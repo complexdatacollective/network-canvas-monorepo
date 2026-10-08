@@ -2734,6 +2734,66 @@ const recordSession: SyncHandler = (_interviewId, session) => {
   return Promise.resolve();
 };
 
+/** How many people and relationships each session written held, in the
+ * order written. */
+const sessionSizes: string[] = [];
+const recordSessionSizes: SyncHandler = (_interviewId, session) => {
+  sessionSizes.push(
+    `people: ${session.network.nodes.length}, relationships: ${session.network.edges.length}`,
+  );
+  return Promise.resolve();
+};
+
+/**
+ * Adding someone saves everyone the addition draws, and how they are
+ * related, as one change. A sister added to a participant with no parents
+ * yet brings an unnamed couple as their parents, and no session written along
+ * the way holds some of the three without the rest, or people without their
+ * relationships.
+ */
+export const AddingARelativeIsOneChange: Story = {
+  args: { requirement: 'none' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      family={{
+        people: [
+          { id: 'ego', gender: 'nonBinary', sex: 'intersex', ego: true },
+        ],
+        links: [],
+      }}
+      onSync={recordSessionSizes}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    sessionSizes.length = 0;
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+
+    await userEvent.hover(await canvas.findByRole('button', { name: /^You/ }));
+    await userEvent.click(await canvas.findByTestId('pedigree-menu-sibling'));
+    await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
+    await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
+    await userEvent.click(
+      await body.findByRole('button', { name: 'Add to family' }),
+    );
+    await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
+    await waitFor(() =>
+      expect(canvas.getAllByTestId('pedigree-person')).toHaveLength(4),
+    );
+
+    await waitFor(() =>
+      expect(sessionSizes.at(-1)).toMatch(
+        /^people: 4, relationships: [1-9]\d*$/,
+      ),
+    );
+    const added = sessionSizes.at(-1);
+    for (const size of sessionSizes) {
+      await expect(['people: 1, relationships: 0', added]).toContain(size);
+    }
+  },
+};
+
 /** Every value written encrypted in the session last written. */
 const encryptedValues = () =>
   (lastSynced?.network.nodes ?? []).flatMap((node) =>

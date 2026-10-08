@@ -56,6 +56,7 @@ import { getCodebook } from '../../store/modules/protocol';
 import {
   addEdge,
   addNode,
+  addNodesAndEdges,
   deleteEdge,
   deleteNode,
   updateEdge,
@@ -1168,16 +1169,15 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   const linkAttributes = (link: PlannedLink) => linkAttributesFor(config, link);
 
+  const linkEdge = (link: PlannedLink) => ({
+    from: link.source,
+    to: link.target,
+    type: config.relationshipType,
+    attributeData: linkAttributes(link),
+  });
+
   const addLink = (link: PlannedLink) =>
-    dispatch(
-      addEdge({
-        from: link.source,
-        to: link.target,
-        type: config.relationshipType,
-        attributeData: linkAttributes(link),
-        currentStep,
-      }),
-    ).unwrap();
+    dispatch(addEdge({ ...linkEdge(link), currentStep })).unwrap();
 
   // An answer that someone has no siblings or children, or that the
   // participant doesn't know, is withdrawn once the family records one: read
@@ -1315,20 +1315,23 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       result.request,
     );
     const newPersonId = plan.people[0]?.id ?? '';
-    for (const person of plan.people) {
-      await dispatch(
-        addNode({
+    // Everyone the addition draws, and how they are related, is saved as one
+    // change, or not at all, so nothing observing the session sees part of
+    // it.
+    await dispatch(
+      addNodesAndEdges({
+        nodes: plan.people.map((person) => ({
           type: config.personType,
           attributeData: person.details,
           modelData: { [entityPrimaryKeyProperty]: person.id },
           // What the participant typed is written encrypted where the study
           // encrypts it.
           useEncryption: encryptDetails,
-          currentStep,
-        }),
-      ).unwrap();
-    }
-    for (const link of plan.links) await addLink(link);
+        })),
+        edges: plan.links.map(linkEdge),
+        currentStep,
+      }),
+    ).unwrap();
     await withdrawContradictedAnswers();
     // Recorded: the people drawn are now the family's own.
     setDraft(null);
