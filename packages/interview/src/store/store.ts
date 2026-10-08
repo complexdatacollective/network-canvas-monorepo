@@ -18,6 +18,7 @@ import { createAnalyticsListenerMiddleware } from './middleware/analyticsListene
 import { createLocaleChangeMiddleware } from './middleware/localeChangeMiddleware';
 import { createInterviewLogger } from './middleware/logger';
 import { createSyncMiddleware } from './middleware/syncMiddleware';
+import { createWritesInFlightMiddleware } from './middleware/writesInFlight';
 import protocol from './modules/protocol';
 import session from './modules/session';
 import ui from './modules/ui';
@@ -48,6 +49,22 @@ export const store = (
     createLocaleChangeMiddleware({
       onProtocolLocaleChange: options.onProtocolLocaleChange,
     });
+  const {
+    middleware: writesInFlightMiddleware,
+    writesSettled,
+    trackWrite,
+  } = createWritesInFlightMiddleware();
+  // A write still protecting its answers is stored before they are handed to
+  // the host, and the result says whether every write under way was stored,
+  // so finishing or closing can stay when one was refused. While the page
+  // unloads there is no time to wait for them. Exports read the recorded
+  // locale, so this waits for the locale write as well as the session write.
+  const flushSync = async (flushOptions?: { unloading?: boolean }) => {
+    const settling = flushOptions?.unloading ? undefined : writesSettled();
+    const stored = (await settling) ?? true;
+    await Promise.all([flush(flushOptions), localeChangesSettled()]);
+    return stored;
+  };
   const tracker = options.tracker ?? NULL_TRACKER;
   const analyticsMiddleware = createAnalyticsListenerMiddleware({
     tracker,
@@ -57,7 +74,7 @@ export const store = (
   const redaction = createEncryptedValueRedaction(protocolPayload.codebook);
 
   // Object.assign rather than a cast so the store's inferred type (dispatch
-  // thunk overloads included) survives alongside the added flushSync.
+  // thunk overloads included) survives alongside the added functions.
   return Object.assign(
     configureStore({
       reducer: rootReducer,
@@ -68,6 +85,7 @@ export const store = (
           },
         }).concat(
           ...(options.isDevelopment ? [createInterviewLogger(redaction)] : []),
+          writesInFlightMiddleware,
           syncMiddleware,
           localeChangeMiddleware,
           analyticsMiddleware,
@@ -86,13 +104,7 @@ export const store = (
         protocol: protocolPayload,
       },
     }),
-    {
-      // Exports read the recorded locale, so whatever ends the session waits
-      // for the locale write as well as the session write.
-      flushSync: async (flushOptions?: { unloading?: boolean }) => {
-        await Promise.all([flush(flushOptions), localeChangesSettled()]);
-      },
-    },
+    { flushSync, writesSettled, trackWrite },
   );
 };
 

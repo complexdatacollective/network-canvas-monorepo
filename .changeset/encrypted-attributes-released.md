@@ -103,6 +103,14 @@ Encrypted answers are now protected in a new way:
   back from any other person does. Leaving a Network Composer stage saves a
   change in its side panel that hadn't been saved yet, and asks before
   discarding one that is invalid or couldn't be saved.
+- Leaving a stage, moving to the next or previous question on a stage (or to
+  the next person on the map), finishing or closing the interview waits for
+  answers still being encrypted, so they are kept and the next stage is
+  chosen with them. When one of them can't be saved, the participant stays
+  where they are and the interview isn't finished or closed, so they see why
+  and can try again. The confirmations to finish and to close the interview
+  stay open while they wait, and cancelling either one keeps the interview
+  open.
 - An area picked on the map is highlighted once it is saved, so a pick that
   couldn't be saved, such as a protected location picked before the
   passphrase was entered, no longer looks chosen. The map highlights only the

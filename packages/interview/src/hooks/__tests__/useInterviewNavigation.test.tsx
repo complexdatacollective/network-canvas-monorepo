@@ -1,4 +1,4 @@
-import { configureStore } from '@reduxjs/toolkit';
+import { configureStore, type Middleware } from '@reduxjs/toolkit';
 import { act, renderHook } from '@testing-library/react';
 import { type ReactNode, useState } from 'react';
 import { Provider } from 'react-redux';
@@ -11,9 +11,11 @@ import {
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
+import { createWritesInFlightMiddleware } from '../../store/middleware/writesInFlight';
 import protocol from '../../store/modules/protocol';
-import session, { updateEgo } from '../../store/modules/session';
+import session, { updateEgo, updatePrompt } from '../../store/modules/session';
 import ui from '../../store/modules/ui';
+import { WritesInFlightProvider } from '../../store/WritesInFlightContext';
 import useInterviewNavigation from '../useInterviewNavigation';
 
 type TestStage = {
@@ -22,6 +24,7 @@ type TestStage = {
   label: string;
   items: never[];
   skipLogic?: SkipLogic;
+  prompts?: { id: string; text: string }[];
 };
 
 const makeStages = (count: number): TestStage[] =>
@@ -63,7 +66,7 @@ const skipWhenDeclined = (
   destination,
 });
 
-function makeStore(stages: TestStage[]) {
+function makeStore(stages: TestStage[], extraMiddleware: Middleware[] = []) {
   return configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
@@ -92,7 +95,8 @@ function makeStore(stages: TestStage[]) {
         stages,
       } as never,
     },
-    middleware: (g) => g({ serializableCheck: false }),
+    middleware: (g) =>
+      g({ serializableCheck: false }).concat(...extraMiddleware),
   });
 }
 
@@ -126,6 +130,42 @@ function renderStatefulNavigation(
     () => useInterviewNavigation(initialStageOverrideIndex, reviewMode),
     { wrapper: Wrapper },
   );
+  return { result, onStepChange, store };
+}
+
+// Navigation in a store that tracks the session writes under way, as the
+// interview's own store does.
+function renderTrackingWrites(stages: TestStage[], initialStep = 0) {
+  const { middleware, writesSettled, trackWrite } =
+    createWritesInFlightMiddleware();
+  const store = makeStore(stages, [middleware]);
+  const onStepChange = vi.fn();
+
+  function Wrapper({ children }: { children: ReactNode }) {
+    const [step, setStep] = useState(initialStep);
+    return (
+      <Provider store={store}>
+        <WritesInFlightProvider
+          writesSettled={writesSettled}
+          trackWrite={trackWrite}
+        >
+          <CurrentStepProvider
+            currentStep={step}
+            onStepChange={(nextStep, meta) => {
+              onStepChange(nextStep, meta);
+              setStep(nextStep);
+            }}
+          >
+            {children}
+          </CurrentStepProvider>
+        </WritesInFlightProvider>
+      </Provider>
+    );
+  }
+
+  const { result } = renderHook(() => useInterviewNavigation(), {
+    wrapper: Wrapper,
+  });
   return { result, onStepChange, store };
 }
 
@@ -775,4 +815,296 @@ describe('useInterviewNavigation goToStage (progress-bar jump)', () => {
     expect(onStepChange).toHaveBeenCalledTimes(1);
     expect(onStepChange).toHaveBeenCalledWith(2, expect.anything());
   });
+});
+
+describe('useInterviewNavigation waiting for writes begun on the stage', () => {
+  const declined = { set: { agrees: false }, unset: [] };
+  // Lets everything already queued run, so a navigation that did not wait
+  // would have finished.
+  const queuedWorkRuns = () =>
+    act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+
+  it('chooses the next screen with an answer still being stored', async () => {
+    const stages = makeStages(3);
+    stages[1]!.skipLogic = skipWhenDeclined({ type: 'finish' });
+    const { result, onStepChange, store } = renderTrackingWrites(stages);
+    store.dispatch(updateEgo.pending('w1', declined));
+
+    let moving: Promise<unknown> = Promise.resolve();
+    act(() => {
+      moving = result.current.moveForward();
+    });
+    await queuedWorkRuns();
+    expect(onStepChange).not.toHaveBeenCalled();
+
+    await act(async () => {
+      store.dispatch(updateEgo.fulfilled(declined, 'w1', declined));
+      await moving;
+    });
+    expect(onStepChange).toHaveBeenLastCalledWith(3, expect.anything());
+  });
+
+  it('chooses the previous screen with an answer still being stored', async () => {
+    const stages = makeStages(3);
+    stages[1]!.skipLogic = {
+      action: 'SKIP',
+      filter: skipWhenDeclined({ type: 'finish' }).filter,
+    };
+    const { result, onStepChange, store } = renderTrackingWrites(stages, 2);
+    store.dispatch(updateEgo.pending('w1', declined));
+
+    let moving: Promise<unknown> = Promise.resolve();
+    act(() => {
+      moving = result.current.moveBackward();
+    });
+    await queuedWorkRuns();
+    expect(onStepChange).not.toHaveBeenCalled();
+
+    await act(async () => {
+      store.dispatch(updateEgo.fulfilled(declined, 'w1', declined));
+      await moving;
+    });
+    expect(onStepChange).toHaveBeenLastCalledWith(0, expect.anything());
+  });
+
+  it('rechecks a menu target with an answer still being stored', async () => {
+    const stages = makeStages(5);
+    stages[1]!.skipLogic = skipWhenDeclined({
+      type: 'stage',
+      stageId: 's4',
+    });
+    const { result, onStepChange, store } = renderTrackingWrites(stages);
+    const confirmUnavailable = vi.fn().mockResolvedValue(true);
+    store.dispatch(updateEgo.pending('w1', declined));
+
+    let moving: Promise<unknown> = Promise.resolve();
+    act(() => {
+      moving = result.current.goToStage(2, confirmUnavailable);
+    });
+    await queuedWorkRuns();
+    expect(onStepChange).not.toHaveBeenCalled();
+
+    await act(async () => {
+      store.dispatch(updateEgo.fulfilled(declined, 'w1', declined));
+      await moving;
+    });
+    expect(confirmUnavailable).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'bypassed' }),
+    );
+    expect(onStepChange).toHaveBeenLastCalledWith(2, expect.anything());
+  });
+
+  type Navigation = ReturnType<typeof useInterviewNavigation>;
+  it.each<
+    [string, (navigation: Navigation) => Promise<unknown>, number, number]
+  >([
+    ['forward', (navigation) => navigation.moveForward(), 0, 1],
+    ['back', (navigation) => navigation.moveBackward(), 2, 1],
+    ['to a menu target', (navigation) => navigation.goToStage(2), 0, 2],
+  ])(
+    'stays when an answer still being stored is refused, going %s, and goes when asked again',
+    async (_direction, navigate, from, to) => {
+      const { result, onStepChange, store } = renderTrackingWrites(
+        makeStages(3),
+        from,
+      );
+      store.dispatch(updateEgo.pending('w1', declined));
+
+      let moving: Promise<unknown> = Promise.resolve();
+      act(() => {
+        moving = navigate(result.current);
+      });
+      await act(async () => {
+        store.dispatch(
+          updateEgo.rejected(new Error('refused'), 'w1', declined),
+        );
+        await moving;
+      });
+      expect(onStepChange).not.toHaveBeenCalled();
+
+      await act(async () => {
+        await navigate(result.current);
+      });
+      expect(onStepChange).toHaveBeenLastCalledWith(to, expect.anything());
+    },
+  );
+
+  it.each<[string, (navigation: Navigation) => Promise<unknown>]>([
+    ['forward', (navigation) => navigation.moveForward()],
+    ['to a menu target', (navigation) => navigation.goToStage(2)],
+  ])(
+    'stays, going %s, when an answer the stage begins storing as it is left is refused',
+    async (_direction, navigate) => {
+      const { result, onStepChange, store } = renderTrackingWrites(
+        makeStages(3),
+      );
+      act(() => {
+        result.current.registerBeforeNext(() => {
+          store.dispatch(updateEgo.pending('w1', declined));
+          return true;
+        });
+      });
+
+      let moving: Promise<unknown> = Promise.resolve();
+      act(() => {
+        moving = navigate(result.current);
+      });
+      await queuedWorkRuns();
+      await act(async () => {
+        store.dispatch(
+          updateEgo.rejected(new Error('refused'), 'w1', declined),
+        );
+        await moving;
+      });
+
+      expect(onStepChange).not.toHaveBeenCalled();
+    },
+  );
+
+  // One stage asking two questions, then a second stage.
+  const twoPrompts = () => {
+    const stages = makeStages(2);
+    stages[0]!.prompts = [
+      { id: 'p1', text: 'First question' },
+      { id: 'p2', text: 'Second question' },
+    ];
+    return stages;
+  };
+
+  it.each<
+    [string, (navigation: Navigation) => Promise<unknown>, number, number]
+  >([
+    ['forward', (navigation) => navigation.moveForward(), 0, 1],
+    ['back', (navigation) => navigation.moveBackward(), 1, 0],
+  ])(
+    'moves to the %s prompt only once an answer still being stored is stored',
+    async (_direction, navigate, from, to) => {
+      const { result, onStepChange, store } =
+        renderTrackingWrites(twoPrompts());
+      act(() => {
+        store.dispatch(updatePrompt(from));
+      });
+      store.dispatch(updateEgo.pending('w1', declined));
+
+      let moving: Promise<unknown> = Promise.resolve();
+      act(() => {
+        moving = navigate(result.current);
+      });
+      await queuedWorkRuns();
+      expect(store.getState().session.promptIndex).toBe(from);
+
+      await act(async () => {
+        store.dispatch(updateEgo.fulfilled(declined, 'w1', declined));
+        await moving;
+      });
+      expect(store.getState().session.promptIndex).toBe(to);
+      expect(onStepChange).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each<
+    [string, (navigation: Navigation) => Promise<unknown>, number, number]
+  >([
+    ['forward', (navigation) => navigation.moveForward(), 0, 1],
+    ['back', (navigation) => navigation.moveBackward(), 1, 0],
+  ])(
+    'stays on the prompt when an answer still being stored is refused, going %s, and moves when asked again',
+    async (_direction, navigate, from, to) => {
+      const { result, store } = renderTrackingWrites(twoPrompts());
+      act(() => {
+        store.dispatch(updatePrompt(from));
+      });
+      store.dispatch(updateEgo.pending('w1', declined));
+
+      let moving: Promise<unknown> = Promise.resolve();
+      act(() => {
+        moving = navigate(result.current);
+      });
+      await act(async () => {
+        store.dispatch(
+          updateEgo.rejected(new Error('refused'), 'w1', declined),
+        );
+        await moving;
+      });
+      expect(store.getState().session.promptIndex).toBe(from);
+
+      await act(async () => {
+        await navigate(result.current);
+      });
+      expect(store.getState().session.promptIndex).toBe(to);
+    },
+  );
+
+  it.each<[string, (navigation: Navigation) => Promise<unknown>, number]>([
+    ['forward', (navigation) => navigation.moveForward(), 0],
+    ['back', (navigation) => navigation.moveBackward(), 1],
+  ])(
+    'stays on the prompt, going %s, when an answer the stage begins storing as it moves on is refused',
+    async (_direction, navigate, from) => {
+      const { result, store } = renderTrackingWrites(twoPrompts());
+      act(() => {
+        store.dispatch(updatePrompt(from));
+        result.current.registerBeforeNext(() => {
+          store.dispatch(updateEgo.pending('w1', declined));
+          return true;
+        });
+      });
+
+      let moving: Promise<unknown> = Promise.resolve();
+      act(() => {
+        moving = navigate(result.current);
+      });
+      await queuedWorkRuns();
+      await act(async () => {
+        store.dispatch(
+          updateEgo.rejected(new Error('refused'), 'w1', declined),
+        );
+        await moving;
+      });
+
+      expect(store.getState().session.promptIndex).toBe(from);
+    },
+  );
+
+  it.each<[string, (navigation: Navigation) => Promise<unknown>]>([
+    ['forward', (navigation) => navigation.moveForward()],
+    ['back', (navigation) => navigation.moveBackward()],
+  ])(
+    'takes no step within the stage, going %s, until an answer still being stored is stored, and none when it is refused',
+    async (_direction, navigate) => {
+      const { result, store } = renderTrackingWrites(makeStages(3), 1);
+      // A stage that moves between its own steps, as the map moves from one
+      // person to the next.
+      const steps: string[] = [];
+      act(() => {
+        result.current.registerBeforeNext((direction) => {
+          steps.push(direction);
+          return false;
+        });
+      });
+      store.dispatch(updateEgo.pending('w1', declined));
+      store.dispatch(updateEgo.pending('w2', declined));
+
+      let moving: Promise<unknown> = Promise.resolve();
+      act(() => {
+        moving = navigate(result.current);
+      });
+      await queuedWorkRuns();
+      expect(steps).toEqual([]);
+
+      await act(async () => {
+        store.dispatch(updateEgo.fulfilled(declined, 'w1', declined));
+        store.dispatch(
+          updateEgo.rejected(new Error('refused'), 'w2', declined),
+        );
+        await moving;
+      });
+      expect(steps).toEqual([]);
+
+      await act(async () => {
+        await navigate(result.current);
+      });
+      expect(steps).toHaveLength(1);
+    },
+  );
 });
