@@ -2,7 +2,12 @@ import { describe, expect, test } from 'vitest';
 
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
-import { answersContradictedBy, evaluateCompleteness } from '../completeness';
+import {
+  answersContradictedBy,
+  evaluateCompleteness,
+  recommendationsCover,
+  recommendationsShown,
+} from '../completeness';
 import { readFamily } from '../model';
 import { config, link, person } from './fixtures';
 
@@ -318,5 +323,49 @@ describe('answersContradictedBy', () => {
         ),
       ).size,
     ).toBe(0);
+  });
+});
+
+describe('recommendationsCover', () => {
+  const shown = recommendationsShown([
+    { kind: 'parents', personId: 'ego', missing: 1 },
+    { kind: 'siblings', personId: 'ego' },
+  ]);
+
+  test('covers the same list, or a shorter one', () => {
+    expect(
+      recommendationsCover(shown, [
+        { kind: 'parents', personId: 'ego', missing: 1 },
+        { kind: 'siblings', personId: 'ego' },
+      ]),
+    ).toBe(true);
+    expect(
+      recommendationsCover(shown, [{ kind: 'siblings', personId: 'ego' }]),
+    ).toBe(true);
+  });
+
+  test('covers an item that now needs less than it did', () => {
+    const both = recommendationsShown([
+      { kind: 'parents', personId: 'ego', missing: 2 },
+    ]);
+    expect(
+      recommendationsCover(both, [
+        { kind: 'parents', personId: 'ego', missing: 1 },
+      ]),
+    ).toBe(true);
+  });
+
+  test('does not cover an item that now needs more than it did', () => {
+    expect(
+      recommendationsCover(shown, [
+        { kind: 'parents', personId: 'ego', missing: 2 },
+      ]),
+    ).toBe(false);
+  });
+
+  test('does not cover an item it did not list', () => {
+    expect(
+      recommendationsCover(shown, [{ kind: 'children', personId: 'ego' }]),
+    ).toBe(false);
   });
 });
