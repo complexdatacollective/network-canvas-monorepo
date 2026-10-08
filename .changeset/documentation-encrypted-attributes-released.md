@@ -23,9 +23,14 @@ anyone. A new section explains what a participant sees when an interview's
 protection details are damaged or come from a newer version, and the export
 section now says that only answers saved encrypted are replaced with
 `ENCRYPTED`. Another new section explains that skip logic and filters can't
-use an encrypted attribute, except a panel over an external data file, that
-upgrading removes such rules, and that a list sorted by an encrypted attribute
-is sorted by the participant's answers only once the passphrase is entered.
+compare the answers to an encrypted attribute, except in a panel over an
+external data file, but can still check whether it is answered. It explains
+that upgrading removes the rules that compared these answers and keeps the
+others, that a stage whose skip logic loses all its rules is always shown, so
+one that was shown only when a removed rule matched may appear for the first
+time, and how the rules that remain may match differently. It also explains
+that a list sorted by an encrypted attribute is sorted by the participant's
+answers only once the passphrase is entered.
 
 The schema information page says that schema 9 keeps a protocol's
 `experiments` setting, for features released within a schema version, and

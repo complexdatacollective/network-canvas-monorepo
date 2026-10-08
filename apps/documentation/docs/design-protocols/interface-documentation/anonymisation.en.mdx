@@ -19,11 +19,17 @@ In the **Encrypted attributes** section of the stage editor, each node type in y
 
 ### Encrypted attributes in skip logic, filters and sorting
 
-Skip logic and filters can't use an encrypted attribute. They are checked without the participant's passphrase, so they could never read its answers, only the encrypted text. Architect doesn't offer encrypted attributes when you build a rule, and it won't let you encrypt an attribute that a rule already uses until you remove or change that rule.
+Skip logic and filters are checked without the participant's passphrase, so they can't read the answers to an encrypted attribute. This means a rule can't compare those answers, for example to check whether a name is "Alice". A rule can still check whether an encrypted attribute has been answered at all. When you build a rule on an encrypted attribute, Architect offers only **exists** and **does not exist**.
 
-There is one exception. A panel that lists people from an external data file can still filter on an encrypted attribute, because the data in that file isn't encrypted.
+Architect won't let you encrypt an attribute while a rule compares its answers. Remove that rule first, or change it so it only checks whether the attribute is answered.
 
-If you upgrade a schema 8 protocol that encrypts attributes, any skip logic or filter rule that used one of them is removed, because it never worked. Skip logic or a filter that is left with no rules is removed too, so a stage that had such skip logic is now always shown. Check the stages that used these rules, because the rules that remain may now match differently.
+There is one exception. A panel that lists people from an external data file can still compare an encrypted attribute's answers, because the data in that file isn't encrypted.
+
+If you upgrade a schema 8 protocol that encrypts attributes, any skip logic or filter rule that compared the answers to one of them is removed. Under schema 8, these rules only ever compared the encrypted text, never the answer itself. Rules that only check whether an encrypted attribute is answered keep working, so they stay.
+
+Skip logic that is left with no rules is removed, so its stage is now always shown. If a stage was set to show only when a removed rule matched, it may never have appeared before, so it may now appear for the first time. A filter that is left with no rules is removed too, so it no longer limits what its stage or panel shows.
+
+Check the stages that used the removed rules, because the rules that remain may now match differently. If all the rules had to match, the remaining ones match at least as often as before. If any one rule could match, they match at most as often.
 
 You can still sort a list by an encrypted attribute, such as a name. Once the participant has entered their passphrase, the list is sorted by their answers. Until then, or if an answer can't be read, the list ignores that sort rule, so its order never hints at what the answers say.
 

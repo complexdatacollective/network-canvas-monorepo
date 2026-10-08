@@ -141,12 +141,17 @@ Encrypted answers are now protected in a new way:
   relative's label, such as "Rosa's Parent".
 
 Skip logic and filters are checked without the participant's passphrase, so a
-rule on an encrypted attribute could only ever compare its encrypted text.
-Architect no longer offers encrypted attributes when you build skip logic, a
-stage filter or a panel filter, except in a panel that lists people from an
-external data file, whose rows are not encrypted. It won't let you encrypt an
-attribute that one of these rules uses until the rule is removed or changed.
-Upgrading a protocol to schema 9 removes such rules.
+rule that compared the answers to an encrypted attribute only ever compared
+its encrypted text. A rule that only checks whether an encrypted attribute is
+answered still works. When you build skip logic, a stage filter or a panel
+filter, Architect offers an encrypted attribute only with "exists" and "does
+not exist", except in a panel that lists people from an external data file,
+whose rows are not encrypted. A stored rule that compares one is marked, and
+can't be saved until it is changed. Architect won't let you encrypt an
+attribute while one of these rules compares its answers. Upgrading a protocol
+to schema 9 removes the comparing rules and keeps the others. Skip logic left
+with no rules is removed, so its stage is always shown, and a stage shown only
+when a removed rule matched may never have appeared before.
 
 Answers encrypted by the experimental feature in schema 8 can't be read after
 the upgrade, and a forgotten passphrase still can't be recovered. A schema 8
