@@ -21,6 +21,7 @@ import {
   RESOURCE_KIND_ICONS,
 } from '@codaco/protocol-builder/resources/components/resourceKinds';
 import { assetMetadataMessages } from '~/components/Assets/assetMetadataMessages';
+import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 import { getBundledAssetUrl } from '~/templates/bundled-asset-url';
 import { getAssetBlobUrl, revokeBlobUrl } from '~/utils/assetUtils';
 import { cx } from '~/utils/cva';
@@ -284,6 +285,7 @@ const AssetCard = ({
   onReplace = null,
 }: AssetCardProps) => {
   const intl = useAppIntl();
+  const readOnly = useProtocolReadOnly();
   const typeLabel = intl.formatMessage(assetMetadataMessages[type]);
   const typeColor = RESOURCE_KIND_BADGE_COLORS[type];
   const handleDelete = useCallback(
@@ -331,6 +333,7 @@ const AssetCard = ({
           size="sm"
           onClick={handleReplace}
           onMouseDown={stopCardSelection}
+          disabled={readOnly}
         />
       ),
       !isUnresolved && onPreview && (
@@ -378,6 +381,7 @@ const AssetCard = ({
           size="sm"
           onClick={handleDelete}
           onMouseDown={stopCardSelection}
+          disabled={readOnly}
         />
       ),
     ],
@@ -394,6 +398,7 @@ const AssetCard = ({
       onPreview,
       onReplace,
       intl,
+      readOnly,
     ],
   );
 

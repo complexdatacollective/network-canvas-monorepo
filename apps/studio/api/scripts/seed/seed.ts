@@ -24,7 +24,11 @@ import {
   earliestSessionByParticipant,
   seedSessionsAndNetworks,
 } from './network.ts';
-import { seedProtocolLine, type SeededVersion } from './protocols.ts';
+import {
+  seedProtocolLine,
+  seedStagedSecret,
+  type SeededVersion,
+} from './protocols.ts';
 import { seedBytes, seedTime } from './rng.ts';
 import {
   closeStudy,
@@ -101,7 +105,8 @@ export type SeedOptions = {
 export type SeedResult = {
   /**
    * Every secret this seed wrote, in plaintext: the webhook signing secrets,
-   * the admin's three OAuth tokens, and each team's protocol API key.
+   * the admin's three OAuth tokens, and each team's protocol API key and
+   * staged API key.
    * Returned so the dump-and-search test knows what to search the database
    * for; nothing else needs them, and they are never printed.
    */
@@ -257,7 +262,10 @@ const populate = Effect.fnUntraced(function* (
     yield* scopeToTeam(team.id);
 
     const line = yield* seedProtocolLine(team.id, cipher);
-    totals.plaintextSecrets.push(line.plaintextAssetKey);
+    totals.plaintextSecrets.push(
+      line.plaintextAssetKey,
+      yield* seedStagedSecret(team.id, line.draftId, team.adminUserId, cipher),
+    );
     const versionsById = new Map<string, SeededVersion>(
       line.versions.map((version) => [version.versionId, version]),
     );

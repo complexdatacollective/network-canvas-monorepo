@@ -65,7 +65,7 @@ export const lockDraftHead: (
     })
     .from(drafts)
     .where(and(eq(drafts.id, draftId), eq(drafts.teamId, teamId)))
-    .for('update');
+    .for('no key update');
   const draft = locked[0];
   if (draft === undefined) {
     return yield* new DraftStructureError({ reason: `no draft ${draftId}` });

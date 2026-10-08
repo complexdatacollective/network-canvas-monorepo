@@ -16,6 +16,7 @@ import { Routes } from '../http/router.ts';
 import { JobClock } from '../jobs/clock.ts';
 import { Jobs } from '../jobs/jobs.ts';
 import { JOB_SCHEMA } from '../jobs/queues.ts';
+import { Analytics } from '../platform/analytics.ts';
 import { BootChecks, type BootRefusal } from '../platform/boot-checks.ts';
 import {
   HttpServerLive,
@@ -26,6 +27,7 @@ import { MaintenanceState } from '../platform/maintenance-state.ts';
 import { SchemaStatus } from '../platform/schema-gate.ts';
 import { TracingLive } from '../platform/tracing.ts';
 import { WebSocketDrain } from '../platform/ws-drain.ts';
+import { Doorbell, doorbellCheck } from '../protocol-builder/doorbell.ts';
 import { RateLimiter } from '../rate-limit/limiter.ts';
 import { RateLimitStore } from '../rate-limit/store.ts';
 import type { StudioServices } from '../rpc/deps.ts';
@@ -75,6 +77,7 @@ function withDatabase(
       const auth = yield* AuthService;
       const objectStore = yield* ObjectStore;
       const triggers = yield* MaintenanceTriggers;
+      const doorbell = yield* Doorbell;
 
       const services = yield* Effect.context<StudioServices>();
 
@@ -89,9 +92,11 @@ function withDatabase(
         ...studio.checks,
         schema: schemaCheck(status.read),
         maintenance: maintenanceCheck(triggers),
+        doorbell: doorbellCheck(env, doorbell),
       });
     }),
   ).pipe(
+    Layer.provide(Doorbell.layer),
     // Listening does not wait for the schema or the keyring: an upgrade starts
     // this process before `migrate` runs, and it answers closed meanwhile.
     // `BootChecks` runs both in the background and holds the gate closed
@@ -114,6 +119,7 @@ function withDatabase(
     Layer.provide(Jobs.layer({ schema: JOB_SCHEMA })),
     Layer.provide(JobClock.layerApplication()),
     Layer.provide(AuditSignal.layer),
+    Layer.provide(Analytics.layerFromEnvironment),
     Layer.provideMerge(Layer.orDie(Database.layerFromEnvironment)),
   );
 }
@@ -126,9 +132,13 @@ function withoutDatabase(env: StudioEnv) {
         auth: yield* AuthService,
         objectStore: yield* ObjectStore,
       });
-      return Serve(studio, studio.checks);
+      return Serve(studio, {
+        ...studio.checks,
+        doorbell: doorbellCheck(env, yield* Doorbell),
+      });
     }),
   ).pipe(
+    Layer.provide(Doorbell.layer),
     Layer.provide(MaintenanceTriggers.layerOpen),
     Layer.provide(ObjectStoreLive),
     Layer.provide(AuthService.layerFromEnvironment),
@@ -138,6 +148,7 @@ function withoutDatabase(env: StudioEnv) {
     Layer.provide(SecretsCipher.layerAbsent),
     Layer.provide(Jobs.layer({ schema: JOB_SCHEMA })),
     Layer.provide(AuditSignal.layer),
+    Layer.provide(Analytics.layerDisabled),
     Layer.provide(DatabaseAbsent),
   );
 }

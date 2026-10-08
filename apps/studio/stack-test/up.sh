@@ -6,6 +6,7 @@
 #   apps/studio/stack-test/up.sh --variant external-bucket
 #   apps/studio/stack-test/up.sh --variant external-bucket-azure
 #   apps/studio/stack-test/up.sh --variant own-proxy
+#   apps/studio/stack-test/up.sh --variant two-api
 #
 # What `dev:stack` does (api/scripts/dev-stack.ts), from bash and without
 # pnpm, plus one per-variant override: write the secrets and the environment,
@@ -143,6 +144,9 @@ cat > "$ENV_FILE" <<ENV
 #     -f $STUDIO_DIR/docker-compose.yml \\
 #     -f $STUDIO_DIR/docker-compose.local.yml \\
 #     -f $STACK_TEST_DIR/variants/$VARIANT.yml ps
+#
+# two-api adds \`-f $TWO_API_OVERRIDE\` after the variant file: the guide's
+# override block, which lib.sh extracts from docs/self-host/run.md.
 STUDIO_HOSTNAME=$HOSTNAME_
 ACME_EMAIL=nobody@localhost
 STUDIO_API_IMAGE=$API_IMAGE
@@ -287,13 +291,48 @@ if [ "$VARIANT" = "own-proxy" ]; then
 fi
 
 # ── Ready ─────────────────────────────────────────────────────────────────
+#
+# One replica is ready when the ingress answers 200 once. With two, the ingress
+# alternates between them, so one 200 can come from a replica that has opened
+# while the other has not — and the first request `assert.sh` makes would then
+# meet the maintenance page. Each replica is asked directly, from inside its own
+# container, and then the ingress has to answer 200 several times in a row,
+# which it can only do once it is sending traffic to both.
 url="$(ingress_url)"
+needed=1
+if [ "$VARIANT" = "two-api" ]; then
+  needed=8
+  for service in $(api_services); do
+    say "waiting for $service to open"
+    opened=''
+    for _ in $(seq 1 120); do
+      if compose exec -T "$service" node -e \
+        "fetch('http://127.0.0.1:3000/readyz').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))" \
+        >/dev/null 2>&1; then
+        opened=yes
+        break
+      fi
+      sleep 1
+    done
+    if [ -z "$opened" ]; then
+      compose ps
+      compose logs --tail 200 "$service"
+      die "$service did not answer /readyz with 200 from inside its container within 120s"
+    fi
+  done
+fi
 say "waiting for $url/readyz"
+streak=0
 for attempt in $(seq 1 120); do
   code="$(curl -k -s -o /dev/null -w '%{http_code}' --max-time 5 "$url/readyz" || true)"
   if [ "$code" = "200" ]; then
-    say "$url/readyz answered 200 after ${attempt}s"
-    exit 0
+    streak=$((streak + 1))
+    if [ "$streak" -ge "$needed" ]; then
+      say "$url/readyz answered 200 $streak time(s) in a row after ${attempt}s"
+      exit 0
+    fi
+  else
+    streak=0
   fi
   sleep 1
 done

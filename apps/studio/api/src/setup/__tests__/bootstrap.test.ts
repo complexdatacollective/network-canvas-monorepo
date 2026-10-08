@@ -21,6 +21,7 @@ import {
   issueBootstrapToken,
   printBootstrapToken,
   readInstallation,
+  readInstallationId,
 } from '../bootstrap.ts';
 
 const refusal = (exit: Exit.Exit<unknown, unknown>): string | undefined =>
@@ -257,6 +258,32 @@ describe.skipIf(!testDb)('the bootstrap token', () => {
             bootstrapTokenHash: null,
           });
           assert.deepStrictEqual(yield* issue, { kind: 'owned' });
+        }),
+    );
+
+    suite.effect(
+      'keeps the installation id out of the application’s reach',
+      () =>
+        Effect.gen(function* () {
+          yield* fresh;
+          yield* issue;
+          const before = yield* OwnerScope.open(readInstallationId());
+          assert.isNotNull(before);
+
+          assert.strictEqual(
+            refusal(
+              yield* Effect.exit(
+                asApplication(
+                  'update installation set installation_id = gen_random_uuid()',
+                ),
+              ),
+            ),
+            RAISE_EXCEPTION,
+          );
+          assert.strictEqual(
+            yield* OwnerScope.open(readInstallationId()),
+            before,
+          );
         }),
     );
 

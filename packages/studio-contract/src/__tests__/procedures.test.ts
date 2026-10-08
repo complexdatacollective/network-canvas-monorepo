@@ -9,6 +9,7 @@ const STUDIO_TAGS = [
   'audit.get',
   'audit.list',
   'me',
+  'participant.analytics',
   'participant.finish',
   'participant.redeem',
   'participant.session',
@@ -44,6 +45,7 @@ const STUDIO_MIDDLEWARE: Record<
   'audit.get': [AUTHENTICATED],
   'audit.list': [AUTHENTICATED],
   'me': [AUTHENTICATED],
+  'participant.analytics': [REQUIRE_SESSION],
   'participant.finish': [REQUIRE_SESSION],
   'participant.redeem': [],
   'participant.session': [REQUIRE_SESSION],
@@ -105,8 +107,9 @@ describe('StudioRpcs', () => {
 });
 
 describe('ParticipantRpcs', () => {
-  it('declares the four participant procedures and nothing else', () => {
+  it('declares the five participant procedures and nothing else', () => {
     expect([...ParticipantRpcs.requests.keys()].toSorted()).toEqual([
+      'participant.analytics',
       'participant.finish',
       'participant.redeem',
       'participant.session',

@@ -202,7 +202,7 @@ describe.skipIf(!dbAvailable)('lease state machine', () => {
       const before = await expiries(draft);
       const otherBefore = await expiries(other);
 
-      const renewed = await server.renewHeld(draft, 'tab-A');
+      const renewed = await server.renewHeld(draft, ['tab-A']);
 
       expect(
         renewed
@@ -233,7 +233,7 @@ describe.skipIf(!dbAvailable)('lease state machine', () => {
       await expireLease(run, draft, 'stage-1');
       const before = await expiries(draft);
 
-      const renewed = await server.renewHeld(draft, 'tab-A');
+      const renewed = await server.renewHeld(draft, ['tab-A']);
 
       expect(renewed.map((lease) => lease.sectionId)).toEqual(['stage-2']);
       expect((await expiries(draft)).get('stage-1')?.expires_at).toEqual(
@@ -248,7 +248,7 @@ describe.skipIf(!dbAvailable)('lease state machine', () => {
       await server.acquire(draft, 'stage-2', 'tab-B');
       const before = await expiries(draft);
 
-      const renewed = await server.renewHeld(draft, 'tab-A');
+      const renewed = await server.renewHeld(draft, ['tab-A']);
 
       expect(renewed.map((lease) => lease.sectionId)).toEqual(['stage-1']);
       const after = await expiries(draft);
@@ -258,12 +258,40 @@ describe.skipIf(!dbAvailable)('lease state machine', () => {
       );
     });
 
+    it('renews the leases of every owner it names, in one statement', async () => {
+      const draft = await makeDraft(server);
+      await server.acquire(draft, 'stage-1', 'tab-A');
+      await server.acquire(draft, 'stage-2', 'tab-B');
+      await server.acquire(draft, 'codebook-person', 'tab-C');
+      const before = await expiries(draft);
+
+      const renewed = await server.renewHeld(draft, ['tab-A', 'tab-B']);
+
+      expect(
+        renewed
+          .map(({ sectionId, owner }) => ({ sectionId, owner }))
+          .toSorted((a, b) => a.sectionId.localeCompare(b.sectionId)),
+      ).toEqual([
+        { sectionId: 'stage-1', owner: 'tab-A' },
+        { sectionId: 'stage-2', owner: 'tab-B' },
+      ]);
+      const after = await expiries(draft);
+      for (const sectionId of ['stage-1', 'stage-2']) {
+        expect(after.get(sectionId)?.expires_at.getTime()).toBeGreaterThan(
+          before.get(sectionId)?.expires_at.getTime() ?? 0,
+        );
+      }
+      expect(after.get('codebook-person')?.expires_at).toEqual(
+        before.get('codebook-person')?.expires_at,
+      );
+    });
+
     it('renews nothing for an owner that holds nothing', async () => {
       const draft = await makeDraft(server);
       await server.acquire(draft, 'stage-1', 'tab-A');
       const before = await expiries(draft);
 
-      expect(await server.renewHeld(draft, 'tab-B')).toEqual([]);
+      expect(await server.renewHeld(draft, ['tab-B'])).toEqual([]);
       expect(await expiries(draft)).toEqual(before);
     });
   });

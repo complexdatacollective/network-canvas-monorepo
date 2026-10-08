@@ -8,6 +8,7 @@ import type {
   StepChangeHandler,
 } from '@codaco/interview/contract';
 
+import { createParticipantAnalyticsClient } from './analyticsClient.ts';
 import { createAssetResolver } from './assetUrl.ts';
 import {
   createParticipantHandlers,
@@ -25,6 +26,11 @@ const ANALYTICS: InterviewAnalyticsMetadata = {
 };
 
 export default function InterviewSession() {
+  const { sessionToken } = route.useParams();
+  return <InterviewSessionView key={sessionToken} />;
+}
+
+function InterviewSessionView() {
   const loaded = route.useLoaderData();
   const [notice, setNotice] = useState<ParticipantNoticeKind>();
   const [currentStep, setCurrentStep] = useState(loaded.stageIndex);
@@ -32,6 +38,15 @@ export default function InterviewSession() {
   currentStepRef.current = currentStep;
 
   const { payload } = loaded;
+
+  const { sessionToken } = route.useParams();
+  const analyticsClient = useMemo(
+    () =>
+      loaded.analytics
+        ? createParticipantAnalyticsClient(sessionToken)
+        : undefined,
+    [loaded.analytics, sessionToken],
+  );
 
   const { onSync, onFinish, saveStep, flushStep } = useMemo(
     () =>
@@ -48,16 +63,21 @@ export default function InterviewSession() {
   );
 
   useEffect(() => {
-    const onHidden = () => {
-      if (document.visibilityState === 'hidden') flushStep();
+    const onLeave = () => {
+      flushStep();
+      analyticsClient?.flush({ unloading: true });
     };
-    window.addEventListener('pagehide', flushStep);
+    const onHidden = () => {
+      if (document.visibilityState === 'hidden') onLeave();
+    };
+    window.addEventListener('pagehide', onLeave);
     document.addEventListener('visibilitychange', onHidden);
     return () => {
-      window.removeEventListener('pagehide', flushStep);
+      window.removeEventListener('pagehide', onLeave);
       document.removeEventListener('visibilitychange', onHidden);
+      analyticsClient?.flush();
     };
-  }, [flushStep]);
+  }, [flushStep, analyticsClient]);
 
   const onStepChange = useCallback<StepChangeHandler>(
     (step) => {
@@ -85,7 +105,8 @@ export default function InterviewSession() {
       onFinish={onFinish}
       onRequestAsset={onRequestAsset}
       analytics={ANALYTICS}
-      disableAnalytics
+      posthogClient={analyticsClient}
+      disableAnalytics={analyticsClient === undefined}
       allowUserScaling
     />
   );

@@ -59,6 +59,7 @@ export const openSession = async (rawSessionToken: string) => {
     holderEpoch: loaded.holderEpoch,
     revision: loaded.revision,
     stageIndex: loaded.stageIndex,
+    analytics: loaded.analytics,
     payload,
   };
 };

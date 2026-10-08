@@ -17,15 +17,16 @@ import {
 } from './asset-keys.ts';
 
 type SyncTransactionOperation =
-  | Exclude<keyof SyncServer, 'ttlMs' | 'getSection' | 'manifestChain'>
+  | Exclude<
+      keyof SyncServer,
+      'ttlMs' | 'getSection' | 'manifestChain' | 'renew' | 'renewHeld'
+    >
   | 'forceExpireForTest';
 
 export const SYNC_TRANSACTION_POLICIES = {
   createDraft: 'sync.createDraft',
   acquire: 'sync.acquire',
   takeover: 'sync.takeover',
-  renew: 'sync.renew',
-  renewHeld: 'sync.renewHeld',
   release: 'sync.release',
   commit: 'sync.commit',
   resume: 'sync.resume',

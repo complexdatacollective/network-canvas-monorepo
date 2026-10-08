@@ -127,6 +127,24 @@ api_address() {
     "$(container_id api)"
 }
 
+# One replica's own /readyz body, asked from inside its container so the
+# ingress cannot answer for another. Polls until it is ok with the doorbell
+# subscribed, for up to 120 s, and prints the last body either way for the
+# caller to assert on.
+replica_ready() { # service
+  local body=''
+  for _ in $(seq 1 120); do
+    body="$(compose exec -T "$1" node -e \
+      "fetch('http://127.0.0.1:3000/readyz').then(r => r.text()).then(t => console.log(t), () => console.log(''))" \
+      2>/dev/null || true)"
+    case "$body" in
+      *'"status":"ok"'*'"doorbell":"ok"'*) break ;;
+    esac
+    sleep 1
+  done
+  printf '%s' "$body"
+}
+
 section() {
   echo ''
   echo "[$VARIANT] $1"
@@ -171,6 +189,13 @@ case "$VARIANT" in
     equals "the stack's traefik container is gone" '' "$(container_id traefik)"
     differs 'the nginx ingress is running' '' "$(container_id own-proxy)"
     ;;
+  two-api)
+    # Nothing is gone here; something is added. A second replica that never
+    # started would leave every assertion below passing against one.
+    differs 'the first API replica exists' '' "$(container_id api)"
+    differs 'the second API replica exists' '' "$(container_id api-b)"
+    differs 'they are two containers' "$(container_id api)" "$(container_id api-b)"
+    ;;
 esac
 
 # ── The routing table ─────────────────────────────────────────────────────
@@ -198,7 +223,15 @@ equals 'as a problem document' 'application/problem+json' "$CONTENT_TYPE"
 contains 'naming the refusal' '"status":401' "$BODY"
 equals 'before any procedure answered' '' "$RPC_VERDICT"
 
-request "$URL/readyz"
+# The doorbell subscribes once its store answers, which can be a moment after
+# the rest of /readyz is ok, so the body is asked for again for up to 15 s.
+for _ in $(seq 1 15); do
+  request "$URL/readyz"
+  case "$BODY" in
+    *'"doorbell":"ok"'*) break ;;
+  esac
+  sleep 1
+done
 equals '/readyz is served' 200 "$STATUS"
 contains '/readyz reports the database' '"db":"ok"' "$BODY"
 contains '/readyz reports the schema' '"schema":"ok"' "$BODY"
@@ -208,7 +241,20 @@ contains '/readyz reports the object store' '"objectStore":"ok"' "$BODY"
 # still serve every assertion below. `degraded` here is the swap silently not
 # having worked.
 contains '/readyz reports the limiter' '"limiter":"ok"' "$BODY"
+# `ok` for the same reason: a replica that cannot subscribe reports
+# `degraded` and still answers 200, and its editors then hear of the other
+# replicas' writes only through the five-second poll.
+contains '/readyz reports the doorbell' '"doorbell":"ok"' "$BODY"
 contains '/readyz is ok overall' '"status":"ok"' "$BODY"
+
+# Through the ingress, one answer comes from whichever replica Traefik picked,
+# so with two each is asked from inside its own container as well.
+if [ "$VARIANT" = "two-api" ]; then
+  for service in $(api_services); do
+    replica_body="$(replica_ready "$service")"
+    contains "$service's own /readyz reports the doorbell" '"doorbell":"ok"' "$replica_body"
+  done
+fi
 
 # `--http1.1` because a WebSocket handshake is an HTTP/1.1 upgrade and both
 # ingresses offer h2 over TLS, where `Connection: Upgrade` is not a legal
@@ -335,6 +381,14 @@ else
   fail "the limiter's counters are in $limiter_store" \
     'no studio:rl:* key — the refusal above came from somewhere else'
 fi
+# The doorbell rings in the same store: every API replica holds one
+# subscription to its channel there. The publishing connection subscribes to
+# nothing, and the worker has no doorbell, so the count is the replicas.
+doorbell_subscribers="$(compose exec -T "$limiter_store" \
+  valkey-cli --raw PUBSUB NUMSUB studio:protocol-events 2>/dev/null \
+  | tr -d '\r' | tail -n 1 || true)"
+equals "every API replica listens for the doorbell in $limiter_store" \
+  "$(wc -w <<< "$(api_services)" | tr -d ' ')" "${doorbell_subscribers:-none}"
 if [ "$VARIANT" = 'external-redis' ]; then
   # There is no second store to have written them to: the service that held
   # them before the swap is gone, which the swapped-element section asserted.
@@ -345,29 +399,36 @@ fi
 #
 # `stop`, not `down`. Docker may still move the address, and the guide's nginx
 # block resolves upstreams once, so a moved API takes the documented reload.
+#
+# Every API replica stops: the window is the one in which nothing answers, and
+# with a replica still serving there would be no window to assert on.
 section 'the maintenance window'
 stopped_at="$(api_address)"
-compose stop api >/dev/null 2>&1
+# shellcheck disable=SC2046 # one word per service, deliberately
+compose stop $(api_services) >/dev/null 2>&1
 
 request "$URL/rpc"
 equals '/rpc is 503 while the API is stopped' 503 "$STATUS"
 contains '/rpc is the maintenance page' 'temporarily unavailable' "$BODY"
 
-# 502 or 504, not one or the other: a container that is gone takes its address
+# 502, 503 or 504, not one of them: a container that is gone takes its address
 # with it, so the ingress's connection attempt is refused on some runs and
-# times out on others. Which of the two it is says nothing about the routing;
-# that this path is NOT the maintenance page is the contract.
+# times out on others — and once two-api's health check has marked every
+# server down, Traefik answers 503 itself rather than trying one. Which of the
+# three it is says nothing about the routing; that this path is NOT the
+# maintenance page is the contract.
 request "$URL/readyz"
 case "$STATUS" in
-  502 | 504) pass '/readyz bypasses the maintenance page' "$STATUS" ;;
-  *) fail '/readyz bypasses the maintenance page' "expected a gateway error (502 or 504), saw '$STATUS'" ;;
+  502 | 503 | 504) pass '/readyz bypasses the maintenance page' "$STATUS" ;;
+  *) fail '/readyz bypasses the maintenance page' "expected a gateway error (502, 503 or 504), saw '$STATUS'" ;;
 esac
 excludes '/readyz is the real status, not the page' 'temporarily unavailable' "$BODY"
 
 request "$URL/"
 equals '/ still serves the client' 200 "$STATUS"
 
-compose start api >/dev/null 2>&1
+# shellcheck disable=SC2046 # one word per service, deliberately
+compose start $(api_services) >/dev/null 2>&1
 if [ "$VARIANT" = "own-proxy" ]; then
   started_health=''
   for _ in $(seq 1 90); do
@@ -393,8 +454,8 @@ equals '/readyz recovers once the API is back' 200 "${restored:-none}"
 # ── own-proxy: the upgrade window, and the forwarded headers ──────────────
 #
 # The maintenance window above stops and starts one container, which usually
-# keeps its address. An UPGRADE replaces it — `docker compose up -d web api worker`, step
-# 4 of docs/self-host/upgrade.md — and the replacement usually has a new one.
+# keeps its address. An UPGRADE replaces it — `up -d`, step 4 of
+# docs/self-host/upgrade.md — and the replacement usually has a new one.
 # nginx resolved the name in its `upstream` block once, when it loaded, so it
 # goes on addressing the container that is gone and answers 502 until it is
 # reloaded: measured here at 172.31.243.8 becoming .7, and 502 for as long as
@@ -489,6 +550,316 @@ if [ "$VARIANT" = "own-proxy" ]; then
     "$PROBE_FORWARDED_FOR" "$recorded"
   equals 'the recorded address is where the proxy saw the client' \
     "$client_ip" "$recorded"
+fi
+
+# ── two-api: an editor's lock survives the replica that granted it ────────
+#
+# What running more than one API is for. An editor takes a section's lock on
+# one replica; that replica is then stopped, as a restart or a failed host
+# would stop it; the other replica carries on serving the same editor, and the
+# editor's next save is still written. Then, with both up, a save on one
+# replica has to reach a tab watching on the other (step 8).
+#
+# Through the unary plane and `curl`, because that is the one a shell can speak
+# and it holds the same lease as a socket does: every call an editor makes to a
+# replica tells the replica the editor is still there, and a replica renews the
+# leases of the editors it has heard from. The lease lasts 30 seconds and is
+# renewed every 10, so a save made after 40 seconds with nobody renewing it is
+# refused as `NotLockHolder`. A pass here means the second replica really did
+# renew what the first had granted.
+#
+# No sleeps except the spacing of the calls the scenario itself makes. Every
+# wait is a poll for the state it is waiting on.
+if [ "$VARIANT" = "two-api" ]; then
+  section 'an editor across a replica stop'
+  TAB='stack-test-tab-1'
+
+  # A version-4 UUID from openssl, which this suite already needs.
+  uuid() {
+    local h
+    h="$(openssl rand -hex 16)"
+    printf '%s-%s-4%s-8%s-%s' "${h:0:8}" "${h:8:4}" "${h:13:3}" "${h:17:3}" "${h:20:12}"
+  }
+
+  # One call on the protocol-builder plane, as the editor's tab.
+  builder() { # tag payload-json
+    RPC_ROUTE=/rpc/protocol-builder
+    rpc "$1" "$2" -b "$COOKIE_JAR" -H "x-studio-client-session: $TAB"
+    RPC_ROUTE=
+  }
+
+  # The ingress has to have stopped sending requests to a replica that is gone
+  # before the scenario can say which replica served them. Traefik notices on
+  # its next health check, and until then it alternates between a live replica
+  # and a dead one, so a single answer proves nothing: a run of them does.
+  served_in_a_row() { # label needed [tag payload-json]
+    local label="$1" needed="$2" streak=0 attempt served
+    shift 2
+    for attempt in $(seq 1 90); do
+      served=no
+      if [ "$#" -eq 2 ]; then
+        builder "$1" "$2"
+        [ "$RPC_VERDICT" = 'Success' ] && served=yes
+      else
+        request "$URL/readyz"
+        [ "$STATUS" = '200' ] && served=yes
+      fi
+      if [ "$served" = 'yes' ]; then
+        streak=$((streak + 1))
+        if [ "$streak" -ge "$needed" ]; then
+          pass "$label" "$streak answers in a row after ${attempt}s"
+          return 0
+        fi
+      else
+        streak=0
+      fi
+      sleep 1
+    done
+    fail "$label" "no run of $needed answers within 90s (last status ${STATUS:-none})"
+  }
+
+  # 1. Only the first replica is up, so it is the one that grants the lock.
+  compose stop api-b >/dev/null 2>&1
+  served_in_a_row 'the ingress serves from the first replica alone' 10
+
+  # 2. A team, a protocol, and a section to edit. There is no HTTP route that
+  # creates a team (the instance's own routes are blocked until teams have an
+  # audited command), so the owner's team is a row, exactly as `scripts/seed`
+  # writes one.
+  rpc me null -b "$COOKIE_JAR"
+  user_id="$(printf '%s' "$RPC_EXIT" | sed -n 's/.*"userId":"\([^"]*\)".*/\1/p')"
+  differs 'the owner has a user id' '' "$user_id"
+  team_id="$(uuid)"
+  compose exec -T postgres psql -U studio -d studio -v ON_ERROR_STOP=1 -q \
+    -c "insert into teams (id, name, slug) values ('$team_id', 'Stack test team', 'stack-test-team'); insert into team_members (id, team_id, user_id, role) values ('$(uuid)', '$team_id', '$user_id', 'owner');" \
+    >/dev/null 2>&1 || fail 'the owner has a team' 'the insert into teams failed'
+  pass 'the owner has a team' "$team_id"
+
+  protocol_id="$(uuid)"
+  draft_id="$(uuid)"
+  rpc protocols.create \
+    "{\"teamId\":\"$team_id\",\"name\":\"Two replicas\",\"protocolId\":\"$protocol_id\",\"draftId\":\"$draft_id\"}" \
+    -b "$COOKIE_JAR"
+  equals 'a protocol is created' Success "$RPC_VERDICT"
+
+  builder ListSections "{\"protocolId\":\"$protocol_id\"}"
+  equals 'the new protocol lists its sections' Success "$RPC_VERDICT"
+  contains 'one of them is the settings section' '"settings"' "$RPC_EXIT"
+  SECTION=settings
+
+  # 3. The tab takes the lock. Its owner is this user and this tab id, which is
+  # what the lease is held under whichever replica serves the next call.
+  builder AcquireLock "{\"protocolId\":\"$protocol_id\",\"sectionId\":\"$SECTION\"}"
+  equals 'the first replica grants the lock' Success "$RPC_VERDICT"
+  contains 'and the tab holds it' '"lock":"held"' "$RPC_EXIT"
+  document="$(printf '%s' "$RPC_EXIT" | sed -n 's/.*"document":\(.*\),"revision":{.*/\1/p')"
+  revision="$(printf '%s' "$RPC_EXIT" \
+    | sed -n 's/.*"revision":\({"sequence":"[0-9]*","contentHash":"[^"]*"}\).*/\1/p')"
+  sequence_before="$(printf '%s' "$revision" | sed -n 's/.*"sequence":"\([0-9]*\)".*/\1/p')"
+  differs 'the lock came with the section document' '' "$document"
+  differs 'and with its revision' '' "$revision"
+
+  # 4. The second replica joins, and is open before anything is taken from the
+  # first.
+  compose start api-b >/dev/null 2>&1
+  for _ in $(seq 1 120); do
+    compose exec -T api-b node -e \
+      "fetch('http://127.0.0.1:3000/readyz').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))" \
+      >/dev/null 2>&1 && break
+    sleep 1
+  done
+  compose exec -T api-b node -e \
+    "fetch('http://127.0.0.1:3000/readyz').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))" \
+    >/dev/null 2>&1 || fail 'the second replica opens' 'its /readyz did not answer 200 within 120s'
+  pass 'the second replica opens' 'its /readyz answered 200'
+
+  # 5. The replica that granted the lock stops. From here only the second
+  # replica can renew it.
+  compose stop api >/dev/null 2>&1
+  stopped_epoch="$(date +%s)"
+  served_in_a_row 'the second replica serves the editor alone' 5 \
+    ListSections "{\"protocolId\":\"$protocol_id\"}"
+
+  # 6. The editor goes on working for longer than the lease lasts: a call every
+  # five seconds, until forty have passed since the first replica stopped.
+  # Forty, not thirty-five, so the margin over the 30 second lease is the
+  # renewal interval and not a rounding.
+  while [ "$(($(date +%s) - stopped_epoch))" -lt 40 ]; do
+    sleep 5
+    builder ListSections "{\"protocolId\":\"$protocol_id\"}"
+    equals 'the editor is still served' Success "$RPC_VERDICT"
+  done
+
+  # 7. The save. Under the lease it was granted, by the second replica.
+  edited="${document/\"name\":\"Two replicas\"/\"name\":\"Two replicas, edited\"}"
+  differs 'the saved document differs from the one taken' "$document" "$edited"
+  builder Submit \
+    "{\"protocolId\":\"$protocol_id\",\"requestId\":\"$(uuid)\",\"sectionId\":\"$SECTION\",\"document\":$edited,\"revision\":$revision}"
+  if [ "$RPC_VERDICT" = 'Success' ]; then
+    pass 'the save is written after the first replica stopped' "$RPC_VERDICT"
+  else
+    fail 'the save is written after the first replica stopped' \
+      "refused with ${RPC_ERROR:-no answer}: the lock lapsed once the replica that granted it stopped"
+  fi
+  sequence_after="$(printf '%s' "$RPC_EXIT" | sed -n 's/.*"sequence":"\([0-9]*\)".*/\1/p')"
+  differs 'the write made a new revision' "$sequence_before" "$sequence_after"
+
+  builder GetSection "{\"protocolId\":\"$protocol_id\",\"sectionId\":\"$SECTION\"}"
+  equals 'the section reads back' Success "$RPC_VERDICT"
+  contains 'with the edited name' 'Two replicas, edited' "$RPC_EXIT"
+
+  # 8. The relay. A second tab watches the protocol on one replica while the
+  # editor saves on the other, and the watcher has to hear of the save. Both
+  # calls go to a replica's own port from inside its container, so Traefik's
+  # balancing cannot put them on the same one; the session cookie is the one
+  # the owner signed in with, read from curl's jar.
+  section 'a save on one replica reaches a watcher on the other'
+  compose start api >/dev/null 2>&1
+  api_body="$(replica_ready api)"
+  contains 'the first replica is back, its doorbell subscribed' '"doorbell":"ok"' "$api_body"
+  # Ready reports the subscription once it is asked for, a moment before the
+  # store may count it, so the count is asked for again for up to 10 s.
+  for _ in $(seq 1 10); do
+    subscribers="$(compose exec -T "$(limiter_store_service)" \
+      valkey-cli --raw PUBSUB NUMSUB studio:protocol-events 2>/dev/null \
+      | tr -d '\r' | tail -n 1 || true)"
+    [ "$subscribers" = 2 ] && break
+    sleep 1
+  done
+  equals 'both replicas listen for the doorbell' 2 "${subscribers:-none}"
+
+  # curl's Netscape jar: tab-separated, the name and value in the last two
+  # fields, and an HttpOnly cookie's line prefixed `#HttpOnly_`.
+  cookie="$(awk -F'\t' 'NF >= 7 { print $6 "=" $7 }' "$COOKIE_JAR" | paste -sd ';' - | sed 's/;/; /g')"
+  differs 'the owner has a session cookie to send' '' "$cookie"
+
+  # Prints `watching` once the stream has answered, and exits 0 on the first
+  # revision newer than AFTER, printing when it saw it.
+  WATCH_JS='
+const { PROTOCOL_ID, COOKIE, ORIGIN, TAB, AFTER } = process.env;
+setTimeout(() => { console.log("timed out"); process.exit(2); }, 30000);
+const response = await fetch("http://127.0.0.1:3000/rpc/protocol-builder", {
+  method: "POST",
+  headers: { "content-type": "application/ndjson", origin: ORIGIN, "sec-fetch-site": "same-origin", cookie: COOKIE, "x-studio-client-session": TAB },
+  body: JSON.stringify({ _tag: "Request", id: "1", tag: "WatchProtocol", payload: { protocolId: PROTOCOL_ID }, headers: [] }) + "\n",
+});
+if (!response.ok || !response.body) { console.log("status " + response.status); process.exit(3); }
+const decoder = new TextDecoder();
+let buffered = "";
+let watching = false;
+for await (const bytes of response.body) {
+  buffered += decoder.decode(bytes, { stream: true });
+  for (let end = buffered.indexOf("\n"); end >= 0; end = buffered.indexOf("\n")) {
+    const line = buffered.slice(0, end);
+    buffered = buffered.slice(end + 1);
+    if (line.trim() === "") continue;
+    const frame = JSON.parse(line);
+    if (frame._tag === "Exit") { console.log("exit " + JSON.stringify(frame.exit)); process.exit(4); }
+    if (frame._tag !== "Chunk") continue;
+    if (!watching) { watching = true; console.log("watching"); }
+    for (const event of frame.values) {
+      if (event.type === "revision" && BigInt(event.revision.sequence) > BigInt(AFTER)) {
+        console.log("revision " + event.revision.sequence + " at " + Date.now());
+        process.exit(0);
+      }
+    }
+  }
+}
+console.log("stream ended");
+process.exit(5);
+'
+
+  # Takes the lock again (the same owner and tab, so it is still theirs) for a
+  # current document and revision, saves it under NAME, and prints the new
+  # sequence and when the save returned.
+  SAVE_JS='
+const { PROTOCOL_ID, SECTION, COOKIE, ORIGIN, TAB, REQUEST_ID, NAME } = process.env;
+const find = (value, key) => {
+  if (value === null || typeof value !== "object") return undefined;
+  if (key in value) return value[key];
+  for (const child of Object.values(value)) {
+    const found = find(child, key);
+    if (found !== undefined) return found;
+  }
+  return undefined;
+};
+const call = async (tag, payload) => {
+  const response = await fetch("http://127.0.0.1:3000/rpc/protocol-builder", {
+    method: "POST",
+    headers: { "content-type": "application/ndjson", origin: ORIGIN, "sec-fetch-site": "same-origin", cookie: COOKIE, "x-studio-client-session": TAB },
+    body: JSON.stringify({ _tag: "Request", id: "1", tag, payload, headers: [] }) + "\n",
+  });
+  const text = await response.text();
+  const exit = text.split("\n").filter((line) => line.trim() !== "").map((line) => JSON.parse(line)).find((frame) => frame._tag === "Exit");
+  if (exit?.exit?._tag !== "Success") throw new Error(tag + " answered " + response.status + ": " + text.slice(0, 300));
+  return exit.exit.value;
+};
+const lock = await call("AcquireLock", { protocolId: PROTOCOL_ID, sectionId: SECTION });
+const document = JSON.parse(JSON.stringify(find(lock, "document")).replace(/"name":"Two replicas[^"]*"/, JSON.stringify("name") + ":" + JSON.stringify(NAME)));
+const saved = await call("Submit", { protocolId: PROTOCOL_ID, requestId: REQUEST_ID, sectionId: SECTION, document, revision: find(lock, "revision") });
+console.log("saved " + find(saved, "sequence") + " at " + Date.now());
+'
+
+  # The safety poll runs every 5 s, so a save it carried reaches the watcher
+  # anywhere up to 5 s after the save returned; one the doorbell carried
+  # arrives in well under a second. A poll lands under this bound by chance
+  # one save in five, so three rounds in a row under it were the doorbell's
+  # but for one run in 125.
+  RELAY_BOUND_MS=1000
+  after="$sequence_after"
+  for round in 1 2 3; do
+    # An empty sequence would let any revision pass as the relayed save, even
+    # one the watcher replays from the log as it connects.
+    case "$after" in
+      '' | *[!0-9]*) fail "round $round has a sequence to watch past" "saw '$after'" ;;
+    esac
+
+    watch_log="$WORK_DIR/relay-watch-$round.log"
+    compose exec -T \
+      -e PROTOCOL_ID="$protocol_id" -e COOKIE="$cookie" -e ORIGIN="$ORIGIN" \
+      -e TAB='stack-test-tab-2' -e AFTER="$after" \
+      api-b node --input-type=module -e "$WATCH_JS" > "$watch_log" 2>&1 < /dev/null &
+    watcher=$!
+    for _ in $(seq 1 60); do
+      grep -q '^watching$' "$watch_log" 2>/dev/null && break
+      kill -0 "$watcher" 2>/dev/null || break
+      sleep 0.5
+    done
+    if grep -q '^watching$' "$watch_log"; then
+      pass "round $round: a second tab watches on the second replica" 'its stream answered'
+    else
+      fail "round $round: a second tab watches on the second replica" "$(tr '\n' ' ' < "$watch_log")"
+    fi
+
+    saved="$(compose exec -T \
+      -e PROTOCOL_ID="$protocol_id" -e SECTION="$SECTION" -e COOKIE="$cookie" \
+      -e ORIGIN="$ORIGIN" -e TAB="$TAB" -e REQUEST_ID="$(uuid)" \
+      -e NAME="Two replicas, relayed $round" \
+      api node --input-type=module -e "$SAVE_JS" 2>&1 < /dev/null || true)"
+    saved_line="$(printf '%s\n' "$saved" | grep '^saved [0-9]* at [0-9]*$' || true)"
+    if [ -n "$saved_line" ]; then
+      pass "round $round: the editor saves on the first replica" "$saved_line"
+    else
+      fail "round $round: the editor saves on the first replica" "$(printf '%s' "$saved" | tr '\n' ' ' | cut -c1-300)"
+    fi
+
+    watched=0
+    wait "$watcher" || watched=$?
+    seen="$(grep '^revision [0-9]* at [0-9]*$' "$watch_log" || true)"
+    if [ "$watched" -ne 0 ] || [ -z "$seen" ]; then
+      fail "round $round: the watcher on the second replica hears of the save" \
+        "exited $watched: $(tr '\n' ' ' < "$watch_log")"
+    fi
+    latency=$((${seen##* at } - ${saved_line##* at }))
+    if [ "$latency" -lt "$RELAY_BOUND_MS" ]; then
+      pass "round $round: the watcher hears of it within ${RELAY_BOUND_MS} ms" \
+        "${seen% at *}, $latency ms after the save returned"
+    else
+      fail "round $round: the watcher hears of it within ${RELAY_BOUND_MS} ms" \
+        "${seen% at *}, $latency ms after the save returned: the safety poll's pace, not the doorbell's"
+    fi
+    after="$(printf '%s' "$saved_line" | sed -n 's/^saved \([0-9]*\) at .*/\1/p')"
+  done
 fi
 
 echo ''

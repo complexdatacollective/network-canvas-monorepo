@@ -2,6 +2,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { PortalContainerProvider } from '../../PortalContainer';
 import Modal from '../index';
 import ModalPopup from '../ModalPopup';
 
@@ -130,5 +131,49 @@ describe('ModalPopup focus return', () => {
 
     await waitFor(() => expect(document.activeElement).toBe(opener));
     expect(document.activeElement).not.toBe(document.body);
+  });
+
+  /**
+   * A modal rendered into an iframe, through a portal container inside it.
+   * Focusing the opener there also focuses the `<iframe>` element in the page
+   * around the frame, as a browser does, so the ambient document's active
+   * element is the frame itself. Remembering THAT as the opener sends focus
+   * back to the `<iframe>` on close, and the frame's own document is left with
+   * focus on its `<body>`.
+   */
+  it('remembers the opener in the document the modal renders into', async () => {
+    const frame = document.createElement('iframe');
+    document.body.append(frame);
+    const frameDocument = frame.contentDocument;
+    if (!frameDocument) throw new Error('the iframe rendered no document');
+    const container = frameDocument.createElement('div');
+    frameDocument.body.append(container);
+
+    try {
+      render(
+        <PortalContainerProvider>
+          <Harness />
+        </PortalContainerProvider>,
+        { container, baseElement: frameDocument.body },
+      );
+
+      const opener = frameDocument.getElementById('opener');
+      if (!opener) throw new Error('#opener not rendered');
+      opener.focus();
+      opener.click();
+      await waitFor(() =>
+        expect(
+          frameDocument
+            .querySelector('[role="dialog"]')
+            ?.contains(frameDocument.activeElement),
+        ).toBe(true),
+      );
+
+      frameDocument.getElementById('in-popup')?.click();
+
+      await waitFor(() => expect(frameDocument.activeElement).toBe(opener));
+    } finally {
+      frame.remove();
+    }
   });
 });

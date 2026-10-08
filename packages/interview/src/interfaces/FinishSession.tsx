@@ -9,12 +9,14 @@ import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
+import { useTrack } from '../analytics/useTrack';
 import {
   useContractHandlers,
   useFinishConfirmationDescription,
 } from '../contract/context';
 import { runtimeMessages } from '../i18n/runtimeMessages';
 import { getInterviewId } from '../selectors/session';
+import { getProtocolStages } from '../store/modules/protocol';
 import { useSyncFlush } from '../store/SyncFlushContext';
 import { interfaceMessages } from './messages';
 
@@ -28,6 +30,8 @@ const FinishSession = () => {
   const finishConfirmationDescription = useFinishConfirmationDescription();
   const flushSync = useSyncFlush();
   const { confirm } = useDialog();
+  const track = useTrack();
+  const stageCount = useSelector(getProtocolStages).length;
 
   const finishInterviewConfirmation = async () => {
     if (!interviewId) return;
@@ -55,6 +59,7 @@ const FinishSession = () => {
           throw new Error('An answer still being saved was refused');
         }
         await onFinish(interviewId, signal);
+        track('interview_finished', { stage_count: stageCount });
       },
     });
   };

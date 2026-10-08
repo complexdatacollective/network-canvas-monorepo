@@ -12,14 +12,17 @@
 import { sql } from 'drizzle-orm';
 import {
   bigint,
+  bytea,
   check,
   foreignKey,
   index,
+  integer,
   jsonb,
   pgTable,
   primaryKey,
   text,
   timestamp,
+  unique,
   uuid,
 } from 'drizzle-orm/pg-core';
 
@@ -70,6 +73,11 @@ const protocolEvents = pgTable(
       'protocol_events_kind_check',
       sql`${table.kind} IN ('revision', 'lock')`,
     ),
+    // The latest lock event per section, which a relay seeds its lock map from
+    // and the reaper re-checks before releasing an expired lease.
+    index('protocol_events_draft_id_section_id_cursor_lock_idx')
+      .on(table.draftId, table.sectionId, table.cursor.desc())
+      .where(sql`${table.kind} = 'lock'`),
     check('protocol_events_cursor_check', sql`${table.cursor} > 0`),
     check(
       'protocol_events_section_id_check',
@@ -168,12 +176,167 @@ const protocolWriteReceipts = pgTable(
   ],
 );
 
+/**
+ * Who is connected to a draft, on any replica, and until when.
+ *
+ * A `socket` row is one `watchProtocol` stream: keyed per watch because one
+ * socket can carry several, so ending one does not end the others. It carries
+ * the presence its socket shows (`socket_id` is what presence and mode are
+ * keyed by). A `contact` row is an owner's unary-plane activity on one
+ * replica, which keeps the owner's leases renewed between calls.
+ *
+ * A closed connection is marked expired rather than deleted, so a reconnect
+ * grace on any replica can tell "gone" from "never here".
+ */
+const protocolConnections = pgTable(
+  'protocol_connections',
+  {
+    teamId: text('team_id').notNull(),
+    draftId: uuid('draft_id').notNull(),
+    connectionId: text('connection_id').notNull(),
+    socketId: text('socket_id'),
+    kind: text('kind').notNull(),
+    owner: text('owner').notNull(),
+    userId: text('user_id').notNull(),
+    displayName: text('display_name').notNull(),
+    mode: text('mode').notNull(),
+    sectionId: text('section_id'),
+    replicaId: text('replica_id').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .default(sql`clock_timestamp()`),
+  },
+  (table) => [
+    primaryKey({ columns: [table.draftId, table.connectionId] }),
+    foreignKey({
+      columns: [table.draftId, table.teamId],
+      foreignColumns: [drafts.id, drafts.teamId],
+    }).onDelete('cascade'),
+    index('protocol_connections_team_id_draft_id_owner_expires_at_idx').on(
+      table.teamId,
+      table.draftId,
+      table.owner,
+      table.expiresAt,
+    ),
+    index('protocol_connections_draft_id_socket_id_idx').on(
+      table.draftId,
+      table.socketId,
+    ),
+    index('protocol_connections_expires_at_idx').on(table.expiresAt),
+    // Presence lists only live socket rows.
+    index('protocol_connections_draft_id_expires_at_socket_idx')
+      .on(table.draftId, table.expiresAt)
+      .where(sql`${table.kind} = 'socket'`),
+    check(
+      'protocol_connections_kind_check',
+      sql`${table.kind} IN ('socket', 'contact')`,
+    ),
+    check(
+      'protocol_connections_mode_check',
+      sql`${table.mode} IN ('viewing', 'editing')`,
+    ),
+    check(
+      'protocol_connections_socket_id_check',
+      sql`(${table.kind} = 'socket') = (${table.socketId} IS NOT NULL)`,
+    ),
+    check(
+      'protocol_connections_connection_id_check',
+      sql`char_length(${table.connectionId}) BETWEEN 1 AND 512`,
+    ),
+    teamIsolationPolicy(),
+  ],
+);
+
+/**
+ * How long a tab's unary-plane contact keeps its leases renewed, and how long
+ * after its last connection lapsed the worker leaves what it staged. Here so
+ * the worker can read it without importing the host.
+ */
+export const IDLE_MS = 5 * 60_000;
+
+/**
+ * A resource an editor staged but has not yet committed, persisted so that a
+ * later write on any replica can promote it.
+ *
+ * Keyed per edit: an owner's staging belongs to one editing session of one
+ * section. The request id is unique per kind because idempotency is keyed on
+ * the pair. Content lives in the object store under `object_key`; a secret is
+ * sealed here, never stored in the clear.
+ */
+const protocolStagedResources = pgTable(
+  'protocol_staged_resources',
+  {
+    teamId: text('team_id').notNull(),
+    draftId: uuid('draft_id').notNull(),
+    owner: text('owner').notNull(),
+    editId: text('edit_id').notNull(),
+    resourceId: text('resource_id').notNull(),
+    requestId: text('request_id').notNull(),
+    kind: text('kind').notNull(),
+    descriptor: jsonb('descriptor').$type<ResourceDescriptor>().notNull(),
+    objectKey: text('object_key'),
+    contentHash: text('content_hash'),
+    byteLength: integer('byte_length'),
+    contentType: text('content_type'),
+    secretCiphertext: bytea('secret_ciphertext'),
+    secretKeyId: text('secret_key_id'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .default(sql`clock_timestamp()`),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.draftId, table.owner, table.editId, table.resourceId],
+    }),
+    unique('protocol_staged_resources_request_key').on(
+      table.draftId,
+      table.owner,
+      table.editId,
+      table.kind,
+      table.requestId,
+    ),
+    foreignKey({
+      columns: [table.draftId, table.teamId],
+      foreignColumns: [drafts.id, drafts.teamId],
+    }).onDelete('cascade'),
+    index('protocol_staged_resources_team_id_created_at_idx').on(
+      table.teamId,
+      table.createdAt,
+    ),
+    index('protocol_staged_resources_team_id_object_key_idx').on(
+      table.teamId,
+      table.objectKey,
+    ),
+    check(
+      'protocol_staged_resources_kind_check',
+      sql`${table.kind} IN ('content', 'secret')`,
+    ),
+    check(
+      'protocol_staged_resources_storage_check',
+      sql`(${table.objectKey} IS NULL) <> (${table.secretCiphertext} IS NULL)`,
+    ),
+    check(
+      'protocol_staged_resources_secret_key_check',
+      sql`(${table.secretKeyId} IS NULL) = (${table.secretCiphertext} IS NULL)`,
+    ),
+    teamIsolationPolicy(),
+  ],
+);
+
 export const PROTOCOL_BUILDER_TABLES = {
   protocolEvents,
   protocolWriteReceipts,
+  protocolConnections,
+  protocolStagedResources,
 };
 
 // Hashed into the schema fingerprint — whitespace counts.
 export const PROTOCOL_BUILDER_SIDECAR_SQL = `
-${tenantTablesSql(['protocol_events', 'protocol_write_receipts'])}
+${tenantTablesSql([
+  'protocol_events',
+  'protocol_write_receipts',
+  'protocol_connections',
+  'protocol_staged_resources',
+])}
 `;

@@ -51,7 +51,7 @@ services:
       # Let's Encrypt's staging endpoint instead would still need a publicly
       # resolvable hostname.
       - --certificatesResolvers.le.acme.caServer=https://127.0.0.1:9/directory
-      - --providers.file.filename=/etc/traefik/dynamic.yml
+      - --providers.file.directory=/etc/traefik/dynamic
       - --api=false
       - --global.checkNewVersion=false
       - --global.sendAnonymousUsage=false

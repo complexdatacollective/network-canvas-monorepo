@@ -136,6 +136,31 @@ describe('WebSocketDrain', () => {
     }),
   );
 
+  it.effect('reports draining from the moment a drain starts', () =>
+    Effect.gen(function* () {
+      const { record } = journal();
+      const { drain, close } = yield* build(record);
+      const held = yield* holdOpen(drain);
+
+      expect(yield* drain.draining).toBe(false);
+
+      const closing = yield* Effect.forkChild(close);
+      yield* drain.closing;
+      expect(yield* drain.draining).toBe(true);
+
+      yield* Fiber.interrupt(held);
+      yield* Fiber.join(closing);
+    }),
+  );
+
+  it.effect('never reports draining from the test layer', () =>
+    Effect.gen(function* () {
+      const drain = yield* WebSocketDrain;
+      yield* drain.drain;
+      expect(yield* drain.draining).toBe(false);
+    }).pipe(Effect.provide(WebSocketDrain.layerTest)),
+  );
+
   it.effect('does not wait when nothing entered', () =>
     Effect.gen(function* () {
       const { entries, record } = journal();

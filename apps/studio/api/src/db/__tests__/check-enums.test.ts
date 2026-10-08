@@ -52,6 +52,9 @@ const TIED: Record<string, readonly string[]> = {
 const DECLARED_ONLY_HERE = new Set([
   'protocol_events_kind_check',
   'protocol_write_receipts_operation_check',
+  'protocol_connections_kind_check',
+  'protocol_connections_mode_check',
+  'protocol_staged_resources_kind_check',
   'assets_media_class_check',
   'assets_origin_check',
   'asset_references_referrer_kind_check',

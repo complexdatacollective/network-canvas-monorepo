@@ -171,7 +171,14 @@ describe.skipIf(!testDb)('a seeded database at rest', () => {
         Effect.gen(function* () {
           const { dump, plaintextSecrets } = yield* SeededDump;
           expect(dump.length).toBeGreaterThan(100_000);
-          const prefixes = ['whsec_', 'sk.seed-', 'ya29.', '1//', 'eyJ'];
+          const prefixes = [
+            'whsec_',
+            'sk.seed-',
+            'sk.staged-',
+            'ya29.',
+            '1//',
+            'eyJ',
+          ];
           expect(
             prefixes.filter(
               (prefix) =>

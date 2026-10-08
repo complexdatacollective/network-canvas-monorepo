@@ -61,8 +61,8 @@ docker compose version --short
 
 Port 80 is not optional even though every request is redirected from it: the
 HTTP-01 challenge is answered there, ahead of the redirect. Nothing else is
-published — the database, the object store and the rate-limit store are
-reachable only from the stack's own network.
+published — the database, the object store and the rate-limit store (which
+also carries the doorbell) are reachable only from the stack's own network.
 
 **TLS** is obtained and renewed automatically by Traefik from Let's Encrypt
 over ACME HTTP-01, with no DNS credentials. The certificate and account live in
@@ -81,7 +81,7 @@ anything else an instance appears to contact is worth investigating.
 | `ghcr.io`                      | Container images. Public packages, so no registry credentials are needed         | `docker compose pull`, and a first start |
 | `acme-v02.api.letsencrypt.org` | TLS certificates over ACME HTTP-01                                               | First start, and on renewal              |
 | `releases.networkcanvas.com`   | The version manifest the update check reads, to tell owners a new version exists | Once a day, from the worker              |
-| `ph-relay.networkcanvas.com`   | Analytics and error reporting, through the Codaco-managed relay                  | Only while `STUDIO_TELEMETRY` is on      |
+| `us.i.posthog.com`             | Analytics, sent by the api process to Codaco's PostHog project                   | Only while `STUDIO_TELEMETRY` is on      |
 
 <!-- outbound-hosts end -->
 
@@ -110,8 +110,11 @@ Two things worth knowing before your firewall team asks:
   newer version exists. An institution that must stop it blocks the host; there
   is no switch
   ([#1901](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1901)).
-- **`STUDIO_TELEMETRY=false` stops the relay completely**, because no client is
+- **`STUDIO_TELEMETRY=false` stops analytics completely**, because no client is
   constructed at all rather than constructed and muted. It is on by default.
+  Participants' browsers never contact PostHog: their usability events go to
+  your instance, which forwards them. A study can also be created with
+  participant analytics off.
 
 ## What a swapped-in element must provide
 
@@ -140,6 +143,12 @@ Each of these replaces one service in the stack. The swap itself is in
 - **No password in `DATABASE_URL` either.** It lives in the
   `secrets/postgres-password` file secret, which `DATABASE_PASSWORD_FILE`
   names. A URL carrying one as well is refused at boot.
+- **A direct connection, or a session-mode pooler.** Transaction-mode pooling
+  (PgBouncer in transaction mode, Cloudflare Hyperdrive) is not yet supported
+  for the API and the worker. Both keep state on a connection beyond one
+  transaction: the `options` startup parameter above, named prepared
+  statements, the worker's `LISTEN`, and the session advisory lock `migrate`
+  takes.
 - **TLS is recommended**, and required by
   [#1900](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1900)
   wherever the database is not on a private network you control:
@@ -172,23 +181,53 @@ Whichever you choose, this is what Studio needs of it — and all it needs:
 - **A probe of the bucket or container**, which `/readyz` reports as
   `objectStore`. When it is unreachable, missing, or refuses the credentials,
   readiness names the object store as the failing check.
+- **Staged files under `staging/`.** A file an author adds while editing a
+  stage is held in the store, under `staging/<team>/<id>`, until they save or
+  cancel that stage. Studio writes the object, copies it to its
+  content-addressed key when the stage is saved, and deletes it once it is
+  saved or cancelled. The worker lists the `staging/` prefix to delete what
+  was abandoned. Nothing else is listed or deleted: assets under `assets/` are
+  never removed.
 - **The bucket or container already exists.** Studio never creates one.
 
-No listing, no deletion, no lifecycle rules, no bucket policy API, no
-presigning, and no public access: assets are served through Studio.
+No lifecycle rules are required, no bucket policy API, no presigning, and no
+public access: assets are served through Studio.
+
+**If the bucket keeps versions**, a delete only hides an object: on S3 it adds
+a delete marker and the bytes stay as a noncurrent version, and Azure blob
+versioning keeps the deleted blob as a previous version. Staged files are
+deleted all the time, so add a lifecycle rule that expires noncurrent (or
+previous) versions under the `staging/` prefix, or they are kept for as long
+as the bucket keeps versions.
+
+Both the API and the worker use the object store, so both need the same
+credentials. Without an object store, an author can still stage an API key,
+but adding a file to a stage is refused.
 
 #### S3-compatible stores
 
-Four S3 operations and no others:
+Seven S3 operations and no others:
 
-| Operation    | Used for                                                  |
-| ------------ | --------------------------------------------------------- |
-| `HeadBucket` | Readiness: does the bucket answer with these credentials? |
-| `HeadObject` | Does this content-addressed object already exist?         |
-| `PutObject`  | Storing an asset's bytes                                  |
-| `GetObject`  | Serving them back on `/storage/:hash`                     |
+| Operation       | Used for                                                               |
+| --------------- | ---------------------------------------------------------------------- |
+| `HeadBucket`    | Readiness: does the bucket answer with these credentials?              |
+| `HeadObject`    | Does this content-addressed object already exist?                      |
+| `PutObject`     | Storing an asset's bytes, or a staged file's                           |
+| `GetObject`     | Serving them back on `/storage/:hash`, and reading a staged file       |
+| `CopyObject`    | Copying a staged file to its asset key when the stage is saved         |
+| `DeleteObject`  | Removing a staged file that was saved, cancelled or abandoned          |
+| `ListObjectsV2` | The worker finding abandoned staged files, under the `staging/` prefix |
 
-No multipart upload. Two further requirements:
+An IAM policy therefore grants `s3:GetObject`, `s3:PutObject`,
+`s3:DeleteObject` and `s3:ListBucket`: `s3:ListBucket` on the bucket itself
+(`arn:aws:s3:::your-bucket`), where it covers both `ListObjectsV2` and the
+`HeadBucket` readiness probe, and the other three on its objects
+(`arn:aws:s3:::your-bucket/*`). `HeadObject` needs `s3:GetObject`, and
+`CopyObject` needs `s3:GetObject` and `s3:PutObject`, so neither adds an
+action. [Upgrading](./upgrade.md#before-you-pull-new-images) from a release
+that did not stage files in the store means adding `s3:DeleteObject`, and
+`s3:ListBucket` if the policy lacks it. No multipart upload. Two further
+requirements:
 
 - **Path-style addressing** (`<endpoint>/<bucket>/<key>`). `S3_ENDPOINT` is the
   service address, not a per-bucket hostname.
@@ -212,6 +251,11 @@ and readiness leaves the object store out rather than reporting it failed.
   container**, with `AZURE_STORAGE_ACCOUNT_URL` naming the account — no
   account keys. `AZURE_CLIENT_ID` picks a user-assigned identity. A host outside
   Azure uses `AZURE_STORAGE_CONNECTION_STRING` instead of the account URL.
+- **What Studio calls:** a blob's properties, upload, download, delete
+  (`deleteIfExists`) and a flat listing (`listBlobsFlat`), and the container's
+  properties for readiness. Storage Blob Data Contributor covers all of them.
+  There is no server-side copy: saving a staged file reads it back and writes
+  it to its asset key.
 - **No `S3_*` variable set alongside it.** A mixed configuration is refused at
   boot, as is one missing the container or naming both an account URL and a
   connection string.
@@ -226,7 +270,8 @@ store cannot drift apart.
 ### A rate-limit store
 
 **Redis 7-compatible.** It holds sliding-window counters and the audit
-denial window, and nothing else: no persistence, no backup, no durability
+denial window, and carries a doorbell between API replicas (below). It holds
+nothing that has to last: no persistence, no backup, no durability
 requirement. The limiter fails open when it is unreachable, and readiness
 reports `limiter: degraded` rather than failing.
 
@@ -234,9 +279,31 @@ The commands Studio issues:
 
 | Where                                        | Commands                                                                                 |
 | -------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| On every connection, as it opens             | `CLIENT SETNAME`, `INFO`                                                                 |
 | Directly                                     | `EVAL`, `SCAN`, `PING`                                                                   |
 | Inside the sliding-window script             | `TIME`, `ZREMRANGEBYSCORE`, `ZCARD`, `ZRANGE … WITHSCORES`, `ZADD`, `PEXPIRE`, `HINCRBY` |
-| Inside the denial-window and summary scripts | `HGET`, `HINCRBY`, `HSET`, `HSETNX`, `HGETALL`, `DEL`, `PEXPIRE`                         |
+| Inside the denial-window and summary scripts | `EXISTS`, `HGET`, `HINCRBY`, `HSET`, `HSETNX`, `HGETALL`, `RENAME`, `DEL`, `PEXPIRE`     |
+| Between API replicas, on one channel         | `PUBLISH`, `SUBSCRIBE`, and `PING` on the subscribed connection                          |
+
+Studio's Redis client names each connection as it opens (`studio-rate-limit`,
+`studio-doorbell` and `studio-doorbell-publish`), so `CLIENT LIST` shows which
+is which, and asks `INFO` whether the server is ready before it sends anything
+else. Those two are the only ones a server may refuse: one that refuses
+`CLIENT SETNAME` is used anyway, and so is one whose access rules deny `INFO`
+(the client logs a warning). One that has renamed or removed `INFO` is not:
+the connection never becomes ready. Every other command in the table is
+required.
+
+The channel is `studio:protocol-events`, and it is not configurable.
+Publishing says that a protocol's edits, locks or editors changed, and each
+replica reads the new state from Postgres when it hears it, so no protocol
+content passes through the store. A replica that misses a message catches up
+on its next five-second poll, so a store that drops or delays messages slows
+live updates and cannot lose one. The same poll is how replicas keep up with
+each other when there is no store at all. `SUBSCRIBE` holds a connection of
+its own per replica; a proxy in front of the store must allow a long-lived
+subscribed connection. A replica whose subscription is down reports
+`doorbell: degraded` on `/readyz`, which still answers 200.
 
 Server-side scripting must be available: atomicity is the script, which is what
 makes the answer the same whether one API container is running or two. Each
@@ -265,6 +332,7 @@ seconds, minutes or hours:
 | `participant_redeem_link`    | `5/10m`   | One participant's own link, against repeated redemption                   |
 | `participant_sync`           | `600/1m`  | Interview sync, against a script replaying a session                      |
 | `participant_session`        | `60/1m`   | Reading an interview, against a script repeating the protocol's assembly  |
+| `participant_analytics`      | `60/1m`   | Interview usability events, against a page flooding the forwarder         |
 | `rpc_user`                   | `600/1m`  | The instance, against one runaway client                                  |
 | `rpc_team`                   | `3000/1m` | The instance, against a whole team at once                                |
 | `storage_read`               | `2000/5m` | Asset delivery, generously: an interview fetches every stimulus it shows  |

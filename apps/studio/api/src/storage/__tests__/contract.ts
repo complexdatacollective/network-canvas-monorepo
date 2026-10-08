@@ -1,12 +1,13 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { createServer, type Socket } from 'node:net';
 
 import { describe, expect, it } from '@effect/vitest';
-import { Effect, Exit, Option } from 'effect';
+import { Effect, Exit, Option, Stream } from 'effect';
 
 import { CI } from '../../__tests__/support/env.ts';
 import { readiness } from '../../http/health.ts';
-import type { ObjectStore } from '../object-store.ts';
+import { mintStagingKey } from '../../protocol-builder/staging-store.ts';
+import { type ObjectStore, stagingPrefix } from '../object-store.ts';
 
 // The object-store contract (#2077): the cases every implementation of the
 // port must pass, run once per provider by that provider's own suite —
@@ -19,6 +20,8 @@ export type ContractSubject = {
   readonly store: ObjectStore['Service'];
   /** The same credentials, naming a bucket or container that does not. */
   readonly missing: ObjectStore['Service'];
+  /** The same store, asking for one object per listing page. */
+  readonly paged: ObjectStore['Service'];
 };
 
 /**
@@ -144,7 +147,10 @@ export function objectStoreContract(
       // Narrowed once for every case: `skipIf` skips them when it is absent.
       const store = subject?.store;
       const missing = subject?.missing;
-      if (store === undefined || missing === undefined) return;
+      const paged = subject?.paged;
+      if (store === undefined || missing === undefined || paged === undefined) {
+        return;
+      }
 
       it.live('stores bytes under their content hash and reads them back', () =>
         Effect.gen(function* () {
@@ -305,6 +311,155 @@ export function objectStoreContract(
             );
             expect(error.operation).toBe('get');
           }),
+      );
+
+      // Each staging case stages under a team of its own, so a listing sees
+      // only that case's objects whatever earlier runs left behind.
+      it.live(
+        'reads back what was staged, and nothing for a key never staged',
+        () =>
+          Effect.gen(function* () {
+            const teamId = randomUUID();
+            const key = mintStagingKey(teamId);
+            const bytes = freshBytes(2048);
+            yield* store.putStaged(key, bytes, 'image/png');
+
+            const found = yield* store.getStaged(key);
+            assertSome(found);
+            expect(found.value).toEqual(bytes);
+            const never = yield* store.getStaged(mintStagingKey(teamId));
+            expect(Option.isNone(never)).toBe(true);
+            yield* store.deleteStaged(key);
+          }),
+      );
+
+      it.live(
+        'deletes a staged object, and deletes it again without failing',
+        () =>
+          Effect.gen(function* () {
+            const key = mintStagingKey(randomUUID());
+            yield* store.putStaged(key, freshBytes(64), 'text/plain');
+
+            yield* store.deleteStaged(key);
+            expect(Option.isNone(yield* store.getStaged(key))).toBe(true);
+            yield* store.deleteStaged(key);
+          }),
+      );
+
+      it.live(
+        'lists only the staged objects under the prefix and older than the bound',
+        () =>
+          Effect.gen(function* () {
+            const team = randomUUID();
+            const mine = mintStagingKey(team);
+            const theirs = mintStagingKey(randomUUID());
+            yield* store.putStaged(mine, freshBytes(16), 'text/plain');
+            yield* store.putStaged(theirs, freshBytes(16), 'text/plain');
+            // A minute either side of now, so the store's clock need not agree
+            // with this one to the second.
+            const later = new Date(Date.now() + 60_000);
+            const earlier = new Date(Date.now() - 60_000);
+
+            expect(
+              yield* Stream.runCollect(
+                store.listStaged(stagingPrefix(team), later),
+              ),
+            ).toEqual([[mine]]);
+            expect(
+              yield* Stream.runCollect(
+                store.listStaged(stagingPrefix(team), earlier),
+              ),
+            ).toEqual([]);
+            yield* store.deleteStaged(mine);
+            yield* store.deleteStaged(theirs);
+          }),
+      );
+
+      it.live('lists staged objects a page at a time, across every page', () =>
+        Effect.gen(function* () {
+          const team = randomUUID();
+          const keys = [
+            mintStagingKey(team),
+            mintStagingKey(team),
+            mintStagingKey(team),
+          ];
+          for (const key of keys) {
+            yield* paged.putStaged(key, freshBytes(16), 'text/plain');
+          }
+          const later = new Date(Date.now() + 60_000);
+
+          const pages = yield* Stream.runCollect(
+            paged.listStaged(stagingPrefix(team), later),
+          );
+          expect(pages.map((page) => page.length)).toEqual([1, 1, 1]);
+          expect(pages.flat().toSorted()).toEqual(keys.toSorted());
+          for (const key of keys) yield* paged.deleteStaged(key);
+        }),
+      );
+
+      it.live('promotes a staged object into the asset its hash names', () =>
+        Effect.gen(function* () {
+          const key = mintStagingKey(randomUUID());
+          const bytes = freshBytes(4096);
+          yield* store.putStaged(key, bytes, 'image/png');
+
+          expect(
+            yield* store.promoteStaged(key, sha256(bytes), 'image/png'),
+          ).toBe(true);
+          const found = yield* store.get(sha256(bytes));
+          assertSome(found);
+          expect(found.value.mediaType).toBe('image/png');
+          expect((yield* drain(found.value.body)).bytes).toEqual(bytes);
+          // Promotion copies; removing what was staged is the caller's step.
+          expect(Option.isSome(yield* store.getStaged(key))).toBe(true);
+          yield* store.deleteStaged(key);
+        }),
+      );
+
+      it.live(
+        'keeps an asset already stored under the hash when promoting',
+        () =>
+          Effect.gen(function* () {
+            const bytes = freshBytes(256);
+            yield* store.put(bytes, 'image/png');
+            const key = mintStagingKey(randomUUID());
+            yield* store.putStaged(key, bytes, 'application/octet-stream');
+
+            expect(
+              yield* store.promoteStaged(
+                key,
+                sha256(bytes),
+                'application/octet-stream',
+              ),
+            ).toBe(true);
+            const found = yield* store.get(sha256(bytes));
+            assertSome(found);
+            expect(found.value.mediaType).toBe('image/png');
+            yield* drain(found.value.body);
+            yield* store.deleteStaged(key);
+          }),
+      );
+
+      it.live('reports a staged object that is gone as unpromoted', () =>
+        Effect.gen(function* () {
+          const bytes = freshBytes(32);
+          const promoted = yield* store.promoteStaged(
+            mintStagingKey(randomUUID()),
+            sha256(bytes),
+            'text/plain',
+          );
+          expect(promoted).toBe(false);
+          expect(Option.isNone(yield* store.get(sha256(bytes)))).toBe(true);
+        }),
+      );
+
+      it.live('fails a listing of a missing bucket or container', () =>
+        Effect.gen(function* () {
+          const error = yield* Effect.flip(
+            Stream.runCollect(missing.listStaged('staging/', new Date())),
+          );
+          expect(error.operation).toBe('list');
+        }),
       );
 
       it.live('fails a put into a missing bucket or container', () =>

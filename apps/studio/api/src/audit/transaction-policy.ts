@@ -45,10 +45,75 @@ export const NO_AUDIT_TRANSACTION_POLICIES = {
     kind: 'none',
     reason: 'Lease release is explicitly excluded from the team audit log.',
   },
-  'protocolBuilder.releaseConnection': {
+  'protocolBuilder.connect': {
     kind: 'none',
     reason:
-      'A closed connection giving its leases back is release, recorded for the same reason and excluded for the same one.',
+      'Recording an open watch and renewing the leases its tab already holds is connection bookkeeping and lease renewal, which the audit-log design excludes.',
+  },
+  'protocolBuilder.liveness': {
+    kind: 'none',
+    reason:
+      'Extending the expiry of open connections and the leases their owners hold is a heartbeat, excluded like any lease renewal.',
+  },
+  'protocolBuilder.contact': {
+    kind: 'none',
+    reason:
+      'Noting that a tab is still calling, so its leases stay renewed between calls, is connection bookkeeping rather than an action on team data.',
+  },
+  'protocolBuilder.expireConnection': {
+    kind: 'none',
+    reason:
+      'Marking a closed watch expired is connection bookkeeping; no state a team can see changes.',
+  },
+  'protocolBuilder.setMode': {
+    kind: 'none',
+    reason:
+      'Switching what a connection shows its colleagues between viewing and editing is presence, which the audit-log design excludes.',
+  },
+  'protocolBuilder.relayRead': {
+    kind: 'none',
+    reason:
+      'Reading the event log, presence and live leases a watcher is sent changes nothing a team can see; it only relays what was already written and audited.',
+  },
+  'protocolBuilder.reap': {
+    kind: 'none',
+    reason:
+      'Logging the release of a lease that lapsed with no one to give it back, and showing its holder no longer editing, is lease release and presence, excluded from the team audit log like any other.',
+  },
+  'protocolBuilder.releaseOwner': {
+    kind: 'none',
+    reason:
+      'A tab that stayed away past the reconnect grace giving its leases back is release, excluded from the team audit log like any other.',
+  },
+  'protocolBuilder.stageResource': {
+    kind: 'none',
+    reason:
+      'Staging a file or key holds it for an edit that may never be saved; the submit that promotes it into the protocol is the audited write.',
+  },
+  'protocolBuilder.readStaged': {
+    kind: 'none',
+    reason:
+      'Reading what the caller staged for its own edit changes nothing a team can see.',
+  },
+  'protocolBuilder.discardStaged': {
+    kind: 'none',
+    reason:
+      'Discarding a staged resource drops something that was never part of the protocol; no state a team can see changes.',
+  },
+  'protocolBuilder.releaseStaged': {
+    kind: 'none',
+    reason:
+      'Dropping what a tab staged once it stayed away past the reconnect grace is cleanup of resources that were never part of the protocol.',
+  },
+  'protocol.gcStagedResources': {
+    kind: 'none',
+    reason:
+      'Collecting what a tab staged once no replica has heard from it for the idle bound, and staged objects nothing names, is scheduled maintenance of things that were never part of a protocol.',
+  },
+  'protocol.gcProtocolConnections': {
+    kind: 'none',
+    reason:
+      'Deleting connection rows that expired long ago is scheduled maintenance of connection bookkeeping, which the audit-log design excludes.',
   },
   'sync.createDraft': {
     kind: 'none',
@@ -61,14 +126,6 @@ export const NO_AUDIT_TRANSACTION_POLICIES = {
   'sync.takeover': {
     kind: 'none',
     reason: 'Lease takeover is explicitly excluded from the team audit log.',
-  },
-  'sync.renew': {
-    kind: 'none',
-    reason: 'Lease renewal is explicitly excluded from the team audit log.',
-  },
-  'sync.renewHeld': {
-    kind: 'none',
-    reason: 'Lease renewal is explicitly excluded from the team audit log.',
   },
   'sync.release': {
     kind: 'none',

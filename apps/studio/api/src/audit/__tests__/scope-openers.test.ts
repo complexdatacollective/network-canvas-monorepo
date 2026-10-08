@@ -191,6 +191,11 @@ const OPENERS: Record<string, { count: number; why: string }> = {
       count: 1,
       why: 'listing one tenant’s drafts for the sweep, read-only',
     },
+  [`${SERVER}/src/jobs/handlers/staged-resources-gc.ts › protocol.gcStagedResources › MaintenanceScope.open`]:
+    {
+      count: 1,
+      why: 'the staging collection’s cross-team tenant enumeration, read-only; its writes go through `noAuditMaintenanceTransaction`',
+    },
   [`${SERVER}/src/jobs/worker.ts › JobWorker.drainOnce › MaintenanceScope.open`]:
     {
       count: 5,
@@ -264,6 +269,11 @@ const OPENERS: Record<string, { count: number; why: string }> = {
     {
       count: 1,
       why: '`participant.sync`: one of an interview’s many writes, unaudited by policy; the session row carries its activity',
+    },
+  [`${SERVER}/src/interview/analytics.ts › interview.forwardParticipantEvents › TenantScope.open`]:
+    {
+      count: 1,
+      why: '`participant.analytics`: reading whether the session’s study allows analytics before forwarding, read-only and unaudited by policy',
     },
   [`${SERVER}/src/rpc/handlers/studies.ts › TenantScope.open`]: {
     count: 2,

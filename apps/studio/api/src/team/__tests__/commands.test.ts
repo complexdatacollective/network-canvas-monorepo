@@ -1936,7 +1936,7 @@ const expectCode = Effect.fnUntraced(function* <A, E, R>(
 const waitUntilBlocked = Effect.fnUntraced(function* (
   harness: TestDatabase['Service'],
 ) {
-  yield* Effect.repeat(
+  yield* Effect.retry(
     Effect.flatMap(
       harness.onOwner(
         harness.owner.sql<{ waiting: number }>`

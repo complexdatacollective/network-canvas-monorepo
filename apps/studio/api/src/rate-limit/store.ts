@@ -1,7 +1,11 @@
-import { Clock, Context, Effect, Layer, MutableRef } from 'effect';
+import { Context, Effect, Layer } from 'effect';
 import { Redis } from 'ioredis';
 
 import { Environment } from '../env.ts';
+import {
+  describeValkeyError,
+  throttledWarning,
+} from '../platform/valkey-log.ts';
 
 export const UNAVAILABLE = 'unavailable';
 export type Unavailable = typeof UNAVAILABLE;
@@ -9,13 +13,6 @@ export type Unavailable = typeof UNAVAILABLE;
 const COMMAND_TIMEOUT_MS = 250;
 
 const CONNECT_TIMEOUT_MS = 2_000;
-
-const WARN_INTERVAL_MS = 60_000;
-
-function describe(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error);
-  return message.replaceAll(/\s+/g, ' ').trim().slice(0, 200);
-}
 
 export class RateLimitStore extends Context.Service<
   RateLimitStore,
@@ -47,7 +44,7 @@ export class RateLimitStore extends Context.Service<
         if (env.redis) return RateLimitStore.layerOf(env.redis);
         if (!env.devDefaults) {
           yield* Effect.logWarning(
-            'REDIS_URL is not set: no rate limit is enforced. Sign-in, invitation, RPC, storage, public API and WebSocket limits all depend on it.',
+            'REDIS_URL is not set: no rate limit is enforced. Sign-in, invitation, RPC, storage, public API and WebSocket limits all depend on it. Protocol-builder updates also reach other replicas only through the 5-second safety poll.',
           );
         }
         return RateLimitStore.layerAbsent;
@@ -83,21 +80,16 @@ const connect = Effect.fnUntraced(function* (url: string) {
       }),
   );
 
-  const lastWarnedAt = MutableRef.make(Number.NEGATIVE_INFINITY);
-  const warn = Effect.fnUntraced(function* (reason: string) {
-    const now = yield* Clock.currentTimeMillis;
-    if (now - MutableRef.get(lastWarnedAt) < WARN_INTERVAL_MS) return;
-    MutableRef.set(lastWarnedAt, now);
-    yield* Effect.logWarning(
+  const warn = throttledWarning(
+    (reason) =>
       `Rate limit store is unavailable; limits are not being enforced (${reason}).`,
-    );
-  });
+  );
 
   // Without a listener ioredis rethrows connection errors as an uncaught
   // 'error' event.
   const context = yield* Effect.context();
   client.on('error', (error: unknown) => {
-    Effect.runForkWith(context)(warn(describe(error)));
+    Effect.runForkWith(context)(warn(describeValkeyError(error)));
   });
 
   let connecting: Promise<unknown> | undefined;
@@ -114,7 +106,7 @@ const connect = Effect.fnUntraced(function* (url: string) {
   ): Effect.Effect<A | Unavailable> =>
     operation.pipe(
       Effect.catch((error): Effect.Effect<Unavailable> =>
-        Effect.as(warn(describe(error)), UNAVAILABLE),
+        Effect.as(warn(describeValkeyError(error)), UNAVAILABLE),
       ),
     );
 

@@ -455,6 +455,10 @@
     "defaultMessage": "Finishing ends this interview. A researcher can mark it unfinished later if changes are needed.",
     "description": "Participant confirmation explaining that finishing closes the interview now, while Interviewer allows a researcher to reopen it later."
   },
+  "interviewer.interview.interviewCouldNotBeOpened": {
+    "defaultMessage": "Interview could not be opened",
+    "description": "Heading shown in place of an interview whose saved data could not be read, so the interview was not opened."
+  },
   "interviewer.interview.interviewNotFound": {
     "defaultMessage": "Interview not found",
     "description": "Visible copy in Interviewer Interview."
@@ -470,6 +474,10 @@
   "interviewer.interview.returnHome": {
     "defaultMessage": "Return home",
     "description": "Visible copy in Interviewer Interview."
+  },
+  "interviewer.interview.theDataSavedForThisInterviewCouldNot": {
+    "defaultMessage": "The data saved for this interview could not be read, so the interview has not been opened. The saved data has not been changed.",
+    "description": "Explains that an interview was not opened because its saved data could not be read, and reassures that the saved data was left unchanged."
   },
   "interviewer.interview.theProtocolThisInterviewUsesCouldNot": {
     "defaultMessage": "The protocol this interview uses could not be updated to work with this version of the app, so this interview cannot be continued. Its responses remain available on the data screen. To start new interviews, repair the protocol in Architect and import it again.",

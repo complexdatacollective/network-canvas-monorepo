@@ -14,6 +14,7 @@ import { pageInsetClasses } from '~/components/ProjectNav/pageInset';
 import { routeFocusTargetProps } from '~/components/RouteFocus';
 import { useAppDispatch } from '~/ducks/hooks';
 import { actionCreators } from '~/ducks/modules/activeProtocol';
+import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 import { getExperiments } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
 const messages = defineMessages({
@@ -57,6 +58,7 @@ const ExperimentsPage = () => {
   const encryptedVariablesLabelId = useId();
   const [, setLocation] = useLocation();
   const dispatch = useAppDispatch();
+  const readOnly = useProtocolReadOnly();
   const experiments = useSelector(getExperiments) ?? {};
   const handleGoBack = useCallback(() => {
     setLocation('/protocol');
@@ -141,6 +143,7 @@ const ExperimentsPage = () => {
               // technology as an unnamed switch. The feature's heading is
               // its name.
               aria-labelledby={encryptedVariablesLabelId}
+              disabled={readOnly}
               value={isEncryptedEnabled}
               onChange={(checked) =>
                 handleToggleExperiment('encryptedVariables', !!checked)

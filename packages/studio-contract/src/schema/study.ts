@@ -44,6 +44,7 @@ export const CreateStudyInput = Schema.Struct({
   studyId: StudyId,
   protocolId: ProtocolId,
   draftId: DraftId,
+  participantAnalytics: Schema.optionalKey(Schema.Boolean),
 });
 
 export const CreateStudyResult = Schema.Struct({

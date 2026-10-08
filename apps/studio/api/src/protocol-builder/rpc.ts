@@ -30,6 +30,7 @@ import { Presence } from './presence.ts';
 import { ProtocolEvents } from './publisher.ts';
 import { StagedImports } from './resources.ts';
 import { HostSessionLive, WatchCutoff, WsConnection } from './session.ts';
+import { socketClosure } from './socket-closure.ts';
 
 export const PROTOCOL_BUILDER_RPC_PATH = '/rpc/protocol-builder';
 
@@ -51,20 +52,6 @@ const closeWith = (socket: Socket.Socket, event: Socket.CloseEvent) =>
   Effect.flatMap(socket.writer, (writer) => writer.write(event)).pipe(
     Effect.scoped,
     Effect.ignore,
-  );
-
-/**
- * Every closure but the migration lock alone. A `migrate` with nothing to
- * apply takes the lock for milliseconds, and a write a socket sends while a
- * real migration holds it runs before or after the migration's transaction,
- * never inside a half-applied one. Once that transaction commits the schema is
- * no longer this build's, and that closes the socket: an old server must not
- * keep writing to a database a newer release has moved.
- */
-const socketClosure = (triggers: MaintenanceTriggers['Service']) =>
-  Effect.map(
-    triggers.closure,
-    Option.filter((closure) => closure.trigger !== 'migration'),
   );
 
 const windowOpened = (triggers: MaintenanceTriggers['Service']) =>

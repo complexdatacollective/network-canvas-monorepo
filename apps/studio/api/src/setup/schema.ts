@@ -6,6 +6,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uuid,
 } from 'drizzle-orm/pg-core';
 
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
@@ -48,6 +49,7 @@ const installation = pgTable(
     bootstrapTokenIssuedAt: timestamp('bootstrap_token_issued_at', {
       withTimezone: true,
     }),
+    installationId: uuid('installation_id').notNull().defaultRandom(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -130,4 +132,19 @@ CREATE OR REPLACE TRIGGER installation_setup_stays_closed
     )
   )
   EXECUTE FUNCTION installation_setup_stays_closed();
+
+CREATE OR REPLACE FUNCTION installation_id_stays_fixed() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'the installation id cannot be changed by the application';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER installation_id_stays_fixed
+  BEFORE UPDATE ON installation
+  FOR EACH ROW
+  WHEN (
+    current_user IN ('${TENANT_ROLES.app}', '${TENANT_ROLES.maintenance}')
+    AND NEW.installation_id IS DISTINCT FROM OLD.installation_id
+  )
+  EXECUTE FUNCTION installation_id_stays_fixed();
 `;

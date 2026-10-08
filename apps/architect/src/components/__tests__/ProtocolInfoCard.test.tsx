@@ -1,6 +1,6 @@
 import { configureStore, type Middleware } from '@reduxjs/toolkit';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import type { HTMLAttributes, ReactNode } from 'react';
+import { type HTMLAttributes, type ReactNode, useLayoutEffect } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -12,6 +12,10 @@ import activeProtocolReducer, {
   updateProtocolDescription,
   updateProtocolName,
 } from '~/ducks/modules/activeProtocol';
+import {
+  ProtocolReadOnlyContext,
+  useProtocolReadOnly,
+} from '~/hooks/useProtocolReadOnly';
 
 import ProtocolInfoCard from '../ProtocolInfoCard';
 
@@ -56,7 +60,7 @@ const createTestStore = () =>
       getDefaultMiddleware({ serializableCheck: false }),
   });
 
-const renderCard = (initialName?: string) => {
+const renderCard = (initialName?: string, readOnly = false) => {
   const store = createTestStore();
   store.dispatch(
     setActiveProtocol(
@@ -65,9 +69,11 @@ const renderCard = (initialName?: string) => {
   );
 
   render(
-    <Provider store={store}>
-      <ProtocolInfoCard />
-    </Provider>,
+    <ProtocolReadOnlyContext value={readOnly}>
+      <Provider store={store}>
+        <ProtocolInfoCard />
+      </Provider>
+    </ProtocolReadOnlyContext>,
   );
 
   return store;
@@ -686,6 +692,122 @@ describe('ProtocolInfoCard', () => {
       // has been sitting inside all along.
       fireEvent.change(nameControl(), { target: { value: 'A'.repeat(85) } });
       expectStatusSilent();
+    });
+  });
+});
+
+describe('ProtocolInfoCard while another tab owns the protocol', () => {
+  beforeEach(() => {
+    window.history.replaceState({}, '', '/protocol');
+  });
+
+  // `disabled` rather than `readOnly`: a disabled textarea takes no focus, so
+  // there is no blur to commit and no caret to type into.
+  it('disables the name and description', () => {
+    renderCard(undefined, true);
+
+    expect(nameControl()).toBeDisabled();
+    expect(
+      screen.getByRole('textbox', { name: 'Protocol description' }),
+    ).toBeDisabled();
+  });
+
+  it('keeps the codebook links', () => {
+    renderCard(undefined, true);
+
+    expect(screen.getAllByRole('link', { name: /types?$/ })).toHaveLength(2);
+  });
+
+  it('leaves the name and description editable outside the guard', () => {
+    renderCard();
+
+    expect(nameControl()).toBeEnabled();
+    expect(
+      screen.getByRole('textbox', { name: 'Protocol description' }),
+    ).toBeEnabled();
+  });
+
+  describe('when an owning tab is demoted holding uncommitted drafts', () => {
+    // The browser can blur a focused control as it becomes disabled. This
+    // fires that blur in a layout effect, which runs after the disabled
+    // attribute is committed and before the card's passive effects discard
+    // the drafts.
+    const BlurWhenDisabled = () => {
+      const readOnly = useProtocolReadOnly();
+      useLayoutEffect(() => {
+        if (readOnly) {
+          for (const control of [nameControl(), descriptionControl()]) {
+            control.dispatchEvent(
+              new FocusEvent('focusout', { bubbles: true }),
+            );
+          }
+        }
+      }, [readOnly]);
+      return null;
+    };
+
+    const descriptionControl = () =>
+      screen.getByRole('textbox', { name: 'Protocol description' });
+
+    const renderDemotable = (children?: ReactNode) => {
+      const store = createTestStore();
+      store.dispatch(setActiveProtocol(protocol));
+
+      const tree = (readOnly: boolean) => (
+        <ProtocolReadOnlyContext value={readOnly}>
+          <Provider store={store}>
+            <ProtocolInfoCard />
+            {children}
+          </Provider>
+        </ProtocolReadOnlyContext>
+      );
+      const view = render(tree(false));
+
+      return {
+        store,
+        setReadOnly: (readOnly: boolean) => view.rerender(tree(readOnly)),
+      };
+    };
+
+    const type = () => {
+      fireEvent.change(nameControl(), { target: { value: 'Draft name' } });
+      fireEvent.change(descriptionControl(), {
+        target: { value: 'Draft description' },
+      });
+    };
+
+    it('shows the saved metadata while read-only and again once editing returns', () => {
+      const { store, setReadOnly } = renderDemotable();
+      type();
+      expect(nameControl()).toHaveValue('Draft name');
+
+      setReadOnly(true);
+      expect(nameControl()).toHaveValue('Original protocol');
+      expect(descriptionControl()).toHaveValue('Original description');
+
+      // The reloaded protocol carries the same metadata, so nothing about the
+      // store changes on reclaim.
+      setReadOnly(false);
+      expect(nameControl()).toBeEnabled();
+      expect(nameControl()).toHaveValue('Original protocol');
+      expect(descriptionControl()).toHaveValue('Original description');
+
+      fireEvent.blur(nameControl());
+      fireEvent.blur(descriptionControl());
+      const { present } = store.getState().activeProtocol;
+      expect(present?.name).toBe('Original protocol');
+      expect(present?.description).toBe('Original description');
+    });
+
+    it('does not commit a draft when the control blurs as it is disabled', () => {
+      const { store, setReadOnly } = renderDemotable(<BlurWhenDisabled />);
+      type();
+
+      setReadOnly(true);
+
+      const { present } = store.getState().activeProtocol;
+      expect(present?.name).toBe('Original protocol');
+      expect(present?.description).toBe('Original description');
     });
   });
 });

@@ -28,6 +28,7 @@ async function subject(): Promise<ContractSubject | undefined> {
       ...objectStore.s3,
       bucket: `studio-missing-${randomBytes(4).toString('hex')}`,
     }),
+    paged: ObjectStoreS3.make(objectStore.s3, { listPageSize: 1 }),
   };
 }
 
