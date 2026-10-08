@@ -45,8 +45,10 @@ async function InterviewContent({
   await connection();
   const { interviewId } = await paramsPromise;
 
+  // A dynamic route segment is never empty, so this is unreachable in
+  // practice; if it ever were, there is no interview to show.
   if (!interviewId) {
-    return 'No interview id found';
+    notFound();
   }
 
   const rawInterview = await getInterviewById(interviewId);

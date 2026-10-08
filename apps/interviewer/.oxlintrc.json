@@ -26,7 +26,12 @@
           "error",
           {
             "props": {
-              "include": [["*", "{label,placeholder,title,itemLabel}"]]
+              "include": [
+                [
+                  "*",
+                  "{label,placeholder,title,itemLabel,description,hint,message,heading,header,headerText,subHeaderText,caption,text,fallback,required,alt,errorTitle,errorMessage,submittingText,emptyMessage,emptyStateMessage,emptyText,loadingText,noResults,cancelLabel,confirmLabel,closeLabel,submitLabel,backLabel,nextLabel,openLabel,addButtonLabel,searchLabel,searchPlaceholder,skipLinkLabel,triggerPlaceholder,popoverTitle,segmentAriaLabel,ariaLabel,unsavedWorkCaveat,showMore,announcedName}"
+                ]
+              ]
             }
           }
         ]

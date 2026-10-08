@@ -1,20 +1,40 @@
 import { type Metadata, type Viewport } from 'next';
 import { Suspense } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
 import Providers from '~/components/Providers';
 import AnalyticsLoader from '~/components/Providers/AnalyticsLoader';
 import { env } from '~/env';
 import { FrescoI18nProvider } from '~/i18n/FrescoI18nProvider';
-import { getFrescoI18nInitialization } from '~/i18n/server';
+import { frescoLocales } from '~/i18n/locales';
+import { getFrescoI18nInitialization, getServerIntl } from '~/i18n/server';
 
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
 import '~/styles/globals.css';
 
-export const metadata: Metadata = {
-  title: 'Network Canvas Fresco',
-  description: 'Fresco.',
-};
+const messages = defineMessages({
+  pageTitle: {
+    id: 'fresco.root.metadata.pageTitle',
+    defaultMessage: 'Network Canvas Fresco',
+    description:
+      'Default browser tab title for Fresco pages that set no title of their own. Keep "Network Canvas Fresco" unchanged in all languages.',
+  },
+  pageDescription: {
+    id: 'fresco.root.metadata.pageDescription',
+    defaultMessage: 'Fresco.',
+    description:
+      'Default page description (search-engine and link-preview metadata) for Fresco pages that set none of their own. Keep "Fresco" unchanged in all languages.',
+  },
+});
+
+export async function generateMetadata(): Promise<Metadata> {
+  const intl = await getServerIntl();
+  return {
+    title: intl.formatMessage(messages.pageTitle),
+    description: intl.formatMessage(messages.pageDescription),
+  };
+}
 
 export const viewport: Viewport = {
   viewportFit: 'cover',
@@ -30,8 +50,11 @@ function RootLayout({ children }: { children: React.ReactNode }) {
 
 async function LocalizedRoot({ children }: { children: React.ReactNode }) {
   const initial = await getFrescoI18nInitialization();
+  const direction =
+    frescoLocales.find(({ locale }) => locale === initial.locale)?.direction ??
+    'ltr';
   return (
-    <html lang={initial.locale} dir="ltr">
+    <html lang={initial.locale} dir={direction}>
       <body className="bg-background publish-colors antialiased">
         <div className="root min-h-dvh">
           <FrescoI18nProvider initial={initial}>
