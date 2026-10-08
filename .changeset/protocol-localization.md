@@ -36,7 +36,9 @@ How an interview picks its language:
   rather than its name. A Narrative preset switcher lists highlighted
   attributes by the translated labels the preset gives them, and a Network
   Composer field shows its own translated caption rather than the attribute's
-  label.
+  label. A form field is always captioned with its own prompt: a prompt can no
+  longer be only spaces, so the attribute's untranslated label never stands in
+  for it.
 
 In Architect:
 

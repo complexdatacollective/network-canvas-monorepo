@@ -14,7 +14,6 @@ import {
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { PresentationalText } from '@codaco/fresco-ui/PresentationalText';
 import {
-  escapeMessageText,
   type LocaleMetadata,
   type LocaleTag,
   type LocalizationDeclaration,
@@ -232,20 +231,6 @@ export function useResolveLocalizedString(): (
       return { ...resolved, text: format(resolved.locale, resolved.text) };
     },
     [localization, resolutionOrder, format],
-  );
-}
-
-/**
- * Researcher text the protocol does not translate, as copy written in the
- * protocol's default language, so it is shown as written in every language.
- */
-export function useUntranslatedText(): (text: string) => LocalizedString {
-  const { localization } = useProtocolLocalizationState();
-  return useCallback(
-    (text: string) => ({
-      [localization.defaultLocale]: escapeMessageText(text),
-    }),
-    [localization],
   );
 }
 

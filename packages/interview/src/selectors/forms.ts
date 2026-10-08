@@ -58,16 +58,18 @@ const getCodebookVariablesForProvidedSubject = createSelector(
  */
 type FieldMetadata = Variable extends infer V
   ? V extends Variable
-    ? Omit<V, 'component' | 'parameters'> & {
+    ? Omit<V, 'component' | 'parameters' | 'label'> & {
         component: ComponentType;
         parameters?: Record<string, unknown>;
         variable: string;
         /**
-         * The caption authored for this field on the stage. This — never
-         * `label` — is what may be repeated back to a participant away from
-         * the field itself, e.g. by a comparison validator.
+         * The caption the researcher authored for this field on the stage,
+         * never the codebook variable's own label. The schema requires it to
+         * say something, so it is always shown as the field's caption and may
+         * be repeated back to a participant away from the field itself, e.g.
+         * by a comparison validator.
          */
-        authoredLabel: LocalizedString;
+        label: LocalizedString;
         hint?: LocalizedString;
         showValidationHints?: boolean;
       }
@@ -116,7 +118,7 @@ const createFieldMetadata = (
 
     // Shared form fields caption with a required `prompt`; NetworkComposer
     // fields with a required `label`.
-    const authoredLabel = 'prompt' in field ? field.prompt : field.label;
+    const label = 'prompt' in field ? field.prompt : field.label;
 
     // The control (component) and its parameters may live on the stage field
     // (NetworkComposer) or, for every other stage, on the codebook variable.
@@ -160,7 +162,7 @@ const createFieldMetadata = (
       ...(parameters !== undefined ? { parameters } : {}),
       component,
       variable,
-      authoredLabel,
+      label,
       hint,
       showValidationHints,
     };

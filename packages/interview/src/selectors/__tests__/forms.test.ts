@@ -24,7 +24,7 @@ describe('selectFieldMetadataFromVariables', () => {
       fields as never,
     );
     expect(meta?.component).toBe('VisualAnalogScale');
-    expect(meta?.authoredLabel).toEqual({ en: 'How close?' });
+    expect(meta?.label).toEqual({ en: 'How close?' });
   });
 
   it('falls back to the codebook component when the field has none (other stages)', () => {
@@ -42,23 +42,6 @@ describe('selectFieldMetadataFromVariables', () => {
       fields as never,
     );
     expect(meta?.component).toBe('Number');
-    expect(meta?.authoredLabel).toEqual({ en: 'How old are you?' });
-  });
-
-  it('captions an unlabelled composer field with the codebook label, not its id or name', () => {
-    const variables = {
-      'var-uuid-1': {
-        name: 'age_years',
-        label: 'Age',
-        type: 'number' as const,
-      },
-    };
-    const fields = [{ variable: 'var-uuid-1', component: 'Number' }];
-    const [meta] = selectFieldMetadataFromVariables(
-      variables as never,
-      fields as never,
-    );
-    expect(meta?.label).toBe('Age');
-    expect(meta?.authoredLabel).toBeUndefined();
+    expect(meta?.label).toEqual({ en: 'How old are you?' });
   });
 });

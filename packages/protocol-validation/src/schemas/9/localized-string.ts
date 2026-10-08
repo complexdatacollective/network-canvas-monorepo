@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { isBlankMessage } from '../../localization/blankText.ts';
 import {
   canonicalizeLocale,
   isCanonicalLocale,
@@ -75,6 +76,28 @@ export const ProtocolLocalizationSchema = z
       });
     }
   });
+
+/**
+ * The rule for one translation of a localized string that must say something:
+ * not empty, and not made only of spaces or other characters that show
+ * nothing. Pass it to `localizedString` as `content`.
+ *
+ * Every translation supplied is held to it, so a blank translation is invalid
+ * rather than a gap the interview falls back over; a language the string has
+ * no translation for is a gap, and is not an error.
+ *
+ * The text is judged as written, not as rendered. Markdown that draws nothing
+ * from visible characters (`**`, `&nbsp;`, `<br>`) is not recognised as blank:
+ * no rule in this package decides what markdown renders, and the renderer
+ * lives in the UI package.
+ */
+export const nonBlankText = () =>
+  z
+    .string()
+    .min(1)
+    .refine((message) => message === '' || !isBlankMessage(message), {
+      message: 'Text cannot be blank.',
+    });
 
 /**
  * A participant-facing string with one translation per protocol locale.

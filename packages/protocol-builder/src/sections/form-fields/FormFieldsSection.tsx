@@ -25,7 +25,10 @@ import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Section from '@codaco/fresco-ui/Section';
-import { duplicateFormFieldIndices } from '@codaco/protocol-validation';
+import {
+  duplicateFormFieldIndices,
+  isBlankMessage,
+} from '@codaco/protocol-validation';
 
 import {
   useCreateCodebookVariable,
@@ -471,12 +474,26 @@ const everyEntryIsAField = (value: unknown) => {
   return value.every(isRecord) ? undefined : MALFORMED_FIELD;
 };
 
+/**
+ * A question is written when it has a translation and none of its translations
+ * is blank, the schema's own rule (`nonBlankText`). The question box removes a
+ * translation emptied or left as spaces, so a blank one only reaches here
+ * from a protocol written elsewhere.
+ */
+const hasQuestion = (prompt: unknown) => {
+  const translations = asLocalizedString(prompt);
+  return (
+    translations !== undefined &&
+    Object.values(translations).every((message) => !isBlankMessage(message))
+  );
+};
+
 const everyFieldComplete = (value: unknown) =>
   rowsOf(value).every(
     (row) =>
       typeof row.variable === 'string' &&
       row.variable !== '' &&
-      asLocalizedString(row.prompt) !== undefined,
+      hasQuestion(row.prompt),
   )
     ? undefined
     : INCOMPLETE_FIELD;
