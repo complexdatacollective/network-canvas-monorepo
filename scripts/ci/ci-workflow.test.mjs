@@ -364,6 +364,85 @@ test('e2e-report keys a pull request report by its number and sweeps by open pul
   );
 });
 
+test('a rerun of an older run never updates reports or the comment for a retargeted pull request', () => {
+  const guard = parsedWorkflow.jobs['e2e-report'].steps.find(
+    ({ id }) => id === 'guard',
+  );
+  const dir = mkdtempSync(join(tmpdir(), 'e2e-report-guard-'));
+  try {
+    const bin = join(dir, 'bin');
+    mkdirSync(bin);
+    // The pull request as GitHub reports it now: `<head sha> <base ref>`.
+    writeFileSync(
+      join(bin, 'gh'),
+      '#!/bin/sh\nif [ -z "$LIVE" ]; then exit 1; fi\necho "$LIVE"\n',
+      { mode: 0o755 },
+    );
+    const current = (live) => {
+      const output = join(dir, 'output');
+      writeFileSync(output, '');
+      const result = spawnSync('bash', ['-e', '-c', guard.run], {
+        encoding: 'utf8',
+        env: {
+          PATH: `${bin}:${process.env.PATH}`,
+          GITHUB_OUTPUT: output,
+          GITHUB_REPOSITORY: 'o/r',
+          GH_TOKEN: 'token',
+          PR_NUMBER: '5',
+          EVENT_HEAD_SHA: 'aaa',
+          EVENT_BASE_REF: 'main',
+          LIVE: live,
+        },
+      });
+      assert.equal(result.status, 0, result.stderr);
+      return readFileSync(output, 'utf8').trim();
+    };
+    assert.equal(current('aaa main'), 'current=true');
+    // The head moved on.
+    assert.equal(current('bbb main'), 'current=false');
+    // Same head, but the pull request now targets another base: the older
+    // run describes a different merge tree and shares this one's report key.
+    assert.equal(current('aaa schema-9'), 'current=false');
+    // An API failure proceeds, as before.
+    assert.equal(current(''), 'current=true');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+  assert.match(
+    guard.env.EVENT_BASE_REF,
+    /github\.event\.pull_request\.base\.ref/,
+  );
+});
+
+test('every reader of earlier runs, releases or release PRs is scoped to the base it describes', () => {
+  // Jobs and steps keyed on a release branch's NAME must also require the
+  // base main: the same branch can back a pull request into an integration
+  // branch, and that is not the release PR.
+  for (const jobName of [
+    'docs-preview-checks',
+    'website-preview-checks',
+    'version-packages-freshness',
+  ]) {
+    assert.match(
+      job(jobName),
+      /github\.base_ref == 'main'/,
+      `${jobName} requires the release PR's base`,
+    );
+  }
+  assert.match(
+    parsedWorkflow.jobs['e2e-policy'].steps.find(({ id }) => id === 'policy')
+      .env.BASE_REF,
+    /github\.base_ref/,
+    'the E2E policy is told the pull request base',
+  );
+  // Lookups of "the" release PR by head branch name.
+  assert.match(
+    job('version-packages-freshness'),
+    /pulls\?state=open&base=main&head=/,
+  );
+  assert.match(job('release'), /--base main --head changeset-release\/main/);
+});
+
 test('superseded CI runs are cancelled for every pull request', () => {
   assert.ok(
     topLevelConcurrency,
@@ -1474,7 +1553,7 @@ test('release-side jobs stop once their main commit has been superseded', () => 
   );
   assert.match(
     releaseJob,
-    /gh pr list --repo "\$GITHUB_REPOSITORY" --state open \\\n\s+--head changeset-release\/main --json number/,
+    /gh pr list --repo "\$GITHUB_REPOSITORY" --state open \\\n\s+--base main --head changeset-release\/main --json number/,
   );
   assert.match(releaseJob, /gh pr close "\$number"/);
 
@@ -1512,14 +1591,14 @@ test('a stale Version Packages PR cannot merge', () => {
   assert.match(condition, /github\.event_name == 'merge_group'/);
   assert.match(
     condition,
-    /github\.event_name == 'pull_request'\s+&& github\.head_ref == 'changeset-release\/main'/,
+    /github\.event_name == 'pull_request'\s+&& github\.base_ref == 'main'\s+&& github\.head_ref == 'changeset-release\/main'/,
   );
   // The queue batches entries, each built on the ones ahead of it, and a
   // group's ref names only its last PR — membership must come from ancestry
   // of the open release PR's head, never from the ref suffix.
   assert.match(
     freshness,
-    /pulls\?state=open&head=\$\{GITHUB_REPOSITORY_OWNER\}:changeset-release\/main"[^\n]*\n\s+--jq '\.\[0\]\.head\.sha \/\/ empty'/,
+    /pulls\?state=open&base=main&head=\$\{GITHUB_REPOSITORY_OWNER\}:changeset-release\/main"[^\n]*\n\s+--jq '\.\[0\]\.head\.sha \/\/ empty'/,
   );
   assert.match(
     freshness,

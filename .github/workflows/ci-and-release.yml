@@ -286,6 +286,10 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           HEAD_REF: ${{ github.head_ref }}
           REF_NAME: ${{ github.ref_name }}
+          # A generated release branch is a release PR only when it targets
+          # main; the same branch name into an integration branch is a feature
+          # PR.
+          BASE_REF: ${{ github.base_ref }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           # On feature PRs, BASE_SHA and HEAD_SHA define the cumulative
           # merge-base diff. On release PRs, HEAD_SHA is also the branch tip
@@ -1545,6 +1549,7 @@ jobs:
     if: >-
       github.event_name == 'merge_group'
       || (github.event_name == 'pull_request'
+      && github.base_ref == 'main'
       && github.head_ref == 'changeset-release/main')
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -1566,7 +1571,7 @@ jobs:
             # job: a queue entry that cannot be judged must not merge on a
             # guess, and re-queueing retries it.
             vp_head=$(gh api \
-              "repos/${GITHUB_REPOSITORY}/pulls?state=open&head=${GITHUB_REPOSITORY_OWNER}:changeset-release/main" \
+              "repos/${GITHUB_REPOSITORY}/pulls?state=open&base=main&head=${GITHUB_REPOSITORY_OWNER}:changeset-release/main" \
               --jq '.[0].head.sha // empty')
             if [[ -z "$vp_head" ]]; then
               echo "No open Version Packages PR — nothing to check"
@@ -1736,6 +1741,7 @@ jobs:
     # validated; ordinary feature PRs must not run the dead-link checker.
     if: >-
       github.event_name == 'pull_request'
+      && github.base_ref == 'main'
       && needs.detect.outputs.docs == 'true'
       && (github.head_ref == 'changeset-release/documentation'
       || github.head_ref == 'changeset-release/website')
@@ -1854,6 +1860,7 @@ jobs:
     # release validates both sites because they link to each other's routes.
     if: >-
       github.event_name == 'pull_request'
+      && github.base_ref == 'main'
       && needs.detect.outputs.website == 'true'
       && (github.head_ref == 'changeset-release/documentation'
       || github.head_ref == 'changeset-release/website')
@@ -2752,15 +2759,25 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EVENT_BASE_REF: ${{ github.event.pull_request.base.ref }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           current=true
           if [ -n "$PR_NUMBER" ] && [ -n "$EVENT_HEAD_SHA" ]; then
+            # The head AND the base: a pull request retargeted between
+            # `schema-*` and `main` keeps its number, its head and so its report
+            # key, but the older run describes a different merge tree. Rerunning
+            # that run must not overwrite the new base's report or comment.
             live=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" \
-              --jq .head.sha 2>/dev/null || true)
-            if [ -n "$live" ] && [ "$live" != "$EVENT_HEAD_SHA" ]; then
+              --jq '"\(.head.sha) \(.base.ref)"' 2>/dev/null || true)
+            live_head=${live%% *}
+            live_base=${live#* }
+            if [ -n "$live_head" ] && [ "$live_head" != "$EVENT_HEAD_SHA" ]; then
               current=false
-              echo "::notice::Skipping E2E report updates: this run describes $EVENT_HEAD_SHA but the PR head is now $live"
+              echo "::notice::Skipping E2E report updates: this run describes $EVENT_HEAD_SHA but the PR head is now $live_head"
+            elif [ -n "$live_base" ] && [ -n "$EVENT_BASE_REF" ] && [ "$live_base" != "$EVENT_BASE_REF" ]; then
+              current=false
+              echo "::notice::Skipping E2E report updates: this run targeted $EVENT_BASE_REF but the PR now targets $live_base"
             fi
           fi
           printf 'current=%s\n' "$current" >> "$GITHUB_OUTPUT"
@@ -3199,7 +3216,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh pr list --repo "$GITHUB_REPOSITORY" --state open \
-            --head changeset-release/main --json number --jq '.[].number' \
+            --base main --head changeset-release/main --json number --jq '.[].number' \
             | while read -r number; do
                 gh pr close "$number" --repo "$GITHUB_REPOSITORY" --comment \
                   "Closing: main ($GITHUB_SHA) has no changesets left to version, so this release PR was generated from a superseded tree. The next push that adds a changeset opens a fresh one."
