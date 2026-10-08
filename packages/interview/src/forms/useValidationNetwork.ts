@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
@@ -94,8 +94,10 @@ function comparesEncryptedValues(
  * cannot read is left out, as if unanswered, and so is every encrypted value
  * under an encryption header no passphrase can open: no rule then waits for a
  * passphrase that could not be entered, and each comparison with a protected
- * answer is skipped as it is for an unanswered one. For every other form it
- * is the network as stored.
+ * answer is skipped as it is for an unanswered one. A run that waited
+ * compares with the network as it is once the wait is over, since people can
+ * be added or changed elsewhere on the stage meanwhile. For every other form
+ * it is the network as stored.
  */
 export function useValidationNetwork(
   { codebook, network }: { codebook: Codebook; network: NcNetwork },
@@ -135,6 +137,9 @@ export function useValidationNetwork(
     makeGetCodebookVariablesForNodeType,
   );
 
+  const latestNetwork = useRef(network);
+  latestNetwork.current = network;
+
   const context = useMemo(() => {
     if (status === 'ready') {
       const nodes = comparesEncrypted ? readyNodes : network.nodes;
@@ -161,17 +166,19 @@ export function useValidationNetwork(
           ),
       };
     }
-    return {
-      network: withoutCiphertext,
-      resolveNetwork: async () => ({
-        ...network,
-        nodes: await decryptNodes(
-          network.nodes,
-          scope,
-          getCodebookVariablesForNodeType,
-        ),
-      }),
+    // Values already decrypted come back from the scope's cache, so going
+    // round again after a change costs only the values that changed.
+    const resolveLatest = async (): Promise<NcNetwork> => {
+      const checkedAgainst = latestNetwork.current;
+      const nodes = await decryptNodes(
+        checkedAgainst.nodes,
+        scope,
+        getCodebookVariablesForNodeType,
+      );
+      if (latestNetwork.current !== checkedAgainst) return resolveLatest();
+      return { ...checkedAgainst, nodes };
     };
+    return { network: withoutCiphertext, resolveNetwork: resolveLatest };
   }, [
     network,
     status,

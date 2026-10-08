@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { isValidElement, type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
@@ -29,7 +29,10 @@ import {
 } from '../../interfaces/Anonymisation/__tests__/encryptionFixtures';
 import { generateSecureAttributes } from '../../interfaces/Anonymisation/utils';
 import protocol from '../../store/modules/protocol';
-import session, { type SessionState } from '../../store/modules/session';
+import session, {
+  restoreNode,
+  type SessionState,
+} from '../../store/modules/session';
 import ui from '../../store/modules/ui';
 import useProtocolForm from '../useProtocolForm';
 
@@ -157,16 +160,19 @@ function fieldFor(variable: string): FormField[] {
  * The stored person, with their name encrypted for `boundTo`: their own id
  * unless the ciphertext was written for someone else.
  */
-async function encryptedNode(boundTo = NODE_ID): Promise<NcNode> {
+async function encryptedNode(
+  boundTo = NODE_ID,
+  { id = NODE_ID, name = 'Alice' } = {},
+): Promise<NcNode> {
   const { encryptedAttributes, secureAttributes } =
     await generateSecureAttributes(
-      { [NAME_VAR]: 'Alice' },
+      { [NAME_VAR]: name },
       variables,
       (await encryptionFor(PASSPHRASE)).key,
       boundTo,
     );
   return {
-    [entityPrimaryKeyProperty]: NODE_ID,
+    [entityPrimaryKeyProperty]: id,
     type: NODE_TYPE,
     [entityAttributesProperty]: encryptedAttributes,
     [entitySecureAttributesMeta]: secureAttributes,
@@ -253,6 +259,21 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+/** A stored person as they are in a network the validators compare with. */
+function nodeIn(network: unknown, nodeId = NODE_ID) {
+  if (!isRecord(network)) return undefined;
+  const { nodes } = network;
+  if (!Array.isArray(nodes)) return undefined;
+  const node: unknown = nodes.find(
+    (candidate: unknown) =>
+      isRecord(candidate) && candidate[entityPrimaryKeyProperty] === nodeId,
+  );
+  if (!isRecord(node) || !isRecord(node[entityAttributesProperty])) {
+    return undefined;
+  }
+  return { [entityAttributesProperty]: node[entityAttributesProperty] };
+}
+
 /** The stored person as the first field's validators see them. */
 function validatedNode(fieldComponents: ReactNode) {
   const element = Array.isArray(fieldComponents)
@@ -260,19 +281,8 @@ function validatedNode(fieldComponents: ReactNode) {
     : fieldComponents;
   if (!isValidElement(element) || !isRecord(element.props)) return undefined;
   const { validationContext } = element.props;
-  if (!isRecord(validationContext) || !isRecord(validationContext.network)) {
-    return undefined;
-  }
-  const { nodes } = validationContext.network;
-  if (!Array.isArray(nodes)) return undefined;
-  const node: unknown = nodes.find(
-    (candidate: unknown) =>
-      isRecord(candidate) && candidate[entityPrimaryKeyProperty] === NODE_ID,
-  );
-  if (!isRecord(node) || !isRecord(node[entityAttributesProperty])) {
-    return undefined;
-  }
-  return { [entityAttributesProperty]: node[entityAttributesProperty] };
+  if (!isRecord(validationContext)) return undefined;
+  return nodeIn(validationContext.network);
 }
 
 /** Waits for the network the first field's validators would compare with. */
@@ -321,6 +331,22 @@ describe('useProtocolForm validating against encrypted values', () => {
       });
     },
   );
+
+  it('compares with a person added while the comparison waited for decryption', async () => {
+    const store = await makeStore([await encryptedNode()], true);
+    const bob = await encryptedNode('node-2', { id: 'node-2', name: 'Bob' });
+    const { result } = renderForm(store, NAME_VAR);
+
+    const resolving = resolveValidatedNetwork(result.current.fieldComponents);
+    act(() => {
+      store.dispatch(restoreNode(bob));
+    });
+    const resolved = await resolving;
+
+    expect(nodeIn(resolved, 'node-2')?.[entityAttributesProperty]).toEqual({
+      [NAME_VAR]: 'Bob',
+    });
+  });
 
   it('leaves out a stored value its key cannot read, rather than comparing with its ciphertext', async () => {
     const store = await makeStore([await encryptedNode('elsewhere')], true);
