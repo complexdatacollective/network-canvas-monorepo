@@ -155,17 +155,15 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// The stage is in the document before its fade-in makes it visible, so a
-// loaded runner can reach the assertion while it is still transparent.
-const expectVisible = (element: HTMLElement) =>
-  waitFor(() => expect(element).toBeVisible(), { timeout: 5000 });
-
 export const NarrativeReflection: Story = {
   render: () => <PerceivedFamilyStory step={6} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    // The stage animates in, so a name can be in the document before it is
+    // visible; a loaded runner can reach the assertion mid-animation.
     for (const name of ['Maya', 'Jo', 'Avery']) {
-      await expectVisible(await canvas.findByText(name));
+      const node = await canvas.findByText(name);
+      await waitFor(() => expect(node).toBeVisible());
     }
   },
 };
@@ -173,8 +171,10 @@ export const NarrativeReflection: Story = {
 export const FullWalkthrough: Story = {
   render: () => <PerceivedFamilyStory step={1} />,
   play: async ({ canvasElement }) => {
-    await expectVisible(
-      await within(canvasElement).findByText('Who feels like family to you?'),
+    const prompt = await within(canvasElement).findByText(
+      'Who feels like family to you?',
     );
+    // As above: the prompt is in the document before the stage is visible.
+    await waitFor(() => expect(prompt).toBeVisible());
   },
 };

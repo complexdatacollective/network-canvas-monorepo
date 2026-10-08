@@ -2106,6 +2106,136 @@ export const RecommendsThreeGenerations: Story = {
   play: expectPeople(4),
 };
 
+/**
+ * A recommendation lets the participant continue on pressing Next again, but
+ * only past what they have been shown. Pressing Next lists what is still
+ * recommended; removing their mother then adds something new, so the next
+ * press shows the list again rather than continuing, and the press after it
+ * continues.
+ */
+export const ARecommendationIsShownAgainWhenItGrows: Story = {
+  args: { requirement: 'firstDegree', enforcement: 'recommended' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      followedByPeopleList
+      family={{
+        people: [
+          {
+            id: 'ego',
+            name: 'Ella',
+            gender: 'woman',
+            sex: 'female',
+            ego: true,
+          },
+          { id: 'mum', name: 'Rachel', gender: 'woman', sex: 'female' },
+          { id: 'dad', name: 'Tom', gender: 'man', sex: 'male' },
+        ],
+        links: [
+          { from: 'mum', to: 'dad', kind: 'partner' },
+          { from: 'mum', to: 'ego', kind: 'biological', carrier: true },
+          { from: 'dad', to: 'ego', kind: 'biological' },
+        ],
+      }}
+    />
+  ),
+  play: async (context) => {
+    await expectPeople(3)(context);
+    const { canvasElement } = context;
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    const recommendations = () =>
+      body.queryByRole('region', { name: /^Before you continue/ });
+
+    // The first press lists what is recommended, and stays.
+    await userEvent.click(canvas.getByTestId('next-button'));
+    await waitFor(() =>
+      expect(recommendations(), 'listed on the first press').not.toBeNull(),
+    );
+    await expect(canvas.queryByText(PEOPLE_PROMPT)).toBeNull();
+
+    // Removing her mother adds a parent to the list.
+    await userEvent.click(canvas.getByRole('button', { name: /^Rachel/ }));
+    await userEvent.click(
+      await body.findByRole('button', { name: 'Remove from family' }),
+    );
+    const dialog = await body.findByRole('dialog', { name: 'Remove Rachel?' });
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Remove from family' }),
+    );
+    await expectPeople(2)(context);
+    await waitFor(() => expect(recommendations()).toBeNull());
+
+    // So the next press shows the list again, and stays.
+    await userEvent.click(canvas.getByTestId('next-button'));
+    await waitFor(() =>
+      expect(recommendations(), 'listed again').not.toBeNull(),
+    );
+    await expect(canvas.queryByText(PEOPLE_PROMPT)).toBeNull();
+
+    // The press after it continues.
+    await leaveForPeopleList(canvasElement);
+  },
+};
+
+/** With one biological parent recorded, the first press recommends adding
+ * the other; removing that parent leaves both to add, which is more than the
+ * list showed, so the next press shows it again. */
+export const RemovingTheOnlyParentShowsTheRecommendationAgain: Story = {
+  args: { requirement: 'parents', enforcement: 'recommended' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      followedByPeopleList
+      family={{
+        people: [
+          {
+            id: 'ego',
+            name: 'Ella',
+            gender: 'woman',
+            sex: 'female',
+            ego: true,
+          },
+          { id: 'mum', name: 'Rachel', gender: 'woman', sex: 'female' },
+        ],
+        links: [{ from: 'mum', to: 'ego', kind: 'biological', carrier: true }],
+      }}
+    />
+  ),
+  play: async (context) => {
+    await expectPeople(2)(context);
+    const { canvasElement } = context;
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    const recommendations = () =>
+      body.queryByRole('region', { name: /^Before you continue/ });
+
+    await userEvent.click(canvas.getByTestId('next-button'));
+    await waitFor(() =>
+      expect(recommendations(), 'listed on the first press').not.toBeNull(),
+    );
+
+    await userEvent.click(canvas.getByRole('button', { name: /^Rachel/ }));
+    await userEvent.click(
+      await body.findByRole('button', { name: 'Remove from family' }),
+    );
+    const dialog = await body.findByRole('dialog', { name: 'Remove Rachel?' });
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Remove from family' }),
+    );
+    await expectPeople(1)(context);
+    await waitFor(() => expect(recommendations()).toBeNull());
+
+    await userEvent.click(canvas.getByTestId('next-button'));
+    await waitFor(() =>
+      expect(recommendations(), 'listed again').not.toBeNull(),
+    );
+    await expect(canvas.queryByText(PEOPLE_PROMPT)).toBeNull();
+
+    await leaveForPeopleList(canvasElement);
+  },
+};
+
 const panelOf = (canvasElement: HTMLElement) =>
   canvasElement.ownerDocument.querySelector(
     '[data-testid="pedigree-person-panel"]',

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 
+import { createMessageError } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -34,6 +35,7 @@ import {
 import { formValuesToAttributePatch } from '../../../forms/formValuesToAttributePatch';
 import useProtocolForm from '../../../forms/useProtocolForm';
 import { useStageSelector } from '../../../hooks/useStageSelector';
+import { runtimeMessages } from '../../../i18n/runtimeMessages';
 import { useResolveLocalizedString } from '../../../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
@@ -318,17 +320,23 @@ export default function PersonForm({
       writeOwnProperty(set, notRecordedAttribute, recorded);
     }
 
+    // An answer the network cannot hold fails the whole save, as on the
+    // interview's other forms: nothing is saved, and the panel stays open.
     if (formFields.length > 0) {
       const patch = formValuesToAttributePatch(
         coerceValues(values),
         formFields.map((field) => field.variable),
       );
-      if (patch.success) {
-        for (const [variable, value] of Object.entries(patch.patch.set)) {
-          writeOwnProperty(set, variable, value);
-        }
-        unset.push(...patch.patch.unset);
+      if (!patch.success) {
+        return {
+          success: false,
+          formErrors: [createMessageError(runtimeMessages.submissionFailed)],
+        };
       }
+      for (const [variable, value] of Object.entries(patch.patch.set)) {
+        writeOwnProperty(set, variable, value);
+      }
+      unset.push(...patch.patch.unset);
     }
 
     onSubmit({
@@ -765,8 +773,12 @@ function readOwnDetails(
   config: PedigreeConfig,
 ): PersonDetails {
   const details: PersonDetails = {};
-  const name = asString(readOwnProperty(values, config.nameAttribute))?.trim();
-  if (name) writeOwnProperty(details, config.nameAttribute, name);
+  // The name is kept as typed, as its validation saw it; a name of nothing
+  // but spaces is no name, as validation treats it.
+  const name = asString(readOwnProperty(values, config.nameAttribute));
+  if (name !== undefined && name.trim() !== '') {
+    writeOwnProperty(details, config.nameAttribute, name);
+  }
   if (config.genderIdentity) {
     const { attribute } = config.genderIdentity;
     const gender = asOption(readOwnProperty(values, attribute));
