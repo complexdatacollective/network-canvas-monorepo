@@ -325,11 +325,7 @@ async function migrateOneProtocol(
     }
     let interviews: InterviewMigrationCounts;
     try {
-      // Its interviews were recorded against the stored, older version, so
-      // they are migrated with the normalized protocol.
-      interviews = await normalizeNonConformantProtocol(prisma, row, {
-        migrateInterviews: true,
-      });
+      interviews = await normalizeNonConformantProtocol(prisma, row);
     } catch (normalizationErr) {
       const normalizationCause =
         normalizationErr instanceof Error
@@ -389,11 +385,16 @@ async function migrateOneProtocol(
  * Re-running the migration from `NORMALIZATION_SOURCE_VERSION` applies exactly
  * those rewrites; it does not repair content, so a row whose body genuinely
  * violates the schema throws here and is left in place by the caller.
+ *
+ * Its interviews cross the same rewrite, like those of any migrated protocol
+ * (see `migrateInterviewsOf`). A row numbered with the target version can
+ * still hold an older shape the chain converts — a pre-redesign Family
+ * Pedigree gains its introduction stage and a new stage record — so being at
+ * the target version does not mean its interviews already are.
  */
 async function normalizeNonConformantProtocol(
   prisma: Prisma.TransactionClient,
   row: ProtocolRow,
-  { migrateInterviews }: { migrateInterviews: boolean },
 ): Promise<InterviewMigrationCounts> {
   const cleanName = row.name.replace(/\.netcanvas$/i, '');
 
@@ -432,13 +433,14 @@ async function normalizeNonConformantProtocol(
     newHash,
   );
 
-  const interviews = migrateInterviews
-    ? await migrateInterviewsOf(prisma, row, migrateSession)
-    : { migrated: 0, failed: [] };
+  const interviews = await migrateInterviewsOf(prisma, row, migrateSession);
 
-  console.log(
-    `Normalized non-conformant protocol "${row.name}" (id=${row.id})... ok (new hash: ${newHash.slice(0, 8)}...)`,
-  );
+  if (interviews.failed.length === 0) {
+    console.log(
+      `Normalized non-conformant protocol "${row.name}" (id=${row.id})... ok (new hash: ${newHash.slice(0, 8)}...; ` +
+        `${interviews.migrated} interviews migrated)`,
+    );
+  }
   return interviews;
 }
 
@@ -454,10 +456,11 @@ async function normalizeNonConformantProtocol(
  *   current validation rules shipped, mechanically re-normalized through the
  *   migration chain (see `normalizeNonConformantProtocol`).
  *
- * A protocol migrated up from an older version carries its interviews with
- * it (see `migrateInterviewsOf`): the migration may move stages, so each
- * interview's stage metadata and resume position follow their stages, and any
- * data the migration re-spells is rewritten, in the same transaction.
+ * Every protocol this rewrites, migrated or normalized, carries its
+ * interviews with it (see `migrateInterviewsOf`): the rewrite may move
+ * stages, so each interview's stage metadata and resume position follow
+ * their stages, and any data it re-spells is rewritten, in the same
+ * transaction.
  *
  * Interviews are all or nothing: if any interview of any protocol cannot be
  * migrated, every protocol is still tried so the report names each failed
@@ -537,11 +540,10 @@ export async function migrateProtocolsToCompatibleVersion(
     }
 
     try {
-      // Already at the target version, so its interviews already are too.
-      await normalizeNonConformantProtocol(prisma, row, {
-        migrateInterviews: false,
-      });
+      const interviews = await normalizeNonConformantProtocol(prisma, row);
       normalized += 1;
+      interviewsMigrated += interviews.migrated;
+      interviewsFailed.push(...interviews.failed);
     } catch (err) {
       skipped += 1;
       const cause = err instanceof Error ? err.message : String(err);
