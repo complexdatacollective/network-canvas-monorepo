@@ -1,7 +1,10 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it, vi } from 'vitest';
 
-import { entityAttributesProperty } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+} from '@codaco/shared-consts';
 
 import type { Tracker } from '../../../analytics/tracker';
 import { unlockEncryption } from '../../../interfaces/Anonymisation/unlockEncryption';
@@ -14,6 +17,7 @@ import session, {
   deleteEdge,
   deleteNode,
   removeNodeFromPrompt,
+  restoreNode,
 } from '../../modules/session';
 import ui from '../../modules/ui';
 import { createAnalyticsListenerMiddleware } from '../analyticsListener';
@@ -106,6 +110,22 @@ describe('analyticsListener — global entity events', () => {
     expect(calls.filter(([name]) => name === 'edge_created')).toEqual([
       ['edge_created', { edge_id: expect.any(String), edge_type: 'knows' }],
     ]);
+  });
+
+  it('emits node_added when undo or redo puts a removed node back', () => {
+    const tracker = makeTracker();
+    const store = buildStore(tracker);
+    store.dispatch(
+      restoreNode({
+        [entityPrimaryKeyProperty]: 'node-1',
+        type: 'person',
+        [entityAttributesProperty]: {},
+      }),
+    );
+    expect(tracker.track).toHaveBeenCalledWith('node_added', {
+      node_id: 'node-1',
+      node_type: 'person',
+    });
   });
 
   it('emits node_removed on deleteNode', () => {
