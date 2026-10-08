@@ -47,6 +47,8 @@ type SeedPerson = {
   gender?: string;
   sex?: PedigreeSexAssignedAtBirth;
   ego?: boolean;
+  /** The nomination prompts (by index) the person is already selected for. */
+  nominatedFor?: number[];
 };
 
 type SeedLink = {
@@ -184,6 +186,12 @@ export function buildInterview({
         ? { [stage.genderIdentity]: [person.gender] }
         : {}),
       ...(person.sex ? { [stage.sexAssignedAtBirth]: [person.sex] } : {}),
+      ...Object.fromEntries(
+        (person.nominatedFor ?? []).flatMap((index) => {
+          const attribute = stage.nominations[index];
+          return attribute ? [[attribute, true]] : [];
+        }),
+      ),
     });
   }
   for (const link of family?.links ?? []) {
@@ -599,6 +607,107 @@ export const NominatingConditions: Story = {
     await expect(
       await canvas.findByTestId('pedigree-tool-connect'),
     ).toBeVisible();
+  },
+};
+
+/** How many of a person's yes-or-no attributes are true in the session last
+ * written: for the participant, their marker and each prompt they are
+ * selected for. */
+const trueAttributesInSession = (personId: string) =>
+  (lastSynced?.network.nodes ?? [])
+    .filter((node) => node[entityPrimaryKeyProperty] === personId)
+    .flatMap((node) => Object.values(node[entityAttributesProperty]))
+    .filter((value) => value === true).length;
+
+/**
+ * Someone selected for a prompt limited to one sex at birth, whose sex at
+ * birth is then changed to the other, is no longer selected for it: their
+ * answer is withdrawn when the change is saved, rather than left standing for
+ * someone the prompt leaves out.
+ */
+export const ChangingSexAtBirthWithdrawsANomination: Story = {
+  args: { requirement: 'none' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      family={describedFamily}
+      onSync={recordSession}
+      nominationPrompts={[
+        { text: OVARIAN_PROMPT, onlyForSexAssignedAtBirth: 'female' },
+      ]}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    lastSynced = undefined;
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    const you = () => canvas.getByRole('button', { name: /^You/ });
+
+    await canvas.findByText(PROMPT);
+    await userEvent.click(canvas.getByTestId('next-button'));
+    await canvas.findByText(OVARIAN_PROMPT);
+    // Intersex, the participant can be chosen.
+    await waitFor(() => expect(you()).toBeEnabled());
+    await userEvent.click(you());
+    await waitFor(() => expect(you()).toHaveAttribute('aria-pressed', 'true'));
+    await waitFor(() => expect(trueAttributesInSession('ego')).toBe(2));
+
+    // Back on the family's own prompt, the participant's sex at birth is
+    // changed to one the prompt leaves out.
+    await userEvent.click(canvas.getByTestId('previous-button'));
+    await canvas.findByText(PROMPT);
+    await userEvent.click(await canvas.findByRole('button', { name: /^You/ }));
+    await waitFor(() => expect(panelOf(canvasElement)).not.toBeNull());
+    await userEvent.click(await body.findByRole('radio', { name: 'Male' }));
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
+    // Only the participant marker is left true.
+    await waitFor(() => expect(trueAttributesInSession('ego')).toBe(1));
+
+    await userEvent.click(canvas.getByTestId('next-button'));
+    await canvas.findByText(OVARIAN_PROMPT);
+    await waitFor(() => expect(you()).toBeDisabled());
+    await expect(you()).toHaveAttribute('aria-pressed', 'false');
+  },
+};
+
+/**
+ * Someone already selected for a prompt that no longer applies to them —
+ * their sex at birth was changed somewhere else in the interview — can still
+ * be deselected, and then cannot be selected again.
+ */
+export const AnIneligibleNominationCanBeWithdrawn: Story = {
+  args: { requirement: 'none' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      family={{
+        ...describedFamily,
+        people: describedFamily.people.map((person) =>
+          person.id === 'dad' ? { ...person, nominatedFor: [0] } : person,
+        ),
+      }}
+      nominationPrompts={[
+        { text: OVARIAN_PROMPT, onlyForSexAssignedAtBirth: 'female' },
+      ]}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const father = () => canvas.getByRole('button', { name: /^Father/ });
+
+    await canvas.findByText(PROMPT);
+    await userEvent.click(canvas.getByTestId('next-button'));
+    await canvas.findByText(OVARIAN_PROMPT);
+    await waitFor(() =>
+      expect(father()).toHaveAttribute('aria-pressed', 'true'),
+    );
+    await expect(father()).toBeEnabled();
+    await userEvent.click(father());
+    await waitFor(() =>
+      expect(father()).toHaveAttribute('aria-pressed', 'false'),
+    );
+    await waitFor(() => expect(father()).toBeDisabled());
   },
 };
 

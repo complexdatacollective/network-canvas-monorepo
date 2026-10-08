@@ -649,6 +649,46 @@ export type ParentChoice = {
   carriedPregnancy: boolean;
 };
 
+/**
+ * Whether a nomination prompt limited to one sex assigned at birth applies to
+ * someone of this sex at birth: anyone not recorded as the other sex, so
+ * people whose sex at birth is intersex, unknown or not recorded can be
+ * chosen. A prompt with no limit applies to everyone.
+ */
+export const nominationAppliesTo = (
+  onlyForSexAssignedAtBirth: 'female' | 'male' | undefined,
+  sexAssignedAtBirth: string | undefined,
+) =>
+  !onlyForSexAssignedAtBirth ||
+  (sexAssignedAtBirth !== 'female' && sexAssignedAtBirth !== 'male') ||
+  sexAssignedAtBirth === onlyForSexAssignedAtBirth;
+
+/**
+ * The attributes of the nomination prompts a person stops being nominated
+ * for when their sex at birth becomes `sexAssignedAtBirth`: each prompt that
+ * nominates them now and no longer applies to them. Their nomination is
+ * withdrawn rather than left standing for someone the prompt excludes.
+ */
+export function nominationsWithdrawnBy(
+  prompts: readonly {
+    attribute: string;
+    onlyForSexAssignedAtBirth?: 'female' | 'male';
+  }[],
+  attributes: Readonly<Record<string, VariableValue>>,
+  sexAssignedAtBirth: string | undefined,
+): string[] {
+  return prompts
+    .filter(
+      (prompt) =>
+        readOwnProperty(attributes, prompt.attribute) === true &&
+        !nominationAppliesTo(
+          prompt.onlyForSexAssignedAtBirth,
+          sexAssignedAtBirth,
+        ),
+    )
+    .map((prompt) => prompt.attribute);
+}
+
 /** Whether someone could have carried a pregnancy: anyone not recorded as
  * male at birth, including people whose sex at birth is not yet known.
  * Gender identity has no bearing on it. */

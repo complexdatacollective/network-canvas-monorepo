@@ -6,6 +6,8 @@ import {
   fullSiblingsOf,
   missingDetailsFor,
   nameFingerprint,
+  nominationAppliesTo,
+  nominationsWithdrawnBy,
   partnersOf,
   planAddRelative,
   primaryParentsOf,
@@ -718,5 +720,32 @@ describe('planAddRelative', () => {
         isCurrentPartner: false,
       },
     ]);
+  });
+});
+
+describe('nominations limited to one sex at birth', () => {
+  test('apply to anyone not recorded as the other sex', () => {
+    expect(nominationAppliesTo('female', 'female')).toBe(true);
+    expect(nominationAppliesTo('female', 'male')).toBe(false);
+    expect(nominationAppliesTo('female', 'intersex')).toBe(true);
+    expect(nominationAppliesTo('female', undefined)).toBe(true);
+    expect(nominationAppliesTo(undefined, 'male')).toBe(true);
+  });
+
+  test('are withdrawn when the person’s sex at birth becomes the other', () => {
+    const prompts = [
+      { attribute: 'ovarian', onlyForSexAssignedAtBirth: 'female' as const },
+      { attribute: 'prostate', onlyForSexAssignedAtBirth: 'male' as const },
+      { attribute: 'heart' },
+    ];
+    const nominated = { ovarian: true, prostate: true, heart: true };
+    expect(nominationsWithdrawnBy(prompts, nominated, 'male')).toEqual([
+      'ovarian',
+    ]);
+    expect(nominationsWithdrawnBy(prompts, nominated, 'intersex')).toEqual([]);
+    // Someone not nominated, or deselected, has nothing to withdraw.
+    expect(nominationsWithdrawnBy(prompts, { ovarian: false }, 'male')).toEqual(
+      [],
+    );
   });
 });

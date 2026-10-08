@@ -64,7 +64,7 @@ import {
 } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { Direction, StageProps } from '../../types';
-import { readOwnProperty } from '../../utils/ownProperty';
+import { readOwnProperty, writeOwnProperty } from '../../utils/ownProperty';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { pedigreeFraming } from '../pedigree-common/framing';
 import {
@@ -108,6 +108,8 @@ import {
   planConnection,
   type PlannedLink,
   nameFingerprint,
+  nominationAppliesTo,
+  nominationsWithdrawnBy,
   readFamily,
   type Family,
   type Person,
@@ -199,11 +201,15 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     readOwnProperty(person.attributes, nomination.attribute) === true;
   // A prompt limited to one sex at birth leaves out people recorded as the
   // other; anyone whose sex at birth is not known either way can be chosen.
-  const canNominate = (person: Person) => {
-    const only = nomination?.onlyForSexAssignedAtBirth;
-    const sex = person.sexAssignedAtBirth;
-    return !only || (sex !== 'female' && sex !== 'male') || sex === only;
-  };
+  const canNominate = (person: Person) =>
+    nominationAppliesTo(
+      nomination?.onlyForSexAssignedAtBirth,
+      person.sexAssignedAtBirth,
+    );
+  // Someone nominated whom the prompt no longer applies to (their sex at
+  // birth was changed elsewhere in the interview) can still be deselected.
+  const canSelect = (person: Person) =>
+    canNominate(person) || isNominated(person);
 
   // The stage's own record: the framing the participant chose, when the
   // stage leaves it to them, and who holds a label saved as their name
@@ -987,7 +993,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (nomination) {
       setLastFocusedId(personId);
       const person = family.byId.get(personId);
-      if (!person || !canNominate(person)) return;
+      if (!person || !canSelect(person)) return;
       void dispatch(
         updateNode({
           nodeId: personId,
@@ -1020,7 +1026,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     ...family.people.map((person) => person.id),
   ].find((id) => {
     const person = id ? family.byId.get(id) : undefined;
-    return person !== undefined && (!nomination || canNominate(person));
+    return person !== undefined && (!nomination || canSelect(person));
   });
 
   const handleNodeKeyDown = (
@@ -1122,13 +1128,31 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       if (typeof typedName === 'string') {
         decryption.expectName(mode.person.id, typedName);
       }
+      // A change of sex at birth withdraws the person from every prompt
+      // limited to the other sex, so no nomination stands for someone the
+      // prompt excludes.
+      const sexAttribute = config.sexAssignedAtBirthAttribute;
+      const sexValue = readOwnProperty(result.set, sexAttribute);
+      const sexAssignedAtBirth = Array.isArray(sexValue)
+        ? String(sexValue[0])
+        : result.unset.includes(sexAttribute)
+          ? undefined
+          : mode.person.sexAssignedAtBirth;
+      const set = { ...result.set };
+      for (const attribute of nominationsWithdrawnBy(
+        stage.nominationPrompts ?? [],
+        mode.person.attributes,
+        sexAssignedAtBirth,
+      )) {
+        writeOwnProperty(set, attribute, false);
+      }
       await dispatch(
         updateNode({
           nodeId: mode.person.id,
           attributePatch: {
-            set: result.set,
+            set,
             unset: result.unset.filter(
-              (variable) => !Object.hasOwn(result.set, variable),
+              (variable) => !Object.hasOwn(set, variable),
             ),
           },
           currentStep,
@@ -1550,7 +1574,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   selected={
                     nomination ? isNominated(person) : personId === selectedId
                   }
-                  disabled={nomination ? !canNominate(person) : false}
+                  disabled={nomination ? !canSelect(person) : false}
                   linking={
                     tool !== 'pointer' &&
                     (personId === linkingId || personId === connectorTargetId)
