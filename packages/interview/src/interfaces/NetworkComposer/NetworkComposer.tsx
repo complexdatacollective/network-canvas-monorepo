@@ -17,7 +17,6 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   isNetworkComposerStageMetadata,
-  type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
 
@@ -44,7 +43,7 @@ import {
   getStageMetadata,
 } from '../../selectors/session';
 import { getCodebook } from '../../store/modules/protocol';
-import { updateNode, updateStageMetadata } from '../../store/modules/session';
+import { updateStageMetadata } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
@@ -64,14 +63,6 @@ import { useComposerStore, createComposerStore } from './useComposerStore';
 import { createUndoStore } from './useUndoStore';
 
 type NetworkComposerProps = StageProps<'NetworkComposer'>;
-
-const isPosition = (value: unknown): value is { x: number; y: number } =>
-  typeof value === 'object' &&
-  value !== null &&
-  'x' in value &&
-  'y' in value &&
-  typeof value.x === 'number' &&
-  typeof value.y === 'number';
 
 const hasGroupValue = (raw: unknown, value: string): boolean => {
   if (raw == null) return false;
@@ -289,40 +280,17 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
 
   const handleNodeDragEnd = useCallback(
     (nodeId: string, position: { x: number; y: number }) => {
-      const node = nodes.find((n) => n[entityPrimaryKeyProperty] === nodeId);
-      const rawPrev = node?.[entityAttributesProperty]?.[layoutVariable];
-      const previous = isPosition(rawPrev) ? rawPrev : null;
-
-      if (previous !== null) {
-        void actions.repositionNode(nodeId, position, previous);
-      } else {
-        // Node has no persisted layout position yet (e.g. auto-positioned by
-        // the simulation). No meaningful prior position to restore, so fall
-        // back to a direct update without an undo entry.
-        void dispatch(
-          updateNode({
-            nodeId,
-            attributePatch: {
-              set: { [layoutVariable]: position },
-              unset: [],
-            },
-            currentStep,
-          }),
-        );
-      }
+      void actions.repositionNode(nodeId, position);
     },
-    [actions, nodes, dispatch, layoutVariable, currentStep],
+    [actions],
   );
 
   // Nodes are added by name from the tool palette (not by tapping the canvas),
   // each landing on the next free grid cell from the top-left.
   const handleAddNode = useCallback(
     async (name: string) => {
-      const occupied = nodes
-        .map((n) => n[entityAttributesProperty]?.[layoutVariable])
-        .filter(isPosition);
       try {
-        await actions.createNodeAt(name, nextGridPosition(occupied));
+        await actions.createNodeAt(name, nextGridPosition);
         return true;
       } catch (error) {
         showToast({
@@ -333,7 +301,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         return false;
       }
     },
-    [nodes, layoutVariable, actions, showToast, intl],
+    [actions, showToast, intl],
   );
 
   const handleBackgroundTap = useCallback(() => {
@@ -401,30 +369,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
       // Complete: tap on a different node — toggle the edge undo-aware.
       const source = pendingEdgeSource;
       setPendingEdgeSource(null);
-
-      // Read live edges at call time to avoid stale-closure bugs.
-      let currentEdges: NcEdge[] = [];
-      dispatch((_, getState) => {
-        const { session: sessionState } = getState() as {
-          session: { network: { edges: NcEdge[] } };
-        };
-        currentEdges = sessionState.network.edges;
-      });
-
-      const existing = currentEdges.find(
-        (e) =>
-          e.type === edgeType &&
-          ((e.from === source && e.to === tappedId) ||
-            (e.from === tappedId && e.to === source)),
-      );
-
-      if (existing) {
-        await actions.deleteEdgeById(existing[entityPrimaryKeyProperty]);
-      } else {
-        await actions.connect(source, tappedId, edgeType);
-      }
+      await actions.toggleEdge(source, tappedId, edgeType);
     },
-    [composerStore, dispatch, actions],
+    [composerStore, actions],
   );
 
   const handleEdgeTap = useCallback(

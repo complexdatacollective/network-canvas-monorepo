@@ -23,7 +23,8 @@ import {
   updateNode,
 } from '../../store/modules/session';
 import type { AppDispatch } from '../../store/store';
-import type { UndoStoreApi } from './useUndoStore';
+import { isPosition } from './gridPlacement';
+import type { UndoCommand, UndoStoreApi } from './useUndoStore';
 
 type Position = { x: number; y: number };
 
@@ -38,27 +39,50 @@ type UseComposerActionsArgs = {
   dispatch: AppDispatch;
 };
 
+// Every change is made in the undo store's queue, so it can be made later
+// than it was asked for. Whatever it depends on is therefore read when it is
+// made, not when it is asked for.
+
+/**
+ * Where a new person goes, or how to choose it from where the people already
+ * on the stage are when the person is added.
+ */
+type Placement = Position | ((occupied: Position[]) => Position);
+
+/**
+ * The patch to save, or how to build it when the save is made, after every
+ * change, undo and redo asked for before it. Building null saves nothing.
+ */
+type PatchToSave = AttributePatch | (() => AttributePatch | null);
+
+const buildPatch = (patchToSave: PatchToSave) =>
+  typeof patchToSave === 'function' ? patchToSave() : patchToSave;
+
 type ComposerActions = {
-  createNodeAt: (name: string, position: Position) => Promise<string>;
-  connect: (from: string, to: string, edgeType: string) => Promise<void>;
+  createNodeAt: (name: string, placement: Placement) => Promise<string>;
+  /**
+   * Connects two people with a relationship of `edgeType`, or removes the one
+   * they already have.
+   */
+  toggleEdge: (from: string, to: string, edgeType: string) => Promise<void>;
   deleteNodeById: (id: string) => Promise<void>;
   deleteNodesById: (ids: string[]) => Promise<void>;
   deleteEdgeById: (id: string) => Promise<void>;
   updateNodeAttributes: (
     id: string,
-    attributePatch: AttributePatch,
+    attributePatch: PatchToSave,
     coalesceKey?: string,
   ) => Promise<void>;
   updateEdgeAttributes: (
     id: string,
-    attributePatch: AttributePatch,
+    attributePatch: PatchToSave,
     coalesceKey?: string,
   ) => Promise<void>;
-  repositionNode: (
-    id: string,
-    position: Position,
-    previous: Position,
-  ) => Promise<void>;
+  /**
+   * Moves a person. The move can be undone when they had a position before
+   * it; a person the automatic layout placed has none of their own yet.
+   */
+  repositionNode: (id: string, position: Position) => Promise<void>;
   toggleGroupMembership: (
     id: string,
     variable: string,
@@ -111,6 +135,19 @@ export function useComposerActions({
     );
   }
 
+  function readOccupiedPositions(): Position[] {
+    return dispatch((_, getState) =>
+      getState()
+        .session.network.nodes.filter((n) => n.type === subjectType)
+        .map((n) => n[entityAttributesProperty][layoutVariable])
+        .filter(isPosition),
+    );
+  }
+
+  function readEdges(): NcEdge[] {
+    return dispatch((_, getState) => getState().session.network.edges);
+  }
+
   function readIncidentEdges(ids: ReadonlySet<string>): NcEdge[] {
     return dispatch((_, getState) =>
       getState().session.network.edges.filter(
@@ -135,11 +172,15 @@ export function useComposerActions({
 
   async function createNodeAt(
     name: string,
-    position: Position,
+    placement: Placement,
   ): Promise<string> {
     const id = uuid();
 
     await undoStore.getState().record(async () => {
+      const position =
+        typeof placement === 'function'
+          ? placement(readOccupiedPositions())
+          : placement;
       await dispatch(
         addNode({
           type: subjectType,
@@ -174,26 +215,64 @@ export function useComposerActions({
     from: string,
     to: string,
     edgeType: string,
+  ): Promise<UndoCommand> {
+    const { edgeId } = await dispatch(
+      addEdge({ from, to, type: edgeType, currentStep }),
+    ).unwrap();
+
+    let liveEdgeId = edgeId;
+
+    return {
+      label: `Connect nodes`,
+      undo: () => {
+        dispatch(deleteEdge(liveEdgeId));
+      },
+      redo: async () => {
+        const { edgeId: newId } = await dispatch(
+          addEdge({ from, to, type: edgeType, currentStep }),
+        ).unwrap();
+        liveEdgeId = newId;
+      },
+    };
+  }
+
+  function removeEdge(edgeSnapshot: NcEdge): UndoCommand {
+    let liveEdgeId = edgeSnapshot[entityPrimaryKeyProperty];
+    dispatch(deleteEdge(liveEdgeId));
+
+    return {
+      label: `Delete edge`,
+      undo: async () => {
+        const { edgeId: newId } = await dispatch(
+          addEdge({
+            from: edgeSnapshot.from,
+            to: edgeSnapshot.to,
+            type: edgeSnapshot.type,
+            attributeData: edgeSnapshot[entityAttributesProperty],
+            currentStep,
+          }),
+        ).unwrap();
+        liveEdgeId = newId;
+      },
+      redo: () => {
+        dispatch(deleteEdge(liveEdgeId));
+      },
+    };
+  }
+
+  async function toggleEdge(
+    from: string,
+    to: string,
+    edgeType: string,
   ): Promise<void> {
     await undoStore.getState().record(async () => {
-      const { edgeId } = await dispatch(
-        addEdge({ from, to, type: edgeType, currentStep }),
-      ).unwrap();
-
-      let liveEdgeId = edgeId;
-
-      return {
-        label: `Connect nodes`,
-        undo: () => {
-          dispatch(deleteEdge(liveEdgeId));
-        },
-        redo: async () => {
-          const { edgeId: newId } = await dispatch(
-            addEdge({ from, to, type: edgeType, currentStep }),
-          ).unwrap();
-          liveEdgeId = newId;
-        },
-      };
+      const existing = readEdges().find(
+        (e) =>
+          e.type === edgeType &&
+          ((e.from === from && e.to === to) ||
+            (e.from === to && e.to === from)),
+      );
+      return existing ? removeEdge(existing) : connect(from, to, edgeType);
     });
   }
 
@@ -254,51 +333,20 @@ export function useComposerActions({
 
   async function deleteEdgeById(id: string): Promise<void> {
     await undoStore.getState().record(async () => {
-      let capturedEdge: NcEdge | undefined;
-
-      dispatch((_, getState) => {
-        const { session: sessionState } = getState() as {
-          session: { network: { edges: NcEdge[] } };
-        };
-        capturedEdge = sessionState.network.edges.find(
-          (e) => e[entityPrimaryKeyProperty] === id,
-        );
-      });
-
-      dispatch(deleteEdge(id));
-
-      if (!capturedEdge) return null;
-
-      const edgeSnapshot = capturedEdge;
-      let liveEdgeId = edgeSnapshot[entityPrimaryKeyProperty];
-
-      return {
-        label: `Delete edge`,
-        undo: async () => {
-          const { edgeId: newId } = await dispatch(
-            addEdge({
-              from: edgeSnapshot.from,
-              to: edgeSnapshot.to,
-              type: edgeSnapshot.type,
-              attributeData: edgeSnapshot[entityAttributesProperty],
-              currentStep,
-            }),
-          ).unwrap();
-          liveEdgeId = newId;
-        },
-        redo: () => {
-          dispatch(deleteEdge(liveEdgeId));
-        },
-      };
+      const edge = readEdges().find((e) => e[entityPrimaryKeyProperty] === id);
+      return edge ? removeEdge(edge) : null;
     });
   }
 
   async function updateNodeAttributes(
     id: string,
-    attributePatch: AttributePatch,
+    patchToSave: PatchToSave,
     coalesceKey?: string,
   ): Promise<void> {
     await undoStore.getState().record(async () => {
+      const attributePatch = buildPatch(patchToSave);
+      if (attributePatch === null) return null;
+
       const editedKeys = [
         ...new Set([
           ...Object.keys(attributePatch.set),
@@ -328,10 +376,13 @@ export function useComposerActions({
 
   async function updateEdgeAttributes(
     id: string,
-    attributePatch: AttributePatch,
+    patchToSave: PatchToSave,
     coalesceKey?: string,
   ): Promise<void> {
     await undoStore.getState().record(async () => {
+      const attributePatch = buildPatch(patchToSave);
+      if (attributePatch === null) return null;
+
       let priorAttributes: NcEdge[typeof entityAttributesProperty] = {};
 
       dispatch((_, getState) => {
@@ -390,12 +441,11 @@ export function useComposerActions({
     });
   }
 
-  async function repositionNode(
-    id: string,
-    position: Position,
-    previous: Position,
-  ): Promise<void> {
+  async function repositionNode(id: string, position: Position): Promise<void> {
     await undoStore.getState().record(async () => {
+      const prior = readNode(id)?.[entityAttributesProperty][layoutVariable];
+      const previous = isPosition(prior) ? prior : null;
+
       await dispatch(
         updateNode({
           nodeId: id,
@@ -406,6 +456,8 @@ export function useComposerActions({
           currentStep,
         }),
       ).unwrap();
+
+      if (previous === null) return null;
 
       return {
         label: `Move node`,
@@ -592,7 +644,7 @@ export function useComposerActions({
 
   return {
     createNodeAt,
-    connect,
+    toggleEdge,
     deleteNodeById,
     deleteNodesById,
     deleteEdgeById,

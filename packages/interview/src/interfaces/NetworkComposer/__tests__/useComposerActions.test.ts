@@ -172,8 +172,8 @@ describe('useComposerActions', () => {
     expect(store.getState().session.network.nodes).toHaveLength(1);
   });
 
-  // 3. connect adds one edge; undo removes it
-  it('connect adds an edge; undo removes it', async () => {
+  // 3. toggleEdge adds one edge between unconnected people; undo removes it
+  it('toggleEdge adds an edge; undo removes it', async () => {
     const nodeA = {
       [entityPrimaryKeyProperty]: 'a',
       type: NODE_TYPE,
@@ -204,7 +204,7 @@ describe('useComposerActions', () => {
     );
 
     await act(async () => {
-      await result.current.connect('a', 'b', EDGE_TYPE);
+      await result.current.toggleEdge('a', 'b', EDGE_TYPE);
     });
 
     expect(store.getState().session.network.edges).toHaveLength(1);
@@ -280,8 +280,8 @@ describe('useComposerActions', () => {
     );
   });
 
-  // 7. connect cycle: undo→redo→undo tracks the live edge id correctly
-  it('connect undo→redo→undo cycle keeps edge count correct', async () => {
+  // 7. toggleEdge cycle: undo→redo→undo tracks the live edge id correctly
+  it('toggleEdge undo→redo→undo cycle keeps edge count correct', async () => {
     const nodeA: NcNode = {
       [entityPrimaryKeyProperty]: 'a',
       type: NODE_TYPE,
@@ -312,7 +312,7 @@ describe('useComposerActions', () => {
     );
 
     await act(async () => {
-      await result.current.connect('a', 'b', EDGE_TYPE);
+      await result.current.toggleEdge('a', 'b', EDGE_TYPE);
     });
     expect(store.getState().session.network.edges).toHaveLength(1);
 
@@ -364,7 +364,7 @@ describe('useComposerActions', () => {
     const newPos = { x: 0.8, y: 0.8 };
 
     await act(async () => {
-      await result.current.repositionNode('a', newPos, prevPos);
+      await result.current.repositionNode('a', newPos);
     });
 
     expect(
@@ -842,4 +842,117 @@ describe('useComposerActions deleting while another change is being made', () =>
       expect(stillThere(store)).toBe(false);
     },
   );
+});
+
+describe('useComposerActions reading the network when a change is made', () => {
+  const at = (id: string, position?: { x: number; y: number }): NcNode => ({
+    [entityPrimaryKeyProperty]: id,
+    type: NODE_TYPE,
+    [entityAttributesProperty]: position ? { [LAYOUT_VAR]: position } : {},
+  });
+
+  // Holds the history queue until `release` is called, as a change still
+  // being saved does.
+  function setUp(nodes: NcNode[]) {
+    const store = makeStore(nodes);
+    const undoStore = createUndoStore();
+    const { result } = renderHook(
+      () =>
+        useComposerActions({
+          subjectType: NODE_TYPE,
+          quickAdd: QUICK_ADD_VAR,
+          layoutVariable: LAYOUT_VAR,
+          useEncryption: false,
+          currentStep: 0,
+          undoStore,
+          dispatch: store.dispatch as Parameters<
+            typeof useComposerActions
+          >[0]['dispatch'],
+        }),
+      { wrapper: makeWrapper(store) },
+    );
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const held = undoStore.getState().record(async () => {
+      await gate;
+      return null;
+    });
+    const settle = async (...pending: Promise<unknown>[]) => {
+      release();
+      await act(async () => {
+        await Promise.all([held, ...pending]);
+      });
+    };
+    return { store, undoStore, actions: () => result.current, settle };
+  }
+
+  const layoutOf = (store: ReturnType<typeof makeStore>, id: string) =>
+    store
+      .getState()
+      .session.network.nodes.find((n) => n[entityPrimaryKeyProperty] === id)?.[
+      entityAttributesProperty
+    ][LAYOUT_VAR];
+
+  it('connects or disconnects two people as they are when the change is made', async () => {
+    const { store, actions, settle } = setUp([at('a'), at('b')]);
+
+    const first = actions().toggleEdge('a', 'b', EDGE_TYPE);
+    const second = actions().toggleEdge('a', 'b', EDGE_TYPE);
+    await settle(first, second);
+
+    expect(store.getState().session.network.edges).toHaveLength(0);
+  });
+
+  it('undoes a move to where the person was when it was made', async () => {
+    const start = { x: 0.1, y: 0.1 };
+    const middle = { x: 0.4, y: 0.4 };
+    const end = { x: 0.8, y: 0.8 };
+    const { store, undoStore, actions, settle } = setUp([at('a', start)]);
+
+    const first = actions().repositionNode('a', middle);
+    const second = actions().repositionNode('a', end);
+    await settle(first, second);
+    expect(layoutOf(store, 'a')).toEqual(end);
+
+    await act(async () => {
+      await undoStore.getState().undo();
+    });
+    expect(layoutOf(store, 'a')).toEqual(middle);
+  });
+
+  it('places a person among the people there when they are added', async () => {
+    const { store, actions, settle } = setUp([]);
+    const nextFree = (occupied: { x: number; y: number }[]) => ({
+      x: 0.1 * (occupied.length + 1),
+      y: 0.1,
+    });
+
+    let first: Promise<string> = Promise.resolve('');
+    let second: Promise<string> = Promise.resolve('');
+    act(() => {
+      first = actions().createNodeAt('Alex', nextFree);
+      second = actions().createNodeAt('Sam', nextFree);
+    });
+    await settle(first, second);
+
+    expect(layoutOf(store, await first)).toEqual({ x: 0.1, y: 0.1 });
+    expect(layoutOf(store, await second)).toEqual({ x: 0.2, y: 0.1 });
+  });
+
+  it('builds the attributes to save when the save is made', async () => {
+    const { actions, settle } = setUp([at('a')]);
+    let built = false;
+
+    const saving = actions().updateNodeAttributes('a', () => {
+      built = true;
+      return { set: { [QUICK_ADD_VAR]: 'Alex' }, unset: [] };
+    });
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(built).toBe(false);
+
+    await settle(saving);
+    expect(built).toBe(true);
+  });
 });

@@ -52,7 +52,15 @@ export type InspectorProps = {
    * is only hidden, so what was entered comes back with it.
    */
   passphraseStatus?: PassphraseNoticeStatus;
-  onSave: (id: string, attributePatch: AttributePatch) => Promise<void>;
+  /**
+   * Saves the patch `buildPatch` returns, building it only when the save is
+   * made: after every change, undo and redo asked for before it. A patch of
+   * null saves nothing.
+   */
+  onSave: (
+    id: string,
+    buildPatch: () => AttributePatch | null,
+  ) => Promise<void>;
   onDelete: (id: string) => void;
   /**
    * Holds the participant on this entity while its form has a draft, so
@@ -280,41 +288,48 @@ function AttributeFormInner({
         return message;
       };
 
-      const fieldState = storeApi?.getState().pathOperations?.getFieldState;
-      const stored = ownWritesRef.current.at(-1)?.stored ?? givenRef.current;
-      // An answer is saved only while the form still shows it, so a save
-      // asked for before an undo cannot put back an answer the form has since
-      // replaced, and never over an answer an undo or redo overtook.
-      const savable = (form.fields ?? [])
-        .map(({ variable }) => variable)
-        .filter(
-          (variable) =>
-            !heldRef.current.has(variable) &&
-            isEqual(
-              ownValue(values, variable),
-              fieldState?.([variable])?.value,
-            ),
+      let failure: MessageDescriptor | undefined;
+      let ownWrite: OwnWrite | undefined;
+      // Built when the save is made, once the form has followed every undo or
+      // redo made before it.
+      const buildPatch = () => {
+        const fieldState = storeApi?.getState().pathOperations?.getFieldState;
+        const stored = ownWritesRef.current.at(-1)?.stored ?? givenRef.current;
+        // An answer is saved only while the form still shows it, so a save
+        // asked for before an undo cannot put back an answer the form has
+        // since replaced, and never over an answer an undo or redo overtook.
+        const savable = (form.fields ?? [])
+          .map(({ variable }) => variable)
+          .filter(
+            (variable) =>
+              !heldRef.current.has(variable) &&
+              isEqual(
+                ownValue(values, variable),
+                fieldState?.([variable])?.value,
+              ),
+          );
+        const patchResult = formValuesToAttributePatch(
+          coerceValues(values),
+          savable,
+          stored,
         );
-      const patchResult = formValuesToAttributePatch(
-        coerceValues(values),
-        savable,
-        stored,
-      );
-      if (!patchResult.success) {
-        return showSaveFailure(runtimeMessages.submissionFailed);
-      }
+        if (!patchResult.success) {
+          failure = runtimeMessages.submissionFailed;
+          return null;
+        }
 
-      // Every save adds an undo step, and a new step discards what could be
-      // redone, so a save that changes nothing, as after the form follows an
-      // undo, is not made.
-      const { set, unset } = patchResult.patch;
-      const changesAnswers =
-        unset.length > 0 ||
-        Object.entries(set).some(
-          ([name, value]) => !isEqual(value, stored[name]),
-        );
-      if (changesAnswers) {
-        const ownWrite: OwnWrite = {
+        // Every save adds an undo step, and a new step discards what could
+        // be redone, so a save that changes nothing, as after the form
+        // follows an undo, is not made.
+        const { set, unset } = patchResult.patch;
+        const changesAnswers =
+          unset.length > 0 ||
+          Object.entries(set).some(
+            ([name, value]) => !isEqual(value, stored[name]),
+          );
+        if (!changesAnswers) return null;
+
+        ownWrite = {
           stored: Object.fromEntries(
             [...Object.entries(stored), ...Object.entries(set)].filter(
               ([name]) => !unset.includes(name),
@@ -323,16 +338,19 @@ function AttributeFormInner({
           done: false,
         };
         ownWritesRef.current = [...ownWritesRef.current, ownWrite];
-        try {
-          await onSave(entityId, patchResult.patch);
-        } catch (error) {
-          ownWritesRef.current = ownWritesRef.current.filter(
-            (pending) => pending !== ownWrite,
-          );
-          return showSaveFailure(rejectedWriteMessage(error));
-        }
-        ownWrite.done = true;
+        return patchResult.patch;
+      };
+
+      try {
+        await onSave(entityId, buildPatch);
+      } catch (error) {
+        ownWritesRef.current = ownWritesRef.current.filter(
+          (pending) => pending !== ownWrite,
+        );
+        return showSaveFailure(rejectedWriteMessage(error));
       }
+      if (failure) return showSaveFailure(failure);
+      if (ownWrite) ownWrite.done = true;
 
       // An edit refused earlier is saved now, so the refusal is gone.
       const state = storeApi?.getState();

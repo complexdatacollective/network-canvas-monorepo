@@ -19,10 +19,12 @@ import {
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { ContractProvider } from '../../../contract/context';
+import type { AttributePatch } from '../../../store/entityAttributePatch';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type { RegisterBeforeNext, StageProps } from '../../../types';
+import Inspector, { type InspectorProps } from '../Inspector';
 import NetworkComposer from '../NetworkComposer';
 
 beforeAll(() => {
@@ -748,6 +750,57 @@ describe('NetworkComposer inspector — undo and redo changing what the drawer s
     await press('redo');
     await waitFor(() => expect(stored(store, NICKNAME_VAR)).toBe('Al'));
     expect(stored(store, NODE_NAME_VAR)).toBe('Alice Updated');
+  });
+
+  it('builds what it saves from the answers shown when the save is made', async () => {
+    const store = makeStore(false, twoQuestionStage, twoQuestionCodebook);
+    const builds: (() => AttributePatch | null)[] = [];
+    const inspector = (attributes: Record<string, string>) => (
+      <Provider store={store}>
+        <ContractProvider
+          onFinish={vi.fn()}
+          onRequestAsset={vi.fn()}
+          flags={{ isE2E: false, isDevelopment: false }}
+        >
+          <DialogProvider>
+            <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+              <StageMetadataContext.Provider value={vi.fn()}>
+                <Inspector
+                  entityId={NODE_A_ID}
+                  // The fixture's loose stage shape, as the interface is given.
+                  form={
+                    twoQuestionStage.nodeForm as unknown as InspectorProps['form']
+                  }
+                  subject={{ entity: 'node', type: NODE_TYPE }}
+                  attributes={attributes}
+                  // The save is asked for, but made only when the test says.
+                  onSave={async (_id, build) => {
+                    builds.push(build);
+                  }}
+                  onDelete={vi.fn()}
+                  guardDraft={() => () => undefined}
+                />
+              </StageMetadataContext.Provider>
+            </CurrentStepProvider>
+          </DialogProvider>
+        </ContractProvider>
+      </Provider>
+    );
+    const { rerender } = render(inspector({ [NODE_NAME_VAR]: 'Alice Smith' }));
+
+    fireEvent.change(await screen.findByLabelText(/nickname/i), {
+      target: { value: 'Al' },
+    });
+    await waitFor(() => expect(builds).toHaveLength(1), { timeout: 2000 });
+
+    // An undo changes the full name, which the participant has not touched,
+    // after the save was asked for and before it is made.
+    rerender(inspector({ [NODE_NAME_VAR]: 'Alice Undone' }));
+    await waitFor(() =>
+      expect(screen.getByLabelText(/full name/i)).toHaveValue('Alice Undone'),
+    );
+
+    expect(builds[0]?.()).toEqual({ set: { [NICKNAME_VAR]: 'Al' }, unset: [] });
   });
 
   it('keeps an unsaved edit of a relationship an undo overtook, without saving it over the undo', async () => {
