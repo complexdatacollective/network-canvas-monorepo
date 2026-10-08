@@ -4,10 +4,12 @@
 '@codaco/studio-web': minor
 ---
 
-Encrypted attributes are no longer experimental, so protocols no longer have
-an `experiments` setting. The protocol settings section no longer accepts
-`experiments`, and the server no longer splits a protocol's experiments into
-its settings section. A stored schema 8 protocol is upgraded with its
+Encrypted attributes are no longer experimental. Protocols keep their
+`experiments` setting, for features released within a schema version, and
+the protocol settings section still accepts and keeps it, but
+`encryptedVariables` is no longer one of its experiments: the settings
+section refuses it, and an attribute marked as encrypted is always
+encrypted. A stored schema 8 protocol is upgraded with its
 experiments included, so attributes it encrypted stay encrypted, and
 attributes it marked as encrypted without turning the experiment on are
 unmarked and keep being collected without encryption.
