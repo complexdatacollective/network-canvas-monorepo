@@ -121,6 +121,29 @@ describe('createUndoStore record', () => {
     expect(log).toEqual(['undo:a', 'change']);
   });
 
+  it('counts a change as one to undo from when it is asked for until it is recorded', async () => {
+    const store = createUndoStore();
+    const log: string[] = [];
+    const change = deferred();
+
+    const recording = store.getState().record(async () => {
+      await change.promise;
+      return cmd(log, 'a');
+    });
+    expect(store.getState().recording).toBe(1);
+    change.resolve();
+    await recording;
+    expect(store.getState().recording).toBe(0);
+    expect(store.getState().past.map((c) => c.label)).toEqual(['a']);
+
+    await expect(
+      store.getState().record(async () => {
+        throw new Error('refused');
+      }),
+    ).rejects.toThrow('refused');
+    expect(store.getState().recording).toBe(0);
+  });
+
   it('keeps what can be redone when a change changes nothing', async () => {
     const store = createUndoStore();
     const log: string[] = [];

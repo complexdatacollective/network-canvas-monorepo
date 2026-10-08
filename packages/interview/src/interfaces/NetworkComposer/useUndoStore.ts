@@ -17,6 +17,12 @@ export type UndoCommand = {
 type UndoState = {
   past: UndoCommand[];
   future: UndoCommand[];
+  /**
+   * How many changes are waiting to be made or being made. Each will be the
+   * newest step, or join it, so it can be undone from the moment it is asked
+   * for, before it is recorded.
+   */
+  recording: number;
 };
 
 type UndoActions = {
@@ -92,12 +98,19 @@ export const createUndoStore = (limit = 50) =>
     return {
       past: [],
       future: [],
+      recording: 0,
 
-      record: (change) =>
-        enqueue(async () => {
-          const command = await change();
-          if (command) addStep(command);
-        }),
+      record: (change) => {
+        set((state) => ({ recording: state.recording + 1 }));
+        return enqueue(async () => {
+          try {
+            const command = await change();
+            if (command) addStep(command);
+          } finally {
+            set((state) => ({ recording: state.recording - 1 }));
+          }
+        });
+      },
 
       undo: () =>
         enqueue(async () => {

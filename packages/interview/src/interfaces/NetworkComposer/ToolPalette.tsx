@@ -121,7 +121,11 @@ export default function ToolPalette({
 }: ToolPaletteProps) {
   const intl = useAppIntl();
   const activeTool = useComposerStore(composerStore, (s) => s.activeTool);
-  const canUndo = useUndoStore(undoStore, (s) => s.past.length > 0);
+  // A change still being made can be undone too: the undo waits for it.
+  const canUndo = useUndoStore(
+    undoStore,
+    (s) => s.past.length > 0 || s.recording > 0,
+  );
   const canRedo = useUndoStore(undoStore, (s) => s.future.length > 0);
   // The Groups popover opens on click and closes once a group is picked, so its
   // open state is independent of whether the group tool is active.

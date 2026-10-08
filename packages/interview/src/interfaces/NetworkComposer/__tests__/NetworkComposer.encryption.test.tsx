@@ -1219,6 +1219,26 @@ describe('NetworkComposer saving edits in the order they were made', () => {
     expect(await storedNotes(store)).toBe('Met at work');
   });
 
+  it('lets Undo be pressed while the first edit is being saved, and applies it to that edit', async () => {
+    const store = makeStore(await makeNodes(), true);
+    const notesInput = await openAlice(store);
+    const saving = holdNextEncryption();
+
+    fireEvent.change(notesInput, { target: { value: 'First' } });
+    await waitFor(() => expect(saving.begun()).toBe(true), { timeout: 2000 });
+    const undo = screen.getByRole('button', { name: 'Undo' });
+    // Toolbar controls stay focusable and say they are disabled this way.
+    expect(undo).not.toHaveAttribute('aria-disabled', 'true');
+    act(() => {
+      fireEvent.click(undo);
+    });
+    saving.release();
+
+    await allSaved();
+    await waitFor(() => expect(notesInput).toHaveValue('Met at work'));
+    expect(await storedNotes(store)).toBe('Met at work');
+  });
+
   it('keeps an edit an undo overtook while its save waited its turn, without saving it', async () => {
     const store = makeStore(await makeNodes(), true);
     const notesInput = await openAlice(store);
