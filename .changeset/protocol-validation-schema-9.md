@@ -56,8 +56,9 @@ Schema 9:
   escaped so that markdown shows it as written, and wrapped the same way. An
   empty optional text that schema 9 requires to be non-empty is removed, as are
   Network Composer scale end labels that were not strings. Its two migration
-  notes tell researchers what the new version allows and how to set the
-  protocol's real language.
+  notes tell researchers what the new version allows, and to check the
+  protocol's default language in Architect and, if the protocol is not in
+  English, relabel it as the right language, which keeps the existing text.
 - Schema 8 still refuses names outside `a-z`, `A-Z`, digits and `. _ - :`, with
   a message that says so. `VersionlessProtocolSchema`, the version 8 body
   without its `schemaVersion`, is now exported.

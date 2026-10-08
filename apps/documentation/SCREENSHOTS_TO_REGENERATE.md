@@ -43,7 +43,7 @@ New pages with no screenshots yet:
 
 - `design-protocols/translating-your-protocol.en.mdx` would benefit from the
   **Languages** tab (the **Protocol languages** list and **Missing
-  translations**), the **Add languages** and **Identify language** dialogs, a
+  translations**), the **Add languages** and **Relabel the … text** dialogs, a
   stage editor showing the language menu and a missing-translation note, and
   a **Summary** tab stage listing a text in every language.
 - `design-protocols/preview-mode.en.mdx` would benefit from the **Preview
