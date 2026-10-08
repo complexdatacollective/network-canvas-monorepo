@@ -17,13 +17,6 @@ beside its indicator. `isPresentationalText`, `presentationalTextValue` and
 `presentationalTextProps` help components handle both forms. The Language
 Chooser stage type has a colour and icon.
 
-`RenderMarkdown` accepts it as its text too. In section markdown each block it
-renders gets the text's `lang` and `dir`, so the blocks stay siblings of the
-content around them and keep the spacing they have in the page's own language.
-Label markdown, which renders inline, is placed in a `span` that carries them,
-and a `render` element is given them when one is passed. `UnorderedList` and
-`OrderedList` accept the attributes of the list element they render.
-
 `Combobox`, `Select` and `IconPicker` fields no longer grow wider than the
 space they are given when the text they show is long. The text is cut off with
 an ellipsis instead of running past the edge of its dialog.

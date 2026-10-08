@@ -431,20 +431,17 @@ describe('protocol text in the interview language', () => {
       [],
     );
 
-    // Siblings, though the text carries its own language: the typography's
-    // `not-first:`/`not-last:` spacing reads that order, so a wrapper carrying
-    // the language would respace the item.
+    // Siblings: the typography's `not-first:`/`not-last:` spacing reads that
+    // order, so a wrapper around the item would respace it.
     const title = screen.getByRole('heading', { name: 'Before you begin' });
     const section = screen.getByRole('heading', { name: 'Section' });
     expect(section.previousElementSibling).toBe(title);
     expect(section.nextElementSibling).toBe(
       screen.getByText('context').closest('p'),
     );
-    expect(section).toHaveAttribute('lang', 'en');
-    expect(section.nextElementSibling).toHaveAttribute('lang', 'en');
   });
 
-  it('marks a text item shown in a fallback language with that language and direction', () => {
+  it('leaves a text item’s language to the interview’s boundary', () => {
     renderInformation(
       makeStage([
         { id: 'i1', type: 'text', content: { en: 'Some **context**.' } },
@@ -453,9 +450,9 @@ describe('protocol text in the interview language', () => {
       { localization: ENGLISH_AND_ARABIC, locale: 'ar' },
     );
 
-    const block = screen.getByText('context').closest('[lang]');
-    expect(block).toHaveAttribute('lang', 'en');
-    expect(block).toHaveAttribute('dir', 'ltr');
+    // Even shown in a fallback language, the item names none of its own: the
+    // interview sets one language for everything it renders.
+    expect(screen.getByText('context').closest('[lang], [dir]')).toBeNull();
   });
 
   it('marks an image description shown in a fallback language with that language', async () => {
