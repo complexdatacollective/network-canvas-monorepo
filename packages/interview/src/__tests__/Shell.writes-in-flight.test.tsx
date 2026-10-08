@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type ReactNode } from 'react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
@@ -16,10 +16,17 @@ import { updateEgo } from '../store/modules/session';
 
 vi.mock('../hooks/useMediaQuery', () => ({ default: () => false }));
 
-vi.mock('../interfaces', () => {
-  const ObservedInterface = ({ stage }: { stage: { id: string } }) => (
-    <div data-testid="stage" data-stage-interface={stage.id} />
-  );
+// What a stage is given to count a save waiting its turn as under way.
+const stageWrites = vi.hoisted(
+  (): { trackWrite?: (stored: Promise<boolean>) => void } => ({}),
+);
+
+vi.mock('../interfaces', async () => {
+  const { useTrackWrite } = await import('../store/WritesInFlightContext');
+  const ObservedInterface = ({ stage }: { stage: { id: string } }) => {
+    stageWrites.trackWrite = useTrackWrite();
+    return <div data-testid="stage" data-stage-interface={stage.id} />;
+  };
 
   return { default: () => ObservedInterface };
 });
@@ -123,7 +130,7 @@ function liveStore() {
 
 const declined = { set: { agrees: false }, unset: [] };
 
-async function renderShell() {
+async function renderShell(onExit?: () => void) {
   render(
     <Shell
       payload={payload}
@@ -132,6 +139,7 @@ async function renderShell() {
       onRequestAsset={() => Promise.resolve('')}
       analytics={{ installationId: 'test', hostApp: 'test' }}
       disableAnalytics
+      onExit={onExit}
       flags={{ isE2E: true }}
     />,
     { wrapper: WithoutMotion },
@@ -142,6 +150,18 @@ async function renderShell() {
 
 const shownStage = () =>
   screen.getByTestId('stage').getAttribute('data-stage-interface');
+
+async function exitInterview() {
+  const user = userEvent.setup();
+  await user.click(screen.getByTestId('settings-button'));
+  await user.click(await screen.findByTestId('exit-button'));
+  const dialog = await screen.findByRole('dialog', {
+    name: 'Exit this interview?',
+  });
+  await user.click(
+    await within(dialog).findByRole('button', { name: 'Exit interview' }),
+  );
+}
 
 describe('Shell leaving a stage with a write under way', () => {
   it('chooses the next stage with an answer still being stored', async () => {
@@ -175,5 +195,50 @@ describe('Shell leaving a stage with a write under way', () => {
 
     await userEvent.setup().click(next);
     await waitFor(() => expect(shownStage()).toBe('agreed-stage'));
+  });
+});
+
+describe('Shell closing the interview with a write under way', () => {
+  it('stays open when an answer still being stored is refused', async () => {
+    const onExit = vi.fn();
+    const { store } = await renderShell(onExit);
+    act(() => {
+      store.dispatch(updateEgo.pending('w1', declined));
+    });
+
+    await exitInterview();
+    act(() => {
+      store.dispatch(updateEgo.rejected(new Error('refused'), 'w1', declined));
+    });
+    await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
+    expect(onExit).not.toHaveBeenCalled();
+
+    await exitInterview();
+    await waitFor(() => expect(onExit).toHaveBeenCalledTimes(1));
+  });
+
+  it('stays open when a save the stage has waiting its turn is refused', async () => {
+    const onExit = vi.fn();
+    await renderShell(onExit);
+    let settleSave: (stored: boolean) => void = () => undefined;
+    act(() => {
+      stageWrites.trackWrite?.(
+        new Promise<boolean>((resolve) => {
+          settleSave = resolve;
+        }),
+      );
+    });
+
+    await exitInterview();
+    await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
+    expect(onExit).not.toHaveBeenCalled();
+    act(() => {
+      settleSave(false);
+    });
+    await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
+    expect(onExit).not.toHaveBeenCalled();
+
+    await exitInterview();
+    await waitFor(() => expect(onExit).toHaveBeenCalledTimes(1));
   });
 });

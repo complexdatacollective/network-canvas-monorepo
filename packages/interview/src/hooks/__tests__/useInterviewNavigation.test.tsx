@@ -15,7 +15,7 @@ import { createWritesInFlightMiddleware } from '../../store/middleware/writesInF
 import protocol from '../../store/modules/protocol';
 import session, { updateEgo } from '../../store/modules/session';
 import ui from '../../store/modules/ui';
-import { WritesSettledProvider } from '../../store/WritesSettledContext';
+import { WritesInFlightProvider } from '../../store/WritesInFlightContext';
 import useInterviewNavigation from '../useInterviewNavigation';
 
 type TestStage = {
@@ -135,7 +135,8 @@ function renderStatefulNavigation(
 // Navigation in a store that tracks the session writes under way, as the
 // interview's own store does.
 function renderTrackingWrites(stages: TestStage[], initialStep = 0) {
-  const { middleware, writesSettled } = createWritesInFlightMiddleware();
+  const { middleware, writesSettled, trackWrite } =
+    createWritesInFlightMiddleware();
   const store = makeStore(stages, [middleware]);
   const onStepChange = vi.fn();
 
@@ -143,7 +144,10 @@ function renderTrackingWrites(stages: TestStage[], initialStep = 0) {
     const [step, setStep] = useState(initialStep);
     return (
       <Provider store={store}>
-        <WritesSettledProvider writesSettled={writesSettled}>
+        <WritesInFlightProvider
+          writesSettled={writesSettled}
+          trackWrite={trackWrite}
+        >
           <CurrentStepProvider
             currentStep={step}
             onStepChange={(nextStep, meta) => {
@@ -153,7 +157,7 @@ function renderTrackingWrites(stages: TestStage[], initialStep = 0) {
           >
             {children}
           </CurrentStepProvider>
-        </WritesSettledProvider>
+        </WritesInFlightProvider>
       </Provider>
     );
   }

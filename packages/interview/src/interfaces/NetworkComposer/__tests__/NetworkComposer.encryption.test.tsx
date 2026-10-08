@@ -25,6 +25,7 @@ import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { ContractProvider } from '../../../contract/context';
 import { setPassphrase, setPassphraseInvalid } from '../../../store/modules/ui';
+import { WritesInFlightProvider } from '../../../store/WritesInFlightContext';
 import { interviewToastManager } from '../../../toast/interviewToastManager';
 import type { BeforeNextFunction, StageProps } from '../../../types';
 import { createEncryptionStore } from '../../Anonymisation/__tests__/encryptionFixtures';
@@ -292,19 +293,27 @@ function renderComposer(
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <Provider store={store}>
-        <ContractProvider
-          onFinish={vi.fn()}
-          onRequestAsset={vi.fn()}
-          flags={{ isE2E: false, isDevelopment: false }}
+        <WritesInFlightProvider
+          writesSettled={store.writesSettled}
+          trackWrite={store.trackWrite}
         >
-          <DialogProvider>
-            <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-              <StageMetadataContext.Provider value={registerBeforeNext}>
-                {children}
-              </StageMetadataContext.Provider>
-            </CurrentStepProvider>
-          </DialogProvider>
-        </ContractProvider>
+          <ContractProvider
+            onFinish={vi.fn()}
+            onRequestAsset={vi.fn()}
+            flags={{ isE2E: false, isDevelopment: false }}
+          >
+            <DialogProvider>
+              <CurrentStepProvider
+                currentStep={0}
+                onStepChange={() => undefined}
+              >
+                <StageMetadataContext.Provider value={registerBeforeNext}>
+                  {children}
+                </StageMetadataContext.Provider>
+              </CurrentStepProvider>
+            </DialogProvider>
+          </ContractProvider>
+        </WritesInFlightProvider>
       </Provider>
     );
   }
@@ -1028,6 +1037,31 @@ describe('NetworkComposer saving edits in the order they were made', () => {
     expect(
       await readStored(store.getState().session.network.nodes[0], NOTES_VAR),
     ).toBe('Second');
+  });
+
+  it('counts an edit waiting its turn as being saved until it is stored', async () => {
+    const store = makeStore(await makeNodes(), true);
+    const notesInput = await openAlice(store);
+    const earlier = holdNextEncryption();
+
+    fireEvent.change(notesInput, { target: { value: 'First' } });
+    await waitFor(() => expect(earlier.begun()).toBe(true), {
+      timeout: 2000,
+    });
+    fireEvent.change(notesInput, { target: { value: 'Second' } });
+    // Long enough for the autosave to ask for the later edit to be saved.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
+    const settling = store.writesSettled();
+
+    earlier.release();
+    let allStored: boolean | undefined;
+    await act(async () => {
+      allStored = await settling;
+    });
+    // Read as soon as the wait is over: the later edit is already stored.
+    const [saved] = store.getState().session.network.nodes;
+    expect(allStored).toBe(true);
+    expect(await readStored(saved, NOTES_VAR)).toBe('Second');
   });
 
   it('clears an answer an earlier save is still storing when the participant moves on', async () => {

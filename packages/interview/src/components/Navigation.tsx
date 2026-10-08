@@ -341,9 +341,10 @@ const Navigation = ({
       // unmounting the Shell — could re-read the session between the
       // in-flight write and the final one. Exit is the one teardown the
       // Shell controls, so wait out the full flush here; it never rejects
-      // and typically resolves in milliseconds.
-      await flushPendingSync();
-      onExit();
+      // and typically resolves in milliseconds. When an answer still being
+      // saved is refused, the interview stays open, so the participant sees
+      // why and can try again.
+      if (await flushPendingSync()) onExit();
     }
   }, [confirm, onExit, reviewMode, flushPendingSync]);
 

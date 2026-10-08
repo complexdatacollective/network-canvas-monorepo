@@ -24,6 +24,7 @@ import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { ContractProvider } from '../../../contract/context';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import { setPassphrase } from '../../../store/modules/ui';
+import { WritesInFlightProvider } from '../../../store/WritesInFlightContext';
 import { interviewToastManager } from '../../../toast/interviewToastManager';
 import type { BeforeNextFunction, StageProps } from '../../../types';
 import { createEncryptionStore } from '../../Anonymisation/__tests__/encryptionFixtures';
@@ -145,19 +146,24 @@ function renderGeospatial(passphrase?: string, encryptionEnabled = true) {
       flags={{ isE2E: true }}
     >
       <Provider store={store}>
-        <InterviewI18nProvider requestedLocale="en">
-          <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-            <StageMetadataContext.Provider value={registerBeforeNext}>
-              <GeospatialInterface
-                stage={stage}
-                getNavigationHelpers={() => ({
-                  moveForward: vi.fn(),
-                  moveBackward: vi.fn(),
-                })}
-              />
-            </StageMetadataContext.Provider>
-          </CurrentStepProvider>
-        </InterviewI18nProvider>
+        <WritesInFlightProvider
+          writesSettled={store.writesSettled}
+          trackWrite={store.trackWrite}
+        >
+          <InterviewI18nProvider requestedLocale="en">
+            <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+              <StageMetadataContext.Provider value={registerBeforeNext}>
+                <GeospatialInterface
+                  stage={stage}
+                  getNavigationHelpers={() => ({
+                    moveForward: vi.fn(),
+                    moveBackward: vi.fn(),
+                  })}
+                />
+              </StageMetadataContext.Provider>
+            </CurrentStepProvider>
+          </InterviewI18nProvider>
+        </WritesInFlightProvider>
       </Provider>
     </ContractProvider>,
   );
@@ -177,15 +183,7 @@ function renderGeospatial(passphrase?: string, encryptionEnabled = true) {
     });
   };
 
-  // What pressing Next asks of the stage: whether it may be left.
-  const leave = async () => {
-    for (const handler of beforeNext.values()) {
-      if ((await handler('forwards', 'step')) === false) return false;
-    }
-    return true;
-  };
-
-  return { store, selectArea, waitForMap, leave };
+  return { store, selectArea, waitForMap };
 }
 
 async function readStoredLocation(node: NcNode | undefined) {
@@ -269,8 +267,8 @@ describe('Geospatial saving locations in the order they were picked', () => {
     ).resolves.toBe('outside-selectable-areas');
   });
 
-  it('leaves the stage only once a location waiting its turn has been stored', async () => {
-    const { store, selectArea, leave } = renderGeospatial('pw');
+  it('counts a location waiting its turn as being saved until it is stored', async () => {
+    const { store, selectArea } = renderGeospatial('pw');
     const begunBefore = encryptionGate.begun;
     let release: () => void = () => undefined;
     encryptionGate.held = new Promise((resolve) => {
@@ -282,48 +280,33 @@ describe('Geospatial saving locations in the order they were picked', () => {
     act(() => {
       fireEvent.click(screen.getByTestId('outside-selectable-areas-button'));
     });
-
-    let left = false;
-    const leaving = leave().then((allowed) => {
-      left = allowed;
-      return allowed;
-    });
-    await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
-    expect(left).toBe(false);
+    const settling = store.writesSettled();
 
     release();
+    let allStored: boolean | undefined;
     await act(async () => {
-      await leaving;
+      allStored = await settling;
     });
-    expect(left).toBe(true);
-    await expect(
-      readStoredLocation(store.getState().session.network.nodes[0]),
-    ).resolves.toBe('outside-selectable-areas');
+    // Read as soon as the wait is over: the later location is already stored.
+    const [saved] = store.getState().session.network.nodes;
+    expect(allStored).toBe(true);
+    await expect(readStoredLocation(saved)).resolves.toBe(
+      'outside-selectable-areas',
+    );
   });
 
-  it('stays on the stage when the location being saved as it is left is refused', async () => {
-    const { store, selectArea, leave } = renderGeospatial('pw');
-    const begunBefore = encryptionGate.begun;
-    let release: () => void = () => undefined;
-    encryptionGate.held = new Promise((resolve) => {
-      release = resolve;
-    });
+  it('counts a location it could not take as not saved', async () => {
+    const { store, waitForMap } = renderGeospatial();
+    await waitForMap();
 
-    await selectArea();
-    await waitFor(() => expect(encryptionGate.begun).toBe(begunBefore + 1));
-    const leaving = leave();
-    // The passphrase is replaced while the location is being protected, so
-    // the location is refused.
+    let settling: Promise<boolean> | undefined;
     act(() => {
-      store.dispatch(setPassphrase('another-passphrase'));
+      fireEvent.click(screen.getByTestId('outside-selectable-areas-button'));
+      settling = store.writesSettled();
     });
-    release();
 
-    let allowed: boolean | undefined;
-    await act(async () => {
-      allowed = await leaving;
-    });
-    expect(allowed).toBe(false);
+    await expect(settling).resolves.toBe(false);
+    expect(store.getState().ui.showPassphrasePrompter).toBe(true);
   });
 });
 

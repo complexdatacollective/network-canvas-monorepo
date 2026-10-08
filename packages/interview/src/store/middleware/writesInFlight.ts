@@ -28,8 +28,12 @@ const isSessionWrite = isAsyncThunkAction(
   updateNode,
 );
 
+// A dispatched write is known by its request id, and one still waiting its
+// turn by a symbol of its own.
+type WriteKey = string | symbol;
+
 type Waiting = {
-  writes: Set<string>;
+  writes: Set<WriteKey>;
   refused: boolean;
   resolve: (allStored: boolean) => void;
 };
@@ -46,14 +50,17 @@ export function createWritesInFlightMiddleware(): {
   // Resolves once every write begun so far has been stored or refused, with
   // whether all of them were stored, or is undefined when none is under way.
   writesSettled: () => Promise<boolean> | undefined;
+  // Counts a write asked for but still waiting its turn to be dispatched as
+  // under way until `stored` settles, refused unless it resolves true.
+  trackWrite: (stored: Promise<boolean>) => void;
 } {
-  const inFlight = new Set<string>();
+  const inFlight = new Set<WriteKey>();
   let waiting: Waiting[] = [];
 
-  const settle = (requestId: string, stored: boolean) => {
-    inFlight.delete(requestId);
+  const settle = (key: WriteKey, stored: boolean) => {
+    inFlight.delete(key);
     waiting = waiting.filter((wait) => {
-      if (!wait.writes.delete(requestId)) return true;
+      if (!wait.writes.delete(key)) return true;
       if (!stored) wait.refused = true;
       if (wait.writes.size > 0) return true;
       wait.resolve(!wait.refused);
@@ -89,5 +96,14 @@ export function createWritesInFlightMiddleware(): {
     });
   };
 
-  return { middleware, writesSettled };
+  const trackWrite = (stored: Promise<boolean>) => {
+    const key = Symbol('write waiting its turn');
+    inFlight.add(key);
+    void stored.then(
+      (wasStored) => settle(key, wasStored),
+      () => settle(key, false),
+    );
+  };
+
+  return { middleware, writesSettled, trackWrite };
 }

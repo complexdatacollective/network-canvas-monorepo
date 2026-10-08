@@ -28,7 +28,7 @@ import { calculateProgress, getInterviewProgress } from '../selectors/utils';
 import { getProtocolStages } from '../store/modules/protocol';
 import { transitionStage, updatePrompt } from '../store/modules/session';
 import type { RootState } from '../store/store';
-import { useWritesSettled } from '../store/WritesSettledContext';
+import { useWritesSettled } from '../store/WritesInFlightContext';
 import type {
   BeforeNextFunction,
   Direction,

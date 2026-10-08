@@ -53,7 +53,7 @@ beforeAll(() => {
   globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
 });
 
-function makeView(flush: () => Promise<void>, onFinish: FinishHandler) {
+function makeView(flush: () => Promise<boolean>, onFinish: FinishHandler) {
   const store = createStore(payload, { onSync: () => Promise.resolve() });
   return (locale: string) => (
     <AnimationProvider disableAnimations reducedMotion="always">
@@ -96,6 +96,7 @@ describe('FinishSession localized recoverable failures', () => {
           rejected = true;
           throw new Error(diagnostic);
         }
+        return true;
       });
       const finish = vi.fn<FinishHandler>(async (_id, signal) => {
         order.push('finish');
@@ -162,7 +163,7 @@ describe('FinishSession localized recoverable failures', () => {
   );
 
   it('still passes the cancellation signal to a pending host finish', async () => {
-    const flush = vi.fn(() => Promise.resolve());
+    const flush = vi.fn(() => Promise.resolve(true));
     const finish = vi.fn<FinishHandler>(
       (_id, signal) =>
         new Promise((resolve) => {
@@ -189,5 +190,29 @@ describe('FinishSession localized recoverable failures', () => {
     );
     expect(signal?.aborted).toBe(true);
     expect(finish).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not finish while an answer still being saved was refused', async () => {
+    const flush = vi
+      .fn<() => Promise<boolean>>()
+      .mockResolvedValueOnce(false)
+      .mockResolvedValue(true);
+    const finish = vi.fn<FinishHandler>(() => Promise.resolve());
+    render(makeView(flush, finish)('en'));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Finish' }));
+    const dialog = await screen.findByRole('dialog');
+    const confirmFinish = within(dialog).getByRole('button', {
+      name: 'Finish Interview',
+    });
+
+    await user.click(confirmFinish);
+    expect(
+      await within(dialog).findByText(english, { exact: true }),
+    ).toBeVisible();
+    expect(finish).not.toHaveBeenCalled();
+
+    await user.click(confirmFinish);
+    await waitFor(() => expect(finish).toHaveBeenCalledTimes(1));
   });
 });

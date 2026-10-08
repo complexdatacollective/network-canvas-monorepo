@@ -57,7 +57,7 @@ import type { RequestedLocale } from './i18n/locales';
 import { getLastAvailableAuthoredStageIndex } from './selectors/skip-logic';
 import { store, type RootState } from './store/store';
 import { SyncFlushProvider } from './store/SyncFlushContext';
-import { WritesSettledProvider } from './store/WritesSettledContext';
+import { WritesInFlightProvider } from './store/WritesInFlightContext';
 import {
   InterviewToastProvider,
   InterviewToastViewport,
@@ -640,7 +640,10 @@ const Shell = ({
         >
           <Provider store={reduxStore}>
             <SyncFlushProvider flush={reduxStore.flushSync}>
-              <WritesSettledProvider writesSettled={reduxStore.writesSettled}>
+              <WritesInFlightProvider
+                writesSettled={reduxStore.writesSettled}
+                trackWrite={reduxStore.trackWrite}
+              >
                 <ContractProvider
                   onFinish={onFinish}
                   onRequestAsset={onRequestAsset}
@@ -672,7 +675,7 @@ const Shell = ({
                     />
                   </CurrentStepProvider>
                 </ContractProvider>
-              </WritesSettledProvider>
+              </WritesInFlightProvider>
             </SyncFlushProvider>
           </Provider>
         </AnalyticsProvider>

@@ -31,8 +31,8 @@ import { useContractFlags } from '../../contract/context';
 import { writeFailureMessage } from '../../forms/writeSubmissionResult';
 import { useAssetUrl } from '../../hooks/useAssetUrl';
 import useBeforeNext from '../../hooks/useBeforeNext';
-import useOneAtATime from '../../hooks/useOneAtATime';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
+import useSavesInOrder from '../../hooks/useSavesInOrder';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { getCodebookVariablesForSubjectType } from '../../selectors/protocol';
@@ -113,6 +113,8 @@ function readFirstFeatureProperty(json: unknown, property: string): unknown {
   if (!isUnknownRecord(properties)) return null;
   return properties[property];
 }
+
+const isStored = (stored: boolean) => stored;
 
 type GeospatialInterfaceProps = StageProps<'Geospatial'>;
 
@@ -243,8 +245,7 @@ export default function GeospatialInterface({
   // A location that takes longer to save, as a protected one can, never lands
   // after one picked later. Every outcome of a save, including a refusal, is
   // reported inside it.
-  const { run: saveLocationInOrder, latest: latestLocationSaved } =
-    useOneAtATime(saveLocationValue);
+  const saveLocationInOrder = useSavesInOrder(saveLocationValue, isStored);
   const setLocationValue = useCallback(
     (value: string | null, selectionKind: 'search' | 'pin' = 'pin') => {
       void saveLocationInOrder(value, selectionKind);
@@ -410,27 +411,21 @@ export default function GeospatialInterface({
     });
   }, [navState.activeIndex]);
 
-  // Picks still waiting their turn to be saved have not reached the store, so
-  // the stage is left only once they have, and the next stage is chosen with
-  // them. When the latest is refused the stage stays, so the participant sees
-  // why and can pick again.
-  const leaveStage = () => latestLocationSaved() ?? true;
-
   const beforeNext = (direction: Direction, intent: NavigationIntent) => {
     // Leave the stage if there are no nodes
     if (stageNodes.length === 0) {
-      return leaveStage();
+      return true;
     }
 
     if (intent === 'jump') {
-      return leaveStage();
+      return true;
     }
 
     // We are moving backwards.
     if (direction === 'backwards') {
       // If we are at the first node, leave the stage
       if (navState.activeIndex === 0) {
-        return leaveStage();
+        return true;
       }
 
       previousNode();
@@ -439,7 +434,7 @@ export default function GeospatialInterface({
 
     // We are moving forwards.
     if (isLastNode()) {
-      return leaveStage();
+      return true;
     }
     nextNode();
     return false;

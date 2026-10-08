@@ -27,7 +27,7 @@ import { formValuesToAttributePatch } from '../../forms/formValuesToAttributePat
 import useProtocolForm from '../../forms/useProtocolForm';
 import { rejectedWriteMessage } from '../../forms/writeSubmissionResult';
 import useBeforeNext from '../../hooks/useBeforeNext';
-import useOneAtATime from '../../hooks/useOneAtATime';
+import useSavesInOrder from '../../hooks/useSavesInOrder';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
 import type { Subject } from '../../selectors/forms';
 import type { AttributePatch } from '../../store/entityAttributePatch';
@@ -70,6 +70,9 @@ const AUTOSAVE_DELAY = 400;
 type OwnWrite = { stored: Record<string, FieldValue>; done: boolean };
 
 const noopSubmit: FormSubmitHandler = () => ({ success: true as const });
+
+// A save resolves to why it was refused, or to nothing once it is stored.
+const isSaved = (reason: MessageDescriptor | undefined) => reason === undefined;
 
 /**
  * Watches the form's values and, once they settle, validates and persists them
@@ -279,7 +282,7 @@ function AttributeFormInner({
   );
   // A save that takes longer, as protecting an answer can, never lands after
   // a newer one.
-  const { run: persist } = useOneAtATime(save);
+  const persist = useSavesInOrder(save, isSaved);
 
   const handleValidValues = useCallback(
     (values: Record<string, FieldValue>) => {

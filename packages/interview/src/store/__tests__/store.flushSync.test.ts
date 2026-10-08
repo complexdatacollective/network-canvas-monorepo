@@ -40,7 +40,7 @@ function makeInterview() {
 }
 
 // Whether `promise` has settled once everything already queued has run.
-async function hasSettled(promise: Promise<void>) {
+async function hasSettled(promise: Promise<unknown>) {
   let settled = false;
   void promise.finally(() => {
     settled = true;
@@ -58,7 +58,7 @@ describe('store flushSync', () => {
     expect(await hasSettled(flushing)).toBe(false);
 
     interview.dispatch(updateEgo.fulfilled(patch, 'w1', patch));
-    await flushing;
+    await expect(flushing).resolves.toBe(true);
 
     expect(onSync).toHaveBeenLastCalledWith(
       'session-1',
@@ -71,6 +71,45 @@ describe('store flushSync', () => {
       }),
       expect.anything(),
     );
+  });
+
+  it('says when a write still under way was refused, and still hands over what was stored', async () => {
+    const { interview, onSync } = makeInterview();
+    interview.dispatch(updateEgo.pending('w1', patch));
+    interview.dispatch(updateEgo.pending('w2', patch));
+
+    const flushing = interview.flushSync();
+    interview.dispatch(updateEgo.fulfilled(patch, 'w1', patch));
+    interview.dispatch(updateEgo.rejected(new Error('refused'), 'w2', patch));
+
+    await expect(flushing).resolves.toBe(false);
+    expect(onSync).toHaveBeenLastCalledWith(
+      'session-1',
+      expect.objectContaining({
+        network: expect.objectContaining({
+          ego: expect.objectContaining({
+            [entityAttributesProperty]: { agrees: true },
+          }),
+        }),
+      }),
+      expect.anything(),
+    );
+  });
+
+  it('waits for a write still waiting its turn, and says when it was refused', async () => {
+    const { interview } = makeInterview();
+    let settleWrite: (stored: boolean) => void = () => undefined;
+    interview.trackWrite(
+      new Promise<boolean>((resolve) => {
+        settleWrite = resolve;
+      }),
+    );
+
+    const flushing = interview.flushSync();
+    expect(await hasSettled(flushing)).toBe(false);
+
+    settleWrite(false);
+    await expect(flushing).resolves.toBe(false);
   });
 
   it('does not wait for a write still under way while the page unloads', async () => {

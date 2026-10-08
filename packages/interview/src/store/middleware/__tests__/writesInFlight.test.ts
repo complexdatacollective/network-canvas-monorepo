@@ -13,13 +13,14 @@ const patch = { set: { agrees: true }, unset: [] };
 const unchanged: Reducer<number> = (state = 0) => state;
 
 function makeStore(reducer = unchanged) {
-  const { middleware, writesSettled } = createWritesInFlightMiddleware();
+  const { middleware, writesSettled, trackWrite } =
+    createWritesInFlightMiddleware();
   const store = configureStore({
     reducer: { session: reducer },
     middleware: (getDefault) =>
       getDefault({ serializableCheck: false }).concat(middleware),
   });
-  return { store, writesSettled };
+  return { store, writesSettled, trackWrite };
 }
 
 // Whether `promise` has settled once everything already queued has run.
@@ -105,6 +106,37 @@ describe('writes in flight', () => {
     await expect(settling).resolves.toBe(true);
     expect(writesSettled()).toBeDefined();
   });
+
+  it('counts a write waiting its turn as under way until it is stored', async () => {
+    const { writesSettled, trackWrite } = makeStore();
+    let settleWrite: (stored: boolean) => void = () => undefined;
+    trackWrite(
+      new Promise<boolean>((resolve) => {
+        settleWrite = resolve;
+      }),
+    );
+
+    const settling = writesSettled();
+    expect(await hasSettled(settling)).toBe(false);
+
+    settleWrite(true);
+    await expect(settling).resolves.toBe(true);
+    expect(writesSettled()).toBeUndefined();
+  });
+
+  it.each([
+    ['is refused', () => Promise.resolve(false)],
+    ['fails', () => Promise.reject(new Error('failed'))],
+  ])(
+    'says a write waiting its turn was not stored when it %s',
+    async (_outcome, settle) => {
+      const { writesSettled, trackWrite } = makeStore();
+      trackWrite(settle());
+
+      await expect(writesSettled()).resolves.toBe(false);
+      expect(writesSettled()).toBeUndefined();
+    },
+  );
 
   it('ignores actions that are not session writes', () => {
     const { store, writesSettled } = makeStore();

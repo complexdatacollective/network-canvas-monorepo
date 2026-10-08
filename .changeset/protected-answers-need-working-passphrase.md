@@ -43,12 +43,13 @@ answers; other interviews work as before.
   saved last and replace the later one, and an answer put back while an
   earlier one was still being protected could be lost.
 - Leaving a stage, finishing or closing the interview waits for answers
-  still being protected, so they are kept and the next stage is chosen with
-  them. When one of them cannot be saved, the stage is not left, so the
-  participant sees why and can try again. Before, a location picked or
-  a name added just before pressing Next could be lost, and an answer still
-  being protected could be left out of the stage that came next and of the
-  interview handed back when finishing.
+  still being protected, including answers still waiting for an earlier one
+  to be saved, so they are kept and the next stage is chosen with them. When
+  one of them cannot be saved, the stage is not left and the interview is not
+  finished or closed, so the participant sees why and can try again. Before,
+  a location picked or a name added just before pressing Next could be lost,
+  and an answer still being protected could be left out of the stage that
+  came next and of the interview handed back when finishing or closing.
 - Replacing a protected answer with an unprotected one no longer leaves the
   answer unreadable.
 - Saving a form no longer erases a protected answer the form could not show.

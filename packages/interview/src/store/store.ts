@@ -38,14 +38,20 @@ export const store = (
   const { middleware: syncMiddleware, flush } = createSyncMiddleware({
     onSync: options.onSync,
   });
-  const { middleware: writesInFlightMiddleware, writesSettled } =
-    createWritesInFlightMiddleware();
+  const {
+    middleware: writesInFlightMiddleware,
+    writesSettled,
+    trackWrite,
+  } = createWritesInFlightMiddleware();
   // A write still protecting its answers is stored before they are handed to
-  // the host. While the page unloads there is no time to wait for it.
+  // the host, and the result says whether every write under way was stored,
+  // so finishing or closing can stay when one was refused. While the page
+  // unloads there is no time to wait for them.
   const flushSync = async (flushOptions?: { unloading?: boolean }) => {
     const settling = flushOptions?.unloading ? undefined : writesSettled();
-    if (settling) await settling;
-    return flush(flushOptions);
+    const stored = (await settling) ?? true;
+    await flush(flushOptions);
+    return stored;
   };
   const tracker = options.tracker ?? NULL_TRACKER;
   const analyticsMiddleware = createAnalyticsListenerMiddleware({
@@ -84,7 +90,7 @@ export const store = (
           }
         : false,
     }),
-    { flushSync, writesSettled },
+    { flushSync, writesSettled, trackWrite },
   );
 };
 
