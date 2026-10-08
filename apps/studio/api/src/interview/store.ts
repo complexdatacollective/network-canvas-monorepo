@@ -4,6 +4,7 @@ import { and, eq, isNotNull, lt, ne, or, isNull, sql } from 'drizzle-orm';
 import { Effect, Redacted, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
+import type { FinishOutcome } from '@codaco/protocol-validation';
 import { ParticipantSessionStatus } from '@codaco/studio-contract/schema/participant';
 import {
   StudyParticipationMode,
@@ -585,11 +586,18 @@ export const recordProgress: (
   }
 }, sqlErrorsOnly);
 
+/** Where a session ended: its protocol's finish stage and that stage's outcome. */
+export type SessionFinish = {
+  readonly stageId: string;
+  readonly outcome: FinishOutcome;
+};
+
 export const completeSession: (
   sessionId: string,
+  finish: SessionFinish,
 ) => Effect.Effect<boolean, SqlError.SqlError, Transaction> = Effect.fn(
   'interview.store.completeSession',
-)(function* (sessionId: string) {
+)(function* (sessionId: string, finish: SessionFinish) {
   const { tx } = yield* Transaction;
   const teamId = yield* tenantTeamId;
   const rows = yield* tx
@@ -598,6 +606,8 @@ export const completeSession: (
       status: 'completed',
       completedAt: sql`now()`,
       lastActivityAt: sql`now()`,
+      finishStageId: finish.stageId,
+      finishOutcome: finish.outcome,
     })
     .where(
       and(

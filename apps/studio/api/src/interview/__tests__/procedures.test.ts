@@ -7,6 +7,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   CURRENT_SCHEMA_VERSION,
   type CurrentProtocol,
+  type FinishOutcome,
+  isFinishSessionStage,
 } from '@codaco/protocol-validation';
 import { PARTICIPANT_SESSION_HEADER } from '@codaco/studio-contract/middleware/session';
 import { LinkToken } from '@codaco/studio-contract/schema/ids';
@@ -46,8 +48,16 @@ import { mintSessionToken } from '../token.ts';
 const MAPBOX_KEY = 'pk.participant-test-key';
 const PHOTO_SOURCE = `${'a'.repeat(64)}.png`;
 
-const interviewProtocol = (): CurrentProtocol => ({
+/** The protocol's finish stage, as `baseProtocol` names it. */
+const FINISH_STAGE_ID = 'finish';
+
+const interviewProtocol = (
+  finishOutcome: FinishOutcome = 'completed',
+): CurrentProtocol => ({
   ...baseProtocol(),
+  stages: baseProtocol().stages.map((stage) =>
+    isFinishSessionStage(stage) ? { ...stage, outcome: finishOutcome } : stage,
+  ),
   assetManifest: {
     mapKey: { id: 'mapKey', name: 'Mapbox', type: 'apikey', value: MAPBOX_KEY },
     photo: { id: 'photo', name: 'Photo', type: 'image', source: PHOTO_SOURCE },
@@ -65,7 +75,10 @@ type Fixture = {
   readonly linkToken: Redacted.Redacted;
 };
 
-const seed = (mode: 'managed' | 'anonymous' = 'managed') =>
+const seed = (
+  mode: 'managed' | 'anonymous' = 'managed',
+  finishOutcome: FinishOutcome = 'completed',
+) =>
   Effect.gen(function* () {
     const harness = yield* TestDatabase;
     const cipher = yield* SecretsCipher;
@@ -75,7 +88,7 @@ const seed = (mode: 'managed' | 'anonymous' = 'managed') =>
       unsafeMakeTeamAccess(teamId, 'owner'),
       Effect.gen(function* () {
         const created = yield* createProtocol(teamId, cipher, {
-          protocol: interviewProtocol(),
+          protocol: interviewProtocol(finishOutcome),
         });
         const published = yield* publishDraft(teamId, {
           draftId: created.draftId,
@@ -255,23 +268,38 @@ describe.skipIf(!testDb)('the participant procedures', () => {
     token: Redacted.Redacted,
     holderEpoch: number,
     revision: string,
+    {
+      stageId = FINISH_STAGE_ID,
+      outcome = 'completed',
+    }: { readonly stageId?: string; readonly outcome?: FinishOutcome } = {},
   ) =>
     client.callExit(
       asParticipant(
         token,
-        client.rpc('participant.finish', { holderEpoch, revision }),
+        client.rpc('participant.finish', {
+          holderEpoch,
+          revision,
+          stageId,
+          outcome,
+        }),
       ),
     );
 
-  const fixture = (mode?: 'managed' | 'anonymous') => database.run(seed(mode));
+  const fixture = (
+    mode?: 'managed' | 'anonymous',
+    finishOutcome?: FinishOutcome,
+  ) => database.run(seed(mode, finishOutcome));
   const sessionRow = async (sessionId: string) =>
     (
       await query<{
         status: string;
         client_revision: string;
         ego_attributes: unknown;
+        finish_stage_id: string | null;
+        finish_outcome: string | null;
       }>(
-        `SELECT status, client_revision::text AS client_revision, ego_attributes
+        `SELECT status, client_revision::text AS client_revision, ego_attributes,
+                finish_stage_id, finish_outcome
          FROM interview_sessions WHERE id = $1`,
         [sessionId],
       )
@@ -681,7 +709,11 @@ describe.skipIf(!testDb)('the participant procedures', () => {
       expect(await finish(sessionToken, holderEpoch, '1')).toEqual(
         Exit.succeed({ state: 'completed' }),
       );
-      expect((await sessionRow(sessionId))?.status).toBe('completed');
+      expect(await sessionRow(sessionId)).toMatchObject({
+        status: 'completed',
+        finish_stage_id: FINISH_STAGE_ID,
+        finish_outcome: 'completed',
+      });
 
       const snapshots = await query<{
         payload: unknown;
@@ -697,6 +729,8 @@ describe.skipIf(!testDb)('the participant procedures', () => {
         currentStep: 1,
         stageMetadata: { 'stage-1': { seen: true } },
         network: network(['n1', 'n2'], [['n1', 'n2']]),
+        finishStageId: FINISH_STAGE_ID,
+        finishOutcome: 'completed',
       });
 
       const jobSchema = database.harness.jobSchema;
@@ -718,6 +752,86 @@ describe.skipIf(!testDb)('the participant procedures', () => {
           nodeCount: 2,
           edgeCount: 1,
         },
+      });
+    });
+
+    it('records the outcome the finish stage declares', async () => {
+      const f = await fixture('managed', 'ineligible');
+      const { sessionId, sessionToken } = await redeemed(f.linkToken);
+      const { holderEpoch } = await opened(sessionToken);
+
+      expect(
+        await finish(sessionToken, holderEpoch, '0', { outcome: 'ineligible' }),
+      ).toEqual(Exit.succeed({ state: 'completed' }));
+      expect(await sessionRow(sessionId)).toMatchObject({
+        status: 'completed',
+        finish_stage_id: FINISH_STAGE_ID,
+        finish_outcome: 'ineligible',
+      });
+      expect(
+        await query(
+          'SELECT payload FROM session_snapshots WHERE session_id = $1',
+          [sessionId],
+        ),
+      ).toEqual([
+        {
+          payload: expect.objectContaining({
+            finishStageId: FINISH_STAGE_ID,
+            finishOutcome: 'ineligible',
+          }),
+        },
+      ]);
+    });
+
+    it.each([
+      ['a stage that is not a finish stage', { stageId: 'sociogram1' }],
+      ['a stage the protocol does not have', { stageId: 'elsewhere' }],
+      [
+        'an outcome its finish stage does not declare',
+        { outcome: 'terminated' as const },
+      ],
+    ])('refuses a finish naming %s, and commits nothing', async (_, named) => {
+      const f = await fixture();
+      const { sessionId, sessionToken } = await redeemed(f.linkToken);
+      const { holderEpoch } = await opened(sessionToken);
+
+      await expectRpcFailure(
+        finish(sessionToken, holderEpoch, '0', named),
+        'FinishUnrecognised',
+      );
+      expect(await sessionRow(sessionId)).toMatchObject({
+        status: 'in_progress',
+        finish_stage_id: null,
+        finish_outcome: null,
+      });
+      expect(
+        await query(
+          'SELECT session_id FROM session_snapshots WHERE session_id = $1',
+          [sessionId],
+        ),
+      ).toEqual([]);
+      expect(
+        (await auditEvents(f.teamId)).map((event) => event.event_type),
+      ).toEqual(['interview.started']);
+    });
+
+    it('keeps the first finish when one is replayed with another outcome', async () => {
+      const f = await fixture();
+      const { sessionId, sessionToken } = await redeemed(f.linkToken);
+      const { holderEpoch } = await opened(sessionToken);
+      await finish(sessionToken, holderEpoch, '0');
+
+      expect(
+        (
+          await expectRpcFailure(
+            finish(sessionToken, holderEpoch, '0', { outcome: 'terminated' }),
+            'SessionEnded',
+          )
+        ).state,
+      ).toBe('completed');
+      expect(await sessionRow(sessionId)).toMatchObject({
+        finish_stage_id: FINISH_STAGE_ID,
+        finish_outcome: 'completed',
       });
     });
 

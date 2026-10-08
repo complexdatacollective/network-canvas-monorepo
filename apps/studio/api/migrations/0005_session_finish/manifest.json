@@ -1,0 +1,12 @@
+{
+  "version": "0005_session_finish",
+  "ordinal": 5,
+  "fingerprint": "38fcdcc1d8b5ccf8af3f1e6fc2d1cad49dcd2d96f336327b68c41a8e70f2ba4e",
+  "drops": [],
+  "artefacts": {
+    "delta.sql": "a86eb6832a754fbc08ef12e4691aab44d53c55c0cc11a7e58732b5bdd3defa30",
+    "sidecars.sql": "122698a66aaef5703757df8889ae1e6d88a1d51a6675319f7b6ef02d0af3f1be",
+    "snapshot.json": "0322fccc6c5ad9abadeb0087b10309128c49be13bdd27bb1ffbd27ebe50be236"
+  },
+  "combined": "eb0cd782842657ffd352448aff80ff2c794b2ec258e044063be808c6afbdae78"
+}

@@ -649,6 +649,13 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
             yield* count(`select count(*)::int as n from interview_sessions
          where status = 'completed' and current_stage_id is null`),
           ).toBe(0);
+          // And records that stage, with its outcome, as where it finished.
+          expect(
+            yield* count(`select count(*)::int as n from interview_sessions
+         where status = 'completed'
+           and (finish_stage_id is distinct from current_stage_id
+                or finish_outcome is null)`),
+          ).toBe(0);
           expect(
             yield* count(`select count(*)::int as n from interview_sessions
          where status = 'in_progress'`),

@@ -3,6 +3,7 @@ import { Redacted } from 'effect';
 import {
   createDebouncedSyncHandler,
   type FinishHandler,
+  type SessionFinish,
   type SessionSnapshot,
   type SyncHandler,
 } from '@codaco/interview/contract';
@@ -175,10 +176,10 @@ export function createParticipantHandlers({
     return debouncedSync(id, snapshot, options);
   };
 
-  const finish = (signal: AbortSignal) =>
+  const finish = ({ stageId, outcome }: SessionFinish, signal: AbortSignal) =>
     participantCall(
       'participant.finish',
-      { holderEpoch, revision: String(held) },
+      { holderEpoch, revision: String(held), stageId, outcome },
       signal,
     );
 
@@ -186,9 +187,7 @@ export function createParticipantHandlers({
   // (the interview unmounting) aborts `signal`: the request in flight is
   // abandoned, and nothing after it runs, so an abandoned finish never shows
   // the finished notice or finishes again after a resend.
-  // Studio records when an interview finished, not yet the finish stage it
-  // ended at or that stage's outcome.
-  const onFinish: FinishHandler = async (_id, _finish, signal) => {
+  const onFinish: FinishHandler = async (_id, sessionFinish, signal) => {
     try {
       // The runtime flushes only answers it holds unsaved, so a stage save
       // still waiting out the debounce (reaching the finish stage changes no
@@ -198,12 +197,12 @@ export function createParticipantHandlers({
         signal.throwIfAborted();
       }
       try {
-        await finish(signal);
+        await finish(sessionFinish, signal);
       } catch (error) {
         if (!(error instanceof SessionOutOfDate)) throw error;
         await send(offered, ORDINARY);
         signal.throwIfAborted();
-        await finish(signal);
+        await finish(sessionFinish, signal);
       }
     } catch (error) {
       const kind = noticeOf(error);

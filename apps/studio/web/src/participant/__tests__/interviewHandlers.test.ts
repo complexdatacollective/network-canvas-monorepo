@@ -207,7 +207,7 @@ describe('the participant sync handler’s recovery', () => {
           network: session('Ada').network,
         }),
       ],
-      ['participant.finish', { holderEpoch: 3, revision: '9' }],
+      ['participant.finish', { holderEpoch: 3, revision: '9', ...FINISH }],
     ]);
   });
 
@@ -511,7 +511,7 @@ describe('the participant stage flush', () => {
         'participant.sync',
         expect.objectContaining({ revision: '9', stageIndex: 2 }),
       ],
-      ['participant.finish', { holderEpoch: 3, revision: '9' }],
+      ['participant.finish', { holderEpoch: 3, revision: '9', ...FINISH }],
     ]);
   });
 
@@ -571,7 +571,10 @@ describe('the participant page’s save numbers', () => {
     await onFinish('session-1', FINISH, new AbortController().signal);
 
     expect(harness.calls).toEqual([
-      { tag: 'participant.finish', payload: { holderEpoch: 3, revision: '7' } },
+      {
+        tag: 'participant.finish',
+        payload: { holderEpoch: 3, revision: '7', ...FINISH },
+      },
     ]);
   });
 
@@ -598,9 +601,34 @@ describe('the participant finish handler', () => {
 
     expect(harness.calls.at(-1)).toEqual({
       tag: 'participant.finish',
-      payload: { holderEpoch: 3, revision: '8' },
+      payload: { holderEpoch: 3, revision: '8', ...FINISH },
     });
     expect(onNotice).toHaveBeenCalledWith('finished');
+  });
+
+  it('sends the finish stage the interview ended at and its outcome', async () => {
+    const harness = installParticipantHarness({
+      'participant.finish': () => Effect.succeed({ state: 'completed' }),
+    });
+    const { onFinish } = handlersFor();
+
+    await onFinish(
+      'session-1',
+      { stageId: 'screened-out', outcome: 'ineligible' },
+      signal,
+    );
+
+    expect(harness.calls).toEqual([
+      {
+        tag: 'participant.finish',
+        payload: {
+          holderEpoch: 3,
+          revision: '7',
+          stageId: 'screened-out',
+          outcome: 'ineligible',
+        },
+      },
+    ]);
   });
 
   it('saves the latest answers again when the server is behind, then finishes', async () => {
@@ -630,7 +658,7 @@ describe('the participant finish handler', () => {
     expect(harness.calls.map(({ tag, payload }) => [tag, payload])).toEqual([
       ['participant.sync', expect.objectContaining({ revision: '8' })],
       // The save at 8 was refused, so the server still holds 7.
-      ['participant.finish', { holderEpoch: 3, revision: '7' }],
+      ['participant.finish', { holderEpoch: 3, revision: '7', ...FINISH }],
       [
         'participant.sync',
         expect.objectContaining({
@@ -638,7 +666,7 @@ describe('the participant finish handler', () => {
           network: session('Ada').network,
         }),
       ],
-      ['participant.finish', { holderEpoch: 3, revision: '9' }],
+      ['participant.finish', { holderEpoch: 3, revision: '9', ...FINISH }],
     ]);
     expect(onNotice).toHaveBeenCalledWith('finished');
   });

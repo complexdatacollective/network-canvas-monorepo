@@ -1,9 +1,11 @@
-import { Clock, Effect, Redacted } from 'effect';
+import { Clock, Effect, Redacted, Schema } from 'effect';
 
+import { isFinishSessionStage } from '@codaco/protocol-validation';
 import { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
 import { ParticipantSession } from '@codaco/studio-contract/middleware/session';
 import {
   type FinishInput,
+  FinishUnrecognised,
   LinkUnavailable,
   SessionEnded,
   SessionOutOfDate,
@@ -11,6 +13,7 @@ import {
 } from '@codaco/studio-contract/schema/participant';
 
 import { auditedAs, changed } from '../audit/audited.ts';
+import { tenantTeamId } from '../db/tenant.ts';
 import { Jobs } from '../jobs/jobs.ts';
 import { networkFromRows, snapshotPayload } from '../network/mapping.ts';
 import {
@@ -18,8 +21,50 @@ import {
   readSessionNetwork,
   refreshSessionNetworkProjections,
 } from '../network/session-network.ts';
+import { getVersionDocument } from '../protocol/store.ts';
 import { sessionRefusal } from './availability.ts';
-import { completeSession, loadSessionContext } from './store.ts';
+import {
+  completeSession,
+  loadSessionContext,
+  type SessionFinish,
+} from './store.ts';
+
+/**
+ * The part of a stored protocol a finish is checked against. The document was
+ * validated when it was published, so one this does not decode is a defect.
+ */
+const decodeStages = Schema.decodeUnknownEffect(
+  Schema.Struct({
+    stages: Schema.Array(
+      Schema.Struct({
+        id: Schema.String,
+        type: Schema.String,
+        outcome: Schema.optional(Schema.Unknown),
+      }),
+    ),
+  }),
+);
+
+/**
+ * The finish exactly as the session's protocol declares it, or null. The
+ * outcome reaches every export, so a finish is recorded only when it names
+ * the protocol's finish stage and the outcome that stage declares.
+ */
+const declaredFinish = Effect.fnUntraced(function* (
+  protocolVersionId: string,
+  finish: SessionFinish,
+) {
+  const document = yield* getVersionDocument(
+    yield* tenantTeamId,
+    protocolVersionId,
+  ).pipe(Effect.catchTag('ProtocolStoreError', Effect.die));
+  const { stages } = yield* decodeStages(document).pipe(Effect.orDie);
+  const stage = stages
+    .filter(isFinishSessionStage)
+    .find((candidate) => candidate.id === finish.stageId);
+  if (stage === undefined || stage.outcome !== finish.outcome) return null;
+  return { stageId: stage.id, outcome: finish.outcome };
+});
 
 export const finishParticipantSession = Effect.fn(
   'interview.finishParticipantSession',
@@ -59,9 +104,17 @@ export const finishParticipantSession = Effect.fn(
         });
       }
 
+      const finish = yield* declaredFinish(context.protocolVersionId, {
+        stageId: input.stageId,
+        outcome: input.outcome,
+      });
+      if (finish === null) {
+        return yield* new FinishUnrecognised({});
+      }
+
       const rows = yield* readSessionNetwork(session.sessionId);
       yield* refreshSessionNetworkProjections(session.sessionId);
-      if (!(yield* completeSession(session.sessionId))) {
+      if (!(yield* completeSession(session.sessionId, finish))) {
         return yield* Effect.die(
           new Error(`session ${session.sessionId} refused completion`),
         );
@@ -78,6 +131,8 @@ export const finishParticipantSession = Effect.fn(
         }),
         stageMetadata: Redacted.value(context.stageMetadata),
         currentStep: context.stageIndex,
+        finishStageId: finish.stageId,
+        finishOutcome: finish.outcome,
       });
       yield* insertSessionSnapshot({
         sessionId: session.sessionId,

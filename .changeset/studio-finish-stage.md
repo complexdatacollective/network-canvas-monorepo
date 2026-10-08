@@ -1,5 +1,6 @@
 ---
 '@codaco/studio-api': minor
+'@codaco/studio-contract': minor
 '@codaco/studio-web': minor
 ---
 
@@ -24,3 +25,17 @@ Canvas has no closing text for starts that way.
 
 Development seed data now leaves a completed interview at the finish stage it
 ended at, as Interviewer and Fresco record it, rather than past the last stage.
+
+A finished interview now records where it ended: the finish stage the
+participant confirmed Finish on, and the outcome that stage declares
+(completed, ineligible or terminated). Before, Studio recorded every finish as
+completed and kept neither. The participant finish call carries both, and the
+server records them only when they name the protocol's own finish stage and
+the outcome it declares; any other finish is refused and nothing is saved. The
+session and its frozen snapshot, which exports read, carry both values. A
+finish sent again after the interview has finished, with any outcome, is
+answered as already finished and changes nothing.
+
+The upgrade adds the migration `0005_session_finish`. An interview completed
+before it keeps no finish stage or outcome, since none was recorded; every
+interview completed after it must record both.

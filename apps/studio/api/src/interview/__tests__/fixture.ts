@@ -129,7 +129,9 @@ export const completeSession = (sessionId: string) =>
       Effect.gen(function* () {
         yield* harness.owner.sql.unsafe(
           `UPDATE interview_sessions
-           SET status = 'completed', completed_at = now() WHERE id = $1`,
+           SET status = 'completed', completed_at = now(),
+               finish_stage_id = 'finish', finish_outcome = 'completed'
+           WHERE id = $1`,
           [sessionId],
         );
         yield* harness.owner.sql.unsafe(

@@ -86,7 +86,7 @@ const sessionPayload = (stageIndex: number, analytics = false) => ({
         label: { en: 'Finish' },
         title: { en: 'Thank you' },
         content: { en: 'The interview is complete.' },
-        outcome: 'completed',
+        outcome: 'terminated',
       },
     ],
   }),
@@ -316,7 +316,12 @@ describe('the interview session', () => {
     await waitFor(() => {
       expect(harness.calls.at(-1)).toEqual({
         tag: 'participant.finish',
-        payload: { holderEpoch: 2, revision: '5' },
+        payload: {
+          holderEpoch: 2,
+          revision: '5',
+          stageId: 'finish',
+          outcome: 'terminated',
+        },
       });
     });
   });

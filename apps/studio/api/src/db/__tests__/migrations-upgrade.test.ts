@@ -328,7 +328,7 @@ describe.skipIf(!db)('an upgrade of a populated database', () => {
           slug: 'finalize_one',
           backfill: [
             'SET LOCAL ROLE studio_maintenance;',
-            `UPDATE interview_sessions SET status = 'completed', completed_at = now() WHERE id = '${session?.id}';`,
+            `UPDATE interview_sessions SET status = 'completed', completed_at = now(), finish_stage_id = 'finish', finish_outcome = 'completed' WHERE id = '${session?.id}';`,
             `INSERT INTO session_snapshots (session_id, team_id, study_id, protocol_version_id, schema_version, payload, payload_hash)
                  SELECT s.id, s.team_id, s.study_id, s.protocol_version_id, v.schema_version, '{}', 'upgrade-probe'
                    FROM interview_sessions s
@@ -455,7 +455,7 @@ describe.skipIf(!db)('an upgrade of a populated database', () => {
           'ALTER TABLE interview_sessions DISABLE TRIGGER interview_sessions_writable;',
           'SET LOCAL ROLE studio_maintenance;',
           'UPDATE interview_sessions SET probe_note = status;',
-          `UPDATE interview_sessions SET status = 'completed', completed_at = now() WHERE id = '${session?.id}';`,
+          `UPDATE interview_sessions SET status = 'completed', completed_at = now(), finish_stage_id = 'finish', finish_outcome = 'completed' WHERE id = '${session?.id}';`,
           `INSERT INTO session_snapshots (session_id, team_id, study_id, protocol_version_id, schema_version, payload, payload_hash)
              SELECT s.id, s.team_id, s.study_id, s.protocol_version_id, v.schema_version, '{}', 'upgrade-note-probe'
                FROM interview_sessions s
