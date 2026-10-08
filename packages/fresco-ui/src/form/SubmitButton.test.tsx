@@ -99,6 +99,20 @@ describe('SubmitButton', () => {
     expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
   });
 
+  it('stays disabled while idle when a caller passes disabled={true}', () => {
+    render(
+      <FormStoreProvider>
+        <FormWithoutProvider onSubmit={() => ({ success: true as const })}>
+          <SubmitButton disabled>Save</SubmitButton>
+        </FormWithoutProvider>
+      </FormStoreProvider>,
+    );
+
+    const button = screen.getByRole('button', { name: 'Save' });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('aria-busy', 'false');
+  });
+
   it('renames itself only when a caller opts in with submittingText', async () => {
     render(
       <FormStoreProvider>
