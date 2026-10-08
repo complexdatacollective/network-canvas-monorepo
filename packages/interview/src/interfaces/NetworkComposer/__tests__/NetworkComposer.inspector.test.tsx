@@ -19,6 +19,7 @@ import {
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { ContractProvider } from '../../../contract/context';
+import type { AttributePatch } from '../../../store/entityAttributePatch';
 import protocol from '../../../store/modules/protocol';
 import session, { updateNode } from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
@@ -28,6 +29,7 @@ import type {
   StageProps,
 } from '../../../types';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
+import Inspector, { type InspectorProps } from '../Inspector';
 import NetworkComposer from '../NetworkComposer';
 
 beforeAll(() => {
@@ -540,6 +542,348 @@ describe('NetworkComposer inspector — undo and redo with the drawer open', () 
     await pressUndo(true);
     await waitFor(() => expect(storedName(store)).toBe('Alice Updated'));
     await waitFor(() => expect(nameInput).toHaveValue('Alice Updated'));
+  });
+});
+
+describe('NetworkComposer inspector — undo and redo changing what the drawer shows', () => {
+  const NICKNAME_VAR = 'var-nickname';
+  const GROUP_VAR = 'var-group';
+
+  const twoQuestionStage = {
+    ...stage,
+    nodeForm: {
+      fields: [
+        ...nodeForm.fields,
+        { variable: NICKNAME_VAR, prompt: { en: 'Nickname' } },
+      ],
+    },
+  };
+  const groupStage = {
+    ...twoQuestionStage,
+    convexHullVariable: GROUP_VAR,
+    nodeForm: {
+      fields: [
+        ...twoQuestionStage.nodeForm.fields,
+        { variable: GROUP_VAR, prompt: { en: 'Team' } },
+      ],
+    },
+  };
+  const personType = codebook.node[NODE_TYPE];
+  const twoQuestionCodebook = {
+    ...codebook,
+    node: {
+      [NODE_TYPE]: {
+        ...personType,
+        variables: {
+          ...personType.variables,
+          [NICKNAME_VAR]: {
+            name: 'Nickname',
+            label: 'Nickname',
+            type: 'text' as const,
+            component: 'Text' as const,
+          },
+          [GROUP_VAR]: {
+            name: 'Team',
+            label: 'Team',
+            type: 'categorical' as const,
+            component: 'CheckboxGroup' as const,
+            options: [
+              { value: 'red', label: { en: 'Team Red' } },
+              { value: 'blue', label: { en: 'Team Blue' } },
+            ],
+          },
+        },
+      },
+    },
+  };
+
+  const stored = (store: ReturnType<typeof makeStore>, variable: string) =>
+    store
+      .getState()
+      .session.network.nodes.find(
+        (n) => n[entityPrimaryKeyProperty] === NODE_A_ID,
+      )?.[entityAttributesProperty]?.[variable];
+
+  async function openAlice(stageForTest: object = twoQuestionStage) {
+    const store = makeStore(false, stageForTest, twoQuestionCodebook);
+    renderInterface(store, stageForTest);
+    const nodeA = await screen.findByRole('button', { name: /alice/i });
+    act(() => {
+      tapNode(nodeA);
+    });
+    return {
+      store,
+      fullName: await screen.findByLabelText(/full name/i),
+      nickname: await screen.findByLabelText(/nickname/i),
+    };
+  }
+
+  const press = (key: 'undo' | 'redo') =>
+    act(async () => {
+      fireEvent.keyDown(screen.getByTestId('network-composer'), {
+        key: 'z',
+        metaKey: true,
+        shiftKey: key === 'redo',
+      });
+    });
+
+  // Longer than the drawer waits before saving an edit, so any save it
+  // would make has been made.
+  const autosaveWindow = () =>
+    act(() => new Promise((resolve) => setTimeout(resolve, 600)));
+
+  // Saves an edit to the full name, then changes it again and presses undo
+  // before the drawer has saved the second edit. The undo puts back the
+  // answer from before the first edit.
+  async function overtakeEdit() {
+    const opened = await openAlice();
+    const { store, fullName } = opened;
+    fireEvent.change(fullName, { target: { value: 'Alice Updated' } });
+    await waitFor(
+      () => expect(stored(store, NODE_NAME_VAR)).toBe('Alice Updated'),
+      { timeout: 2000 },
+    );
+    fireEvent.change(fullName, { target: { value: 'Alice Draft' } });
+    await press('undo');
+    await waitFor(() =>
+      expect(stored(store, NODE_NAME_VAR)).toBe('Alice Smith'),
+    );
+    return opened;
+  }
+
+  it('keeps an answer an undo put back when another question is then changed', async () => {
+    const { store, fullName, nickname } = await openAlice();
+    fireEvent.change(fullName, { target: { value: 'Alice Updated' } });
+    await waitFor(
+      () => expect(stored(store, NODE_NAME_VAR)).toBe('Alice Updated'),
+      { timeout: 2000 },
+    );
+
+    await press('undo');
+    await waitFor(() => expect(fullName).toHaveValue('Alice Smith'));
+    fireEvent.change(nickname, { target: { value: 'Al' } });
+    await waitFor(() => expect(stored(store, NICKNAME_VAR)).toBe('Al'), {
+      timeout: 2000,
+    });
+
+    await autosaveWindow();
+    expect(stored(store, NODE_NAME_VAR)).toBe('Alice Smith');
+    expect(fullName).toHaveValue('Alice Smith');
+  });
+
+  it('shows a group membership an undo removed, and does not save it back', async () => {
+    const store = makeStore(false, groupStage, twoQuestionCodebook);
+    renderInterface(store, groupStage);
+    fireEvent.click(screen.getByRole('button', { name: /groups/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /team red/i }));
+    act(() => {
+      tapNode(screen.getByRole('button', { name: /alice/i }));
+    });
+    await waitFor(() => expect(stored(store, GROUP_VAR)).toEqual(['red']));
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /^select$/i }));
+    });
+    act(() => {
+      tapNode(screen.getByRole('button', { name: /alice/i }));
+    });
+    const teamRed = await screen.findByRole('checkbox', { name: /team red/i });
+    expect(teamRed).toBeChecked();
+
+    await press('undo');
+    await waitFor(() => expect(stored(store, GROUP_VAR)).toBeUndefined());
+    await waitFor(() => expect(teamRed).not.toBeChecked());
+
+    fireEvent.change(screen.getByLabelText(/nickname/i), {
+      target: { value: 'Al' },
+    });
+    await waitFor(() => expect(stored(store, NICKNAME_VAR)).toBe('Al'), {
+      timeout: 2000,
+    });
+    expect(stored(store, GROUP_VAR)).toBeUndefined();
+  });
+
+  it('keeps an unsaved edit an undo overtook on screen, without saving it over the undo', async () => {
+    const { store, fullName } = await overtakeEdit();
+
+    await autosaveWindow();
+    expect(fullName).toHaveValue('Alice Draft');
+    expect(stored(store, NODE_NAME_VAR)).toBe('Alice Smith');
+  });
+
+  it('saves the other questions without saving an edit an undo overtook', async () => {
+    const { store, fullName, nickname } = await overtakeEdit();
+
+    fireEvent.change(nickname, { target: { value: 'Al' } });
+    await waitFor(() => expect(stored(store, NICKNAME_VAR)).toBe('Al'), {
+      timeout: 2000,
+    });
+    await autosaveWindow();
+    expect(stored(store, NODE_NAME_VAR)).toBe('Alice Smith');
+    expect(fullName).toHaveValue('Alice Draft');
+  });
+
+  it('saves an edit an undo overtook once the participant changes that question again', async () => {
+    const { store, fullName } = await overtakeEdit();
+    await autosaveWindow();
+
+    fireEvent.change(fullName, { target: { value: 'Alice Draft Again' } });
+    await waitFor(
+      () => expect(stored(store, NODE_NAME_VAR)).toBe('Alice Draft Again'),
+      { timeout: 2000 },
+    );
+  });
+
+  it('saves an edit an undo overtook once a redo puts back the answer it was made from', async () => {
+    const { store, fullName } = await overtakeEdit();
+    await autosaveWindow();
+
+    await press('redo');
+    await waitFor(
+      () => expect(stored(store, NODE_NAME_VAR)).toBe('Alice Draft'),
+      { timeout: 2000 },
+    );
+    expect(fullName).toHaveValue('Alice Draft');
+  });
+
+  it('asks before closing the drawer on an edit an undo overtook, and keeps it when the participant keeps their changes', async () => {
+    const { store, fullName } = await overtakeEdit();
+    await autosaveWindow();
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    });
+    expect(
+      await screen.findByText(/undo or redo changed an answer/i),
+    ).toBeTruthy();
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Keep changes' }));
+    });
+    await waitFor(() =>
+      expect(screen.queryByText(/undo or redo changed an answer/i)).toBeNull(),
+    );
+    expect(fullName).toHaveValue('Alice Draft');
+    expect(screen.getByTestId('inspector-panel')).toBeTruthy();
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    });
+    const discard = await screen.findByRole('button', {
+      name: 'Discard changes',
+    });
+    act(() => {
+      fireEvent.click(discard);
+    });
+    await waitFor(() =>
+      expect(screen.queryByTestId('inspector-panel')).toBeNull(),
+    );
+    expect(stored(store, NODE_NAME_VAR)).toBe('Alice Smith');
+  });
+
+  it('undoes every question changed in one undo step', async () => {
+    const { store, fullName, nickname } = await openAlice();
+    fireEvent.change(fullName, { target: { value: 'Alice Updated' } });
+    await waitFor(
+      () => expect(stored(store, NODE_NAME_VAR)).toBe('Alice Updated'),
+      { timeout: 2000 },
+    );
+    fireEvent.change(nickname, { target: { value: 'Al' } });
+    await waitFor(() => expect(stored(store, NICKNAME_VAR)).toBe('Al'), {
+      timeout: 2000,
+    });
+
+    await press('undo');
+    await waitFor(() =>
+      expect(stored(store, NODE_NAME_VAR)).toBe('Alice Smith'),
+    );
+    await autosaveWindow();
+    expect(stored(store, NICKNAME_VAR)).toBeUndefined();
+    expect(nickname).toHaveValue('');
+
+    await press('redo');
+    await waitFor(() => expect(stored(store, NICKNAME_VAR)).toBe('Al'));
+    expect(stored(store, NODE_NAME_VAR)).toBe('Alice Updated');
+  });
+
+  it('builds what it saves from the answers shown when the save is made', async () => {
+    const store = makeStore(false, twoQuestionStage, twoQuestionCodebook);
+    const builds: (() => AttributePatch | null)[] = [];
+    const inspector = (attributes: Record<string, string>) => (
+      <Provider store={store}>
+        <TestProtocolLocalization>
+          <ContractProvider
+            onFinish={vi.fn()}
+            onRequestAsset={vi.fn()}
+            flags={{ isE2E: false, isDevelopment: false }}
+          >
+            <DialogProvider>
+              <CurrentStepProvider
+                currentStep={0}
+                onStepChange={() => undefined}
+              >
+                <StageMetadataContext.Provider value={vi.fn()}>
+                  <Inspector
+                    entityId={NODE_A_ID}
+                    // The fixture's loose stage shape, as the interface is given.
+                    form={
+                      twoQuestionStage.nodeForm as unknown as InspectorProps['form']
+                    }
+                    subject={{ entity: 'node', type: NODE_TYPE }}
+                    attributes={attributes}
+                    // The save is asked for, but made only when the test says.
+                    onSave={async (_id, build) => {
+                      builds.push(build);
+                    }}
+                    onDelete={vi.fn()}
+                    guardDraft={() => () => undefined}
+                  />
+                </StageMetadataContext.Provider>
+              </CurrentStepProvider>
+            </DialogProvider>
+          </ContractProvider>
+        </TestProtocolLocalization>
+      </Provider>
+    );
+    const { rerender } = render(inspector({ [NODE_NAME_VAR]: 'Alice Smith' }));
+
+    fireEvent.change(await screen.findByLabelText(/nickname/i), {
+      target: { value: 'Al' },
+    });
+    await waitFor(() => expect(builds).toHaveLength(1), { timeout: 2000 });
+
+    // An undo changes the full name, which the participant has not touched,
+    // after the save was asked for and before it is made.
+    rerender(inspector({ [NODE_NAME_VAR]: 'Alice Undone' }));
+    await waitFor(() =>
+      expect(screen.getByLabelText(/full name/i)).toHaveValue('Alice Undone'),
+    );
+
+    expect(builds[0]?.()).toEqual({ set: { [NICKNAME_VAR]: 'Al' }, unset: [] });
+  });
+
+  it('keeps an unsaved edit of a relationship an undo overtook, without saving it over the undo', async () => {
+    const store = makeStore(true);
+    renderInterface(store);
+    const storedStrength = () =>
+      store
+        .getState()
+        .session.network.edges.find(
+          (e) => e[entityPrimaryKeyProperty] === EDGE_ID,
+        )?.[entityAttributesProperty]?.[EDGE_STRENGTH_VAR];
+
+    await clickEdge(EDGE_ID);
+    const strength = await screen.findByLabelText(/strength/i);
+    fireEvent.change(strength, { target: { value: 'weak' } });
+    await waitFor(() => expect(storedStrength()).toBe('weak'), {
+      timeout: 2000,
+    });
+    fireEvent.change(strength, { target: { value: 'medium' } });
+    await press('undo');
+    await waitFor(() => expect(storedStrength()).toBe('strong'));
+
+    await autosaveWindow();
+    expect(strength).toHaveValue('medium');
+    expect(storedStrength()).toBe('strong');
   });
 });
 

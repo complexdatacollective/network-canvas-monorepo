@@ -179,8 +179,8 @@ describe('useComposerActions with an encrypted quick-add variable', () => {
     await act(async () => {
       id = await result.current.createNodeAt('Alex', { x: 0.5, y: 0.5 });
     });
-    act(() => {
-      result.current.deleteNodeById(id);
+    await act(async () => {
+      await result.current.deleteNodeById(id);
     });
     expect(getNode(store, id)).toBeUndefined();
 
@@ -199,8 +199,8 @@ describe('useComposerActions with an encrypted quick-add variable', () => {
       ids.push(await result.current.createNodeAt('Alex', { x: 0.2, y: 0.2 }));
       ids.push(await result.current.createNodeAt('Sam', { x: 0.8, y: 0.8 }));
     });
-    act(() => {
-      result.current.deleteNodesById(ids);
+    await act(async () => {
+      await result.current.deleteNodesById(ids);
     });
 
     await act(async () => {

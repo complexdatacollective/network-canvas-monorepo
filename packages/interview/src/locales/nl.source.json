@@ -160,6 +160,7 @@
   "interview.interfaces.discardChanges": "Discard changes",
   "interview.interfaces.discardChangesDescription": "This form contains invalid data, so it cannot be saved. If you continue it will be reset, and your changes will be lost. Do you want to discard your changes?",
   "interview.interfaces.discardChangesTitle": "Discard changes?",
+  "interview.interfaces.discardOvertakenEditDescription": "Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost.",
   "interview.interfaces.dragToReposition": "Drag to reposition",
   "interview.interfaces.drawEdge": "Draw edge",
   "interview.interfaces.drawingControls": "Drawing controls",

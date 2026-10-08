@@ -160,6 +160,7 @@
   "interview.interfaces.discardChanges": "放弃更改",
   "interview.interfaces.discardChangesDescription": "此表单包含无效数据，因此无法保存。如果继续，表单将被重置，您的更改将会丢失。是否放弃更改？",
   "interview.interfaces.discardChangesTitle": "放弃更改？",
+  "interview.interfaces.discardOvertakenEditDescription": "撤销或重做在您编辑某个回答时更改了该回答，因此您的修改尚未保存。如要保留您的修改，请再次更改该回答。如果继续，您的修改将会丢失。",
   "interview.interfaces.dragToReposition": "拖动以调整位置",
   "interview.interfaces.drawEdge": "绘制关系",
   "interview.interfaces.drawingControls": "绘图控件",

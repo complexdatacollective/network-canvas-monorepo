@@ -160,6 +160,7 @@
   "interview.interfaces.discardChanges": "Descartar alterações",
   "interview.interfaces.discardChangesDescription": "Este formulário contém dados inválidos e, por isso, não pode ser salvo. Se você continuar, ele será redefinido e suas alterações serão perdidas. Deseja descartar suas alterações?",
   "interview.interfaces.discardChangesTitle": "Descartar alterações?",
+  "interview.interfaces.discardOvertakenEditDescription": "Desfazer ou refazer alterou uma resposta enquanto você a editava, por isso sua alteração não foi salva. Para mantê-la, altere essa resposta novamente. Se você continuar, sua alteração será perdida.",
   "interview.interfaces.dragToReposition": "Arraste para reposicionar",
   "interview.interfaces.drawEdge": "Desenhar laço",
   "interview.interfaces.drawingControls": "Controles de desenho",
