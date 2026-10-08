@@ -35,6 +35,7 @@ export const sharedSuiteClaims: readonly string[] = [
   'DyadCensus:skipLogic',
   'DyadCensus:filter',
   'EgoForm:skipLogic',
+  'FamilyPedigree:skipLogic',
   'Geospatial:skipLogic',
   'Geospatial:filter',
   'Information:skipLogic',

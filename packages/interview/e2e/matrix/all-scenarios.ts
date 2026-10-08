@@ -5,6 +5,7 @@ import { categoricalBinScenarios } from './categorical-bin.scenarios.js';
 import { crossCuttingScenarios } from './cross-cutting.scenarios.js';
 import { dyadCensusScenarios } from './dyad-census.scenarios.js';
 import { egoFormScenarios } from './ego-form.scenarios.js';
+import { familyPedigreeScenarios } from './family-pedigree.scenarios.js';
 import { finishSessionScenarios } from './finish-session.scenarios.js';
 import { geospatialScenarios } from './geospatial.scenarios.js';
 import { informationScenarios } from './information.scenarios.js';
@@ -34,6 +35,7 @@ export const ALL_SUITES: InterfaceScenarios[] = [
   crossCuttingScenarios,
   dyadCensusScenarios,
   egoFormScenarios,
+  familyPedigreeScenarios,
   finishSessionScenarios,
   geospatialScenarios,
   informationScenarios,
