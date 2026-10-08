@@ -562,7 +562,7 @@ const interviewSessions = pgTable(
       sql`(${table.status} = 'completed') = (${table.completedAt} IS NOT NULL)
           AND (${table.status} = 'abandoned') = (${table.abandonedAt} IS NOT NULL)`,
     ),
-    // The outcomes are the protocol schema's `FINISH_OUTCOMES`.
+    // The outcomes are the protocol schema's `FINISH_OUTCOMES` (check-enums.test.ts).
     check(
       'interview_sessions_finish_check',
       sql`(${table.finishStageId} IS NULL) = (${table.finishOutcome} IS NULL)

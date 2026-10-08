@@ -5,6 +5,7 @@ import { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
 import { ParticipantSession } from '@codaco/studio-contract/middleware/session';
 import {
   type FinishInput,
+  FinishOutcome,
   FinishUnrecognised,
   LinkUnavailable,
   SessionEnded,
@@ -30,17 +31,21 @@ import {
 } from './store.ts';
 
 /**
- * The part of a stored protocol a finish is checked against. The document was
- * validated when it was published, so one this does not decode is a defect.
+ * The part of a stored protocol a finish is checked against: each stage's id,
+ * and a finish stage's outcome. The document was validated when it was
+ * published, so one this does not decode is a defect.
  */
 const decodeStages = Schema.decodeUnknownEffect(
   Schema.Struct({
     stages: Schema.Array(
-      Schema.Struct({
-        id: Schema.String,
-        type: Schema.String,
-        outcome: Schema.optional(Schema.Unknown),
-      }),
+      Schema.Union([
+        Schema.Struct({
+          id: Schema.String,
+          type: Schema.Literal('FinishSession'),
+          outcome: FinishOutcome,
+        }),
+        Schema.Struct({ id: Schema.String, type: Schema.String }),
+      ]),
     ),
   }),
 );

@@ -74,16 +74,20 @@ describe('the network row mapping', () => {
 });
 
 describe('the snapshot payload', () => {
-  it('is the canonical JSON of the network, stage metadata and position, hashed', () => {
+  it('is the canonical JSON of the network, stage metadata, position and finish, hashed', () => {
     const snapshot = snapshotPayload({
       network,
       stageMetadata: { 'stage-1': { step: 2 } },
       currentStep: 3,
+      finishStageId: 'finish',
+      finishOutcome: 'ineligible',
     });
     const expected = canonicalize({
       network,
       stageMetadata: { 'stage-1': { step: 2 } },
       currentStep: 3,
+      finishStageId: 'finish',
+      finishOutcome: 'ineligible',
     });
     expect(snapshot.payload).toBe(expected);
     expect(snapshot.payloadHash).toBe(
@@ -93,12 +97,20 @@ describe('the snapshot payload', () => {
 
   it('does not depend on key order', () => {
     const reordered = snapshotPayload({
+      finishOutcome: 'completed',
+      finishStageId: 'finish',
       currentStep: 3,
       stageMetadata: {},
       network: { ego: network.ego, edges: network.edges, nodes: network.nodes },
     });
     expect(reordered).toEqual(
-      snapshotPayload({ network, stageMetadata: {}, currentStep: 3 }),
+      snapshotPayload({
+        network,
+        stageMetadata: {},
+        currentStep: 3,
+        finishStageId: 'finish',
+        finishOutcome: 'completed',
+      }),
     );
   });
 });
