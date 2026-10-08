@@ -61,7 +61,7 @@ function renderFinish(onFinish: FinishHandler) {
               onFinish={onFinish}
               onRequestAsset={() => Promise.resolve('')}
             >
-              <SyncFlushProvider flush={() => Promise.resolve()}>
+              <SyncFlushProvider flush={() => Promise.resolve(true)}>
                 <DialogProvider>
                   <FinishSession />
                 </DialogProvider>
