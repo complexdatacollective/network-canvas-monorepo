@@ -1,5 +1,5 @@
 import type { DBAdapter, DBTransactionAdapter } from 'better-auth/types';
-import { Predicate } from 'effect';
+import { Predicate, Redacted } from 'effect';
 
 import {
   type OAuthTokenColumn,
@@ -122,9 +122,8 @@ function openResult(
       // cipher's SecretUnreadableError propagates, so a row written around
       // this adapter fails loudly rather than returning a stored string as
       // though it were a bearer token.
-      value[column] = cipher.openOAuthToken(
-        identityFrom(value, column),
-        stored,
+      value[column] = Redacted.value(
+        cipher.openOAuthToken(identityFrom(value, column), stored),
       );
     }
     return;
@@ -177,7 +176,10 @@ function sealedCreateData<D extends object>(
     const token = tokenText(source[column], column);
     if (token === undefined) continue;
     Object.assign(sealed, {
-      [column]: cipher.sealOAuthToken(identityFrom(source, column), token),
+      [column]: cipher.sealOAuthToken(
+        identityFrom(source, column),
+        Redacted.make(token),
+      ),
     });
   }
   return sealed;
@@ -256,7 +258,7 @@ function wrapOperations(
           if (plaintext === undefined) continue;
           patch[column] = cipher.sealOAuthToken(
             identityFrom(after, column),
-            plaintext,
+            Redacted.make(plaintext),
           );
           continue;
         }

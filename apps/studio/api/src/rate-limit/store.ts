@@ -1,11 +1,8 @@
-import { Context, Effect, Layer } from 'effect';
+import { Cause, Context, Effect, Layer } from 'effect';
 import { Redis } from 'ioredis';
 
 import { Environment } from '../env.ts';
-import {
-  describeValkeyError,
-  throttledWarning,
-} from '../platform/valkey-log.ts';
+import { throttledWarning } from '../platform/valkey-log.ts';
 
 export const UNAVAILABLE = 'unavailable';
 export type Unavailable = typeof UNAVAILABLE;
@@ -80,16 +77,18 @@ const connect = Effect.fnUntraced(function* (url: string) {
       }),
   );
 
-  const warn = throttledWarning(
-    (reason) =>
-      `Rate limit store is unavailable; limits are not being enforced (${reason}).`,
+  const warn = throttledWarning((error) =>
+    Effect.logWarning(
+      'Rate limit store is unavailable; limits are not being enforced.',
+      Cause.fail(error),
+    ),
   );
 
   // Without a listener ioredis rethrows connection errors as an uncaught
   // 'error' event.
   const context = yield* Effect.context();
   client.on('error', (error: unknown) => {
-    Effect.runForkWith(context)(warn(describeValkeyError(error)));
+    Effect.runForkWith(context)(warn(error));
   });
 
   let connecting: Promise<unknown> | undefined;
@@ -106,7 +105,7 @@ const connect = Effect.fnUntraced(function* (url: string) {
   ): Effect.Effect<A | Unavailable> =>
     operation.pipe(
       Effect.catch((error): Effect.Effect<Unavailable> =>
-        Effect.as(warn(describeValkeyError(error)), UNAVAILABLE),
+        Effect.as(warn(error), UNAVAILABLE),
       ),
     );
 

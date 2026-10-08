@@ -1,4 +1,4 @@
-import { Predicate } from 'effect';
+import { Predicate, Redacted, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { PARTICIPANT_SESSION_HEADER } from '@codaco/studio-contract/middleware/session';
@@ -44,12 +44,12 @@ const syncPayload = (attributes: Record<string, unknown>) => ({
   revision: '2',
   stageIndex: 0,
   stageId: null,
-  network: {
+  network: Redacted.make({
     nodes: [],
     edges: [],
     ego: { _uid: 'ego', attributes },
-  },
-  stageMetadata: {},
+  }),
+  stageMetadata: Redacted.make({}),
 });
 
 afterEach(() => {
@@ -61,7 +61,7 @@ describe('the participant runtime', () => {
     answerEmptyOk();
 
     await participantCall('participant.redeem', {
-      linkToken: LinkToken.make('l'.repeat(32)),
+      linkToken: Schema.decodeSync(LinkToken)('l'.repeat(32)),
     }).then(ignore, ignore);
 
     expect(requestUrl(fetchStub.mock.calls[0]?.[0] ?? '')).toContain('/rpc');
@@ -72,7 +72,7 @@ describe('the participant runtime', () => {
     answerEmptyOk();
 
     await participantCall('participant.redeem', {
-      linkToken: LinkToken.make('l'.repeat(32)),
+      linkToken: Schema.decodeSync(LinkToken)('l'.repeat(32)),
     }).then(ignore, ignore);
     expect(headerOf(lastInit(), PARTICIPANT_SESSION_HEADER)).toBeUndefined();
 

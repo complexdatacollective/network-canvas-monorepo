@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@effect/vitest';
-import { Context, Effect, Exit, Layer, Scope } from 'effect';
+import { Context, Effect, Exit, Layer, Redacted, Scope } from 'effect';
 
 import {
   startSilentSmtp,
@@ -35,8 +35,10 @@ describe('the SMTP mailer', () => {
           expect(
             Effect.runPromise(
               mailer.sendMagicLink({
-                email: 'researcher@example.org',
-                url: 'https://studio.example.org/api/auth/magic-link/verify?token=abc',
+                email: Redacted.make('researcher@example.org'),
+                url: Redacted.make(
+                  'https://studio.example.org/api/auth/magic-link/verify?token=abc',
+                ),
               }),
             ),
           ).rejects.toThrow(/Greeting never received/),

@@ -155,8 +155,8 @@ if (!isLocalDatabase(env.db.url) && !values.force) {
 }
 
 const url = new URL(env.db.url);
-const owner = createOwnerPool(env.db);
-const pool = createPool(env.db);
+const owner = createOwnerPool(env.db, { logLevel: env.logLevel });
+const pool = createPool(env.db, { logLevel: env.logLevel });
 
 const TEAM_ID = 'demo-team';
 

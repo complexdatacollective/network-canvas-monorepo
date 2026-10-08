@@ -1,7 +1,7 @@
 import { Schema } from 'effect';
 
 import { AuditEventId } from './ids.ts';
-import { DecimalSequence } from './primitives.ts';
+import { DecimalSequence, PrivateString } from './primitives.ts';
 import { TeamScoped } from './team.ts';
 
 export const AUDIT_CATEGORIES = [
@@ -76,13 +76,13 @@ export const AuditListInput = Schema.Struct({
 const AuditActor = Schema.Struct({
   kind: AuditActorKind,
   id: Schema.NullOr(Schema.String),
-  label: Schema.String,
+  label: PrivateString,
 });
 
 const AuditEventReference = Schema.Struct({
   type: Schema.String,
   id: Schema.NullOr(Schema.String),
-  label: Schema.NullOr(Schema.String),
+  label: Schema.NullOr(PrivateString),
 });
 
 export const AuditEventSummary = Schema.Struct({
@@ -113,7 +113,7 @@ export const AuditFilterOptions = Schema.Struct({
     Schema.Struct({ eventType: Schema.String, title: Schema.String }),
   ),
   actors: Schema.Array(
-    Schema.Struct({ ...AuditActorFilter.fields, label: Schema.String }),
+    Schema.Struct({ ...AuditActorFilter.fields, label: PrivateString }),
   ),
   truncated: Schema.Boolean,
 });
@@ -126,9 +126,11 @@ export const AuditGetInput = Schema.Struct({
 
 export const AuditEventDetail = Schema.Struct({
   ...AuditEventSummary.fields,
-  teamLabel: Schema.String,
+  teamLabel: PrivateString,
   requestId: Schema.String.check(Schema.isUUID()),
-  details: Schema.Record(Schema.String, Schema.Unknown),
+  details: Schema.RedactedFromValue(
+    Schema.Record(Schema.String, Schema.Unknown),
+  ),
 });
 export type AuditEventDetail = (typeof AuditEventDetail)['Type'];
 

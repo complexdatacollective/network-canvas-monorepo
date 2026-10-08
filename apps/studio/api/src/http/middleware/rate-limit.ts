@@ -1,6 +1,10 @@
-import { Effect, Option } from 'effect';
+import { Effect, Option, Redacted } from 'effect';
 import { HttpRouter, HttpServerResponse } from 'effect/http';
 
+import {
+  rateLimitSubject,
+  type RateLimitSubject,
+} from '../../rate-limit/enforce.ts';
 import { RateLimiter } from '../../rate-limit/limiter.ts';
 import type { RateLimitScope } from '../../rate-limit/scopes.ts';
 import { ClientAddress, UNKNOWN_ADDRESS } from './client-address.ts';
@@ -15,21 +19,24 @@ export const tooManyRequests = (retryAfterSeconds: number) =>
     },
   );
 
-export const clientAddress: Effect.Effect<string> = Effect.map(
+export const clientAddress: Effect.Effect<Redacted.Redacted> = Effect.map(
   Effect.serviceOption(ClientAddress),
-  Option.getOrElse(() => UNKNOWN_ADDRESS),
+  Option.getOrElse(() => Redacted.make(UNKNOWN_ADDRESS)),
 );
 
 export const httpRateLimit = <R>(
   scope: RateLimitScope,
-  subject: Effect.Effect<string, never, R>,
+  subject: Effect.Effect<RateLimitSubject, never, R>,
 ) =>
   HttpRouter.middleware(
     Effect.gen(function* () {
       const limiter = yield* RateLimiter;
       return (httpEffect) =>
         Effect.gen(function* () {
-          const decision = yield* limiter.check(scope, yield* subject);
+          const decision = yield* limiter.check(
+            scope,
+            rateLimitSubject(yield* subject),
+          );
           if (!decision.allowed) {
             return tooManyRequests(decision.retryAfterSeconds);
           }

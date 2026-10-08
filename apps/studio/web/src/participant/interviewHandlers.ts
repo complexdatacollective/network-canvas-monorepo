@@ -1,3 +1,5 @@
+import { Redacted } from 'effect';
+
 import {
   createDebouncedSyncHandler,
   type FinishHandler,
@@ -90,8 +92,8 @@ export function createParticipantHandlers({
       revision: String(issued),
       stageIndex,
       stageId: stageIds[stageIndex] ?? null,
-      network: snapshot.network,
-      stageMetadata: snapshot.stageMetadata ?? {},
+      network: Redacted.make(snapshot.network),
+      stageMetadata: Redacted.make(snapshot.stageMetadata ?? {}),
     };
   };
 

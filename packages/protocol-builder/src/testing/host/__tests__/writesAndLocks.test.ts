@@ -1,3 +1,4 @@
+import { Redacted } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -116,10 +117,10 @@ async function stagePortrait(host: InMemoryHost): Promise<string> {
     request: {
       kind: 'content',
       contentKind: 'image',
-      name: 'Portrait',
-      source: 'portrait.png',
+      name: Redacted.make('Portrait'),
+      source: Redacted.make('portrait.png'),
       contentType: 'image/png',
-      bytes: IMAGE(),
+      bytes: Redacted.make(IMAGE()),
     },
   });
   if (staged.status !== 'ok') throw new Error('staging failed');
@@ -200,10 +201,10 @@ const CALLS: readonly Call[] = [
         protocolId: host.protocolId,
         requestId: nextRequestId(),
         sectionId: INFORMATION,
-        document: {
+        document: Redacted.make({
           ...host.store.read(INFORMATION).document,
           label: 'Renamed by the enumeration',
-        },
+        }),
         revision: host.store.read(INFORMATION).revision,
       }),
   },
@@ -218,7 +219,7 @@ const CALLS: readonly Call[] = [
         protocolId: host.protocolId,
         requestId: nextRequestId(),
         sectionId: INFORMATION,
-        document: host.store.read(INFORMATION).document,
+        document: Redacted.make(host.store.read(INFORMATION).document),
         revision: host.store.read(INFORMATION).revision,
         promote: { editId: EDIT, resourceIds: [resourceId] },
       });
@@ -233,7 +234,7 @@ const CALLS: readonly Call[] = [
         protocolId: host.protocolId,
         requestId: nextRequestId(),
         kind: 'stage',
-        document: template,
+        document: Redacted.make(template),
       });
     },
   },
@@ -247,10 +248,10 @@ const CALLS: readonly Call[] = [
         protocolId: host.protocolId,
         requestId: nextRequestId(),
         kind: 'stage',
-        document: {
+        document: Redacted.make({
           ...template,
           items: [{ id: 'item-1', type: 'asset', content: resourceId }],
-        },
+        }),
         promote: { editId: EDIT, resourceIds: [resourceId] },
       });
     },
@@ -263,12 +264,12 @@ const CALLS: readonly Call[] = [
         protocolId: host.protocolId,
         requestId: nextRequestId(),
         kind: 'codebookNode',
-        document: {
+        document: Redacted.make({
           name: 'Place',
           color: 'node-color-seq-3',
           shape: { default: 'circle' },
           variables: {},
-        },
+        }),
       }),
   },
   {
@@ -279,7 +280,7 @@ const CALLS: readonly Call[] = [
         protocolId: host.protocolId,
         requestId: nextRequestId(),
         kind: 'codebookEdge',
-        document: { name: 'Knows', color: 'edge-color-seq-1' },
+        document: Redacted.make({ name: 'Knows', color: 'edge-color-seq-1' }),
       }),
   },
   {
@@ -291,11 +292,11 @@ const CALLS: readonly Call[] = [
         protocolId: host.protocolId,
         requestId: nextRequestId(),
         kind: 'codebookEgo',
-        document: {
+        document: Redacted.make({
           variables: {
             ego_age: { name: 'ego_age', type: 'number', component: 'Number' },
           },
-        },
+        }),
       }),
   },
   {
@@ -509,10 +510,16 @@ function expectedRow(
 
 /** Who a refusal says is holding the section, if it says. */
 function holderNamedBy(error: unknown): string | undefined {
-  if (error instanceof NotLockHolder) return error.holder?.displayName;
+  if (error instanceof NotLockHolder) {
+    return error.holder === undefined
+      ? undefined
+      : Redacted.value(error.holder.displayName);
+  }
   if (!(error instanceof SectionsLocked)) return undefined;
   return error.blocked.flatMap((entry) =>
-    entry.holder === undefined ? [] : [entry.holder.displayName],
+    entry.holder === undefined
+      ? []
+      : [Redacted.value(entry.holder.displayName)],
   )[0];
 }
 

@@ -8,7 +8,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { Effect, Layer, Predicate } from 'effect';
+import { Effect, Layer, Predicate, Redacted } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ProtocolBuilderGroup } from '@codaco/protocol-builder-core/contract';
@@ -70,34 +70,41 @@ const moveStage = vi.fn<Answer<'protocols.moveStage'>>();
 
 const PROTOCOL_UUID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 
+const DRAFT_SECTIONS = {
+  settings: { name: 'Shell proof', schemaVersion: 8 },
+  stageOrder: { stages: [STAGE_A, STAGE_B] },
+  [`stage:${STAGE_A}`]: {
+    id: STAGE_A,
+    type: 'Information',
+    label: 'Welcome',
+    title: 'Welcome',
+    items: [],
+  },
+  [`stage:${STAGE_B}`]: {
+    id: STAGE_B,
+    type: 'Information',
+    label: 'Follow-up',
+    title: 'Follow-up',
+    items: [],
+  },
+  assets: {},
+};
+
 const DRAFT = {
   protocol: {
     id: ProtocolId.make(PROTOCOL_UUID),
     draftId: DraftId.make('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'),
-    name: 'Shell proof',
+    name: Redacted.make('Shell proof'),
     createdAt: new Date('2026-08-28T00:00:00Z'),
     updatedAt: new Date('2026-08-28T00:00:00Z'),
   },
   revision: { sequence: '2', hash: 'revision-2' },
-  sections: {
-    settings: { name: 'Shell proof', schemaVersion: 8 },
-    stageOrder: { stages: [STAGE_A, STAGE_B] },
-    [`stage:${STAGE_A}`]: {
-      id: STAGE_A,
-      type: 'Information',
-      label: 'Welcome',
-      title: 'Welcome',
-      items: [],
-    },
-    [`stage:${STAGE_B}`]: {
-      id: STAGE_B,
-      type: 'Information',
-      label: 'Follow-up',
-      title: 'Follow-up',
-      items: [],
-    },
-    assets: {},
-  },
+  sections: Object.fromEntries(
+    Object.entries(DRAFT_SECTIONS).map(([id, document]) => [
+      id,
+      Redacted.make(document),
+    ]),
+  ),
 };
 
 /**
@@ -112,9 +119,9 @@ const DRAFT = {
  * drawn from a second reading nothing keeps current (#1810).
  */
 const HOST_SECTIONS: Readonly<Record<string, SectionDoc>> = {
-  ...DRAFT.sections,
+  ...DRAFT_SECTIONS,
   [`stage:${STAGE_A}`]: {
-    ...DRAFT.sections[`stage:${STAGE_A}`],
+    ...DRAFT_SECTIONS[`stage:${STAGE_A}`],
     label: 'Welcome, from the host',
   },
 };
@@ -156,9 +163,9 @@ function studyDetail(owner: string): (typeof StudyDetail)['Type'] {
 
 const ME: Me = {
   userId: 'user-1',
-  email: 'researcher@example.org',
+  email: Redacted.make('researcher@example.org'),
   emailVerified: true,
-  name: 'Researcher',
+  name: Redacted.make('Researcher'),
   locale: null,
   teams: [{ teamId: TeamId.make('team-a'), role: 'owner' }],
 };
@@ -237,7 +244,10 @@ function servedBy(handle: InMemoryHandlers): HandlersLayer {
         }
         const written = commandWriteFor(input.sectionId);
         if (written !== undefined) {
-          return { document: written, revision: COMMAND_REVISION };
+          return {
+            document: Redacted.make(written),
+            revision: COMMAND_REVISION,
+          };
         }
         return yield* handle.GetSection(input);
       }),
@@ -247,7 +257,7 @@ function servedBy(handle: InMemoryHandlers): HandlersLayer {
         ? handle.AcquireLock(input)
         : Effect.succeed({
             lock: 'held' as const,
-            document: written,
+            document: Redacted.make(written),
             revision: COMMAND_REVISION,
           });
     },
@@ -287,7 +297,12 @@ async function collaboratorAddsScreen(label: string): Promise<void> {
     protocolId: DRAFT.protocol.id,
     requestId: nextRequestId(),
     kind: 'stage',
-    document: { type: 'Information', label, title: label, items: [] },
+    document: Redacted.make({
+      type: 'Information',
+      label,
+      title: label,
+      items: [],
+    }),
   });
 }
 
@@ -305,7 +320,7 @@ async function collaboratorRenamesScreen(
     protocolId: DRAFT.protocol.id,
     requestId: nextRequestId(),
     sectionId: target,
-    document: { ...held.document, label },
+    document: Redacted.make({ ...Redacted.value(held.document), label }),
     revision: held.revision,
   });
   await client.rpcCall('ReleaseLock', {
@@ -325,7 +340,7 @@ async function collaboratorRepairsStageOrder(): Promise<void> {
     protocolId: DRAFT.protocol.id,
     requestId: nextRequestId(),
     sectionId: STAGE_ORDER,
-    document: { stages: [STAGE_A, STAGE_B] },
+    document: Redacted.make({ stages: [STAGE_A, STAGE_B] }),
     revision: held.revision,
   });
   await client.rpcCall('ReleaseLock', {
@@ -1421,7 +1436,10 @@ describe('the socket the editor opens', () => {
             ? current
             : {
                 ...current,
-                protocol: { ...current.protocol, name: 'Renamed' },
+                protocol: {
+                  ...current.protocol,
+                  name: Redacted.make('Renamed'),
+                },
               },
       );
     });

@@ -1,5 +1,6 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { Redacted } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
 
 import Button from '@codaco/fresco-ui/Button';
@@ -13,6 +14,7 @@ import { renderResourceEditor } from './renderResourceEditor.tsx';
 import { renderInResourceContext, TEST_EDIT_ID } from './resourceContext.tsx';
 import {
   createResourceHost,
+  plainDescriptor,
   resourceProcedures,
   stagedResources,
   withResourceProcedures,
@@ -127,7 +129,9 @@ function keyRecorder() {
     requestIds: (): string[] => staging.map((input) => input.requestId),
     stagedNames: (): string[] =>
       staging.map((input) =>
-        input.request.kind === 'secret' ? input.request.name : '',
+        input.request.kind === 'secret'
+          ? Redacted.value(input.request.name)
+          : '',
       ),
     stagings: (): number => staging.length,
   };
@@ -436,7 +440,11 @@ describe('the secret resource picker', () => {
       // not see.
       editId,
       requestId: 'another-field',
-      request: { kind: 'secret', name: 'Mapbox', value: SECOND_SECRET },
+      request: {
+        kind: 'secret',
+        name: Redacted.make('Mapbox'),
+        value: Redacted.make(SECOND_SECRET),
+      },
     });
     expect(elsewhere.status).toBe('ok');
     const before = key.stagings();
@@ -575,7 +583,7 @@ describe('the control a key is typed into', () => {
     expect(inputValues()).toEqual(['', '']);
     expect(document.body.innerHTML).not.toContain(SECRET);
     // Only the descriptor, which is what a stage field stores.
-    expect(staged.mock.calls[0]?.[0]).toEqual({
+    expect(plainDescriptor(staged.mock.calls[0]![0])).toEqual({
       id: 'staged-resource-1',
       kind: 'apikey',
       name: 'Mapbox key',
@@ -598,7 +606,9 @@ describe('the control a key is typed into', () => {
     // descriptor and lose the key the researcher just added.
     expect(new Set(key.requestIds()).size).toBe(2);
     expect(key.stagedNames()).toEqual(['Mapbox key', 'Fieldwork key']);
-    expect(staged.mock.calls.map(([descriptor]) => descriptor)).toEqual([
+    expect(
+      staged.mock.calls.map(([descriptor]) => plainDescriptor(descriptor)),
+    ).toEqual([
       expect.objectContaining({ id: 'staged-resource-1', name: 'Mapbox key' }),
       expect.objectContaining({
         id: 'staged-resource-2',
@@ -703,7 +713,7 @@ describe('a key edited after an uncertain failure', () => {
     await waitFor(() => expect(staged).toHaveBeenCalledTimes(1));
 
     expect(new Set(key.requestIds()).size).toBe(2);
-    expect(staged.mock.calls[0]?.[0]).toMatchObject({
+    expect(plainDescriptor(staged.mock.calls[0]![0])).toMatchObject({
       name: 'Mapbox production key',
     });
   });

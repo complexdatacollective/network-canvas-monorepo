@@ -9,6 +9,7 @@ import {
   Fiber,
   Layer,
   Predicate,
+  Redacted,
   Ref,
   Schema,
 } from 'effect';
@@ -322,9 +323,9 @@ describe.skipIf(!url)('the slot around a command', () => {
       Principal.of({
         kind: 'user',
         userId: Schema.decodeSync(UserId)(input.actorId),
-        email: 'actor@example.test',
+        email: Redacted.make('actor@example.test'),
         emailVerified: true,
-        name: 'Denied Actor',
+        name: Redacted.make('Denied Actor'),
         locale: null,
         sessionId: 'denied-session',
       });

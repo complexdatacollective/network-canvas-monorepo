@@ -1,4 +1,4 @@
-import { Context, Effect, Layer, Option } from 'effect';
+import { Context, Effect, Layer, Option, Redacted } from 'effect';
 import type * as Headers from 'effect/http/Headers';
 
 import { ProtocolNotFound } from '@codaco/protocol-builder-core/contract/errors';
@@ -80,7 +80,8 @@ export const HostSessionLive: Layer.Layer<HostSession, never, AuthService> =
             },
           );
           const displayName =
-            principal.value.name.trim() || principal.value.email.trim();
+            Redacted.value(principal.value.name).trim() ||
+            Redacted.value(principal.value.email).trim();
           return yield* effect.pipe(
             Effect.provideService(
               HostCaller,
@@ -90,7 +91,7 @@ export const HostSessionLive: Layer.Layer<HostSession, never, AuthService> =
                   readClientSessionId(headers[CLIENT_SESSION_HEADER]) ??
                   connectionId,
                 userId: principal.value.userId,
-                displayName: displayName.slice(0, 320),
+                displayName: Redacted.make(displayName.slice(0, 320)),
               }),
             ),
             provideCaller(principal.value),

@@ -1,6 +1,7 @@
 import { randomBytes, webcrypto } from 'node:crypto';
 import { inspect } from 'node:util';
 
+import { Redacted } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -67,40 +68,52 @@ describe('sealing and opening each kind of secret', () => {
   const cipher = testCipher();
 
   it('round trips a webhook signing secret under the current key', () => {
-    const sealed = cipher.sealWebhookSecret(WEBHOOK, WEBHOOK_SECRET);
+    const sealed = cipher.sealWebhookSecret(
+      WEBHOOK,
+      Redacted.make(WEBHOOK_SECRET),
+    );
     expect(sealed.keyId).toBe('test-1');
-    expect(cipher.openWebhookSecret(WEBHOOK, sealed)).toBe(WEBHOOK_SECRET);
+    expect(Redacted.value(cipher.openWebhookSecret(WEBHOOK, sealed))).toBe(
+      WEBHOOK_SECRET,
+    );
   });
 
   it('round trips an asset API key', () => {
-    const sealed = cipher.sealAssetKey(ASSET, ASSET_KEY);
-    expect(cipher.openAssetKey(ASSET, sealed)).toBe(ASSET_KEY);
+    const sealed = cipher.sealAssetKey(ASSET, Redacted.make(ASSET_KEY));
+    expect(Redacted.value(cipher.openAssetKey(ASSET, sealed))).toBe(ASSET_KEY);
   });
 
   it('opens a ciphertext a row hands back as a plain Uint8Array', () => {
-    const sealed = cipher.sealAssetKey(ASSET, ASSET_KEY);
+    const sealed = cipher.sealAssetKey(ASSET, Redacted.make(ASSET_KEY));
     const asSqlPgReadsIt = new Uint8Array(sealed.ciphertext);
     expect(Buffer.isBuffer(asSqlPgReadsIt)).toBe(false);
     expect(
-      cipher.openAssetKey(ASSET, {
-        ciphertext: asSqlPgReadsIt,
-        keyId: sealed.keyId,
-      }),
+      Redacted.value(
+        cipher.openAssetKey(ASSET, {
+          ciphertext: asSqlPgReadsIt,
+          keyId: sealed.keyId,
+        }),
+      ),
     ).toBe(ASSET_KEY);
   });
 
   it('round trips an OAuth token through its stored string form', () => {
-    const stored = cipher.sealOAuthToken(OAUTH, OAUTH_TOKEN);
+    const stored = cipher.sealOAuthToken(OAUTH, Redacted.make(OAUTH_TOKEN));
     expect(stored.startsWith('studio-secret:test-1:')).toBe(true);
-    expect(cipher.openOAuthToken(OAUTH, stored)).toBe(OAUTH_TOKEN);
+    expect(Redacted.value(cipher.openOAuthToken(OAUTH, stored))).toBe(
+      OAUTH_TOKEN,
+    );
   });
 
   it('writes nothing recognisable into the stored bytes', () => {
     // The dump-and-search test (#1900's first acceptance criterion) searches
     // for these encodings across every table; asserting them here is what
     // makes that test about the write paths rather than about the cipher.
-    const sealed = cipher.sealWebhookSecret(WEBHOOK, WEBHOOK_SECRET);
-    const stored = cipher.sealOAuthToken(OAUTH, OAUTH_TOKEN);
+    const sealed = cipher.sealWebhookSecret(
+      WEBHOOK,
+      Redacted.make(WEBHOOK_SECRET),
+    );
+    const stored = cipher.sealOAuthToken(OAUTH, Redacted.make(OAUTH_TOKEN));
     for (const encoding of ['utf8', 'base64', 'base64url', 'hex'] as const) {
       expect(sealed.ciphertext.toString(encoding)).not.toContain(
         encoding === 'utf8'
@@ -115,8 +128,14 @@ describe('sealing and opening each kind of secret', () => {
   });
 
   it('never produces the same bytes twice for the same value', () => {
-    const once = cipher.sealWebhookSecret(WEBHOOK, WEBHOOK_SECRET);
-    const twice = cipher.sealWebhookSecret(WEBHOOK, WEBHOOK_SECRET);
+    const once = cipher.sealWebhookSecret(
+      WEBHOOK,
+      Redacted.make(WEBHOOK_SECRET),
+    );
+    const twice = cipher.sealWebhookSecret(
+      WEBHOOK,
+      Redacted.make(WEBHOOK_SECRET),
+    );
     expect(once.ciphertext.equals(twice.ciphertext)).toBe(false);
   });
 
@@ -127,7 +146,7 @@ describe('sealing and opening each kind of secret', () => {
     const keyring = testKeyring();
     const sealed = createSecretsCipher(keyring).sealWebhookSecret(
       WEBHOOK,
-      WEBHOOK_SECRET,
+      Redacted.make(WEBHOOK_SECRET),
     );
     expect(sealed.ciphertext[0]).toBe(1);
 
@@ -169,7 +188,10 @@ describe('the row a ciphertext belongs to', () => {
   ];
 
   it.each(moved)('refuses a webhook secret read as %s', (_axis, identity) => {
-    const sealed = cipher.sealWebhookSecret(WEBHOOK, WEBHOOK_SECRET);
+    const sealed = cipher.sealWebhookSecret(
+      WEBHOOK,
+      Redacted.make(WEBHOOK_SECRET),
+    );
     expect(() => cipher.openWebhookSecret(identity, sealed)).toThrow(
       SecretUnreadableError,
     );
@@ -185,7 +207,7 @@ describe('the row a ciphertext belongs to', () => {
   ];
 
   it.each(movedAssets)('refuses an asset key read as %s', (_axis, identity) => {
-    const sealed = cipher.sealAssetKey(ASSET, ASSET_KEY);
+    const sealed = cipher.sealAssetKey(ASSET, Redacted.make(ASSET_KEY));
     expect(() => cipher.openAssetKey(identity, sealed)).toThrow(
       SecretUnreadableError,
     );
@@ -200,7 +222,7 @@ describe('the row a ciphertext belongs to', () => {
   ];
 
   it.each(movedTokens)('refuses a token read as %s', (_axis, identity) => {
-    const stored = cipher.sealOAuthToken(OAUTH, OAUTH_TOKEN);
+    const stored = cipher.sealOAuthToken(OAUTH, Redacted.make(OAUTH_TOKEN));
     expect(() => cipher.openOAuthToken(identity, stored)).toThrow(
       SecretUnreadableError,
     );
@@ -212,7 +234,7 @@ describe('the row a ciphertext belongs to', () => {
     // could be moved between them undetected.
     const sealed = cipher.sealWebhookSecret(
       { teamId: 'a', subscriptionId: 'b,c' },
-      WEBHOOK_SECRET,
+      Redacted.make(WEBHOOK_SECRET),
     );
     expect(() =>
       cipher.openWebhookSecret({ teamId: 'a,b', subscriptionId: 'c' }, sealed),
@@ -224,14 +246,19 @@ describe('the row a ciphertext belongs to', () => {
     // upper-cased; the same row must open either way.
     const sealed = cipher.sealWebhookSecret(
       { ...WEBHOOK, subscriptionId: WEBHOOK.subscriptionId.toUpperCase() },
+      Redacted.make(WEBHOOK_SECRET),
+    );
+    expect(Redacted.value(cipher.openWebhookSecret(WEBHOOK, sealed))).toBe(
       WEBHOOK_SECRET,
     );
-    expect(cipher.openWebhookSecret(WEBHOOK, sealed)).toBe(WEBHOOK_SECRET);
   });
 
   it('leaves the case of an identifier that is not a uuid alone', () => {
     // Team ids are text, and `Team-One` is a different team from `team-one`.
-    const sealed = cipher.sealWebhookSecret(WEBHOOK, WEBHOOK_SECRET);
+    const sealed = cipher.sealWebhookSecret(
+      WEBHOOK,
+      Redacted.make(WEBHOOK_SECRET),
+    );
     expect(() =>
       cipher.openWebhookSecret({ ...WEBHOOK, teamId: 'Team-One' }, sealed),
     ).toThrow(SecretUnreadableError);
@@ -241,7 +268,10 @@ describe('the row a ciphertext belongs to', () => {
     // An empty part would let two different rows share an AAD, which is the
     // one thing binding the identity exists to prevent.
     expect(() =>
-      cipher.sealWebhookSecret({ ...WEBHOOK, teamId: '' }, WEBHOOK_SECRET),
+      cipher.sealWebhookSecret(
+        { ...WEBHOOK, teamId: '' },
+        Redacted.make(WEBHOOK_SECRET),
+      ),
     ).toThrow(/incomplete row identity/);
   });
 });
@@ -250,7 +280,10 @@ describe('a stored value that is not what was written', () => {
   const cipher = testCipher();
 
   function tamper(at: number): SealedSecret {
-    const sealed = cipher.sealWebhookSecret(WEBHOOK, WEBHOOK_SECRET);
+    const sealed = cipher.sealWebhookSecret(
+      WEBHOOK,
+      Redacted.make(WEBHOOK_SECRET),
+    );
     const ciphertext = Buffer.from(sealed.ciphertext);
     const byte = ciphertext[at];
     // An index past the end would leave the value untouched, and every
@@ -273,7 +306,10 @@ describe('a stored value that is not what was written', () => {
   });
 
   it('refuses a flipped bit in the tag', () => {
-    const sealed = cipher.sealWebhookSecret(WEBHOOK, WEBHOOK_SECRET);
+    const sealed = cipher.sealWebhookSecret(
+      WEBHOOK,
+      Redacted.make(WEBHOOK_SECRET),
+    );
     expect(() =>
       cipher.openWebhookSecret(WEBHOOK, tamper(sealed.ciphertext.length - 1)),
     ).toThrow(SecretUnreadableError);
@@ -282,7 +318,10 @@ describe('a stored value that is not what was written', () => {
   it('refuses an envelope version this build does not know', () => {
     // The version byte is what lets a later layout be introduced safely: a
     // value that starts with anything else is refused, never guessed at.
-    const sealed = cipher.sealWebhookSecret(WEBHOOK, WEBHOOK_SECRET);
+    const sealed = cipher.sealWebhookSecret(
+      WEBHOOK,
+      Redacted.make(WEBHOOK_SECRET),
+    );
     const ciphertext = Buffer.from(sealed.ciphertext);
     ciphertext[0] = 2;
     expect(() =>
@@ -300,7 +339,10 @@ describe('a stored value that is not what was written', () => {
   });
 
   it('refuses a truncated envelope of a plausible length', () => {
-    const sealed = cipher.sealWebhookSecret(WEBHOOK, WEBHOOK_SECRET);
+    const sealed = cipher.sealWebhookSecret(
+      WEBHOOK,
+      Redacted.make(WEBHOOK_SECRET),
+    );
     expect(() =>
       cipher.openWebhookSecret(WEBHOOK, {
         ...sealed,
@@ -313,7 +355,10 @@ describe('a stored value that is not what was written', () => {
 describe('which key opens a value', () => {
   it('refuses a key id that is not the one it was sealed under', () => {
     const cipher = testCipher();
-    const sealed = cipher.sealWebhookSecret(WEBHOOK, WEBHOOK_SECRET);
+    const sealed = cipher.sealWebhookSecret(
+      WEBHOOK,
+      Redacted.make(WEBHOOK_SECRET),
+    );
     expect(() =>
       cipher.openWebhookSecret(WEBHOOK, { ...sealed, keyId: 'test-2' }),
     ).toThrow(SecretUnreadableError);
@@ -321,7 +366,10 @@ describe('which key opens a value', () => {
 
   it('refuses a key id the keyring cannot produce, naming it', () => {
     const cipher = testCipher();
-    const sealed = cipher.sealWebhookSecret(WEBHOOK, WEBHOOK_SECRET);
+    const sealed = cipher.sealWebhookSecret(
+      WEBHOOK,
+      Redacted.make(WEBHOOK_SECRET),
+    );
     expect(() =>
       cipher.openWebhookSecret(WEBHOOK, { ...sealed, keyId: 'gone' }),
     ).toThrow(/cannot produce key id "gone"/);
@@ -332,16 +380,18 @@ describe('which key opens a value', () => {
     // the two, every value in the database is under the older key.
     const sealed = testCipher(testKeyring(['test-1'])).sealWebhookSecret(
       WEBHOOK,
-      WEBHOOK_SECRET,
+      Redacted.make(WEBHOOK_SECRET),
     );
     const rotated = testCipher(testKeyring(['test-2', 'test-1']));
-    expect(rotated.openWebhookSecret(WEBHOOK, sealed)).toBe(WEBHOOK_SECRET);
+    expect(Redacted.value(rotated.openWebhookSecret(WEBHOOK, sealed))).toBe(
+      WEBHOOK_SECRET,
+    );
   });
 
   it('fails closed once the old key is taken out, naming what it needs', () => {
     const sealed = testCipher(testKeyring(['test-1'])).sealWebhookSecret(
       WEBHOOK,
-      WEBHOOK_SECRET,
+      Redacted.make(WEBHOOK_SECRET),
     );
     const shortened = testCipher(testKeyring(['test-2']));
     expect(() => shortened.openWebhookSecret(WEBHOOK, sealed)).toThrow(
@@ -358,36 +408,48 @@ describe('re-sealing for rotation', () => {
     // Rotation is a full table scan; a row already under the current key must
     // cost nothing and, above all, must not be rewritten with a new nonce for
     // no reason.
-    const sealed = rotated.sealWebhookSecret(WEBHOOK, WEBHOOK_SECRET);
+    const sealed = rotated.sealWebhookSecret(
+      WEBHOOK,
+      Redacted.make(WEBHOOK_SECRET),
+    );
     expect(rotated.resealWebhookSecret(WEBHOOK, sealed)).toBe(sealed);
 
-    const stored = rotated.sealOAuthToken(OAUTH, OAUTH_TOKEN);
+    const stored = rotated.sealOAuthToken(OAUTH, Redacted.make(OAUTH_TOKEN));
     expect(rotated.resealOAuthToken(OAUTH, stored)).toBe(stored);
 
-    const key = rotated.sealAssetKey(ASSET, ASSET_KEY);
+    const key = rotated.sealAssetKey(ASSET, Redacted.make(ASSET_KEY));
     expect(rotated.resealAssetKey(ASSET, key)).toBe(key);
   });
 
   it('moves a webhook secret to the current key, unchanged in plaintext', () => {
-    const sealed = underOld.sealWebhookSecret(WEBHOOK, WEBHOOK_SECRET);
+    const sealed = underOld.sealWebhookSecret(
+      WEBHOOK,
+      Redacted.make(WEBHOOK_SECRET),
+    );
     const resealed = rotated.resealWebhookSecret(WEBHOOK, sealed);
     expect(resealed.keyId).toBe('test-2');
     expect(resealed.ciphertext.equals(sealed.ciphertext)).toBe(false);
-    expect(rotated.openWebhookSecret(WEBHOOK, resealed)).toBe(WEBHOOK_SECRET);
+    expect(Redacted.value(rotated.openWebhookSecret(WEBHOOK, resealed))).toBe(
+      WEBHOOK_SECRET,
+    );
   });
 
   it('moves an asset key to the current key', () => {
-    const sealed = underOld.sealAssetKey(ASSET, ASSET_KEY);
+    const sealed = underOld.sealAssetKey(ASSET, Redacted.make(ASSET_KEY));
     const resealed = rotated.resealAssetKey(ASSET, sealed);
     expect(resealed.keyId).toBe('test-2');
-    expect(rotated.openAssetKey(ASSET, resealed)).toBe(ASSET_KEY);
+    expect(Redacted.value(rotated.openAssetKey(ASSET, resealed))).toBe(
+      ASSET_KEY,
+    );
   });
 
   it('moves an OAuth token to the current key', () => {
-    const stored = underOld.sealOAuthToken(OAUTH, OAUTH_TOKEN);
+    const stored = underOld.sealOAuthToken(OAUTH, Redacted.make(OAUTH_TOKEN));
     const resealed = rotated.resealOAuthToken(OAUTH, stored);
     expect(parseOAuthTokenKeyId(resealed)).toBe('test-2');
-    expect(rotated.openOAuthToken(OAUTH, resealed)).toBe(OAUTH_TOKEN);
+    expect(Redacted.value(rotated.openOAuthToken(OAUTH, resealed))).toBe(
+      OAUTH_TOKEN,
+    );
   });
 
   it('refuses to re-seal a token that was never sealed', () => {
@@ -424,7 +486,7 @@ describe('the stored OAuth token form', () => {
     // Node's decoder ignores what it cannot read, so `…=` and `…` would
     // otherwise decrypt to the same thing and two stored strings would be one
     // value.
-    const stored = cipher.sealOAuthToken(OAUTH, OAUTH_TOKEN);
+    const stored = cipher.sealOAuthToken(OAUTH, Redacted.make(OAUTH_TOKEN));
     expect(() => cipher.openOAuthToken(OAUTH, `${stored}=`)).toThrow(
       /not canonically encoded/,
     );
@@ -433,7 +495,7 @@ describe('the stored OAuth token form', () => {
   it('reads its key id the way the rotation SQL does', () => {
     // `split_part(col, ':', 2)` is what the boot check and the rotation query
     // use; the two must agree for every id a keyring can hold.
-    const stored = cipher.sealOAuthToken(OAUTH, OAUTH_TOKEN);
+    const stored = cipher.sealOAuthToken(OAUTH, Redacted.make(OAUTH_TOKEN));
     expect(parseOAuthTokenKeyId(stored)).toBe(stored.split(':')[1]);
     expect(parseOAuthTokenKeyId(stored)).toBe('test-1');
   });
@@ -467,7 +529,10 @@ describe('what a failure says', () => {
     // `secret_key_id` and `key_id` are ordinary columns, so what comes back is
     // whatever is in them. A failure that repeated it would turn any write
     // around the application into a way to put arbitrary stored bytes in a log.
-    const sealed = cipher.sealWebhookSecret(WEBHOOK, WEBHOOK_SECRET);
+    const sealed = cipher.sealWebhookSecret(
+      WEBHOOK,
+      Redacted.make(WEBHOOK_SECRET),
+    );
     const error = thrown(() =>
       cipher.openWebhookSecret(WEBHOOK, {
         ...sealed,
@@ -489,7 +554,10 @@ describe('what a failure says', () => {
   });
 
   it('names neither the value nor the key when a read fails', () => {
-    const sealed = cipher.sealWebhookSecret(WEBHOOK, WEBHOOK_SECRET);
+    const sealed = cipher.sealWebhookSecret(
+      WEBHOOK,
+      Redacted.make(WEBHOOK_SECRET),
+    );
     const material = testKeyring().subkey('secrets', 'test-1').export();
     const cases = [
       () => cipher.openWebhookSecret({ ...WEBHOOK, teamId: 'other' }, sealed),
@@ -498,7 +566,7 @@ describe('what a failure says', () => {
       () =>
         cipher.openOAuthToken(
           { ...OAUTH, column: 'idToken' },
-          cipher.sealOAuthToken(OAUTH, OAUTH_TOKEN),
+          cipher.sealOAuthToken(OAUTH, Redacted.make(OAUTH_TOKEN)),
         ),
       () => cipher.openOAuthToken(OAUTH, OAUTH_TOKEN),
     ];
@@ -525,11 +593,19 @@ describe('the nonce generator', () => {
     // reproducible; everything else takes the CSPRNG.
     const random = vi.fn((bytes: number) => Buffer.alloc(bytes, 7));
     const cipher = createSecretsCipher(testKeyring(), { random });
-    const once = cipher.sealWebhookSecret(WEBHOOK, WEBHOOK_SECRET);
-    const twice = cipher.sealWebhookSecret(WEBHOOK, WEBHOOK_SECRET);
+    const once = cipher.sealWebhookSecret(
+      WEBHOOK,
+      Redacted.make(WEBHOOK_SECRET),
+    );
+    const twice = cipher.sealWebhookSecret(
+      WEBHOOK,
+      Redacted.make(WEBHOOK_SECRET),
+    );
     expect(random).toHaveBeenCalledWith(12);
     expect(once.ciphertext.equals(twice.ciphertext)).toBe(true);
-    expect(cipher.openWebhookSecret(WEBHOOK, once)).toBe(WEBHOOK_SECRET);
+    expect(Redacted.value(cipher.openWebhookSecret(WEBHOOK, once))).toBe(
+      WEBHOOK_SECRET,
+    );
   });
 
   it('refuses a generator that returns the wrong number of bytes', () => {
@@ -538,9 +614,9 @@ describe('the nonce generator', () => {
     const cipher = createSecretsCipher(testKeyring(), {
       random: () => randomBytes(8),
     });
-    expect(() => cipher.sealWebhookSecret(WEBHOOK, WEBHOOK_SECRET)).toThrow(
-      /must be 12 bytes/,
-    );
+    expect(() =>
+      cipher.sealWebhookSecret(WEBHOOK, Redacted.make(WEBHOOK_SECRET)),
+    ).toThrow(/must be 12 bytes/);
   });
 });
 

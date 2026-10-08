@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { getRouteApi, useBlocker } from '@tanstack/react-router';
+import { Redacted } from 'effect';
 import { ArrowDown, ArrowUp, Plus } from 'lucide-react';
 import {
   useCallback,
@@ -565,7 +566,7 @@ function ProtocolEditor({ address }: { address: DraftAddress }) {
     <ProtocolBuilder adapter={hostAdapter} protocolId={address.protocolId}>
       <EditorWorkspace
         address={address}
-        protocolName={draft.data.protocol.name}
+        protocolName={Redacted.value(draft.data.protocol.name)}
       />
     </ProtocolBuilder>
   );

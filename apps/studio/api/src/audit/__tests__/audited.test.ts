@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { assert, layer } from '@effect/vitest';
-import { Cause, Effect, Exit, Fiber, Layer, Schema } from 'effect';
+import { Cause, Effect, Exit, Fiber, Layer, Redacted, Schema } from 'effect';
 import { TestClock } from 'effect/testing';
 import { describe } from 'vitest';
 
@@ -42,9 +42,9 @@ const REQUEST_ID = '00000000-0000-4000-8000-00000000000a';
 const principal = Principal.of({
   kind: 'user',
   userId: Schema.decodeSync(UserId)('audited-actor'),
-  email: 'actor@example.test',
+  email: Redacted.make('actor@example.test'),
   emailVerified: true,
-  name: 'Audited Actor',
+  name: Redacted.make('Audited Actor'),
   locale: null,
   sessionId: 'audited-session',
 });
@@ -56,7 +56,7 @@ const ROLE_CHANGED: AuditEvents = [
     category: 'team_access',
     subjectType: 'team_member',
     subjectId: 'subject-user',
-    subjectLabel: 'Subject User',
+    subjectLabel: Redacted.make('Subject User'),
     resourceType: null,
     resourceId: null,
     resourceLabel: null,
@@ -81,7 +81,7 @@ const denied = () =>
         category: 'team_access',
         subjectType: 'team_member',
         subjectId: 'subject-user',
-        subjectLabel: 'Subject User',
+        subjectLabel: Redacted.make('Subject User'),
         resourceType: null,
         resourceId: null,
         resourceLabel: null,
@@ -483,7 +483,7 @@ describe.skipIf(!testDb)('audited', () => {
               changed(context.teamLabel, ROLE_CHANGED),
             ),
           );
-          assert.strictEqual(seen, 'Audited Team');
+          assert.strictEqual(Redacted.value(seen), 'Audited Team');
         }),
     );
   });

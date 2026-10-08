@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import process from 'node:process';
 
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 
 import { CurrentProtocolSchema } from '@codaco/protocol-validation';
 import { TEAM_GUC } from '@codaco/studio-sync/rls';
@@ -88,7 +88,7 @@ const liveStudy = Effect.fnUntraced(function* (
       ],
     ],
   );
-  return link.token;
+  return Redacted.value(link.token);
 });
 
 const program = Effect.fnUntraced(function* () {

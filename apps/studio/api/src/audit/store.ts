@@ -1,17 +1,22 @@
 import { randomUUID } from 'node:crypto';
 
 import { and, desc, eq, gte, inArray, isNull, lt, max } from 'drizzle-orm';
-import { Effect, Schema } from 'effect';
+import { Effect, Redacted, Schema } from 'effect';
 import { type Statement, type SqlError } from 'effect/sql';
 
 import { AuditActorKind } from '@codaco/studio-contract/schema/audit';
 import type { AuditActorFilter } from '@codaco/studio-contract/schema/audit';
 import { NotFound } from '@codaco/studio-contract/schema/errors';
+import { PrivateString } from '@codaco/studio-contract/schema/primitives';
 
 import { teams as teamsTable } from '../db/auth-schema.ts';
 import { sqlErrorsOnly, sqlErrorsOnlyBeside } from '../db/errors.ts';
 import { Transaction } from '../db/tenant.ts';
-import { parseAuditEventInput, type AuditEventInput } from './events.ts';
+import {
+  encodeAuditEventInput,
+  parseAuditEventInput,
+  type AuditEventInput,
+} from './events.ts';
 import { AUDIT_TABLES } from './schema.ts';
 
 const auditEvents = AUDIT_TABLES.auditEvents;
@@ -38,24 +43,27 @@ export const lockTeam: (
 
 export const lockedTeamLabel: (
   teamId: string,
-) => Effect.Effect<string, NotFound | SqlError.SqlError, Transaction> =
-  Effect.fn('audit.store.lockedTeamLabel')(function* (teamId: string) {
-    const { tx } = yield* Transaction;
-    const rows = yield* tx
-      .select({ name: teamsTable.name })
-      .from(teamsTable)
-      .where(eq(teamsTable.id, teamId))
-      .for('update');
-    const team = rows[0];
-    if (team === undefined) {
-      return yield* new NotFound({ detail: 'team not found' });
-    }
-    const label = team.name.trim();
-    if (label.length === 0) {
-      return yield* Effect.die(new Error('audit command team name is empty'));
-    }
-    return label.slice(0, 320);
-  }, sqlErrorsOnlyBeside);
+) => Effect.Effect<
+  Redacted.Redacted,
+  NotFound | SqlError.SqlError,
+  Transaction
+> = Effect.fn('audit.store.lockedTeamLabel')(function* (teamId: string) {
+  const { tx } = yield* Transaction;
+  const rows = yield* tx
+    .select({ name: teamsTable.name })
+    .from(teamsTable)
+    .where(eq(teamsTable.id, teamId))
+    .for('update');
+  const team = rows[0];
+  if (team === undefined) {
+    return yield* new NotFound({ detail: 'team not found' });
+  }
+  const label = team.name.trim();
+  if (label.length === 0) {
+    return yield* Effect.die(new Error('audit command team name is empty'));
+  }
+  return Redacted.make(label.slice(0, 320));
+}, sqlErrorsOnlyBeside);
 
 export type AuditEvent = AuditEventInput & {
   id: string;
@@ -68,7 +76,7 @@ export type AuditEvent = AuditEventInput & {
 export type StoredAuditEvent = {
   id: string;
   teamId: string;
-  teamLabel: string;
+  teamLabel: Redacted.Redacted;
   sequence: string;
   occurredAt: Date;
   eventType: string;
@@ -77,15 +85,15 @@ export type StoredAuditEvent = {
   outcome: string;
   actorKind: string;
   actorId: string | null;
-  actorLabel: string;
+  actorLabel: Redacted.Redacted;
   subjectType: string | null;
   subjectId: string | null;
-  subjectLabel: string | null;
+  subjectLabel: Redacted.Redacted | null;
   resourceType: string | null;
   resourceId: string | null;
-  resourceLabel: string | null;
+  resourceLabel: Redacted.Redacted | null;
   requestId: string;
-  details: Record<string, unknown>;
+  details: Redacted.Redacted<Record<string, unknown>>;
 };
 
 export type AuditListFilters = {
@@ -103,13 +111,15 @@ export type AuditListFilters = {
 
 export type AuditFacets = {
   eventTypes: string[];
-  actors: (AuditActorFilter & { label: string })[];
+  actors: (AuditActorFilter & { label: Redacted.Redacted })[];
   truncated: boolean;
 };
 
 type AuditEventRow = typeof auditEvents.$inferSelect;
 
-const AuditDetails = Schema.Record(Schema.String, Schema.Unknown);
+const AuditDetails = Schema.RedactedFromValue(
+  Schema.Record(Schema.String, Schema.Unknown),
+);
 const decodeDetails = Schema.decodeUnknownSync(AuditDetails);
 
 function storedEvent(row: AuditEventRow): AuditEvent {
@@ -122,9 +132,16 @@ function storedEvent(row: AuditEventRow): AuditEvent {
   };
 }
 
+const privateLabel = (label: string | null) =>
+  label === null ? null : Redacted.make(label);
+
 function storedRow(row: AuditEventRow): StoredAuditEvent {
   return {
     ...row,
+    teamLabel: Redacted.make(row.teamLabel),
+    actorLabel: Redacted.make(row.actorLabel),
+    subjectLabel: privateLabel(row.subjectLabel),
+    resourceLabel: privateLabel(row.resourceLabel),
     sequence: row.sequence.toString(),
     details: decodeDetails(row.details),
   };
@@ -151,7 +168,7 @@ export const append: (
   unvalidatedEvent: AuditEventInput,
   options?: { occurredAt?: Date },
 ) {
-  const event = parseAuditEventInput(unvalidatedEvent);
+  const event = encodeAuditEventInput(unvalidatedEvent);
   const { tx } = yield* Transaction;
   yield* lockTeam(event.teamId);
   const [previous] = yield* tx
@@ -252,7 +269,7 @@ const FacetEventType = Schema.Struct({ eventType: Schema.String });
 const FacetActor = Schema.Struct({
   kind: AuditActorKind,
   id: Schema.NullOr(Schema.String),
-  label: Schema.String,
+  label: PrivateString,
 });
 
 /**

@@ -1,3 +1,5 @@
+import type { Effect } from 'effect';
+
 import type { InstanceStatus as ContractInstanceStatus } from '@codaco/studio-contract/schema/status';
 import type { DeploymentMode } from '@codaco/studio-contract/surfaces';
 
@@ -49,7 +51,7 @@ export function getDeploymentStatus(mode: DeploymentMode): DeploymentStatus {
  * which is where the fallback is decided, because `status` must stay
  * answerable while the database is away.
  */
-export type InstallationReader = () => Promise<Installation | null>;
+export type InstallationReader = Effect.Effect<Installation | null>;
 
 /** Until an owner names the instance at first-run setup (#1909). */
 const DEFAULT_INSTANCE_NAME = 'Network Canvas Studio';

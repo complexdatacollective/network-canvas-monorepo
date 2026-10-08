@@ -29,7 +29,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { and, asc, desc, eq, gt, inArray, max, or, sql } from 'drizzle-orm';
-import { Context, Effect } from 'effect';
+import { Context, Effect, Redacted } from 'effect';
 import type { SqlError } from 'effect/sql';
 
 import type { Presence } from '@codaco/protocol-builder-core/contract/schemas';
@@ -233,7 +233,7 @@ export const connectSocket: (
           kind: 'socket',
           owner,
           userId: viewing.userId,
-          displayName: viewing.displayName,
+          displayName: Redacted.value(viewing.displayName),
           mode: viewing.mode,
           replicaId,
           expiresAt: expiryFromNow(),
@@ -241,7 +241,7 @@ export const connectSocket: (
         .onConflictDoUpdate({
           target: [connections.draftId, connections.connectionId],
           set: {
-            displayName: viewing.displayName,
+            displayName: Redacted.value(viewing.displayName),
             replicaId,
             expiresAt: expiryFromNow(),
           },
@@ -375,7 +375,7 @@ export const upsertContact: (
           kind: 'contact',
           owner,
           userId: presence.userId,
-          displayName: presence.displayName,
+          displayName: Redacted.value(presence.displayName),
           mode: presence.mode,
           replicaId,
           expiresAt: expiryFromNow(),
@@ -543,7 +543,7 @@ const groupPresence = (
     inDraft.set(row.socketId, {
       sessionId: row.socketId,
       userId: row.userId,
-      displayName: row.displayName,
+      displayName: Redacted.make(row.displayName),
       mode,
       ...(row.sectionId === null
         ? {}

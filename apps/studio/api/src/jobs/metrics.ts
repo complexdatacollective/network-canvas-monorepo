@@ -1,4 +1,4 @@
-import { Cause, Duration, Effect, Layer, Metric, Schedule } from 'effect';
+import { Duration, Effect, Layer, Metric, Schedule } from 'effect';
 
 import type { JobQueueName } from '@codaco/studio-sync/jobs';
 
@@ -58,7 +58,13 @@ export const recordQueueDepths = Effect.fn('JobQueueMetrics.record')(
         if (options.warned.has(declaration.name)) continue;
         options.warned.add(declaration.name);
         yield* Effect.logWarning(
-          `large queue backlog: ${declaration.name} holds ${waiting} jobs waiting to run, over its warning size of ${threshold}`,
+          'large queue backlog: jobs waiting to run exceed the queue warning size',
+        ).pipe(
+          Effect.annotateLogs({
+            queue: declaration.name,
+            waiting,
+            warning_size: threshold,
+          }),
         );
         continue;
       }
@@ -81,9 +87,7 @@ export const JobQueueMetrics = {
         yield* Effect.forkScoped(
           recordQueueDepths(options).pipe(
             Effect.catchCause((cause) =>
-              Effect.logError(
-                `the job metrics pass failed: ${Cause.pretty(cause)}`,
-              ),
+              Effect.logError('the job metrics pass failed', cause),
             ),
             Effect.repeat(
               Schedule.spaced(

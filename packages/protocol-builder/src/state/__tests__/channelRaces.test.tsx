@@ -1,9 +1,12 @@
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { render, waitFor } from '@testing-library/react';
-import { Effect, Schema } from 'effect';
+import { Effect, Redacted, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { ProtocolEventSchema } from '@codaco/protocol-builder-core/contract/schemas';
+import {
+  ProtocolEventSchema,
+  type Presence,
+} from '@codaco/protocol-builder-core/contract/schemas';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import {
   sectionId,
@@ -20,10 +23,11 @@ import {
   lockQueryKey,
   presenceQueryKey,
   useProtocolBuilderContext,
+  type LockState,
   type ProtocolBuilderAdapter,
   type ProtocolBuilderContextValue,
 } from '../context.ts';
-import { useEntityTypes, useSection } from '../hooks.ts';
+import { useEntityTypes, useSection, type CachedSection } from '../hooks.ts';
 
 /** A fresh idempotency key: every write below is its own intent. */
 let writes = 0;
@@ -72,8 +76,11 @@ function fixtureHost(): InMemoryHost {
   });
 }
 
-function sectionEntry(cache: Cache, id: ProtocolSectionId): unknown {
-  return cache.client.getQueryData(
+function sectionEntry(
+  cache: Cache,
+  id: ProtocolSectionId,
+): CachedSection | undefined {
+  return cache.client.getQueryData<CachedSection>(
     cache.context.adapter.rpcKey('GetSection', {
       protocolId: cache.context.protocolId,
       sectionId: id,
@@ -82,10 +89,8 @@ function sectionEntry(cache: Cache, id: ProtocolSectionId): unknown {
 }
 
 function labelOf(cache: Cache, id: ProtocolSectionId): unknown {
-  const entry = sectionEntry(cache, id) as
-    | { document?: Record<string, unknown> }
-    | undefined;
-  return entry?.document?.label;
+  const entry = sectionEntry(cache, id);
+  return entry === undefined ? undefined : Redacted.value(entry.document).label;
 }
 
 function sectionIds(cache: Cache): readonly string[] | undefined {
@@ -98,26 +103,19 @@ function sectionIds(cache: Cache): readonly string[] | undefined {
 }
 
 function holderName(cache: Cache): unknown {
-  const lock = cache.client.getQueryData(
+  const holder = cache.client.getQueryData<LockState>(
     lockQueryKey(cache.context.protocolId, INFORMATION),
-  );
-  return (lock as { holder?: { displayName?: string } } | undefined)?.holder
-    ?.displayName;
+  )?.holder;
+  return holder === undefined ? undefined : Redacted.value(holder.displayName);
 }
 
 function presentNames(cache: Cache): string[] {
-  const present = cache.client.getQueryData(
+  const present = cache.client.getQueryData<readonly Presence[]>(
     presenceQueryKey(cache.context.protocolId),
   );
-  return Array.isArray(present)
-    ? present
-        .map((entry: unknown) =>
-          typeof entry === 'object' && entry !== null
-            ? String((entry as { displayName?: unknown }).displayName)
-            : '',
-        )
-        .sort()
-    : [];
+  return (present ?? [])
+    .map((entry) => Redacted.value(entry.displayName))
+    .toSorted();
 }
 
 async function deleteInformation(host: InMemoryHost): Promise<void> {
@@ -140,7 +138,7 @@ async function renameInformation(
     protocolId: host.protocolId,
     requestId: nextRequestId(),
     sectionId: INFORMATION,
-    document: { ...held.document, label },
+    document: Redacted.make({ ...Redacted.value(held.document), label }),
     revision: held.revision,
   });
 }
@@ -200,12 +198,12 @@ const RACES: readonly Race[] = [
         protocolId: host.protocolId,
         requestId: nextRequestId(),
         kind: 'codebookNode',
-        document: {
+        document: Redacted.make({
           name: 'Place',
           color: 'node-color-seq-3',
           shape: { default: 'circle' },
           variables: {},
-        },
+        }),
       });
     },
     event: `revision:${PLACE}`,

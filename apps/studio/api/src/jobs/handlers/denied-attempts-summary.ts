@@ -1,4 +1,4 @@
-import { Cause, DateTime, Effect, Ref } from 'effect';
+import { Cause, DateTime, Effect, Redacted, Ref } from 'effect';
 import type { SqlError } from 'effect/sql';
 
 import type { NotFound } from '@codaco/studio-contract/schema/errors';
@@ -20,7 +20,6 @@ import {
 } from '../../audit/events.ts';
 import { type MaintenanceDatabase } from '../../db/client.ts';
 import { MaintenanceScope, Transaction } from '../../db/tenant.ts';
-import { causeError, deepestMessage } from '../errors.ts';
 import { maintenanceTeamAccess } from '../team-access.ts';
 import type { HandledJob, JobOutcome } from '../worker.ts';
 import {
@@ -84,8 +83,8 @@ const loadActor = Effect.fnUntraced(function* (actorId: string) {
   if (!row) return null;
   const actor: DeniedAuditActor = {
     userId: actorId,
-    email: row.email,
-    name: row.name,
+    email: Redacted.make(row.email),
+    name: Redacted.make(row.name),
   };
   return actor;
 });
@@ -136,8 +135,8 @@ export const deniedAttemptsSummary = (
     const actor = yield* loadActor(window.actorId);
     if (!actor) {
       yield* Effect.logError(
-        `${QUEUE}: discarding a summary for a user that no longer exists (team ${window.teamId}).`,
-      );
+        'discarding a summary for a user that no longer exists',
+      ).pipe(Effect.annotateLogs({ queue: QUEUE, team_id: window.teamId }));
       yield* store.discardClaim(claimKey);
       return;
     }
@@ -190,7 +189,9 @@ export const deniedAttemptsSummary = (
 
       if (!isDeniedAuditOperation(window.operation)) {
         yield* Effect.logError(
-          `${QUEUE}: discarding a summary for unknown operation ${JSON.stringify(window.operation)}.`,
+          'discarding a summary for an unknown operation',
+        ).pipe(
+          Effect.annotateLogs({ queue: QUEUE, operation: window.operation }),
         );
         yield* store.discardClaim(claimKey);
         continue;
@@ -209,14 +210,14 @@ export const deniedAttemptsSummary = (
           Cause.hasInterrupts(cause)
             ? Effect.interrupt
             : Effect.logWarning(
-                `${QUEUE}: a summary could not be appended to the audit log; it stays claimed for a later run.`,
+                'a summary could not be appended to the audit log; it stays claimed for a later run',
+                cause,
               ).pipe(
                 Effect.annotateLogs({
-                  teamId: window.teamId,
+                  queue: QUEUE,
+                  team_id: window.teamId,
                   operation: window.operation,
-                  suppressedCount: summary.suppressedCount,
-                  cause:
-                    deepestMessage(causeError(cause)) ?? Cause.pretty(cause),
+                  suppressed_count: summary.suppressedCount,
                   defect: Cause.hasDies(cause),
                 }),
               ),
@@ -230,8 +231,8 @@ export const deniedAttemptsSummary = (
     const store = yield* DeniedAttemptsStore;
     const fields = yield* store.drainScopeCounts;
     for (const [scope, count] of fields) {
-      yield* Effect.logWarning(
-        `Rate limit refused ${count} call(s) in scope ${scope}.`,
+      yield* Effect.logWarning('Rate limit refused calls in a scope').pipe(
+        Effect.annotateLogs({ scope, count }),
       );
     }
     return fields.size;
@@ -245,15 +246,25 @@ export const deniedAttemptsSummary = (
     MaintenanceDatabase | DeniedAttemptsStore
   > {
     const store = yield* DeniedAttemptsStore;
-    const label = `${QUEUE} ${job.id} attempt ${job.attempt}`;
+    const jobAnnotations = {
+      queue: QUEUE,
+      job_id: job.id,
+      attempt: job.attempt,
+    };
     if (!store.configured) {
-      yield* Effect.logInfo(`${label}: no rate limit store is configured`);
+      yield* Effect.logInfo('no rate limit store is configured').pipe(
+        Effect.annotateLogs(jobAnnotations),
+      );
       return 'completed';
     }
     const events = yield* summariseWindows();
     const scopes = yield* summariseScopes();
-    yield* Effect.logInfo(
-      `${label}: summary events ${events}, limiter scopes ${scopes}`,
+    yield* Effect.logInfo('denied-attempts summary written').pipe(
+      Effect.annotateLogs({
+        ...jobAnnotations,
+        summary_events: events,
+        limiter_scopes: scopes,
+      }),
     );
     return 'completed';
   });

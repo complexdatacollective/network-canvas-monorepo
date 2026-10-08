@@ -2,6 +2,7 @@ import { Schema } from 'effect';
 
 import { SUPPORTED_STUDIO_LOCALES } from '../locales.ts';
 import { TeamId } from './ids.ts';
+import { PrivateString } from './primitives.ts';
 
 const TeamMembershipSummary = Schema.Struct({
   teamId: TeamId,
@@ -14,9 +15,9 @@ const TeamMembershipSummary = Schema.Struct({
 
 export const Me = Schema.Struct({
   userId: Schema.String,
-  email: Schema.String,
+  email: PrivateString,
   emailVerified: Schema.Boolean,
-  name: Schema.String,
+  name: PrivateString,
   /*
     A plain string, NOT the supported-locale union: a stored tag this build no
     longer offers must fall back on the client rather than fail the whole of `me`.

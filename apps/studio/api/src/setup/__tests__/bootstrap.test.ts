@@ -1,5 +1,5 @@
 import { assert, layer } from '@effect/vitest';
-import { Cause, Effect, Exit } from 'effect';
+import { Cause, Effect, Exit, Redacted } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -95,13 +95,18 @@ describe.skipIf(!testDb)('the bootstrap token', () => {
         if (outcome.kind !== 'issued') throw new Error('expected a token');
 
         const stored = (yield* storedRow())?.bootstrap_token_hash ?? null;
-        assert.notStrictEqual(stored, outcome.token);
-        assert.notInclude(stored ?? '', outcome.token);
+        assert.notStrictEqual(stored, Redacted.value(outcome.token));
+        assert.notInclude(stored ?? '', Redacted.value(outcome.token));
         assert.strictEqual(stored, hashBootstrapToken(outcome.token));
         assert.match(stored ?? '', /^[0-9a-f]{64}$/);
-        assert.match(outcome.token, /^[A-Za-z0-9_-]{43}$/);
+        assert.match(Redacted.value(outcome.token), /^[A-Za-z0-9_-]{43}$/);
         assert.isTrue(bootstrapTokenMatches(outcome.token, stored));
-        assert.isFalse(bootstrapTokenMatches(`${outcome.token}x`, stored));
+        assert.isFalse(
+          bootstrapTokenMatches(
+            Redacted.make(`${Redacted.value(outcome.token)}x`),
+            stored,
+          ),
+        );
       }),
     );
 
@@ -117,7 +122,10 @@ describe.skipIf(!testDb)('the bootstrap token', () => {
           const second = yield* issue;
           if (second.kind !== 'issued') throw new Error('expected a token');
 
-          assert.notStrictEqual(second.token, first.token);
+          assert.notStrictEqual(
+            Redacted.value(second.token),
+            Redacted.value(first.token),
+          );
           const secondHash = (yield* storedRow())?.bootstrap_token_hash ?? null;
           assert.notStrictEqual(secondHash, firstHash);
           assert.isFalse(bootstrapTokenMatches(first.token, secondHash));
@@ -309,7 +317,7 @@ describe('the printed block', () => {
   ): string => {
     const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     try {
-      printBootstrapToken(outcome, publicUrl);
+      Effect.runSync(printBootstrapToken(outcome, publicUrl));
       return log.mock.calls.map((call) => String(call[0])).join('\n');
     } finally {
       log.mockRestore();
@@ -318,7 +326,7 @@ describe('the printed block', () => {
 
   it('names the token, where it is spent, and that it is shown once', () => {
     const block = printed(
-      { kind: 'issued', token: 'a-token' },
+      { kind: 'issued', token: Redacted.make('a-token') },
       'https://studio.example.org/',
     );
 
@@ -328,7 +336,7 @@ describe('the printed block', () => {
   });
 
   it('still names the path with no public URL configured', () => {
-    const block = printed({ kind: 'issued', token: 'a-token' });
+    const block = printed({ kind: 'issued', token: Redacted.make('a-token') });
 
     expect(block).toContain('/setup');
     expect(block).not.toContain('undefined');

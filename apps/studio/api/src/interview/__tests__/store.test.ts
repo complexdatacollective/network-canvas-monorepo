@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
-import { Effect, Option, Schema } from 'effect';
+import { Effect, Option, Redacted, Schema } from 'effect';
 import { describe, expect, test } from 'vitest';
 
 import {
@@ -35,7 +35,7 @@ import {
   tokenFor,
 } from './fixture.ts';
 
-const secretHashOf = (token: string) =>
+const secretHashOf = (token: Redacted.Redacted) =>
   Option.getOrThrow(parsePresentedToken(token)).secretHash;
 
 describe('a presented token', () => {
@@ -62,7 +62,7 @@ describe('a presented token', () => {
     ['a short secret', `team.${randomBytes(31).toString('base64url')}`],
     ['a secret that is not base64url', `team.${'+'.repeat(43)}`],
   ])('refuses %s', (_label, token) => {
-    expect(parsePresentedToken(token)).toEqual(Option.none());
+    expect(parsePresentedToken(Redacted.make(token))).toEqual(Option.none());
   });
 });
 
@@ -101,6 +101,9 @@ describe.skipIf(!testDb)('the interview store', () => {
             fixture.access,
             findLinkByTokenHash(secretHashOf(fixture.managedLink.token)),
           );
+          expect(
+            link?.participantCode && Redacted.value(link.participantCode),
+          ).toBe(fixture.participantCode);
           expect(link).toEqual({
             linkId: fixture.managedLink.id,
             studyId: fixture.studyId,
@@ -115,7 +118,7 @@ describe.skipIf(!testDb)('the interview store', () => {
             protocolVersionId: fixture.versionId,
             waveOpensAt: null,
             waveClosesAt: null,
-            participantCode: fixture.participantCode,
+            participantCode: expect.anything(),
           });
         }).pipe(Effect.orDie),
       );
@@ -202,17 +205,19 @@ describe.skipIf(!testDb)('the interview store', () => {
           const fixture = yield* seedInterviewFixture();
           const sessionId = yield* insertSession(fixture);
           const token = yield* tokenFor(fixture, sessionId);
+          const found = yield* TenantScope.open(
+            fixture.access,
+            findSessionByTokenHash(secretHashOf(token)),
+          );
           expect(
-            yield* TenantScope.open(
-              fixture.access,
-              findSessionByTokenHash(secretHashOf(token)),
-            ),
-          ).toEqual({
+            found?.participantCode && Redacted.value(found.participantCode),
+          ).toBe(fixture.participantCode);
+          expect(found).toEqual({
             sessionId,
             studyId: fixture.studyId,
             holderEpoch: 0,
             status: 'in_progress',
-            participantCode: fixture.participantCode,
+            participantCode: expect.anything(),
           });
         }).pipe(Effect.orDie),
       );
@@ -251,7 +256,7 @@ describe.skipIf(!testDb)('the interview store', () => {
           const sessionId = yield* insertSession(fixture);
           const first = yield* tokenFor(fixture, sessionId);
           const second = yield* tokenFor(fixture, sessionId);
-          const find = (token: string) =>
+          const find = (token: Redacted.Redacted) =>
             TenantScope.open(
               fixture.access,
               findSessionByTokenHash(secretHashOf(token)),

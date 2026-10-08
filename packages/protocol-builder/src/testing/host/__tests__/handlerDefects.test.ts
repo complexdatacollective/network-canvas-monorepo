@@ -1,3 +1,4 @@
+import { Redacted } from 'effect';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
@@ -108,7 +109,10 @@ describe.each(hosts)('a test host %s', (_, serve) => {
       protocolId: host.protocolId,
       requestId: 'write-after-defect',
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Written after a defect' },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: 'Written after a defect',
+      }),
       revision: held.revision,
     });
 
@@ -126,6 +130,6 @@ describe.each(hosts)('a test host %s', (_, serve) => {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
-    expect(read.document.label).toBe('Written after a defect');
+    expect(Redacted.value(read.document).label).toBe('Written after a defect');
   });
 });

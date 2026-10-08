@@ -32,11 +32,9 @@ export function skewMillis(measurement: {
   return measurement.database - (measurement.before + measurement.after) / 2;
 }
 
-export function skewWarning(skew: number): string | null {
+export function skewWarning(skew: number): 'behind' | 'ahead' | null {
   if (Math.abs(skew) < Duration.toMillis(SKEW_WARNING_THRESHOLD)) return null;
-  return `the job clock is ${(Math.abs(skew) / 1000).toFixed(1)}s ${
-    skew > 0 ? 'behind' : 'ahead of'
-  } the database; job timestamps are being corrected by that much`;
+  return skew > 0 ? 'behind' : 'ahead';
 }
 
 /** In a transaction, `now()` is the transaction's start time, as a job's own statements see it. */
@@ -77,11 +75,27 @@ const makeLayer = <R>(
         const measured = yield* measureSkew(onScope);
         MutableRef.set(skew, measured);
         const warning = skewWarning(measured);
-        if (warning !== null) yield* Effect.logWarning(warning);
+        if (warning === null) return;
+        yield* (
+          warning === 'behind'
+            ? Effect.logWarning(
+                'the job clock is behind the database; job timestamps are being corrected by that much',
+              )
+            : Effect.logWarning(
+                'the job clock is ahead of the database; job timestamps are being corrected by that much',
+              )
+        ).pipe(
+          Effect.annotateLogs({
+            skew_seconds: Number((Math.abs(measured) / 1000).toFixed(1)),
+          }),
+        );
       }).pipe(
         Effect.catchCause((cause) =>
           logFailedReading(
-            'the job clock could not be measured against the database; keeping the last correction',
+            (level) =>
+              Effect.logWithLevel(level)(
+                'the job clock could not be measured against the database; keeping the last correction',
+              ),
             cause,
           ),
         ),

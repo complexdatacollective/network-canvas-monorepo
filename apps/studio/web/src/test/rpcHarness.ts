@@ -1,4 +1,4 @@
-import { Effect, Layer } from 'effect';
+import { Effect, Layer, Option, Redacted, Schema } from 'effect';
 import type { RpcGroup } from 'effect/rpc';
 import { RpcTest } from 'effect/rpc';
 import { onTestFinished } from 'vitest';
@@ -79,9 +79,9 @@ const unimplementedHandlers: StudioHandlers = {
 export const HARNESS_PRINCIPAL: Principal['Service'] = Principal.of({
   kind: 'user',
   userId: UserId.make('harness-user'),
-  email: 'researcher@example.org',
+  email: Redacted.make('researcher@example.org'),
   emailVerified: true,
-  name: 'Harness Researcher',
+  name: Redacted.make('Harness Researcher'),
   locale: null,
   sessionId: 'harness-session',
 });
@@ -107,10 +107,28 @@ const authenticatedLayer = (
     ),
   );
 
+export const onTheWire = (
+  group: {
+    readonly requests: ReadonlyMap<
+      string,
+      { readonly payloadSchema: Schema.Codec<unknown, unknown> }
+    >;
+  },
+  tag: string,
+  payload: unknown,
+): unknown => {
+  const rpc = group.requests.get(tag);
+  if (rpc === undefined) return payload;
+  return Option.getOrElse(
+    Schema.encodeUnknownOption(rpc.payloadSchema)(payload),
+    () => payload,
+  );
+};
+
 const recording =
   (client: StudioRpcClient, calls: RpcCall[]): StudioRpcClient =>
   (tag, payload, options) => {
-    calls.push({ tag, payload });
+    calls.push({ tag, payload: onTheWire(StudioRpcs, tag, payload) });
     return client(tag, payload, options);
   };
 

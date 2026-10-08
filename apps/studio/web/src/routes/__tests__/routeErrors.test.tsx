@@ -8,7 +8,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 import type { ReactElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -53,7 +53,7 @@ const DRAFT_ID = '4d0f5f2e-0000-4000-8000-000000000003';
 
 const STUDY = {
   id: StudyId.make(STUDY_ID),
-  name: 'Shell proof',
+  name: Redacted.make('Shell proof'),
   state: 'draft',
   participationMode: 'managed',
   protocolId: ProtocolId.make(PROTOCOL_ID),
@@ -180,9 +180,9 @@ beforeEach(() => {
     'me': () =>
       Effect.succeed({
         userId: 'user-1',
-        email: 'researcher@example.org',
+        email: Redacted.make('researcher@example.org'),
         emailVerified: true,
-        name: 'Researcher',
+        name: Redacted.make('Researcher'),
         locale: null,
         teams: [{ teamId: TeamId.make(fixtures.TEAM.id), role: 'owner' }],
       }),

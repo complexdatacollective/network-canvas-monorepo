@@ -31,9 +31,8 @@ export const SectionIdSchema = Schema.String.pipe(
   }),
 );
 
-export const SectionDocumentSchema = Schema.Record(
-  Schema.String,
-  Schema.Unknown,
+export const SectionDocumentSchema = Schema.RedactedFromValue(
+  Schema.Record(Schema.String, Schema.Unknown),
 );
 
 /**
@@ -65,7 +64,7 @@ export const CursorSchema = NonEmptyString;
 export const PresenceSchema = Schema.Struct({
   sessionId: NonEmptyString,
   userId: NonEmptyString,
-  displayName: NonEmptyString,
+  displayName: Schema.RedactedFromValue(NonEmptyString),
   sectionId: Schema.optionalKey(SectionIdSchema),
   mode: Schema.Literals(['editing', 'viewing']),
 });
@@ -186,7 +185,7 @@ export const ResourceStatusSchema = Schema.Literals(['committed', 'staged']);
 export const ResourceDescriptorSchema = Schema.Struct({
   id: NonEmptyString,
   kind: ResourceKindSchema,
-  name: Schema.String,
+  name: Schema.RedactedFromValue(Schema.String),
   status: ResourceStatusSchema,
   /**
    * The file these bytes are held as: the one the researcher picked while the
@@ -194,7 +193,7 @@ export const ResourceDescriptorSchema = Schema.Struct({
    * committed. A host derives the committed one from the content, so two
    * imports of different bytes under one filename stay two assets.
    */
-  source: Schema.optionalKey(Schema.String),
+  source: Schema.optionalKey(Schema.RedactedFromValue(Schema.String)),
   byteLength: Schema.optionalKey(NonNegativeInt),
   contentType: Schema.optionalKey(Schema.String),
 });
@@ -389,7 +388,7 @@ export const StageResourceInputSchema = Schema.Struct({
     Schema.Struct({
       kind: Schema.Literal('content'),
       contentKind: ResourceContentKindSchema,
-      name: NonEmptyString,
+      name: Schema.RedactedFromValue(NonEmptyString),
       /**
        * Filename the manifest will record, refused here on the terms the
        * manifest itself is validated on: a promoted `source` becomes a zip
@@ -397,25 +396,27 @@ export const StageResourceInputSchema = Schema.Struct({
        * either escapes the archive or produces a protocol that cannot be
        * published.
        */
-      source: Schema.String.check(
-        Schema.makeFilter(isSafeAssetSource, {
-          message:
-            'Asset source must be a filename without path separators or ".."',
-        }),
+      source: Schema.RedactedFromValue(
+        Schema.String.check(
+          Schema.makeFilter(isSafeAssetSource, {
+            message:
+              'Asset source must be a filename without path separators or ".."',
+          }),
+        ),
       ),
       contentType: NonEmptyString,
-      bytes: Schema.Uint8Array,
+      bytes: Schema.RedactedFromValue(Schema.Uint8Array),
     }),
     Schema.Struct({
       kind: Schema.Literal('secret'),
-      name: NonEmptyString,
+      name: Schema.RedactedFromValue(NonEmptyString),
       /**
        * The key itself. A picker holds only the asset id, because that is what
        * a stage field stores — but the value is not hidden from the editor:
        * `inspect` answers with it, and promotion writes it into the asset
        * manifest, which is part of the protocol the researcher sends on.
        */
-      value: NonEmptyString,
+      value: Schema.RedactedFromValue(NonEmptyString),
     }),
   ]),
 });
@@ -470,8 +471,10 @@ export const ResourceInspectionSchema = Schema.Struct({
    * map. An editor that could not read it could only draw the map the
    * participant will not see.
    */
-  value: Schema.optionalKey(Schema.String),
-  variableNames: Schema.optionalKey(Schema.Array(Schema.String)),
+  value: Schema.optionalKey(Schema.RedactedFromValue(Schema.String)),
+  variableNames: Schema.optionalKey(
+    Schema.RedactedFromValue(Schema.Array(Schema.String)),
+  ),
   counts: Schema.optionalKey(
     Schema.Struct({ nodes: Schema.Finite, edges: Schema.Finite }),
   ),
@@ -483,7 +486,7 @@ export const ResourceInspectionSchema = Schema.Struct({
 
 export const ResourcePreviewSchema = Schema.Struct({
   resourceId: NonEmptyString,
-  url: NonEmptyString,
+  url: Schema.RedactedFromValue(NonEmptyString),
   /** Epoch milliseconds after which `url` may stop resolving. */
   expiresAt: Schema.optionalKey(Schema.Finite),
 });

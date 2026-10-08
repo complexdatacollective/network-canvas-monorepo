@@ -1,5 +1,5 @@
 import { assert, describe, layer } from '@effect/vitest';
-import { Duration, Effect, Fiber, Layer } from 'effect';
+import { Duration, Effect, Fiber, Layer, Redacted } from 'effect';
 import { FetchHttpClient } from 'effect/http';
 
 import { ownerRows, testDb } from '../../__tests__/support/database.ts';
@@ -304,16 +304,23 @@ describe.skipIf(!testDb)('the update check', () => {
             const mail = yield* RecordedMail;
 
             assert.strictEqual(outcomeOf(yield* run), 'completed');
-            assert.deepStrictEqual(mail.updateNotices, [
-              {
-                email: 'owner@example.test',
-                name: 'Ada Owner',
-                version: NEWER,
-                notesUrl: manifestOf(NEWER).notes,
-                schemaChange: false,
-                deploymentMode: 'self-hosted',
-              },
-            ]);
+            assert.deepStrictEqual(
+              mail.updateNotices.map((notice) => ({
+                ...notice,
+                email: Redacted.value(notice.email),
+                name: Redacted.value(notice.name),
+              })),
+              [
+                {
+                  email: 'owner@example.test',
+                  name: 'Ada Owner',
+                  version: NEWER,
+                  notesUrl: manifestOf(NEWER).notes,
+                  schemaChange: false,
+                  deploymentMode: 'self-hosted',
+                },
+              ],
+            );
             assert.strictEqual(yield* notifiedVersion, NEWER);
 
             // The same job again, as a replay after a crash or a re-enqueue.
@@ -429,10 +436,10 @@ describe.skipIf(!testDb)('the update check', () => {
             assert.deepStrictEqual((yield* RecordedMail).updateNotices, []);
 
             const mentioning = (version: string) =>
-              logs.messages.filter(
-                (line) =>
-                  line.includes('no mail transport is configured') &&
-                  line.includes(`Studio ${version} is available`),
+              logs.records.filter(
+                ({ message, annotations }) =>
+                  message.includes('no mail transport is configured') &&
+                  annotations['version'] === version,
               );
             assert.strictEqual(
               mentioning(NEWER).length,
@@ -469,7 +476,7 @@ describe.skipIf(!testDb)('the update check', () => {
             assert.strictEqual(outcomeOf(yield* run), 'completed');
             assert.deepStrictEqual(
               mail.updateNotices.map((notice) => [
-                notice.email,
+                Redacted.value(notice.email),
                 notice.version,
               ]),
               [['owner@example.test', NEWER]],

@@ -32,6 +32,7 @@ export async function startStudioServer(
     readonly unaryBodyLimit?: number;
     readonly clock?: Clock.Clock;
     readonly doorbell?: Layer.Layer<Doorbell>;
+    readonly observability?: Layer.Layer<never>;
   } = {},
 ): Promise<{ origin: string; dispose: () => Promise<void> }> {
   const EnvironmentLive = Layer.succeed(Environment, env);
@@ -64,9 +65,15 @@ export async function startStudioServer(
     options.clock === undefined
       ? bounded
       : bounded.pipe(Layer.provide(Layer.succeed(Clock.Clock)(options.clock)));
+  const observed =
+    options.observability === undefined
+      ? clocked
+      : clocked.pipe(Layer.provide(options.observability));
 
   const scope = Scope.makeUnsafe();
-  const context = await Effect.runPromise(Layer.buildWithScope(clocked, scope));
+  const context = await Effect.runPromise(
+    Layer.buildWithScope(observed, scope),
+  );
   const address = Context.get(context, HttpServer.HttpServer).address;
   if (NetAddress.isUnixPathAddress(address)) {
     throw new Error('the test server did not bind a TCP port');

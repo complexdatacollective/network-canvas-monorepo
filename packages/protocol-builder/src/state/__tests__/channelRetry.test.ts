@@ -1,4 +1,4 @@
-import { Stream } from 'effect';
+import { Redacted, Stream } from 'effect';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
@@ -113,7 +113,13 @@ describe('the protocol channel resuming', () => {
       host.protocolId,
       (event) => {
         if (event.type === 'revision' && event.sectionId === INFORMATION) {
-          labels.push(String(event.document?.label));
+          labels.push(
+            String(
+              event.document === undefined
+                ? undefined
+                : Redacted.value(event.document).label,
+            ),
+          );
         }
       },
       controller.signal,
@@ -130,7 +136,7 @@ describe('the protocol channel resuming', () => {
         protocolId: host.protocolId,
         requestId: `resume-${++writes}`,
         sectionId: INFORMATION,
-        document: { ...held.document, label },
+        document: Redacted.make({ ...Redacted.value(held.document), label }),
         revision: held.revision,
       });
 

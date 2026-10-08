@@ -1,4 +1,4 @@
-import { Exit, Schema } from 'effect';
+import { Exit, Redacted, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { ProtocolBuilderGroup } from '@codaco/protocol-builder-core/contract';
@@ -17,6 +17,7 @@ import {
 } from '../createInMemoryHost.ts';
 import { sectionsFromProtocol } from '../sectionsFromProtocol.ts';
 import { committedSource } from './committedSource.ts';
+import { revealed } from './revealed.ts';
 
 /** The edit these calls are made from: one editor, open throughout. */
 const EDIT = 'edit-1';
@@ -125,7 +126,7 @@ async function watchCursors(
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label },
+      document: Redacted.make({ ...Redacted.value(held.document), label }),
       revision: held.revision,
     });
   }
@@ -156,10 +157,10 @@ async function stagePortraitBytes(
     request: {
       kind: 'content',
       contentKind: 'image',
-      name: 'Portrait',
-      source: 'portrait.png',
+      name: Redacted.make('Portrait'),
+      source: Redacted.make('portrait.png'),
       contentType: 'image/png',
-      bytes,
+      bytes: Redacted.make(bytes),
     },
   });
   if (staged.status !== 'ok') throw new Error(staged.failure.message);
@@ -176,7 +177,7 @@ async function committedBytes(
     resourceId,
   });
   if (preview.status !== 'ok') throw new Error(preview.failure.message);
-  return preview.data.url;
+  return Redacted.value(preview.data.url);
 }
 
 async function dataUrl(bytes: Uint8Array): Promise<string> {
@@ -203,10 +204,10 @@ async function stagePortrait(subject: InMemoryHost): Promise<string> {
     request: {
       kind: 'content',
       contentKind: 'image',
-      name: 'Portrait',
-      source: 'portrait.png',
+      name: Redacted.make('Portrait'),
+      source: Redacted.make('portrait.png'),
       contentType: 'image/png',
-      bytes: new Uint8Array([1, 2, 3]),
+      bytes: Redacted.make(new Uint8Array([1, 2, 3])),
     },
   });
   if (staged.status !== 'ok') throw new Error(staged.failure.message);
@@ -227,12 +228,12 @@ async function stageRoster(
     request: {
       kind: 'content',
       contentKind: 'network',
-      name: 'Roster',
-      source,
+      name: Redacted.make('Roster'),
+      source: Redacted.make(source),
       contentType,
       // jsdom's `TextEncoder` answers with Node's `Uint8Array`, which the
       // contract's `instanceof` check does not know.
-      bytes: new Uint8Array(new TextEncoder().encode(text)),
+      bytes: Redacted.make(new Uint8Array(new TextEncoder().encode(text))),
     },
   });
   if (staged.status !== 'ok') throw new Error(staged.failure.message);
@@ -276,7 +277,10 @@ describe('the in-memory host', () => {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...before.document, label: 'Renamed by a non-holder' },
+      document: Redacted.make({
+        ...before.document,
+        label: 'Renamed by a non-holder',
+      }),
       revision: before.revision,
     });
 
@@ -300,21 +304,25 @@ describe('the in-memory host', () => {
       sectionId: INFORMATION,
     });
     expect(readOnly.lock).toBe('readOnly');
-    expect(readOnly.lock === 'readOnly' && readOnly.holder.displayName).toBe(
-      'Grace',
-    );
+    expect(
+      readOnly.lock === 'readOnly' &&
+        Redacted.value(readOnly.holder.displayName),
+    ).toBe('Grace');
 
     const { refusal, isSuccess } = await attempt(subject.adapter, 'Submit', {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...readOnly.document, label: 'Renamed by a spectator' },
+      document: Redacted.make({
+        ...Redacted.value(readOnly.document),
+        label: 'Renamed by a spectator',
+      }),
       revision: readOnly.revision,
     });
 
     expect(isSuccess).toBe(false);
     expect(refusal?._tag).toBe('NotLockHolder');
-    expect(refusalData(refusal)).toMatchObject({
+    expect(revealed(refusalData(refusal))).toMatchObject({
       sectionId: INFORMATION,
       holder: { displayName: 'Grace' },
     });
@@ -333,7 +341,10 @@ describe('the in-memory host', () => {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Renamed by the holder' },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: 'Renamed by the holder',
+      }),
       revision: held.revision,
     });
 
@@ -353,7 +364,7 @@ describe('the in-memory host', () => {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { id: 'information-1', type: 'NotAnInterface' },
+      document: Redacted.make({ id: 'information-1', type: 'NotAnInterface' }),
       revision: subject.store.read(INFORMATION).revision,
     });
 
@@ -371,7 +382,7 @@ describe('the in-memory host', () => {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       kind: 'stage',
-      document: withoutId,
+      document: Redacted.make(withoutId),
       position: 1,
     });
 
@@ -406,7 +417,7 @@ describe('the in-memory host', () => {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       kind: 'stage',
-      document: informationNaming(subject, staged),
+      document: Redacted.make(informationNaming(subject, staged)),
       promote: { editId: EDIT, resourceIds: [staged] },
     });
 
@@ -439,14 +450,14 @@ describe('the in-memory host', () => {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       kind: 'stage',
-      document: informationNaming(subject, 'never-staged'),
+      document: Redacted.make(informationNaming(subject, 'never-staged')),
       promote: { editId: EDIT, resourceIds: ['never-staged'] },
     });
 
     expect(isSuccess).toBe(false);
     expect(refusal?._tag).toBe('PromotionFailed');
     // No section id: the host mints one only for a create it is going to make.
-    expect(refusalData(refusal)).toEqual({
+    expect(revealed(refusalData(refusal))).toEqual({
       failure: {
         reason: 'not-found',
         message: 'no such staged resource',
@@ -473,7 +484,7 @@ describe('the in-memory host', () => {
         // lost.
         requestId: 'write-again',
         kind: 'stage',
-        document: informationNaming(subject, staged),
+        document: Redacted.make(informationNaming(subject, staged)),
         promote: { editId: EDIT, resourceIds: [staged] },
       });
 
@@ -486,7 +497,7 @@ describe('the in-memory host', () => {
     // never told about the first.
     expect(again.sectionId).toBe(first.sectionId);
     expect(again.revision).toEqual(first.revision);
-    expect(again.promoted).toEqual(first.promoted);
+    expect(revealed(again.promoted)).toEqual(revealed(first.promoted));
     expect(stageOrder(subject)).toEqual(order);
   });
 
@@ -496,7 +507,7 @@ describe('the in-memory host', () => {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       kind: 'stage',
-      document: { type: 'NotAnInterface' },
+      document: Redacted.make({ type: 'NotAnInterface' }),
     });
 
     expect(isSuccess).toBe(false);
@@ -524,7 +535,7 @@ describe('the in-memory host', () => {
 
     expect(isSuccess).toBe(false);
     expect(refusal?._tag).toBe('SectionsLocked');
-    expect(refusalData(refusal)).toMatchObject({
+    expect(revealed(refusalData(refusal))).toMatchObject({
       blocked: [{ sectionId: PERSON, holder: { displayName: 'Grace' } }],
     });
 
@@ -586,7 +597,7 @@ describe('the in-memory host', () => {
     // so rather than leaving them naming a variable that is gone.
     expect(isSuccess).toBe(false);
     expect(refusal?._tag).toBe('ReferencesRemain');
-    expect(refusalData(refusal)).toMatchObject({
+    expect(revealed(refusalData(refusal))).toMatchObject({
       remaining: expect.arrayContaining([
         { sectionId: QUICK_ADD, path: ['quickAdd'] },
         { sectionId: NAME_GENERATOR, path: ['form', 'fields', 0, 'variable'] },
@@ -614,7 +625,7 @@ describe('the in-memory host', () => {
 
     expect(isSuccess).toBe(false);
     expect(refusal?._tag).toBe('ReferencesRemain');
-    expect(refusalData(refusal)).toMatchObject({
+    expect(revealed(refusalData(refusal))).toMatchObject({
       remaining: expect.arrayContaining([
         { sectionId: QUICK_ADD, path: ['subject', 'type'] },
       ]),
@@ -652,7 +663,7 @@ describe('the in-memory host', () => {
       protocolId: subject.protocolId,
       sectionId: INFORMATION,
     });
-    const items = read.document.items;
+    const items = Redacted.value(read.document).items;
     if (!Array.isArray(items)) throw new Error('the fixture has no items');
 
     items.push({ id: 'smuggled', type: 'text', content: 'not submitted' });
@@ -678,10 +689,10 @@ describe('the in-memory host', () => {
           request: {
             kind: 'content',
             contentKind: 'image',
-            name: 'Portrait',
-            source: 'portrait.png',
+            name: Redacted.make('Portrait'),
+            source: Redacted.make('portrait.png'),
             contentType: 'image/png',
-            bytes: new Uint8Array([1, 2, 3]),
+            bytes: Redacted.make(new Uint8Array([1, 2, 3])),
           },
         })
       ).refusal?._tag,
@@ -690,7 +701,7 @@ describe('the in-memory host', () => {
           protocolId: elsewhere,
           requestId: nextRequestId(),
           sectionId: INFORMATION,
-          document: subject.store.read(INFORMATION).document,
+          document: Redacted.make(subject.store.read(INFORMATION).document),
           revision: subject.store.read(INFORMATION).revision,
           promote: { editId: EDIT, resourceIds: ['whatever'] },
         })
@@ -737,7 +748,11 @@ describe('the in-memory host', () => {
       protocolId: subject.protocolId,
       editId: EDIT,
       requestId: 'request-1',
-      request: { kind: 'secret', name: 'Mapbox token', value: 'pk.secret' },
+      request: {
+        kind: 'secret',
+        name: Redacted.make('Mapbox token'),
+        value: Redacted.make('pk.secret'),
+      },
     });
     if (staged.status !== 'ok') throw new Error('staging a secret failed');
     const resourceId = staged.data.descriptor.id;
@@ -748,7 +763,9 @@ describe('the in-memory host', () => {
       resourceId,
     });
     expect(
-      stagedInspection.status === 'ok' && stagedInspection.data.value,
+      stagedInspection.status === 'ok' &&
+        stagedInspection.data.value !== undefined &&
+        Redacted.value(stagedInspection.data.value),
     ).toBe('pk.secret');
 
     const promoted = await submitHeld(subject, INFORMATION, {
@@ -769,7 +786,9 @@ describe('the in-memory host', () => {
       },
     );
     expect(
-      committedInspection.status === 'ok' && committedInspection.data.value,
+      committedInspection.status === 'ok' &&
+        committedInspection.data.value !== undefined &&
+        Redacted.value(committedInspection.data.value),
     ).toBe('pk.secret');
   });
 
@@ -782,10 +801,10 @@ describe('the in-memory host', () => {
       request: {
         kind: 'content',
         contentKind: 'image',
-        name: 'Portrait',
-        source: 'portrait.png',
+        name: Redacted.make('Portrait'),
+        source: Redacted.make('portrait.png'),
         contentType: 'image/png',
-        bytes: new Uint8Array([1, 2, 3]),
+        bytes: Redacted.make(new Uint8Array([1, 2, 3])),
       },
     });
     if (staged.status !== 'ok') throw new Error('staging failed');
@@ -806,7 +825,7 @@ describe('the in-memory host', () => {
     // The answer to the first can be lost; the retry carries the same id, and
     // what it is told is what was committed rather than a refusal it cannot
     // act on — and the manifest is not written a second time.
-    expect(first.promoted).toEqual(again.promoted);
+    expect(revealed(first.promoted)).toEqual(revealed(again.promoted));
     expect(subject.store.read(sectionId({ kind: 'assets' }))).toEqual(
       committed,
     );
@@ -829,7 +848,10 @@ describe('the in-memory host', () => {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Renamed beside a bad promotion' },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: 'Renamed beside a bad promotion',
+      }),
       revision: held.revision,
       promote: { editId: EDIT, resourceIds: ['never-staged'] },
     });
@@ -839,7 +861,7 @@ describe('the in-memory host', () => {
     // half-written state the two-call shape used to allow.
     expect(isSuccess).toBe(false);
     expect(refusal?._tag).toBe('PromotionFailed');
-    expect(refusalData(refusal)).toMatchObject({
+    expect(revealed(refusalData(refusal))).toMatchObject({
       sectionId: INFORMATION,
       failure: { reason: 'not-found', resourceId: 'never-staged' },
     });
@@ -858,10 +880,10 @@ describe('the in-memory host', () => {
       request: {
         kind: 'content',
         contentKind: 'image',
-        name: 'Portrait',
-        source: 'portrait.png',
+        name: Redacted.make('Portrait'),
+        source: Redacted.make('portrait.png'),
         contentType: 'image/png',
-        bytes: new Uint8Array([1, 2, 3]),
+        bytes: Redacted.make(new Uint8Array([1, 2, 3])),
       },
     });
     if (staged.status !== 'ok') throw new Error('staging failed');
@@ -901,7 +923,7 @@ describe('the in-memory host', () => {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       kind: 'stage',
-      document: informationNaming(subject, second),
+      document: Redacted.make(informationNaming(subject, second)),
       promote: { editId: OTHER_EDIT, resourceIds: [second] },
     });
 
@@ -950,7 +972,7 @@ describe('the in-memory host', () => {
 
     expect(isSuccess).toBe(false);
     expect(refusal?._tag).toBe('SectionsLocked');
-    expect(refusalData(refusal)).toMatchObject({
+    expect(revealed(refusalData(refusal))).toMatchObject({
       blocked: [{ sectionId: INFORMATION, holder: { displayName: 'Grace' } }],
     });
     expect(subject.store.has(INFORMATION)).toBe(true);
@@ -971,7 +993,7 @@ describe('the in-memory host', () => {
 
     expect(isSuccess).toBe(false);
     expect(refusal?._tag).toBe('SectionsLocked');
-    expect(refusalData(refusal)).toMatchObject({
+    expect(revealed(refusalData(refusal))).toMatchObject({
       blocked: [{ sectionId: STAGE_ORDER, holder: { displayName: 'Grace' } }],
     });
     expect(subject.store.has(INFORMATION)).toBe(true);
@@ -985,11 +1007,11 @@ describe('the in-memory host', () => {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       kind: 'codebookEgo',
-      document: {
+      document: Redacted.make({
         variables: {
           ego_age: { name: 'ego_age', type: 'number', component: 'Number' },
         },
-      },
+      }),
     });
 
     // Adding the first ego attribute is what creates the section, and there is
@@ -1009,12 +1031,12 @@ describe('the in-memory host', () => {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       kind: 'codebookEgo',
-      document: { variables: {} },
+      document: Redacted.make({ variables: {} }),
     });
 
     expect(isSuccess).toBe(false);
     expect(refusal?._tag).toBe('SectionExists');
-    expect(refusalData(refusal)).toMatchObject({ sectionId: EGO });
+    expect(revealed(refusalData(refusal))).toMatchObject({ sectionId: EGO });
     expect(subject.store.read(EGO)).toEqual(before);
   });
 
@@ -1044,7 +1066,7 @@ describe('the in-memory host', () => {
     // leave the protocol naming a variable that no longer exists.
     expect(isSuccess).toBe(false);
     expect(refusal?._tag).toBe('SectionsLocked');
-    expect(refusalData(refusal)).toMatchObject({
+    expect(revealed(refusalData(refusal))).toMatchObject({
       blocked: [{ sectionId: ALTER_FORM, holder: { displayName: 'Ada' } }],
     });
     expect(fieldVariables(subject.store.read(ALTER_FORM).document)).toEqual(
@@ -1088,7 +1110,10 @@ describe('the in-memory host', () => {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Saved after the stream ended' },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: 'Saved after the stream ended',
+      }),
       revision: held.revision,
     });
     expect(written.revision.sequence).toBeGreaterThan(held.revision.sequence);
@@ -1106,10 +1131,10 @@ describe('the in-memory host', () => {
       request: {
         kind: 'content',
         contentKind: 'image',
-        name: 'Portrait',
-        source: '../portrait.png',
+        name: Redacted.make('Portrait'),
+        source: Redacted.make('../portrait.png'),
         contentType: 'image/png',
-        bytes: new Uint8Array([1, 2, 3]),
+        bytes: Redacted.make(new Uint8Array([1, 2, 3])),
       },
     });
 
@@ -1131,10 +1156,10 @@ describe('the in-memory host', () => {
       request: {
         kind: 'content',
         contentKind: 'image',
-        name: 'Empty',
-        source: 'empty.png',
+        name: Redacted.make('Empty'),
+        source: Redacted.make('empty.png'),
         contentType: 'image/png',
-        bytes: new Uint8Array(),
+        bytes: Redacted.make(new Uint8Array()),
       },
     });
 
@@ -1166,10 +1191,10 @@ describe('the in-memory host', () => {
       request: {
         kind: 'content',
         contentKind: 'image',
-        name: 'Portrait',
-        source: 'portrait.png',
+        name: Redacted.make('Portrait'),
+        source: Redacted.make('portrait.png'),
         contentType: 'image/png',
-        bytes: PORTRAIT_BYTES(),
+        bytes: Redacted.make(PORTRAIT_BYTES()),
       },
     });
     const cancelled = await subject.adapter.rpcCall('ResourcesDiscard', {
@@ -1205,7 +1230,7 @@ describe('the in-memory host', () => {
     // The names and counts are in the bytes and nowhere else: a picker showing
     // a roster's summary, and a field offering its columns, have only what
     // this answers.
-    expect(inspected).toMatchObject({
+    expect(revealed(inspected)).toMatchObject({
       status: 'ok',
       data: {
         counts: { nodes: 2, edges: 0 },
@@ -1273,7 +1298,11 @@ describe('the in-memory host', () => {
       protocolId: subject.protocolId,
       editId: EDIT,
       requestId: 'request-1',
-      request: { kind: 'secret', name: 'Mapbox token', value: 'pk.secret' },
+      request: {
+        kind: 'secret',
+        name: Redacted.make('Mapbox token'),
+        value: Redacted.make('pk.secret'),
+      },
     });
     if (staged.status !== 'ok') throw new Error('staging a secret failed');
 
@@ -1329,10 +1358,10 @@ describe('the in-memory host', () => {
       request: {
         kind: 'content',
         contentKind: 'image',
-        name: 'Portrait',
-        source: 'portrait.png',
+        name: Redacted.make('Portrait'),
+        source: Redacted.make('portrait.png'),
         contentType: 'image/png',
-        bytes: new Uint8Array([1, 2, 3]),
+        bytes: Redacted.make(new Uint8Array([1, 2, 3])),
       },
     });
     if (staged.status !== 'ok') throw new Error('staging failed');
@@ -1357,7 +1386,7 @@ describe('the in-memory host', () => {
 
     // The answer to the first can be lost. What the retry is told is what that
     // attempt wrote — the same revision, not a second one nothing changed in.
-    expect(again).toEqual(first);
+    expect(revealed(again)).toEqual(revealed(first));
     expect(subject.store.read(INFORMATION)).toEqual(committed);
 
     await subject.adapter.rpcCall('ReleaseLock', {
@@ -1368,7 +1397,7 @@ describe('the in-memory host', () => {
       protocolId: subject.protocolId,
       requestId: 'write-again',
       sectionId: INFORMATION,
-      document: committed.document,
+      document: Redacted.make(committed.document),
       revision: committed.revision,
       promote: promotion,
     });
@@ -1376,7 +1405,7 @@ describe('the in-memory host', () => {
     // By the time a retry goes out the editor may have closed and given the
     // lock back. Refusing then would tell the researcher to discard a draft
     // that was saved.
-    expect(afterRelease).toEqual(first);
+    expect(revealed(afterRelease)).toEqual(revealed(first));
   });
 
   it('says which section a refactor cannot find', async () => {
@@ -1396,7 +1425,7 @@ describe('the in-memory host', () => {
     // a caller over a transport as nothing it can act on.
     expect(isSuccess).toBe(false);
     expect(refusal?._tag).toBe('SectionNotFound');
-    expect(refusalData(refusal)).toMatchObject({
+    expect(revealed(refusalData(refusal))).toMatchObject({
       sectionId: sectionId({ kind: 'codebookNode', typeId: 'ghost' }),
     });
   });
@@ -1439,7 +1468,7 @@ describe('the in-memory host', () => {
     // The lock survives the drop, so the editor behind it is still editing.
     // Rejoining as a viewer would tell every read-only editor of that section
     // that nobody is in it.
-    expect(holder).toMatchObject({
+    expect(revealed(holder)).toMatchObject({
       displayName: 'Ada',
       mode: 'editing',
       sectionId: PERSON,

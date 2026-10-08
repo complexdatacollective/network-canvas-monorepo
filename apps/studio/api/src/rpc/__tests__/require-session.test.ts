@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
-import { Cause, Effect, Exit, Layer, Option, Schema } from 'effect';
+import { Cause, Effect, Exit, Layer, Option, Redacted, Schema } from 'effect';
 import { Rpc, RpcClient, RpcGroup, RpcTest } from 'effect/rpc';
 import { describe, expect } from 'vitest';
 
@@ -51,7 +51,7 @@ const ProbeHandlers = ProbeRpcs.toLayer({
         accessTeamId: session.access.teamId,
         actorKind: actor.kind,
         actorId: actor.id,
-        actorLabel: actor.label,
+        actorLabel: Redacted.value(actor.label),
       };
     }),
 });
@@ -87,7 +87,9 @@ describe.skipIf(!testDb)('RequireSessionLive', () => {
         const sessionId = yield* insertSession(fixture);
         const token = yield* tokenFor(fixture, sessionId);
 
-        const exit = yield* call({ [PARTICIPANT_SESSION_HEADER]: token });
+        const exit = yield* call({
+          [PARTICIPANT_SESSION_HEADER]: Redacted.value(token),
+        });
         expect(exit).toEqual(
           Exit.succeed({
             sessionId,
@@ -112,7 +114,9 @@ describe.skipIf(!testDb)('RequireSessionLive', () => {
         });
         const token = yield* tokenFor(fixture, sessionId);
 
-        const exit = yield* call({ [PARTICIPANT_SESSION_HEADER]: token });
+        const exit = yield* call({
+          [PARTICIPANT_SESSION_HEADER]: Redacted.value(token),
+        });
         expect(Exit.isSuccess(exit) && exit.value.actorLabel).toBe(
           sessionId.slice(0, 8),
         );
@@ -128,7 +132,9 @@ describe.skipIf(!testDb)('RequireSessionLive', () => {
           const token = yield* tokenFor(fixture, sessionId);
           yield* completeSession(sessionId);
 
-          const exit = yield* call({ [PARTICIPANT_SESSION_HEADER]: token });
+          const exit = yield* call({
+            [PARTICIPANT_SESSION_HEADER]: Redacted.value(token),
+          });
           expect(Exit.isSuccess(exit) && exit.value.status).toBe('completed');
         }).pipe(Effect.orDie),
     );
@@ -155,7 +161,8 @@ describe.skipIf(!testDb)('RequireSessionLive', () => {
         const other = yield* seedInterviewFixture();
         const sessionId = yield* insertSession(fixture);
         const token = yield* tokenFor(fixture, sessionId);
-        const secret = token.slice(token.lastIndexOf('.') + 1);
+        const presented = Redacted.value(token);
+        const secret = presented.slice(presented.lastIndexOf('.') + 1);
 
         expect(
           refusedAs(

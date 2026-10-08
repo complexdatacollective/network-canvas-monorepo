@@ -4,7 +4,7 @@
 // is stamped.
 import { faker } from '@faker-js/faker';
 import { hashPassword } from 'better-auth/crypto';
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 
 import { TEAM_ROLES, type TeamRole } from '@codaco/studio-contract/schema/team';
 
@@ -165,7 +165,7 @@ export const seedAdminOAuthAccount = Effect.fnUntraced(function* (
   const sealed = (column: OAuthTokenColumn) =>
     cipher.sealOAuthToken(
       { providerId: 'google', accountId, column },
-      tokens[column],
+      Redacted.make(tokens[column]),
     );
 
   yield* sql.unsafe(

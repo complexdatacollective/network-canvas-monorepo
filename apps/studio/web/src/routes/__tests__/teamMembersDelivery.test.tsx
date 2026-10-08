@@ -2,7 +2,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Me } from '@codaco/studio-contract/schema/account';
@@ -108,9 +108,9 @@ vi.mock('../../lib/auth.ts', () => ({
 
 const ME: Me = {
   userId: 'user-owner',
-  email: 'owner@example.com',
+  email: Redacted.make('owner@example.com'),
   emailVerified: true,
-  name: 'Owner Researcher',
+  name: Redacted.make('Owner Researcher'),
   locale: null,
   teams: [{ teamId: TeamId.make(TEAM.id), role: 'owner' }],
 };

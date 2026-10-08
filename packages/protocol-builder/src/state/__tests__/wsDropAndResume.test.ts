@@ -1,3 +1,4 @@
+import { Redacted } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
@@ -58,7 +59,13 @@ describe('a protocol stream over a socket that drops mid-stream', () => {
       if (event.type !== 'revision') return;
       if (event.sectionId !== INFORMATION) return;
       revisions.push(event.revision.sequence);
-      labels.push(String(event.document?.label));
+      labels.push(
+        String(
+          event.document === undefined
+            ? undefined
+            : Redacted.value(event.document).label,
+        ),
+      );
     };
     const channel = streamProtocolEvents(
       adapter,
@@ -77,7 +84,7 @@ describe('a protocol stream over a socket that drops mid-stream', () => {
         protocolId: host.protocolId,
         requestId: nextRequestId(),
         sectionId: INFORMATION,
-        document: { ...held.document, label },
+        document: Redacted.make({ ...Redacted.value(held.document), label }),
         revision: held.revision,
       });
     };
@@ -127,7 +134,13 @@ describe('a protocol stream over a socket that drops mid-stream', () => {
       host.protocolId,
       (event) => {
         if (event.type === 'revision')
-          labels.push(String(event.document?.label));
+          labels.push(
+            String(
+              event.document === undefined
+                ? undefined
+                : Redacted.value(event.document).label,
+            ),
+          );
       },
       controller.signal,
     );
@@ -144,7 +157,7 @@ describe('a protocol stream over a socket that drops mid-stream', () => {
         protocolId: host.protocolId,
         requestId: nextRequestId(),
         sectionId: EGO_FORM,
-        document: { ...other.document, label },
+        document: Redacted.make({ ...Redacted.value(other.document), label }),
         revision: other.revision,
       });
     };
@@ -164,7 +177,10 @@ describe('a protocol stream over a socket that drops mid-stream', () => {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Saved after the drop' },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: 'Saved after the drop',
+      }),
       revision: held.revision,
     });
     expect(written.revision.sequence).toBeGreaterThan(held.revision.sequence);

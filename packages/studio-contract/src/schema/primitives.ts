@@ -7,10 +7,14 @@ import { Schema } from 'effect';
 const EMAIL_PATTERN =
   /^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9-]*\.)+[A-Za-z]{2,}$/;
 
-export const Email = Schema.String.check(
+export const EmailAddress = Schema.String.check(
   Schema.isPattern(EMAIL_PATTERN),
   Schema.isMaxLength(320),
 );
+
+export const Email = Schema.RedactedFromValue(EmailAddress);
+
+export const PrivateString = Schema.RedactedFromValue(Schema.String);
 
 export const NonBlankString = (max: number, label: string) =>
   Schema.String.check(

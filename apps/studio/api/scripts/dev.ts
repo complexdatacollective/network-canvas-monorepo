@@ -167,7 +167,7 @@ function bootstrapObjectStore(): void {
 // anything else; a non-local target is left alone.
 async function resetAndSeed(): Promise<void> {
   loadEnvFiles();
-  const { db, secrets } = readEnv();
+  const { db, secrets, logLevel } = readEnv();
   if (!db) throw new Error('DATABASE_URL is unset; nothing to reset.');
   // Unreachable once `db` is present — `resolve()` refuses a DATABASE_URL with
   // no keyring (#1900) — but narrowed rather than asserted, for the same
@@ -185,7 +185,7 @@ async function resetAndSeed(): Promise<void> {
     );
     return;
   }
-  const pool = createOwnerPool(db);
+  const pool = createOwnerPool(db, { logLevel });
   try {
     // The database this resets is local by construction, so the seed can
     // take the pinned PRNG's nonces and write the same rows every boot.

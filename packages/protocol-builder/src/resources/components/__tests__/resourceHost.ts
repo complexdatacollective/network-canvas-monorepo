@@ -1,7 +1,8 @@
-import { Effect } from 'effect';
+import { Effect, Schema } from 'effect';
 
 import type { SuccessOf } from '@codaco/effect-query/types';
 import type { ProtocolBuilderRpcs } from '@codaco/protocol-builder-core/contract';
+import { ResourceDescriptorSchema } from '@codaco/protocol-builder-core/contract/schemas';
 import type { StageType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -12,7 +13,7 @@ import {
   type HandlerOverrides,
   type InMemoryHost,
 } from '../../../testing/host/createInMemoryHost.ts';
-import type { ResourceDescriptor, ResourceKind } from '../../types.ts';
+import type { ResourceKind } from '../../types.ts';
 
 export const STAGE_SECTION = sectionId({ kind: 'stage', stageId: 'stage-1' });
 const ASSETS_SECTION = sectionId({ kind: 'assets' });
@@ -201,18 +202,22 @@ export function withSubmitsCounted(
  * `status: 'staged'` would come back empty however much the edit was holding —
  * which is what a discard having worked looks like.
  */
+export type PlainDescriptor = (typeof ResourceDescriptorSchema)['Encoded'];
+
+export const plainDescriptor = Schema.encodeSync(ResourceDescriptorSchema);
+
 export async function stagedResources(
   adapter: ProtocolBuilderAdapter,
   protocolId: string,
   editId: string,
-): Promise<readonly ResourceDescriptor[]> {
+): Promise<readonly PlainDescriptor[]> {
   const listed = await adapter.rpcCall('ResourcesList', {
     protocolId,
     editId,
     status: 'staged',
   });
   if (listed.status !== 'ok') throw new Error('the host refused to list');
-  return listed.data.resources;
+  return listed.data.resources.map((descriptor) => plainDescriptor(descriptor));
 }
 
 /** The protocol's own asset manifest, as the host currently holds it. */

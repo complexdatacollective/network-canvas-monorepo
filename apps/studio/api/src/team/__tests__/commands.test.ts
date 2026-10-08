@@ -8,6 +8,7 @@ import {
   Exit,
   Fiber,
   Layer,
+  Redacted,
   Schedule,
   Schema,
 } from 'effect';
@@ -61,7 +62,7 @@ const forgedContextDoesNotType: AuditEventBody = {
   category: 'team_access',
   subjectType: 'team_invitation',
   subjectId: 'an-invitation',
-  subjectLabel: 'forged@example.com',
+  subjectLabel: Redacted.make('forged@example.com'),
   resourceType: null,
   resourceId: null,
   resourceLabel: null,
@@ -77,7 +78,7 @@ const forgedOutcomeDoesNotType: AuditEventBody = {
   category: 'team_access',
   subjectType: 'team_invitation',
   subjectId: 'an-invitation',
-  subjectLabel: 'forged@example.com',
+  subjectLabel: Redacted.make('forged@example.com'),
   resourceType: null,
   resourceId: null,
   resourceLabel: null,
@@ -113,9 +114,9 @@ const principalOf = (person: Identity, emailVerified = true) =>
   Principal.of({
     kind: 'user',
     userId: Schema.decodeSync(UserId)(person.userId),
-    email: person.email,
+    email: Redacted.make(person.email),
     emailVerified,
-    name: person.name,
+    name: Redacted.make(person.name),
     locale: null,
     sessionId: `${person.userId}-session`,
   });
@@ -298,8 +299,9 @@ describe.skipIf(!testDb)('audited team commands', () => {
           );
 
           assert.deepStrictEqual(replay, first);
+          assert.strictEqual(Redacted.value(replay.teamName), teamId);
           assert.strictEqual(first.teamId, teamId);
-          assert.strictEqual(first.teamName, teamId);
+          assert.strictEqual(Redacted.value(first.teamName), teamId);
           assert.strictEqual(first.role, 'admin');
           assert.strictEqual(first.status, 'accepted');
 
@@ -628,6 +630,10 @@ describe.skipIf(!testDb)('audited team commands', () => {
           );
 
           assert.deepStrictEqual(second, first);
+          assert.strictEqual(
+            Redacted.value(second.teamName),
+            Redacted.value(first.teamName),
+          );
           const members = yield* memberRoles(teamId);
           assert.lengthOf(
             members.filter(({ id }) => id === first.memberId),
@@ -707,7 +713,7 @@ describe.skipIf(!testDb)('audited team commands', () => {
           yield* asActor(
             owner,
             createTeamInvitation(access(teamId), {
-              email: 'team-label@example.com',
+              email: Redacted.make('team-label@example.com'),
               role: 'member',
             }),
           );
@@ -752,7 +758,7 @@ describe.skipIf(!testDb)('audited team commands', () => {
                       category: 'team_access',
                       subjectType: 'team_invitation',
                       subjectId: randomUUID(),
-                      subjectLabel: 'serialized@example.com',
+                      subjectLabel: Redacted.make('serialized@example.com'),
                       resourceType: null,
                       resourceId: null,
                       resourceLabel: null,
@@ -813,7 +819,7 @@ describe.skipIf(!testDb)('audited team commands', () => {
             asContender(
               admin,
               createTeamInvitation(access(teamId, 'admin'), {
-                email: 'must-not-land@example.com',
+                email: Redacted.make('must-not-land@example.com'),
                 role: 'member',
               }),
             ),
@@ -856,7 +862,7 @@ describe.skipIf(!testDb)('audited team commands', () => {
             category: 'team_access',
             subjectType: 'team_invitation',
             subjectId: randomUUID(),
-            subjectLabel: 'context-check@example.com',
+            subjectLabel: Redacted.make('context-check@example.com'),
             resourceType: null,
             resourceId: null,
             resourceLabel: null,
@@ -875,20 +881,20 @@ describe.skipIf(!testDb)('audited team commands', () => {
           const requestId = randomUUID();
           const context = AuditContext.of({
             teamId,
-            teamLabel: 'Locked Team',
+            teamLabel: Redacted.make('Locked Team'),
             actorKind: 'user',
             actorId: owner.userId,
-            actorLabel: owner.name,
+            actorLabel: Redacted.make(owner.name),
             requestId,
           });
 
           const stamped = stamp(context, forged, 'succeeded');
 
           assert.strictEqual(stamped.teamId, teamId);
-          assert.strictEqual(stamped.teamLabel, 'Locked Team');
+          assert.strictEqual(Redacted.value(stamped.teamLabel), 'Locked Team');
           assert.strictEqual(stamped.actorKind, 'user');
           assert.strictEqual(stamped.actorId, owner.userId);
-          assert.strictEqual(stamped.actorLabel, owner.name);
+          assert.strictEqual(Redacted.value(stamped.actorLabel), owner.name);
           assert.strictEqual(stamped.requestId, requestId);
           assert.strictEqual(stamped.outcome, 'succeeded');
 
@@ -964,7 +970,7 @@ describe.skipIf(!testDb)('audited team commands', () => {
             asActor(
               ordinary,
               createTeamInvitation(access(teamId, 'member'), {
-                email: 'forbidden@example.com',
+                email: Redacted.make('forbidden@example.com'),
                 role: 'member',
               }),
             ),
@@ -1071,7 +1077,7 @@ describe.skipIf(!testDb)('audited team commands', () => {
             asActor(
               admin,
               createTeamInvitation(access(teamId, 'admin'), {
-                email: 'prospective-owner@example.com',
+                email: Redacted.make('prospective-owner@example.com'),
                 role: 'owner',
               }),
               { requestId },
@@ -1137,7 +1143,9 @@ describe.skipIf(!testDb)('audited team commands', () => {
               asActor(
                 admin,
                 createTeamInvitation(access(teamId, 'admin'), {
-                  email: `prospective-owner-${attempt}@example.com`,
+                  email: Redacted.make(
+                    `prospective-owner-${attempt}@example.com`,
+                  ),
                   role: 'owner',
                 }),
               ),
@@ -1176,7 +1184,9 @@ describe.skipIf(!testDb)('audited team commands', () => {
               asActor(
                 owner,
                 createTeamInvitation(access(teamId), {
-                  email: `authorized-burst-${attempt}@example.com`,
+                  email: Redacted.make(
+                    `authorized-burst-${attempt}@example.com`,
+                  ),
                   role: 'member',
                 }),
               ),
@@ -1340,7 +1350,7 @@ describe.skipIf(!testDb)('audited team commands', () => {
           const positive = yield* asActor(
             owner,
             createTeamInvitation(access(teamId), {
-              email: 'positive-oracle@example.com',
+              email: Redacted.make('positive-oracle@example.com'),
               role: 'member',
             }),
           );
@@ -1535,11 +1545,14 @@ describe.skipIf(!testDb)('audited team commands', () => {
           const created = yield* asActor(
             owner,
             createTeamInvitation(access(teamId), {
-              email: 'Invitee@Example.com',
+              email: Redacted.make('Invitee@Example.com'),
               role: 'admin',
             }),
           );
-          assert.strictEqual(created.email, 'invitee@example.com');
+          assert.strictEqual(
+            Redacted.value(created.email),
+            'invitee@example.com',
+          );
           assert.strictEqual(created.role, 'admin');
           assert.strictEqual(created.status, 'pending');
           assert.isAbove(
@@ -1581,7 +1594,7 @@ describe.skipIf(!testDb)('audited team commands', () => {
             asActor(
               owner,
               createTeamInvitation(access(teamId), {
-                email: 'invitee@example.com',
+                email: Redacted.make('invitee@example.com'),
                 role: 'member',
               }),
             ),
@@ -1643,17 +1656,17 @@ describe.skipIf(!testDb)('audited team commands', () => {
           const longest = yield* asActor(
             owner,
             createTeamInvitation(access(teamId), {
-              email: address(320),
+              email: Redacted.make(address(320)),
               role: 'member',
             }),
           );
-          assert.strictEqual(longest.email, address(320));
+          assert.strictEqual(Redacted.value(longest.email), address(320));
 
           const exit = yield* Effect.exit(
             asActor(
               owner,
               createTeamInvitation(access(teamId), {
-                email: address(321),
+                email: Redacted.make(address(321)),
                 role: 'member',
               }),
             ),
@@ -1890,7 +1903,7 @@ describe.skipIf(!testDb)('audited team commands', () => {
           yield* asActor(
             owner,
             createTeamInvitation(access(teamId), {
-              email: 'retained@example.com',
+              email: Redacted.make('retained@example.com'),
               role: 'member',
             }),
           );

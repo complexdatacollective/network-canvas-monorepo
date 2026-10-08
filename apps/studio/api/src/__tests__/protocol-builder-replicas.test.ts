@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
-import { Effect, Stream } from 'effect';
+import { Effect, Redacted, Stream } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { type ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
@@ -14,6 +14,7 @@ import { testDb } from './support/database.ts';
 import {
   ADA,
   GRACE,
+  plainDescriptor,
   setupProtocolBuilderSuite,
   until,
 } from './support/protocol-builder-suite.ts';
@@ -274,7 +275,10 @@ describe.skipIf(!testDb)('protocol-builder across replicas', () => {
         protocolId: suite.protocolId,
         requestId: randomUUID(),
         sectionId,
-        document: { ...held.document, label: 'Saved on another replica' },
+        document: Redacted.make({
+          ...Redacted.value(held.document),
+          label: 'Saved on another replica',
+        }),
         revision: held.revision,
       }),
     );
@@ -371,7 +375,10 @@ describe.skipIf(!testDb)('protocol-builder across replicas', () => {
         protocolId: suite.protocolId,
         requestId: randomUUID(),
         sectionId,
-        document: { ...held.document, label: 'Saved after the restart' },
+        document: Redacted.make({
+          ...Redacted.value(held.document),
+          label: 'Saved after the restart',
+        }),
         revision: held.revision,
       }),
     );
@@ -662,10 +669,10 @@ describe.skipIf(!testDb)('protocol-builder across replicas', () => {
         request: {
           kind: 'content',
           contentKind: 'image',
-          name: 'A photograph',
-          source: 'photo.png',
+          name: Redacted.make('A photograph'),
+          source: Redacted.make('photo.png'),
           contentType: 'image/png',
-          bytes,
+          bytes: Redacted.make(bytes),
         },
       }),
     );
@@ -699,7 +706,9 @@ describe.skipIf(!testDb)('protocol-builder across replicas', () => {
       }),
     );
     const digest = createHash('sha256').update(bytes).digest('hex');
-    expect(written.promoted).toEqual([
+    expect(
+      written.promoted?.map((descriptor) => plainDescriptor(descriptor)),
+    ).toEqual([
       expect.objectContaining({
         id: resourceId,
         status: 'committed',

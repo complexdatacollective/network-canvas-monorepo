@@ -1,5 +1,12 @@
 import { eq } from 'drizzle-orm';
-import { Cause, Duration, Effect, Exit, MutableHashSet } from 'effect';
+import {
+  Cause,
+  Duration,
+  Effect,
+  Exit,
+  MutableHashSet,
+  Redacted,
+} from 'effect';
 import { FetchHttpClient, HttpClient, HttpClientResponse } from 'effect/http';
 import type { SqlError } from 'effect/sql';
 
@@ -27,7 +34,6 @@ import {
   upgradeAppliesMigration,
 } from '../../update/manifest.ts';
 import { STUDIO_VERSION } from '../../version.ts';
-import { causeError, deepestMessage } from '../errors.ts';
 import type { HandledJob, JobOutcome } from '../worker.ts';
 
 // The daily check for a newer Studio release (#1901). It reads one fixed
@@ -62,7 +68,10 @@ export type UpdateCheckOptions = {
   readonly runningMigration?: string | null | undefined;
 };
 
-type Owner = { readonly email: string; readonly name: string };
+type Owner = {
+  readonly email: Redacted.Redacted;
+  readonly name: Redacted.Redacted;
+};
 
 /** What became of the one send this run was entitled to make. */
 type Delivery = 'sent' | 'not-sent' | 'not-claimed';
@@ -97,14 +106,15 @@ const fetchManifest = Effect.gen(function* () {
  * cannot be read — a process run from source has none beside it — which
  * `upgradeAppliesMigration` answers conservatively.
  */
-const newestBundledMigration = (label: string) =>
+const newestBundledMigration = (annotations: Record<string, unknown>) =>
   Effect.tryPromise(readBundledMigrations).pipe(
     Effect.flatMap((text) => readVerifiedMigrations(text)),
     Effect.map((verified) => verified.migrations.at(-1)?.version ?? null),
     Effect.catch((error) =>
       Effect.logInfo(
-        `${label}: this build's migrations could not be read (${deepestMessage(error) ?? String(error)}), so a newer release is reported as changing the database.`,
-      ).pipe(Effect.as(null)),
+        "this build's migrations could not be read, so a newer release is reported as changing the database",
+        Cause.fail(error),
+      ).pipe(Effect.annotateLogs(annotations), Effect.as(null)),
     ),
   );
 
@@ -140,7 +150,11 @@ const readOwner = Effect.fn('job.update-check.readOwner')(function* () {
         .where(eq(installation.id, 1));
     }).pipe(sqlErrorsOnly),
   );
-  const owner: Owner | null = rows[0] ?? null;
+  const row = rows[0];
+  const owner: Owner | null =
+    row === undefined
+      ? null
+      : { email: Redacted.make(row.email), name: Redacted.make(row.name) };
   return owner;
 });
 
@@ -165,8 +179,8 @@ export const updateCheck = (options: UpdateCheckOptions) => {
       : Effect.suspend(() => {
           MutableHashSet.add(mentionedWithoutMail, version);
           return Effect.logInfo(
-            `${QUEUE}: Studio ${version} is available, but no mail transport is configured, so the owner was not emailed. The in-app notice still shows it, and the owner is emailed at the next daily check after mail is configured.`,
-          );
+            'A newer Studio is available, but no mail transport is configured, so the owner was not emailed. The in-app notice still shows it, and the owner is emailed at the next daily check after mail is configured.',
+          ).pipe(Effect.annotateLogs({ queue: QUEUE, version }));
         });
 
   const notifyOwner = Effect.fnUntraced(function* (
@@ -215,11 +229,12 @@ export const updateCheck = (options: UpdateCheckOptions) => {
           ? giveBack(release.version, taken).pipe(
               Effect.catchCause((cause) =>
                 Effect.logWarning(
-                  `${QUEUE}: the notification claim for ${release.version} could not be released; this version may not be emailed.`,
+                  'the notification claim could not be released; this version may not be emailed',
+                  cause,
                 ).pipe(
                   Effect.annotateLogs({
-                    cause:
-                      deepestMessage(causeError(cause)) ?? Cause.pretty(cause),
+                    queue: QUEUE,
+                    version: release.version,
                   }),
                 ),
               ),
@@ -235,7 +250,11 @@ export const updateCheck = (options: UpdateCheckOptions) => {
     MailFailed | SqlError.SqlError,
     MaintenanceDatabase | Mailer | HttpClient.HttpClient
   > {
-    const label = `${QUEUE} ${job.id} attempt ${job.attempt}`;
+    const jobAnnotations = {
+      queue: QUEUE,
+      job_id: job.id,
+      attempt: job.attempt,
+    };
     // An unreachable or unreadable manifest is the ordinary state of an
     // instance behind a firewall that blocks the host, and of every instance
     // until the publisher exists. It is `suppressed`, not `uncertain` (which
@@ -245,15 +264,16 @@ export const updateCheck = (options: UpdateCheckOptions) => {
       Effect.map((read): ReleaseManifest | null => read),
       Effect.catch((error) =>
         Effect.logInfo(
-          `${label}: the release manifest could not be read (${deepestMessage(error) ?? String(error)}); trying again at the next scheduled run.`,
-        ).pipe(Effect.as(null)),
+          'the release manifest could not be read; trying again at the next scheduled run',
+          Cause.fail(error),
+        ).pipe(Effect.annotateLogs(jobAnnotations), Effect.as(null)),
       ),
     );
     if (manifest === null) return 'suppressed';
 
     const runningMigration =
       options.runningMigration === undefined
-        ? yield* newestBundledMigration(label)
+        ? yield* newestBundledMigration(jobAnnotations)
         : options.runningMigration;
     const release = asRelease(manifest, runningMigration);
     yield* record(release);

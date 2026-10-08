@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Cause, Effect, Exit, Option } from 'effect';
+import { Cause, Effect, Exit, Option, Redacted } from 'effect';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import {
@@ -45,18 +45,18 @@ const ACTOR_ID = `rpc-errors-${randomUUID()}`;
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
   userId: ACTOR_ID,
-  email: `${ACTOR_ID}@example.test`,
+  email: Redacted.make(`${ACTOR_ID}@example.test`),
   emailVerified: true,
-  name: 'Refused Researcher',
+  name: Redacted.make('Refused Researcher'),
   locale: null,
   sessionId: `session-${ACTOR_ID}`,
 };
 
 const INSTANCE_NAME = 'Department of Refusals';
 const owner = () => ({
-  name: 'First Owner',
-  email: `owner-${randomUUID()}@example.test`,
-  password: 'first-owner-password',
+  name: Redacted.make('First Owner'),
+  email: Redacted.make(`owner-${randomUUID()}@example.test`),
+  password: Redacted.make('first-owner-password'),
 });
 
 describe('refusals that need no database', () => {
@@ -237,7 +237,11 @@ describe.skipIf(!testDb)('the error map', () => {
     await database.run(
       ownerRows(
         `INSERT INTO "user" (id, name, email, "emailVerified") VALUES ($1, $2, $3, true)`,
-        [PRINCIPAL.userId, PRINCIPAL.name, PRINCIPAL.email],
+        [
+          PRINCIPAL.userId,
+          Redacted.value(PRINCIPAL.name),
+          Redacted.value(PRINCIPAL.email),
+        ],
       ),
     );
     client = await clientAs({
@@ -347,7 +351,11 @@ describe.skipIf(!testDb)('the error map', () => {
 
     const refused = await expectRpcFailure(
       client.callExit(
-        client.rpc('team.createInvitation', { teamId, email, role: 'member' }),
+        client.rpc('team.createInvitation', {
+          teamId,
+          email: Redacted.make(email),
+          role: 'member',
+        }),
       ),
       'TeamCommandError',
     );
@@ -410,7 +418,7 @@ describe.skipIf(!testDb)('the error map', () => {
     await client.call(
       client.rpc('studies.create', {
         teamId,
-        name: 'The first study',
+        name: Redacted.make('The first study'),
         studyId,
         protocolId: ProtocolId.make(randomUUID()),
         draftId: DraftId.make(randomUUID()),
@@ -421,7 +429,7 @@ describe.skipIf(!testDb)('the error map', () => {
       client.callExit(
         client.rpc('studies.create', {
           teamId,
-          name: 'A different study, the same id',
+          name: Redacted.make('A different study, the same id'),
           studyId,
           protocolId: ProtocolId.make(randomUUID()),
           draftId: DraftId.make(randomUUID()),
@@ -439,7 +447,7 @@ describe.skipIf(!testDb)('the error map', () => {
       client.callExit(
         client.rpc('studies.create', {
           teamId,
-          name: 'A study this caller may not create',
+          name: Redacted.make('A study this caller may not create'),
           studyId: StudyId.make(randomUUID()),
           protocolId: ProtocolId.make(randomUUID()),
           draftId: DraftId.make(randomUUID()),
@@ -457,7 +465,7 @@ describe.skipIf(!testDb)('the error map', () => {
       client.callExit(
         client.rpc('protocols.create', {
           teamId,
-          name: 'A line this caller may not make',
+          name: Redacted.make('A line this caller may not make'),
           protocolId: ProtocolId.make(randomUUID()),
           draftId: DraftId.make(randomUUID()),
         }),
@@ -467,7 +475,7 @@ describe.skipIf(!testDb)('the error map', () => {
   });
 
   describe('first-run setup', () => {
-    let token: string;
+    let token: Redacted.Redacted;
 
     beforeEach(async () => {
       await database.run(ownerRows('delete from installation'));
@@ -480,7 +488,7 @@ describe.skipIf(!testDb)('the error map', () => {
       await expectRpcFailure(
         client.callExit(
           client.rpc('setup.complete', {
-            token: 'not-the-token',
+            token: Redacted.make('not-the-token'),
             instanceName: INSTANCE_NAME,
             owner: owner(),
           }),

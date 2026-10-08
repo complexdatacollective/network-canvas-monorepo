@@ -11,7 +11,7 @@ import {
 import { readBundledMigrations } from '../db/migrations-document.ts';
 import { OwnerScope, Transaction } from '../db/tenant.ts';
 import { Environment } from '../env.ts';
-import { LoggerLive } from '../platform/logger.ts';
+import { LoggerLive, LogLevelLive } from '../platform/logger.ts';
 import { TracingLive } from '../platform/tracing.ts';
 import { SecretsCipher } from '../secrets/services.ts';
 import { verifyStoredKeys } from '../secrets/verify.ts';
@@ -145,7 +145,7 @@ const migrate = (document: Effect.Effect<string, unknown>) =>
       Effect.provide(owner),
       Effect.catch((cause) => new MigrateFailed({ cause })),
     );
-    printBootstrapToken(token, env.auth?.baseUrl);
+    yield* printBootstrapToken(token, env.auth?.baseUrl);
   });
 
 /**
@@ -158,7 +158,7 @@ export const migrateProgramReading = (
   migrate(document).pipe(
     Effect.scoped,
     Effect.provide(
-      Layer.mergeAll(LoggerLive, TracingLive('migrate')).pipe(
+      Layer.mergeAll(LoggerLive, LogLevelLive, TracingLive('migrate')).pipe(
         Layer.provideMerge(Environment.layer),
       ),
     ),

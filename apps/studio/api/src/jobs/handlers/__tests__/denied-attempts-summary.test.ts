@@ -476,13 +476,17 @@ describe.skipIf(!testDb)(
               Effect.provide(logs.layer),
             );
 
-            assert.include(
-              logs.messages.join('\n'),
-              'Rate limit refused 7 call(s) in scope sign_in_address.',
-            );
-            assert.include(
-              logs.messages.join('\n'),
-              'Rate limit refused 3 call(s) in scope storage_read.',
+            assert.sameDeepMembers(
+              logs.records
+                .filter(
+                  ({ message }) =>
+                    message === 'Rate limit refused calls in a scope',
+                )
+                .map(({ annotations }) => annotations),
+              [
+                { scope: 'sign_in_address', count: '7' },
+                { scope: 'storage_read', count: '3' },
+              ],
             );
             assert.isFalse(yield* memory.exists(DENIED_SCOPE_COUNTS_KEY));
           }),
@@ -602,9 +606,11 @@ describe.skipIf(!testDb)(
             assert.deepInclude(yield* onlySummary(teamId), {
               suppressedCount: 11,
             });
-            assert.include(
-              logs.messages.join('\n'),
-              'attempt 1: summary events 1, limiter scopes 0',
+            assert.deepInclude(
+              logs.records.find(
+                ({ message }) => message === 'denied-attempts summary written',
+              )?.annotations,
+              { attempt: 1, summary_events: 1, limiter_scopes: 0 },
             );
             assert.include(
               logs.messages.join('\n'),
@@ -659,7 +665,12 @@ describe.skipIf(!testDb)(
             });
             assert.isTrue(yield* memory.exists(`${dyingKey}${CLAIMED_SUFFIX}`));
             assert.isFalse(yield* memory.exists(`${nextKey}${CLAIMED_SUFFIX}`));
-            assert.include(logs.messages.join('\n'), 'summary events 1');
+            assert.deepInclude(
+              logs.records.find(
+                ({ message }) => message === 'denied-attempts summary written',
+              )?.annotations,
+              { summary_events: 1 },
+            );
             assert.include(
               logs.messages.join('\n'),
               'stays claimed for a later run',

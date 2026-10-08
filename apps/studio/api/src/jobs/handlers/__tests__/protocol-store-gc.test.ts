@@ -267,17 +267,25 @@ describe.skipIf(!testDb)('the protocol store sweep on the native queue', () => {
         assert.deepStrictEqual(yield* sectionHashes(teamId), [recent]);
 
         assert.deepStrictEqual(
-          logs.messages.filter((message) =>
-            message.startsWith(`protocol-store-gc ${jobId}: manifests`),
-          ),
+          logs.records
+            .filter(({ message }) => message === 'protocol store swept')
+            .map(({ annotations }) => annotations),
           [
-            `protocol-store-gc ${jobId}: manifests 0, sections 1, command log 0`,
+            {
+              queue: 'protocol-store-gc',
+              job_id: jobId,
+              manifests_deleted: 0,
+              sections_deleted: 1,
+              command_log_deleted: 0,
+            },
           ],
         );
         // Its counts are the whole database's, which other suites share.
         assert.isTrue(
-          logs.messages.some((message) =>
-            message.startsWith(`protocol-store-gc ${jobId}: staged rows`),
+          logs.records.some(
+            ({ message, annotations }) =>
+              message === 'staged resources swept' &&
+              annotations['job_id'] === jobId,
           ),
         );
       }).pipe(Effect.provide(logs.layer));

@@ -9,7 +9,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { Effect } from 'effect';
+import { Effect, Redacted, Schema } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Me } from '@codaco/studio-contract/schema/account';
@@ -22,9 +22,11 @@ import {
 } from '@codaco/studio-contract/schema/ids';
 import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
 import {
+  CreateStudyInput,
   type CreateStudyResult,
   type StudySummary,
 } from '@codaco/studio-contract/schema/study';
+import { CreateTeamInvitationInput } from '@codaco/studio-contract/schema/team';
 
 import { createAppRouter } from '../../router.tsx';
 import {
@@ -35,6 +37,11 @@ import {
 type Answer<Tag extends keyof StudioHandlers> = (
   payload: Parameters<StudioHandlers[Tag]>[0],
 ) => ReturnType<StudioHandlers[Tag]>;
+
+const createdStudy = (call: number): unknown =>
+  Schema.encodeUnknownSync(CreateStudyInput)(
+    fixtures.createStudy.mock.calls[call]?.[0],
+  );
 
 const fixtures = vi.hoisted(() => {
   const TEAM_A = {
@@ -256,7 +263,7 @@ const studiesByTeam: Record<string, (typeof StudySummary)['Type'][]> = {
   'team-a': [
     {
       id: StudyId.make(STUDY_A),
-      name: 'Alpha study',
+      name: Redacted.make('Alpha study'),
       state: 'draft',
       participationMode: 'managed',
       protocolId: ProtocolId.make('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
@@ -266,7 +273,7 @@ const studiesByTeam: Record<string, (typeof StudySummary)['Type'][]> = {
     },
     {
       id: StudyId.make(STUDY_A_LIVE),
-      name: 'Alpha fieldwork',
+      name: Redacted.make('Alpha fieldwork'),
       state: 'live',
       participationMode: 'anonymous',
       protocolId: ProtocolId.make('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'),
@@ -278,7 +285,7 @@ const studiesByTeam: Record<string, (typeof StudySummary)['Type'][]> = {
   'team-b': [
     {
       id: StudyId.make(STUDY_B),
-      name: 'Beta study',
+      name: Redacted.make('Beta study'),
       state: 'draft',
       participationMode: 'managed',
       protocolId: ProtocolId.make('cccccccc-cccc-4ccc-8ccc-cccccccccccc'),
@@ -291,9 +298,9 @@ const studiesByTeam: Record<string, (typeof StudySummary)['Type'][]> = {
 
 const ME: Me = {
   userId: 'user-1',
-  email: 'researcher@example.org',
+  email: Redacted.make('researcher@example.org'),
   emailVerified: true,
-  name: 'Researcher',
+  name: Redacted.make('Researcher'),
   locale: null,
   teams: [{ teamId: TeamId.make('team-a'), role: 'owner' }],
 };
@@ -361,7 +368,7 @@ beforeEach(() => {
   fixtures.createInvitation.mockReturnValue(
     Effect.succeed({
       invitationId: TeamInvitationId.make('new-invitation'),
-      email: 'new@example.com',
+      email: Redacted.make('new@example.com'),
       role: 'admin',
       status: 'pending',
       expiresAt: new Date(Date.now() + 86_400_000),
@@ -485,7 +492,7 @@ describe('the team studies list', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create study' }));
 
     await waitFor(() =>
-      expect(fixtures.createStudy.mock.calls[0]?.[0]).toEqual(
+      expect(createdStudy(0)).toEqual(
         expect.objectContaining({
           teamId: TEAM_A.id,
           name: 'New study',
@@ -518,7 +525,7 @@ describe('the team studies list', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create study' }));
 
     await waitFor(() =>
-      expect(fixtures.createStudy.mock.calls[0]?.[0]).toEqual(
+      expect(createdStudy(0)).toEqual(
         expect.objectContaining({
           name: 'Quiet study',
           participantAnalytics: false,
@@ -652,9 +659,7 @@ describe('the team studies list', () => {
     );
     // Retrying the same name must not leave two studies behind.
     expect(fixtures.createStudy).toHaveBeenCalledTimes(2);
-    expect(fixtures.createStudy.mock.calls[1]?.[0]).toEqual(
-      fixtures.createStudy.mock.calls[0]?.[0],
-    );
+    expect(createdStudy(1)).toEqual(createdStudy(0));
   });
 
   it('does not carry a creation identity across a team switch', async () => {
@@ -771,13 +776,16 @@ describe('the team members screen', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Invite user' }));
 
-    await waitFor(() =>
-      expect(fixtures.createInvitation).toHaveBeenCalledWith({
-        teamId: TEAM_A.id,
-        email: 'new@example.com',
-        role: 'admin',
-      }),
-    );
+    await waitFor(() => expect(fixtures.createInvitation).toHaveBeenCalled());
+    expect(
+      Schema.encodeUnknownSync(CreateTeamInvitationInput)(
+        fixtures.createInvitation.mock.calls[0]?.[0],
+      ),
+    ).toEqual({
+      teamId: TEAM_A.id,
+      email: 'new@example.com',
+      role: 'admin',
+    });
     expect(
       await screen.findByText(
         'Invitation created for new@example.com. Email delivery is queued.',

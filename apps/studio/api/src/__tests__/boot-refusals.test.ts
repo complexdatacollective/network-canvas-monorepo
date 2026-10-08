@@ -9,7 +9,7 @@
 // and opens by itself once the schema is current, with no restart.
 import { randomUUID } from 'node:crypto';
 
-import { Console, Effect, Exit, Schema } from 'effect';
+import { Console, Effect, Exit, Redacted, Schema } from 'effect';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -61,7 +61,7 @@ const STACK_FRAME = /^\s+at /m;
 
 const BOOT_CHECKS_PASSED = /Schema current and keyring verified; serving\./;
 
-const WORKER_STARTED = /Network Canvas Studio worker \S+ started/;
+const WORKER_STARTED = /Network Canvas Studio worker started/;
 
 /** The deployment's environment, minus the development lane's defaults. */
 const deployed = async (
@@ -553,7 +553,7 @@ describe.skipIf(!db)('opening a keyring that matches the database', () => {
     const subscriptionId = randomUUID();
     const secret = testCipher(testKeyring(['boot-1'])).sealWebhookSecret(
       { teamId: 'team-boot-sealed', subscriptionId },
-      'whsec-boot',
+      Redacted.make('whsec-boot'),
     );
     await sealed.pool.query(
       `INSERT INTO webhook_subscriptions

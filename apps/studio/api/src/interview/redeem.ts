@@ -1,4 +1,4 @@
-import { Clock, Effect, Option } from 'effect';
+import { Clock, Effect, Option, type Redacted } from 'effect';
 
 import { Unauthorized } from '@codaco/studio-contract/schema/errors';
 import { LinkUnavailable } from '@codaco/studio-contract/schema/participant';
@@ -18,8 +18,8 @@ import {
 import { mintSessionToken, parsePresentedToken } from './token.ts';
 
 export const redeemLink = Effect.fn('interview.redeemLink')(function* (
-  linkToken: string,
-  clientAddress: string,
+  linkToken: Redacted.Redacted,
+  clientAddress: Redacted.Redacted,
 ) {
   yield* enforceRateLimit('participant_redeem_address', clientAddress);
   const presented = parsePresentedToken(linkToken);

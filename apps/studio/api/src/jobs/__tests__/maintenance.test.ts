@@ -112,7 +112,10 @@ describe.skipIf(!db)('the maintenance gate', () => {
           yield* tick;
           assert.deepStrictEqual(calls, [true, false]);
           assert.strictEqual(logs.messages.length, 1);
-          assert.include(logs.messages[0]!, 'maintenance mode is on');
+          assert.strictEqual(
+            logs.records[0]?.annotations['trigger'],
+            'maintenance',
+          );
           assert.include(logs.messages[0]!, 'stopped claiming jobs');
 
           yield* tick;
@@ -143,7 +146,10 @@ describe.skipIf(!db)('the maintenance gate', () => {
             yield* tick;
             assert.deepStrictEqual(calls, [false]);
             assert.strictEqual(logs.messages.length, 1);
-            assert.include(logs.messages[0]!, 'maintenance mode is on');
+            assert.strictEqual(
+              logs.records[0]?.annotations['trigger'],
+              'maintenance',
+            );
           }).pipe(
             Effect.provide(gateOver({ maintenance })),
             Effect.provide(recording(calls)),
@@ -166,7 +172,10 @@ describe.skipIf(!db)('the maintenance gate', () => {
             yield* tick;
             assert.deepStrictEqual(calls, [true, false]);
             assert.strictEqual(logs.messages.length, 1);
-            assert.include(logs.messages[0]!, 'not this build');
+            assert.strictEqual(
+              logs.records[0]?.annotations['trigger'],
+              'schema',
+            );
             assert.include(logs.messages[0]!, 'stopped claiming jobs');
 
             // Still closed, for a different reason: the log says so once,
@@ -176,7 +185,10 @@ describe.skipIf(!db)('the maintenance gate', () => {
             yield* tick;
             assert.deepStrictEqual(calls, [true, false]);
             assert.strictEqual(logs.messages.length, 2);
-            assert.include(logs.messages[1]!, 'no Studio schema');
+            assert.strictEqual(
+              logs.records[1]?.annotations['trigger'],
+              'schema',
+            );
 
             MutableRef.set(schema, CURRENT);
             yield* tick;
@@ -205,7 +217,10 @@ describe.skipIf(!db)('the maintenance gate', () => {
             yield* tick;
             assert.deepStrictEqual(calls, [true, false]);
             assert.strictEqual(logs.messages.length, 1);
-            assert.include(logs.messages[0]!, 'migration is running');
+            assert.strictEqual(
+              logs.records[0]?.annotations['trigger'],
+              'migration',
+            );
             assert.include(logs.messages[0]!, 'stopped claiming jobs');
 
             MutableRef.set(lockHeld, false);
@@ -233,7 +248,9 @@ describe.skipIf(!db)('the maintenance gate', () => {
             const logged = (text: string) =>
               awaitTrue(
                 Effect.sync(() =>
-                  logs.messages.some((line) => line.includes(text)),
+                  logs.records.some(
+                    ({ annotations }) => annotations['trigger'] === text,
+                  ),
                 ),
                 Duration.seconds(5),
               );
@@ -254,7 +271,7 @@ describe.skipIf(!db)('the maintenance gate', () => {
               // leaves a schema this worker's build did not write.
               MutableRef.set(lockHeld, true);
               assert.isTrue(
-                Option.isSome(yield* logged('migration is running')),
+                Option.isSome(yield* logged('migration')),
                 'the gate never paused for the migration',
               );
               yield* enqueueDelivery();
@@ -268,7 +285,7 @@ describe.skipIf(!db)('the maintenance gate', () => {
               MutableRef.set(schema, STALE);
               MutableRef.set(lockHeld, false);
               assert.isTrue(
-                Option.isSome(yield* logged('not this build')),
+                Option.isSome(yield* logged('schema')),
                 'the gate never read the schema the migration left',
               );
               yield* Effect.sleep(WINDOW);

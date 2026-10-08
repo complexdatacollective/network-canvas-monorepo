@@ -1,4 +1,5 @@
 import { useQueries, useQuery } from '@tanstack/react-query';
+import { Redacted } from 'effect';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
@@ -8,7 +9,7 @@ import {
   type ProtocolBuilderProtocolContext,
 } from '../protocol-context.ts';
 import { useProtocolBuilderContext } from './context.ts';
-import type { SectionAtRevision } from './hooks.ts';
+import type { CachedSection } from './hooks.ts';
 
 const NO_SECTIONS: readonly ProtocolSectionId[] = Object.freeze([]);
 
@@ -57,7 +58,7 @@ const READINGS = new Map<string, Derivation>();
 const READING_LIMIT = 4;
 
 function reading(
-  results: readonly Readonly<{ data?: SectionAtRevision; isError: boolean }>[],
+  results: readonly Readonly<{ data?: CachedSection; isError: boolean }>[],
   ids: readonly ProtocolSectionId[],
   list: Readonly<{ listed: boolean; failed: boolean }>,
 ): Derivation {
@@ -68,7 +69,7 @@ function reading(
     if (result.isError) failed = true;
     const id = ids[index];
     if (id === undefined || result.data === undefined) continue;
-    sections[id] = result.data.document;
+    sections[id] = Redacted.value(result.data.document);
     parts.push(`${id}\u0000${result.data.revision.contentHash}`);
   }
   // Escaped rather than written as themselves: two control characters in

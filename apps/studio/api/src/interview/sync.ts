@@ -1,4 +1,4 @@
-import { Clock, Effect } from 'effect';
+import { Clock, Effect, Redacted } from 'effect';
 
 import { ParticipantSession } from '@codaco/studio-contract/middleware/session';
 import {
@@ -66,15 +66,16 @@ export const syncParticipantSession = Effect.fn(
           break;
       }
 
+      const network = Redacted.value(input.network);
       yield* replaceSessionNetwork({
         sessionId: session.sessionId,
-        network: input.network,
+        network,
       });
       yield* recordProgress(session.sessionId, {
         stageIndex: input.stageIndex,
         stageId: input.stageId,
         stageMetadata: input.stageMetadata,
-        ego: egoColumns(input.network.ego),
+        ego: egoColumns(network.ego),
       });
       return { revision: String(outcome.revision), applied: true };
     }),

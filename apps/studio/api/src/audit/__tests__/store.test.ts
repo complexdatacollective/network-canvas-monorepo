@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
-import { Cause, Effect, Predicate, Result, Schema } from 'effect';
+import { Cause, Effect, Predicate, Redacted, Result, Schema } from 'effect';
 import { describe, expect } from 'vitest';
 
 import { AuditListInput } from '@codaco/studio-contract/schema/audit';
@@ -96,17 +96,17 @@ const failureOf = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
 function invitationEvent(teamId: string): AuditEventInput {
   return {
     teamId,
-    teamLabel: teamId,
+    teamLabel: Redacted.make(teamId),
     eventType: 'team.invitation.created',
     eventVersion: 1,
     category: 'team_access',
     outcome: 'succeeded',
     actorKind: 'user',
     actorId: 'actor',
-    actorLabel: 'Audit actor',
+    actorLabel: Redacted.make('Audit actor'),
     subjectType: 'team_invitation',
     subjectId: randomUUID(),
-    subjectLabel: 'invitee@example.com',
+    subjectLabel: Redacted.make('invitee@example.com'),
     resourceType: null,
     resourceId: null,
     resourceLabel: null,
@@ -158,7 +158,7 @@ describe.skipIf(!testDb)('immutable audit store', () => {
               append(invitationEvent(team)),
             );
             expect(first.sequence).toBe('1');
-            expect(first.teamLabel).toBe(team);
+            expect(Redacted.value(first.teamLabel)).toBe(team);
 
             const second = yield* MaintenanceScope.openTenant(
               access(team),
@@ -485,12 +485,16 @@ describe.skipIf(!testDb)('immutable audit store', () => {
               'audit.system_retention',
               'team.invitation.created',
             ]);
-            expect(reported.actors).toContainEqual({
+            const actors = reported.actors.map((actor) => ({
+              ...actor,
+              label: Redacted.value(actor.label),
+            }));
+            expect(actors).toContainEqual({
               kind: 'system',
               id: null,
               label: 'Studio',
             });
-            expect(reported.actors).toContainEqual({
+            expect(actors).toContainEqual({
               kind: 'user',
               id: 'actor',
               label: 'Audit actor',
@@ -694,7 +698,9 @@ describe.skipIf(!testDb)('immutable audit store', () => {
           );
           expect(found?.id).toBe(stored.id);
           expect(found?.sequence).toBe(stored.sequence);
-          expect(found?.details).toEqual({ role: 'member' });
+          expect(found && Redacted.value(found.details)).toEqual({
+            role: 'member',
+          });
 
           expect(
             yield* TenantScope.open(access(team), get(team, randomUUID())),

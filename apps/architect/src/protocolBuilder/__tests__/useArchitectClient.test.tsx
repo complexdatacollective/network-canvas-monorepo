@@ -1,5 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { renderHook } from '@testing-library/react';
+import { Redacted } from 'effect';
 import { StrictMode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -59,7 +60,10 @@ describe('useArchitectClient', () => {
       protocolId: PROTOCOL_ID,
       requestId: 'write-1',
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Edited under StrictMode' },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: 'Edited under StrictMode',
+      }),
       revision: held.revision,
     });
     expect(stageLabel(store)).toBe('Edited under StrictMode');
@@ -100,7 +104,10 @@ describe('useArchitectClient', () => {
       protocolId: PROTOCOL_ID,
       requestId: 'write-2',
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Written to the second store' },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: 'Written to the second store',
+      }),
       revision: held.revision,
     });
     expect(stageLabel(second)).toBe('Written to the second store');
@@ -123,10 +130,10 @@ describe('useArchitectClient', () => {
       request: {
         kind: 'content',
         contentKind: 'image',
-        name: 'A photograph',
-        source: 'photo.png',
+        name: Redacted.make('A photograph'),
+        source: Redacted.make('photo.png'),
         contentType: 'image/png',
-        bytes: new Uint8Array([1, 2, 3]),
+        bytes: Redacted.make(new Uint8Array([1, 2, 3])),
       },
     });
     if (staged.status !== 'ok') throw new Error('staging failed');
@@ -144,7 +151,10 @@ describe('useArchitectClient', () => {
       protocolId: PROTOCOL_ID,
       requestId: 'write-3',
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Names the photograph' },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: 'Names the photograph',
+      }),
       revision: held.revision,
       promote: { editId: EDIT, resourceIds: [resourceId] },
     });
@@ -159,9 +169,9 @@ describe('useArchitectClient', () => {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
-    expect(blocked.lock === 'readOnly' && blocked.holder.displayName).toBe(
-      'Ein anderer Tab',
-    );
+    expect(
+      blocked.lock === 'readOnly' && Redacted.value(blocked.holder.displayName),
+    ).toBe('Ein anderer Tab');
 
     unmount();
   });

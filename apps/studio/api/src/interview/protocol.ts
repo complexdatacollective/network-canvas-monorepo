@@ -1,4 +1,4 @@
-import { Effect, Predicate } from 'effect';
+import { Effect, Predicate, Redacted } from 'effect';
 import type { SqlError } from 'effect/sql';
 
 import type { ProtocolPayload } from '@codaco/interview/contract';
@@ -40,7 +40,7 @@ const withAssetKeys = Effect.fnUntraced(function* (
         ),
       );
     }
-    filled[assetId] = { ...entry, value };
+    filled[assetId] = { ...entry, value: Redacted.value(value) };
   }
   return { ...document, assetManifest: filled };
 });

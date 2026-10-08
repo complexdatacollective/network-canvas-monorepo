@@ -10,7 +10,7 @@ import {
   useRouterState,
   type RouterHistory,
 } from '@tanstack/react-router';
-import { Schema } from 'effect';
+import { Redacted, Schema } from 'effect';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
@@ -980,7 +980,9 @@ const enterRoute = createRoute({
   loader: async ({ params }) => {
     throw redirect({
       to: '/session/$sessionToken',
-      params: { sessionToken: await enterSession(params.token) },
+      params: {
+        sessionToken: Redacted.value(await enterSession(params.token)),
+      },
       replace: true,
     });
   },

@@ -1,3 +1,4 @@
+import { Redacted, Schema } from 'effect';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { LinkToken, SessionToken } from '@codaco/studio-contract/schema/ids';
@@ -8,8 +9,8 @@ import {
   storeSession,
 } from '../storedSessions.ts';
 
-const LINK = LinkToken.make('l'.repeat(32));
-const SESSION = SessionToken.make('s'.repeat(32));
+const LINK = Schema.decodeSync(LinkToken)('l'.repeat(32));
+const SESSION = 's'.repeat(32);
 
 const denied = () => {
   throw new DOMException('The operation is insecure.', 'SecurityError');
@@ -23,10 +24,15 @@ afterEach(() => {
 
 describe('stored participant sessions', () => {
   it('reads and forgets a session in the store the browser allows when it denies the other', () => {
-    storeSession(LINK, SESSION, { anonymous: false });
+    storeSession(LINK, Schema.decodeSync(SessionToken)(SESSION), {
+      anonymous: false,
+    });
     vi.spyOn(window, 'sessionStorage', 'get').mockImplementation(denied);
 
-    expect(readStoredSession(LINK)).toBe(SESSION);
+    const stored = readStoredSession(LINK);
+    expect(stored === undefined ? undefined : Redacted.value(stored)).toBe(
+      SESSION,
+    );
     forgetStoredSession(LINK);
     expect(localStorage.length).toBe(0);
   });

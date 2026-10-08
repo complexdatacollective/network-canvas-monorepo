@@ -10,7 +10,7 @@
 // row inside its own transaction — that read, not the epoch a client presents,
 // is what decides whether a write is admitted.
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 import type { SqlError } from 'effect/sql';
 
 import type {
@@ -82,6 +82,7 @@ import {
 } from './events.ts';
 import { PROTOCOL_BUILDER_TABLES } from './schema.ts';
 import { consumeStaged, type Consumed } from './staging-store.ts';
+import { presenceOf } from './stored-shapes.ts';
 import {
   readWriteReceipt,
   recordWriteReceipt,
@@ -123,7 +124,10 @@ export type ProtocolBuilderSession = {
   clientSessionId: string;
 };
 
-export type SectionAtRevision = { document: SectionDoc; revision: Revision };
+export type SectionAtRevision = {
+  document: Redacted.Redacted<SectionDoc>;
+  revision: Revision;
+};
 
 export type AcquireOutcome =
   | ({ lock: 'held' } & SectionAtRevision)
@@ -236,11 +240,12 @@ export function sessionPresence(
   sectionId?: ProtocolSectionId,
 ): Presence {
   const displayName =
-    session.principal.name.trim() || session.principal.email.trim();
+    Redacted.value(session.principal.name).trim() ||
+    Redacted.value(session.principal.email).trim();
   return {
     sessionId: session.connectionId,
     userId: session.principal.userId,
-    displayName: displayName.slice(0, 320),
+    displayName: Redacted.make(displayName.slice(0, 320)),
     mode,
     ...(sectionId === undefined ? {} : { sectionId }),
   };
@@ -327,7 +332,7 @@ type SectionRow = {
 function toSectionAtRevision(row: SectionRow): SectionAtRevision | undefined {
   if (row.hash === null || row.doc === null) return undefined;
   return {
-    document: row.doc,
+    document: Redacted.make(row.doc),
     revision: {
       sequence: row.sectionSeq === null ? row.headSeq : BigInt(row.sectionSeq),
       contentHash: row.hash,
@@ -519,7 +524,10 @@ const lockedHolder: (
       )
       .orderBy(desc(protocolEvents.cursor))
       .limit(1);
-    return rows[0]?.holder ?? undefined;
+    const holder = rows[0]?.holder;
+    return holder === undefined || holder === null
+      ? undefined
+      : presenceOf(holder);
   }, sqlErrorsOnly);
 
 /**
@@ -608,7 +616,7 @@ export const acquireLock: (
             holder: holder ?? {
               sessionId: held?.owner ?? 'unknown',
               userId: held?.owner ?? 'unknown',
-              displayName: held?.owner ?? 'another editor',
+              displayName: Redacted.make(held?.owner ?? 'another editor'),
               mode: 'editing',
               sectionId,
             },
@@ -807,7 +815,7 @@ type CommitDetails = {
 };
 
 function committedEvent(
-  protocol: { protocolId: string; protocolLabel: string },
+  protocol: { protocolId: string; protocolLabel: Redacted.Redacted },
   input: { draftId: string; revision: bigint } & CommitDetails,
 ): AuditEventBody {
   return {
@@ -942,7 +950,10 @@ export const submit = Effect.fn('protocolBuilder.submit')(function* (
             new Error(`draft ${session.draftId} has no assets section`),
           );
         }
-        writes.set(ASSETS, { ...assets.document, ...write.assetEntries });
+        writes.set(ASSETS, {
+          ...Redacted.value(assets.document),
+          ...write.assetEntries,
+        });
       }
       const consumed = yield* consumePromotion(session, write.staged);
       if (consumed.status === 'gone') {
@@ -1095,13 +1106,13 @@ export const create = Effect.fn('protocolBuilder.create')(function* (
             new Error(`draft ${session.draftId} has no stageOrder section`),
           );
         }
-        const stages = stageList(order.document);
+        const stages = stageList(Redacted.value(order.document));
         const at =
           input.position === undefined
             ? stages.length
             : Math.min(input.position, stages.length);
         stages.splice(at, 0, id);
-        writes.set(STAGE_ORDER, { ...order.document, stages });
+        writes.set(STAGE_ORDER, { ...Redacted.value(order.document), stages });
       }
       if (input.assetEntries !== undefined) {
         const assets = yield* headSection(session, ASSETS);
@@ -1110,7 +1121,10 @@ export const create = Effect.fn('protocolBuilder.create')(function* (
             new Error(`draft ${session.draftId} has no assets section`),
           );
         }
-        writes.set(ASSETS, { ...assets.document, ...input.assetEntries });
+        writes.set(ASSETS, {
+          ...Redacted.value(assets.document),
+          ...input.assetEntries,
+        });
       }
       const consumed = yield* consumePromotion(session, input.staged);
       if (consumed.status === 'gone') {
@@ -1279,13 +1293,13 @@ export function deleteStage(session: ProtocolBuilderSession, stageId: string) {
           new Error(`draft ${session.draftId} has no stageOrder section`),
         );
       }
-      const stages = stageList(order.document).filter(
+      const stages = stageList(Redacted.value(order.document)).filter(
         (entry) => entry !== stageId,
       );
       return {
         writes: new Map<ProtocolSectionId, SectionDoc | undefined>([
           [target, undefined],
-          [STAGE_ORDER, { ...order.document, stages }],
+          [STAGE_ORDER, { ...Redacted.value(order.document), stages }],
         ]),
         owned: new Set<ProtocolSectionId>(),
       };
@@ -1304,13 +1318,14 @@ export function deleteVariable(
       const ownerSection = codebookSectionId(input.subject);
       const state = yield* headSection(session, ownerSection);
       if (state === undefined) return undefined;
-      const variables = isRecord(state.document.variables)
-        ? { ...state.document.variables }
+      const document = Redacted.value(state.document);
+      const variables = isRecord(document.variables)
+        ? { ...document.variables }
         : {};
       delete variables[input.variableId];
       return sweptPlan(
         yield* headDocuments(session, head),
-        [[ownerSection, { ...state.document, variables }]],
+        [[ownerSection, { ...document, variables }]],
         (documents) =>
           variableReferences(
             assembledProtocol(documents),

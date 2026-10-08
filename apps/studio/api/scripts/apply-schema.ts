@@ -22,7 +22,7 @@ if (!env.db) {
   process.exit(1);
 }
 
-const pool = createOwnerPool(env.db);
+const pool = createOwnerPool(env.db, { logLevel: env.logLevel });
 
 try {
   const outcome = await applySchema(pool).catch(async (error: unknown) => {
@@ -67,14 +67,12 @@ try {
   // is part of it, and on every run, because an ownerless instance whose token
   // was lost is recovered by running this again. An owned instance issues
   // nothing and prints nothing.
-  printBootstrapToken(
-    await Effect.runPromise(
-      OwnerScope.open(issueBootstrapToken()).pipe(
-        Effect.provide(OwnerDatabase.layer(env.db)),
-        Effect.scoped,
-      ),
+  await Effect.runPromise(
+    OwnerScope.open(issueBootstrapToken()).pipe(
+      Effect.provide(OwnerDatabase.layer(env.db)),
+      Effect.scoped,
+      Effect.flatMap((token) => printBootstrapToken(token, env.auth?.baseUrl)),
     ),
-    env.auth?.baseUrl,
   );
 } finally {
   await pool.end();

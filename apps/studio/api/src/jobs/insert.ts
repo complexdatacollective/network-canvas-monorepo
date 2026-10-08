@@ -1,4 +1,4 @@
-import type { JobPayload, JobQueueName } from '@codaco/studio-sync/jobs';
+import type { EncodedJobPayload, JobQueueName } from '@codaco/studio-sync/jobs';
 
 import { resolvedQueue } from './queues.ts';
 import { assertSchemaName } from './schema.ts';
@@ -11,7 +11,7 @@ export type JobInsertStatement = {
 export type JobInsertInput<Queue extends JobQueueName> = {
   readonly schema: string;
   readonly queue: Queue;
-  readonly payload: JobPayload<Queue>;
+  readonly payload: EncodedJobPayload<Queue>;
   readonly singletonKey: string | null;
   readonly now: Date | null;
   readonly startAfter: Date | null;

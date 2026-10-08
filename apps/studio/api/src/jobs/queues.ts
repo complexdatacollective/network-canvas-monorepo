@@ -4,6 +4,7 @@ import {
   JOB_PAYLOAD_PARSE_OPTIONS,
   JOB_PAYLOAD_SCHEMAS,
   JOB_QUEUES,
+  type EncodedJobPayload,
   type JobPayload,
   type JobQueueName,
   type JobQueueOptions,
@@ -87,12 +88,16 @@ export type QueuePayloadCodec<Queue extends JobQueueName> = {
   readonly decode: (
     raw: unknown,
   ) => Effect.Effect<JobPayload<Queue>, Schema.SchemaError>;
+  readonly encode: (
+    payload: JobPayload<Queue>,
+  ) => Effect.Effect<EncodedJobPayload<Queue>, Schema.SchemaError>;
 };
 
 const codec = <Queue extends JobQueueName>(
-  schema: Schema.Codec<JobPayload<Queue>, unknown>,
+  schema: Schema.Codec<JobPayload<Queue>, EncodedJobPayload<Queue>>,
 ): QueuePayloadCodec<Queue> => ({
   decode: Schema.decodeUnknownEffect(schema, JOB_PAYLOAD_PARSE_OPTIONS),
+  encode: Schema.encodeUnknownEffect(schema, JOB_PAYLOAD_PARSE_OPTIONS),
 });
 
 const JOB_PAYLOAD_CODECS: {

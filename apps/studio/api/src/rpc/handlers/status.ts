@@ -12,12 +12,8 @@ import type { RpcDeps } from '../deps.ts';
 export const StatusHandlers = (deps: RpcDeps) =>
   StatusRpcs.toLayer({
     'status': () =>
-      Effect.promise(async () =>
-        getInstanceStatus(
-          deps.capabilities,
-          deps.deployment,
-          await deps.readInstallation(),
-        ),
+      Effect.map(deps.readInstallation, (installation) =>
+        getInstanceStatus(deps.capabilities, deps.deployment, installation),
       ),
     // Only the installation's owner is told. There is no owner role: the owner
     // is the one user `installation.owner_user_id` names, so everyone else
@@ -31,9 +27,7 @@ export const StatusHandlers = (deps: RpcDeps) =>
     'status.updateAvailable': () =>
       Effect.gen(function* () {
         const principal = yield* Principal;
-        const installation = yield* Effect.promise(() =>
-          deps.readInstallation(),
-        );
+        const installation = yield* deps.readInstallation;
         if (installation?.ownerUserId !== principal.userId) return null;
         const latest = yield* Effect.orDie(readLatestRelease());
         if (latest === null || !isNewer(latest.version, STUDIO_VERSION)) {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from '@effect/vitest';
-import { Effect, Layer, Option } from 'effect';
+import { Effect, Layer, Logger, Option, Redacted } from 'effect';
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from 'effect/http';
 
 import { Environment } from '../env.ts';
@@ -19,7 +19,7 @@ function resolveAddress(options: {
   return resolveClientAddress(
     Option.fromUndefinedOr(options.peerAddress),
     options.forwarded,
-    createTrustedProxies(options.trustedProxies),
+    createTrustedProxies(options.trustedProxies).list,
   );
 }
 
@@ -111,8 +111,7 @@ describe('the client address', () => {
     ).toBe('unknown');
   });
 
-  it('ignores an unparseable proxy entry and says so', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+  it('ignores an unparseable proxy entry and counts it', () => {
     expect(
       resolveAddress({
         peerAddress: '10.0.0.5',
@@ -121,11 +120,43 @@ describe('the client address', () => {
       }),
     ).toBe('203.0.113.9');
     expect(
-      warn.mock.calls.filter(([line]) =>
-        String(line).includes('TRUSTED_PROXIES'),
-      ),
-    ).toHaveLength(1);
+      createTrustedProxies(['not-an-address', '10.0.0.0/999', '10.0.0.0/8'])
+        .rejected,
+    ).toBe(2);
   });
+
+  it.effect(
+    'warns with the number of rejected entries, never the entries',
+    () =>
+      Effect.gen(function* () {
+        const lines: string[] = [];
+        const capture = Logger.make((options) => {
+          lines.push(JSON.stringify(Logger.formatStructured.log(options)));
+        });
+        yield* Layer.build(
+          HttpRouter.use(() => Effect.void).pipe(
+            Layer.provideMerge(ClientAddressLive),
+            Layer.provide(
+              Layer.succeed(
+                Environment,
+                resolve({
+                  NODE_ENV: 'test',
+                  TRUSTED_PROXIES: ['192.0.2.77/99', '10.0.0.0/8'],
+                }),
+              ),
+            ),
+            Layer.provide(HttpRouter.layer),
+            Layer.provide(Logger.layer([capture])),
+          ),
+        ).pipe(Effect.scoped);
+        const warnings = lines.filter((line) =>
+          line.includes('TRUSTED_PROXIES'),
+        );
+        expect(warnings).toHaveLength(1);
+        expect(warnings[0]).toContain('"rejected_entries":1');
+        expect(warnings[0]).not.toContain('192.0.2.77');
+      }),
+  );
 });
 
 const PeerLive = (peer: string) =>
@@ -148,7 +179,7 @@ describe('the middleware over a request', () => {
         'GET',
         '/who',
         Effect.map(ClientAddress, (address) =>
-          HttpServerResponse.text(address),
+          HttpServerResponse.text(Redacted.value(address)),
         ),
       ),
     );

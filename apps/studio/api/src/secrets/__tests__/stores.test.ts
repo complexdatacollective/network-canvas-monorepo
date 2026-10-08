@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { layer } from '@effect/vitest';
-import { Cause, Effect, Exit, Option } from 'effect';
+import { Cause, Effect, Exit, Option, Redacted } from 'effect';
 import { describe, expect } from 'vitest';
 
 import {
@@ -88,7 +88,7 @@ const newSubscription = Effect.fnUntraced(function* (
   const secret = `whsec_${randomUUID().replaceAll('-', '')}`;
   const sealed = cipher.sealWebhookSecret(
     { teamId: TEAM, subscriptionId: id },
-    secret,
+    Redacted.make(secret),
   );
   yield* harness.onOwner(
     harness.owner
@@ -124,7 +124,7 @@ const newAccount = Effect.fnUntraced(function* (
     if (typeof value !== 'string') return value.plaintext;
     return cipher.sealOAuthToken(
       { providerId: 'google', accountId, column },
-      value,
+      Redacted.make(value),
     );
   };
   yield* harness.onOwner(
@@ -147,7 +147,7 @@ const newAssetKey = Effect.fnUntraced(function* (
   const value = `pk.${randomUUID().replaceAll('-', '')}`;
   const sealed = cipher.sealAssetKey(
     { teamId: TEAM, protocolId: PROTOCOL, assetId },
-    value,
+    Redacted.make(value),
   );
   yield* harness.onOwner(
     harness.owner
@@ -168,7 +168,7 @@ const newStagedSecret = Effect.fnUntraced(function* (
   const value = `sk.${randomUUID().replaceAll('-', '')}`;
   const sealed = cipher.sealStagedSecret(
     { teamId: TEAM, draftId: DRAFT, owner: OWNER, resourceId },
-    value,
+    Redacted.make(value),
   );
   const descriptor = {
     id: resourceId,
@@ -391,7 +391,9 @@ describe.skipIf(!testDb)('the secret stores', () => {
             probeOf(webhookStore, 'test-1'),
           );
           expect(opener).not.toBeNull();
-          expect(opener?.(AFTER)).toBe(subscription.secret);
+          expect(opener === null ? null : Redacted.value(opener(AFTER))).toBe(
+            subscription.secret,
+          );
         }).pipe(Effect.orDie),
       );
 
@@ -464,7 +466,9 @@ describe.skipIf(!testDb)('the secret stores', () => {
             probeOf(assetKeyStore, 'test-2'),
           );
           expect(opener).not.toBeNull();
-          expect(opener?.(BEFORE)).toBe(key.value);
+          expect(opener === null ? null : Redacted.value(opener(BEFORE))).toBe(
+            key.value,
+          );
 
           const harness = yield* TestDatabase;
           yield* harness.onOwner(
@@ -496,7 +500,10 @@ describe.skipIf(!testDb)('the secret stores', () => {
               probeOf(accountStore, 'test-2'),
             );
             expect(opener, column).not.toBeNull();
-            expect(opener?.(BEFORE), column).toBe(`only.${column}`);
+            expect(
+              opener === null ? null : Redacted.value(opener(BEFORE)),
+              column,
+            ).toBe(`only.${column}`);
             expect(() =>
               BEFORE.openOAuthToken(
                 {
@@ -568,7 +575,9 @@ describe.skipIf(!testDb)('the secret stores', () => {
           const opener = yield* MaintenanceScope.open(
             probeOf(assetKeyStore, 'test-1'),
           );
-          expect(opener?.(AFTER)).toBe(key.value);
+          expect(opener === null ? null : Redacted.value(opener(AFTER))).toBe(
+            key.value,
+          );
         }).pipe(Effect.orDie),
       );
 
@@ -597,9 +606,15 @@ describe.skipIf(!testDb)('the secret stores', () => {
             for (const key of [first, second]) {
               const row = rows.find((r) => r.asset_id === key.assetId);
               expect(
-                AFTER.openAssetKey(
-                  { teamId: TEAM, protocolId: PROTOCOL, assetId: key.assetId },
-                  { ciphertext: row!.ciphertext, keyId: row!.key_id },
+                Redacted.value(
+                  AFTER.openAssetKey(
+                    {
+                      teamId: TEAM,
+                      protocolId: PROTOCOL,
+                      assetId: key.assetId,
+                    },
+                    { ciphertext: row!.ciphertext, keyId: row!.key_id },
+                  ),
                 ),
               ).toBe(key.value);
             }
@@ -633,7 +648,9 @@ describe.skipIf(!testDb)('the secret stores', () => {
             const opener = yield* MaintenanceScope.open(
               probeOf(stagedStore, 'test-1'),
             );
-            expect(opener?.(AFTER)).toBe(secret.value);
+            expect(opener === null ? null : Redacted.value(opener(AFTER))).toBe(
+              secret.value,
+            );
 
             const harness = yield* TestDatabase;
             yield* harness.onOwner(
@@ -704,13 +721,15 @@ describe.skipIf(!testDb)('the secret stores', () => {
               stored[0]?.accessToken?.startsWith('studio-secret:test-1:'),
             ).toBe(true);
             expect(
-              AFTER.openOAuthToken(
-                {
-                  providerId: 'google',
-                  accountId: row.accountId,
-                  column: 'accessToken',
-                },
-                stored[0]?.accessToken ?? '',
+              Redacted.value(
+                AFTER.openOAuthToken(
+                  {
+                    providerId: 'google',
+                    accountId: row.accountId,
+                    column: 'accessToken',
+                  },
+                  stored[0]?.accessToken ?? '',
+                ),
               ),
             ).toBe('ya29.only');
           }).pipe(Effect.orDie),

@@ -1,4 +1,4 @@
-import { Context, Schema } from 'effect';
+import { Context, type Redacted, Schema } from 'effect';
 import { RpcMiddleware } from 'effect/rpc';
 
 import { RateLimited, Unauthorized } from '../schema/errors.ts';
@@ -10,9 +10,9 @@ export class Principal extends Context.Service<
   {
     readonly kind: 'user';
     readonly userId: UserId;
-    readonly email: string;
+    readonly email: Redacted.Redacted;
     readonly emailVerified: boolean;
-    readonly name: string;
+    readonly name: Redacted.Redacted;
     readonly locale: string | null;
     readonly sessionId: string;
   }

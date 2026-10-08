@@ -9,7 +9,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { and, asc, eq, gt, inArray, notExists, sql } from 'drizzle-orm';
-import { Effect, Option } from 'effect';
+import { Effect, Option, type Redacted } from 'effect';
 
 import type { ResourceDescriptor } from '@codaco/protocol-builder-core/contract/schemas';
 
@@ -18,6 +18,11 @@ import { Transaction } from '../db/tenant.ts';
 import type { SecretsCipherApi } from '../secrets/cipher.ts';
 import { StagingKey, stagingPrefix } from '../storage/object-store.ts';
 import { PROTOCOL_BUILDER_TABLES } from './schema.ts';
+import {
+  descriptorOf,
+  storedDescriptor,
+  type StoredResourceDescriptor,
+} from './stored-shapes.ts';
 
 const { protocolStagedResources: staged, protocolConnections: connections } =
   PROTOCOL_BUILDER_TABLES;
@@ -43,12 +48,14 @@ export type StagedRow = {
   readonly contentHash: string | null;
   readonly contentType: string | null;
   /** Opens the row's secret; undefined for a staged file. */
-  readonly secret: ((cipher: SecretsCipherApi) => string) | undefined;
+  readonly secret:
+    | ((cipher: SecretsCipherApi) => Redacted.Redacted)
+    | undefined;
 };
 
 type StoredStagedRow = {
   resourceId: string;
-  descriptor: ResourceDescriptor;
+  descriptor: StoredResourceDescriptor;
   objectKey: string | null;
   contentHash: string | null;
   contentType: string | null;
@@ -73,7 +80,7 @@ function asStagedRow(
   const { secretCiphertext: ciphertext, secretKeyId: keyId } = row;
   return {
     resourceId: row.resourceId,
-    descriptor: row.descriptor,
+    descriptor: descriptorOf(row.descriptor),
     objectKey:
       row.objectKey === null
         ? undefined
@@ -138,7 +145,7 @@ export type StagedInsert =
   | {
       readonly kind: 'secret';
       readonly descriptor: ResourceDescriptor;
-      readonly value: string;
+      readonly value: Redacted.Redacted;
     };
 
 /**
@@ -162,7 +169,7 @@ export const insertStaged = Effect.fn('protocolBuilder.insertStaged')(
       resourceId,
       requestId,
       kind: input.kind,
-      descriptor: input.descriptor,
+      descriptor: storedDescriptor(input.descriptor),
     };
     const values =
       input.kind === 'content'

@@ -1,5 +1,5 @@
 import { assert, describe, layer } from '@effect/vitest';
-import { DateTime, Effect, Layer, Random } from 'effect';
+import { DateTime, Effect, Layer, Random, Redacted } from 'effect';
 import { TestClock } from 'effect/testing';
 
 import { reachableDb } from '../../../__tests__/support/postgres.ts';
@@ -22,10 +22,26 @@ import { layerRecordingMailer, RecordedMail } from './support.ts';
 
 const db = await reachableDb();
 
-const MAGIC_LINK = {
+const MAGIC_LINK_WIRE = {
   email: 'researcher@example.org',
   url: 'https://studio.example.org/api/auth/magic-link/verify?token=abc',
 };
+
+const MAGIC_LINK = {
+  email: Redacted.make(MAGIC_LINK_WIRE.email),
+  url: Redacted.make(MAGIC_LINK_WIRE.url),
+};
+
+const sentLinks = (
+  links: ReadonlyArray<{
+    readonly email: Redacted.Redacted;
+    readonly url: Redacted.Redacted;
+  }>,
+) =>
+  links.map(({ email, url }) => ({
+    email: Redacted.value(email),
+    url: Redacted.value(url),
+  }));
 
 const SIGN_IN = resolvedQueue('sign-in-email');
 
@@ -68,7 +84,9 @@ describe.skipIf(!db)('the sign-in email handler', () => {
             );
 
             const mail = yield* RecordedMail;
-            assert.deepStrictEqual(mail.magicLinks, [MAGIC_LINK]);
+            assert.deepStrictEqual(sentLinks(mail.magicLinks), [
+              MAGIC_LINK_WIRE,
+            ]);
             const [row] = yield* readJobs('sign-in-email');
             assert.strictEqual(row?.id, jobId);
             assert.strictEqual(row?.state, 'completed');
@@ -150,7 +168,7 @@ describe.skipIf(!db)('the sign-in email handler', () => {
               MaintenanceDatabase,
               ({ sql }) => sql`
                 UPDATE ${sql(schema)}.jobs
-                   SET payload = ${JSON.stringify({ email: MAGIC_LINK.email })}::jsonb
+                   SET payload = ${JSON.stringify({ email: MAGIC_LINK_WIRE.email })}::jsonb
                  WHERE id = ${jobId}`,
             ),
           );

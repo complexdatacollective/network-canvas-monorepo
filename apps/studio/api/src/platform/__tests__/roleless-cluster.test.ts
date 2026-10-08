@@ -71,17 +71,22 @@ const text = (message: unknown): string =>
     .map((part) => (Cause.isCause(part) ? Cause.pretty(part) : String(part)))
     .join(' ');
 
-type Captured = { level: string; text: string };
+type Captured = {
+  level: string;
+  text: string;
+  annotations: Readonly<Record<string, unknown>>;
+};
 
 const capture = () => {
   const lines: Captured[] = [];
   const layer = Logger.layer([
-    Logger.make<unknown, void>(({ logLevel, message, cause }) => {
+    Logger.make<unknown, void>(({ logLevel, message, cause, fiber }) => {
       lines.push({
         level: logLevel,
         text: [text(message), cause === undefined ? '' : Cause.pretty(cause)]
           .join(' ')
           .trim(),
+        annotations: fiber.getRef(References.CurrentLogAnnotations),
       });
     }),
   ]);
@@ -212,7 +217,7 @@ describe.skipIf(!testDb)(
 
 describe('a reading the gate takes that fails for any other reason', () => {
   it.live(
-    'logs one warning for the failure, with the reason in it and no stack',
+    'logs one warning for the failure, naming its type and never its message',
     () => {
       const logs = capture();
       return Effect.gen(function* () {
@@ -225,11 +230,12 @@ describe('a reading the gate takes that fails for any other reason', () => {
 
         const warnings = logs.lines.filter((line) => line.level === 'Warn');
         assert.strictEqual(warnings.length, 1);
-        assert.include(warnings[0]?.text, 'could not read the thing');
-        assert.include(warnings[0]?.text, 'connect ECONNREFUSED 127.0.0.1:1');
-        for (const line of logs.lines) {
-          assert.notMatch(line.text, STACK_FRAME, line.text.slice(0, 120));
-        }
+        assert.include(warnings[0]?.text, 'could not take a reading');
+        assert.deepStrictEqual(warnings[0]?.annotations, {
+          reading: 'the thing',
+          error_type: 'Error',
+        });
+        assert.notInclude(warnings[0]?.text, 'ECONNREFUSED');
       }).pipe(Effect.provide(logs.layer));
     },
   );

@@ -1,4 +1,4 @@
-import { Effect, Layer } from 'effect';
+import { Effect, Layer, Redacted, Schema } from 'effect';
 import type { RpcGroup } from 'effect/rpc';
 import { RpcTest } from 'effect/rpc';
 import { onTestFinished } from 'vitest';
@@ -25,7 +25,7 @@ import {
   type ParticipantRpcsType,
   setParticipantRuntime,
 } from '../runtime/participantRuntime.ts';
-import type { RpcCall, RpcHarness } from './rpcHarness.ts';
+import { onTheWire, type RpcCall, type RpcHarness } from './rpcHarness.ts';
 
 export type ParticipantHandlers = RpcGroup.HandlersFrom<ParticipantRpcsType>;
 
@@ -55,7 +55,7 @@ const requireSessionLayer = (
               ParticipantSession,
               ParticipantSession.of({
                 sessionId: 'harness-session',
-                sessionToken: SessionToken.make('s'.repeat(32)),
+                sessionToken: Schema.decodeSync(SessionToken)('s'.repeat(32)),
                 studyId: StudyId.make(HARNESS_STUDY),
                 teamId: TeamId.make(HARNESS_TEAM),
                 holderEpoch: 1,
@@ -68,7 +68,7 @@ const requireSessionLayer = (
               AuditActor.of({
                 kind: 'participant',
                 id: 'harness-session',
-                label: 'harness-participant',
+                label: Redacted.make('harness-participant'),
               }),
             ),
           ),
@@ -78,7 +78,7 @@ const requireSessionLayer = (
 const recording =
   (client: ParticipantRpcClient, calls: RpcCall[]): ParticipantRpcClient =>
   (tag, payload, options) => {
-    calls.push({ tag, payload });
+    calls.push({ tag, payload: onTheWire(ParticipantRpcs, tag, payload) });
     return client(tag, payload, options);
   };
 

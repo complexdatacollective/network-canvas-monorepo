@@ -1,4 +1,4 @@
-import { Schema } from 'effect';
+import { Redacted, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -7,6 +7,7 @@ import {
   auditEventDefinition,
   auditEventKey,
   AuditEventInputSchema,
+  encodeAuditEventInput,
   parseAuditEventInput,
   type AuditEventKey,
 } from '../events.ts';
@@ -57,6 +58,9 @@ describe('audit event registry', () => {
         key === 'security.denied_attempts.rate_limited@1',
       );
       const parsed = parseAuditEventInput(definition.fixture);
+      expect(Redacted.isRedacted(parsed.teamLabel)).toBe(true);
+      expect(Redacted.isRedacted(parsed.actorLabel)).toBe(true);
+      expect(encodeAuditEventInput(parsed)).toEqual(definition.fixture);
       expect(auditEventKey(parsed)).toBe(key);
       expect(auditEventDefinition(parsed)).toBe(definition);
     }
@@ -115,8 +119,8 @@ describe('audit event registry', () => {
   });
   it('decodes every fixture through the union to what its own definition decodes', () => {
     for (const definition of Object.values(AUDIT_EVENT_REGISTRY)) {
-      expect(decodeUnion(definition.fixture)).toEqual(
-        parseAuditEventInput(definition.fixture),
+      expect(encodeAuditEventInput(decodeUnion(definition.fixture))).toEqual(
+        encodeAuditEventInput(parseAuditEventInput(definition.fixture)),
       );
     }
     const v1 = AUDIT_EVENT_REGISTRY['team.invitation.cancelled@1'].fixture;
@@ -129,7 +133,9 @@ describe('audit event registry', () => {
 
   it('refuses an undeclared key at the top level and inside details', () => {
     const fixture = AUDIT_EVENT_REGISTRY['team.invitation.created@1'].fixture;
-    expect(parseAuditEventInput(fixture)).toEqual(fixture);
+    expect(encodeAuditEventInput(parseAuditEventInput(fixture))).toEqual(
+      fixture,
+    );
     expect(() =>
       parseAuditEventInput({ ...fixture, invitationToken: 'secret' }),
     ).toThrow();
@@ -145,10 +151,13 @@ describe('audit event registry', () => {
     const fixture = AUDIT_EVENT_REGISTRY['team.invitation.created@1'].fixture;
     const address = (length: number) =>
       `${'a'.repeat(length - '@example.com'.length)}@example.com`;
-    expect(
-      parseAuditEventInput({ ...fixture, subjectLabel: address(320) })
-        .subjectLabel,
-    ).toBe(address(320));
+    const { subjectLabel } = parseAuditEventInput({
+      ...fixture,
+      subjectLabel: address(320),
+    });
+    expect(subjectLabel === null ? null : Redacted.value(subjectLabel)).toBe(
+      address(320),
+    );
     expect(() =>
       parseAuditEventInput({ ...fixture, subjectLabel: address(321) }),
     ).toThrow();
@@ -274,7 +283,10 @@ describe('audit event registry', () => {
     ];
     for (const [label, input, accepted] of cases) {
       if (accepted) {
-        expect(parseAuditEventInput(input), label).toEqual(input);
+        expect(
+          encodeAuditEventInput(parseAuditEventInput(input)),
+          label,
+        ).toEqual(input);
       } else {
         expect(() => parseAuditEventInput(input), label).toThrow();
       }

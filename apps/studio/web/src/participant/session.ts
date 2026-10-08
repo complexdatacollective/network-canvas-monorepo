@@ -1,4 +1,4 @@
-import { Option, Schema } from 'effect';
+import { Option, Redacted, Schema } from 'effect';
 
 import type {
   InterviewPayload,
@@ -28,7 +28,7 @@ const decodeLinkToken = Schema.decodeUnknownOption(LinkToken);
 const decodeSessionToken = Schema.decodeUnknownOption(SessionToken);
 
 const readSession = (sessionToken: SessionToken) => {
-  setParticipantSessionToken(sessionToken);
+  setParticipantSessionToken(Redacted.value(sessionToken));
   holderId ??= pageHolderId();
   return participantCall('participant.session', { holderId });
 };
@@ -43,17 +43,20 @@ let entered:
 export const openSession = async (rawSessionToken: string) => {
   const sessionToken = refuseUnless(decodeSessionToken(rawSessionToken));
   const loaded =
-    entered?.sessionToken === sessionToken
+    entered !== undefined &&
+    Redacted.value(entered.sessionToken) === Redacted.value(sessionToken)
       ? entered.loaded
       : await readSession(sessionToken);
   entered = undefined;
   const payload: InterviewPayload = {
     session: {
       ...loaded.session,
-      network: NcNetworkSchema.parse(loaded.session.network),
-      stageMetadata: StageMetadataSchema.parse(loaded.session.stageMetadata),
+      network: NcNetworkSchema.parse(Redacted.value(loaded.session.network)),
+      stageMetadata: StageMetadataSchema.parse(
+        Redacted.value(loaded.session.stageMetadata),
+      ),
     },
-    protocol: loaded.protocol as ProtocolPayload,
+    protocol: Redacted.value(loaded.protocol) as ProtocolPayload,
   };
   return {
     holderEpoch: loaded.holderEpoch,

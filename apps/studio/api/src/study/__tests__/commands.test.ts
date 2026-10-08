@@ -1,5 +1,5 @@
 import { assert, describe, it } from '@effect/vitest';
-import { Cause, Effect, Exit, Layer, Schema } from 'effect';
+import { Cause, Effect, Exit, Layer, Redacted, Schema } from 'effect';
 
 import { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
@@ -18,9 +18,9 @@ import { createAuditedStudy } from '../commands.ts';
 const OWNER = Principal.of({
   kind: 'user',
   userId: Schema.decodeSync(UserId)('user-study-name'),
-  email: 'owner@example.org',
+  email: Redacted.make('owner@example.org'),
   emailVerified: true,
-  name: 'Owner',
+  name: Redacted.make('Owner'),
   locale: null,
   sessionId: 'session-study-name',
 });
@@ -42,7 +42,7 @@ describe('createAuditedStudy', () => {
       Effect.gen(function* () {
         const exit = yield* Effect.exit(
           createAuditedStudy(unsafeMakeTeamAccess('team-study-name', 'owner'), {
-            name,
+            name: Redacted.make(name),
             studyId: 'study-name',
             protocolId: 'protocol-study-name',
             draftId: 'draft-study-name',

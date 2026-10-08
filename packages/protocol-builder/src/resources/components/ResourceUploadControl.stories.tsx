@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { Redacted } from 'effect';
 import { useState } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 
@@ -55,7 +56,7 @@ function UploadControlHost({
             disabled={disabled}
             onStaged={(descriptor) =>
               setImported(
-                `${descriptor.name} was staged as ${descriptor.id}, and is not saved yet.`,
+                `${Redacted.value(descriptor.name)} was staged as ${descriptor.id}, and is not saved yet.`,
               )
             }
           />

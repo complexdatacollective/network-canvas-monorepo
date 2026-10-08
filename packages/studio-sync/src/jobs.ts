@@ -185,8 +185,8 @@ export type InvitationDeliveryJob = typeof InvitationDeliveryJobSchema.Type;
 
 /** The documented exception to identifiers-only — see JOB_PAYLOAD_POLICY. */
 export const SignInEmailJobSchema = Schema.Struct({
-  email: Schema.String.check(Schema.isMinLength(1)),
-  url: Schema.String.check(isUrlString),
+  email: Schema.RedactedFromValue(Schema.String.check(Schema.isMinLength(1))),
+  url: Schema.RedactedFromValue(Schema.String.check(isUrlString)),
 });
 export type SignInEmailJob = typeof SignInEmailJobSchema.Type;
 
@@ -224,6 +224,9 @@ export const JOB_PAYLOAD_SCHEMAS = {
 
 export type JobPayload<Queue extends JobQueueName> =
   (typeof JOB_PAYLOAD_SCHEMAS)[Queue]['Type'];
+
+export type EncodedJobPayload<Queue extends JobQueueName> =
+  (typeof JOB_PAYLOAD_SCHEMAS)[Queue]['Encoded'];
 
 /**
  * `Schema.Struct` strips an undeclared key by default; a field the policy forbids

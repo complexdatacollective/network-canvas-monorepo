@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@effect/vitest';
-import { Effect, type Layer, Logger } from 'effect';
+import { Console, Effect, Layer, Logger, Redacted } from 'effect';
 
 import { UPGRADE_GUIDE_URL } from '@codaco/studio-contract/surfaces';
 
@@ -10,29 +10,42 @@ import {
 } from '../mailer.ts';
 import { updateNoticeMessage } from '../smtp.ts';
 
+const MAGIC_LINK_EMAIL = 'researcher@example.org';
+const MAGIC_LINK_URL =
+  'https://studio.example.org/api/auth/magic-link/verify?token=abc';
+
 const MAGIC_LINK = {
-  email: 'researcher@example.org',
-  url: 'https://studio.example.org/api/auth/magic-link/verify?token=abc',
+  email: Redacted.make(MAGIC_LINK_EMAIL),
+  url: Redacted.make(MAGIC_LINK_URL),
 };
 
 const INVITATION: TeamInvitationInput = {
-  email: 'invitee@example.org',
+  email: Redacted.make('invitee@example.org'),
   expiresAt: new Date('2026-01-02T03:04:05.000Z'),
-  invitationUrl: 'https://studio.example.org/invitations/abc',
-  inviterLabel: 'Ada Lovelace',
+  invitationUrl: Redacted.make('https://studio.example.org/invitations/abc'),
+  inviterLabel: Redacted.make('Ada Lovelace'),
   messageId: 'invitation-1@studio.example.org',
   role: 'member',
-  teamLabel: 'Fieldwork',
+  teamLabel: Redacted.make('Fieldwork'),
 };
 
 const UPDATE_NOTICE: UpdateNoticeInput = {
-  email: 'owner@example.org',
-  name: 'Ada Lovelace',
+  email: Redacted.make('owner@example.org'),
+  name: Redacted.make('Ada Lovelace'),
   version: '1.2.3',
   notesUrl: 'https://releases.networkcanvas.com/studio/1.2.3/notes',
   schemaChange: false,
   deploymentMode: 'self-hosted',
 };
+
+function capturingConsole(lines: string[]): Layer.Layer<never> {
+  return Layer.succeed(Console.Console, {
+    ...globalThis.console,
+    log: (...args: ReadonlyArray<unknown>) => {
+      lines.push(args.map(String).join(' '));
+    },
+  });
+}
 
 function capturingLogger(lines: string[]): Layer.Layer<never> {
   return Logger.layer([
@@ -121,40 +134,50 @@ describe('the update notice', () => {
 });
 
 describe('the console mailer', () => {
-  it.effect('logs the sign-in link rather than sending it', () => {
+  it.effect('prints the sign-in link to stdout rather than sending it', () => {
     const lines: string[] = [];
+    const logged: string[] = [];
     return Effect.gen(function* () {
       const mailer = yield* Mailer;
       yield* mailer.sendMagicLink(MAGIC_LINK);
 
       expect(lines).toEqual([
-        `Magic link for ${MAGIC_LINK.email}: ${MAGIC_LINK.url}`,
+        `Magic link for ${MAGIC_LINK_EMAIL}: ${MAGIC_LINK_URL}`,
       ]);
+      expect(logged).toEqual([]);
     }).pipe(
       Effect.provide(Mailer.layerConsole),
-      Effect.provide(capturingLogger(lines)),
+      Effect.provide(capturingConsole(lines)),
+      Effect.provide(capturingLogger(logged)),
     );
   });
 
-  it.effect('logs the invitation link rather than sending it', () => {
-    const lines: string[] = [];
-    return Effect.gen(function* () {
-      const mailer = yield* Mailer;
-      yield* mailer.sendTeamInvitation(INVITATION);
+  it.effect(
+    'prints the invitation link to stdout rather than sending it',
+    () => {
+      const lines: string[] = [];
+      const logged: string[] = [];
+      return Effect.gen(function* () {
+        const mailer = yield* Mailer;
+        yield* mailer.sendTeamInvitation(INVITATION);
 
-      expect(lines).toEqual([
-        `Invitation to ${INVITATION.teamLabel} for ${INVITATION.email}: ${INVITATION.invitationUrl}`,
-      ]);
-    }).pipe(
-      Effect.provide(Mailer.layerConsole),
-      Effect.provide(capturingLogger(lines)),
-    );
-  });
+        expect(lines).toEqual([
+          `Invitation to ${Redacted.value(INVITATION.teamLabel)} for ${Redacted.value(INVITATION.email)}: ${Redacted.value(INVITATION.invitationUrl)}`,
+        ]);
+        expect(logged).toEqual([]);
+      }).pipe(
+        Effect.provide(Mailer.layerConsole),
+        Effect.provide(capturingConsole(lines)),
+        Effect.provide(capturingLogger(logged)),
+      );
+    },
+  );
 });
 
 describe('the console mailer, for the update notice', () => {
-  it.effect('logs the notice rather than sending it', () => {
+  it.effect('prints the notice to stdout rather than sending it', () => {
     const lines: string[] = [];
+    const logged: string[] = [];
     return Effect.gen(function* () {
       const mailer = yield* Mailer;
       yield* mailer.sendUpdateNotice(UPDATE_NOTICE);
@@ -162,9 +185,11 @@ describe('the console mailer, for the update notice', () => {
       expect(lines).toEqual([
         `Studio 1.2.3 is available; notice for owner@example.org: ${UPDATE_NOTICE.notesUrl}`,
       ]);
+      expect(logged).toEqual([]);
     }).pipe(
       Effect.provide(Mailer.layerConsole),
-      Effect.provide(capturingLogger(lines)),
+      Effect.provide(capturingConsole(lines)),
+      Effect.provide(capturingLogger(logged)),
     );
   });
 });

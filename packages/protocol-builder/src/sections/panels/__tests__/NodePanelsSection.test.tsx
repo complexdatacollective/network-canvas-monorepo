@@ -1,4 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react';
+import { type Redacted } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -26,7 +27,7 @@ type Harness = ReturnType<typeof renderStageEditor>;
  */
 const stagedInTheHost = async (
   harness: Harness,
-): Promise<readonly Readonly<{ id: string; name: string }>[]> => {
+): Promise<readonly Readonly<{ id: string; name: Redacted.Redacted }>[]> => {
   const answer = await harness.host.adapter.rpcCall('ResourcesList', {
     protocolId: harness.host.protocolId,
     editId: harness.editId,

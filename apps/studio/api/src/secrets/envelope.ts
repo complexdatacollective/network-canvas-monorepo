@@ -1,5 +1,7 @@
 import { createCipheriv, createDecipheriv, type KeyObject } from 'node:crypto';
 
+import { Redacted } from 'effect';
+
 import {
   isKeyId,
   type KeyringApi,
@@ -115,7 +117,7 @@ function subkeyFor(keyring: KeyringApi, keyId: string): KeyObject {
 export function sealSecret(
   keyring: KeyringApi,
   identity: readonly string[],
-  plaintext: string,
+  plaintext: Redacted.Redacted,
   random: SecretRandom,
 ): SealedSecret {
   const aad = additionalData(identity);
@@ -134,7 +136,7 @@ export function sealSecret(
   });
   cipher.setAAD(aad);
   const body = Buffer.concat([
-    cipher.update(plaintext, 'utf8'),
+    cipher.update(Redacted.value(plaintext), 'utf8'),
     cipher.final(),
   ]);
   return {
@@ -152,7 +154,7 @@ export function openSecret(
   keyring: KeyringApi,
   identity: readonly string[],
   sealed: StoredSecret,
-): string {
+): Redacted.Redacted {
   const bytes = sealed.ciphertext;
   if (bytes.byteLength < 1 + NONCE_BYTES + TAG_BYTES) {
     throw new SecretUnreadableError(
@@ -180,7 +182,7 @@ export function openSecret(
     // `final` has verified the tag, so a forged or misaddressed ciphertext
     // never hands a caller a partial plaintext to act on.
     plaintext = Buffer.concat([pending, decipher.final()]);
-    return plaintext.toString('utf8');
+    return Redacted.make(plaintext.toString('utf8'));
   } catch {
     // Only `final` throws here, and only for a failed tag. The cause is
     // deliberately dropped: it says nothing an operator can act on, and the

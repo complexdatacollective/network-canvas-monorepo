@@ -6,7 +6,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
@@ -555,7 +555,7 @@ function StagedFileProbe() {
       </button>
       <ul>
         {staged.map((descriptor) => (
-          <li key={descriptor.id}>{descriptor.name}</li>
+          <li key={descriptor.id}>{Redacted.value(descriptor.name)}</li>
         ))}
       </ul>
     </BuilderSection>

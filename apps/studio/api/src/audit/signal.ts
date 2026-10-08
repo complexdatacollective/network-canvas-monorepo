@@ -36,7 +36,7 @@ export class AuditSignal extends Context.Service<
               detail: serialised,
             });
           });
-          yield* Effect.logError(MESSAGES[code]).pipe(
+          yield* Effect.logError('Studio audit signal').pipe(
             Effect.annotateLogs({ code, ...detail }),
           );
         }),

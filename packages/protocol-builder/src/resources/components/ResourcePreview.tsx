@@ -1,3 +1,4 @@
+import { Redacted } from 'effect';
 import { useEffect, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -394,7 +395,7 @@ export default function ResourcePreview({
   if (kind === 'image') {
     return (
       <img
-        src={preview.url}
+        src={Redacted.value(preview.url)}
         alt={presentational ? '' : name}
         className={className ?? 'max-h-64 w-full rounded object-contain'}
       />
@@ -406,7 +407,7 @@ export default function ResourcePreview({
       // The researcher's own imported media, which carries no caption track;
       // its accessible name is the name the manifest records for it.
       <video
-        src={preview.url}
+        src={Redacted.value(preview.url)}
         controls={!presentational}
         muted={presentational}
         aria-label={presentational ? undefined : name}
@@ -418,7 +419,7 @@ export default function ResourcePreview({
 
   return (
     <audio
-      src={preview.url}
+      src={Redacted.value(preview.url)}
       controls
       aria-label={name}
       className={className ?? 'w-full'}

@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 
+import type { LogLevel } from 'effect';
 import { parse as parseConnectionString } from 'pg-connection-string';
 
 import type { DeploymentMode } from '@codaco/studio-contract/surfaces';
@@ -96,6 +97,7 @@ export type StudioEnv = {
    */
   telemetry: boolean;
   telemetryEndpoint: string | undefined;
+  logLevel: LogLevel.LogLevel;
   deploymentMode: DeploymentMode;
   /** Only the seed command reads it; unset means the development password. */
   seedAdminPassword: string | undefined;
@@ -641,6 +643,7 @@ export function resolve(
     devDefaults,
     telemetry: raw.STUDIO_TELEMETRY ?? true,
     telemetryEndpoint: raw.OTEL_EXPORTER_OTLP_ENDPOINT,
+    logLevel: raw.STUDIO_LOG_LEVEL ?? 'Info',
     deploymentMode: raw.STUDIO_DEPLOYMENT_MODE ?? DEFAULT_DEPLOYMENT_MODE,
     seedAdminPassword: raw.STUDIO_SEED_ADMIN_PASSWORD,
   };
