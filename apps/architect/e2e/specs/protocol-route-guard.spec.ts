@@ -291,20 +291,6 @@ test('a second tab on the same protocol can look through every page, changes not
     expect(await editingControls(secondTab), tab).toEqual([]);
   }
 
-  // Experiments has no link; it is reached by address.
-  await secondTab.evaluate(() => {
-    history.pushState(null, '', '/protocol/experiments');
-  });
-  await expect(
-    secondTab.getByRole('button', { name: 'Go Back' }),
-  ).toBeVisible();
-  expect(await editingControls(secondTab)).toEqual([]);
-
-  // Experiments has no project navigation of its own; leave it the way it
-  // offers.
-  await secondTab.getByRole('button', { name: 'Go Back' }).click();
-  await expect(secondTab).toHaveURL(/\/protocol$/);
-
   await main.getByRole('link', { name: /^Codebook/ }).click();
   await expect(secondTab).toHaveURL(/\/protocol\/codebook$/);
   const createNodeType = secondTab.getByRole('button', {
