@@ -245,9 +245,14 @@ export const useGeospatialSearch = ({
   }, [language]);
 
   // Cancel pending debounced fetch when fetchSuggestions changes (new instance
-  // created because accessToken/proximityOption changed) or on unmount.
+  // created because accessToken/proximityOption/language changed) or on unmount.
   // This prevents a stale debounce timer from updating state with old results.
-  useEffect(() => {
+  // A layout effect, so the old instance is retired in the same synchronous
+  // block as the commit that replaces it: `retireSearch` above can only cancel
+  // the NEW instance (render has already swapped the ref), and a timer that
+  // fired before a passive cleanup would read the bumped generation as current
+  // and run an old-language request over the re-ask.
+  useLayoutEffect(() => {
     return () => {
       fetchSuggestions?.cancel();
     };

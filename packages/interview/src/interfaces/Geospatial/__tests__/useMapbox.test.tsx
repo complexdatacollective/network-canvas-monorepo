@@ -132,7 +132,7 @@ function withProtocolLocale(
   locale: string,
   localization = {
     defaultLocale: 'en',
-    locales: ['en', 'hu', 'pt-BR', 'zh-TW', 'sw'],
+    locales: ['en', 'hu', 'pt-BR', 'pt-PT', 'zh-TW', 'sw', 'fil'],
   },
 ) {
   return (
@@ -318,14 +318,21 @@ describe('useMapbox protocol language', () => {
     expect(MapConstructor).toHaveBeenCalledTimes(1);
   });
 
-  it('does not touch the map when the language mapped to Mapbox is unchanged', () => {
+  it('does not touch the map when another protocol language maps to the same Mapbox language', () => {
     const { rerender } = render(withProtocolLocale('pt-BR'));
+    expect(constructedWith().language).toBe('pt');
 
-    rerender(withProtocolLocale('en'));
-    rerender(withProtocolLocale('pt-BR'));
-    mapInstance.setLanguage.mockClear();
-    rerender(withProtocolLocale('pt-BR'));
+    rerender(withProtocolLocale('pt-PT'));
 
     expect(mapInstance.setLanguage).not.toHaveBeenCalled();
+    expect(MapConstructor).toHaveBeenCalledTimes(1);
+  });
+
+  it('labels the map in Tagalog for a Filipino protocol language', () => {
+    // A protocol's locales are canonical, so Tagalog arrives as `fil`; Mapbox
+    // spells it `tl`.
+    render(withProtocolLocale('fil'));
+
+    expect(constructedWith().language).toBe('tl');
   });
 });

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useLayoutEffect } from 'react';
 
 import type { LocalizationDeclaration } from '@codaco/protocol-validation';
 
@@ -20,7 +20,19 @@ export const setLanguages = (protocol: string, interfaceLocale = 'en') => {
   current.interface = interfaceLocale;
 };
 
+/**
+ * Called from a layout effect in the wrapper, a parent of the hook under test.
+ * That runs after the hook's own layout effects and before any passive effect,
+ * so it sees the state the commit leaves for the instant between them.
+ */
+export const afterHookLayoutEffects: { current: (() => void) | undefined } = {
+  current: undefined,
+};
+
 export function Languages({ children }: { children: ReactNode }) {
+  useLayoutEffect(() => {
+    afterHookLayoutEffects.current?.();
+  });
   return (
     <InterviewI18nProvider requestedLocale={current.interface}>
       <TestProtocolLocalization

@@ -39,10 +39,23 @@ describe('getMapLanguage', () => {
   });
 
   it.each([
+    // Intl canonicalises `tl` to `fil`, and Mapbox spells it `tl`.
+    ['tl', 'tl'],
+    ['fil', 'tl'],
+    ['fil-PH', 'tl'],
+    // Legacy tags Intl canonicalises to the code Mapbox lists.
+    ['iw', 'he'],
+    ['in', 'id'],
+    ['no', 'no'],
+    ['nb', 'nb'],
+  ])('maps %s to the Mapbox spelling %s', (locale, expected) => {
+    expect(getMapLanguage(locale)).toBe(expected);
+  });
+
+  it.each([
     // Not on Mapbox's list of map languages.
     'sw',
     'is',
-    'fil',
     // Chinese is only supported as a script pair, never as bare Cantonese etc.
     'yue',
     // Not a language at all.
@@ -72,6 +85,10 @@ describe('getSearchLanguage', () => {
       expect(getSearchLanguage(protocolLocale, 'it')).toBe('it');
     },
   );
+
+  it('has no Tagalog or Filipino results, which Search Box does not list', () => {
+    expect(getSearchLanguage('fil', 'de')).toBe('de');
+  });
 
   it('falls back to the interface language when the protocol language is unsupported', () => {
     expect(getSearchLanguage('sw', 'de')).toBe('de');

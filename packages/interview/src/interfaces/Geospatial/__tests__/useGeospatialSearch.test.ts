@@ -37,11 +37,22 @@ vi.mock('@mapbox/search-js-react', () => ({
 
 // Make debounce synchronous with a trackable `cancel` so tests can assert on it
 const mockCancel = vi.fn();
+// Each debounce the hook creates, oldest first, and whether a call is waiting
+// on its timer (set by calling it, cleared by `cancel`).
+const debounces = vi.hoisted(() => [] as { pending: boolean }[]);
 vi.mock('es-toolkit', async (importOriginal) => ({
   ...(await importOriginal<typeof import('es-toolkit')>()),
   debounce: (fn: (...args: unknown[]) => unknown) => {
-    const wrapped = (...args: unknown[]) => fn(...args);
-    wrapped.cancel = mockCancel;
+    const instance = { pending: false };
+    debounces.push(instance);
+    const wrapped = (...args: unknown[]) => {
+      instance.pending = true;
+      return fn(...args);
+    };
+    wrapped.cancel = () => {
+      instance.pending = false;
+      mockCancel();
+    };
     return wrapped;
   },
 }));
@@ -50,7 +61,7 @@ vi.mock('es-toolkit', async (importOriginal) => ({
 import type { Map as MapboxMap } from 'mapbox-gl/esm';
 
 import { type Suggestion, useGeospatialSearch } from '../useGeospatialSearch';
-import { Languages, setLanguages } from './Languages';
+import { afterHookLayoutEffects, Languages, setLanguages } from './Languages';
 
 // Every hook here runs inside a protocol localization, as it does in the Shell.
 const renderHook = <Result, Props>(
@@ -76,6 +87,8 @@ describe('useGeospatialSearch', () => {
     mockSuggest.mockClear().mockResolvedValue({ suggestions: [] });
     mockRetrieve.mockClear().mockResolvedValue({ features: [] });
     mockCancel.mockClear();
+    debounces.length = 0;
+    afterHookLayoutEffects.current = undefined;
     mockFlyTo.mockClear();
   });
 
@@ -618,6 +631,28 @@ describe('useGeospatialSearch', () => {
       expect(result.current.suggestions).not.toContainEqual({
         name: 'Hungary',
       });
+    });
+
+    it("retires the old language's pending search within the commit that changes the language", () => {
+      const { result, rerender } = renderHook(useSearch);
+      act(() => {
+        result.current.handleQueryChange('hungary');
+      });
+      const [oldDebounce, newDebounce] = [debounces[0]!, debounces[1]!];
+      expect(newDebounce).toBeUndefined();
+
+      // Once the commit's layout effects have run, only passive effects are
+      // left; a timer firing in between would still be the old language's.
+      let pendingAtLayout: boolean | undefined;
+      afterHookLayoutEffects.current = () => {
+        pendingAtLayout ??= oldDebounce.pending;
+      };
+      setLanguages('hu');
+      rerender();
+
+      expect(debounces).toHaveLength(2);
+      expect(debounces).toHaveLength(2);
+      expect(pendingAtLayout).toBe(false);
     });
 
     it('does not ask again when the language is unchanged or nothing is typed', async () => {

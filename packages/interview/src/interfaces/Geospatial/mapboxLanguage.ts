@@ -90,6 +90,15 @@ const SEARCH_LANGUAGES: ReadonlySet<string> = new Set([
 const SEARCH_FALLBACK_LANGUAGE = 'en';
 
 /**
+ * Where Mapbox spells a language differently from the canonical form
+ * `Intl.Locale` gives: it canonicalises both `tl` and `fil` to `fil`, but
+ * Mapbox lists Tagalog as `tl`. Every other code on either list (`he`, `id`,
+ * `no`, `nb`, ...) is already its own canonical form, so legacy tags such as
+ * `iw` and `in` reach it correctly.
+ */
+const MAPBOX_SPELLING: Readonly<Record<string, string>> = { fil: 'tl' };
+
+/**
  * The code Mapbox would be asked for: Chinese keeps its script (`zh-Hans` or
  * `zh-Hant`, by the same rule protocol locales are matched with), every other
  * tag is cut to its language (`pt-BR` becomes `pt`), because Mapbox documents
@@ -98,7 +107,9 @@ const SEARCH_FALLBACK_LANGUAGE = 'en';
 function toMapboxCode(tag: string): string | undefined {
   try {
     const { language } = new Intl.Locale(tag);
-    return language === 'zh' ? toScriptMatchingTag(tag) : language;
+    return language === 'zh'
+      ? toScriptMatchingTag(tag)
+      : (MAPBOX_SPELLING[language] ?? language);
   } catch {
     return undefined;
   }
