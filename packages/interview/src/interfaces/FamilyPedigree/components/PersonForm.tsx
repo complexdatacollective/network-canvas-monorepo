@@ -64,6 +64,8 @@ import {
   openGeneticParentSlots,
   sexesRuledOut,
   partnersOf,
+  planAdditionUnder,
+  possibleCarriers,
   primaryParentsOf,
   siblingsOf,
 } from '../model';
@@ -75,7 +77,16 @@ import {
 } from '../options';
 
 export type PersonFormMode =
-  | { kind: 'add'; relation: Relation; anchor: Person }
+  | {
+      kind: 'add';
+      relation: Relation;
+      anchor: Person;
+      /** Ids for the new person (first) and any unnamed parents their
+       * relationship needs, fixed for the opening so the person drawn while
+       * the form is filled in, and anyone the form offers as one of their
+       * parents, is the one added. */
+      ids: readonly string[];
+    }
   | {
       kind: 'edit';
       person: Person;
@@ -467,6 +478,7 @@ export default function PersonForm({
             <RelationshipFields
               relation={mode.relation}
               anchor={mode.anchor}
+              ids={mode.ids}
               family={family}
               displayName={displayName}
               config={config}
@@ -906,6 +918,9 @@ function readRequest(
     case 'sibling': {
       const shared = asStringArray(values[ROLE.sharedParents]);
       const placeholders = asString(values[ROLE.sharedParentCount]);
+      // The model records the carrier only while the answers still make them
+      // one of the sibling's parents who could have carried the pregnancy.
+      const carrier = asString(values[ROLE.carrier]);
       return {
         relation,
         sharedParentIds: shared.filter((id) => id !== UNKNOWN),
@@ -923,6 +938,7 @@ function readRequest(
           (asString(values[ROLE.siblingKind]) as
             | (typeof CHILD_KINDS)[number]
             | undefined) ?? 'biological',
+        carrier: carrier && carrier !== NONE ? carrier : null,
       };
     }
   }
@@ -931,6 +947,7 @@ function readRequest(
 function RelationshipFields({
   relation,
   anchor,
+  ids,
   family,
   displayName,
   config,
@@ -938,6 +955,7 @@ function RelationshipFields({
 }: {
   relation: Relation;
   anchor: Person;
+  ids: readonly string[];
   family: Family;
   displayName: (personId: string) => string;
   config: PedigreeConfig;
@@ -967,8 +985,10 @@ function RelationshipFields({
       return (
         <SiblingFields
           anchor={anchor}
+          ids={ids}
           family={family}
           displayName={displayName}
+          config={config}
           framing={framing}
         />
       );
@@ -1270,17 +1290,26 @@ function ChildFields({
 
 function SiblingFields({
   anchor,
+  ids,
   family,
   displayName,
+  config,
   framing,
 }: {
   anchor: Person;
+  ids: readonly string[];
   family: Family;
   displayName: (personId: string) => string;
+  config: PedigreeConfig;
   framing: FramingId;
 }) {
   const intl = useAppIntl();
-  const values = useFormValue([ROLE.sharedParents, ROLE.siblingKind]);
+  const values = useFormValue([
+    ROLE.sharedParents,
+    ROLE.sharedParentCount,
+    ROLE.siblingKind,
+    ROLE.carrier,
+  ]);
   const parents = primaryParentsOf(family, anchor.id);
   const args = {
     isYou: anchor.isEgo ? 'true' : 'false',
@@ -1316,6 +1345,40 @@ function SiblingFields({
   useEffect(() => {
     if (biologicalImpossible) setFieldValue(ROLE.siblingKind, undefined);
   }, [biologicalImpossible, setFieldValue]);
+
+  // A biological sibling is asked who carried the pregnancy, as a child is:
+  // each parent the sibling will have, as the answers stand, who could have
+  // carried it — the parents chosen, and any unnamed parent added for both
+  // of them — offered by the name they are shown by.
+  const carriers =
+    asString(values[ROLE.siblingKind]) === 'biological'
+      ? possibleCarriers(
+          family,
+          planAdditionUnder(ids, {
+            family,
+            anchorId: anchor.id,
+            details: {},
+            request: readRequest('sibling', values, anchor, family),
+            sexAttribute: config.sexAssignedAtBirthAttribute,
+          }),
+          ids[0] ?? '',
+          config.sexAssignedAtBirthAttribute,
+        )
+      : [];
+  // An answer a later one has taken away is asked again.
+  const carrier = asString(values[ROLE.carrier]);
+  const carrierImpossible =
+    carrier !== undefined && carrier !== NONE && !carriers.includes(carrier);
+  useEffect(() => {
+    if (carrierImpossible) setFieldValue(ROLE.carrier, undefined);
+  }, [carrierImpossible, setFieldValue]);
+  // An unnamed parent added for both of them is the anchor's second parent,
+  // offered in the words the question about shared parents used, or one of
+  // the two given to someone with no parents, shown by how they are related.
+  const carrierLabel = (id: string) =>
+    family.byId.has(id) || parents.length !== 1
+      ? displayName(id)
+      : intl.formatMessage(messages.sharedParentUnshown, args);
 
   // Someone with no parents is given an egg parent and a sperm parent,
   // unnamed; the sibling may share both or one of them. Someone whose egg or
@@ -1388,6 +1451,20 @@ function SiblingFields({
         required
         initialValue="biological"
       />
+      {carriers.length > 0 && (
+        <Field
+          component={RadioGroupField}
+          name={ROLE.carrier}
+          label={intl.formatMessage(messages.carrierLabel)}
+          options={[
+            ...carriers.map((id) => ({ value: id, label: carrierLabel(id) })),
+            {
+              value: NONE,
+              label: intl.formatMessage(messages.carrierUnknown),
+            },
+          ]}
+        />
+      )}
     </>
   );
 }

@@ -1,4 +1,5 @@
 import { hash } from 'ohash';
+import { v4 as uuid } from 'uuid';
 
 import {
   PEDIGREE_RELATIONSHIP_KINDS,
@@ -453,6 +454,13 @@ export type AddRelativeRequest =
       /** The sibling's own relationship to the parents they share, which
        * need not be the anchor's: one may be adopted and the other not. */
       parentKind: 'biological' | 'adoptive' | 'social';
+      /**
+       * Who carried the pregnancy, for a biological sibling: one of the
+       * parents the sibling is planned to have (`possibleCarriers`), by id,
+       * which for an unnamed parent the addition gives them is the id the
+       * plan creates for that parent. Null when not known.
+       */
+      carrier: string | null;
     };
 
 export type PlannedPerson = { id: string; details: PersonDetails };
@@ -690,10 +698,89 @@ export function planAddRelative({
     }
   }
 
+  const kept = keepWithinGeneticLimit(family, people, links, sexAttribute);
+  if (request.relation !== 'sibling' || request.carrier === null) {
+    return { people, links: kept };
+  }
+  // The sibling's carrier is one of the parents they are planned to have
+  // who could have carried the pregnancy; any other answer, which a later
+  // one has made impossible, records nobody.
+  const plan = { people, links: kept };
+  const carrier = possibleCarriers(
+    family,
+    plan,
+    newPersonId,
+    sexAttribute,
+  ).find((id) => id === request.carrier);
   return {
     people,
-    links: keepWithinGeneticLimit(family, people, links, sexAttribute),
+    links: kept.map((link) =>
+      carrier !== undefined &&
+      link.source === carrier &&
+      link.target === newPersonId
+        ? { ...link, isGestationalCarrier: true }
+        : link,
+    ),
   };
+}
+
+/** The sex at birth a planned addition gives a person, or that they are
+ * recorded with. */
+function plannedSexOf(
+  family: Family,
+  plan: AdditionPlan,
+  personId: string,
+  sexAttribute: string,
+): string | undefined {
+  const planned = plan.people.find((person) => person.id === personId);
+  if (!planned) return family.byId.get(personId)?.sexAssignedAtBirth;
+  const value = readOwnProperty(planned.details, sexAttribute);
+  const sex = Array.isArray(value) ? value[0] : value;
+  return typeof sex === 'string' ? sex : undefined;
+}
+
+/**
+ * The parents a planned addition gives `childId` who could have carried their
+ * pregnancy: their biological parents, as planned, except anyone recorded (or
+ * planned) as male at birth. Unnamed parents the addition creates are
+ * included, by the ids the plan gives them.
+ */
+export function possibleCarriers(
+  family: Family,
+  plan: AdditionPlan,
+  childId: string,
+  sexAttribute: string,
+): string[] {
+  return plan.links
+    .filter(
+      (link) =>
+        link.target === childId &&
+        link.kind === 'biological' &&
+        couldCarryPregnancy(
+          plannedSexOf(family, plan, link.source, sexAttribute),
+        ),
+    )
+    .map((link) => link.source);
+}
+
+/**
+ * Everything to create to add a relative, under ids fixed in advance: the new
+ * person's first, then one for each unnamed parent the relationship needs, in
+ * the order the plan adds them. The same answers always plan the same people
+ * under the same ids, so the person drawn while the form is filled in, and the
+ * unnamed parents it offers as having carried the pregnancy, are the ones
+ * added.
+ */
+export function planAdditionUnder(
+  ids: readonly string[],
+  args: Omit<Parameters<typeof planAddRelative>[0], 'newPersonId' | 'createId'>,
+): AdditionPlan {
+  let next = 1;
+  return planAddRelative({
+    ...args,
+    newPersonId: ids[0] ?? uuid(),
+    createId: () => ids[next++] ?? uuid(),
+  });
 }
 
 /**

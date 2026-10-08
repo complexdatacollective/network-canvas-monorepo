@@ -441,13 +441,13 @@ export const messages = defineMessages({
     id: 'interview.familyPedigree.carrierLabel',
     defaultMessage: 'Who carried the pregnancy?',
     description:
-      'Question in the side panel for adding a biological child. Options are the child’s parents’ names, or someone else / not known.',
+      'Question in the side panel for adding a biological child or a biological sibling. Options are the new person’s parents, by name or by how they are related to the participant, or someone else / not known.',
   },
   carrierUnknown: {
     id: 'interview.familyPedigree.carrierUnknown',
     defaultMessage: 'Someone else, or I don’t know',
     description:
-      'Option: neither parent shown carried the pregnancy, or the participant does not know.',
+      'Option: none of the parents offered carried the pregnancy, or the participant does not know.',
   },
   add: {
     id: 'interview.familyPedigree.add',
@@ -841,7 +841,7 @@ export const messages = defineMessages({
     defaultMessage:
       '{isYou, select, true {Your other parent, not shown yet} other {The other parent of “{name}”, not shown yet}}',
     description:
-      'Option when choosing which parents a new sibling shares, for someone with one parent recorded: their second parent, who is added unnamed for both of them.',
+      'Option when choosing which parents a new sibling shares, for someone with one parent recorded: their second parent, who is added unnamed for both of them. Also an option when asked who carried the new sibling’s pregnancy.',
   },
   passphraseNeededNotice: {
     id: 'interview.familyPedigree.passphraseNeededNotice',
