@@ -37,6 +37,8 @@
   "interview.familyPedigree.connectQuestion": "{firstIsYou, select, true {How are you and “{second}” related?} other {How are “{first}” and “{second}” related?}}",
   "interview.familyPedigree.connectTool": "Connect",
   "interview.familyPedigree.connectedParentAnnouncement": "{relationship} ({kind})",
+  "interview.familyPedigree.detailsPassphraseInvalidNotice": "Your passphrase did not unlock the answers saved about your family. Enter it again to add or change people.",
+  "interview.familyPedigree.detailsPassphraseNeededNotice": "Enter your passphrase to add or change people in your family.",
   "interview.familyPedigree.disconnectConfirm": "Remove connection",
   "interview.familyPedigree.disconnectConfirmDescription": "Both people stay in your family tree. Only the connection between them is removed.",
   "interview.familyPedigree.disconnectConfirmTitle": "{firstIsYou, select, true {Remove the connection between you and “{second}”?} other {Remove the connection between “{first}” and “{second}”?}}",

@@ -1,28 +1,28 @@
 import { describe, expect, test } from 'vitest';
 
-import { encryptedNameOf, NameDecryptor } from '../encryptedNames';
+import { encryptedValueOf, NameDecryptor } from '../encryptedNames';
 import { encryptedPerson, person } from './fixtures';
 
 const PASSPHRASE = 'correct horse battery staple';
 
-describe('encryptedNameOf', () => {
+describe('encryptedValueOf', () => {
   test('reads an encrypted name, and nothing from a name held as text or none', async () => {
     const encrypted = await encryptedPerson('bea', 'Bea', PASSPHRASE);
-    expect(encryptedNameOf(encrypted, 'name')).toMatchObject({
+    expect(encryptedValueOf(encrypted, 'name')).toMatchObject({
       data: expect.any(Array),
       secureAttributes: {
         iv: expect.any(Array),
         salt: expect.any(Array),
       },
     });
-    expect(encryptedNameOf(person('tom', { name: 'Tom' }), 'name')).toBe(
+    expect(encryptedValueOf(person('tom', { name: 'Tom' }), 'name')).toBe(
       undefined,
     );
-    expect(encryptedNameOf(person('unnamed'), 'name')).toBe(undefined);
+    expect(encryptedValueOf(person('unnamed'), 'name')).toBe(undefined);
     // Ciphertext with no record of how it was made cannot be decrypted.
-    expect(encryptedNameOf(person('orphan', { name: [1, 2, 3] }), 'name')).toBe(
-      undefined,
-    );
+    expect(
+      encryptedValueOf(person('orphan', { name: [1, 2, 3] }), 'name'),
+    ).toBe(undefined);
   });
 });
 

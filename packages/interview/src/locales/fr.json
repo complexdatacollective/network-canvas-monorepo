@@ -37,6 +37,8 @@
   "interview.familyPedigree.connectQuestion": "{firstIsYou, select, true {Quel est votre lien avec « {second} » ?} other {Quel est le lien entre « {first} » et « {second} » ?}}",
   "interview.familyPedigree.connectTool": "Relier",
   "interview.familyPedigree.connectedParentAnnouncement": "{relationship} ({kind})",
+  "interview.familyPedigree.detailsPassphraseInvalidNotice": "Votre phrase secrète n’a pas permis de déverrouiller les réponses enregistrées sur votre famille. Saisissez-la à nouveau pour ajouter ou modifier des personnes.",
+  "interview.familyPedigree.detailsPassphraseNeededNotice": "Saisissez votre phrase secrète pour ajouter ou modifier des personnes de votre famille.",
   "interview.familyPedigree.disconnectConfirm": "Supprimer le lien",
   "interview.familyPedigree.disconnectConfirmDescription": "Les deux personnes restent dans votre arbre généalogique. Seul le lien entre elles est supprimé.",
   "interview.familyPedigree.disconnectConfirmTitle": "{firstIsYou, select, true {Supprimer le lien entre vous et « {second} » ?} other {Supprimer le lien entre « {first} » et « {second} » ?}}",

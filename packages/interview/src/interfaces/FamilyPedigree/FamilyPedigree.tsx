@@ -96,7 +96,7 @@ import PersonForm, {
   type PersonFormResult,
 } from './components/PersonForm';
 import PersonNode from './components/PersonNode';
-import { useDecryptedNames } from './encryptedNames';
+import { decryptValues, useDecryptedNames } from './encryptedNames';
 import { generateLabels, labelEveryone, labelWrites } from './generatedLabels';
 import { messages } from './messages';
 import {
@@ -243,14 +243,38 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     setPassphrase,
     setPassphraseInvalid,
   } = usePassphrase();
-  const encryptNames =
-    encryptionEnabled &&
-    codebook.node?.[config.personType]?.variables?.[config.nameAttribute]
-      ?.encrypted === true;
-  const namesLocked = encryptNames && (!passphrase || passphraseInvalid);
+  // Every attribute the stage writes from what the participant types — the
+  // name and the researcher's own fields — that the study encrypts. Adding
+  // or changing someone writes them, so either waits for the passphrase.
+  const encryptedAttributes = useMemo(() => {
+    if (!encryptionEnabled) return [];
+    const variables = codebook.node?.[config.personType]?.variables ?? {};
+    return [
+      config.nameAttribute,
+      ...formFields.map((field) => field.variable),
+    ].filter(
+      (variable) => readOwnProperty(variables, variable)?.encrypted === true,
+    );
+  }, [
+    codebook,
+    config.nameAttribute,
+    config.personType,
+    encryptionEnabled,
+    formFields,
+  ]);
+  const encryptDetails = encryptedAttributes.length > 0;
+  const encryptNames = encryptedAttributes.includes(config.nameAttribute);
+  const encryptedFormAttributes = encryptedAttributes.filter(
+    (variable) => variable !== config.nameAttribute,
+  );
+  const awaitingPassphrase = !passphrase || passphraseInvalid;
+  // Names that cannot be read yet are shown as labels.
+  const namesLocked = encryptNames && awaitingPassphrase;
+  // Nobody can be added or changed.
+  const detailsLocked = encryptDetails && awaitingPassphrase;
   useEffect(() => {
-    if (encryptNames) requirePassphrase();
-  }, [encryptNames, requirePassphrase]);
+    if (encryptDetails) requirePassphrase();
+  }, [encryptDetails, requirePassphrase]);
   const [passphraseOpen, setPassphraseOpen] = useState(false);
   const decryption = useDecryptedNames({
     nodes,
@@ -468,7 +492,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // mid-way through describing this person. Nor while connecting or
   // disconnecting people, nor while the family waits for the passphrase.
   const menuPersonId =
-    panel?.open || tool !== 'pointer' || nomination || namesLocked
+    panel?.open || tool !== 'pointer' || nomination || detailsLocked
       ? null
       : (hoveredId ?? focusedId);
   const menuPerson = menuPersonId ? family.byId.get(menuPersonId) : undefined;
@@ -684,22 +708,24 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     panZoom.goTo({ x, y, scale });
   }, [selectedId, panZoom, clearInsets]);
 
-  // Anything that could write a name waits for the passphrase, and asks for
-  // it instead, saying why.
+  // Anything that could write what the study encrypts waits for the
+  // passphrase, and asks for it instead, saying why: to see the names, when
+  // they are encrypted, as well as to add or change people.
+  const passphraseNotice = encryptNames
+    ? passphraseInvalid
+      ? messages.passphraseInvalidNotice
+      : messages.passphraseNeededNotice
+    : passphraseInvalid
+      ? messages.detailsPassphraseInvalidNotice
+      : messages.detailsPassphraseNeededNotice;
   const askForPassphrase = () => {
     requirePassphrase();
-    setAnnouncement(
-      intl.formatMessage(
-        passphraseInvalid
-          ? messages.passphraseInvalidNotice
-          : messages.passphraseNeededNotice,
-      ),
-    );
+    setAnnouncement(intl.formatMessage(passphraseNotice));
     setPassphraseOpen(true);
   };
 
   const openAddPanel = (relation: Relation, anchor: Person) => {
-    if (namesLocked) {
+    if (detailsLocked) {
       askForPassphrase();
       return;
     }
@@ -906,17 +932,35 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (item.kind === 'parents') {
       openAddPanel('parent', person);
     } else {
-      openEdit(person.id);
+      void openEdit(person.id);
     }
   };
 
-  const openEdit = (personId: string) => {
-    if (namesLocked) {
+  const openEdit = async (personId: string) => {
+    if (detailsLocked) {
       askForPassphrase();
       return;
     }
-    const person = family.byId.get(personId);
-    if (!person) return;
+    const recorded = family.byId.get(personId);
+    if (!recorded) return;
+    // The researcher's encrypted fields open on what was typed.
+    const node = nodes.find(
+      (candidate) => candidate[entityPrimaryKeyProperty] === personId,
+    );
+    const decrypted =
+      passphrase && node && encryptedFormAttributes.length > 0
+        ? await decryptValues(node, encryptedFormAttributes, passphrase)
+        : new Map<string, string>();
+    if (decrypted === null) {
+      setPassphraseInvalid(true);
+      askForPassphrase();
+      return;
+    }
+    const attributes = { ...recorded.attributes };
+    for (const [variable, value] of decrypted) {
+      writeOwnProperty(attributes, variable, value);
+    }
+    const person = { ...recorded, attributes };
     rememberView(personId, personId);
     setPanel({
       open: true,
@@ -987,7 +1031,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // Selecting a person (click, tap, Enter or Space) opens their details. The
   // panel returns focus to them when it closes.
   const handleActivate = (personId: string) => {
-    if (namesLocked) {
+    if (detailsLocked) {
       setLastFocusedId(personId);
       askForPassphrase();
       return;
@@ -1015,7 +1059,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     setLastFocusedId(personId);
     if (lastPointerType.current === 'touch') setFocusedId(personId);
     lastPointerType.current = null;
-    openEdit(personId);
+    void openEdit(personId);
   };
 
   // Roving focus: the family is a single tab stop, and the arrow keys move
@@ -1117,7 +1161,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (!panel) return;
     // The passphrase found not to decrypt the names while the panel was open
     // keeps the panel open until the right one is entered.
-    if (namesLocked) {
+    if (detailsLocked) {
       askForPassphrase();
       return;
     }
@@ -1232,8 +1276,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           type: config.personType,
           attributeData: person.details,
           modelData: { [entityPrimaryKeyProperty]: person.id },
-          // A typed name is written encrypted when the study encrypts names.
-          useEncryption: encryptNames,
+          // What the participant typed is written encrypted where the study
+          // encrypts it.
+          useEncryption: encryptDetails,
           currentStep,
         }),
       ).unwrap();
@@ -1606,7 +1651,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           ref={toolbarAreaRef}
           className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex flex-col items-center gap-2 px-4"
         >
-          {namesLocked && (
+          {detailsLocked && (
             <Alert
               variant="info"
               density="compact"
@@ -1616,13 +1661,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             >
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <p className="text-sm">
-                  <AppMessage
-                    message={
-                      passphraseInvalid
-                        ? messages.passphraseInvalidNotice
-                        : messages.passphraseNeededNotice
-                    }
-                  />
+                  <AppMessage message={passphraseNotice} />
                 </p>
                 <Button size="sm" onClick={() => setPassphraseOpen(true)}>
                   <AppMessage message={messages.enterPassphrase} />
@@ -1686,7 +1725,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               {!nomination && (
                 <ToolbarToggleGroup
                   aria-label={intl.formatMessage(messages.toolGroupLabel)}
-                  disabled={namesLocked}
+                  disabled={detailsLocked}
                   value={[tool]}
                   onValueChange={(value) => {
                     const next = value[0];
@@ -1768,7 +1807,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       <div aria-live="polite" className="sr-only">
         {announcement}
       </div>
-      {encryptNames && (
+      {encryptDetails && (
         <PassphraseOverlay
           show={passphraseOpen}
           onClose={() => setPassphraseOpen(false)}

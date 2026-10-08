@@ -151,6 +151,14 @@
     "defaultMessage": "{relationship} ({kind})",
     "description": "Screen reader announcement after connecting two people as parent and child. relationship is the chosen menu option (for example “Julie” is a parent of “Rob”); kind is the kind of parent chosen (for example Adoptive parent)."
   },
+  "interview.familyPedigree.detailsPassphraseInvalidNotice": {
+    "defaultMessage": "Your passphrase did not unlock the answers saved about your family. Enter it again to add or change people.",
+    "description": "Notice shown under the family tree when the passphrase entered could not unlock the protected answers saved earlier about a family member (names are not protected in this study). Until the right one is entered, the family cannot be changed."
+  },
+  "interview.familyPedigree.detailsPassphraseNeededNotice": {
+    "defaultMessage": "Enter your passphrase to add or change people in your family.",
+    "description": "Notice shown under the family tree when the study protects some of the answers about each family member (but not their names) with a passphrase that has not been entered yet. Until it is, the family cannot be changed."
+  },
   "interview.familyPedigree.disconnectConfirm": {
     "defaultMessage": "Remove connection",
     "description": "Button in the confirmation that removes the connection between two people."

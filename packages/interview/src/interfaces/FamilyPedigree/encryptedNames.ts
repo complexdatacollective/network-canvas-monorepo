@@ -24,19 +24,44 @@ const isNumberArray = (value: unknown): value is number[] =>
   Array.isArray(value) && value.every((item) => typeof item === 'number');
 
 /**
- * A person's name, when it is stored encrypted. Undefined for a name held as
- * text, and for none. A value with no record of how it was encrypted cannot
- * be decrypted, and is undefined too.
+ * A person's value for one attribute, such as their name, when it is stored
+ * encrypted. Undefined for a value held as text, and for none. A value with
+ * no record of how it was encrypted cannot be decrypted, and is undefined
+ * too.
  */
-export function encryptedNameOf(
+export function encryptedValueOf(
   node: NcNode,
-  nameAttribute: string,
+  attribute: string,
 ): EncryptedName | undefined {
   const secureMeta = node[entitySecureAttributesMeta];
-  const secure = secureMeta && readOwnProperty(secureMeta, nameAttribute);
-  const data = readOwnProperty(node[entityAttributesProperty], nameAttribute);
+  const secure = secureMeta && readOwnProperty(secureMeta, attribute);
+  const data = readOwnProperty(node[entityAttributesProperty], attribute);
   if (!secure || !isNumberArray(data)) return undefined;
   return { data, secureAttributes: { iv: secure.iv, salt: secure.salt } };
+}
+
+/**
+ * The person's values for these attributes, each decrypted where it is
+ * stored encrypted, by attribute; `null` when the passphrase cannot decrypt
+ * one of them.
+ */
+export async function decryptValues(
+  node: NcNode,
+  attributes: readonly string[],
+  passphrase: string,
+): Promise<Map<string, string> | null> {
+  const values = new Map<string, string>();
+  for (const attribute of attributes) {
+    const encrypted = encryptedValueOf(node, attribute);
+    if (!encrypted) continue;
+    try {
+      values.set(attribute, await decryptData(encrypted, passphrase));
+    } catch {
+      // A wrong passphrase, or ciphertext that is not what it claims.
+      return null;
+    }
+  }
+  return values;
 }
 
 type DecryptedNames = {
@@ -79,7 +104,7 @@ export class NameDecryptor {
     let failed = false;
     let settled = true;
     for (const node of nodes) {
-      const encrypted = encryptedNameOf(node, nameAttribute);
+      const encrypted = encryptedValueOf(node, nameAttribute);
       if (!encrypted) continue;
       const id = node[entityPrimaryKeyProperty];
       const result = this.results.get(
@@ -107,7 +132,7 @@ export class NameDecryptor {
   ): Promise<DecryptedNames> {
     const waiting: Promise<void>[] = [];
     for (const node of nodes) {
-      const encrypted = encryptedNameOf(node, nameAttribute);
+      const encrypted = encryptedValueOf(node, nameAttribute);
       if (!encrypted) continue;
       const key = NameDecryptor.keyOf(passphrase, encrypted);
       if (this.results.has(key)) continue;

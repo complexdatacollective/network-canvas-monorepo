@@ -37,6 +37,8 @@
   "interview.familyPedigree.connectQuestion": "{firstIsYou, select, true {您和“{second}”是什么关系？} other {“{first}”和“{second}”是什么关系？}}",
   "interview.familyPedigree.connectTool": "连接",
   "interview.familyPedigree.connectedParentAnnouncement": "{relationship}（{kind}）",
+  "interview.familyPedigree.detailsPassphraseInvalidNotice": "您的密码短语未能解锁已保存的关于您家人的回答。请重新输入，以添加或更改人员。",
+  "interview.familyPedigree.detailsPassphraseNeededNotice": "请输入您的密码短语，以添加或更改您家中的人员。",
   "interview.familyPedigree.disconnectConfirm": "移除连接",
   "interview.familyPedigree.disconnectConfirmDescription": "两人都会保留在您的家谱图中，只会移除他们之间的连接。",
   "interview.familyPedigree.disconnectConfirmTitle": "{firstIsYou, select, true {要移除您和“{second}”之间的连接吗？} other {要移除“{first}”和“{second}”之间的连接吗？}}",

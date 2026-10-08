@@ -37,6 +37,8 @@
   "interview.familyPedigree.connectQuestion": "{firstIsYou, select, true {Wat is de relatie tussen jou en “{second}”?} other {Wat is de relatie tussen “{first}” en “{second}”?}}",
   "interview.familyPedigree.connectTool": "Verbinden",
   "interview.familyPedigree.connectedParentAnnouncement": "{relationship} ({kind})",
+  "interview.familyPedigree.detailsPassphraseInvalidNotice": "Met je wachtzin konden de opgeslagen antwoorden over je familie niet worden ontgrendeld. Voer hem opnieuw in om mensen toe te voegen of te wijzigen.",
+  "interview.familyPedigree.detailsPassphraseNeededNotice": "Voer je wachtzin in om mensen in je familie toe te voegen of te wijzigen.",
   "interview.familyPedigree.disconnectConfirm": "Verbinding verwijderen",
   "interview.familyPedigree.disconnectConfirmDescription": "Beide personen blijven in je stamboom. Alleen de verbinding tussen hen wordt verwijderd.",
   "interview.familyPedigree.disconnectConfirmTitle": "{firstIsYou, select, true {De verbinding tussen jou en “{second}” verwijderen?} other {De verbinding tussen “{first}” en “{second}” verwijderen?}}",

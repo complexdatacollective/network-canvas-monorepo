@@ -31,6 +31,9 @@ const PEOPLE_PROMPT = 'Everyone in your family, by their saved names.';
 /** The question on the form after the pedigree, when a story adds it. */
 const NAME_FORM_PROMPT = 'What is this person called?';
 
+/** The researcher's own question, encrypted, when a story adds it. */
+const NICKNAME_PROMPT = 'Nickname';
+
 /** A name as the interview stores it encrypted: ciphertext, with the salt
  * and initialisation vector it was made with. */
 type EncryptedSeedName = {
@@ -98,6 +101,9 @@ type StoryOptions = {
   followedByNameForm?: boolean;
   /** Encrypts the name attribute with the participant's passphrase. */
   encryptedNames?: boolean;
+  /** Adds a text field, Nickname, encrypted with the participant's
+   * passphrase (the name is not encrypted unless `encryptedNames`). */
+  encryptedFormField?: boolean;
 };
 
 /** What only the story's shell takes: how the interview is hosted. */
@@ -134,9 +140,12 @@ export function buildInterview({
   followedByPeopleList = false,
   followedByNameForm = false,
   encryptedNames = false,
+  encryptedFormField = false,
 }: StoryOptions) {
   const si = new SyntheticInterview(1);
-  if (encryptedNames) si.setExperiments({ encryptedVariables: true });
+  if (encryptedNames || encryptedFormField) {
+    si.setExperiments({ encryptedVariables: true });
+  }
   si.addInformationStage({ title: 'Welcome', text: 'Before the pedigree.' });
   const people = si.addNodeType({ name: 'Person' });
   const stage = si.addStage('FamilyPedigree', {
@@ -179,6 +188,10 @@ export function buildInterview({
       prompt: 'Is this person still living?',
       validation: { required: true },
     });
+  }
+
+  if (encryptedFormField) {
+    stage.addFormField({ component: 'Text', prompt: NICKNAME_PROMPT });
   }
 
   for (const person of family?.people ?? []) {
@@ -241,6 +254,20 @@ export function buildInterview({
     const name = personType.variables[stage.name];
     if (name) name.component = 'Text';
   }
+  if (encryptedFormField) {
+    const pedigree = payload.protocol.stages.find(
+      (candidate) => candidate.type === 'FamilyPedigree',
+    );
+    const nickname =
+      pedigree?.type === 'FamilyPedigree'
+        ? pedigree.form?.fields.at(-1)?.variable
+        : undefined;
+    const personType = payload.protocol.codebook.node[people.id] as {
+      variables: Record<string, { encrypted?: boolean }>;
+    };
+    const variable = nickname ? personType.variables[nickname] : undefined;
+    if (variable) variable.encrypted = true;
+  }
   if (encryptedNames) {
     const personType = payload.protocol.codebook.node[people.id] as {
       variables: Record<string, { encrypted?: boolean }>;
@@ -274,6 +301,7 @@ function PedigreeStory({
   followedByPeopleList,
   followedByNameForm,
   encryptedNames,
+  encryptedFormField,
   protoAttribute,
   onSync,
 }: StoryOptions & ShellOptions) {
@@ -293,6 +321,7 @@ function PedigreeStory({
           followedByPeopleList,
           followedByNameForm,
           encryptedNames,
+          encryptedFormField,
         }),
       ),
     [
@@ -308,6 +337,7 @@ function PedigreeStory({
       followedByPeopleList,
       followedByNameForm,
       encryptedNames,
+      encryptedFormField,
     ],
   );
 
@@ -343,7 +373,9 @@ function PedigreeStory({
         onSync={onSync}
         preparePayload={preparePayload}
         // The passphrase is entered from the side of the screen.
-        navigationOrientation={encryptedNames ? 'vertical' : undefined}
+        navigationOrientation={
+          encryptedNames || encryptedFormField ? 'vertical' : undefined
+        }
       />
     </div>
   );
@@ -2674,6 +2706,76 @@ export const FormFieldNamedProto: Story = {
     await expect(
       await body.findByRole('spinbutton', { name: /Age/ }),
     ).toHaveValue(61);
+  },
+};
+
+/**
+ * The study encrypts one of its own questions, but not names. Until the
+ * participant enters their passphrase, nobody can be added or changed, and
+ * a notice says why. Once it is entered, an answer to that question is
+ * stored encrypted, while the name is stored as typed, and the answer opens
+ * decrypted in the question again.
+ */
+export const EncryptedFormField: Story = {
+  args: { requirement: 'none' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      encryptedFormField
+      onSync={recordSession}
+      family={describedFamily}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    lastSynced = undefined;
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+
+    const notice = await canvas.findByTestId('pedigree-passphrase-notice');
+    await expect(notice).toHaveTextContent(
+      'Enter your passphrase to add or change people in your family.',
+    );
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Enter your Passphrase' }),
+    );
+    await userEvent.type(
+      await body.findByRole('textbox', { name: /Passphrase/ }),
+      PASSPHRASE,
+    );
+    await userEvent.click(
+      await body.findByRole('button', { name: 'Submit passphrase' }),
+    );
+    await waitFor(() =>
+      expect(canvas.queryByTestId('pedigree-passphrase-notice')).toBeNull(),
+    );
+
+    await userEvent.hover(await canvas.findByRole('button', { name: /^You/ }));
+    await userEvent.click(await canvas.findByTestId('pedigree-menu-sibling'));
+    await userEvent.type(
+      await body.findByRole('textbox', { name: /^Name/ }),
+      'Bea',
+    );
+    await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
+    await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
+    await userEvent.type(
+      await body.findByRole('textbox', { name: NICKNAME_PROMPT }),
+      'Bee',
+    );
+    await userEvent.click(
+      await body.findByRole('button', { name: 'Add to family' }),
+    );
+    await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
+
+    await waitFor(() => {
+      expect(storedAsText('Bea')).toBe(true);
+      expect(storedAsText('Bee')).toBe(false);
+      expect(encryptedValues()).toHaveLength(1);
+    });
+
+    await userEvent.click(await canvas.findByRole('button', { name: /^Bea/ }));
+    await expect(
+      await body.findByRole('textbox', { name: NICKNAME_PROMPT }),
+    ).toHaveValue('Bee');
   },
 };
 
