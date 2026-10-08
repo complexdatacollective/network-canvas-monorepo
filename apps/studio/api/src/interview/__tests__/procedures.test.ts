@@ -4,7 +4,10 @@ import { Context, Effect, Exit, Redacted, Schema } from 'effect';
 import { RpcClient } from 'effect/rpc';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  CURRENT_SCHEMA_VERSION,
+  type CurrentProtocol,
+} from '@codaco/protocol-validation';
 import { PARTICIPANT_SESSION_HEADER } from '@codaco/studio-contract/middleware/session';
 import { LinkToken } from '@codaco/studio-contract/schema/ids';
 import {
@@ -481,7 +484,7 @@ describe.skipIf(!testDb)('the participant procedures', () => {
         schemaVersion: number;
       };
       expect(protocol.id).toBe(f.versionId);
-      expect(protocol.schemaVersion).toBe(8);
+      expect(protocol.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
       expect(protocol.assets).toEqual(
         expect.arrayContaining([
           {
@@ -689,7 +692,7 @@ describe.skipIf(!testDb)('the participant procedures', () => {
         [sessionId],
       );
       expect(snapshots).toHaveLength(1);
-      expect(snapshots[0]?.schema_version).toBe(8);
+      expect(snapshots[0]?.schema_version).toBe(CURRENT_SCHEMA_VERSION);
       expect(snapshots[0]?.payload).toMatchObject({
         currentStep: 1,
         stageMetadata: { 'stage-1': { seen: true } },
