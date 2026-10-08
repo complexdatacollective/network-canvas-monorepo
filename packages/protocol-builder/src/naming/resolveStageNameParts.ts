@@ -14,7 +14,6 @@ type EntityNameResolver = (
 
 type QualifierResolvers = {
   resolveAssetType: (assetId: string) => string | null;
-  resolveVariableName: (variableId: string) => string | null;
 };
 
 /**
@@ -28,7 +27,6 @@ type QualifierStageFields = {
   type?: StageType;
   panels?: PanelQualifierInput[];
   items?: Item[];
-  nominationPrompts?: { variable: string }[];
 };
 
 /**
@@ -135,23 +133,6 @@ function resolveInformationQualifier(
   return buildListQualifier(mediaLabels, { summaryNoun: 'Media' });
 }
 
-function resolveNominationQualifier(
-  prompts: { variable: string }[] | undefined,
-  resolveVariableName: (variableId: string) => string | null,
-): Qualifier | null {
-  if (!prompts) {
-    return null;
-  }
-  const names = prompts
-    .map((prompt) => resolveVariableName(prompt.variable))
-    .filter((name): name is string => Boolean(name));
-  return buildListQualifier(names, {
-    singularNoun: 'Nomination',
-    pluralNoun: 'Nominations',
-    summaryNoun: 'Nominations',
-  });
-}
-
 export function resolveStageQualifier(
   stage: QualifierStageFields,
   resolvers: QualifierResolvers,
@@ -164,11 +145,6 @@ export function resolveStageQualifier(
       return resolveInformationQualifier(
         stage.items,
         resolvers.resolveAssetType,
-      );
-    case 'FamilyPedigree':
-      return resolveNominationQualifier(
-        stage.nominationPrompts,
-        resolvers.resolveVariableName,
       );
     default:
       return null;

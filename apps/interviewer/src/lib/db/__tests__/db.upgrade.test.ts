@@ -16,7 +16,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { fromBase64 } from '../../vault/crypto';
-import { db, getSettings } from '../db';
+import { db, getSettings, type StoredProtocolMigrationRecord } from '../db';
 import { migrateStoredProtocols } from '../migrateStoredProtocols';
 import {
   decryptAsset,
@@ -35,7 +35,6 @@ import {
   DEFAULT_SETTINGS,
   type StoredAsset,
   type StoredProtocol,
-  type StoredProtocolMigrationRecord,
   type StoredSession,
 } from '../types';
 

@@ -1,8 +1,3 @@
-import { entityAttributesProperty } from '@codaco/shared-consts';
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
-
-import type { VariableConfig } from '../store';
-import { getEdgeRelationshipType } from '../utils/edgeUtils';
 import { computeConnectors } from './connectors';
 import {
   computeLayoutMetrics,
@@ -14,6 +9,7 @@ import type {
   PedigreeConnectors,
   PedigreeInput,
   PedigreeLayout,
+  PedigreeLink,
   Relation,
   ScalingParams,
 } from './types';
@@ -28,32 +24,21 @@ type ConversionResult = {
   idToIndex: Map<string, number>;
 };
 
-function readEdge(edge: NcEdge, config: VariableConfig) {
+function readLink(link: PedigreeLink) {
   return {
-    relationshipType:
-      getEdgeRelationshipType(edge, config.relationshipTypeVariable) ??
-      'biological',
-    isActive: edge[entityAttributesProperty][config.isActiveVariable] !== false,
-    isGestationalCarrier:
-      edge[entityAttributesProperty][config.isGestationalCarrierVariable] ===
-      true,
+    relationshipType: link.kind,
+    isActive: link.isActive !== false,
+    isGestationalCarrier: link.isGestationalCarrier === true,
   };
 }
 
-export function storeToPedigreeInput(
-  nodes: Map<string, NcNode>,
-  edges: Map<string, NcEdge>,
-  variableConfig: VariableConfig,
+export function toPedigreeInput(
+  nodeIds: readonly string[],
+  links: readonly PedigreeLink[],
 ): ConversionResult {
-  const indexToId: string[] = [];
+  const indexToId: string[] = [...nodeIds];
   const idToIndex = new Map<string, number>();
-
-  let idx = 0;
-  for (const nodeId of nodes.keys()) {
-    indexToId.push(nodeId);
-    idToIndex.set(nodeId, idx);
-    idx++;
-  }
+  indexToId.forEach((nodeId, index) => idToIndex.set(nodeId, index));
 
   const n = indexToId.length;
   const id: string[] = indexToId.slice();
@@ -61,15 +46,12 @@ export function storeToPedigreeInput(
   const relations: Relation[] = [];
   const partnerConnections: PartnerConnection[] = [];
 
-  for (const edge of edges.values()) {
-    const { relationshipType, isActive, isGestationalCarrier } = readEdge(
-      edge,
-      variableConfig,
-    );
+  for (const link of links) {
+    const { relationshipType, isActive, isGestationalCarrier } = readLink(link);
 
     if (relationshipType === 'partner') {
-      const i1 = idToIndex.get(edge.from);
-      const i2 = idToIndex.get(edge.to);
+      const i1 = idToIndex.get(link.source);
+      const i2 = idToIndex.get(link.target);
       if (i1 === undefined || i2 === undefined) continue;
       relations.push({ id1: i1, id2: i2, code: 4 });
       partnerConnections.push({
@@ -78,8 +60,8 @@ export function storeToPedigreeInput(
         isActive,
       });
     } else {
-      const childIdx = idToIndex.get(edge.to);
-      const parentIdx = idToIndex.get(edge.from);
+      const childIdx = idToIndex.get(link.target);
+      const parentIdx = idToIndex.get(link.source);
       if (childIdx === undefined || parentIdx === undefined) continue;
 
       parents[childIdx]!.push({
@@ -183,9 +165,8 @@ export function pedigreeLayoutToPositions(
 
 export function buildConnectorData(
   layout: PedigreeLayout,
-  edges: Map<string, NcEdge>,
+  links: readonly PedigreeLink[],
   dimensions: LayoutDimensions,
-  variableConfig: VariableConfig,
   parents: ParentConnection[][] = [],
   idToIndex?: Map<string, number>,
   nodeNames?: string[],
@@ -209,11 +190,11 @@ export function buildConnectorData(
   if (idToIndex) {
     partnerPairs = new Set<string>();
     activePartnerPairs = new Set<string>();
-    for (const edge of edges.values()) {
-      const { relationshipType, isActive } = readEdge(edge, variableConfig);
+    for (const link of links) {
+      const { relationshipType, isActive } = readLink(link);
       if (relationshipType !== 'partner') continue;
-      const i1 = idToIndex.get(edge.from);
-      const i2 = idToIndex.get(edge.to);
+      const i1 = idToIndex.get(link.source);
+      const i2 = idToIndex.get(link.target);
       if (i1 === undefined || i2 === undefined) continue;
       const pairKey = `${Math.min(i1, i2)},${Math.max(i1, i2)}`;
       partnerPairs.add(pairKey);

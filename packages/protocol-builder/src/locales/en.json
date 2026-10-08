@@ -1116,12 +1116,12 @@
     "description": "Heading of the alert shown when saving an attribute (a codebook variable) was refused. The reason follows underneath."
   },
   "protocolBuilder.codebookVariable.heldAnswerValuesCaption": {
-    "defaultMessage": "A yes/no attribute is written here as two answers, one recording “true” and the other “false”. This one’s answers record something else, so they are shown as they are, and saving leaves them unchanged.",
-    "description": "Caption over the read-only list of answers a yes/no attribute offers, shown when the attribute holds two answers that do not record one “true” and one “false” — both recording the same one, for instance. It says that saving the attribute does not alter them. “true” and “false” are the literal values the protocol stores and stay as they are."
+    "defaultMessage": "A boolean attribute is written here as two answers, one recording “true” and the other “false”. This one’s answers record something else, so they are shown as they are, and saving leaves them unchanged.",
+    "description": "Caption over the read-only list of answers a boolean (yes/no) attribute offers, shown when the attribute holds two answers that do not record one “true” and one “false” — both recording the same one, for instance. It says that saving the attribute does not alter them. “true” and “false” are the literal values the protocol stores and stay as they are."
   },
   "protocolBuilder.codebookVariable.heldAnswersCaption": {
-    "defaultMessage": "A yes/no attribute is written here as two answers, and this one offers a different number of them. They are shown as they are, and saving leaves them unchanged.",
-    "description": "Caption over the read-only list of answers a yes/no attribute offers, shown when the attribute holds some number of answers other than the two this editor writes. It says that saving the attribute does not alter them."
+    "defaultMessage": "A boolean attribute is written here as two answers, and this one offers a different number of them. They are shown as they are, and saving leaves them unchanged.",
+    "description": "Caption over the read-only list of answers a boolean (yes/no) attribute offers, shown when the attribute holds some number of answers other than the two this editor writes. It says that saving the attribute does not alter them."
   },
   "protocolBuilder.codebookVariable.heldAnswersLegend": {
     "defaultMessage": "The answers this attribute offers",
@@ -1133,7 +1133,7 @@
   },
   "protocolBuilder.codebookVariable.interfaceOwnedPick": {
     "defaultMessage": "This attribute is set by {owner}, so it cannot be used here. Choose a different attribute.",
-    "description": "Refusal shown when a researcher picks an attribute (a codebook variable) that one kind of interview step writes for itself. owner is the name of that step, which is the researcher’s own or a built-in interface name and is not translated here."
+    "description": "Refusal shown when a researcher picks an attribute (a codebook variable) that one kind of interview step writes for itself. owner is a whole English phrase from the protocol schema that names a built-in interface and what it records, for example “the Family Pedigree interface, which marks the participant”. It is not translated here, so it stays in English inside the translated sentence."
   },
   "protocolBuilder.codebookVariable.labelHint": {
     "defaultMessage": "A readable label for this attribute. It is not translated. Left empty, the attribute name is used.",
@@ -1198,6 +1198,10 @@
   "protocolBuilder.codebookVariable.saveSubmit": {
     "defaultMessage": "Save attribute",
     "description": "Button that saves the changes to an existing attribute (a codebook variable)."
+  },
+  "protocolBuilder.codebookVariable.stageManagedOptions": {
+    "defaultMessage": "{count, plural, one {These options are managed by the {stageLabels} stage, which decides the kinship words each one takes. Edit them there.} other {These options are managed by the stages {stageLabels}, which decide the kinship words each one takes. Edit them in any of those stages.}}",
+    "description": "Shown in place of the editable list of allowed answers of an attribute (a codebook variable) whose answers belong to one or more interview steps, and as the refusal when a change to them is attempted anywhere else. A stage is one step of an interview. stageLabels is the researcher’s own name for each of those steps, already in quotation marks and separated by commas, and is not translated here. count is how many steps manage the answers. The kinship words are the family words (mother, brother, parent) a family-tree step uses for each answer."
   },
   "protocolBuilder.codebookVariable.submittingStatus": {
     "defaultMessage": "Saving attribute.",
@@ -1614,26 +1618,6 @@
   "protocolBuilder.externalDataSource.unreadableTitle": {
     "defaultMessage": "This data file could not be read",
     "description": "Warning heading shown when the chosen data file could not be opened. The reason underneath comes from the application hosting this editor."
-  },
-  "protocolBuilder.familyPedigree.familyMemberAttributesDescription": {
-    "defaultMessage": "Map the node attributes used to label family members and store pedigree relationships.",
-    "description": "Description of the family-member attributes group. Mapping means choosing which codebook attribute each thing the interface records is kept in."
-  },
-  "protocolBuilder.familyPedigree.familyMemberAttributesTitle": {
-    "defaultMessage": "Family member attributes",
-    "description": "Heading of the group holding the attributes a family pedigree writes onto each family member. Also names the group to assistive technology."
-  },
-  "protocolBuilder.familyPedigree.nominationDetailsDescription": {
-    "defaultMessage": "Write the question participants will answer and choose the boolean attribute that records who they nominate.",
-    "description": "Said under the title of a nomination prompt’s own dialog. A boolean attribute holds a yes-or-no answer, recorded here against each family member the participant names."
-  },
-  "protocolBuilder.familyPedigree.relationshipAttributesDescription": {
-    "defaultMessage": "Map the edge attributes used to describe family relationships and support inheritance tracing.",
-    "description": "Description of the relationship-attributes group. Inheritance tracing is how the interface follows a condition down the family tree."
-  },
-  "protocolBuilder.familyPedigree.relationshipAttributesTitle": {
-    "defaultMessage": "Relationship attributes",
-    "description": "Heading of the group holding the attributes a family pedigree writes onto each relationship it draws. Also names the group to assistive technology."
   },
   "protocolBuilder.field.required": {
     "defaultMessage": "This field is required.",
@@ -3823,54 +3807,6 @@
     "defaultMessage": "Enter your title here...",
     "description": "Placeholder shown in the empty page-heading field. The trailing dots are an ellipsis written as three full stops."
   },
-  "protocolBuilder.pageContent.introAddLabel": {
-    "defaultMessage": "Create new introduction block",
-    "description": "Button that opens the dialog for adding one more piece to an introduction screen."
-  },
-  "protocolBuilder.pageContent.introAddTitle": {
-    "defaultMessage": "Create introduction block",
-    "description": "Title of the dialog a researcher fills in to add one more piece to an introduction screen."
-  },
-  "protocolBuilder.pageContent.introClearConfirm": {
-    "defaultMessage": "Remove the introduction screen",
-    "description": "Action that confirms switching the introduction screen off and discarding its blocks."
-  },
-  "protocolBuilder.pageContent.introClearDescription": {
-    "defaultMessage": "This will delete every block on the introduction screen, and the participant will start the task straight away. Do you want to continue?",
-    "description": "Body of the confirmation asked before switching the introduction screen off, which throws every block on it away."
-  },
-  "protocolBuilder.pageContent.introClearTitle": {
-    "defaultMessage": "This will remove the introduction screen",
-    "description": "Title of the confirmation asked before switching the introduction screen off, which throws every block on it away."
-  },
-  "protocolBuilder.pageContent.introDescription": {
-    "defaultMessage": "Show the participant a screen of text and media before this task begins.",
-    "description": "Description of the introduction-screen section."
-  },
-  "protocolBuilder.pageContent.introEditTitle": {
-    "defaultMessage": "Edit introduction block",
-    "description": "Title of the dialog a researcher fills in to change a piece of an introduction screen."
-  },
-  "protocolBuilder.pageContent.introEmptyState": {
-    "defaultMessage": "No blocks yet. Create one to explain this task before the participant starts it.",
-    "description": "Shown in place of the list of blocks while an introduction screen holds nothing yet."
-  },
-  "protocolBuilder.pageContent.introItemNoun": {
-    "defaultMessage": "introduction block",
-    "description": "What one piece of an introduction screen is called inside things said ABOUT it — \"Edit introduction block\" — so it is lower case and singular."
-  },
-  "protocolBuilder.pageContent.introItemsHint": {
-    "defaultMessage": "The participant scrolls through these in order before starting the task. Drag to reorder them.",
-    "description": "Guidance under the list of blocks on an introduction screen."
-  },
-  "protocolBuilder.pageContent.introItemsLabel": {
-    "defaultMessage": "Introduction blocks",
-    "description": "Label of the ordered list of pieces the introduction screen is built from."
-  },
-  "protocolBuilder.pageContent.introTitle": {
-    "defaultMessage": "Introduction screen",
-    "description": "Heading of the section where a researcher builds a page of text and media shown before this step of the interview’s own task begins."
-  },
   "protocolBuilder.pageContent.pageAddLabel": {
     "defaultMessage": "Create new content item",
     "description": "Button that opens the dialog for adding one more piece to a page. Whole rather than a generic \"Add\", because a stage editor shows several lists at once."
@@ -3907,77 +3843,109 @@
     "defaultMessage": "Page content",
     "description": "Heading of the section where a researcher builds a page of text and media that a participant reads instead of doing a task."
   },
-  "protocolBuilder.pedigree.boundariesChildrenContributorsHint": {
-    "defaultMessage": "For each of the participant's children, asks that the child's other genetic parent has their own parents and grandparents recorded, extending the family pedigree to that side of the family. Participants without children can affirm this instead.",
-    "description": "Guidance under the co-parent family requirement control. \"Affirm this instead\" means a participant with no children confirms that fact rather than recording anybody."
+  "protocolBuilder.pedigree.completenessClearConfirm": {
+    "defaultMessage": "Remove the requirement",
+    "description": "Button that confirms switching off the completeness requirement and discarding it."
   },
-  "protocolBuilder.pedigree.boundariesChildrenContributorsLabel": {
-    "defaultMessage": "Co-parent family requirement",
-    "description": "Label of the control setting how strictly the pedigree asks about the families of the people the participant had children with."
+  "protocolBuilder.pedigree.completenessClearDescription": {
+    "defaultMessage": "The relatives, the enforcement and the relatives-not-recorded attribute you chose will be removed from this stage, and participants will be able to continue with any family they have drawn.",
+    "description": "Body of the confirmation shown before the completeness requirement is switched off, saying what is lost."
   },
-  "protocolBuilder.pedigree.boundariesDescription": {
-    "defaultMessage": "Set how far the pedigree must extend beyond the participant's immediate family.",
-    "description": "Description of the pedigree boundaries section."
+  "protocolBuilder.pedigree.completenessClearTitle": {
+    "defaultMessage": "Remove the completeness requirement?",
+    "description": "Title of the confirmation shown before a researcher switches off the requirement that a participant records a minimum part of their family."
   },
-  "protocolBuilder.pedigree.boundariesEnforcementIntro": {
-    "defaultMessage": "Each boundary below can be set to one of three enforcement levels, which determine how the interview behaves when the condition is not yet met:",
-    "description": "Sentence introducing the list of enforcement levels below it, so it ends in a colon."
+  "protocolBuilder.pedigree.completenessDescription": {
+    "defaultMessage": "Check that participants have recorded a minimum part of their family, and every required detail about each person, before they continue. Switched off, they can continue with whatever they have drawn.",
+    "description": "Description of the completeness section. The participant is the person being interviewed. The required details are sex assigned at birth, gender identity when the stage asks it, and any additional person field the codebook marks as required. Whether the participant may continue without them is the enforcement choice below."
   },
-  "protocolBuilder.pedigree.boundariesGrandparentsHint": {
-    "defaultMessage": "Asks the participant to record two parents for each of their own parents, so that all of the participant's grandparents appear in the family pedigree.",
-    "description": "Guidance under the grandparent requirement control."
+  "protocolBuilder.pedigree.completenessEnforcementLabel": {
+    "defaultMessage": "When the family is incomplete",
+    "description": "Label of the control choosing whether a participant may continue while the required relatives are not all recorded."
   },
-  "protocolBuilder.pedigree.boundariesGrandparentsLabel": {
-    "defaultMessage": "Grandparent requirement",
-    "description": "Label of the control setting how strictly the pedigree asks for the participant’s grandparents."
-  },
-  "protocolBuilder.pedigree.boundariesLevelOff": {
-    "defaultMessage": "Off",
-    "description": "Enforcement level meaning the boundary is never checked. Keyed by the schema value \"off\"."
-  },
-  "protocolBuilder.pedigree.boundariesLevelRecommended": {
+  "protocolBuilder.pedigree.completenessEnforcementRecommended": {
     "defaultMessage": "Recommended",
-    "description": "Enforcement level meaning the participant is reminded but may finish anyway. Keyed by the schema value \"recommended\"."
+    "description": "Name of the choice that shows a participant what is missing but lets them continue."
   },
-  "protocolBuilder.pedigree.boundariesLevelRequired": {
+  "protocolBuilder.pedigree.completenessEnforcementRecommendedDescription": {
+    "defaultMessage": "Participants are shown what is missing but may continue.",
+    "description": "Says what the recommended choice does. It refers to the relatives the participant has not recorded."
+  },
+  "protocolBuilder.pedigree.completenessEnforcementRequired": {
     "defaultMessage": "Required",
-    "description": "Enforcement level meaning the participant cannot finish the stage until the boundary is met. Keyed by the schema value \"required\"."
+    "description": "Name of the choice that stops a participant continuing until the required relatives are recorded."
   },
-  "protocolBuilder.pedigree.boundariesOffExplanation": {
-    "defaultMessage": "<term>Off</term> — the condition is never checked, and participants are not asked to provide this information.",
-    "description": "What the \"Off\" enforcement level does. The <term> tag holds the level’s own name and is drawn in bold; keep it matching the \"Off\" option label below."
+  "protocolBuilder.pedigree.completenessEnforcementRequiredDescription": {
+    "defaultMessage": "Participants cannot continue until the required relatives and details are recorded.",
+    "description": "Says what the required choice does. The required relatives are the ones chosen above, and the required details are about each person in the family the participant has drawn."
   },
-  "protocolBuilder.pedigree.boundariesRecommendedExplanation": {
-    "defaultMessage": "<term>Recommended</term> — participants see a reminder in the completion checklist, but can finish the stage without satisfying the condition.",
-    "description": "What the \"Recommended\" enforcement level does. The <term> tag holds the level’s own name and is drawn in bold; keep it matching the \"Recommended\" option label. The completion checklist is a list the participant sees on the pedigree screen."
+  "protocolBuilder.pedigree.completenessScopeFirstDegree": {
+    "defaultMessage": "Parents, siblings and children",
+    "description": "Name of the completeness choice that requires the participant’s parents, siblings and children."
   },
-  "protocolBuilder.pedigree.boundariesRequiredExplanation": {
-    "defaultMessage": "<term>Required</term> — participants cannot finish the stage until the condition is satisfied.",
-    "description": "What the \"Required\" enforcement level does. The <term> tag holds the level’s own name and is drawn in bold; keep it matching the \"Required\" option label."
+  "protocolBuilder.pedigree.completenessScopeFirstDegreeDescription": {
+    "defaultMessage": "First-degree relatives, and the other biological parent of each of the participant’s biological children.",
+    "description": "Says what the parents-siblings-and-children choice requires. First-degree relatives are a person’s parents, siblings and children. The other biological parent of a child is the person who gave the egg or sperm the participant did not; their own family is not required."
   },
-  "protocolBuilder.pedigree.boundariesSelectPlaceholder": {
-    "defaultMessage": "Select an option",
-    "description": "Shown in an enforcement-level control while the researcher has chosen no level yet."
+  "protocolBuilder.pedigree.completenessScopeGrandparents": {
+    "defaultMessage": "Three generations",
+    "description": "Name of the completeness choice that requires three generations of the participant’s family: themselves, their parents and their grandparents."
   },
-  "protocolBuilder.pedigree.boundariesTitle": {
-    "defaultMessage": "Pedigree boundaries",
-    "description": "Heading of the section setting how far beyond their immediate family a participant has to record before the stage will let them finish."
+  "protocolBuilder.pedigree.completenessScopeGrandparentsDescription": {
+    "defaultMessage": "Adds grandparents, and aunts and uncles on both sides.",
+    "description": "Says what the three-generations choice adds to first-degree relatives. Both sides means the mother’s and the father’s family."
   },
-  "protocolBuilder.pedigree.censusFieldHint": {
-    "defaultMessage": "Configure the prompt shown to participants during the family building phase.",
-    "description": "Guidance under the census prompt field."
+  "protocolBuilder.pedigree.completenessScopeHint": {
+    "defaultMessage": "Each choice includes the ones before it. Only biological relatives count, so an adopted child does not satisfy “children”. Biological parents are the people who gave the egg or sperm, so donors count. A participant can account for siblings and children by saying they have none or do not know.",
+    "description": "Guidance under the control choosing which relatives must be recorded. Biological parents are the genetic parents of a person; a gestational carrier who did not contribute the egg is not one. Adoptive and step relatives do not count. Siblings, in this setting, are people who share a biological parent."
   },
-  "protocolBuilder.pedigree.censusFieldLabel": {
-    "defaultMessage": "Census prompt",
-    "description": "Label of the field holding the question. \"Census\" is this interface’s name for the phase in which the participant lists everyone in their family."
+  "protocolBuilder.pedigree.completenessScopeLabel": {
+    "defaultMessage": "Relatives to record",
+    "description": "Label of the control choosing which relatives of the participant must be recorded. Each choice includes the ones before it."
   },
-  "protocolBuilder.pedigree.censusPlaceholder": {
-    "defaultMessage": "Enter your prompt...",
-    "description": "Placeholder shown in the empty census prompt field. The trailing dots are an ellipsis written as three full stops."
+  "protocolBuilder.pedigree.completenessScopeParents": {
+    "defaultMessage": "Both biological parents",
+    "description": "Name of the least demanding completeness choice: the participant’s two biological parents must be recorded."
   },
-  "protocolBuilder.pedigree.censusTitle": {
-    "defaultMessage": "Family-building prompt",
-    "description": "Heading of the section holding the single question shown while a participant is drawing their family."
+  "protocolBuilder.pedigree.completenessScopeParentsDescription": {
+    "defaultMessage": "Every person has two biological parents, so an unknown parent is still added to the family.",
+    "description": "Says what the both-biological-parents choice requires, and why an unknown parent is still recorded."
+  },
+  "protocolBuilder.pedigree.completenessScopeSecondDegree": {
+    "defaultMessage": "All second-degree relatives",
+    "description": "Name of the completeness choice that requires every second-degree relative of the participant."
+  },
+  "protocolBuilder.pedigree.completenessScopeSecondDegreeDescription": {
+    "defaultMessage": "Adds nieces, nephews and grandchildren.",
+    "description": "Says what the all-second-degree-relatives choice adds to three generations."
+  },
+  "protocolBuilder.pedigree.completenessScopeThirdDegree": {
+    "defaultMessage": "Three generations, to first cousins",
+    "description": "Name of the most demanding completeness choice: three generations including the participant’s first cousins."
+  },
+  "protocolBuilder.pedigree.completenessScopeThirdDegreeDescription": {
+    "defaultMessage": "Adds first cousins: the clinical three-generation pedigree.",
+    "description": "Says what the to-first-cousins choice adds. A clinical pedigree is the family tree health professionals draw to assess inherited conditions."
+  },
+  "protocolBuilder.pedigree.completenessTitle": {
+    "defaultMessage": "Completeness",
+    "description": "Heading of the optional section where a researcher chooses how much of the family a Family Pedigree participant must record before they can continue."
+  },
+  "protocolBuilder.pedigree.completenessWaiting": {
+    "defaultMessage": "Choose the node type before choosing how complete the family must be.",
+    "description": "Shown in place of the completeness section’s description while no node type has been chosen for the stage."
+  },
+  "protocolBuilder.pedigree.currentPartnerCreateLabel": {
+    "defaultMessage": "Create a new current partner attribute",
+    "description": "Title of the dialog that creates a new boolean attribute marking a current partnership."
+  },
+  "protocolBuilder.pedigree.currentPartnerHint": {
+    "defaultMessage": "True when a partnership is current, and false when it has ended.",
+    "description": "Guidance under the current partner attribute control. It is set on every partnership, and on nothing else."
+  },
+  "protocolBuilder.pedigree.currentPartnerLabel": {
+    "defaultMessage": "Current partner",
+    "description": "Label of the control choosing the boolean attribute that marks a partnership as current."
   },
   "protocolBuilder.pedigree.dependentStagesBlockReason": {
     "defaultMessage": "{stageCount, plural, one {{stageNames} reads this pedigree and maps its own attributes onto this node type, so the node type cannot be changed here. Change or remove that stage first.} other {{stageNames} read this pedigree and map their own attributes onto this node type, so the node type cannot be changed here. Change or remove those stages first.}}",
@@ -3991,369 +3959,513 @@
     "defaultMessage": "Other stages read this pedigree",
     "description": "Title of the warning shown above the node type control when other stages of the same protocol draw their network from this pedigree."
   },
-  "protocolBuilder.pedigree.edgeDescription": {
-    "defaultMessage": "Choose the edge type and map the attributes used to store family relationships.",
-    "description": "Description of the relationship data section."
+  "protocolBuilder.pedigree.egoCreateLabel": {
+    "defaultMessage": "Create a new participant marker attribute",
+    "description": "Title of the dialog that creates a new boolean attribute marking the participant."
   },
-  "protocolBuilder.pedigree.edgeGameteRoleCreateLabel": {
-    "defaultMessage": "Create a new gamete role attribute",
-    "description": "Button that opens a dialog for adding the gamete role attribute to the codebook."
+  "protocolBuilder.pedigree.egoHint": {
+    "defaultMessage": "The interface sets this boolean attribute to true on the participant’s own person, and leaves it blank on everyone else. Use it in a stage filter to keep the participant out of later stages, such as a name generator or sociogram of their relatives, or to tell them apart in exports and analysis. Because it is blank rather than false for everyone else, filter on “is not” true to leave the participant out.",
+    "description": "Guidance under the participant marker attribute control. A stage filter is the set of rules, in the stage’s Stage filter section, that decide which nodes a stage shows. A name generator and a sociogram are kinds of interview stage. “is not” is the name of a rule operator in the stage filter, written exactly as it appears there."
   },
-  "protocolBuilder.pedigree.edgeGameteRoleHint": {
-    "defaultMessage": "Stores whether a parent contributed the egg or sperm. The interface uses this fixed value set to trace biological inheritance.",
-    "description": "Guidance under the gamete role control. The fixed value set is the list of answers this attribute offers, which the researcher may not edit because the genetics engine branches on those exact values."
-  },
-  "protocolBuilder.pedigree.edgeGameteRoleLabel": {
-    "defaultMessage": "Gamete role",
-    "description": "Label of the control binding the attribute that records which reproductive cell a parent contributed — the egg or the sperm."
-  },
-  "protocolBuilder.pedigree.edgeGestationalCarrierCreateLabel": {
-    "defaultMessage": "Create a new gestational carrier attribute",
-    "description": "Button that opens a dialog for adding the gestational carrier attribute to the codebook."
-  },
-  "protocolBuilder.pedigree.edgeGestationalCarrierHint": {
-    "defaultMessage": "A boolean attribute indicating whether a parent is a gestational carrier. Used only for parent relationships.",
-    "description": "Guidance under the gestational carrier control."
-  },
-  "protocolBuilder.pedigree.edgeGestationalCarrierLabel": {
-    "defaultMessage": "Gestational carrier",
-    "description": "Label of the control binding the attribute that records who carried each pregnancy. A gestational carrier is the person who was pregnant, who may not be a genetic parent."
-  },
-  "protocolBuilder.pedigree.edgeIsActiveCreateLabel": {
-    "defaultMessage": "Create a new active status attribute",
-    "description": "Button that opens a dialog for adding the active status attribute to the codebook."
-  },
-  "protocolBuilder.pedigree.edgeIsActiveHint": {
-    "defaultMessage": "A boolean attribute indicating whether the relationship is currently active.",
-    "description": "Guidance under the active status control."
-  },
-  "protocolBuilder.pedigree.edgeIsActiveLabel": {
-    "defaultMessage": "Active status",
-    "description": "Label of the control binding the attribute that records whether a relationship is a current one."
-  },
-  "protocolBuilder.pedigree.edgeRelationshipTypeCreateLabel": {
-    "defaultMessage": "Create a new relationship type attribute",
-    "description": "Button that opens a dialog for adding the relationship type attribute to the codebook."
-  },
-  "protocolBuilder.pedigree.edgeRelationshipTypeHint": {
-    "defaultMessage": "Stores the relationship category between family members, such as biological, social, donor, surrogate, adoptive, or partner.",
-    "description": "Guidance under the relationship type control. The six words are the kinds of relationship a pedigree can record."
-  },
-  "protocolBuilder.pedigree.edgeRelationshipTypeLabel": {
-    "defaultMessage": "Relationship type",
-    "description": "Label of the control binding the attribute that holds what kind of relationship each edge is."
-  },
-  "protocolBuilder.pedigree.edgeTitle": {
-    "defaultMessage": "Relationship data",
-    "description": "Heading of the section binding the edge type and the attributes the pedigree stores each family relationship’s details in."
-  },
-  "protocolBuilder.pedigree.edgeTypeChangeConfirm": {
-    "defaultMessage": "Change the edge type",
-    "description": "Button that confirms changing a Family Pedigree’s edge type and discarding everything that described the previous one."
-  },
-  "protocolBuilder.pedigree.edgeTypeChangeDescription": {
-    "defaultMessage": "The relationship type, whether a relationship is current, who carried each pregnancy and the gamete each parent contributed all name attributes of the current edge type, so changing it removes them.",
-    "description": "Body of the confirmation shown before a Family Pedigree’s edge type changes, listing what the change discards."
-  },
-  "protocolBuilder.pedigree.edgeTypeChangeTitle": {
-    "defaultMessage": "This will clear everything about family relationships",
-    "description": "Title of the confirmation shown before a researcher changes the edge type a Family Pedigree records relationships as. Everything the stage says about a relationship describes attributes of the current type, so changing it discards all of it."
-  },
-  "protocolBuilder.pedigree.edgeTypeLabel": {
-    "defaultMessage": "Edge type",
-    "description": "Label of the control choosing which edge type of the codebook a family relationship is."
+  "protocolBuilder.pedigree.egoLabel": {
+    "defaultMessage": "Participant marker",
+    "description": "Label of the control choosing the boolean attribute that marks which family member is the participant."
   },
   "protocolBuilder.pedigree.framingDescription": {
-    "defaultMessage": "Choose fixed terminology or let each participant select their preferred framing.",
-    "description": "Description of the pedigree framing section. \"Framing\" is this interface’s name for one of two sets of words it can ask about parents with."
+    "defaultMessage": "Choose the kinship words used for family members the participant hasn’t named. Named people are shown by name. This changes only what participants read, and adds nothing to the exported data.",
+    "description": "Description of the wording section. The participant is the person being interviewed; the words are kinship words such as mother, sibling or egg parent. A family member the participant has not given a name to is shown by their kinship to the participant instead. The participant themselves is always shown as “You”."
   },
-  "protocolBuilder.pedigree.framingGamete": {
-    "defaultMessage": "Gamete-based",
-    "description": "Name of the framing that describes parents by their reproductive contribution — the egg and the sperm — rather than by gender. Keyed by the schema value \"gamete\"; the participant-facing words this framing selects live in the interview runtime and are translated there."
+  "protocolBuilder.pedigree.framingGameteDescription": {
+    "defaultMessage": "A biological parent is called the egg parent or the sperm parent, going by their sex assigned at birth, and a parent whose sex is neither female nor male is called a parent. Every other relative gets a neutral word such as grandparent, sibling or parent’s sibling.",
+    "description": "Says what the egg parent and sperm parent choice does. Biological parents are the people who gave the egg or the sperm. The egg parent is the one whose sex assigned at birth is female and the sperm parent the one whose sex assigned at birth is male; a biological parent with any other answer, or none, is called a parent."
   },
-  "protocolBuilder.pedigree.framingGameteExplanation": {
-    "defaultMessage": "<term>Gamete-based</term> — describes each parent by their reproductive contribution, using terms such as “egg parent” and “sperm parent” and questions such as “Who provided the egg?”. This framing works for all family structures, including donor conception, surrogacy, and same-sex parents.",
-    "description": "What the gamete-based framing does, in the list a researcher chooses a framing from. The <term> tag holds the framing’s own name and is drawn in bold; keep it around whatever names the framing in your language, and keep it matching the \"Gamete-based\" option label. The quoted phrases are examples of what a participant would read."
+  "protocolBuilder.pedigree.framingGameteLabel": {
+    "defaultMessage": "Egg parent and sperm parent",
+    "description": "Name of the wording choice that describes biological parents by the egg or sperm they gave, without gendered words."
   },
-  "protocolBuilder.pedigree.framingGendered": {
-    "defaultMessage": "Gendered",
-    "description": "Name of the framing that describes parents with gendered kinship terms — mother, father. Keyed by the schema value \"gendered\"."
+  "protocolBuilder.pedigree.framingGenderedDescription": {
+    "defaultMessage": "Words such as mother, father, sister, brother, aunt and uncle. A person’s words come from their gender identity when this stage asks about it, and from their sex assigned at birth when it does not.",
+    "description": "Says what the everyday kinship words choice does and where each person’s words come from. The stage can be set to ask each family member’s gender identity or not to ask it."
   },
-  "protocolBuilder.pedigree.framingGenderedExplanation": {
-    "defaultMessage": "<term>Gendered</term> — uses gendered kinship terms such as “mother” and “father” and questions such as “Who is the biological mother?”. This framing assumes that each child has a mother and a father.",
-    "description": "What the gendered framing does, in the list a researcher chooses a framing from. The <term> tag holds the framing’s own name and is drawn in bold; keep it matching the \"Gendered\" option label. The quoted phrases are examples of what a participant would read."
+  "protocolBuilder.pedigree.framingGenderedLabel": {
+    "defaultMessage": "Everyday kinship words",
+    "description": "Name of the wording choice that uses the usual kinship words, such as mother, sister and aunt."
   },
-  "protocolBuilder.pedigree.framingIntro": {
-    "defaultMessage": "The framing determines the language the interface uses when talking about biological parents:",
-    "description": "Sentence introducing the list of framings below it, so it ends in a colon. \"The interface\" is the pedigree screen the participant sees."
+  "protocolBuilder.pedigree.framingHint": {
+    "defaultMessage": "Everyday kinship words are used unless you choose otherwise.",
+    "description": "Guidance under the wording control, saying which choice applies when the researcher makes none."
   },
-  "protocolBuilder.pedigree.framingModeFixed": {
-    "defaultMessage": "Fixed framing",
-    "description": "Option meaning the researcher chooses one framing and every participant gets it. Keyed by the schema value \"fixed\"."
+  "protocolBuilder.pedigree.framingLabel": {
+    "defaultMessage": "Words for family members",
+    "description": "Label of the control choosing which words describe family members: everyday kinship words, egg and sperm parent words, or whichever the participant prefers."
   },
-  "protocolBuilder.pedigree.framingModeLabel": {
-    "defaultMessage": "Framing mode",
-    "description": "Label of the control choosing whether the researcher fixes the framing or the participant picks it."
+  "protocolBuilder.pedigree.framingParticipantPreferenceDescription": {
+    "defaultMessage": "Participants choose between the two sets of words when they first reach the stage, and can change their choice at any time.",
+    "description": "Says what the let-the-participant-choose wording choice does. The two sets of words are everyday kinship words and egg parent and sperm parent words."
   },
-  "protocolBuilder.pedigree.framingModeParticipantChoice": {
+  "protocolBuilder.pedigree.framingParticipantPreferenceLabel": {
     "defaultMessage": "Let the participant choose",
-    "description": "Option meaning each participant picks their own framing during the interview. Keyed by the schema value \"participantChoice\"."
-  },
-  "protocolBuilder.pedigree.framingSharedWording": {
-    "defaultMessage": "Both framings use the same wording for gestational carriers and donors.",
-    "description": "Said under the two framing explanations, so a researcher knows the choice does not affect how the pedigree asks about a surrogate or a donor."
+    "description": "Name of the wording choice that asks the participant which of the other two sets of words they would like used."
   },
   "protocolBuilder.pedigree.framingTitle": {
-    "defaultMessage": "Pedigree framing",
-    "description": "Heading of the section where a researcher chooses the vocabulary the pedigree uses when it asks a participant about biological parents."
+    "defaultMessage": "Wording",
+    "description": "Heading of the section where a researcher chooses the words a Family Pedigree uses to describe family members, such as mother or egg parent."
   },
-  "protocolBuilder.pedigree.framingValueLabel": {
-    "defaultMessage": "Fixed framing terminology",
-    "description": "Label of the control naming which framing every participant gets. Shown only while the framing mode is fixed."
+  "protocolBuilder.pedigree.genderIdentityClearConfirm": {
+    "defaultMessage": "Stop asking",
+    "description": "Button that confirms switching off the gender identity question and discarding the attribute and words chosen for it."
   },
-  "protocolBuilder.pedigree.memberFormAddLabel": {
-    "defaultMessage": "Create new form field",
-    "description": "Button that opens the dialog for adding one more question to the family member form. Whole rather than a generic \"Add\", because a stage editor shows several lists at once and they would otherwise be indistinguishable to anyone navigating by a list of buttons."
+  "protocolBuilder.pedigree.genderIdentityClearDescription": {
+    "defaultMessage": "The attribute and the words you chose for each option will be removed from this stage, and words such as mother or brother will follow each person’s sex assigned at birth. The attribute and its options stay in the codebook.",
+    "description": "Body of the confirmation shown before the gender identity question is switched off, saying what is lost and what is kept. An attribute is a codebook variable. The kinship words (mother, brother, parent) follow the sex a person was assigned at birth instead."
   },
-  "protocolBuilder.pedigree.memberFormClearConfirm": {
-    "defaultMessage": "Delete the form",
-    "description": "Button that confirms switching off the family member form and discarding it."
+  "protocolBuilder.pedigree.genderIdentityClearTitle": {
+    "defaultMessage": "Stop asking about gender identity?",
+    "description": "Title of the confirmation shown before a researcher switches off the gender identity question of a Family Pedigree."
   },
-  "protocolBuilder.pedigree.memberFormClearDescription": {
-    "defaultMessage": "Every field you have added to it will be removed, and participants will no longer be asked anything when they add a family member.",
-    "description": "Body of the confirmation shown before the family member form is switched off, saying what is lost. A field is one question the form asks."
+  "protocolBuilder.pedigree.genderIdentityCreateLabel": {
+    "defaultMessage": "Create a new gender identity attribute",
+    "description": "Title of the dialog that creates a new categorical attribute for gender identity, starting from a suggested list of options the researcher can edit."
   },
-  "protocolBuilder.pedigree.memberFormClearTitle": {
-    "defaultMessage": "This will delete the family member form",
-    "description": "Title of the confirmation shown before a researcher switches off the form a Family Pedigree asks about each family member. Switching it off discards the form, which is why it is confirmed."
+  "protocolBuilder.pedigree.genderIdentityDescription": {
+    "defaultMessage": "When off, the question isn’t asked, and words such as mother or brother follow each person’s sex assigned at birth.",
+    "description": "Explains what happens when the gender identity question is switched off: it is not asked, and the kinship words (mother, brother, parent) follow the sex a person was assigned at birth instead. Female takes feminine words, male masculine words, and anyone else, or no answer, neutral words."
   },
-  "protocolBuilder.pedigree.memberFormDescription": {
-    "defaultMessage": "Optionally add fields shown when participants add or edit family members.",
-    "description": "Description of the family member form section. Optional because a pedigree may ask nothing at all about each person."
+  "protocolBuilder.pedigree.genderIdentityHint": {
+    "defaultMessage": "Records each person’s gender identity. Set its options, and the words each one takes, below.",
+    "description": "Guidance under the gender identity attribute control. The options are the researcher’s own, and are edited and given kinship words in the controls that follow, which appear once an attribute is chosen."
   },
-  "protocolBuilder.pedigree.memberFormEmptyState": {
-    "defaultMessage": "No form fields yet. Create one to ask something about each family member.",
-    "description": "Shown in place of the family member form’s field list while it asks nothing yet."
+  "protocolBuilder.pedigree.genderIdentityLabel": {
+    "defaultMessage": "Gender identity",
+    "description": "Label of the control choosing the categorical attribute that holds each family member’s gender identity."
   },
-  "protocolBuilder.pedigree.memberFormFieldLabel": {
-    "defaultMessage": "Form fields",
-    "description": "Label of the ordered list of questions the family member form asks."
+  "protocolBuilder.pedigree.genderIdentityTitle": {
+    "defaultMessage": "Ask about gender identity",
+    "description": "Title of the switch, and of the part of the person attributes section it opens, that makes a Family Pedigree ask each family member’s gender identity. A new stage has it switched on; switched off, the question is not asked."
   },
-  "protocolBuilder.pedigree.memberFormReservedRefusal": {
-    "defaultMessage": "The pedigree already collects each family member’s name through its own name control, so this form cannot collect the display label attribute — or an attribute whose id is “name” — as well. Choose another attribute for the field, or remove it.",
-    "description": "Refusal shown when a family member form field collects the attribute the pedigree shows each relative by. The interview asks for that name through its own control and never renders such a field, so the question the researcher wrote would never be asked. Shown under the attribute control while the field’s own dialog is open, and above the list of fields when the display label moves onto an attribute an existing field already collects. \"id\" is the identifier an attribute is filed under in the protocol."
+  "protocolBuilder.pedigree.genderOptionDifferentIdentity": {
+    "defaultMessage": "A different identity",
+    "description": "Label of the suggested option for a gender identity not named by the others, when a new gender identity attribute is created. The researcher may rename it."
   },
-  "protocolBuilder.pedigree.memberFormTitle": {
-    "defaultMessage": "Form configuration",
-    "description": "Heading of the section holding what a Family Pedigree asks about each person the participant adds."
+  "protocolBuilder.pedigree.genderOptionMan": {
+    "defaultMessage": "Man",
+    "description": "Label of the suggested “man” option when a new gender identity attribute is created. The researcher may rename it."
   },
-  "protocolBuilder.pedigree.nodeBiologicalSexCreateLabel": {
-    "defaultMessage": "Create a new biological sex attribute",
-    "description": "Button that opens a dialog for adding the biological sex attribute to the codebook."
+  "protocolBuilder.pedigree.genderOptionNonBinary": {
+    "defaultMessage": "Non-binary",
+    "description": "Label of the suggested “non-binary” option when a new gender identity attribute is created. The researcher may rename it."
   },
-  "protocolBuilder.pedigree.nodeBiologicalSexHint": {
-    "defaultMessage": "Stores each family member's sex recorded at birth for sex-linked inheritance.",
-    "description": "Guidance under the biological sex control. Sex-linked inheritance is a condition passed on differently depending on that recorded sex."
+  "protocolBuilder.pedigree.genderOptionPreferNotToSay": {
+    "defaultMessage": "Prefer not to say",
+    "description": "Label of the suggested option for a participant who would rather not give a gender identity, when a new gender identity attribute is created. The researcher may rename it."
   },
-  "protocolBuilder.pedigree.nodeBiologicalSexLabel": {
-    "defaultMessage": "Biological sex",
-    "description": "Label of the control binding the attribute that holds each family member’s sex recorded at birth."
+  "protocolBuilder.pedigree.genderOptionUnknown": {
+    "defaultMessage": "Don’t know",
+    "description": "Label of the suggested option for a gender identity the participant does not know, when a new gender identity attribute is created. The researcher may rename it."
   },
-  "protocolBuilder.pedigree.nodeDescription": {
-    "defaultMessage": "Choose the node type and map the attributes used to represent family members.",
-    "description": "Description of the family member data section. \"Map\" here means point each of the interface’s slots at one attribute of the codebook."
+  "protocolBuilder.pedigree.genderOptionWoman": {
+    "defaultMessage": "Woman",
+    "description": "Label of the suggested “woman” option when a new gender identity attribute is created. The researcher may rename it."
   },
-  "protocolBuilder.pedigree.nodeEgoCreateLabel": {
-    "defaultMessage": "Create a new participant identifier attribute",
-    "description": "Button that opens a dialog for adding the participant identifier attribute to the codebook."
+  "protocolBuilder.pedigree.genderOptionsEdit": {
+    "defaultMessage": "Edit options",
+    "description": "Button that opens the editor for the options of the gender identity attribute, so the researcher can add, remove, relabel or change them."
   },
-  "protocolBuilder.pedigree.nodeEgoHint": {
-    "defaultMessage": "A boolean attribute used to identify which node represents the participant in the family pedigree.",
-    "description": "Guidance under the participant identifier control. Boolean because the attribute either marks a node as the participant or does not."
+  "protocolBuilder.pedigree.genderOptionsEditHint": {
+    "defaultMessage": "This stage decides the words each option takes, so the options can only be edited from a Family Pedigree stage that uses this attribute. Elsewhere in Architect they are read-only.",
+    "description": "Explains why the button that edits the gender identity options is on this stage: the options belong to the stage because it decides which kinship words each one takes, so no other part of the app can change them. A Family Pedigree stage is the interview step this page configures. Architect is the name of the app."
   },
-  "protocolBuilder.pedigree.nodeEgoLabel": {
-    "defaultMessage": "Participant identifier",
-    "description": "Label of the control binding the attribute that marks which person in the family tree is the participant themselves."
+  "protocolBuilder.pedigree.genderOptionsEditTitle": {
+    "defaultMessage": "Edit gender identity options",
+    "description": "Title of the dialog in which the researcher edits the options of the gender identity attribute."
   },
-  "protocolBuilder.pedigree.nodeLabelCreateLabel": {
-    "defaultMessage": "Create a new display label attribute",
-    "description": "Button that opens a dialog for adding the display label attribute to the codebook. Whole rather than a generic \"Create\", because a pedigree editor shows several of these at once and they would otherwise be indistinguishable to anyone navigating by a list of buttons."
+  "protocolBuilder.pedigree.genderTermsHint": {
+    "defaultMessage": "A family member without a name is shown by a kinship word such as mother, brother or aunt. These are the words each gender identity takes. Change them, and the options, with Edit options. An option with neutral words is called a parent, sibling or child. These words are used when the wording is everyday kinship words.",
+    "description": "Guidance over the read-only table showing the kinship words each gender identity option takes. Edit options is the label of the button below it, which opens the dialog where the options and their words are edited together. Neutral words are the ones that do not depend on gender. Everyday kinship words is a choice in the Wording section. A family member is shown by their name when they have one, so the words are only used for people without a name."
   },
-  "protocolBuilder.pedigree.nodeLabelHint": {
-    "defaultMessage": "A text attribute used to store the display label for each family member other than the participant.",
-    "description": "Guidance under the display label control."
+  "protocolBuilder.pedigree.genderTermsLabel": {
+    "defaultMessage": "Words for each gender identity",
+    "description": "Label of the read-only table showing, for each option of the gender identity attribute, the kinship words used for a person who has it, such as mother or father."
   },
-  "protocolBuilder.pedigree.nodeLabelLabel": {
-    "defaultMessage": "Display label",
-    "description": "Label of the control binding the attribute that holds the name shown on each person drawn in the family tree."
+  "protocolBuilder.pedigree.genderWordsFeminine": {
+    "defaultMessage": "Feminine words (mother, sister)",
+    "description": "Choice for the kinship words a gender identity option takes: the words used for women, with examples."
   },
-  "protocolBuilder.pedigree.nodeRelationshipCreateLabel": {
-    "defaultMessage": "Create a new relationship attribute",
-    "description": "Button that opens a dialog for adding the relationship-to-participant attribute to the codebook."
+  "protocolBuilder.pedigree.genderWordsMasculine": {
+    "defaultMessage": "Masculine words (father, brother)",
+    "description": "Choice for the kinship words a gender identity option takes: the words used for men, with examples."
   },
-  "protocolBuilder.pedigree.nodeRelationshipHint": {
-    "defaultMessage": "Stores each person's relationship to the participant, such as mother, uncle, or daughter. The family pedigree interface calculates this value automatically.",
-    "description": "Guidance under the relationship-to-participant control. The three examples are kinship terms and should be replaced with natural ones in your language."
+  "protocolBuilder.pedigree.genderWordsNeutral": {
+    "defaultMessage": "Neutral words (parent, sibling)",
+    "description": "Choice for the kinship words a gender identity option takes: words that do not depend on gender, with examples."
   },
-  "protocolBuilder.pedigree.nodeRelationshipLabel": {
-    "defaultMessage": "Relationship to participant",
-    "description": "Label of the control binding the attribute that holds how each person is related to the participant."
+  "protocolBuilder.pedigree.genderWordsOptionField": {
+    "defaultMessage": "Option {index} kinship words",
+    "description": "Label of the control, on one option’s row in the gender identity options dialog, choosing which kinship words (mother, father, parent) a person with that gender identity takes. index is the option’s position in the list, counting from one, and is passed as text because the researcher reads it as this row’s name."
   },
-  "protocolBuilder.pedigree.nodeTitle": {
-    "defaultMessage": "Family member data",
-    "description": "Heading of the section binding the node type and the attributes the pedigree stores each family member’s details in."
+  "protocolBuilder.pedigree.genderWordsSummaryOptionHeader": {
+    "defaultMessage": "Option",
+    "description": "Column heading over the gender identity options, in the read-only table on the stage showing which kinship words each option takes."
   },
-  "protocolBuilder.pedigree.nodeTypeChangeConfirm": {
-    "defaultMessage": "Change the node type",
-    "description": "Button that confirms changing a Family Pedigree’s node type and discarding everything that described the previous one."
+  "protocolBuilder.pedigree.genderWordsSummaryWordsHeader": {
+    "defaultMessage": "Kinship words",
+    "description": "Column heading over the kinship words (mother, father, parent) each gender identity option takes, in the read-only table on the stage."
   },
-  "protocolBuilder.pedigree.nodeTypeChangeDescription": {
-    "defaultMessage": "The display label, the participant identifier, the relationship attribute, the biological sex attribute, the family member form and every nomination prompt all name attributes of the current node type, so changing it removes them.",
-    "description": "Body of the confirmation shown before a Family Pedigree’s node type changes, listing what the change discards."
+  "protocolBuilder.pedigree.genderWordsUnknown": {
+    "defaultMessage": "Not known (neutral words; biological mother or father for a biological parent)",
+    "description": "Choice for the kinship words a gender identity option takes, for an option meaning the person’s gender is not known. Every relative gets neutral words, such as parent or sibling, except a biological parent whose sex assigned at birth is known, who is called biological mother or biological father."
   },
-  "protocolBuilder.pedigree.nodeTypeChangeTitle": {
-    "defaultMessage": "This will clear everything about family members",
-    "description": "Title of the confirmation shown before a researcher changes the node type a Family Pedigree draws people as. Everything the stage says about a family member describes attributes of the current type, so changing it discards all of it."
+  "protocolBuilder.pedigree.gestationalCarrierCreateLabel": {
+    "defaultMessage": "Create a new gestational carrier attribute",
+    "description": "Title of the dialog that creates a new boolean attribute marking the parent who carried a pregnancy."
   },
-  "protocolBuilder.pedigree.nodeTypeLabel": {
-    "defaultMessage": "Node type",
-    "description": "Label of the control choosing which node type of the codebook a family member is."
+  "protocolBuilder.pedigree.gestationalCarrierHint": {
+    "defaultMessage": "True on the parent relationship of whoever carried the pregnancy (a surrogate, or a biological parent who did), and false on every other parent relationship.",
+    "description": "Guidance under the gestational carrier attribute control. A parent relationship is the connection between a parent and their child. The attribute is not set on partnerships."
+  },
+  "protocolBuilder.pedigree.gestationalCarrierLabel": {
+    "defaultMessage": "Gestational carrier",
+    "description": "Label of the control choosing the boolean attribute that marks the parent who carried a pregnancy."
+  },
+  "protocolBuilder.pedigree.kindCreateLabel": {
+    "defaultMessage": "Create a new relationship kind attribute",
+    "description": "Title of the dialog that creates a new categorical attribute for relationship kinds, seeded with the fixed options the interface owns."
+  },
+  "protocolBuilder.pedigree.kindHint": {
+    "defaultMessage": "Records whether a relationship is a partnership or which kind of parent one person is to the other. The interface sets the options this attribute offers.",
+    "description": "Guidance under the relationship kind attribute control. The options are a fixed list the interface owns."
+  },
+  "protocolBuilder.pedigree.kindLabel": {
+    "defaultMessage": "Relationship kind",
+    "description": "Label of the control choosing the categorical attribute that records what kind of relationship each edge is: a partnership, or a kind of parenthood."
+  },
+  "protocolBuilder.pedigree.nameCreateLabel": {
+    "defaultMessage": "Create a new name attribute",
+    "description": "Title of the dialog that creates a new text attribute for family members’ names."
+  },
+  "protocolBuilder.pedigree.nameHint": {
+    "defaultMessage": "Each person’s name, typed by the participant in the side panel. A name may be left blank: when the participant leaves this stage, anyone unnamed is given a label from their relationship to the participant, such as “Maternal aunt” or “Sister (partner of Tom)”. The participant is not asked their own name and is shown as “You”. The attribute’s validation rules apply to names the participant types.",
+    "description": "Guidance under the name attribute control. The side panel is where the participant describes each family member. The two labels in quotation marks are examples of what the interview generates for an unnamed person, and are translated like the rest of the sentence; Tom is a person’s name. “You” is how the interview labels the participant in their family tree."
+  },
+  "protocolBuilder.pedigree.nameLabel": {
+    "defaultMessage": "Name",
+    "description": "Label of the control choosing the text attribute that holds each family member’s name."
   },
   "protocolBuilder.pedigree.nominationAddLabel": {
     "defaultMessage": "Create new nomination prompt",
-    "description": "Button that opens the dialog for writing one more nomination prompt. Whole rather than a generic \"Add\", because a pedigree editor shows several lists at once and they would otherwise be indistinguishable to anyone navigating by a list of buttons."
+    "description": "Button that opens the dialog for writing one more question about the whole family. Whole rather than a generic “Add”, because a stage editor shows several lists at once."
   },
   "protocolBuilder.pedigree.nominationAddTitle": {
     "defaultMessage": "Create nomination prompt",
-    "description": "Title of the dialog a researcher fills in to write one more nomination prompt."
-  },
-  "protocolBuilder.pedigree.nominationAtLeastOne": {
-    "defaultMessage": "Add at least one nomination prompt, or switch this section off.",
-    "description": "Refusal shown above the nomination prompt list when a researcher saves a pedigree whose nomination section is switched on and empty. Switching the section off is the other way out, and is offered beside the list."
-  },
-  "protocolBuilder.pedigree.nominationCreateLabel": {
-    "defaultMessage": "Create a new nomination attribute",
-    "description": "Button that opens a dialog for adding the attribute this nomination prompt will record its answers in to the codebook."
+    "description": "Title of the dialog a researcher fills in to write one more question about the whole family."
   },
   "protocolBuilder.pedigree.nominationDescription": {
-    "defaultMessage": "Optionally collect a specific condition or trait in a boolean attribute for each family member.",
-    "description": "Description of the nomination prompts section. Optional because a pedigree that only draws the family is a complete pedigree."
+    "defaultMessage": "Optionally ask questions about the whole family once it is drawn, such as “Who in your family has had heart disease?”. Participants answer each in turn by selecting everyone it applies to, and the interface sets a boolean attribute on them.",
+    "description": "Description of the nomination prompts section. A prompt is one question a participant is asked. Nominating means selecting the people a question applies to. An attribute is a codebook variable."
   },
   "protocolBuilder.pedigree.nominationEditTitle": {
     "defaultMessage": "Edit nomination prompt",
-    "description": "Title of the dialog a researcher fills in to change a nomination prompt they have already written."
+    "description": "Title of the dialog a researcher fills in to change a question about the whole family they have already written."
   },
   "protocolBuilder.pedigree.nominationEmptyState": {
-    "defaultMessage": "No nomination prompts yet. Create one to ask the participant to mark family members.",
-    "description": "Shown in place of the nomination prompt list while the section is switched on but holds nothing."
+    "defaultMessage": "No nomination prompts yet. Create one to ask about the whole family.",
+    "description": "Shown in place of the nomination prompt list while the stage asks nothing about the whole family."
   },
   "protocolBuilder.pedigree.nominationFieldLabel": {
-    "defaultMessage": "Prompts",
-    "description": "Label of the list of nomination prompts. A nomination prompt asks the participant which family members a question applies to."
+    "defaultMessage": "Nomination prompts",
+    "description": "Label of the ordered list of questions asked about the whole family. The same words as the section heading, translated once for each: the heading names the part of the stage and this names the control."
   },
-  "protocolBuilder.pedigree.nominationPreviewEmptyText": {
-    "defaultMessage": "Empty prompt",
-    "description": "Stands in for a nomination prompt’s question in the list while the researcher has written none."
-  },
-  "protocolBuilder.pedigree.nominationPreviewRecords": {
-    "defaultMessage": "Records the boolean attribute \"{attributeName}\"",
-    "description": "Shown on one closed nomination prompt row, saying where its answers go. attributeName is the codebook name the researcher gave that attribute, which is not translated."
-  },
-  "protocolBuilder.pedigree.nominationPromptNoun": {
+  "protocolBuilder.pedigree.nominationItemNoun": {
     "defaultMessage": "nomination prompt",
-    "description": "What one row of the nomination prompt list is called inside things said ABOUT it — \"Edit nomination prompt\", \"Delete this nomination prompt?\" — so it is lower case and singular. Qualified rather than plain \"prompt\" because a pedigree editor shows a census prompt beside it."
+    "description": "What one row of the nomination prompt list is called inside things said ABOUT it — “Edit nomination prompt”, “Delete this nomination prompt?” — so it is lower case and singular."
   },
-  "protocolBuilder.pedigree.nominationPromptsClearConfirm": {
-    "defaultMessage": "Delete the prompts",
-    "description": "Button that confirms switching off the nomination prompts and discarding them."
+  "protocolBuilder.pedigree.nominationListHint": {
+    "defaultMessage": "Participants see these in order, after they have drawn their family. Drag prompts to reorder them.",
+    "description": "Guidance under the list of nomination prompts. The prompts are questions about the whole family."
   },
-  "protocolBuilder.pedigree.nominationPromptsClearDescription": {
-    "defaultMessage": "Every prompt you have written here will be removed, and participants will no longer be asked to mark family members.",
-    "description": "Body of the confirmation shown before the nomination prompts are switched off, saying what is lost. A nomination prompt asks the participant to mark which family members share a condition or trait."
+  "protocolBuilder.pedigree.nominationRowDescription": {
+    "defaultMessage": "Write the question, then choose the attribute that records who the participant selects.",
+    "description": "Description under the title of the dialog for one nomination prompt. An attribute is a codebook variable."
   },
-  "protocolBuilder.pedigree.nominationPromptsClearTitle": {
-    "defaultMessage": "This will delete your nomination prompts",
-    "description": "Title of the confirmation shown before a researcher switches off a Family Pedigree’s nomination prompts. Switching them off discards them, which is why it is confirmed."
+  "protocolBuilder.pedigree.nominationSexAnyone": {
+    "defaultMessage": "Anyone",
+    "description": "Choice for a nomination prompt that places no limit on who can be selected."
+  },
+  "protocolBuilder.pedigree.nominationSexFemale": {
+    "defaultMessage": "Anyone except people assigned male at birth",
+    "description": "Choice for a nomination prompt that leaves out only the people whose sex assigned at birth is male. People whose sex assigned at birth is female, intersex, not known, not given or not yet answered can still be selected."
+  },
+  "protocolBuilder.pedigree.nominationSexHint": {
+    "defaultMessage": "Use this for a condition that only people of one sex can have. People recorded as the other sex assigned at birth cannot be selected. Everyone else can, including people whose sex assigned at birth is intersex, don’t know, prefer not to say or not yet answered.",
+    "description": "Guidance under the control limiting a nomination prompt by sex assigned at birth, saying who is left out and who is not. The limit is for a condition only people of one sex can have, such as ovarian or prostate cancer. The listed answers are the options of the sex assigned at birth question, and not yet answered means the participant has not answered it for that person."
+  },
+  "protocolBuilder.pedigree.nominationSexLabel": {
+    "defaultMessage": "Who can be selected",
+    "description": "Label of the control choosing whether a nomination prompt is open to anyone or only to people assigned one sex at birth."
+  },
+  "protocolBuilder.pedigree.nominationSexMale": {
+    "defaultMessage": "Anyone except people assigned female at birth",
+    "description": "Choice for a nomination prompt that leaves out only the people whose sex assigned at birth is female. People whose sex assigned at birth is male, intersex, not known, not given or not yet answered can still be selected."
   },
   "protocolBuilder.pedigree.nominationTextHint": {
-    "defaultMessage": "The question the participant answers for each family member.",
-    "description": "Guidance under a nomination prompt’s question field."
-  },
-  "protocolBuilder.pedigree.nominationTextLabel": {
-    "defaultMessage": "Prompt text",
-    "description": "Label of the field holding the question one nomination prompt asks."
+    "defaultMessage": "Phrase it so the participant can select everyone it applies to.",
+    "description": "Guidance under the box where a researcher writes a nomination prompt, saying how the participant answers it: by selecting the people it applies to."
   },
   "protocolBuilder.pedigree.nominationTextPlaceholder": {
-    "defaultMessage": "Enter your prompt...",
-    "description": "Placeholder shown in a nomination prompt’s empty question field. The trailing dots are an ellipsis written as three full stops."
-  },
-  "protocolBuilder.pedigree.nominationTextRequired": {
-    "defaultMessage": "Enter the question this prompt asks.",
-    "description": "Refusal shown under a nomination prompt’s question field when the researcher saves the row without writing one."
+    "defaultMessage": "Who in your family has had heart disease?",
+    "description": "Example shown inside the empty box where a researcher writes a nomination prompt. Written as it would read to a participant."
   },
   "protocolBuilder.pedigree.nominationTitle": {
     "defaultMessage": "Nomination prompts",
-    "description": "Heading of the optional section holding questions the participant answers about the whole family at once, by marking the members each one applies to."
+    "description": "Heading of the optional section listing the questions a Family Pedigree asks about the whole family once it is drawn, such as who has had a condition."
+  },
+  "protocolBuilder.pedigree.nominationVariableCreateLabel": {
+    "defaultMessage": "Create a new nomination attribute",
+    "description": "Title of the dialog that creates a new boolean attribute for a nomination prompt to set on the people the participant selects."
   },
   "protocolBuilder.pedigree.nominationVariableEmpty": {
-    "defaultMessage": "No boolean attributes of this node type can be nominated yet. Create one to continue.",
-    "description": "Shown in place of a nomination prompt’s attribute list when every boolean attribute of the node type is already written by something else."
+    "defaultMessage": "This type has no boolean attributes yet. Create one to record who the participant selects.",
+    "description": "Shown in place of the attribute picker’s options when the person node type has no attribute holding true or false."
+  },
+  "protocolBuilder.pedigree.nominationVariableGoneRefusal": {
+    "defaultMessage": "This attribute can no longer record a nomination prompt. Choose another one.",
+    "description": "Refusal shown when a researcher saves a nomination prompt whose attribute has been deleted from the codebook or is no longer a boolean attribute."
   },
   "protocolBuilder.pedigree.nominationVariableHint": {
-    "defaultMessage": "Select the boolean attribute this prompt will update.",
-    "description": "Guidance under a nomination prompt’s attribute control. Boolean because the participant either marks a family member or does not."
+    "defaultMessage": "A boolean attribute. The interface sets it to true on everyone the participant selects, and to false on anyone they select and then deselect. Everyone else is left blank.",
+    "description": "Guidance under the attribute control of a nomination prompt. An attribute is a codebook variable. Selecting a person a second time deselects them."
   },
   "protocolBuilder.pedigree.nominationVariableLabel": {
     "defaultMessage": "Attribute",
-    "description": "Label of the control choosing which codebook attribute one nomination prompt’s answers are stored in."
+    "description": "Label of the control choosing the boolean attribute a nomination prompt sets on the people the participant selects."
   },
   "protocolBuilder.pedigree.nominationVariableRequired": {
-    "defaultMessage": "Choose the attribute this prompt records.",
-    "description": "Refusal shown under a nomination prompt’s attribute control when the researcher saves the row without choosing one."
+    "defaultMessage": "Choose the attribute that records who is selected.",
+    "description": "Refusal shown when a researcher saves a nomination prompt without choosing the attribute set on the people the participant selects."
   },
-  "protocolBuilder.pedigree.nominationWaitingDescription": {
-    "defaultMessage": "Choose a node type before writing this pedigree’s nomination prompts.",
-    "description": "Shown in place of the nomination prompts section’s description while the researcher has not yet chosen the node type, so there is no attribute for a prompt to record its answer in."
+  "protocolBuilder.pedigree.nominationWaiting": {
+    "defaultMessage": "Choose the node type before writing questions about the family.",
+    "description": "Shown in place of the nomination prompts section’s description while no node type has been chosen for the stage."
   },
-  "protocolBuilder.pedigree.slotDraftFormCollectsRefusal": {
-    "defaultMessage": "\"{attributeName}\" is collected by this stage’s own form, so it cannot also be written by this slot (values written here would bypass its validation)",
-    "description": "Refusal shown under a pedigree slot the interface writes directly, when the attribute picked is already collected by the family member form one section above — so both are on the screen the researcher is looking at, and the wording must not send them searching their other stages. attributeName is the codebook name of the attribute, which is not translated."
+  "protocolBuilder.pedigree.personAttributesDescription": {
+    "defaultMessage": "Choose where the interface records what it asks about every family member. Pick an existing attribute, or create a new one from the picker.",
+    "description": "Description of the person attributes section. An attribute is a codebook variable."
   },
-  "protocolBuilder.pedigree.slotDraftLabelCollectsRefusal": {
-    "defaultMessage": "\"{attributeName}\" is the display label this stage shows each family member by, so it cannot also be written by this slot (what this slot derives would replace the name the participant entered)",
-    "description": "Refusal shown under a pedigree slot the interface writes directly, when the attribute picked is the one the display label control — a few lines above, in the same section — already names. attributeName is the codebook name of the attribute, which is not translated."
+  "protocolBuilder.pedigree.personAttributesTitle": {
+    "defaultMessage": "Person attributes",
+    "description": "Heading of the section where a researcher chooses the codebook attributes a Family Pedigree records about every family member the participant adds."
   },
-  "protocolBuilder.pedigree.slotDraftSlotDerivesRefusal": {
-    "defaultMessage": "\"{attributeName}\" is written without validation by another slot in this stage, so it cannot also be collected here (the values that slot writes bypass this attribute’s validation)",
-    "description": "Refusal shown under the display label — the one pedigree slot whose value is collected through a form field — when the attribute picked is already written directly by another slot of the same stage. Deliberately says \"slot\" rather than \"form field\": told it cannot be used as a form field, a researcher goes looking for a form field they never added. attributeName is the codebook name of the attribute, which is not translated."
+  "protocolBuilder.pedigree.personAttributesWaiting": {
+    "defaultMessage": "Choose the node type before choosing its attributes.",
+    "description": "Shown in place of the person attributes section’s description while no node type has been chosen for the stage."
   },
-  "protocolBuilder.pedigree.slotEmptyState": {
-    "defaultMessage": "No attributes of this type can be used here yet. Create one to continue.",
-    "description": "Shown in place of a pedigree slot’s attribute list when the codebook offers nothing this slot can take — usually because every candidate is already written by something else. \"Of this type\" means of the attribute type the slot needs, such as text or boolean."
+  "protocolBuilder.pedigree.personFormAddLabel": {
+    "defaultMessage": "Create new person field",
+    "description": "Button that opens the dialog for adding one more question about each family member."
   },
-  "protocolBuilder.pedigree.slotUnvalidatedElsewhereRefusal": {
-    "defaultMessage": "\"{attributeName}\" is written without validation by another stage, so it cannot also be collected here (the values that stage writes bypass this attribute’s validation)",
-    "description": "Refusal shown under a pedigree slot that collects an answer — the display label — when the attribute picked is already written directly by another stage of the protocol, which would let unchecked values in under the same name. attributeName is the codebook name of the attribute, which is not translated."
+  "protocolBuilder.pedigree.personFormClearConfirm": {
+    "defaultMessage": "Remove the fields",
+    "description": "Button that confirms switching off the additional person fields and discarding them."
   },
-  "protocolBuilder.pedigree.slotValuesChangedNote": {
-    "defaultMessage": "This attribute no longer offers the exact values this control needs, because they were changed somewhere else. Choose another one.",
-    "description": "Shown under a pedigree attribute control, as soon as the editor sees it, when the attribute the control holds still exists and is still a list of answers but its values have been edited elsewhere and no longer match the fixed set the interface owns. The refusal that stops the save says the same thing with the attribute’s name; this is the standing note beside the control before the researcher tries."
+  "protocolBuilder.pedigree.personFormClearDescription": {
+    "defaultMessage": "Every field you have added will be removed, and participants will only be asked the interface’s own questions about each family member.",
+    "description": "Body of the confirmation shown before the additional person fields are switched off, saying what is lost."
   },
-  "protocolBuilder.pedigree.slotValuesChangedOptionLabel": {
-    "defaultMessage": "{attributeName} — no longer offers the values this control needs",
-    "description": "Name of the one option standing for the attribute a pedigree attribute control already holds, in a slot that uses a fixed set of values the interface owns (biological sex, relationship type, or gamete role), when that attribute still exists and is still a list of answers but the values it offers have been edited elsewhere and no longer match the fixed set. Shown in the select’s list beside the attributes that can still be chosen. attributeName is the codebook name of the attribute, which is not translated."
+  "protocolBuilder.pedigree.personFormClearTitle": {
+    "defaultMessage": "Remove the additional person fields?",
+    "description": "Title of the confirmation shown before a researcher switches off the extra questions a Family Pedigree asks about each family member."
   },
-  "protocolBuilder.pedigree.variableGoneRefusal": {
-    "defaultMessage": "This attribute is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.",
-    "description": "Refusal shown under a pedigree attribute control when the attribute it holds has been deleted from the codebook — by a collaborator, or in another part of this session — while this editor was open. The attribute is not named, because once it is deleted only its internal identifier is left."
+  "protocolBuilder.pedigree.personFormDescription": {
+    "defaultMessage": "Optionally ask more about each family member. These questions come last in the side panel, after the interface’s own questions about the person and how they are related.",
+    "description": "Description of the additional person fields section. The side panel is where the participant describes each person they add. The interface’s own questions are the person’s name, gender identity (when the stage asks it) and sex assigned at birth, and then how the person is related to others in the family."
   },
-  "protocolBuilder.pedigree.variableOptionsChangedRefusal": {
-    "defaultMessage": "\"{attributeName}\" no longer offers the exact values this control needs, because they were changed somewhere else. Choose another attribute.",
-    "description": "Refusal shown under a pedigree attribute control whose slot uses a fixed set of values the interface owns — biological sex, relationship type, or gamete role — when the attribute it holds still exists and is still a list of answers, but the values it offers have been edited elsewhere and no longer match that fixed set. attributeName is the codebook name of the attribute, which is not translated."
+  "protocolBuilder.pedigree.personFormEmptyState": {
+    "defaultMessage": "No fields yet. Create one to ask something more about each family member.",
+    "description": "Shown in place of the additional person fields list while it asks nothing yet."
   },
-  "protocolBuilder.pedigree.variableTypeChangedRefusal": {
-    "defaultMessage": "\"{attributeName}\" is no longer the kind of attribute this control can use, because its type was changed somewhere else. Choose another attribute.",
-    "description": "Refusal shown under a pedigree attribute control when the attribute it holds still exists but has been given a different type — a true/false attribute turned into a list of answers, say — so the interface can no longer write or read it. attributeName is the codebook name of the attribute, which is not translated."
+  "protocolBuilder.pedigree.personFormFieldLabel": {
+    "defaultMessage": "Form fields",
+    "description": "Label of the ordered list of extra questions asked about each family member."
+  },
+  "protocolBuilder.pedigree.personFormReservedRefusal": {
+    "defaultMessage": "The interface already records this attribute itself, so these fields cannot collect it as well. Choose another attribute, or remove the field.",
+    "description": "Refusal shown when an additional person field collects an attribute already chosen as one of the Family Pedigree’s own person attributes (name, gender identity, sex assigned at birth, participant marker or relationship to the participant) or as the attribute a nomination prompt sets."
+  },
+  "protocolBuilder.pedigree.personFormTitle": {
+    "defaultMessage": "Additional person fields",
+    "description": "Heading of the section holding the extra questions a Family Pedigree asks about each family member, after its own questions."
+  },
+  "protocolBuilder.pedigree.promptHint": {
+    "defaultMessage": "Shown to the participant above the canvas while they draw their family. Invite them to add the people in their family, and tell them how, for example: “Let’s map out your family. Tap or click a person to add their details, and hover over them (or tap them) to add their relatives.”",
+    "description": "Guidance under the pedigree prompt field. The example is written as it would read to a participant, and may be translated freely."
+  },
+  "protocolBuilder.pedigree.promptLabel": {
+    "defaultMessage": "Prompt text",
+    "description": "Label of the field holding the instruction shown to the participant on the pedigree canvas."
+  },
+  "protocolBuilder.pedigree.promptPlaceholder": {
+    "defaultMessage": "Let’s map out your family. Tap or click a person to add their details, and hover over them (or tap them) to add their relatives.",
+    "description": "Example shown inside the empty pedigree prompt field. Written as it would read to a participant."
+  },
+  "protocolBuilder.pedigree.promptTitle": {
+    "defaultMessage": "Prompt",
+    "description": "Heading of the section holding the instruction a Family Pedigree shows the participant while they draw their family."
+  },
+  "protocolBuilder.pedigree.relationshipToParticipantClearConfirm": {
+    "defaultMessage": "Stop recording",
+    "description": "Button that confirms switching off recording the relationship to the participant."
+  },
+  "protocolBuilder.pedigree.relationshipToParticipantClearDescription": {
+    "defaultMessage": "The attribute will be removed from this stage, and the interview will stop updating it. The attribute stays in the codebook, and any filter or skip logic that uses it will no longer find new relationships.",
+    "description": "Body of the confirmation shown before recording the relationship to the participant is switched off, saying what changes. An attribute is a codebook variable."
+  },
+  "protocolBuilder.pedigree.relationshipToParticipantClearTitle": {
+    "defaultMessage": "Stop recording relationships to the participant?",
+    "description": "Title of the confirmation shown before a researcher switches off recording each family member’s relationship to the participant."
+  },
+  "protocolBuilder.pedigree.relationshipToParticipantCreateLabel": {
+    "defaultMessage": "Create a new relationship to the participant attribute",
+    "description": "Title of the dialog that creates a new categorical attribute for each family member’s relationship to the participant, with the options the interface sets."
+  },
+  "protocolBuilder.pedigree.relationshipToParticipantDescription": {
+    "defaultMessage": "Saves how each person is related to the participant, such as parent, sibling or cousin, so that later stages can filter or skip on it. The interview works it out from the family the participant draws; it is never asked.",
+    "description": "Explains what recording the relationship to the participant does. A filter or skip logic in a later stage can only test a person’s own attributes, which is why the relationship is saved as one. It is updated every time the participant leaves the stage."
+  },
+  "protocolBuilder.pedigree.relationshipToParticipantHint": {
+    "defaultMessage": "The interface sets this attribute’s options: parent, sibling, cousin and so on, naming neither gender nor side of the family. Everyone connected to the participant is given one; the participant is not. To show a later stage only first-degree biological relatives, for example, filter on parent, donor, sibling, child and donor-conceived child.",
+    "description": "Guidance under the relationship-to-the-participant attribute control. The option values are fixed by the interface; their labels can be translated in the codebook. Donor-conceived child is a child conceived with the person as a gamete donor."
+  },
+  "protocolBuilder.pedigree.relationshipToParticipantLabel": {
+    "defaultMessage": "Relationship to the participant",
+    "description": "Label of the control choosing the categorical attribute that holds each family member’s relationship to the participant."
+  },
+  "protocolBuilder.pedigree.relationshipToParticipantOption": {
+    "defaultMessage": "{value, select, parent {Parent} adoptiveParent {Adoptive parent} stepParent {Step-parent} donor {Donor} surrogate {Surrogate} child {Child} adoptiveChild {Adoptive child} stepChild {Stepchild} donorConceivedChild {Donor-conceived child} surrogacyChild {Child born through surrogacy} sibling {Sibling} halfSibling {Half-sibling} adoptiveSibling {Adoptive sibling} stepSibling {Step-sibling} partner {Partner} formerPartner {Former partner} grandparent {Grandparent} greatGrandparent {Great-grandparent} grandchild {Grandchild} greatGrandchild {Great-grandchild} parentsSibling {Parent’s sibling} grandparentsSibling {Grandparent’s sibling} siblingsChild {Sibling’s child} cousin {Cousin} parentInLaw {Parent-in-law} siblingInLaw {Sibling-in-law} childInLaw {Child-in-law} other {Other relative}}",
+    "description": "Default label of one option of a new relationship-to-the-participant attribute: how a family member is related to the participant, in words that name neither gender nor side of the family. The label is written into the protocol as participant-facing text, and researchers can change it. parent, child and sibling are biological; donor is an egg or sperm donor; surrogate carried the pregnancy without giving a gamete; donorConceivedChild is a child conceived with the participant as a donor; surrogacyChild is a child the participant carried as a surrogate; adoptiveSibling is related through adoption only; stepParent is a step or social parent."
+  },
+  "protocolBuilder.pedigree.relationshipToParticipantTitle": {
+    "defaultMessage": "Record each person’s relationship to the participant",
+    "description": "Title of the switch, and of the part of the person attributes section it opens, that makes a Family Pedigree save each family member’s relationship to the participant (parent, sibling, cousin…) as an attribute. Off by default."
+  },
+  "protocolBuilder.pedigree.relationshipTypeChangeConfirm": {
+    "defaultMessage": "Change the edge type",
+    "description": "Button that confirms changing a Family Pedigree’s relationship edge type and discarding the attributes chosen for the previous one."
+  },
+  "protocolBuilder.pedigree.relationshipTypeChangeDescription": {
+    "defaultMessage": "The relationship kind, gestational carrier and current partner attributes belong to the current edge type, so changing it clears those choices. The attributes stay in the codebook.",
+    "description": "Body of the confirmation shown before a Family Pedigree’s relationship edge type changes, saying what the change discards from this stage and what it leaves. The codebook is the protocol’s definition of what an interview records."
+  },
+  "protocolBuilder.pedigree.relationshipTypeChangeTitle": {
+    "defaultMessage": "Change the relationship edge type?",
+    "description": "Title of the confirmation shown before a researcher changes the edge type a Family Pedigree records relationships as, when relationship attributes are already chosen."
+  },
+  "protocolBuilder.pedigree.relationshipTypeHint": {
+    "defaultMessage": "Every partnership and parent–child relationship the participant draws is recorded as an edge of this type.",
+    "description": "Guidance under the relationship edge type control."
+  },
+  "protocolBuilder.pedigree.relationshipTypeLabel": {
+    "defaultMessage": "Relationship edge type",
+    "description": "Label of the control choosing which kind of connection family relationships are recorded as."
+  },
+  "protocolBuilder.pedigree.relationshipsDescription": {
+    "defaultMessage": "Choose the edge type family relationships are recorded as, and the attributes the interface writes on each one. Siblings are not recorded directly: two people are siblings when they share a parent.",
+    "description": "Description of the relationships section. An edge is a connection between two members of the network."
+  },
+  "protocolBuilder.pedigree.relationshipsTitle": {
+    "defaultMessage": "Relationships",
+    "description": "Heading of the section where a researcher chooses how a Family Pedigree records the relationships between family members."
+  },
+  "protocolBuilder.pedigree.relativesNotRecordedCreateLabel": {
+    "defaultMessage": "Create a new relatives not recorded attribute",
+    "description": "Title of the dialog that creates a new categorical attribute for relatives not recorded, seeded with the fixed options the interface owns."
+  },
+  "protocolBuilder.pedigree.relativesNotRecordedHint": {
+    "defaultMessage": "Where “no siblings”, “no children” and “don’t know” answers are stored, on the person they are about. The interface sets the options this attribute offers.",
+    "description": "Guidance under the relatives-not-recorded attribute control. The options are a fixed list the interface owns."
+  },
+  "protocolBuilder.pedigree.relativesNotRecordedLabel": {
+    "defaultMessage": "Relatives not recorded",
+    "description": "Label of the control choosing the categorical attribute that holds a participant’s answers that a family member has no siblings or children, or that they do not know."
+  },
+  "protocolBuilder.pedigree.sexAssignedAtBirthCreateLabel": {
+    "defaultMessage": "Create a new sex assigned at birth attribute",
+    "description": "Title of the dialog that creates a new categorical attribute for sex assigned at birth, seeded with the fixed options the interface owns."
+  },
+  "protocolBuilder.pedigree.sexAssignedAtBirthHint": {
+    "defaultMessage": "The interface uses this to name biological parents and donors, to work out who could have carried a pregnancy, to check that a child’s two biological parents are possible, to choose everyday kinship words when gender identity is not asked, and to limit a nomination question to one sex assigned at birth. The interface sets this attribute’s options, and they cannot be changed.",
+    "description": "Guidance under the sex assigned at birth attribute control, saying why the interface needs it. The options are a fixed list the interface owns. Kinship words are the family words (mother, brother, parent). A nomination question is one question asked of the whole family, such as who has had a condition."
+  },
+  "protocolBuilder.pedigree.sexAssignedAtBirthLabel": {
+    "defaultMessage": "Sex assigned at birth",
+    "description": "Label of the control choosing the categorical attribute that holds each family member’s sex assigned at birth."
+  },
+  "protocolBuilder.pedigree.symbolsCodebookLabel": {
+    "defaultMessage": "Set in the codebook",
+    "description": "Option of the symbols choice that leaves the symbols to the shape setting of the person type in the codebook. Its description says what that setting draws."
+  },
+  "protocolBuilder.pedigree.symbolsCustomGenderIdentity": {
+    "defaultMessage": "Follows gender identity, with shapes set differently in the codebook.",
+    "description": "Description of the set-in-the-codebook option of the symbols choice when the codebook draws symbols from gender identity with a mapping someone set by hand, rather than the standard circle, square and diamond."
+  },
+  "protocolBuilder.pedigree.symbolsCustomSexAssignedAtBirth": {
+    "defaultMessage": "Follows sex assigned at birth, with shapes set differently in the codebook.",
+    "description": "Description of the set-in-the-codebook option of the symbols choice when the codebook draws symbols from sex assigned at birth with a mapping someone set by hand, rather than the standard circle, square and diamond."
+  },
+  "protocolBuilder.pedigree.symbolsGenderIdentityDescription": {
+    "defaultMessage": "A circle for options with feminine words, a square for masculine words, and a diamond for everyone else.",
+    "description": "Description of the gender identity option of the symbols choice. Feminine words are kinship words such as mother, masculine words such as father. Everyone else includes options with neutral or not-known words and people whose gender identity is not recorded."
+  },
+  "protocolBuilder.pedigree.symbolsGenderIdentityLabel": {
+    "defaultMessage": "Gender identity",
+    "description": "Option of the symbols choice that draws each family member’s symbol from their gender identity, through the kinship words chosen for each gender identity option."
+  },
+  "protocolBuilder.pedigree.symbolsGenderIdentityOutOfDate": {
+    "defaultMessage": "Gender identity’s options or kinship words have changed since the symbols were set.",
+    "description": "Note under the symbols choice while it draws symbols from gender identity but the gender identity options, or the kinship words chosen for them, have changed since. A small Update symbols action follows it."
+  },
+  "protocolBuilder.pedigree.symbolsHint": {
+    "defaultMessage": "A person’s symbol comes from the shape of the person type in the codebook. Choosing an option changes that shape straight away, not when you save this stage, and changes how people of this type are drawn throughout the interview.",
+    "description": "Guidance under the symbols choice. The shape is the Shape setting, with its mapping from an attribute, in the node appearance group of the codebook’s node type editor. The change is written to the codebook at once, so it is not undone by cancelling the stage, and it applies on every stage that draws this node type."
+  },
+  "protocolBuilder.pedigree.symbolsLabel": {
+    "defaultMessage": "Symbols",
+    "description": "Label of the choice, at the end of the person attributes section, of what sets the symbol (circle, square or diamond) each family member is drawn with on the family tree."
+  },
+  "protocolBuilder.pedigree.symbolsNoSource": {
+    "defaultMessage": "Choose the sex assigned at birth or gender identity attribute above to draw symbols from it.",
+    "description": "Shown under the symbols choice while neither attribute it can draw symbols from has been chosen in the controls above it."
+  },
+  "protocolBuilder.pedigree.symbolsNotMapped": {
+    "defaultMessage": "{shape, select, circle {Everyone is drawn as a circle.} square {Everyone is drawn as a square.} other {Everyone is drawn as a diamond.}}",
+    "description": "Description of the set-in-the-codebook option of the symbols choice when the codebook draws every family member with the same symbol, or will once the option is chosen. shape is the stored shape name: circle, square, or diamond (the other branch)."
+  },
+  "protocolBuilder.pedigree.symbolsOther": {
+    "defaultMessage": "Follows the attribute {attributeName}, set in the codebook.",
+    "description": "Description of the set-in-the-codebook option of the symbols choice when the codebook draws symbols from an attribute that is neither of this stage’s sex assigned at birth or gender identity attributes. attributeName is that attribute’s name as the researcher gave it."
+  },
+  "protocolBuilder.pedigree.symbolsReplaceConfirm": {
+    "defaultMessage": "Replace symbols",
+    "description": "Button that confirms overwriting the shape mapping set by hand in the codebook."
+  },
+  "protocolBuilder.pedigree.symbolsReplaceDescription": {
+    "defaultMessage": "The shapes chosen for this person type in the codebook will be replaced, wherever people of this type are drawn in the interview.",
+    "description": "Body of the confirmation shown before a symbol button overwrites a shape mapping someone set by hand in the codebook, saying what is lost."
+  },
+  "protocolBuilder.pedigree.symbolsReplaceTitle": {
+    "defaultMessage": "Replace the symbols set in the codebook?",
+    "description": "Title of the confirmation shown before a symbol button overwrites a shape mapping someone set by hand in the codebook."
+  },
+  "protocolBuilder.pedigree.symbolsSexAssignedAtBirthDescription": {
+    "defaultMessage": "A circle for female, a square for male, and a diamond for everyone else.",
+    "description": "Description of the sex assigned at birth option of the symbols choice, saying which symbol each answer gets. Everyone else includes people whose sex assigned at birth is not recorded."
+  },
+  "protocolBuilder.pedigree.symbolsSexAssignedAtBirthLabel": {
+    "defaultMessage": "Sex assigned at birth",
+    "description": "Option of the symbols choice that draws each family member’s symbol from their sex assigned at birth, the standard way family trees are drawn."
+  },
+  "protocolBuilder.pedigree.symbolsUpdateGenderIdentity": {
+    "defaultMessage": "Update symbols",
+    "description": "Link-style action in the out-of-date note that draws the symbols again from the gender identity options and kinship words as they are now."
   },
   "protocolBuilder.promptAttribute.lockedOptions": {
     "defaultMessage": "These values are set by the interface that uses this attribute, so they cannot be changed here.",
@@ -5878,6 +5990,58 @@
   "protocolBuilder.skipLogicDestination.untitledStageOption": {
     "defaultMessage": "Stage {position, number} — Untitled stage",
     "description": "The same offered destination as stageOption, for a stage the researcher has not named yet, so there is no name to show. position is where that stage will sit in the finished interview, counting from one."
+  },
+  "protocolBuilder.slotVariable.draftBoundElsewhereRefusal": {
+    "defaultMessage": "\"{attributeName}\" already records another of this stage’s answers, so it cannot record this one as well. Choose another attribute.",
+    "description": "Refusal shown under an attribute control when the attribute picked is already chosen for a different answer the same stage records, such as gender identity and sex assigned at birth, so one answer would overwrite the other. attributeName is the codebook name of the attribute, which is not translated."
+  },
+  "protocolBuilder.slotVariable.draftFormCollectsRefusal": {
+    "defaultMessage": "\"{attributeName}\" is collected by another field of this stage, so it cannot also be written by this control (values written here would bypass its validation)",
+    "description": "Refusal shown under an attribute control the interface writes directly, when the attribute picked is already collected, with validation, by another field of the stage the researcher has open. attributeName is the codebook name of the attribute, which is not translated."
+  },
+  "protocolBuilder.slotVariable.draftSlotWritesRefusal": {
+    "defaultMessage": "\"{attributeName}\" is written without validation by another control of this stage, so it cannot also be collected here (the values that control writes bypass this attribute’s validation)",
+    "description": "Refusal shown under an attribute control that collects an answer from the participant, when the attribute picked is already written directly by another control of the stage the researcher has open. attributeName is the codebook name of the attribute, which is not translated."
+  },
+  "protocolBuilder.slotVariable.emptyState": {
+    "defaultMessage": "No attributes of this type can be used here yet. Create one to continue.",
+    "description": "Shown in place of an attribute list when the codebook offers nothing this control can take, usually because every candidate is already written by something else. \"Of this type\" means of the attribute type the control needs, such as text or true/false."
+  },
+  "protocolBuilder.slotVariable.managedElsewhereNote": {
+    "defaultMessage": "{count, plural, one {Its options are managed by the {stageLabels} stage, which decides the kinship words each one takes, and only one stage may manage them. Choose another attribute, or stop asking about gender identity here.} other {Its options are managed by the stages {stageLabels}, which decide the kinship words each one takes, and only one stage may manage them. Choose another attribute, or stop asking about gender identity here.}}",
+    "description": "Shown under the gender identity attribute control of a Family Pedigree stage when the attribute it holds already has its list of answers managed by another stage. A stage is one step of an interview. stageLabels is the researcher’s own name for each of those steps, already in quotation marks and separated by commas, and is not translated here. count is how many steps manage the answers. The kinship words are the family words (mother, brother, parent) a family-tree step uses for each answer."
+  },
+  "protocolBuilder.slotVariable.managedElsewhereOptionLabel": {
+    "defaultMessage": "{attributeName} — its options are managed by another stage",
+    "description": "Name of the option standing for the attribute a control already holds, when that attribute’s list of answers is managed by another stage, so this stage cannot use it. Shown in the list beside the attributes that can still be chosen. attributeName is the codebook name of the attribute, which is not translated."
+  },
+  "protocolBuilder.slotVariable.managedElsewhereRefusal": {
+    "defaultMessage": "\"{attributeName}\" cannot be used here, because only one stage may manage an attribute’s options. Choose another attribute.",
+    "description": "Refusal shown under an attribute control whose stage manages the attribute’s list of answers (a Family Pedigree’s gender identity, whose answers each take kinship words), when the attribute picked already has its answers managed by another stage. attributeName is the codebook name of the attribute, which is not translated."
+  },
+  "protocolBuilder.slotVariable.unvalidatedElsewhereRefusal": {
+    "defaultMessage": "\"{attributeName}\" is written without validation by another stage, so it cannot also be collected here (the values that stage writes bypass this attribute’s validation)",
+    "description": "Refusal shown under an attribute control that collects an answer from the participant when the attribute picked is already written directly, without validation, by another stage of the protocol. attributeName is the codebook name of the attribute, which is not translated."
+  },
+  "protocolBuilder.slotVariable.valuesChangedNote": {
+    "defaultMessage": "This attribute no longer offers the exact values this control needs, because they were changed somewhere else. Choose another one.",
+    "description": "Shown under an attribute control when the attribute it holds is still a list of answers but its values have been edited elsewhere and no longer match the fixed set the interface owns."
+  },
+  "protocolBuilder.slotVariable.valuesChangedOptionLabel": {
+    "defaultMessage": "{attributeName} — no longer offers the values this control needs",
+    "description": "Name of the option standing for the attribute a control already holds, in a control that needs a fixed set of values the interface owns, when that attribute’s values have been edited elsewhere and no longer match the set. Shown in the list beside the attributes that can still be chosen. attributeName is the codebook name of the attribute, which is not translated."
+  },
+  "protocolBuilder.slotVariable.variableGoneRefusal": {
+    "defaultMessage": "This attribute is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.",
+    "description": "Refusal shown under an attribute control when the attribute it holds has been deleted from the codebook while this editor was open. The attribute is not named, because once it is deleted only its internal identifier is left."
+  },
+  "protocolBuilder.slotVariable.variableOptionsChangedRefusal": {
+    "defaultMessage": "\"{attributeName}\" no longer offers the exact values this control needs, because they were changed somewhere else. Choose another attribute.",
+    "description": "Refusal shown under an attribute control that needs a fixed set of values the interface owns, when the attribute it holds is still a list of answers but its values have been edited elsewhere and no longer match that set. attributeName is the codebook name of the attribute, which is not translated."
+  },
+  "protocolBuilder.slotVariable.variableTypeChangedRefusal": {
+    "defaultMessage": "\"{attributeName}\" is no longer the kind of attribute this control can use, because its type was changed somewhere else. Choose another attribute.",
+    "description": "Refusal shown under an attribute control when the attribute it holds still exists but has been given a different type, so the interface can no longer write or read it. attributeName is the codebook name of the attribute, which is not translated."
   },
   "protocolBuilder.sortOptions.attributeColumn": {
     "defaultMessage": "Attribute",

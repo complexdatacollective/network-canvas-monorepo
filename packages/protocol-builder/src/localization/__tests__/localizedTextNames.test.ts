@@ -147,28 +147,16 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
     en('Answer as best you can.'),
   ],
   [
-    [...fixtureStage('FamilyPedigree'), 'introScreen'],
+    [...fixtureStage('FamilyPedigree'), 'form'],
     {
-      items: [
-        { id: 'intro-text', type: 'text', content: en('We will draw it.') },
+      fields: [
         {
-          id: 'intro-picture',
-          type: 'asset',
-          content: 'picture',
-          description: en('A family tree'),
+          variable: 'fm_occupation',
+          prompt: en('What do they do?'),
+          hint: en('Their main work.'),
         },
       ],
     },
-  ],
-  [
-    [...fixtureStage('FamilyPedigree'), 'nodeConfig', 'form'],
-    [
-      {
-        variable: 'fm_occupation',
-        prompt: en('What do they do?'),
-        hint: en('Their main work.'),
-      },
-    ],
   ],
   [
     [...fixtureStage('NetworkComposer'), 'nodeForm'],

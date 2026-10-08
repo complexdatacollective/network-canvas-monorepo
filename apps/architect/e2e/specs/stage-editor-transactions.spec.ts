@@ -56,7 +56,7 @@ const isRequired = (protocol: CurrentProtocol, name: string): boolean =>
 const formFieldsOf = (
   stage: CurrentProtocol['stages'][number] | undefined,
 ): readonly unknown[] | undefined =>
-  stage !== undefined && 'form' in stage ? stage.form.fields : undefined;
+  stage !== undefined && 'form' in stage ? stage.form?.fields : undefined;
 
 // Builds the shared starting point: one committed EgoForm stage carrying one
 // committed codebook attribute, which the cases below then edit from inside a

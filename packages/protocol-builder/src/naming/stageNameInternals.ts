@@ -169,7 +169,6 @@ export function useProposedStageLabel(): string {
           type: identity.type,
           subject: draft.subject,
           items: draft.items,
-          nominationPrompts: draft.nominationPrompts,
           panels: draft.panels,
         },
         protocolContext,
@@ -204,12 +203,11 @@ export function useEditingStageLabel(): string {
 type StageNameSources = Readonly<{
   subject: StageSubject | undefined;
   items: Item[] | undefined;
-  nominationPrompts: { variable: string }[] | undefined;
   panels: StageLabelPanel[] | undefined;
 }>;
 
 /**
- * The draft as it stands right now, for the four values a name is built from.
+ * The draft as it stands right now, for the three values a name is built from.
  *
  * Read through the package's one draft-value hook, so a proposed name sees
  * what every section sees — including a subject only the committed draft holds
@@ -221,17 +219,15 @@ type StageNameSources = Readonly<{
 function useStageNameSources(): StageNameSources {
   const rawSubject = useStageValue('subject');
   const rawItems = useStageValue('items');
-  const rawNominationPrompts = useStageValue('nominationPrompts');
   const rawPanels = useStageValue('panels');
 
   return useMemo(
     () => ({
       subject: readSubject(rawSubject),
       items: readItems(rawItems),
-      nominationPrompts: readNominationPrompts(rawNominationPrompts),
       panels: readPanels(rawPanels),
     }),
-    [rawItems, rawNominationPrompts, rawPanels, rawSubject],
+    [rawItems, rawPanels, rawSubject],
   );
 }
 
@@ -265,19 +261,6 @@ function readItems(value: unknown): Item[] | undefined {
     }
   }
   return items;
-}
-
-function readNominationPrompts(
-  value: unknown,
-): { variable: string }[] | undefined {
-  if (!Array.isArray(value)) return undefined;
-  const prompts: { variable: string }[] = [];
-  for (const entry of value) {
-    if (typeof entry !== 'object' || entry === null) continue;
-    if (!('variable' in entry) || typeof entry.variable !== 'string') continue;
-    prompts.push({ variable: entry.variable });
-  }
-  return prompts;
 }
 
 /**

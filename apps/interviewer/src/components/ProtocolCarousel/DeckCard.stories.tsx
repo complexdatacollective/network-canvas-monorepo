@@ -90,6 +90,7 @@ type StoryArgs = {
   isActive: boolean;
   sessionCount: number;
   requiresInternetConnection: boolean;
+  unavailable: boolean;
   // Toggle the delete control to watch the requires-internet pill glide to
   // its new position in the top row.
   showDelete: boolean;
@@ -121,6 +122,7 @@ const meta: Meta<StoryArgs> = {
     isActive: true,
     sessionCount: 3,
     requiresInternetConnection: false,
+    unavailable: false,
     showDelete: true,
     size: 480,
   },
@@ -142,6 +144,13 @@ const meta: Meta<StoryArgs> = {
         'Derived in ProtocolDeck from the protocol stages (true when a ' +
         'Geospatial stage is present); toggles the offline/online pill.',
     },
+    unavailable: {
+      control: 'boolean',
+      description:
+        'Derived in DeckSlotCard: true when the protocol is still below the ' +
+        'schema version the app runs, because it or its interviews could not ' +
+        'be updated.',
+    },
     showDelete: {
       control: 'boolean',
       description:
@@ -157,6 +166,7 @@ const meta: Meta<StoryArgs> = {
     isActive,
     sessionCount,
     requiresInternetConnection,
+    unavailable,
     showDelete,
     size,
   }) => (
@@ -166,6 +176,7 @@ const meta: Meta<StoryArgs> = {
         isActive={isActive}
         sessionCount={sessionCount}
         requiresInternetConnection={requiresInternetConnection}
+        unavailable={unavailable}
         onActivate={() => {}}
         onDelete={showDelete ? () => {} : undefined}
         footer={
@@ -350,6 +361,22 @@ export const ExtremelyLongNameAndDescription: Story = {
 export const RequiresInternetPill: Story = {
   args: {
     requiresInternetConnection: true,
+  },
+};
+
+/**
+ * A protocol the launch-time update left behind: it, or its interviews, could
+ * not be updated to the schema version this app runs. Opening it explains
+ * which.
+ */
+export const Unavailable: Story = {
+  args: {
+    unavailable: true,
+  },
+  play: async ({ canvasElement }) => {
+    await expect(
+      within(canvasElement).getByText('Not available'),
+    ).toBeInTheDocument();
   },
 };
 

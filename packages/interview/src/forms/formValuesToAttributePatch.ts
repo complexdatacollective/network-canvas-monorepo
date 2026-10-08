@@ -2,6 +2,7 @@ import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import { type VariableValue, VariableValueSchema } from '@codaco/shared-consts';
 
 import type { AttributePatch } from '../store/entityAttributePatch';
+import { writeOwnProperty } from '../utils/ownProperty';
 
 export type FormValuesToAttributePatchResult =
   | { success: true; patch: AttributePatch }
@@ -37,12 +38,7 @@ export function formValuesToAttributePatch(
       continue;
     }
 
-    Object.defineProperty(set, fieldName, {
-      configurable: true,
-      enumerable: true,
-      value: result.data,
-      writable: true,
-    });
+    writeOwnProperty(set, fieldName, result.data);
   }
 
   if (invalidFieldNames.length > 0) {

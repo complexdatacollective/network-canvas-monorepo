@@ -1,8 +1,7 @@
 import { render } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
 
-import { edgeKey } from '../../../NarrativePedigree/highlight';
-import { PedigreeEdgeSvg } from '../components/EdgeRenderer';
+import { edgeKey, PedigreeEdgeSvg } from '../components/EdgeRenderer';
 import { dimColor } from '../dimColor';
 import type { ConnectorRenderData } from '../pedigreeAdapter';
 import type {
@@ -10,6 +9,8 @@ import type {
   ParentChildConnector,
   ParentGroupConnector,
   TwinIndicator,
+  PedigreeEdgeType,
+  PedigreeLink,
 } from '../types';
 
 // ---------------------------------------------------------------------------
@@ -879,41 +880,12 @@ describe('PedigreeEdgeSvg — twin and duplicate-arc dimming', () => {
 // PedigreeLayout integration — highlightedEdgeKeys threads through
 // ---------------------------------------------------------------------------
 
-import { entityAttributesProperty } from '@codaco/shared-consts';
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
-
-import type { VariableConfig } from '../../store';
 import PedigreeLayout from '../components/PedigreeLayout';
-
-const variableConfig: VariableConfig = {
-  nodeType: 'person',
-  edgeType: 'family',
-  nodeLabelVariable: 'name',
-  egoVariable: 'isEgo',
-  relationshipVariable: 'relationship',
-  relationshipTypeVariable: 'rel',
-  isActiveVariable: 'active',
-  isGestationalCarrierVariable: 'gc',
-  gameteRoleVariable: 'gameteRole',
-  biologicalSexVariable: 'biologicalSex',
-};
 
 const DIMS = { nodeWidth: 100, nodeHeight: 100 };
 
-function makeNodes(
-  entries: { id: string; isEgo?: boolean }[],
-): Map<string, NcNode> {
-  const map = new Map<string, NcNode>();
-  for (const { id, isEgo } of entries) {
-    map.set(id, {
-      _uid: id,
-      type: 'person',
-      [entityAttributesProperty]: {
-        [variableConfig.egoVariable]: isEgo ?? false,
-      },
-    });
-  }
-  return map;
+function makeNodes(entries: { id: string; isEgo?: boolean }[]): string[] {
+  return entries.map(({ id }) => id);
 }
 
 function makeEdges(
@@ -921,27 +893,21 @@ function makeEdges(
     from: string;
     to: string;
     relationshipType: string;
-    isActive: boolean;
+    isActive?: boolean;
+    isGestationalCarrier?: boolean;
   }[],
-): Map<string, NcEdge> {
-  const map = new Map<string, NcEdge>();
-  entries.forEach((e, i) => {
-    map.set(`e${i}`, {
-      _uid: `e${i}`,
-      type: 'family',
-      from: e.from,
-      to: e.to,
-      [entityAttributesProperty]: {
-        [variableConfig.relationshipTypeVariable]: [e.relationshipType],
-        [variableConfig.isActiveVariable]: e.isActive,
-      },
-    });
-  });
-  return map;
+): PedigreeLink[] {
+  return entries.map((e) => ({
+    source: e.from,
+    target: e.to,
+    kind: e.relationshipType as PedigreeEdgeType,
+    isActive: e.isActive ?? true,
+    isGestationalCarrier: e.isGestationalCarrier ?? false,
+  }));
 }
 
-const renderNode = (node: NcNode & { id: string }) => (
-  <div data-testid={`node-${node.id}`}>{node.id}</div>
+const renderNode = (nodeId: string) => (
+  <div data-testid={`node-${nodeId}`}>{nodeId}</div>
 );
 
 describe('PedigreeLayout — highlightedEdgeKeys prop forwarded', () => {
@@ -974,9 +940,8 @@ describe('PedigreeLayout — highlightedEdgeKeys prop forwarded', () => {
 
     const { container } = render(
       <PedigreeLayout
-        nodes={nodes}
-        edges={edges}
-        variableConfig={variableConfig}
+        nodeIds={nodes}
+        links={edges}
         {...DIMS}
         renderNode={renderNode}
       />,
@@ -1019,9 +984,8 @@ describe('PedigreeLayout — highlightedEdgeKeys prop forwarded', () => {
     expect(() =>
       render(
         <PedigreeLayout
-          nodes={nodes}
-          edges={edges}
-          variableConfig={variableConfig}
+          nodeIds={nodes}
+          links={edges}
           {...DIMS}
           renderNode={renderNode}
           highlightedNodeIds={highlightedNodeIds}

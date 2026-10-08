@@ -348,11 +348,11 @@ describe('schema issues in the outline', () => {
    * reading everywhere else.
    */
   it('leaves a missing value to the required field that owns it', () => {
-    const store = storeWith({ config: ['nodeConfig.egoVariable'] }, true);
+    const store = storeWith({ config: ['nodeConfig.egoAttribute'] }, true);
 
     store.setValidationIssues([
       {
-        path: ['nodeConfig', 'egoVariable'],
+        path: ['nodeConfig', 'egoAttribute'],
         code: 'invalid_type',
         message: 'Invalid input: expected string, received undefined',
         absent: true,
@@ -431,11 +431,11 @@ describe('schema issues in the outline', () => {
    * would read "Finished" over a stage the protocol refuses to save.
    */
   it('keeps a missing value no required field speaks for', () => {
-    const store = storeWith({ config: ['nodeConfig.egoVariable'] });
+    const store = storeWith({ config: ['nodeConfig.egoAttribute'] });
 
     store.setValidationIssues([
       {
-        path: ['nodeConfig', 'egoVariable'],
+        path: ['nodeConfig', 'egoAttribute'],
         code: 'invalid_type',
         message: 'Invalid input: expected string, received undefined',
         absent: true,
@@ -443,7 +443,7 @@ describe('schema issues in the outline', () => {
     ]);
 
     expect(sentences(sectionNamed(store, 'config')).map(read)).toEqual([
-      'nodeConfig.egoVariable has no value, and this stage needs one.',
+      'nodeConfig.egoAttribute has no value, and this stage needs one.',
     ]);
     expect(
       sectionOutlineStatus(sectionNamed(store, 'config'), EMPTY_FORM),

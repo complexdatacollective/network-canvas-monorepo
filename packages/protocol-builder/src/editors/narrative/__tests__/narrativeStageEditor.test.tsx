@@ -6,15 +6,12 @@ import {
   attributeField,
   chooseAttributeById,
 } from '../../../testing/attributePicker.ts';
-import { fixtureLocalization } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
   expectOpenedAsANewStage,
   NEW_STAGE_POSITION,
 } from '../../__tests__/creationSignal.ts';
 import { addPreset, narrativeEditor, presetsOf } from './narrativeFixtures.tsx';
-
-const FIXTURE_LOCALIZATION = fixtureLocalization();
 
 const openFixture = () =>
   renderStageEditor({ stageId: 'narrative-1', editor: narrativeEditor });
@@ -25,7 +22,7 @@ const openNewStage = () =>
     stage: {
       id: 'narrative-new',
       type: 'Narrative',
-      fields: getInterfaceTemplate('Narrative', FIXTURE_LOCALIZATION),
+      fields: getInterfaceTemplate('Narrative'),
     },
     editor: narrativeEditor,
   });

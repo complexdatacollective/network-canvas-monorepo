@@ -6,11 +6,14 @@ import {
   localizedOptions,
 } from '../../../utils/test-utils.ts';
 import {
-  BIOLOGICAL_SEX_OPTIONS,
-  GAMETE_ROLE_OPTIONS,
-  RELATIONSHIP_TYPE_OPTIONS,
+  PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import ProtocolSchemaV9 from '../schema.ts';
+import {
+  GENDER_IDENTITY_OPTIONS,
+  GENDER_IDENTITY_TERMS,
+} from './pedigreeGenderFixtures.ts';
 
 const booleanPair = {
   boolA: {
@@ -115,16 +118,17 @@ const familyPedigreeProtocol = () => ({
             component: 'Text',
           },
           isEgo: { name: 'IsEgo', label: 'IsEgo', type: 'boolean' },
-          relationship: {
-            name: 'Relationship',
-            label: 'Relationship',
-            type: 'text',
-          },
-          biologicalSex: {
-            name: 'BiologicalSex',
-            label: 'BiologicalSex',
+          genderIdentity: {
+            name: 'GenderIdentity',
+            label: 'GenderIdentity',
             type: 'categorical',
-            options: localizedOptions(BIOLOGICAL_SEX_OPTIONS),
+            options: GENDER_IDENTITY_OPTIONS,
+          },
+          sexAssignedAtBirth: {
+            name: 'SexAssignedAtBirth',
+            label: 'SexAssignedAtBirth',
+            type: 'categorical',
+            options: localizedOptions(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS),
           },
           ...booleanPair,
         },
@@ -136,27 +140,21 @@ const familyPedigreeProtocol = () => ({
         label: localized('Family'),
         color: 'edge-color-seq-1',
         variables: {
-          relationshipType: {
-            name: 'RelationshipType',
-            label: 'RelationshipType',
+          relationshipKind: {
+            name: 'RelationshipKind',
+            label: 'RelationshipKind',
             type: 'categorical',
-            options: localizedOptions(RELATIONSHIP_TYPE_OPTIONS),
-          },
-          isActive: {
-            name: 'IsActive',
-            label: 'IsActive',
-            type: 'boolean',
+            options: localizedOptions(PEDIGREE_RELATIONSHIP_KIND_OPTIONS),
           },
           isGestationalCarrier: {
             name: 'IsGestationalCarrier',
             label: 'IsGestationalCarrier',
             type: 'boolean',
           },
-          gameteRole: {
-            name: 'GameteRole',
-            label: 'GameteRole',
-            type: 'categorical',
-            options: localizedOptions(GAMETE_ROLE_OPTIONS),
+          isCurrentPartner: {
+            name: 'IsCurrentPartner',
+            label: 'IsCurrentPartner',
+            type: 'boolean',
           },
         },
       },
@@ -167,27 +165,24 @@ const familyPedigreeProtocol = () => ({
       id: 'family',
       type: 'FamilyPedigree',
       label: localized('Family'),
-      nodeConfig: {
-        type: 'person',
-        nodeLabelVariable: 'label',
-        egoVariable: 'isEgo',
-        relationshipVariable: 'relationship',
-        biologicalSexVariable: 'biologicalSex',
-        form: formFields,
+      subject: { entity: 'node', type: 'person' },
+      prompt: localized('Build your family'),
+      nodeConfiguration: {
+        nameAttribute: 'label',
+        genderIdentity: {
+          attribute: 'genderIdentity',
+          terms: GENDER_IDENTITY_TERMS,
+        },
+        sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
+        egoAttribute: 'isEgo',
       },
-      edgeConfig: {
+      edgeConfiguration: {
         type: 'family',
-        relationshipTypeVariable: 'relationshipType',
-        isActiveVariable: 'isActive',
-        isGestationalCarrierVariable: 'isGestationalCarrier',
-        gameteRoleVariable: 'gameteRole',
+        kindAttribute: 'relationshipKind',
+        gestationalCarrierAttribute: 'isGestationalCarrier',
+        currentPartnerAttribute: 'isCurrentPartner',
       },
-      framing: { mode: 'fixed', value: 'gamete' },
-      boundaries: {
-        requireGrandparents: 'off',
-        requireChildrenContributors: 'off',
-      },
-      censusPrompt: localized('Build your family'),
+      form: { fields: formFields },
     },
   ],
 });
@@ -262,9 +257,9 @@ describe('shared form stage-effective validation contradictions', () => {
       expectedPath: ['stages', 0, 'form', 'fields', 0, 'variable'],
     },
     {
-      label: 'FamilyPedigree node form',
+      label: 'FamilyPedigree person form',
       protocol: familyPedigreeProtocol,
-      expectedPath: ['stages', 0, 'nodeConfig', 'form', 0, 'variable'],
+      expectedPath: ['stages', 0, 'form', 'fields', 0, 'variable'],
     },
   ];
 

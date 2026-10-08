@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  type Filter,
+  PEDIGREE_DEFAULT_GENDER_IDENTITIES,
+  PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+  stageSchema,
+  validateProtocol,
   analyzeProtocolLocalization,
   CurrentProtocolSchema,
   escapeMessageText,
-  type Filter,
   type LocalizedString,
   messageText,
-  stageSchema,
 } from '@codaco/protocol-validation';
 import {
   NcNetworkSchema,
@@ -21,6 +25,20 @@ import {
   DEFAULT_SYNTHETIC_SEED,
   SyntheticInterview,
 } from '../SyntheticInterview.ts';
+
+/**
+ * Validates a built protocol against the current schema. The builder emits the
+ * interview payload's `id` and `assets` in place of a protocol file's `name`.
+ */
+function validateSynthetic(
+  protocol: ReturnType<SyntheticInterview['getProtocol']>,
+) {
+  const { id: _id, assets: _assets, ...file } = protocol;
+  return validateProtocol({
+    ...file,
+    name: 'Synthetic protocol',
+  } as unknown as Parameters<typeof validateProtocol>[0]);
+}
 
 describe('SyntheticInterview', () => {
   describe('determinism', () => {
@@ -932,134 +950,178 @@ describe('SyntheticInterview', () => {
   });
 
   describe('FamilyPedigree', () => {
-    it('creates stage with new config structure', () => {
+    it('builds a valid stage with its person and family types and default prompt', async () => {
       const si = new SyntheticInterview();
-      const nt = si.addNodeType({ name: 'Person' });
-      const et = si.addEdgeType({ name: 'Family' });
-      const relVar = et.addVariable({
-        type: 'categorical',
-        name: 'Relationship',
-        options: [
-          { label: 'Parent', value: 'parent' },
-          { label: 'Child', value: 'child' },
-        ],
-      });
-      nt.addVariable({
-        type: 'categorical',
-        name: 'Sex',
-        options: [
-          { label: 'Male', value: 'male' },
-          { label: 'Female', value: 'female' },
-        ],
-      });
-      const nameVar = nt.addVariable({ type: 'text', name: 'Name' });
-      const egoVar = nt.addVariable({ type: 'boolean', name: 'Is Ego' });
-      const relToEgoVar = nt.addVariable({
-        type: 'text',
-        name: 'Rel to Ego',
-      });
-      const bioSexVar = nt.addVariable({
-        type: 'text',
-        name: 'Biological Sex',
-      });
-      const isActiveVar = et.addVariable({
-        type: 'boolean',
-        name: 'Is Active',
-      });
-      const isGestVar = et.addVariable({
-        type: 'boolean',
-        name: 'Is Gest Carrier',
-      });
-
-      const stage = si.addStage('FamilyPedigree', {
-        subject: { entity: 'node', type: nt.id },
-        initialNodes: { count: 3 },
-        nodeConfig: {
-          type: nt.id,
-          nodeLabelVariable: nameVar.id,
-          egoVariable: egoVar.id,
-          relationshipVariable: relToEgoVar.id,
-          biologicalSexVariable: bioSexVar.id,
-          form: [{ variable: nameVar.id, prompt: { 'en-US': 'Name' } }],
-        },
-        edgeConfig: {
-          type: et.id,
-          relationshipTypeVariable: relVar.id,
-          isActiveVariable: isActiveVar.id,
-          isGestationalCarrierVariable: isGestVar.id,
-        },
-        censusPrompt: 'Build your family pedigree',
-      });
-      stage.addDiseaseNominationStep({
-        text: 'Who has the disease?',
-        variable: 'hasDisease',
-      });
+      const stage = si.addStage('FamilyPedigree');
 
       const protocol = si.getProtocol();
-      const stageConfig = protocol.stages[0] as Record<string, unknown>;
-      expect(stageConfig.type).toBe('FamilyPedigree');
+      const result = await validateSynthetic(protocol);
+      expect(result.error?.issues ?? []).toEqual([]);
+      expect(result.success).toBe(true);
 
-      const nodeConfig = stageConfig.nodeConfig as Record<string, unknown>;
-      expect(nodeConfig.type).toBe(nt.id);
-      expect(nodeConfig.nodeLabelVariable).toBe(nameVar.id);
-
-      const edgeConfig = stageConfig.edgeConfig as Record<string, unknown>;
-      expect(edgeConfig.type).toBe(et.id);
-      expect(edgeConfig.relationshipTypeVariable).toBe(relVar.id);
-      expect(edgeConfig.isActiveVariable).toBe(isActiveVar.id);
-
-      expect(stageConfig.censusPrompt).toEqual({
-        'en-US': 'Build your family pedigree',
+      const config = protocol.stages[0] as unknown as Record<string, unknown>;
+      expect(config.type).toBe('FamilyPedigree');
+      expect(config.subject).toEqual({
+        entity: 'node',
+        type: stage.personType,
       });
-      expect(stageConfig.label).toBeDefined();
-
-      const nomPrompts = stageConfig.nominationPrompts as {
-        text: LocalizedString;
-        variable: string;
-      }[];
-      expect(nomPrompts).toHaveLength(1);
-      expect(nomPrompts[0]!.text).toEqual({ 'en-US': 'Who has the disease?' });
+      expect(config.prompt).toEqual({ 'en-US': expect.any(String) });
+      expect(config.nodeConfiguration).toEqual({
+        nameAttribute: stage.name,
+        genderIdentity: {
+          attribute: stage.genderIdentity,
+          terms: [...PEDIGREE_DEFAULT_GENDER_IDENTITIES],
+        },
+        sexAssignedAtBirthAttribute: stage.sexAssignedAtBirth,
+        egoAttribute: stage.ego,
+      });
+      expect(config.edgeConfiguration).toEqual({
+        type: stage.edgeType,
+        kindAttribute: stage.kind,
+        gestationalCarrierAttribute: stage.gestationalCarrier,
+        currentPartnerAttribute: stage.currentPartner,
+      });
+      expect(config).not.toHaveProperty('form');
     });
 
-    it('localizes plain-text node form prompts and hints', () => {
+    it('seeds the gender identity variable with the six default options and gives the other owned variables exactly the interface options', () => {
       const si = new SyntheticInterview();
-      const nt = si.addNodeType({ name: 'Person' });
-      const nameVar = nt.addVariable({ type: 'text', name: 'Name' });
-      const ageVar = nt.addVariable({ type: 'number', name: 'Age' });
-      const egoVar = nt.addVariable({ type: 'boolean', name: 'Is Ego' });
-      const relToEgoVar = nt.addVariable({ type: 'text', name: 'Rel to Ego' });
-      const bioSexVar = nt.addVariable({ type: 'text', name: 'Sex' });
+      const stage = si.addStage('FamilyPedigree');
+      const { codebook } = si.getProtocol();
 
-      si.addStage('FamilyPedigree', {
-        subject: { entity: 'node', type: nt.id },
-        nodeConfig: {
-          type: nt.id,
-          nodeLabelVariable: nameVar.id,
-          egoVariable: egoVar.id,
-          relationshipVariable: relToEgoVar.id,
-          biologicalSexVariable: bioSexVar.id,
-          form: [
-            {
-              variable: nameVar.id,
-              prompt: 'Their {first} name',
-              hint: 'As they prefer',
-            },
-            { variable: ageVar.id, prompt: { 'en-US': 'Age' } },
-          ],
+      type Typed = Record<string, { variables: Record<string, unknown> }>;
+      const person = (codebook.node as Typed)[stage.personType]!.variables;
+      const family = (codebook.edge as Typed)[stage.edgeType]!.variables;
+      expect(person[stage.name]).toMatchObject({ type: 'text' });
+      expect(person[stage.ego]).toMatchObject({ type: 'boolean' });
+      expect(person[stage.genderIdentity!]).toMatchObject({
+        type: 'categorical',
+        options: PEDIGREE_DEFAULT_GENDER_IDENTITIES.map(({ value }) => ({
+          value,
+          label: { 'en-US': expect.any(String) },
+        })),
+      });
+      expect(person[stage.sexAssignedAtBirth]).toMatchObject({
+        type: 'categorical',
+        options: PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS.map(
+          ({ value, label }) => ({ value, label: { 'en-US': label } }),
+        ),
+      });
+      expect(family[stage.kind]).toMatchObject({
+        type: 'categorical',
+        options: PEDIGREE_RELATIONSHIP_KIND_OPTIONS.map(({ value, label }) => ({
+          value,
+          label: { 'en-US': label },
+        })),
+      });
+      expect(family[stage.gestationalCarrier]).toMatchObject({
+        type: 'boolean',
+      });
+      expect(family[stage.currentPartner]).toMatchObject({ type: 'boolean' });
+    });
+
+    it('takes researcher-defined gender identity options and the words each takes', async () => {
+      const si = new SyntheticInterview();
+      const stage = si.addStage('FamilyPedigree', {
+        genderIdentities: [
+          { value: 'transWoman', label: 'Trans woman', words: 'feminine' },
+          { value: 'agender', label: 'Agender', words: 'neutral' },
+        ],
+      });
+      const protocol = si.getProtocol();
+      const config = protocol.stages[0] as unknown as {
+        nodeConfiguration: { genderIdentity: { terms: unknown } };
+      };
+      expect(config.nodeConfiguration.genderIdentity.terms).toEqual([
+        { value: 'transWoman', words: 'feminine' },
+        { value: 'agender', words: 'neutral' },
+      ]);
+      type Typed = Record<string, { variables: Record<string, unknown> }>;
+      expect(
+        (protocol.codebook.node as Typed)[stage.personType]!.variables[
+          stage.genderIdentity!
+        ],
+      ).toMatchObject({
+        options: [
+          { value: 'transWoman', label: { 'en-US': 'Trans woman' } },
+          { value: 'agender', label: { 'en-US': 'Agender' } },
+        ],
+      });
+      const result = await validateSynthetic(protocol);
+      expect(result.error?.issues ?? []).toEqual([]);
+      expect(result.success).toBe(true);
+    });
+
+    it('leaves gender identity out when the stage does not ask about it', async () => {
+      const si = new SyntheticInterview();
+      const stage = si.addStage('FamilyPedigree', {
+        askGenderIdentity: false,
+      });
+      const protocol = si.getProtocol();
+      expect(stage.genderIdentity).toBeUndefined();
+      const config = protocol.stages[0] as unknown as {
+        nodeConfiguration: Record<string, unknown>;
+      };
+      expect(config.nodeConfiguration).toEqual({
+        nameAttribute: stage.name,
+        sexAssignedAtBirthAttribute: stage.sexAssignedAtBirth,
+        egoAttribute: stage.ego,
+      });
+      // No gender identity variable is created either.
+      type Typed = Record<string, { variables: Record<string, unknown> }>;
+      const variables = (protocol.codebook.node as Typed)[stage.personType]!
+        .variables;
+      expect(Object.keys(variables)).toHaveLength(3);
+      const result = await validateSynthetic(protocol);
+      expect(result.error?.issues ?? []).toEqual([]);
+      expect(result.success).toBe(true);
+    });
+
+    it('reuses a supplied person type and adds researcher form fields', async () => {
+      const si = new SyntheticInterview();
+      const person = si.addNodeType({ name: 'Relative' });
+      const stage = si.addStage('FamilyPedigree', {
+        subject: { entity: 'node', type: person.id },
+        prompt: 'Draw your family',
+        form: {
+          fields: [{ component: 'Text', prompt: 'Occupation' }],
         },
       });
+      stage.addFormField({ component: 'Toggle', prompt: 'Deceased' });
 
-      const built = si.getProtocol().stages[0];
-      if (built?.type !== 'FamilyPedigree') {
-        throw new Error('Expected a FamilyPedigree stage');
-      }
-      expect(built.nodeConfig.form).toEqual([
-        {
-          variable: nameVar.id,
-          prompt: { 'en-US': "Their '{'first'}' name" },
-          hint: { 'en-US': 'As they prefer' },
-        },
-        { variable: ageVar.id, prompt: { 'en-US': 'Age' } },
+      const protocol = si.getProtocol();
+      expect(stage.personType).toBe(person.id);
+      const config = protocol.stages[0] as unknown as {
+        prompt: LocalizedString;
+        form: { fields: { prompt: LocalizedString }[] };
+      };
+      expect(config.prompt).toEqual({ 'en-US': 'Draw your family' });
+      expect(config.form.fields.map((field) => field.prompt)).toEqual([
+        { 'en-US': 'Occupation' },
+        { 'en-US': 'Deceased' },
+      ]);
+      expect(config.form).not.toHaveProperty('title');
+
+      const result = await validateSynthetic(protocol);
+      expect(result.error?.issues ?? []).toEqual([]);
+      expect(result.success).toBe(true);
+    });
+
+    it('seeds people and relationships a story writes onto it', () => {
+      const si = new SyntheticInterview();
+      const stage = si.addStage('FamilyPedigree', {
+        initialNodes: { count: 2 },
+      });
+      si.setNodeAttribute(0, stage.ego, true);
+      si.setNodeAttribute(1, stage.genderIdentity!, ['woman']);
+      si.addEdges([[1, 0]], stage.edgeType);
+      si.setEdgeAttribute(0, stage.kind, ['biological']);
+
+      const network = si.getNetwork();
+      expect(network.nodes).toHaveLength(2);
+      expect(network.edges).toHaveLength(1);
+      expect(network.edges[0]![entityAttributesProperty][stage.kind]).toEqual([
+        'biological',
       ]);
     });
   });

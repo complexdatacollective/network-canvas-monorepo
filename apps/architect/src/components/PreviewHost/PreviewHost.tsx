@@ -220,8 +220,8 @@ async function buildSession(payload: PreviewPayload): Promise<SessionPayload> {
     // unplaced nodes to work with.
     inProgressStageIndex: payload.startStage,
   });
-  // Stages that record a finalized state (e.g. a FamilyPedigree's committed
-  // network) do so via stageMetadata; without it they preview as never
+  // Stages that record a finalized state (e.g. a census's recorded
+  // answers) do so via stageMetadata; without it they preview as never
   // finalized. Parse each entry independently so a single malformed entry is
   // dropped rather than discarding every stage's metadata. Interaction-driven
   // stages emit no metadata, so their "unplaced nodes" intent is preserved.

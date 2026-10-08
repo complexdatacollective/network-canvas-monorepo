@@ -77,7 +77,7 @@ function makeWrapper() {
             },
           },
         },
-        stages: [{ id: 'stage1', type: 'FamilyPedigree' }],
+        stages: [{ id: 'stage1', type: 'Information' }],
       } as never,
     },
     middleware: (g) => g({ serializableCheck: false }),

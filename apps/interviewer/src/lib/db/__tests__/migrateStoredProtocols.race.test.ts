@@ -6,18 +6,23 @@ import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-s
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { hashProtocol, migrateProtocol } from '@codaco/protocol-validation';
 
-import type { StoredProtocol } from '../types';
+import type { StoredProtocol, StoredSession } from '../types';
 
 // A controllable pause inside `encryptProtocol`, so a test can
 // deterministically land a peer tab's write (a re-import or a delete) in the
 // gap between the sweep's read of a row and its commit. Everything else passes
 // through to the real implementation, so seeding rows is unaffected while no
 // pause is armed.
-let encryptPause: {
+type Pause = {
   reached: Promise<void>;
   signalReached: () => void;
   blocked: Promise<void>;
-} | null = null;
+};
+
+let encryptPause: Pause | null = null;
+// The same, inside `encryptSession`: the sweep re-encrypts a migrated session
+// after reading the protocol's sessions and before committing.
+let sessionEncryptPause: Pause | null = null;
 
 vi.mock('../recordCrypto', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../recordCrypto')>();
@@ -36,15 +41,27 @@ vi.mock('../recordCrypto', async (importOriginal) => {
       }
       return actual.encryptProtocol(...args);
     },
+    encryptSession: async (
+      ...args: Parameters<typeof actual.encryptSession>
+    ) => {
+      if (sessionEncryptPause) {
+        const pause = sessionEncryptPause;
+        sessionEncryptPause = null;
+        pause.signalReached();
+        await pause.blocked;
+      }
+      return actual.encryptSession(...args);
+    },
   };
 });
 
 // Import AFTER the mock so the sweep binds the wrapped encryptProtocol.
 const { db } = await import('../db');
 const { migrateStoredProtocols } = await import('../migrateStoredProtocols');
-const { encryptProtocol } = await import('../recordCrypto');
+const { decryptSession, encryptProtocol, encryptSession } =
+  await import('../recordCrypto');
 
-function pauseNextEncrypt() {
+function makePause() {
   let signalReached!: () => void;
   let release!: () => void;
   const reached = new Promise<void>((resolve) => {
@@ -53,7 +70,18 @@ function pauseNextEncrypt() {
   const blocked = new Promise<void>((resolve) => {
     release = resolve;
   });
-  encryptPause = { reached, signalReached, blocked };
+  return { pause: { reached, signalReached, blocked }, reached, release };
+}
+
+function pauseNextEncrypt() {
+  const { pause, reached, release } = makePause();
+  encryptPause = pause;
+  return { reached, release };
+}
+
+function pauseNextSessionEncrypt() {
+  const { pause, reached, release } = makePause();
+  sessionEncryptPause = pause;
   return { reached, release };
 }
 
@@ -111,6 +139,7 @@ async function seedProtocol(row: StoredProtocol): Promise<void> {
 describe('the sweep against concurrent writers', () => {
   afterEach(async () => {
     encryptPause = null;
+    sessionEncryptPause = null;
     await db.protocols.clear();
     await db.sessions.clear();
     await db.assets.clear();
@@ -160,5 +189,70 @@ describe('the sweep against concurrent writers', () => {
     expect(result.failed).toEqual([]);
     // Nothing was written anywhere — not the old key, not the migrated key.
     expect(await db.protocols.count()).toBe(0);
+  });
+
+  it('does not undo a session write that lands mid-migration', async () => {
+    // Migrating drops the empty form at stage 0, so a session at stage 1
+    // moves to stage 0 and has to be re-encrypted.
+    const doc: Record<string, unknown> = {
+      schemaVersion: 7,
+      codebook: { node: {}, edge: {}, ego: {} },
+      stages: [
+        { id: 'empty', type: 'EgoForm', label: 'Empty', form: { fields: [] } },
+        {
+          id: 'info',
+          type: 'Information',
+          label: 'Info',
+          title: 'Info',
+          items: [{ id: 'text', type: 'text', content: 'Hello' }],
+        },
+      ],
+    };
+    await seedProtocol(storedRow('old-hash', 'Form Study', doc));
+    const session: StoredSession = {
+      id: 's1',
+      protocolHash: 'old-hash',
+      protocolName: 'Form Study',
+      caseId: 'case-1',
+      startedAt: '2026-01-02T00:00:00.000Z',
+      lastUpdatedAt: '2026-01-02T00:00:00.000Z',
+      finishedAt: null,
+      exportedAt: null,
+      currentStep: 1,
+      network: { ego: { _uid: 'ego', attributes: {} }, nodes: [], edges: [] },
+      localePreference: null,
+      locale: null,
+    };
+    await db.sessions.put(await encryptSession(session));
+
+    const pause = pauseNextSessionEncrypt();
+    const pending = migrateStoredProtocols();
+    await pause.reached;
+    // The interview, still running against the old protocol, saves an answer.
+    await db.sessions.put(
+      await encryptSession({
+        ...session,
+        lastUpdatedAt: '2026-01-03T00:00:00.000Z',
+        network: {
+          ...session.network,
+          ego: { _uid: 'ego', attributes: { answered: true } },
+        },
+      }),
+    );
+    pause.release();
+    const first = await pending;
+
+    // Nothing was committed; the next launch migrates what is stored then.
+    expect(first.migrated).toEqual([]);
+    expect(first.failed).toEqual([]);
+    expect((await db.sessions.get('s1'))?.protocolHash).toBe('old-hash');
+
+    const second = await migrateStoredProtocols();
+    expect(second.migrated).toHaveLength(1);
+    const row = await db.sessions.get('s1');
+    if (!row) throw new Error('expected the session to survive');
+    const migrated = await decryptSession(row);
+    expect(migrated.currentStep).toBe(0);
+    expect(migrated.network.ego.attributes).toEqual({ answered: true });
   });
 });

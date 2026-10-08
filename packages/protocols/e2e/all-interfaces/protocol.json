@@ -3,12 +3,13 @@
   "description": "Schema-9 protocol covering all 20 interface types, used by the Architect e2e suite.",
   "lastModified": "2026-07-13T00:00:00.000Z",
   "schemaVersion": 9,
-  "localization": { "defaultLocale": "en-US", "locales": ["en-US"] },
   "codebook": {
     "node": {
       "person": {
         "name": "person",
-        "label": { "en-US": "person" },
+        "label": {
+          "en-US": "person"
+        },
         "color": "node-color-seq-1",
         "icon": "add-a-person",
         "shape": {
@@ -52,15 +53,21 @@
             "type": "ordinal",
             "options": [
               {
-                "label": { "en-US": "Weekly" },
+                "label": {
+                  "en-US": "Weekly"
+                },
                 "value": 3
               },
               {
-                "label": { "en-US": "Monthly" },
+                "label": {
+                  "en-US": "Monthly"
+                },
                 "value": 2
               },
               {
-                "label": { "en-US": "Rarely" },
+                "label": {
+                  "en-US": "Rarely"
+                },
                 "value": 1
               }
             ]
@@ -71,15 +78,21 @@
             "type": "categorical",
             "options": [
               {
-                "label": { "en-US": "In person" },
+                "label": {
+                  "en-US": "In person"
+                },
                 "value": "in_person"
               },
               {
-                "label": { "en-US": "Phone or video call" },
+                "label": {
+                  "en-US": "Phone or video call"
+                },
                 "value": "call"
               },
               {
-                "label": { "en-US": "Text or messaging" },
+                "label": {
+                  "en-US": "Text or messaging"
+                },
                 "value": "text"
               }
             ]
@@ -105,7 +118,6 @@
       },
       "family_member": {
         "name": "family member",
-        "label": { "en-US": "family member" },
         "color": "node-color-seq-2",
         "icon": "add-a-person",
         "shape": {
@@ -127,46 +139,94 @@
             "type": "boolean",
             "component": "Toggle"
           },
-          "fm_relationship_to_ego": {
-            "name": "fm_relationship_to_ego",
-            "label": "fm_relationship_to_ego",
-            "type": "text",
-            "component": "Text"
-          },
-          "biologicalSex": {
-            "name": "biologicalSex",
-            "label": "biologicalSex",
+          "genderIdentity": {
+            "name": "genderIdentity",
             "type": "categorical",
             "options": [
               {
-                "value": "female",
-                "label": { "en-US": "Female" }
-              },
-              {
-                "value": "male",
-                "label": { "en-US": "Male" }
-              },
-              {
-                "value": "intersex",
+                "value": "woman",
                 "label": {
-                  "en-US": "Intersex or a variation in sex characteristics"
+                  "en-US": "Woman"
+                }
+              },
+              {
+                "value": "man",
+                "label": {
+                  "en-US": "Man"
+                }
+              },
+              {
+                "value": "nonBinary",
+                "label": {
+                  "en-US": "Non-binary"
+                }
+              },
+              {
+                "value": "differentIdentity",
+                "label": {
+                  "en-US": "A different identity"
                 }
               },
               {
                 "value": "unknown",
-                "label": { "en-US": "Don’t know" }
+                "label": {
+                  "en-US": "Don’t know"
+                }
               },
               {
                 "value": "preferNotToSay",
-                "label": { "en-US": "Prefer not to say" }
+                "label": {
+                  "en-US": "Prefer not to say"
+                }
               }
-            ]
+            ],
+            "label": "genderIdentity"
+          },
+          "sexAssignedAtBirth": {
+            "name": "sexAssignedAtBirth",
+            "type": "categorical",
+            "options": [
+              {
+                "value": "female",
+                "label": {
+                  "en-US": "Female"
+                }
+              },
+              {
+                "value": "male",
+                "label": {
+                  "en-US": "Male"
+                }
+              },
+              {
+                "value": "intersex",
+                "label": {
+                  "en-US": "Intersex"
+                }
+              },
+              {
+                "value": "unknown",
+                "label": {
+                  "en-US": "Don’t know"
+                }
+              },
+              {
+                "value": "preferNotToSay",
+                "label": {
+                  "en-US": "Prefer not to say"
+                }
+              }
+            ],
+            "label": "sexAssignedAtBirth"
           },
           "hasConditionX": {
             "name": "hasConditionX",
             "label": "hasConditionX",
             "type": "boolean"
           }
+        },
+        "label": {
+          "en-US": "family member"
         }
       }
     },
@@ -183,70 +243,71 @@
     "edge": {
       "family_edge": {
         "name": "family_edge",
-        "label": { "en-US": "family_edge" },
         "color": "edge-color-seq-1",
         "variables": {
-          "relationshipType": {
-            "name": "relationshipType",
-            "label": "relationshipType",
+          "relationshipKind": {
+            "name": "relationshipKind",
             "type": "categorical",
             "options": [
               {
+                "value": "partner",
+                "label": {
+                  "en-US": "Partner"
+                }
+              },
+              {
                 "value": "biological",
-                "label": { "en-US": "Biological" }
-              },
-              {
-                "value": "social",
-                "label": { "en-US": "Social" }
-              },
-              {
-                "value": "donor",
-                "label": { "en-US": "Donor" }
-              },
-              {
-                "value": "surrogate",
-                "label": { "en-US": "Surrogate" }
+                "label": {
+                  "en-US": "Biological parent"
+                }
               },
               {
                 "value": "adoptive",
-                "label": { "en-US": "Adoptive" }
+                "label": {
+                  "en-US": "Adoptive parent"
+                }
               },
               {
-                "value": "partner",
-                "label": { "en-US": "Partner" }
+                "value": "social",
+                "label": {
+                  "en-US": "Step or social parent"
+                }
+              },
+              {
+                "value": "donor",
+                "label": {
+                  "en-US": "Donor"
+                }
+              },
+              {
+                "value": "surrogate",
+                "label": {
+                  "en-US": "Surrogate"
+                }
               }
-            ]
-          },
-          "isActive": {
-            "name": "isActive",
-            "label": "isActive",
-            "type": "boolean"
+            ],
+            "label": "relationshipKind"
           },
           "isGestationalCarrier": {
             "name": "isGestationalCarrier",
             "label": "isGestationalCarrier",
             "type": "boolean"
           },
-          "gameteRole": {
-            "name": "gameteRole",
-            "label": "gameteRole",
-            "type": "categorical",
-            "options": [
-              {
-                "value": "egg",
-                "label": { "en-US": "Egg" }
-              },
-              {
-                "value": "sperm",
-                "label": { "en-US": "Sperm" }
-              }
-            ]
+          "isCurrentPartner": {
+            "name": "isCurrentPartner",
+            "type": "boolean",
+            "label": "isCurrentPartner"
           }
+        },
+        "label": {
+          "en-US": "family_edge"
         }
       },
       "knows": {
         "name": "knows",
-        "label": { "en-US": "knows" },
+        "label": {
+          "en-US": "knows"
+        },
         "color": "edge-color-seq-2",
         "variables": {
           "closeness": {
@@ -255,15 +316,21 @@
             "type": "ordinal",
             "options": [
               {
-                "label": { "en-US": "Very close" },
+                "label": {
+                  "en-US": "Very close"
+                },
                 "value": 3
               },
               {
-                "label": { "en-US": "Somewhat close" },
+                "label": {
+                  "en-US": "Somewhat close"
+                },
                 "value": 2
               },
               {
-                "label": { "en-US": "Not close" },
+                "label": {
+                  "en-US": "Not close"
+                },
                 "value": 1
               }
             ]
@@ -282,9 +349,13 @@
     {
       "id": "anonymisation-1",
       "type": "Anonymisation",
-      "label": { "en-US": "Anonymisation" },
+      "label": {
+        "en-US": "Anonymisation"
+      },
       "explanationText": {
-        "title": { "en-US": "This interview uses enhanced privacy protection" },
+        "title": {
+          "en-US": "This interview uses enhanced privacy protection"
+        },
         "body": {
           "en-US": "This interview allows you to encrypt the names of people you mention so they cannot be seen by anyone but you. To use this feature, enter a passphrase below."
         }
@@ -297,17 +368,23 @@
     {
       "id": "ego-form-1",
       "type": "EgoForm",
-      "label": { "en-US": "Ego Form" },
+      "label": {
+        "en-US": "Ego Form"
+      },
       "form": {
         "fields": [
           {
             "variable": "ego_name",
-            "prompt": { "en-US": "What is your name?" }
+            "prompt": {
+              "en-US": "What is your name?"
+            }
           }
         ]
       },
       "introductionPanel": {
-        "title": { "en-US": "Introduction" },
+        "title": {
+          "en-US": "Introduction"
+        },
         "text": {
           "en-US": "There are a few questions about you before we begin."
         }
@@ -316,44 +393,60 @@
     {
       "id": "information-1",
       "type": "Information",
-      "label": { "en-US": "Information" },
-      "title": { "en-US": "Welcome" },
+      "label": {
+        "en-US": "Information"
+      },
+      "title": {
+        "en-US": "Welcome"
+      },
       "items": [
         {
           "id": "info-item-1",
           "type": "text",
-          "content": { "en-US": "Welcome to this interview." }
+          "content": {
+            "en-US": "Welcome to this interview."
+          }
         }
       ]
     },
     {
       "id": "name-generator-1",
       "type": "NameGenerator",
-      "label": { "en-US": "Name Generator" },
+      "label": {
+        "en-US": "Name Generator"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
       },
       "form": {
-        "title": { "en-US": "Add a person" },
+        "title": {
+          "en-US": "Add a person"
+        },
         "fields": [
           {
             "variable": "name",
-            "prompt": { "en-US": "What is this person's name?" }
+            "prompt": {
+              "en-US": "What is this person's name?"
+            }
           }
         ]
       },
       "prompts": [
         {
           "id": "name-generator-prompt-1",
-          "text": { "en-US": "Who are the people you know?" }
+          "text": {
+            "en-US": "Who are the people you know?"
+          }
         }
       ]
     },
     {
       "id": "name-generator-quick-add-1",
       "type": "NameGeneratorQuickAdd",
-      "label": { "en-US": "Name Generator Quick Add" },
+      "label": {
+        "en-US": "Name Generator Quick Add"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -362,14 +455,18 @@
       "prompts": [
         {
           "id": "name-generator-quick-add-prompt-1",
-          "text": { "en-US": "Quickly add people you know" }
+          "text": {
+            "en-US": "Quickly add people you know"
+          }
         }
       ]
     },
     {
       "id": "name-generator-roster-1",
       "type": "NameGeneratorRoster",
-      "label": { "en-US": "Name Generator Roster" },
+      "label": {
+        "en-US": "Name Generator Roster"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -378,7 +475,9 @@
       "cardOptions": {
         "additionalProperties": [
           {
-            "label": { "en-US": "Age" },
+            "label": {
+              "en-US": "Age"
+            },
             "variable": "age"
           }
         ]
@@ -392,7 +491,9 @@
         ],
         "sortableProperties": [
           {
-            "label": { "en-US": "Age" },
+            "label": {
+              "en-US": "Age"
+            },
             "variable": "age"
           }
         ]
@@ -404,7 +505,9 @@
       "prompts": [
         {
           "id": "name-generator-roster-prompt-1",
-          "text": { "en-US": "Select people from the roster" }
+          "text": {
+            "en-US": "Select people from the roster"
+          }
         }
       ],
       "behaviours": {
@@ -415,7 +518,9 @@
     {
       "id": "sociogram-1",
       "type": "Sociogram",
-      "label": { "en-US": "Sociogram" },
+      "label": {
+        "en-US": "Sociogram"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -446,7 +551,9 @@
         },
         {
           "id": "sociogram-prompt-2",
-          "text": { "en-US": "Highlight the people you feel closest to" },
+          "text": {
+            "en-US": "Highlight the people you feel closest to"
+          },
           "layout": {
             "layoutVariable": "layout"
           },
@@ -463,13 +570,17 @@
     {
       "id": "dyad-census-1",
       "type": "DyadCensus",
-      "label": { "en-US": "Dyad Census" },
+      "label": {
+        "en-US": "Dyad Census"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
       },
       "introductionPanel": {
-        "title": { "en-US": "Introduction to the Dyad Census" },
+        "title": {
+          "en-US": "Introduction to the Dyad Census"
+        },
         "text": {
           "en-US": "This section will go through all possible node pairs and ask you how they are connected."
         }
@@ -477,7 +588,9 @@
       "prompts": [
         {
           "id": "dyad-census-prompt-1",
-          "text": { "en-US": "Do these two people know each other?" },
+          "text": {
+            "en-US": "Do these two people know each other?"
+          },
           "createEdge": "knows"
         }
       ]
@@ -485,7 +598,9 @@
     {
       "id": "one-to-many-dyad-census-1",
       "type": "OneToManyDyadCensus",
-      "label": { "en-US": "One to Many Dyad Census" },
+      "label": {
+        "en-US": "One to Many Dyad Census"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -496,7 +611,9 @@
       "prompts": [
         {
           "id": "one-to-many-dyad-census-prompt-1",
-          "text": { "en-US": "Tap on all the people who this person knows" },
+          "text": {
+            "en-US": "Tap on all the people who this person knows"
+          },
           "createEdge": "knows"
         }
       ]
@@ -504,13 +621,17 @@
     {
       "id": "tie-strength-census-1",
       "type": "TieStrengthCensus",
-      "label": { "en-US": "Tie-Strength Census" },
+      "label": {
+        "en-US": "Tie-Strength Census"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
       },
       "introductionPanel": {
-        "title": { "en-US": "Introduction to the Tie-Strength Census" },
+        "title": {
+          "en-US": "Introduction to the Tie-Strength Census"
+        },
         "text": {
           "en-US": "This interface both creates an edge and assigns an ordinal value to it."
         }
@@ -518,17 +639,23 @@
       "prompts": [
         {
           "id": "tie-strength-census-prompt-1",
-          "text": { "en-US": "How close are these two people?" },
+          "text": {
+            "en-US": "How close are these two people?"
+          },
           "createEdge": "knows",
           "edgeVariable": "closeness",
-          "negativeLabel": { "en-US": "Don't know each other" }
+          "negativeLabel": {
+            "en-US": "Don't know each other"
+          }
         }
       ]
     },
     {
       "id": "ordinal-bin-1",
       "type": "OrdinalBin",
-      "label": { "en-US": "Ordinal Bin" },
+      "label": {
+        "en-US": "Ordinal Bin"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -547,7 +674,9 @@
     {
       "id": "categorical-bin-1",
       "type": "CategoricalBin",
-      "label": { "en-US": "Categorical Bin" },
+      "label": {
+        "en-US": "Categorical Bin"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -565,7 +694,9 @@
     {
       "id": "alter-form-1",
       "type": "AlterForm",
-      "label": { "en-US": "Alter Form" },
+      "label": {
+        "en-US": "Alter Form"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -574,23 +705,33 @@
         "fields": [
           {
             "variable": "relationship_to_ego",
-            "prompt": { "en-US": "What is this person's relationship to you?" }
+            "prompt": {
+              "en-US": "What is this person's relationship to you?"
+            }
           },
           {
             "variable": "flagged",
-            "prompt": { "en-US": "Does this person have this attribute?" }
+            "prompt": {
+              "en-US": "Does this person have this attribute?"
+            }
           }
         ]
       },
       "introductionPanel": {
-        "title": { "en-US": "Introduction to the alter form" },
-        "text": { "en-US": "A few more questions about each person." }
+        "title": {
+          "en-US": "Introduction to the alter form"
+        },
+        "text": {
+          "en-US": "A few more questions about each person."
+        }
       }
     },
     {
       "id": "alter-edge-form-1",
       "type": "AlterEdgeForm",
-      "label": { "en-US": "Alter Edge Form" },
+      "label": {
+        "en-US": "Alter Edge Form"
+      },
       "subject": {
         "entity": "edge",
         "type": "knows"
@@ -599,19 +740,27 @@
         "fields": [
           {
             "variable": "edgeNotes",
-            "prompt": { "en-US": "Add any notes about this relationship" }
+            "prompt": {
+              "en-US": "Add any notes about this relationship"
+            }
           }
         ]
       },
       "introductionPanel": {
-        "title": { "en-US": "Introduction to the alter edge form" },
-        "text": { "en-US": "A few questions about each relationship." }
+        "title": {
+          "en-US": "Introduction to the alter edge form"
+        },
+        "text": {
+          "en-US": "A few questions about each relationship."
+        }
       }
     },
     {
       "id": "narrative-1",
       "type": "Narrative",
-      "label": { "en-US": "Narrative" },
+      "label": {
+        "en-US": "Narrative"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -619,14 +768,21 @@
       "presets": [
         {
           "id": "narrative-preset-1",
-          "label": { "en-US": "Default layout" },
+          "label": {
+            "en-US": "Default layout"
+          },
           "layoutVariable": "layout",
           "groupVariable": "contactType",
           "edges": {
             "display": ["knows"]
           },
           "highlight": [
-            { "variable": "flagged", "label": { "en-US": "Flagged" } }
+            {
+              "variable": "flagged",
+              "label": {
+                "en-US": "Flagged"
+              }
+            }
           ]
         }
       ],
@@ -642,51 +798,81 @@
     {
       "id": "family-pedigree-1",
       "type": "FamilyPedigree",
-      "label": { "en-US": "Family Pedigree" },
-      "nodeConfig": {
-        "type": "family_member",
-        "nodeLabelVariable": "fm_name",
-        "egoVariable": "is_ego",
-        "relationshipVariable": "fm_relationship_to_ego",
-        "biologicalSexVariable": "biologicalSex"
+      "label": {
+        "en-US": "Family Pedigree"
       },
-      "edgeConfig": {
+      "subject": {
+        "entity": "node",
+        "type": "family_member"
+      },
+      "prompt": {
+        "en-US": "Who is in your family?"
+      },
+      "nodeConfiguration": {
+        "nameAttribute": "fm_name",
+        "genderIdentity": {
+          "attribute": "genderIdentity",
+          "terms": [
+            {
+              "value": "woman",
+              "words": "feminine"
+            },
+            {
+              "value": "man",
+              "words": "masculine"
+            },
+            {
+              "value": "nonBinary",
+              "words": "neutral"
+            },
+            {
+              "value": "differentIdentity",
+              "words": "neutral"
+            },
+            {
+              "value": "unknown",
+              "words": "unknown"
+            },
+            {
+              "value": "preferNotToSay",
+              "words": "neutral"
+            }
+          ]
+        },
+        "sexAssignedAtBirthAttribute": "sexAssignedAtBirth",
+        "egoAttribute": "is_ego"
+      },
+      "edgeConfiguration": {
         "type": "family_edge",
-        "relationshipTypeVariable": "relationshipType",
-        "isActiveVariable": "isActive",
-        "isGestationalCarrierVariable": "isGestationalCarrier",
-        "gameteRoleVariable": "gameteRole"
+        "kindAttribute": "relationshipKind",
+        "gestationalCarrierAttribute": "isGestationalCarrier",
+        "currentPartnerAttribute": "isCurrentPartner"
       },
-      "framing": {
-        "mode": "fixed",
-        "value": "gamete"
-      },
-      "boundaries": {
-        "requireGrandparents": "off",
-        "requireChildrenContributors": "off"
-      },
-      "censusPrompt": { "en-US": "Who is in your family?" },
       "nominationPrompts": [
         {
           "id": "nomination-1",
           "text": {
             "en-US": "Who in your family has been diagnosed with condition X?"
           },
-          "variable": "hasConditionX"
+          "attribute": "hasConditionX"
         }
       ]
     },
     {
       "id": "narrative-pedigree-1",
       "type": "NarrativePedigree",
-      "label": { "en-US": "Narrative Pedigree" },
+      "label": {
+        "en-US": "Narrative Pedigree"
+      },
       "sourceStageId": "family-pedigree-1",
       "diseases": [
         {
           "id": "disease-1",
-          "label": { "en-US": "Condition X" },
+          "label": {
+            "en-US": "Condition X"
+          },
           "color": "node-color-seq-1",
-          "variable": "hasConditionX",
+          "attribute": "hasConditionX",
           "inheritancePattern": "autosomalDominant"
         }
       ]
@@ -694,7 +880,9 @@
     {
       "id": "network-composer-1",
       "type": "NetworkComposer",
-      "label": { "en-US": "Network Composer" },
+      "label": {
+        "en-US": "Network Composer"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -708,7 +896,9 @@
     {
       "id": "geospatial-1",
       "type": "Geospatial",
-      "label": { "en-US": "Geospatial" },
+      "label": {
+        "en-US": "Geospatial"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -716,7 +906,7 @@
       "mapOptions": {
         "tokenAssetId": "mapbox_token",
         "style": "mapbox://styles/mapbox/standard",
-        "center": [-74.0, 40.7],
+        "center": [-74, 40.7],
         "initialZoom": 10,
         "dataSourceAssetId": "geo_data",
         "color": "ord-color-seq-6",
@@ -725,7 +915,9 @@
       "prompts": [
         {
           "id": "geospatial-prompt-1",
-          "text": { "en-US": "Where do you live?" },
+          "text": {
+            "en-US": "Where do you live?"
+          },
           "variable": "location"
         }
       ]
@@ -733,7 +925,9 @@
     {
       "id": "language-chooser-1",
       "type": "LanguageChooser",
-      "label": { "en-US": "Language Chooser" }
+      "label": {
+        "en-US": "Language Chooser"
+      }
     }
   ],
   "assetManifest": {
@@ -752,5 +946,9 @@
       "type": "network",
       "source": "roster.json"
     }
+  },
+  "localization": {
+    "defaultLocale": "en-US",
+    "locales": ["en-US"]
   }
 }

@@ -343,6 +343,7 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
             categoricalBinPromptMessages.otherBinPlaceholder,
           )}
           singleLine
+          compact
           initialValue={asLocalizedString(item[OTHER_LABEL_FIELD])}
           required={intl.formatMessage(
             categoricalBinPromptMessages.otherBinRequired,

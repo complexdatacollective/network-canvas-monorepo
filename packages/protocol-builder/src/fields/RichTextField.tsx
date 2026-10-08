@@ -34,6 +34,12 @@ type RichTextFieldProps = CreateFormFieldProps<
     'singleLine'?: boolean;
     /** Toolbar features to withhold, e.g. `['bold', 'lists']`. */
     'disallowedTypes'?: string[];
+    /**
+     * One line tall, for a short label such as an option's; implies
+     * `singleLine`. A prompt is `singleLine` alone and keeps the tall editing
+     * area.
+     */
+    'compact'?: boolean;
   }
 >;
 
@@ -49,10 +55,12 @@ const asRichTextContent = (value: unknown): RichTextContent | undefined =>
 const RichTextField = ({
   value,
   onChange,
-  singleLine = false,
+  singleLine: singleLineProp = false,
+  compact = false,
   disallowedTypes = [],
   ...props
 }: RichTextFieldProps) => {
+  const singleLine = singleLineProp || compact;
   const toolbarOptions = {
     bold: !disallowedTypes.includes('bold'),
     italic: !disallowedTypes.includes('italic'),
@@ -116,6 +124,7 @@ const RichTextField = ({
     <RichTextEditorField
       {...props}
       singleLine={singleLine}
+      compact={compact}
       changeMode="input"
       toolbarOptions={toolbarOptions}
       value={content}

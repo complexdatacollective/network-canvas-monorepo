@@ -6,7 +6,7 @@ import {
 /**
  * The variables whose rules this run actually applies.
  *
- * Bin-assigned variables and unwritten pedigree-edge variables still receive a
+ * Bin-assigned variables and variables no stage writes still receive a
  * generated value, but no participant-facing field validates that value. The
  * generation analyser has always excluded their declared rules; the delegated
  * analyser must receive the same view.

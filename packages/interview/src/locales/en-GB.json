@@ -1,9 +1,4 @@
 {
-  "interview.familyPedigree.buildComplete": "All tasks are complete. You can now finalise your family pedigree.",
-  "interview.familyPedigree.finalize": "Finalise",
-  "interview.familyPedigree.finalizePedigree": "Finalise family pedigree",
-  "interview.familyPedigree.finalizeQuestion": "Finalise your family pedigree?",
-  "interview.familyPedigree.finalized": "Your family pedigree has been finalised.",
   "interview.interfaces.mapUnavailableDescription": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organiser. You may be able to continue your interview by selecting the next arrow.",
   "interview.interfaces.recenterMap": "Recentre Map",
   "interview.runtime.finishFailed": "The interview could not be finished. Please try again. If the problem continues, contact the study organiser.",

@@ -135,8 +135,8 @@ export default function DiseasesSection() {
       const row = saved.find(
         (candidate) => isRecord(candidate) && candidate.id === id,
       );
-      const variable = isRecord(row) ? row.variable : undefined;
-      return typeof variable === 'string' ? variable : '';
+      const attribute = isRecord(row) ? row.attribute : undefined;
+      return typeof attribute === 'string' ? attribute : '';
     },
     [savedFields],
   );
@@ -145,15 +145,15 @@ export default function DiseasesSection() {
     (row: RowValues, context: { editIndex?: number }): RowSaveOutcome => {
       const fieldErrors: Record<string, string[]> = {};
 
-      const variable = typeof row.variable === 'string' ? row.variable : '';
+      const attribute = typeof row.attribute === 'string' ? row.attribute : '';
       const liveRows = Array.isArray(rows) ? rows : [];
       const duplicateVariable =
-        variable !== '' &&
+        attribute !== '' &&
         liveRows.some(
           (sibling, index) =>
             index !== context.editIndex &&
             isRecord(sibling) &&
-            sibling.variable === variable,
+            sibling.attribute === attribute,
         );
       const pickIssue = duplicateVariable
         ? createMessageError(
@@ -165,10 +165,10 @@ export default function DiseasesSection() {
             slotMap,
             subject,
             sourceStageId,
-            variableId: row.variable,
+            variableId: row.attribute,
             committedVariable: savedVariableFor(row.id),
           });
-      if (pickIssue !== undefined) fieldErrors.variable = [pickIssue];
+      if (pickIssue !== undefined) fieldErrors.attribute = [pickIssue];
 
       // The row goes last, so any collision it is part of is reported at its
       // own index whichever sibling it repeats.

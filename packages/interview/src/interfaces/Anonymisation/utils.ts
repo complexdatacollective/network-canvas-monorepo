@@ -5,18 +5,7 @@ import type {
   EntitySecureAttributesMeta,
 } from '@codaco/shared-consts';
 
-const writeOwnProperty = <Value>(
-  target: Record<string, Value>,
-  key: string,
-  value: Value,
-): void => {
-  Object.defineProperty(target, key, {
-    configurable: true,
-    enumerable: true,
-    value,
-    writable: true,
-  });
-};
+import { writeOwnProperty } from '../../utils/ownProperty';
 
 export class UnauthorizedError extends Error {
   constructor(message?: string) {

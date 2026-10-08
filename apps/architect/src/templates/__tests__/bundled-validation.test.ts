@@ -123,10 +123,7 @@ describe('bundled template Narrative Pedigree colors', () => {
 
     // Guard the generated assertion: the bundled CEGRM template is expected
     // to exercise Narrative Pedigree, so an empty template list is a broken
-    // fixture, not a passing color contract. The Development Protocol is not
-    // included: it deliberately exercises arbitrary CSS colors accepted by
-    // the runtime schema, whereas starter templates must use what this editor
-    // actually offers a researcher.
+    // fixture, not a passing color contract.
     expect(diseaseColors.length).toBeGreaterThan(0);
     expect(
       diseaseColors.filter(({ color }) => !offeredDiseaseColors.has(color)),

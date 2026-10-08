@@ -1,8 +1,8 @@
 import type { IntlShape } from '@codaco/app-i18n/messages';
-import { entityAttributesProperty } from '@codaco/shared-consts';
-import type { NcNode } from '@codaco/shared-consts';
+import type { VariableValue } from '@codaco/shared-consts';
 
 import { resolveInterviewIntl } from '../../../i18n/resolveIntl';
+import { readOwnProperty } from '../../../utils/ownProperty';
 import { messages } from '../messages';
 
 export type Status =
@@ -46,14 +46,21 @@ export function mergeStatus(a: Status, b: Status): Status {
   return indexA <= indexB ? a : b;
 }
 
+/**
+ * Everyone marked affected by a disease: those whose boolean disease
+ * attribute is true. Anyone else, false or unanswered, is not affected.
+ */
 export function affectedSet(
-  nodes: NcNode[],
-  diseaseVariable: string,
+  people: readonly {
+    id: string;
+    attributes: Readonly<Record<string, VariableValue>>;
+  }[],
+  diseaseAttribute: string,
 ): Set<string> {
   const result = new Set<string>();
-  for (const node of nodes) {
-    if (node[entityAttributesProperty][diseaseVariable] === true) {
-      result.add(node._uid);
+  for (const person of people) {
+    if (readOwnProperty(person.attributes, diseaseAttribute) === true) {
+      result.add(person.id);
     }
   }
   return result;

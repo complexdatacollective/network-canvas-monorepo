@@ -81,7 +81,7 @@ type StageMetadataEntry = StageMetadata[string];
 /**
  * Remove any DyadCensus/TieStrengthCensus metadata entries that reference the
  * given node. Census metadata is stored as `[promptIndex, nodeA, nodeB, value]`
- * tuples; non-census (e.g. FamilyPedigree) entries are objects and are left
+ * tuples; non-census (e.g. NetworkComposer) entries are objects and are left
  * untouched. Pruning prevents a stale 'No' pre-selection from being revived
  * when a node with the same id is re-added later.
  */

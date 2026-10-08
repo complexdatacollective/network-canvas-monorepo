@@ -1,8 +1,10 @@
 import {
   listAssetIds,
   listProtocolIds,
+  listProtocolMigrationIds,
   reencryptAsset,
   reencryptProtocol,
+  reencryptProtocolMigration,
 } from './protocols';
 import { getSessionDek } from './sessionKey';
 import { listSessionIds, reencryptSession } from './sessions';
@@ -15,7 +17,7 @@ export type ReencryptProgress = (done: number, total: number) => void;
 // unlock finishes the job; the security invariant is only met once failed === 0.
 export type ReencryptResult = { total: number; failed: number };
 
-// Sweep every session, protocol, and asset row and re-encrypt it under the
+// Sweep every session, protocol, asset, and re-keying record row and re-encrypt it under the
 // currently-held session DEK. This closes the gap where data collected before
 // the device was secured (written as plaintext, no `_enc`, while the vault was
 // unconfigured / mode `none`) would otherwise stay unencrypted at rest forever
@@ -55,13 +57,18 @@ export async function reencryptAllRecords(
     );
   }
 
-  const [sessionIds, protocolIds, assetIds] = await Promise.all([
+  const [sessionIds, protocolIds, assetIds, migrationIds] = await Promise.all([
     listSessionIds(),
     listProtocolIds(),
     listAssetIds(),
+    listProtocolMigrationIds(),
   ]);
 
-  const total = sessionIds.length + protocolIds.length + assetIds.length;
+  const total =
+    sessionIds.length +
+    protocolIds.length +
+    assetIds.length +
+    migrationIds.length;
   let done = 0;
   let failed = 0;
   onProgress?.(0, total);
@@ -81,6 +88,10 @@ export async function reencryptAllRecords(
   for (const id of sessionIds) await runRow(() => reencryptSession(id));
   for (const id of protocolIds) await runRow(() => reencryptProtocol(id));
   for (const id of assetIds) await runRow(() => reencryptAsset(id));
+  // A re-keying record keeps the protocol row its migration replaced.
+  for (const id of migrationIds) {
+    await runRow(() => reencryptProtocolMigration(id));
+  }
 
   return { total, failed };
 }

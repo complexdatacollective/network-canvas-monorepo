@@ -1,96 +1,69 @@
 /**
- * Version-local schema contract definitions for the FamilyPedigree interface.
+ * Value sets the FamilyPedigree interface owns, and the vocabulary it offers
+ * researchers for the one it does not.
  *
- * These value sets ARE the schema 9 contract: a protocol is admissible only if
- * its interface-owned variables carry exactly these members (their labels are
- * localized copy, and the ones here are only the defaults), and its framing is
- * one of these ids. They live inside the version directory — not in
- * a shared constants package — so that editing shared code can never silently
- * redefine the contract of a schema version that has already shipped.
+ * The interface both writes and reads sex assigned at birth, the relationship
+ * kind and the relatives-not-recorded answers, so the codebook variables bound
+ * to those slots must carry exactly these members; Architect locks them onto
+ * the variable. Their labels are localized copy, and the ones here are only
+ * the defaults. A person's symbol is not decided here: it is the person type's
+ * codebook shape, which the researcher may map to any attribute.
  *
- * When a future schema version directory is created, COPY this file into it and
- * edit the copy. Never import it from another version's directory, and never
- * move it back out into cross-version shared code.
+ * These value sets are the schema 9 contract. They live inside the version
+ * directory, not in a shared constants package, so that editing shared code
+ * can never silently redefine the contract of a schema version that has
+ * already shipped.
+ *
+ * Gender identity is the researcher's. The interface only needs to know which
+ * kinship words each of the researcher's options takes, so the stage carries a
+ * mapping from option to `PEDIGREE_GENDER_WORDS`.
  */
 
 /**
- * Canonical relationship-type values for the FamilyPedigree interface.
+ * Which kinship words a gender identity option takes in the gendered framing.
  *
- * These are the option values stored on the `relationshipType` edge variable
- * (the discriminant for the pedigree Edge union). Architect locks them onto the
- * categorical edge variable and the interview interface reads and branches on
- * them, so schema 9 pins them here.
+ * - `feminine`: mother, sister, daughter, grandmother, aunt, niece.
+ * - `masculine`: father, brother, son, grandfather, uncle, nephew.
+ * - `neutral`: parent, sibling, child, grandparent, parent's sibling.
+ * - `unknown`: the person's gender is not known, so a biological parent is
+ *   named from their sex assigned at birth ("biological mother") and every
+ *   other relative with neutral words.
  */
-export const RELATIONSHIP_TYPES = [
-  'biological',
-  'social',
-  'donor',
-  'surrogate',
-  'adoptive',
-  'partner',
+export const PEDIGREE_GENDER_WORDS = [
+  'feminine',
+  'masculine',
+  'neutral',
+  'unknown',
 ] as const;
 
-export type RelationshipType = (typeof RELATIONSHIP_TYPES)[number];
-
-const RELATIONSHIP_TYPE_LABELS: Record<RelationshipType, string> = {
-  biological: 'Biological',
-  social: 'Social',
-  donor: 'Donor',
-  surrogate: 'Surrogate',
-  adoptive: 'Adoptive',
-  partner: 'Partner',
-};
+export type PedigreeGenderWords = (typeof PEDIGREE_GENDER_WORDS)[number];
 
 /**
- * The relationship-type options as `{ value, label }` pairs, in canonical
- * order. Architect locks the categorical edge variable to exactly this set.
+ * The gender identity options Architect offers to seed a new attribute with,
+ * each with the words it takes by default. Architect supplies the translated
+ * label for each value; the researcher may then edit, add or remove options,
+ * so nothing reads these values back as the only possible ones.
  */
-export const RELATIONSHIP_TYPE_OPTIONS: {
-  value: RelationshipType;
-  label: string;
-}[] = RELATIONSHIP_TYPES.map((value) => ({
-  value,
-  label: RELATIONSHIP_TYPE_LABELS[value],
-}));
+export const PEDIGREE_DEFAULT_GENDER_IDENTITIES = [
+  { value: 'woman', words: 'feminine' },
+  { value: 'man', words: 'masculine' },
+  { value: 'nonBinary', words: 'neutral' },
+  { value: 'differentIdentity', words: 'neutral' },
+  { value: 'unknown', words: 'unknown' },
+  { value: 'preferNotToSay', words: 'neutral' },
+] as const satisfies readonly { value: string; words: PedigreeGenderWords }[];
+
+export type PedigreeDefaultGenderIdentityValue =
+  (typeof PEDIGREE_DEFAULT_GENDER_IDENTITIES)[number]['value'];
 
 /**
- * Canonical gamete-role values for the FamilyPedigree interface — which
- * reproductive cell (gamete) a parent contributed to a child.
- *
- * Stored on the `gameteRole` categorical edge variable of genetic parent
- * edges.
+ * Sex assigned at birth. The interface reads it to name biological parents
+ * and donors by the gamete they gave, to know who could have carried a
+ * pregnancy, to check that a child's two genetic parents are possible, to
+ * choose the gendered framing's words when gender identity is not asked, and
+ * to limit a nomination prompt to one sex.
  */
-export const GAMETE_ROLES = ['egg', 'sperm'] as const;
-
-export type GameteRole = (typeof GAMETE_ROLES)[number];
-
-const GAMETE_ROLE_LABELS: Record<GameteRole, string> = {
-  egg: 'Egg',
-  sperm: 'Sperm',
-};
-
-/**
- * The gamete-role options as `{ value, label }` pairs, in canonical order.
- * Architect locks the categorical edge variable to exactly this set.
- */
-export const GAMETE_ROLE_OPTIONS: {
-  value: GameteRole;
-  label: string;
-}[] = GAMETE_ROLES.map((value) => ({
-  value,
-  label: GAMETE_ROLE_LABELS[value],
-}));
-
-/**
- * Canonical biological-sex values for pedigree participants — the sex recorded
- * at birth, needed for sex-linked genetic transmission (X-linked, Y-linked,
- * mitochondrial). This is distinct from gender identity.
- *
- * Stored on the `biologicalSex` node variable. Only `female`/`male` drive
- * transmission; `intersex`, `unknown`, and `preferNotToSay` are stored
- * distinctly but all propagate as uncertainty in the genetics engine.
- */
-export const BIOLOGICAL_SEX_VALUES = [
+export const PEDIGREE_SEX_ASSIGNED_AT_BIRTH = [
   'female',
   'male',
   'intersex',
@@ -98,37 +71,232 @@ export const BIOLOGICAL_SEX_VALUES = [
   'preferNotToSay',
 ] as const;
 
-export type BiologicalSex = (typeof BIOLOGICAL_SEX_VALUES)[number];
+export type PedigreeSexAssignedAtBirth =
+  (typeof PEDIGREE_SEX_ASSIGNED_AT_BIRTH)[number];
 
-const BIOLOGICAL_SEX_LABELS: Record<BiologicalSex, string> = {
-  female: 'Female',
-  male: 'Male',
-  intersex: 'Intersex or a variation in sex characteristics',
-  unknown: 'Don’t know',
-  preferNotToSay: 'Prefer not to say',
-};
+const SEX_ASSIGNED_AT_BIRTH_LABELS: Record<PedigreeSexAssignedAtBirth, string> =
+  {
+    female: 'Female',
+    male: 'Male',
+    intersex: 'Intersex',
+    unknown: 'Don’t know',
+    preferNotToSay: 'Prefer not to say',
+  };
 
-/**
- * The biological-sex options as `{ value, label }` pairs, in canonical order,
- * with participant-facing labels. The single source of truth for the choices
- * shown to a participant and described to a protocol author.
- */
-export const BIOLOGICAL_SEX_OPTIONS: {
-  value: BiologicalSex;
+export const PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS: {
+  value: PedigreeSexAssignedAtBirth;
   label: string;
-}[] = BIOLOGICAL_SEX_VALUES.map((value) => ({
+}[] = PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
   value,
-  label: BIOLOGICAL_SEX_LABELS[value],
+  label: SEX_ASSIGNED_AT_BIRTH_LABELS[value],
 }));
 
 /**
- * Framing identifiers for the FamilyPedigree interface.
- *
- * Two framings are supported: 'gamete' (biology-first language) and 'gendered'
- * (mother/father kinship terms). The stage's `framing` config stores one of
- * these ids; the participant-facing terminology each id selects is interview
- * copy and lives in the interview runtime.
+ * The kind of a relationship edge. A `partner` edge joins two partners in
+ * either direction; every other kind is a parent edge, directed from the
+ * parent to the child. Siblings are never stored: two people are siblings when
+ * they share a parent.
  */
-export const FRAMING_IDS = ['gamete', 'gendered'] as const;
+export const PEDIGREE_RELATIONSHIP_KINDS = [
+  'partner',
+  'biological',
+  'adoptive',
+  'social',
+  'donor',
+  'surrogate',
+] as const;
+
+export type PedigreeRelationshipKind =
+  (typeof PEDIGREE_RELATIONSHIP_KINDS)[number];
+
+export type PedigreeParentKind = Exclude<PedigreeRelationshipKind, 'partner'>;
+
+const RELATIONSHIP_KIND_LABELS: Record<PedigreeRelationshipKind, string> = {
+  partner: 'Partner',
+  biological: 'Biological parent',
+  adoptive: 'Adoptive parent',
+  social: 'Step or social parent',
+  donor: 'Donor',
+  surrogate: 'Surrogate',
+};
+
+export const PEDIGREE_RELATIONSHIP_KIND_OPTIONS: {
+  value: PedigreeRelationshipKind;
+  label: string;
+}[] = PEDIGREE_RELATIONSHIP_KINDS.map((value) => ({
+  value,
+  label: RELATIONSHIP_KIND_LABELS[value],
+}));
+
+/**
+ * Relatives a participant has said are not in their family, or that they do
+ * not know about. Recorded on the person they are relatives of, so that "has
+ * no siblings" and "siblings not known" are kept distinct from a question
+ * never answered. Siblings and children are the only open-ended groups: every
+ * person has exactly two biological parents, so missing parents are added as
+ * people (who may be entirely unknown) rather than recorded here.
+ */
+export const PEDIGREE_RELATIVES_NOT_RECORDED = [
+  'noSiblings',
+  'siblingsUnknown',
+  'noChildren',
+  'childrenUnknown',
+] as const;
+
+export type PedigreeRelativesNotRecorded =
+  (typeof PEDIGREE_RELATIVES_NOT_RECORDED)[number];
+
+const RELATIVES_NOT_RECORDED_LABELS: Record<
+  PedigreeRelativesNotRecorded,
+  string
+> = {
+  noSiblings: 'Has no siblings',
+  siblingsUnknown: 'Siblings not known',
+  noChildren: 'Has no children',
+  childrenUnknown: 'Children not known',
+};
+
+export const PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS: {
+  value: PedigreeRelativesNotRecorded;
+  label: string;
+}[] = PEDIGREE_RELATIVES_NOT_RECORDED.map((value) => ({
+  value,
+  label: RELATIVES_NOT_RECORDED_LABELS[value],
+}));
+
+/**
+ * A person's relationship to the participant, which a Family Pedigree stage
+ * may record in a categorical attribute so that later stages can filter and
+ * skip on it (a filter tests only a person's own attributes). The interface
+ * works it out from the family the participant drew, and owns the values:
+ * they are language-independent and neutral, naming neither gender nor the
+ * side of the family. Their labels are the researcher's codebook copy;
+ * Architect seeds them in the researcher's language.
+ *
+ * - Parents: `parent` (a biological parent), `adoptiveParent`, `stepParent`
+ *   (a step or social parent, or a parent's partner), `donor`, `surrogate`.
+ * - Children: `child` (a biological child), `adoptiveChild`, `stepChild`,
+ *   `donorConceivedChild`, `surrogacyChild`.
+ * - Siblings: `sibling` (sharing every biological parent), `halfSibling`,
+ *   `adoptiveSibling` (related through adoption only), `stepSibling`.
+ * - Partners: `partner`, `formerPartner`.
+ * - Further along the family: `grandparent`, `greatGrandparent`,
+ *   `grandchild`, `greatGrandchild`, `parentsSibling`, `grandparentsSibling`,
+ *   `siblingsChild`, `cousin`.
+ * - In-laws: `parentInLaw`, `siblingInLaw`, `childInLaw`.
+ * - `otherRelative`: connected to the participant, but by none of these.
+ *
+ * The participant themselves has no value, nor does anyone not connected to
+ * them.
+ */
+export const PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT = [
+  'parent',
+  'adoptiveParent',
+  'stepParent',
+  'donor',
+  'surrogate',
+  'child',
+  'adoptiveChild',
+  'stepChild',
+  'donorConceivedChild',
+  'surrogacyChild',
+  'sibling',
+  'halfSibling',
+  'adoptiveSibling',
+  'stepSibling',
+  'partner',
+  'formerPartner',
+  'grandparent',
+  'greatGrandparent',
+  'grandchild',
+  'greatGrandchild',
+  'parentsSibling',
+  'grandparentsSibling',
+  'siblingsChild',
+  'cousin',
+  'parentInLaw',
+  'siblingInLaw',
+  'childInLaw',
+  'otherRelative',
+] as const;
+
+export type PedigreeRelationshipToParticipant =
+  (typeof PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT)[number];
+
+/**
+ * The relationship values as an interface-owned option set. They carry no
+ * labels: unlike the older sets, whose English labels a migrated schema 8
+ * protocol is written with, these are only ever created in Architect, which
+ * labels them through its translations.
+ */
+export const PEDIGREE_RELATIONSHIP_TO_PARTICIPANT_OPTIONS: {
+  value: PedigreeRelationshipToParticipant;
+}[] = PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT.map((value) => ({ value }));
+
+/**
+ * How much of the family a participant must record before continuing. Each
+ * scope includes the ones before it; "biological" parents are those who gave
+ * genes, so a gamete donor counts and a gestational carrier does not.
+ *
+ * - `parents`: both of the participant's biological parents (Bennett et al.
+ *   2008 — every person descends from two, so an unknown parent is still
+ *   drawn).
+ * - `firstDegree`: adds the participant's siblings and children (first-degree
+ *   relatives; the minimum for risk assessment in NCCN and ACOG guidance).
+ * - `grandparents`: adds both biological parents of each of the participant's
+ *   biological parents, and those parents' siblings — three generations on
+ *   both sides, the scope of Family Healthware and MeTree.
+ * - `secondDegree`: adds nieces and nephews (children of siblings) and
+ *   grandchildren, completing the second-degree relatives.
+ * - `thirdDegree`: adds first cousins (children of aunts and uncles) — the
+ *   three-generation pedigree to third degree that Bennett recommends as the
+ *   clinical standard.
+ *
+ * Siblings and children are satisfied by recording at least one, or by the
+ * participant saying there are none or that they do not know.
+ */
+export const PEDIGREE_COMPLETENESS_SCOPES = [
+  'parents',
+  'firstDegree',
+  'grandparents',
+  'secondDegree',
+  'thirdDegree',
+] as const;
+
+export type PedigreeCompletenessScope =
+  (typeof PEDIGREE_COMPLETENESS_SCOPES)[number];
+
+/**
+ * How the interface describes family members to the participant.
+ *
+ * - `gendered`: the usual kinship words — mother, father, grandmother, aunt,
+ *   nephew — and neutral words (parent, sibling, cousin) for anyone whose
+ *   words are neutral. A person's words come from their gender identity
+ *   option (see `PEDIGREE_GENDER_WORDS`) when the stage asks about gender
+ *   identity, and otherwise from their sex assigned at birth: female takes
+ *   feminine words, male masculine, and anything else or unanswered neutral.
+ * - `gamete`: words that make no assumption about gender. Biological parents
+ *   are described by the gamete they gave (egg parent, sperm parent, read
+ *   from their recorded sex at birth, and a plain parent when it is neither
+ *   female nor male), and every other relative by a neutral word
+ *   (grandparent, parent's sibling, sibling's child).
+ *
+ * The framing changes only what is shown, and nothing it produces is
+ * exported. When the participant chooses the framing, the choice is kept in
+ * the session's stage metadata so they are asked only once.
+ */
+export const FRAMING_IDS = ['gendered', 'gamete'] as const;
 
 export type FramingId = (typeof FRAMING_IDS)[number];
+
+/**
+ * The stage's framing setting: one of the framings, or
+ * `participantPreference`, which asks the participant to choose between them
+ * when they first reach the stage.
+ */
+export const FRAMING_SETTINGS = [
+  ...FRAMING_IDS,
+  'participantPreference',
+] as const;
+
+export type FramingSetting = (typeof FRAMING_SETTINGS)[number];

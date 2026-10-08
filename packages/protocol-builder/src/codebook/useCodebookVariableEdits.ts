@@ -33,11 +33,13 @@ import {
   MissingVariableError,
   sectionIdForCodebookSubject,
 } from './editing.ts';
+import { useStageManagedOptionsLock } from './useStageManagedOptionsLock.ts';
 import { optionsShapeFor } from './variableOptions.ts';
 import { parametersForShape, parameterShapeFor } from './variableParameters.ts';
 import {
   buildInterfaceOwnedOptionMap,
   interfaceOwnedOptionsIssue,
+  stageManagedOptionsRefusal,
 } from './variableRoles.ts';
 import {
   useCodebookSectionWrite,
@@ -593,10 +595,16 @@ export type SetVariableOptions = (
  * refused the same write for the same reason
  * (`sections/useVariableOptionsCommit.ts`'s interface-owned refusal), and
  * until now the package carried the refusal with nothing calling it.
+ *
+ * A list a STAGE manages — the pedigree's gender identity options, whose kin
+ * words live on the stage — is refused from anywhere but the editor of a stage
+ * that manages it (`useStageManagedOptionsLock`). The option editors show such
+ * a list read-only; this is the backstop behind them.
  */
 export function useSetVariableOptions(): SetVariableOptions {
   const write = useCodebookSectionWrite();
   const protocolContext = useProtocolContext();
+  const stageManagedLock = useStageManagedOptionsLock();
   const intl = useAppIntl();
 
   return useCallback(
@@ -626,6 +634,18 @@ export function useSetVariableOptions(): SetVariableOptions {
       );
       if (ownedIssue !== undefined) {
         return { status: 'refused', message: ownedIssue };
+      }
+
+      // A list a STAGE manages is refused outside that stage's editor. The
+      // option editors show it read-only there, so this is the backstop for a
+      // write that reaches here some other way — a row opened on one attribute
+      // and re-pointed at a managed one, say.
+      const managedBy = stageManagedLock(subject, variableId);
+      if (managedBy !== undefined) {
+        return {
+          status: 'refused',
+          message: stageManagedOptionsRefusal(managedBy),
+        };
       }
 
       let refusal: string | undefined;
@@ -672,7 +692,7 @@ export function useSetVariableOptions(): SetVariableOptions {
         message: refusal ?? rowRefusal(outcome, intl),
       };
     },
-    [intl, protocolContext, write],
+    [intl, protocolContext, stageManagedLock, write],
   );
 }
 

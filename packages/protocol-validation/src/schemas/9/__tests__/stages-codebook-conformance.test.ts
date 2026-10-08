@@ -6,7 +6,6 @@ import { CodebookSchema } from '../codebook/codebook.ts';
 import { panelSchema } from '../common/panels.ts';
 import { FilterSchema } from '../filters/index.ts';
 import { anonymisationStage } from '../stages/anonymisation.ts';
-import { familyPedigreeStage } from '../stages/family-pedigree.ts';
 import { geospatialStage } from '../stages/geospatial.ts';
 import { informationStage } from '../stages/information.ts';
 import { nameGeneratorRosterStage } from '../stages/name-generator-roster.ts';
@@ -19,82 +18,6 @@ import { sociogramStage } from '../stages/sociogram.ts';
  * top-level ProtocolSchemaV9) so they document the structural constraints each
  * schema enforces on its own.
  */
-
-describe('FamilyPedigree nomination prompts (#664)', () => {
-  const baseStage = {
-    id: 'fp1',
-    label: localized('Family Pedigree'),
-    type: 'FamilyPedigree' as const,
-    nodeConfig: {
-      type: 'person',
-      nodeLabelVariable: 'label',
-      egoVariable: 'isEgo',
-      relationshipVariable: 'rel',
-      biologicalSexVariable: 'bioSex',
-    },
-    edgeConfig: {
-      type: 'family',
-      relationshipTypeVariable: 'relType',
-      isActiveVariable: 'isActive',
-      isGestationalCarrierVariable: 'isGc',
-      gameteRoleVariable: 'gameteRole',
-    },
-    censusPrompt: localized('Build your family'),
-    framing: { mode: 'fixed' as const, value: 'gamete' as const },
-    boundaries: {
-      requireGrandparents: 'off' as const,
-      requireChildrenContributors: 'off' as const,
-    },
-  };
-
-  it('accepts nomination prompts with distinct, non-reserved ids', () => {
-    const result = familyPedigreeStage.safeParse({
-      ...baseStage,
-      nominationPrompts: [
-        { id: 'p1', text: localized('Who has the condition?'), variable: 'v1' },
-        { id: 'p2', text: localized('Who else?'), variable: 'v2' },
-      ],
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("rejects a nomination prompt using the reserved id 'scaffolding'", () => {
-    const result = familyPedigreeStage.safeParse({
-      ...baseStage,
-      nominationPrompts: [
-        {
-          id: 'scaffolding',
-          text: localized('Who has the condition?'),
-          variable: 'v1',
-        },
-      ],
-    });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      const issue = result.error.issues.find((i) =>
-        i.message.includes('scaffolding'),
-      );
-      expect(issue).toBeDefined();
-    }
-  });
-
-  it('rejects duplicate nomination-prompt ids', () => {
-    const result = familyPedigreeStage.safeParse({
-      ...baseStage,
-      nominationPrompts: [
-        { id: 'dup', text: localized('First'), variable: 'v1' },
-        { id: 'dup', text: localized('Second'), variable: 'v2' },
-      ],
-    });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      const issue = result.error.issues.find((i) =>
-        i.message.toLowerCase().includes('duplicate'),
-      );
-      expect(issue).toBeDefined();
-    }
-  });
-});
 
 describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
   const baseStage = {

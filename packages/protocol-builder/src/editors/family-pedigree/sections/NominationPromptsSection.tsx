@@ -1,279 +1,232 @@
-import { get } from 'es-toolkit/compat';
 import { useCallback, useMemo } from 'react';
 
-import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
+import type { RichSelectOption } from '@codaco/fresco-ui/form/fields/RichSelectGroup';
+import { FAMILY_PEDIGREE_BUILD_PROMPT_ID } from '@codaco/protocol-validation';
 
+import BinAttributeField, {
+  type BinAttributeSlot,
+  binAttributePickIssue,
+} from '../../../fields/BinAttributeField.tsx';
+import DefaultChoiceField from '../../../fields/DefaultChoiceField.tsx';
 import {
-  hasValidatedUse,
-  interfaceOwnedPickIssue,
-} from '../../../codebook/variableRoles.ts';
-import { withoutAbsentValues } from '../../../form/absentValues.ts';
-import {
-  crossClassPickIssue,
-  draftValidatedElsewhereMessage,
-  validatedElsewhereMessage,
-  variableDisplayName,
-} from '../../../form/arrayFields/crossClassPick.ts';
-import {
-  RowDialog,
-  RowList,
-  RowListItem,
-  rowId,
-  rowTemplate,
-  type RowListConfig,
-  type RowSaveOutcome,
-  type RowValues,
+  PromptTextField,
+  PromptTextPreview,
+} from '../../../fields/PromptTextField.tsx';
+import type {
+  RowEditorProps,
+  RowSaveContext,
+  RowSaveOutcome,
+  RowValues,
 } from '../../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
-import { useStageValue } from '../../../form/stageFormHooks.ts';
-import type { CodebookSubject } from '../../../protocol-context.ts';
-import { variablesForSubject } from '../../../protocol-context.ts';
-import BuilderSection from '../../../sections/BuilderSection.tsx';
+import PromptsSection from '../../../sections/PromptsSection.tsx';
+import { useStageSubject } from '../../../sections/useStageSubject.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
-import { usePedigreeVariableIndexes } from './entityTypeReset.ts';
+import { familyPedigreeMessages as messages } from './pedigreeMessages.ts';
 import {
-  NominationPromptEditor,
-  NominationPromptPreview,
-} from './NominationPromptRow.tsx';
-import { pedigreeMessages } from './pedigreeMessages.ts';
-import { draftRowVariables, unusableVariableIssue } from './slotWiring.ts';
+  NOMINATION_PROMPTS_PATH,
+  usePedigreeDraftBindings,
+} from './pedigreeSlots.ts';
 
-const PROMPTS_FIELD = 'nominationPrompts';
-const NODE_TYPE_FIELD = 'nodeConfig.type';
-const FORM_FIELD = 'nodeConfig.form';
+/** Where a nomination prompt keeps what it sets, and who it is limited to. */
+const VARIABLE_FIELD = 'attribute';
+const SEX_FIELD = 'onlyForSexAssignedAtBirth';
 
-/**
- * The refusal a switched-on but empty list earns.
- *
- * Encoded rather than formatted: it crosses the field's string-only error
- * contract on its way to the form's error region, and `FieldErrors` decodes it
- * where it is rendered — which also puts a standing refusal into the reader's
- * new language when they change it, without the researcher having to submit
- * again.
- */
-const AT_LEAST_ONE_PROMPT = createMessageError(
-  pedigreeMessages.nominationAtLeastOne,
-);
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
+/** What a nomination prompt with no limit means: anyone can be selected. */
+const ANYONE = 'anyone';
 
 /**
- * The optional questions the pedigree asks about every family member at once.
- *
- * A capability rather than a required list: a pedigree that only draws the
- * family is a complete pedigree, and the schema spells "this stage does not do
- * this" as the key's absence — so switching the section off removes it rather
- * than leaving an empty array behind.
- *
- * Every prompt names an attribute of the node type, so the section resets on
- * that type. `resetOn` is what takes the SWITCH off with the prompts: the node
- * configuration's own reset already discards them, but nothing there can reach
- * this section's switch, so it would stand open over an empty list and the
- * outline would call an optional section nobody has filled in finished. The
- * two resets compose into one write — see `NODE_TYPE_DEPENDENT_FIELDS`.
- *
- * Each prompt writes its attribute through a per-person toggle the participant
- * operates, which makes it an UNVALIDATED writer. Two rules follow, and they
- * are enforced twice each — once by the picker, which never offers a refused
- * attribute, and once here at save time, which is what catches a draft that
- * predates the rule or an imported protocol that never met it:
- *
- * 1. it may not take an attribute a form collects, whose validation the toggle
- *    would bypass — a form anywhere else in the protocol, or THIS stage's own
- *    family member form, which is unsaved and so appears in no protocol the
- *    role map is built from; and
- * 2. it may never take one the pedigree itself derives — the participant
- *    marker above all, whether the pedigree has been bound to it since the
- *    last save or only in this unsaved edit — and that rule has NO
- *    unchanged-pick escape, because re-saving such a prompt would go on
- *    overwriting the marker.
- *
- * The escape for rule 1 is anchored to the stage's own SAVED prompts, found BY
- * ROW ID rather than by the row the dialog opened on. The two differ once a
- * prompt has been edited more than once in a single unsaved session, and only
- * the saved anchor keeps an attribute the protocol ALREADY binds here
- * saveable.
+ * The attribute a nomination prompt sets to true on each person the
+ * participant selects. The interface writes it itself, without asking the
+ * participant anything a form could check, so it is an UNVALIDATED writer: it
+ * may not be an attribute a form collects.
  */
-export default function NominationPromptsSection() {
+const NOMINATION_SLOT: BinAttributeSlot = Object.freeze({
+  name: VARIABLE_FIELD,
+  variableType: 'boolean',
+  writerClass: 'unvalidated',
+  goneRefusal: messages.nominationVariableGoneRefusal,
+});
+
+const asString = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : undefined;
+
+/**
+ * The attributes the stage's other answers hold, as seen from one prompt:
+ * every attribute the stage's other answers and prompts are bound to, which
+ * is the stage's list less this prompt's own attribute, once.
+ */
+const boundElsewhereFrom = (
+  bound: readonly string[],
+  ownAttribute: string | undefined,
+): string[] => {
+  const own = ownAttribute === undefined ? -1 : bound.indexOf(ownAttribute);
+  return own === -1 ? [...bound] : bound.toSpliced(own, 1);
+};
+
+/**
+ * A fresh id for a nomination prompt.
+ *
+ * Never the id the interview gives the family-building step, which comes
+ * before every nomination prompt: a prompt reusing it is refused by the
+ * schema. A random id cannot be that word in practice, and this says so
+ * instead of relying on it.
+ */
+export function newNominationPromptId(): string {
+  let id: string = crypto.randomUUID();
+  while (id === FAMILY_PEDIGREE_BUILD_PROMPT_ID) id = crypto.randomUUID();
+  return id;
+}
+
+/** A new prompt starts with its id and nothing else. */
+const newNominationPrompt = (): Partial<RowValues> => ({
+  id: newNominationPromptId(),
+});
+
+/**
+ * One nomination prompt: the question, the attribute that records who the
+ * participant selects, and whether only people of one sex assigned at birth
+ * can be selected.
+ */
+function NominationPromptEditor({ item }: RowEditorProps) {
   const intl = useAppIntl();
-  const { savedFields } = useStageEditorForm();
-  const protocolContext = useProtocolContext();
-  const { roleMap, slotMap, draftSlotMap } = usePedigreeVariableIndexes();
-  const nodeType = useStageValue(NODE_TYPE_FIELD);
-  const formRows = useStageValue(FORM_FIELD);
-  const waiting = typeof nodeType !== 'string';
-
-  /**
-   * What this stage's own unsaved form collects, which the picker excludes and
-   * this gate refuses — the same list, so the two cannot disagree about a pick.
-   */
-  const draftFormVariables = useMemo(
-    () => draftRowVariables(formRows),
-    [formRows],
-  );
-
-  const subject: CodebookSubject | null = useMemo(
+  const subject = useStageSubject('node');
+  const { draftSlotMap, validatedPersonVariables, otherAnswerVariables } =
+    usePedigreeDraftBindings();
+  const committedAttribute = asString(item[VARIABLE_FIELD]);
+  const draftBoundElsewhere = useMemo(
     () =>
-      typeof nodeType === 'string' ? { entity: 'node', type: nodeType } : null,
-    [nodeType],
+      boundElsewhereFrom(
+        otherAnswerVariables.nominationPrompts,
+        committedAttribute,
+      ),
+    [committedAttribute, otherAnswerVariables.nominationPrompts],
   );
 
-  const allVariables = useMemo(
-    () =>
-      subject === null ? {} : variablesForSubject(protocolContext, subject),
-    [protocolContext, subject],
-  );
-
-  /**
-   * This row's own saved attribute, found by the row's stable id.
-   *
-   * The stage as the protocol last STORED it, not the document the form is
-   * working on: what this answers is whether the protocol ALREADY binds the
-   * attribute here, and a structural write moves the working document without
-   * anything being stored.
-   */
-  const savedVariableFor = useCallback(
-    (id: unknown): string => {
-      const saved: unknown = get(savedFields, PROMPTS_FIELD);
-      if (!Array.isArray(saved) || typeof id !== 'string') return '';
-      const row = saved.find(
-        (candidate) => isRecord(candidate) && candidate.id === id,
-      );
-      const variable = isRecord(row) ? row.variable : undefined;
-      return typeof variable === 'string' ? variable : '';
-    },
-    [savedFields],
-  );
-
-  const beforeSave = useCallback(
-    (value: RowValues): RowSaveOutcome => {
-      if (subject === null) return { row: value };
-      const variable = typeof value.variable === 'string' ? value.variable : '';
-
-      // The attribute itself, before anything about who else writes it: a
-      // collaborator can delete it — or change it to something a true/false
-      // toggle cannot be written into — while this row's dialog is open, and
-      // the picker showing it as unavailable does not stop the required rule
-      // seeing a nonempty value and letting the row close.
-      const unusable = unusableVariableIssue(allVariables, variable, 'boolean');
-      if (unusable !== undefined) {
-        return { refused: { fieldErrors: { variable: [unusable] } } };
-      }
-
-      const ownedIssue =
-        interfaceOwnedPickIssue(slotMap, subject, variable) ??
-        interfaceOwnedPickIssue(draftSlotMap, subject, variable);
-      if (ownedIssue !== undefined) {
-        return { refused: { fieldErrors: { variable: [ownedIssue] } } };
-      }
-
-      const saved = savedVariableFor(value.id);
-      // The form on the same screen, in its own words: told the attribute is
-      // "collected by a form elsewhere in this protocol", a researcher goes
-      // looking through their other stages for a field one section above.
-      if (
-        variable !== '' &&
-        variable !== saved &&
-        draftFormVariables.includes(variable)
-      ) {
-        return {
-          refused: {
-            fieldErrors: {
-              variable: [
-                draftValidatedElsewhereMessage(
-                  variableDisplayName(allVariables, variable),
-                ),
-              ],
-            },
-          },
-        };
-      }
-
-      const issue = crossClassPickIssue({
-        variableId: variable,
-        originalVariableId: saved,
-        hasConflictingUse: (variableId) =>
-          hasValidatedUse(roleMap, subject, variableId),
-        allVariables,
-        message: validatedElsewhereMessage,
-      });
-      if (issue !== undefined) {
-        return { refused: { fieldErrors: { variable: [issue] } } };
-      }
-      return { row: value };
-    },
-    [
-      allVariables,
-      savedVariableFor,
-      draftFormVariables,
-      draftSlotMap,
-      roleMap,
-      slotMap,
-      subject,
+  // Held for as long as the reader's language does not change: a control's
+  // options are part of what it registers with, and a fresh array every render
+  // re-registers it.
+  const sexOptions = useMemo<RichSelectOption[]>(
+    () => [
+      {
+        value: ANYONE,
+        label: intl.formatMessage(messages.nominationSexAnyone),
+      },
+      {
+        value: 'female',
+        label: intl.formatMessage(messages.nominationSexFemale),
+      },
+      { value: 'male', label: intl.formatMessage(messages.nominationSexMale) },
     ],
-  );
-
-  const rowList = useMemo<RowListConfig>(
-    () => ({
-      Preview: NominationPromptPreview,
-      Editor: NominationPromptEditor,
-      addTitle: pedigreeMessages.nominationAddTitle,
-      editTitle: pedigreeMessages.nominationEditTitle,
-      description: pedigreeMessages.nominationDetailsDescription,
-      formId: 'nomination-prompt-editor',
-      name: PROMPTS_FIELD,
-      beforeSave,
-      normalize: (row) => withoutAbsentValues(row) as RowValues,
-    }),
-    [beforeSave],
+    [intl],
   );
 
   return (
-    <BuilderSection
-      title={intl.formatMessage(pedigreeMessages.nominationTitle)}
-      description={intl.formatMessage(
-        waiting
-          ? pedigreeMessages.nominationWaitingDescription
-          : pedigreeMessages.nominationDescription,
-      )}
-      disabled={waiting}
-      resetOn={NODE_TYPE_FIELD}
-      capability={{
-        fields: [PROMPTS_FIELD],
-        confirmClear: {
-          title: pedigreeMessages.nominationPromptsClearTitle,
-          description: pedigreeMessages.nominationPromptsClearDescription,
-          confirmLabel: pedigreeMessages.nominationPromptsClearConfirm,
-        },
-      }}
-    >
-      <RowList config={rowList}>
-        <Field<typeof ArrayField<RowValues>>
-          name={PROMPTS_FIELD}
-          label={intl.formatMessage(pedigreeMessages.nominationFieldLabel)}
-          component={ArrayField}
-          getId={rowId}
-          addButtonLabel={intl.formatMessage(
-            pedigreeMessages.nominationAddLabel,
-          )}
-          // A DESCRIPTOR rather than a word: every sentence the noun goes into
-          // is formatted where it is read, so resolving it here would put an
-          // English noun into a Spanish sentence.
-          itemLabel={pedigreeMessages.nominationPromptNoun}
-          emptyStateMessage={intl.formatMessage(
-            pedigreeMessages.nominationEmptyState,
-          )}
-          itemComponent={RowListItem}
-          editorComponent={RowDialog}
-          itemTemplate={rowTemplate()}
-          sortable
-          required={AT_LEAST_ONE_PROMPT}
-        />
-      </RowList>
-    </BuilderSection>
+    <>
+      <PromptTextField
+        item={item}
+        placeholder={intl.formatMessage(messages.nominationTextPlaceholder)}
+        hint={intl.formatMessage(messages.nominationTextHint)}
+      />
+      <BinAttributeField
+        slot={NOMINATION_SLOT}
+        subject={subject}
+        committed={asString(item[VARIABLE_FIELD])}
+        label={intl.formatMessage(messages.nominationVariableLabel)}
+        hint={intl.formatMessage(messages.nominationVariableHint)}
+        emptyMessage={intl.formatMessage(messages.nominationVariableEmpty)}
+        requiredMessage={intl.formatMessage(
+          messages.nominationVariableRequired,
+        )}
+        createLabel={intl.formatMessage(messages.nominationVariableCreateLabel)}
+        draftConflicting={validatedPersonVariables}
+        draftSlotMap={draftSlotMap}
+        draftBoundElsewhere={draftBoundElsewhere}
+        editsValues={false}
+      />
+      <Field<typeof DefaultChoiceField>
+        name={SEX_FIELD}
+        component={DefaultChoiceField}
+        label={intl.formatMessage(messages.nominationSexLabel)}
+        hint={intl.formatMessage(messages.nominationSexHint)}
+        options={sexOptions}
+        defaultOption={ANYONE}
+        initialValue={asString(item[SEX_FIELD])}
+      />
+    </>
+  );
+}
+
+/**
+ * The questions a Family Pedigree asks about the whole family once it is
+ * drawn, each answered by selecting the people it applies to.
+ *
+ * The shared prompts list at `nominationPrompts`, which a stage may go
+ * without: emptying the list removes the key, because the schema accepts no
+ * stage holding an empty one. The attribute each prompt sets is picked as
+ * every unvalidated writer's is — never one a form collects, nor one the
+ * interface owns for a slot of its own — and this stage's own unsaved
+ * bindings count, so a pick made a moment ago in another section constrains
+ * this one before anything is saved.
+ */
+export default function NominationPromptsSection() {
+  const { identity } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
+  const subject = useStageSubject('node');
+  const { draftSlotMap, validatedPersonVariables, otherAnswerVariables } =
+    usePedigreeDraftBindings();
+
+  const beforeSave = useCallback(
+    (row: RowValues, context: RowSaveContext): RowSaveOutcome => {
+      const issue = binAttributePickIssue({
+        protocolContext,
+        excludedStageId: identity.id,
+        subject,
+        slot: NOMINATION_SLOT,
+        variableId: asString(row[VARIABLE_FIELD]) ?? '',
+        openedOnVariableId: asString(context.openedOn[VARIABLE_FIELD]) ?? '',
+        draftConflicting: validatedPersonVariables,
+        draftSlotMap,
+        draftBoundElsewhere: boundElsewhereFrom(
+          otherAnswerVariables.nominationPrompts,
+          asString(context.openedOn[VARIABLE_FIELD]),
+        ),
+      });
+      return issue === undefined
+        ? { row }
+        : { refused: { fieldErrors: { [VARIABLE_FIELD]: [issue] } } };
+    },
+    [
+      draftSlotMap,
+      identity.id,
+      otherAnswerVariables.nominationPrompts,
+      protocolContext,
+      subject,
+      validatedPersonVariables,
+    ],
+  );
+
+  return (
+    <PromptsSection
+      PromptEditor={NominationPromptEditor}
+      PromptPreview={PromptTextPreview}
+      beforeSave={beforeSave}
+      itemTemplate={newNominationPrompt}
+      name={NOMINATION_PROMPTS_PATH}
+      optional
+      title={messages.nominationTitle}
+      description={messages.nominationDescription}
+      waitingDescription={messages.nominationWaiting}
+      fieldLabel={messages.nominationFieldLabel}
+      fieldHint={messages.nominationListHint}
+      addLabel={messages.nominationAddLabel}
+      addTitle={messages.nominationAddTitle}
+      editTitle={messages.nominationEditTitle}
+      itemNoun={messages.nominationItemNoun}
+      emptyState={messages.nominationEmptyState}
+      rowDescription={messages.nominationRowDescription}
+    />
   );
 }

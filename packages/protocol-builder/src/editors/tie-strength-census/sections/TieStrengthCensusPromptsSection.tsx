@@ -446,6 +446,7 @@ function TieStrengthCensusPromptEditor({ item }: RowEditorProps) {
               tieStrengthPromptMessages.declinePlaceholder,
             )}
             singleLine
+            compact
             initialValue={asLocalizedString(item[DECLINE_FIELD])}
             required={intl.formatMessage(
               tieStrengthPromptMessages.declineRequired,

@@ -4,18 +4,13 @@ import { describe, expect, it } from 'vitest';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
-import {
-  fixtureLocalization,
-  fixtureStageIds,
-} from '../../../testing/protocolFixture.ts';
+import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import { dyadCensusStageEditor } from '../DyadCensusStageEditor.ts';
-
-const FIXTURE_LOCALIZATION = fixtureLocalization();
 
 /**
  * The editor as a host reaches it: through its own registry entry, so every
@@ -221,9 +216,7 @@ describe('creating a dyad census stage', () => {
 
     // This interface's template carries nothing, so the new stage opens with
     // nothing written for the researcher to find and undo.
-    expect(getInterfaceTemplate('DyadCensus', FIXTURE_LOCALIZATION)).toEqual(
-      {},
-    );
+    expect(getInterfaceTemplate('DyadCensus')).toEqual({});
     expect(screen.queryAllByRole('button', { name: /^Edit prompt/ })).toEqual(
       [],
     );
@@ -310,8 +303,7 @@ describe('creating a dyad census stage', () => {
     });
 
     expect(
-      getInterfaceTemplate('DyadCensus', FIXTURE_LOCALIZATION)
-        .introductionPanel,
+      getInterfaceTemplate('DyadCensus').introductionPanel,
     ).toBeUndefined();
     expect(await harness.submit()).toBeNull();
   });
