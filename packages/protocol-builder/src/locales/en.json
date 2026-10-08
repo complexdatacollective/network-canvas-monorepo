@@ -3888,8 +3888,8 @@
     "description": "Name of the completeness choice that requires the participant’s parents, siblings and children."
   },
   "protocolBuilder.pedigree.completenessScopeFirstDegreeDescription": {
-    "defaultMessage": "First-degree relatives.",
-    "description": "Says what the parents-siblings-and-children choice requires. First-degree relatives are a person’s parents, siblings and children."
+    "defaultMessage": "First-degree relatives, and the other biological parent of each of the participant’s biological children.",
+    "description": "Says what the parents-siblings-and-children choice requires. First-degree relatives are a person’s parents, siblings and children. The other biological parent of a child is the person who gave the egg or sperm the participant did not; their own family is not required."
   },
   "protocolBuilder.pedigree.completenessScopeGrandparents": {
     "defaultMessage": "Three generations",
@@ -4293,7 +4293,7 @@
   },
   "protocolBuilder.pedigree.personFormReservedRefusal": {
     "defaultMessage": "The interface already records this attribute itself, so these fields cannot collect it as well. Choose another attribute, or remove the field.",
-    "description": "Refusal shown when an additional person field collects an attribute already chosen as one of the Family Pedigree’s own person attributes (name, gender identity, sex assigned at birth or participant marker) or as the attribute a nomination prompt sets."
+    "description": "Refusal shown when an additional person field collects an attribute already chosen as one of the Family Pedigree’s own person attributes (name, gender identity, sex assigned at birth, participant marker or relationship to the participant) or as the attribute a nomination prompt sets."
   },
   "protocolBuilder.pedigree.personFormTitle": {
     "defaultMessage": "Additional person fields",
@@ -4314,6 +4314,42 @@
   "protocolBuilder.pedigree.promptTitle": {
     "defaultMessage": "Prompt",
     "description": "Heading of the section holding the instruction a Family Pedigree shows the participant while they draw their family."
+  },
+  "protocolBuilder.pedigree.relationshipToParticipantClearConfirm": {
+    "defaultMessage": "Stop recording",
+    "description": "Button that confirms switching off recording the relationship to the participant."
+  },
+  "protocolBuilder.pedigree.relationshipToParticipantClearDescription": {
+    "defaultMessage": "The attribute will be removed from this stage, and the interview will stop updating it. The attribute stays in the codebook, and any filter or skip logic that uses it will no longer find new relationships.",
+    "description": "Body of the confirmation shown before recording the relationship to the participant is switched off, saying what changes. An attribute is a codebook variable."
+  },
+  "protocolBuilder.pedigree.relationshipToParticipantClearTitle": {
+    "defaultMessage": "Stop recording relationships to the participant?",
+    "description": "Title of the confirmation shown before a researcher switches off recording each family member’s relationship to the participant."
+  },
+  "protocolBuilder.pedigree.relationshipToParticipantCreateLabel": {
+    "defaultMessage": "Create a new relationship to the participant attribute",
+    "description": "Title of the dialog that creates a new categorical attribute for each family member’s relationship to the participant, with the options the interface sets."
+  },
+  "protocolBuilder.pedigree.relationshipToParticipantDescription": {
+    "defaultMessage": "Saves how each person is related to the participant, such as parent, sibling or cousin, so that later stages can filter or skip on it. The interview works it out from the family the participant draws; it is never asked.",
+    "description": "Explains what recording the relationship to the participant does. A filter or skip logic in a later stage can only test a person’s own attributes, which is why the relationship is saved as one. It is updated every time the participant leaves the stage."
+  },
+  "protocolBuilder.pedigree.relationshipToParticipantHint": {
+    "defaultMessage": "The interface sets this attribute’s options: parent, sibling, cousin and so on, naming neither gender nor side of the family. Everyone connected to the participant is given one; the participant is not. To show a later stage only first-degree biological relatives, for example, filter on parent, donor, sibling, child and donor-conceived child.",
+    "description": "Guidance under the relationship-to-the-participant attribute control. The option values are fixed by the interface; their labels can be translated in the codebook. Donor-conceived child is a child conceived with the person as a gamete donor."
+  },
+  "protocolBuilder.pedigree.relationshipToParticipantLabel": {
+    "defaultMessage": "Relationship to the participant",
+    "description": "Label of the control choosing the categorical attribute that holds each family member’s relationship to the participant."
+  },
+  "protocolBuilder.pedigree.relationshipToParticipantOption": {
+    "defaultMessage": "{value, select, parent {Parent} adoptiveParent {Adoptive parent} stepParent {Step-parent} donor {Donor} surrogate {Surrogate} child {Child} adoptiveChild {Adoptive child} stepChild {Stepchild} donorConceivedChild {Donor-conceived child} surrogacyChild {Child born through surrogacy} sibling {Sibling} halfSibling {Half-sibling} adoptiveSibling {Adoptive sibling} stepSibling {Step-sibling} partner {Partner} formerPartner {Former partner} grandparent {Grandparent} greatGrandparent {Great-grandparent} grandchild {Grandchild} greatGrandchild {Great-grandchild} parentsSibling {Parent’s sibling} grandparentsSibling {Grandparent’s sibling} siblingsChild {Sibling’s child} cousin {Cousin} parentInLaw {Parent-in-law} siblingInLaw {Sibling-in-law} childInLaw {Child-in-law} other {Other relative}}",
+    "description": "Default label of one option of a new relationship-to-the-participant attribute: how a family member is related to the participant, in words that name neither gender nor side of the family. The label is written into the protocol as participant-facing text, and researchers can change it. parent, child and sibling are biological; donor is an egg or sperm donor; surrogate carried the pregnancy without giving a gamete; donorConceivedChild is a child conceived with the participant as a donor; surrogacyChild is a child the participant carried as a surrogate; adoptiveSibling is related through adoption only; stepParent is a step or social parent."
+  },
+  "protocolBuilder.pedigree.relationshipToParticipantTitle": {
+    "defaultMessage": "Record each person’s relationship to the participant",
+    "description": "Title of the switch, and of the part of the person attributes section it opens, that makes a Family Pedigree save each family member’s relationship to the participant (parent, sibling, cousin…) as an attribute. Off by default."
   },
   "protocolBuilder.pedigree.relationshipTypeChangeConfirm": {
     "defaultMessage": "Change the edge type",
@@ -5974,6 +6010,18 @@
   "protocolBuilder.slotVariable.emptyState": {
     "defaultMessage": "No attributes of this type can be used here yet. Create one to continue.",
     "description": "Shown in place of an attribute list when the codebook offers nothing this control can take, usually because every candidate is already written by something else. \"Of this type\" means of the attribute type the control needs, such as text or true/false."
+  },
+  "protocolBuilder.slotVariable.managedElsewhereNote": {
+    "defaultMessage": "{count, plural, one {Its options are managed by the {stageLabels} stage, which decides the kinship words each one takes, and only one stage may manage them. Choose another attribute, or stop asking about gender identity here.} other {Its options are managed by the stages {stageLabels}, which decide the kinship words each one takes, and only one stage may manage them. Choose another attribute, or stop asking about gender identity here.}}",
+    "description": "Shown under the gender identity attribute control of a Family Pedigree stage when the attribute it holds already has its list of answers managed by another stage. A stage is one step of an interview. stageLabels is the researcher’s own name for each of those steps, already in quotation marks and separated by commas, and is not translated here. count is how many steps manage the answers. The kinship words are the family words (mother, brother, parent) a family-tree step uses for each answer."
+  },
+  "protocolBuilder.slotVariable.managedElsewhereOptionLabel": {
+    "defaultMessage": "{attributeName} — its options are managed by another stage",
+    "description": "Name of the option standing for the attribute a control already holds, when that attribute’s list of answers is managed by another stage, so this stage cannot use it. Shown in the list beside the attributes that can still be chosen. attributeName is the codebook name of the attribute, which is not translated."
+  },
+  "protocolBuilder.slotVariable.managedElsewhereRefusal": {
+    "defaultMessage": "\"{attributeName}\" cannot be used here, because only one stage may manage an attribute’s options. Choose another attribute.",
+    "description": "Refusal shown under an attribute control whose stage manages the attribute’s list of answers (a Family Pedigree’s gender identity, whose answers each take kinship words), when the attribute picked already has its answers managed by another stage. attributeName is the codebook name of the attribute, which is not translated."
   },
   "protocolBuilder.slotVariable.unvalidatedElsewhereRefusal": {
     "defaultMessage": "\"{attributeName}\" is written without validation by another stage, so it cannot also be collected here (the values that stage writes bypass this attribute’s validation)",
