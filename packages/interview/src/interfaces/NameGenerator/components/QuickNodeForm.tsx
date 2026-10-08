@@ -1,18 +1,9 @@
 'use client';
 import { motion, type Variants } from 'motion/react';
-import {
-  type RefObject,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback } from 'react';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import Form from '@codaco/fresco-ui/form/Form';
-import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type {
   FormSubmissionResult,
   FormSubmitHandler,
@@ -31,7 +22,6 @@ import {
 } from '../../../selectors/forms';
 import { getCodebookVariablesForSubjectType } from '../../../selectors/protocol';
 import { getPromptAdditionalAttributes } from '../../../selectors/session';
-import { useTrackWrite } from '../../../store/WritesInFlightContext';
 import { interfaceMessages } from '../../messages';
 import QuickAddField from './QuickAddField';
 
@@ -52,42 +42,6 @@ const containerVariants: Variants = {
   },
 };
 
-/**
- * Counts each submission of the form it is rendered in as a save under way
- * from the moment it starts, while the name is still being checked, so leaving
- * the stage waits for it. Once the submission is over, it counts as stored
- * when `added` says the person was added.
- */
-function TrackSubmissions({ added }: { added: RefObject<boolean> }) {
-  const storeApi = useContext(FormStoreContext);
-  const trackWrite = useTrackWrite();
-
-  useEffect(() => {
-    if (!storeApi) return;
-    let settle: ((stored: boolean) => void) | undefined;
-    const unsubscribe = storeApi.subscribe((state, previous) => {
-      if (state.isSubmitting === previous.isSubmitting) return;
-      if (state.isSubmitting) {
-        added.current = false;
-        trackWrite(
-          new Promise<boolean>((resolve) => {
-            settle = resolve;
-          }),
-        );
-        return;
-      }
-      settle?.(added.current);
-      settle = undefined;
-    });
-    return () => {
-      unsubscribe();
-      settle?.(false);
-    };
-  }, [storeApi, trackWrite, added]);
-
-  return null;
-}
-
 type QuickNodeFormProps = {
   disabled: boolean;
   targetVariable: string;
@@ -105,8 +59,6 @@ const QuickNodeForm = ({
 }: QuickNodeFormProps) => {
   const intl = useAppIntl();
   const newNodeAttributes = useStageSelector(getPromptAdditionalAttributes);
-  const [successfulSubmissionCount, setSuccessfulSubmissionCount] = useState(0);
-  const added = useRef(false);
 
   // Derive the target variable's validation props directly from its
   // codebook definition — quick-add renders its own QuickAddField and only
@@ -158,7 +110,7 @@ const QuickNodeForm = ({
         }
       : undefined;
 
-  const handleSubmit: FormSubmitHandler = useCallback(
+  const handleAdd: FormSubmitHandler = useCallback(
     async (values) => {
       if (disabled) {
         return {
@@ -180,15 +132,10 @@ const QuickNodeForm = ({
         };
       }
 
-      const saved = await addNode({
+      return addNode({
         ...newNodeAttributes,
         ...patchResult.patch.set,
       });
-      if (saved.success) {
-        added.current = true;
-        setSuccessfulSubmissionCount((count) => count + 1);
-      }
-      return saved;
     },
     [disabled, addNode, newNodeAttributes, targetVariable],
   );
@@ -204,20 +151,17 @@ const QuickNodeForm = ({
         layout
         data-testid="quick-add-form"
       >
-        <Form onSubmit={handleSubmit}>
-          <TrackSubmissions added={added} />
-          <QuickAddField
-            name={targetVariable}
-            disabled={disabled}
-            placeholder={intl.formatMessage(
-              interfaceMessages.quickLabelPlaceholder,
-            )}
-            onShowInput={onShowForm ?? undefined}
-            successfulSubmissionCount={successfulSubmissionCount}
-            {...validationProps}
-            validationContext={validationContext}
-          />
-        </Form>
+        <QuickAddField
+          name={targetVariable}
+          disabled={disabled}
+          placeholder={intl.formatMessage(
+            interfaceMessages.quickLabelPlaceholder,
+          )}
+          onShowInput={onShowForm ?? undefined}
+          onAdd={handleAdd}
+          {...validationProps}
+          validationContext={validationContext}
+        />
       </motion.div>
     </>
   );
