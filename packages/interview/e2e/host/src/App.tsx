@@ -1,8 +1,7 @@
 import {
+  type ComponentProps,
   useCallback,
   useEffect,
-  useMemo,
-  useRef,
   useState,
   useSyncExternalStore,
 } from 'react';
@@ -19,6 +18,7 @@ import { mockFinish, mockSync } from './mockCallbacks';
 import {
   createInterview as createInterviewHook,
   getAllowStageNavigation,
+  getMountGeneration,
   getRequestedLocale,
   getTestState,
   installProtocol as installProtocolHook,
@@ -68,11 +68,12 @@ function useTestState() {
       // Include allowStageNavigation so a mid-test setAllowStageNavigation()
       // toggle changes the snapshot and re-renders App (which re-reads the flag
       // and passes it to Shell). Without it useSyncExternalStore would bail out.
+      // The mount generation likewise re-renders App for remountInterview().
       `${Array.from(getTestState().interviews.entries())
         .map(([id]) => id)
         .join(
           ',',
-        )}|${getAllowStageNavigation()}|${JSON.stringify(getRequestedLocale())}`,
+        )}|${getAllowStageNavigation()}|${JSON.stringify(getRequestedLocale())}|${getMountGeneration()}`,
     () => '',
   );
 }
@@ -128,21 +129,6 @@ export default function App() {
     ? getTestState().protocols.get(entry.protocolId)
     : undefined;
 
-  // Stable ref to the current entry/protocol so useMemo only recreates the
-  // payload (and thus the Redux store inside Shell) when the interview ID
-  // changes, not on every step change or App re-render.
-  const entryRef = useRef(entry);
-  entryRef.current = entry;
-  const protocolRef = useRef(protocol);
-  protocolRef.current = protocol;
-
-  const payload: InterviewPayload | null = useMemo(() => {
-    const e = entryRef.current;
-    const p = protocolRef.current;
-    if (!e || !p) return null;
-    return { session: e.session, protocol: p };
-  }, [activeId]);
-
   if (!activeId) {
     return <div>No interview selected. Use ?interviewId=... in the URL.</div>;
   }
@@ -155,25 +141,52 @@ export default function App() {
     return <div>Unknown protocol for interview: {entry.protocolId}</div>;
   }
 
-  if (!payload) {
-    return <div>Loading...</div>;
-  }
-
   return (
     <AnimationProvider disableAnimations reducedMotion="always">
-      <Shell
-        payload={payload}
+      {/*
+        Each key is one mount of an interview: selecting another interview, or
+        remountInterview() bumping the generation, starts a fresh Shell from the
+        session held at that moment.
+      */}
+      <MountedInterview
+        key={`${activeId}:${getMountGeneration()}`}
+        session={entry.session}
+        protocol={protocol}
         requestedLocale={getRequestedLocale()}
-        onSync={mockSync}
-        onFinish={mockFinish}
-        onRequestAsset={mockAssetReq}
+        allowStageNavigation={getAllowStageNavigation()}
         currentStep={currentStep}
         onStepChange={onStepChange}
-        allowStageNavigation={getAllowStageNavigation()}
-        flags={{ isE2E: true }}
-        analytics={{ installationId: 'e2e', hostApp: 'e2e' }}
-        disableAnalytics={true}
       />
     </AnimationProvider>
+  );
+}
+
+type MountedInterviewProps = InterviewPayload &
+  Pick<
+    ComponentProps<typeof Shell>,
+    'requestedLocale' | 'allowStageNavigation' | 'currentStep' | 'onStepChange'
+  >;
+
+function MountedInterview({
+  session,
+  protocol,
+  ...shellProps
+}: MountedInterviewProps) {
+  // The payload seeds the Shell's store, so it is fixed for the life of this
+  // mount; the session the host goes on to hold reaches the Shell only by a
+  // remount, never by re-seeding a running one.
+  const [payload] = useState<InterviewPayload>(() => ({ session, protocol }));
+
+  return (
+    <Shell
+      {...shellProps}
+      payload={payload}
+      onSync={mockSync}
+      onFinish={mockFinish}
+      onRequestAsset={mockAssetReq}
+      flags={{ isE2E: true }}
+      analytics={{ installationId: 'e2e', hostApp: 'e2e' }}
+      disableAnalytics={true}
+    />
   );
 }

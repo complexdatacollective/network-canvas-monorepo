@@ -178,6 +178,23 @@ vi.mock('../../../../../selectors/protocol', () => ({
 // would read real Redux state, so it returns null and the caller falls back to
 // its no-fields path. Everything else — including the validation-rule
 // resolution PersonNameField depends on — stays real.
+// Decrypting stored values for validation reads the passphrase from Redux;
+// this pedigree has none to decrypt.
+vi.mock('../../../../../forms/useValidationNetwork', async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import('../../../../../forms/useValidationNetwork')
+    >();
+  return {
+    ...actual,
+    useValidationNetwork: ({ network }: { network: unknown }) => ({ network }),
+  };
+});
+
+vi.mock('../../../../Anonymisation/usePassphrase', () => ({
+  usePassphrase: () => ({ isEnabled: false }),
+}));
+
 vi.mock('../../../../../selectors/forms', async (importOriginal) => {
   const actual =
     await importOriginal<typeof import('../../../../../selectors/forms')>();

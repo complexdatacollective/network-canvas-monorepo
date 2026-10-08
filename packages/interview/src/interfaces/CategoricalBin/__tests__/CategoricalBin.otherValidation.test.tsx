@@ -55,7 +55,13 @@ class StubResizeObserver {
   disconnect() {}
 }
 
-class ImmediateIntersectionObserver {
+// jsdom has no IntersectionObserver. This one reports every observed element
+// as fully in view.
+class ImmediateIntersectionObserver implements IntersectionObserver {
+  readonly root = null;
+  readonly rootMargin = '';
+  readonly scrollMargin = '';
+  readonly thresholds: readonly number[] = [];
   private callback: IntersectionObserverCallback;
 
   constructor(callback: IntersectionObserverCallback) {
@@ -63,26 +69,34 @@ class ImmediateIntersectionObserver {
   }
 
   observe(target: Element) {
-    // jsdom has no real IntersectionObserver, and the DOM lib's
-    // IntersectionObserverEntry/IntersectionObserver types carry many
-    // properties (boundingClientRect, intersectionRatio, ...) this minimal
-    // stub doesn't implement. This is the same narrow, established stub
-    // pattern used package-wide (see SlidesForm.navigation.test.tsx and
-    // NetworkComposer.inspector.test.tsx).
-    this.callback(
-      [{ isIntersecting: true, target } as IntersectionObserverEntry],
-      this as unknown as IntersectionObserver,
-    );
+    // Entries are reported on a later task, as a real observer reports them:
+    // a callback fired from inside observe() reaches components that have not
+    // finished mounting, such as the animated icon of the Alert a form error
+    // renders in.
+    setTimeout(() => {
+      const bounds = target.getBoundingClientRect();
+      this.callback(
+        [
+          {
+            target,
+            isIntersecting: true,
+            intersectionRatio: 1,
+            boundingClientRect: bounds,
+            intersectionRect: bounds,
+            rootBounds: null,
+            time: 0,
+          },
+        ],
+        this,
+      );
+    }, 0);
   }
 
   unobserve() {}
   disconnect() {}
-  takeRecords() {
+  takeRecords(): IntersectionObserverEntry[] {
     return [];
   }
-  readonly root = null;
-  readonly rootMargin = '';
-  readonly thresholds = [];
 }
 
 beforeAll(() => {
@@ -531,13 +545,25 @@ describe('CategoricalBin other-input honours codebook validation', () => {
     expect(track).not.toHaveBeenCalled();
   });
 
-  it('does not commit an Other drop when the node update is rejected', async () => {
+  it('keeps the Other answer open with the error, and commits nothing, when the node update is rejected', async () => {
     const { store, getDndStore } = renderCategoricalBin(undefined, false, true);
 
     await dropNodeIntoOtherBin(getDndStore);
-    await screen.findByRole('textbox');
+    fireEvent.change(await screen.findByRole('textbox'), {
+      target: { value: 'kept for a retry' },
+    });
     fireEvent.click(screen.getByTestId('dialog-submit'));
 
+    expect(
+      await screen.findByText('An error occurred while submitting the form.'),
+    ).toBeVisible();
+    expect(screen.getByRole('textbox')).toHaveValue('kept for a retry');
+    expect(getOtherAttribute(store)).toBeUndefined();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('dialog-cancel'));
+      await new Promise((resolve) => setTimeout(resolve, 550));
+    });
     await waitForDialogToClose();
 
     expect(getOtherAttribute(store)).toBeUndefined();

@@ -3,7 +3,7 @@ import { invariant } from 'es-toolkit';
 import { find, get } from 'es-toolkit/compat';
 import { v4 as uuid } from 'uuid';
 
-import type { Codebook } from '@codaco/protocol-validation';
+import type { Codebook, Variable } from '@codaco/protocol-validation';
 import {
   type EntityPrimaryKey,
   entityAttributesProperty,
@@ -17,7 +17,12 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import { generateSecureAttributes } from '../../interfaces/Anonymisation/utils';
+import { rememberEncryptedWrite } from '../../interfaces/Anonymisation/decryptionScope';
+import { isAttributeEncrypted } from '../../interfaces/Anonymisation/isAttributeEncrypted';
+import {
+  generateSecureAttributes,
+  PassphraseRequiredError,
+} from '../../interfaces/Anonymisation/utils';
 import {
   makeGetCodebookVariablesForEdgeType,
   makeGetCodebookVariablesForNodeType,
@@ -34,6 +39,7 @@ import {
   type AttributePatch,
   validateAttributePatch,
 } from '../entityAttributePatch';
+import type { RootState } from '../store';
 import { getShouldEncryptNames } from './protocol';
 
 // reducer helpers:
@@ -126,8 +132,11 @@ const actionTypes = {
   transitionStage: 'SESSION/TRANSITION_STAGE',
   updateStageMetadata: 'SESSION/UPDATE_STAGE_METADATA',
   addNode: 'NETWORK/ADD_NODE' as const,
+  addNodesAndEdges: 'NETWORK/ADD_NODES_AND_EDGES' as const,
   deleteNode: 'NETWORK/DELETE_NODE' as const,
+  restoreNode: 'NETWORK/RESTORE_NODE' as const,
   updateNode: 'NETWORK/UPDATE_NODE' as const,
+  restoreNodeAttributes: 'NETWORK/RESTORE_NODE_ATTRIBUTES' as const,
   toggleNodeAttributes: 'NETWORK/TOGGLE_NODE_ATTRIBUTES' as const,
   addNodeToPrompt: 'NETWORK/ADD_NODE_TO_PROMPT' as const,
   removeNodeFromPrompt: 'NETWORK/REMOVE_NODE_FROM_PROMPT' as const,
@@ -139,6 +148,51 @@ const actionTypes = {
 };
 
 const initialState = {} as SessionState;
+
+/**
+ * The passphrase an encrypted write may use. Throwing rejects the whole write,
+ * so a patch that mixes encrypted and plain values is never applied in part.
+ */
+function requireUsablePassphrase(state: {
+  ui: { passphrase: string | null; passphraseInvalid: boolean };
+}): string {
+  const { passphrase, passphraseInvalid } = state.ui;
+  if (!passphrase || passphraseInvalid) {
+    throw new PassphraseRequiredError();
+  }
+  return passphrase;
+}
+
+/**
+ * Encrypts `attributes` with the usable passphrase in force, which must still
+ * be in force and usable once encryption finishes. Deriving the keys takes
+ * long enough for the passphrase to be replaced or found not to work in the
+ * meantime, and a write encrypted with a passphrase no longer in force could
+ * not be read with the one that is, so it is refused.
+ */
+async function encryptWithPassphraseInForce(
+  getState: () => RootState,
+  attributes: Record<string, VariableValue>,
+  variables: Record<string, Variable>,
+) {
+  const passphrase = requireUsablePassphrase(getState());
+  const encrypted = await generateSecureAttributes(
+    attributes,
+    variables,
+    passphrase,
+  );
+  if (requireUsablePassphrase(getState()) !== passphrase) {
+    throw new PassphraseRequiredError();
+  }
+  rememberEncryptedWrite(
+    getState,
+    passphrase,
+    attributes,
+    encrypted.encryptedAttributes,
+    encrypted.secureAttributes ?? {},
+  );
+  return encrypted;
+}
 
 type AddNodeArgs = {
   type: NcNode['type'];
@@ -157,103 +211,34 @@ type AddNodeArgs = {
   allowUnknownAttributes?: boolean;
 };
 
-export const addNode = createAppAsyncThunk(
-  actionTypes.addNode,
-  async (args: AddNodeArgs, thunkApi) => {
-    const {
-      type,
-      attributeData,
-      modelData,
-      useEncryption,
-      allowUnknownAttributes,
-      currentStep,
-    } = args;
-    const state = thunkApi.getState();
+/**
+ * The payload that adds a node: its attributes checked against the codebook,
+ * and encrypted where `useEncryption` asks. Throws when the node cannot be
+ * saved.
+ */
+async function prepareNode(args: AddNodeArgs, getState: () => RootState) {
+  const {
+    type,
+    attributeData,
+    modelData,
+    useEncryption,
+    allowUnknownAttributes,
+    currentStep,
+  } = args;
+  const state = getState();
 
-    const getCodebookVariablesForNodeType =
-      makeGetCodebookVariablesForNodeType(state);
+  const getCodebookVariablesForNodeType =
+    makeGetCodebookVariablesForNodeType(state);
 
-    const variablesForType = getCodebookVariablesForNodeType(type);
+  const variablesForType = getCodebookVariablesForNodeType(type);
 
-    const initialAttributes = applyEntityAttributePatch(
-      attributeData ?? {},
-      undefined,
-      { set: {}, unset: [] },
-    ).attributes;
+  const initialAttributes = applyEntityAttributePatch(
+    attributeData ?? {},
+    undefined,
+    { set: {}, unset: [] },
+  ).attributes;
 
-    if (!allowUnknownAttributes) {
-      const validation = validateAttributePatch(
-        { set: initialAttributes, unset: [] },
-        new Set(Object.keys(variablesForType)),
-      );
-
-      invariant(
-        validation.success,
-        `Invalid node attributes for type "${type}": ${validation.success ? '' : validation.error.keys.join(', ')} do not exist in protocol codebook`,
-      );
-    }
-
-    const sessionMeta = getSessionMeta(state, currentStep);
-
-    if (!useEncryption) {
-      return {
-        type,
-        attributeData: initialAttributes,
-        modelData,
-        sessionMeta,
-      };
-    }
-
-    const { passphrase } = state.ui;
-
-    invariant(
-      passphrase,
-      'Passphrase is required to add a node when encryption is enabled',
-    );
-
-    const { secureAttributes, encryptedAttributes } =
-      await generateSecureAttributes(
-        initialAttributes,
-        variablesForType,
-        passphrase,
-      );
-
-    return {
-      type,
-      attributeData: encryptedAttributes,
-      modelData,
-      secureAttributes,
-      sessionMeta,
-    };
-  },
-);
-
-export const addEdge = createAppAsyncThunk(
-  actionTypes.addEdge,
-  (
-    props: {
-      from: NcNode[EntityPrimaryKey];
-      to: NcNode[EntityPrimaryKey];
-      type: NcNode['type'];
-      attributeData?: Readonly<Record<string, VariableValue | undefined>>;
-      currentStep: number;
-    },
-    { getState },
-  ) => {
-    const { from, to, type, attributeData, currentStep } = props;
-    const state = getState();
-    const sessionMeta = getSessionMeta(state, currentStep);
-
-    const getCodebookVariablesForEdgeType =
-      makeGetCodebookVariablesForEdgeType(state);
-
-    const variablesForType = getCodebookVariablesForEdgeType(type);
-
-    const initialAttributes = applyEntityAttributePatch(
-      attributeData ?? {},
-      undefined,
-      { set: {}, unset: [] },
-    ).attributes;
+  if (!allowUnknownAttributes) {
     const validation = validateAttributePatch(
       { set: initialAttributes, unset: [] },
       new Set(Object.keys(variablesForType)),
@@ -261,19 +246,122 @@ export const addEdge = createAppAsyncThunk(
 
     invariant(
       validation.success,
-      `Invalid edge attributes for type "${type}": ${validation.success ? '' : validation.error.keys.join(', ')} do not exist in protocol codebook`,
+      `Invalid node attributes for type "${type}": ${validation.success ? '' : validation.error.keys.join(', ')} do not exist in protocol codebook`,
     );
+  }
 
-    const edgeId = uuid();
+  const sessionMeta = getSessionMeta(state, currentStep);
 
+  if (!useEncryption) {
     return {
-      sessionMeta,
-      from,
-      to,
       type,
       attributeData: initialAttributes,
-      edgeId,
+      modelData,
+      sessionMeta,
     };
+  }
+
+  const { secureAttributes, encryptedAttributes } =
+    await encryptWithPassphraseInForce(
+      getState,
+      initialAttributes,
+      variablesForType,
+    );
+
+  return {
+    type,
+    attributeData: encryptedAttributes,
+    modelData,
+    secureAttributes,
+    sessionMeta,
+  };
+}
+
+export const addNode = createAppAsyncThunk(
+  actionTypes.addNode,
+  (args: AddNodeArgs, { getState }) => prepareNode(args, getState),
+);
+
+type AddEdgeArgs = {
+  from: NcNode[EntityPrimaryKey];
+  to: NcNode[EntityPrimaryKey];
+  type: NcNode['type'];
+  attributeData?: Readonly<Record<string, VariableValue | undefined>>;
+  currentStep: number;
+};
+
+/**
+ * The payload that adds an edge, with its attributes checked against the
+ * codebook. Throws when the edge cannot be saved.
+ */
+function prepareEdge(props: AddEdgeArgs, state: RootState) {
+  const { from, to, type, attributeData, currentStep } = props;
+  const sessionMeta = getSessionMeta(state, currentStep);
+
+  const getCodebookVariablesForEdgeType =
+    makeGetCodebookVariablesForEdgeType(state);
+
+  const variablesForType = getCodebookVariablesForEdgeType(type);
+
+  const initialAttributes = applyEntityAttributePatch(
+    attributeData ?? {},
+    undefined,
+    { set: {}, unset: [] },
+  ).attributes;
+  const validation = validateAttributePatch(
+    { set: initialAttributes, unset: [] },
+    new Set(Object.keys(variablesForType)),
+  );
+
+  invariant(
+    validation.success,
+    `Invalid edge attributes for type "${type}": ${validation.success ? '' : validation.error.keys.join(', ')} do not exist in protocol codebook`,
+  );
+
+  const edgeId = uuid();
+
+  return {
+    sessionMeta,
+    from,
+    to,
+    type,
+    attributeData: initialAttributes,
+    edgeId,
+  };
+}
+
+export const addEdge = createAppAsyncThunk(
+  actionTypes.addEdge,
+  (props: AddEdgeArgs, { getState }) => prepareEdge(props, getState()),
+);
+
+/**
+ * Adds several nodes, and edges between them or existing nodes, as one change
+ * to the session: every one is prepared first, and if any cannot be saved,
+ * none is. The edges come back with their ids in the order they were given.
+ */
+export const addNodesAndEdges = createAppAsyncThunk(
+  actionTypes.addNodesAndEdges,
+  async (
+    {
+      nodes,
+      edges,
+      currentStep,
+    }: {
+      nodes: readonly Omit<AddNodeArgs, 'currentStep'>[];
+      edges: readonly Omit<AddEdgeArgs, 'currentStep'>[];
+      currentStep: number;
+    },
+    { getState },
+  ) => {
+    const preparedNodes: Awaited<ReturnType<typeof prepareNode>>[] = [];
+    for (const node of nodes) {
+      preparedNodes.push(await prepareNode({ ...node, currentStep }, getState));
+    }
+    const preparedEdges = edges.map((edge) =>
+      prepareEdge({ ...edge, currentStep }, getState()),
+    );
+    return { nodes: preparedNodes, edges: preparedEdges };
   },
 );
 
@@ -312,13 +400,12 @@ export const updateNode = createAppAsyncThunk(
         : `Invalid node attribute patch for type "${node.type}": ${validation.error.keys.join(', ')} ${validation.error.code === 'unknown-keys' ? 'do not exist in protocol codebook' : 'cannot be both set and unset'}`,
     );
 
-    const useEncryption = getShouldEncryptNames(state);
-    // We know that encryption is enabled at the protocol level, but are the node attributes we are updating encrypted?
-    const hasEncryptedAttributes = Object.keys(attributePatch.set).some(
-      (key) => variablesForType[key]?.encrypted,
+    const encryptionEnabled = getShouldEncryptNames(state);
+    const hasEncryptedAttributes = Object.keys(attributePatch.set).some((key) =>
+      isAttributeEncrypted(encryptionEnabled, variablesForType, key),
     );
 
-    if (!useEncryption || !hasEncryptedAttributes) {
+    if (!hasEncryptedAttributes) {
       return {
         nodeId,
         attributePatch,
@@ -327,15 +414,11 @@ export const updateNode = createAppAsyncThunk(
       };
     }
 
-    const { passphrase } = state.ui;
-
-    invariant(passphrase, 'Passphrase is required to update this node');
-
     const { secureAttributes, encryptedAttributes } =
-      await generateSecureAttributes(
+      await encryptWithPassphraseInForce(
+        thunkApi.getState,
         attributePatch.set,
         variablesForType,
-        passphrase,
       );
 
     return {
@@ -357,6 +440,37 @@ export const deleteNode = createAction<NcNode[EntityPrimaryKey]>(
 export const deleteEdge = createAction<NcEdge[EntityPrimaryKey]>(
   actionTypes.deleteEdge,
 );
+
+type SecureAttributeMetadata = NonNullable<
+  NcNode[typeof entitySecureAttributesMeta]
+>[string];
+
+/**
+ * Captured attribute values of one node, each with its secure-attribute
+ * metadata as stored. `null` records a key the node did not have.
+ */
+export type NodeAttributeSnapshot = Readonly<
+  Record<
+    string,
+    { value: VariableValue; secure?: SecureAttributeMetadata } | null
+  >
+>;
+
+/**
+ * Undo/redo support: puts back a node exactly as it was captured. Unlike
+ * addNode it neither validates nor encrypts, because the snapshot is already
+ * stored state — an encrypted value comes back together with its IV and salt.
+ */
+export const restoreNode = createAction<NcNode>(actionTypes.restoreNode);
+
+/**
+ * Undo/redo support: writes a captured slice of a node's attributes back, each
+ * value together with its own secure-attribute metadata (or the lack of it).
+ */
+export const restoreNodeAttributes = createAction<{
+  nodeId: NcNode[EntityPrimaryKey];
+  snapshot: NodeAttributeSnapshot;
+}>(actionTypes.restoreNodeAttributes);
 
 export const updatePrompt = createAction<number>(actionTypes.updatePrompt);
 /**
@@ -605,39 +719,81 @@ export const updateStageMetadata = createAction<{
   metadata: StageMetadataEntry;
 }>(actionTypes.updateStageMetadata);
 
+function newNodeFrom(
+  network: NcNetwork,
+  {
+    type,
+    attributeData,
+    secureAttributes,
+    sessionMeta,
+    modelData,
+  }: Awaited<ReturnType<typeof prepareNode>>,
+): NcNode {
+  const { promptId, stageId } = sessionMeta;
+  invariant(stageId, 'Stage ID is required to add a node');
+
+  // If node UUID is provided, check that it doesn't already exist in the network
+  if (modelData?.[entityPrimaryKeyProperty]) {
+    const existingNode = find(network.nodes, {
+      [entityPrimaryKeyProperty]: modelData[entityPrimaryKeyProperty],
+    });
+    invariant(!existingNode, 'Node with this ID already exists in network');
+  }
+
+  return {
+    [entityPrimaryKeyProperty]: modelData?.[entityPrimaryKeyProperty] ?? uuid(),
+    type,
+    [entityAttributesProperty]: attributeData,
+    [entitySecureAttributesMeta]: secureAttributes,
+    promptIDs: promptId ? [promptId] : [],
+    stageId: stageId,
+  };
+}
+
+function newEdgeFrom({
+  from,
+  to,
+  type,
+  attributeData,
+  edgeId,
+}: ReturnType<typeof prepareEdge>): NcEdge {
+  return {
+    [entityPrimaryKeyProperty]: edgeId,
+    from,
+    to,
+    type,
+    [entityAttributesProperty]: attributeData,
+  };
+}
+
 const sessionReducer = createReducer(initialState, (builder) => {
   builder.addCase(addNode.fulfilled, (state, action) => {
-    const { secureAttributes, sessionMeta, modelData } = action.payload;
-    const { promptId, stageId } = sessionMeta;
-    invariant(stageId, 'Stage ID is required to add a node');
-
-    const {
-      payload: { type, attributeData },
-    } = action;
-
-    // If node UUID is provided, check that it doesn't already exist in the network
-    if (modelData?.[entityPrimaryKeyProperty]) {
-      const existingNode = find(state.network.nodes, {
-        [entityPrimaryKeyProperty]: modelData[entityPrimaryKeyProperty],
-      });
-      invariant(!existingNode, 'Node with this ID already exists in network');
-    }
-
-    const newNode: NcNode = {
-      [entityPrimaryKeyProperty]:
-        modelData?.[entityPrimaryKeyProperty] ?? uuid(),
-      type,
-      [entityAttributesProperty]: attributeData,
-      [entitySecureAttributesMeta]: secureAttributes,
-      promptIDs: promptId ? [promptId] : [],
-      stageId: stageId,
-    };
+    const newNode = newNodeFrom(state.network, action.payload);
 
     return withLastUpdated({
       ...state,
       network: {
         ...state.network,
         nodes: [...state.network.nodes, newNode],
+      },
+    });
+  });
+
+  builder.addCase(addNodesAndEdges.fulfilled, (state, action) => {
+    const nodes = [...state.network.nodes];
+    for (const payload of action.payload.nodes) {
+      nodes.push(newNodeFrom({ ...state.network, nodes }, payload));
+    }
+
+    return withLastUpdated({
+      ...state,
+      network: {
+        ...state.network,
+        nodes,
+        edges: [
+          ...state.network.edges,
+          ...action.payload.edges.map(newEdgeFrom),
+        ],
       },
     });
   });
@@ -736,6 +892,81 @@ const sessionReducer = createReducer(initialState, (builder) => {
     });
   });
 
+  builder.addCase(restoreNode, (state, action) => {
+    const node = action.payload;
+    invariant(
+      !find(state.network.nodes, {
+        [entityPrimaryKeyProperty]: node[entityPrimaryKeyProperty],
+      }),
+      'Node with this ID already exists in network',
+    );
+
+    return withLastUpdated({
+      ...state,
+      network: {
+        ...state.network,
+        nodes: [...state.network.nodes, node],
+      },
+    });
+  });
+
+  builder.addCase(restoreNodeAttributes, (state, action) => {
+    const { nodeId, snapshot } = action.payload;
+    const { network } = state;
+
+    return withLastUpdated({
+      ...state,
+      network: {
+        ...network,
+        nodes: network.nodes.map((node) => {
+          if (node[entityPrimaryKeyProperty] !== nodeId) {
+            return node;
+          }
+
+          const entries = Object.entries(snapshot);
+          const captured = entries.flatMap(([key, entry]) =>
+            entry === null ? [] : [{ key, ...entry }],
+          );
+          const set = Object.fromEntries(
+            captured.map(({ key, value }): [string, VariableValue] => [
+              key,
+              value,
+            ]),
+          );
+          const secureSet = Object.fromEntries(
+            captured.flatMap(
+              ({ key, secure }): [string, SecureAttributeMetadata][] =>
+                secure ? [[key, secure]] : [],
+            ),
+          );
+
+          // Setting a key drops the metadata its current value carries, so a
+          // restored value only ever pairs with its own captured IV and salt.
+          const patched = applyEntityAttributePatch(
+            node[entityAttributesProperty],
+            node[entitySecureAttributesMeta],
+            {
+              set,
+              unset: entries.flatMap(([key, entry]) =>
+                entry === null ? [key] : [],
+              ),
+            },
+            secureSet,
+          );
+
+          const { [entitySecureAttributesMeta]: _stored, ...rest } = node;
+          return {
+            ...rest,
+            [entityAttributesProperty]: patched.attributes,
+            ...(patched.secureAttributes
+              ? { [entitySecureAttributesMeta]: patched.secureAttributes }
+              : {}),
+          };
+        }),
+      },
+    });
+  });
+
   builder.addCase(toggleNodeAttributes.fulfilled, (state, action) => {
     const { nodeId, attributePatch } = action.payload;
     const { network } = state;
@@ -785,10 +1016,6 @@ const sessionReducer = createReducer(initialState, (builder) => {
     const { network } = state;
     const { nodes } = network;
 
-    // TODO: must be updated to support encrypted attributes.
-    // Should have an additional parameter controlling this (see addNode)
-    // Stage should control this parameter, using the usePassphrase hook
-
     return withLastUpdated({
       ...state,
       network: {
@@ -835,17 +1062,7 @@ const sessionReducer = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(addEdge.fulfilled, (state, action) => {
-    const {
-      payload: { from, to, type, attributeData, edgeId },
-    } = action;
-
-    const newEdge: NcEdge = {
-      [entityPrimaryKeyProperty]: edgeId,
-      from,
-      to,
-      type,
-      [entityAttributesProperty]: attributeData,
-    };
+    const newEdge = newEdgeFrom(action.payload);
 
     return withLastUpdated({
       ...state,

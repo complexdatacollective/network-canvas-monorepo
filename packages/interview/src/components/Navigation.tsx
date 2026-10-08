@@ -307,7 +307,7 @@ const Navigation = ({
 
   const handleExit = useCallback(async () => {
     if (!onExit) return;
-    const confirmed = await confirm({
+    await confirm({
       title: (
         <AppMessage
           message={
@@ -331,9 +331,6 @@ const Navigation = ({
       ),
       cancelLabel: <AppMessage message={commonMessages.cancel} />,
       intent: 'warning',
-      onConfirm: () => {},
-    });
-    if (confirmed === true) {
       // Hand control back to the host only after pending session state is
       // written. The Shell's unmount-cleanup flush alone cannot enqueue the
       // final snapshot synchronously when a write is already on the wire (it
@@ -341,10 +338,15 @@ const Navigation = ({
       // unmounting the Shell — could re-read the session between the
       // in-flight write and the final one. Exit is the one teardown the
       // Shell controls, so wait out the full flush here; it never rejects
-      // and typically resolves in milliseconds.
-      await flushPendingSync();
-      onExit();
-    }
+      // and typically resolves in milliseconds. It runs while the
+      // confirmation is still open, so nothing more can be asked of the
+      // interview between the flush and the hand-over. When an answer still
+      // being saved is refused, or the participant cancels while it is
+      // saved, the interview stays open, so they see why and can try again.
+      onConfirm: async (signal) => {
+        if ((await flushPendingSync()) && !signal.aborted) onExit();
+      },
+    });
   }, [confirm, onExit, reviewMode, flushPendingSync]);
 
   const closeMenu = useCallback(
