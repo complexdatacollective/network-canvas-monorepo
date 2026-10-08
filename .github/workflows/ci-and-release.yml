@@ -1,10 +1,30 @@
 name: CI and Release
 
+# A pull request run is titled `PR #<number> → <base> · <pull request title>`.
+# `carry-forward-statuses` matches that prefix to tell apart two pull requests
+# from one branch (for example into `schema-9` and `main`), which a run's
+# `pull_requests` array cannot do. Other events keep a title like GitHub's own
+# default.
+run-name: >-
+  ${{ github.event_name == 'pull_request'
+  && format('PR #{0} → {1} · {2}', github.event.pull_request.number, github.event.pull_request.base.ref, github.event.pull_request.title)
+  || github.event.head_commit.message
+  || github.event.merge_group.head_commit.message
+  || github.workflow }}
+
 on:
+  # Release, publish, deploy and mirror jobs hang off this trigger (and are
+  # additionally guarded by `github.ref == 'refs/heads/main'`), so it stays
+  # `main` only: an integration branch never releases.
   push:
     branches: [main]
+  # Pull requests into `main` and into long-lived integration branches get the
+  # same CI. `integration/<name>` is the convention for new integration
+  # branches; `schema-*` covers schema-version branches such as `schema-9`.
+  # Rulesets (merge queue, required `quality`) still apply only to `main`, so
+  # on an integration base this run is advisory.
   pull_request:
-    branches: [main]
+    branches: [main, 'integration/**', 'schema-*']
   merge_group:
     types: [checks_requested]
   workflow_dispatch:
@@ -266,6 +286,10 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           HEAD_REF: ${{ github.head_ref }}
           REF_NAME: ${{ github.ref_name }}
+          # A generated release branch is a release PR only when it targets
+          # main; the same branch name into an integration branch is a feature
+          # PR.
+          BASE_REF: ${{ github.base_ref }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           # On feature PRs, BASE_SHA and HEAD_SHA define the cumulative
           # merge-base diff. On release PRs, HEAD_SHA is also the branch tip
@@ -1525,6 +1549,7 @@ jobs:
     if: >-
       github.event_name == 'merge_group'
       || (github.event_name == 'pull_request'
+      && github.base_ref == 'main'
       && github.head_ref == 'changeset-release/main')
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -1546,7 +1571,7 @@ jobs:
             # job: a queue entry that cannot be judged must not merge on a
             # guess, and re-queueing retries it.
             vp_head=$(gh api \
-              "repos/${GITHUB_REPOSITORY}/pulls?state=open&head=${GITHUB_REPOSITORY_OWNER}:changeset-release/main" \
+              "repos/${GITHUB_REPOSITORY}/pulls?state=open&base=main&head=${GITHUB_REPOSITORY_OWNER}:changeset-release/main" \
               --jq '.[0].head.sha // empty')
             if [[ -z "$vp_head" ]]; then
               echo "No open Version Packages PR — nothing to check"
@@ -1716,6 +1741,7 @@ jobs:
     # validated; ordinary feature PRs must not run the dead-link checker.
     if: >-
       github.event_name == 'pull_request'
+      && github.base_ref == 'main'
       && needs.detect.outputs.docs == 'true'
       && (github.head_ref == 'changeset-release/documentation'
       || github.head_ref == 'changeset-release/website')
@@ -1834,6 +1860,7 @@ jobs:
     # release validates both sites because they link to each other's routes.
     if: >-
       github.event_name == 'pull_request'
+      && github.base_ref == 'main'
       && needs.detect.outputs.website == 'true'
       && (github.head_ref == 'changeset-release/documentation'
       || github.head_ref == 'changeset-release/website')
@@ -2597,9 +2624,10 @@ jobs:
       source_run_url: ${{ format('{0}/{1}/actions/runs/{2}', github.server_url, github.repository, github.run_id) }}
 
   # One consolidated E2E report per run: publishes the Playwright report of
-  # every FAILED suite job to GitHub Pages under <job-name>/<branch-slug>/
-  # (replacing that branch's previous report; a later green run removes it, so
-  # only the latest run's report is ever kept), then upserts a single sticky
+  # every FAILED suite job to GitHub Pages under
+  # <job-name>/<branch-slug>-pr<number>/ (replacing that pull request's
+  # previous report; a later green run removes it, so only the latest run's
+  # report is ever kept), then upserts a single sticky
   # PR status comment showing the policy's decision matrix plus each job's
   # outcome. Purely informational: whether the report PUBLISHED says nothing
   # about whether the code is sound — the actual verdicts are the suite jobs.
@@ -2647,10 +2675,16 @@ jobs:
       - id: meta
         env:
           REF: ${{ github.head_ref || github.ref_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           GH_TOKEN: ${{ github.token }}
         run: |
           # Report directory scheme: the normalised ref for readability plus a
-          # short digest of the raw ref. Normalisation alone is lossy
+          # short digest of the raw ref. On a pull request the key also ends in
+          # `-pr<number>`, because one branch can back several pull requests
+          # (for example into `schema-9` and into `main`) and their runs must
+          # not replace or delete each other's reports. A branch slug always
+          # ends in eight hex digits and `-pr<n>` never does, so the two key
+          # shapes cannot collide. Normalisation alone is lossy
           # (feature/foo and feature-foo collide), and a collision would let
           # one branch's run overwrite or delete another branch's
           # still-current report. The orphan sweep in the merge step
@@ -2670,10 +2704,17 @@ jobs:
             s=${s:0:100}
             printf '%s-%s\n' "$s" "$(printf '%s' "$1" | sha256sum | cut -c1-8)"
           }
-          printf 'slug=%s\n' "$(slugify "$REF")" >> "$GITHUB_OUTPUT"
-          # Slugs of every live branch, for the merge step's orphan sweep. A
-          # failed listing leaves the file absent and the sweep skipped —
-          # never delete on doubt.
+          branch_slug=$(slugify "$REF")
+          slug=$branch_slug
+          [ -n "$PR_NUMBER" ] && slug="${branch_slug}-pr${PR_NUMBER}"
+          printf 'slug=%s\n' "$slug" >> "$GITHUB_OUTPUT"
+          # The key reports used before pull requests were part of it. The
+          # merge step drops it whenever this branch publishes under its new
+          # key, so a report published by an earlier run cannot linger.
+          printf 'legacy_slug=%s\n' "$branch_slug" >> "$GITHUB_OUTPUT"
+          # Keys of every live branch and every open pull request, for the
+          # merge step's orphan sweep. A failed listing leaves the file absent
+          # and the sweep skipped — never delete on doubt.
           pending_deploy=false
           if refs=$(git ls-remote --heads \
             "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
@@ -2683,6 +2724,20 @@ jobs:
               | while IFS= read -r branch; do
                   [ -n "$branch" ] && slugify "$branch" >> "$RUNNER_TEMP/live-slugs.txt"
                 done
+            # Open pull requests, under the same `<branch slug>-pr<number>`
+            # key as above. Without them the sweep would delete every
+            # pull-request report as an orphan. If the listing fails, drop the
+            # file so the sweep is skipped rather than deleting on doubt.
+            if prs=$(gh api --paginate \
+              "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" \
+              --jq '.[] | "\(.head.ref)\t\(.number)"' 2>/dev/null); then
+              printf '%s\n' "$prs" \
+                | while IFS=$'\t' read -r pr_ref pr_number; do
+                    [ -n "$pr_ref" ] && echo "$(slugify "$pr_ref")-pr${pr_number}" >> "$RUNNER_TEMP/live-slugs.txt"
+                  done
+            else
+              rm -f "$RUNNER_TEMP/live-slugs.txt"
+            fi
             # gh-pages-deployed tracks the last tree deploy-pages actually
             # accepted (see the record step below). If gh-pages has advanced
             # past it, an earlier deploy failed after its state was
@@ -2704,15 +2759,25 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EVENT_BASE_REF: ${{ github.event.pull_request.base.ref }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           current=true
           if [ -n "$PR_NUMBER" ] && [ -n "$EVENT_HEAD_SHA" ]; then
+            # The head AND the base: a pull request retargeted between
+            # `schema-*` and `main` keeps its number, its head and so its report
+            # key, but the older run describes a different merge tree. Rerunning
+            # that run must not overwrite the new base's report or comment.
             live=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" \
-              --jq .head.sha 2>/dev/null || true)
-            if [ -n "$live" ] && [ "$live" != "$EVENT_HEAD_SHA" ]; then
+              --jq '"\(.head.sha) \(.base.ref)"' 2>/dev/null || true)
+            live_head=${live%% *}
+            live_base=${live#* }
+            if [ -n "$live_head" ] && [ "$live_head" != "$EVENT_HEAD_SHA" ]; then
               current=false
-              echo "::notice::Skipping E2E report updates: this run describes $EVENT_HEAD_SHA but the PR head is now $live"
+              echo "::notice::Skipping E2E report updates: this run describes $EVENT_HEAD_SHA but the PR head is now $live_head"
+            elif [ -n "$live_base" ] && [ -n "$EVENT_BASE_REF" ] && [ "$live_base" != "$EVENT_BASE_REF" ]; then
+              current=false
+              echo "::notice::Skipping E2E report updates: this run targeted $EVENT_BASE_REF but the PR now targets $live_base"
             fi
           fi
           printf 'current=%s\n' "$current" >> "$GITHUB_OUTPUT"
@@ -2743,6 +2808,7 @@ jobs:
         if: steps.guard.outputs.current == 'true'
         env:
           SLUG: ${{ steps.meta.outputs.slug }}
+          LEGACY_SLUG: ${{ steps.meta.outputs.legacy_slug }}
           PENDING_DEPLOY: ${{ steps.meta.outputs.pending_deploy }}
           R_INTERVIEW_PIXEL: ${{ needs.interview-e2e.result }}
           R_INTERVIEW_NATIVE: ${{ needs.interview-e2e-native.result }}
@@ -2761,13 +2827,22 @@ jobs:
           # would make the state-branch commit below fail and leave the stale
           # report live instead of deleted.
           printf '%s\n' \
-            '<!doctype html><title>Network Canvas E2E reports</title><p>E2E failure reports are published under <code>/&lt;job-name&gt;/&lt;branch-slug&gt;/</code>.</p>' \
+            '<!doctype html><title>Network Canvas E2E reports</title><p>E2E failure reports are published under <code>/&lt;job-name&gt;/&lt;branch-slug&gt;-pr&lt;number&gt;/</code>.</p>' \
             > merged/index.html
           changed=false
           published='{}'
           merge_report() {
             local job=$1 result=$2 artifact=$3
             local dir="merged/$job/$SLUG"
+            # Reports published before the pull request number joined the key
+            # live under the bare branch slug. This branch now publishes under
+            # SLUG, so the old directory describes a superseded run and nothing
+            # else would ever replace it while the branch lives.
+            local legacy="merged/$job/$LEGACY_SLUG"
+            if [ "$legacy" != "$dir" ] && [ -d "$legacy" ]; then
+              rm -rf "$legacy"
+              changed=true
+            fi
             case "$result" in
               failure)
                 local src="reports/$artifact"
@@ -3141,7 +3216,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh pr list --repo "$GITHUB_REPOSITORY" --state open \
-            --head changeset-release/main --json number --jq '.[].number' \
+            --base main --head changeset-release/main --json number --jq '.[].number' \
             | while read -r number; do
                 gh pr close "$number" --repo "$GITHUB_REPOSITORY" --comment \
                   "Closing: main ($GITHUB_SHA) has no changesets left to version, so this release PR was generated from a superseded tree. The next push that adds a changeset opens a fresh one."
@@ -4211,6 +4286,12 @@ jobs:
           FLAG_WEBSITE: ${{ needs.detect.outputs.website }}
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          # One branch can back several pull requests (for example one into
+          # `schema-9` and one into `main`), whose merge trees differ. A
+          # verdict is carried forward only from a run of THIS pull request
+          # against THIS base.
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
         with:
           script: |
             const flagToJobs = {
@@ -4266,6 +4347,18 @@ jobs:
                 // Skip runs against the same commit (re-runs of the same SHA
                 // don't introduce new information).
                 if (run.head_sha === process.env.PR_HEAD_SHA) continue;
+                // The branch filter above matches every pull request from this
+                // branch, whatever its base, and a run's `pull_requests` array
+                // lists every open pull request whose head matches the run, not
+                // only the one that triggered it — so it cannot tell two pull
+                // requests from one branch apart. The run's own title can: the
+                // top-level `run-name` starts a pull request run's title with
+                // this pull request's number and base. A run with any other
+                // title (for example one started before `run-name` existed)
+                // cannot be proven to describe this merge tree and carries
+                // nothing.
+                const titlePrefix = `PR #${process.env.PR_NUMBER} → ${process.env.PR_BASE_REF} · `;
+                if (!run.display_title?.startsWith(titlePrefix)) continue;
                 // Pull the job list for this run.
                 const { data: jobs } = await github.rest.actions.listJobsForWorkflowRun({
                   owner: context.repo.owner,

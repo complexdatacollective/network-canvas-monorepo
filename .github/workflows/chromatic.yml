@@ -13,6 +13,8 @@ on:
   # Dependabot and fork PR events cannot read Actions secrets. Wait for the
   # unprivileged CI run, then publish status-only Chromatic results from the
   # trusted default-branch workflow without checking out proposed code.
+  # CI also runs for PRs into integration branches, which take no Chromatic
+  # statuses, so only a PR into main continues.
   workflow_run:
     workflows:
       - CI and Release
@@ -64,6 +66,7 @@ jobs:
       || (github.event_name == 'workflow_run'
       && github.event.workflow_run.event == 'pull_request'
       && github.event.workflow_run.pull_requests[0].number
+      && github.event.workflow_run.pull_requests[0].base.ref == 'main'
       && (github.event.workflow_run.actor.login == 'dependabot[bot]'
       || github.event.workflow_run.head_repository.full_name != github.repository)
       && !startsWith(github.event.workflow_run.head_branch, 'changeset-release/'))
