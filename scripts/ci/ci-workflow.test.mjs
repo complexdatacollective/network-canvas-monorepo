@@ -1,5 +1,16 @@
 import assert from 'node:assert/strict';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import { test } from 'vitest';
 import { parse } from 'yaml';
@@ -72,11 +83,14 @@ function job(name) {
   )?.groups?.body;
 }
 
-test('full CI runs on PRs to main while merge groups request only quality', () => {
+test('full CI runs on PRs to main and integration branches while merge groups request only quality', () => {
   assert.match(
     workflow,
-    /^  pull_request:\n(?: {4}#.*\n)*    branches: \[main\]$/m,
+    /^ {2}pull_request:\n(?: {4}#.*\n)*? {4}branches: \[main, 'integration\/\*\*', 'schema-\*'\]$/m,
   );
+  // Pushes stay main-only: the release, publish, deploy and mirror jobs are
+  // reached from this trigger, and an integration branch must never release.
+  assert.match(workflow, /^ {2}push:\n {4}branches: \[main\]$/m);
   assert.match(workflow, /^  merge_group:\n    types: \[checks_requested\]$/m);
 
   for (const jobName of [
@@ -99,6 +113,334 @@ test('full CI runs on PRs to main while merge groups request only quality', () =
   assert.ok(quality, 'quality job exists');
   assert.match(quality, /if \[\[ "\$EVENT_NAME" == "merge_group" \]\]; then/);
   assert.match(quality, /PR quality verdicts are authoritative/);
+});
+
+test('release, publish, deploy and mirror jobs never run for an integration base', () => {
+  // Every job below is reachable only from a push to (or a dispatch on) main,
+  // directly or through a `needs:` chain rooted in a job that is. A
+  // pull_request event, whatever its base, can start none of them.
+  for (const jobName of [
+    'release',
+    'product-release-pr',
+    'apps-release-detect',
+  ]) {
+    assert.match(
+      job(jobName),
+      /if: github\.ref == 'refs\/heads\/main' && github\.event_name == 'push'/,
+      `${jobName} runs only for a push to main`,
+    );
+  }
+  assert.match(
+    job('legacy-release-detect'),
+    /github\.ref == 'refs\/heads\/main'\n\s+&& \(github\.event_name == 'push' \|\| github\.event_name == 'workflow_dispatch'\)/,
+  );
+  for (const [jobName, root] of [
+    ['apps-release-architect', 'apps-release-detect'],
+    ['apps-release-interviewer', 'apps-release-detect'],
+    ['apps-release-background-creator', 'apps-release-detect'],
+    ['apps-release-fresco', 'apps-release-detect'],
+    ['apps-release-documentation', 'apps-release-detect'],
+    ['apps-release-website', 'apps-release-detect'],
+    ['interviewer-release-build', 'legacy-release-detect'],
+    ['architect-release-build', 'legacy-release-detect'],
+    ['interviewer-mirror', 'legacy-release-detect'],
+    ['architect-mirror', 'legacy-release-detect'],
+    ['interviewer-release-publish', 'legacy-release-detect'],
+    ['architect-release-publish', 'legacy-release-detect'],
+  ]) {
+    const body = job(jobName);
+    assert.ok(body, `${jobName} exists`);
+    assert.match(body, new RegExp(`needs[:\\s\\[][^]*?${root}`));
+    assert.match(
+      body,
+      new RegExp(`needs\\.${root}\\.outputs\\.\\w+_released == 'true'`),
+      `${jobName} is gated on ${root}'s release decision`,
+    );
+  }
+});
+
+// One branch can back pull requests into several bases (say `schema-9` and
+// `main`), and their merge trees differ. These two tests run the real
+// carry-forward script and the real report-key script against stand-ins for
+// GitHub, and fail if a verdict or a report crosses from one pull request to
+// the other.
+test('carry-forward-statuses copies a verdict only from runs of the same pull request and base', async () => {
+  const script =
+    parsedWorkflow.jobs['carry-forward-statuses'].steps[0].with.script;
+  const AsyncFunction = async function () {}.constructor;
+  // The title GitHub gives a pull request run, rendered from the workflow's
+  // own `run-name` format string.
+  const format = parsedWorkflow['run-name'].match(/format\('([^']+)'/)?.[1];
+  assert.ok(format, 'the workflow titles pull request runs with run-name');
+  const titleOf = (number, base, prTitle) =>
+    format.replace('{0}', number).replace('{1}', base).replace('{2}', prTitle);
+  // Both pull requests from the branch are open, so GitHub lists BOTH on every
+  // one of the branch's runs: `pull_requests` cannot tell the runs apart, and
+  // the title is the only thing that can.
+  const run = (id, number, base, jobConclusion, displayTitle) => ({
+    id,
+    run_number: id,
+    head_sha: `sha-${id}`,
+    html_url: `https://example.test/runs/${id}`,
+    display_title:
+      displayTitle ??
+      (number === null ? 'a push' : titleOf(number, base, 'Release')),
+    pull_requests: [
+      { number: 5, base: { ref: 'main' } },
+      { number: 7, base: { ref: 'schema-9' } },
+    ],
+    jobConclusion,
+  });
+  const execute = async (runs, env) => {
+    const created = [];
+    const github = {
+      rest: {
+        actions: {
+          listWorkflowRunsForRepo: async () => ({
+            data: { workflow_runs: runs },
+          }),
+          listJobsForWorkflowRun: async ({ run_id: runId }) => ({
+            data: {
+              jobs: [
+                {
+                  name: 'docs-preview-checks',
+                  conclusion: runs.find(({ id }) => id === runId).jobConclusion,
+                  html_url: `https://example.test/jobs/${runId}`,
+                },
+              ],
+            },
+          }),
+        },
+        checks: { create: async (args) => created.push(args) },
+      },
+    };
+    const saved = { ...process.env };
+    Object.assign(process.env, {
+      FLAG_DOCS: 'false',
+      FLAG_WEBSITE: 'true',
+      PR_HEAD_REF: 'changeset-release/documentation',
+      PR_HEAD_SHA: 'sha-current',
+      PR_NUMBER: '5',
+      PR_BASE_REF: 'main',
+      ...env,
+    });
+    try {
+      await new AsyncFunction('github', 'context', 'core', script)(
+        github,
+        {
+          repo: { owner: 'o', repo: 'r' },
+          runId: 999,
+          sha: 'sha-current',
+        },
+        { info() {} },
+      );
+    } finally {
+      for (const key of Object.keys(process.env)) {
+        if (!(key in saved)) delete process.env[key];
+      }
+      Object.assign(process.env, saved);
+    }
+    return created;
+  };
+
+  // The newest run is the other pull request's (same branch, base schema-9)
+  // and failed; the older run is this pull request's and passed. Only the
+  // latter may be carried.
+  let created = await execute(
+    [run(3, 7, 'schema-9', 'failure'), run(2, 5, 'main', 'success')],
+    {},
+  );
+  assert.equal(created.length, 1);
+  assert.equal(created[0].conclusion, 'success');
+  assert.match(created[0].output.summary, /#2\b/);
+
+  // Nothing from another pull request is ever carried.
+  created = await execute([run(3, 7, 'schema-9', 'success')], {});
+  assert.deepEqual(created, []);
+
+  // A pull request retargeted to another base starts over.
+  created = await execute([run(2, 5, 'main', 'success')], {
+    PR_BASE_REF: 'schema-9',
+  });
+  assert.deepEqual(created, []);
+
+  // PR #55 is not PR #5, and a run with a title this workflow did not give
+  // it (one started before `run-name` existed) cannot be proven to match.
+  created = await execute([run(2, 55, 'main', 'success')], {});
+  assert.deepEqual(created, []);
+  created = await execute(
+    [run(2, 5, 'main', 'success', 'Release the documentation site')],
+    {},
+  );
+  assert.deepEqual(created, []);
+});
+
+test('e2e-report keys a pull request report by its number and sweeps by open pull request', () => {
+  const meta = parsedWorkflow.jobs['e2e-report'].steps.find(
+    ({ id }) => id === 'meta',
+  );
+  const dir = mkdtempSync(join(tmpdir(), 'e2e-report-meta-'));
+  try {
+    const bin = join(dir, 'bin');
+    mkdirSync(bin);
+    // `git ls-remote` lists two branches; `gh api` lists the open pull
+    // requests, one of them from a branch that is gone.
+    writeFileSync(
+      join(bin, 'git'),
+      '#!/bin/sh\nprintf "aaa\\trefs/heads/feat/x\\nbbb\\trefs/heads/gh-pages\\n"\n',
+      { mode: 0o755 },
+    );
+    writeFileSync(
+      join(bin, 'gh'),
+      '#!/bin/sh\nif [ "$GH_FAIL" = 1 ]; then exit 1; fi\nprintf "feat/x\\t11\\nfeat/x\\t12\\ngone/branch\\t13\\n"\n',
+      { mode: 0o755 },
+    );
+    const execute = (env) => {
+      const output = join(dir, 'output');
+      writeFileSync(output, '');
+      rmSync(join(dir, 'live-slugs.txt'), { force: true });
+      const result = spawnSync('bash', ['-e', '-c', meta.run], {
+        encoding: 'utf8',
+        env: {
+          PATH: `${bin}:${process.env.PATH}`,
+          GITHUB_OUTPUT: output,
+          GITHUB_REPOSITORY: 'o/r',
+          GH_TOKEN: 'token',
+          RUNNER_TEMP: dir,
+          REF: 'feat/x',
+          ...env,
+        },
+      });
+      assert.equal(result.status, 0, result.stderr);
+      const outputs = Object.fromEntries(
+        readFileSync(output, 'utf8')
+          .split('\n')
+          .filter(Boolean)
+          .map((line) => line.split(/=(.*)/s).slice(0, 2)),
+      );
+      const live = existsSync(join(dir, 'live-slugs.txt'))
+        ? readFileSync(join(dir, 'live-slugs.txt'), 'utf8')
+            .split('\n')
+            .filter(Boolean)
+        : null;
+      return { outputs, live };
+    };
+
+    const first = execute({ PR_NUMBER: '11' });
+    const second = execute({ PR_NUMBER: '12' });
+    const push = execute({ PR_NUMBER: '' });
+    // Two pull requests from one branch never share a directory ...
+    assert.notEqual(first.outputs.slug, second.outputs.slug);
+    assert.match(first.outputs.slug, /^feat-x-[0-9a-f]{8}-pr11$/);
+    assert.match(second.outputs.slug, /^feat-x-[0-9a-f]{8}-pr12$/);
+    // ... the number-less key is still reported so the old directory can be
+    // dropped, and a run with no pull request keeps using it.
+    assert.equal(first.outputs.legacy_slug, push.outputs.slug);
+    assert.match(first.outputs.legacy_slug, /^feat-x-[0-9a-f]{8}$/);
+    // Every open pull request's key is live, so the sweep keeps its report;
+    // the key of a pull request that is no longer open is not.
+    for (const key of [first.outputs.slug, second.outputs.slug]) {
+      assert.ok(first.live.includes(key), `${key} is live`);
+    }
+    assert.ok(first.live.includes(first.outputs.legacy_slug));
+    assert.ok(!first.live.some((key) => key.endsWith('-pr99')));
+    assert.ok(first.live.some((key) => key.startsWith('gone-branch-')));
+
+    // A failed pull-request listing removes the file: the sweep is skipped
+    // rather than deleting every pull request's report on doubt.
+    assert.equal(execute({ PR_NUMBER: '11', GH_FAIL: '1' }).live, null);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+
+  const merge = parsedWorkflow.jobs['e2e-report'].steps.find(
+    ({ id }) => id === 'merge',
+  );
+  assert.match(merge.env.LEGACY_SLUG, /steps\.meta\.outputs\.legacy_slug/);
+  assert.match(
+    merge.run,
+    /local legacy="merged\/\$job\/\$LEGACY_SLUG"[\s\S]*?rm -rf "\$legacy"/,
+    'a report under the old number-less key is dropped',
+  );
+});
+
+test('a rerun of an older run never updates reports or the comment for a retargeted pull request', () => {
+  const guard = parsedWorkflow.jobs['e2e-report'].steps.find(
+    ({ id }) => id === 'guard',
+  );
+  const dir = mkdtempSync(join(tmpdir(), 'e2e-report-guard-'));
+  try {
+    const bin = join(dir, 'bin');
+    mkdirSync(bin);
+    // The pull request as GitHub reports it now: `<head sha> <base ref>`.
+    writeFileSync(
+      join(bin, 'gh'),
+      '#!/bin/sh\nif [ -z "$LIVE" ]; then exit 1; fi\necho "$LIVE"\n',
+      { mode: 0o755 },
+    );
+    const current = (live) => {
+      const output = join(dir, 'output');
+      writeFileSync(output, '');
+      const result = spawnSync('bash', ['-e', '-c', guard.run], {
+        encoding: 'utf8',
+        env: {
+          PATH: `${bin}:${process.env.PATH}`,
+          GITHUB_OUTPUT: output,
+          GITHUB_REPOSITORY: 'o/r',
+          GH_TOKEN: 'token',
+          PR_NUMBER: '5',
+          EVENT_HEAD_SHA: 'aaa',
+          EVENT_BASE_REF: 'main',
+          LIVE: live,
+        },
+      });
+      assert.equal(result.status, 0, result.stderr);
+      return readFileSync(output, 'utf8').trim();
+    };
+    assert.equal(current('aaa main'), 'current=true');
+    // The head moved on.
+    assert.equal(current('bbb main'), 'current=false');
+    // Same head, but the pull request now targets another base: the older
+    // run describes a different merge tree and shares this one's report key.
+    assert.equal(current('aaa schema-9'), 'current=false');
+    // An API failure proceeds, as before.
+    assert.equal(current(''), 'current=true');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+  assert.match(
+    guard.env.EVENT_BASE_REF,
+    /github\.event\.pull_request\.base\.ref/,
+  );
+});
+
+test('every reader of earlier runs, releases or release PRs is scoped to the base it describes', () => {
+  // Jobs and steps keyed on a release branch's NAME must also require the
+  // base main: the same branch can back a pull request into an integration
+  // branch, and that is not the release PR.
+  for (const jobName of [
+    'docs-preview-checks',
+    'website-preview-checks',
+    'version-packages-freshness',
+  ]) {
+    assert.match(
+      job(jobName),
+      /github\.base_ref == 'main'/,
+      `${jobName} requires the release PR's base`,
+    );
+  }
+  assert.match(
+    parsedWorkflow.jobs['e2e-policy'].steps.find(({ id }) => id === 'policy')
+      .env.BASE_REF,
+    /github\.base_ref/,
+    'the E2E policy is told the pull request base',
+  );
+  // Lookups of "the" release PR by head branch name.
+  assert.match(
+    job('version-packages-freshness'),
+    /pulls\?state=open&base=main&head=/,
+  );
+  assert.match(job('release'), /--base main --head changeset-release\/main/);
 });
 
 test('superseded CI runs are cancelled for every pull request', () => {
@@ -1211,7 +1553,7 @@ test('release-side jobs stop once their main commit has been superseded', () => 
   );
   assert.match(
     releaseJob,
-    /gh pr list --repo "\$GITHUB_REPOSITORY" --state open \\\n\s+--head changeset-release\/main --json number/,
+    /gh pr list --repo "\$GITHUB_REPOSITORY" --state open \\\n\s+--base main --head changeset-release\/main --json number/,
   );
   assert.match(releaseJob, /gh pr close "\$number"/);
 
@@ -1249,14 +1591,14 @@ test('a stale Version Packages PR cannot merge', () => {
   assert.match(condition, /github\.event_name == 'merge_group'/);
   assert.match(
     condition,
-    /github\.event_name == 'pull_request'\s+&& github\.head_ref == 'changeset-release\/main'/,
+    /github\.event_name == 'pull_request'\s+&& github\.base_ref == 'main'\s+&& github\.head_ref == 'changeset-release\/main'/,
   );
   // The queue batches entries, each built on the ones ahead of it, and a
   // group's ref names only its last PR — membership must come from ancestry
   // of the open release PR's head, never from the ref suffix.
   assert.match(
     freshness,
-    /pulls\?state=open&head=\$\{GITHUB_REPOSITORY_OWNER\}:changeset-release\/main"[^\n]*\n\s+--jq '\.\[0\]\.head\.sha \/\/ empty'/,
+    /pulls\?state=open&base=main&head=\$\{GITHUB_REPOSITORY_OWNER\}:changeset-release\/main"[^\n]*\n\s+--jq '\.\[0\]\.head\.sha \/\/ empty'/,
   );
   assert.match(
     freshness,

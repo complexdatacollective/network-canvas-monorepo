@@ -66,9 +66,11 @@ export {
 } from './localization/localePreferences.ts';
 export {
   canonicalizeLocale,
+  isUndeterminedLocale,
   type LocaleTag,
   type LocalizationDeclaration,
 } from './localization/localeTag.ts';
+export { isBlankMessage, isBlankText } from './localization/blankText.ts';
 export { escapeMarkdownText } from './localization/markdownText.ts';
 export {
   escapeMessageText,

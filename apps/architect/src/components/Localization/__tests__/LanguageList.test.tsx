@@ -30,22 +30,6 @@ const trilingual: CurrentProtocol = {
   ],
 };
 
-// Made before protocols declared their languages, so its text is marked as
-// the unidentified language.
-const migrated: CurrentProtocol = {
-  ...trilingual,
-  localization: { defaultLocale: 'und', locales: ['und'] },
-  stages: [
-    {
-      id: 'welcome',
-      type: 'Information',
-      label: { und: 'Welcome' },
-      title: { und: 'Hello' },
-      items: [],
-    },
-  ],
-};
-
 const DEFAULT_REASON =
   'To remove the default language, make another language the default first.';
 const STRANDED_REASON =
@@ -113,14 +97,14 @@ describe('LanguageList', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('gives each language one control, which removes it and is named for it', () => {
+  it('gives each language two controls, which change and remove it and are named for it', () => {
     renderLanguageList();
 
     expect(
       within(rowOf('German'))
         .getAllByRole('button')
         .map((button) => button.getAttribute('aria-label')),
-    ).toEqual(['Remove German']);
+    ).toEqual(['Change German to a different language', 'Remove German']);
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 
@@ -241,30 +225,80 @@ describe('LanguageList', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('identifies the language of unidentified text from its notice', async () => {
-    const { store } = renderLanguageList(migrated);
+  it('records the text of a language as another language from that language’s row', async () => {
+    const { store } = renderLanguageList();
     const { openDialog } = globalThis.__architectDialogMocks;
-    openDialog.mockResolvedValueOnce({ language: 'en' });
+    openDialog.mockResolvedValueOnce({ language: 'es' });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Identify language' }));
+    fireEvent.click(
+      within(rowOf('German')).getByRole('button', {
+        name: 'Change German to a different language',
+      }),
+    );
 
     await vi.waitFor(() => expect(openDialog).toHaveBeenCalledOnce());
     expect(openDialog.mock.lastCall?.[0]).toMatchObject({
-      title: 'Identify the language of your text',
-      submitLabel: 'Identify language',
+      title: 'Change German to a different language',
+      submitLabel: 'Change language',
     });
     await vi.waitFor(() =>
       expect(getProtocol(store.getState())?.localization).toEqual({
         defaultLocale: 'en',
-        locales: ['en'],
+        locales: ['en', 'fr', 'es'],
       }),
     );
     expect(getProtocol(store.getState())?.stages[0]?.label).toEqual({
       en: 'Welcome',
+      fr: 'Bienvenue',
     });
-    expect(
-      screen.queryByRole('button', { name: 'Identify language' }),
-    ).not.toBeInTheDocument();
+    expect(rowOf('Spanish')).toBeInTheDocument();
+  });
+
+  it('moves the translations and the default with the language changed', async () => {
+    const { store } = renderLanguageList();
+    globalThis.__architectDialogMocks.openDialog.mockResolvedValueOnce({
+      language: 'es',
+    });
+
+    fireEvent.click(
+      within(rowOf('English')).getByRole('button', {
+        name: 'Change English to a different language',
+      }),
+    );
+
+    await vi.waitFor(() =>
+      expect(getProtocol(store.getState())?.localization).toEqual({
+        defaultLocale: 'es',
+        locales: ['es', 'fr', 'de'],
+      }),
+    );
+    expect(getProtocol(store.getState())?.stages[0]?.label).toEqual({
+      es: 'Welcome',
+      fr: 'Bienvenue',
+    });
+  });
+
+  it('offers only languages the protocol does not have yet', async () => {
+    renderLanguageList();
+    const { openDialog } = globalThis.__architectDialogMocks;
+    openDialog.mockResolvedValueOnce(undefined);
+
+    fireEvent.click(
+      within(rowOf('German')).getByRole('button', {
+        name: 'Change German to a different language',
+      }),
+    );
+
+    await vi.waitFor(() => expect(openDialog).toHaveBeenCalledOnce());
+    const { children } = openDialog.mock.lastCall?.[0] ?? {};
+    const { options } = (
+      children as { props: { options: { value: string }[] } }
+    ).props;
+    expect(options.length).toBeGreaterThan(0);
+    for (const declared of ['en', 'fr', 'de']) {
+      expect(options.map(({ value }) => value)).not.toContain(declared);
+    }
+    expect(options.map(({ value }) => value)).not.toContain('und');
   });
 
   it('explains which translation participants see under the heading', () => {

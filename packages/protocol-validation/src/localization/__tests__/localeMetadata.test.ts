@@ -190,12 +190,9 @@ describe('getLocaleMetadata', () => {
   });
 
   describe('direction', () => {
-    it.each(['en', 'es', 'zh-Hant-TW', 'und'])(
-      'is left-to-right for %s',
-      (locale) => {
-        expect(getLocaleMetadata(locale).direction).toBe('ltr');
-      },
-    );
+    it.each(['en', 'es', 'zh-Hant-TW'])('is left-to-right for %s', (locale) => {
+      expect(getLocaleMetadata(locale).direction).toBe('ltr');
+    });
 
     it.each(['ar', 'he', 'fa', 'ur'])('is right-to-left for %s', (locale) => {
       expect(getLocaleMetadata(locale).direction).toBe('rtl');
@@ -227,7 +224,6 @@ describe('getLocaleMetadata', () => {
         ['az', 'ltr'],
         ['en', 'ltr'],
         ['zh-Hant-TW', 'ltr'],
-        ['und', 'ltr'],
       ])('derives %s as %s from the likely script', (locale, direction) => {
         stubIntl({ Locale: LocaleWithoutTextInfo });
         expect(getLocaleMetadata(locale).direction).toBe(direction);

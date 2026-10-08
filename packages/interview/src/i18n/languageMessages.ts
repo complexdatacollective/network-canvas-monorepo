@@ -7,10 +7,4 @@ export const languageMessages = defineMessages({
     description:
       'Heading of the interview screen where the participant picks the language the interview is shown in.',
   },
-  unspecifiedLanguage: {
-    id: 'interview.language.unspecifiedLanguage',
-    defaultMessage: 'Unspecified language',
-    description:
-      'Name of the language choice for interview content whose language the researcher did not specify.',
-  },
 });

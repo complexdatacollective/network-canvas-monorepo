@@ -23,9 +23,9 @@ languages.
   translated are still described by their plain names.
 - Editing a version that was saved in an older protocol format now starts a
   draft that has been upgraded to the current format, with its text written in
-  the unspecified language. Before, the draft kept the old format and could not
+  English. Before, the draft kept the old format and could not
   be edited.
-- A protocol created in Studio is written in the unspecified language (`und`),
+- A protocol created in Studio is written in English (`en`),
   as a protocol upgraded from an earlier version is, because Studio does not
   yet ask which language you are writing in. The sample protocol, the demo
   protocol and the protocols a new instance seeds declare their language, US

@@ -1051,6 +1051,10 @@
     "defaultMessage": "There is nothing to add from this list.",
     "description": "Empty state after an external roster has loaded successfully but contains no entries."
   },
+  "interview.interfaces.emptyValue": {
+    "defaultMessage": "No value",
+    "description": "Shown in place of a roster detail that has no value: a blank field or an empty list. Replaces a bare dash so screen readers announce it."
+  },
   "interview.interfaces.enableDrawing": {
     "defaultMessage": "Enable drawing",
     "description": "Toggle action that turns on freehand drawing on the narrative canvas."
@@ -1398,10 +1402,6 @@
   "interview.language.chooseLanguage": {
     "defaultMessage": "Choose a language",
     "description": "Heading of the interview screen where the participant picks the language the interview is shown in."
-  },
-  "interview.language.unspecifiedLanguage": {
-    "defaultMessage": "Unspecified language",
-    "description": "Name of the language choice for interview content whose language the researcher did not specify."
   },
   "interview.narrativePedigree.affected": {
     "defaultMessage": "Affected",

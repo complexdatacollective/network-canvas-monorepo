@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
-import { isCanonicalLocale } from '../../localization/localeTag.ts';
+import {
+  isCanonicalLocale,
+  isUndeterminedLocale,
+} from '../../localization/localeTag.ts';
 import { collectEntityAttributeReferencesFromSchema } from '../../utils/collectEntityAttributeReferences.ts';
 import { collectLocalizedStringsFromSchema } from '../../utils/collectLocalizedStrings.ts';
 import {
@@ -652,9 +655,11 @@ const ProtocolSchema = z
         protocol,
       )) {
         for (const locale of Object.keys(hit.value)) {
-          // A malformed tag is already reported by the field's own schema.
+          // A malformed or undetermined tag is already reported by the
+          // field's own schema.
           if (
             !isCanonicalLocale(locale) ||
+            isUndeterminedLocale(locale) ||
             localization.locales.includes(locale)
           ) {
             continue;

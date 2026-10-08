@@ -38,8 +38,10 @@ import { entityAttributesProperty } from '@codaco/shared-consts';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { LocalizedText } from '../../localization/LocalizedText';
 import { useResolvePresentationalText } from '../../localization/ProtocolLocalizationProvider';
+import { useContentFormat } from '../../localization/useContentFormat';
 import { getNetworkNodes, getSubjectType } from '../../selectors/session';
 import { getCodebook } from '../../store/modules/protocol';
+import { compareAsText } from '../../utils/compareCodeUnits';
 import { interfaceMessages } from '../messages';
 
 type NarrativeStage = Extract<Stage, { type: 'Narrative' }>;
@@ -63,6 +65,7 @@ export function buildGroupLegend(
   categoricalOptions: VariableOption[],
   groupValues: VariableOptionValue[],
   toPresentationalText: (label: LocalizedString) => PresentationalText,
+  collator: Intl.Collator,
 ): GroupLegendEntry[] {
   const known = categoricalOptions.map((option, index) => ({
     label: toPresentationalText(option.label),
@@ -70,14 +73,20 @@ export function buildGroupLegend(
   }));
 
   const knownValues = new Set(categoricalOptions.map((option) => option.value));
+  // Colours are handed out in a language-independent order (the one the hulls
+  // use), so a value keeps its colour when the participant changes language.
+  // The legend itself is read, so it is listed in the reader's alphabetical
+  // order.
   const extraValues = [
     ...new Set(groupValues.filter((value) => !knownValues.has(value))),
-  ].toSorted((a, b) => String(a).localeCompare(String(b)));
+  ].toSorted(compareAsText);
 
-  const extra = extraValues.map((value, index) => ({
-    label: String(value),
-    colorIndex: categoricalOptions.length + 1 + index,
-  }));
+  const extra = extraValues
+    .map((value, index) => ({
+      label: String(value),
+      colorIndex: categoricalOptions.length + 1 + index,
+    }))
+    .toSorted((a, b) => collator.compare(a.label, b.label));
 
   return [...known, ...extra];
 }
@@ -117,6 +126,7 @@ export default function PresetSwitcher({
 }: PresetSwitcherProps) {
   const intl = useAppIntl();
   const toPresentationalText = useResolvePresentationalText();
+  const { collator } = useContentFormat();
   const currentPreset = presets[activePreset];
 
   const selector = useMemo(
@@ -170,8 +180,9 @@ export default function PresetSwitcher({
         categoricalOptions ?? [],
         groupValues,
         toPresentationalText,
+        collator,
       ),
-    [categoricalOptions, groupValues, toPresentationalText],
+    [categoricalOptions, groupValues, toPresentationalText, collator],
   );
 
   const hasHighlights = highlights.length > 0;
