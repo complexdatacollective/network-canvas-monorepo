@@ -97,8 +97,8 @@ async function askAs(
   );
 }
 
-const ownedBy = (ownerUserId: string | null) => () =>
-  Promise.resolve(installation(ownerUserId));
+const ownedBy = (ownerUserId: string | null) =>
+  Effect.succeed(installation(ownerUserId));
 
 describe('status.updateAvailable', () => {
   afterEach(() => {
@@ -136,7 +136,7 @@ describe('status.updateAvailable', () => {
   it('tells nobody when there is no installation to read', async () => {
     stored.read.mockReturnValue(release('1.3.0'));
 
-    expect(await askAs(OWNER_ID, () => Promise.resolve(null))).toBeNull();
+    expect(await askAs(OWNER_ID, Effect.succeed(null))).toBeNull();
   });
 
   it('tells the owner nothing when no release has been recorded', async () => {

@@ -1,4 +1,4 @@
-import { Cause, Effect } from 'effect';
+import { Cause, Effect, type LogLevel, References } from 'effect';
 import pg from 'pg';
 
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
@@ -23,9 +23,14 @@ export type PoolLimits = {
    * its work does not need.
    */
   max?: number;
+  logLevel?: LogLevel.LogLevel;
 };
 
-function connect(db: DbEnv, role?: string, limits: PoolLimits = {}): pg.Pool {
+function connect(
+  db: DbEnv,
+  role?: string,
+  { logLevel = 'Info', ...limits }: PoolLimits = {},
+): pg.Pool {
   const pool = new pg.Pool({
     connectionString: db.url,
     connectionTimeoutMillis: CONNECTION_TIMEOUT_MS,
@@ -42,7 +47,10 @@ function connect(db: DbEnv, role?: string, limits: PoolLimits = {}): pg.Pool {
       Effect.logError(
         'Postgres pool error on an idle client',
         Cause.fail(error),
-      ).pipe(Effect.provide(LoggerLive)),
+      ).pipe(
+        Effect.provide(LoggerLive),
+        Effect.provideService(References.MinimumLogLevel, logLevel),
+      ),
     );
   });
   return pool;
@@ -54,6 +62,9 @@ export function createPool(db: DbEnv, limits: PoolLimits = {}): pg.Pool {
 }
 
 /** The connecting login itself: schema application, reset, and seeding. */
-export function createOwnerPool(db: DbEnv): pg.Pool {
-  return connect(db);
+export function createOwnerPool(
+  db: DbEnv,
+  options: Pick<PoolLimits, 'logLevel'> = {},
+): pg.Pool {
+  return connect(db, undefined, options);
 }

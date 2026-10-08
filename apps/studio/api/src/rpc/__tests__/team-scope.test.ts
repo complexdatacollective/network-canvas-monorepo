@@ -68,7 +68,7 @@ const DEPS: RpcDeps = {
     socialProviders: [],
   },
   deployment: { mode: 'self-hosted', billing: false },
-  readInstallation: () => Promise.resolve(null),
+  readInstallation: Effect.succeed(null),
   services: unusedServices,
 };
 

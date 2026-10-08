@@ -22,7 +22,7 @@ if (!env.db) {
   process.exit(1);
 }
 
-const pool = createOwnerPool(env.db);
+const pool = createOwnerPool(env.db, { logLevel: env.logLevel });
 
 try {
   const outcome = await applySchema(pool).catch(async (error: unknown) => {
