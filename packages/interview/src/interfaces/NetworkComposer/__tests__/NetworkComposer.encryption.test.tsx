@@ -868,3 +868,102 @@ describe('NetworkComposer saving edits in the order they were made', () => {
     ).toBe('Old friend');
   });
 });
+
+describe('NetworkComposer side panel checking an answer against a protected one', () => {
+  // Only the notes are protected, so the side panel opens without the
+  // passphrase, but its place is checked against them.
+  const comparingVariables: Record<string, Variable> = {
+    ...variables,
+    [QUICK_ADD_VAR]: {
+      name: 'name',
+      label: 'name',
+      type: 'text',
+      component: 'Text',
+    },
+    [PLACE_VAR]: {
+      name: 'place',
+      label: 'place',
+      type: 'text',
+      component: 'Text',
+      validation: { differentFrom: asEntityAttributeReference(NOTES_VAR) },
+    },
+  };
+  const comparingStage: StageProps<'NetworkComposer'>['stage'] = {
+    ...stage,
+    nodeForm: {
+      fields: [
+        {
+          variable: asEntityAttributeReference(PLACE_VAR),
+          component: 'Text',
+          label: { en: 'Place' },
+        },
+      ],
+    },
+  };
+
+  async function makeNodeWithProtectedNotes(): Promise<NcNode> {
+    const { key } = await encryptionFor(PASSPHRASE);
+    const { encryptedAttributes, secureAttributes } =
+      await generateSecureAttributes(
+        {
+          [QUICK_ADD_VAR]: 'Alice',
+          [NOTES_VAR]: 'Met at work',
+          [LAYOUT_VAR]: { x: 0.3, y: 0.3 },
+        },
+        comparingVariables,
+        key,
+        NODE_ID,
+      );
+    return {
+      [entityPrimaryKeyProperty]: NODE_ID,
+      type: NODE_TYPE,
+      [entityAttributesProperty]: encryptedAttributes,
+      [entitySecureAttributesMeta]: secureAttributes,
+    };
+  }
+
+  it.each([
+    [
+      'says the passphrase is needed to save the answer',
+      true,
+      'Your answers have not been saved. Enter your passphrase, then try again.',
+    ],
+    [
+      'says the answer is invalid once the passphrase is in force',
+      false,
+      /invalid data/,
+    ],
+  ])('%s before discarding it on closing', async (_case, locked, reason) => {
+    const store = await makeStore({
+      nodes: [await makeNodeWithProtectedNotes()],
+      locked,
+      nodeVariables: comparingVariables,
+      composerStage: comparingStage,
+    });
+    renderComposer(store, comparingStage);
+
+    act(() => {
+      tapNode(screen.getByRole('button', { name: 'Alice' }));
+    });
+    const placeInput = await screen.findByLabelText(/place/i);
+    fireEvent.change(placeInput, { target: { value: 'Met at work' } });
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    });
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Discard changes?',
+    });
+    expect(dialog).toHaveTextContent(reason);
+    expect(dialog).not.toHaveTextContent(
+      locked ? /invalid data/ : /Enter your passphrase/,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Keep changes' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Discard changes?' }),
+      ).toBeNull(),
+    );
+    expect(screen.getByLabelText(/place/i)).toHaveValue('Met at work');
+  });
+});

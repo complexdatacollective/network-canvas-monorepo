@@ -68,10 +68,12 @@ Encrypted answers are now protected in a new way:
 - A validation rule that compares an answer with protected ones, such as
   "must be different from" or "must be unique", uses the decrypted answers.
   While the passphrase hasn't been entered, the check asks for it instead of
-  passing or comparing with encrypted text. A check that waits for the
-  answers to be decrypted compares with them as they are once it is done, so
-  someone added or changed meanwhile, such as a person put back by an undo,
-  is compared too.
+  passing or comparing with encrypted text. When that keeps the answers in a
+  form, or in the Network Composer's side panel, from being saved, the
+  warning before discarding them says to enter the passphrase rather than
+  that they are invalid. A check that waits for the answers to be decrypted
+  compares with them as they are once it is done, so someone added or
+  changed meanwhile, such as a person put back by an undo, is compared too.
 - A form shown over the screen, such as the add-a-person form, the "Other"
   question of a categorical bin, or a family pedigree's person forms, now
   offers the passphrase itself when one of its rules needs it, because the

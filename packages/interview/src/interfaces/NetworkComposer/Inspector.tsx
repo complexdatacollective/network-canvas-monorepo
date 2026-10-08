@@ -40,7 +40,9 @@ import type { AttributePatch } from '../../store/entityAttributePatch';
 import PassphraseNotice, {
   type PassphraseNoticeStatus,
 } from '../Anonymisation/PassphraseNotice';
-import discardChangesDialog from '../discardChangesDialog';
+import discardChangesDialog, {
+  failedCheckReason,
+} from '../discardChangesDialog';
 import { interfaceMessages } from '../messages';
 import type { LeaveGuard } from './useComposerStore';
 
@@ -170,13 +172,14 @@ function AttributeFormInner({
     [attributes],
   );
 
-  const { fieldComponents, coerceValues, toAttributePatch } = useProtocolForm({
-    fields: form.fields ?? [],
-    initialValues,
-    subject,
-    currentEntityId: entityId,
-    unavailableVariables: unavailable,
-  });
+  const { fieldComponents, coerceValues, toAttributePatch, passphraseNeeded } =
+    useProtocolForm({
+      fields: form.fields ?? [],
+      initialValues,
+      subject,
+      currentEntityId: entityId,
+      unavailableVariables: unavailable,
+    });
   const storeApi = useContext(FormStoreContext);
   const { confirm } = useDialog();
   const pendingSave = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -279,7 +282,7 @@ function AttributeFormInner({
 
       const reason = (await state.validateForm())
         ? await persist(state.getFormValues())
-        : interfaceMessages.discardChangesDescription;
+        : failedCheckReason(passphraseNeeded);
       if (reason === undefined) return true;
 
       const discarded = await confirm({
@@ -288,7 +291,7 @@ function AttributeFormInner({
       });
       return discarded === true;
     })();
-  }, [storeApi, showsSaved, persist, confirm]);
+  }, [storeApi, showsSaved, persist, passphraseNeeded, confirm]);
 
   useBeforeNext(confirmLeave);
   useEffect(

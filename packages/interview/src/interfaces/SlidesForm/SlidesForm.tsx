@@ -13,7 +13,10 @@ import {
 } from 'react';
 import { useSelector } from 'react-redux';
 
-import { createMessageError } from '@codaco/app-i18n/messages';
+import {
+  createMessageError,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
 import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -55,7 +58,9 @@ import type { AttributePatch } from '../../store/entityAttributePatch';
 import type { BeforeNextFunction, Direction } from '../../types';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { useProtectedFormValues } from '../Anonymisation/useProtectedFormValues';
-import discardChangesDialog from '../discardChangesDialog';
+import discardChangesDialog, {
+  failedCheckReason,
+} from '../discardChangesDialog';
 import { interfaceMessages } from '../messages';
 
 type FormKind = 'alter' | 'alter_edge' | 'ego' | 'slides';
@@ -91,6 +96,11 @@ type SlideHandle = {
   validate: () => Promise<boolean>;
   submit: () => Promise<boolean>;
   isDirty: () => boolean;
+  /**
+   * Why answers that failed their checks cannot be saved, for the warning
+   * before leaving.
+   */
+  unsavedReason: () => MessageDescriptor;
   /**
    * Ask the slide's form to move to its first invalid question. The form does
    * that from a layout effect on the commit that renders the errors, so this
@@ -142,6 +152,7 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
       toAttributePatch,
       componentByVariable,
       variableByFieldPath,
+      passphraseNeeded,
     } = useProtocolForm({
       fields: form.fields,
       autoFocus: false,
@@ -219,6 +230,7 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
       // no longer had.
       isDirty: () =>
         storeApi ? selectIsFormDirty(storeApi.getState()) : false,
+      unsavedReason: () => failedCheckReason(passphraseNeeded),
       requestErrorFocus: () => storeApi?.getState().requestErrorFocus(),
       getFieldErrors: () =>
         buildProtocolFieldErrors(
@@ -293,6 +305,7 @@ const ProtectedSlide = forwardRef<
     validate: async () => false,
     submit: async () => false,
     isDirty: () => false,
+    unsavedReason: () => failedCheckReason(reason === 'locked'),
     requestErrorFocus: () => noticeRef.current?.focus(),
     getFieldErrors: () => [],
   }));
@@ -443,7 +456,7 @@ export default function SlidesForm({
       }
 
       const discarded = await confirm({
-        ...discardChangesDialog(),
+        ...discardChangesDialog(slideRef.current?.unsavedReason()),
         onConfirm: () => {
           track('form_dismissed_without_save', { form_kind });
         },
@@ -464,7 +477,7 @@ export default function SlidesForm({
         }
       } else if (slideRef.current?.isDirty()) {
         const discarded = await confirm({
-          ...discardChangesDialog(),
+          ...discardChangesDialog(slideRef.current?.unsavedReason()),
           onConfirm: () => {
             track('form_dismissed_without_save', { form_kind });
           },

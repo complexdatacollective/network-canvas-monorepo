@@ -1,4 +1,11 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
@@ -119,11 +126,13 @@ async function renderAlterForm({
   const onStepChange = vi.fn();
   let moveForward: (() => Promise<void>) | undefined;
   let moveBackward: (() => Promise<void>) | undefined;
+  let goToStage: ((targetIndex: number) => Promise<void>) | undefined;
 
   function Harness() {
     const navigation = useInterviewNavigation(0);
     moveForward = navigation.moveForward;
     moveBackward = navigation.moveBackward;
+    goToStage = navigation.goToStage;
     if (alterFormStage?.type !== 'AlterForm') return null;
 
     return (
@@ -166,7 +175,11 @@ async function renderAlterForm({
       await moveBackward?.();
     });
 
-  return { store, onStepChange, next, back, prompts: () => prompts };
+  // Started without waiting, since leaving can wait on a confirmation.
+  const leave = (how: 'back' | 'jump') =>
+    how === 'back' ? moveBackward?.() : goToStage?.(1);
+
+  return { store, onStepChange, next, back, leave, prompts: () => prompts };
 }
 
 /** A ciphertext written for another person fails to decrypt for this one. */
@@ -416,6 +429,76 @@ describe('AlterForm comparing an answer with a protected one', () => {
         .nickname,
     ).toBe('Alice');
   });
+
+  // Answers the participant types, and is then asked whether to discard.
+  async function discardDialogOnLeaving(
+    leave: (how: 'back' | 'jump') => Promise<void> | undefined,
+    how: 'back' | 'jump',
+  ) {
+    await userEvent.type(
+      await screen.findByRole('textbox', { name: 'Nickname' }),
+      'Alice',
+    );
+    let leaving: Promise<void> | undefined;
+    await act(async () => {
+      leaving = leave(how);
+      await Promise.resolve();
+    });
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Discard changes?',
+    });
+    const keep = async () => {
+      fireEvent.click(
+        within(dialog).getByRole('button', { name: 'Keep changes' }),
+      );
+      await act(async () => {
+        await leaving;
+      });
+    };
+    return { dialog, keep };
+  }
+
+  it.each(['back', 'jump'] as const)(
+    'says the passphrase is needed to save the answer before discarding it on going %s',
+    async (how) => {
+      const { onStepChange, leave } = await renderAlterForm({
+        stages,
+        variables,
+      });
+
+      const { dialog, keep } = await discardDialogOnLeaving(leave, how);
+
+      expect(
+        within(dialog).getByText(
+          'Your answers have not been saved. Enter your passphrase, then try again.',
+        ),
+      ).toBeInTheDocument();
+      expect(within(dialog).queryByText(/invalid data/)).toBeNull();
+
+      await keep();
+      expect(onStepChange).not.toHaveBeenCalled();
+      expect(screen.getByRole('textbox', { name: 'Nickname' })).toHaveValue(
+        'Alice',
+      );
+    },
+  );
+
+  it.each(['back', 'jump'] as const)(
+    'says the answer is invalid before discarding it on going %s once the passphrase is in force',
+    async (how) => {
+      const { leave } = await renderAlterForm({
+        stages,
+        variables,
+        unlocked: true,
+      });
+
+      const { dialog, keep } = await discardDialogOnLeaving(leave, how);
+
+      expect(within(dialog).getByText(/invalid data/)).toBeInTheDocument();
+      expect(within(dialog).queryByText(/Enter your passphrase/)).toBeNull();
+      await keep();
+    },
+  );
 
   it('asks for the passphrase before checking the answer, then checks it against the protected one', async () => {
     const { store, onStepChange, next } = await renderAlterForm({
