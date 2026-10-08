@@ -23,13 +23,20 @@ type ExpectedSite = Readonly<{
   format: LocalizedStringFormat;
   // Whether the field's own rule allows an empty translation.
   allowsEmpty: boolean;
+  // Whether the field may have no translation at all: only the finish
+  // stage's text, which a new protocol in a language Network Canvas supplies
+  // none for starts without (`findFinishStageTextProblems`).
+  allowsNoTranslation: boolean;
 }>;
 
 const site = (
   path: Path,
   format: LocalizedStringFormat,
   allowsEmpty = false,
-): ExpectedSite => ({ path, format, allowsEmpty });
+  allowsNoTranslation = false,
+): ExpectedSite => ({ path, format, allowsEmpty, allowsNoTranslation });
+
+const FINISH_STAGE_INDEX = 20;
 
 const person = ['codebook', 'node', 'person'] as const;
 const personVariable = (id: string) => [...person, 'variables', id] as const;
@@ -124,7 +131,7 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
 
   // Every stage's label.
   ...Array.from({ length: 21 }, (_, index) =>
-    site(stage(index, 'label'), 'plain'),
+    site(stage(index, 'label'), 'plain', false, index === FINISH_STAGE_INDEX),
   ),
 
   site(stage(1, 'title'), 'plain'),
@@ -216,8 +223,8 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
 
   // The finish stage's title and content are markdown, so a researcher can
   // emphasise a word in either.
-  site(stage(20, 'title'), 'markdown'),
-  site(stage(20, 'content'), 'markdown'),
+  site(stage(FINISH_STAGE_INDEX, 'title'), 'markdown', false, true),
+  site(stage(FINISH_STAGE_INDEX, 'content'), 'markdown', false, true),
 ];
 
 const pathKey = (path: readonly PropertyKey[]) =>
@@ -295,9 +302,11 @@ describe('localized string coverage', () => {
   );
 
   it.each(EXPECTED_SITES.map((expected) => [siteName(expected), expected]))(
-    'rejects copy with no translation at %s',
-    (_name, { path }) => {
-      expect(failurePaths(withValueAt(path, {}))).toContain(pathKey(path));
+    'keeps the field rule for copy with no translation at %s',
+    (_name, { path, allowsNoTranslation }) => {
+      const paths = failurePaths(withValueAt(path, {}));
+      if (allowsNoTranslation) expect(paths).toEqual([]);
+      else expect(paths).toContain(pathKey(path));
     },
   );
 

@@ -1,9 +1,17 @@
 import JSZip from 'jszip';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  createDefaultFinishSessionStage,
+  type CurrentProtocol,
+} from '@codaco/protocol-validation';
 
-import { bundleProtocol, UnresolvedAssetsError } from '../bundleProtocol';
+import {
+  bundleProtocol,
+  downloadProtocolAsNetcanvas,
+  MissingFinishStageTextError,
+  UnresolvedAssetsError,
+} from '../bundleProtocol';
 
 const getAssetById = vi.fn();
 
@@ -172,5 +180,74 @@ describe('bundleProtocol', () => {
       value: 'secret',
       name: 'Mapbox',
     });
+  });
+});
+
+describe('the finish stage text guard', () => {
+  const japanese = { defaultLocale: 'ja', locales: ['ja'] };
+  // As Architect creates a protocol in a language Network Canvas supplies no
+  // closing text for.
+  const japaneseProtocol = (): CurrentProtocol => ({
+    ...makeProtocol({ 'id-1': asset('image', 'photo.jpg', 'Photo') }),
+    localization: japanese,
+    stages: [
+      createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
+    ],
+  });
+
+  beforeEach(() => {
+    getAssetById.mockReset();
+    getAssetById.mockResolvedValue({ data: new Blob(['bytes']) });
+  });
+
+  it('refuses to bundle a protocol whose finish stage has no heading or text in the default language', async () => {
+    const refusal = bundleProtocol(japaneseProtocol());
+    await expect(refusal).rejects.toBeInstanceOf(MissingFinishStageTextError);
+    await expect(refusal).rejects.toMatchObject({
+      problem: {
+        stageId: 'end',
+        stageIndex: 0,
+        locale: 'ja',
+        missing: ['title', 'content'],
+      },
+    });
+    // Refused before any resource is read.
+    expect(getAssetById).not.toHaveBeenCalled();
+  });
+
+  it('refuses one missing only its text, and names only that', async () => {
+    const protocol = japaneseProtocol();
+    const [finish] = protocol.stages;
+    if (finish?.type !== 'FinishSession') throw new Error('no finish stage');
+    await expect(
+      bundleProtocol({
+        ...protocol,
+        stages: [{ ...finish, title: { ja: '終わり' } }],
+      }),
+    ).rejects.toMatchObject({ problem: { missing: ['content'] } });
+  });
+
+  it('bundles it once both are written in the default language', async () => {
+    const protocol = japaneseProtocol();
+    const [finish] = protocol.stages;
+    if (finish?.type !== 'FinishSession') throw new Error('no finish stage');
+    const blob = await bundleProtocol({
+      ...protocol,
+      stages: [
+        {
+          ...finish,
+          title: { ja: '終わり' },
+          content: { ja: 'ご協力ありがとうございました。' },
+        },
+      ],
+    });
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    expect(zip.file('protocol.json')).not.toBeNull();
+  });
+
+  it('passes the refusal through a download unwrapped, so its caller can describe it', async () => {
+    await expect(
+      downloadProtocolAsNetcanvas(japaneseProtocol(), 'Japanese'),
+    ).rejects.toBeInstanceOf(MissingFinishStageTextError);
   });
 });

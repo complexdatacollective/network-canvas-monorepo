@@ -16,8 +16,10 @@ const TITLE_LIMIT = 50;
 /**
  * The heading and text of the screen that ends the interview.
  *
- * Not a capability: a finish stage the participant reads nothing on is a
- * stage the protocol schema refuses. The heading is markdown restricted to one
+ * Not a capability: a protocol whose finish stage has no heading or text in
+ * its default language cannot be downloaded. The schema still accepts one
+ * while the protocol is being written, because a new protocol in a language
+ * Network Canvas supplies no closing text for starts with none. The heading is markdown restricted to one
  * line, because the interview renders its emphasis inside the heading and
  * nothing else.
  */

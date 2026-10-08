@@ -4,6 +4,10 @@ import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { AppErrorMessage, AppMessage } from '@codaco/app-i18n/react';
 import type { DialogContextType } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  FinishStageTextRefusal,
+  FinishStageTextRefusalTitle,
+} from '~/components/FinishStageTextAlert';
 import { exportNetcanvas } from '~/ducks/modules/userActions/userActions';
 import type { AppDispatch } from '~/ducks/store';
 
@@ -53,6 +57,9 @@ const finalMessages = defineMessages({
  * `protocol` overrides what is written into the file. Pass it only where the
  * canonical protocol is not what the researcher is being offered — rescuing an
  * uncommitted stage draft, which lives outside `activeProtocol`.
+ *
+ * Nor is one whose finish stage has no heading or text in its default
+ * language: no host would import it (`MissingFinishStageTextError`).
  */
 export const downloadActiveProtocol = async (
   dispatch: AppDispatch,
@@ -61,6 +68,23 @@ export const downloadActiveProtocol = async (
 ): Promise<boolean> => {
   try {
     const result = await dispatch(exportNetcanvas(protocol)).unwrap();
+    if (result.status === 'missing-finish-stage-text') {
+      void openDialog({
+        type: 'acknowledge',
+        intent: 'destructive',
+        title: createElement(FinishStageTextRefusalTitle),
+        description: createElement(FinishStageTextRefusal, {
+          problem: result.problem,
+        }),
+        actions: {
+          primary: {
+            label: createElement(AppMessage, { message: utilityMessages.oK }),
+            value: true,
+          },
+        },
+      });
+      return false;
+    }
     if (result.status === 'unresolved-assets') {
       void openDialog({
         type: 'acknowledge',

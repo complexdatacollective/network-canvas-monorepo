@@ -67,7 +67,11 @@ beforeAll(() => {
   globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
 });
 
-function makeView(flush: () => Promise<void>, onFinish: FinishHandler) {
+function makeView(
+  flush: () => Promise<void>,
+  onFinish: FinishHandler,
+  stage: Parameters<typeof FinishSession>[0]['stage'] = finishStage,
+) {
   const store = createStore(payload, {
     onSync: () => Promise.resolve(),
     onProtocolLocaleChange: () => Promise.resolve(),
@@ -92,7 +96,7 @@ function makeView(flush: () => Promise<void>, onFinish: FinishHandler) {
               <SyncFlushProvider flush={flush}>
                 <DialogProvider>
                   <FinishSession
-                    stage={finishStage}
+                    stage={stage}
                     getNavigationHelpers={() => ({
                       moveForward: () => undefined,
                       moveBackward: () => undefined,
@@ -215,5 +219,17 @@ describe('FinishSession localized recoverable failures', () => {
     );
     expect(signal?.aborted).toBe(true);
     expect(finish).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders without closing text, as a preview of a protocol still being written does', () => {
+    render(
+      makeView(
+        () => Promise.resolve(),
+        () => Promise.resolve(),
+        { ...finishStage, label: {}, title: {}, content: {} },
+      )('en'),
+    );
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Finish' })).toBeEnabled();
   });
 });

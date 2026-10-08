@@ -44,10 +44,12 @@ import {
   validateNames,
 } from './utils/validateExternalData.ts';
 import validateProtocol, {
+  FINISH_STAGE_TEXT_MISSING,
   formatProtocolValidationIssues,
   ProtocolValidationError,
   type ProtocolValidationIssue,
   type ProtocolValidationResult,
+  type ValidateProtocolOptions,
 } from './validation/validate-protocol.ts';
 
 export {
@@ -151,6 +153,11 @@ export {
   withDefaultFinishSessionTranslation,
 } from './schemas/9/finish-session-defaults.ts';
 export {
+  findFinishStageTextProblems,
+  type FinishStageTextField,
+  type FinishStageTextProblem,
+} from './schemas/9/finish-stage-text.ts';
+export {
   findTimelineStructureProblems,
   isFinishSessionStage,
   type TimelineStructureProblem,
@@ -220,6 +227,7 @@ export {
   type ExtractedAssets,
   extractProtocol,
   extractProtocolFromZip,
+  FINISH_STAGE_TEXT_MISSING,
   findCollidingAttributeNames,
   formatProtocolValidationIssues,
   getAssetMimeType,
@@ -242,6 +250,7 @@ export {
   type ProtocolValidationIssue,
   type ProtocolValidationResult,
   type StageReferenceHit,
+  type ValidateProtocolOptions,
   validateNames,
   validateProtocol,
 };

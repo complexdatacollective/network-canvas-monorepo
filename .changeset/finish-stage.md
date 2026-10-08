@@ -31,6 +31,14 @@ ended early. That outcome is saved with each interview and exported.
   interview has always shown there, in English under the protocol's default
   language. Its notes say so. A recorded interview that was on the old
   finish screen resumes on the new finish stage.
+- A finish stage's name, heading and text may have no translation at all
+  while a protocol is being written, so a protocol in a language Network
+  Canvas has no closing text for starts without any. `validateProtocol` still
+  refuses a protocol whose finish stage has no heading or text in its default
+  language, with the issue code `finish_stage_text_missing`
+  (`FINISH_STAGE_TEXT_MISSING`) naming what is missing. An editor passes
+  `{ draft: true }` to allow it while the protocol is written.
+  `findFinishStageTextProblems` reports the same problem without validating.
 - `createDefaultFinishSessionStage`, `defaultFinishSessionText`,
   `defaultFinishSessionFields`, `hasDefaultFinishSessionText` and
   `withDefaultFinishSessionTranslation` supply that text in English, German,
@@ -68,6 +76,11 @@ ended early. That outcome is saved with each interview and exported.
 - A new protocol starts with a finish stage, in each of its languages that
   Network Canvas has text for. The Finish Screen has its own editor, for its
   heading, text and outcome.
+- A protocol whose finish stage has no heading or text in its default
+  language — a new protocol in a language Network Canvas has no text for, or
+  text a researcher cleared — can be edited, saved and reopened, but not
+  downloaded. The stage list says so, with a link to the finish stage's
+  editor, and every download is refused with the same explanation.
 - The finish stage can't be deleted or moved, and the timeline won't place a
   stage after it. New stages are added before it, and a protocol never gains a
   second one.

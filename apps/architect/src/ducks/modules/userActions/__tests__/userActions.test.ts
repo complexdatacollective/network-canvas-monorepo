@@ -195,6 +195,56 @@ describe('userActions', () => {
     });
   });
 
+  // Network Canvas supplies no closing text in Japanese, so the finish stage
+  // starts with none rather than with English recorded as Japanese. The
+  // protocol is written and reopened like any other; only downloading it is
+  // refused until the text is written (`bundleProtocol`).
+  describe('a new protocol in a language with no supplied closing text', () => {
+    it('is created with an empty finish stage, saved, and reopened', async () => {
+      const actual = await vi.importActual<
+        typeof import('@codaco/protocol-validation')
+      >('@codaco/protocol-validation');
+      validateProtocol.mockImplementation(actual.validateProtocol);
+      const localization = { defaultLocale: 'ja', locales: ['ja'] };
+
+      await runThunk(createNetcanvas({ name: '研究', localization }));
+
+      const [[{ protocol }]] = putStoredProtocol.mock.calls as [
+        [{ protocol: CurrentProtocol }],
+      ];
+      expect(protocol.stages).toEqual([
+        {
+          id: expect.any(String),
+          type: 'FinishSession',
+          label: {},
+          title: {},
+          content: {},
+          outcome: 'completed',
+        },
+      ]);
+
+      // Reopened from the library as a row whose validity is not yet proven,
+      // so it goes through validation again.
+      getStoredProtocol.mockResolvedValue({
+        id: 'ja',
+        name: protocol.name,
+        schemaVersion: protocol.schemaVersion,
+        protocol,
+        createdAt: 0,
+        updatedAt: 0,
+      });
+      setActiveProtocol.mockReset();
+
+      const result = await runThunk(openLibraryProtocol({ id: 'ja' }));
+
+      expect(result.payload).toEqual({ status: 'opened' });
+      expect(setActiveProtocol).toHaveBeenCalledWith(protocol);
+      expect(validateProtocol).toHaveBeenLastCalledWith(protocol, {
+        draft: true,
+      });
+    });
+  });
+
   // A protocol has exactly one finish stage, so one that arrives with a
   // second is refused rather than opened.
   describe('opening a protocol with two finish stages', () => {
@@ -377,10 +427,10 @@ describe('userActions', () => {
         openBundledTemplate({ protocol, name: 'Renamed Template' }),
       );
 
-      expect(validateProtocol).toHaveBeenCalledWith({
-        ...protocol,
-        name: 'Renamed Template',
-      });
+      expect(validateProtocol).toHaveBeenCalledWith(
+        { ...protocol, name: 'Renamed Template' },
+        { draft: true },
+      );
     });
 
     it('guards the whole open in setImportInProgress(true)/finally(false)', async () => {

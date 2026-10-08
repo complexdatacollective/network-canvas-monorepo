@@ -82,7 +82,7 @@ describe('admitStoredProtocol', () => {
       await expect(
         admitStoredProtocol(makeRow(), { validate, markValidated, migrate }),
       ).resolves.toEqual({ success: true, protocol });
-      expect(validate).toHaveBeenCalledWith(protocol);
+      expect(validate).toHaveBeenCalledWith(protocol, { draft: true });
       expect(markValidated).toHaveBeenCalledWith(makeRow());
       expect(migrate).not.toHaveBeenCalled();
     });
@@ -127,7 +127,7 @@ describe('admitStoredProtocol', () => {
         name: row.name,
       });
       // The upgraded document is validated before anything is written.
-      expect(validate).toHaveBeenCalledWith(upgraded);
+      expect(validate).toHaveBeenCalledWith(upgraded, { draft: true });
       // The write is guarded on the row still being the one that was read:
       // the snapshot travels with the input so the guard can compare.
       expect(persist).toHaveBeenCalledWith(

@@ -5,6 +5,9 @@ import {
   migrateProtocolWithSessions,
 } from '../../../migration/migrate-protocol.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
+import validateProtocol, {
+  FINISH_STAGE_TEXT_MISSING,
+} from '../../../validation/validate-protocol.ts';
 import {
   createDefaultFinishSessionStage,
   DEFAULT_FINISH_SESSION_TEXT,
@@ -12,6 +15,7 @@ import {
   hasDefaultFinishSessionText,
   withDefaultFinishSessionTranslation,
 } from '../finish-session-defaults.ts';
+import { findFinishStageTextProblems } from '../finish-stage-text.ts';
 import ProtocolSchemaV9 from '../schema.ts';
 import { finishSessionStage } from '../stages/finish-session.ts';
 import { findTimelineStructureProblems } from '../timeline-structure.ts';
@@ -342,6 +346,122 @@ describe('supplied finish text', () => {
       expect(
         withDefaultFinishSessionTranslation(translated, 'fr', 'en').title,
       ).toEqual({ ...stage.title, fr: 'Fin' });
+    });
+  });
+});
+
+describe('closing text missing in the default language', () => {
+  const japanese = { defaultLocale: 'ja', locales: ['ja'] };
+  // As Architect creates it: nothing in the codebook yet.
+  const japaneseProtocol = () => ({
+    ...createBaseProtocol(),
+    codebook: { node: {}, edge: {}, ego: {} },
+    localization: japanese,
+    stages: [
+      createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
+    ],
+  });
+
+  it('creates the stage with no text, rather than text in another language', () => {
+    expect(
+      createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
+    ).toEqual({
+      id: 'end',
+      type: 'FinishSession',
+      label: {},
+      title: {},
+      content: {},
+      outcome: 'completed',
+    });
+  });
+
+  it('is a protocol that can still be edited', async () => {
+    expect(ProtocolSchemaV9.safeParse(japaneseProtocol()).success).toBe(true);
+    expect(
+      (await validateProtocol(japaneseProtocol(), { draft: true })).success,
+    ).toBe(true);
+  });
+
+  it('is reported as missing heading and text, not as a schema error', async () => {
+    const result = await validateProtocol(japaneseProtocol());
+    expect(result.success).toBe(false);
+    expect(result.error?.issues).toEqual([
+      {
+        code: FINISH_STAGE_TEXT_MISSING,
+        path: ['stages', 0, 'title', 'ja'],
+        message:
+          "The stage that ends the interview has no heading in the protocol's default language (ja).",
+      },
+      {
+        code: FINISH_STAGE_TEXT_MISSING,
+        path: ['stages', 0, 'content', 'ja'],
+        message:
+          "The stage that ends the interview has no text in the protocol's default language (ja).",
+      },
+    ]);
+  });
+
+  it('finds the finish stage and what it is missing', () => {
+    expect(findFinishStageTextProblems(japaneseProtocol())).toEqual([
+      {
+        stageId: 'end',
+        stageIndex: 0,
+        locale: 'ja',
+        missing: ['title', 'content'],
+      },
+    ]);
+  });
+
+  it('counts only the default language: text in another one is not enough', () => {
+    expect(
+      findFinishStageTextProblems({
+        localization: { defaultLocale: 'ja', locales: ['ja', 'en'] },
+        stages: [
+          {
+            ...finish('end'),
+            title: { en: 'All done', ja: '終わり' },
+            content: { en: 'Thank you.' },
+          },
+        ],
+      }),
+    ).toEqual([
+      { stageId: 'end', stageIndex: 0, locale: 'ja', missing: ['content'] },
+    ]);
+  });
+
+  it('counts blank text as missing', () => {
+    expect(
+      findFinishStageTextProblems({
+        localization: { defaultLocale: 'en', locales: ['en'] },
+        stages: [
+          information('intro'),
+          { ...finish('end'), title: { en: '  ' } },
+        ],
+      }),
+    ).toEqual([
+      { stageId: 'end', stageIndex: 1, locale: 'en', missing: ['title'] },
+    ]);
+  });
+
+  it('finds nothing once both are written', async () => {
+    expect(
+      findFinishStageTextProblems({
+        ...createBaseProtocol(),
+        stages: [finish()],
+      }),
+    ).toEqual([]);
+    expect(
+      (await validateProtocol(protocolWith([information('intro'), finish()])))
+        .success,
+    ).toBe(true);
+  });
+
+  it('allows empty text only on the finish stage', () => {
+    expect(
+      issues([{ ...information('intro'), title: {} }, finish()]),
+    ).toContainEqual({
+      path: ['stages', 0, 'title'],
+      message: 'Text must have at least one translation.',
     });
   });
 });

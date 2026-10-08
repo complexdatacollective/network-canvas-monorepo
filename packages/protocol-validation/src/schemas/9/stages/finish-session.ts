@@ -41,8 +41,22 @@ export const finishSessionStage = baseStageSchema.extend({
         'A finish stage cannot have skip logic: every route through the interview ends at one.',
     })
     .optional(),
-  title: localizedString(z.string().min(1), 'markdown'),
-  content: localizedString(z.string().min(1), 'markdown'),
+  // A new protocol in a language Network Canvas supplies no closing text for
+  // starts with none of these, rather than with text in another language
+  // recorded under its own. The label may stay empty: the interview's stages
+  // menu leaves the finish stage out, so no participant reads it. The title
+  // and content may be empty only while the protocol is being written: it
+  // cannot leave its editor until both are written in its default language
+  // (`findFinishStageTextProblems`, checked by `validateProtocol`).
+  label: localizedString(
+    z.string().min(1, { message: 'Stage label cannot be empty' }),
+    'plain',
+    { mayBeEmpty: true },
+  ),
+  title: localizedString(z.string().min(1), 'markdown', { mayBeEmpty: true }),
+  content: localizedString(z.string().min(1), 'markdown', {
+    mayBeEmpty: true,
+  }),
   outcome: FinishOutcomeSchema,
 });
 

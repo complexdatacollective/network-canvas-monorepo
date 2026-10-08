@@ -38,6 +38,40 @@ const describeFinishError = () => (
 
 type FinishSessionText = Pick<FinishSessionStage, 'title' | 'content'>;
 
+function FinishSessionTitle({
+  title,
+  headingRef,
+}: {
+  title: FinishSessionStage['title'];
+  headingRef?: Ref<HTMLHeadingElement>;
+}) {
+  const { text } = useLocalizedString(title);
+  return (
+    <RenderMarkdown
+      allowedElements={TITLE_ELEMENTS}
+      render={
+        <Heading
+          ref={headingRef}
+          tabIndex={headingRef ? -1 : undefined}
+          level="h1"
+          className="text-center"
+        />
+      }
+    >
+      {text}
+    </RenderMarkdown>
+  );
+}
+
+/**
+ * Text with no translation at all, which only a protocol still being written
+ * can have: Architect previews it before the researcher writes the closing
+ * text for a language Network Canvas supplies none for. A protocol cannot be
+ * downloaded like that, so no participant meets it.
+ */
+const isUnwritten = (value: FinishSessionStage['title']) =>
+  Object.keys(value).length === 0;
+
 /** The researcher's title and content, in the protocol's language. */
 function FinishSessionText({
   stage,
@@ -46,26 +80,17 @@ function FinishSessionText({
   stage: FinishSessionText;
   headingRef?: Ref<HTMLHeadingElement>;
 }) {
-  const { text: title } = useLocalizedString(stage.title);
   return (
     <>
-      <RenderMarkdown
-        allowedElements={TITLE_ELEMENTS}
-        render={
-          <Heading
-            ref={headingRef}
-            tabIndex={headingRef ? -1 : undefined}
-            level="h1"
-            className="text-center"
-          />
-        }
-      >
-        {title}
-      </RenderMarkdown>
-      <LocalizedMarkdown
-        value={stage.content}
-        allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
-      />
+      {!isUnwritten(stage.title) && (
+        <FinishSessionTitle title={stage.title} headingRef={headingRef} />
+      )}
+      {!isUnwritten(stage.content) && (
+        <LocalizedMarkdown
+          value={stage.content}
+          allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+        />
+      )}
     </>
   );
 }
