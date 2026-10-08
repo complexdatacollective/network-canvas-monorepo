@@ -32,6 +32,14 @@ const removeEncryptedMarks = (codebook: unknown) => {
   }
 };
 
+// Schema 9 keeps `experiments` for features released within it, but
+// encrypted attributes are no longer one of them.
+const withoutEncryptedVariables = (experiments: unknown) => {
+  if (!isRecord(experiments)) return experiments;
+  const { encryptedVariables: _released, ...remaining } = experiments;
+  return remaining;
+};
+
 // Schema 9 refuses an Anonymisation stage whose minimum passphrase length is
 // above its maximum: no passphrase meets both, so a participant could never
 // choose one. Both lengths go, as the 7 to 8 migration does with an inverted
@@ -299,6 +307,9 @@ const migrationV8toV9 = createMigration({
 
     return {
       ...migrated,
+      ...(experiments !== undefined && {
+        experiments: withoutEncryptedVariables(experiments),
+      }),
       schemaVersion: 9 as const,
       localization: {
         defaultLocale: UNDETERMINED_LOCALE,

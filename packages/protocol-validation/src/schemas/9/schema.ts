@@ -38,7 +38,11 @@ import {
   CodebookSchema,
   type NodeDefinition,
 } from './codebook/index.ts';
-import { type FormField, type StageSubject } from './common/index.ts';
+import {
+  ExperimentsSchema,
+  type FormField,
+  type StageSubject,
+} from './common/index.ts';
 import type { FilterRule } from './filters/index.ts';
 import {
   INTERFACE_OWNED_OPTION_SETS,
@@ -627,6 +631,7 @@ const ProtocolSchema = z
     name: z.string().min(1),
     description: z.string().optional(),
     localization: ProtocolLocalizationSchema,
+    experiments: ExperimentsSchema.optional(),
     lastModified: z.string().datetime().optional(),
     codebook: CodebookSchema,
     assetManifest: z.record(z.string(), assetSchema).optional(),

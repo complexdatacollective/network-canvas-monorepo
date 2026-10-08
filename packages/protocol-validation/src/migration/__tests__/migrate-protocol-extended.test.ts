@@ -212,7 +212,7 @@ describe('Protocol Migration - Extended Tests', () => {
       expect(migrated.experiments).toEqual({});
     });
 
-    it('should drop the experiments field again during v8 to v9 migration', () => {
+    it('should keep the experiments field during v8 to v9 migration', () => {
       const v7Doc = {
         schemaVersion: 7,
         codebook: { node: {}, edge: {}, ego: {} },
@@ -221,7 +221,7 @@ describe('Protocol Migration - Extended Tests', () => {
 
       const migrated = migrateProtocol(v7Doc, 9, { name: 'Test Protocol' });
 
-      expect(migrated).not.toHaveProperty('experiments');
+      expect(migrated.experiments).toEqual({});
     });
 
     it('should handle null values in optional fields', () => {

@@ -6,13 +6,14 @@ import {
 } from '../../../migration/migrate-protocol.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import ProtocolSchemaV8 from '../../8/schema.ts';
+import migrationV8toV9 from '../migration.ts';
 import ProtocolSchemaV9 from '../schema.ts';
 import { asSchema8Protocol } from './schema-8-protocol.ts';
 
 // The base protocol with its `person.name` attribute marked encrypted, under
 // the given experiments.
 const protocolWithEncryptedName = (
-  experiments: { encryptedVariables?: boolean } | undefined,
+  experiments: Partial<Record<string, boolean>> | undefined,
 ) => {
   const base = createBaseProtocol();
   const { person } = base.codebook.node;
@@ -37,7 +38,7 @@ const protocolWithEncryptedName = (
 
 // The same protocol as schema 8 stored it.
 const schema8WithEncryptedName = (
-  experiments: { encryptedVariables?: boolean } | undefined,
+  experiments: Partial<Record<string, boolean>> | undefined,
 ) => asSchema8Protocol(protocolWithEncryptedName(experiments));
 
 // The base protocol, never encrypted, as the migration leaves it.
@@ -45,7 +46,7 @@ const migratedBase = () =>
   migrateProtocol(asSchema8Protocol(createBaseProtocol()), 9);
 
 describe('Migrating encrypted attributes from schema 8 to 9', () => {
-  it('keeps them encrypted when the experiment was on', () => {
+  it('keeps them encrypted when the experiment was on, and drops the experiment', () => {
     const migrated = migrateProtocol(
       schema8WithEncryptedName({ encryptedVariables: true }),
       9,
@@ -54,11 +55,11 @@ describe('Migrating encrypted attributes from schema 8 to 9', () => {
     expect(migrated.codebook.node?.person?.variables?.name).toMatchObject({
       encrypted: true,
     });
-    expect(Object.hasOwn(migrated, 'experiments')).toBe(false);
+    expect(migrated.experiments).toStrictEqual({});
+    expect(ProtocolSchemaV9.safeParse(migrated).success).toBe(true);
   });
 
   it.each([
-    ['absent', undefined],
     ['empty', {}],
     ['off', { encryptedVariables: false }],
   ])(
@@ -72,9 +73,20 @@ describe('Migrating encrypted attributes from schema 8 to 9', () => {
       expect(migrated.codebook.node?.person?.variables?.name).toEqual(
         migratedBase().codebook.node?.person?.variables?.name,
       );
-      expect(Object.hasOwn(migrated, 'experiments')).toBe(false);
+      expect(migrated.experiments).toStrictEqual({});
+      expect(ProtocolSchemaV9.safeParse(migrated).success).toBe(true);
     },
   );
+
+  it('unmarks them when the protocol had no experiments, and adds none', () => {
+    const migrated = migrateProtocol(schema8WithEncryptedName(undefined), 9);
+
+    expect(migrated.codebook.node?.person?.variables?.name).toEqual(
+      migratedBase().codebook.node?.person?.variables?.name,
+    );
+    expect(Object.hasOwn(migrated, 'experiments')).toBe(false);
+    expect(ProtocolSchemaV9.safeParse(migrated).success).toBe(true);
+  });
 
   it('changes nothing else in the codebook', () => {
     const migrated = migrateProtocol(schema8WithEncryptedName(undefined), 9);
@@ -84,14 +96,42 @@ describe('Migrating encrypted attributes from schema 8 to 9', () => {
 });
 
 describe('The experiments setting', () => {
-  it('is still accepted by schema 8', () => {
+  it('keeps every experiment but encrypted attributes when migrating from schema 8', () => {
+    const migrated = migrationV8toV9.migrate(
+      schema8WithEncryptedName({
+        encryptedVariables: true,
+        laterFeature: true,
+      }),
+      {},
+    );
+
+    expect(migrated.experiments).toStrictEqual({ laterFeature: true });
+  });
+
+  it('is still accepted by schema 8 with encrypted attributes turned on', () => {
     const protocol = schema8WithEncryptedName({ encryptedVariables: true });
     expect(ProtocolSchemaV8.safeParse(protocol).success).toBe(true);
   });
 
-  it('is refused by schema 9, which always encrypts', () => {
+  it('is accepted by schema 9', () => {
     const protocol = {
-      ...protocolWithEncryptedName({ encryptedVariables: true }),
+      ...protocolWithEncryptedName({}),
+      schemaVersion: 9,
+    };
+
+    expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
+  });
+
+  it.each([
+    [
+      'encrypted attributes, which are no longer experimental',
+      'encryptedVariables',
+    ],
+    ['an experiment schema 9 does not define', 'laterFeature'],
+  ])('is refused by schema 9 when it turns on %s', (_description, key) => {
+    const protocol = {
+      ...protocolWithEncryptedName(undefined),
+      experiments: { [key]: true },
       schemaVersion: 9,
     };
     const result = ProtocolSchemaV9.safeParse(protocol);
@@ -100,14 +140,14 @@ describe('The experiments setting', () => {
     expect(result.error?.issues).toContainEqual(
       expect.objectContaining({
         code: 'unrecognized_keys',
-        keys: ['experiments'],
+        keys: [key],
+        path: ['experiments'],
       }),
     );
   });
 
   it('is not needed by schema 9 to keep an attribute encrypted', () => {
-    const { experiments: _experiments, ...protocol } =
-      protocolWithEncryptedName({ encryptedVariables: true });
+    const protocol = protocolWithEncryptedName(undefined);
     expect(
       ProtocolSchemaV9.safeParse({ ...protocol, schemaVersion: 9 }).success,
     ).toBe(true);
