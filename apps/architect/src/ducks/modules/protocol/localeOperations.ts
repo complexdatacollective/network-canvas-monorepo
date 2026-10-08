@@ -4,13 +4,16 @@ import {
   canonicalizeLocale,
   collectLocalizedStrings,
   type CurrentProtocol,
+  findInterfaceOwnedOptionBindings,
   isFinishSessionStage,
+  isSuppliedOptionLabelSet,
   isUndeterminedLocale,
   type LocaleTag,
   type LocalizedString,
   type LocalizedStringHit,
   messageText,
   withDefaultFinishSessionTranslation,
+  withSuppliedOptionLabelTranslation,
 } from '@codaco/protocol-validation';
 import { withTranslation } from '~/utils/localizedText';
 
@@ -126,10 +129,46 @@ const resolveNewLocale = (
 };
 
 /**
- * Declares new languages. Nothing is translated, with one exception: a finish
- * stage whose closing text is still the text Network Canvas supplies gets that
- * text in each new language it is supplied in. Everything else shows as a
- * missing translation until it is written.
+ * The protocol with the option labels Network Canvas supplies added in
+ * `locale` to every attribute a Family Pedigree reads them from, where that
+ * attribute's labels in the default language are all still the supplied ones.
+ */
+const withSuppliedOptionLabels = (
+  protocol: CurrentProtocol,
+  locale: LocaleTag,
+): CurrentProtocol =>
+  createNextState(protocol, (draft) => {
+    const { defaultLocale } = protocol.localization;
+    for (const binding of findInterfaceOwnedOptionBindings(protocol)) {
+      const set = binding.optionSet;
+      if (!isSuppliedOptionLabelSet(set)) continue;
+      const { entity, type } = binding.subject;
+      const variables =
+        entity === 'ego'
+          ? draft.codebook.ego?.variables
+          : type === undefined
+            ? undefined
+            : draft.codebook[entity]?.[type]?.variables;
+      const variable = variables?.[binding.variableId];
+      if (variable?.type !== 'categorical') continue;
+      variable.options = [
+        ...withSuppliedOptionLabelTranslation(
+          set,
+          variable.options,
+          locale,
+          defaultLocale,
+        ),
+      ];
+    }
+  });
+
+/**
+ * Declares new languages. Nothing is translated, with two exceptions, each
+ * text Network Canvas supplies and the researcher has not changed in the
+ * default language: a finish stage's closing text, and the labels of the
+ * answers a Family Pedigree asks for. Each gets its supplied text in every new
+ * language it is supplied in. Everything else shows as a missing translation
+ * until it is written.
  */
 export const addLocales = (
   protocol: CurrentProtocol,
@@ -143,10 +182,11 @@ export const addLocales = (
     added.push(resolved.locale);
   }
   const { defaultLocale } = protocol.localization;
+  const labelled = added.reduce(withSuppliedOptionLabels, protocol);
   return {
     ok: true,
     protocol: {
-      ...protocol,
+      ...labelled,
       stages: protocol.stages.map((stage) =>
         isFinishSessionStage(stage)
           ? added.reduce(

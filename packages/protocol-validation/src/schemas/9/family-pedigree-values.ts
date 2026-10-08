@@ -116,7 +116,7 @@ const RELATIONSHIP_KIND_LABELS: Record<PedigreeRelationshipKind, string> = {
   biological: 'Biological parent',
   adoptive: 'Adoptive parent',
   social: 'Step or social parent',
-  donor: 'Donor',
+  donor: 'Egg or sperm donor',
   surrogate: 'Surrogate',
 };
 

@@ -763,7 +763,7 @@ export const ProtectedAnswersRefused: Story = {
       canvas.getByRole('button', { name: 'Add a person' }),
     ).toBeDisabled();
     await expect(
-      canvas.queryByRole('button', { name: 'Enter your Passphrase' }),
+      canvas.queryByRole('button', { name: 'Enter your passphrase' }),
     ).not.toBeInTheDocument();
 
     await userEvent.click(canvas.getByTestId('next-button'));
@@ -842,10 +842,10 @@ export const PassphraseInsideTheForm: Story = {
     );
     const form = within(await screen.findByRole('dialog'));
     await userEvent.click(
-      form.getByRole('button', { name: 'Enter your Passphrase' }),
+      form.getByRole('button', { name: 'Enter your passphrase' }),
     );
     const prompt = await screen.findByRole('dialog', {
-      name: 'Enter your Passphrase',
+      name: 'Enter your passphrase',
     });
     await userEvent.type(
       within(prompt).getByLabelText(/^Passphrase/, { selector: 'input' }),
@@ -858,7 +858,7 @@ export const PassphraseInsideTheForm: Story = {
       timeout: 10_000,
     });
     await expect(
-      form.queryByRole('button', { name: 'Enter your Passphrase' }),
+      form.queryByRole('button', { name: 'Enter your passphrase' }),
     ).not.toBeInTheDocument();
     const finished = screen.getByRole('button', { name: 'Finished' });
     await expect(finished).toHaveFocus();

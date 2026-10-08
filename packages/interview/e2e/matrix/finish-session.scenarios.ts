@@ -148,7 +148,7 @@ export const finishSessionScenarios: InterfaceScenarios = {
         await page.getByRole('button', { name: 'Finish' }).click();
         await page
           .getByRole('dialog')
-          .getByRole('button', { name: 'Finish Interview' })
+          .getByRole('button', { name: 'Finish', exact: true })
           .click();
 
         // The host is told which finish stage ended the interview, and how.
@@ -227,7 +227,7 @@ export const finishSessionScenarios: InterfaceScenarios = {
 
         const primary = dialog.getByTestId('dialog-primary');
         const cancel = dialog.getByTestId('dialog-cancel');
-        await expect(primary).toHaveText('Finish Interview');
+        await expect(primary).toHaveText('Finish');
         await expect(cancel).toHaveText('Cancel');
         // Destructive intent autofocuses Cancel, not the primary action.
         await expect(cancel).toBeFocused();

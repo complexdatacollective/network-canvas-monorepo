@@ -10,6 +10,7 @@ import {
   useState,
 } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
 import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
 import { CollectionFilterInput } from '@codaco/fresco-ui/collection/components/CollectionFilterInput';
@@ -465,9 +466,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
           */}
           {itemsStatus.state === 'idle' || itemsStatus.state === 'loading' ? (
             <div className="flex flex-1 items-center justify-center">
-              <Loading
-                message={intl.formatMessage(interfaceMessages.loading)}
-              />
+              <Loading message={intl.formatMessage(commonMessages.loading)} />
             </div>
           ) : itemsStatus.state === 'error' ? (
             <ErrorMessage error={itemsStatus.error} />

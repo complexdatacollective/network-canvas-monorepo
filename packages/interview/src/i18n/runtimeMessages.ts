@@ -35,12 +35,6 @@ export const runtimeMessages = defineMessages({
     defaultMessage: 'This item could not be displayed.',
     description: 'Fallback when protocol-provided media cannot be displayed.',
   },
-  copyClipboard: {
-    id: 'interview.runtime.copyClipboard',
-    defaultMessage: 'Copy to clipboard',
-    description:
-      'Tooltip for copying diagnostic information about an interview error.',
-  },
   copied: {
     id: 'interview.runtime.copied',
     defaultMessage: 'Copied!',
@@ -117,7 +111,7 @@ export const runtimeMessages = defineMessages({
   },
   enterPassphrase: {
     id: 'interview.runtime.enterPassphrase',
-    defaultMessage: 'Enter your Passphrase',
+    defaultMessage: 'Enter your passphrase',
     description: 'Title of the dialog for revealing encrypted interview data.',
   },
   submitPassphrase: {
@@ -253,11 +247,6 @@ export const runtimeMessages = defineMessages({
       'There was an error with the interview software, and this task could not be displayed. Try refreshing the page. If the problem persists, please contact the study organizer and provide the debug information below. You may be able to continue your interview by clicking the next button.',
     description:
       'Recovery instructions for an unexpected interview screen failure.',
-  },
-  untitledStage: {
-    id: 'interview.runtime.untitledStage',
-    defaultMessage: 'Untitled stage',
-    description: 'Fallback for an interview screen with no authored label.',
   },
   hiddenByAnswers: {
     id: 'interview.runtime.hiddenByAnswers',

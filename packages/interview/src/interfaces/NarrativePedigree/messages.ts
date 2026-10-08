@@ -121,12 +121,6 @@ export const messages = defineMessages({
     description:
       'Accessible action focusing the inheritance view on a person. name is entered research text or a localized relationship fallback; do not alter it.',
   },
-  familyPedigree: {
-    id: 'interview.narrativePedigree.familyPedigree',
-    defaultMessage: 'Family pedigree',
-    description:
-      'Snapshot title fallback used only when the protocol has no stage label. An authored stage label always takes precedence and stays unchanged.',
-  },
   snapshotCondition: {
     id: 'interview.narrativePedigree.snapshotCondition',
     defaultMessage: '{title}: {condition}',

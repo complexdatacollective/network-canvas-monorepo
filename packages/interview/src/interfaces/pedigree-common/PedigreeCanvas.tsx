@@ -21,6 +21,7 @@ import {
   type Point,
 } from '../FamilyPedigree/spatialNavigation';
 import { type PanZoom, useZoomLimits } from '../FamilyPedigree/usePanZoom';
+import { interfaceMessages } from '../messages';
 
 /** How far one press of a zoom control (or of + or −) zooms, as a power of
  * two. */
@@ -121,7 +122,7 @@ export function usePedigreeZoomButtons({
   return [
     <ToolbarIconButton
       key="zoom-out"
-      aria-label={intl.formatMessage(messages.zoomOut)}
+      aria-label={intl.formatMessage(interfaceMessages.zoomOut)}
       icon={<ZoomOut />}
       disabled={zoomLimits.atMin}
       onClick={() => panZoom.zoomBy(-ZOOM_STEP)}
@@ -129,7 +130,7 @@ export function usePedigreeZoomButtons({
     />,
     <ToolbarIconButton
       key="zoom-in"
-      aria-label={intl.formatMessage(messages.zoomIn)}
+      aria-label={intl.formatMessage(interfaceMessages.zoomIn)}
       icon={<ZoomIn />}
       disabled={zoomLimits.atMax}
       onClick={() => panZoom.zoomBy(ZOOM_STEP)}

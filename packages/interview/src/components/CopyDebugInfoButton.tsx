@@ -3,7 +3,7 @@
 import { Check, ClipboardCopy } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
-import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { AppMessage } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
@@ -25,7 +25,6 @@ export default function CopyDebugInfoButton({
   debugInfo: string;
   className?: string;
 }) {
-  const intl = useAppIntl();
   const [copied, setCopied] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -48,7 +47,6 @@ export default function CopyDebugInfoButton({
     <Button
       onClick={copyDebugInfoToClipboard}
       className={cx(className)}
-      title={intl.formatMessage(messages.copyClipboard)}
       color="primary"
       icon={copied ? <Check /> : <ClipboardCopy />}
     >

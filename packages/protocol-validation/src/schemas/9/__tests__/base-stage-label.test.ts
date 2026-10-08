@@ -46,6 +46,20 @@ describe('baseStageSchema label requirement (#663)', () => {
     }
   });
 
+  it('rejects a label made only of spaces', () => {
+    const result = baseStageSchema.safeParse({
+      ...validBase,
+      label: localized('   '),
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(
+        result.error.issues.some((issue) => issue.path.includes('label')),
+      ).toBe(true);
+    }
+  });
+
   it('accepts a stage that provides a label', () => {
     const result = baseStageSchema.safeParse(validBase);
     expect(result.success).toBe(true);

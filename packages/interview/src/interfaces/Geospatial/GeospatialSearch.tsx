@@ -21,6 +21,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
+import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { interfaceMessages } from '../messages';
 import {
   type Suggestion,
@@ -45,7 +46,7 @@ const preventBlur = (e: React.MouseEvent) => e.preventDefault();
  * Search outcomes, as whole sentences a translator can work with — never
  * assembled from fragments, and never a status code.
  */
-const NO_RESULTS_MESSAGE = interfaceMessages.noSearchResults;
+const NO_RESULTS_MESSAGE = runtimeMessages.noSearchMatch;
 /**
  * Kept distinct from `NO_RESULTS_MESSAGE` on purpose: a search that could not
  * run tells us nothing about whether the place exists, and saying "Nothing

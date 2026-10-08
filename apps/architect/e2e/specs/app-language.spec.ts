@@ -216,9 +216,7 @@ test('authors an Information stage in Spanish and changes built-in preview langu
   await expect(preview.locator('html')).toHaveAttribute('lang', 'en');
   await expect(finish).toHaveAttribute('id', dialogId ?? '');
   await expect(finish).toContainText(spanishFinishConfirmation);
-  await finish
-    .getByRole('button', { name: 'Finalizar entrevista', exact: true })
-    .click();
+  await finish.getByRole('button', { name: 'Finalizar', exact: true }).click();
   // The completed state's built-in notice follows the interview's language
   // too.
   await expect(

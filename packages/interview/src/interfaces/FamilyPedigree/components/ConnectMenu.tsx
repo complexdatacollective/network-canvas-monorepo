@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import {
   DropdownMenu,
@@ -20,16 +21,9 @@ import {
   type Family,
   type ParentChoice,
 } from '../model';
-import { PARENT_KIND_LABELS } from '../options';
+import type { OwnedOptionLabels } from '../options';
 
 export type ConnectPair = { firstId: string; secondId: string };
-
-/** A biological parent who carried the pregnancy is offered as its own
- * choice; every other kind by its usual label. */
-const parentChoiceLabel = (choice: ParentChoice) =>
-  choice.parentKind === 'biological' && choice.carriedPregnancy
-    ? messages.parentKindBiologicalCarrier
-    : PARENT_KIND_LABELS[choice.parentKind];
 
 const choiceId = (choice: ParentChoice) =>
   choice.parentKind === 'biological' && choice.carriedPregnancy
@@ -41,6 +35,8 @@ type ConnectMenuProps = {
   pair: ConnectPair | null;
   family: Family;
   displayName: (personId: string) => string;
+  /** The codebook's labels for the kinds of parent. */
+  parentKindLabels: OwnedOptionLabels['parentKind'];
   /** The second person's symbol, which the menu opens beside and returns
    * focus to. */
   anchor: HTMLElement | null;
@@ -62,11 +58,18 @@ export default function ConnectMenu({
   pair,
   family,
   displayName,
+  parentKindLabels,
   anchor,
   onConnect,
   onClose,
 }: ConnectMenuProps) {
   const intl = useAppIntl();
+  // A biological parent who carried the pregnancy is offered as its own
+  // choice; every other kind by the codebook's label.
+  const parentChoiceLabel = (choice: ParentChoice) =>
+    choice.parentKind === 'biological' && choice.carriedPregnancy
+      ? intl.formatMessage(messages.parentKindBiologicalCarrier)
+      : parentKindLabels[choice.parentKind];
   // The parent and child chosen in the first step, for the current pair.
   const [choice, setChoice] = useState<{
     pair: ConnectPair;
@@ -105,7 +108,7 @@ export default function ConnectMenu({
             parentChoice.parentId,
             parentChoice.childId,
           ).map((option, index) => {
-            const kindLabel = intl.formatMessage(parentChoiceLabel(option));
+            const kindLabel = parentChoiceLabel(option);
             const id = choiceId(option);
             return (
               <DropdownMenuItem
@@ -131,7 +134,7 @@ export default function ConnectMenu({
             closeOnClick={false}
             onClick={() => setChoice(null)}
           >
-            {intl.formatMessage(messages.connectBack)}
+            {intl.formatMessage(commonMessages.back)}
           </DropdownMenuItem>
         </DropdownMenuGroup>
       );
@@ -211,7 +214,7 @@ export default function ConnectMenu({
         {parentOption({ parentId: second, childId: first })}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={onClose}>
-          {intl.formatMessage(messages.cancel)}
+          {intl.formatMessage(commonMessages.cancel)}
         </DropdownMenuItem>
       </DropdownMenuGroup>
     );

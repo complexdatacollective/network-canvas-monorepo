@@ -21,8 +21,6 @@ const messages = defineMessages({
 type Breakpoint = {
   /** Position of the breakpoint as a percentage (0–100) of the container's main axis. */
   value: number;
-  /** Human-readable label for the breakpoint, used by assistive tech and tooling. */
-  label: string;
 };
 
 type ResizableFlexPanelProps = {

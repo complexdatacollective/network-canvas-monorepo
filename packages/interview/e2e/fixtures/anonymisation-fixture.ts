@@ -145,17 +145,17 @@ export class AnonymisationFixture {
    */
   prompterButton(): Locator {
     return this.page.getByRole('button', {
-      name: 'Enter your Passphrase',
+      name: 'Enter your passphrase',
       exact: true,
     });
   }
 
   /**
    * The prompter dialog, titled "Choose a passphrase" in an interview without
-   * one and "Enter your Passphrase" in one that has one.
+   * one and "Enter your passphrase" in one that has one.
    */
   prompterDialog(
-    name: 'Choose a passphrase' | 'Enter your Passphrase',
+    name: 'Choose a passphrase' | 'Enter your passphrase',
   ): Locator {
     return this.page.getByRole('dialog', { name, exact: true });
   }

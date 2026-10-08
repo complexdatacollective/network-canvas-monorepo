@@ -227,7 +227,7 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
           />
         ) : focalPeople ? (
           <div key="missing" className="flex h-24 items-center justify-center">
-            <AppMessage message={interfaceMessages.noNodesAvailable} />
+            <AppMessage message={interfaceMessages.noNodes} />
           </div>
         ) : null}
       </AnimatePresence>

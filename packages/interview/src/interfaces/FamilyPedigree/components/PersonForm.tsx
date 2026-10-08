@@ -51,6 +51,7 @@ import {
 } from '../../../selectors/forms';
 import { getCodebookVariablesForSubjectType } from '../../../selectors/protocol';
 import { readOwnProperty, writeOwnProperty } from '../../../utils/ownProperty';
+import { interfaceMessages } from '../../messages';
 import { RELATIVES_NOT_RECORDED } from '../completeness';
 import { messages } from '../messages';
 import {
@@ -80,8 +81,7 @@ import {
 import {
   BUILT_IN_DETAIL_LABELS,
   CHILD_KIND_LABELS,
-  PARENT_KIND_LABELS,
-  SEX_ASSIGNED_AT_BIRTH_LABELS,
+  type OwnedOptionLabels,
 } from '../options';
 
 export type PersonFormMode =
@@ -175,6 +175,9 @@ type PersonFormProps = {
    * researcher defined them. Empty when the stage does not ask about gender
    * identity. */
   genderIdentityOptions: GenderIdentityOption[];
+  /** The codebook's labels for the answers about sex assigned at birth and
+   * the kinds of parent. */
+  optionLabels: OwnedOptionLabels;
   formFields: FormField[];
   /** The stage's record of who holds a label it saved as their name, by
    * person id. Labels are given afresh, so a typed name may repeat one. */
@@ -211,6 +214,7 @@ export default function PersonForm({
   config,
   framing,
   genderIdentityOptions,
+  optionLabels,
   formFields,
   generatedLabels,
   decryptedNames,
@@ -384,7 +388,7 @@ export default function PersonForm({
   const ruledOut = person ? sexesRuledOut(family, person.id) : new Set();
   const sexOptions = PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
     value,
-    label: intl.formatMessage(SEX_ASSIGNED_AT_BIRTH_LABELS[value]),
+    label: optionLabels.sexAssignedAtBirth[value],
     disabled: ruledOut.has(value),
   }));
 
@@ -491,6 +495,7 @@ export default function PersonForm({
               displayName={displayName}
               config={config}
               framing={framing}
+              parentKindLabels={optionLabels.parentKind}
             />
           </section>
         )}
@@ -506,6 +511,7 @@ export default function PersonForm({
             person={mode.person}
             family={family}
             displayName={displayName}
+            parentKindLabels={optionLabels.parentKind}
           />
         )}
         {formFields.length > 0 && (
@@ -545,7 +551,7 @@ function RelativesQuestions({
   };
   const options = [
     { value: 'yes', label: intl.formatMessage(messages.hasRelativesYes) },
-    { value: 'no', label: intl.formatMessage(messages.no) },
+    { value: 'no', label: intl.formatMessage(interfaceMessages.no) },
     { value: 'unknown', label: intl.formatMessage(messages.dontKnow) },
   ];
   const initial = (
@@ -646,10 +652,12 @@ function ExistingRelationshipFields({
   person,
   family,
   displayName,
+  parentKindLabels,
 }: {
   person: Person;
   family: Family;
   displayName: (personId: string) => string;
+  parentKindLabels: Readonly<Record<PedigreeParentKind, string>>;
 }) {
   const intl = useAppIntl();
   const { partnerships, parents } = existingLinksOf(family, person.id);
@@ -722,6 +730,7 @@ function ExistingRelationshipFields({
           personIsYou={isYou(person.id)}
           parentIsYou={isYou(link.source)}
           parentName={displayName(link.source)}
+          parentKindLabels={parentKindLabels}
         />
       ))}
     </section>
@@ -737,7 +746,9 @@ function ParentLinkFields({
   personIsYou,
   parentIsYou,
   parentName,
+  parentKindLabels,
 }: {
+  parentKindLabels: Readonly<Record<PedigreeParentKind, string>>;
   link: FamilyLink;
   /** This parent could be a genetic parent alongside the person's others. */
   canBeGenetic: boolean;
@@ -770,7 +781,7 @@ function ParentLinkFields({
         })}
         options={PARENT_KINDS.map((value) => ({
           value,
-          label: intl.formatMessage(PARENT_KIND_LABELS[value]),
+          label: parentKindLabels[value],
           disabled:
             (isGeneticKind(value) && !canBeGenetic) ||
             (value === 'surrogate' && (anotherCarries || !canCarry)),
@@ -960,7 +971,9 @@ function RelationshipFields({
   displayName,
   config,
   framing,
+  parentKindLabels,
 }: {
+  parentKindLabels: Readonly<Record<PedigreeParentKind, string>>;
   relation: Relation;
   anchor: Person;
   ids: readonly string[];
@@ -977,6 +990,7 @@ function RelationshipFields({
           family={family}
           displayName={displayName}
           config={config}
+          parentKindLabels={parentKindLabels}
         />
       );
     case 'partner':
@@ -1020,7 +1034,9 @@ function ParentFields({
   family,
   displayName,
   config,
+  parentKindLabels,
 }: {
+  parentKindLabels: Readonly<Record<PedigreeParentKind, string>>;
   anchor: Person;
   family: Family;
   displayName: (personId: string) => string;
@@ -1168,7 +1184,7 @@ function ParentFields({
         label={intl.formatMessage(messages.parentKindLabel)}
         options={PARENT_KINDS.map((value) => ({
           value,
-          label: intl.formatMessage(PARENT_KIND_LABELS[value]),
+          label: parentKindLabels[value],
           disabled: !kindPossible(value),
         }))}
         required
@@ -1185,7 +1201,7 @@ function ParentFields({
               value: id,
               label: displayName(id),
             })),
-            { value: NONE, label: intl.formatMessage(messages.no) },
+            { value: NONE, label: intl.formatMessage(interfaceMessages.no) },
           ]}
           initialValue={partnerDefault.initial}
           {...partnerDefault.answering}

@@ -611,7 +611,7 @@ export default function NarrativePedigreeView({
   // person when one is set — e.g. "Inheritance Pathways: Huntington's Disease —
   // inheritance for Leo".
   const snapshotTitle = useMemo(() => {
-    const base = stageLabel || intl.formatMessage(messages.familyPedigree);
+    const base = stageLabel;
     if (!selectedDiseaseLabel) return base;
     return focalLabel
       ? intl.formatMessage(messages.snapshotInheritance, {

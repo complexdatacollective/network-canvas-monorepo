@@ -162,7 +162,7 @@ type Story = StoryObj;
 const findKeyButton = (canvasElement: HTMLElement) =>
   within(canvasElement).findByRole(
     'button',
-    { name: 'Enter your Passphrase' },
+    { name: 'Enter your passphrase' },
     { timeout: 10_000 },
   );
 
@@ -199,7 +199,7 @@ export const TurnsAwayAWrongPassphrase: Story = {
   play: async ({ canvasElement }) => {
     const field = await openPrompter(canvasElement);
     const dialog = screen.getByRole('dialog', {
-      name: 'Enter your Passphrase',
+      name: 'Enter your passphrase',
     });
     // Masked without being a password input, so password managers neither
     // offer to save it nor fill it in.
@@ -248,7 +248,7 @@ export const AcceptsTheMatchingPassphrase: Story = {
     ).toBeInTheDocument();
     await waitFor(() =>
       expect(
-        canvas.queryByRole('button', { name: 'Enter your Passphrase' }),
+        canvas.queryByRole('button', { name: 'Enter your passphrase' }),
       ).not.toBeInTheDocument(),
     );
   },
@@ -305,7 +305,7 @@ export const ChoosesAPassphrase: Story = {
     await waitFor(() =>
       expect(
         within(canvasElement).queryByRole('button', {
-          name: 'Enter your Passphrase',
+          name: 'Enter your passphrase',
         }),
       ).not.toBeInTheDocument(),
     );
@@ -347,7 +347,7 @@ export const AnswerEncryptedForAnotherPerson: Story = {
     ).not.toBeInTheDocument();
     await waitFor(() =>
       expect(
-        canvas.queryByRole('button', { name: 'Enter your Passphrase' }),
+        canvas.queryByRole('button', { name: 'Enter your passphrase' }),
       ).not.toBeInTheDocument(),
     );
   },
@@ -371,7 +371,7 @@ export const NotShownForAnswersThatCannotBeRead: Story = {
     await expect(canvas.queryByText('🔒')).not.toBeInTheDocument();
     await settle();
     await expect(
-      canvas.queryByRole('button', { name: 'Enter your Passphrase' }),
+      canvas.queryByRole('button', { name: 'Enter your passphrase' }),
     ).not.toBeInTheDocument();
   },
 };

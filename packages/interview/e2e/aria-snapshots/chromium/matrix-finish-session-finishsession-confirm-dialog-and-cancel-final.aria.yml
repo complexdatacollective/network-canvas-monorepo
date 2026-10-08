@@ -5,4 +5,4 @@
     - button "Close"
     - paragraph: Finish this interview only when you are satisfied with your responses.
     - button "Cancel"
-    - button "Finish Interview"
+    - button "Finish"

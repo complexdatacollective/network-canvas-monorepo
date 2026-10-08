@@ -67,7 +67,7 @@ describe('schema 8 interface-owned values', () => {
       { value: 'biological', label: 'Biological parent' },
       { value: 'adoptive', label: 'Adoptive parent' },
       { value: 'social', label: 'Step or social parent' },
-      { value: 'donor', label: 'Donor' },
+      { value: 'donor', label: 'Egg or sperm donor' },
       { value: 'surrogate', label: 'Surrogate' },
     ]);
   });

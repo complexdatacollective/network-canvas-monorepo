@@ -141,6 +141,17 @@ export {
   type LocalizedString,
   type LocalizedStringFormat,
 } from './schemas/9/localized-string.ts';
+// The Family Pedigree option labels Network Canvas supplies, written into a
+// protocol by Architect.
+export {
+  hasSuppliedOptionLabels,
+  isSuppliedOptionLabelSet,
+  SUPPLIED_PEDIGREE_OPTION_LABELS,
+  type SuppliedOptionLabelSet,
+  suppliedOptionLabel,
+  suppliedOptionLabels,
+  withSuppliedOptionLabelTranslation,
+} from './schemas/9/family-pedigree-option-labels.ts';
 // The finish stage text Network Canvas supplies, written into a protocol by
 // the v8 → v9 migration and by Architect.
 export {

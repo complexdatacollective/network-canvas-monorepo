@@ -900,7 +900,7 @@ function buildSearchFlowScenario(): ScenarioDefinition {
 
       // The filed keyboard route: ArrowDown onto the suggestion, Enter to
       // choose it. Focus returns to "Search location", so the next Tab resumes
-      // from the toggle and reaches Zoom In in sequence — rather than resuming
+      // from the toggle and reaches Zoom in in sequence — rather than resuming
       // where the removed option used to sit and skipping the toggle entirely.
       await stage.geospatial.search('Sidetrack');
       await stage.geospatial.searchInput.press('ArrowDown');

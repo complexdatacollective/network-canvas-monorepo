@@ -525,7 +525,7 @@ export const ProtectedNotesRefused: Story = {
       screen.queryByRole('button', { name: 'Enter a new answer' }),
     ).not.toBeInTheDocument();
     await expect(
-      screen.queryByRole('button', { name: 'Enter your Passphrase' }),
+      screen.queryByRole('button', { name: 'Enter your passphrase' }),
     ).not.toBeInTheDocument();
   },
 };

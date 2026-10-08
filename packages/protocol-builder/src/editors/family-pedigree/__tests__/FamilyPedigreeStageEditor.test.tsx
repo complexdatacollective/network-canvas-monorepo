@@ -6,6 +6,8 @@ import {
   PEDIGREE_DEFAULT_GENDER_IDENTITIES,
   PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT,
   PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
+  suppliedOptionLabel,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
@@ -444,6 +446,45 @@ describe('the attribute slots', () => {
     });
     expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
       true,
+    );
+  });
+
+  it('seeds a new sex assigned at birth attribute with the supplied labels, in each protocol language that has them', async () => {
+    const harness = renderStageEditor({
+      stageId: 'family-pedigree-1',
+      editor: familyPedigreeEditor,
+      localization: { defaultLocale: 'en-US', locales: ['en-US', 'es', 'hu'] },
+    });
+    await harness.opened();
+
+    await inventAttribute(
+      harness.user,
+      attributeField('Sex assigned at birth'),
+      'sex_new',
+    );
+    const editor = await screen.findByRole('dialog');
+    await harness.user.click(
+      within(editor).getByRole('button', { name: 'Create attribute' }),
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    const definition = harness.protocolSections()[FAMILY_MEMBER_SECTION];
+    const variables = isRecord(definition) ? definition.variables : undefined;
+    const created = isRecord(variables)
+      ? variables[variableIdByName(harness, 'sex_new') ?? '']
+      : undefined;
+    expect(isRecord(created) ? created.options : undefined).toEqual(
+      PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
+        value,
+        label: {
+          'en-US': suppliedOptionLabel(
+            'pedigreeSexAssignedAtBirth',
+            value,
+            'en',
+          ),
+          'es': suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'es'),
+        },
+      })),
     );
   });
 

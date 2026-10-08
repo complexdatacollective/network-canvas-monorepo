@@ -78,8 +78,9 @@ function twoScreenProtocol(): CurrentProtocol {
 /**
  * Seed the protocol, open its first stage, launch the preview, and walk it to
  * the protocol's finish stage. `exact` on the Finish locator matters: the
- * confirmation's title and its confirm action are "Finish Interview", while
- * the stage's button is the bare "Finish".
+ * finish stage's own heading and label are "Finish Interview", and the
+ * stage's button and the confirmation's confirm action are both the bare
+ * "Finish", so the confirm action is found inside the dialog.
  */
 async function previewToFinishStage(
   architectPage: Page,
@@ -121,7 +122,7 @@ test('finishing a preview reports completion, prevents a repeat, and can be rest
   await finishButton.click();
   const dialog = preview.getByRole('dialog');
   await expect(dialog).toBeVisible();
-  await dialog.getByRole('button', { name: 'Finish Interview' }).click();
+  await dialog.getByRole('button', { name: 'Finish', exact: true }).click();
 
   // 1. The completed state replaces the interview: the protocol's own
   //    closing text, the notice that the answers can no longer change, and
