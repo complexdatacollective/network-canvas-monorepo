@@ -1,7 +1,14 @@
 'use client';
 
 import { AnimatePresence } from 'motion/react';
-import { useCallback, useEffect, useId, useMemo, useRef } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
 import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
@@ -249,6 +256,13 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     writesEncrypted: useEncryption,
   });
 
+  // The people whose add is under way. Protecting their answers can take a
+  // while, so they leave the roster as soon as they are dropped rather than
+  // once they are in the network, and a second drop of the same card is
+  // ignored. The ref answers a drop straight away; the state re-renders.
+  const addingRef = useRef(new Set<string>());
+  const [adding, setAdding] = useState<ReadonlySet<string>>(() => new Set());
+
   const handleAddNode = async (metadata?: Record<string, unknown>) => {
     const meta = metadata as UseItemElement | undefined;
     if (!meta) return;
@@ -259,6 +273,10 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     }
 
     const { id, data } = meta;
+    if (addingRef.current.has(id)) return;
+    addingRef.current.add(id);
+    setAdding(new Set(addingRef.current));
+
     const attributeData = {
       ...newNodeAttributes,
       ...data[entityAttributesProperty],
@@ -275,7 +293,10 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
         allowUnknownAttributes: true,
         currentStep,
       }),
-    );
+    ).finally(() => {
+      addingRef.current.delete(id);
+      setAdding(new Set(addingRef.current));
+    });
     const failure = writeFailureMessage(result);
     if (failure) {
       showToast({
@@ -313,12 +334,12 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     return false;
   }, [maxNodesReached, itemsStatus, encryptionLocked]);
 
-  // --- Exclude already-added items from source panel ---
+  // --- Exclude added items, and those being added, from source panel ---
   const filteredItems = useMemo(() => {
-    if (!excludeItems || excludeItems.length === 0) return items;
-    const excludeSet = new Set(excludeItems);
+    if (excludeItems.length === 0 && adding.size === 0) return items;
+    const excludeSet = new Set([...excludeItems, ...adding]);
     return items.filter((item) => !excludeSet.has(item.id));
-  }, [items, excludeItems]);
+  }, [items, excludeItems, adding]);
 
   // --- Disabled keys to prevent dragging when disabled ---
   const disabledKeys = useMemo(
@@ -374,6 +395,9 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
         ? { ...item, itemType: 'SOURCE_NODES' }
         : { itemType: 'SOURCE_NODES' };
     },
+    // A drag names the person by the label their card shows.
+    getItemAnnouncedName: (key) =>
+      filteredItems.find((i) => i.id === String(key))?.props.label,
     renderPreview: (_key, metadata) => {
       const item = metadata as UseItemElement | undefined;
       if (!item?.props?.label) return null;
