@@ -20,11 +20,12 @@ import {
 } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
+import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { ContractProvider } from '../../../contract/context';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import { setPassphrase } from '../../../store/modules/ui';
 import { interviewToastManager } from '../../../toast/interviewToastManager';
-import type { StageProps } from '../../../types';
+import type { BeforeNextFunction, StageProps } from '../../../types';
 import { createEncryptionStore } from '../../Anonymisation/__tests__/encryptionFixtures';
 import { isNumberArray } from '../../Anonymisation/decryptionScope';
 import { decryptData } from '../../Anonymisation/utils';
@@ -122,6 +123,19 @@ function renderGeospatial(passphrase?: string, encryptionEnabled = true) {
   });
   if (passphrase) store.dispatch(setPassphrase(passphrase));
 
+  const beforeNext = new Map<string, BeforeNextFunction>();
+  function registerBeforeNext(fn: BeforeNextFunction | null): void;
+  function registerBeforeNext(key: string, fn: BeforeNextFunction | null): void;
+  function registerBeforeNext(
+    keyOrFn: string | BeforeNextFunction | null,
+    maybeFn?: BeforeNextFunction | null,
+  ) {
+    const key = typeof keyOrFn === 'string' ? keyOrFn : 'stage';
+    const fn = typeof keyOrFn === 'string' ? maybeFn : keyOrFn;
+    if (fn) beforeNext.set(key, fn);
+    else beforeNext.delete(key);
+  }
+
   render(
     <ContractProvider
       onFinish={vi.fn()}
@@ -133,13 +147,15 @@ function renderGeospatial(passphrase?: string, encryptionEnabled = true) {
       <Provider store={store}>
         <InterviewI18nProvider requestedLocale="en">
           <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-            <GeospatialInterface
-              stage={stage}
-              getNavigationHelpers={() => ({
-                moveForward: vi.fn(),
-                moveBackward: vi.fn(),
-              })}
-            />
+            <StageMetadataContext.Provider value={registerBeforeNext}>
+              <GeospatialInterface
+                stage={stage}
+                getNavigationHelpers={() => ({
+                  moveForward: vi.fn(),
+                  moveBackward: vi.fn(),
+                })}
+              />
+            </StageMetadataContext.Provider>
           </CurrentStepProvider>
         </InterviewI18nProvider>
       </Provider>
@@ -161,7 +177,23 @@ function renderGeospatial(passphrase?: string, encryptionEnabled = true) {
     });
   };
 
-  return { store, selectArea, waitForMap };
+  // What pressing Next asks of the stage: whether it may be left.
+  const leave = async () => {
+    for (const handler of beforeNext.values()) {
+      if ((await handler('forwards', 'step')) === false) return false;
+    }
+    return true;
+  };
+
+  return { store, selectArea, waitForMap, leave };
+}
+
+async function readStoredLocation(node: NcNode | undefined) {
+  const data = node?.[entityAttributesProperty].neighbourhood;
+  const secureAttributes = node?.[entitySecureAttributesMeta]?.neighbourhood;
+  if (!isNumberArray(data)) throw new Error('Expected a stored ciphertext');
+  if (!secureAttributes) throw new Error('Expected secure-attribute metadata');
+  return decryptData({ secureAttributes, data }, 'pw');
 }
 
 describe('Geospatial asking for an encrypted location', () => {
@@ -232,15 +264,41 @@ describe('Geospatial saving locations in the order they were picked', () => {
       expect(encryptionGate.ended).toBe(encryptionGate.begun),
     );
     await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
-    const [saved] = store.getState().session.network.nodes;
-    const data = saved?.[entityAttributesProperty].neighbourhood;
-    const secureAttributes = saved?.[entitySecureAttributesMeta]?.neighbourhood;
-    if (!isNumberArray(data)) throw new Error('Expected a stored ciphertext');
-    if (!secureAttributes)
-      throw new Error('Expected secure-attribute metadata');
-    await expect(decryptData({ secureAttributes, data }, 'pw')).resolves.toBe(
-      'outside-selectable-areas',
-    );
+    await expect(
+      readStoredLocation(store.getState().session.network.nodes[0]),
+    ).resolves.toBe('outside-selectable-areas');
+  });
+
+  it('leaves the stage only once a location waiting its turn has been stored', async () => {
+    const { store, selectArea, leave } = renderGeospatial('pw');
+    const begunBefore = encryptionGate.begun;
+    let release: () => void = () => undefined;
+    encryptionGate.held = new Promise((resolve) => {
+      release = resolve;
+    });
+
+    await selectArea();
+    await waitFor(() => expect(encryptionGate.begun).toBe(begunBefore + 1));
+    act(() => {
+      fireEvent.click(screen.getByTestId('outside-selectable-areas-button'));
+    });
+
+    let left = false;
+    const leaving = leave().then((allowed) => {
+      left = allowed;
+      return allowed;
+    });
+    await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
+    expect(left).toBe(false);
+
+    release();
+    await act(async () => {
+      await leaving;
+    });
+    expect(left).toBe(true);
+    await expect(
+      readStoredLocation(store.getState().session.network.nodes[0]),
+    ).resolves.toBe('outside-selectable-areas');
   });
 });
 

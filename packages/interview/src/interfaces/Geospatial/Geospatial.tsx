@@ -241,7 +241,8 @@ export default function GeospatialInterface({
   // A location that takes longer to save, as a protected one can, never lands
   // after one picked later. Every outcome of a save, including a refusal, is
   // reported inside it.
-  const saveLocationInOrder = useOneAtATime(saveLocationValue);
+  const { run: saveLocationInOrder, settled: locationsSaved } =
+    useOneAtATime(saveLocationValue);
   const setLocationValue = useCallback(
     (value: string | null, selectionKind: 'search' | 'pin' = 'pin') => {
       void saveLocationInOrder(value, selectionKind);
@@ -407,21 +408,29 @@ export default function GeospatialInterface({
     });
   }, [navState.activeIndex]);
 
+  // Picks still waiting their turn to be saved have not reached the store, so
+  // the stage is left only once they have, and the next stage is chosen with
+  // them.
+  const leaveStage = () => {
+    const saving = locationsSaved();
+    return saving ? saving.then(() => true) : true;
+  };
+
   const beforeNext = (direction: Direction, intent: NavigationIntent) => {
     // Leave the stage if there are no nodes
     if (stageNodes.length === 0) {
-      return true;
+      return leaveStage();
     }
 
     if (intent === 'jump') {
-      return true;
+      return leaveStage();
     }
 
     // We are moving backwards.
     if (direction === 'backwards') {
       // If we are at the first node, leave the stage
       if (navState.activeIndex === 0) {
-        return true;
+        return leaveStage();
       }
 
       previousNode();
@@ -430,7 +439,7 @@ export default function GeospatialInterface({
 
     // We are moving forwards.
     if (isLastNode()) {
-      return true;
+      return leaveStage();
     }
     nextNode();
     return false;

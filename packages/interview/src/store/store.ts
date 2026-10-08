@@ -12,6 +12,7 @@ import type { InterviewPayload, SyncHandler } from '../contract/types';
 import { createAnalyticsListenerMiddleware } from './middleware/analyticsListener';
 import { createLoggerMiddleware } from './middleware/logger';
 import { createSyncMiddleware } from './middleware/syncMiddleware';
+import { createWritesInFlightMiddleware } from './middleware/writesInFlight';
 import protocol from './modules/protocol';
 import session from './modules/session';
 import ui from './modules/ui';
@@ -37,6 +38,15 @@ export const store = (
   const { middleware: syncMiddleware, flush } = createSyncMiddleware({
     onSync: options.onSync,
   });
+  const { middleware: writesInFlightMiddleware, writesSettled } =
+    createWritesInFlightMiddleware();
+  // A write still protecting its answers is stored before they are handed to
+  // the host. While the page unloads there is no time to wait for it.
+  const flushSync = async (flushOptions?: { unloading?: boolean }) => {
+    const settling = flushOptions?.unloading ? undefined : writesSettled();
+    if (settling) await settling;
+    return flush(flushOptions);
+  };
   const tracker = options.tracker ?? NULL_TRACKER;
   const analyticsMiddleware = createAnalyticsListenerMiddleware({
     tracker,
@@ -44,7 +54,7 @@ export const store = (
   const redactors = createSecretRedactors(protocolPayload);
 
   // Object.assign rather than a cast so the store's inferred type (dispatch
-  // thunk overloads included) survives alongside the added flushSync.
+  // thunk overloads included) survives alongside the added functions.
   return Object.assign(
     configureStore({
       reducer: rootReducer,
@@ -55,6 +65,7 @@ export const store = (
           },
         }).concat(
           ...(options.isDevelopment ? [createLoggerMiddleware(redactors)] : []),
+          writesInFlightMiddleware,
           syncMiddleware,
           analyticsMiddleware,
           ...(options.extraMiddleware ?? []),
@@ -73,7 +84,7 @@ export const store = (
           }
         : false,
     }),
-    { flushSync: flush },
+    { flushSync, writesSettled },
   );
 };
 

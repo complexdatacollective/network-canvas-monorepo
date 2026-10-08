@@ -1,4 +1,4 @@
-import { configureStore } from '@reduxjs/toolkit';
+import { configureStore, type Middleware } from '@reduxjs/toolkit';
 import { act, renderHook } from '@testing-library/react';
 import { type ReactNode, useState } from 'react';
 import { Provider } from 'react-redux';
@@ -11,9 +11,11 @@ import {
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
+import { createWritesInFlightMiddleware } from '../../store/middleware/writesInFlight';
 import protocol from '../../store/modules/protocol';
 import session, { updateEgo } from '../../store/modules/session';
 import ui from '../../store/modules/ui';
+import { WritesSettledProvider } from '../../store/WritesSettledContext';
 import useInterviewNavigation from '../useInterviewNavigation';
 
 type TestStage = {
@@ -63,7 +65,7 @@ const skipWhenDeclined = (
   destination,
 });
 
-function makeStore(stages: TestStage[]) {
+function makeStore(stages: TestStage[], extraMiddleware: Middleware[] = []) {
   return configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
@@ -92,7 +94,8 @@ function makeStore(stages: TestStage[]) {
         stages,
       } as never,
     },
-    middleware: (g) => g({ serializableCheck: false }),
+    middleware: (g) =>
+      g({ serializableCheck: false }).concat(...extraMiddleware),
   });
 }
 
@@ -126,6 +129,38 @@ function renderStatefulNavigation(
     () => useInterviewNavigation(initialStageOverrideIndex, reviewMode),
     { wrapper: Wrapper },
   );
+  return { result, onStepChange, store };
+}
+
+// Navigation in a store that tracks the session writes under way, as the
+// interview's own store does.
+function renderTrackingWrites(stages: TestStage[], initialStep = 0) {
+  const { middleware, writesSettled } = createWritesInFlightMiddleware();
+  const store = makeStore(stages, [middleware]);
+  const onStepChange = vi.fn();
+
+  function Wrapper({ children }: { children: ReactNode }) {
+    const [step, setStep] = useState(initialStep);
+    return (
+      <Provider store={store}>
+        <WritesSettledProvider writesSettled={writesSettled}>
+          <CurrentStepProvider
+            currentStep={step}
+            onStepChange={(nextStep, meta) => {
+              onStepChange(nextStep, meta);
+              setStep(nextStep);
+            }}
+          >
+            {children}
+          </CurrentStepProvider>
+        </WritesSettledProvider>
+      </Provider>
+    );
+  }
+
+  const { result } = renderHook(() => useInterviewNavigation(), {
+    wrapper: Wrapper,
+  });
   return { result, onStepChange, store };
 }
 
@@ -774,5 +809,83 @@ describe('useInterviewNavigation goToStage (progress-bar jump)', () => {
 
     expect(onStepChange).toHaveBeenCalledTimes(1);
     expect(onStepChange).toHaveBeenCalledWith(2, expect.anything());
+  });
+});
+
+describe('useInterviewNavigation waiting for writes begun on the stage', () => {
+  const declined = { set: { agrees: false }, unset: [] };
+  // Lets everything already queued run, so a navigation that did not wait
+  // would have finished.
+  const queuedWorkRuns = () =>
+    act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+
+  it('chooses the next screen with an answer still being stored', async () => {
+    const stages = makeStages(3);
+    stages[1]!.skipLogic = skipWhenDeclined({ type: 'finish' });
+    const { result, onStepChange, store } = renderTrackingWrites(stages);
+    store.dispatch(updateEgo.pending('w1', declined));
+
+    let moving: Promise<unknown> = Promise.resolve();
+    act(() => {
+      moving = result.current.moveForward();
+    });
+    await queuedWorkRuns();
+    expect(onStepChange).not.toHaveBeenCalled();
+
+    await act(async () => {
+      store.dispatch(updateEgo.fulfilled(declined, 'w1', declined));
+      await moving;
+    });
+    expect(onStepChange).toHaveBeenLastCalledWith(3, expect.anything());
+  });
+
+  it('chooses the previous screen with an answer still being stored', async () => {
+    const stages = makeStages(3);
+    stages[1]!.skipLogic = {
+      action: 'SKIP',
+      filter: skipWhenDeclined({ type: 'finish' }).filter,
+    };
+    const { result, onStepChange, store } = renderTrackingWrites(stages, 2);
+    store.dispatch(updateEgo.pending('w1', declined));
+
+    let moving: Promise<unknown> = Promise.resolve();
+    act(() => {
+      moving = result.current.moveBackward();
+    });
+    await queuedWorkRuns();
+    expect(onStepChange).not.toHaveBeenCalled();
+
+    await act(async () => {
+      store.dispatch(updateEgo.fulfilled(declined, 'w1', declined));
+      await moving;
+    });
+    expect(onStepChange).toHaveBeenLastCalledWith(0, expect.anything());
+  });
+
+  it('rechecks a menu target with an answer still being stored', async () => {
+    const stages = makeStages(5);
+    stages[1]!.skipLogic = skipWhenDeclined({
+      type: 'stage',
+      stageId: 's4',
+    });
+    const { result, onStepChange, store } = renderTrackingWrites(stages);
+    const confirmUnavailable = vi.fn().mockResolvedValue(true);
+    store.dispatch(updateEgo.pending('w1', declined));
+
+    let moving: Promise<unknown> = Promise.resolve();
+    act(() => {
+      moving = result.current.goToStage(2, confirmUnavailable);
+    });
+    await queuedWorkRuns();
+    expect(onStepChange).not.toHaveBeenCalled();
+
+    await act(async () => {
+      store.dispatch(updateEgo.fulfilled(declined, 'w1', declined));
+      await moving;
+    });
+    expect(confirmUnavailable).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'bypassed' }),
+    );
+    expect(onStepChange).toHaveBeenLastCalledWith(2, expect.anything());
   });
 });

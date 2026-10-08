@@ -279,7 +279,7 @@ function AttributeFormInner({
   );
   // A save that takes longer, as protecting an answer can, never lands after
   // a newer one.
-  const persist = useOneAtATime(save);
+  const { run: persist } = useOneAtATime(save);
 
   const handleValidValues = useCallback(
     (values: Record<string, FieldValue>) => {
