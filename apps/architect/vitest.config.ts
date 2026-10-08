@@ -150,6 +150,7 @@ export default defineConfig({
             '@codaco/protocol-validation > csvtojson',
             '@codaco/interview > concaveman',
             '@codaco/interview > html-to-image',
+            '@codaco/interview > intl-messageformat',
             '@codaco/interview > ohash',
             '@reduxjs/toolkit > immer',
             '@tanstack/react-table',
