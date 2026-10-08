@@ -216,6 +216,8 @@ type DialogState = AnyDialog & {
   open: boolean;
   abortController: AbortController | null;
   onConfirmHandler: (() => void | Promise<void>) | null;
+  /** See `ConfirmOptions.abortable`. */
+  abortable?: boolean;
   error: React.ReactNode;
   /**
    * The control that was focused when this dialog was requested. Captured
@@ -229,7 +231,33 @@ type DialogState = AnyDialog & {
 type ConfirmOptions = {
   /** Localized error guidance rendered while the confirm remains open for retry. */
   describeError?: (error: unknown) => React.ReactNode;
+  /**
+   * The confirmed action. When it returns a promise, the dialog stays open
+   * until it settles: it closes as confirmed once the promise resolves, and
+   * shows the error for a retry if it rejects.
+   *
+   * While the promise is pending the dialog cannot be cancelled or dismissed
+   * (Cancel is disabled, the close button is hidden, and Escape and outside
+   * presses are ignored), because cancelling would resolve the confirm as
+   * cancelled while the action carried on and completed. Set `abortable` only
+   * when the action really stops on `signal`.
+   *
+   * `signal` also aborts when the dialog is torn down without the user (the
+   * provider unmounting, or `closeAllDialogs`), so an action can skip
+   * follow-up work, such as state updates, that no longer has a dialog to
+   * report to.
+   */
   onConfirm: (signal: AbortSignal) => void | Promise<void>;
+  /**
+   * Keeps Cancel, the close button, Escape and outside presses available while
+   * an async `onConfirm` is pending. Cancelling aborts `signal` and resolves
+   * the confirm as cancelled (`false`, or `null` when dismissed).
+   *
+   * Only set this when `onConfirm` honours `signal`: once it aborts, nothing
+   * the action has not already done may happen. Server actions, IPC calls and
+   * storage writes that run to completion regardless are not abortable.
+   */
+  abortable?: boolean;
   title?: React.ReactNode;
   description?: React.ReactNode;
   confirmLabel: React.ReactNode;
@@ -275,6 +303,16 @@ export const DialogContext = createContext<DialogContextType | null>(null);
  */
 const getDialogFinalFocus = (dialog: DialogState) => () =>
   resolveFinalFocus(dialog.opener, dialog.finalFocus);
+
+/**
+ * Whether a confirm is running an action that leaving would not stop. Leaving
+ * resolves the confirm as cancelled, which would be untrue while that action
+ * is still going to complete, so Cancel and every dismissal are refused until
+ * it settles. A confirm whose action honours its signal (`abortable`) stays
+ * cancellable, as cancelling it really does stop the action.
+ */
+const isConfirmHeldOpen = (dialog: DialogState) =>
+  dialog.abortController !== null && !dialog.abortable;
 
 function WizardDialogContent({
   dialog,
@@ -324,10 +362,11 @@ function WizardDialogContent({
     <Dialog
       title={wizardProps.title}
       description={wizardProps.description}
-      closeDialog={() => void guardedCloseDialog(dialogId, null)}
+      closeDialog={wizardProps.cancel}
       finalFocus={getDialogFinalFocus(dialog)}
       accent={dialog.intent}
       open={dialog.open}
+      dismissible={!wizardProps.isBusy}
       footer={wizardProps.footer}
       className={dialog.className}
       size={dialog.size ?? 'editor'}
@@ -456,6 +495,11 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
   const [dialogs, setDialogs] = useState<DialogState[]>([]);
   const dialogsRef = useRef<DialogState[]>([]);
   const isMounted = useRef(true);
+  // Confirms running an action that leaving would not stop, recorded the
+  // moment the action starts rather than when the dialog next renders, so a
+  // Cancel or dismissal in the same task as the confirming click is refused
+  // too. The rendered state (`isConfirmHeldOpen`) only disables the controls.
+  const heldOpenConfirms = useRef(new Set<string>());
 
   useEffect(() => {
     dialogsRef.current = dialogs;
@@ -612,8 +656,13 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
   const confirm = useCallback(
     async (options: ConfirmOptions): Promise<true | false | null> => {
       const dialogId = generatePublicId();
+      let isRunning = false;
 
       const handleConfirm = async () => {
+        // A second confirming click before the first one's render has
+        // disabled the button would run the action twice.
+        if (isRunning) return;
+
         setDialogError(dialogId, null);
 
         const abortController = new AbortController();
@@ -639,13 +688,21 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
           return;
         }
 
+        isRunning = true;
+        if (!options.abortable) heldOpenConfirms.current.add(dialogId);
         setDialogAbortController(dialogId, abortController);
 
         try {
           await maybePromise;
+          heldOpenConfirms.current.delete(dialogId);
           await closeDialog(dialogId, true);
         } catch (e) {
-          if (e instanceof DOMException && e.name === 'AbortError') {
+          heldOpenConfirms.current.delete(dialogId);
+          // Only an abort this dialog asked for means it has closed. Any other
+          // rejection, an AbortError from the action's own timeout included,
+          // is a failure to show, or a dialog that cannot be cancelled while
+          // it waits would be left waiting for good.
+          if (abortController.signal.aborted) {
             return;
           }
 
@@ -659,6 +716,8 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
                 <AppMessage message={messages.errorOccurred} />
               )),
           );
+        } finally {
+          isRunning = false;
         }
       };
 
@@ -682,9 +741,11 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
           },
         },
         onConfirmHandler: handleConfirm,
+        abortable: options.abortable ?? false,
       } as ChoiceDialog<boolean, never, boolean> & {
         id: string;
         onConfirmHandler: () => void | Promise<void>;
+        abortable: boolean;
       });
 
       return result ?? null;
@@ -697,6 +758,13 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
     openDialog,
     confirm,
     closeAllDialogs,
+  };
+
+  // Cancel, the close button, Escape and outside presses: the ways the person
+  // using a dialog leaves it, as opposed to the caller closing it.
+  const leaveDialog = (id: string, value: unknown = null) => {
+    if (heldOpenConfirms.current.has(id)) return;
+    void closeDialog(id, value);
   };
 
   const renderDialogActions = (dialog: DialogState) => {
@@ -729,6 +797,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
           : 'primary';
 
       const isLoading = dialog.abortController !== null;
+      const isHeldOpen = isConfirmHeldOpen(dialog);
 
       const handlePrimaryClick = () => {
         if (dialog.onConfirmHandler) {
@@ -751,9 +820,10 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
           {dialog.actions.cancel && (
             <Button
               onClick={() =>
-                closeDialog(dialog.id, dialog.actions.cancel.value)
+                leaveDialog(dialog.id, dialog.actions.cancel.value)
               }
               autoFocus={autoFocusButton === 'cancel'}
+              disabled={isHeldOpen}
               data-testid="dialog-cancel"
             >
               {dialog.actions.cancel.label}
@@ -816,10 +886,11 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
         key={dialog.id}
         title={dialog.title}
         description={dialog.description}
-        closeDialog={() => closeDialog(dialog.id)}
+        closeDialog={() => leaveDialog(dialog.id)}
         finalFocus={getDialogFinalFocus(dialog)}
         accent={dialog.intent}
         open={dialog.open}
+        dismissible={!isConfirmHeldOpen(dialog)}
         footer={footer}
         className={dialog.className}
         size={dialog.size}

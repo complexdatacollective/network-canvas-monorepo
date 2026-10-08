@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { action } from 'storybook/actions';
-import { expect, fn, screen, userEvent } from 'storybook/test';
+import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test';
 
 import Button from '../Button';
 import Heading from '../typography/Heading';
@@ -124,19 +124,42 @@ import useDialog from './useDialog';
  *
  * ## Async Confirm
  *
- * The `confirm` utility supports async `onConfirm` callbacks with built-in
- * abort and error handling. During loading, the dialog remains dismissible —
- * cancel/close/Escape trigger `AbortController.abort()`.
+ * The `confirm` utility supports async `onConfirm` callbacks. The dialog stays
+ * open until the promise settles: it resolves `true` once the action completes,
+ * and shows the error for a retry if it fails.
+ *
+ * While the action runs, the dialog cannot be cancelled or dismissed. Most
+ * actions (a server action, an IPC call, a storage write) complete whatever
+ * happens to the dialog, and cancelling would tell the user nothing happened
+ * when it did.
  *
  * ```tsx
  * const result = await confirm({
- *   title: 'Finish Interview',
- *   confirmLabel: 'Finish',
- *   onConfirm: async (signal: AbortSignal) => {
- *     await fetch('/api/action', { method: 'POST', signal });
+ *   title: 'Delete Item?',
+ *   confirmLabel: 'Delete',
+ *   onConfirm: async () => {
+ *     await deleteItem(id);
  *   },
  * });
- * // result: true (completed) | false (cancelled) | null (aborted/error)
+ * // result: true (completed) | false (cancelled before confirming) | null (dismissed)
+ * ```
+ *
+ * An action that really stops when its `signal` aborts opts in with
+ * `abortable: true`. Cancel, the close button, Escape and outside presses then
+ * stay available while it runs, abort the signal, and resolve the confirm as
+ * cancelled. Nothing the action has not already done may happen after that.
+ *
+ * ```tsx
+ * const result = await confirm({
+ *   title: 'Process Data',
+ *   confirmLabel: 'Process',
+ *   abortable: true,
+ *   onConfirm: async (signal) => {
+ *     const data = await fetchPreview({ signal });
+ *     signal.throwIfAborted();
+ *     applyLocally(data);
+ *   },
+ * });
  * ```
  */
 const meta: Meta = {
@@ -462,19 +485,28 @@ export const ConfirmUtility: StoryObj<Meta<ConfirmUtilityArgs>> = {
   },
 };
 
+type AsyncConfirmArgs = {
+  onResult: (result: unknown) => void;
+};
+
 /**
  * The `confirm` utility supports async `onConfirm` callbacks. When the callback
  * returns a Promise, the dialog shows a loading state on the primary button.
  *
- * During loading, the cancel button, close button, backdrop click, and Escape key
- * all trigger `AbortController.abort()` on the in-flight request. The dialog is
- * **always dismissible**.
+ * While it runs, the dialog **cannot be cancelled or dismissed**: Cancel is
+ * disabled, the close button is hidden, and Escape and outside presses are
+ * ignored. The action here, like a server action, runs to completion whatever
+ * happens to the dialog, so cancelling would report that nothing happened when
+ * it did. The confirm resolves `true` once it completes.
  *
- * If the async action fails with a non-abort error, the error message is shown
- * inline in the dialog and the user can retry.
+ * If the async action fails, the error message is shown inline in the dialog,
+ * and the user can retry or cancel.
  */
-export const AsyncConfirm: Story = {
-  render: () => {
+export const AsyncConfirm: StoryObj<Meta<AsyncConfirmArgs>> = {
+  args: {
+    onResult: fn(),
+  },
+  render: (args) => {
     const { confirm } = useDialog();
 
     const handleAsyncAction = async () => {
@@ -484,17 +516,11 @@ export const AsyncConfirm: Story = {
           'Are you sure you want to finish? Your responses cannot be changed afterwards.',
         confirmLabel: 'Finish Interview',
         cancelLabel: 'Cancel',
-        onConfirm: async (signal) => {
-          await new Promise<void>((resolve, reject) => {
-            const timeout = setTimeout(resolve, 2000);
-            signal.addEventListener('abort', () => {
-              clearTimeout(timeout);
-              reject(new DOMException('Aborted', 'AbortError'));
-            });
-          });
+        onConfirm: async () => {
+          await new Promise<void>((resolve) => setTimeout(resolve, 2000));
         },
       });
-      action('console.log')('Async confirm result:', result);
+      args.onResult(result);
     };
 
     return (
@@ -503,15 +529,43 @@ export const AsyncConfirm: Story = {
       </div>
     );
   },
+  play: async ({ args }) => {
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Finish Interview (2s delay)' }),
+    );
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Finish Interview' }),
+    );
+
+    const cancel = within(dialog).getByRole('button', { name: 'Cancel' });
+    await waitFor(() => expect(cancel).toBeDisabled());
+    await expect(
+      within(dialog).queryByRole('button', { name: 'Close' }),
+    ).not.toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+    await expect(dialog).toBeInTheDocument();
+    await expect(args.onResult).not.toHaveBeenCalled();
+
+    // The action completes, and the confirm reports that it did.
+    await waitFor(() => expect(args.onResult).toHaveBeenCalledWith(true), {
+      timeout: 5000,
+    });
+  },
 };
 
 /**
- * When the user cancels during an async operation, the AbortController signal
- * is triggered. Try clicking "Run Action" and then "Cancel" while loading.
+ * An action that really stops when its signal aborts opts in with
+ * `abortable: true`. Cancel, the close button, Escape and outside presses then
+ * stay available while it runs: they abort the signal and resolve the confirm
+ * as cancelled. Try clicking "Process" and then "Cancel" while loading.
  */
-export const AsyncConfirmWithAbort: Story = {
+export const AsyncConfirmWithAbort: StoryObj<Meta<AsyncConfirmArgs>> = {
   name: 'Async Confirm — Abort on Cancel',
-  render: () => {
+  args: {
+    onResult: fn(),
+  },
+  render: (args) => {
     const { confirm } = useDialog();
 
     const handleAction = async () => {
@@ -522,6 +576,7 @@ export const AsyncConfirmWithAbort: Story = {
         confirmLabel: 'Process',
         cancelLabel: 'Cancel',
         intent: 'default',
+        abortable: true,
         onConfirm: async (signal) => {
           await new Promise<void>((resolve, reject) => {
             const timeout = setTimeout(resolve, 5000);
@@ -535,13 +590,14 @@ export const AsyncConfirmWithAbort: Story = {
 
       const resultLabels = {
         true: 'Completed',
-        false: 'Cancelled before start',
-        null: 'Aborted during action',
+        false: 'Cancelled',
+        null: 'Dismissed',
       };
       action('console.log')(
         'Result:',
         resultLabels[String(result) as keyof typeof resultLabels],
       );
+      args.onResult(result);
     };
 
     return (
@@ -551,6 +607,25 @@ export const AsyncConfirmWithAbort: Story = {
         </Button>
       </div>
     );
+  },
+  play: async ({ args }) => {
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'Process Data (5s — try cancelling)',
+      }),
+    );
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Process' }),
+    );
+    await within(dialog).findByRole('button', { name: 'Please wait...' });
+
+    const cancel = within(dialog).getByRole('button', { name: 'Cancel' });
+    await expect(cancel).toBeEnabled();
+    await userEvent.click(cancel);
+
+    await waitFor(() => expect(args.onResult).toHaveBeenCalledWith(false));
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
   },
 };
 
