@@ -29,6 +29,7 @@ function migrated(...names: string[]): StoredProtocolMigrationResult {
       toVersion: 8,
       previousHash: `old-${name}`,
       hash: `new-${name}`,
+      unmigratedSessionIds: [],
     })),
     failed: [],
   };

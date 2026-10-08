@@ -1,8 +1,11 @@
+import { getInterviewProgress } from '@codaco/interview';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import {
   type CurrentProtocol,
   hashProtocol,
-  migrateProtocol,
+  migrateProtocolWithSessions,
+  type SessionMigrationResult,
+  type SessionMigrator,
   validateProtocol,
 } from '@codaco/protocol-validation';
 
@@ -10,12 +13,16 @@ import { db } from './db';
 import {
   decryptAsset,
   decryptProtocol,
+  type DecryptedSessionRecord,
+  decryptSessionRecord,
   encryptAsset,
   encryptProtocol,
+  encryptSession,
   type StoredAssetRow,
   type StoredProtocolRow,
+  type StoredSessionRow,
 } from './recordCrypto';
-import type { StoredProtocol } from './types';
+import type { StoredProtocol, StoredSession } from './types';
 
 // Bring stored protocols up to the schema version this build's interview
 // runtime executes (`COMPATIBLE_PROTOCOL_SCHEMA_VERSION`, read from the
@@ -31,12 +38,15 @@ import type { StoredProtocol } from './types';
 // tables. A row whose migration or validation fails never opens a transaction
 // at all, so it and its sessions are left untouched and the sweep continues.
 //
-// Two properties of a migration are what make repointing sessions sufficient,
-// and protocol-validation's migration module states both as binding invariants:
-// a migration never adds, removes, or reorders stages (so a session's
-// `currentStep` still names the same stage), and never changes the shape of a
-// collected answer (so `network` needs no rewriting). A future migration rule
-// that breaks either one forces this file to be redesigned in the same change.
+// A migration can move stages and change how a session represents its data,
+// so repointing a session is not enough: every session of the protocol is
+// also carried across the migration — its network, stage metadata and resume
+// position (`currentStep`) — by the session migrator protocol-validation
+// returns with the migrated protocol (`migrateProtocolWithSessions`), and
+// written in the same transaction. A session the migrator cannot carry is
+// repointed unchanged and logged, as before session migrations existed: its
+// data stays exactly as recorded, and one damaged session does not hold back
+// its protocol.
 //
 // Transaction-liveness rule: Dexie auto-commits an open transaction the moment
 // the body awaits a non-Dexie promise. Every `crypto.subtle` await (decrypt /
@@ -49,6 +59,9 @@ export type MigratedStoredProtocol = {
   toVersion: number;
   previousHash: string;
   hash: string;
+  /** Ids of the sessions the session migrator could not carry, which were
+   * repointed unchanged. */
+  unmigratedSessionIds: string[];
 };
 
 export type FailedStoredProtocolMigration = {
@@ -120,6 +133,137 @@ const sourceUnchanged = (
   current.schemaVersion === read.schemaVersion &&
   current.name === read.name;
 
+/**
+ * The protocol's sessions, migrated and re-encrypted for the transaction to
+ * write, keyed to `hash`. Done before the transaction opens, because
+ * decrypting and encrypting await `crypto.subtle`.
+ */
+type MigratedSessionRows = {
+  /** Every session read, as read, for the transaction to check unchanged. */
+  read: StoredSessionRow[];
+  /** Every session, ready to write. */
+  rows: StoredSessionRow[];
+  unmigratedSessionIds: string[];
+};
+
+/** Decrypts one stored session and runs it through the session migrator. A
+ * session that cannot be decrypted is reported like one that cannot be
+ * migrated. */
+async function migrateSessionRow(
+  row: StoredSessionRow,
+  migrateSession: SessionMigrator,
+): Promise<
+  | {
+      success: true;
+      record: DecryptedSessionRecord;
+      result: Extract<SessionMigrationResult, { success: true }>;
+    }
+  | { success: false; error: unknown }
+> {
+  let record: DecryptedSessionRecord;
+  try {
+    record = await decryptSessionRecord(row);
+  } catch (error) {
+    return { success: false, error };
+  }
+  const result = migrateSession({
+    network: record.network,
+    stageMetadata: record.stageMetadata,
+    currentStep: record.currentStep,
+  });
+  return result.success
+    ? { success: true, record, result }
+    : { success: false, error: result.error };
+}
+
+async function migrateSessionRows(
+  previousHash: string,
+  hash: string,
+  migrateSession: SessionMigrator,
+  stages: CurrentProtocol['stages'],
+): Promise<MigratedSessionRows> {
+  const read = await db.sessions
+    .where('protocolHash')
+    .equals(previousHash)
+    .toArray();
+  const rows: StoredSessionRow[] = [];
+  const unmigratedSessionIds: string[] = [];
+  // Sequential, like the asset re-keying: one session's network at a time.
+  for (const row of read) {
+    const migration = await migrateSessionRow(row, migrateSession);
+    if (!migration.success) {
+      // oxlint-disable-next-line no-console -- the only record of which session was left unmigrated, and why
+      console.error(
+        `Could not migrate session ${row.id}; repointing it unchanged`,
+        migration.error,
+      );
+      unmigratedSessionIds.push(row.id);
+      rows.push({ ...row, protocolHash: hash });
+      continue;
+    }
+    const { record, result } = migration;
+    if (!result.changed) {
+      rows.push({ ...row, protocolHash: hash });
+      continue;
+    }
+    const { network, stageMetadata, currentStep } = result.session;
+    const migrated: StoredSession = {
+      ...record,
+      protocolHash: hash,
+      network,
+      stageMetadata,
+      currentStep,
+      // The stored progress was reported against the old stage count; an
+      // in-progress session's moved position is re-derived as the engine
+      // would report it. A finished session's progress stands.
+      ...(currentStep !== record.currentStep && record.finishedAt === null
+        ? { progress: getInterviewProgress(stages, currentStep).progress }
+        : {}),
+    };
+    rows.push(await encryptSession(migrated));
+  }
+  return { read, rows, unmigratedSessionIds };
+}
+
+/** The fields any session write changes, compared to detect one in the gap
+ * between reading a protocol's sessions and committing their migration. */
+const sessionUnchanged = (
+  current: StoredSessionRow | undefined,
+  read: StoredSessionRow,
+) =>
+  current !== undefined &&
+  current.protocolHash === read.protocolHash &&
+  current.lastUpdatedAt === read.lastUpdatedAt &&
+  current.finishedAt === read.finishedAt &&
+  current.exportedAt === read.exportedAt &&
+  current.currentStep === read.currentStep &&
+  current.localePreference === read.localePreference &&
+  current.locale === read.locale;
+
+/**
+ * Inside the migration's transaction: the protocol's sessions must be exactly
+ * the ones read and migrated, each unchanged since. Otherwise a write landed
+ * in the gap, and writing the migrated copies would undo it.
+ */
+async function assertSessionsUnchanged(
+  previousHash: string,
+  sessions: MigratedSessionRows,
+  name: string,
+): Promise<void> {
+  const ids = await db.sessions
+    .where('protocolHash')
+    .equals(previousHash)
+    .primaryKeys();
+  if (ids.length !== sessions.read.length) {
+    throw new SourceChangedError(name);
+  }
+  for (const read of sessions.read) {
+    if (!sessionUnchanged(await db.sessions.get(read.id), read)) {
+      throw new SourceChangedError(name);
+    }
+  }
+}
+
 async function migrateStoredProtocolRow(
   row: StoredProtocolRow,
 ): Promise<MigratedStoredProtocol> {
@@ -130,7 +274,7 @@ async function migrateStoredProtocolRow(
 
   // The `name` dependency: v7 and below have no protocol name of their own, so
   // the migration is told the one this library already displays for the row.
-  const migrated = migrateProtocol(
+  const { protocol: migrated, migrateSession } = migrateProtocolWithSessions(
     stored.protocol,
     COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
     { name: stored.name },
@@ -171,17 +315,27 @@ async function migrateStoredProtocolRow(
   // place and leave sessions and assets alone. A migration to schema 9 always
   // moves the key, because it adds the localization declaration.
   if (hash === previousHash) {
+    // The sessions still change: a migration that leaves the structure alone
+    // can re-spell what a session holds.
+    const sessions = await migrateSessionRows(
+      previousHash,
+      hash,
+      migrateSession,
+      validated.stages,
+    );
     // Guarded like every other commit in this sweep: the async work above
     // left a gap in which another tab may have re-imported (same hash, and —
     // because the hash excludes assets and experiments — possibly different
-    // resources) or deleted this protocol. Only the revision that was read
-    // may be replaced.
-    await db.transaction('rw', db.protocols, async () => {
+    // resources) or deleted this protocol, or written one of its sessions.
+    // Only the revision that was read may be replaced.
+    await db.transaction('rw', db.protocols, db.sessions, async () => {
       const source = await db.protocols.get(row.id);
       if (!sourceUnchanged(source, row)) {
         throw new SourceChangedError(row.name);
       }
+      await assertSessionsUnchanged(previousHash, sessions, row.name);
       await db.protocols.put(protocolRow);
+      if (sessions.rows.length > 0) await db.sessions.bulkPut(sessions.rows);
     });
     return {
       name: nextStored.name,
@@ -189,6 +343,7 @@ async function migrateStoredProtocolRow(
       toVersion: validated.schemaVersion,
       previousHash,
       hash,
+      unmigratedSessionIds: sessions.unmigratedSessionIds,
     };
   }
 
@@ -211,6 +366,12 @@ async function migrateStoredProtocolRow(
     throw collisionError();
   }
   const assetRows = await rekeyAssets(previousHash, hash);
+  const sessions = await migrateSessionRows(
+    previousHash,
+    hash,
+    migrateSession,
+    validated.stages,
+  );
 
   await db.transaction(
     'rw',
@@ -240,19 +401,10 @@ async function migrateStoredProtocolRow(
         hash,
         migratedAt: new Date().toISOString(),
       });
-      // Query the sessions by primary key rather than by the `protocolHash`
-      // index we are about to rewrite: Dexie leaves the result undefined when a
-      // `modify` changes the very index it is iterating.
-      const sessionIds = await db.sessions
-        .where('protocolHash')
-        .equals(previousHash)
-        .primaryKeys();
-      if (sessionIds.length > 0) {
-        await db.sessions
-          .where('id')
-          .anyOf(sessionIds)
-          .modify({ protocolHash: hash });
-      }
+      // The migrated sessions carry the new hash; a session written since
+      // they were read aborts the commit, and the next launch tries again.
+      await assertSessionsUnchanged(previousHash, sessions, row.name);
+      if (sessions.rows.length > 0) await db.sessions.bulkPut(sessions.rows);
       await db.assets.where('protocolHash').equals(previousHash).delete();
       await db.protocols.delete(row.id);
     },
@@ -264,6 +416,7 @@ async function migrateStoredProtocolRow(
     toVersion: validated.schemaVersion,
     previousHash,
     hash,
+    unmigratedSessionIds: sessions.unmigratedSessionIds,
   };
 }
 

@@ -20,6 +20,7 @@ import { migrateStoredProtocols } from '../migrateStoredProtocols';
 import {
   decryptAsset,
   decryptProtocol,
+  decryptSession,
   encryptAsset,
   encryptProtocol,
   encryptSession,
@@ -113,6 +114,140 @@ function storedSession(id: string, protocolHash: string): StoredSession {
     network,
     localePreference: null,
     locale: null,
+  };
+}
+
+// A schema 8 protocol whose Family Pedigree (stage 1) has an introduction
+// screen. The v8 → v9 migration makes the introduction a stage of its own,
+// inserted before the pedigree, so the pedigree and every later stage move one
+// place on.
+function v8PedigreeDocument(): Record<string, unknown> {
+  return {
+    schemaVersion: 8,
+    name: 'Pedigree Study',
+    codebook: {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          icon: 'add-a-person',
+          shape: { default: 'circle' },
+          variables: {
+            name: { name: 'name', type: 'text', component: 'Text' },
+            is_ego: { name: 'is_ego', type: 'boolean', component: 'Toggle' },
+            biologicalSex: {
+              name: 'biologicalSex',
+              type: 'categorical',
+              options: [
+                { value: 'female', label: 'Female' },
+                { value: 'male', label: 'Male' },
+                {
+                  value: 'intersex',
+                  label: 'Intersex or a variation in sex characteristics',
+                },
+                { value: 'unknown', label: 'Don’t know' },
+                { value: 'preferNotToSay', label: 'Prefer not to say' },
+              ],
+            },
+          },
+        },
+      },
+      edge: {
+        family: {
+          name: 'Family',
+          color: 'edge-color-seq-1',
+          variables: {
+            kind: {
+              name: 'kind',
+              type: 'categorical',
+              options: [
+                { value: 'biological', label: 'Biological' },
+                { value: 'social', label: 'Social' },
+                { value: 'donor', label: 'Donor' },
+                { value: 'surrogate', label: 'Surrogate' },
+                { value: 'adoptive', label: 'Adoptive' },
+                { value: 'partner', label: 'Partner' },
+              ],
+            },
+            isActive: { name: 'isActive', type: 'boolean' },
+            isGestationalCarrier: {
+              name: 'isGestationalCarrier',
+              type: 'boolean',
+            },
+          },
+        },
+      },
+      ego: { variables: {} },
+    },
+    stages: [
+      {
+        id: 'welcome',
+        type: 'Information',
+        label: 'Welcome',
+        title: 'Welcome',
+        items: [{ id: 'welcome-text', type: 'text', content: 'Welcome' }],
+      },
+      {
+        id: 'family',
+        type: 'FamilyPedigree',
+        label: 'Family',
+        introScreen: {
+          items: [{ id: 'intro', type: 'text', content: 'Your family.' }],
+        },
+        nodeConfig: {
+          type: 'person',
+          nodeLabelVariable: 'name',
+          egoVariable: 'is_ego',
+          biologicalSexVariable: 'biologicalSex',
+        },
+        edgeConfig: {
+          type: 'family',
+          relationshipTypeVariable: 'kind',
+          isActiveVariable: 'isActive',
+          isGestationalCarrierVariable: 'isGestationalCarrier',
+        },
+        framing: { mode: 'participantChoice' },
+        censusPrompt: 'Who is in your family?',
+      },
+      {
+        id: 'closing',
+        type: 'Information',
+        label: 'Closing',
+        title: 'Closing',
+        items: [{ id: 'closing-text', type: 'text', content: 'Thank you' }],
+      },
+    ],
+  };
+}
+
+// A session at the pedigree, as the schema 8 interview recorded it once the
+// pedigree was finalized: its stage record keyed by the pedigree's index.
+function v8PedigreeSession(id: string, protocolHash: string): StoredSession {
+  return {
+    ...storedSession(id, protocolHash),
+    currentStep: 1,
+    progress: 33,
+    network: {
+      ...network,
+      nodes: [
+        {
+          [entityPrimaryKeyProperty]: 'ego-1',
+          type: 'person',
+          [entityAttributesProperty]: { is_ego: true },
+          stageId: 'family',
+          promptIDs: [],
+        },
+      ],
+    },
+    stageMetadata: {
+      1: {
+        isNetworkCommitted: true,
+        edgeIdVersion: 1,
+        nodes: [{ id: 'ego-1', label: '', isEgo: true }],
+        edges: [],
+        selectedFraming: 'gamete',
+      },
+    } as unknown as StoredSession['stageMetadata'],
   };
 }
 
@@ -226,6 +361,67 @@ describe.each([
     if (!assetRow) throw new Error('expected the asset to be re-keyed');
     expect(assetRow.protocolHash).toBe(row.hash);
     expect((await decryptAsset(assetRow)).data).toBe('secret-key-1');
+  });
+
+  it('carries each session across the migration with its protocol', async () => {
+    await seedProtocol(
+      storedRow('old-hash', 'Pedigree Study', v8PedigreeDocument()),
+    );
+    await db.sessions.put(
+      await encryptSession(v8PedigreeSession('s1', 'old-hash')),
+    );
+
+    const result = await migrateStoredProtocols();
+
+    expect(result.failed).toEqual([]);
+    expect(result.migrated[0]?.unmigratedSessionIds).toEqual([]);
+    const row = await db.sessions.get('s1');
+    if (!row) throw new Error('expected the session to survive');
+    expect(row.protocolHash).toBe(result.migrated[0]?.hash);
+    // Readable again: the schema 8 pedigree record no longer fails the
+    // current stage metadata schema.
+    const session = await decryptSession(row);
+    // The pedigree moved from stage 1 to 2, and its record with it.
+    expect(session.currentStep).toBe(2);
+    expect(session.stageMetadata).toEqual({ 2: { framing: 'gamete' } });
+    expect(session.network.nodes).toHaveLength(1);
+    // Progress re-derived for the moved position (stage 2 of 4 + finish).
+    expect(session.progress).not.toBe(33);
+    expect(session.lastUpdatedAt).toBe('2026-01-02T00:00:00.000Z');
+  });
+
+  it('repoints a session it cannot migrate unchanged, and migrates the rest', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await seedProtocol(
+      storedRow('old-hash', 'Pedigree Study', v8PedigreeDocument()),
+    );
+    await db.sessions.put(
+      await encryptSession(v8PedigreeSession('s-ok', 'old-hash')),
+    );
+    const damaged = {
+      ...v8PedigreeSession('s-damaged', 'old-hash'),
+      stageMetadata: {
+        1: { isNetworkCommitted: true },
+        7: { notAStageRecord: true },
+      },
+    } as unknown as StoredSession;
+    await db.sessions.put(await encryptSession(damaged));
+
+    const result = await migrateStoredProtocols();
+
+    expect(result.migrated[0]?.unmigratedSessionIds).toEqual(['s-damaged']);
+    const hash = result.migrated[0]?.hash;
+    const ok = await db.sessions.get('s-ok');
+    expect(ok?.protocolHash).toBe(hash);
+    expect(ok?.currentStep).toBe(2);
+    const left = await db.sessions.get('s-damaged');
+    expect(left?.protocolHash).toBe(hash);
+    expect(left?.currentStep).toBe(1);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('s-damaged'),
+      expect.anything(),
+    );
+    errorSpy.mockRestore();
   });
 
   it('leaves a protocol already at the compatible version completely alone', async () => {

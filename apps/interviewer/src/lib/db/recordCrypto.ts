@@ -94,9 +94,20 @@ export async function encryptSession(
   };
 }
 
-export async function decryptSession(
+/**
+ * A stored session decrypted but not parsed: its network and stage metadata
+ * exactly as stored. The stored-protocol migration reads sessions this way,
+ * because a session recorded against an older protocol schema can hold stage
+ * metadata the current schema no longer accepts until it is migrated.
+ */
+export type DecryptedSessionRecord = Omit<
+  StoredSession,
+  'network' | 'stageMetadata'
+> & { network: unknown; stageMetadata: unknown };
+
+export async function decryptSessionRecord(
   row: StoredSessionRow,
-): Promise<StoredSession> {
+): Promise<DecryptedSessionRecord> {
   const { _enc, network, stageMetadata, ...rest } = row;
   if (!_enc) {
     if (network === undefined) {
@@ -104,11 +115,7 @@ export async function decryptSession(
         `Session ${row.id} has neither plaintext network nor _enc`,
       );
     }
-    return {
-      ...rest,
-      network: NcNetworkSchema.parse(network),
-      stageMetadata: parseStageMetadata(stageMetadata),
-    };
+    return { ...rest, network, stageMetadata };
   }
   const dek = getSessionDek();
   if (!dek) throw new Error('Cannot decrypt session: vault is locked (no key)');
@@ -117,10 +124,17 @@ export async function decryptSession(
   const decStageMetadata = _enc.stageMetadata
     ? await decryptJson<unknown>(_enc.stageMetadata, dek, aad)
     : undefined;
+  return { ...rest, network: decNetwork, stageMetadata: decStageMetadata };
+}
+
+export async function decryptSession(
+  row: StoredSessionRow,
+): Promise<StoredSession> {
+  const { network, stageMetadata, ...rest } = await decryptSessionRecord(row);
   return {
     ...rest,
-    network: NcNetworkSchema.parse(decNetwork),
-    stageMetadata: parseStageMetadata(decStageMetadata),
+    network: NcNetworkSchema.parse(network),
+    stageMetadata: parseStageMetadata(stageMetadata),
   };
 }
 
