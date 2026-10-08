@@ -3,11 +3,18 @@
  * across the same schema migration as the protocol itself.
  *
  * A host migrates a stored protocol in place, and every session recorded
- * against it goes on pointing at the migrated protocol. A migration step that
- * changes stage positions, or how a session represents its data, declares a
- * `migrateSession` step beside its protocol transform (see `createMigration`),
- * and `migrateProtocolWithSessions` hands the host a migrator that runs those
- * steps, in order, on each session recorded against the source protocol.
+ * against it goes on pointing at the migrated protocol.
+ * `migrateProtocolWithSessions` hands the host a migrator that carries each
+ * session recorded against the source protocol across every step, in order:
+ *
+ * 1. Stage positions, which the framework handles for every step. When a step
+ *    adds, removes or reorders stages, the session's stage-keyed records and
+ *    resume position follow their stages, matched by id between the protocol
+ *    before and after that step (`stageMovement`, `remapStageIndices`).
+ * 2. Data shape, which a step that changes how a session represents its data
+ *    declares as `migrateSession` beside its protocol transform (see
+ *    `createMigration`). It receives the session already at the step's new
+ *    stage positions.
  */
 import { isEqual } from 'ohash';
 import { z } from 'zod';
@@ -73,8 +80,9 @@ export type SessionDocument = {
 
 /**
  * The outcome of migrating one session. A failure is returned rather than
- * thrown, so a host migrating many sessions can record it, leave that session
- * as it was, and carry on with the rest.
+ * thrown, so a host can migrate every session of a protocol and report every
+ * failure. A host writes nothing for a protocol with any failed session: the
+ * protocol and all its sessions stay as they were (see the README).
  */
 export type SessionMigrationResult =
   | {
@@ -95,16 +103,23 @@ export type SessionMigrator = (
   session: PersistedSession,
 ) => SessionMigrationResult;
 
-/** A session step as the chain recorded it while migrating the protocol. */
+/**
+ * One step of a protocol migration as the chain recorded it, for the session
+ * migrator: how the step moved stages, and the step's own session step, if it
+ * declares one, with the protocol before and after it (frozen).
+ */
 export type RecordedSessionStep = {
   from: SchemaVersion;
   to: SchemaVersion;
-  migrateSession: (
-    session: SessionDocument,
-    protocols: { before: unknown; after: unknown },
-  ) => SessionDocument;
-  before: unknown;
-  after: unknown;
+  stages: StageMovement;
+  migrateSession?: {
+    run: (
+      session: SessionDocument,
+      protocols: { before: unknown; after: unknown },
+    ) => SessionDocument;
+    before: unknown;
+    after: unknown;
+  };
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -196,11 +211,23 @@ export const createSessionMigrator =
 
     let current = document;
     for (const step of steps) {
+      if (step.stages.kind === 'unmatched') {
+        return {
+          success: false,
+          error: new SessionMigrationError(
+            'stages-unmatched',
+            `The migration from version ${step.from} changed how many stages the protocol has, and its stages cannot be told apart because some have no id or share one, so the session's stage positions cannot be carried across it.`,
+            { version: step.from },
+          ),
+        };
+      }
+      if (step.stages.kind === 'moved') {
+        current = remapStageIndices(current, step.stages.map);
+      }
+      if (!step.migrateSession) continue;
+      const { run, before, after } = step.migrateSession;
       try {
-        current = step.migrateSession(current, {
-          before: step.before,
-          after: step.after,
-        });
+        current = run(current, { before, after });
       } catch (cause) {
         return {
           success: false,
@@ -250,7 +277,8 @@ export const createSessionMigrator =
     };
   };
 
-const stageIdsOf = (protocol: unknown): (string | undefined)[] => {
+/** Each stage's id, in order; `undefined` for a stage without one. */
+export const stageIdsOf = (protocol: unknown): (string | undefined)[] => {
   const stages = isRecord(protocol) ? protocol.stages : undefined;
   if (!Array.isArray(stages)) return [];
   return stages.map((stage) =>
@@ -262,44 +290,62 @@ const hasUniqueIds = (ids: readonly (string | undefined)[]) =>
   ids.every((id) => id !== undefined) && new Set(ids).size === ids.length;
 
 /**
- * Where each stage of `before` is in `after`, matched by stage id.
+ * Where each stage of the protocol before a step is in the protocol after it.
  *
  * - `stage(i)` is the new index of the stage at old index `i`, or `undefined`
- *   if the migration removed it. Indices at or past the end of `before` (the
- *   engine's finish stage) keep their distance from the end.
- * - `position(i)` is where a session at old index `i` resumes: the same stage,
- *   or, if it was removed, the first stage after it that survived.
- *
- * Throws when the stages cannot be matched (a missing or repeated id) and the
- * migration changed how many there are; with the same number of stages and no
- * usable ids, every stage is taken to have stayed where it was.
+ *   if the step removed it. Indices at or past the end of the old stages (the
+ *   engine's finish stage) keep their distance from the end, so the finish
+ *   stage stays the finish stage.
+ * - `position(i)` is where a session at old index `i` resumes: the same stage
+ *   at its new index, or, if it was removed, the first stage after it that
+ *   survived (the finish stage if none did). A stage the step inserted is
+ *   never chosen for a session already past or on the stage it precedes.
  */
-export const stageIndexMap = (
-  before: unknown,
-  after: unknown,
-): {
+export type StageIndexMap = {
   stage: (index: number) => number | undefined;
   position: (index: number) => number;
-} => {
-  const beforeIds = stageIdsOf(before);
-  const afterIds = stageIdsOf(after);
-  const beyond = (index: number) => index - beforeIds.length + afterIds.length;
+};
 
-  if (!hasUniqueIds(beforeIds) || !hasUniqueIds(afterIds)) {
-    if (beforeIds.length !== afterIds.length) {
-      throw new Error(
-        'Stage positions cannot be mapped: the protocol has stages without a unique id, and the migration changed how many stages there are.',
-      );
+/**
+ * How one step moved the protocol's stages:
+ *
+ * - `none`: no stage moved, so nothing a session holds by stage index changes.
+ * - `moved`: stages were added, removed or reordered; `map` says where each
+ *   went.
+ * - `unmatched`: the number of stages changed, but they cannot be matched
+ *   between the two protocols because some stage has no id or shares one.
+ *   Every session of the protocol fails with `stages-unmatched` rather than be
+ *   guessed at.
+ *
+ * Stages are matched by id. Without a unique id on every stage on both sides,
+ * an unchanged count is taken to mean every stage stayed where it was:
+ * every step in the chain that moves stages adds or removes one, and none
+ * reorders them, so a step that keeps the count keeps every position.
+ */
+export type StageMovement =
+  | { kind: 'none' }
+  | { kind: 'moved'; map: StageIndexMap }
+  | { kind: 'unmatched' };
+
+export const stageMovement = (
+  beforeIds: readonly (string | undefined)[],
+  afterIds: readonly (string | undefined)[],
+): StageMovement => {
+  const reliable = hasUniqueIds(beforeIds) && hasUniqueIds(afterIds);
+  if (beforeIds.length === afterIds.length) {
+    if (!reliable || beforeIds.every((id, index) => afterIds[index] === id)) {
+      return { kind: 'none' };
     }
-    return { stage: (index) => index, position: (index) => index };
+  } else if (!reliable) {
+    return { kind: 'unmatched' };
   }
 
+  const beyond = (index: number) => index - beforeIds.length + afterIds.length;
   const newIndexById = new Map(afterIds.map((id, index) => [id, index]));
   const stage = (index: number): number | undefined => {
     if (index < 0) return index;
     if (index >= beforeIds.length) return beyond(index);
-    const id = beforeIds[index];
-    return id === undefined ? undefined : newIndexById.get(id);
+    return newIndexById.get(beforeIds[index]);
   };
   const position = (index: number): number => {
     for (let next = index; next < beforeIds.length; next += 1) {
@@ -308,26 +354,26 @@ export const stageIndexMap = (
     }
     return index < 0 ? index : beyond(Math.max(index, beforeIds.length));
   };
-  return { stage, position };
+  return { kind: 'moved', map: { stage, position } };
 };
 
 const STAGE_INDEX_KEY = /^(0|[1-9]\d*)$/;
 
 /**
- * Moves a session's stage-keyed records and its resume position to where the
- * migration put each stage, matching stages by id. Metadata of a removed stage
- * is dropped; a session resuming at a removed stage resumes at the stage that
- * followed it. A key that is not a stage index is kept as it is.
+ * Moves a session's stage-keyed records and its resume position to where a
+ * step put each stage. The record of a removed stage is dropped; a session
+ * resuming at a removed stage resumes at the stage that followed it. A key
+ * that is not a stage index is kept as it is.
  *
- * The session step of any migration that adds, removes or reorders stages
- * starts with this.
+ * Everything a host persists that names a stage by index is here: the
+ * `stageMetadata` keys and `currentStep`. No stage record refers to another
+ * stage by index (a Narrative Pedigree finds its source pedigree by id), so
+ * record values are carried unchanged.
  */
 export const remapStageIndices = (
   session: SessionDocument,
-  before: unknown,
-  after: unknown,
+  map: StageIndexMap,
 ): SessionDocument => {
-  const map = stageIndexMap(before, after);
   const stageMetadata: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(session.stageMetadata)) {
     if (!STAGE_INDEX_KEY.test(key)) {

@@ -13,7 +13,9 @@ import {
   type PersistedSession,
   remapStageIndices,
   type SessionDocument,
-  stageIndexMap,
+  type StageIndexMap,
+  stageIdsOf,
+  stageMovement,
 } from '../session.ts';
 
 type Fields = Record<string, unknown>;
@@ -151,26 +153,27 @@ describe('session migration', () => {
   });
 
   describe('reports each failing session without throwing', () => {
-    const failOnStep7: SessionMigrationStep<1 | 2 | 3, 2 | 3 | 4> = (
+    // Stage 1 (`b`) keeps its index: each step appends its stage at the end.
+    const failOnStage1: SessionMigrationStep<1 | 2 | 3, 2 | 3 | 4> = (
       current,
     ) => {
-      if (current.currentStep === 7) throw new Error('step seven');
+      if (current.currentStep === 1) throw new Error('stage one');
       return current;
     };
-    const migrateSession = migratorFor(chainOf({ 2: failOnStep7 }));
+    const migrateSession = migratorFor(chainOf({ 2: failOnStage1 }));
 
     it('names the step that failed and keeps its error', () => {
-      const result = migrateSession(session({ currentStep: 7 }));
+      const result = migrateSession(session({ currentStep: 1 }));
       expect(result.success).toBe(false);
       if (result.success) return;
       expect(result.error).toBeInstanceOf(SessionMigrationError);
       expect(result.error.reason).toBe('step-failed');
       expect(result.error.version).toBe(2);
-      expect((result.error.cause as Error).message).toBe('step seven');
+      expect((result.error.cause as Error).message).toBe('stage one');
     });
 
     it('migrates the other sessions', () => {
-      const results = [6, 7, 8].map((currentStep) =>
+      const results = [0, 1, 2].map((currentStep) =>
         migrateSession(session({ currentStep })),
       );
       expect(results.map((result) => result.success)).toEqual([
@@ -237,7 +240,7 @@ describe('session migration', () => {
   });
 });
 
-describe('migrationV7toV8 session step', () => {
+describe('migrationV7toV8 stage positions', () => {
   const information = (id: string) => ({
     id,
     type: 'Information',
@@ -291,67 +294,300 @@ describe('migrationV7toV8 session step', () => {
   });
 });
 
-describe('stageIndexMap', () => {
-  it('follows each stage by id, and the finish stage by its distance from the end', () => {
-    const map = stageIndexMap(
-      stages('a', 'b', 'c'),
-      stages('a', 'new', 'b', 'c'),
+/**
+ * A one-step chain 1 → 2 whose protocol transform rewrites the stage ids with
+ * `transform`, and which declares no session step unless given one.
+ */
+const stageChain = (
+  transform: (ids: (string | undefined)[]) => (string | undefined)[],
+  migrateSession?: SessionMigrationStep<1, 2>,
+) => {
+  const chain = new MigrationChain();
+  chain.register(
+    createMigration({
+      from: 1,
+      to: 2,
+      dependencies: {},
+      migrate: (doc) =>
+        ({
+          ...doc,
+          schemaVersion: 2,
+          stages: transform(stageIdsOf(doc)).map((id) =>
+            id === undefined
+              ? { type: 'Information' }
+              : { id, type: 'Information' },
+          ),
+        }) as unknown as ProtocolDocument<2>,
+      migrateSession,
+    }),
+  );
+  return chain;
+};
+
+const migratorOf = (chain: MigrationChain, ...ids: (string | undefined)[]) => {
+  const { sessionSteps } = chain.migrateWithSessionSteps(
+    {
+      schemaVersion: 1,
+      stages: ids.map((id) => (id === undefined ? {} : { id })),
+    } as unknown as ProtocolDocument<1>,
+    2,
+  );
+  return createSessionMigrator(sessionSteps);
+};
+
+const migratedSession = (
+  migrateSession: ReturnType<typeof createSessionMigrator>,
+  stored: Partial<PersistedSession>,
+) => {
+  const result = migrateSession(session(stored));
+  if (!result.success) throw result.error;
+  return result.session;
+};
+
+const automaticLayout = (value: boolean) => ({ automaticLayout: value });
+
+describe('stage positions, moved by the framework for every step', () => {
+  it('follows a stage inserted by a step that declares no session step', () => {
+    const migrateSession = migratorOf(
+      stageChain((ids) => ['intro', ...ids]),
+      'a',
+      'b',
     );
+    expect(
+      migratedSession(migrateSession, {
+        stageMetadata: { 0: automaticLayout(true), 1: automaticLayout(false) },
+        currentStep: 1,
+      }),
+    ).toEqual({
+      network: emptyNetwork(),
+      stageMetadata: { 1: automaticLayout(true), 2: automaticLayout(false) },
+      currentStep: 2,
+    });
+  });
+
+  it('follows a stage removed by a step that declares no session step', () => {
+    const migrateSession = migratorOf(
+      stageChain((ids) => ids.filter((id) => id !== 'b')),
+      'a',
+      'b',
+      'c',
+    );
+    expect(
+      migratedSession(migrateSession, {
+        stageMetadata: {
+          0: automaticLayout(true),
+          1: automaticLayout(false),
+          2: automaticLayout(true),
+        },
+        currentStep: 2,
+      }),
+    ).toEqual({
+      network: emptyNetwork(),
+      // The removed stage's record goes with it.
+      stageMetadata: { 0: automaticLayout(true), 1: automaticLayout(true) },
+      currentStep: 1,
+    });
+  });
+
+  it('follows stages a step reorders', () => {
+    const migrateSession = migratorOf(
+      stageChain((ids) => [...ids].reverse()),
+      'a',
+      'b',
+      'c',
+    );
+    expect(
+      migratedSession(migrateSession, {
+        stageMetadata: { 0: automaticLayout(true) },
+        currentStep: 0,
+      }),
+    ).toMatchObject({
+      stageMetadata: { 2: automaticLayout(true) },
+      currentStep: 2,
+    });
+  });
+
+  it('resumes at the next surviving stage when the current one was removed', () => {
+    const migrateSession = migratorOf(
+      stageChain((ids) => ids.filter((id) => id !== 'b')),
+      'a',
+      'b',
+      'c',
+    );
+    expect(
+      migratedSession(migrateSession, { currentStep: 1 }).currentStep,
+    ).toBe(1);
+    // With nothing after it, at the finish position.
+    const lastRemoved = migratorOf(
+      stageChain((ids) => ids.filter((id) => id !== 'c')),
+      'a',
+      'b',
+      'c',
+    );
+    expect(migratedSession(lastRemoved, { currentStep: 2 }).currentStep).toBe(
+      2,
+    );
+  });
+
+  it('does not send a session back to a stage inserted before its own', () => {
+    const migrateSession = migratorOf(
+      stageChain(() => ['a', 'intro', 'b']),
+      'a',
+      'b',
+    );
+    // On `b`: still on `b`, not on its new introduction.
+    expect(
+      migratedSession(migrateSession, { currentStep: 1 }).currentStep,
+    ).toBe(2);
+    // On `a`: the introduction is still ahead of it.
+    expect(
+      migratedSession(migrateSession, { currentStep: 0 }).currentStep,
+    ).toBe(0);
+  });
+
+  it('keeps the finish position the finish position', () => {
+    const inserted = migratorOf(
+      stageChain((ids) => ['intro', ...ids]),
+      'a',
+      'b',
+    );
+    expect(migratedSession(inserted, { currentStep: 2 }).currentStep).toBe(3);
+    const removed = migratorOf(
+      stageChain((ids) => ids.slice(1)),
+      'a',
+      'b',
+    );
+    expect(migratedSession(removed, { currentStep: 2 }).currentStep).toBe(1);
+  });
+
+  it('hands a session step the session already at the new stage positions', () => {
+    const seen: SessionDocument[] = [];
+    const migrateSession = migratorOf(
+      stageChain(
+        (ids) => ['intro', ...ids],
+        (current) => {
+          seen.push(structuredClone(current));
+          return current;
+        },
+      ),
+      'a',
+      'b',
+    );
+    migratedSession(migrateSession, {
+      stageMetadata: { 1: automaticLayout(true) },
+      currentStep: 1,
+    });
+    expect(seen).toEqual([
+      {
+        network: emptyNetwork(),
+        stageMetadata: { 2: automaticLayout(true) },
+        currentStep: 2,
+      },
+    ]);
+  });
+
+  it('records nothing for a step that neither moves stages nor declares a session step', () => {
+    const { sessionSteps } = stageChain((ids) => ids).migrateWithSessionSteps(
+      {
+        schemaVersion: 1,
+        stages: [{ id: 'a' }, { id: 'b' }],
+      } as unknown as ProtocolDocument<1>,
+      2,
+    );
+    expect(sessionSteps).toEqual([]);
+  });
+
+  describe('a protocol without a unique id on every stage', () => {
+    it('keeps every position when the step keeps the number of stages', () => {
+      const migrateSession = migratorOf(
+        stageChain((ids) => ids.map(() => undefined)),
+        undefined,
+        undefined,
+      );
+      expect(
+        migratedSession(migrateSession, {
+          stageMetadata: { 1: automaticLayout(true) },
+          currentStep: 1,
+        }),
+      ).toMatchObject({
+        stageMetadata: { 1: automaticLayout(true) },
+        currentStep: 1,
+      });
+    });
+
+    it('fails every session when the step changes the number of stages', () => {
+      for (const ids of [
+        [undefined, 'b'],
+        ['a', 'a'],
+      ]) {
+        const migrateSession = migratorOf(
+          stageChain((current) => ['intro', ...current]),
+          ...ids,
+        );
+        const result = migrateSession(session());
+        expect(result.success).toBe(false);
+        if (result.success) continue;
+        expect(result.error).toBeInstanceOf(SessionMigrationError);
+        expect(result.error.reason).toBe('stages-unmatched');
+        expect(result.error.version).toBe(1);
+      }
+    });
+  });
+});
+
+describe('stageMovement', () => {
+  const mapOf = (
+    before: (string | undefined)[],
+    after: (string | undefined)[],
+  ): StageIndexMap => {
+    const movement = stageMovement(before, after);
+    if (movement.kind !== 'moved') throw new Error(movement.kind);
+    return movement.map;
+  };
+
+  it('follows each stage by id, and the finish stage by its distance from the end', () => {
+    const map = mapOf(['a', 'b', 'c'], ['a', 'new', 'b', 'c']);
     expect([0, 1, 2, 3, 4].map(map.stage)).toEqual([0, 2, 3, 4, 5]);
   });
 
   it('drops a removed stage and resumes at the stage after it', () => {
-    const map = stageIndexMap(stages('a', 'b', 'c'), stages('new', 'a', 'c'));
+    const map = mapOf(['a', 'b', 'c'], ['new', 'a', 'c']);
     expect(map.stage(1)).toBeUndefined();
     expect(map.position(1)).toBe(2);
     // With nothing after it, at the finish stage.
-    const lastRemoved = stageIndexMap(stages('a', 'b'), stages('new', 'a'));
-    expect(lastRemoved.position(1)).toBe(2);
+    expect(mapOf(['a', 'b'], ['new', 'a']).position(1)).toBe(2);
   });
 
-  it('keeps every index when stages cannot be matched but their number holds', () => {
-    const map = stageIndexMap(
-      { stages: [{}, {}] },
-      { stages: [{ id: 'x' }, { id: 'y' }] },
-    );
-    expect(map.stage(1)).toBe(1);
+  it('reports no movement when the ids stay in order', () => {
+    expect(stageMovement(['a', 'b'], ['a', 'b'])).toEqual({ kind: 'none' });
+  });
+
+  it('assumes nothing moved when stages cannot be matched but their number holds', () => {
+    expect(stageMovement([undefined, undefined], ['x', 'y'])).toEqual({
+      kind: 'none',
+    });
   });
 
   it('refuses to guess when stages cannot be matched and their number changed', () => {
-    expect(() =>
-      stageIndexMap(
-        { stages: [{ id: 'a' }, { id: 'a' }] },
-        stages('a', 'b', 'c'),
-      ),
-    ).toThrow(/unique id/);
+    expect(stageMovement(['a', 'a'], ['a', 'b', 'c'])).toEqual({
+      kind: 'unmatched',
+    });
   });
 });
 
 describe('remapStageIndices', () => {
-  const remap = (
-    current: Partial<SessionDocument>,
-    before: unknown,
-    after: unknown,
-  ) =>
-    remapStageIndices(
+  it('moves records and the resume position, dropping a removed stage’s record', () => {
+    const result = remapStageIndices(
       {
         network: emptyNetwork(),
-        stageMetadata: {},
-        currentStep: 0,
-        ...current,
-      },
-      before,
-      after,
-    );
-
-  it('moves records and the resume position, dropping a removed stage’s record', () => {
-    const result = remap(
-      {
         stageMetadata: { 0: 'a', 1: 'b', 2: 'c', other: 'kept' },
         currentStep: 2,
       },
-      stages('a', 'b', 'c'),
-      stages('new', 'a', 'c'),
+      (() => {
+        const movement = stageMovement(['a', 'b', 'c'], ['new', 'a', 'c']);
+        if (movement.kind !== 'moved') throw new Error(movement.kind);
+        return movement.map;
+      })(),
     );
     expect(result.stageMetadata).toEqual({ 1: 'a', 2: 'c', other: 'kept' });
     expect(result.currentStep).toBe(2);

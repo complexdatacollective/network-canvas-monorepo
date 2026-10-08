@@ -172,7 +172,8 @@ export type ProtocolWithSessionMigrator<P extends VersionedProtocol> = {
    * data the migration re-spells is rewritten. Pure, so a host may call it
    * for each of its sessions, in any order, inside the transaction that
    * writes the protocol. A session that cannot be migrated is reported in the
-   * result, never thrown.
+   * result, never thrown; if any session fails, the host writes neither the
+   * protocol nor any of its sessions.
    */
   migrateSession: SessionMigrator;
 };

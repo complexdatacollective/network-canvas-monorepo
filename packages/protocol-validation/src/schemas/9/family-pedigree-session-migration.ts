@@ -1,7 +1,7 @@
 /**
  * The schema 8 to 9 translation of a session's Family Pedigree stage record,
- * run by `migrationV8toV9`'s session step after it has moved every stage
- * record to its stage's new index.
+ * run by `migrationV8toV9`'s session step, after the migration framework has
+ * moved every stage record to its stage's new index.
  *
  * WHAT SCHEMA 8 KEPT. The schema 8 interview held the family a participant was
  * building in memory only, and wrote it to the session network when they

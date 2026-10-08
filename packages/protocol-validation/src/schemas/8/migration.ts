@@ -2,7 +2,6 @@ import {
   createMigration,
   type ProtocolDocument,
 } from '../../migration/index.ts';
-import { remapStageIndices } from '../../migration/session.ts';
 import { traverseAndTransform } from '../../utils/traverse-and-transform.ts';
 import {
   NodeColorSequence,
@@ -1966,11 +1965,9 @@ const migrationV7toV8 = createMigration({
 
     return result as ProtocolDocument<8>;
   },
-  // Dropping a form stage with no fields moves every later stage up, so a
-  // session's stage records and resume position follow their stages. A
-  // session resuming at a dropped stage resumes at the stage after it.
-  migrateSession: (session, { before, after }) =>
-    remapStageIndices(session, before, after),
+  // Dropping a form stage with no fields moves every later stage up. The
+  // framework moves each session's stage records and resume position with
+  // their stages, so this step needs no session step of its own.
 });
 
 export default migrationV7toV8;
