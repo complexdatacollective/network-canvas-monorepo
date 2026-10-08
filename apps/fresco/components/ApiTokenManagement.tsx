@@ -302,32 +302,34 @@ export default function ApiTokenManagement({
 
   const handleCreateToken = async () => {
     setIsLoading(true);
-    const result = await createApiToken({
-      description: newTokenDescription || undefined,
-    });
-
-    if (result.error) {
-      add({
-        title: <AppErrorMessage error={result.error} />,
-        variant: 'destructive',
+    try {
+      const result = await createApiToken({
+        description: newTokenDescription || undefined,
       });
-    } else if (result.data) {
-      setTokens([
-        {
-          id: result.data.id,
-          description: result.data.description,
-          createdAt: result.data.createdAt,
-          lastUsedAt: result.data.lastUsedAt,
-          isActive: result.data.isActive,
-        },
-        ...tokens,
-      ]);
-      setCreatedToken(result.data.token);
-      setNewTokenDescription('');
-      setIsCreating(false);
-    }
 
-    setIsLoading(false);
+      if (result.error) {
+        add({
+          title: <AppErrorMessage error={result.error} />,
+          variant: 'destructive',
+        });
+      } else if (result.data) {
+        setTokens([
+          {
+            id: result.data.id,
+            description: result.data.description,
+            createdAt: result.data.createdAt,
+            lastUsedAt: result.data.lastUsedAt,
+            isActive: result.data.isActive,
+          },
+          ...tokens,
+        ]);
+        setCreatedToken(result.data.token);
+        setNewTokenDescription('');
+        setIsCreating(false);
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleToggleActive = async (id: string, isActive: boolean) => {
@@ -349,18 +351,21 @@ export default function ApiTokenManagement({
 
   const handleDeleteToken = async (token: ApiToken) => {
     setIsDeleting(true);
-    const result = await deleteApiToken({ id: token.id });
+    try {
+      const result = await deleteApiToken({ id: token.id });
 
-    if (result.error) {
-      add({
-        title: <AppErrorMessage error={result.error} />,
-        variant: 'destructive',
-      });
-    } else {
-      setTokens(tokens.filter((t) => t.id !== token.id));
-      setTokenToDelete(null);
+      if (result.error) {
+        add({
+          title: <AppErrorMessage error={result.error} />,
+          variant: 'destructive',
+        });
+      } else {
+        setTokens(tokens.filter((t) => t.id !== token.id));
+        setTokenToDelete(null);
+      }
+    } finally {
+      setIsDeleting(false);
     }
-    setIsDeleting(false);
   };
 
   const columns = getApiTokenColumns({
@@ -397,6 +402,9 @@ export default function ApiTokenManagement({
       <Dialog
         open={isCreating}
         closeDialog={() => setIsCreating(false)}
+        // The token is created once the request is sent; leaving mid-way would
+        // look like a cancel and then pop up the created token anyway.
+        dismissible={!isLoading}
         title={intl.formatMessage(messages.createAPIToken)}
         description={intl.formatMessage(
           messages.createANewAPITokenForAuthenticating,
@@ -408,6 +416,7 @@ export default function ApiTokenManagement({
                 setIsCreating(false);
                 setNewTokenDescription('');
               }}
+              disabled={isLoading}
             >
               {intl.formatMessage(commonMessages.cancel)}
             </Button>
@@ -482,6 +491,9 @@ export default function ApiTokenManagement({
         accent="destructive"
         open={!!tokenToDelete}
         closeDialog={() => setTokenToDelete(null)}
+        // The deletion runs to completion once started, so leaving mid-way
+        // would look like a cancel while the token is still revoked.
+        dismissible={!isDeleting}
         title={intl.formatMessage(messages.deleteAPIToken)}
         description={intl.formatMessage(messages.areYouSureYouWantToDelete)}
         footer={
