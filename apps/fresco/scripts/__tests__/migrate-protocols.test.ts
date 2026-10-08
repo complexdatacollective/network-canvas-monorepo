@@ -1325,6 +1325,72 @@ describe('encrypted attributes in the deploy migration', () => {
   });
 });
 
+/**
+ * Rewrites every English-only text in a migrated protocol as French and
+ * German text, as a researcher who wrote it in those languages would have.
+ */
+function inFrenchAndGerman(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(inFrenchAndGerman);
+  if (typeof value !== 'object' || value === null) return value;
+  const entries = Object.entries(value);
+  const [only] = entries;
+  if (entries.length === 1 && only?.[0] === 'en') {
+    return { fr: `${String(only[1])} (fr)`, de: `${String(only[1])} (de)` };
+  }
+  return Object.fromEntries(
+    entries.map(([key, child]) => [key, inFrenchAndGerman(child)]),
+  );
+}
+
+describe('languages in the deploy migration', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('keeps the languages and text of a row at the compatible version that it normalizes', async () => {
+    const atEncryptionVersion = migrateProtocol(
+      { ...makeV7ProtocolWithEncryptedName(), name: 'Bilingual' },
+      8,
+      { name: 'Bilingual' },
+    );
+    const current = migrateProtocol(
+      atEncryptionVersion,
+      COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+      { name: 'Bilingual' },
+    );
+    const localization = { defaultLocale: 'fr', locales: ['fr', 'de'] };
+    const codebook = inFrenchAndGerman(current.codebook);
+    const stages = inFrenchAndGerman(current.stages);
+    expect(codebook).toHaveProperty('node.person.label', {
+      fr: 'Person (fr)',
+      de: 'Person (de)',
+    });
+    const prisma = makeMockPrisma();
+    prisma.protocol.findMany.mockResolvedValue([
+      {
+        id: 'cm-bilingual',
+        assets: [],
+        name: 'Bilingual.netcanvas',
+        schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+        // Copies, so a migration that rewrites the row in place cannot also
+        // rewrite what the assertions expect.
+        stages: structuredClone(stages),
+        codebook: structuredClone(codebook),
+        localization: structuredClone(localization),
+        // Refused at the compatible version, so the row is normalized.
+        experiments: { encryptedVariables: true },
+      },
+    ]);
+
+    await runMigration(prisma);
+
+    const written = onlyWrite(prisma);
+    expect(written).toHaveProperty('data.localization', localization);
+    expect(written).toHaveProperty('data.codebook', codebook);
+    expect(written).toHaveProperty('data.stages', stages);
+  });
+});
+
 describe('buildAssetManifest', () => {
   it('reconstructs a file-asset manifest entry from a stored Asset row', () => {
     const manifest = buildAssetManifest([
