@@ -223,7 +223,8 @@ function v8PedigreeDocument(): Record<string, unknown> {
 }
 
 // A session at the pedigree, as the schema 8 interview recorded it once the
-// pedigree was finalized: its stage record keyed by the pedigree's index.
+// pedigree was finalized: its stage record keyed by the pedigree's index. It
+// has a relative on it, so it had passed the pedigree's introduction.
 function v8PedigreeSession(id: string, protocolHash: string): StoredSession {
   return {
     ...storedSession(id, protocolHash),
@@ -239,13 +240,23 @@ function v8PedigreeSession(id: string, protocolHash: string): StoredSession {
           stageId: 'family',
           promptIDs: [],
         },
+        {
+          [entityPrimaryKeyProperty]: 'mother-1',
+          type: 'person',
+          [entityAttributesProperty]: { is_ego: false, name: 'Ana' },
+          stageId: 'family',
+          promptIDs: [],
+        },
       ],
     },
     stageMetadata: {
       1: {
         isNetworkCommitted: true,
         edgeIdVersion: 1,
-        nodes: [{ id: 'ego-1', label: '', isEgo: true }],
+        nodes: [
+          { id: 'ego-1', label: '', isEgo: true },
+          { id: 'mother-1', label: 'Ana', isEgo: false },
+        ],
         edges: [],
         selectedFraming: 'gamete',
       },
@@ -407,7 +418,7 @@ describe.each([
     // The pedigree moved from stage 1 to 2, and its record with it.
     expect(session.currentStep).toBe(2);
     expect(session.stageMetadata).toEqual({ 2: { framing: 'gamete' } });
-    expect(session.network.nodes).toHaveLength(1);
+    expect(session.network.nodes).toHaveLength(2);
     // Progress re-derived for the moved position (stage 2 of 4 + finish).
     expect(session.progress).not.toBe(33);
     expect(session.lastUpdatedAt).toBe('2026-01-02T00:00:00.000Z');

@@ -9,7 +9,10 @@ import {
   migrateFamilyPedigreeStages,
   migrateNarrativePedigreeStages,
 } from './family-pedigree-migration.ts';
-import { migrateFamilyPedigreeSessionRecords } from './family-pedigree-session-migration.ts';
+import {
+  migrateFamilyPedigreeSessionRecords,
+  resumeUnstartedPedigreeAtIntroduction,
+} from './family-pedigree-session-migration.ts';
 import ProtocolSchemaV9 from './schema.ts';
 
 // Schema 8 never recorded the language its copy was written in, so a migrated
@@ -233,9 +236,12 @@ const migrationV8toV9 = createMigration({
   // A pedigree's introduction screen becomes a stage of its own, which moves
   // the pedigree and every stage after it one place on; the framework moves
   // each session's stage records and resume position with their stages
-  // before this runs. The redesigned pedigree keeps a different stage record,
-  // which is translated without losing anything the participant recorded.
+  // before this runs. A session on a pedigree it had not started had not yet
+  // seen the introduction, so it resumes on the new stage instead. The
+  // redesigned pedigree keeps a different stage record, which is translated
+  // without losing anything the participant recorded.
   migrateSession: (session, { before, after }) => {
+    resumeUnstartedPedigreeAtIntroduction(session, after, before);
     migrateFamilyPedigreeSessionRecords(session, after, before);
     return session;
   },
