@@ -9,7 +9,7 @@ import {
   databaseCheck,
   type HealthCheck,
   type HealthChecks,
-  HealthRoutes,
+  WorkerHealthRoutes,
   schemaCheckOn,
 } from '../http/health.ts';
 import { MaintenanceTriggers } from '../http/middleware/maintenance.ts';
@@ -98,7 +98,7 @@ function workerWith(db: DbEnv) {
       const started = yield* Ref.make(Option.none<StartedQueue>());
 
       const Health = HttpRouter.serve(
-        HealthRoutes(workerChecks(readiness, limiter, started)),
+        WorkerHealthRoutes(workerChecks(readiness, limiter, started)),
         {
           disableLogger: true,
           disableListenLog: true,

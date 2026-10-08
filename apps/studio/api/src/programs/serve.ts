@@ -48,12 +48,9 @@ import { reportingRefusals } from './command.ts';
 function Serve(studio: Studio, checks: HealthChecks) {
   const Listening = Layer.effectDiscard(
     Effect.gen(function* () {
-      const server = yield* HttpServer.HttpServer;
+      yield* HttpServer.HttpServer;
       yield* Effect.log('Network Canvas Studio listening on its address').pipe(
-        Effect.annotateLogs({
-          version: STUDIO_VERSION,
-          address: HttpServer.formatAddress(server.address),
-        }),
+        Effect.annotateLogs({ version: STUDIO_VERSION }),
       );
     }),
   );

@@ -9,6 +9,7 @@ import * as NetAddress from 'effect/net/NetAddress';
 import { PARTICIPANT_SESSION_HEADER } from '@codaco/studio-contract/middleware/session';
 
 import { ServerTelemetryLive } from '../../platform/http-server.ts';
+import { WorkerHealthRoutes } from '../health.ts';
 import { HttpSpanLive } from '../middleware/http-span.ts';
 
 const SEEDS = {
@@ -25,9 +26,22 @@ const ALLOWED = new Set([
   'http.response.status_code',
 ]);
 
+const PROBE_ROUTES = Layer.mergeAll(
+  HttpRouter.add(
+    'GET',
+    '/probe/:id',
+    HttpServerResponse.text('ok', { status: 202 }),
+  ),
+  HttpRouter.add('GET', '/failing', Effect.fail(new Error('refused'))),
+  HttpRouter.add('GET', '/dying', Effect.die(new Error('broken'))),
+).pipe(Layer.provideMerge(HttpSpanLive));
+
 const serverSpans = (
   telemetry: Layer.Layer<never>,
   path = `/probe/42?${SEEDS.query}`,
+  routes:
+    | typeof PROBE_ROUTES
+    | ReturnType<typeof WorkerHealthRoutes> = PROBE_ROUTES,
 ) =>
   Effect.gen(function* () {
     const spans: Tracer.NativeSpan[] = [];
@@ -38,16 +52,7 @@ const serverSpans = (
         return span;
       },
     });
-    const Probe = Layer.mergeAll(
-      HttpRouter.add(
-        'GET',
-        '/probe/:id',
-        HttpServerResponse.text('ok', { status: 202 }),
-      ),
-      HttpRouter.add('GET', '/failing', Effect.fail(new Error('refused'))),
-      HttpRouter.add('GET', '/dying', Effect.die(new Error('broken'))),
-    ).pipe(Layer.provideMerge(HttpSpanLive));
-    const Served = HttpRouter.serve(Probe, {
+    const Served = HttpRouter.serve(routes, {
       disableLogger: true,
       disableListenLog: true,
     }).pipe(
@@ -114,6 +119,22 @@ describe('the span a request records', () => {
         expect(spans).toHaveLength(1);
         expect(spans[0]?.attributes.get('http.response.status_code')).toBe(500);
       }),
+  );
+
+  it.live('is recorded the same way by the worker health listener', () =>
+    Effect.gen(function* () {
+      const spans = yield* serverSpans(
+        ServerTelemetryLive,
+        '/healthz',
+        WorkerHealthRoutes({}),
+      );
+      expect(spans).toHaveLength(1);
+      expect(Object.fromEntries(spans[0]?.attributes ?? [])).toEqual({
+        'http.request.method': 'GET',
+        'http.route': '/healthz',
+        'http.response.status_code': 200,
+      });
+    }),
   );
 
   it.live(
