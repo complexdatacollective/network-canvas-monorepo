@@ -247,11 +247,12 @@ describe('stageIndexMap', () => {
   });
 
   it('drops a removed stage and resumes at the stage after it', () => {
-    const map = stageIndexMap(stages('a', 'b', 'c'), stages('a', 'c'));
+    const map = stageIndexMap(stages('a', 'b', 'c'), stages('new', 'a', 'c'));
     expect(map.stage(1)).toBeUndefined();
-    expect(map.position(1)).toBe(1);
-    const lastRemoved = stageIndexMap(stages('a', 'b'), stages('a'));
-    expect(lastRemoved.position(1)).toBe(1);
+    expect(map.position(1)).toBe(2);
+    // With nothing after it, at the finish stage.
+    const lastRemoved = stageIndexMap(stages('a', 'b'), stages('new', 'a'));
+    expect(lastRemoved.position(1)).toBe(2);
   });
 
   it('keeps every index when stages cannot be matched but their number holds', () => {
