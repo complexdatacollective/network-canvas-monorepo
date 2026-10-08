@@ -152,7 +152,7 @@ export const informationScenarios: InterfaceScenarios = {
       },
     },
     {
-      id: 'media-asset-description-and-name-fallback',
+      id: 'media-asset-description-and-kind-fallback',
       covers: ['items[].type=asset(audio)', 'items[].description'],
       build: () => {
         const synth = new SyntheticInterview();
@@ -206,13 +206,15 @@ export const informationScenarios: InterfaceScenarios = {
           'aria-label',
           'Intro narration',
         );
-        // description fallback: the asset NAME labels the second player
-        await expect(audios.nth(1)).toHaveAttribute('aria-label', 'clip');
+        // description fallback: an undescribed player is named for its kind,
+        // never after the asset's name ("clip"), which is only the
+        // researcher's filing label
+        await expect(audios.nth(1)).toHaveAttribute('aria-label', 'Audio');
         await expect(audios.nth(0)).toHaveAttribute('controls', '');
         // a video with no description takes the same fallback
         await expect(page.locator('main video')).toHaveAttribute(
           'aria-label',
-          'welcome',
+          'Video',
         );
       },
     },
@@ -258,8 +260,8 @@ export const informationScenarios: InterfaceScenarios = {
         await expect(video).toHaveAttribute('controls', '');
         await expect(video).not.toHaveAttribute('autoplay');
         // the researcher's description names the player, as it does for an
-        // image's alt text and an audio player; the asset name is only the
-        // fallback (covered by media-asset-description-and-name-fallback)
+        // image's alt text and an audio player; without one the player is
+        // named for its kind (covered by media-asset-description-and-kind-fallback)
         await expect(video).toHaveAttribute(
           'aria-label',
           'A welcome from the research team',

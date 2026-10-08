@@ -21,6 +21,38 @@ export type CompletenessItem =
   | { kind: 'parents'; personId: string; missing: number }
   | { kind: 'siblings' | 'children' | 'details'; personId: string };
 
+/** What an item asks for, the same however many of it are still missing:
+ * a person's parents, siblings, children or details. */
+const completenessItemKey = (item: CompletenessItem) =>
+  `${item.kind}:${item.personId}`;
+
+/** How much of an item is still missing: the parents still to add, or one. */
+const amountMissing = (item: CompletenessItem) =>
+  item.kind === 'parents' ? item.missing : 1;
+
+/** What a list of recommendations showed: how much of each item was
+ * missing when it was shown. */
+export type ShownRecommendations = ReadonlyMap<string, number>;
+
+export const recommendationsShown = (
+  items: readonly CompletenessItem[],
+): ShownRecommendations =>
+  new Map(
+    items.map((item) => [completenessItemKey(item), amountMissing(item)]),
+  );
+
+/** Whether a list already shown covers everything still outstanding: every
+ * item was in it, and none has grown since (a person who has lost a parent
+ * now needs more than the list asked for). */
+export const recommendationsCover = (
+  shown: ShownRecommendations,
+  items: readonly CompletenessItem[],
+) =>
+  items.every((item) => {
+    const before = shown.get(completenessItemKey(item));
+    return before !== undefined && amountMissing(item) <= before;
+  });
+
 export type CompletenessProgress = {
   /** What is still needed, about people already in the family. */
   items: CompletenessItem[];

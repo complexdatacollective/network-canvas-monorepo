@@ -321,7 +321,10 @@ function PopupsInsideADialogExample() {
  * out `hidden: true`.
  *
  * Escape closes the popup first and the dialog second, and focus stays trapped
- * in the dialog between the two.
+ * in the dialog between the two. That holds while focus is still on a popup's
+ * trigger too: Shift+Tab out of the combobox's search box lands there with the
+ * popup open, and so does a key pressed before Base UI moves focus into a
+ * popup that has just opened.
  */
 export const PopupsInsideADialog: Story = {
   render: () => <PopupsInsideADialogExample />,
@@ -403,6 +406,30 @@ export const PopupsInsideADialog: Story = {
       await expectExposed(listbox);
       await closeWithEscape(trigger);
     });
+
+    await step(
+      'Escape from the combobox trigger closes the combobox, not the dialog',
+      async () => {
+        const trigger = await openFrom(
+          within(dialog).getByRole('combobox', { name: 'Translators' }),
+        );
+        // Base UI moves focus into the popup on the next animation frame.
+        // Wait for that, so it cannot undo the move back to the trigger.
+        const popup = document.getElementById(
+          trigger.getAttribute('aria-controls') ?? '',
+        );
+        await waitFor(async () => {
+          await expect(popup).toContainElement(
+            document.activeElement as HTMLElement | null,
+          );
+        });
+        // Where Shift+Tab out of the search box puts focus. The popup stays
+        // open.
+        trigger.focus();
+        await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+        await closeWithEscape(trigger);
+      },
+    );
 
     await step('a popover inside the dialog is exposed', async () => {
       const trigger = await openFrom(
