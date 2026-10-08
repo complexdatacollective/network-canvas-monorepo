@@ -7,6 +7,9 @@ import ParticipantLayout from '~/app/(interview)/layout';
 import { frescoLocales } from '~/i18n/locales';
 import { frescoCatalogs } from '~/src/locales/catalogs';
 
+// The layout also exports its page metadata, which reads the request on the
+// server; none of that runs when the layout renders.
+vi.mock('~/i18n/server', () => ({ getServerIntl: vi.fn() }));
 vi.mock('~/app/(interview)/_components/EndSessionRecording', () => ({
   default: () => null,
 }));
@@ -19,7 +22,7 @@ function ParticipantContent() {
 }
 
 describe('Fresco participant locale boundary', () => {
-  it('keeps the real interview layout on its independent default inside a Spanish researcher host', () => {
+  it("shows the real interview layout in the host's language and declares no language of its own", () => {
     render(
       <AppI18nProvider
         locale="es"
@@ -31,9 +34,13 @@ describe('Fresco participant locale boundary', () => {
         </ParticipantLayout>
       </AppI18nProvider>,
     );
-    const button = screen.getByRole('button', { name: 'Continue' });
-    expect(button.closest('[lang]')).toHaveAttribute('lang', 'en');
-    expect(button.closest('[dir]')).toHaveAttribute('dir', 'ltr');
+    const button = screen.getByRole('button', { name: 'Continuar' });
+    // The region inherits the document's language rather than asserting one:
+    // the interview inside it (Shell) declares its own.
+    const region = button.closest('[data-theme-interview]');
+    expect(region).not.toBeNull();
+    expect(region).not.toHaveAttribute('lang');
+    expect(region).not.toHaveAttribute('dir');
     expect(document.documentElement).toHaveAttribute('lang', 'es');
   });
 });
