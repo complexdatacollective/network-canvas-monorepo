@@ -92,6 +92,7 @@ export default defineConfig({
             '@base-ui/react/slider',
             '@base-ui/react/switch',
             '@base-ui/react/toolbar',
+            '@base-ui/react/tooltip',
             '@codaco/app-i18n > @formatjs/icu-messageformat-parser',
             '@codaco/app-i18n > @formatjs/intl-localematcher',
             '@codaco/app-i18n > react-intl',

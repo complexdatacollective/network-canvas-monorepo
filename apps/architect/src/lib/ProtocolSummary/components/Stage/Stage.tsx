@@ -407,10 +407,12 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
       {narrativePedigree && <NarrativePedigree {...narrativePedigree} />}
       <ScaffoldingStep scaffoldingStep={scaffoldingStep ?? null} />
       <NameGenerationStep nameGenerationStep={nameGenerationStep ?? null} />
-      <Anonymisation
-        explanationText={explanationText ?? null}
-        validation={validation ?? null}
-      />
+      {type === 'Anonymisation' && (
+        <Anonymisation
+          explanationText={explanationText ?? null}
+          validation={validation ?? null}
+        />
+      )}
       <InterviewScript interviewScript={interviewScript ?? null} />
     </div>
   );

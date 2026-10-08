@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
-import { entityAttributesProperty } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entitySecureAttributesMeta,
+} from '@codaco/shared-consts';
 
 import { buildSyntheticPayload } from './synthetic-payload.js';
 
@@ -118,5 +121,65 @@ describe('buildSyntheticPayload', () => {
     expect(() =>
       buildSyntheticPayload(synth, { protocolName: 'invalid' }),
     ).toThrow(/CurrentProtocolSchema|dataSource|asset/i);
+  });
+
+  describe('with schema8Encryption', () => {
+    function interviewWithAnEncryptedName() {
+      const synth = new SyntheticInterview();
+      const person = synth.addNodeType({ name: 'Person' });
+      const name = person.addVariable({
+        name: 'name',
+        type: 'text',
+        encrypted: true,
+      });
+      const nickname = person.addVariable({ name: 'nickname', type: 'text' });
+      const stage = synth.addStage('NameGeneratorQuickAdd', {
+        subject: { entity: 'node', type: person.id },
+        quickAdd: name.id,
+      });
+      stage.addPrompt();
+      synth.addManualNode(stage.id, person.id, 'alice', {
+        [name.id]: 'Alice',
+        [nickname.id]: 'Al',
+      });
+      return { synth, name: name.id, nickname: nickname.id };
+    }
+
+    it('stores each encrypted answer as schema 8 ciphertext, beside an IV and a salt of its own, with no header', () => {
+      const { synth, name, nickname } = interviewWithAnEncryptedName();
+      const { session } = buildSyntheticPayload(synth, {
+        protocolName: 'schema-8-encryption',
+        seedNetwork: true,
+        schema8Encryption: true,
+      });
+
+      const [alice] = session.network.nodes;
+      expect(session.network.nodes).toHaveLength(1);
+      expect(session.network).not.toHaveProperty('encryption');
+      expect(alice?.[entityAttributesProperty][name]).toEqual(
+        expect.arrayContaining([expect.any(Number)]),
+      );
+      expect(JSON.stringify(session.network)).not.toContain('Alice');
+      expect(alice?.[entityAttributesProperty][nickname]).toBe('Al');
+      expect(alice?.[entitySecureAttributesMeta]).toEqual({
+        [name]: {
+          iv: expect.arrayContaining([expect.any(Number)]),
+          salt: expect.arrayContaining([expect.any(Number)]),
+        },
+      });
+      expect(
+        alice?.[entitySecureAttributesMeta]?.[name]?.iv ?? [],
+      ).toHaveLength(12);
+    });
+
+    it('refuses to run without seedNetwork, which leaves no answers to encrypt', () => {
+      const { synth } = interviewWithAnEncryptedName();
+      expect(() =>
+        buildSyntheticPayload(synth, {
+          protocolName: 'schema-8-unseeded',
+          schema8Encryption: true,
+        }),
+      ).toThrow(/without seedNetwork/);
+    });
   });
 });

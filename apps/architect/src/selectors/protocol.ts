@@ -132,13 +132,6 @@ export const getNetworkAssets = createSelector(
     ),
 );
 
-export const getExperiments = (state: RootState) => {
-  const protocol = getProtocol(state);
-  const experiments = protocol ? protocol.experiments : undefined;
-
-  return experiments;
-};
-
 // Timeline selector
 export const getTimelineLocus = (state: RootState): string | null => {
   // Timeline entries are now Locus objects ({ id, path }); return the id.

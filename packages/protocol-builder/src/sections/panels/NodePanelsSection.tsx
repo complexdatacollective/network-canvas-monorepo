@@ -45,6 +45,7 @@ import type {
   ResourceKind,
 } from '../../resources/types.ts';
 import {
+  ruleSetAllowsEncryptedAttributes,
   ruleSetRules,
   ruleSetTargets,
   ruleSetValidationMessage,
@@ -844,14 +845,19 @@ function withoutUnanswerableRules(filter: unknown): unknown {
  * The targets are the ones the panel's own SOURCE names, and the variant is
  * read through a ref for the same reason the codebook is: the researcher can
  * switch the source while the dialog is open, and a rule that was fine over
- * the interview's own network is not fine over an imported file.
+ * the interview's own network is not fine over an imported file. The
+ * reader's formatter is read the same way, so the verdict is stated in the
+ * language they are reading now.
  */
 function usePanelFilterValidation(variant: PanelRuleSetVariant) {
   const protocolContext = useProtocolContext();
+  const intl = useAppIntl();
   const codebook = useRef(protocolContext.codebook);
   codebook.current = protocolContext.codebook;
   const currentVariant = useRef(variant);
   currentVariant.current = variant;
+  const currentIntl = useRef(intl);
+  currentIntl.current = intl;
 
   return useMemo(
     () => ({
@@ -863,6 +869,12 @@ function usePanelFilterValidation(variant: PanelRuleSetVariant) {
                 value,
                 codebook.current,
                 ruleSetTargets(currentVariant.current),
+                {
+                  intl: currentIntl.current,
+                  allowEncryptedAttributes: ruleSetAllowsEncryptedAttributes(
+                    currentVariant.current,
+                  ),
+                },
               ),
       ]),
     }),

@@ -75,6 +75,10 @@
     "defaultMessage": "Encrypted attributes for {typeName}",
     "description": "Accessible name of one node type’s group of checkboxes in the encrypted-attributes section — read aloud rather than shown, because the type’s name is already a heading above it. typeName is the researcher’s own name for the node type, such as \"person\"."
   },
+  "protocolBuilder.anonymisation.attributeUsedByRule": {
+    "defaultMessage": "{ruleCount, plural, one {\"{attributeName}\" cannot be encrypted while a rule in {stageNames} compares its answers. Rules are checked without the participant’s passphrase, so that rule could not read the encrypted answers. Remove the rule, or change it to check only whether the attribute is answered.} other {\"{attributeName}\" cannot be encrypted while # rules in {stageNames} compare its answers. Rules are checked without the participant’s passphrase, so those rules could not read the encrypted answers. Remove those rules, or change them to check only whether the attribute is answered.}}",
+    "description": "Shown in the encrypted-attributes section when a researcher ticks an attribute whose answers a rule already compares (for example, \"the name is Alice\") — in a stage’s skip logic, a stage’s filter, or the filter of a side panel listing people from the interview — and the tick is refused. A rule that only checks whether the attribute was answered keeps working once it is encrypted, so it does not count. ruleCount is how many comparing rules there are; attributeName is the researcher’s own name for the attribute; stageNames is the names of the stages holding those rules, each in quotation marks, already joined into one phrase in the reader’s language. A stage is one step of an interview."
+  },
   "protocolBuilder.anonymisation.clearTypeConfirmDescription": {
     "defaultMessage": "This will deselect all encrypted attributes for the {typeName} node type. Do you want to continue?",
     "description": "Body of the confirmation shown when a researcher switches encryption off for a whole node type. typeName is the researcher’s own name for the type, such as \"person\"."
@@ -170,6 +174,14 @@
   "protocolBuilder.anonymisation.passphraseRulesMinimumAboveMaximum": {
     "defaultMessage": "The shortest passphrase you allow cannot be longer than the longest one.",
     "description": "Refusal shown on the passphrase-rules control when the minimum length the researcher set is greater than the maximum, so no passphrase could satisfy both."
+  },
+  "protocolBuilder.anonymisation.passphraseRulesMinimumDefault": {
+    "defaultMessage": "Defaults to {count, plural, one {# character} other {# characters}} if no minimum is set.",
+    "description": "Shown beneath the minimum-length rule in the passphrase rules, saying how short a passphrase a participant may choose when the researcher sets no minimum of their own. count is that default length. A minimum the researcher sets replaces it, even a shorter one."
+  },
+  "protocolBuilder.anonymisation.passphraseRulesMinimumDefaultLowered": {
+    "defaultMessage": "Defaults to the maximum, {count, plural, one {# character} other {# characters}}, if no minimum is set, because the maximum is shorter than the usual default of {defaultCount, number}.",
+    "description": "Shown beneath the minimum-length rule in the passphrase rules in place of the usual default, when the researcher has set a maximum length shorter than that default and no minimum. The interview then lowers the default minimum to the maximum, so a participant can still choose a passphrase. count is the maximum length in characters, which becomes the minimum; defaultCount is the usual default minimum length in characters. A minimum the researcher sets replaces both."
   },
   "protocolBuilder.anonymisation.passphraseRulesTitle": {
     "defaultMessage": "Passphrase validation",
@@ -5247,6 +5259,10 @@
     "defaultMessage": "Another rule in this set has the same identifier, so this protocol cannot be saved with both. Edit or delete the rule.",
     "description": "Shown on the rows of both rules in a rule set that share one internal identifier. Opening and saving either rule gives it a fresh one."
   },
+  "protocolBuilder.ruleDescription.problemEncryptedAttribute": {
+    "defaultMessage": "This rule compares the answers to an encrypted attribute. Rules are checked without the participant’s passphrase, so they can only check whether an encrypted attribute is answered. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the rule compares the answers to an encrypted attribute, for example \"is exactly\" or \"contains\". An encrypted attribute’s answers can only be read with the passphrase the participant chose, and rules are checked without it, so the only rules allowed on one are those that check whether it was answered at all."
+  },
   "protocolBuilder.ruleDescription.problemIncomplete": {
     "defaultMessage": "This rule is not complete. Edit it to fill in every part, or delete it.",
     "description": "Shown on a rule’s row in the rule list when one of the rule’s parts was never answered."
@@ -5411,6 +5427,10 @@
     "defaultMessage": "Enter the value to compare against. You can use a regular expression to match multiple values.",
     "description": "Guidance under the value control, for a rule about the ego — the interview participant themselves — whose comparison matches text against a regular expression."
   },
+  "protocolBuilder.ruleEditor.encryptedOperatorHint": {
+    "defaultMessage": "This attribute is encrypted. Rules are checked without the participant’s passphrase, so a rule can only check whether it is answered.",
+    "description": "Guidance under the comparison control, for a rule about an encrypted attribute in skip logic or a filter. An encrypted attribute’s answers can only be read with the passphrase the participant chose, so the control only offers \"exists\" (it was answered) and \"does not exist\" (it was not)."
+  },
   "protocolBuilder.ruleEditor.entityHint": {
     "defaultMessage": "Select which network entity your rule should target.",
     "description": "Guidance under the control where a researcher chooses whether a rule is about a node, an edge, or the ego."
@@ -5450,6 +5470,10 @@
   "protocolBuilder.ruleEditor.presenceConditionSection": {
     "defaultMessage": "Presence condition",
     "description": "Heading of the section where a researcher says whether the rule matches when an entity type is present or when it is absent."
+  },
+  "protocolBuilder.ruleEditor.refuseEncryptedAttribute": {
+    "defaultMessage": "A rule can only check whether an encrypted attribute is answered. Choose another operator or another attribute.",
+    "description": "Refusal shown on the comparison control when the rule compares the answers to an encrypted attribute, in a rule set whose rules are checked without the participant’s passphrase and so cannot read encrypted answers. The operators still allowed are \"exists\" and \"does not exist\"."
   },
   "protocolBuilder.ruleEditor.refuseIncomplete": {
     "defaultMessage": "This rule cannot be saved until this question is answered.",
@@ -6182,6 +6206,10 @@
   "protocolBuilder.stageName.placeholder": {
     "defaultMessage": "Enter stage name...",
     "description": "Placeholder for the researcher-authored stage name field."
+  },
+  "protocolBuilder.stageName.quoted": {
+    "defaultMessage": "\"{stageName}\"",
+    "description": "One stage’s name in quotation marks, as it appears inside a sentence that names several stages, such as the stages holding a rule. Use the quotation marks your language puts around a quoted name. stageName is the researcher’s own name for the stage and is not translated. A stage is one step of an interview."
   },
   "protocolBuilder.stageTypeImage.preview": {
     "defaultMessage": "Preview of {interfaceName}",

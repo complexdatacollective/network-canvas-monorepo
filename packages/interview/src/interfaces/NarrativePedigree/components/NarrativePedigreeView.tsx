@@ -158,32 +158,25 @@ export default function NarrativePedigreeView({
   const nodes = useStageSelector(getNetworkNodes);
   const edges = useStageSelector(getNetworkEdges);
 
-  // Names the study encrypts are decrypted with the participant's passphrase,
-  // as the Family Pedigree decrypts them. Until it is entered (through the
-  // interview's passphrase prompt), or when it does not decrypt them, people
-  // are shown by how they are related to the participant.
-  const {
-    isEnabled: encryptionEnabled,
-    passphrase,
-    passphraseInvalid,
-    requirePassphrase,
-    setPassphraseInvalid,
-  } = usePassphrase();
+  // Names stored encrypted are decrypted with the interview's key, as the
+  // Family Pedigree decrypts them. Until the passphrase is entered (through
+  // the interview's passphrase prompt), and for a name that can never be
+  // read, people are shown by how they are related to the participant.
+  const { requirePassphrase } = usePassphrase();
+  const personVariables = useMemo(
+    () => (config ? (codebook.node?.[config.personType]?.variables ?? {}) : {}),
+    [codebook, config],
+  );
   const encryptNames =
     config !== null &&
-    encryptionEnabled &&
-    codebook.node?.[config.personType]?.variables?.[config.nameAttribute]
-      ?.encrypted === true;
+    personVariables[config.nameAttribute]?.encrypted === true;
   useEffect(() => {
     if (encryptNames) requirePassphrase();
   }, [encryptNames, requirePassphrase]);
   const decryption = useDecryptedNames({
     nodes,
     nameAttribute: config?.nameAttribute ?? '',
-    enabled: encryptNames,
-    passphrase,
-    passphraseInvalid,
-    onUndecryptable: () => setPassphraseInvalid(true),
+    variables: personVariables,
   });
 
   // The participant's family as the source stage recorded it: the

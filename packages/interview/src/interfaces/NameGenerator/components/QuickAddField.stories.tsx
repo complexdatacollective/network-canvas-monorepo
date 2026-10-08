@@ -6,10 +6,12 @@ import { Provider } from 'react-redux';
 import { action } from 'storybook/actions';
 import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test';
 
+import { createMessageError } from '@codaco/app-i18n/messages';
 import Form from '@codaco/fresco-ui/form/Form';
 import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
 import type { NodeDefinition } from '@codaco/protocol-validation';
 
+import { runtimeMessages } from '../../../i18n/runtimeMessages';
 import QuickAddField from './QuickAddField';
 
 const customIconOptions = ['add-a-person', 'add-a-place'];
@@ -59,9 +61,6 @@ const buildMockProtocol = (icon: string, maxNodes: number) => ({
       ],
     },
   ],
-  experiments: {
-    encryptedVariables: false,
-  },
   assets: [],
 });
 
@@ -86,9 +85,6 @@ const createMockStore = (icon: string, maxNodes: number) => {
     codebook: mockProtocol.codebook,
     stages: mockProtocol.stages,
     assets: [],
-    experiments: {
-      encryptedVariables: false,
-    },
   };
 
   const mockSessionState = {
@@ -97,8 +93,7 @@ const createMockStore = (icon: string, maxNodes: number) => {
   };
 
   const mockUiState = {
-    passphrase: null as string | null,
-    passphraseInvalid: false,
+    encryptionKeyId: null,
     showPassphrasePrompter: false,
   };
 
@@ -366,6 +361,60 @@ export const Disabled: Story = {
     docs: {
       description: {
         story: 'Disabled state prevents interaction with the field.',
+      },
+    },
+  },
+};
+
+// Takes a while to add the name, then refuses it, as an add whose answer
+// can't be saved does.
+const slowRefusal: FormSubmitHandler = async () => {
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+  return {
+    success: false,
+    fieldErrors: {
+      name: [createMessageError(runtimeMessages.submissionFailed)],
+    },
+  };
+};
+
+export const ClosingWhileAdding: Story = {
+  args: {
+    name: 'name',
+    placeholder: 'Type a name and press enter...',
+    disabled: false,
+  },
+  render: ({ icon: _icon, maxNodes: _maxNodes, ...args }) => (
+    <div className="flex flex-col items-end gap-4">
+      <Form onSubmit={slowRefusal}>
+        <QuickAddField {...args} />
+      </Form>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByTestId('quick-add-toggle'));
+    const input = await canvas.findByTestId('quick-add-input');
+    await userEvent.type(input, 'Bob{Enter}');
+    await waitFor(() => expect(input).toBeDisabled());
+
+    await userEvent.click(canvas.getByTestId('quick-add-toggle'));
+    await expect(canvas.getByTestId('quick-add-input')).toHaveValue('Bob');
+
+    await waitFor(
+      () => expect(canvas.getByTestId('quick-add-input')).not.toBeDisabled(),
+      { timeout: 5000 },
+    );
+    await expect(canvas.getByTestId('quick-add-input')).toHaveValue('Bob');
+    await expect(
+      await screen.findByText('An error occurred while submitting the form.'),
+    ).toBeInTheDocument();
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Pressing the button while a name is being added leaves the field open. Here the add takes a moment and is then refused, so the name stays in the field with the reason beside it.',
       },
     },
   },

@@ -39,6 +39,10 @@ import type { StoredProtocol } from './types';
 // tables. A row whose migration or validation fails never opens a transaction
 // at all, so it and its sessions are left untouched and the sweep continues.
 //
+// A library stored by a release whose runtime executed an older schema version
+// (schema 8, for every release before the runtime moved to 9) is migrated here
+// on the first launch after the update.
+//
 // A migration can move stages and change how a session represents its data,
 // so repointing a session is not enough: every session of the protocol is
 // also carried across the migration — its network, stage metadata and resume
@@ -382,6 +386,9 @@ async function migrateStoredProtocolRow(
 
   // The `name` dependency: v7 and below have no protocol name of their own, so
   // the migration is told the one this library already displays for the row.
+  // The whole stored document goes in because the migration from 8 reads its
+  // `experiments`: without them it unmarks every encrypted attribute, and
+  // sessions whose values were already encrypted could no longer be read.
   const { protocol: migrated, migrateSession } = migrateProtocolWithSessions(
     stored.protocol,
     COMPATIBLE_PROTOCOL_SCHEMA_VERSION,

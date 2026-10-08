@@ -24,6 +24,33 @@ const TARGET_SCHEMA_VERSION = COMPATIBLE_PROTOCOL_SCHEMA_VERSION;
  */
 const NORMALIZATION_SOURCE_VERSION = 7;
 
+/**
+ * The last version whose `experiments` had `encryptedVariables`, which
+ * recorded whether attributes marked `encrypted` were actually encrypted.
+ * The migration out of it removes `encryptedVariables` and unmarks every
+ * encrypted attribute unless it was on.
+ */
+const ENCRYPTION_EXPERIMENT_SCHEMA_VERSION = 8;
+
+type StoredExperiments = { encryptedVariables?: true };
+
+/**
+ * A version 8 row's stored experiments, as its upgrade reads them: attributes
+ * marked `encrypted` stay marked only while `encryptedVariables` is on. The
+ * alpha runtime named that flag `encryptNames` and encrypted those attributes
+ * while it was on, so a row stored then keeps encryption. Anything else stored
+ * there upgrades as an unset flag does.
+ */
+function readStoredExperiments(stored: unknown): StoredExperiments {
+  if (typeof stored !== 'object' || stored === null) return {};
+  const encryptionWasOn =
+    'encryptedVariables' in stored &&
+    typeof stored.encryptedVariables === 'boolean'
+      ? stored.encryptedVariables
+      : 'encryptNames' in stored && stored.encryptNames === true;
+  return encryptionWasOn ? { encryptedVariables: true } : {};
+}
+
 type ProtocolAssetRow = {
   assetId: string;
   name: string;
@@ -298,12 +325,13 @@ async function migrateOneProtocol(
     schemaVersion: row.schemaVersion,
     stages: row.stages,
     codebook: row.codebook,
-    // Once the target version advances beyond 8, version-8 rows enter this
-    // path carrying experiments; a source that omitted them would persist the
-    // migration's absent default and silently erase the stored configuration.
-    // Omit the key (rather than sending null) for the older rows that have
-    // none.
-    ...(row.experiments != null ? { experiments: row.experiments } : {}),
+    // Fresco keeps a protocol's `experiments` in their own column. The
+    // migration out of version 8 unmarks every encrypted attribute unless
+    // they say encryption was on, so omitting them would stop encrypting
+    // attributes whose collected values are already ciphertext.
+    ...(row.schemaVersion === ENCRYPTION_EXPERIMENT_SCHEMA_VERSION
+      ? { experiments: readStoredExperiments(row.experiments) }
+      : {}),
     assetManifest: buildAssetManifest(row.assets),
   };
 
@@ -352,11 +380,7 @@ async function migrateOneProtocol(
       stages: migrated.stages as Prisma.InputJsonValue,
       codebook: migrated.codebook,
       localization: migrated.localization,
-      // Fall back to the stored value like the normalization path below: the
-      // migration chain predates experiments and may not carry them through.
-      // A future migration that means to clear them should set `{}`, not drop
-      // the key.
-      experiments: migrated.experiments ?? row.experiments ?? Prisma.JsonNull,
+      experiments: migrated.experiments ?? Prisma.JsonNull,
       hash: newHash,
     },
     newHash,
@@ -398,11 +422,29 @@ async function normalizeNonConformantProtocol(
 ): Promise<InterviewMigrationCounts> {
   const cleanName = row.name.replace(/\.netcanvas$/i, '');
 
+  // A row stored after the encryption experiment's version always encrypts
+  // an attribute marked `encrypted`, as `encryptedVariables` did, so its
+  // experiments turn the flag on; the migration out of that version removes
+  // it again. The migration into that version keeps experiments carried into
+  // it, so they reach the migration that reads them.
+  const experiments =
+    row.schemaVersion > ENCRYPTION_EXPERIMENT_SCHEMA_VERSION
+      ? {
+          ...(typeof row.experiments === 'object' &&
+          row.experiments !== null &&
+          !Array.isArray(row.experiments)
+            ? row.experiments
+            : {}),
+          encryptedVariables: true,
+        }
+      : readStoredExperiments(row.experiments);
+
   const asSourceVersion = {
     name: cleanName,
     schemaVersion: NORMALIZATION_SOURCE_VERSION,
     stages: row.stages,
     codebook: row.codebook,
+    experiments,
     assetManifest: buildAssetManifest(row.assets),
   };
 
@@ -424,10 +466,7 @@ async function normalizeNonConformantProtocol(
       stages: migrated.stages as Prisma.InputJsonValue,
       codebook: migrated.codebook,
       localization: migrated.localization,
-      // Preserve the protocol's existing experiments; a migration chain
-      // starting below the version that introduced them has no knowledge of
-      // them and would otherwise reset them to its default.
-      experiments: row.experiments ?? Prisma.JsonNull,
+      experiments: migrated.experiments ?? Prisma.JsonNull,
       hash: newHash,
     },
     newHash,

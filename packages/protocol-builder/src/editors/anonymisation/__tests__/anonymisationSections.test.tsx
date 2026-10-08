@@ -2,12 +2,17 @@ import { act, screen, waitFor, within } from '@testing-library/react';
 import { type ReactNode, useMemo, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import { DEFAULT_PASSPHRASE_MIN_LENGTH } from '@codaco/shared-consts';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
   StageEditorFormContext,
   useStageEditorForm,
 } from '../../../form/stageEditorContext.ts';
+import {
+  attributeField,
+  chooseAttributeById,
+} from '../../../testing/attributePicker.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
@@ -16,12 +21,15 @@ import { anonymisationStageEditor } from '../AnonymisationStageEditor.ts';
 import EncryptedAttributesSection from '../sections/EncryptedAttributesSection.tsx';
 import {
   alreadyProtecting,
+  answeredRule,
   attributeCheckbox,
   collaboratorSets,
   heldWrites,
   personDocument,
+  personRule,
   personVariable,
   switchOnType,
+  withStageFields,
 } from './anonymisationFixtures.tsx';
 
 /**
@@ -50,6 +58,25 @@ function UntilTheEditorIsReadOnly({
 const openEditor = (): StageEditorHarness =>
   renderStageEditor({
     stageId: 'anonymisation-1',
+    registry: anonymisationStageEditor,
+  });
+
+const openWithRules = (
+  validation: Readonly<{ minLength?: number; maxLength?: number }>,
+): StageEditorHarness =>
+  renderStageEditor({
+    stage: {
+      id: 'anonymisation-rules',
+      type: 'Anonymisation',
+      fields: {
+        label: { 'en-US': 'Anonymisation' },
+        explanationText: {
+          title: { 'en-US': 'Privacy' },
+          body: { 'en-US': 'Choose a passphrase.' },
+        },
+        validation,
+      },
+    },
     registry: anonymisationStageEditor,
   });
 
@@ -298,10 +325,83 @@ describe('how the passphrase rules are put on screen', () => {
   });
 
   /**
-   * A protocol that ARRIVES holding a contradiction — a minimum above the
-   * maximum — is the state of anyone opening one, and nothing has been typed
-   * or blurred, so the field states nothing and the rule editor's own sentence
-   * is the whole of what the researcher reads. It has to be the repair
+   * The interview applies the shared default minimum when the stage sets none,
+   * so the minimum row says so — on the row itself, and from the constant the
+   * interview reads rather than a number written here, so the two cannot
+   * drift. It stays when the researcher switches the minimum on or off, and
+   * the maximum, which has no default, says nothing.
+   */
+  it('says what minimum applies when none is set', async () => {
+    const harness = openEditor();
+    const hint = `Defaults to ${DEFAULT_PASSPHRASE_MIN_LENGTH} characters if no minimum is set.`;
+
+    const minimum = await screen.findByRole('switch', {
+      name: 'Minimum text length',
+    });
+    expect(minimum).toBeChecked();
+    expect(minimum).toHaveAccessibleDescription(hint);
+
+    await harness.user.click(minimum);
+    await waitFor(() => expect(minimum).not.toBeChecked());
+    expect(minimum).toHaveAccessibleDescription(hint);
+    expect(
+      screen.getByRole('switch', { name: 'Maximum text length' }),
+    ).toHaveAccessibleDescription('');
+  });
+
+  /**
+   * The interview never holds a participant to a default minimum longer than
+   * the researcher's own maximum (`effectivePassphraseMinLength`), so a short
+   * maximum on its own lowers the default to it. That is explained rather than
+   * refused: the stage works, and schema 8 protocols holding one exist.
+   */
+  it('says a shorter maximum lowers the default minimum, and saves it', async () => {
+    const harness = openWithRules({ maxLength: 6 });
+
+    const minimum = await screen.findByRole('switch', {
+      name: 'Minimum text length',
+    });
+    expect(minimum).not.toBeChecked();
+    expect(minimum).toHaveAccessibleDescription(
+      `Defaults to the maximum, 6 characters, if no minimum is set, because the maximum is shorter than the usual default of ${DEFAULT_PASSPHRASE_MIN_LENGTH}.`,
+    );
+
+    const saved = await harness.submit();
+    expect(saved?.stageDocument.validation).toEqual({ maxLength: 6 });
+  });
+
+  it('says the usual default minimum beside a maximum that does not lower it', async () => {
+    openWithRules({ maxLength: 12 });
+
+    expect(
+      await screen.findByRole('switch', { name: 'Minimum text length' }),
+    ).toHaveAccessibleDescription(
+      `Defaults to ${DEFAULT_PASSPHRASE_MIN_LENGTH} characters if no minimum is set.`,
+    );
+  });
+
+  it('still refuses a minimum above a maximum shorter than the default', async () => {
+    const harness = openWithRules({ minLength: 9, maxLength: 6 });
+
+    await screen.findByRole('switch', { name: 'Minimum text length' });
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(
+        'The shortest passphrase you allow cannot be longer than the longest one.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * A stage that ARRIVES holding a contradiction — a minimum above the
+   * maximum. A schema 9 protocol cannot carry one: the 8 to 9 migration
+   * removes the pair and schema 9 refuses it. A stored row can still bring
+   * one, though: Architect opens a current-schema row already marked
+   * validated without validating it again (`admitStoredProtocol`), so a row
+   * a development build saved before that refusal existed reaches this editor
+   * as it is. Nothing has been typed or blurred, so the field states nothing
+   * and the rule editor's own sentence is the whole of what the researcher
+   * reads. It has to be the repair
    * guidance in their language, never the analyser's technical diagnostic
    * (`Attribute "this attribute": minLength (40) is greater than maxLength
    * (5)`), which names the schema's own rule keys and is written for a
@@ -489,6 +589,250 @@ describe('the attributes a passphrase protects', () => {
         'This type has no text attributes, so it has nothing that can be encrypted.',
       ),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * Rules are checked without the participant's passphrase, so the protocol
+   * schema refuses a rule over interview answers that compares an encrypted
+   * attribute. Encrypting one a rule already compares would leave that rule
+   * refused on a stage this editor is not editing, so the tick is refused here
+   * instead, naming the stages to go to. A rule that only asks whether the
+   * attribute was answered keeps working, so it does not stand in the way.
+   */
+  describe('an attribute a rule reads', () => {
+    it('encrypts it when the rules only ask whether it is answered', async () => {
+      const harness = renderStageEditor({
+        stageId: 'anonymisation-1',
+        registry: anonymisationStageEditor,
+        adapter: withStageFields({
+          'name-generator-1': {
+            skipLogic: {
+              action: 'SHOW',
+              filter: { rules: [answeredRule('skip-a', 'name')] },
+            },
+          },
+        }),
+      });
+      await switchOnType(harness, 'person');
+
+      await harness.user.click(attributeCheckbox('person', 'name'));
+
+      await waitFor(() =>
+        expect(personVariable(harness, 'name').encrypted).toBe(true),
+      );
+      expect(screen.queryByText(/cannot be encrypted/)).toBeNull();
+    });
+
+    it('counts only the rules that compare its answers', async () => {
+      const harness = renderStageEditor({
+        stageId: 'anonymisation-1',
+        registry: anonymisationStageEditor,
+        adapter: withStageFields({
+          'name-generator-1': {
+            skipLogic: {
+              action: 'SKIP',
+              filter: {
+                join: 'OR',
+                rules: [
+                  answeredRule('skip-a', 'name'),
+                  personRule('skip-b', 'name'),
+                ],
+              },
+            },
+          },
+          'sociogram-1': {
+            filter: { rules: [answeredRule('filter-a', 'name')] },
+          },
+        }),
+      });
+      await switchOnType(harness, 'person');
+
+      await harness.user.click(attributeCheckbox('person', 'name'));
+
+      expect(
+        await screen.findByText(
+          '"name" cannot be encrypted while a rule in "Name Generator" compares its answers. Rules are checked without the participant’s passphrase, so that rule could not read the encrypted answers. Remove the rule, or change it to check only whether the attribute is answered.',
+        ),
+      ).toBeInTheDocument();
+      expect(attributeCheckbox('person', 'name')).not.toBeChecked();
+    });
+
+    it('refuses to encrypt it, naming the stages whose rules read it', async () => {
+      const harness = renderStageEditor({
+        stageId: 'anonymisation-1',
+        registry: anonymisationStageEditor,
+        adapter: withStageFields({
+          'name-generator-1': {
+            skipLogic: {
+              action: 'SKIP',
+              filter: { rules: [personRule('skip-a', 'name')] },
+            },
+          },
+          'sociogram-1': {
+            filter: { rules: [personRule('filter-a', 'name')] },
+          },
+        }),
+      });
+      await switchOnType(harness, 'person');
+
+      await harness.user.click(attributeCheckbox('person', 'name'));
+
+      const refusal = await screen.findByText(
+        '"name" cannot be encrypted while 2 rules in "Name Generator" and "Sociogram" compare its answers. Rules are checked without the participant’s passphrase, so those rules could not read the encrypted answers. Remove those rules, or change them to check only whether the attribute is answered.',
+      );
+      // A notice rather than an alert: nothing is wrong with the protocol, and
+      // the tick is fine once the rules are gone.
+      expect(refusal.closest('[role]')).toHaveAttribute('role', 'status');
+      expect(attributeCheckbox('person', 'name')).not.toBeChecked();
+      expect(Object.hasOwn(personVariable(harness, 'name'), 'encrypted')).toBe(
+        false,
+      );
+    });
+
+    /**
+     * A panel over an imported file reads the researcher's own rows, which
+     * nothing encrypts — so its rules do not stand in the way. One over the
+     * interview's own network reads interview answers, and does.
+     */
+    it('counts only the panels that read the interview’s own network', async () => {
+      const harness = renderStageEditor({
+        stageId: 'anonymisation-1',
+        registry: anonymisationStageEditor,
+        adapter: withStageFields({
+          'name-generator-1': {
+            panels: [
+              {
+                id: 'panel-network',
+                title: { 'en-US': 'People already named' },
+                dataSource: 'existing',
+                filter: { rules: [personRule('panel-a', 'name')] },
+              },
+              {
+                id: 'panel-roster',
+                title: { 'en-US': 'Roster' },
+                dataSource: 'roster_data',
+                filter: {
+                  rules: [personRule('panel-b', 'relationship_to_ego')],
+                },
+              },
+            ],
+          },
+        }),
+      });
+      await switchOnType(harness, 'person');
+
+      await harness.user.click(attributeCheckbox('person', 'name'));
+      expect(
+        await screen.findByText(
+          '"name" cannot be encrypted while a rule in "Name Generator" compares its answers. Rules are checked without the participant’s passphrase, so that rule could not read the encrypted answers. Remove the rule, or change it to check only whether the attribute is answered.',
+        ),
+      ).toBeInTheDocument();
+
+      await harness.user.click(
+        attributeCheckbox('person', 'relationship_to_ego'),
+      );
+      await waitFor(() =>
+        expect(personVariable(harness, 'relationship_to_ego').encrypted).toBe(
+          true,
+        ),
+      );
+      expect(screen.queryByText(/cannot be encrypted/)).toBeNull();
+    });
+
+    /**
+     * The tick reads the SAVED stages: encryption is committed at once, under
+     * the codebook's lock, while this stage's draft may still be discarded —
+     * so a rule only the draft holds does not stop it. That rule is then
+     * marked, and keeps the draft from being saved, because the skip logic
+     * re-reads the codebook it just changed.
+     */
+    it('refuses to save this stage’s own draft rule once its attribute is encrypted', async () => {
+      const harness = renderStageEditor({
+        stageId: 'anonymisation-1',
+        registry: anonymisationStageEditor,
+        adapter: withStageFields({
+          'anonymisation-1': {
+            skipLogic: {
+              action: 'SKIP',
+              filter: {
+                rules: [personRule('skip-a', 'relationship_to_ego')],
+              },
+            },
+          },
+        }),
+      });
+
+      await harness.user.click(
+        await screen.findByRole('button', { name: /^Edit rule:/ }),
+      );
+      await screen.findByRole('dialog', { name: 'Construct a Rule' });
+      await chooseAttributeById(
+        harness.user,
+        await waitFor(() => attributeField('Node attribute')),
+        'name',
+      );
+      await harness.user.selectOptions(
+        await screen.findByRole('combobox', { name: /Operator/ }),
+        'EXACTLY',
+      );
+      await harness.user.type(
+        await screen.findByRole('textbox', { name: /Attribute value/ }),
+        'Ada',
+      );
+      await harness.user.click(
+        screen.getByRole('button', { name: 'Finish and Close' }),
+      );
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('dialog', { name: 'Construct a Rule' }),
+        ).toBeNull(),
+      );
+
+      await switchOnType(harness, 'person');
+      await harness.user.click(attributeCheckbox('person', 'name'));
+      await waitFor(() =>
+        expect(personVariable(harness, 'name').encrypted).toBe(true),
+      );
+
+      expect(
+        await screen.findByText(
+          'This rule compares the answers to an encrypted attribute. Rules are checked without the participant’s passphrase, so they can only check whether an encrypted attribute is answered. Edit or delete the rule.',
+        ),
+      ).toBeInTheDocument();
+      expect(await harness.submit()).toBeNull();
+    });
+
+    /** Unticking is the way out of a protocol that already holds both. */
+    it('still lets it be unencrypted', async () => {
+      const harness = renderStageEditor({
+        stageId: 'anonymisation-1',
+        registry: anonymisationStageEditor,
+        adapter: withStageFields(
+          {
+            'name-generator-1': {
+              skipLogic: {
+                action: 'SKIP',
+                filter: { rules: [personRule('skip-a', 'name')] },
+              },
+            },
+          },
+          alreadyProtecting('name'),
+        ),
+      });
+      await screen.findByRole('group', {
+        name: 'Encrypted attributes for person',
+      });
+      expect(attributeCheckbox('person', 'name')).toBeChecked();
+
+      await harness.user.click(attributeCheckbox('person', 'name'));
+
+      await waitFor(() =>
+        expect(
+          Object.hasOwn(personVariable(harness, 'name'), 'encrypted'),
+        ).toBe(false),
+      );
+      expect(screen.queryByText(/cannot be encrypted/)).toBeNull();
+    });
   });
 
   /**

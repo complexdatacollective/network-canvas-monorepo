@@ -1,234 +1,170 @@
 'use client';
 
-import { hash } from 'ohash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
+import { useStore } from 'react-redux';
 
+import type { Variable } from '@codaco/protocol-validation';
+import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
+
+import type { RootState } from '../../store/store';
 import {
-  entityAttributesProperty,
-  entityPrimaryKeyProperty,
-  entitySecureAttributesMeta,
-  type NcNode,
-} from '@codaco/shared-consts';
+  type DecryptionScope,
+  decryptInScope,
+  getDecryptionScope,
+  type OutcomeOf,
+  readCachedOutcome,
+  readEncryptedAttribute,
+  type StoredEncryptedAttribute,
+  type UnreadableReason,
+} from '../Anonymisation/decryptionScope';
+import { useDecryptedOutcomes } from '../Anonymisation/useDecryptionScope';
+import { useReportUnreadable } from '../Anonymisation/useReportUnreadable';
 
-import { readOwnProperty } from '../../utils/ownProperty';
-import { decryptData } from '../Anonymisation/utils';
+type StoredName = { personId: string; stored: StoredEncryptedAttribute };
 
-/** A name as the interview's encryption stores it: ciphertext, with the salt
- * and initialisation vector it was made with. */
-type EncryptedName = {
-  data: number[];
-  secureAttributes: { iv: number[]; salt: number[] };
-};
-
-const isNumberArray = (value: unknown): value is number[] =>
-  Array.isArray(value) && value.every((item) => typeof item === 'number');
-
-/**
- * A person's value for one attribute, such as their name, when it is stored
- * encrypted. Undefined for a value held as text, and for none. A value with
- * no record of how it was encrypted cannot be decrypted, and is undefined
- * too.
- */
-export function encryptedValueOf(
-  node: NcNode,
-  attribute: string,
-): EncryptedName | undefined {
-  const secureMeta = node[entitySecureAttributesMeta];
-  const secure = secureMeta && readOwnProperty(secureMeta, attribute);
-  const data = readOwnProperty(node[entityAttributesProperty], attribute);
-  if (!secure || !isNumberArray(data)) return undefined;
-  return { data, secureAttributes: { iv: secure.iv, salt: secure.salt } };
+/** Each person whose name is stored as ciphertext, readable or not. */
+export function storedEncryptedNames(
+  nodes: readonly NcNode[],
+  nameAttribute: string,
+  variables: Record<string, Variable>,
+): StoredName[] {
+  return nodes.flatMap((node) => {
+    const stored = readEncryptedAttribute(node, nameAttribute, variables);
+    return stored ? [{ personId: node[entityPrimaryKeyProperty], stored }] : [];
+  });
 }
 
-/**
- * The person's values for these attributes, each decrypted where it is
- * stored encrypted, by attribute; `null` when the passphrase cannot decrypt
- * one of them.
- */
-export async function decryptValues(
-  node: NcNode,
-  attributes: readonly string[],
-  passphrase: string,
-): Promise<Map<string, string> | null> {
-  const values = new Map<string, string>();
-  for (const attribute of attributes) {
-    const encrypted = encryptedValueOf(node, attribute);
-    if (!encrypted) continue;
-    try {
-      values.set(attribute, await decryptData(encrypted, passphrase));
-    } catch {
-      // A wrong passphrase, or ciphertext that is not what it claims.
-      return null;
-    }
+/** The text of each encrypted name decrypted so far, by person id. */
+export function readDecryptedNames(
+  names: readonly StoredName[],
+  outcomeOf: OutcomeOf,
+): Map<string, string> {
+  const decrypted = new Map<string, string>();
+  for (const { personId, stored } of names) {
+    if (stored.status !== 'encrypted') continue;
+    const outcome = outcomeOf(stored.value);
+    if (outcome?.readable) decrypted.set(personId, outcome.plaintext);
   }
-  return values;
+  return decrypted;
 }
 
-type DecryptedNames = {
-  /** Each name decrypted so far, by person id. */
-  names: Map<string, string>;
-  /** The passphrase could not decrypt at least one of the names. */
-  failed: boolean;
-  /** Every name has been decrypted, or has failed to be. */
-  settled: boolean;
-};
-
-const EMPTY: ReadonlyMap<string, string> = new Map();
+const encryptedValues = (names: readonly StoredName[]) =>
+  names.flatMap(({ stored }) =>
+    stored.status === 'encrypted' ? [stored.value] : [],
+  );
 
 /**
- * Decrypts a family's encrypted names with a passphrase, remembering each
- * result (by passphrase and ciphertext) so that a name is decrypted once, and
- * a new passphrase tries every name again.
- */
-export class NameDecryptor {
-  /** Each name's text, or null where the passphrase could not decrypt it. */
-  private readonly results = new Map<string, string | null>();
-  private readonly running = new Map<string, Promise<void>>();
-
-  private static keyOf(passphrase: string, encrypted: EncryptedName) {
-    return hash([passphrase, encrypted.data, encrypted.secureAttributes]);
-  }
-
-  /**
-   * The names already decrypted among these nodes. `expected` gives, by
-   * person id, the text a name being decrypted is known to hold, because the
-   * stage has just written it.
-   */
-  read(
-    nodes: readonly NcNode[],
-    nameAttribute: string,
-    passphrase: string,
-    expected: ReadonlyMap<string, string> = EMPTY,
-  ): DecryptedNames {
-    const names = new Map<string, string>();
-    let failed = false;
-    let settled = true;
-    for (const node of nodes) {
-      const encrypted = encryptedValueOf(node, nameAttribute);
-      if (!encrypted) continue;
-      const id = node[entityPrimaryKeyProperty];
-      const result = this.results.get(
-        NameDecryptor.keyOf(passphrase, encrypted),
-      );
-      if (result === null) {
-        failed = true;
-      } else if (result !== undefined) {
-        names.set(id, result);
-      } else {
-        settled = false;
-        const text = expected.get(id);
-        if (text !== undefined) names.set(id, text);
-      }
-    }
-    return { names, failed, settled };
-  }
-
-  /** Decrypts every name among these nodes not yet decrypted, then reads
-   * them all. */
-  async decrypt(
-    nodes: readonly NcNode[],
-    nameAttribute: string,
-    passphrase: string,
-  ): Promise<DecryptedNames> {
-    const waiting: Promise<void>[] = [];
-    for (const node of nodes) {
-      const encrypted = encryptedValueOf(node, nameAttribute);
-      if (!encrypted) continue;
-      const key = NameDecryptor.keyOf(passphrase, encrypted);
-      if (this.results.has(key)) continue;
-      const run =
-        this.running.get(key) ?? this.start(key, encrypted, passphrase);
-      waiting.push(run);
-    }
-    await Promise.all(waiting);
-    return this.read(nodes, nameAttribute, passphrase);
-  }
-
-  private start(key: string, encrypted: EncryptedName, passphrase: string) {
-    const run = (async () => {
-      try {
-        this.results.set(key, await decryptData(encrypted, passphrase));
-      } catch {
-        // A wrong passphrase, or ciphertext that is not what it claims.
-        this.results.set(key, null);
-      } finally {
-        this.running.delete(key);
-      }
-    })();
-    this.running.set(key, run);
-    return run;
-  }
-}
-
-/**
- * The family's encrypted names, decrypted with the participant's passphrase
- * for the stage to show and to tell people apart by. Nothing is decrypted
- * while `enabled` is false or there is no passphrase. A name the passphrase
- * cannot decrypt calls `onUndecryptable`, once for each time the passphrase
- * is entered (`passphraseInvalid` returning to false).
- *
- * `expectName` gives the text of a name the stage is about to write, so the
- * person is shown by it while the new ciphertext is decrypted, rather than
- * by a label for that moment.
+ * The family's encrypted names, decrypted with the interview's key for the
+ * stage to show and to tell people apart by. Nothing is decrypted while no key
+ * is in force, and nothing here asks for the passphrase. A name that can
+ * never be read is left out, and reported.
  */
 export function useDecryptedNames({
   nodes,
   nameAttribute,
-  enabled,
-  passphrase,
-  passphraseInvalid,
-  onUndecryptable,
+  variables,
 }: {
   nodes: readonly NcNode[];
   nameAttribute: string;
-  enabled: boolean;
-  passphrase: string | null;
-  passphraseInvalid: boolean;
-  onUndecryptable: () => void;
+  variables: Record<string, Variable>;
 }) {
-  const [decryptor] = useState(() => new NameDecryptor());
-  // Changes whenever more names have been decrypted.
-  const [version, setVersion] = useState(0);
-  const [expected, setExpected] = useState<ReadonlyMap<string, string>>(EMPTY);
-  const key = enabled && passphrase ? passphrase : null;
+  const store = useStore<RootState>();
+  const reportUnreadable = useReportUnreadable();
 
-  const names = useMemo(() => {
-    if (!key) return EMPTY;
-    // Read again whenever more names have been decrypted.
-    void version;
-    return decryptor.read(nodes, nameAttribute, key, expected).names;
-  }, [decryptor, nodes, nameAttribute, key, expected, version]);
+  const stored = useMemo(
+    () => storedEncryptedNames(nodes, nameAttribute, variables),
+    [nodes, nameAttribute, variables],
+  );
+  const values = useMemo(() => encryptedValues(stored), [stored]);
+  const outcomeOf = useDecryptedOutcomes(values);
 
-  const onUndecryptableRef = useRef(onUndecryptable);
-  onUndecryptableRef.current = onUndecryptable;
-
-  useEffect(() => {
-    if (!key) return;
-    let live = true;
-    const before = decryptor.read(nodes, nameAttribute, key);
-    void (async () => {
-      const { failed } = await decryptor.decrypt(nodes, nameAttribute, key);
-      if (!live) return;
-      if (!before.settled) setVersion((current) => current + 1);
-      if (failed && !passphraseInvalid) onUndecryptableRef.current();
-    })();
-    return () => {
-      live = false;
-    };
-  }, [decryptor, nodes, nameAttribute, key, passphraseInvalid]);
-
-  const expectName = useCallback((personId: string, text: string) => {
-    setExpected((current) => new Map(current).set(personId, text));
-  }, []);
-
-  /** Every name among these nodes, once all of them are decrypted. */
-  const decryptAll = useCallback(
-    async (latest: readonly NcNode[]) =>
-      key
-        ? decryptor.decrypt(latest, nameAttribute, key)
-        : { names: new Map<string, string>(), failed: false, settled: true },
-    [decryptor, nameAttribute, key],
+  const names = useMemo(
+    () => readDecryptedNames(stored, outcomeOf),
+    [stored, outcomeOf],
   );
 
-  return { names, expectName, decryptAll };
+  useEffect(() => {
+    for (const { stored: name } of stored) {
+      if (name.status === 'unreadable') reportUnreadable(name.reason);
+      else if (outcomeOf(name.value)?.readable === false) {
+        reportUnreadable('decryption-failed');
+      }
+    }
+  }, [stored, outcomeOf, reportUnreadable]);
+
+  /** Every name among these nodes that can be decrypted, once it is. */
+  const decryptAll = useCallback(
+    async (latest: readonly NcNode[]) => {
+      const scope = getDecryptionScope(store.getState);
+      const latestNames = storedEncryptedNames(
+        latest,
+        nameAttribute,
+        variables,
+      );
+      if (!scope) return readDecryptedNames(latestNames, () => undefined);
+      await Promise.all(
+        encryptedValues(latestNames).map((value) =>
+          decryptInScope(scope, value),
+        ),
+      );
+      return readDecryptedNames(latestNames, (value) =>
+        readCachedOutcome(scope, value),
+      );
+    },
+    [store, nameAttribute, variables],
+  );
+
+  return { names, decryptAll };
+}
+
+type ProtectedDetails =
+  | {
+      status: 'ready';
+      /** Each value decrypted, by attribute. */
+      values: Map<string, string>;
+      /** The attributes whose stored value can never be shown. */
+      unavailable: string[];
+      /** Why each of those cannot be read. */
+      unreadable: UnreadableReason[];
+    }
+  | { status: 'locked' };
+
+/**
+ * The person's values for these attributes, each decrypted where it is
+ * stored encrypted, for the form that edits them. Locked while one is stored
+ * encrypted and no key is in force, unless no passphrase can ever put one in
+ * force: then, like a value that can never be read, it is unavailable.
+ */
+export async function decryptDetails(
+  node: NcNode,
+  attributes: readonly string[],
+  variables: Record<string, Variable>,
+  scope: DecryptionScope | undefined,
+  encryptionUnavailable: boolean,
+): Promise<ProtectedDetails> {
+  const values = new Map<string, string>();
+  const unavailable: string[] = [];
+  const unreadable: UnreadableReason[] = [];
+  for (const attribute of attributes) {
+    const stored = readEncryptedAttribute(node, attribute, variables);
+    if (!stored) continue;
+    if (stored.status === 'unreadable') {
+      unavailable.push(attribute);
+      unreadable.push(stored.reason);
+      continue;
+    }
+    if (!scope) {
+      if (!encryptionUnavailable) return { status: 'locked' };
+      unavailable.push(attribute);
+      continue;
+    }
+    const outcome = await decryptInScope(scope, stored.value);
+    if (outcome.readable) {
+      values.set(attribute, outcome.plaintext);
+    } else {
+      unavailable.push(attribute);
+      unreadable.push('decryption-failed');
+    }
+  }
+  return { status: 'ready', values, unavailable, unreadable };
 }

@@ -10,7 +10,6 @@ import {
 import type { SessionWithResequencedIDs } from '../../input';
 import type { ExportOptions } from '../../options';
 import type { ExportWarning } from '../../output';
-import { getEntityAttributes } from '../../utils/general';
 import { planTypedColumns } from './columns';
 import {
   csvEOL,
@@ -27,19 +26,11 @@ export function* attributeListRows(
   exportOptions: ExportOptions,
   reportWarning: (warning: ExportWarning) => void,
 ): Generator<string, void, void> {
-  const columns = planTypedColumns(
-    'node',
-    codebook.node,
-    network.nodes.map((node) => ({
-      type: node.type,
-      attributes: getEntityAttributes(node),
-    })),
-    {
-      exportOptions,
-      protocolName: network.sessionVariables[protocolName],
-      reportWarning,
-    },
-  );
+  const columns = planTypedColumns('node', codebook.node, network.nodes, {
+    exportOptions,
+    protocolName: network.sessionVariables[protocolName],
+    reportWarning,
+  });
 
   yield (
     [...BUILT_IN_HEADERS, ...columns.map(({ header }) => header)]
@@ -48,13 +39,12 @@ export function* attributeListRows(
   );
 
   for (const node of network.nodes) {
-    const attributes = getEntityAttributes(node);
     yield (
       [
         node[nodeExportIDProperty],
         node[egoProperty],
         node[entityPrimaryKeyProperty],
-        ...columns.map(({ cells }) => cells.get(node.type)?.(attributes)),
+        ...columns.map(({ cells }) => cells.get(node.type)?.(node)),
       ]
         .map((value) => String(sanitizeCellValue(value) ?? ''))
         .join(',') + csvEOL

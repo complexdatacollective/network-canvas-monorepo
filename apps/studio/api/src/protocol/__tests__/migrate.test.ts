@@ -45,6 +45,27 @@ const V7_SECTIONS: Record<string, SectionDoc> = {
   },
 };
 
+// A stored schema-8 version whose person name is marked encrypted, under the
+// given experiments.
+const v8EncryptedSections = (
+  experiments: SectionDoc | undefined,
+): Record<string, SectionDoc> => ({
+  'settings': {
+    name: 'Legacy Protocol',
+    schemaVersion: 8,
+    ...(experiments !== undefined && { experiments }),
+  },
+  'stageOrder': { stages: [] },
+  'codebook:node:person': {
+    name: 'Person',
+    color: 'node-color-seq-1',
+    shape: { default: 'circle' },
+    variables: {
+      personName: { name: 'Name', type: 'text', encrypted: true },
+    },
+  },
+});
+
 describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
   let store: StoreSchema;
   let run: <A, E>(body: Effect.Effect<A, E, Transaction>) => Promise<A>;
@@ -58,7 +79,9 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
     await store.dispose();
   });
 
-  async function seedV7Version(): Promise<{
+  async function seedVersion(
+    storedSections: Record<string, SectionDoc>,
+  ): Promise<{
     protocolId: string;
     versionId: string;
   }> {
@@ -68,7 +91,7 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
       `INSERT INTO protocols (id, team_id, name) VALUES ($1, $2, $3)`,
       [protocolId, TEST_TEAM_ID, 'Legacy Protocol'],
     );
-    await run(makeTestSyncServer().createDraft(draftId, V7_SECTIONS));
+    await run(makeTestSyncServer().createDraft(draftId, storedSections));
     await store.affected(
       `INSERT INTO protocol_drafts (draft_id, team_id, protocol_id)
        VALUES ($1, $2, $3)`,
@@ -76,13 +99,13 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
     );
     const published = await run(publishDraft(TEST_TEAM_ID, { draftId }));
     if (published.status !== 'published') {
-      throw new Error(`v7 publish failed: ${published.status}`);
+      throw new Error(`seeded publish failed: ${published.status}`);
     }
     return { protocolId, versionId: published.versionId };
   }
 
   it('migrates a stored v7 version into a current-schema draft and records provenance on publish', async () => {
-    const { protocolId, versionId } = await seedV7Version();
+    const { protocolId, versionId } = await seedVersion(V7_SECTIONS);
     const versions = await run(listVersions(TEST_TEAM_ID, protocolId));
     expect(versions[0]!.schemaVersion).toBe(7);
 
@@ -141,8 +164,61 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
     expect(canonicalize(frozenAfter[0])).toBe(canonicalize(frozenBefore[0]));
   });
 
+  async function migratedDraftOf(versionId: string) {
+    const migration = await run(
+      migrateStoredVersionToDraft(TEST_TEAM_ID, { versionId }),
+    );
+    return run(getDraftDocument(TEST_TEAM_ID, migration.draftId));
+  }
+
+  it('keeps a stored v8 version’s attributes encrypted when its experiments turned encryption on, and keeps its experiments without that one', async () => {
+    // Values already collected for them are ciphertext.
+    const { versionId } = await seedVersion(
+      v8EncryptedSections({ encryptedVariables: true }),
+    );
+
+    const document = await migratedDraftOf(versionId);
+
+    expect(document).toHaveProperty(
+      'codebook.node.person.variables.personName.encrypted',
+      true,
+    );
+    expect(document.experiments).toStrictEqual({});
+  });
+
+  async function expectEncryptionUnmarked(versionId: string) {
+    const document = await migratedDraftOf(versionId);
+
+    expect(document).toHaveProperty(
+      'codebook.node.person.variables.personName.type',
+      'text',
+    );
+    expect(document).not.toHaveProperty(
+      'codebook.node.person.variables.personName.encrypted',
+    );
+    return document;
+  }
+
+  it('unmarks a stored v8 version’s encrypted attributes when encryption was off, and keeps its experiments', async () => {
+    const { versionId } = await seedVersion(
+      v8EncryptedSections({ encryptedVariables: false }),
+    );
+
+    const document = await expectEncryptionUnmarked(versionId);
+
+    expect(document.experiments).toStrictEqual({});
+  });
+
+  it('unmarks a stored v8 version’s encrypted attributes when it had no experiments, and adds none', async () => {
+    const { versionId } = await seedVersion(v8EncryptedSections(undefined));
+
+    const document = await expectEncryptionUnmarked(versionId);
+
+    expect(document).not.toHaveProperty('experiments');
+  });
+
   it('branches an editable current-schema draft from a stored v7 version', async () => {
-    const { protocolId, versionId } = await seedV7Version();
+    const { protocolId, versionId } = await seedVersion(V7_SECTIONS);
 
     const branched = await run(
       createDraftFromVersion(TEST_TEAM_ID, { versionId }),

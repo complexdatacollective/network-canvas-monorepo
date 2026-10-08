@@ -29,6 +29,7 @@ vi.mock('../../../hooks/useCelebrate', () => ({
 
 vi.mock('../../../analytics/useTrack', () => ({
   useTrack: () => vi.fn(),
+  useCaptureException: () => vi.fn(),
 }));
 
 class NoopObserver {

@@ -35,6 +35,11 @@ export type ScenarioDefinition = {
   currentStep?: number;
   /** install synth.getNetwork() as the starting network (default false) */
   seedNetwork?: boolean;
+  /**
+   * store the seeded network's encrypted answers in the schema 8 format, with
+   * no encryption header (needs seedNetwork)
+   */
+  schema8Encryption?: true;
   /** seeded stage metadata (e.g. dyad-census pair state) */
   stageMetadata?: unknown;
   /** extra pixel-capture masks (visual suite only, e.g. EncryptedBackground) */

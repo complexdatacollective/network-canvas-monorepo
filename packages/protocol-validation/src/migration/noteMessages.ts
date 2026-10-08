@@ -373,6 +373,27 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. A form field is one question in a form; its attribute is the piece of information the question collects.',
   },
+  schema9EncryptedAttributes: {
+    id: 'protocolValidation.migrationNotes.schema9.encryptedAttributes',
+    defaultMessage:
+      'Encrypted attributes are no longer experimental: the Anonymisation interface is always available, and an attribute marked as encrypted is always encrypted. If this protocol marked attributes as encrypted without turning on the experimental "Encrypted Attributes" feature, those attributes are no longer marked, so they keep being collected without encryption.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance: encryptedAttributes. "Encrypted Attributes" is the name of the former experimental feature switch in Architect. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
+  },
+  schema9ContradictoryPassphraseRules: {
+    id: 'protocolValidation.migrationNotes.schema9.contradictoryPassphraseRules',
+    defaultMessage:
+      'If an Anonymisation stage required a minimum passphrase length longer than its maximum, no participant could choose a passphrase, so both lengths are removed and the default minimum length applies.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance: contradictoryPassphraseRules. Anonymisation is the name of the interface (stage type) that asks a participant to choose a passphrase protecting some of their answers; the lengths are the shortest and longest passphrase the researcher allowed. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
+  },
+  schema9EncryptedAttributeRules: {
+    id: 'protocolValidation.migrationNotes.schema9.encryptedAttributeRules',
+    defaultMessage:
+      "Skip logic and filters can no longer compare the answers to an encrypted attribute. Rules are checked without the participant's passphrase, so under schema 8 a rule like this only ever compared the encrypted text, never the answer. These rules are removed. Rules that only check whether an encrypted attribute is answered still work, so they are kept. Skip logic left with no rules is removed, so its stage now always appears: a stage that was shown only when a removed rule matched may never have appeared under schema 8. A filter left with no rules is removed, so it no longer limits what its stage or panel shows. Where other rules remain, they may now match differently: if all rules had to match, they now match at least as often as before; if any one rule could match, at most as often. Check the stages that used the removed rules. Rules in a panel that lists people from an external data file are kept, because that data is not encrypted.",
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance: encryptedAttributeRules. An encrypted attribute is one whose answers are stored encrypted with a passphrase the participant chooses. Skip logic decides whether a stage is shown; a filter decides which people a stage or panel lists; each is made of rules. A rule either compares an answer (for example, "the name is Alice") or only checks whether the question was answered. A panel is the side list on a name generator stage. "All rules had to match" and "any one rule could match" are the two ways a set of rules can be combined. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
+  },
   schema9FamilyPedigree: {
     id: 'protocolValidation.migrationNotes.schema9.familyPedigree',
     defaultMessage:
@@ -523,6 +544,9 @@ const migrationNoteSets = {
       migrationNoteMessages.schema9AttributeNames,
       migrationNoteMessages.schema9DefaultLanguage,
       migrationNoteMessages.schema9BlankFieldQuestions,
+      migrationNoteMessages.schema9EncryptedAttributes,
+      migrationNoteMessages.schema9ContradictoryPassphraseRules,
+      migrationNoteMessages.schema9EncryptedAttributeRules,
       migrationNoteMessages.schema9FamilyPedigree,
       migrationNoteMessages.schema9FamilyPedigreeLabels,
       migrationNoteMessages.schema9FamilyPedigreeCompleteness,

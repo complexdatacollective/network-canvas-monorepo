@@ -1,4 +1,4 @@
-import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import Dialog, { type DialogProps } from '@codaco/fresco-ui/dialogs/Dialog';
 
 type OverlayProps = {
   children: React.ReactNode;
@@ -7,10 +7,21 @@ type OverlayProps = {
   title: string;
   footer?: React.ReactNode;
   className?: string;
+  dismissible?: boolean;
+  finalFocus?: DialogProps['finalFocus'];
 };
 
 const Overlay = (props: OverlayProps) => {
-  const { children, onClose, show, title, footer, className } = props;
+  const {
+    children,
+    onClose,
+    show,
+    title,
+    footer,
+    className,
+    dismissible,
+    finalFocus,
+  } = props;
 
   return (
     <Dialog
@@ -19,6 +30,8 @@ const Overlay = (props: OverlayProps) => {
       title={title}
       className={className}
       footer={footer}
+      dismissible={dismissible}
+      finalFocus={finalFocus}
     >
       {children}
     </Dialog>

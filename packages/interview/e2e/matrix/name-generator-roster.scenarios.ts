@@ -3,6 +3,7 @@ import path from 'node:path';
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
+import { AnonymisationFixture } from '../fixtures/anonymisation-fixture.js';
 import { expect } from '../fixtures/matrix-test.js';
 import { NameGeneratorRosterFixture } from '../fixtures/name-generator-roster-fixture.js';
 import { DEV_PROTOCOL_ASSETS_DIR } from '../helpers/protocol-paths.js';
@@ -1007,7 +1008,6 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
           type: 'text',
           encrypted: true,
         });
-        synth.setExperiments({ encryptedVariables: true });
 
         synth.addAsset({
           id: 'jsonRoster',
@@ -1031,22 +1031,20 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         const firstOption = roster.sourceListbox.getByRole('option').first();
 
         // The encrypted "name" variable gates the roster: every card is
-        // disabled until a passphrase is provided
-        // (NameGeneratorRoster.tsx:254-267, `!passphrase && useEncryption`).
+        // disabled until the interview's key is in force
+        // (NameGeneratorRoster.tsx, `useEncryption && !unlocked`).
         await expect(firstOption).toHaveAttribute('aria-disabled', 'true');
 
-        // The 🔑 prompter opens a dialog to collect the passphrase.
-        const lockButton = page.getByRole('button').filter({ hasText: '🔑' });
-        await expect(lockButton).toBeVisible();
-        await lockButton.click();
-
-        await page
-          .getByRole('textbox', { name: 'Passphrase' })
-          .fill('correct horse battery staple');
-        await page.getByRole('button', { name: 'Submit passphrase' }).click();
+        // The 🔑 prompter opens a dialog in which, with no passphrase chosen
+        // in this interview yet, one is chosen and confirmed.
+        const anon = new AnonymisationFixture(page);
+        await expect(anon.prompterButton()).toBeVisible();
+        await anon.openPrompter();
+        await expect(anon.prompterDialog('Choose a passphrase')).toBeVisible();
+        await anon.choosePrompterPassphrase('correct horse battery staple');
 
         // The passphrase is accepted: the prompter (🔑) is dismissed.
-        await expect(lockButton).toBeHidden();
+        await expect(anon.prompterButton()).toBeHidden();
 
         // With a valid passphrase the roster cards re-enable: the disabledKeys
         // fix in useSelectionState clears the stale disabled Set once

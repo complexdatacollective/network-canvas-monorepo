@@ -11,25 +11,81 @@ navOrder: 21
 
 </InterfaceSummary>
 
-This interface is used to enable an advanced feature whereby participant data can be encrypted on-device, in such a way as to prevent anyone other than the participant, including the researcher, from accessing it.
+This interface lets participant data be encrypted on-device, in such a way as to prevent anyone other than the participant, including the researcher, from accessing it.
 
-<TipBox danger>
-
-The Anonymisation interface, and the per-variable encryption it relies on, is **experimental** and **not enabled by default**. To use it, enable the **Encrypted Variables** experimental feature on Architect's Experimental Features page; the Anonymisation interface then becomes available when you add a stage. Because it is experimental, we recommend discussing it with the Network Canvas team before relying on it in a real study.
-
-</TipBox>
-
-Adding this interface to your protocol will enable you to select which node attributes are encrypted. When viewing this stage, your participants will be required to create a passphrase that will be used to encrypt their data.
+Adding this interface to your protocol will enable you to select which node attributes are encrypted. When viewing this stage, your participants will be asked to choose a passphrase, and to enter it a second time to confirm it. The passphrase is what protects their data. Every attribute you mark as encrypted is encrypted during interviews.
 
 In the **Encrypted attributes** section of the stage editor, each node type in your protocol has its own switch. Turn a type's switch on, then tick the text attributes of that type that should be encrypted. Only text attributes can be encrypted, and edge attributes are not offered. Turning a type's switch off stops encrypting every attribute of that type at once; Architect asks you to confirm before it clears them.
 
-### Technical Implementation of Encryption
+### Encrypted attributes in skip logic, filters and sorting
 
-The anonymisation interface uses the [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API) to encrypt data. The encryption is performed using the AES-GCM algorithm, which is a symmetric key encryption algorithm. The passphrase provided by the user is used to derive a key for encryption and decryption. Each attribute has a unique key derived from the passphrase, ensuring that only the user who knows the passphrase can decrypt their data.
+Skip logic and filters are checked without the participant's passphrase, so they can't read the answers to an encrypted attribute. This means a rule can't compare those answers, for example to check whether a name is "Alice". A rule can still check whether an encrypted attribute has been answered at all. When you build a rule on an encrypted attribute, Architect offers only **exists** and **does not exist**.
 
-The passphrase is not stored in the database, but is instead stored in the user's browser in memory. This means that refreshing the page, closing the tab, or visiting the interview from another browser will require the user to re-enter their passphrase. The encrypted data is stored in the database, and can only be decrypted by the user who knows the passphrase.
+Architect won't let you encrypt an attribute while a rule compares its answers. Remove that rule first, or change it so it only checks whether the attribute is answered.
 
-When exporting this data, the encrypted attributes will not be included in the export file, and will be replaced with the string 'encrypted'.
+There is one exception. A panel that lists people from an external data file can still compare an encrypted attribute's answers, because the data in that file isn't encrypted.
+
+If you upgrade a schema 8 protocol that encrypts attributes, any skip logic or filter rule that compared the answers to one of them is removed. Under schema 8, these rules only ever compared the encrypted text, never the answer itself. Rules that only check whether an encrypted attribute is answered keep working, so they stay.
+
+Skip logic that is left with no rules is removed, so its stage is now always shown. If a stage was set to show only when a removed rule matched, it may never have appeared before, so it may now appear for the first time. A filter that is left with no rules is removed too, so it no longer limits what its stage or panel shows.
+
+Check the stages that used the removed rules, because the rules that remain may now match differently. If all the rules had to match, the remaining ones match at least as often as before. If any one rule could match, they match at most as often.
+
+You can still sort a list by an encrypted attribute, such as a name. Once the participant has entered their passphrase, the list is sorted by their answers. Until then, or if an answer can't be read, the list ignores that sort rule, so its order never hints at what the answers say.
+
+### Passphrase length
+
+By default, a participant must choose a passphrase of at least 8 characters.
+
+To set your own limits, use the **Passphrase validation** section of the stage editor. Switch on **Minimum text length** to set the shortest passphrase you will allow, and **Maximum text length** to set the longest. A minimum you set always replaces the default of 8, even if yours is shorter. The minimum can't be longer than the maximum.
+
+If you set a maximum shorter than 8 and no minimum, the default minimum is lowered to your maximum, so participants can still choose a passphrase. The stage editor shows the minimum that applies.
+
+Length rules apply when a participant first chooses their passphrase, which is also when they confirm it by entering it a second time. When they come back to the interview later, they only need to enter the same passphrase again.
+
+### How answers are protected
+
+Protection happens on the participant's own device, using the [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API). Answers are encrypted before they are stored, so the interview data never holds them in readable form.
+
+- **One key for each interview.** When a participant chooses a passphrase, the interview derives a single encryption key from it. The key is derived with PBKDF2-SHA256, using 600,000 iterations and a random salt that is created for that interview. This is deliberately slow, which makes guessing a passphrase expensive.
+- **Strong encryption for every answer.** Each encrypted answer is encrypted with that key using AES-256-GCM, with a fresh random value for every answer.
+- **Answers are tied to their place.** Each answer is bound to the person and the question it belongs to, so an encrypted answer that is copied to another person or question cannot be read.
+- **Answers are padded.** Each answer is padded to a fixed block size before it is encrypted, so the length of an encrypted answer reveals less about what it says.
+- **The passphrase is checked, not stored.** The interview saves a small check value, encrypted under the key. When a participant enters their passphrase again, the interview uses the check value to confirm that it is the one they chose, without ever storing the passphrase itself.
+
+The passphrase is never stored. The key is held only in memory, in the browser or app running the interview, and is never saved. This means that refreshing the page, closing the tab, or visiting the interview from another browser or device will require the participant to enter their passphrase again. The encrypted answers are stored with the rest of the interview, and can only be read by someone who knows the passphrase.
+
+### If a participant forgets their passphrase
+
+<TipBox danger>
+
+A forgotten passphrase cannot be recovered by anyone, including you, the participant, and the Network Canvas team. The answers it protects stay unreadable.
+
+</TipBox>
+
+Make sure participants understand this before they choose a passphrase. The **Task explanation** section of the stage editor is the place to tell them. A longer passphrase is harder to guess, but also harder to remember.
+
+### Exporting protected answers
+
+When exporting this data, the encrypted attributes will not be included in the export file in readable form. Every encrypted answer is replaced with the string `ENCRYPTED`. A value that was not encrypted when it was saved is exported as it was saved.
+
+### Answers protected by the experimental version
+
+In schema 8 protocols, the Anonymisation interface was an experimental feature, and it protected answers in an earlier format. Answers protected that way cannot be read after you upgrade to schema 9, even with the right passphrase. After the upgrade:
+
+- Interviews that contain these answers still open.
+- The earlier protected answers appear as "Answer unavailable" where the interview would have shown them. They are still exported as `ENCRYPTED`.
+- New answers are protected in the way described on this page, once the participant chooses a new passphrase.
+
+If you have interviews in progress that use the experimental version, consider finishing them before you upgrade the app. See [Schema version 9](/en/get-started/protocol-schema-information#schema-version-9) for what else changes when you migrate a protocol.
+
+### If the protection details are damaged
+
+Each interview stores a small record of how its key is made, next to the answers. If that record is damaged, or was created by a newer version of Network Canvas than the one running the interview, no passphrase can open the protected answers. The interview then doesn't ask for one:
+
+- Protected answers appear as "Answer unavailable", and the participant is told they can't be shown or saved.
+- The rest of the interview carries on. Forms open with their other questions, and stages that collect protected answers don't hold the participant back with a minimum number of people.
+- The record and the stored answers are left as they are, and are exported as usual.
 
 ### Best Practices
 
@@ -47,7 +103,7 @@ Use this feature to encourage disclosure of sensitive information, such as names
 
 <GoodPractice>
 
-When using the anonymisation interface, clearly communicate to participants how their data will be used and the importance of the passphrase for accessing their encrypted data. This transparency builds trust and encourages participation.
+When using the anonymisation interface, clearly communicate to participants how their data will be used and the importance of the passphrase for accessing their encrypted data, including that a forgotten passphrase cannot be recovered. This transparency builds trust and encourages participation.
 
 </GoodPractice>
 

@@ -4,6 +4,11 @@ import { describe, expect, it } from 'vitest';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import {
+  alreadyProtecting,
+  answeredRule,
+  personRule,
+} from '../../../editors/anonymisation/__tests__/anonymisationFixtures.tsx';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import NodePanelsSection from '../NodePanelsSection.tsx';
 
@@ -845,6 +850,90 @@ describe('a panel filter emptied down to nothing', () => {
     expect(
       Object.hasOwn(panelsOf(await harness.submit())[0] ?? {}, 'filter'),
     ).toBe(false);
+  });
+});
+
+/**
+ * Rules that read the interview are checked without the participant's
+ * passphrase, so the schema refuses one comparing an encrypted attribute
+ * there; whether it was answered survives encryption, so a rule asking only
+ * that is accepted. A panel over an imported file reads the file's own plain
+ * values instead, and the schema accepts the same comparison — refusing it
+ * would hold the panel's dialog shut over an edit nothing is wrong with.
+ */
+describe('a panel filter on an encrypted attribute', () => {
+  const panelReading = (dataSource: string) => ({
+    id: 'panel-1',
+    title: en('People you named earlier'),
+    dataSource,
+    filter: {
+      join: 'AND',
+      rules: [personRule('rule-1', 'relationship_to_ego')],
+    },
+  });
+
+  it('saves a panel over an imported file that holds one', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([panelReading('roster_data')]),
+      sections: panels,
+      adapter: alreadyProtecting('relationship_to_ego'),
+    });
+
+    const dialog = await openPanel(harness, 'Edit panel');
+    expect(dialog.queryByText(/encrypted/)).toBeNull();
+    const title = dialog.getByRole('textbox', { name: 'Panel title' });
+    await harness.user.clear(title);
+    await harness.user.type(title, 'People on the roster');
+    await saveTheRow(harness, dialog);
+
+    expect(panelsOf(await harness.submit())[0]).toEqual({
+      ...panelReading('roster_data'),
+      title: en('People on the roster'),
+    });
+  });
+
+  it('refuses the same panel over the interview’s own network', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([panelReading('existing')]),
+      sections: panels,
+      adapter: alreadyProtecting('relationship_to_ego'),
+    });
+
+    const dialog = await openPanel(harness, 'Edit panel');
+    expect(
+      dialog.getByText(
+        'This rule compares the answers to an encrypted attribute. Rules are checked without the participant’s passphrase, so they can only check whether an encrypted attribute is answered. Edit or delete the rule.',
+      ),
+    ).toBeInTheDocument();
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await dialog.findByText(
+        'Rule 1 cannot be used as it stands. Open it to fix it, or delete it.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('saves a panel over the interview’s own network that only asks whether it is answered', async () => {
+    const panel = {
+      ...panelReading('existing'),
+      filter: {
+        join: 'AND',
+        rules: [answeredRule('rule-1', 'relationship_to_ego')],
+      },
+    };
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([panel]),
+      sections: panels,
+      adapter: alreadyProtecting('relationship_to_ego'),
+    });
+
+    const dialog = await openPanel(harness, 'Edit panel');
+    expect(dialog.queryByText(/encrypted/)).toBeNull();
+    await saveTheRow(harness, dialog);
+
+    expect(panelsOf(await harness.submit())[0]).toEqual(panel);
   });
 });
 

@@ -7,6 +7,7 @@ import {
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
+  entitySecureAttributesMeta,
   StageMetadataSchema,
 } from '@codaco/shared-consts';
 
@@ -38,6 +39,12 @@ export type BuildSyntheticPayloadOptions = {
   assets?: SyntheticAssetSpec[];
   currentStep?: number;
   seedNetwork?: boolean;
+  /**
+   * Store the seeded network's encrypted answers as schema 8 wrote them: each
+   * value replaced by ciphertext with an IV and a salt of its own beside it,
+   * and no encryption header on the network. Needs `seedNetwork`.
+   */
+  schema8Encryption?: boolean;
   stageMetadata?: unknown;
 };
 
@@ -50,6 +57,49 @@ export type SyntheticPayloadResult = {
   currentStep: number;
   assetFiles: { assetId: string; source: string; localPath: string }[];
 };
+
+// The runtime never tries to decrypt a schema 8 value, so these bytes need
+// not decrypt to anything: only their shape is the old format's.
+const SCHEMA_8_CIPHERTEXT = Array.from(
+  { length: 24 },
+  (_, index) => (index * 37 + 11) % 256,
+);
+const SCHEMA_8_IV = Array.from({ length: 12 }, (_, index) => index + 1);
+const SCHEMA_8_SALT = Array.from({ length: 16 }, (_, index) => 255 - index);
+
+type Network = SessionSnapshot['network'];
+
+function withSchema8Encryption(
+  network: Network,
+  codebook: ProtocolPayload['codebook'],
+): Network {
+  const { encryption: _header, ...unprotected } = network;
+  return {
+    ...unprotected,
+    nodes: network.nodes.map((node) => {
+      const variables = codebook.node?.[node.type]?.variables ?? {};
+      const encrypted = Object.keys(node[entityAttributesProperty]).filter(
+        (variableId) => variables[variableId]?.encrypted,
+      );
+      if (encrypted.length === 0) return node;
+      return {
+        ...node,
+        [entityAttributesProperty]: {
+          ...node[entityAttributesProperty],
+          ...Object.fromEntries(
+            encrypted.map((variableId) => [variableId, SCHEMA_8_CIPHERTEXT]),
+          ),
+        },
+        [entitySecureAttributesMeta]: Object.fromEntries(
+          encrypted.map((variableId) => [
+            variableId,
+            { iv: SCHEMA_8_IV, salt: SCHEMA_8_SALT },
+          ]),
+        ),
+      };
+    }),
+  };
+}
 
 /**
  * Convert a SyntheticInterview into the real ProtocolPayload/SessionSnapshot
@@ -68,6 +118,11 @@ export function buildSyntheticPayload(
     // unseeded state and fail later with misleading assertions.
     throw new Error(
       `Synthetic payload "${opts.protocolName}" was given stageMetadata that fails StageMetadataSchema:\n${parsedStageMetadata.error.message}`,
+    );
+  }
+  if (opts.schema8Encryption && !opts.seedNetwork) {
+    throw new Error(
+      `Synthetic payload "${opts.protocolName}" asks for schema 8 encryption without seedNetwork, so it has no answers to encrypt.`,
     );
   }
   const raw = synth.getInterviewPayload({
@@ -129,7 +184,9 @@ export function buildSyntheticPayload(
     // unanswered form does could then not express itself, and one about
     // pre-population says so by asking for the seeded network.
     network: opts.seedNetwork
-      ? raw.network
+      ? opts.schema8Encryption
+        ? withSchema8Encryption(raw.network, protocol.codebook)
+        : raw.network
       : {
           ...raw.network,
           nodes: [],

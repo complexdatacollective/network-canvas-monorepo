@@ -1,10 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
-import { expect, waitFor } from 'storybook/test';
+import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 
+import type { NavigationOrientation } from '../../Shell';
+import EncryptedStoryInterviewShell from '../../storybook-support/EncryptedStoryInterviewShell';
+import { choosePassphraseInPrompter } from '../../storybook-support/passphraseSteps';
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
 function createComposerInterview(seed: number) {
@@ -21,8 +24,10 @@ function createComposerInterview(seed: number) {
 
 function NetworkComposerStoryWrapper({
   buildFn,
+  navigationOrientation,
 }: {
   buildFn: () => SyntheticInterview;
+  navigationOrientation?: NavigationOrientation;
 }) {
   const interview = useMemo(() => buildFn(), [buildFn]);
   const rawPayload = useMemo(
@@ -33,7 +38,10 @@ function NetworkComposerStoryWrapper({
 
   return (
     <div className="flex h-dvh w-full">
-      <StoryInterviewShell rawPayload={rawPayload} />
+      <StoryInterviewShell
+        rawPayload={rawPayload}
+        navigationOrientation={navigationOrientation}
+      />
     </div>
   );
 }
@@ -279,4 +287,245 @@ const buildBackgroundImage = () => {
  */
 export const BackgroundImage: Story = {
   render: () => <NetworkComposerStoryWrapper buildFn={buildBackgroundImage} />,
+};
+
+const validatedAgeInterview = (
+  people: { id: string; name: string; position: { x: number; y: number } }[],
+) => {
+  const { si, nt, quickAddVar, layoutVar, friendship } =
+    createComposerInterview(12);
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  const stage = si.addStage('NetworkComposer', {
+    quickAdd: quickAddVar.id,
+    layoutVariable: layoutVar.id,
+    nodeForm: {
+      fields: [
+        {
+          component: 'Number',
+          label: 'Age',
+          validation: { minValue: 1, maxValue: 120 },
+        },
+      ],
+    },
+  });
+  stage.addEdgeType({ type: friendship.id });
+  for (const { id, name, position } of people) {
+    si.addManualNode(stage.id, nt.id, id, {
+      [quickAddVar.id]: name,
+      [layoutVar.id]: position,
+    });
+  }
+  si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
+  return si;
+};
+
+const alice = { id: 'alice', name: 'Alice', position: { x: 0.4, y: 0.4 } };
+
+const buildValidatedAge = () => validatedAgeInterview([alice]);
+
+const buildValidatedAges = () =>
+  validatedAgeInterview([
+    alice,
+    { id: 'bob', name: 'Bob', position: { x: 0.65, y: 0.6 } },
+  ]);
+
+/**
+ * Leaving the stage with an edit in the drawer saves it, even one made too
+ * recently for the autosave. An edit that cannot be saved, such as an age
+ * outside its limits, is not dropped without a word: the participant is asked
+ * whether to discard it, and keeping it stays on the stage.
+ */
+export const LeavingWithAnInvalidEdit: Story = {
+  render: () => <NetworkComposerStoryWrapper buildFn={buildValidatedAge} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Alice' }, { timeout: 10_000 }),
+    );
+
+    const age = await screen.findByRole('spinbutton', { name: /age/i });
+    await userEvent.clear(age);
+    await userEvent.type(age, '500');
+    await userEvent.click(canvas.getByTestId('next-button'));
+
+    await expect(
+      await screen.findByRole('dialog', { name: 'Discard changes?' }),
+    ).toHaveTextContent(/invalid data/);
+    await userEvent.click(screen.getByRole('button', { name: 'Keep changes' }));
+
+    await expect(
+      await screen.findByRole('spinbutton', { name: /age/i }),
+    ).toHaveValue(500);
+    await expect(canvas.queryByText('After the main stage.')).toBeNull();
+  },
+};
+
+/**
+ * Moving off a person never drops an edit in the drawer. Closing the drawer,
+ * or tapping someone else, first saves the edit, even one made too recently
+ * for the autosave. An edit that cannot be saved, such as an age outside its
+ * limits, is not dropped without a word: the participant is asked whether to
+ * discard it, and keeping it keeps the drawer open on it.
+ */
+export const UnsavedEditInDrawer: Story = {
+  render: () => <NetworkComposerStoryWrapper buildFn={buildValidatedAges} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const discardDialog = { name: 'Discard changes?' };
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Alice' }, { timeout: 10_000 }),
+    );
+
+    const age = await screen.findByRole('spinbutton', { name: /age/i });
+    await userEvent.clear(age);
+    await userEvent.type(age, '500');
+    await userEvent.click(screen.getByRole('button', { name: 'Close' }));
+
+    await expect(
+      await screen.findByRole('dialog', discardDialog),
+    ).toHaveTextContent(/invalid data/);
+    await userEvent.click(screen.getByRole('button', { name: 'Keep changes' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', discardDialog)).toBeNull(),
+    );
+    await expect(screen.getByRole('spinbutton', { name: /age/i })).toHaveValue(
+      500,
+    );
+
+    await userEvent.clear(screen.getByRole('spinbutton', { name: /age/i }));
+    await userEvent.type(
+      screen.getByRole('spinbutton', { name: /age/i }),
+      '34',
+    );
+    await userEvent.click(canvas.getByRole('button', { name: 'Bob' }));
+    await expect(screen.queryByRole('dialog', discardDialog)).toBeNull();
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Alice' }));
+    await waitFor(() =>
+      expect(screen.getByRole('spinbutton', { name: /age/i })).toHaveValue(34),
+    );
+  },
+};
+
+const buildEncryptedNames = () => {
+  const si = new SyntheticInterview(10);
+  const nt = si.addNodeType({ name: 'Person' });
+  const quickAddVar = nt.addVariable({
+    type: 'text',
+    name: 'name',
+    encrypted: true,
+  });
+  const layoutVar = nt.addVariable({ type: 'layout', name: 'Composer Layout' });
+  const friendship = si.addEdgeType({ name: 'Friendship' });
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  const stage = si.addStage('NetworkComposer', {
+    quickAdd: quickAddVar.id,
+    layoutVariable: layoutVar.id,
+  });
+  stage.addEdgeType({ type: friendship.id });
+  si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
+  return si;
+};
+
+/**
+ * The quick-add name variable is marked encrypted. Adding a person waits for
+ * a passphrase, chosen and confirmed from the key button in the navigation;
+ * names are then stored encrypted and shown decrypted.
+ */
+export const EncryptedNames: Story = {
+  render: () => (
+    <NetworkComposerStoryWrapper
+      buildFn={buildEncryptedNames}
+      navigationOrientation="vertical"
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const addNode = await canvas.findByRole('button', { name: /add node/i });
+
+    await userEvent.click(addNode);
+    await expect(
+      await screen.findByText(/enter your passphrase to see and change/i),
+    ).toBeInTheDocument();
+    await expect(
+      screen.queryByRole('textbox', { name: /name/i }),
+    ).not.toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+
+    await choosePassphraseInPrompter('storybook passphrase');
+
+    await userEvent.click(addNode);
+    const nameInput = await screen.findByRole('textbox', { name: /name/i });
+    await userEvent.type(nameInput, 'Alex{Enter}');
+    await userEvent.keyboard('{Escape}');
+
+    await expect(
+      await canvas.findByRole('button', { name: /alex/i }),
+    ).toBeInTheDocument();
+  },
+};
+
+const buildProtectedNotes = () => {
+  const { si, nt, quickAddVar, layoutVar, friendship } =
+    createComposerInterview(11);
+  const notesVar = nt.addVariable({
+    type: 'text',
+    name: 'notes',
+    component: 'Text',
+    encrypted: true,
+  });
+  const stage = si.addStage('NetworkComposer', {
+    quickAdd: quickAddVar.id,
+    layoutVariable: layoutVar.id,
+    nodeForm: {
+      fields: [
+        { variable: notesVar.id, component: 'Text', label: 'Notes' },
+        { component: 'Number', label: 'Age' },
+      ],
+    },
+  });
+  stage.addEdgeType({ type: friendship.id });
+  si.addManualNode(stage.id, nt.id, 'alice', {
+    [quickAddVar.id]: 'Alice',
+    [layoutVar.id]: { x: 0.4, y: 0.4 },
+    [notesVar.id]: 'Met at work',
+  });
+  si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
+  return { interview: si, encryptedVariableIds: [notesVar.id] };
+};
+
+/**
+ * The notes are protected, but the record this interview keeps to check a
+ * passphrase has been damaged (here, an impossible key-stretching count), so
+ * no passphrase can open them. A person's notes are shown as unavailable, with
+ * the reason, and cannot be replaced; nothing asks for a passphrase.
+ */
+export const ProtectedNotesRefused: Story = {
+  render: () => (
+    <EncryptedStoryInterviewShell
+      build={buildProtectedNotes}
+      passphrase="storybook passphrase"
+      currentStep={0}
+      headerIterations={1_000_000_000}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Alice' }, { timeout: 10_000 }),
+    );
+
+    const notes = await screen.findByRole('textbox', { name: /notes/i });
+    await expect(notes).toHaveValue('Answer unavailable');
+    await expect(notes).toHaveAttribute('readonly');
+    await expect(notes).toHaveAccessibleDescription(
+      /cannot be shown or saved in this interview/,
+    );
+    await expect(
+      screen.queryByRole('button', { name: 'Enter a new answer' }),
+    ).not.toBeInTheDocument();
+    await expect(
+      screen.queryByRole('button', { name: 'Enter your Passphrase' }),
+    ).not.toBeInTheDocument();
+  },
 };

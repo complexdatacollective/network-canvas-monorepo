@@ -243,11 +243,13 @@ optional.
 
 ## Encrypted variables
 
-If your protocol uses the experimental
+If your protocol uses the
 [Anonymisation interface](/en/design-protocols/interface-documentation/anonymisation),
-encrypted variables are never exported in readable form: every exported value
-for an encrypted variable is the literal string `ENCRYPTED`, in both CSV and
-GraphML.
+encrypted answers are never exported in readable form. Every answer that was
+saved encrypted is exported as the literal string `ENCRYPTED`, in both CSV and
+GraphML, and in GraphML a node whose label would be an encrypted answer is
+labelled `Encrypted`. A value that was not encrypted when it was saved is
+exported as it was saved, even in a variable marked as encrypted.
 
 ## Variable types in analysis
 

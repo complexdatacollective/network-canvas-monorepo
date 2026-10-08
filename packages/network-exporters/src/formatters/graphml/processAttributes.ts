@@ -10,6 +10,7 @@ import {
 
 import type { EdgeWithResequencedID, NodeWithResequencedID } from '../../input';
 import type { ExportOptions } from '../../options';
+import { isEncryptedAttribute } from '../../utils/encryptedAttribute';
 import {
   getEntityAttributes,
   getOwn,
@@ -63,13 +64,17 @@ function processAttributes(
 
   for (const [key, value] of Object.entries(entityAttributes)) {
     const codebookEntry = getOwn(variables, key);
+    const encrypted = isEncryptedAttribute(entity, key, codebookEntry);
 
     if (!codebookEntry) {
       const externalKey = keyIds.external.get(key);
       if (!externalKey) {
         throw new Error(`Missing GraphML key for external attribute: ${key}`);
       }
-      createDomDataElement(externalKey, stringifyValue(value));
+      createDomDataElement(
+        externalKey,
+        encrypted ? 'ENCRYPTED' : stringifyValue(value),
+      );
       continue;
     }
 
@@ -86,7 +91,7 @@ function processAttributes(
       return { id, origin };
     });
 
-    if (codebookEntry.encrypted) {
+    if (encrypted) {
       // An encrypted value is never exported. A layout variable writes the
       // marker for its coordinates only.
       for (const { id, origin } of columns) {

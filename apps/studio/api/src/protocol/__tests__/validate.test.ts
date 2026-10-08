@@ -47,6 +47,26 @@ describe('validateSection', () => {
     expect(result).toEqual({ success: true });
   });
 
+  it('accepts the experiments setting in settings', () => {
+    const result = validateSection('settings', {
+      name: 'P',
+      schemaVersion: 9,
+      localization: { defaultLocale: 'en', locales: ['en'] },
+      experiments: {},
+    });
+    expect(result).toEqual({ success: true });
+  });
+
+  it('rejects the encrypted attributes experiment, which is no longer one', () => {
+    const result = validateSection('settings', {
+      name: 'P',
+      schemaVersion: 9,
+      localization: { defaultLocale: 'en', locales: ['en'] },
+      experiments: { encryptedVariables: true },
+    });
+    expect(result.success).toBe(false);
+  });
+
   it('rejects a mismatched stage section identity', () => {
     const result = validateStageSectionIdentity('expected', { id: 'other' });
     expect(result.success).toBe(false);

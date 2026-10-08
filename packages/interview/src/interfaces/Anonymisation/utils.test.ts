@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import type { Variable } from '@codaco/protocol-validation';
 import type { EntityAttributesProperty, NcNode } from '@codaco/shared-consts';
 
-import { generateSecureAttributes } from './utils';
+import { encryptionFor } from './__tests__/encryptionFixtures';
+import { generateSecureAttributes, writesEncryptedValue } from './utils';
 
 describe('generateSecureAttributes', () => {
   it('preserves encrypted __proto__ attributes and their metadata as own properties', async () => {
@@ -25,12 +26,9 @@ describe('generateSecureAttributes', () => {
       ['__proto__', encryptedVariable],
     ]);
 
+    const { key } = await encryptionFor('test passphrase');
     const { encryptedAttributes, secureAttributes } =
-      await generateSecureAttributes(
-        attributes,
-        codebookVariables,
-        'test passphrase',
-      );
+      await generateSecureAttributes(attributes, codebookVariables, key, 'n1');
 
     expect(secureAttributes).toBeDefined();
     if (!secureAttributes) {
@@ -38,8 +36,10 @@ describe('generateSecureAttributes', () => {
     }
     expect(Object.hasOwn(secureAttributes, '__proto__')).toBe(true);
     expect(Object.hasOwn(encryptedAttributes, '__proto__')).toBe(true);
+    expect(secureAttributes['__proto__']).toEqual({
+      iv: expect.arrayContaining([expect.any(Number)]),
+    });
     expect(secureAttributes['__proto__']?.iv).toHaveLength(12);
-    expect(secureAttributes['__proto__']?.salt).toHaveLength(16);
     expect(encryptedAttributes['__proto__']).toEqual(
       expect.arrayContaining([expect.any(Number)]),
     );
@@ -49,4 +49,48 @@ describe('generateSecureAttributes', () => {
       Object.getOwnPropertyDescriptor(Object.prototype, '__proto__'),
     ).toEqual(prototypeDescriptor);
   });
+});
+
+describe('writesEncryptedValue', () => {
+  const variables: Record<string, Variable> = {
+    name: {
+      name: 'name',
+      label: 'name',
+      type: 'text',
+      component: 'Text',
+      encrypted: true,
+    },
+    nickname: {
+      name: 'nickname',
+      label: 'nickname',
+      type: 'text',
+      component: 'Text',
+    },
+  };
+
+  it.each([
+    [{ name: 'Alice' }, true],
+    [{ nickname: 'Al' }, false],
+    [{ name: undefined, nickname: 'Al' }, false],
+    [{ unknown: 'value' }, false],
+  ])(
+    'agrees with generateSecureAttributes for %o',
+    async (attributes, expected) => {
+      const stored = Object.fromEntries(
+        Object.entries(attributes).filter(
+          (entry): entry is [string, string] => entry[1] !== undefined,
+        ),
+      );
+      const { key } = await encryptionFor('passphrase');
+      const { secureAttributes } = await generateSecureAttributes(
+        stored,
+        variables,
+        key,
+        'n1',
+      );
+
+      expect(writesEncryptedValue(attributes, variables)).toBe(expected);
+      expect(Object.keys(secureAttributes ?? {}).length > 0).toBe(expected);
+    },
+  );
 });

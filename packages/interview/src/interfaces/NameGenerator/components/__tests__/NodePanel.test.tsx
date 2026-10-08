@@ -8,6 +8,10 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import type { usePassphrase } from '../../../Anonymisation/usePassphrase';
+
+type Passphrase = ReturnType<typeof usePassphrase>;
+
 const externalDataMock = vi.fn();
 
 vi.mock('../../../../hooks/useExternalData', () => ({
@@ -15,18 +19,50 @@ vi.mock('../../../../hooks/useExternalData', () => ({
 }));
 
 // getStageSubject returns the stage subject; getPanelNodes returns a selector.
-// The component calls useStageSelector twice, so dispatch by the selector ref.
+// The component calls useStageSelector several times, so dispatch by the
+// selector ref.
 const stageSubject = { entity: 'node', type: 'person' };
 const panelNodesSelector = vi.fn();
+const stageVariables: Record<string, unknown> = {};
 
 vi.mock('../../../../hooks/useStageSelector', () => ({
-  useStageSelector: (selector: unknown) =>
-    selector === panelNodesSelector ? panelNodesSelector() : stageSubject,
+  useStageSelector: (selector: unknown) => {
+    if (selector === panelNodesSelector) return panelNodesSelector();
+    if (selector === 'getCodebookVariablesForSubjectType') {
+      return stageVariables;
+    }
+    return stageSubject;
+  },
 }));
 
 vi.mock('../../../../selectors/session', () => ({
   getStageSubject: 'getStageSubject',
 }));
+
+vi.mock('../../../../selectors/protocol', () => ({
+  getCodebookVariablesForSubjectType: 'getCodebookVariablesForSubjectType',
+}));
+
+const passphraseState = { unlocked: false, refused: false };
+const requirePassphrase = vi.fn();
+
+vi.mock('../../../Anonymisation/usePassphrase', async () => {
+  const { runtimeMessages } = await import('../../../../i18n/runtimeMessages');
+  return {
+    usePassphrase: (): Passphrase => ({
+      unlocked: passphraseState.unlocked,
+      passphraseChosen: true,
+      encryptionUnavailable: passphraseState.refused,
+      lockedNotice: passphraseState.refused
+        ? runtimeMessages.protectedAnswersUnavailable
+        : runtimeMessages.protectedAnswersLocked,
+      unlock: vi.fn<Passphrase['unlock']>(),
+      submitPassphrase: vi.fn<Passphrase['submitPassphrase']>(),
+      requirePassphrase,
+      showPassphrasePrompter: false,
+    }),
+  };
+});
 
 vi.mock('../../../../selectors/name-generator', () => ({
   getPanelNodes: () => panelNodesSelector,
@@ -185,5 +221,61 @@ describe('NodePanel node limit enforcement', () => {
     expect(
       screen.getByTestId('node-list').getAttribute('data-disabled-keys'),
     ).toBe('a,b');
+  });
+});
+
+describe('NodePanel external data with encrypted values', () => {
+  const rows: NcNode[] = [
+    {
+      [entityPrimaryKeyProperty]: 'a',
+      [entityAttributesProperty]: { name: 'Alice' },
+      type: 'person',
+    },
+  ];
+
+  beforeEach(() => {
+    stageVariables.name = { name: 'name', type: 'text', encrypted: true };
+    externalDataMock.mockReturnValue({
+      externalData: rows,
+      status: { state: 'ready' },
+    });
+    panelNodesSelector.mockReturnValue(rows);
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+    delete stageVariables.name;
+    passphraseState.unlocked = false;
+    passphraseState.refused = false;
+  });
+
+  it('asks for the passphrase and holds the rows back until one is entered', () => {
+    renderPanel();
+
+    expect(requirePassphrase).toHaveBeenCalled();
+    expect(screen.queryByTestId('node-list')).toBeNull();
+    expect(screen.getByText(/enter your passphrase/i)).toBeTruthy();
+  });
+
+  it('says protected answers cannot be shown or saved, holding the rows back, under a header no passphrase can open', () => {
+    passphraseState.refused = true;
+
+    renderPanel();
+
+    expect(screen.queryByTestId('node-list')).toBeNull();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      /cannot be shown or saved in this interview/,
+    );
+    expect(screen.queryByText(/enter your passphrase/i)).toBeNull();
+  });
+
+  it('offers the rows once the passphrase has been entered', () => {
+    passphraseState.unlocked = true;
+
+    renderPanel();
+
+    expect(requirePassphrase).not.toHaveBeenCalled();
+    expect(screen.getByTestId('node-list').textContent).toBe('1');
   });
 });

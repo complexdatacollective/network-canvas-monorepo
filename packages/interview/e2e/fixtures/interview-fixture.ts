@@ -233,6 +233,29 @@ export class InterviewFixture {
   }
 
   /**
+   * Leave the interview and resume it, as a participant returning later
+   * would: the host remounts it from the session it holds, so answers are
+   * kept and the in-memory encryption key is not. The step is kept too.
+   */
+  async resume(): Promise<void> {
+    if (!this.interviewId) {
+      throw new Error('interviewId must be set before calling resume().');
+    }
+    // The running interview's root is marked so that its replacement, not the
+    // root about to be unmounted, is what the stage-load wait sees.
+    await this.page.evaluate((id) => {
+      document
+        .querySelector('main[data-theme-interview]')
+        ?.setAttribute('data-e2e-before-resume', '');
+      window.__test.remountInterview(id);
+    }, this.interviewId);
+    await this.page
+      .locator('main[data-e2e-before-resume]')
+      .waitFor({ state: 'detached', timeout: 15_000 });
+    await this.waitForStageLoad();
+  }
+
+  /**
    * Navigate to an interview and wait for it to load.
    * Use this in beforeEach to set the starting URL.
    */

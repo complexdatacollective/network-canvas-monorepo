@@ -77,6 +77,8 @@ model Protocol {
   localization    Json        @default("{\"defaultLocale\":\"en\",\"locales\":[\"en\"]}")
   assets          Asset[]
   interviews      Interview[]
+  // The protocol's `experiments`. A schema 8 row's also tell the deploy-time
+  // migration to schema 9 whether its encrypted attributes stay encrypted.
   experiments     Json?
   originalFileKey String?
   originalFileUrl String?
