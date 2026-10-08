@@ -443,7 +443,12 @@ describe('planAddRelative', () => {
   });
 
   test('a donor is never partnered and never carries', () => {
-    const result = plan(nuclearFamily(), 'ego', {
+    const family = readFamily(
+      [person('ego', { isEgo: true }), person('mum', { sex: ['female'] })],
+      [link('mum', 'ego', 'biological')],
+      config,
+    );
+    const result = plan(family, 'ego', {
       relation: 'parent',
       parentKind: 'donor',
       carriedPregnancy: true,
@@ -474,6 +479,7 @@ describe('planAddRelative', () => {
       source: 'added',
       target: 'sib',
       kind: 'social',
+      isGestationalCarrier: false,
     });
   });
 
@@ -747,5 +753,271 @@ describe('nominations limited to one sex at birth', () => {
     expect(nominationsWithdrawnBy(prompts, { ovarian: false }, 'male')).toEqual(
       [],
     );
+  });
+});
+
+describe('no addition gives anyone more than two genetic parents', () => {
+  /**
+   * Every person's genetic parents (biological parents and donors) once the
+   * plan is added, with their sexes at birth: at most two, at most one
+   * recorded female and one recorded male.
+   */
+  function breaches(family: Family, result: AdditionPlan): string[] {
+    const sexOf = new Map<string, unknown>(
+      family.people.map((p) => [p.id, p.sexAssignedAtBirth]),
+    );
+    for (const planned of result.people) {
+      const sex = planned.details[config.sexAssignedAtBirthAttribute];
+      sexOf.set(planned.id, Array.isArray(sex) ? sex[0] : undefined);
+    }
+    const links = [...family.links, ...result.links].filter(
+      (l) => l.kind === 'biological' || l.kind === 'donor',
+    );
+    const children = new Set(links.map((l) => l.target));
+    return [...children].filter((child) => {
+      const sexes = links
+        .filter((l) => l.target === child)
+        .map((l) => sexOf.get(l.source));
+      return (
+        sexes.length > 2 ||
+        sexes.filter((s) => s === 'female').length > 1 ||
+        sexes.filter((s) => s === 'male').length > 1
+      );
+    });
+  }
+
+  test('a sibling of someone with only a donor parent', () => {
+    const family = readFamily(
+      [person('ego'), person('eggDonor', { sex: ['female'] })],
+      [link('eggDonor', 'ego', 'donor')],
+      config,
+    );
+    const result = plan(family, 'ego', {
+      relation: 'sibling',
+      sharedParentIds: [],
+      sharesUnshown: 'both',
+      parentKind: 'biological',
+    });
+    expect(breaches(family, result)).toEqual([]);
+    // The sperm is still to give, so one unnamed parent gives it; the egg
+    // donor already gave the egg, so the other unnamed parent did not.
+    expect(result.people.slice(1).map((p) => p.details)).toEqual([
+      { sex: ['male'] },
+      {},
+    ]);
+  });
+
+  test('a sibling of someone with two donors and no other parent', () => {
+    const family = readFamily(
+      [
+        person('ego'),
+        person('eggDonor', { sex: ['female'] }),
+        person('spermDonor', { sex: ['male'] }),
+      ],
+      [link('eggDonor', 'ego', 'donor'), link('spermDonor', 'ego', 'donor')],
+      config,
+    );
+    const result = plan(family, 'ego', {
+      relation: 'sibling',
+      sharedParentIds: [],
+      sharesUnshown: 'both',
+      parentKind: 'biological',
+    });
+    expect(breaches(family, result)).toEqual([]);
+  });
+
+  test('a sibling sharing the unshown second parent of someone with a parent and a donor', () => {
+    const family = readFamily(
+      [
+        person('ego'),
+        person('mum', { sex: ['female'] }),
+        person('spermDonor', { sex: ['male'] }),
+      ],
+      [link('mum', 'ego', 'biological'), link('spermDonor', 'ego', 'donor')],
+      config,
+    );
+    const result = plan(family, 'ego', {
+      relation: 'sibling',
+      sharedParentIds: ['mum'],
+      sharesUnshown: 'other',
+      parentKind: 'biological',
+    });
+    expect(breaches(family, result)).toEqual([]);
+  });
+
+  test('a new genetic parent is not also made the parent of a sibling who has two', () => {
+    const family = readFamily(
+      [
+        person('ego'),
+        person('mum', { sex: ['female'] }),
+        person('sib'),
+        person('sibDad', { sex: ['male'] }),
+      ],
+      [
+        link('mum', 'ego', 'biological'),
+        link('mum', 'sib', 'biological'),
+        link('sibDad', 'sib', 'biological'),
+      ],
+      config,
+    );
+    const result = planAddRelative({
+      family,
+      anchorId: 'ego',
+      newPersonId: 'added',
+      details: { sex: ['male'] },
+      request: {
+        relation: 'parent',
+        parentKind: 'biological',
+        carriedPregnancy: false,
+        partnerId: null,
+        partnershipCurrent: true,
+        alsoParentOf: ['sib'],
+      },
+      createId,
+      sexAttribute: config.sexAssignedAtBirthAttribute,
+    });
+    expect(breaches(family, result)).toEqual([]);
+  });
+
+  test('a child of two partners recorded the same sex at birth is the biological child of one', () => {
+    const family = readFamily(
+      [person('ego', { sex: ['female'] }), person('wife', { sex: ['female'] })],
+      [link('ego', 'wife', 'partner')],
+      config,
+    );
+    const result = plan(family, 'ego', {
+      relation: 'child',
+      otherParent: 'wife',
+      parentKind: 'biological',
+      biologicalParent: 'both',
+      carrier: 'anchor',
+    });
+    expect(breaches(family, result)).toEqual([]);
+  });
+});
+
+describe('a new parent of the anchor’s siblings', () => {
+  const family = () =>
+    readFamily(
+      [
+        person('ego', { isEgo: true }),
+        person('dad', { sex: ['male'] }),
+        person('sib'),
+      ],
+      [link('dad', 'ego', 'biological'), link('dad', 'sib', 'biological')],
+      config,
+    );
+
+  test('is the same kind of parent to each, with the same record of carrying', () => {
+    const result = planAddRelative({
+      family: family(),
+      anchorId: 'ego',
+      newPersonId: 'added',
+      details: { sex: ['female'] },
+      request: {
+        relation: 'parent',
+        parentKind: 'surrogate',
+        carriedPregnancy: true,
+        partnerId: null,
+        partnershipCurrent: true,
+        alsoParentOf: ['sib'],
+      },
+      createId,
+      sexAttribute: config.sexAssignedAtBirthAttribute,
+    });
+    expect(result.links).toEqual([
+      {
+        source: 'added',
+        target: 'ego',
+        kind: 'surrogate',
+        isGestationalCarrier: true,
+      },
+      {
+        source: 'added',
+        target: 'sib',
+        kind: 'surrogate',
+        isGestationalCarrier: true,
+      },
+    ]);
+  });
+
+  test('a biological parent who carried the anchor carried a sibling with no carrier recorded, and not one who has another', () => {
+    const withCarrier = readFamily(
+      [
+        person('ego', { isEgo: true }),
+        person('dad', { sex: ['male'] }),
+        person('sib'),
+        person('sib2'),
+        person('surrogate', { sex: ['female'] }),
+      ],
+      [
+        link('dad', 'ego', 'biological'),
+        link('dad', 'sib', 'biological'),
+        link('dad', 'sib2', 'biological'),
+        link('surrogate', 'sib2', 'surrogate', { carrier: true }),
+      ],
+      config,
+    );
+    const result = planAddRelative({
+      family: withCarrier,
+      anchorId: 'ego',
+      newPersonId: 'added',
+      details: { sex: ['female'] },
+      request: {
+        relation: 'parent',
+        parentKind: 'biological',
+        carriedPregnancy: true,
+        partnerId: null,
+        partnershipCurrent: true,
+        alsoParentOf: ['sib', 'sib2'],
+      },
+      createId,
+      sexAttribute: config.sexAssignedAtBirthAttribute,
+    });
+    expect(result.links).toEqual([
+      {
+        source: 'added',
+        target: 'ego',
+        kind: 'biological',
+        isGestationalCarrier: true,
+      },
+      {
+        source: 'added',
+        target: 'sib',
+        kind: 'biological',
+        isGestationalCarrier: true,
+      },
+      {
+        source: 'added',
+        target: 'sib2',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
+    ]);
+  });
+});
+
+describe('fullSiblingsOf', () => {
+  test('is only those with exactly the same primary parents', () => {
+    const family = readFamily(
+      [
+        person('ego'),
+        person('mum'),
+        person('dad'),
+        person('fullSib'),
+        person('halfSib'),
+      ],
+      [
+        link('mum', 'ego', 'biological'),
+        link('mum', 'fullSib', 'biological'),
+        link('mum', 'halfSib', 'biological'),
+        link('dad', 'halfSib', 'biological'),
+      ],
+      config,
+    );
+    // Ego has one parent recorded; a sibling with a second parent cannot be
+    // their full sibling, as ego's second parent is not that person.
+    expect(fullSiblingsOf(family, 'ego')).toEqual(['fullSib']);
+    expect(fullSiblingsOf(family, 'halfSib')).toEqual([]);
   });
 });

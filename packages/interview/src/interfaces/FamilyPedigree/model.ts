@@ -305,6 +305,13 @@ function parentLinksOf(family: Family, personId: string) {
   );
 }
 
+/** Whether someone is recorded as having carried the person's pregnancy. */
+function hasCarrier(family: Family, personId: string): boolean {
+  return parentLinksOf(family, personId).some(
+    (link) => link.isGestationalCarrier,
+  );
+}
+
 /** Parents who raise or are related to the person — not donors or surrogates. */
 export function primaryParentsOf(family: Family, personId: string): string[] {
   return parentLinksOf(family, personId)
@@ -337,12 +344,22 @@ export function siblingsOf(family: Family, personId: string): string[] {
     .map((person) => person.id);
 }
 
-/** The person's siblings who share every one of their primary parents. */
+/**
+ * The person's full siblings: those with exactly the same primary parents.
+ * While the person's parents are incomplete, a sibling who shares their one
+ * known parent but has another as well is a half sibling, because the
+ * person's own second parent, when added, is not that other parent (each pair
+ * of people has one link at most). The kinship words and the genetics engine
+ * compare parent sets the same way.
+ */
 export function fullSiblingsOf(family: Family, personId: string): string[] {
-  const parents = primaryParentsOf(family, personId);
+  const parents = new Set(primaryParentsOf(family, personId));
   return siblingsOf(family, personId).filter((siblingId) => {
     const siblingParents = new Set(primaryParentsOf(family, siblingId));
-    return parents.every((parent) => siblingParents.has(parent));
+    return (
+      siblingParents.size === parents.size &&
+      [...parents].every((parent) => siblingParents.has(parent))
+    );
   });
 }
 
@@ -485,16 +502,28 @@ export function planAddRelative({
   switch (request.relation) {
     case 'parent': {
       const kind = request.parentKind;
+      const carried =
+        kind === 'surrogate' ||
+        (kind === 'biological' && request.carriedPregnancy);
       links.push({
         source: newPersonId,
         target: anchorId,
         kind,
-        isGestationalCarrier:
-          kind === 'surrogate' ||
-          (kind === 'biological' && request.carriedPregnancy),
+        isGestationalCarrier: carried,
       });
+      // The new parent is the same parent to each sibling chosen: the same
+      // kind, and the same record of carrying the pregnancy, except where a
+      // sibling already has someone recorded as carrying theirs (one person
+      // carries a pregnancy). The form offers a surrogate only to siblings
+      // with no carrier, since a surrogate carried the pregnancy by
+      // definition.
       for (const siblingId of request.alsoParentOf) {
-        links.push({ source: newPersonId, target: siblingId, kind });
+        links.push({
+          source: newPersonId,
+          target: siblingId,
+          kind,
+          isGestationalCarrier: carried && !hasCarrier(family, siblingId),
+        });
       }
       if (request.partnerId && PRIMARY_PARENT_KINDS.has(kind)) {
         links.push({
@@ -565,50 +594,72 @@ export function planAddRelative({
     }
     case 'sibling': {
       const anchorParents = primaryParentsOf(family, anchorId);
-      const anchorLinks = parentLinksOf(family, anchorId);
       const shared = request.sharedParentIds.filter((id) =>
         anchorParents.includes(id),
       );
       // Siblings hang from the parents they share. Someone without parents
-      // is given an egg parent and a sperm parent, unnamed, for the
-      // participant to fill in later; someone with one is given their
-      // second when the sibling shares them.
-      let placeholders: string[] = [];
+      // is given two, unnamed, for the participant to fill in later; someone
+      // with one is given their second when the sibling shares them. An
+      // unnamed parent is a biological parent, giving a gamete not yet
+      // given, while the anchor has room for another genetic parent; one
+      // added once the anchor's genetic parents (donors included) are
+      // complete is a parent who raised them without giving a gamete, and is
+      // added as an adoptive parent.
+      const open = openGeneticParentSlots(family, anchorId);
+      const placeholders: { id: string; kind: 'biological' | 'adoptive' }[] =
+        [];
+      const addParentPlaceholder = (
+        kind: 'biological' | 'adoptive',
+        sex: 'female' | 'male' | undefined,
+      ) => {
+        const id = addPlaceholder(kind === 'biological' ? sex : undefined);
+        placeholders.push({ id, kind });
+        return id;
+      };
       let sharedPlaceholders: string[] = [];
-      let secondKind: 'biological' | 'adoptive' = 'biological';
       if (anchorParents.length === 0) {
-        const eggParent = addPlaceholder('female');
-        const spermParent = addPlaceholder('male');
-        placeholders = [eggParent, spermParent];
-        sharedPlaceholders =
+        const added = [0, 1].map((slot) =>
+          slot < open.length
+            ? addParentPlaceholder('biological', open[slot])
+            : addParentPlaceholder('adoptive', undefined),
+        );
+        // Sharing one of them names the one who gave that gamete; with no
+        // such parent added, the sibling shares both.
+        const giver =
           request.sharesUnshown === 'eggParent'
-            ? [eggParent]
+            ? 'female'
             : request.sharesUnshown === 'spermParent'
-              ? [spermParent]
-              : placeholders;
+              ? 'male'
+              : undefined;
+        const chosen = added.filter(
+          (id, index) => giver !== undefined && open[index] === giver,
+        );
+        sharedPlaceholders = chosen.length > 0 ? chosen : added;
       } else if (
         anchorParents.length === 1 &&
         request.sharesUnshown !== 'none'
       ) {
-        const [known] = anchorLinks.filter((link) =>
+        const [known] = parentLinksOf(family, anchorId).filter((link) =>
           anchorParents.includes(link.source),
         );
         // The other parent of someone adopted was most likely an adoptive
         // parent too; otherwise they are taken to be a biological parent,
-        // who gave the other gamete when the known parent gave one.
-        secondKind = known?.kind === 'adoptive' ? 'adoptive' : 'biological';
-        const second = addPlaceholder(
-          secondKind === 'biological' && known && isGeneticKind(known.kind)
-            ? otherGameteSex(family.byId.get(known.source)?.sexAssignedAtBirth)
-            : undefined,
-        );
-        placeholders = [second];
+        // who gave the other gamete when that is known, while there is room
+        // for one.
+        const second =
+          known?.kind === 'adoptive' || open.length === 0
+            ? addParentPlaceholder('adoptive', undefined)
+            : addParentPlaceholder(
+                'biological',
+                open.length === 1 ? open[0] : undefined,
+              );
         sharedPlaceholders = [second];
       }
-      for (const id of placeholders) {
-        links.push({ source: id, target: anchorId, kind: secondKind });
+      for (const { id, kind } of placeholders) {
+        links.push({ source: id, target: anchorId, kind });
       }
-      const [first, second, ...others] = [...anchorParents, ...placeholders];
+      const placeholderIds = placeholders.map(({ id }) => id);
+      const [first, second, ...others] = [...anchorParents, ...placeholderIds];
       if (placeholders.length > 0 && first && second && others.length === 0) {
         links.push({
           source: first,
@@ -634,7 +685,77 @@ export function planAddRelative({
     }
   }
 
-  return { people, links };
+  return {
+    people,
+    links: keepWithinGeneticLimit(family, people, links, sexAttribute),
+  };
+}
+
+/**
+ * The places still open among a person's genetic parents (biological parents
+ * and donors), each as the sex at birth an unnamed parent added there takes:
+ * that of the gamete still to give, when it follows. A person has two genetic
+ * parents, one giving the egg and one the sperm, so someone with none has two
+ * open places (female and male), someone with two has none, and someone with
+ * one has a place for whoever gave the other gamete. With a single genetic
+ * parent the shared gamete rule (`inferGametes`) reads their gamete from
+ * their sex at birth alone, so it is not known when they are neither female
+ * nor male.
+ */
+export function openGeneticParentSlots(
+  family: Family,
+  personId: string,
+): ('female' | 'male' | undefined)[] {
+  const sexes = geneticParentSexes(family, personId);
+  if (sexes.length === 0) return ['female', 'male'];
+  if (sexes.length >= 2) return [];
+  return [otherGameteSex(sexes[0])];
+}
+
+/**
+ * The rule every addition keeps: nobody has more than two genetic parents, or
+ * two recorded as the same binary sex at birth (`geneticParentsPossible`),
+ * counting the genetic parents they already have, donors included, and those
+ * planned with them. A planned genetic link that would break it is recorded
+ * as a social parent link instead, in the order planned: that person raised
+ * the child but cannot have given them a gamete. The forms offer only
+ * additions that keep the rule, so this is the model's own guarantee rather
+ * than something a participant meets.
+ */
+function keepWithinGeneticLimit(
+  family: Family,
+  people: readonly PlannedPerson[],
+  links: readonly PlannedLink[],
+  sexAttribute: string,
+): PlannedLink[] {
+  const plannedSex = new Map(
+    people.map((planned) => {
+      const value = readOwnProperty(planned.details, sexAttribute);
+      return [planned.id, Array.isArray(value) ? value[0] : value] as const;
+    }),
+  );
+  const sexOf = (id: string) =>
+    plannedSex.has(id)
+      ? (plannedSex.get(id) as string | undefined)
+      : family.byId.get(id)?.sexAssignedAtBirth;
+  const geneticSexes = new Map<string, (string | undefined)[]>();
+  const sexesOf = (childId: string) => {
+    const known =
+      geneticSexes.get(childId) ??
+      (family.byId.has(childId) ? geneticParentSexes(family, childId) : []);
+    geneticSexes.set(childId, known);
+    return known;
+  };
+  return links.map((link) => {
+    if (!isGeneticKind(link.kind)) return link;
+    const sexes = sexesOf(link.target);
+    const sex = sexOf(link.source);
+    if (geneticParentsPossible([...sexes, sex])) {
+      sexes.push(sex);
+      return link;
+    }
+    return { ...link, kind: 'social', isGestationalCarrier: false };
+  });
 }
 
 /** A relationship the participant draws between two people already shown. */
@@ -697,7 +818,7 @@ export const couldCarryPregnancy = (sexAssignedAtBirth: string | undefined) =>
 
 /** The sex at birth of whoever gave the other gamete to someone of this
  * sex, when that follows. */
-export const otherGameteSex = (sex: string | undefined) =>
+const otherGameteSex = (sex: string | undefined) =>
   sex === 'female' ? 'male' : sex === 'male' ? 'female' : undefined;
 
 /** Biological parents and gamete donors each gave the person an egg or a
@@ -815,14 +936,13 @@ export function availableParentChoices(
   ) {
     return [];
   }
-  const parentLinks = parentLinksOf(family, childId);
   const parentSex = family.byId.get(parentId)?.sexAssignedAtBirth;
   const canBeGenetic = geneticParentsPossible([
     ...geneticParentSexes(family, childId),
     parentSex,
   ]);
-  const hasCarrier = parentLinks.some((link) => link.isGestationalCarrier);
-  const canCarry = !hasCarrier && couldCarryPregnancy(parentSex);
+  const canCarry =
+    !hasCarrier(family, childId) && couldCarryPregnancy(parentSex);
   const choices: ParentChoice[] = [];
   for (const kind of PEDIGREE_RELATIONSHIP_KINDS) {
     if (kind === 'partner') continue;

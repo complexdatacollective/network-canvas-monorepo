@@ -60,7 +60,7 @@ import {
   geneticParentsPossible,
   holdsGeneratedLabel,
   isGeneticKind,
-  otherGameteSex,
+  openGeneticParentSlots,
   sexesRuledOut,
   partnersOf,
   primaryParentsOf,
@@ -894,7 +894,9 @@ function readRequest(
         sharesUnshown:
           placeholders === 'eggParent' || placeholders === 'spermParent'
             ? placeholders
-            : placeholders === 'both'
+            : // With no parents to choose from, and no choice of which
+              // unnamed parent to share, the sibling shares both.
+              placeholders === 'both' || shared.length === 0
               ? 'both'
               : shared.includes(UNKNOWN)
                 ? 'other'
@@ -1269,9 +1271,9 @@ function SiblingFields({
 
   // The sibling can be the biological child of the parents they share only
   // when those parents could have given one egg and one sperm. Someone with
-  // no parents is given an egg parent and a sperm parent, who always could;
-  // a second parent not yet shown gave the other gamete when the known one
-  // gave one.
+  // no parents is given two, who always could; a second parent not yet shown
+  // gave the gamete the anchor's genetic parents have not, when that follows
+  // (`openGeneticParentSlots`, as the plan adds them).
   const sexOf = (id: string) => family.byId.get(id)?.sexAssignedAtBirth;
   const knownLink = family.links.find(
     (link) =>
@@ -1279,17 +1281,14 @@ function SiblingFields({
       link.kind !== 'partner' &&
       link.source === parents[0],
   );
+  const open = openGeneticParentSlots(family, anchor.id);
+  const unshownSex =
+    knownLink?.kind !== 'adoptive' && open.length === 1 ? open[0] : undefined;
   const shared = asStringArray(values[ROLE.sharedParents]);
   const biologicalPossible =
     parents.length === 0 ||
     geneticParentsPossible(
-      shared.map((id) =>
-        id !== UNKNOWN
-          ? sexOf(id)
-          : knownLink && isGeneticKind(knownLink.kind)
-            ? otherGameteSex(sexOf(knownLink.source))
-            : undefined,
-      ),
+      shared.map((id) => (id !== UNKNOWN ? sexOf(id) : unshownSex)),
     );
   // Choosing parents can make a biological child impossible; the question
   // is then asked again.
@@ -1301,10 +1300,13 @@ function SiblingFields({
   }, [biologicalImpossible, setFieldValue]);
 
   // Someone with no parents is given an egg parent and a sperm parent,
-  // unnamed; the sibling may share both or one of them. A parent not yet
-  // shown can be shared too, and is added for both.
+  // unnamed; the sibling may share both or one of them. Someone whose egg or
+  // sperm came from a donor already has that genetic parent, so the parents
+  // they are given are not an egg parent and a sperm parent, and the sibling
+  // shares both. A parent not yet shown can be shared too, and is added for
+  // both.
   const sharedField =
-    parents.length === 0 ? (
+    parents.length === 0 && open.length < 2 ? null : parents.length === 0 ? (
       <Field
         component={RadioGroupField}
         name={ROLE.sharedParentCount}
