@@ -2,15 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import type { InheritancePattern } from '@codaco/protocol-validation';
 
+import { gameteLookup, inferGametes } from '../../FamilyPedigree/gametes';
 import { pedigreeConfigFromStage } from '../../FamilyPedigree/model';
 import { readParticipantsFamily } from '../../pedigree-common/membership';
 import { buildComprehensivePedigree } from '../comprehensivePedigreeFixture';
 import { computeStatuses } from '../genetics/computeStatuses';
-import {
-  gameteLookup,
-  geneticSexResolver,
-  inferGametes,
-} from '../genetics/familyGenetics';
+import { geneticSexResolver } from '../genetics/familyGenetics';
 import { buildGeneticGraph } from '../genetics/geneticGraph';
 import { affectedSet, type Status } from '../genetics/status';
 

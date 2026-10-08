@@ -155,6 +155,63 @@ describe('labelFamily', () => {
     });
   });
 
+  test('a parent who is neither female nor male at birth is named by the gamete the shared rule derives', () => {
+    // Paired with a parent recorded male, an intersex genetic parent gave the
+    // egg by elimination; the labels agree with the genetics.
+    const nodes = [
+      person('ego', { isEgo: true }),
+      person('intersexParent', { sex: ['intersex'] }),
+      person('maleParent', { sex: ['male'], gender: ['unknown'] }),
+      person('sibling', { isEgo: false }),
+      person('intersexDonor', { sex: ['intersex'] }),
+      person('mum', { sex: ['female'], gender: ['unknown'] }),
+    ];
+    const edges = [
+      link('intersexParent', 'ego', 'biological'),
+      link('maleParent', 'ego', 'biological'),
+      link('intersexDonor', 'sibling', 'donor'),
+      link('mum', 'sibling', 'biological'),
+      link('maleParent', 'mum', 'partner'),
+    ];
+    expect(labelsOf(nodes, edges, 'gamete')).toMatchObject({
+      intersexParent: 'Egg parent',
+      maleParent: 'Sperm parent',
+    });
+    expect(labelsOf(nodes, edges)).toMatchObject({
+      intersexParent: 'Biological mother',
+      maleParent: 'Biological father',
+    });
+    // Two genetic parents who are both neither female nor male: no gamete is
+    // known, so neither is named by one.
+    expect(
+      labelsOf(
+        [
+          person('ego', { isEgo: true }),
+          person('a', { sex: ['intersex'] }),
+          person('b', { sex: ['unknown'] }),
+        ],
+        [link('a', 'ego', 'biological'), link('b', 'ego', 'biological')],
+        'gamete',
+      ),
+    ).toMatchObject({ a: 'Parent', b: 'Parent' });
+    // A donor is named by the gamete they gave the child they are a donor to.
+    const donorFamily = readFamily(
+      [
+        person('ego', { isEgo: true }),
+        person('intersexDonor', { sex: ['intersex'] }),
+        person('dad', { sex: ['male'] }),
+      ],
+      [link('intersexDonor', 'ego', 'donor'), link('dad', 'ego', 'biological')],
+      config,
+    );
+    expect(
+      formatPersonLabel(
+        labelFamily(donorFamily, 'gamete').get('intersexDonor')!,
+        intl,
+      ),
+    ).toBe('Egg donor');
+  });
+
   test('a researcher-defined option takes the words it is mapped to', () => {
     // "transWoman" is not one of the six default options: the researcher
     // defined it and mapped it to feminine words.

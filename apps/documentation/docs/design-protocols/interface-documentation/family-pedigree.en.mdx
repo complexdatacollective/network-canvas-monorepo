@@ -92,9 +92,27 @@ The interface uses sex assigned at birth to name biological parents and donors, 
 
 <KeyConcept title="Why sex is recorded at birth">
 
-Family-history and inheritance work depends on the sex a person was assigned at birth, because it determines how sex-linked conditions are passed on. This is separate from how a person describes their gender. The interface always offers "Don't know" and "Prefer not to say", and treats any answer other than female or male as not known either way: it never names someone as a mother or a father from it, and a nomination prompt limited to one sex does not exclude them. A [Narrative Pedigree](/en/design-protocols/interface-documentation/narrative-pedigree) stage reads it to trace X-linked and Y-linked conditions.
+Family-history and inheritance work depends on the sex a person was assigned at birth, because it determines how sex-linked conditions are passed on. This is separate from how a person describes their gender. The interface always offers "Don't know" and "Prefer not to say", and treats any answer other than female or male as not known either way: a nomination prompt limited to one sex does not exclude them, and they are named by the gamete they gave only when that follows from their partner in conceiving a child (see below). A [Narrative Pedigree](/en/design-protocols/interface-documentation/narrative-pedigree) stage reads it to trace X-linked and Y-linked conditions.
 
 </KeyConcept>
+
+#### Which parent gave the egg or the sperm
+
+The interface never asks which gamete a biological parent or donor gave. It works it out from sex assigned at birth, by one rule that the kinship words and the [Narrative Pedigree](/en/design-protocols/interface-documentation/narrative-pedigree) both follow. For each of a child's genetic parents (biological parents and donors):
+
+1. A parent recorded female at birth gave the egg, and one recorded male gave the sperm. Sex assigned at birth decides this, whatever the person's gender identity: a trans man recorded female at birth gave the egg.
+2. A parent recorded intersex, don't know or prefer not to say, or not yet answered, gave the other gamete when the child's other genetic parent is recorded female or male. Paired with a parent recorded male, an intersex parent gave the egg.
+3. Otherwise the gamete is not known: when a child has a single genetic parent who is neither female nor male at birth, or two genetic parents who are both neither.
+
+Because a child has at most two genetic parents, at most one recorded female at birth and one recorded male, the rule never finds two eggs or two sperm.
+
+The model cannot record some families exactly. A gamete the participant knows but whose giver's sex is not known (for example an anonymous sperm donor recorded as "don't know", where the child's other genetic parent is not recorded female or male either) is recorded as not known. A rare difference of sex development where someone recorded female or male at birth gave the other gamete cannot be recorded as such; recording their sex at birth as intersex lets the rule work out their gamete instead. Mitochondrial donation, which involves three genetic contributors, cannot be drawn.
+
+<TipBox>
+
+If you analyse the family with software that reads a pedigree file with "father" and "mother" columns, such as the PED format used for linkage and segregation analysis, those columns mean the sperm-giver and the egg-giver. Fill them from the gamete worked out by this rule, not from gender identity, and leave them unknown where the rule does.
+
+</TipBox>
 
 #### Gender identity
 
@@ -102,7 +120,7 @@ A new stage asks about gender identity. Turn **Ask about gender identity** off i
 
 - The participant is asked each person's gender identity in the side panel.
 - You choose a categorical attribute to hold the answer and define its options. When you create a new attribute, Architect suggests Woman, Man, Non-binary, A different identity, Don't know and Prefer not to say, which you can edit.
-- For each option, you choose the kinship words a person with that option takes. Feminine words are mother, sister, daughter, grandmother, aunt and niece. Masculine words are father, brother, son, grandfather, uncle and nephew. Neutral words are parent, sibling, child, grandparent and parent's sibling. An option you mark **Not known** takes neutral words, except that a biological parent whose sex assigned at birth is known is called a biological mother or a biological father.
+- For each option, you choose the kinship words a person with that option takes. Feminine words are mother, sister, daughter, grandmother, aunt and niece. Masculine words are father, brother, son, grandfather, uncle and nephew. Neutral words are parent, sibling, child, grandparent and parent's sibling. An option you mark **Not known** takes neutral words, except that a biological parent whose gamete is known (see [Which parent gave the egg or the sperm](#which-parent-gave-the-egg-or-the-sperm)) is called a biological mother if they gave the egg or a biological father if they gave the sperm.
 - The options belong to this stage, because it decides the words each one takes. They can only be edited from a Family Pedigree stage that uses the attribute, and are read-only everywhere else in Architect.
 
 When it is off, the question is not asked, and the everyday kinship words follow each person's sex assigned at birth instead: female takes feminine words, male takes masculine words, and anyone else takes neutral words.
@@ -143,11 +161,11 @@ The interface writes these attributes itself. A filter or skip logic can read th
 
 Choose the kinship words used for family members the participant has not named. People who are named are shown by name. The wording changes what participants read, and the words in the labels saved for people the participant leaves unnamed (see [Name](#name)). It adds no other data to the export.
 
-| Choice                               | What participants read                                                                                                                                                                                                                                                    |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Everyday kinship words** (default) | Words such as mother, father, sister, brother, aunt and uncle. A person's words come from their gender identity when the stage asks about it, and from their sex assigned at birth when it does not.                                                                      |
-| **Egg parent and sperm parent**      | A biological parent is called the egg parent or the sperm parent, going by their sex assigned at birth, and a parent whose sex is neither female nor male is called a parent. Every other relative gets a neutral word, such as grandparent, sibling or parent's sibling. |
-| **Let the participant choose**       | Participants choose between the two sets of words when they first reach the stage, using a control in the toolbar, and can change their choice at any time. Until they choose, the egg parent and sperm parent words are used.                                            |
+| Choice                               | What participants read                                                                                                                                                                                                                                                                                                                          |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Everyday kinship words** (default) | Words such as mother, father, sister, brother, aunt and uncle. A person's words come from their gender identity when the stage asks about it, and from their sex assigned at birth when it does not.                                                                                                                                            |
+| **Egg parent and sperm parent**      | A biological parent is called the egg parent or the sperm parent, going by the gamete they gave (see [Which parent gave the egg or the sperm](#which-parent-gave-the-egg-or-the-sperm)), and a parent whose gamete is not known is called a parent. Every other relative gets a neutral word, such as grandparent, sibling or parent's sibling. |
+| **Let the participant choose**       | Participants choose between the two sets of words when they first reach the stage, using a control in the toolbar, and can change their choice at any time. Until they choose, the egg parent and sperm parent words are used.                                                                                                                  |
 
 When the participant chooses, their choice is kept with the interview session. It is not exported.
 

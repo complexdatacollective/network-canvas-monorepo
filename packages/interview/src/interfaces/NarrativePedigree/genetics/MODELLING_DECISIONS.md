@@ -149,8 +149,10 @@ adjacency, not the nuclear one.
 **Where the gametes come from.** The Family Pedigree records no gametes. It
 records each person's sex assigned at birth, and it allows a child at most one
 genetic parent recorded female at birth and one recorded male, since one gave
-the egg and the other the sperm. `inferGametes` (`familyGenetics.ts`) reads
-the gametes back from that:
+the egg and the other the sperm. `inferGametes`
+(`FamilyPedigree/gametes.ts`, the one rule the Family Pedigree's kinship words
+also use; see `FamilyPedigree/REPRODUCTIVE_ROLE_AND_SEX.md`) reads the gametes
+back from that:
 
 - a genetic parent recorded female at birth gave the egg, one recorded male the
   sperm;

@@ -7,13 +7,10 @@ import {
   link,
   person,
 } from '../../../FamilyPedigree/__tests__/fixtures';
+import { gameteLookup, inferGametes } from '../../../FamilyPedigree/gametes';
 import { readFamily } from '../../../FamilyPedigree/model';
 import { computeStatuses } from '../computeStatuses';
-import {
-  gameteLookup,
-  geneticSexResolver,
-  inferGametes,
-} from '../familyGenetics';
+import { geneticSexResolver } from '../familyGenetics';
 import { buildGeneticGraph } from '../geneticGraph';
 
 const withSex = (id: string, sex?: PedigreeSexAssignedAtBirth) =>
@@ -34,51 +31,6 @@ function trio(
     config,
   );
 }
-
-describe('inferGametes', () => {
-  it('gives the egg to the parent recorded female and the sperm to the one recorded male', () => {
-    const gametes = inferGametes(trio('female', 'male'));
-    expect(gametes.get('a>child')).toBe('egg');
-    expect(gametes.get('b>child')).toBe('sperm');
-  });
-
-  it.each(['intersex', 'unknown', 'preferNotToSay', undefined] as const)(
-    'gives a parent recorded %s the gamete their partner did not give',
-    (sex) => {
-      expect(inferGametes(trio(sex, 'male')).get('a>child')).toBe('egg');
-      expect(inferGametes(trio(sex, 'female')).get('a>child')).toBe('sperm');
-    },
-  );
-
-  it('leaves both gametes unknown when neither parent is recorded female or male', () => {
-    const gametes = inferGametes(trio('intersex', 'unknown'));
-    expect(gametes.size).toBe(0);
-  });
-
-  it('reads donors as genetic parents and leaves out surrogates and social parents', () => {
-    const family = readFamily(
-      [
-        withSex('donor', 'female'),
-        withSex('dad', 'male'),
-        withSex('surrogate', 'female'),
-        withSex('stepmum', 'female'),
-        withSex('child'),
-      ],
-      [
-        link('donor', 'child', 'donor'),
-        link('dad', 'child', 'biological'),
-        link('surrogate', 'child', 'surrogate', { carrier: true }),
-        link('stepmum', 'child', 'social'),
-      ],
-      config,
-    );
-    const gametes = inferGametes(family);
-    expect(gametes.get('donor>child')).toBe('egg');
-    expect(gametes.get('dad>child')).toBe('sperm');
-    expect(gametes.has('surrogate>child')).toBe(false);
-    expect(gametes.has('stepmum>child')).toBe(false);
-  });
-});
 
 describe('geneticSexResolver', () => {
   it('reads female and male from sex assigned at birth', () => {

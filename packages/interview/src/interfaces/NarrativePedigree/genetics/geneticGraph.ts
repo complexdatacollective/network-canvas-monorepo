@@ -1,3 +1,5 @@
+import type { Gamete } from '../../FamilyPedigree/gametes';
+
 /** Someone in the family, as the genetics engine sees them. */
 export type GeneticPerson = { id: string };
 
@@ -13,9 +15,6 @@ export type GeneticFamily = {
   people: readonly GeneticPerson[];
   links: readonly GeneticLink[];
 };
-
-/** Which gamete a genetic parent gave a child. */
-export type Gamete = 'egg' | 'sperm';
 
 /**
  * Biological parents and gamete donors each gave the child an egg or a sperm,
@@ -58,8 +57,8 @@ function pushInto(
  *   egg (the enucleated donor egg retains its cytoplasm), else the first egg;
  *   the nuclear parents are everyone EXCEPT that donor egg.
  *
- * The Family Pedigree records no gametes; they are inferred from sex assigned
- * at birth (`inferGametes`). It allows at most one genetic parent recorded
+ * The Family Pedigree records no gametes; they are derived from sex assigned
+ * at birth (`inferGametes`, FamilyPedigree/gametes.ts). It allows at most one genetic parent recorded
  * female at birth, so two eggs arise only from data it did not record, and
  * the engine then trusts the tags it is given (see
  * genetics/MODELLING_DECISIONS.md §2–3).

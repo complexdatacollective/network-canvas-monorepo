@@ -45,6 +45,7 @@ import { getCodebook, getStages } from '../../../store/modules/protocol';
 import type { StageProps } from '../../../types';
 import { usePassphrase } from '../../Anonymisation/usePassphrase';
 import { useDecryptedNames } from '../../FamilyPedigree/encryptedNames';
+import { gameteLookup, inferGametes } from '../../FamilyPedigree/gametes';
 import {
   labelEveryone,
   withoutSoftHyphens,
@@ -65,11 +66,7 @@ import {
 import { PedigreeSnapshotDocument } from '../export/PedigreeSnapshotDocument';
 import { exportSnapshot } from '../export/snapshot';
 import { computeStatuses } from '../genetics/computeStatuses';
-import {
-  gameteLookup,
-  geneticSexResolver,
-  inferGametes,
-} from '../genetics/familyGenetics';
+import { geneticSexResolver } from '../genetics/familyGenetics';
 import { buildGeneticGraph } from '../genetics/geneticGraph';
 import { affectedSet, getStatusLabel, type Status } from '../genetics/status';
 import { computeContributors } from '../highlight';

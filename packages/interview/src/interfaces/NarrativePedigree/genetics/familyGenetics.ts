@@ -1,74 +1,7 @@
+import { type Gamete, inferGametes } from '../../FamilyPedigree/gametes';
 import type { Family } from '../../FamilyPedigree/model';
-import { type Gamete, isGeneticKind } from './geneticGraph';
 
 type Sex = 'female' | 'male' | 'unknown';
-
-const linkKey = (parentId: string, childId: string) => `${parentId}>${childId}`;
-
-/**
- * The gamete each genetic parent (biological parent or donor) gave each child,
- * as far as the family's recorded sexes assigned at birth tell it.
- *
- * The Family Pedigree records no gametes. It records each person's sex
- * assigned at birth, and allows a child at most one genetic parent recorded
- * female at birth and one recorded male, because one gave the egg and the
- * other the sperm. So:
- *
- * - a genetic parent recorded female at birth gave the egg, and one recorded
- *   male gave the sperm;
- * - otherwise (intersex, not known, preferred not to say, or not answered),
- *   when the child's other genetic parent is recorded female or male, this
- *   one gave the other gamete. This is how the Family Pedigree itself records
- *   an unnamed parent added to complete a pair: it gives them the sex of the
- *   gamete the known parent did not give.
- * - anything else is not known.
- *
- * Keyed by `parent>child`.
- */
-export function inferGametes(family: Family): Map<string, Gamete> {
-  const geneticParents = new Map<string, string[]>();
-  for (const link of family.links) {
-    if (!isGeneticKind(link.kind)) continue;
-    const parents = geneticParents.get(link.target) ?? [];
-    if (!parents.includes(link.source)) parents.push(link.source);
-    geneticParents.set(link.target, parents);
-  }
-
-  const gameteOfSex = (parentId: string): Gamete | undefined => {
-    const sex = family.byId.get(parentId)?.sexAssignedAtBirth;
-    if (sex === 'female') return 'egg';
-    if (sex === 'male') return 'sperm';
-    return undefined;
-  };
-
-  const gametes = new Map<string, Gamete>();
-  for (const [childId, parents] of geneticParents) {
-    for (const parentId of parents) {
-      const own = gameteOfSex(parentId);
-      if (own) {
-        gametes.set(linkKey(parentId, childId), own);
-        continue;
-      }
-      const [other, ...rest] = parents.filter((id) => id !== parentId);
-      if (other === undefined || rest.length > 0) continue;
-      const otherGamete = gameteOfSex(other);
-      if (otherGamete) {
-        gametes.set(
-          linkKey(parentId, childId),
-          otherGamete === 'egg' ? 'sperm' : 'egg',
-        );
-      }
-    }
-  }
-  return gametes;
-}
-
-/** Looks up a gamete from `inferGametes`, in the shape `buildGeneticGraph`
- * takes. */
-export function gameteLookup(gametes: ReadonlyMap<string, Gamete>) {
-  return (parentId: string, childId: string) =>
-    gametes.get(linkKey(parentId, childId));
-}
 
 /**
  * Each person's sex for the sex-linked rules (X-linked, Y-linked and the

@@ -4,6 +4,7 @@ import type {
   PedigreeRelationshipKind,
 } from '@codaco/protocol-validation';
 
+import { type Gamete, gameteLookup, inferGametes } from './gametes';
 import { messages } from './messages';
 import type { Family, Person } from './model';
 
@@ -227,34 +228,44 @@ function stepsFrom(family: Family, personId: string): Step[] {
   return steps;
 }
 
-/** The term for a single step, which is also a close relative's term. */
+/** Which gamete a genetic parent gave a child, when it is known
+ * (`inferGametes`). */
+type GameteOf = (parentId: string, childId: string) => Gamete | undefined;
+
+/**
+ * The term for a single step from `fromId`, which is also a close relative's
+ * term. A biological parent or donor is named by the gamete they gave
+ * `fromId`, as the shared rule derives it from sex assigned at birth
+ * (`inferGametes`), never from sex at birth read on its own.
+ */
 function stepTerm(
   family: Family,
+  fromId: string,
   step: Step,
   framing: FramingId,
+  gameteOf: GameteOf,
 ): StepTerm & KinTerm {
   const person = family.byId.get(step.to);
   const gender = genderOf(person, framing);
   switch (step.type) {
     case 'parent':
       switch (step.kind) {
-        case 'biological':
+        case 'biological': {
+          const gamete = gameteOf(step.to, fromId);
           if (framing === 'gamete') {
             // The gamete framing names a biological parent by the gamete
-            // they gave, read from their recorded sex at birth.
-            const sex = person?.sexAssignedAtBirth;
-            if (sex === 'female') return 'eggParent';
-            if (sex === 'male') return 'spermParent';
+            // they gave.
+            if (gamete === 'egg') return 'eggParent';
+            if (gamete === 'sperm') return 'spermParent';
             return 'parent';
           }
           if (gender === 'other') {
             // With their gender identity not known, a biological parent is
             // named by the gamete they gave, in gendered words.
             const words = person?.genderWords;
-            const sex = person?.sexAssignedAtBirth;
             if (words === undefined || words === 'unknown') {
-              if (sex === 'female') return 'biologicalMother';
-              if (sex === 'male') return 'biologicalFather';
+              if (gamete === 'egg') return 'biologicalMother';
+              if (gamete === 'sperm') return 'biologicalFather';
             }
           }
           return pick(gender, {
@@ -262,6 +273,7 @@ function stepTerm(
             man: 'father',
             other: 'parent',
           });
+        }
         case 'adoptive':
           return pick(gender, {
             woman: 'adoptiveMother',
@@ -275,9 +287,9 @@ function stepTerm(
             other: 'stepparent',
           });
         case 'donor': {
-          const sex = person?.sexAssignedAtBirth;
-          if (sex === 'female') return 'eggDonor';
-          if (sex === 'male') return 'spermDonor';
+          const gamete = gameteOf(step.to, fromId);
+          if (gamete === 'egg') return 'eggDonor';
+          if (gamete === 'sperm') return 'spermDonor';
           return 'donor';
         }
         case 'surrogate':
@@ -502,6 +514,7 @@ export function labelFamily(
     }
   }
   if (!family.egoId) return fillUnconnected(family, labels);
+  const gameteOf = gameteLookup(inferGametes(family));
 
   // Breadth-first from the participant, one step of distance at a time, so
   // that each label is final before anyone further away is described through
@@ -522,7 +535,7 @@ export function labelFamily(
         if (path.length === 1) {
           layer.set(step.to, {
             type: 'term',
-            term: stepTerm(family, step, framing),
+            term: stepTerm(family, fromId, step, framing, gameteOf),
           });
           continue;
         }
@@ -534,7 +547,7 @@ export function labelFamily(
             : {
                 type: 'relativeOf',
                 owner: labels.get(fromId)!,
-                term: stepTerm(family, step, framing),
+                term: stepTerm(family, fromId, step, framing, gameteOf),
               },
         );
       }
