@@ -1138,6 +1138,9 @@ Studio's own message catalogs are separate work.
   falls back to another of the protocol's languages, and no wrapper is added to
   carry one: a wrapper would separate typography siblings whose spacing depends
   on their order.
+- The one exception is a language's name written in that language: the
+  Language Chooser marks each option with the language it names, so that
+  "Deutsch" is read as German whatever the interview language is.
 - The host owns the document-level `<html lang>`. The Interview package does
   not rewrite it because surrounding host chrome may remain in another
   language.

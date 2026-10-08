@@ -187,7 +187,8 @@ function Interview({
 
   // The interview's language boundary. Everything the Shell renders (stage,
   // navigation, dialogs and toasts alike) takes the interview language and
-  // lays out in its direction from here; no text inside marks its own.
+  // lays out in its direction from here; no text inside marks its own, apart
+  // from the Language Chooser's language names, each written in itself.
   return (
     <ThemedRegion
       theme="interview"
