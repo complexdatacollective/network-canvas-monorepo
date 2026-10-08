@@ -1214,6 +1214,68 @@ export const ABirthParentIsNotAssumedToBeAnAdoptiveParentsPartner: Story = {
 };
 
 /**
+ * Choosing the answer already filled in is an answer too, with the pointer or
+ * the keyboard: Jun's new parent, made adoptive, is assumed to be Clare's
+ * partner, and the participant clicks Clare; made biological again, she is
+ * still Clare's partner. Opened afresh, the partner question starts at No,
+ * and the participant presses Space on No; made adoptive, it stays No.
+ */
+export const ChoosingTheAnswerFilledInKeepsIt: Story = {
+  args: { requirement: 'none' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      family={{
+        people: [
+          { id: 'ego', name: 'Jun', gender: 'man', sex: 'male', ego: true },
+          { id: 'clare', name: 'Clare', gender: 'woman', sex: 'female' },
+        ],
+        links: [{ from: 'clare', to: 'ego', kind: 'adoptive' }],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    const openAddParent = async () => {
+      await userEvent.hover(
+        await canvas.findByRole('button', { name: /^You/ }),
+      );
+      await userEvent.click(await canvas.findByTestId('pedigree-menu-parent'));
+      await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
+      await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
+      const kind = await body.findByRole('radiogroup', {
+        name: /^What kind of parent are they\?/,
+      });
+      const partner = await body.findByRole('radiogroup', {
+        name: /^Are they the partner of another parent\?/,
+      });
+      return {
+        chooseKind: (name: string) =>
+          userEvent.click(within(kind).getByRole('radio', { name })),
+        option: (name: string) => within(partner).getByRole('radio', { name }),
+      };
+    };
+
+    const byPointer = await openAddParent();
+    await byPointer.chooseKind('Adoptive parent');
+    await waitFor(() => expect(byPointer.option('Clare')).toBeChecked());
+    await userEvent.click(byPointer.option('Clare'));
+    await byPointer.chooseKind('Biological parent');
+    await expect(byPointer.option('Clare')).toBeChecked();
+    await userEvent.click(await body.findByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
+
+    const byKeyboard = await openAddParent();
+    await waitFor(() => expect(byKeyboard.option('No')).toBeChecked());
+    byKeyboard.option('No').focus();
+    await userEvent.keyboard(' ');
+    await byKeyboard.chooseKind('Adoptive parent');
+    await expect(byKeyboard.option('No')).toBeChecked();
+  },
+};
+
+/**
  * Ella's birth mother Rachel is recorded. Her father, added as a biological
  * parent, is assumed to be Rachel's partner, as is a stepfather: either
  * raised Ella with her.

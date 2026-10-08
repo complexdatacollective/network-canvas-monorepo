@@ -1,6 +1,13 @@
 'use client';
 
-import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
+import {
+  type MouseEvent,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
@@ -1105,7 +1112,7 @@ function ParentFields({
   const belongsWith = (parentId: string) =>
     !birthAndAdoptive(kindOfParent(parentId), parentKind);
   const [onlyParent] = existingParents;
-  const partnerInitial = useDefaultUntilAnswered(
+  const partnerDefault = useDefaultUntilAnswered(
     ROLE.partnerId,
     partnerChoice,
     raises &&
@@ -1115,7 +1122,7 @@ function ParentFields({
       ? onlyParent
       : NONE,
   );
-  const siblingsInitial = useDefaultUntilAnswered(
+  const siblingsDefault = useDefaultUntilAnswered(
     ROLE.alsoParentOf,
     values[ROLE.alsoParentOf],
     existingParents.every(belongsWith)
@@ -1156,7 +1163,8 @@ function ParentFields({
             })),
             { value: NONE, label: intl.formatMessage(messages.no) },
           ]}
-          initialValue={partnerInitial}
+          initialValue={partnerDefault.initial}
+          {...partnerDefault.answering}
         />
       )}
       {raises && partnerChoice !== undefined && partnerChoice !== NONE && (
@@ -1172,7 +1180,8 @@ function ParentFields({
             label: displayName(id),
             disabled: !siblingPossible(id),
           }))}
-          initialValue={siblingsInitial}
+          initialValue={siblingsDefault.initial}
+          {...siblingsDefault.answering}
         />
       )}
     </>
@@ -1184,17 +1193,37 @@ const birthAndAdoptive = (first: string | undefined, second: string) =>
   (first === 'biological' && second === 'adoptive') ||
   (first === 'adoptive' && second === 'biological');
 
+/** Whether an event on a question's options was aimed at one that can be
+ * chosen: the option itself, or its label. */
+const choosesOption = (target: EventTarget) => {
+  if (!(target instanceof Element)) return false;
+  const selector = '[role="radio"], [role="checkbox"]';
+  const option =
+    target.closest(selector) ??
+    target.closest('label')?.querySelector(selector);
+  return (
+    option !== null &&
+    option !== undefined &&
+    option.getAttribute('aria-disabled') !== 'true' &&
+    !option.hasAttribute('data-disabled') &&
+    !option.matches(':disabled')
+  );
+};
+
 /**
  * Keeps a question's answer at its default while the default changes with
- * earlier answers, until the participant answers it themselves: once the
- * answer differs from the default it was given, it is theirs and is left
- * alone. Returns the default the question starts with.
+ * earlier answers, until the participant answers it themselves. Choosing an
+ * option, with the pointer or the keyboard, is an answer even when it is the
+ * option already chosen, as is any change to the answer not made here; once
+ * answered, the answer is theirs and is left alone. Returns the default the
+ * question starts with, and the handlers that notice the participant
+ * answering, for the question's options.
  */
 function useDefaultUntilAnswered<Answer extends string | string[]>(
   name: string,
   answer: FieldValue | undefined,
   defaultAnswer: Answer,
-): Answer {
+) {
   const setFieldValue = useFormStore((store) => store.setFieldValue);
   const key = JSON.stringify(defaultAnswer);
   const [initial] = useState(defaultAnswer);
@@ -1214,7 +1243,15 @@ function useDefaultUntilAnswered<Answer extends string | string[]>(
     setFieldValue(name, defaultAnswer);
   });
   useEffect(() => followDefault(key), [key]);
-  return initial;
+  // Choosing an option from the keyboard (Space on the option focused)
+  // clicks it, as the pointer does; moving to another with the arrow keys
+  // changes the answer.
+  const answering = {
+    onClickCapture: (event: MouseEvent<HTMLElement>) => {
+      if (choosesOption(event.target)) answered.current = true;
+    },
+  };
+  return { initial, answering };
 }
 
 function ChildFields({
