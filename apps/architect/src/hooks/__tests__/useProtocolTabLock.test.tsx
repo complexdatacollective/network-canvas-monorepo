@@ -101,7 +101,7 @@ const editedStage = { ...stage, label: 'A, edited' } as Stage;
 
 /** What the stage editor's chrome publishes while it is open and untouched. */
 const openPristineStageDraft = () => {
-  publishStageDraft(stage, { label: 'A' }, { label: 'A' });
+  publishStageDraft(stage, { label: 'A' }, { label: 'A' }, true);
 };
 
 const createTestStore = () =>
@@ -128,7 +128,7 @@ const makeRefresh = () =>
 // A stage editor with a real edit in it, exactly as its own chrome publishes
 // one: the document on screen, against the document it opened on.
 const openDirtyStageDraft = () => {
-  publishStageDraft(editedStage, { label: 'A' }, { label: 'A, edited' });
+  publishStageDraft(editedStage, { label: 'A' }, { label: 'A, edited' }, true);
 };
 
 // A nested editor — a new-variable window, an entity-type dialog, an array-row
@@ -439,6 +439,36 @@ describe('useProtocolTabLock', () => {
     expect(mockBrowserNavigate).toHaveBeenCalledWith('/protocol', {
       replace: true,
     });
+    expect(getProtocolLockState(store.getState())).toBe('owned');
+  });
+
+  // A stage editor opened while the other tab held the protocol was never
+  // granted its stage, so it holds nothing to lose: the researcher stays on the
+  // stage they were reading, and the page re-opens it for editing
+  // (StageEditorPage) once this tab owns the protocol again.
+  it('reclaims in place under a stage editor that was only ever read-only', async () => {
+    const fake = makeFakeLock();
+    mockLocation.mockReturnValue('/protocol/stage/stage-1');
+    window.history.replaceState(null, '', '/protocol/stage/stage-1');
+    const { store, refreshActiveProtocol } = renderTabLock(fake.factory);
+    act(() => {
+      store.dispatch(setActiveProtocolId('p1'));
+      store.dispatch(setActiveProtocol(protocol));
+    });
+    act(() => {
+      fake.fireExclusivity(false);
+    });
+    act(() => {
+      publishStageDraft(stage, { label: 'A' }, { label: 'A' }, false);
+    });
+
+    await act(async () => {
+      fake.fireExclusivity(true);
+      await Promise.resolve();
+    });
+
+    expect(refreshActiveProtocol).toHaveBeenCalledTimes(1);
+    expect(mockBrowserNavigate).not.toHaveBeenCalled();
     expect(getProtocolLockState(store.getState())).toBe('owned');
   });
 

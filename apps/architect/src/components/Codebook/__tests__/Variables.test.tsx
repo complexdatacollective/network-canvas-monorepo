@@ -7,6 +7,7 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
 import developmentProtocol from '@codaco/protocols/development';
 import { actionCreators as protocolActions } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
+import { ProtocolReadOnlyContext } from '~/hooks/useProtocolReadOnly';
 
 import Variables from '../Variables';
 
@@ -28,23 +29,25 @@ const makeStore = () => {
   return store;
 };
 
-const renderVariables = () =>
+const renderVariables = ({ readOnly = false } = {}) =>
   render(
-    <Provider store={makeStore()}>
-      <Variables
-        entity="node"
-        type={PERSON}
-        variables={[
-          {
-            id: LAST_NAME,
-            name: 'last_name',
-            component: 'Text',
-            inUse: false,
-            usage: [],
-          },
-        ]}
-      />
-    </Provider>,
+    <ProtocolReadOnlyContext value={readOnly}>
+      <Provider store={makeStore()}>
+        <Variables
+          entity="node"
+          type={PERSON}
+          variables={[
+            {
+              id: LAST_NAME,
+              name: 'last_name',
+              component: 'Text',
+              inUse: false,
+              usage: [],
+            },
+          ]}
+        />
+      </Provider>
+    </ProtocolReadOnlyContext>,
   );
 
 describe('Codebook attribute table', () => {
@@ -58,5 +61,28 @@ describe('Codebook attribute table', () => {
 
     expect(pill).toHaveClass('bg-(--variable-pill-accent)');
     expect(pill).not.toHaveClass('variable-pill-effect-border');
+  });
+
+  it('offers a rename trigger and an enabled delete outside read-only', () => {
+    renderVariables();
+
+    expect(
+      screen.getByRole('button', { name: 'Edit attribute name: last_name' }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: 'Delete attribute' }),
+    ).toBeEnabled();
+  });
+
+  it('renders the name statically and disables delete while read-only', () => {
+    renderVariables({ readOnly: true });
+
+    expect(
+      screen.queryByRole('button', { name: 'Edit attribute name: last_name' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('last_name')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Delete attribute' }),
+    ).toBeDisabled();
   });
 });

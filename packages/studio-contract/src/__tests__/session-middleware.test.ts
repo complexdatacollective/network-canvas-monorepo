@@ -19,6 +19,7 @@ const participantHandlers = <R>(reads: Effect.Effect<unknown, never, R>) => ({
   'participant.session': () => Effect.andThen(reads, unreachable),
   'participant.sync': () => unreachable,
   'participant.finish': () => unreachable,
+  'participant.analytics': () => unreachable,
 });
 
 const ResearcherProbeRpcs = RpcGroup.make(

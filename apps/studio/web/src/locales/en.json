@@ -1839,6 +1839,14 @@
     "defaultMessage": "Open the protocol editor",
     "description": "Link on a study card into the study's protocol editor."
   },
+  "studio.teamStudies.participantAnalyticsHint": {
+    "defaultMessage": "Records how participants move through the interview, such as time spent on each screen. Never their answers or anything that identifies them.",
+    "description": "Hint under the creation form's participant analytics switch, explaining what is and is not collected."
+  },
+  "studio.teamStudies.participantAnalyticsLabel": {
+    "defaultMessage": "Collect anonymous usability analytics from participants",
+    "description": "Label of the creation form's switch for participant usability analytics."
+  },
   "studio.updateNotice.codeOnly": {
     "defaultMessage": "Studio {version} is available, released {releasedAt}. Upgrading to it does not change the database.",
     "description": "Shown above every screen to the person who owns this Studio when a newer release is out and upgrading this Studio to it applies no database migration (decided against the version running, so a release skipped over counts): going back means running the previous version again."

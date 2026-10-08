@@ -10,6 +10,7 @@ import { TenantScope } from '../db/tenant.ts';
 import { networkFromRows } from '../network/mapping.ts';
 import { readSessionNetwork } from '../network/session-network.ts';
 import { enforceRateLimit } from '../rate-limit/enforce.ts';
+import { participantAnalyticsConfig } from './analytics.ts';
 import { sessionRefusal } from './availability.ts';
 import { participantProtocolPayload } from './protocol.ts';
 import { claimHolder, loadSessionContext } from './store.ts';
@@ -52,6 +53,11 @@ export const readParticipantSession = Effect.fn(
         protocolVersionId: context.protocolVersionId,
         publishedAt: context.publishedAt,
       });
+      const analytics =
+        (yield* participantAnalyticsConfig(
+          session.sessionId,
+          context.studySettings,
+        )) !== null;
 
       return {
         studyId: context.studyId,
@@ -77,6 +83,7 @@ export const readParticipantSession = Effect.fn(
           stageMetadata: context.stageMetadata,
         },
         protocol,
+        analytics,
       };
     }),
   );

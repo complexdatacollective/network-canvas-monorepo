@@ -204,7 +204,8 @@ export function createParticipantHandlers({
       const kind = noticeOf(error);
       if (kind === undefined) throw error;
       stop(kind);
-      return;
+      if (kind === 'finished') return;
+      throw error;
     }
     stop('finished');
   };

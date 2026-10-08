@@ -91,9 +91,8 @@ export type StudioEnv = {
   trustedProxies: string[] | undefined;
   devDefaults: boolean;
   /**
-   * Whether this instance reports anonymous usage telemetry. Nothing reads it
-   * yet — #1897 builds the reporting — but it resolves here so the variable
-   * and its opt-out exist before the first version that could report.
+   * Whether this instance reports anonymous usage telemetry. With it off, no
+   * analytics client and no trace exporter is constructed.
    */
   telemetry: boolean;
   telemetryEndpoint: string | undefined;

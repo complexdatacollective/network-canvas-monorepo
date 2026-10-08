@@ -2088,6 +2088,21 @@ CREATE OR REPLACE TRIGGER installation_setup_stays_closed
   )
   EXECUTE FUNCTION installation_setup_stays_closed();
 
+CREATE OR REPLACE FUNCTION installation_id_stays_fixed() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'the installation id cannot be changed by the application';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER installation_id_stays_fixed
+  BEFORE UPDATE ON installation
+  FOR EACH ROW
+  WHEN (
+    current_user IN ('studio_app', 'studio_maintenance')
+    AND NEW.installation_id IS DISTINCT FROM OLD.installation_id
+  )
+  EXECUTE FUNCTION installation_id_stays_fixed();
+
 
 INSERT INTO deployment_state (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
 REVOKE INSERT, DELETE, TRUNCATE ON deployment_state

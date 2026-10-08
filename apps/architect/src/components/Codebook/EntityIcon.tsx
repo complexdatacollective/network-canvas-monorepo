@@ -53,6 +53,7 @@ const renderIcon = (
       // a NodeColorSequence value when entity === "node".
       return (
         <Node
+          presentational
           label=""
           color={color as NodeColorSequence | undefined}
           shape={shape}

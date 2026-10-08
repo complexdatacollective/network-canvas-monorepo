@@ -9,6 +9,7 @@ import { DatabaseAbsent } from '../db/client.ts';
 import { getDeploymentStatus } from '../domain.ts';
 import { Jobs } from '../jobs/jobs.ts';
 import { JOB_SCHEMA } from '../jobs/queues.ts';
+import { Analytics } from '../platform/analytics.ts';
 import { RateLimiter } from '../rate-limit/limiter.ts';
 import { RateLimitStore } from '../rate-limit/store.ts';
 import type { RpcDeps } from '../rpc/deps.ts';
@@ -22,6 +23,7 @@ const STUDIO_TAGS = [
   'audit.get',
   'audit.list',
   'me',
+  'participant.analytics',
   'participant.finish',
   'participant.redeem',
   'participant.session',
@@ -80,6 +82,7 @@ const handlerContext = await Effect.runPromise(
             DatabaseAbsent,
             SecretsCipher.layerAbsent,
             AuditSignal.layer,
+            Analytics.layerDisabled,
             Jobs.layer({ schema: JOB_SCHEMA }),
             DeniedAttempts.layer.pipe(
               Layer.provide(RateLimitStore.layerAbsent),

@@ -76,7 +76,7 @@ presence|publisher`). `pb/schema.ts` is outside that set and already
      cannot tell a clean release from an expiry.
    - The relay seeds a `section → owner` map once, keeps it up to date from
      relayed lock events, and checks only believed-held sections.
-   - Migration 0002 adds the partial index `protocol_events (draft_id,
+   - Migration 0003 adds the partial index `protocol_events (draft_id,
 section_id, cursor DESC) WHERE kind = 'lock'` for the seed and the
      reaper recheck. The columns are verified in `pb/schema.ts`.
 9. **Ghost presence never rings,** so the safety poll diffs presence.
@@ -112,7 +112,7 @@ null`, 250 ms timeout) stays untouched. The doorbell opens its own
 
 ## 2. Shared shapes
 
-### 2.1 Tables (`pb/schema.ts`, migration `0002_studio_multi_replica_sync`, both owned by C1)
+### 2.1 Tables (`pb/schema.ts`, migration `0003_studio_multi_replica_sync`, both owned by C1)
 
 Both tables get a composite FK `(draft_id, team_id)` → `drafts` `ON DELETE
 CASCADE`, `teamIsolationPolicy()`, an entry in `PROTOCOL_BUILDER_TABLES`,
@@ -375,7 +375,7 @@ are getters, which each file copies in its own `beforeAll`.
 - Schema and migration:
   - `pb/schema.ts` (§2.1);
   - `src/db/fingerprint.generated.ts`;
-  - `migrations/0002_studio_multi_replica_sync/`;
+  - `migrations/0003_studio_multi_replica_sync/`;
   - the ERD block.
 - New code:
   - new `pb/connections.ts` (§2.3);

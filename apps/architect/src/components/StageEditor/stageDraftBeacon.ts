@@ -21,6 +21,17 @@ type StageDraftBeacon = Readonly<{
   /** A stage editor is mounted. */
   open: boolean;
   /**
+   * Whether the editor on screen may write: the host granted it the stage.
+   *
+   * An editor opened while another tab holds the protocol is read-only from
+   * its first render, so it can never hold anything the protocol does not —
+   * it is a page to look at, and handing editing back to this tab leaves
+   * nothing to weigh. An editor that WAS granted the stage keeps that grant
+   * when the tab is demoted, so its work survives until the researcher
+   * decides what to do with it (`useProtocolAccessMode`).
+   */
+  editing: boolean;
+  /**
    * Whether it holds anything the protocol does not.
    *
    * A deep comparison against the document the editor opened on, so undoing an
@@ -38,6 +49,7 @@ type StageDraftBeacon = Readonly<{
 
 const CLOSED: StageDraftBeacon = Object.freeze({
   open: false,
+  editing: false,
   dirty: false,
   stage: undefined,
 });
@@ -74,9 +86,11 @@ export function publishStageDraft(
   stage: Stage,
   committed: Readonly<Record<string, unknown>>,
   draft: Readonly<Record<string, unknown>>,
+  editing: boolean,
 ): void {
   announce({
     open: true,
+    editing,
     dirty: !isEqual(prune(draft), prune(committed)),
     stage,
   });
