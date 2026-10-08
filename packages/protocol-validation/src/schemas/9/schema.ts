@@ -9,7 +9,7 @@ import { collectLocalizedStringsFromSchema } from '../../utils/collectLocalizedS
 import {
   findExclusiveVariableConflicts,
   findInterfaceOwnedOptionBindings,
-  findStageManagedOptionBindings,
+  findSingleStageBindings,
 } from '../../utils/findExclusiveVariableConflicts.ts';
 import { variableNameFor } from '../../utils/referenceSubjects.ts';
 import { validateReferences } from '../../utils/validateEntityAttributeReferences.ts';
@@ -732,30 +732,31 @@ const ProtocolSchema = z
       });
     }
 
-    // Stage-managed option lists: the stage that manages a variable's options
-    // keeps what each option means beside them (the Family Pedigree's kinship
-    // words), in its own section. A second managing stage would hold its own
-    // copy of that meaning, which an options edit made from the first could
-    // not rewrite, so the two would silently disagree. One stage manages a
-    // variable's options: every stage that shares one is refused, naming the
-    // others, as Architect refuses it in each of them.
-    const managedBindings = findStageManagedOptionBindings(protocol, hits);
-    const managedKey = (binding: (typeof managedBindings)[number]) =>
+    // Single-stage slots: each stage binding a variable at such a slot
+    // decides something about it from its own configuration — what its
+    // options mean (the Family Pedigree's kinship words), or what it holds
+    // for everyone of the type (the pedigree's relationship to the
+    // participant) — so a second stage would silently contradict the first.
+    // One stage binds a variable there: every stage that shares one is
+    // refused, naming the others, as Architect refuses it in each of them.
+    const singleStageBindings = findSingleStageBindings(protocol, hits);
+    const bindingKey = (binding: (typeof singleStageBindings)[number]) =>
       JSON.stringify([
         binding.subject.entity,
         binding.subject.type ?? null,
         binding.variableId,
+        binding.descriptor.reason,
       ]);
-    for (const binding of managedBindings) {
+    for (const binding of singleStageBindings) {
       const { entity, type } = binding.subject;
       if (entity !== 'ego' && type === undefined) continue;
-      const key = managedKey(binding);
+      const key = bindingKey(binding);
       const others = [
         ...new Set(
-          managedBindings
+          singleStageBindings
             .filter(
               (other) =>
-                other.stageId !== binding.stageId && managedKey(other) === key,
+                other.stageId !== binding.stageId && bindingKey(other) === key,
             )
             .map((other) => `"${other.stageLabel}"`),
         ),
@@ -765,7 +766,7 @@ const ProtocolSchema = z
         entity === 'ego' ? { entity } : { entity, type: type ?? '' };
       ctx.addIssue({
         code: 'custom' as const,
-        message: `The options of attribute "${variableNameFor(protocol, subject, binding.variableId)}" are also managed by ${others.length === 1 ? 'the stage' : 'the stages'} ${others.join(', ')}, but only one stage may manage them, because each decides ${binding.descriptor.owner}. Choose another attribute.`,
+        message: `${others.length === 1 ? 'The stage' : 'The stages'} ${others.join(', ')} also ${others.length === 1 ? 'uses' : 'use'} attribute "${variableNameFor(protocol, subject, binding.variableId)}" here, but only one stage may, because ${binding.descriptor.reason}. Choose another attribute.`,
         path: binding.path,
       });
     }

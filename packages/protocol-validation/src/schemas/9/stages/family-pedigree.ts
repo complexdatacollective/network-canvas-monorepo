@@ -77,6 +77,9 @@ const GenderIdentitySchema = z.strictObject({
     stageManagedOptions: {
       owner: 'the kinship words each option takes',
     },
+    singleStage: {
+      reason: 'each decides the kinship words each of its options takes',
+    },
   }),
   // Which kinship words each option takes (mother or father, sister or
   // brother, parent or sibling). An option not listed takes neutral words.
@@ -123,7 +126,9 @@ export const NodeConfigurationSchema = z.strictObject({
   // the participant (`PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT`), so that later
   // stages can filter and skip on it. Worked out from the family, not asked:
   // written for everyone connected to the participant each time they leave
-  // the stage, and cleared for anyone no longer connected.
+  // the stage, and cleared for anyone of the type outside that family. So
+  // one stage records it: another, drawing a family of its own, would clear
+  // the first one's.
   relationshipToParticipantAttribute: entityAttributeReference({
     subject: 'stageSubject',
     usage: 'unvalidatedAttribute',
@@ -134,6 +139,10 @@ export const NodeConfigurationSchema = z.strictObject({
         "the Family Pedigree interface, which records each person's relationship to the participant",
     },
     ownedOptions: 'pedigreeRelationshipToParticipant',
+    singleStage: {
+      reason:
+        "each works out every person's relationship to the participant from its own family, and clears it from anyone outside that family",
+    },
   }).optional(),
 });
 

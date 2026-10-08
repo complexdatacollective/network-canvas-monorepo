@@ -1,4 +1,7 @@
-import { createMessageError } from '@codaco/app-i18n/messages';
+import {
+  createMessageError,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
 import {
   type InterfaceOwnedOption,
   optionsMatchInterfaceOwnedSet,
@@ -122,21 +125,21 @@ export function ruleOutValuesOutsideOwnedSet<T extends SlotVariableOption>(
 }
 
 /**
- * The pool, with every attribute whose options another stage manages RULED
- * OUT rather than dropped, for a slot whose stage manages them: only one stage
- * may. `managersElsewhere` names those other stages, and is empty for an
- * attribute this stage may take.
+ * The pool, with every attribute another stage already binds at a slot only
+ * one stage may bind it at RULED OUT rather than dropped (see
+ * `SingleStageSlotDescriptor`). `holdersElsewhere` names those other stages,
+ * and is empty for an attribute this stage may take.
  */
-export function ruleOutOptionsManagedElsewhere<T extends SlotVariableOption>(
+export function ruleOutHeldElsewhere<T extends SlotVariableOption>(
   options: readonly T[],
-  managersElsewhere: (variableId: string) => readonly string[],
+  holdersElsewhere: (variableId: string) => readonly string[],
   words: (
     attributeName: string,
     stageLabels: readonly string[],
   ) => NonNullable<VariablePickerOption['unusableWords']>,
 ): T[] {
   return options.map((option) => {
-    const stageLabels = managersElsewhere(option.value);
+    const stageLabels = holdersElsewhere(option.value);
     return stageLabels.length === 0
       ? option
       : {
@@ -147,17 +150,18 @@ export function ruleOutOptionsManagedElsewhere<T extends SlotVariableOption>(
   });
 }
 
-/** The refusal for a pick whose options another stage manages. */
-export const managedElsewhereIssue = (
+/** The refusal for a pick another stage already holds at such a slot. */
+export const heldElsewhereIssue = (
   allVariables: Readonly<Variables>,
   variableId: unknown,
-  managersElsewhere: (variableId: string) => readonly string[],
+  holdersElsewhere: (variableId: string) => readonly string[],
+  refusal: MessageDescriptor,
 ): string | undefined =>
   typeof variableId !== 'string' ||
   variableId === '' ||
-  managersElsewhere(variableId).length === 0
+  holdersElsewhere(variableId).length === 0
     ? undefined
-    : createMessageError(slotVariableMessages.managedElsewhereRefusal, {
+    : createMessageError(refusal, {
         attributeName: variableDisplayName(allVariables, variableId),
       });
 

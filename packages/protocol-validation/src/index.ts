@@ -183,8 +183,10 @@ export {
   type ExclusiveVariableSlot,
   findExclusiveVariableSlots,
   findInterfaceOwnedOptionBindings,
+  findSingleStageBindings,
   findStageManagedOptionBindings,
   type InterfaceOwnedOptionBinding,
+  type SingleStageBinding,
   type StageManagedOptionBinding,
 } from './utils/findExclusiveVariableConflicts.ts';
 export {

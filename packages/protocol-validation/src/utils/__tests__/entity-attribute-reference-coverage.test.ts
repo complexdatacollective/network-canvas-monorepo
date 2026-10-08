@@ -78,6 +78,12 @@ const EXPECTED_STAGE_MANAGED_OPTION_OWNERS = [
   'the kinship words each option takes',
 ];
 
+// Every slot only one stage may bind a variable at.
+const EXPECTED_SINGLE_STAGE_REASONS = [
+  'each decides the kinship words each of its options takes',
+  "each works out every person's relationship to the participant from its own family, and clears it from anyone outside that family",
+];
+
 // The descriptors themselves, by the same traversal as countTagged.
 const collectDescriptors = (
   schema: z.ZodType,
@@ -165,6 +171,24 @@ describe('entity-attribute reference coverage', () => {
     expect([...new Set(owners)].toSorted()).toEqual(
       EXPECTED_STAGE_MANAGED_OPTION_OWNERS,
     );
+  });
+
+  it('declares exactly the expected single-stage slots', () => {
+    const reasons = collectDescriptors(CurrentProtocolSchema)
+      .map((descriptor) => descriptor.singleStage?.reason)
+      .filter((reason): reason is string => reason !== undefined);
+    expect([...new Set(reasons)].toSorted()).toEqual(
+      EXPECTED_SINGLE_STAGE_REASONS.toSorted(),
+    );
+  });
+
+  // A managing stage keeps its own copy of what the options mean, which an
+  // options edit made from another stage could not rewrite.
+  it('lets only one stage manage a variable’s options', () => {
+    for (const descriptor of collectDescriptors(CurrentProtocolSchema)) {
+      if (!descriptor.stageManagedOptions) continue;
+      expect(descriptor.singleStage).toBeDefined();
+    }
   });
 
   // Managing a variable's options is not owning the variable: other stages
