@@ -250,6 +250,7 @@ different stages without re-creating the Redux store: only the
 | `posthogClient`                 | A posthog-js client (needs `capture`, `captureException`, `register`) | no       | Pre-initialised PostHog client. When provided, the package emits events through it without modifying its config. When absent, the package lazy-initialises its own named instance against `ph-relay.networkcanvas.com`.                                                                                                                                                                                                                                                                                                             |
 | `disableAnalytics`              | `boolean`                                                             | no       | When `true`, all event emission is suppressed (no `posthog-js` import). Default `false`. Use for E2E and synthetic-interview runs.                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `finishConfirmationDescription` | `ReactNode`                                                           | no       | Host-specific explanation shown in the finish confirmation dialog. Defaults to localized neutral guidance that does not promise responses are immutable. A subscribed message component can keep a host override responsive to language changes.                                                                                                                                                                                                                                                                                    |
+| `catalog`                       | `InterviewCatalog`                                                    | no       | The interface language's messages from `loadInterviewCatalog`, given the same `requestedLocales` and the session's `localePreference`. Lets the interview render, and hydrate, without waiting for that language to download. Used only while it matches the negotiated language.                                                                                                                                                                                                                                                   |
 | `flags`                         | `{ isE2E?, isDevelopment? }`                                          | no       | `isE2E: true` exposes `window.__interviewStore` for Playwright fixtures. `isDevelopment: true` enables redux-logger.                                                                                                                                                                                                                                                                                                                                                                                                                |
 
 The package replaces a previous `onError` callback with internal `posthog.captureException` calls; render errors and asset-load failures are reported via the resolved analytics client (or suppressed when `disableAnalytics` is `true`). The host does not need to wire its own error sink.
@@ -313,8 +314,24 @@ The interface currently supports `en`, `en-GB`, `es`, `zh-Hans`, `zh-Hant`,
 `es-MX` to `es`, `zh-CN` and `zh-SG` to `zh-Hans`, `zh-TW`, `zh-HK` and `zh-MO`
 to `zh-Hant`, `de-AT` to `de`, `nl-BE` to `nl`, `pt` or `pt-PT` to `pt-BR`,
 `it-CH` to `it`, and `fr-CA` to `fr`. Unsupported or malformed requests fall
-back to `en`. All interface messages are bundled, so switching language needs no
-network. Research values and identifiers are always passed through unchanged.
+back to `en`. Each language's messages are a separate chunk (see below). Research values and identifiers are always passed through unchanged.
+
+Each interface language's messages are a separate chunk, loaded when an
+interview first shows that language; English needs none. A Shell mounting in a
+language that has not loaded yet shows a spinner on the interview's surface
+until it has, rather than render English first, and a later change keeps the
+current language on screen until the new one is ready. An offline host keeps
+every language available by precaching every chunk of its build, as a PWA's
+service worker does.
+
+A host can take that download off the interview's path with
+`loadInterviewCatalog(requestedLocales, localePreference)` from
+`@codaco/interview/catalog`, which negotiates exactly as `Shell` does and
+resolves to `{ locale, messages }`. The entry carries no React, so a server
+can import it: a server-rendered host awaits it and passes the result as
+`catalog`, and the interview renders and hydrates in that language with no
+spinner and no request. A client host calls it without awaiting while it
+prepares the payload; the Shell then finds the language already loaded.
 
 Changing `requestedLocales` takes effect immediately and preserves the mounted
 interview, pending form input, navigation and answers. The package sets `lang`
@@ -354,16 +371,19 @@ Hosts rendering exported controls outside `Shell`, such as an inline
 `ProtocolField` preview, need the two providers `Shell` mounts for itself:
 
 - `InterviewI18nProvider` supplies the interface language. It takes
-  `requestedLocale` (a string, an ordered array, or `null`) and an optional
-  `localePreference`, and resolves them as above.
+  `requestedLocale` (a string, an ordered array, or `null`), an optional
+  `localePreference` and an optional `catalog`, and resolves them as above.
+  Unlike `Shell`, it brings no Suspense boundary of its own: its first render
+  in a language that has not loaded yet suspends, so render it under one.
 - `ProtocolLocalizationProvider` supplies the protocol language. It takes
   `localization` (the protocol's declaration), `localeOptions`,
   `requestedLocales`, `localePreference`, `recordedLocale`,
   `onLocalePreferenceChange` and `onLocaleRecorded`. Controls that render
   protocol-authored text throw outside it.
 
-Hosts that already own an i18n provider can instead merge `interviewCatalogs`
-from `@codaco/interview/locales` into their app catalog. Without
+Hosts that already own an i18n provider can instead add
+`interviewCatalogLoaders` from `@codaco/interview/locales` to their app's
+catalog source. Without
 `InterviewI18nProvider`, standalone controls use their English defaults.
 
 #### Analytics
@@ -461,6 +481,12 @@ export async function loadInterviewPayload(
 node already initialised — call it once when you create a new interview
 record so subsequent loads pass schema validation.
 
+A host that holds the validated protocol document itself, rather than
+flattened database records, builds the protocol half with
+`currentProtocolToPayload(protocol, { id, importedAt })` from
+`@codaco/interview/contract`. Pass the same `id` and `importedAt` every time
+the same protocol is loaded.
+
 ---
 
 ## Sparse entity attribute flow
@@ -541,8 +567,9 @@ so persistence and export do not reintroduce nullish attribute values.
 ## Public API reference
 
 Everything below is exported from `'@codaco/interview'`. Additional public
-subpaths expose the contract, protocol schema version, locale catalogs and
-styles; host code should not reach into package internals.
+subpaths expose the contract, protocol schema version, locale catalogs, the
+interview catalog loader (`@codaco/interview/catalog`) and styles; host code
+should not reach into package internals.
 
 ### Components
 
@@ -615,6 +642,7 @@ type ResolvedAsset = {
   name: string;
   type: 'image' | 'video' | 'audio' | 'network' | 'geojson' | 'apikey';
   value?: string; // apikey only
+  source?: string; // the file's name in the protocol, used for MIME type and CSV/JSON decisions
 };
 
 type SyncOptions = {

@@ -14,6 +14,7 @@ import { Link, useLocation } from 'wouter';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { Badge } from '@codaco/fresco-ui/Badge';
 import { useProtocolAccessMode } from '~/hooks/useProtocolAccessMode';
 import { type MessageConfig, formatConfig } from '~/i18n/formatConfig';
 import {
@@ -202,26 +203,23 @@ const ProjectNav = () => {
     );
   });
 
-  // A read-only tab renders one whole-protocol view at whatever /protocol URL
-  // it is on, so these tabs would push history entries and change nothing. A
-  // control that is visibly live and does nothing is the defect this guard was
-  // written to remove, so they are replaced by a statement of the state.
-  const items =
-    accessMode === 'read-only'
-      ? [
-          <span
-            key="read-only"
-            className="inline-flex items-center gap-2 text-base leading-none font-semibold"
-          >
-            <Eye className="size-4 shrink-0" aria-hidden />
-            {intl.formatMessage(messages.readOnly)}
-          </span>,
-        ]
-      : tabs;
-
-  return (
-    <NavShell leading={<Breadcrumb items={breadcrumbItems} />} items={items} />
+  // Every page stays reachable read-only, so the tabs stay too; what changes is
+  // that nothing on them can be edited, which the bar states beside the
+  // protocol's name — where it stays visible on a narrow bar, whose tabs move
+  // into the drawer.
+  const leading = (
+    <div className="flex min-w-0 flex-1 items-center gap-3">
+      <Breadcrumb items={breadcrumbItems} />
+      {accessMode === 'read-only' && (
+        <Badge appearance="outline" className="shrink-0">
+          <Eye className="size-3.5 shrink-0" aria-hidden />
+          {intl.formatMessage(messages.readOnly)}
+        </Badge>
+      )}
+    </div>
   );
+
+  return <NavShell leading={leading} items={tabs} />;
 };
 
 export default ProjectNav;

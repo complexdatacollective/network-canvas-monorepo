@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import { loadCatalog } from '@codaco/app-i18n/locales';
 import { createAppIntl } from '@codaco/app-i18n/messages';
 
-import { interviewCatalogs } from '../../../locales/catalogs';
+import { interviewCatalogLoaders } from '../../../locales/catalogs';
 import { getMapboxLocale, updateMapboxControlLocale } from '../mapboxLocale';
 
 function makeMapControls() {
@@ -38,8 +39,11 @@ function makeMapControls() {
 }
 
 describe('native Mapbox control localization', () => {
-  it('supplies Spanish control labels at construction and updates the same DOM on a live switch', () => {
-    const es = createAppIntl({ locale: 'es', messages: interviewCatalogs.es });
+  it('supplies Spanish control labels at construction and updates the same DOM on a live switch', async () => {
+    const es = createAppIntl({
+      locale: 'es',
+      messages: await loadCatalog('es', interviewCatalogLoaders),
+    });
     expect(getMapboxLocale(es)).toEqual({
       'Map.Title': 'Mapa',
       'LogoControl.Title': 'Página de inicio de Mapbox',

@@ -10,6 +10,7 @@ import SegmentedSwitcher, {
   type SegmentedOption,
 } from '@codaco/fresco-ui/SegmentedSwitcher';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 import { type MessageConfig, formatConfig } from '~/i18n/formatConfig';
 
 import AssetCard from './AssetCard';
@@ -134,6 +135,7 @@ const Assets = ({
 }: AssetsProps) => {
   const intl = useAppIntl();
   const unresolvedAssetIds = useUnresolvedAssetIds();
+  const readOnly = useProtocolReadOnly();
   const handleDelete = disableDelete ? null : onDelete;
   const selectedAssetType = (assetType ?? 'all') as AssetFilterValue;
 
@@ -162,15 +164,17 @@ const Assets = ({
       // Activating the card is a second route to Preview, so hiding the button
       // is not enough: it would open a preview of bytes that are known not to
       // exist, with a download that cannot work. Send the researcher to the
-      // one action that resolves it instead.
+      // one action that resolves it instead. Read-only, that action is
+      // unavailable and there is nothing else to open, so activating does
+      // nothing.
       if (unresolvedAssetIds.has(selectedKey)) {
-        onReplace?.(selectedKey);
+        if (!readOnly) onReplace?.(selectedKey);
         return;
       }
 
       onPreview?.(selectedKey);
     },
-    [onPreview, onReplace, onSelect, unresolvedAssetIds],
+    [onPreview, onReplace, onSelect, readOnly, unresolvedAssetIds],
   );
 
   const renderItem = useCallback(

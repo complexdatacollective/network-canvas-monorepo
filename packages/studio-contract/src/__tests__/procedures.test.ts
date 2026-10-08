@@ -9,6 +9,11 @@ const STUDIO_TAGS = [
   'audit.get',
   'audit.list',
   'me',
+  'participant.analytics',
+  'participant.finish',
+  'participant.redeem',
+  'participant.session',
+  'participant.sync',
   'protocols.addInformationStage',
   'protocols.create',
   'protocols.draft',
@@ -16,6 +21,7 @@ const STUDIO_TAGS = [
   'protocols.moveStage',
   'setup.complete',
   'status',
+  'status.updateAvailable',
   'studies.counts',
   'studies.create',
   'studies.get',
@@ -39,6 +45,11 @@ const STUDIO_MIDDLEWARE: Record<
   'audit.get': [AUTHENTICATED],
   'audit.list': [AUTHENTICATED],
   'me': [AUTHENTICATED],
+  'participant.analytics': [REQUIRE_SESSION],
+  'participant.finish': [REQUIRE_SESSION],
+  'participant.redeem': [],
+  'participant.session': [REQUIRE_SESSION],
+  'participant.sync': [REQUIRE_SESSION],
   'protocols.addInformationStage': [AUTHENTICATED],
   'protocols.create': [AUTHENTICATED, TEAM_ADMINISTRATION],
   'protocols.draft': [AUTHENTICATED],
@@ -46,6 +57,7 @@ const STUDIO_MIDDLEWARE: Record<
   'protocols.moveStage': [AUTHENTICATED],
   'setup.complete': [],
   'status': [],
+  'status.updateAvailable': [AUTHENTICATED],
   'studies.counts': [AUTHENTICATED],
   'studies.create': [AUTHENTICATED],
   'studies.get': [AUTHENTICATED],
@@ -54,13 +66,6 @@ const STUDIO_MIDDLEWARE: Record<
   'team.cancelInvitation': [AUTHENTICATED],
   'team.createInvitation': [AUTHENTICATED],
   'team.updateMemberRole': [AUTHENTICATED],
-};
-
-const PARTICIPANT_MIDDLEWARE: Record<string, ReadonlyArray<string>> = {
-  'participant.redeem': [],
-  'participant.session': [REQUIRE_SESSION],
-  'participant.sync': [REQUIRE_SESSION],
-  'participant.finish': [REQUIRE_SESSION],
 };
 
 type DeclaredRpc = {
@@ -102,8 +107,9 @@ describe('StudioRpcs', () => {
 });
 
 describe('ParticipantRpcs', () => {
-  it('declares the four participant procedures and nothing else', () => {
+  it('declares the five participant procedures and nothing else', () => {
     expect([...ParticipantRpcs.requests.keys()].toSorted()).toEqual([
+      'participant.analytics',
       'participant.finish',
       'participant.redeem',
       'participant.session',
@@ -111,18 +117,19 @@ describe('ParticipantRpcs', () => {
     ]);
   });
 
-  it.each(Object.entries(PARTICIPANT_MIDDLEWARE))(
-    'declares the expected middleware on %s',
-    (tag, expected) => {
-      expect(middlewareKeys(ParticipantRpcs.requests, tag)).toEqual([
-        ...expected,
-      ]);
-    },
-  );
+  it.each(
+    Object.entries(STUDIO_MIDDLEWARE).filter(([tag]) =>
+      tag.startsWith('participant.'),
+    ),
+  )('declares the expected middleware on %s', (tag, expected) => {
+    expect(middlewareKeys(ParticipantRpcs.requests, tag)).toEqual([
+      ...expected,
+    ]);
+  });
 
-  it('is not merged into the rpc plane, because nothing serves it yet', () => {
+  it('is merged into the rpc plane', () => {
     for (const tag of ParticipantRpcs.requests.keys()) {
-      expect(StudioRpcs.requests.has(tag)).toBe(false);
+      expect(StudioRpcs.requests.has(tag)).toBe(true);
     }
   });
 });

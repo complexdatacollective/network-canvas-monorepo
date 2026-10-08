@@ -30,6 +30,45 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
   // Base valid protocol for testing variations
   const baseValidProtocol = createBaseProtocol();
 
+  // Name generator prompts may only stamp boolean attributes, which the base
+  // protocol does not define; an encrypted text variable stands in for the
+  // most sensitive thing a prompt must never overwrite.
+  const personDefinition = baseValidProtocol.codebook.node.person;
+  const protocolWithFlagVariables = {
+    ...baseValidProtocol,
+    codebook: {
+      ...baseValidProtocol.codebook,
+      node: {
+        ...baseValidProtocol.codebook.node,
+        person: {
+          ...personDefinition,
+          variables: {
+            ...personDefinition.variables,
+            closeFriend: {
+              name: 'Close_Friend',
+              label: 'Close friend',
+              type: 'boolean',
+              component: 'Boolean',
+            },
+            coworker: {
+              name: 'Coworker',
+              label: 'Coworker',
+              type: 'boolean',
+              component: 'Toggle',
+            },
+            secretName: {
+              name: 'Secret_Name',
+              label: 'Secret name',
+              type: 'text',
+              component: 'Text',
+              encrypted: true,
+            },
+          },
+        },
+      },
+    },
+  };
+
   describe('Stage Subject Validation', () => {
     it('validates protocol with valid stage subjects', () => {
       const result = ProtocolSchemaV9.safeParse(baseValidProtocol);
@@ -918,9 +957,65 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
   });
 
   describe('Additional Attributes Validation', () => {
+    const nameGeneratorWith = (
+      additionalAttributes: { variable: string; value: boolean }[],
+    ) => ({
+      ...protocolWithFlagVariables,
+      stages: [
+        {
+          id: 'nameGen1',
+          type: 'NameGenerator',
+          label: localized('Name Generator'),
+          subject: { entity: 'node', type: 'person' },
+          form: {
+            title: localized('Add person'),
+            fields: [{ variable: 'name', prompt: localized('Enter name') }],
+          },
+          prompts: [
+            {
+              id: 'prompt1',
+              text: localized('Who do you know?'),
+              additionalAttributes,
+            },
+          ],
+        },
+      ],
+    });
+
+    it.each([
+      ['a number', 'age'],
+      ['a categorical', 'category'],
+      ['a text', 'name'],
+      ['an encrypted text', 'secretName'],
+    ])(
+      'rejects additionalAttributes that target %s attribute',
+      (_label, variable) => {
+        const result = ProtocolSchemaV9.safeParse(
+          nameGeneratorWith([{ variable, value: true }]),
+        );
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          const typeError = result.error.issues.find(
+            (issue) =>
+              issue.message ===
+              `The attribute "${variable}" must be of type boolean`,
+          );
+          expect(typeError?.path).toEqual([
+            'stages',
+            0,
+            'prompts',
+            0,
+            'additionalAttributes',
+            0,
+            'variable',
+          ]);
+        }
+      },
+    );
+
     it('validates additionalAttributes with correct variable references', () => {
       const nameGeneratorProtocol = {
-        ...baseValidProtocol,
+        ...protocolWithFlagVariables,
         stages: [
           {
             id: 'nameGen1',
@@ -944,8 +1039,8 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 id: 'prompt1',
                 text: localized('Who do you know?'),
                 additionalAttributes: [
-                  { variable: 'age', value: true },
-                  { variable: 'category', value: false },
+                  { variable: 'closeFriend', value: true },
+                  { variable: 'coworker', value: false },
                 ],
               },
             ],
@@ -2292,7 +2387,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
 
     it('handles complex nested validation scenarios', () => {
       const complexProtocol = {
-        ...baseValidProtocol,
+        ...protocolWithFlagVariables,
         stages: [
           {
             id: 'complex1',
@@ -2316,8 +2411,8 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 id: 'prompt1',
                 text: localized('Main prompt'),
                 additionalAttributes: [
-                  { variable: 'age', value: true },
-                  { variable: 'category', value: false },
+                  { variable: 'closeFriend', value: true },
+                  { variable: 'coworker', value: false },
                 ],
               },
             ],

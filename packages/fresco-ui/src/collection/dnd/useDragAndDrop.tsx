@@ -48,6 +48,7 @@ export function useDragAndDrop<T>(options: DragAndDropOptions<T>): {
     getItemMetadata,
     renderPreview,
     announcedName,
+    getItemAnnouncedName,
   } = options;
 
   // Get the item type(s) from the getItems function for drop target acceptance
@@ -162,7 +163,9 @@ export function useDragAndDrop<T>(options: DragAndDropOptions<T>): {
           metadata,
           preview,
           announcedName:
-            dragKeys.size > 1 ? `${dragKeys.size} items` : `Item ${key}`,
+            dragKeys.size > 1
+              ? `${dragKeys.size} items`
+              : (getItemAnnouncedName?.(key) ?? `Item ${key}`),
           disabled: isDisabled,
         });
 
@@ -305,6 +308,7 @@ export function useDragAndDrop<T>(options: DragAndDropOptions<T>): {
     [
       getItems,
       getItemMetadata,
+      getItemAnnouncedName,
       renderPreview,
       handleDrop,
       dropTarget,

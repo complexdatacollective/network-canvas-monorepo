@@ -18,6 +18,7 @@ declare global {
         },
       ): string;
       getNetworkState(): SessionSnapshot['network'] | undefined;
+      remountInterview(interviewId: string): void;
       reset(): void;
       setFinishBehavior(behavior: FinishBehavior): void;
       resolveManualFinish(): void;

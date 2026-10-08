@@ -5,10 +5,22 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
+
+import { architectCatalogSource } from '~/locales/catalogs';
 
 import { ArchitectI18nRoot } from '../ArchitectI18nRoot';
 import * as preference from '../preference';
+
+// The provider shows a language once its catalog has loaded. Loading these
+// up front lets the first render in Spanish, and the switch to British
+// English, render synchronously, as the assertions below expect.
+beforeAll(() =>
+  Promise.all([
+    architectCatalogSource.load('es'),
+    architectCatalogSource.load('en-GB'),
+  ]),
+);
 
 beforeEach(() => {
   localStorage.clear();

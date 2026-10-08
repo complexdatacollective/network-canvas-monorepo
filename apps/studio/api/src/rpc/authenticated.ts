@@ -7,6 +7,7 @@ import {
 import { Unauthorized } from '@codaco/studio-contract/schema/errors';
 import { UserId } from '@codaco/studio-contract/schema/ids';
 
+import { provideCaller } from '../audit/actor.ts';
 import { principalFromHeaders } from '../auth/principal.ts';
 import { AuthService, type SessionPrincipal } from '../auth/service.ts';
 import { enforceRateLimit } from '../rate-limit/enforce.ts';
@@ -49,11 +50,7 @@ export const AuthenticatedLive: Layer.Layer<
           RateLimiter,
           limiter,
         );
-        return yield* Effect.provideService(
-          effect,
-          Principal,
-          principalOf(principal.value),
-        );
+        return yield* provideCaller(principalOf(principal.value))(effect);
       });
   }),
 );

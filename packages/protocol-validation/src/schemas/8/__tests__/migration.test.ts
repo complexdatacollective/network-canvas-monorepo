@@ -2732,6 +2732,64 @@ describe('Migration V7 to V8', () => {
     });
   });
 
+  describe('name generator additionalAttributes', () => {
+    const buildNameGeneratorProtocol = (
+      additionalAttributes: { variable: string; value: boolean }[],
+    ) =>
+      ({
+        schemaVersion: 7 as const,
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              variables: {
+                name: { name: 'Name', type: 'text', component: 'Text' },
+                age: { name: 'Age', type: 'number', component: 'Number' },
+                closeFriend: {
+                  name: 'Close_friend',
+                  type: 'boolean',
+                  component: 'Toggle',
+                },
+              },
+            },
+          },
+          edge: {},
+          ego: {},
+        },
+        stages: [
+          {
+            id: 'ng1',
+            type: 'NameGenerator',
+            label: 'Name people',
+            subject: { entity: 'node', type: 'person' },
+            form: {
+              title: 'Add person',
+              fields: [{ variable: 'name', prompt: 'Name?' }],
+            },
+            prompts: [{ id: 'p1', text: 'Who?', additionalAttributes }],
+          },
+        ],
+      }) as Protocol<7>;
+
+    it('drops entries that target non-boolean attributes and keeps boolean ones', () => {
+      const migratedRaw = migrationV7toV8.migrate(
+        buildNameGeneratorProtocol([
+          { variable: 'name', value: true },
+          { variable: 'closeFriend', value: true },
+          { variable: 'age', value: false },
+        ]),
+        { name: 'Test Protocol' },
+      );
+      const parsed = V8OutputSchema.parse(migratedRaw);
+      const stage = parsed.stages[0];
+      expect(stage && 'prompts' in stage && stage.prompts[0]).toHaveProperty(
+        'additionalAttributes',
+        [{ variable: 'closeFriend', value: true }],
+      );
+    });
+  });
+
   describe('OrdinalBin prompt color normalisation', () => {
     const buildOrdinalProtocol = (prompt: Record<string, unknown>) =>
       ({

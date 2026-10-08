@@ -9,7 +9,6 @@ import {
 } from '@codaco/studio-contract/schema/errors';
 
 import { AuthService } from '../auth/service.ts';
-import { AUTH_TABLES } from '../db/auth-schema.ts';
 import type { Database } from '../db/client.ts';
 import { sqlErrorsOnly } from '../db/errors.ts';
 import {
@@ -27,11 +26,11 @@ import {
   resolveStudy as resolveStudyTenant,
   seesEveryTeamStudy,
 } from '../study/tenancy.ts';
+import { sharedMemberRole } from '../team/member-role.ts';
 import { roleGrantsTeamAdministration } from '../team/roles.ts';
 import { requireDatabase } from './bridge.ts';
 import type { RpcDeps } from './deps.ts';
 
-const { team_members: teamMembers } = AUTH_TABLES;
 const { studyRoleGrants } = STUDY_ROLE_TABLES;
 const { studies } = STUDY_TABLES;
 
@@ -85,10 +84,20 @@ export const resolveStudy = Effect.fnUntraced(function* (
   return resolved;
 });
 
-/**
- * A caller that also locks the membership row `FOR UPDATE` must take that lock
- * first, or two concurrent calls can deadlock.
- */
+/** A caller that also locks the membership row `FOR UPDATE` must take that lock first, or concurrent calls deadlock. */
+export const requireLockedRole = Effect.fnUntraced(function* (
+  access: TeamAccess,
+): Effect.fn.Return<
+  string,
+  Forbidden | SqlError.SqlError,
+  Transaction | Principal
+> {
+  const principal = yield* Principal;
+  const role = yield* sharedMemberRole(access.teamId, principal.userId);
+  if (role === null) return yield* new Forbidden({});
+  return role;
+});
+
 export const requireProtocol = Effect.fnUntraced(function* (
   access: TeamAccess,
   protocolId: string,
@@ -99,21 +108,7 @@ export const requireProtocol = Effect.fnUntraced(function* (
 > {
   const principal = yield* Principal;
   const { tx } = yield* Transaction;
-  const members = yield* sqlErrorsOnly(
-    tx
-      .select({ role: teamMembers.role })
-      .from(teamMembers)
-      .where(
-        and(
-          eq(teamMembers.team_id, access.teamId),
-          eq(teamMembers.user_id, principal.userId),
-        ),
-      )
-      .for('share', { of: teamMembers }),
-  );
-  const member = members[0];
-  if (member === undefined) return yield* new Forbidden({});
-  const seesEveryStudy = seesEveryTeamStudy(member.role);
+  const seesEveryStudy = seesEveryTeamStudy(yield* requireLockedRole(access));
   if (!seesEveryStudy) {
     yield* sqlErrorsOnly(
       tx

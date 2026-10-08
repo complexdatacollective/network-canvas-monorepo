@@ -3,15 +3,15 @@ import userEvent from '@testing-library/user-event';
 import { useState, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { commonCatalogs } from '@codaco/app-i18n/common';
-import { ecosystemLocales, mergeCatalogs } from '@codaco/app-i18n/locales';
+import { commonCatalogLoaders } from '@codaco/app-i18n/common';
+import { ecosystemLocales, loadCatalog } from '@codaco/app-i18n/locales';
 import { createAppIntl, type IntlShape } from '@codaco/app-i18n/messages';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
-import { frescoUiCatalogs } from '@codaco/fresco-ui/locales';
-import { protocolValidationCatalogs } from '@codaco/protocol-validation/locales';
+import { frescoUiCatalogLoaders } from '@codaco/fresco-ui/locales';
+import { protocolValidationCatalogLoaders } from '@codaco/protocol-validation/locales';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
+import { protocolBuilderCatalogLoaders } from '../../locales/catalogs.ts';
 import type { ProtocolLocalization } from '../../localization/localizedText.ts';
 import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
@@ -111,12 +111,12 @@ const context: ProtocolBuilderProtocolContext = {
 };
 
 /**
- * The catalog a host actually mounts, in the merge order `frescoUiCatalogs`
+ * The catalog a host actually mounts, in the merge order `loadCatalog`
  * documents: common verbs, then the shared components, then this package,
  * then the shared validation rule names `@codaco/protocol-validation` owns
- * (`architectCatalogs` merges them in the same order).
+ * (Architect merges them in the same order).
  *
- * All four layers matter to a sweep. Passing only `protocolBuilderCatalogs.es`
+ * All four layers matter to a sweep. Passing only this package's own Spanish
  * leaves `commonMessages.cancel` and every `frescoUi.*` id falling back to
  * English, and the fallbacks are not harmless noise: fresco-ui's field marker
  * is "Required", which is also the English of this package's own
@@ -124,12 +124,16 @@ const context: ProtocolBuilderProtocolContext = {
  * leak for a string protocol-builder never rendered. Mounting what a host
  * mounts is what makes the English left on screen this package's own.
  */
-const SPANISH = mergeCatalogs(
-  commonCatalogs.es ?? {},
-  frescoUiCatalogs.es ?? {},
-  protocolBuilderCatalogs.es ?? {},
-  protocolValidationCatalogs.es ?? {},
+const SPANISH = await loadCatalog(
+  'es',
+  commonCatalogLoaders,
+  frescoUiCatalogLoaders,
+  protocolBuilderCatalogLoaders,
+  protocolValidationCatalogLoaders,
 );
+
+/** This package's own Spanish alone, for the checks about what it ships. */
+const SPANISH_OWN = await loadCatalog('es', protocolBuilderCatalogLoaders);
 
 /**
  * `testing/i18n.ts`'s `esIntl` carries only this package's own catalog, which
@@ -161,7 +165,7 @@ describe('the codebook read in Spanish', () => {
   it('ships Spanish for the ids this directory declares', () => {
     // Checked first so a merge that has not landed this directory's catalog
     // entries fails saying so, rather than as an unexplained missing string.
-    expect(Object.keys(protocolBuilderCatalogs.es ?? {})).toEqual(
+    expect(Object.keys(SPANISH_OWN)).toEqual(
       expect.arrayContaining([
         'protocolBuilder.codebookEntity.codebookTitle',
         'protocolBuilder.codebookEntity.subjectDescription',

@@ -4,7 +4,8 @@
 // tabs on the SAME protocol both autosave into one row (last-writer-wins). To
 // prevent that, tabs announce their active protocol over a same-origin
 // BroadcastChannel; the second tab to claim an id is told it is not exclusive
-// and becomes a read-only view (autosave disabled).
+// and goes read-only: it can still be browsed, but nothing in it can be changed
+// and autosave is off.
 //
 // This is a leaf module (no app imports) so it can't create import cycles. A
 // redux listener middleware bridges it to the store.

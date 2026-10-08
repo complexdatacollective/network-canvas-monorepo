@@ -18,7 +18,7 @@ Usage: studio-api <command>
 
   serve            the HTTP, RPC and WebSocket process (the default)
   worker           background jobs and cron schedules
-  migrate          create this build's schema in an empty database
+  migrate          apply this build's migrations (creating the schema in an empty database)
   maintenance on   close the instance to users
   maintenance off  reopen it
   rotate-secrets   re-encrypt stored secrets under the keyring's current entry

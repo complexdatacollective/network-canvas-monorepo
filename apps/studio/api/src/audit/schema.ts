@@ -114,7 +114,7 @@ const auditEvents = pgTable(
     ),
     check(
       'audit_events_actor_kind_check',
-      sql`${table.actorKind} IN ('user', 'api_token', 'system')`,
+      sql`${table.actorKind} IN ('user', 'api_token', 'system', 'participant')`,
     ),
     check(
       'audit_events_actor_id_check',

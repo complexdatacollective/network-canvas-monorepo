@@ -265,14 +265,16 @@ describe.skipIf(!testDb)('opening a protocol-builder session', () => {
     }
   });
 
-  it('decides a write on the role locked in its transaction, not the one the session read', async () => {
+  it('decides a read and a write on the role locked in its transaction, not the one the session read', async () => {
     staleRoles.set(MEMBER.userId, 'owner');
     try {
-      const sections = await client.call(
-        { principal: MEMBER },
-        client.rpc('ListSections', { protocolId: reachable }),
+      await expectRpcFailure(
+        client.callExit(
+          { principal: MEMBER },
+          client.rpc('ListSections', { protocolId: reachable }),
+        ),
+        'ProtocolNotFound',
       );
-      expect(sections.sectionIds).toContain('stageOrder');
       await expectRpcFailure(
         client.callExit(
           { principal: MEMBER },

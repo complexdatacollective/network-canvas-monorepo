@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Effect, type Exit, Option } from 'effect';
+import { Effect, Exit, Option } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -14,6 +14,7 @@ import {
 import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
+import type { RateLimiter } from '../rate-limit/limiter.ts';
 import { authServiceStub } from './support/auth.ts';
 import {
   insertTeam,
@@ -28,6 +29,7 @@ import {
   expectRpcFailure,
   type RpcTestClient,
 } from './support/rpc.ts';
+import { limiterWithoutStore } from './support/valkey.ts';
 
 const TEAM_ID = TeamId.make('rpc-protocol-reauth-team');
 
@@ -54,6 +56,7 @@ describe.skipIf(!testDb)(
       slug: string,
       role: string,
       staleRole: string,
+      limiter?: RateLimiter['Service'],
     ): Promise<Researcher> => {
       const principal: SessionPrincipal = {
         kind: 'user',
@@ -82,6 +85,7 @@ describe.skipIf(!testDb)(
       const client = await createRpcClient(
         createStudio(readEnv(), {
           services: database.services,
+          ...(limiter === undefined ? {} : { limiter }),
           auth: authServiceStub({
             getSession: () => Effect.succeedSome(principal),
             getMembership: (_userId, teamId) =>
@@ -231,6 +235,99 @@ describe.skipIf(!testDb)(
       );
 
       await expectRpcFailure(Promise.resolve(exit), 'Forbidden');
+    });
+
+    it('lists only what the role committed while the request is in flight can see', async () => {
+      const study = await createStudy('Demoted lister study');
+      const demoted = await addResearcher('demoted-lister', 'admin', 'admin');
+
+      const exit = await withChangeInFlight(
+        {
+          statement: `UPDATE team_members SET role = 'member' WHERE id = $1`,
+          params: [demoted.memberId],
+        },
+        () =>
+          demoted.client.callExit(
+            demoted.client.rpc('protocols.list', { teamId: TEAM_ID }),
+          ),
+      );
+
+      if (Exit.isFailure(exit)) throw new Error('the list was refused');
+      expect(exit.value.map((protocol) => protocol.id)).not.toContain(
+        study.protocolId,
+      );
+    });
+
+    const demotion = (memberId: string) => ({
+      statement: `UPDATE team_members SET role = 'member' WHERE id = $1`,
+      params: [memberId],
+    });
+
+    it('lists only the studies the role committed while the request is in flight can see', async () => {
+      const study = await createStudy('Demoted study lister study');
+      const demoted = await addResearcher('demoted-studies', 'admin', 'admin');
+
+      const exit = await withChangeInFlight(demotion(demoted.memberId), () =>
+        demoted.client.callExit(
+          demoted.client.rpc('studies.list', { teamId: TEAM_ID }),
+        ),
+      );
+
+      if (Exit.isFailure(exit)) throw new Error('the list was refused');
+      expect(exit.value.map((listed) => listed.id)).not.toContain(
+        study.studyId,
+      );
+    });
+
+    it('refuses a study read from an Admin demoted while the request is in flight', async () => {
+      const study = await createStudy('Demoted study reader study');
+      const demoted = await addResearcher('demoted-study', 'admin', 'admin');
+
+      const exit = await withChangeInFlight(demotion(demoted.memberId), () =>
+        demoted.client.callExit(
+          demoted.client.rpc('studies.get', { studyId: study.studyId }),
+        ),
+      );
+
+      await expectRpcFailure(Promise.resolve(exit), 'Forbidden');
+    });
+
+    it('refuses study counts to an Admin demoted after the study was resolved', async () => {
+      const study = await createStudy('Demoted counter study');
+      const resolved = Promise.withResolvers<void>();
+      const demoted = Promise.withResolvers<void>();
+      const holding: RateLimiter['Service'] = {
+        ...limiterWithoutStore,
+        check: (scope, subject) =>
+          scope === 'rpc_team'
+            ? Effect.andThen(
+                Effect.promise(async () => {
+                  resolved.resolve();
+                  await demoted.promise;
+                }),
+                limiterWithoutStore.check(scope, subject),
+              )
+            : limiterWithoutStore.check(scope, subject),
+      };
+      const counter = await addResearcher(
+        'demoted-counter',
+        'admin',
+        'admin',
+        holding,
+      );
+
+      const pending = counter.client.callExit(
+        counter.client.rpc('studies.counts', { studyId: study.studyId }),
+      );
+      await resolved.promise;
+      await database.run(
+        ownerAffected(`UPDATE team_members SET role = 'member' WHERE id = $1`, [
+          counter.memberId,
+        ]),
+      );
+      demoted.resolve();
+
+      await expectRpcFailure(pending, 'Forbidden');
     });
 
     it('refuses an edit through a grant revoked while the request is in flight', async () => {

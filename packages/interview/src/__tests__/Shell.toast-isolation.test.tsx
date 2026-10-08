@@ -32,6 +32,7 @@ import {
 
 import type { InterviewPayload, SyncHandler } from '../contract/types';
 import useStageValidation from '../hooks/useStageValidation';
+import { interviewCatalogSource } from '../i18n/catalog';
 import { runtimeMessages } from '../i18n/runtimeMessages';
 import Shell from '../Shell';
 import {
@@ -236,6 +237,14 @@ function ScopedToast({
     </InterviewToastProvider>
   );
 }
+
+// Loaded before anything renders, as a host loads a language before it
+// mounts an interview, so renders in these languages are synchronous.
+beforeAll(async () => {
+  await Promise.all(
+    ['es', 'en-GB'].map((locale) => interviewCatalogSource.load(locale)),
+  );
+});
 
 describe('Shell toast ownership', () => {
   it('keeps actual validation and queued language changes inside one Shell without writing answers', async () => {

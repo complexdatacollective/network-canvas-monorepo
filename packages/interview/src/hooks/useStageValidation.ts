@@ -1,19 +1,12 @@
 'use client';
 
-import {
-  type ReactNode,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-} from 'react';
+import { type ReactNode, useContext, useEffect, useRef } from 'react';
 
 import type { ToastVariant } from '@codaco/fresco-ui/Toast';
 
 import { useTrack } from '../analytics/useTrack';
 import { StageMetadataContext } from '../contexts/StageMetadataContext';
-import { useInterviewToastContext } from '../toast/InterviewToast';
-import { interviewToastManager } from '../toast/interviewToastManager';
+import { useInterviewToast } from '../toast/useInterviewToast';
 import type { Direction, NavigationIntent } from '../types';
 
 type StageConstraint = {
@@ -34,22 +27,13 @@ type StageConstraint = {
   };
 };
 
-type InterviewToastOptions = {
-  description: string | ReactNode;
-  variant: ToastVariant;
-  anchor: 'forward' | 'backward';
-  icon?: ReactNode;
-  timeout?: number;
-};
-
 type UseStageValidationOptions = {
   constraints: StageConstraint[];
 };
 
 function useStageValidation({ constraints }: UseStageValidationOptions) {
   const registerBeforeNext = useContext(StageMetadataContext);
-  const toastContext = useInterviewToastContext();
-  const toastManager = toastContext?.toastManager ?? interviewToastManager;
+  const { showToast, closeToast } = useInterviewToast();
   const track = useTrack();
 
   const constraintsRef = useRef(constraints);
@@ -60,48 +44,6 @@ function useStageValidation({ constraints }: UseStageValidationOptions) {
   // Track previous isMet values for auto-close
   const prevIsMetRef = useRef<boolean[]>([]);
 
-  const resolvePositionerProps = useCallback(
-    (anchor: 'forward' | 'backward') => {
-      if (!toastContext) return undefined;
-
-      const { forwardButtonRef, backButtonRef, orientation } = toastContext;
-      const anchorRef = anchor === 'forward' ? forwardButtonRef : backButtonRef;
-      const side =
-        orientation === 'vertical' ? ('right' as const) : ('top' as const);
-
-      return {
-        anchor: anchorRef.current,
-        side,
-      };
-    },
-    [toastContext],
-  );
-
-  const resolvePositionerPropsRef = useRef(resolvePositionerProps);
-  resolvePositionerPropsRef.current = resolvePositionerProps;
-
-  const showToast = useCallback(
-    (options: InterviewToastOptions): string => {
-      const positionerProps = resolvePositionerPropsRef.current(options.anchor);
-
-      return toastManager.add({
-        type: options.variant,
-        description: options.description,
-        timeout: options.timeout ?? 4000,
-        positionerProps,
-        data: options.icon ? { icon: options.icon } : undefined,
-      });
-    },
-    [toastManager],
-  );
-
-  const closeToast = useCallback(
-    (id: string) => {
-      toastManager.close(id);
-    },
-    [toastManager],
-  );
-
   // Auto-close toasts when constraints transition from unmet -> met
   useEffect(() => {
     const prevValues = prevIsMetRef.current;
@@ -111,14 +53,14 @@ function useStageValidation({ constraints }: UseStageValidationOptions) {
       if (constraint.isMet && prevValues[index] === false) {
         const toastId = activeToasts.get(index);
         if (toastId) {
-          toastManager.close(toastId);
+          closeToast(toastId);
           activeToasts.delete(index);
         }
       }
     });
 
     prevIsMetRef.current = constraints.map((c) => c.isMet);
-  }, [constraints, toastManager]);
+  }, [constraints, closeToast]);
 
   // Register the keyed beforeNext handler
   useEffect(() => {
@@ -142,18 +84,8 @@ function useStageValidation({ constraints }: UseStageValidationOptions) {
           });
 
           if (!activeToasts.has(i)) {
-            const positionerProps = resolvePositionerPropsRef.current(
-              constraint.toast.anchor,
-            );
-
-            const toastId = toastManager.add({
-              type: constraint.toast.variant,
-              description: constraint.toast.description,
-              timeout: constraint.toast.timeout ?? 4000,
-              positionerProps,
-              data: constraint.toast.icon
-                ? { icon: constraint.toast.icon }
-                : undefined,
+            const toastId = showToast({
+              ...constraint.toast,
               onRemove: () => {
                 activeToasts.delete(i);
               },
@@ -177,11 +109,11 @@ function useStageValidation({ constraints }: UseStageValidationOptions) {
       registerBeforeNext('stageValidation', null);
 
       for (const toastId of activeToasts.values()) {
-        toastManager.close(toastId);
+        closeToast(toastId);
       }
       activeToasts.clear();
     };
-  }, [registerBeforeNext, toastManager]);
+  }, [registerBeforeNext, showToast, closeToast, track]);
 
   return { showToast, closeToast };
 }

@@ -100,8 +100,8 @@ const LOOPBACK_CASE_TIMEOUT_MS = 60_000;
 /**
  * The deployment's environment, minus the development lane: the committed
  * `.env.development` this suite runs under would otherwise hand the child a
- * console mailer and the lenient schema wait, which are precisely the two
- * behaviours these cases are about.
+ * console mailer and the development lane's remedies, which these cases are
+ * not about.
  */
 function startWorker(overrides: Record<string, string>): Entrypoint {
   return startEntrypoint('src/worker.ts', {
@@ -120,11 +120,11 @@ function startWorker(overrides: Record<string, string>): Entrypoint {
 }
 
 /**
- * The development lane, which waits for a schema rather than exiting on one it
- * does not have. It is the only way to hold a real worker process in the state
- * the readiness case is about: up and answering, with no queue behind it —
- * the queue's layers are built after the schema gate and the secrets check,
- * because nothing may claim a job against a schema this build did not make.
+ * The development lane, waiting for a schema it does not have. Either lane
+ * holds a real worker process in the state the readiness case is about: up and
+ * answering, with no queue behind it — the queue's layers are built after the
+ * schema gate and the secrets check, because nothing may claim a job against a
+ * schema this build did not make. This one also has a mail transport.
  */
 function startWaitingWorker(overrides: Record<string, string>): Entrypoint {
   return startEntrypoint('src/worker.ts', {
@@ -200,7 +200,7 @@ describe.skipIf(!db)('the worker entrypoint', () => {
       );
       try {
         await worker.waitForOutput(
-          /the deployment is in maintenance: the job worker has stopped claiming jobs/,
+          /maintenance mode is on: Upgrading: the job worker has stopped claiming jobs/,
           MAINTENANCE_WAIT_MS,
         );
       } finally {
@@ -208,7 +208,10 @@ describe.skipIf(!db)('the worker entrypoint', () => {
           'update deployment_state set maintenance = false, reason = null',
         );
       }
-      await worker.waitForOutput(/maintenance is over/, MAINTENANCE_WAIT_MS);
+      await worker.waitForOutput(
+        /the deployment is open again/,
+        MAINTENANCE_WAIT_MS,
+      );
 
       worker.child.kill('SIGTERM');
       // The process exits 130 — `NodeRuntime.runMain`'s code for an interruption
@@ -543,11 +546,12 @@ describe.skipIf(!db)('the worker entrypoint', () => {
     }
   });
 
-  it('refuses a database this build did not create', async () => {
+  it('waits, not ready, on a database with no schema rather than exiting', async () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
-    // Outside development a stale or absent schema is an answer, not a
-    // transient failure — the same verdict the web process boots on, reached
-    // through the same schema gate (src/platform/schema-gate.ts).
+    // Outside development too (#1901): an upgrade starts the new image before
+    // `migrate` runs, so a missing schema is something to wait for, through
+    // the same schema gate the web process uses (src/platform/schema-gate.ts).
+    // That it opens again is `boot-refusals.test.ts`.
     const empty = await createScratchDatabase(db);
     // A port of its own: on the default 3001 it refuses the *port* rather than
     // the database.
@@ -557,9 +561,16 @@ describe.skipIf(!db)('the worker entrypoint', () => {
       WORKER_HEALTH_PORT: String(healthPort),
     });
     try {
-      const { code } = await worker.exited;
-      expect(code).toBe(1);
-      expect(worker.output()).toMatch(/The database has no Studio schema/);
+      await Promise.race([
+        worker.waitForOutput(/The database has no Studio schema/),
+        worker.exited.then(({ code }) => {
+          throw new Error(`the worker exited ${code}:\n${worker.output()}`);
+        }),
+      ]);
+      const waiting = await readReadiness(healthPort);
+      expect(waiting.status).toBe(503);
+      expect(waiting.body.checks.jobs).toBe('failed: not started');
+      expect(worker.child.exitCode).toBeNull();
     } finally {
       worker.child.kill('SIGKILL');
       await empty.dispose();

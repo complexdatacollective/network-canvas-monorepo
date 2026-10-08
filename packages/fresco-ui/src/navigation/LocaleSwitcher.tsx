@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import {
   type ComponentPropsWithRef,
+  type KeyboardEvent,
   type ReactElement,
   useEffect,
   useId,
@@ -216,7 +217,11 @@ export default function LocaleSwitcher({
     state: Exclude<LocaleSwitcherSaveState, 'idle'>;
     key: number;
   } | null>(null);
-  const { open, onOpenChange, onTriggerKeyDown } = useComboboxTriggerEscape({
+  const {
+    open,
+    onOpenChange,
+    onTriggerKeyDown: closeOnTriggerEscape,
+  } = useComboboxTriggerEscape({
     defaultOpen,
     onOpenChange: (nextOpen) => {
       if (!nextOpen) {
@@ -225,6 +230,22 @@ export default function LocaleSwitcher({
       }
     },
   });
+  // Base UI answers ArrowDown/ArrowUp on the trigger of an open combobox by
+  // focusing its search input. Without a search box there is none, so once
+  // focus is back on the trigger (Shift+Tab out of the list leaves the list
+  // open) the arrows went nowhere. They go to the list instead, which is
+  // where opening put focus in the first place.
+  const onTriggerKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    closeOnTriggerEscape(event);
+    if (
+      !searchable &&
+      open &&
+      (event.key === 'ArrowDown' || event.key === 'ArrowUp')
+    ) {
+      event.preventDefault();
+      listRef.current?.focus();
+    }
+  };
   useEffect(() => {
     if (saveState === 'idle') {
       setNotice(null);

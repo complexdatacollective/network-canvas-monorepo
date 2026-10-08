@@ -15,6 +15,7 @@ import Surface from '@codaco/fresco-ui/layout/Surface';
 import Section from '@codaco/fresco-ui/Section';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 import { getCodebook } from '~/selectors/protocol';
 
 import EgoType from './EgoType';
@@ -118,6 +119,7 @@ const CodebookSearchObserver = ({
 
 const Codebook = ({ onEditEntity }: CodebookProps) => {
   const intl = useAppIntl();
+  const readOnly = useProtocolReadOnly();
   const codebook = useSelector(getCodebook);
   const {
     nodes,
@@ -199,6 +201,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
             color="primary"
             size="sm"
             icon={<Plus />}
+            disabled={readOnly}
             onClick={() => onEditEntity?.('node')}
           >
             {intl.formatMessage(messages.createNodeType)}
@@ -235,6 +238,7 @@ const Codebook = ({ onEditEntity }: CodebookProps) => {
             color="primary"
             size="sm"
             icon={<Plus />}
+            disabled={readOnly}
             onClick={() => onEditEntity?.('edge')}
           >
             {intl.formatMessage(messages.createEdgeType)}

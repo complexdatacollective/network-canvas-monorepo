@@ -12,7 +12,6 @@ import {
   Scope,
 } from 'effect';
 
-import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 import {
@@ -23,6 +22,7 @@ import {
   testDb,
 } from '../../../__tests__/support/database.ts';
 import { testDeniedAttempts } from '../../../__tests__/support/valkey.ts';
+import { provideCaller } from '../../../audit/actor.ts';
 import { AuditSignal } from '../../../audit/signal.ts';
 import type { SessionPrincipal } from '../../../auth/service.ts';
 import { MaintenanceDatabase, Database } from '../../../db/client.ts';
@@ -896,7 +896,7 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
     const asInviter = <A, E, R>(command: Effect.Effect<A, E, R>) =>
       Effect.flatMap(DeliveryHarness, (harness) =>
         command.pipe(
-          Effect.provideService(Principal, principalOf(PRINCIPAL)),
+          provideCaller(principalOf(PRINCIPAL)),
           Effect.provideService(RequestId, RequestId.of(randomUUID())),
           Effect.provide(Jobs.layer({ schema: harness.schema })),
           Effect.provideService(Database, harness.app),
@@ -944,7 +944,7 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
             email,
             role: 'member',
           }).pipe(
-            Effect.provideService(Principal, principalOf(PRINCIPAL)),
+            provideCaller(principalOf(PRINCIPAL)),
             Effect.provideService(RequestId, RequestId.of(randomUUID())),
             Effect.provideService(
               Jobs,

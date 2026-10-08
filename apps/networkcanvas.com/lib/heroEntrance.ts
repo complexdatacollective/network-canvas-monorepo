@@ -8,16 +8,15 @@ const entranceSpring: Transition = {
 };
 
 export function createHeroEntrance(reduceMotion: boolean) {
-  const pageVariants: Variants = {
-    hidden: {},
-    visible: {
-      transition: { staggerChildren: reduceMotion ? 0 : 0.16 },
-    },
-  };
+  // The header enters first. It sits outside `<main>` and the hero inside, so
+  // the hero waits for it rather than sharing a parent's stagger.
   const heroVariants: Variants = {
     hidden: {},
     visible: {
-      transition: { staggerChildren: reduceMotion ? 0 : 0.12 },
+      transition: {
+        delayChildren: reduceMotion ? 0 : 0.16,
+        staggerChildren: reduceMotion ? 0 : 0.12,
+      },
     },
   };
   const itemVariants: Variants = reduceMotion
@@ -63,7 +62,6 @@ export function createHeroEntrance(reduceMotion: boolean) {
   return {
     backdropItemVariants,
     initial: reduceMotion ? false : 'hidden',
-    pageVariants,
     heroVariants,
     itemVariants,
   };

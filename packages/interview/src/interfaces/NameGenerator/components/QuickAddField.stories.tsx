@@ -3,20 +3,20 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { icons } from 'lucide-react';
 import type { ComponentProps } from 'react';
 import { Provider } from 'react-redux';
-import { action } from 'storybook/actions';
 import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test';
 
-import Form from '@codaco/fresco-ui/form/Form';
 import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
 import type { NodeDefinition } from '@codaco/protocol-validation';
 
+import { writeSubmissionResult } from '../../../forms/writeSubmissionResult';
+import { runtimeMessages } from '../../../i18n/runtimeMessages';
 import QuickAddField from './QuickAddField';
 
 const customIconOptions = ['add-a-person', 'add-a-place'];
 
 const iconOptions = [...customIconOptions, ...Object.keys(icons)];
 
-type StoryArgs = ComponentProps<typeof QuickAddField> & {
+type StoryArgs = Omit<ComponentProps<typeof QuickAddField>, 'onAdd'> & {
   icon: string;
   maxNodes: number;
 };
@@ -136,7 +136,6 @@ const ReduxDecorator = (
 
 const meta: Meta<StoryArgs> = {
   title: 'Interfaces/NameGenerator/QuickAddField',
-  component: QuickAddField,
   decorators: [ReduxDecorator],
   parameters: {
     layout: 'fullscreen',
@@ -191,29 +190,27 @@ const meta: Meta<StoryArgs> = {
 export default meta;
 type Story = StoryObj<StoryArgs>;
 
-function QuickAddFieldWrapper(
-  props: React.ComponentProps<typeof QuickAddField> & {
-    onFormSubmit: (values: Record<string, unknown>) => void;
-  },
-) {
-  const { onFormSubmit, ...fieldProps } = props;
-
-  const handleSubmit: FormSubmitHandler = (values) => {
-    const typedValues = values as Record<string, unknown>;
-    const submittedName = typedValues[fieldProps.name] as string;
-    action(submittedName);
-
+function QuickAddFieldWrapper({
+  onFormSubmit,
+  refuseAdds = false,
+  ...fieldProps
+}: Omit<ComponentProps<typeof QuickAddField>, 'onAdd'> & {
+  onFormSubmit: (values: Record<string, unknown>) => void;
+  /** Answer every add as refused, the way a write the session rejects is. */
+  refuseAdds?: boolean;
+}) {
+  const handleAdd: FormSubmitHandler = (values) => {
     // Log to Storybook actions panel
-    onFormSubmit({ [fieldProps.name]: submittedName });
+    onFormSubmit(values);
 
-    return { success: true };
+    return refuseAdds
+      ? writeSubmissionResult({ meta: { requestStatus: 'rejected' } })
+      : { success: true };
   };
 
   return (
     <div className="flex flex-col items-end gap-4">
-      <Form onSubmit={handleSubmit}>
-        <QuickAddField {...fieldProps} />
-      </Form>
+      <QuickAddField {...fieldProps} onAdd={handleAdd} />
     </div>
   );
 }
@@ -348,6 +345,84 @@ export const SingleEntryHint: Story = {
       description: {
         story:
           'A stage whose remaining `maxNodes` allowance is a single node closes the box on the next successful add, so the usage hint drops its promise that the box stays open.',
+      },
+    },
+  },
+};
+
+async function enterName(canvasElement: HTMLElement, name: string) {
+  const canvas = within(canvasElement);
+  await userEvent.click(canvas.getByTestId('quick-add-toggle'));
+  const input = await canvas.findByTestId('quick-add-input');
+  await userEvent.type(input, `${name}{Enter}`);
+  await waitFor(() => expect(input).not.toBeDisabled());
+  return input;
+}
+
+const namesAdded = fn().mockName('names-added');
+
+export const NameAdded: Story = {
+  args: {
+    name: 'name',
+    placeholder: 'Type a name and press enter...',
+    disabled: false,
+  },
+  render: ({ icon: _icon, maxNodes: _maxNodes, ...args }) => (
+    <QuickAddFieldWrapper {...args} onFormSubmit={namesAdded} />
+  ),
+  play: async ({ canvasElement }) => {
+    namesAdded.mockClear();
+    const input = await enterName(canvasElement, 'Alice');
+
+    await expect(namesAdded).toHaveBeenCalledWith({ name: 'Alice' });
+    await expect(input).toHaveValue('');
+    await expect(input).toHaveFocus();
+
+    // The celebration's particles fly at random, so a capture waits for them
+    // to clear.
+    await waitFor(
+      () =>
+        expect(
+          document.querySelectorAll('body > div[style*="z-index: 50"]'),
+        ).toHaveLength(0),
+      { timeout: 3000 },
+    );
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Once a name is added, the box clears and keeps focus, ready for the next name. Whether to clear comes from the add itself: compare `NameRefused`.',
+      },
+    },
+  },
+};
+
+export const NameRefused: Story = {
+  args: {
+    name: 'name',
+    placeholder: 'Type a name and press enter...',
+    disabled: false,
+  },
+  render: ({ icon: _icon, maxNodes: _maxNodes, ...args }) => (
+    <QuickAddFieldWrapper {...args} onFormSubmit={namesAdded} refuseAdds />
+  ),
+  play: async ({ canvasElement }) => {
+    namesAdded.mockClear();
+    const input = await enterName(canvasElement, 'Alice');
+
+    await expect(namesAdded).toHaveBeenCalledWith({ name: 'Alice' });
+    await expect(
+      await screen.findByText(runtimeMessages.submissionFailed.defaultMessage),
+    ).toBeVisible();
+    await expect(input).toHaveValue('Alice');
+    await expect(input).toHaveFocus();
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'When an add is refused (here, every add is), the name stays in the box, with the reason shown, so the participant can try again without retyping it.',
       },
     },
   },

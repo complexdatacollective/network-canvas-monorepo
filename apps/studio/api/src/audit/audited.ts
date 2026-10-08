@@ -1,6 +1,6 @@
-import { Cause, Effect, Exit, Predicate } from 'effect';
+import { Cause, Effect, Exit, Option, Predicate } from 'effect';
 
-import { Principal } from '@codaco/studio-contract/middleware/authenticated';
+import { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
 
 import { deepestMessage } from '../db/errors.ts';
 import { savepoint, type TeamAccess, TenantScope } from '../db/tenant.ts';
@@ -92,7 +92,7 @@ export const stamp = (
     ...body,
     teamId: context.teamId,
     teamLabel: context.teamLabel,
-    actorKind: 'user',
+    actorKind: context.actorKind,
     actorId: context.actorId,
     actorLabel: context.actorLabel,
     requestId: context.requestId,
@@ -125,7 +125,7 @@ export const audited = <A, E, R>(
   body: Effect.Effect<AuditedResult<A>, E, R>,
 ) =>
   Effect.gen(function* () {
-    const principal = yield* Principal;
+    const actor = yield* AuditActor;
     const requestId = yield* RequestId;
 
     const outcome = yield* TenantScope.open(
@@ -139,8 +139,9 @@ export const audited = <A, E, R>(
         const context = AuditContext.of({
           teamId: access.teamId,
           teamLabel,
-          actorId: principal.userId,
-          actorLabel: (principal.name.trim() || principal.email).slice(0, 320),
+          actorKind: actor.kind,
+          actorId: actor.id,
+          actorLabel: actor.label,
           requestId,
         });
 
@@ -171,8 +172,9 @@ export const audited = <A, E, R>(
           return yield* Effect.failCause(exit.cause);
         }
 
-        const error = Cause.squash(exit.cause);
-        const marker = auditableMarker(error);
+        const marker = auditableMarker(
+          Option.getOrUndefined(Cause.findErrorOption(exit.cause)),
+        );
         if (marker === undefined) {
           return yield* Effect.failCause(exit.cause);
         }
@@ -188,4 +190,40 @@ export const audited = <A, E, R>(
       return yield* Effect.failCause(outcome.cause);
     }
     return outcome.value;
+  }).pipe(Effect.withSpan(name));
+
+export type AuditedAsResult<A> = {
+  readonly actor: AuditActor['Service'];
+  readonly result: AuditedResult<A>;
+};
+
+export const auditedAs = <A, E, R>(
+  name: string,
+  access: TeamAccess,
+  body: Effect.Effect<AuditedAsResult<A>, E, R>,
+) =>
+  Effect.gen(function* () {
+    const requestId = yield* RequestId;
+    return yield* TenantScope.open(
+      access,
+      Effect.gen(function* () {
+        yield* lockTeam(access.teamId);
+        const teamLabel = yield* lockedTeamLabel(access.teamId);
+        const { actor, result } = yield* body;
+        if (result._tag === 'Unchanged') return result.value;
+
+        const context = AuditContext.of({
+          teamId: access.teamId,
+          teamLabel,
+          actorKind: actor.kind,
+          actorId: actor.id,
+          actorLabel: actor.label,
+          requestId,
+        });
+        for (const event of result.events) {
+          yield* appendRequired(context, stamp(context, event, 'succeeded'));
+        }
+        return result.value;
+      }),
+    );
   }).pipe(Effect.withSpan(name));

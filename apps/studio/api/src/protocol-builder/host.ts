@@ -42,6 +42,7 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
+import { provideCaller } from '../audit/actor.ts';
 import {
   audited,
   changed,
@@ -70,18 +71,17 @@ import {
   type DraftStructureError,
   type HeadState,
 } from '../protocol/draft-structure.ts';
-import {
-  createProtocolSyncServer,
-  SYNC_TRANSACTION_POLICIES,
-} from '../protocol/sync.ts';
+import { createProtocolSyncServer } from '../protocol/sync.ts';
 import { requireProtocol } from '../rpc/team-scope.ts';
 import type { SecretsCipherApi } from '../secrets/cipher.ts';
+import type { StagingKey } from '../storage/object-store.ts';
 import {
   appendProtocolEvents,
   type LoggedProtocolEvent,
   type ProtocolEventRecord,
 } from './events.ts';
 import { PROTOCOL_BUILDER_TABLES } from './schema.ts';
+import { consumeStaged, type Consumed } from './staging-store.ts';
 import {
   readWriteReceipt,
   recordWriteReceipt,
@@ -129,12 +129,24 @@ export type AcquireOutcome =
   | ({ lock: 'held' } & SectionAtRevision)
   | ({ lock: 'readOnly'; holder: Presence } & SectionAtRevision);
 
+/**
+ * A promoted resource stopped being staged between the promotion's plan and
+ * its write: discarded, released or collected. The write changed nothing.
+ */
+type StagingGone = { status: 'stagingGone'; resourceId: string };
+
 export type SubmitOutcome =
-  | { status: 'written'; revision: Revision }
+  | {
+      status: 'written';
+      revision: Revision;
+      /** Staged objects the write consumed, for the caller to delete. */
+      stagedObjects: StagingKey[];
+    }
   | { status: 'replayed'; receipt: WriteReceipt }
   | { status: 'notLockHolder'; holder?: Presence }
   | { status: 'blocked'; blocked: SectionHolder[] }
-  | { status: 'invalidShape'; issues: SectionIssue[] };
+  | { status: 'invalidShape'; issues: SectionIssue[] }
+  | StagingGone;
 
 export type CreatableSectionKind =
   | 'stage'
@@ -143,7 +155,12 @@ export type CreatableSectionKind =
   | 'codebookEgo';
 
 export type CreateOutcome =
-  | { status: 'created'; sectionId: ProtocolSectionId; revision: Revision }
+  | {
+      status: 'created';
+      sectionId: ProtocolSectionId;
+      revision: Revision;
+      stagedObjects: StagingKey[];
+    }
   | { status: 'replayed'; receipt: WriteReceipt }
   | { status: 'exists'; sectionId: ProtocolSectionId }
   | { status: 'blocked'; blocked: SectionHolder[] }
@@ -151,7 +168,8 @@ export type CreateOutcome =
       status: 'invalidShape';
       sectionId: ProtocolSectionId;
       issues: SectionIssue[];
-    };
+    }
+  | StagingGone;
 
 export type SectionHolder = { sectionId: ProtocolSectionId; holder?: Presence };
 
@@ -162,12 +180,35 @@ export type SectionHolder = { sectionId: ProtocolSectionId; holder?: Presence };
  * `promoted` is carried through rather than derived, because the receipt has
  * to answer the retry with what the first attempt said — by then the staged
  * resources it describes have been consumed and cannot be described again.
+ * `staged` names the rows the write consumes in its own transaction, so the
+ * resources stop being staged exactly when they become committed.
  */
 export type WriteIntent = {
   requestId: string;
   assetEntries?: Readonly<Record<string, unknown>>;
   promoted?: ResourceDescriptor[];
+  staged?: { editId: string; resourceIds: readonly string[] };
 };
+
+/**
+ * Takes the write's staged rows under the draft head it holds, after every
+ * check that could still refuse it, so a refusal leaves them staged.
+ */
+const consumePromotion = (
+  session: ProtocolBuilderSession,
+  staged: WriteIntent['staged'],
+) =>
+  staged === undefined
+    ? Effect.succeed<Consumed>({ status: 'consumed', objectKeys: [] })
+    : consumeStaged(
+        {
+          teamId: session.access.teamId,
+          draftId: session.draftId,
+          owner: sessionOwner(session),
+          editId: staged.editId,
+        },
+        staged.resourceIds,
+      );
 
 export type RefactorOutcome =
   | {
@@ -181,10 +222,9 @@ export type RefactorOutcome =
 /** A write's outcome and the events it logged, for the caller to publish. */
 export type Published<T> = { outcome: T; events: LoggedProtocolEvent[] };
 
-export type AcquireResult = Published<AcquireOutcome | undefined> & {
-  /** Present when this call took the lease, so the keeper can renew it. */
-  lease?: { epoch: bigint };
-};
+export type AcquireResult = Published<AcquireOutcome | undefined>;
+
+type ReleaseResult = Published<undefined>;
 
 export function sessionOwner(session: ProtocolBuilderSession): string {
   return `${session.principal.userId}:${session.clientSessionId}`;
@@ -295,7 +335,7 @@ function toSectionAtRevision(row: SectionRow): SectionAtRevision | undefined {
   };
 }
 
-const headSection: (
+export const headSection: (
   session: ProtocolBuilderSession,
   sectionId: ProtocolSectionId,
 ) => Effect.Effect<
@@ -340,28 +380,52 @@ const headSection: (
   return row === undefined ? undefined : toSectionAtRevision(row);
 }, sqlErrorsOnly);
 
+export const authorizeCaller: (
+  session: ProtocolBuilderSession,
+) => Effect.Effect<void, Forbidden | SqlError.SqlError, Database> = Effect.fn(
+  'protocolBuilder.authorizeCaller',
+)(function* (session: ProtocolBuilderSession) {
+  return yield* TenantScope.open(
+    session.access,
+    requireProtocol(session.access, session.protocolId).pipe(
+      Effect.provideService(Principal)(session.principal),
+    ),
+  );
+});
+
 export const readSection: (
   session: ProtocolBuilderSession,
   sectionId: ProtocolSectionId,
-) => Effect.Effect<SectionAtRevision | undefined, SqlError.SqlError, Database> =
-  Effect.fn('protocolBuilder.readSection')(function* (
-    session: ProtocolBuilderSession,
-    sectionId: ProtocolSectionId,
-  ) {
-    return yield* TenantScope.open(
-      session.access,
+) => Effect.Effect<
+  SectionAtRevision | undefined,
+  Forbidden | SqlError.SqlError,
+  Database
+> = Effect.fn('protocolBuilder.readSection')(function* (
+  session: ProtocolBuilderSession,
+  sectionId: ProtocolSectionId,
+) {
+  return yield* TenantScope.open(
+    session.access,
+    Effect.andThen(
+      requireProtocol(session.access, session.protocolId),
       headSection(session, sectionId),
-    );
-  });
+    ).pipe(provideCaller(session.principal)),
+  );
+});
 
 export const listSectionIds: (
   session: ProtocolBuilderSession,
-) => Effect.Effect<ProtocolSectionId[], SqlError.SqlError, Database> =
-  Effect.fn('protocolBuilder.listSectionIds')(function* (
-    session: ProtocolBuilderSession,
-  ) {
-    return yield* TenantScope.open(
-      session.access,
+) => Effect.Effect<
+  ProtocolSectionId[],
+  Forbidden | SqlError.SqlError,
+  Database
+> = Effect.fn('protocolBuilder.listSectionIds')(function* (
+  session: ProtocolBuilderSession,
+) {
+  return yield* TenantScope.open(
+    session.access,
+    Effect.andThen(
+      requireProtocol(session.access, session.protocolId),
       Effect.gen(function* () {
         const { tx } = yield* Transaction;
         const rows = yield* tx
@@ -385,8 +449,9 @@ export const listSectionIds: (
           makeSectionId(parseSectionId(id)),
         );
       }).pipe(sqlErrorsOnly),
-    );
-  });
+    ).pipe(provideCaller(session.principal)),
+  );
+});
 
 type LeaseRow = { owner: string; epoch: bigint; live: boolean };
 
@@ -562,29 +627,8 @@ export const acquireLock: (
       return {
         outcome: { lock: 'held', ...state } satisfies AcquireOutcome,
         events,
-        lease: { epoch: lease.epoch },
       };
-    }).pipe(Effect.provideService(Principal)(session.principal)),
-  );
-});
-
-export const renewLease: (
-  session: ProtocolBuilderSession,
-  sectionId: ProtocolSectionId,
-  epoch: bigint,
-) => Effect.Effect<Lease | null, SqlError.SqlError, Database> = Effect.fn(
-  'protocolBuilder.renewLease',
-)(function* (
-  session: ProtocolBuilderSession,
-  sectionId: ProtocolSectionId,
-  epoch: bigint,
-) {
-  return yield* noAuditTransaction(
-    SYNC_TRANSACTION_POLICIES.renew,
-    session.access,
-    sqlErrorsOnly(
-      sync.renew(session.draftId, sectionId, sessionOwner(session), epoch),
-    ),
+    }).pipe(provideCaller(session.principal)),
   );
 });
 
@@ -596,8 +640,8 @@ export const releaseLock: (
   session: ProtocolBuilderSession,
   sectionId: ProtocolSectionId,
 ) => Effect.Effect<
-  Published<undefined>,
-  DraftStructureError | SqlError.SqlError,
+  ReleaseResult,
+  DraftStructureError | Forbidden | SqlError.SqlError,
   Database
 > = Effect.fn('protocolBuilder.releaseLock')(function* (
   session: ProtocolBuilderSession,
@@ -609,63 +653,23 @@ export const releaseLock: (
     'protocolBuilder.releaseLock',
     session.access,
     Effect.gen(function* () {
+      yield* requireProtocol(session.access, session.protocolId);
       yield* lockDraftHead(teamId, session.draftId);
       const lease = yield* lockLease(teamId, session.draftId, sectionId);
-      if (lease === undefined || !lease.live || lease.owner !== owner) {
-        return { outcome: undefined, events: [] };
-      }
-      yield* sqlErrorsOnly(
-        sync.release(session.draftId, sectionId, owner, lease.epoch),
-      );
-      const events = yield* appendProtocolEvents(teamId, session.draftId, [
-        { kind: 'lock', sectionId },
-      ]);
-      return { outcome: undefined, events };
-    }),
-  );
-});
-
-/**
- * Releases everything one connection still holds. A dropped socket must not
- * leave colleagues waiting out a lease they can see nobody using.
- */
-export const releaseConnection: (
-  session: ProtocolBuilderSession,
-  sectionIds: readonly ProtocolSectionId[],
-) => Effect.Effect<
-  Published<undefined>,
-  DraftStructureError | SqlError.SqlError,
-  Database
-> = Effect.fn('protocolBuilder.releaseConnection')(function* (
-  session: ProtocolBuilderSession,
-  sectionIds: readonly ProtocolSectionId[],
-) {
-  const owner = sessionOwner(session);
-  const teamId = session.access.teamId;
-  if (sectionIds.length === 0) return { outcome: undefined, events: [] };
-  return yield* noAuditTransaction(
-    'protocolBuilder.releaseConnection',
-    session.access,
-    Effect.gen(function* () {
-      yield* lockDraftHead(teamId, session.draftId);
-      const records: ProtocolEventRecord[] = [];
-      for (const sectionId of sectionIds) {
-        const lease = yield* lockLease(teamId, session.draftId, sectionId);
-        if (lease === undefined || !lease.live || lease.owner !== owner) {
-          continue;
-        }
+      const releasing =
+        lease !== undefined && lease.live && lease.owner === owner;
+      if (releasing) {
         yield* sqlErrorsOnly(
           sync.release(session.draftId, sectionId, owner, lease.epoch),
         );
-        records.push({ kind: 'lock', sectionId });
       }
-      const events = yield* appendProtocolEvents(
-        teamId,
-        session.draftId,
-        records,
-      );
+      const events = releasing
+        ? yield* appendProtocolEvents(teamId, session.draftId, [
+            { kind: 'lock', sectionId },
+          ])
+        : [];
       return { outcome: undefined, events };
-    }),
+    }).pipe(provideCaller(session.principal)),
   );
 });
 
@@ -832,7 +836,7 @@ const auditedCommand = <A, E, R>(
   body: Effect.Effect<AuditedResult<A>, E, R>,
 ) =>
   audited(name, session.access, body).pipe(
-    Effect.provideService(Principal)(session.principal),
+    provideCaller(session.principal),
     Effect.provideService(RequestId)(session.requestId),
   );
 
@@ -940,6 +944,13 @@ export const submit = Effect.fn('protocolBuilder.submit')(function* (
         }
         writes.set(ASSETS, { ...assets.document, ...write.assetEntries });
       }
+      const consumed = yield* consumePromotion(session, write.staged);
+      if (consumed.status === 'gone') {
+        return unchanged<Published<SubmitOutcome | undefined>>({
+          outcome: { status: 'stagingGone', resourceId: consumed.resourceId },
+          events: [],
+        });
+      }
       const written = yield* writeSections(session, {
         head,
         writes,
@@ -951,7 +962,11 @@ export const submit = Effect.fn('protocolBuilder.submit')(function* (
       });
       return changed<Published<SubmitOutcome | undefined>>(
         {
-          outcome: { status: 'written', revision: written.revision },
+          outcome: {
+            status: 'written',
+            revision: written.revision,
+            stagedObjects: consumed.objectKeys,
+          },
           events: written.events,
         },
         [
@@ -1097,6 +1112,13 @@ export const create = Effect.fn('protocolBuilder.create')(function* (
         }
         writes.set(ASSETS, { ...assets.document, ...input.assetEntries });
       }
+      const consumed = yield* consumePromotion(session, input.staged);
+      if (consumed.status === 'gone') {
+        return unchanged<Published<CreateOutcome>>({
+          outcome: { status: 'stagingGone', resourceId: consumed.resourceId },
+          events: [],
+        });
+      }
       const written = yield* writeSections(session, {
         head,
         writes,
@@ -1113,6 +1135,7 @@ export const create = Effect.fn('protocolBuilder.create')(function* (
             status: 'created',
             sectionId: target,
             revision: written.revision,
+            stagedObjects: consumed.objectKeys,
           },
           events: written.events,
         },

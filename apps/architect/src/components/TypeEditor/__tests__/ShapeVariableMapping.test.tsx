@@ -2,12 +2,18 @@ import { configureStore } from '@reduxjs/toolkit';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { useContext, type ContextType } from 'react';
 import { Provider } from 'react-redux';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { ArchitectI18nProvider } from '~/i18n/ArchitectI18nProvider';
 import { ARCHITECT_LOCALE_KEY } from '~/i18n/preference';
+import { architectCatalogSource } from '~/locales/catalogs';
+
+// The provider shows a language once its catalog has loaded. Loading
+// Spanish up front lets a switch to it render synchronously, as the
+// assertions below expect.
+beforeAll(() => architectCatalogSource.load('es'));
 
 afterEach(() => localStorage.removeItem(ARCHITECT_LOCALE_KEY));
 

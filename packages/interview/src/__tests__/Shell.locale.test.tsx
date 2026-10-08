@@ -23,6 +23,7 @@ import type {
   ProtocolLocaleChangeHandler,
   SyncHandler,
 } from '../contract/types';
+import { interviewCatalogSource } from '../i18n/catalog';
 import Shell from '../Shell';
 import { updateStageMetadata } from '../store/modules/session';
 
@@ -178,6 +179,14 @@ function liveStore() {
   if (!store) throw new Error('The real Shell did not expose its store');
   return store;
 }
+
+// Loaded before anything renders, as a host loads a language before it
+// mounts an interview, so renders in these languages are synchronous.
+beforeAll(async () => {
+  await Promise.all(
+    ['es', 'en-GB'].map((locale) => interviewCatalogSource.load(locale)),
+  );
+});
 
 describe('Shell interview languages', () => {
   it.each([

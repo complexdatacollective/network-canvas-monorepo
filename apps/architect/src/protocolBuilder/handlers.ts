@@ -58,7 +58,7 @@ import { WriteLedger } from './writeLedger.ts';
 
 export const ArchitectHandlers = (
   store: ArchitectStore,
-  otherTabName: string,
+  otherTabName: () => string,
 ) =>
   ProtocolBuilderGroup.toLayer(
     Effect.gen(function* () {
@@ -80,7 +80,7 @@ export const ArchitectHandlers = (
           : {
               sessionId: OTHER_TAB_SESSION,
               userId: OTHER_TAB_SESSION,
-              displayName: otherTabName,
+              displayName: otherTabName(),
               mode: 'editing' as const,
             };
 

@@ -152,6 +152,32 @@ function getNetworkState(): SessionSnapshot['network'] | undefined {
   return window.__interviewStore?.getState().session.network;
 }
 
+// Bumped by remountInterview; App keys Shell on it.
+let mountGeneration = 0;
+
+export function getMountGeneration(): number {
+  return mountGeneration;
+}
+
+/**
+ * Unmounts the running interview and mounts it again from the session it
+ * holds now, as a host does when a participant leaves and later resumes:
+ * answers are kept, and nothing that lived only in memory — the passphrase
+ * among it — survives. (A page reload cannot stand in for this: onSync is a
+ * no-op here, so a reload would discard the answers too.)
+ */
+function remountInterview(interviewId: string): void {
+  const entry = state.interviews.get(interviewId);
+  const session = window.__interviewStore?.getState().session;
+  if (!entry || !session) {
+    throw new Error(`Interview ${interviewId} is not running`);
+  }
+  state.interviews.set(interviewId, { ...entry, session });
+  mountGeneration += 1;
+  persistState();
+  notifySubscribers();
+}
+
 // Opt-in Shell stage navigation ("Go to a stage" drawer). Default OFF so the
 // host's aria tree is unchanged for every suite that doesn't ask for it —
 // enabling it unconditionally would add a "Go to a stage" button inside
@@ -186,6 +212,7 @@ function reset(): void {
   state = createEmptyState();
   allowStageNavigation = false;
   requestedLocales = [];
+  mountGeneration = 0;
   resetFinishInstrumentation();
   sessionStorage.removeItem(STORAGE_KEY);
   notifySubscribers();
@@ -202,6 +229,7 @@ export function installTestHooks(): void {
     setAssetUrl,
     createInterview,
     getNetworkState,
+    remountInterview,
     reset,
     setFinishBehavior,
     resolveManualFinish,

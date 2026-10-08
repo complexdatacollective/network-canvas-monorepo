@@ -2,13 +2,22 @@ import { configureStore } from '@reduxjs/toolkit';
 import { renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 import { asEntityAttributeReference } from '@codaco/protocol-validation';
 
+import { interviewCatalogSource } from '../../i18n/catalog';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import useSortedNodeList from '../useSortedNodeList';
+
+// Loaded before anything renders, as a host loads a language before it
+// mounts an interview, so renders in these languages are synchronous.
+beforeAll(async () => {
+  await Promise.all(
+    ['de'].map((locale) => interviewCatalogSource.load(locale)),
+  );
+});
 
 const store = configureStore({
   reducer: { protocol: () => ({ codebook: undefined }) },

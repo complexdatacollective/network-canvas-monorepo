@@ -28,6 +28,7 @@ import { calculateProgress, getInterviewProgress } from '../selectors/utils';
 import { getProtocolStages } from '../store/modules/protocol';
 import { transitionStage, updatePrompt } from '../store/modules/session';
 import type { RootState } from '../store/store';
+import { useWritesSettled } from '../store/WritesInFlightContext';
 import type {
   BeforeNextFunction,
   Direction,
@@ -41,6 +42,15 @@ import { useStageSelector } from './useStageSelector';
 type CurrentInterfaceProps = Omit<StageProps, 'stage'> & {
   stage: ReturnType<typeof getCurrentStage>;
 };
+// A write the stage started without waiting for it, as protecting an answer
+// can take a while, may be refused, and may decide what comes next. So the
+// participant moves on from what they see, to another step of the stage,
+// another prompt or another stage, only once the writes under way when they
+// asked have been stored, and to another prompt or stage only once any the
+// stage's handlers then began have been stored too. When one is refused they
+// stay, so they see why and can try again.
+const allStored = async (writes: Promise<boolean> | undefined) =>
+  (await writes) ?? true;
 
 export default function useInterviewNavigation(
   initialStageOverrideIndex?: number,
@@ -48,6 +58,7 @@ export default function useInterviewNavigation(
 ) {
   const dispatch = useDispatch();
   const interviewStore = useStore<RootState>();
+  const writesSettled = useWritesSettled();
 
   // `currentStep` is the latest navigation target (updated synchronously when
   // the user presses next). `displayedStep` lags during a stage exit
@@ -203,9 +214,17 @@ export default function useInterviewNavigation(
     setHasAttemptedStageNavigation(true);
 
     try {
+      if (!(await allStored(writesSettled()))) {
+        setReviewBoundaryReached(false);
+        return;
+      }
       const stageAllowsNavigation = await canNavigate('forwards', 'step');
 
       if (!stageAllowsNavigation) {
+        setReviewBoundaryReached(false);
+        return;
+      }
+      if (!(await allStored(writesSettled()))) {
         setReviewBoundaryReached(false);
         return;
       }
@@ -247,6 +266,7 @@ export default function useInterviewNavigation(
     reviewMode,
     setStep,
     interviewStore,
+    writesSettled,
   ]);
 
   const moveBackward = useCallback(async () => {
@@ -254,6 +274,10 @@ export default function useInterviewNavigation(
     setHasAttemptedStageNavigation(true);
 
     try {
+      if (!(await allStored(writesSettled()))) {
+        setReviewBoundaryReached(false);
+        return;
+      }
       const stageAllowsNavigation = await canNavigate('backwards', 'step');
 
       if (!stageAllowsNavigation) {
@@ -262,6 +286,7 @@ export default function useInterviewNavigation(
       }
 
       setReviewBoundaryReached(false);
+      if (!(await allStored(writesSettled()))) return;
       if (stageAllowsNavigation !== 'FORCE' && !isFirstPrompt) {
         dispatch(updatePrompt(promptIndex - 1));
         return;
@@ -294,6 +319,7 @@ export default function useInterviewNavigation(
     registerBeforeNext,
     protocolStages,
     interviewStore,
+    writesSettled,
   ]);
 
   const goToStage = useCallback(
@@ -307,6 +333,7 @@ export default function useInterviewNavigation(
 
       setForceNavigationDisabled(true);
       setHasAttemptedStageNavigation(true);
+      const writesUnderWay = writesSettled();
 
       try {
         const direction: Direction =
@@ -326,6 +353,7 @@ export default function useInterviewNavigation(
           }
         }
 
+        if (!(await allStored(writesUnderWay))) return;
         const stageAllowsNavigation = await canNavigate(direction, 'jump');
         if (!stageAllowsNavigation) {
           return;
@@ -333,6 +361,7 @@ export default function useInterviewNavigation(
 
         // Re-check after beforeNext handlers: saving the current screen may
         // have made this target locally hidden or bypassed by a new route.
+        if (!(await allStored(writesSettled()))) return;
         const targetAvailability = getStageAvailabilityMap(
           interviewStore.getState(),
         )[targetIndex];
@@ -364,6 +393,7 @@ export default function useInterviewNavigation(
       registerBeforeNext,
       setStep,
       interviewStore,
+      writesSettled,
     ],
   );
 

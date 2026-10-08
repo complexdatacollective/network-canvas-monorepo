@@ -10,7 +10,7 @@ import {
   useExportProgress,
 } from '~/components/ExportProgressProvider';
 import { frescoLocales } from '~/i18n/locales';
-import { frescoCatalogs } from '~/src/locales/catalogs';
+import { frescoCatalogSource } from '~/src/locales/catalogs';
 
 const { runBatchedExport } = vi.hoisted(() => ({ runBatchedExport: vi.fn() }));
 vi.mock('~/lib/export/runBatchedExport', () => ({ runBatchedExport }));
@@ -46,7 +46,7 @@ const view = (
   <AppI18nProvider
     locale="en"
     locales={frescoLocales}
-    messages={frescoCatalogs.en}
+    messages={frescoCatalogSource.peek('en')}
   >
     <Toast.Provider>
       <ExportProgressProvider>

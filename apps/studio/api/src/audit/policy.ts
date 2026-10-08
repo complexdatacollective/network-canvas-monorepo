@@ -7,6 +7,7 @@ export type RpcTag = string;
 
 export const AUDIT_READ_TAGS: ReadonlySet<RpcTag> = new Set<RpcTag>([
   'status',
+  'status.updateAvailable',
   'me',
   'protocols.draft',
   'protocols.list',
@@ -50,6 +51,23 @@ export const RPC_MUTATION_AUDIT_POLICIES = {
   'protocols.create': { kind: 'required' },
   'protocols.addInformationStage': { kind: 'required' },
   'protocols.moveStage': { kind: 'required' },
+  'participant.redeem': { kind: 'required' },
+  'participant.finish': { kind: 'required' },
+  'participant.session': {
+    kind: 'none',
+    reason:
+      'Reading a session for the page that opens it claims the session for that page and changes nothing a researcher acts on; the redemption that led here is audited.',
+  },
+  'participant.analytics': {
+    kind: 'none',
+    reason:
+      'Usability events are forwarded to product analytics and change nothing in the study; they are not research data and leave no row behind.',
+  },
+  'participant.sync': {
+    kind: 'none',
+    reason:
+      'One of hundreds of writes an interview makes as it is answered; the session row carries its activity, and the completion that ends it is audited.',
+  },
   // The protocol-builder host (#1483), which is now the only way a protocol's
   // sections are locked and written. Its writes are domain mutations, so they
   // carry a required event; a lock is lease coordination, which the audit

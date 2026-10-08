@@ -1,20 +1,41 @@
 import { assert, it, layer } from '@effect/vitest';
-import { Duration, Effect, Fiber, Layer, MutableRef } from 'effect';
+import {
+  Deferred,
+  Duration,
+  Effect,
+  Fiber,
+  Layer,
+  MutableRef,
+  Option,
+} from 'effect';
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from 'effect/http';
 import { TestClock } from 'effect/testing';
 import { describe } from 'vitest';
 
-import { TestDatabaseLive, testDb } from '../../__tests__/support/database.ts';
+import { MAINTENANCE_PROBLEM_TYPE } from '@codaco/studio-contract/schema/problem';
+
+import {
+  TestDatabase,
+  TestDatabaseLive,
+  testDb,
+} from '../../__tests__/support/database.ts';
+import { Database, ReadinessDatabase } from '../../db/client.ts';
 import {
   type DeploymentState,
   readDeploymentState,
   setMaintenance,
 } from '../../db/deployment-state.ts';
-import type { SchemaState } from '../../db/schema.ts';
+import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
+import { SCHEMA_LOCK_KEY, type SchemaState } from '../../db/schema.ts';
 import { MaintenanceScope } from '../../db/tenant.ts';
+import { Environment, readEnv } from '../../env.ts';
+import { collectLogs } from '../../platform/__tests__/support/logs.ts';
+import { BootChecks } from '../../platform/boot-checks.ts';
 import { MaintenanceState } from '../../platform/maintenance-state.ts';
+import { SchemaStatus } from '../../platform/schema-gate.ts';
 import { HealthRoutes } from '../health.ts';
 import {
+  type Closure,
   maintenanceCheck,
   MaintenanceGate,
   MaintenanceTriggers,
@@ -113,7 +134,11 @@ const REFUSAL = {
   status: 503,
   retryAfter: '30',
   contentType: 'application/problem+json',
-  body: { title: 'Down for maintenance', status: 503 },
+  body: {
+    type: MAINTENANCE_PROBLEM_TYPE,
+    title: 'Down for maintenance',
+    status: 503,
+  },
 };
 
 const flag = (maintenance: boolean, reason: string | null = null) =>
@@ -131,12 +156,16 @@ describe.skipIf(!testDb)('the maintenance gate', () => {
     const withGate = <A, E, R>(
       control: Triggers,
       body: Effect.Effect<A, E, R>,
+      booted?: MutableRef.MutableRef<boolean>,
     ) =>
       body.pipe(
         Effect.provide(
-          MaintenanceTriggers.layerWith(probesOf(control)).pipe(
-            Layer.provide(MaintenanceState.layer),
-          ),
+          MaintenanceTriggers.layerWith({
+            ...probesOf(control),
+            ...(booted === undefined
+              ? {}
+              : { bootPassed: Effect.sync(() => MutableRef.get(booted)) }),
+          }).pipe(Layer.provide(MaintenanceState.layer)),
         ),
         Effect.scoped,
         Effect.ensuring(Effect.orDie(flag(false))),
@@ -314,6 +343,251 @@ describe.skipIf(!testDb)('the maintenance gate', () => {
         );
       },
     );
+
+    suite.effect(
+      'names the operator’s window first, then the migration, the schema and the boot',
+      () => {
+        // Every trigger at once, lifted one at a time: readiness has to say
+        // `maintenance` for as long as the flag is set, whatever else holds the
+        // gate, because that is what an upgrade's deploy script watches for.
+        const control = triggers();
+        const booted = MutableRef.make(false);
+        const served = MutableRef.make(0);
+        const named = (detail: string) => ({
+          status: 'failing',
+          checks: { maintenance: `failed: ${detail}` },
+        });
+        return withGate(
+          control,
+          Effect.gen(function* () {
+            yield* flag(true, 'Upgrading');
+            MutableRef.set(control.lock, true);
+            MutableRef.set(control.schema, { kind: 'absent' });
+            const request = yield* openStack(served);
+            const lift = (change: () => void) =>
+              Effect.andThen(
+                Effect.sync(change),
+                TestClock.adjust(Duration.millis(1001)),
+              );
+
+            assert.deepStrictEqual(
+              (yield* request('/readyz')).body,
+              named('maintenance mode is on: Upgrading'),
+            );
+
+            yield* flag(false);
+            yield* TestClock.adjust(Duration.millis(1001));
+            assert.deepStrictEqual(
+              (yield* request('/readyz')).body,
+              named('a schema migration is running'),
+            );
+
+            yield* lift(() => MutableRef.set(control.lock, false));
+            assert.deepStrictEqual(
+              (yield* request('/readyz')).body,
+              named('the database has no Studio schema'),
+            );
+
+            yield* lift(() =>
+              MutableRef.set(control.schema, { kind: 'current' }),
+            );
+            assert.deepStrictEqual(
+              (yield* request('/readyz')).body,
+              named('the server is starting'),
+            );
+            assert.deepStrictEqual(yield* request('/rpc'), REFUSAL);
+            assert.strictEqual(MutableRef.get(served), 0);
+
+            MutableRef.set(booted, true);
+            assert.strictEqual((yield* request('/rpc')).status, 200);
+            assert.strictEqual(MutableRef.get(served), 1);
+          }),
+          booted,
+        );
+      },
+    );
+  });
+
+  /**
+   * The production wiring, `MaintenanceTriggers.layer`, over the readings a
+   * deployed process takes: the real `pg_locks` probe, the real fingerprint
+   * through `SchemaStatus`, and the real `deployment_state` row. Only the boot
+   * checks are a switch here — their real run is `boot-refusals.test.ts`.
+   */
+  layer(TestDatabaseLive)('over the real probes', (suite) => {
+    const Deployed = Layer.succeed(Environment, {
+      ...readEnv(),
+      devDefaults: false,
+    });
+
+    const ReadinessFromApp = Layer.effect(
+      ReadinessDatabase,
+      Effect.gen(function* () {
+        return yield* Database;
+      }),
+    );
+
+    const withRealProbes = <A, E, R>(
+      booted: MutableRef.MutableRef<boolean>,
+      body: Effect.Effect<A, E, R>,
+    ) =>
+      body.pipe(
+        Effect.provide(
+          MaintenanceTriggers.layer.pipe(
+            Layer.provide(
+              Layer.succeed(BootChecks)(
+                BootChecks.of({
+                  passed: Effect.sync(() => MutableRef.get(booted)),
+                }),
+              ),
+            ),
+            Layer.provide(MaintenanceState.layer),
+            Layer.provide(
+              SchemaStatus.layer.pipe(
+                Layer.provide(ReadinessFromApp),
+                Layer.provide(Deployed),
+              ),
+            ),
+          ),
+        ),
+        Effect.scoped,
+        Effect.ensuring(Effect.orDie(flag(false))),
+      );
+
+    /** What `migrate` holds, on a connection of its own, for as long as it runs. */
+    const holdMigrationLock = Effect.gen(function* () {
+      const { owner } = yield* TestDatabase;
+      const connection = yield* owner.sql.reserve;
+      yield* Effect.acquireRelease(
+        connection.executeUnprepared(
+          `select pg_advisory_lock(${SCHEMA_LOCK_KEY})`,
+          [],
+          undefined,
+        ),
+        () =>
+          Effect.orDie(
+            connection.executeUnprepared(
+              `select pg_advisory_unlock(${SCHEMA_LOCK_KEY})`,
+              [],
+              undefined,
+            ),
+          ),
+      );
+    });
+
+    const stamp = (fingerprint: string) =>
+      Effect.gen(function* () {
+        const { owner } = yield* TestDatabase;
+        yield* owner.sql`update "schemaFingerprint" set "fingerprint" = ${fingerprint}`;
+      });
+
+    suite.effect(
+      'refuses while migrate holds the advisory lock, and reopens once it lets go',
+      () => {
+        const booted = MutableRef.make(true);
+        const served = MutableRef.make(0);
+        return withRealProbes(
+          booted,
+          Effect.gen(function* () {
+            const request = yield* openStack(served);
+            assert.strictEqual((yield* request('/rpc')).status, 200);
+
+            yield* Effect.scoped(
+              Effect.gen(function* () {
+                yield* holdMigrationLock;
+                yield* TestClock.adjust(Duration.millis(1001));
+                assert.deepStrictEqual(yield* request('/rpc'), REFUSAL);
+                assert.deepStrictEqual((yield* request('/readyz')).body, {
+                  status: 'failing',
+                  checks: {
+                    maintenance: 'failed: a schema migration is running',
+                  },
+                });
+              }),
+            );
+            assert.strictEqual(MutableRef.get(served), 1);
+
+            yield* TestClock.adjust(Duration.millis(1001));
+            assert.strictEqual((yield* request('/rpc')).status, 200);
+            assert.strictEqual(MutableRef.get(served), 2);
+          }),
+        );
+      },
+    );
+
+    suite.effect(
+      'refuses a database another build stamped, with no flag, and reopens once it is current',
+      () => {
+        const booted = MutableRef.make(true);
+        const served = MutableRef.make(0);
+        return withRealProbes(
+          booted,
+          Effect.gen(function* () {
+            const request = yield* openStack(served);
+            yield* Effect.acquireRelease(stamp('an-older-build'), () =>
+              Effect.orDie(stamp(SCHEMA_FINGERPRINT)),
+            );
+
+            assert.deepStrictEqual(yield* request('/api/v1/studies'), REFUSAL);
+            assert.deepStrictEqual((yield* request('/readyz')).body, {
+              status: 'failing',
+              checks: {
+                maintenance: 'failed: the database schema is not this build’s',
+              },
+            });
+            assert.strictEqual(MutableRef.get(served), 0);
+
+            yield* stamp(SCHEMA_FINGERPRINT);
+            yield* TestClock.adjust(Duration.millis(1001));
+            assert.strictEqual((yield* request('/api/v1/studies')).status, 200);
+            assert.strictEqual(MutableRef.get(served), 1);
+          }),
+        );
+      },
+    );
+
+    suite.effect(
+      'stays closed while the boot checks run, though every reading says open',
+      () => {
+        // A fresh install's first seconds: no flag, no lock, a current schema
+        // as far as any reading can tell — and a keyring nobody has checked.
+        const booted = MutableRef.make(false);
+        const served = MutableRef.make(0);
+        return withRealProbes(
+          booted,
+          Effect.gen(function* () {
+            const request = yield* openStack(served);
+            for (const path of REFUSED) {
+              assert.deepStrictEqual(yield* request(path), REFUSAL, path);
+            }
+            assert.strictEqual(MutableRef.get(served), 0);
+            assert.deepStrictEqual((yield* request('/readyz')).body, {
+              status: 'failing',
+              checks: { maintenance: 'failed: the server is starting' },
+            });
+            assert.strictEqual((yield* request('/healthz')).status, 200);
+
+            yield* flag(true, 'Upgrading');
+            yield* TestClock.adjust(Duration.millis(1001));
+            assert.deepStrictEqual((yield* request('/readyz')).body, {
+              status: 'failing',
+              checks: {
+                maintenance: 'failed: maintenance mode is on: Upgrading',
+              },
+            });
+
+            // The checks pass inside the operator's window: the flag still
+            // holds the gate until it is cleared.
+            MutableRef.set(booted, true);
+            assert.deepStrictEqual(yield* request('/rpc'), REFUSAL);
+            yield* flag(false);
+            yield* TestClock.adjust(Duration.millis(1001));
+            assert.strictEqual((yield* request('/rpc')).status, 200);
+            assert.strictEqual(MutableRef.get(served), 1);
+          }),
+        );
+      },
+    );
   });
 });
 
@@ -424,4 +698,353 @@ describe('a flag that cannot be read', () => {
       }),
     );
   });
+});
+
+describe('a schema reading across a closure', () => {
+  type SchemaMode = 'current' | 'stale' | 'fails' | 'hangs';
+
+  const SCHEMA_READS: Record<SchemaMode, Effect.Effect<SchemaState, Error>> = {
+    current: Effect.succeed({ kind: 'current' }),
+    stale: Effect.succeed({
+      kind: 'stale',
+      reason: 'mismatch',
+      found: 'a-newer-build',
+      appliedAt: new Date(0),
+    }),
+    fails: Effect.fail(new Error('connect ECONNREFUSED')),
+    hangs: Effect.never,
+  };
+
+  type Control = {
+    readonly flag: MutableRef.MutableRef<boolean>;
+    readonly lock: MutableRef.MutableRef<boolean>;
+    readonly schema: MutableRef.MutableRef<SchemaMode>;
+  };
+
+  const control = (): Control => ({
+    flag: MutableRef.make(false),
+    lock: MutableRef.make(false),
+    schema: MutableRef.make<SchemaMode>('current'),
+  });
+
+  // The flag is read uncached, so a window can open and shut inside one TTL
+  // of the cached lock and schema readings.
+  const closureOver = <A, E>(
+    { flag: flagOn, lock, schema }: Control,
+    body: (
+      closure: Effect.Effect<Option.Option<Closure>>,
+    ) => Effect.Effect<A, E>,
+    schemaRead: Effect.Effect<SchemaState, Error> = Effect.suspend(
+      () => SCHEMA_READS[MutableRef.get(schema)],
+    ),
+  ) =>
+    Effect.gen(function* () {
+      const { closure } = yield* MaintenanceTriggers;
+      return yield* body(closure);
+    }).pipe(
+      Effect.provide(
+        MaintenanceTriggers.layerWith({
+          lockHeld: Effect.sync(() => MutableRef.get(lock)),
+          schema: schemaRead,
+        }).pipe(Layer.provide(MaintenanceState.layerTest(flagOn))),
+      ),
+    );
+  const triggerOf = (closure: Option.Option<Closure>) =>
+    Option.match(closure, {
+      onNone: () => 'open',
+      onSome: ({ trigger, detail }) => `${trigger}: ${detail}`,
+    });
+
+  const UNREAD =
+    'schema: the schema has not been read since maintenance mode or a migration';
+  const STALE = 'schema: the database schema is not this build’s';
+
+  it.effect(
+    'stays shut after maintenance mode until the schema has been read again',
+    () => {
+      const switches = control();
+      return closureOver(switches, (closure) =>
+        Effect.gen(function* () {
+          assert.strictEqual(triggerOf(yield* closure), 'open');
+
+          MutableRef.set(switches.flag, true);
+          yield* TestClock.adjust(Duration.millis(1001));
+          assert.strictEqual(
+            triggerOf(yield* closure),
+            'maintenance: maintenance mode is on',
+          );
+
+          // The operator migrates and clears the flag; the database is not
+          // answering yet.
+          MutableRef.set(switches.schema, 'fails');
+          MutableRef.set(switches.flag, false);
+          yield* TestClock.adjust(Duration.millis(1001));
+          assert.strictEqual(triggerOf(yield* closure), UNREAD);
+
+          MutableRef.set(switches.schema, 'stale');
+          yield* TestClock.adjust(Duration.millis(1001));
+          assert.strictEqual(triggerOf(yield* closure), STALE);
+        }),
+      );
+    },
+  );
+
+  it.effect(
+    'reads the schema afresh when a window ends inside the schema reading’s TTL',
+    () => {
+      const switches = control();
+      return closureOver(switches, (closure) =>
+        Effect.gen(function* () {
+          assert.strictEqual(triggerOf(yield* closure), 'open');
+
+          MutableRef.set(switches.flag, true);
+          yield* TestClock.adjust(Duration.millis(100));
+          assert.strictEqual(
+            triggerOf(yield* closure),
+            'maintenance: maintenance mode is on',
+          );
+
+          MutableRef.set(switches.schema, 'stale');
+          MutableRef.set(switches.flag, false);
+          yield* TestClock.adjust(Duration.millis(100));
+          assert.strictEqual(triggerOf(yield* closure), STALE);
+        }),
+      );
+    },
+  );
+
+  it.effect(
+    'stays shut after a migration when the first schema read fails',
+    () => {
+      const switches = control();
+      return closureOver(switches, (closure) =>
+        Effect.gen(function* () {
+          assert.strictEqual(triggerOf(yield* closure), 'open');
+
+          MutableRef.set(switches.lock, true);
+          yield* TestClock.adjust(Duration.millis(1001));
+          assert.strictEqual(
+            triggerOf(yield* closure),
+            'migration: a schema migration is running',
+          );
+
+          MutableRef.set(switches.lock, false);
+          MutableRef.set(switches.schema, 'fails');
+          yield* TestClock.adjust(Duration.millis(1001));
+          assert.strictEqual(triggerOf(yield* closure), UNREAD);
+          // Still unread once it can be read, until the failure's TTL is up.
+          MutableRef.set(switches.schema, 'current');
+          assert.strictEqual(triggerOf(yield* closure), UNREAD);
+          yield* TestClock.adjust(Duration.millis(1001));
+          assert.strictEqual(triggerOf(yield* closure), 'open');
+          // Once read, the schema answers from the cache again.
+          MutableRef.set(switches.schema, 'fails');
+          yield* TestClock.adjust(Duration.millis(1001));
+          assert.strictEqual(triggerOf(yield* closure), 'open');
+        }),
+      );
+    },
+  );
+
+  it.effect(
+    'stays shut after a migration while the first schema read hangs',
+    () => {
+      const switches = control();
+      return closureOver(switches, (closure) =>
+        Effect.gen(function* () {
+          assert.strictEqual(triggerOf(yield* closure), 'open');
+
+          MutableRef.set(switches.lock, true);
+          yield* TestClock.adjust(Duration.millis(1001));
+          assert.strictEqual(
+            triggerOf(yield* closure),
+            'migration: a schema migration is running',
+          );
+
+          MutableRef.set(switches.lock, false);
+          MutableRef.set(switches.schema, 'hangs');
+          yield* TestClock.adjust(Duration.millis(1001));
+          const pending = yield* Effect.forkChild(closure);
+          yield* TestClock.adjust(Duration.millis(500));
+          assert.strictEqual(triggerOf(yield* Fiber.join(pending)), UNREAD);
+
+          MutableRef.set(switches.schema, 'stale');
+          yield* TestClock.adjust(Duration.millis(1001));
+          assert.strictEqual(triggerOf(yield* closure), STALE);
+          MutableRef.set(switches.schema, 'current');
+          yield* TestClock.adjust(Duration.millis(1001));
+          assert.strictEqual(triggerOf(yield* closure), 'open');
+        }),
+      );
+    },
+  );
+
+  /**
+   * A schema read whose `held`-th call waits on `release`, so it is still in
+   * flight while the test opens and shuts a window. `reads` counts every call.
+   */
+  const heldRead = (switches: Control, held: number) =>
+    Effect.gen(function* () {
+      const release = yield* Deferred.make<void>();
+      const reads = MutableRef.make(0);
+      const read = Effect.suspend(() => {
+        MutableRef.update(reads, (count) => count + 1);
+        return MutableRef.get(reads) === held
+          ? Effect.andThen(Deferred.await(release), SCHEMA_READS.current)
+          : SCHEMA_READS[MutableRef.get(switches.schema)];
+      });
+      return {
+        read,
+        reads,
+        release: Deferred.succeed(release, undefined),
+      };
+    });
+
+  const MAINTENANCE = 'maintenance: maintenance mode is on';
+
+  it.effect(
+    'keeps a closure shut on a read begun before it, though the read lands after',
+    () => {
+      const switches = control();
+      return Effect.gen(function* () {
+        const { read, reads, release } = yield* heldRead(switches, 2);
+        return yield* closureOver(
+          switches,
+          (closure) =>
+            Effect.gen(function* () {
+              MutableRef.set(switches.flag, true);
+              assert.strictEqual(triggerOf(yield* closure), MAINTENANCE);
+              MutableRef.set(switches.flag, false);
+              assert.strictEqual(triggerOf(yield* closure), 'open');
+
+              MutableRef.set(switches.flag, true);
+              assert.strictEqual(triggerOf(yield* closure), MAINTENANCE);
+              MutableRef.set(switches.flag, false);
+              const inFlight = yield* Effect.forkChild(closure);
+              yield* Effect.yieldNow;
+              assert.strictEqual(MutableRef.get(reads), 2);
+
+              // Maintenance mode opens and shuts again while that read waits,
+              // and the migration inside it makes the schema stale.
+              MutableRef.set(switches.flag, true);
+              assert.strictEqual(triggerOf(yield* closure), MAINTENANCE);
+              MutableRef.set(switches.schema, 'stale');
+              MutableRef.set(switches.flag, false);
+              yield* release;
+              assert.strictEqual(
+                triggerOf(yield* Fiber.join(inFlight)),
+                UNREAD,
+              );
+              assert.strictEqual(triggerOf(yield* closure), STALE);
+            }),
+          read,
+        );
+      });
+    },
+  );
+
+  it.effect(
+    'does not let a read from before a window replace one taken after it',
+    () => {
+      const switches = control();
+      return Effect.gen(function* () {
+        const { read, release } = yield* heldRead(switches, 1);
+        return yield* closureOver(
+          switches,
+          (closure) =>
+            Effect.gen(function* () {
+              // The first read is in flight when maintenance mode begins.
+              const before = yield* Effect.forkChild(closure);
+              yield* Effect.yieldNow;
+              MutableRef.set(switches.flag, true);
+              assert.strictEqual(triggerOf(yield* closure), MAINTENANCE);
+              MutableRef.set(switches.schema, 'stale');
+              MutableRef.set(switches.flag, false);
+              assert.strictEqual(triggerOf(yield* closure), STALE);
+
+              // It lands, answering "current" from before the migration.
+              yield* release;
+              assert.strictEqual(triggerOf(yield* Fiber.join(before)), STALE);
+              assert.strictEqual(triggerOf(yield* closure), STALE);
+              // Past the TTL the stale schema is read again, never the old
+              // value: a failed read answers what this window read.
+              MutableRef.set(switches.schema, 'fails');
+              yield* TestClock.adjust(Duration.millis(1001));
+              assert.strictEqual(triggerOf(yield* closure), STALE);
+            }),
+          read,
+        );
+      });
+    },
+  );
+
+  it.effect('shares one read among the calls that reopen a window', () => {
+    const switches = control();
+    return Effect.gen(function* () {
+      const { read, reads, release } = yield* heldRead(switches, 2);
+      return yield* closureOver(
+        switches,
+        (closure) =>
+          Effect.gen(function* () {
+            assert.strictEqual(triggerOf(yield* closure), 'open');
+            MutableRef.set(switches.flag, true);
+            assert.strictEqual(triggerOf(yield* closure), MAINTENANCE);
+            MutableRef.set(switches.flag, false);
+
+            const waiting = yield* Effect.forkChild(
+              Effect.all(
+                Array.from({ length: 20 }, () => closure),
+                {
+                  concurrency: 'unbounded',
+                },
+              ),
+            );
+            yield* Effect.yieldNow;
+            yield* release;
+            const answers = yield* Fiber.join(waiting);
+            assert.deepStrictEqual(
+              new Set(answers.map(triggerOf)),
+              new Set(['open']),
+            );
+            assert.strictEqual(MutableRef.get(reads), 2);
+
+            // A failing read is shared too, and kept for the TTL.
+            MutableRef.set(switches.flag, true);
+            assert.strictEqual(triggerOf(yield* closure), MAINTENANCE);
+            MutableRef.set(switches.flag, false);
+            MutableRef.set(switches.schema, 'fails');
+            for (let call = 0; call < 5; call++) {
+              assert.strictEqual(triggerOf(yield* closure), UNREAD);
+            }
+            assert.strictEqual(MutableRef.get(reads), 3);
+          }),
+        read,
+      );
+    });
+  });
+
+  it.effect(
+    'logs why the schema cannot be read once, however long it cannot',
+    () => {
+      const switches = control();
+      const logs = collectLogs();
+      return closureOver(switches, (closure) =>
+        Effect.gen(function* () {
+          MutableRef.set(switches.flag, true);
+          assert.strictEqual(triggerOf(yield* closure), MAINTENANCE);
+          MutableRef.set(switches.flag, false);
+          MutableRef.set(switches.schema, 'fails');
+          for (let tick = 0; tick < 3; tick++) {
+            assert.strictEqual(triggerOf(yield* closure), UNREAD);
+            yield* TestClock.adjust(Duration.millis(1001));
+          }
+          const failures = logs.messages.filter((line) =>
+            line.includes('could not read the schema fingerprint'),
+          );
+          assert.strictEqual(failures.length, 1);
+          assert.include(failures[0]!, 'ECONNREFUSED');
+        }),
+      ).pipe(Effect.provide(logs.layer));
+    },
+  );
 });

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import developmentProtocol from '@codaco/protocols/development';
 
-import { loadBundledSampleProtocol } from '../bundledProtocols';
+import { loadBundledSampleProtocol } from '../bundledSampleProtocol';
 import { importBundledProtocol } from '../importProtocol';
 
 // Any network access during a "bundled" install is a defect: fail loudly.

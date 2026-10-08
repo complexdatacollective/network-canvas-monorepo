@@ -10,6 +10,7 @@ import { TeamId } from '@codaco/studio-contract/schema/ids';
 import { clientSessionId } from '../../lib/clientSession.ts';
 import { installFetchStub, requestUrl } from '../../test/fetchStub.ts';
 import { FakeWebSocket } from '../../test/hostHarness.ts';
+import { HostClient } from '../hostClient.ts';
 import { endHostSession, hostRuntime } from '../hostSession.ts';
 import {
   rpcCall,
@@ -19,7 +20,7 @@ import {
   rpcQuery,
   useRpcStream,
 } from '../rpc.ts';
-import { getWebRuntime, HostClient, WebLayer } from '../runtime.ts';
+import { getWebRuntime, WebLayer } from '../runtime.ts';
 
 const fetchStub = installFetchStub();
 
@@ -78,18 +79,16 @@ describe('the web runtime', () => {
     expect(initOf(firstCall()).method).toBe('POST');
   });
 
-  it('names this tab on every request', async () => {
+  it('does not name this tab on a /rpc request', async () => {
     answerEmptyOk();
 
     await callStatus();
-    await callStatus();
 
-    expect(fetchStub).toHaveBeenCalledTimes(2);
-    for (const call of fetchStub.mock.calls) {
-      expect(headerOf(initOf(call), CLIENT_SESSION_HEADER)).toBe(
-        clientSessionId(),
-      );
-    }
+    expect(fetchStub).toHaveBeenCalledTimes(1);
+    expect(headerOf(initOf(firstCall()), 'content-type')).toBeDefined();
+    expect(
+      headerOf(initOf(firstCall()), CLIENT_SESSION_HEADER),
+    ).toBeUndefined();
   });
 
   it('sends the session cookie, and accepts one back', async () => {

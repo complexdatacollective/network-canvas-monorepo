@@ -15,6 +15,7 @@ import {
 import {
   LinkUnavailable,
   SessionEnded,
+  SessionOutOfDate,
   SessionTakenOver,
 } from '../schema/participant.ts';
 import { ProtocolAuthorizationError } from '../schema/protocol.ts';
@@ -260,7 +261,7 @@ const SAMPLES = new Map<string, ErrorSample>([
   [
     'SessionEnded',
     {
-      make: () => new SessionEnded({ state: 'expired' }),
+      make: () => new SessionEnded({ state: 'completed' }),
       isInstance: (value) => value instanceof SessionEnded,
     },
   ],
@@ -269,6 +270,13 @@ const SAMPLES = new Map<string, ErrorSample>([
     {
       make: () => new SessionTakenOver({ holderEpoch: 2 }),
       isInstance: (value) => value instanceof SessionTakenOver,
+    },
+  ],
+  [
+    'SessionOutOfDate',
+    {
+      make: () => new SessionOutOfDate({ revision: '4' }),
+      isInstance: (value) => value instanceof SessionOutOfDate,
     },
   ],
   [

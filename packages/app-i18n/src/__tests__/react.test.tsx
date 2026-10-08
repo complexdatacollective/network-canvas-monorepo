@@ -1,16 +1,23 @@
 // @vitest-environment jsdom
-import { render, screen, within } from '@testing-library/react';
-import { useEffect } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { act, cleanup, render, screen, within } from '@testing-library/react';
+import { Suspense, useEffect } from 'react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { commonMessages } from '../common.ts';
-import { defineAppLocales, pseudoAppLocale } from '../locales.ts';
+import {
+  createCatalogSource,
+  defineAppLocales,
+  pseudoAppLocale,
+} from '../locales.ts';
+import type { CatalogMessages, CatalogSource } from '../locales.ts';
 import { defineMessages } from '../messages.ts';
 import {
   AppI18nProvider,
   AppMessage,
   useAppIntl,
   useAppLocale,
+  useLocaleCatalog,
+  useLocaleLoadFailure,
 } from '../react.tsx';
 
 const registry = defineAppLocales([
@@ -40,6 +47,13 @@ const messages = defineMessages({
 function Greeting(props: { name: string }) {
   const intl = useAppIntl();
   return <p>{intl.formatMessage(messages.greeting, { name: props.name })}</p>;
+}
+
+function Unavailable() {
+  const failure = useLocaleLoadFailure();
+  return failure === undefined ? null : (
+    <p>Could not load {failure.locale.label}</p>
+  );
 }
 
 function Count(props: { count: number }) {
@@ -347,6 +361,13 @@ describe('AppI18nProvider', () => {
   });
 });
 
+describe('useLocaleLoadFailure without a provider', () => {
+  it('reports nothing', () => {
+    render(<Unavailable />);
+    expect(screen.queryByText(/Could not load/)).toBeNull();
+  });
+});
+
 describe('useAppLocale without a provider', () => {
   it('throws a descriptive error', () => {
     function Bare() {
@@ -398,5 +419,305 @@ describe('AppMessage', () => {
       </AppI18nProvider>,
     );
     expect(view.container.textContent).toBe('مرحبا Ada');
+  });
+});
+
+describe('useLocaleCatalog', () => {
+  // The suites above leave their trees mounted; these assert on copy they share.
+  afterEach(cleanup);
+  const translated = defineAppLocales([
+    { locale: 'en', label: 'English', direction: 'ltr' },
+    { locale: 'es', label: 'Español', direction: 'ltr' },
+    { locale: 'fr', label: 'Français', direction: 'ltr' },
+  ]);
+  const spanish = { 'demo.greeting': 'Hola {name}' };
+  const french = { 'demo.greeting': 'Bonjour {name}' };
+
+  /** A catalog module the test releases when it chooses. */
+  const pending = (catalog: CatalogMessages) => {
+    let release = () => {};
+    const loaded = new Promise<{ default: CatalogMessages }>((resolve) => {
+      release = () => resolve({ default: catalog });
+    });
+    return { load: () => loaded, release };
+  };
+
+  function Host(props: {
+    source: CatalogSource;
+    locale: string;
+    preloaded?: { locale: string; messages: CatalogMessages };
+  }) {
+    const catalog = useLocaleCatalog(
+      props.source,
+      props.locale,
+      props.preloaded,
+    );
+    return (
+      <AppI18nProvider
+        locale={catalog.locale}
+        locales={translated}
+        messages={catalog.messages}
+        loadFailure={catalog.failure}
+      >
+        <Greeting name="Ada" />
+        <Unavailable />
+      </AppI18nProvider>
+    );
+  }
+
+  it('keeps the current language on screen until the next one has loaded', async () => {
+    cleanup();
+    const es = pending(spanish);
+    const source = createCatalogSource({
+      es: es.load,
+      fr: () => Promise.resolve({ default: french }),
+    });
+    await source.load('fr');
+
+    const { rerender } = render(<Host source={source} locale="fr" />);
+    expect(screen.getByText('Bonjour Ada')).toBeDefined();
+
+    rerender(<Host source={source} locale="es" />);
+    // Neither English nor a half-switched screen while Spanish is in flight.
+    expect(screen.getByText('Bonjour Ada')).toBeDefined();
+    expect(document.documentElement.lang).toBe('fr');
+
+    await act(async () => es.release());
+    expect(screen.getByText('Hola Ada')).toBeDefined();
+    expect(document.documentElement.lang).toBe('es');
+  });
+
+  it('suspends a first render until its catalog has loaded instead of flashing English', async () => {
+    const es = pending(spanish);
+    const source = createCatalogSource({ es: es.load });
+
+    // React retries a suspended render only when it began in an awaited act.
+    await act(async () => {
+      render(
+        <Suspense fallback={<p>Waiting</p>}>
+          <Host source={source} locale="es" />
+        </Suspense>,
+      );
+    });
+    expect(screen.getByText('Waiting')).toBeDefined();
+    expect(screen.queryByText('Hello Ada')).toBeNull();
+
+    await act(async () => es.release());
+    expect(screen.getByText('Hola Ada')).toBeDefined();
+  });
+
+  it('renders a catalog loaded before the first render straight away', async () => {
+    const source = createCatalogSource({
+      es: () => Promise.resolve({ default: spanish }),
+    });
+    await source.load('es');
+
+    render(<Host source={source} locale="es" />);
+    expect(screen.getByText('Hola Ada')).toBeDefined();
+  });
+
+  it('renders a preloaded catalog without loading it again', () => {
+    const es = vi.fn(() => Promise.resolve({ default: spanish }));
+    const source = createCatalogSource({ es });
+
+    render(
+      <Host
+        source={source}
+        locale="es"
+        preloaded={{ locale: 'es', messages: spanish }}
+      />,
+    );
+    expect(screen.getByText('Hola Ada')).toBeDefined();
+    expect(es).not.toHaveBeenCalled();
+  });
+
+  describe('when the first load fails', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    // A browser answers a repeated import of a module that failed to load
+    // with that failure, at once. Past a few calls the loader stops settling,
+    // so a render that keeps loading again ends the test instead of spinning.
+    const failingSpanish = () => {
+      let calls = 0;
+      return vi.fn(() => {
+        calls += 1;
+        return calls > 5
+          ? new Promise<{ default: CatalogMessages }>(() => {})
+          : Promise.reject(new Error('offline'));
+      });
+    };
+
+    function renderFirst(source: CatalogSource) {
+      return act(async () => {
+        render(
+          <Suspense fallback={<p>Waiting</p>}>
+            <Host source={source} locale="es" />
+          </Suspense>,
+        );
+      });
+    }
+
+    it('falls back to English and reports the language it could not load', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const es = failingSpanish();
+      await renderFirst(createCatalogSource({ es }));
+      expect(screen.getByText('Hello Ada')).toBeDefined();
+      expect(screen.getByText('Could not load Español')).toBeDefined();
+      expect(document.documentElement.lang).toBe('en');
+      // The render's own attempt, then the first retry once English is up:
+      // not a new load every time React renders again.
+      expect(es).toHaveBeenCalledTimes(2);
+    });
+
+    it('switches to the language once a retry loads it', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const es = vi
+        .fn<() => Promise<{ default: CatalogMessages }>>()
+        .mockRejectedValueOnce(new Error('offline'))
+        .mockRejectedValueOnce(new Error('offline'))
+        .mockResolvedValue({ default: spanish });
+      await renderFirst(createCatalogSource({ es }));
+      expect(screen.getByText('Hello Ada')).toBeDefined();
+
+      await act(() => vi.advanceTimersByTimeAsync(999));
+      expect(screen.getByText('Hello Ada')).toBeDefined();
+      await act(() => vi.advanceTimersByTimeAsync(1));
+      expect(screen.getByText('Hola Ada')).toBeDefined();
+      expect(screen.queryByText(/Could not load/)).toBeNull();
+      expect(document.documentElement.lang).toBe('es');
+    });
+
+    it('tries afresh on its first render when the load before it failed', async () => {
+      const es = vi
+        .fn<() => Promise<{ default: CatalogMessages }>>()
+        .mockRejectedValueOnce(new Error('offline'))
+        .mockResolvedValue({ default: spanish });
+      const source = createCatalogSource({ es });
+      await source.load('es').catch(() => undefined);
+      await renderFirst(source);
+      expect(screen.getByText('Hola Ada')).toBeDefined();
+      expect(screen.queryByText(/Could not load/)).toBeNull();
+      expect(es).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('switches away from a preloaded catalog by loading the new locale', async () => {
+    const fr = pending(french);
+    const source = createCatalogSource({
+      es: () => Promise.resolve({ default: spanish }),
+      fr: fr.load,
+    });
+    const preloaded = { locale: 'es', messages: spanish };
+
+    const { rerender } = render(
+      <Host source={source} locale="es" preloaded={preloaded} />,
+    );
+    rerender(<Host source={source} locale="fr" preloaded={preloaded} />);
+    expect(screen.getByText('Hola Ada')).toBeDefined();
+
+    await act(async () => fr.release());
+    expect(screen.getByText('Bonjour Ada')).toBeDefined();
+  });
+
+  describe('when the next language fails to load', () => {
+    const failingFrench = (failures: number) => {
+      const load = vi.fn<() => Promise<{ default: CatalogMessages }>>();
+      for (let i = 0; i < failures; i++) {
+        load.mockRejectedValueOnce(new Error('offline'));
+      }
+      return load.mockResolvedValue({ default: french });
+    };
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('stays in the current language and keeps trying, waiting longer after each failure', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const unhandled = vi.fn();
+      process.on('unhandledRejection', unhandled);
+      const fr = failingFrench(2);
+      const source = createCatalogSource({
+        es: () => Promise.resolve({ default: spanish }),
+        fr,
+      });
+      await source.load('es');
+      try {
+        const { rerender } = render(<Host source={source} locale="es" />);
+        await act(async () => rerender(<Host source={source} locale="fr" />));
+        // Node reports an unhandled rejection only once the microtasks drain.
+        await new Promise((resolve) => setImmediate(resolve));
+        expect(fr).toHaveBeenCalledOnce();
+        expect(unhandled).not.toHaveBeenCalled();
+        expect(screen.getByText('Hola Ada')).toBeDefined();
+        expect(screen.getByText('Could not load Français')).toBeDefined();
+        expect(document.documentElement.lang).toBe('es');
+
+        await act(() => vi.advanceTimersByTimeAsync(999));
+        expect(fr).toHaveBeenCalledOnce();
+        await act(() => vi.advanceTimersByTimeAsync(1));
+        expect(fr).toHaveBeenCalledTimes(2);
+        expect(screen.getByText('Hola Ada')).toBeDefined();
+
+        await act(() => vi.advanceTimersByTimeAsync(1999));
+        expect(fr).toHaveBeenCalledTimes(2);
+        await act(() => vi.advanceTimersByTimeAsync(1));
+        expect(fr).toHaveBeenCalledTimes(3);
+        expect(screen.getByText('Bonjour Ada')).toBeDefined();
+        expect(screen.queryByText(/Could not load/)).toBeNull();
+        expect(document.documentElement.lang).toBe('fr');
+      } finally {
+        process.off('unhandledRejection', unhandled);
+      }
+    });
+
+    it('waits from the first interval again when a language it gave up on is chosen again', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const fr = failingFrench(4);
+      const source = createCatalogSource({
+        es: () => Promise.resolve({ default: spanish }),
+        fr,
+      });
+      await source.load('es');
+
+      const { rerender } = render(<Host source={source} locale="es" />);
+      await act(async () => rerender(<Host source={source} locale="fr" />));
+      await act(() => vi.advanceTimersByTimeAsync(1000));
+      await act(() => vi.advanceTimersByTimeAsync(2000));
+      expect(fr).toHaveBeenCalledTimes(3);
+
+      await act(async () => rerender(<Host source={source} locale="es" />));
+      // Choosing another language abandons the failed one.
+      expect(screen.queryByText(/Could not load/)).toBeNull();
+      await act(async () => rerender(<Host source={source} locale="fr" />));
+      expect(fr).toHaveBeenCalledTimes(4);
+      await act(() => vi.advanceTimersByTimeAsync(999));
+      expect(fr).toHaveBeenCalledTimes(4);
+      await act(() => vi.advanceTimersByTimeAsync(1));
+      expect(fr).toHaveBeenCalledTimes(5);
+      expect(screen.getByText('Bonjour Ada')).toBeDefined();
+    });
+
+    it('tries again as soon as the device is back online', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const fr = failingFrench(1);
+      const source = createCatalogSource({
+        es: () => Promise.resolve({ default: spanish }),
+        fr,
+      });
+      await source.load('es');
+
+      const { rerender } = render(<Host source={source} locale="es" />);
+      await act(async () => rerender(<Host source={source} locale="fr" />));
+      expect(fr).toHaveBeenCalledOnce();
+
+      await act(async () => window.dispatchEvent(new Event('online')));
+      expect(fr).toHaveBeenCalledTimes(2);
+      await act(() => source.load('fr'));
+      expect(fr).toHaveBeenCalledTimes(2);
+      expect(screen.getByText('Bonjour Ada')).toBeDefined();
+    });
   });
 });

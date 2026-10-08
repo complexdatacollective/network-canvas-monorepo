@@ -39,6 +39,15 @@ type WizardDialogProps = {
   description: ReactNode;
   children: ReactNode;
   footer: ReactNode;
+  /**
+   * True while Next is validating the step or running its `beforeNext`
+   * handler. The wizard cannot be left meanwhile: that work (an enrolment, a
+   * server call) carries on regardless, so leaving would resolve the wizard
+   * as cancelled while it completes.
+   */
+  isBusy: boolean;
+  /** Leaves the wizard as cancelled, unless it is busy. */
+  cancel: () => void;
 };
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
@@ -107,6 +116,9 @@ export default function useWizardState({
   const [backEnabled, setBackEnabled] = useState(true);
   const [nextLabelOverride, setNextLabelOverride] = useState<ReactNode>(null);
   const [isNextLoading, setIsNextLoading] = useState(false);
+  // Set as Next starts, not on the next render, so a Cancel, Back or second
+  // Next in the same task as the first Next is refused too.
+  const isNextLoadingRef = useRef(false);
 
   const beforeNextRef = useRef<BeforeNextHandler | null>(null);
   const prevStepRef = useRef(stepIndex);
@@ -198,6 +210,8 @@ export default function useWizardState({
   );
 
   const handleNext = useCallback(async () => {
+    if (isNextLoadingRef.current) return;
+    isNextLoadingRef.current = true;
     setIsNextLoading(true);
     try {
       // Validate all currently registered form fields
@@ -223,6 +237,7 @@ export default function useWizardState({
     } catch {
       return;
     } finally {
+      isNextLoadingRef.current = false;
       setIsNextLoading(false);
     }
 
@@ -254,11 +269,13 @@ export default function useWizardState({
   ]);
 
   const handleBack = useCallback(() => {
+    if (isNextLoadingRef.current) return;
     const prev = findNextUnskipped(stepIndex, 'backward');
     if (prev !== null) goToStep(prev);
   }, [goToStep, stepIndex, findNextUnskipped]);
 
   const handleCancel = useCallback(() => {
+    if (isNextLoadingRef.current) return;
     void closeDialog(dialogId, null);
   }, [closeDialog, dialogId]);
 
@@ -343,7 +360,11 @@ export default function useWizardState({
           )
         )}
         <div className="phone-landscape:flex-row phone-landscape:justify-between flex flex-col gap-8">
-          <Button onClick={handleCancel} data-testid="wizard-cancel">
+          <Button
+            onClick={handleCancel}
+            disabled={isNextLoading}
+            data-testid="wizard-cancel"
+          >
             {dialog.cancelLabel ?? intl.formatMessage(commonMessages.cancel)}
           </Button>
 
@@ -351,7 +372,7 @@ export default function useWizardState({
             {showBackButton && (
               <Button
                 onClick={handleBack}
-                disabled={isFirstActive || !backEnabled}
+                disabled={isFirstActive || !backEnabled || isNextLoading}
                 data-testid="wizard-back"
               >
                 {currentStep.backLabel ??
@@ -374,5 +395,7 @@ export default function useWizardState({
         </div>
       </div>
     ),
+    isBusy: isNextLoading,
+    cancel: handleCancel,
   };
 }

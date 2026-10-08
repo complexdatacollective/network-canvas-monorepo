@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAppIntl } from '@codaco/app-i18n/messages';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
-import { interviewerCatalogs } from '~/locales/catalogs';
+import { interviewerCatalogSource } from '~/locales/catalogs';
 
 import { importProtocolFromFile } from '../importProtocol';
 
@@ -171,7 +171,7 @@ describe('importProtocolFromFile error reporting', () => {
   it('renders actionable Spanish import guidance from the actual archive failure metadata', async () => {
     const intl = createAppIntl({
       locale: 'es',
-      messages: interviewerCatalogs.es,
+      messages: await interviewerCatalogSource.load('es'),
     });
     const cases: [Uint8Array, string][] = [
       [

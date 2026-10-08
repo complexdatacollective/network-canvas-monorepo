@@ -7,9 +7,11 @@
 #   docker compose up -d
 #   docker compose run --rm migrate
 #
-# Between those two commands `api` and `worker` restart in a loop — there is no
-# schema for them to verify yet, and `docker compose ps` says `Restarting (1)`
-# — which is expected and stops the moment `migrate` has run.
+# Between those two commands `api` and `worker` are up but closed: there is no
+# schema yet, so `api` answers every request with the maintenance page and its
+# `/readyz` fails naming the reason, and `worker` runs no jobs. Both re-check
+# the schema every few seconds and open on their own once `migrate` has run,
+# with no restart. An upgrade passes through the same state.
 #
 # Read `migrate`'s output: besides creating the schema it prints the first-run
 # setup token, which is what `/setup` takes to create the first owner account.
@@ -41,16 +43,25 @@
 #                  the `postgres` service and the `postgres-data` volume.
 #   Object store   set `S3_ENDPOINT` and the other four `S3_*` variables. Then
 #                  delete the `garage` service, the `garage-init` one-shot,
-#                  `migrate`'s `depends_on` entry for it, the `garage-config`
-#                  and `garage-init` configs, and the `garage-data` volume.
-#   Rate limiting  set `REDIS_URL`; any Redis 7-compatible server works. Then
-#                  delete the `valkey` service and the `depends_on` entries
-#                  naming it.
+#                  the `depends_on` entries naming them in `api`, `worker`
+#                  and `migrate`, the `garage-config` and `garage-init`
+#                  configs, and the `garage-data` volume.
+#                  Or, for Azure Blob Storage, which does not speak S3: set
+#                  `STUDIO_OBJECT_STORE=azure-blob`, the `AZURE_STORAGE_*`
+#                  variables, and empty every `S3_*` value, `S3_ENDPOINT`
+#                  included if a managed bucket set it (an empty access key
+#                  also stops `S3_ENDPOINT` defaulting to Garage — see below). The
+#                  Garage tidying is then the same.
+#   Rate limiting  set `REDIS_URL`; any Redis 7-compatible server works. The
+#                  same server holds the rate-limit counters and carries the
+#                  `studio:protocol-events` doorbell that tells every API
+#                  replica a protocol has changed. Then delete the `valkey`
+#                  service and the `depends_on` entries naming it.
 #   Ingress        the one that is not a variable, because it is a routing
 #                  table rather than an address: delete the `traefik` service,
-#                  the `traefik-dynamic` config and the published ports, and
-#                  reproduce that routing table in an institution's own proxy
-#                  against `web` and `api`.
+#                  the `traefik-dynamic` and `traefik-api-servers` configs and
+#                  the published ports, and reproduce that routing table in an
+#                  institution's own proxy against `web` and `api`.
 #
 # ── Where the secrets live ────────────────────────────────────────────────
 #
@@ -87,13 +98,25 @@ x-studio-env: &studio-env
   # managed Postgres too — put its password in the same file.
   DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER}@postgres:5432/${POSTGRES_DB}}
   REDIS_URL: ${REDIS_URL:-redis://valkey:6379}
-  S3_ENDPOINT: ${S3_ENDPOINT:-http://garage:3900}
+  # The stack's own Garage is the default only while an S3 access key is
+  # configured. An Azure Blob deployment empties the `S3_*` values in `.env`,
+  # and then this is empty too: the server refuses any `S3_*` variable beside
+  # `STUDIO_OBJECT_STORE=azure-blob`, so a default here would stop it booting.
+  S3_ENDPOINT: ${S3_ENDPOINT:-${S3_ACCESS_KEY_ID:+http://garage:3900}}
   DATABASE_PASSWORD_FILE: /run/secrets/postgres_password
   STUDIO_SECRETS_KEY_FILE: /run/secrets/studio_secrets_key
   S3_REGION: ${S3_REGION}
   S3_BUCKET: ${S3_BUCKET}
   S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
   S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+  # `s3` reads the five above. `azure-blob` reads these instead: the
+  # container, and either the account URL (a managed identity, optionally the
+  # user-assigned one `AZURE_CLIENT_ID` names) or a connection string.
+  STUDIO_OBJECT_STORE: ${STUDIO_OBJECT_STORE}
+  AZURE_STORAGE_ACCOUNT_URL: ${AZURE_STORAGE_ACCOUNT_URL:-}
+  AZURE_STORAGE_CONTAINER: ${AZURE_STORAGE_CONTAINER:-}
+  AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING:-}
+  AZURE_CLIENT_ID: ${AZURE_CLIENT_ID:-}
   BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
   SMTP_URL: ${SMTP_URL:-}
   EMAIL_FROM: ${EMAIL_FROM:-}
@@ -113,9 +136,12 @@ x-studio-secrets: &studio-secrets
 services:
   # The only service with published ports. Its static configuration is the
   # command flags; its routing table is the `traefik-dynamic` config below,
-  # read through the file provider. It is given no Docker socket: the routing
-  # is fixed, and a container-discovery provider would let any container on
-  # this network publish a route by setting a label.
+  # read through the file provider from one directory: the routes in
+  # `traefik-dynamic`, and the list of `api` servers in `traefik-api-servers`.
+  # The list is its own file so that running more than one `api` is a change to
+  # that file alone (docs/self-host/run.md). It is given no Docker socket: the
+  # routing is fixed, and a container-discovery provider would let any
+  # container on this network publish a route by setting a label.
   traefik:
     image: traefik:v3.6@sha256:31267173a15b4944e797a76ffd9c419707c8d8b32fe5b610f80cd0cfa05f372d
     restart: unless-stopped
@@ -131,7 +157,7 @@ services:
       - --certificatesResolvers.le.acme.email=${ACME_EMAIL}
       - --certificatesResolvers.le.acme.storage=/acme/acme.json
       - --certificatesResolvers.le.acme.httpChallenge.entryPoint=web
-      - --providers.file.filename=/etc/traefik/dynamic.yml
+      - --providers.file.directory=/etc/traefik/dynamic
       # No dashboard and no API: this instance routes one hostname and has
       # nothing an operator needs to inspect over HTTP.
       - --api=false
@@ -145,7 +171,9 @@ services:
       - traefik-acme:/acme
     configs:
       - source: traefik-dynamic
-        target: /etc/traefik/dynamic.yml
+        target: /etc/traefik/dynamic/routing.yml
+      - source: traefik-api-servers
+        target: /etc/traefik/dynamic/api-servers.yml
     depends_on:
       - web
       - api
@@ -160,6 +188,10 @@ services:
     image: ${STUDIO_API_IMAGE}
     restart: unless-stopped
     command: [serve]
+    # The server's own shutdown takes up to 15s — open WebSockets get 5s to
+    # close, then accepted requests 10s to finish — and the upgrade's backup
+    # relies on it finishing. Docker's 10s default would SIGKILL it partway.
+    stop_grace_period: 20s
     environment: *studio-env
     secrets: *studio-secrets
     # Liveness, not readiness: it consults nothing, so the container runtime
@@ -214,9 +246,12 @@ services:
       garage:
         condition: service_started
 
-  # Rate-limit counters only (#1909). Persistence is off on purpose: a counter
-  # that survives a restart is a counter that outlives the abuse it was
-  # measuring, and the limiter fails open when Valkey is unreachable anyway.
+  # Rate-limit counters (#1909), and the `studio:protocol-events` doorbell the
+  # API replicas ring each other on when a protocol changes. Nothing here is
+  # kept: persistence is off on purpose, because a counter that survives a
+  # restart outlives the abuse it was measuring, and a doorbell message is
+  # only a nudge. The limiter fails open when Valkey is unreachable, and the
+  # replicas fall back to checking the database every five seconds.
   valkey:
     image: valkey/valkey:8.1-alpine@sha256:d2e18f3410b6f616de1417f570fa55261af2898b9c5b2cfb6781ce2373ea43d1
     restart: unless-stopped
@@ -275,6 +310,7 @@ services:
     entrypoint: ['/bin/sh', '/garage-init.sh']
     environment:
       GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN}
+      STUDIO_OBJECT_STORE: ${STUDIO_OBJECT_STORE}
       S3_BUCKET: ${S3_BUCKET}
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
@@ -285,9 +321,13 @@ services:
       garage:
         condition: service_started
 
-  # `docker compose run --rm migrate`. Creates this build's schema in an empty
-  # database, is a no-op against a current one, and refuses one another build
-  # created. On an instance that still has no owner it also prints the
+  # `docker compose run --rm migrate`. Applies, in one transaction, every
+  # migration this image carries that the database has not recorded: all of
+  # them to an empty database, none to a current one. It refuses, changing
+  # nothing, a database a newer release migrated, one whose recorded history
+  # differs from the image's, or one with Studio's tables and no history; the
+  # message names the remedy. The upgrade sequence is
+  # docs/self-host/upgrade.md. On an instance that still has no owner it also prints the
   # first-run setup token, so its output is worth reading rather than only its
   # exit code. It bootstraps Garage first, through the dependency below, so a
   # first run is one command.
@@ -357,21 +397,33 @@ configs:
               # A stopped API container is a connection error, which Traefik
               # reports as 502. "Bad gateway" is not what is happening — the
               # instance is temporarily unavailable — and 503 is also what the
-              # API itself answers with once maintenance mode exists (#1901),
-              # so a client and a monitor see one status for the whole window
-              # however it started.
+              # API itself answers while it is closed: maintenance mode, a
+              # migration holding the lock, a schema that is not this build's,
+              # or a boot whose checks have not finished (#1901). A client and a
+              # monitor see one status for the whole window however it started.
               statusRewrites:
                 "502-503": 503
 
+        services:
+          web:
+            loadBalancer:
+              servers:
+                - url: "http://web:80"
+
+  # The `api` service Traefik balances across, apart from the routes so that a
+  # second replica is a one-file change. One `url` per replica, each named for
+  # its Compose service; `docs/self-host/run.md` shows the edit, and adds the
+  # health check that takes a stopped replica out of rotation. One replica
+  # needs no health check: with nowhere else to send a request, taking it out
+  # would only turn a slow answer into the maintenance page.
+  traefik-api-servers:
+    content: |
+      http:
         services:
           api:
             loadBalancer:
               servers:
                 - url: "http://api:3000"
-          web:
-            loadBalancer:
-              servers:
-                - url: "http://web:80"
 
   garage-config:
     content: |
@@ -413,6 +465,15 @@ configs:
       # matched as a whole line — which does not depend on where the field
       # sits in the document.
       set -eu
+
+      # Any other provider leaves the stack's Garage holding nothing, and
+      # empties the S3_* values this would import. Succeeding here keeps that
+      # swap a change to `.env` alone: `migrate` still waits on this one-shot
+      # until the Garage services are deleted.
+      if [ "$${STUDIO_OBJECT_STORE:-}" != s3 ]; then
+          echo "garage-init: STUDIO_OBJECT_STORE is '$${STUDIO_OBJECT_STORE:-}', not s3, so Garage holds nothing; skipping"
+          exit 0
+      fi
 
       ADMIN="http://garage:3903"
 

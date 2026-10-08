@@ -13,6 +13,7 @@ import type { ExportOptions } from '../../options';
 import {
   getEntityAttributes,
   getOwn,
+  hasEncryptedValue,
   isCategoricalOptionSelected,
 } from '../../utils/general';
 import {
@@ -63,13 +64,17 @@ function processAttributes(
 
   for (const [key, value] of Object.entries(entityAttributes)) {
     const codebookEntry = getOwn(variables, key);
+    const variableIsEncrypted = hasEncryptedValue(entity, key);
 
     if (!codebookEntry) {
       const externalKey = keyIds.external.get(key);
       if (!externalKey) {
         throw new Error(`Missing GraphML key for external attribute: ${key}`);
       }
-      createDomDataElement(externalKey, stringifyValue(value));
+      createDomDataElement(
+        externalKey,
+        variableIsEncrypted ? 'ENCRYPTED' : stringifyValue(value),
+      );
       continue;
     }
 
@@ -86,9 +91,11 @@ function processAttributes(
       return { id, origin };
     });
 
-    if (codebookEntry.encrypted) {
-      // An encrypted value is never exported. A layout variable writes the
-      // marker for its coordinates only.
+    // Only a value saved as ciphertext is marked: a plaintext answer is
+    // exported whatever the codebook asks for now. An encrypted value is never
+    // exported, and a layout variable writes the marker for its coordinates
+    // only.
+    if (variableIsEncrypted) {
       for (const { id, origin } of columns) {
         if (
           origin.kind !== 'layout' ||

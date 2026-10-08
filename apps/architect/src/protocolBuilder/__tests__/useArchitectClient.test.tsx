@@ -1,20 +1,32 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { renderHook } from '@testing-library/react';
 import { StrictMode } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { CurrentProtocolSchema } from '@codaco/protocol-validation';
+import {
+  CurrentProtocolSchema,
+  type ExtractedAsset,
+} from '@codaco/protocol-validation';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
-import { setActiveProtocolId } from '~/ducks/modules/app';
+import { setActiveProtocolId, setProtocolLockState } from '~/ducks/modules/app';
 import { rootReducer } from '~/ducks/modules/root';
-import { getProtocol } from '~/selectors/protocol';
+import { getAssetManifest, getProtocol } from '~/selectors/protocol';
 
 import type { ArchitectStore } from '../architectStore.ts';
 import { useArchitectClient } from '../useArchitectClient.ts';
 
+// Architect's IndexedDB asset store is out of reach here; an import only has
+// to land somewhere for its promotion to be checked.
+vi.mock('~/utils/assetUtils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/utils/assetUtils')>()),
+  saveAssetWithFallback: (_asset: ExtractedAsset) =>
+    Promise.resolve({ persisted: true }),
+}));
+
 const PROTOCOL_ID = 'library-row-1';
+const EDIT = 'edit-1';
 const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
 
 /** The language the all-interfaces protocol is written in. */
@@ -68,18 +80,18 @@ describe('useArchitectClient', () => {
     ).rejects.toThrow('ManagedRuntime disposed');
   });
 
-  it('builds a new client for a new store or tab name, and disposes the old one', async () => {
+  it('builds a new client for a new store, and disposes the old one', async () => {
     const first = openStore();
     const second = openStore();
     const { result, rerender, unmount } = renderHook(
-      ({ store, name }: { store: ArchitectStore; name: string }) =>
-        useArchitectClient(store, name),
-      { initialProps: { store: first, name: 'Another tab' } },
+      ({ store }: { store: ArchitectStore }) =>
+        useArchitectClient(store, 'Another tab'),
+      { initialProps: { store: first } },
     );
     const initial = result.current.adapter;
     await initial.rpcCall('ListSections', { protocolId: PROTOCOL_ID });
 
-    rerender({ store: second, name: 'Another tab' });
+    rerender({ store: second });
     const overSecond = result.current.adapter;
     expect(overSecond).not.toBe(initial);
     await Promise.resolve();
@@ -103,16 +115,65 @@ describe('useArchitectClient', () => {
     expect(stageLabel(second)).toBe('Written to the second store');
     expect(stageLabel(first)).not.toBe('Written to the second store');
 
-    rerender({ store: second, name: 'Ein anderer Tab' });
-    const renamed = result.current.adapter;
-    expect(renamed).not.toBe(overSecond);
+    unmount();
+  });
+
+  it('keeps the client, and what an edit imported, through a language change', async () => {
+    const store = openStore();
+    const { result, rerender, unmount } = renderHook(
+      ({ name }: { name: string }) => useArchitectClient(store, name),
+      { initialProps: { name: 'Another tab' } },
+    );
+    const { adapter } = result.current;
+    const staged = await adapter.rpcCall('ResourcesStage', {
+      protocolId: PROTOCOL_ID,
+      editId: EDIT,
+      requestId: 'import-1',
+      request: {
+        kind: 'content',
+        contentKind: 'image',
+        name: 'A photograph',
+        source: 'photo.png',
+        contentType: 'image/png',
+        bytes: new Uint8Array([1, 2, 3]),
+      },
+    });
+    if (staged.status !== 'ok') throw new Error('staging failed');
+    const resourceId = staged.data.descriptor.id;
+
+    rerender({ name: 'Ein anderer Tab' });
     await Promise.resolve();
-    await expect(
-      overSecond.rpcCall('ListSections', { protocolId: PROTOCOL_ID }),
-    ).rejects.toThrow('ManagedRuntime disposed');
-    await expect(
-      renamed.rpcCall('ListSections', { protocolId: PROTOCOL_ID }),
-    ).resolves.toBeDefined();
+    expect(result.current.adapter).toBe(adapter);
+
+    const held = await adapter.rpcCall('AcquireLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+    const written = await adapter.rpcCall('Submit', {
+      protocolId: PROTOCOL_ID,
+      requestId: 'write-3',
+      sectionId: INFORMATION,
+      document: {
+        ...held.document,
+        label: { [FIXTURE_LANGUAGE]: 'Names the photograph' },
+      },
+      revision: held.revision,
+      promote: { editId: EDIT, resourceIds: [resourceId] },
+    });
+    expect(written.promoted?.map((entry) => entry.status)).toEqual([
+      'committed',
+    ]);
+    expect(getAssetManifest(store.getState())[resourceId]).toBeDefined();
+
+    // The label a lock holder is reported under is the current language's.
+    store.dispatch(setProtocolLockState('open-elsewhere'));
+    const blocked = await adapter.rpcCall('AcquireLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+    expect(blocked.lock === 'readOnly' && blocked.holder.displayName).toBe(
+      'Ein anderer Tab',
+    );
 
     unmount();
   });

@@ -20,8 +20,8 @@ import type { HandlersLayer } from '@codaco/protocol-builder/testing/host/create
 import { CLIENT_SESSION_PARAM } from '@codaco/studio-contract/client-session';
 import { MAX_SOCKET_FRAME_BYTES } from '@codaco/studio-contract/limits';
 
+import { HostClient } from '../runtime/hostClient.ts';
 import { setHostClientLayer } from '../runtime/hostSession.ts';
-import { HostClient } from '../runtime/runtime.ts';
 
 const restoreHostClient = () => setHostClientLayer(HostClient.layer);
 

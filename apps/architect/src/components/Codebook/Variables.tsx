@@ -26,6 +26,7 @@ import { ensureError } from '@codaco/shared-consts';
 import { ConnectedVariablePill } from '~/components/VariablePill';
 import { useAppDispatch } from '~/ducks/hooks';
 import { deleteVariableAsync } from '~/ducks/modules/protocol/codebook';
+import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 
 import ControlsColumn from './ControlsColumn';
 import UsageColumn from './UsageColumn';
@@ -113,13 +114,16 @@ const NameHeader = ({
   );
 };
 
-const NameCell = ({ row }: CellContext<DataTableFeatures, Variable>) => (
-  <ConnectedVariablePill
-    editable
-    uuid={row.original.id}
-    className="max-w-[min(20rem,55cqi)]"
-  />
-);
+const NameCell = ({ row }: CellContext<DataTableFeatures, Variable>) => {
+  const readOnly = useProtocolReadOnly();
+  return (
+    <ConnectedVariablePill
+      editable={!readOnly}
+      uuid={row.original.id}
+      className="max-w-[min(20rem,55cqi)]"
+    />
+  );
+};
 
 const UsedInHeader = ({
   column,

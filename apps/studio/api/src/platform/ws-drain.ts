@@ -1,7 +1,8 @@
 import { Context, Effect, Latch, Layer, Ref, type Scope } from 'effect';
 import { HttpServer } from 'effect/http';
 
-const DRAIN_TIMEOUT = '5 seconds';
+/** How long a stop waits for open WebSockets to close, before the listener stops. */
+export const DRAIN_TIMEOUT = '5 seconds';
 
 export class WebSocketDrain extends Context.Service<
   WebSocketDrain,
@@ -9,6 +10,8 @@ export class WebSocketDrain extends Context.Service<
     readonly enter: Effect.Effect<void, never, Scope.Scope>;
     readonly closing: Effect.Effect<void>;
     readonly drain: Effect.Effect<void>;
+    /** True from the moment a drain starts, so readiness can pull the replica. */
+    readonly draining: Effect.Effect<boolean>;
   }
 >()('@studio/WebSocketDrain') {
   static readonly layer: Layer.Layer<WebSocketDrain> = Layer.effect(
@@ -47,7 +50,12 @@ export class WebSocketDrain extends Context.Service<
         );
       });
 
-      return WebSocketDrain.of({ enter, closing: closing.await, drain });
+      return WebSocketDrain.of({
+        enter,
+        closing: closing.await,
+        drain,
+        draining: Effect.sync(() => closing.isOpen()),
+      });
     }),
   );
 
@@ -73,6 +81,7 @@ export class WebSocketDrain extends Context.Service<
       enter: Effect.void,
       closing: Effect.never,
       drain: Effect.void,
+      draining: Effect.succeed(false),
     }),
   );
 }

@@ -28,6 +28,8 @@ const { webhookSubscriptions } = WEBHOOK_TABLES;
 const TEAM = 'team-secret-stores';
 const USER = 'user-secret-stores';
 const PROTOCOL = '9b3d7c22-1f40-4e6a-8b95-2c7d0e1a3f64';
+const DRAFT = '4f0c2a6e-8d31-4b57-9e02-7a1c5d9b3e48';
+const OWNER = `${USER}:tab-1`;
 
 const BEFORE = createSecretsCipher(testKeyring(['test-2', 'test-1']));
 const AFTER = createSecretsCipher(testKeyring(['test-1', 'test-2']));
@@ -50,6 +52,7 @@ const probeOf = (store: SecretStore, keyId: string) =>
 const webhookStore = storeNamed('webhook_subscriptions');
 const accountStore = storeNamed('account');
 const assetKeyStore = storeNamed('protocol_asset_keys');
+const stagedStore = storeNamed('protocol_staged_resources');
 
 const reset = Effect.fnUntraced(function* () {
   const harness = yield* TestDatabase;
@@ -59,6 +62,7 @@ const reset = Effect.fnUntraced(function* () {
       yield* sql`delete from webhook_subscriptions`;
       yield* sql`delete from account`;
       yield* sql`delete from protocol_asset_keys`;
+      yield* sql`delete from protocol_staged_resources`;
       yield* sql`insert into teams (id, name, slug)
                  values (${TEAM}, ${TEAM}, ${TEAM})
                  on conflict (id) do nothing`;
@@ -67,6 +71,9 @@ const reset = Effect.fnUntraced(function* () {
                  on conflict (id) do nothing`;
       yield* sql`insert into protocols (id, team_id, name)
                  values (${PROTOCOL}, ${TEAM}, 'Stores protocol')
+                 on conflict (id) do nothing`;
+      yield* sql`insert into drafts (id, team_id, head_manifest_hash)
+                 values (${DRAFT}, ${TEAM}, 'h')
                  on conflict (id) do nothing`;
     }),
   );
@@ -150,6 +157,54 @@ const newAssetKey = Effect.fnUntraced(function* (
                    ${keyIdOverride ?? sealed.keyId})`,
   );
   return { assetId, value };
+});
+
+const newStagedSecret = Effect.fnUntraced(function* (
+  cipher = BEFORE,
+  keyIdOverride?: string,
+) {
+  const harness = yield* TestDatabase;
+  const resourceId = `resource-${randomUUID()}`;
+  const value = `sk.${randomUUID().replaceAll('-', '')}`;
+  const sealed = cipher.sealStagedSecret(
+    { teamId: TEAM, draftId: DRAFT, owner: OWNER, resourceId },
+    value,
+  );
+  const descriptor = {
+    id: resourceId,
+    kind: 'apikey',
+    name: 'Key',
+    status: 'staged',
+  };
+  yield* harness.onOwner(
+    harness.owner.sql`insert into protocol_staged_resources
+             (team_id, draft_id, owner, edit_id, resource_id, request_id, kind,
+              descriptor, secret_ciphertext, secret_key_id)
+           values (${TEAM}, ${DRAFT}, ${OWNER}, 'edit-1', ${resourceId},
+                   ${randomUUID()}, 'secret', ${JSON.stringify(descriptor)}::jsonb,
+                   ${sealed.ciphertext}, ${keyIdOverride ?? sealed.keyId})`,
+  );
+  return { resourceId, value };
+});
+
+/** A staged file: a row holding an object key and no secret. */
+const newStagedFile = Effect.fnUntraced(function* () {
+  const harness = yield* TestDatabase;
+  const resourceId = `resource-${randomUUID()}`;
+  const descriptor = {
+    id: resourceId,
+    kind: 'image',
+    name: 'Photo',
+    status: 'staged',
+  };
+  yield* harness.onOwner(
+    harness.owner.sql`insert into protocol_staged_resources
+             (team_id, draft_id, owner, edit_id, resource_id, request_id, kind,
+              descriptor, object_key, content_hash, byte_length, content_type)
+           values (${TEAM}, ${DRAFT}, ${OWNER}, 'edit-1', ${resourceId},
+                   ${randomUUID()}, 'content', ${JSON.stringify(descriptor)}::jsonb,
+                   ${`staging/${TEAM}/${randomUUID()}`}, 'hash', 4, 'image/png')`,
+  );
 });
 
 describe.skipIf(!testDb)('the secret stores', () => {
@@ -248,6 +303,38 @@ describe.skipIf(!testDb)('the secret stores', () => {
         }).pipe(Effect.orDie),
       );
 
+      it.effect(
+        'reads an underscore in the current key id as itself, not as a wildcard',
+        () =>
+          Effect.gen(function* () {
+            yield* reset();
+            const current = createSecretsCipher(
+              testKeyring(['key_1', 'keyx1']),
+            );
+            const neighbour = createSecretsCipher(
+              testKeyring(['keyx1', 'key_1']),
+            );
+            yield* newAccount(current, { accessToken: 'ya29.current' });
+            yield* newAccount(neighbour, { accessToken: 'ya29.neighbour' });
+
+            expect(
+              yield* MaintenanceScope.open(
+                accountStore.remaining(current.currentKeyId),
+              ),
+            ).toBe(1);
+            expect(
+              yield* MaintenanceScope.open(
+                rotateBatchWith(current, accountStore, 10),
+              ),
+            ).toBe(1);
+            expect(
+              yield* MaintenanceScope.open(
+                accountStore.remaining(current.currentKeyId),
+              ),
+            ).toBe(0);
+          }).pipe(Effect.orDie),
+      );
+
       it.effect('leaves a row already under the current key alone', () =>
         Effect.gen(function* () {
           yield* reset();
@@ -340,6 +427,8 @@ describe.skipIf(!testDb)('the secret stores', () => {
           yield* newSubscription(BEFORE, 'not-a-keyring-id');
           yield* newAssetKey(BEFORE, 'asset-gone');
           yield* newAssetKey(BEFORE, 'asset-gone');
+          yield* newStagedSecret(BEFORE, 'staged-gone');
+          yield* newStagedFile();
           const harness = yield* TestDatabase;
           yield* harness.onOwner(
             harness.owner
@@ -354,6 +443,7 @@ describe.skipIf(!testDb)('the secret stores', () => {
               webhook: webhookStore.keyIdsInUse,
               account: accountStore.keyIdsInUse,
               assetKeys: assetKeyStore.keyIdsInUse,
+              staged: stagedStore.keyIdsInUse,
             }),
           );
           expect(ids.webhook.toSorted()).toEqual([
@@ -361,6 +451,7 @@ describe.skipIf(!testDb)('the secret stores', () => {
             'test-2',
           ]);
           expect(ids.assetKeys).toEqual(['asset-gone']);
+          expect(ids.staged).toEqual(['staged-gone']);
           expect(ids.account).toEqual(['']);
         }).pipe(Effect.orDie),
       );
@@ -428,12 +519,14 @@ describe.skipIf(!testDb)('the secret stores', () => {
               webhook: probeOf(webhookStore, 'test-1'),
               account: probeOf(accountStore, 'test-1'),
               assetKeys: probeOf(assetKeyStore, 'test-1'),
+              staged: probeOf(stagedStore, 'test-1'),
             }),
           );
           expect(answers).toEqual({
             webhook: null,
             account: null,
             assetKeys: null,
+            staged: null,
           });
         }).pipe(Effect.orDie),
       );
@@ -510,6 +603,49 @@ describe.skipIf(!testDb)('the secret stores', () => {
                 ),
               ).toBe(key.value);
             }
+          }).pipe(Effect.orDie),
+      );
+
+      it.effect(
+        're-seals a staged secret, steps over a staged file, and opens it only under its own owner',
+        () =>
+          Effect.gen(function* () {
+            yield* reset();
+            const secret = yield* newStagedSecret();
+            yield* newStagedFile();
+
+            expect(
+              yield* MaintenanceScope.open(
+                stagedStore.remaining(AFTER.currentKeyId),
+              ),
+            ).toBe(1);
+            expect(
+              yield* MaintenanceScope.open(
+                rotateBatchWith(AFTER, stagedStore, 10),
+              ),
+            ).toBe(1);
+            expect(
+              yield* MaintenanceScope.open(
+                stagedStore.remaining(AFTER.currentKeyId),
+              ),
+            ).toBe(0);
+
+            const opener = yield* MaintenanceScope.open(
+              probeOf(stagedStore, 'test-1'),
+            );
+            expect(opener?.(AFTER)).toBe(secret.value);
+
+            const harness = yield* TestDatabase;
+            yield* harness.onOwner(
+              harness.owner
+                .sql`update protocol_staged_resources set owner = ${`${USER}:tab-2`}
+                     where resource_id = ${secret.resourceId}`,
+            );
+            const moved = yield* MaintenanceScope.open(
+              probeOf(stagedStore, 'test-1'),
+            );
+            expect(moved).not.toBeNull();
+            expect(() => moved?.(AFTER)).toThrow();
           }).pipe(Effect.orDie),
       );
 

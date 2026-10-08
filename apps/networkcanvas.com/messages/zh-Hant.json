@@ -20,7 +20,7 @@
   },
   "News": {
     "label": "最新消息：",
-    "fullStory": "[閱讀全文]"
+    "readMore": "[閱讀更多]"
   },
   "Tools": {
     "heading": "協助您進行研究的一系列工具",
@@ -101,6 +101,27 @@
     "citing": "關於引用 Network Canvas 的方式，請參閱我們<article>說明文件中的相關文章</article>。",
     "submission": "如果您希望在此展示您的著作，請在我們社群論壇的<thread>討論串</thread>中留言告訴我們。"
   },
+  "UpdatesPage": {
+    "metadata": {
+      "title": "更新",
+      "description": "Network Canvas 專案的各項消息：軟體發布、經費、研究論文、工作坊及其他里程碑。"
+    },
+    "heading": "更新",
+    "introduction": "自 2013 年專案啟動以來，Network Canvas 的各項消息：軟體發布、經費、研究論文、工作坊及其他里程碑。",
+    "search": {
+      "label": "搜尋更新",
+      "placeholder": "搜尋更新",
+      "clear": "清除搜尋",
+      "results": "顯示 {count} 則，共 {total, plural, =1 {# 則更新} other {# 則更新}}",
+      "emptyHeading": "找不到更新",
+      "emptyDescription": "請嘗試其他搜尋字詞。"
+    },
+    "details": {
+      "show": "顯示完整詳細資訊",
+      "hide": "隱藏詳細資訊"
+    },
+    "readMore": "閱讀完整公告"
+  },
   "Team": {
     "heading": "核心團隊",
     "introduction": "我們的專案團隊成員來自各種不同的學科與專業領域。"
@@ -145,6 +166,7 @@
   },
   "Footer": {
     "terms": "使用條款",
+    "updates": "更新",
     "privacy": "隱私權政策",
     "copyright": "版權所有 Complex Data Collective 2016-{year}",
     "youtube": "YouTube",

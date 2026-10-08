@@ -1,7 +1,14 @@
 'use client';
 
 import { AnimatePresence } from 'motion/react';
-import { useCallback, useEffect, useId, useMemo, useRef } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
 import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
@@ -31,6 +38,7 @@ import Panel from '../../components/Panel';
 import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import { writeFailureMessage } from '../../forms/writeSubmissionResult';
 import useNodeLimits from '../../hooks/useNodeLimits';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
@@ -54,7 +62,9 @@ import {
 } from '../../selectors/session';
 import { addNode, deleteNode } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
+import { useInterviewToast } from '../../toast/useInterviewToast';
 import getParentKeyByNameValue from '../../utils/getParentKeyByNameValue';
+import { isAttributeEncrypted } from '../Anonymisation/isAttributeEncrypted';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { interfaceMessages } from '../messages';
 import { buildRosterSortConfig } from './buildRosterSortConfig';
@@ -97,7 +107,9 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
 
   const { isLastPrompt } = usePrompts();
 
-  const { requirePassphrase, passphrase, isEnabled } = usePassphrase();
+  const { requirePassphrase, passphrase, passphraseInvalid, isEnabled } =
+    usePassphrase();
+  const { showToast } = useInterviewToast();
 
   const interfaceRef = useRef(null);
 
@@ -188,18 +200,10 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
 
   // --- Encryption detection ---
   const useEncryption = useMemo(() => {
-    // The encrypted-variables experiment is the master switch: the decrypt
-    // path (useNodeAttributes) only runs when it is enabled, so writing
-    // ciphertext without it would store values that can never be displayed.
-    if (!isEnabled) {
-      return false;
-    }
+    const isEncrypted = (variableId: string) =>
+      isAttributeEncrypted(isEnabled, codebookForNodeType, variableId);
 
-    if (
-      Object.keys(newNodeAttributes).some(
-        (variableId) => codebookForNodeType[variableId]?.encrypted,
-      )
-    ) {
+    if (Object.keys(newNodeAttributes).some(isEncrypted)) {
       return true;
     }
 
@@ -230,9 +234,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
       [] as string[],
     );
 
-    return itemAttributesWithCodebookMatches.some(
-      (itemAttribute) => codebookForNodeType[itemAttribute]?.encrypted,
-    );
+    return itemAttributesWithCodebookMatches.some(isEncrypted);
   }, [items, codebookForNodeType, newNodeAttributes, isEnabled]);
 
   useEffect(() => {
@@ -241,6 +243,10 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     }
   }, [useEncryption, requirePassphrase]);
 
+  // Answers this stage would encrypt can only be taken once a passphrase that
+  // works is in force.
+  const encryptionLocked = useEncryption && (!passphrase || passphraseInvalid);
+
   const { maxNodesReached } = useNodeLimits({
     stageNodeCount,
     minNodes,
@@ -248,17 +254,33 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     isLastPrompt,
   });
 
-  const handleAddNode = (metadata?: Record<string, unknown>) => {
+  // The people whose add is under way. Protecting their answers can take a
+  // while, so they leave the roster as soon as they are dropped rather than
+  // once they are in the network, and a second drop of the same card is
+  // ignored. The ref answers a drop straight away; the state re-renders.
+  const addingRef = useRef(new Set<string>());
+  const [adding, setAdding] = useState<ReadonlySet<string>>(() => new Set());
+
+  const handleAddNode = async (metadata?: Record<string, unknown>) => {
     const meta = metadata as UseItemElement | undefined;
     if (!meta) return;
 
+    if (encryptionLocked) {
+      requirePassphrase();
+      return;
+    }
+
     const { id, data } = meta;
+    if (addingRef.current.has(id)) return;
+    addingRef.current.add(id);
+    setAdding(new Set(addingRef.current));
+
     const attributeData = {
       ...newNodeAttributes,
       ...data[entityAttributesProperty],
     };
 
-    void dispatch(
+    const result = await dispatch(
       addNode({
         type: stage.subject.type,
         modelData: {
@@ -269,7 +291,18 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
         allowUnknownAttributes: true,
         currentStep,
       }),
-    );
+    ).finally(() => {
+      addingRef.current.delete(id);
+      setAdding(new Set(addingRef.current));
+    });
+    const failure = writeFailureMessage(result);
+    if (failure) {
+      showToast({
+        description: intl.formatMessage(failure),
+        variant: 'destructive',
+        anchor: 'forward',
+      });
+    }
   };
 
   const handleRemoveNode = useCallback(
@@ -283,7 +316,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
   );
 
   const disabled = useMemo(() => {
-    if (!passphrase && useEncryption) {
+    if (encryptionLocked) {
       return true;
     }
     // Nothing may be dragged out of a roster that has not finished arriving —
@@ -297,14 +330,14 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     }
 
     return false;
-  }, [maxNodesReached, itemsStatus, passphrase, useEncryption]);
+  }, [maxNodesReached, itemsStatus, encryptionLocked]);
 
-  // --- Exclude already-added items from source panel ---
+  // --- Exclude added items, and those being added, from source panel ---
   const filteredItems = useMemo(() => {
-    if (!excludeItems || excludeItems.length === 0) return items;
-    const excludeSet = new Set(excludeItems);
+    if (excludeItems.length === 0 && adding.size === 0) return items;
+    const excludeSet = new Set([...excludeItems, ...adding]);
     return items.filter((item) => !excludeSet.has(item.id));
-  }, [items, excludeItems]);
+  }, [items, excludeItems, adding]);
 
   // --- Disabled keys to prevent dragging when disabled ---
   const disabledKeys = useMemo(
@@ -360,6 +393,9 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
         ? { ...item, itemType: 'SOURCE_NODES' }
         : { itemType: 'SOURCE_NODES' };
     },
+    // A drag names the person by the label their card shows.
+    getItemAnnouncedName: (key) =>
+      filteredItems.find((i) => i.id === String(key))?.props.label,
     renderPreview: (_key, metadata) => {
       const item = metadata as UseItemElement | undefined;
       if (!item?.props?.label) return null;

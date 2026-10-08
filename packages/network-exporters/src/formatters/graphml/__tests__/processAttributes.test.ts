@@ -3,8 +3,11 @@ import { describe, expect, it } from 'vitest';
 
 import type { Codebook } from '@codaco/protocol-validation';
 import {
+  egoProperty,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  entitySecureAttributesMeta,
+  nodeExportIDProperty,
 } from '@codaco/shared-consts';
 
 import type { NodeWithResequencedID } from '../../../input';
@@ -136,6 +139,101 @@ describe('processAttributes', () => {
 
       expect(trueCount).toBe(1); // Only '10' should be true
       expect(falseCount).toBe(2); // '1' and '100' should be false
+    });
+  });
+
+  describe('encrypted values', () => {
+    const codebookWithName = (encrypted: boolean): Codebook => ({
+      node: {
+        person: {
+          name: 'person',
+          label: { en: 'Person' },
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            'name-uuid': {
+              name: 'name',
+              label: 'Name',
+              type: 'text',
+              encrypted,
+            },
+          },
+        },
+      },
+    });
+
+    it('exports a value saved as ciphertext as ENCRYPTED, though the codebook no longer asks for encryption', async () => {
+      const node: NodeWithResequencedID = {
+        [entityPrimaryKeyProperty]: '1',
+        [egoProperty]: 'ego-1',
+        [nodeExportIDProperty]: 1,
+        type: 'person',
+        [entityAttributesProperty]: {
+          'name-uuid': [12, 34, 56],
+          'external-uuid': [78, 90],
+        },
+        [entitySecureAttributesMeta]: {
+          'name-uuid': { iv: [1], salt: [2] },
+          'external-uuid': { iv: [3], salt: [4] },
+        },
+      };
+
+      const codebook = codebookWithName(false);
+      const keyIds = await keyIdsFor(codebook, node);
+      const result = await processAttributes(
+        node,
+        codebook,
+        mockExportOptions,
+        keyIds,
+      );
+
+      expect(getDataElements(result)).toEqual({
+        'name-uuid': 'ENCRYPTED',
+        [keyIds.external.get('external-uuid') ?? '']: 'ENCRYPTED',
+      });
+    });
+
+    it('exports a value saved as plaintext as itself, though the codebook now asks for encryption', async () => {
+      const node: NodeWithResequencedID = {
+        [entityPrimaryKeyProperty]: '1',
+        [egoProperty]: 'ego-1',
+        [nodeExportIDProperty]: 1,
+        type: 'person',
+        [entityAttributesProperty]: { 'name-uuid': 'Alice' },
+      };
+
+      const codebook = codebookWithName(true);
+      const result = await processAttributes(
+        node,
+        codebook,
+        mockExportOptions,
+        await keyIdsFor(codebook, node),
+      );
+
+      expect(getDataElements(result)).toEqual({ 'name-uuid': 'Alice' });
+    });
+
+    it('exports a plaintext value as itself, though metadata from an encrypted value it replaced was left with it', async () => {
+      const node: NodeWithResequencedID = {
+        [entityPrimaryKeyProperty]: '1',
+        [egoProperty]: 'ego-1',
+        [nodeExportIDProperty]: 1,
+        type: 'person',
+        [entityAttributesProperty]: { 'name-uuid': 'Alice' },
+        [entitySecureAttributesMeta]: {
+          'name-uuid': { iv: [1], salt: [2] },
+        },
+      };
+
+      const codebook = codebookWithName(true);
+      const result = await processAttributes(
+        node,
+        codebook,
+        mockExportOptions,
+        await keyIdsFor(codebook, node),
+      );
+
+      expect(getDataElements(result)).toEqual({ 'name-uuid': 'Alice' });
     });
   });
 });

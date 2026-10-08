@@ -1,5 +1,5 @@
 import { getLocalizedPathname } from '~/lib/i18n/clientLocale';
-import type { Locale } from '~/lib/i18n/locales';
+import { isLocale, type Locale } from '~/lib/i18n/locales';
 import {
   protocolGalleryOrigin,
   protocolGalleryPathPrefix,
@@ -162,6 +162,43 @@ export function resolveWebsiteNavigationUrl(
   }
 
   return href;
+}
+
+/**
+ * The site path an absolute URL on the website points at, without any locale
+ * segment, so a link written as a full address still keeps the visitor's
+ * language. Anything not on the website gives undefined.
+ */
+export function websitePathFromUrl(href: string) {
+  let url: URL;
+  try {
+    url = new URL(href);
+  } catch {
+    return undefined;
+  }
+  if (url.origin !== canonicalNetworkCanvasUrl) return undefined;
+
+  const [, first = '', ...rest] = url.pathname.split('/');
+  const pathname = isLocale(first) ? `/${rest.join('/')}` : url.pathname;
+  return `${pathname}${url.search}${url.hash}`;
+}
+
+/**
+ * Link to one of the website's own pages from any host, carrying the locale.
+ */
+export function websitePageHref(
+  locale: Locale,
+  pathname: string,
+  host: SiteHost = 'website',
+) {
+  return resolveWebsiteNavigationUrl(
+    new URL(
+      getLocalizedPathname(locale, pathname),
+      canonicalNetworkCanvasUrl,
+    ).toString(),
+    locale,
+    host,
+  );
 }
 
 /**

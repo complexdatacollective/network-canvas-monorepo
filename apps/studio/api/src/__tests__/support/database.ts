@@ -42,6 +42,7 @@ import {
   jobSchemaGrantsSql,
   jobSchemaSql,
 } from '../../jobs/schema.ts';
+import { Analytics } from '../../platform/analytics.ts';
 import type { StudioServices } from '../../rpc/deps.ts';
 import { createSecretsCipher } from '../../secrets/cipher.ts';
 import { SecretsCipher } from '../../secrets/services.ts';
@@ -292,6 +293,7 @@ const TestStudioServicesLive: Layer.Layer<
     return Layer.mergeAll(
       Jobs.layer({ schema: harness.jobSchema }),
       AuditSignal.layer,
+      Analytics.layerDisabled,
       testDeniedAttempts,
       keyring === undefined
         ? Layer.succeed(SecretsCipher)(

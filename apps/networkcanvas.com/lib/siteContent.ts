@@ -5,6 +5,7 @@ import csv from 'csvtojson';
 import { z } from 'zod';
 
 import type { Locale } from '~/lib/i18n/locales';
+import { isUpdateDate } from '~/lib/updateDates';
 
 export type NewsItem = { id: string; title: string; href: string };
 
@@ -34,8 +35,25 @@ export type TeamMember = {
   photo: string;
 };
 
+export const updateProminences = [
+  'launch',
+  'featured',
+  'normal',
+  'mini',
+] as const;
+export type UpdateProminence = (typeof updateProminences)[number];
+
+export type Update = {
+  id: string;
+  date: string;
+  prominence: UpdateProminence;
+  title: string;
+  summary?: string;
+  details?: string;
+  link?: string;
+};
+
 export type SiteContent = {
-  newsItems: NewsItem[];
   publications: Publication[];
   grants: Grant[];
   coreTeam: TeamMember[];
@@ -57,22 +75,6 @@ const publicationYear = z
   .string()
   .trim()
   .regex(/^\d{4}$/, 'must be a four-digit year');
-
-const newsRowSchema = z
-  .object({
-    id,
-    'title_en': requiredText,
-    'title_es': requiredText,
-    'title_zh-Hans': requiredText,
-    'title_zh-Hant': requiredText,
-    'title_de': requiredText,
-    'title_nl': requiredText,
-    'title_pt-BR': requiredText,
-    'title_it': requiredText,
-    'title_fr': requiredText,
-    'href': z.union([httpsUrl, internalPath]),
-  })
-  .strict();
 
 const publicationRowSchema = z
   .object({
@@ -162,6 +164,39 @@ const teamMemberRowSchema = z
   })
   .strict();
 
+const optionalText = z
+  .string()
+  .trim()
+  .optional()
+  .transform((value) => value || undefined);
+
+const updateRowSchema = z
+  .object({
+    id: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'must be a URL slug'),
+    date: z
+      .string()
+      .refine(isUpdateDate, 'must be a date: YYYY, YYYY-MM or YYYY-MM-DD'),
+    prominence: z.enum(updateProminences),
+    link: optionalText.pipe(internalPath.optional()),
+  })
+  .strict()
+  .superRefine((row, context) => {
+    if (row.prominence === 'launch' && !row.link) {
+      context.addIssue({
+        code: 'custom',
+        path: ['link'],
+        message: 'is required for a launch update',
+      });
+    }
+    if (row.prominence !== 'launch' && row.link) {
+      context.addIssue({
+        code: 'custom',
+        path: ['link'],
+        message: `must be empty for a ${row.prominence} update`,
+      });
+    }
+  });
+
 const csvRowsSchema = z.array(z.record(z.string(), z.string()));
 
 function issueField(issue: z.core.$ZodIssue): string {
@@ -248,30 +283,13 @@ export async function loadSiteContent(
   locale: Locale,
   contentDirectory = join(process.cwd(), 'content'),
 ): Promise<SiteContent> {
-  const [newsRows, publicationRows, grantRows, teamRows] = await Promise.all([
-    parseCsv(contentDirectory, 'latest-news.csv', newsRowSchema),
+  const [publicationRows, grantRows, teamRows] = await Promise.all([
     parseCsv(contentDirectory, 'publications.csv', publicationRowSchema),
     parseCsv(contentDirectory, 'grants.csv', grantRowSchema),
     parseCsv(contentDirectory, 'core-team.csv', teamMemberRowSchema),
   ]);
 
   return {
-    newsItems: newsRows.map((row) => ({
-      id: row.id,
-      title: localized(
-        locale,
-        row.title_en,
-        row.title_es,
-        row['title_zh-Hans'],
-        row['title_zh-Hant'],
-        row.title_de,
-        row.title_nl,
-        row['title_pt-BR'],
-        row.title_it,
-        row.title_fr,
-      ),
-      href: row.href,
-    })),
     publications: publicationRows.map((row) => ({
       id: row.id,
       title: localized(
@@ -373,4 +391,118 @@ export async function loadSiteContent(
       photo: row.photo,
     })),
   };
+}
+
+const DETAILS_MARKER = '<!-- more -->';
+
+const updateTextRules = {
+  launch: { summary: true, details: false },
+  featured: { summary: true, details: true },
+  normal: { summary: true, details: false },
+  mini: { summary: false, details: false },
+} as const satisfies Record<
+  UpdateProminence,
+  { summary: boolean; details: boolean }
+>;
+
+async function readUpdateText(
+  contentDirectory: string,
+  updateId: string,
+  locale: Locale,
+) {
+  // British English differs from American English only where an update says
+  // so, so it falls back to the American text.
+  const candidates = locale === 'en-GB' ? ['en-GB', 'en-US'] : [locale];
+  for (const candidate of candidates) {
+    const filename = `updates/${updateId}.${candidate}.md`;
+    try {
+      const source = await readFile(join(contentDirectory, filename), 'utf8');
+      return { filename, source };
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    }
+  }
+  throw new Error(`updates/${updateId}.${locale}.md: missing translation`);
+}
+
+function parseUpdateText(
+  filename: string,
+  source: string,
+  prominence: UpdateProminence,
+) {
+  const heading = /^# (.+)\n?/.exec(source.replace(/\r\n/g, '\n'));
+  const title = heading?.[1]?.trim();
+  if (!heading || !title) {
+    throw new Error(`${filename}: title: must start with a "# " heading`);
+  }
+
+  const body = source.replace(/\r\n/g, '\n').slice(heading[0].length);
+  const [summaryPart = '', detailsPart, ...rest] = body.split(DETAILS_MARKER);
+  if (rest.length > 0) {
+    throw new Error(`${filename}: details: must have one ${DETAILS_MARKER}`);
+  }
+  const summary = summaryPart.trim() || undefined;
+  const details = detailsPart?.trim() || undefined;
+  const rules = updateTextRules[prominence];
+
+  if (rules.summary && !summary) {
+    throw new Error(
+      `${filename}: summary: is required for a ${prominence} update`,
+    );
+  }
+  if (!rules.summary && summary) {
+    throw new Error(
+      `${filename}: summary: must be empty for a ${prominence} update`,
+    );
+  }
+  if (detailsPart !== undefined && !rules.details) {
+    throw new Error(
+      `${filename}: details: must be empty for a ${prominence} update`,
+    );
+  }
+
+  return { title, summary, details };
+}
+
+export async function loadUpdates(
+  locale: Locale,
+  contentDirectory = join(process.cwd(), 'content'),
+): Promise<Update[]> {
+  const rows = await parseCsv(contentDirectory, 'updates.csv', updateRowSchema);
+
+  const updates = await Promise.all(
+    rows.map(async (row) => {
+      const { filename, source } = await readUpdateText(
+        contentDirectory,
+        row.id,
+        locale,
+      );
+      const { title, summary, details } = parseUpdateText(
+        filename,
+        source,
+        row.prominence,
+      );
+      return {
+        id: row.id,
+        date: row.date,
+        prominence: row.prominence,
+        title,
+        ...(summary ? { summary } : {}),
+        ...(details ? { details } : {}),
+        ...(row.link ? { link: row.link } : {}),
+      };
+    }),
+  );
+
+  return updates.toSorted((a, b) => b.date.localeCompare(a.date));
+}
+
+const LATEST_NEWS_COUNT = 5;
+
+export function latestNewsItems(updates: readonly Update[]): NewsItem[] {
+  return updates.slice(0, LATEST_NEWS_COUNT).map((update) => ({
+    id: update.id,
+    title: update.title,
+    href: `/updates#${update.id}`,
+  }));
 }

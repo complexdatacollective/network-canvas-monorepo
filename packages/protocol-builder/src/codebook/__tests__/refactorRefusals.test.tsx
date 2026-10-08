@@ -3,8 +3,11 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { commonCatalogs } from '@codaco/app-i18n/common';
-import { ecosystemLocales, mergeCatalogs } from '@codaco/app-i18n/locales';
+import { commonCatalogLoaders } from '@codaco/app-i18n/common';
+import {
+  createCatalogSource,
+  ecosystemLocales,
+} from '@codaco/app-i18n/locales';
 import { formatMessageError } from '@codaco/app-i18n/messages';
 import { AppI18nProvider, useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
@@ -14,7 +17,7 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
-import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
+import { protocolBuilderCatalogLoaders } from '../../locales/catalogs.ts';
 import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
 import {
   createInMemoryHost,
@@ -24,6 +27,12 @@ import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts
 import { useDeleteCodebookVariable } from '../writes.ts';
 
 const FIXTURE: Record<string, unknown> = allInterfaces;
+
+const catalogs = createCatalogSource(
+  commonCatalogLoaders,
+  protocolBuilderCatalogLoaders,
+);
+await catalogs.load('es');
 
 const PERSON = sectionId({ kind: 'codebookNode', typeId: 'person' });
 const SUBJECT = { entity: 'node', type: 'person' } as const;
@@ -87,10 +96,7 @@ const renderDeleting = (
       <AppI18nProvider
         locale={locale}
         locales={ecosystemLocales}
-        messages={mergeCatalogs(
-          commonCatalogs[locale] ?? {},
-          protocolBuilderCatalogs[locale] ?? {},
-        )}
+        messages={catalogs.peek(locale)}
         manageDocument={false}
       >
         {tree}

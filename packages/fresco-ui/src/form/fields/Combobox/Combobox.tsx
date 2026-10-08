@@ -109,10 +109,6 @@ type ComboboxFieldProps = FieldValueProps<(string | number)[]> &
     | 'defaultValue'
     | 'name'
     | 'disabled'
-    // The field owns whether its popup is open (see
-    // `useComboboxTriggerEscape`), so neither would be honoured.
-    | 'open'
-    | 'onOpenChange'
   > &
   VariantProps<typeof comboboxTriggerVariants>;
 
@@ -161,6 +157,7 @@ function ComboboxField(props: ComboboxFieldProps) {
     'aria-required': ariaRequired,
     'aria-disabled': ariaDisabled,
     'aria-readonly': ariaReadOnly,
+    open: openProp,
     defaultOpen,
     ...rest
   } = props;
@@ -174,6 +171,7 @@ function ComboboxField(props: ComboboxFieldProps) {
   const portalContainer = usePortalContainer();
 
   const { open, onOpenChange, onTriggerKeyDown } = useComboboxTriggerEscape({
+    open: openProp,
     defaultOpen,
     onOpenChange: (nextOpen) => {
       if (!nextOpen) setInputValue('');

@@ -20,14 +20,21 @@ vi.mock('~/components/ui/HomepagePageBackground', () => ({
 
 vi.mock('../HeroIntro', () => ({
   HeroIntro: ({
+    children,
     newsItems,
     onEntranceStart,
   }: {
+    children?: ReactNode;
     newsItems: readonly NewsItem[];
     onEntranceStart: () => void;
   }) => {
     heroRender({ newsItems, onEntranceStart });
-    return <button onClick={onEntranceStart}>Start entrance</button>;
+    return (
+      <>
+        <button onClick={onEntranceStart}>Start entrance</button>
+        {children}
+      </>
+    );
   },
 }));
 

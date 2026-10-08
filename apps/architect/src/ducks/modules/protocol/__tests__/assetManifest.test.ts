@@ -175,7 +175,7 @@ describe('protocol/assetManifest', () => {
       mockedValidateAsset.mockResolvedValue({ duplicateCount: 0 });
       // A stage editor open, with a nested editor open inside it: the exact
       // pair the old discriminator answered backwards.
-      publishStageDraft(openStage, {}, {});
+      publishStageDraft(openStage, {}, {}, true);
       const nestedEditor = renderHook(() => useNestedDraft(true, () => true));
       store.dispatch(setProtocolLockState('reclaim-blocked'));
 
@@ -195,7 +195,7 @@ describe('protocol/assetManifest', () => {
 
     it('sends the researcher to the stage-draft choice when that is the blocker', async () => {
       mockedValidateAsset.mockResolvedValue({ duplicateCount: 0 });
-      publishStageDraft(openStage, {}, {});
+      publishStageDraft(openStage, {}, {}, true);
       store.dispatch(setProtocolLockState('reclaim-blocked'));
 
       const result = await store.dispatch(

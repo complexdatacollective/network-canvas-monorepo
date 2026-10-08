@@ -419,6 +419,7 @@ const migrationV7toV8 = createMigration({
 - A CategoricalBin prompt \`otherOptionLabel\` or \`otherVariablePrompt\` without an accompanying \`otherVariable\` was silently ignored, as was an empty-string \`otherVariable\`. Such orphaned properties are removed.
 - A CategoricalBin prompt with \`otherVariable\` set now requires both \`otherVariablePrompt\` and \`otherOptionLabel\` (previously a missing label silently dropped the whole "other" bin). A missing value is backfilled from the other authored one, else "Please specify" / "Other".
 - A CategoricalBin prompt's \`otherVariable\` must reference a text attribute because its follow-up control records text. A non-text reference and its associated "other" configuration are removed.
+- A name generator prompt's \`additionalAttributes\` must reference boolean attributes. The interview sets each one when a node is added to the prompt and clears it when the node is removed, so a non-boolean target had any value collected for it elsewhere overwritten with true/false and then erased. Entries referencing a non-boolean attribute are removed.
 - A Sociogram prompt with \`highlight.allowHighlighting\` enabled must name the boolean attribute to toggle, and an \`edges\` object must set \`create\` and/or \`display\`. Prompts violating either were runtime no-ops; the highlight toggle is turned off and the empty edges object removed.
 - The Sociogram and Narrative \`automaticLayout\` behaviour is now a plain boolean (previously \`{ enabled }\`); existing values are flattened. The Narrative interface gains this behaviour for the first time; it is only active when explicitly enabled, so existing Narrative stages keep their hand-authored static positions.
 - Validation rules that contradict each other are removed so existing protocols stay valid under the new schema checks: inverted \`min\`/\`max\` pairs (both removed), \`required\` text or categorical attributes whose maximum is zero (the zero maximum is removed), \`minSelected\` above the option count, \`sameAs\` and \`differentFrom\` naming one target (both removed), comparator structures no value can satisfy — impossible cycles, comparisons inside a \`sameAs\` group, comparisons whose value ranges cannot overlap (the comparator is removed; value bounds are kept), \`sameAs\` groups whose bounds share no value (the \`sameAs\` rules are removed) — and validation references to an attribute of a different type. Count-valued rules must be non-negative; negative values are removed.
@@ -1889,6 +1890,33 @@ const migrationV7toV8 = createMigration({
             }
           }
           return document;
+        },
+      },
+      {
+        // Name generator prompts stamp, then clear, a boolean on every node
+        // they nominate. Drop legacy entries aimed at non-boolean attributes
+        // before schema validation.
+        paths: ['stages[]'],
+        fn: <V>(stage: V) => {
+          const typedStage = asRecord(stage);
+          if (!typedStage || !Array.isArray(typedStage.prompts)) return stage;
+          for (const rawPrompt of typedStage.prompts) {
+            const prompt = asRecord(rawPrompt);
+            if (!prompt || !Array.isArray(prompt.additionalAttributes)) {
+              continue;
+            }
+            prompt.additionalAttributes = prompt.additionalAttributes.filter(
+              (entry) => {
+                const variable = codebookVariable(
+                  codebook,
+                  typedStage.subject,
+                  asRecord(entry)?.variable,
+                );
+                return !variable || variable.type === 'boolean';
+              },
+            );
+          }
+          return stage;
         },
       },
       {

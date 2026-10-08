@@ -101,6 +101,7 @@ const openDirtyStageDraft = () => {
     editedStage,
     { label: { en: 'A' } },
     { label: { en: 'A, edited' } },
+    true,
   );
 };
 

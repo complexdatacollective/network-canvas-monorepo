@@ -1,7 +1,8 @@
 import { Effect, Layer, Option, Ref, Schema } from 'effect';
-import { HttpRouter } from 'effect/http';
+import { FetchHttpClient, HttpRouter } from 'effect/http';
 
 import { MaintenanceDatabase, ReadinessDatabase } from '../db/client.ts';
+import { migrationLockHeld } from '../db/readiness.ts';
 import { type DbEnv, Environment } from '../env.ts';
 import {
   databaseCheck,
@@ -10,6 +11,7 @@ import {
   HealthRoutes,
   schemaCheckOn,
 } from '../http/health.ts';
+import { MaintenanceTriggers } from '../http/middleware/maintenance.ts';
 import { JobClock } from '../jobs/clock.ts';
 import { DeniedAttemptsStore } from '../jobs/handlers/denied-attempts/store.ts';
 import { Jobs } from '../jobs/jobs.ts';
@@ -29,6 +31,7 @@ import { RateLimiter } from '../rate-limit/limiter.ts';
 import { RateLimitStore } from '../rate-limit/store.ts';
 import { SecretsCipher } from '../secrets/services.ts';
 import { KeyringVerified } from '../secrets/verify.ts';
+import { ObjectStoreLive } from '../storage/live.ts';
 import { STUDIO_VERSION } from '../version.ts';
 import { reportingRefusals } from './command.ts';
 
@@ -121,14 +124,32 @@ function workerWith(db: DbEnv) {
         }),
       );
 
+      // The API's closure rule, read on the probe client `/readyz` uses. No
+      // boot trigger: `SchemaCurrent` and `SecretsVerified` are built before
+      // the gate, so a worker that reaches it has finished booting.
+      const Triggers = Layer.unwrap(
+        Effect.map(SchemaStatus, (status) =>
+          MaintenanceTriggers.layerWith({
+            lockHeld: migrationLockHeld(readiness.sql),
+            schema: status.read,
+          }),
+        ),
+      );
+
       return Started.pipe(
         Layer.provide(JobMaintenanceGate.layer()),
+        Layer.provide(Triggers),
         Layer.provide(MaintenanceState.layerMaintenance),
         Layer.provide(JobQueueMetrics.layer()),
         Layer.provide(JobHandlersLive),
+        // The update check's manifest fetch, which contacts the one host
+        // `update/manifest.ts` names.
+        Layer.provide(FetchHttpClient.layer),
         Layer.provide(DeniedAttemptsStore.layer),
+        // The protocol-store sweep collects staged objects.
+        Layer.provide(ObjectStoreLive),
         // Paused until the gate's first reading: a worker that booted
-        // fetching could claim before that reading said "maintenance".
+        // fetching could claim before that reading said "closed".
         Layer.provideMerge(
           JobWorker.layer({ schema: JOB_SCHEMA, startPaused: true }),
         ),

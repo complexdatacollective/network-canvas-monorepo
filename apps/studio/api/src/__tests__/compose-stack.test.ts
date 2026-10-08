@@ -1,8 +1,12 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
+import { Duration } from 'effect';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
+
+import { GRACEFUL_SHUTDOWN_TIMEOUT } from '../platform/http-server.ts';
+import { DRAIN_TIMEOUT } from '../platform/ws-drain.ts';
 
 // The drift guard between `apps/studio/docker-compose.yml` and the
 // `.env.example` beside it — the two files a self-hoster downloads, and the
@@ -29,6 +33,19 @@ type ComposeService = {
   secrets?: string[];
   stop_grace_period?: string;
 };
+/** A `traefik-api-servers` config, as the file provider reads it. */
+type ApiServers = {
+  http: {
+    services: {
+      api: {
+        loadBalancer: {
+          healthCheck?: { path: string; interval: string; timeout: string };
+          servers: { url: string }[];
+        };
+      };
+    };
+  };
+};
 type ComposeFile = {
   services: Record<string, ComposeService>;
   secrets?: Record<string, { file?: string }>;
@@ -38,11 +55,28 @@ type ComposeFile = {
 // Parsed with interpolation left alone: `${VAR}` is a plain string to the YAML
 // parser, which is what lets the checks below reason about the references
 // themselves rather than about one machine's values for them.
-/** Every overlay `stack-test/lib.sh` layers over `docker-compose.yml`. */
+const upgradeOverlaySource = read('release-test/compose.upgrade.yml');
+
+/**
+ * The `docker-compose.override.yml` that docs/self-host/run.md gives a
+ * self-hoster adding a replica, read from between the markers
+ * `stack-test/lib.sh` extracts it from for the two-api variant.
+ */
+const twoApiOverrideSource =
+  /^<!-- two-api-override start -->\n+```yaml\n(?<body>[\s\S]*?)^```\n+<!-- two-api-override end -->$/m.exec(
+    read('docs/self-host/run.md'),
+  )?.groups?.body ?? '';
+
+/**
+ * Every overlay `stack-test/lib.sh` or `release-test/lib.sh` layers over
+ * `docker-compose.yml`.
+ */
 function composeOverlays(): [string, string][] {
   const variants = new URL('stack-test/variants/', studioRoot);
   return [
     ['docker-compose.local.yml', localComposeSource],
+    ['release-test/compose.upgrade.yml', upgradeOverlaySource],
+    ['docs/self-host/run.md (two-api-override)', twoApiOverrideSource],
     ...readdirSync(fileURLToPath(variants))
       .filter((name) => name.endsWith('.yml'))
       .map((name): [string, string] => [
@@ -200,6 +234,49 @@ describe('the reference compose stack', () => {
     }
   });
 
+  it('gives the api time to finish its own shutdown before Docker kills it', () => {
+    // The upgrade stops `api` before its backup and relies on the stop
+    // finishing the requests already accepted (docs/self-host/upgrade.md,
+    // step 2). The server's shutdown is the WebSocket drain, then the
+    // listener's graceful close, one after the other; Docker's 10s default is
+    // shorter than the two together and would SIGKILL a request partway.
+    const shutdownMs =
+      Duration.toMillis(DRAIN_TIMEOUT) +
+      Duration.toMillis(GRACEFUL_SHUTDOWN_TIMEOUT);
+    const graceOf = (value: string | undefined) => {
+      const seconds = /^(\d+)s$/.exec(value ?? '')?.[1];
+      return seconds === undefined ? null : Number(seconds) * 1000;
+    };
+    expect(compose.services.api!.stop_grace_period).toBe('20s');
+    expect(graceOf(compose.services.api!.stop_grace_period)).toBeGreaterThan(
+      shutdownMs,
+    );
+
+    // As for the worker: an overlay that mentions the key must say 20s.
+    for (const [name, source] of composeOverlays()) {
+      const overlay = parse(source, { logLevel: 'silent' }) as ComposeFile;
+      const api = overlay.services?.api;
+      if (!api || !('stop_grace_period' in api)) continue;
+      expect({ name, grace: api.stop_grace_period }).toEqual({
+        name,
+        grace: '20s',
+      });
+    }
+  });
+
+  it('lets the upgrade lane add nothing to the stack but a loopback database port', () => {
+    // The lane's claim is that it upgrades the reference stack with the
+    // guide's commands. An overlay that replaced an image, a command or a
+    // service would make that claim about a different stack, so the overlay is
+    // held to the one thing the seed needs: Postgres reachable from this host,
+    // and from nowhere else.
+    const overlay = parse(upgradeOverlaySource) as ComposeFile;
+    expect(Object.keys(overlay)).toEqual(['services']);
+    expect(overlay.services).toEqual({
+      postgres: { ports: ['127.0.0.1:55433:5432'] },
+    });
+  });
+
   it('lets the three swappable backing services be swapped from .env alone', () => {
     // The specification's "one service block and one set of variables": each
     // of these defaults to the stack's own service, so pointing Studio at a
@@ -265,6 +342,71 @@ describe('the reference compose stack', () => {
       .map(({ name }) => name)
       .filter((name) => !known.has(name));
     expect(stray).toEqual([]);
+  });
+
+  it('gives Traefik one api server, with no health check, in a file of its own', () => {
+    // The server list is its own config so a second replica replaces that
+    // file alone (docs/self-host/run.md). With one server a health check could
+    // only take it out of rotation and serve the maintenance page instead.
+    const traefik: {
+      command: string[];
+      configs: { source: string; target: string }[];
+    } = parse(composeSource).services.traefik;
+    expect(traefik.command).toContain(
+      '--providers.file.directory=/etc/traefik/dynamic',
+    );
+    expect(traefik.configs).toEqual([
+      { source: 'traefik-dynamic', target: '/etc/traefik/dynamic/routing.yml' },
+      {
+        source: 'traefik-api-servers',
+        target: '/etc/traefik/dynamic/api-servers.yml',
+      },
+    ]);
+    const servers: ApiServers = parse(
+      compose.configs!['traefik-api-servers']!.content!,
+    );
+    expect(servers).toEqual({
+      http: {
+        services: {
+          api: { loadBalancer: { servers: [{ url: 'http://api:3000' }] } },
+        },
+      },
+    });
+  });
+
+  it('adds a second replica in the guide with the base api and a liveness check', () => {
+    expect(twoApiOverrideSource).not.toBe('');
+    const override: {
+      services: Record<string, { extends?: { file: string; service: string } }>;
+      configs: Record<string, { content: string }>;
+    } = parse(twoApiOverrideSource);
+    // `extends`, so the replica is the base file's `api` with nothing changed
+    // but its name, and its name starts with `api` because the upgrade and
+    // restore commands find replicas that way.
+    expect(override.services).toEqual({
+      'api-b': { extends: { file: 'docker-compose.yml', service: 'api' } },
+    });
+    expect(Object.keys(override.configs)).toEqual(['traefik-api-servers']);
+    const servers: ApiServers = parse(
+      override.configs['traefik-api-servers']!.content,
+    );
+    // `/healthz`, not `/readyz`: readiness fails on every replica at once
+    // during maintenance or a database outage.
+    expect(servers).toEqual({
+      http: {
+        services: {
+          api: {
+            loadBalancer: {
+              healthCheck: { path: '/healthz', interval: '5s', timeout: '3s' },
+              servers: [
+                { url: 'http://api:3000' },
+                { url: 'http://api-b:3000' },
+              ],
+            },
+          },
+        },
+      },
+    });
   });
 
   it('carries the two file secrets and no others', () => {

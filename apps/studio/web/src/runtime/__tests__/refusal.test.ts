@@ -7,9 +7,11 @@ import {
   Maintenance,
   NotFound,
   RateLimited,
+  Unauthorized,
 } from '@codaco/studio-contract/schema/errors';
 import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
 
+import { refusalRetryDelay, retryRefusals } from '../../lib/queryClient.ts';
 import { installFetchStub, problemResponse } from '../../test/fetchStub.ts';
 import {
   isConflict,
@@ -161,6 +163,22 @@ describe('a refusal on the HTTP plane', () => {
     expect(retryAfterSeconds(error)).toBe(1.5);
   });
 
+  it('reports a 401 as unauthorized', async () => {
+    answer(() =>
+      problemResponse(401, {
+        type: 'about:blank',
+        title: 'Unauthorized',
+        status: 401,
+      }),
+    );
+
+    const error = await failureOfStatusCall();
+
+    expect(carriedRefusal(error)).toBeInstanceOf(Unauthorized);
+    expect(refusalOf(error)).toEqual({ kind: 'unauthorized' });
+    expect(retryAfterSeconds(error)).toBeUndefined();
+  });
+
   it('reports a 403 as forbidden', async () => {
     answer(() =>
       problemResponse(403, {
@@ -257,6 +275,7 @@ describe('a refusal on the rpc plane', () => {
     expect(retryAfterSeconds(new Maintenance({}))).toBeUndefined();
     expect(refusalOf(new Forbidden({}))).toEqual({ kind: 'forbidden' });
     expect(refusalOf(new NotFound({}))).toEqual({ kind: 'notFound' });
+    expect(refusalOf(new Unauthorized({}))).toEqual({ kind: 'unauthorized' });
   });
 
   it('is not a refusal when nothing refused', () => {
@@ -274,5 +293,148 @@ describe('the guards the screens branch on', () => {
     expect(isConflict(new Forbidden({}))).toBe(false);
     expect(isNotFound(new NotFound({}))).toBe(true);
     expect(isNotFound(new Conflict({}))).toBe(false);
+  });
+});
+
+const POLICY = [
+  {
+    status: 401,
+    kind: 'unauthorized',
+    typed: () => new Unauthorized({}),
+    retries: [false, false],
+  },
+  {
+    status: 403,
+    kind: 'forbidden',
+    typed: () => new Forbidden({}),
+    retries: [false, false],
+  },
+  {
+    status: 404,
+    kind: 'notFound',
+    typed: () => new NotFound({}),
+    retries: [false, false],
+  },
+  {
+    status: 429,
+    kind: 'rateLimited',
+    typed: () => new RateLimited({ retryAfterSeconds: 7 }),
+    retries: [true, false],
+  },
+  {
+    status: 503,
+    kind: 'maintenance',
+    typed: () => new Maintenance({ retryAfterSeconds: 7 }),
+    retries: [true, true],
+  },
+] as const;
+
+const PLANES = [
+  {
+    plane: 'the HTTP plane',
+    failure: (row: (typeof POLICY)[number]) => {
+      answer(() =>
+        problemResponse(
+          row.status,
+          { title: 'Refused', status: row.status },
+          { 'retry-after': '7' },
+        ),
+      );
+      return failureOfStatusCall();
+    },
+  },
+  {
+    plane: 'the rpc plane',
+    failure: (row: (typeof POLICY)[number]) => Promise.resolve(row.typed()),
+  },
+] as const;
+
+describe('the retry policy, on both planes', () => {
+  it.each(POLICY.flatMap((row) => PLANES.map((plane) => ({ row, ...plane }))))(
+    'treats $row.status on $plane as $row.kind',
+    async ({ row, failure }) => {
+      const error = await failure(row);
+
+      expect(refusalOf(error)?.kind).toBe(row.kind);
+      expect([retryRefusals(0, error), retryRefusals(3, error)]).toEqual(
+        row.retries,
+      );
+      if (row.retries[0]) expect(refusalRetryDelay(0, error)).toBe(7_000);
+    },
+  );
+});
+
+const SET_TIMEOUT_MAX_MS = 2 ** 31 - 1;
+const CEILING_MS = 60 * 60 * 1000;
+const WEEKS = String(5 * 7 * 24 * 60 * 60);
+const OVERFLOWING_DIGITS = '9'.repeat(400);
+
+describe('an oversized Retry-After', () => {
+  const oversized: ReadonlyArray<readonly [string, () => Promise<unknown>]> = [
+    ...[429, 503].flatMap((status) =>
+      [WEEKS, OVERFLOWING_DIGITS].map(
+        (header) =>
+          [
+            `a ${String(status)} header of ${String(header.length)} digits`,
+            () => {
+              answer(() =>
+                problemResponse(
+                  status,
+                  { title: 'Refused' },
+                  { 'retry-after': header },
+                ),
+              );
+              return failureOfStatusCall();
+            },
+          ] as const,
+      ),
+    ),
+    [
+      'a 503 problem document naming weeks',
+      () => {
+        answer(() =>
+          problemResponse(503, {
+            title: 'Refused',
+            retryAfterSeconds: Number(WEEKS),
+          }),
+        );
+        return failureOfStatusCall();
+      },
+    ],
+    [
+      'a typed maintenance refusal naming weeks',
+      () => Promise.resolve(new Maintenance({ retryAfterSeconds: 3e6 })),
+    ],
+    [
+      'a typed rate limit naming weeks',
+      () => Promise.resolve(new RateLimited({ retryAfterSeconds: 3e6 })),
+    ],
+    [
+      'a typed maintenance refusal naming forever',
+      () =>
+        Promise.resolve(
+          new Maintenance({ retryAfterSeconds: Number.POSITIVE_INFINITY }),
+        ),
+    ],
+  ];
+
+  it.each(oversized)(
+    'waits at most the ceiling for %s',
+    async (_name, refusal) => {
+      const error = await refusal();
+
+      expect(retryAfterSeconds(error)).toBe(CEILING_MS / 1000);
+      expect(refusalRetryDelay(0, error)).toBe(CEILING_MS);
+      expect(refusalRetryDelay(0, error)).toBeLessThanOrEqual(
+        SET_TIMEOUT_MAX_MS,
+      );
+    },
+  );
+
+  it('is ignored when it is not a number at all', () => {
+    const error = new Maintenance({ retryAfterSeconds: Number.NaN });
+
+    expect(retryAfterSeconds(error)).toBeUndefined();
+    expect(refusalRetryDelay(0, error)).toBe(30_000);
   });
 });

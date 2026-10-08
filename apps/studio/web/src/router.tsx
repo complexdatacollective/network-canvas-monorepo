@@ -3,6 +3,7 @@ import {
   createRootRouteWithContext,
   createRoute,
   createRouter,
+  lazyRouteComponent,
   notFound,
   Outlet,
   redirect,
@@ -25,6 +26,7 @@ import {
   fetchSetupRequirement,
   topologyGuard,
 } from './lib/deployment.ts';
+import { parseStudyParams, parseTeamParams } from './lib/ids.ts';
 import {
   landingRedirect,
   resolveLandingDestination,
@@ -34,13 +36,19 @@ import { queryClient as applicationQueryClient } from './lib/queryClient.ts';
 import {
   resolveSessionState,
   revalidateSession,
-  ServerUnreachableError,
+  isSessionUnknown,
   sessionQueryOptions,
   setUnauthorizedResponseHandler,
 } from './lib/session.ts';
+import {
+  LinkErrorScreen,
+  SessionErrorScreen,
+} from './participant/ParticipantErrorScreen.tsx';
+import ParticipantI18nProvider from './participant/ParticipantI18nProvider.tsx';
+import ParticipantPending from './participant/ParticipantPending.tsx';
+import { enterSession, openSession } from './participant/session.ts';
 import AcceptInvitation from './routes/AcceptInvitation.tsx';
 import AppLayout from './routes/AppLayout.tsx';
-import Editor from './routes/Editor.tsx';
 import ErrorScreen from './routes/ErrorScreen.tsx';
 import Marketing from './routes/Marketing.tsx';
 import NotFoundScreen from './routes/NotFoundScreen.tsx';
@@ -57,6 +65,7 @@ import ScreenMain from './shell/ScreenMain.tsx';
 import SiteLayout from './shell/SiteLayout.tsx';
 import StudyArea from './shell/StudyArea.tsx';
 import TeamArea from './shell/TeamArea.tsx';
+import UpdateNotice from './shell/UpdateNotice.tsx';
 
 const isTeamInvitationId = Schema.is(TeamInvitationId);
 
@@ -85,11 +94,15 @@ type ShellContext = {
  * The locale provider is here, above everything, for two reasons (2026-09-04
  * localization design §5.1). The root route is what `createAppRouter` builds,
  * so the app and every route test get the same wiring rather than the app
- * getting it in `main.tsx` and the tests going without. And it sits above all
- * four shells — site, focused, app and participant — because the language a
- * screen speaks is not a property of which product it belongs to. Above
- * `DialogProvider` too: a dialog's own chrome is translated by the same
- * provider as the screen that opened it.
+ * getting it in `main.tsx` and the tests going without. And it sits above the
+ * site, focused and app shells because the language a screen speaks is not a
+ * property of which product it belongs to. Above `DialogProvider` too: a
+ * dialog's own chrome is translated by the same provider as the screen that
+ * opened it.
+ *
+ * The participant shell gets its own provider, which follows the browser and
+ * never asks who is signed in: a participant tab must make no researcher
+ * request (#1899), even in a browser where a researcher is signed in.
  *
  * `LocaleSync` is here rather than in `AppLayout` for the second of those
  * reasons. It applies the account's stored preference, and a signed-in
@@ -100,14 +113,27 @@ function RootLayout() {
   const location = useRouterState({
     select: (state) => (state.resolvedLocation ?? state.location).pathname,
   });
+  const participant = useRouterState({
+    select: (state) =>
+      state.matches.some(
+        (match) => match.routeId === participantLayoutRoute.id,
+      ),
+  });
 
+  const content = (
+    <DialogProvider>
+      <RouteFocus location={location} />
+      <Outlet />
+    </DialogProvider>
+  );
+
+  if (participant) {
+    return <ParticipantI18nProvider>{content}</ParticipantI18nProvider>;
+  }
   return (
     <StudioI18nProvider>
       <LocaleSync />
-      <DialogProvider>
-        <RouteFocus location={location} />
-        <Outlet />
-      </DialogProvider>
+      {content}
     </StudioI18nProvider>
   );
 }
@@ -288,57 +314,31 @@ const screens = defineMessages({
     description:
       'What the No team yet screen at /no-team will do, shown on it while it is not yet built.',
   },
-  enterTitle: {
-    id: 'studio.screens.enterTitle',
-    defaultMessage: 'Welcome',
-    description:
-      'Name of the Welcome screen at /enter/$token, used as its heading.',
-  },
-  enterDescription: {
-    id: 'studio.screens.enterDescription',
-    defaultMessage:
-      "Where a participant's invitation link lands: the study's welcome, the language they will answer in, and anything they should read first.",
-    description:
-      'What the Welcome screen at /enter/$token will do, shown on it while it is not yet built.',
-  },
-  enterConsentTitle: {
-    id: 'studio.screens.enterConsentTitle',
+  sessionConsentTitle: {
+    id: 'studio.screens.sessionConsentTitle',
     defaultMessage: 'Consent',
     description:
-      'Name of the Consent screen at /enter/$token/consent, used as its heading.',
+      'Name of the Consent screen at /session/$sessionToken/consent, used as its heading.',
   },
-  enterConsentDescription: {
-    id: 'studio.screens.enterConsentDescription',
+  sessionConsentDescription: {
+    id: 'studio.screens.sessionConsentDescription',
     defaultMessage:
       "The study's consent text, and the participant's recorded decision about taking part in it.",
     description:
-      'What the Consent screen at /enter/$token/consent will do, shown on it while it is not yet built.',
+      'What the Consent screen at /session/$sessionToken/consent will do, shown on it while it is not yet built.',
   },
-  enterInterviewTitle: {
-    id: 'studio.screens.enterInterviewTitle',
-    defaultMessage: 'Interview',
-    description:
-      'Name of the Interview screen at /enter/$token/interview, used as its heading.',
-  },
-  enterInterviewDescription: {
-    id: 'studio.screens.enterInterviewDescription',
-    defaultMessage:
-      'The interview itself, run by the Network Canvas interview runtime and owning the whole viewport.',
-    description:
-      'What the Interview screen at /enter/$token/interview will do, shown on it while it is not yet built.',
-  },
-  enterCompleteTitle: {
-    id: 'studio.screens.enterCompleteTitle',
+  sessionCompleteTitle: {
+    id: 'studio.screens.sessionCompleteTitle',
     defaultMessage: 'Interview complete',
     description:
-      'Name of the Interview complete screen at /enter/$token/complete, used as its heading.',
+      'Name of the Interview complete screen at /session/$sessionToken/complete, used as its heading.',
   },
-  enterCompleteDescription: {
-    id: 'studio.screens.enterCompleteDescription',
+  sessionCompleteDescription: {
+    id: 'studio.screens.sessionCompleteDescription',
     defaultMessage:
       'Confirms the interview is finished and sends the participant wherever the study asked to return them.',
     description:
-      'What the Interview complete screen at /enter/$token/complete will do, shown on it while it is not yet built.',
+      'What the Interview complete screen at /session/$sessionToken/complete will do, shown on it while it is not yet built.',
   },
   accountIndexTitle: {
     id: 'studio.screens.accountIndexTitle',
@@ -792,9 +792,10 @@ const signInRoute = createRoute({
       .fetchQuery(sessionQueryOptions)
       .catch((error: unknown) => {
         // This guard's only question is "are you already signed in?". An
-        // unreachable server cannot answer it, and not knowing is no reason to
-        // replace the sign-in page with the error screen.
-        if (error instanceof ServerUnreachableError) return undefined;
+        // unreachable server, or one in maintenance, cannot answer it, and not
+        // knowing is no reason to replace the sign-in page with the error
+        // screen.
+        if (isSessionUnknown(error)) return undefined;
         throw error;
       });
     if (session !== 'signedIn') return;
@@ -951,13 +952,17 @@ const noTeamRoute = createRoute({
   // the cookie by hand. And so the language, which is a per-account preference
   // with nothing to do with teams: the header that carries the switcher is
   // behind the same redirect, and a researcher waiting on an invitation would
-  // otherwise read this screen in a language they cannot change.
+  // otherwise read this screen in a language they cannot change. And so the
+  // update notice (#1901): setup ends here for the installation's owner, who
+  // has no team until they create one, and the app shell that carries it
+  // elsewhere is behind the same redirect.
   component: screenPlaceholder({
     title: screens.noTeamTitle,
     description: screens.noTeamDescription,
     issue: '#1249',
     action: (
       <>
+        <UpdateNotice className="m-0" />
         <NoTeamSignOut />
         <StudioLocaleSwitcher />
       </>
@@ -972,39 +977,45 @@ const noTeamRoute = createRoute({
 const enterRoute = createRoute({
   getParentRoute: () => participantLayoutRoute,
   path: '/enter/$token',
-  component: screenPlaceholder({
-    title: screens.enterTitle,
-    description: screens.enterDescription,
-    issue: '#1265',
-  }),
+  loader: async ({ params }) => {
+    throw redirect({
+      to: '/session/$sessionToken',
+      params: { sessionToken: await enterSession(params.token) },
+      replace: true,
+    });
+  },
+  pendingComponent: ParticipantPending,
+  errorComponent: LinkErrorScreen,
 });
 
-const enterConsentRoute = createRoute({
+const sessionRoute = createRoute({
   getParentRoute: () => participantLayoutRoute,
-  path: '/enter/$token/consent',
+  path: '/session/$sessionToken',
+  loader: ({ params }) => openSession(params.sessionToken),
+  staleTime: Infinity,
+  pendingComponent: ParticipantPending,
+  errorComponent: SessionErrorScreen,
+  component: lazyRouteComponent(
+    () => import('./participant/InterviewSession.tsx'),
+  ),
+});
+
+const sessionConsentRoute = createRoute({
+  getParentRoute: () => participantLayoutRoute,
+  path: '/session/$sessionToken/consent',
   component: screenPlaceholder({
-    title: screens.enterConsentTitle,
-    description: screens.enterConsentDescription,
+    title: screens.sessionConsentTitle,
+    description: screens.sessionConsentDescription,
     issue: '#1266',
   }),
 });
 
-const enterInterviewRoute = createRoute({
+const sessionCompleteRoute = createRoute({
   getParentRoute: () => participantLayoutRoute,
-  path: '/enter/$token/interview',
+  path: '/session/$sessionToken/complete',
   component: screenPlaceholder({
-    title: screens.enterInterviewTitle,
-    description: screens.enterInterviewDescription,
-    issue: '#1293',
-  }),
-});
-
-const enterCompleteRoute = createRoute({
-  getParentRoute: () => participantLayoutRoute,
-  path: '/enter/$token/complete',
-  component: screenPlaceholder({
-    title: screens.enterCompleteTitle,
-    description: screens.enterCompleteDescription,
+    title: screens.sessionCompleteTitle,
+    description: screens.sessionCompleteDescription,
     issue: '#1292',
   }),
 });
@@ -1164,6 +1175,7 @@ const templatesRoute = createRoute({
 const teamLayoutRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/team/$teamId',
+  params: { parse: parseTeamParams },
   component: TeamArea,
 });
 
@@ -1277,6 +1289,7 @@ const teamSettingsMessagingRoute = createRoute({
 const studyRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/study/$studyId',
+  params: { parse: parseStudyParams },
 });
 
 /** The study's own area. Sidebar: Study. */
@@ -1402,7 +1415,7 @@ const editorLayoutRoute = createRoute({
 const editorIndexRoute = createRoute({
   getParentRoute: () => editorLayoutRoute,
   path: '/',
-  component: Editor,
+  component: lazyRouteComponent(() => import('./routes/Editor.tsx')),
 });
 
 const editorCodebookRoute = createRoute({
@@ -1470,9 +1483,9 @@ const routeTree = rootRoute.addChildren([
   ]),
   participantLayoutRoute.addChildren([
     enterRoute,
-    enterConsentRoute,
-    enterInterviewRoute,
-    enterCompleteRoute,
+    sessionRoute,
+    sessionConsentRoute,
+    sessionCompleteRoute,
   ]),
   appLayoutRoute.addChildren([
     accountLayoutRoute.addChildren([

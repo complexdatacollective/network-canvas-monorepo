@@ -199,6 +199,7 @@ beforeEach(() => {
         { kind: 'user', id: 'user-owner', label: 'Owner Researcher' },
         { kind: 'user', id: 'user-departed', label: 'Departed Researcher' },
         { kind: 'system', id: null, label: 'Studio' },
+        { kind: 'participant', id: 'session-1', label: 'P-0001' },
       ],
       truncated: false,
     }),
@@ -404,6 +405,16 @@ describe('Team activity screen', () => {
     await waitFor(() => {
       expect(fixtures.listAudit).toHaveBeenLastCalledWith(
         expect.objectContaining({ to: new Date('2026-03-09T00:00:00') }),
+      );
+    });
+  });
+
+  it('names a participant by their code and kind', async () => {
+    renderActivity();
+    await screen.findByRole('cell', { name: 'Invitation created' });
+    await waitFor(() => {
+      expect(optionLabels(screen.getByLabelText('Actor'))).toContain(
+        'P-0001 (Participant)',
       );
     });
   });

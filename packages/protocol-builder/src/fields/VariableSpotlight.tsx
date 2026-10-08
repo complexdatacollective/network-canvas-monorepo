@@ -388,11 +388,12 @@ export default function VariableSpotlight({
         // still in the box for the researcher to correct — and whoever refused
         // it has already said why, on the field this window belongs to.
         const outcome = await onCreate(name);
-        // Unless the window it was asked from has been dismissed since. The
-        // window stays dismissible while a write is out — Architect's never
-        // held the researcher there either — so this answer can be about a
-        // name they have already walked away from, and the only state left to
-        // put it in is the NEXT window's, over whatever they type in it.
+        // Unless the window it was asked from has been closed since. The
+        // researcher cannot dismiss it while the write is out (the codebook
+        // write completes regardless, so leaving would look like calling it
+        // off), but the field that owns the window can still close it, so this
+        // answer can be about a window that is gone, and the only state left
+        // to put it in is the NEXT window's, over whatever is typed in it.
         // Dropped, so the next open starts clean. What the codebook actually
         // DID is not dropped with it: the field says an unassigned create in
         // its own notice, which outlives this window.
@@ -579,7 +580,11 @@ export default function VariableSpotlight({
   })();
 
   return (
-    <Modal open={open} onOpenChange={onOpenChange}>
+    <Modal
+      open={open}
+      onOpenChange={onOpenChange}
+      dismissible={creating === undefined}
+    >
       <ModalPopup
         data-variable-spotlight=""
         finalFocus={finalFocus}

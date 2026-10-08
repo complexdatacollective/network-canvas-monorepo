@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   checkCatalogFreshness,
+  checkCatalogLoaders,
   checkFullLocale,
   checkOverrideLocale,
   collectSourceFiles,
@@ -17,9 +18,9 @@ import {
   readTranslationSources,
 } from '@codaco/app-i18n/catalog-guards';
 import type { ExtractedCatalog } from '@codaco/app-i18n/catalog-guards';
-import { ecosystemLocales } from '@codaco/app-i18n/locales';
+import { ecosystemLocales, loadCatalog } from '@codaco/app-i18n/locales';
 
-import { protocolBuilderCatalogs } from '../catalogs';
+import { protocolBuilderCatalogLoaders } from '../catalogs';
 
 const localesDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const srcDir = dirname(localesDir);
@@ -35,6 +36,17 @@ const SOURCE_LOCALE = 'en';
 const overrideLocales = ecosystemLocales
   .map((entry) => entry.locale)
   .filter((locale) => locale !== SOURCE_LOCALE);
+
+/**
+ * Every catalog this package ships, loaded through its own loaders — the path a
+ * host takes — so what a locale actually serves is what gets inspected.
+ */
+const loadedCatalogs = await Promise.all(
+  Object.keys(protocolBuilderCatalogLoaders).map(async (locale) => ({
+    locale,
+    messages: await loadCatalog(locale, protocolBuilderCatalogLoaders),
+  })),
+);
 
 describe('the package’s own protocolBuilder.* catalogs', () => {
   it('keeps src/locales/en.json fresh (regenerate with pnpm i18n:extract)', async () => {
@@ -59,11 +71,10 @@ describe('the package’s own protocolBuilder.* catalogs', () => {
     // publishes the sections and draws nothing, so it translates nothing about
     // them; every catalog is asked, because a stale translation of copy no
     // component reads is invisible to the freshness check.
-    const offenders = Object.entries(protocolBuilderCatalogs).flatMap(
-      ([locale, catalog]) =>
-        Object.keys(catalog)
-          .filter((id) => id.startsWith('protocolBuilder.outline.'))
-          .map((id) => `${locale}: ${id}`),
+    const offenders = loadedCatalogs.flatMap(({ locale, messages }) =>
+      Object.keys(messages)
+        .filter((id) => id.startsWith('protocolBuilder.outline.'))
+        .map((id) => `${locale}: ${id}`),
     );
 
     expect([
@@ -79,15 +90,13 @@ describe('the package’s own protocolBuilder.* catalogs', () => {
     // so no `common.*` id may be declared — or translated — here.
     const ids = [
       ...Object.keys(committedEn),
-      ...Object.values(protocolBuilderCatalogs).flatMap((catalog) =>
-        Object.keys(catalog),
-      ),
+      ...loadedCatalogs.flatMap(({ messages }) => Object.keys(messages)),
     ];
     expect(ids.filter((id) => id.startsWith('common.'))).toEqual([]);
   });
 
   it('ships a catalog for every non-source ecosystem locale', () => {
-    expect(Object.keys(protocolBuilderCatalogs).toSorted()).toEqual(
+    expect(Object.keys(protocolBuilderCatalogLoaders).toSorted()).toEqual(
       overrideLocales.toSorted(),
     );
   });
@@ -219,10 +228,10 @@ function respellCopy(text: string, table: ReadonlyMap<string, string>): string {
 }
 
 /**
- * Read from the committed file rather than through `protocolBuilderCatalogs`,
- * whose values are typed as pre-parsed ICU as well as source strings. An
- * override is compared against a `defaultMessage` here, so it has to be the
- * string a translator wrote.
+ * Read from the committed file rather than loaded through
+ * `protocolBuilderCatalogLoaders`, whose catalogs are typed as pre-parsed ICU
+ * as well as source strings. An override is compared against a
+ * `defaultMessage` here, so it has to be the string a translator wrote.
  */
 const enGb = JSON.parse(
   readFileSync(join(localesDir, 'en-GB.json'), 'utf8'),
@@ -290,5 +299,11 @@ describe('the en-GB overrides and the American source they come from', () => {
     );
 
     expect(offenders).toEqual([]);
+  });
+
+  it('loads each locale from its own committed catalog', async () => {
+    expect(
+      await checkCatalogLoaders(localesDir, protocolBuilderCatalogLoaders),
+    ).toEqual([]);
   });
 });

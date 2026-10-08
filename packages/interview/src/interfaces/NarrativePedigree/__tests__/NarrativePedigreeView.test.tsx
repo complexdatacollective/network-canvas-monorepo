@@ -295,6 +295,7 @@ function makeStore({
       ui: {
         FORM_IS_READY: false,
         passphrase: encryption?.passphrase ?? null,
+        passphraseEntry: 0,
         showPassphrasePrompter: false,
         passphraseInvalid: false,
       },

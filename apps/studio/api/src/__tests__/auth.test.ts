@@ -5,6 +5,7 @@ import { type Headers, HttpServerRequest } from 'effect/http';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { TeamId } from '@codaco/studio-contract/schema/ids';
+import { AUTH_NOT_CONFIGURED_PROBLEM_TYPE } from '@codaco/studio-contract/schema/problem';
 
 import {
   SEED_ADMIN_EMAIL,
@@ -447,7 +448,7 @@ describe('unconfigured auth', () => {
     port: 3000,
     host: '0.0.0.0',
     workerHealthPort: 3001,
-    s3: undefined,
+    objectStore: undefined,
     db: undefined,
     auth: undefined,
     mail: undefined,
@@ -470,6 +471,9 @@ describe('unconfigured auth', () => {
     expect(res.headers.get('Content-Type')).toContain(
       'application/problem+json',
     );
+    expect(await res.json()).toMatchObject({
+      type: AUTH_NOT_CONFIGURED_PROBLEM_TYPE,
+    });
   });
 
   it('reports auth as disabled in status', async () => {

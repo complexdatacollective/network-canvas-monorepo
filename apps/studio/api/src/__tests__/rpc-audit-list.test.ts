@@ -990,6 +990,68 @@ describe.skipIf(!testDb)('audit list/get RPC', () => {
   });
 
   it.skipIf(!limiterStore)(
+    'suppresses a denial past the window without reporting it lost',
+    async () => {
+      const demoted = principal(`audit-spent-${randomUUID()}`, 'Audit Spent');
+      await query(
+        `INSERT INTO "user" (id, name, email, "emailVerified")
+         VALUES ($1, $2, $3, true)`,
+        [demoted.userId, demoted.name, demoted.email],
+      );
+      await query(
+        `INSERT INTO team_members (id, team_id, user_id, role)
+         VALUES ($1, $2, $3, 'member')`,
+        [`${demoted.userId}-member`, TEAM, demoted.userId],
+      );
+      const demotedClient = await createRpcClient(
+        createStudio(readEnv(), {
+          auth: authServiceStub({
+            getSession: () => Effect.succeedSome(demoted),
+            getMembership: () => Effect.succeedSome({ role: 'owner' }),
+          }),
+          services: database.services,
+        }),
+      );
+      extraClients.push(demotedClient);
+
+      const warning = vi
+        .spyOn(process, 'emitWarning')
+        .mockImplementation(() => undefined);
+      let calls: (typeof warning)['mock']['calls'];
+      try {
+        for (let attempt = 0; attempt < 6; attempt += 1) {
+          await expectRpcFailure(
+            demotedClient.callExit(
+              demotedClient.rpc('audit.list', { teamId: TEAM }),
+            ),
+            'Forbidden',
+          );
+        }
+        calls = [...warning.mock.calls];
+      } finally {
+        warning.mockRestore();
+      }
+
+      expect(
+        await query(
+          `SELECT id FROM audit_events
+           WHERE team_id = $1 AND actor_id = $2
+             AND event_type = 'audit.read_denied'`,
+          [TEAM, demoted.userId],
+        ),
+      ).toHaveLength(5);
+      expect(
+        calls.filter(
+          ([, options]) =>
+            typeof options === 'object' &&
+            options !== null &&
+            Reflect.get(options, 'code') === 'STUDIO_AUDIT_DENIAL_EVENT_LOST',
+        ),
+      ).toEqual([]);
+    },
+  );
+
+  it.skipIf(!limiterStore)(
     'spends the denial window only on denial events that committed',
     async () => {
       const lost = principal(`audit-window-${randomUUID()}`, 'Audit Window');

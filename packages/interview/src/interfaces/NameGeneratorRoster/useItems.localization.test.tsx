@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { interviewCatalogSource } from '../../i18n/catalog';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import { TestProtocolLocalization } from '../__tests__/TestProtocolLocalization';
 import useItems from './useItems';
@@ -56,6 +57,14 @@ function RosterLabels() {
     </ul>
   );
 }
+
+// Loaded before anything renders, as a host loads a language before it
+// mounts an interview, so renders in these languages are synchronous.
+beforeAll(async () => {
+  await Promise.all(
+    ['es', 'en-GB'].map((locale) => interviewCatalogSource.load(locale)),
+  );
+});
 
 describe('roster memoized fallback labels', () => {
   it('invalidates already-loaded fallback labels on locale changes without rewriting roster data or authored type labels', () => {

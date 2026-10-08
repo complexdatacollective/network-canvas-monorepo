@@ -15,6 +15,12 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const SERVER_SRC = resolve(HERE, '../..');
 const REPO_ROOT = resolve(SERVER_SRC, '../../../..');
 const SYNC_SRC = resolve(REPO_ROOT, 'packages/studio-sync/src');
+const SERVER_SCRIPTS = resolve(SERVER_SRC, '../scripts');
+const SCANNED_FILES = () => [
+  ...sourceFiles(SERVER_SRC),
+  ...sourceFiles(SERVER_SCRIPTS),
+  ...sourceFiles(SYNC_SRC),
+];
 
 function sourceFiles(root: string): string[] {
   return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
@@ -169,9 +175,10 @@ function rawCalls(tokens: SourceToken[]): number[] {
       continue;
     }
     if (
-      token.raw === 'sql' &&
+      (token.raw === 'sql' || (!member && aliases.has(token.raw))) &&
       isPunctuation(next, SyntaxKind.DotToken) &&
-      isName(tokens[index + 2], 'raw') &&
+      (isName(tokens[index + 2], 'raw') ||
+        isName(tokens[index + 2], 'literal')) &&
       isPunctuation(tokens[index + 3], SyntaxKind.OpenParenToken)
     ) {
       calls.push(index);
@@ -205,7 +212,7 @@ function rawStatementsIn(source: string): (string | null)[] {
 
 function inventory(): Map<string, number> {
   const counts = new Map<string, number>();
-  for (const file of [...sourceFiles(SERVER_SRC), ...sourceFiles(SYNC_SRC)]) {
+  for (const file of SCANNED_FILES()) {
     const path = relative(REPO_ROOT, file);
     for (const span of rawStatementsIn(readFileSync(file, 'utf8'))) {
       const key = span === null ? path : `${path} › ${span}`;
@@ -217,6 +224,7 @@ function inventory(): Map<string, number> {
 
 const SERVER = 'apps/studio/api/src';
 const SYNC = 'packages/studio-sync/src';
+const SCRIPTS = 'apps/studio/api/scripts';
 
 const ALLOWLIST: Record<string, { count: number; why: string }> = {
   [`${SERVER}/audit/store.ts › audit.store.facets`]: {
@@ -235,9 +243,41 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     count: 2,
     why: 'the same, for every tenant table’s policy',
   },
-  [`${SERVER}/db/migrate.ts › db.migrate`]: {
+  [`${SERVER}/db/migrate.ts`]: {
     count: 3,
-    why: 'the session advisory lock, its release, and the split schema install',
+    why: 'each split statement of a pending migration’s artefacts, the `select 1` that tells, after one fails, whether the transaction is still open, and the role and team and erasure settings a deferred check reads (session functions, no table)',
+  },
+  [`${SERVER}/db/migrate.ts › db.migrate`]: {
+    count: 2,
+    why: 'the session advisory lock and its release',
+  },
+  [`${SERVER}/db/migrate.ts › db.migrate.probe`]: {
+    count: 1,
+    why: '`to_regclass` over the history table, the stamp and a runtime-built identifier list (no FROM)',
+  },
+  [`${SERVER}/db/migrate.ts › db.migrate.readStamp`]: {
+    count: 1,
+    why: 'the stamp read the probe gates, on a table that may not exist yet when the module is written',
+  },
+  [`${SERVER}/db/migrate.ts › db.migrate.readSessionState`]: {
+    count: 1,
+    why: 'the transaction id, roles, settings, triggers and row-level security each artefact must leave as it found them: session functions and `pg_trigger`/`pg_class` aggregates, no application table',
+  },
+  [`${SERVER}/db/migrate.ts › db.migrate.settleDeferredChecks`]: {
+    count: 1,
+    why: 'the deferrable constraints, by name, read from `pg_constraint`: a catalog read the builder has no form for (the `SET CONSTRAINTS` naming them go through the file-level statement runner)',
+  },
+  [`${SERVER}/programs/migrate.ts`]: {
+    count: 2,
+    why: '`SET LOCAL ROLE studio_maintenance` and `RESET ROLE` around the keyring check inside the migration transaction',
+  },
+  [`${SERVER}/db/history.ts › db.history.create`]: {
+    count: 1,
+    why: '`CREATE TABLE IF NOT EXISTS public.studio_migrations`: DDL for a table kept outside SCHEMA, which drizzle-kit therefore never renders',
+  },
+  [`${SERVER}/db/history.ts › db.history.revoke`]: {
+    count: 1,
+    why: '`REVOKE ALL` on the history table from both application roles: DCL, which the builder has no form for',
   },
   [`${SERVER}/db/schema.ts › db.checkSchema`]: {
     count: 2,
@@ -250,6 +290,10 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
   [`${SERVER}/db/deployment-state.ts › db.deploymentState.read`]: {
     count: 1,
     why: 'a transaction-local `statement_timeout` via `set_config` (no FROM), so a read queued behind a migration’s lock ends on the server rather than holding its connection',
+  },
+  [`${SERVER}/db/deployment-state.ts › db.deploymentState.readLatestRelease`]: {
+    count: 1,
+    why: 'the same transaction-local `statement_timeout` on the release-state read, kept separate from the flag read so a new image can read the flag against an older schema (#1901 R-1)',
   },
   [`${SERVER}/db/readiness.ts › db.readiness.alive`]: {
     count: 1,
@@ -272,8 +316,8 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     why: 'the job schema, split statement by statement (its trigger carries a dollar-quoted plpgsql body)',
   },
   [`${SERVER}/jobs/worker.ts`]: {
-    count: 12,
-    why: 'claim, settle, retry, cron and queue-depth statements against the job schema, which drizzle does not model — one of them the singleton guard, a fragment the claim interpolates',
+    count: 13,
+    why: 'claim, settle, retry, cron and queue-depth statements against the job schema, which drizzle does not model — one of them the singleton guard, a fragment the claim interpolates, and its `sql.literal` empty twin',
   },
   [`${SERVER}/jobs/worker.ts › JobWorker.deleteExpired`]: {
     count: 1,
@@ -296,13 +340,13 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     why: '`SELECT now()`, no FROM clause',
   },
   [`${SERVER}/jobs/handlers/protocol-store-gc.ts › protocol.gcProtocolStore`]: {
-    count: 9,
-    why: '#1957’s port of the store sweep: `select current_user` (no FROM) and the sweep over the shared `REFERENCED` predicate',
+    count: 12,
+    why: '#1957’s port of the store sweep: `select current_user` (no FROM) and the sweep over the shared `REFERENCED` predicate, spliced in through `sql.literal`',
   },
   [`${SERVER}/jobs/handlers/invitation-delivery.ts › job.invitation-delivery`]:
     {
-      count: 9,
-      why: '#1957’s port of the delivery state machine',
+      count: 15,
+      why: '#1957’s port of the delivery state machine, six of them the shared `STILL_PENDING` predicate spliced in through `sql.literal`',
     },
   [`${SERVER}/jobs/handlers/denied-attempts-summary.ts`]: {
     count: 2,
@@ -317,6 +361,10 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     count: 1,
     why: '`INSERT … SELECT` over its own target table, freezing the manifest row through `to_jsonb(m)`',
   },
+  [`${SERVER}/protocol-builder/connections.ts › protocolBuilder.lockTimeout`]: {
+    count: 1,
+    why: '`SET LOCAL lock_timeout`, which bounds the lock waits of a liveness pass, a connect and a grace’s release, and has no builder path',
+  },
   [`${SYNC}/server.ts`]: {
     count: 2,
     why: "`current_setting('transaction_isolation')` (no FROM), and the built `sectionExists` query executed as the same SQL it embeds in an `EXISTS`",
@@ -325,9 +373,17 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
     count: 17,
     why: 'the scratch-schema harness: create, apply, grant and drop, and the one-statement fixtures and oracles every suite shares — as the owner, a tenant, the maintenance role, and under the erasure marker',
   },
+  [`${SERVER}/__tests__/support/protocol-builder-suite.ts`]: {
+    count: 6,
+    why: '`holdRow`’s BEGIN, team pin, held statement, backend pid and ROLLBACK on a connection of its own, standing in for another replica’s transaction, and `blockedBehind`’s `pg_locks` probe of the backends waiting on it',
+  },
+  [`${SERVER}/interview/__tests__/fixture.ts`]: {
+    count: 11,
+    why: 'the interview suites’ owner fixtures: a team with a pinned protocol version, a live study, its wave, a participant and both link kinds, a session, and the completion the finalization triggers demand',
+  },
   [`${SERVER}/jobs/__tests__/support.ts`]: {
-    count: 13,
-    why: 'the queue suites’ scratch job schema and fixtures, and `holding`’s BEGIN, statements, lock probe and COMMIT/ROLLBACK on a reserved connection',
+    count: 14,
+    why: 'the queue suites’ scratch job schema and fixtures, and `holding`’s BEGIN, statements, lock probe and COMMIT/ROLLBACK on a reserved connection, and the `sql.literal` that stands for no queue filter',
   },
   [`${SYNC}/__tests__/helpers.ts`]: {
     count: 5,
@@ -340,6 +396,50 @@ const ALLOWLIST: Record<string, { count: number; why: string }> = {
   [`${SERVER}/jobs/install.ts`]: {
     count: 1,
     why: 'the node-postgres `installJobSchema`, over the same split statement list as the Effect path',
+  },
+  [`${SCRIPTS}/apply.ts`]: {
+    count: 18,
+    why: 'the node-postgres schema apply and local reset: the advisory lock and its release, the migration-history probe and count that refuse a migrated database, the stamp probe and clear, the sidecars, the transaction around the job schema and stamp, the schema drops, and the scratch sweep over `pg_namespace` and `pg_database`',
+  },
+  [`${SCRIPTS}/e2e-participant-links.ts`]: {
+    count: 1,
+    why: 'the stack e2e fixture’s team GUC via `set_config`, as the seed stamps it',
+  },
+  [`${SCRIPTS}/protocol-demo.ts`]: {
+    count: 1,
+    why: 'the demo’s team upsert, before the protocol store takes over',
+  },
+  [`${SCRIPTS}/seed/insert.ts`]: {
+    count: 1,
+    why: 'the seed’s batched multi-row insert, over table and column names that are literals in the seed source',
+  },
+  [`${SCRIPTS}/seed/integrations.ts`]: {
+    count: 1,
+    why: 'the seed’s webhook disablement update',
+  },
+  [`${SCRIPTS}/seed/messaging.ts`]: {
+    count: 1,
+    why: 'the seed’s link redemption rollup, an `UPDATE … FROM` over an aggregate',
+  },
+  [`${SCRIPTS}/seed/monitoring.ts`]: {
+    count: 2,
+    why: 'the seed’s wave and stage rollups, `INSERT … SELECT` over aggregates',
+  },
+  [`${SCRIPTS}/seed/seed.ts`]: {
+    count: 4,
+    why: 'the seed’s truncate-everything `DO` block, the team GUC via `set_config`, and the constraint-mode switches',
+  },
+  [`${SCRIPTS}/seed/studies.ts`]: {
+    count: 3,
+    why: 'the seed’s schedule insert and its consent and study state backdating',
+  },
+  [`${SCRIPTS}/seed/teams.ts`]: {
+    count: 3,
+    why: 'the seed’s installation row and better-auth credential accounts, whose quoted camel-case columns the seed writes directly',
+  },
+  [`${SERVER}/__tests__/support/migrations.ts`]: {
+    count: 3,
+    why: 'the non-superuser owner login the runner suites connect as, and the scratch databases it owns: bootstrap, create and drop',
   },
   [`${SERVER}/__tests__/support/postgres.ts`]: {
     count: 4,
@@ -368,6 +468,24 @@ describe('the raw SQL allowlist', () => {
     for (const [key, entry] of Object.entries(ALLOWLIST)) {
       expect(entry.why, key).not.toBe('');
     }
+  });
+
+  it('scans the scripts as well as the server and sync sources', () => {
+    const scanned = SCANNED_FILES().map((file) => relative(REPO_ROOT, file));
+    expect(scanned).toContain('apps/studio/api/scripts/apply.ts');
+    expect(scanned).toContain('apps/studio/api/scripts/seed/seed.ts');
+  });
+
+  // A file that imports drizzle's `sql` has its `sql` templates read as
+  // fragments. Lint's `no-shadow` stops a second `sql` binding in a nested
+  // scope and TypeScript stops one at module level, so the only way a raw
+  // statement hides under that name is a suppressed lint rule.
+  it('finds no module that suppresses no-shadow', () => {
+    expect(
+      SCANNED_FILES()
+        .filter((file) => /no-shadow/.test(readFileSync(file, 'utf8')))
+        .map((file) => relative(REPO_ROOT, file)),
+    ).toEqual([]);
   });
 });
 
@@ -454,5 +572,17 @@ describe('the raw SQL collector', () => {
 
   it('counts sql.raw only where it is called', () => {
     expect(rawStatementsIn(`const f = sql.raw;`)).toEqual([]);
+  });
+
+  it('counts sql.literal, under its own name or a destructured one', () => {
+    const source = `
+      import { sql } from 'drizzle-orm';
+      const g = Effect.fn('g')(function* () {
+        const { sql: client } = yield* Transaction;
+        yield* open.sql\`select \${sql.literal('true')}\`;
+        yield* open.sql\`select \${client.literal('true')}\`;
+        const f = sql.literal;
+      });`;
+    expect(rawStatementsIn(source)).toEqual(['g', 'g', 'g', 'g']);
   });
 });

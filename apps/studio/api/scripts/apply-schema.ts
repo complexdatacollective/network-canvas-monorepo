@@ -10,10 +10,10 @@ import {
   issueBootstrapToken,
   printBootstrapToken,
 } from '../src/setup/bootstrap.ts';
-import { applySchema } from './apply.ts';
+import { applySchema, MigratedDatabaseRefused } from './apply.ts';
 
-// The server only verifies; this is the application step for every lane, run
-// once against whatever DATABASE_URL points at.
+// The checkout lane's push: development databases and test fixtures only. A
+// database carrying migration history is refused, naming `migrate` (#1901).
 
 const env = readEnv();
 
@@ -25,7 +25,13 @@ if (!env.db) {
 const pool = createOwnerPool(env.db);
 
 try {
-  const outcome = await applySchema(pool);
+  const outcome = await applySchema(pool).catch(async (error: unknown) => {
+    // A refusal, not a crash: print the remedy alone.
+    if (!(error instanceof MigratedDatabaseRefused)) throw error;
+    console.error(error.message);
+    await pool.end();
+    process.exit(1);
+  });
   for (const { hint, statement } of outcome.hints) {
     console.warn(`hint: ${hint}${statement ? `\n  ${statement}` : ''}`);
   }

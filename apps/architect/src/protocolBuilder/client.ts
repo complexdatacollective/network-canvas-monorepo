@@ -14,7 +14,7 @@ export type ArchitectClient = Readonly<{
 
 export function createArchitectClient(
   store: ArchitectStore,
-  otherTabName: string,
+  otherTabName: () => string,
 ): ArchitectClient {
   const runtime = makeArchitectHostRuntime(store, otherTabName);
   return {

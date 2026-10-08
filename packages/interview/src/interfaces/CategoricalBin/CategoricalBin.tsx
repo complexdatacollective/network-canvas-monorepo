@@ -1,10 +1,8 @@
 'use client';
 import { AnimatePresence, motion } from 'motion/react';
 import type { ComponentProps } from 'react';
-import { useEffect, useRef, useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-import type { IntlShape } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -12,12 +10,11 @@ import type { FieldProps } from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import UINode from '@codaco/fresco-ui/Node';
-import { presentationalTextValue } from '@codaco/fresco-ui/PresentationalText';
-import type {
-  LocalizedString,
-  ResolvedLocalizedString,
-  Stage,
-} from '@codaco/protocol-validation';
+import {
+  type PresentationalText,
+  presentationalTextValue,
+} from '@codaco/fresco-ui/PresentationalText';
+import type { Stage } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -26,25 +23,29 @@ import {
 
 import { useTrack } from '../../analytics/useTrack';
 import NodeDrawer from '../../components/NodeDrawer';
+import PassphraseRecovery from '../../components/PassphraseRecovery';
 import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { buildVariableLabels } from '../../forms/buildVariableLabels';
+import {
+  savingNeedsPassphrase,
+  useValidationNetwork,
+} from '../../forms/useValidationNetwork';
+import {
+  writeFailureMessage,
+  writeSubmissionResult,
+} from '../../forms/writeSubmissionResult';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
-import {
-  useResolveLocalizedString,
-  useResolvePresentationalText,
-} from '../../localization/ProtocolLocalizationProvider';
+import { runtimeMessages } from '../../i18n/runtimeMessages';
+import { useResolvePresentationalText } from '../../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
   validationPropsFor,
 } from '../../selectors/forms';
-import {
-  getCodebookVariablesForSubjectType,
-  makeGetCodebookForNodeType,
-} from '../../selectors/protocol';
+import { getCodebookVariablesForSubjectType } from '../../selectors/protocol';
 import {
   getNodeColorSelector,
   getNodeTypeDefinition,
@@ -52,8 +53,11 @@ import {
 } from '../../selectors/session';
 import { updateNode } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
+import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
-import { getNodeLabelAttribute } from '../../utils/getNodeLabelAttribute';
+import { isAttributeEncrypted } from '../Anonymisation/isAttributeEncrypted';
+import { useNodeLabel } from '../Anonymisation/useNodeLabel';
+import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { interfaceMessages } from '../messages';
 import CategoricalBinItem from './components/CategoricalBinItem';
 import { useCategoricalBins } from './useCategoricalBins';
@@ -95,38 +99,68 @@ type CategoricalBinPrompts = Extract<
   { type: 'CategoricalBin' }
 >['prompts'][number];
 
-const getNodeLabel = (
-  node: NcNode,
-  getCodebook: ReturnType<typeof makeGetCodebookForNodeType.resultFunc>,
-  resolve: (value: LocalizedString) => ResolvedLocalizedString,
-  intl: IntlShape,
-): string => {
-  const codebook = getCodebook(node.type);
-  const attributes = node[entityAttributesProperty];
-  const labelAttrId = getNodeLabelAttribute(
-    codebook?.variables ?? {},
-    attributes,
-  );
-
-  if (labelAttrId) {
-    const value = attributes[labelAttrId];
-    if (typeof value === 'string' || typeof value === 'number') {
-      return String(value);
-    }
-  }
-
-  return codebook
-    ? resolve(codebook.label).text
-    : intl.formatMessage(interfaceMessages.node);
-};
-
 // Queued dialog children subscribe themselves, so the placeholder and fallback
 // label follow a locale switch while the participant keeps their entered answer.
-function OtherResponseField(props: FieldProps<typeof InputField>) {
+function OtherResponseField({
+  baseValidationContext,
+  currentEntityId,
+  label,
+  ...props
+}: Omit<FieldProps<typeof InputField>, 'label' | 'validationContext'> & {
+  baseValidationContext: ReturnType<typeof getValidationContext>;
+  currentEntityId: string;
+  label: PresentationalText;
+}) {
   const intl = useAppIntl();
+  const { stageSubject } = baseValidationContext;
+  const validationNetwork = useValidationNetwork(
+    baseValidationContext,
+    stageSubject,
+    [props.name],
+    currentEntityId,
+  );
+  // Context-dependent rules (unique, sameAs, differentFrom,
+  // greaterThanVariable, etc.) resolve against the entity being edited and the
+  // live network — mirror useProtocolForm's ValidationContext, scoped to the
+  // dropped node via currentEntityId so e.g. `unique` excludes the node's own
+  // previous value and `differentFrom`/`sameAs` can read a sibling attribute
+  // already recorded on this same node. stageSubject is only ever null for
+  // stage types that carry no subject at all
+  // (Information/Anonymisation/NarrativePedigree); CategoricalBin
+  // always has a node subject, so the undefined fallback is defensive only.
+  const validationContext = useMemo<ValidationContext | undefined>(
+    () =>
+      stageSubject
+        ? {
+            codebook: baseValidationContext.codebook,
+            ...validationNetwork,
+            stageSubject,
+            currentEntityId,
+            // …and the same comparison rule must word its error the same way
+            // here as it does in a form. The one variable this dialog asks
+            // about has exactly one piece of authored, participant-facing
+            // text — the prompt rendered as the field's label. The node's own
+            // label is deliberately not a source: it is the name the
+            // participant typed, not something the researcher authored.
+            variableLabels: buildVariableLabels([
+              { variable: props.name, label: presentationalTextValue(label) },
+            ]),
+          }
+        : undefined,
+    [
+      baseValidationContext.codebook,
+      validationNetwork,
+      stageSubject,
+      currentEntityId,
+      props.name,
+      label,
+    ],
+  );
   return (
     <Field
       {...props}
+      label={label}
+      validationContext={validationContext}
       placeholder={intl.formatMessage(interfaceMessages.responsePlaceholder)}
     />
   );
@@ -134,17 +168,11 @@ function OtherResponseField(props: FieldProps<typeof InputField>) {
 
 function OtherResponseNode({
   node,
-  getCodebook,
   ...props
 }: Omit<ComponentProps<typeof UINode>, 'label'> & {
   node: NcNode;
-  getCodebook: ReturnType<typeof makeGetCodebookForNodeType.resultFunc>;
 }) {
-  const intl = useAppIntl();
-  const resolve = useResolveLocalizedString();
-  return (
-    <UINode {...props} label={getNodeLabel(node, getCodebook, resolve, intl)} />
-  );
+  return <UINode {...props} label={useNodeLabel(node)} />;
 }
 
 const CategoricalBin = (_props: CategoricalBinStageProps) => {
@@ -223,13 +251,30 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
   const { openDialog } = useDialog();
   const nodeColor = useStageSelector(getNodeColorSelector);
   const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
-  const getCodebookForNodeType = useSelector(makeGetCodebookForNodeType);
   const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
   // Base pieces of the validation context useProtocolForm builds for every
-  // other Field (codebook + network + this stage's subject); the dialog below
-  // scopes it to the specific dropped node via currentEntityId.
+  // other Field (codebook + network + this stage's subject); the dialog's
+  // field scopes it to the specific dropped node.
   const baseValidationContext = useStageSelector(getValidationContext);
   const toPresentationalText = useResolvePresentationalText();
+  const intl = useAppIntl();
+  const { passphrase, passphraseInvalid, requirePassphrase, isEnabled } =
+    usePassphrase();
+  const { showToast } = useInterviewToast();
+
+  // A refused write leaves the person where they were; say why.
+  const committed = (
+    updateResult: Parameters<typeof writeFailureMessage>[0],
+  ) => {
+    const failure = writeFailureMessage(updateResult);
+    if (!failure) return true;
+    showToast({
+      description: intl.formatMessage(failure),
+      variant: 'destructive',
+      anchor: 'forward',
+    });
+    return false;
+  };
 
   const handleDropNode = async (node: NcNode, binIndex: number) => {
     const nodeId = node[entityPrimaryKeyProperty];
@@ -260,6 +305,23 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
       const { otherVariable, otherVariablePrompt } = prompt;
       const otherPromptLabel = toPresentationalText(otherVariablePrompt);
 
+      // An answer that would be encrypted is not asked for until it could be
+      // saved.
+      if (
+        isAttributeEncrypted(isEnabled, stageVariables, otherVariable) &&
+        (!passphrase || passphraseInvalid)
+      ) {
+        requirePassphrase();
+        showToast({
+          description: intl.formatMessage(
+            runtimeMessages.protectedAnswersLocked,
+          ),
+          variant: 'info',
+          anchor: 'forward',
+        });
+        return false;
+      }
+
       // Derive the other variable's validation props directly from its
       // codebook definition — the other-input renders its own Field/component
       // and only ever needs `.validation`, so this skips component
@@ -273,92 +335,70 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
         ? validationPropsFor(otherValidationMetadata)
         : {};
 
-      // Context-dependent rules (unique, sameAs, differentFrom,
-      // greaterThanVariable, etc.) resolve against the entity being edited and
-      // the live network — mirror useProtocolForm's ValidationContext, scoped
-      // to this dropped node via currentEntityId so e.g. `unique` excludes the
-      // node's own previous value and `differentFrom`/`sameAs` can read a
-      // sibling attribute already recorded on this same node.
-      // stageSubject is only ever null for stage types that carry no subject
-      // at all (Information/Anonymisation/NarrativePedigree);
-      // CategoricalBin always has a node subject, so the undefined fallback
-      // here is defensive only, matching the "Missing codebook entry" guard
-      // above.
-      const validationContext: ValidationContext | undefined =
-        baseValidationContext.stageSubject
-          ? {
-              codebook: baseValidationContext.codebook,
-              network: baseValidationContext.network,
-              stageSubject: baseValidationContext.stageSubject,
-              currentEntityId: nodeId,
-              // …and the same comparison rule must word its error the same way
-              // here as it does in a form. The one variable this dialog asks
-              // about has exactly one piece of authored, participant-facing
-              // text — the prompt rendered as the field's label below. The
-              // node's own label is deliberately not a source: it is the name
-              // the participant typed, not something the researcher authored.
-              variableLabels: buildVariableLabels([
-                {
-                  variable: otherVariable,
-                  label: presentationalTextValue(otherPromptLabel),
-                },
-              ]),
-            }
-          : undefined;
-
       const result = await openDialog({
         type: 'form',
         title: <AppMessage message={interfaceMessages.specifyOther} />,
         children: (
-          <div className="flex items-start gap-4">
-            <div className="shrink-0">
-              <OtherResponseNode
-                node={node}
-                getCodebook={getCodebookForNodeType}
-                color={nodeColor}
-                shape={
-                  nodeTypeDefinition
-                    ? resolveNodeShape(
-                        nodeTypeDefinition.shape,
-                        node[entityAttributesProperty],
-                      )
-                    : undefined
-                }
+          <>
+            {savingNeedsPassphrase(
+              stageVariables,
+              [otherVariable],
+              isEnabled,
+              nodeId,
+            ) && <PassphraseRecovery />}
+            <div className="flex items-start gap-4">
+              <div className="shrink-0">
+                <OtherResponseNode
+                  node={node}
+                  color={nodeColor}
+                  shape={
+                    nodeTypeDefinition
+                      ? resolveNodeShape(
+                          nodeTypeDefinition.shape,
+                          node[entityAttributesProperty],
+                        )
+                      : undefined
+                  }
+                />
+              </div>
+              <OtherResponseField
+                label={otherPromptLabel}
+                component={InputField}
+                name={otherVariable}
+                nameMode="opaque"
+                {...otherValidationProps}
+                baseValidationContext={baseValidationContext}
+                currentEntityId={nodeId}
+                autoFocus
               />
             </div>
-            <OtherResponseField
-              label={otherPromptLabel}
-              component={InputField}
-              name={otherVariable}
-              nameMode="opaque"
-              {...otherValidationProps}
-              validationContext={validationContext}
-              autoFocus
-            />
-          </div>
+          </>
         ),
         intent: 'default',
+        // Saving inside the dialog means a refused save keeps it open with
+        // the answer as typed and the reason shown, ready to retry.
+        onSubmit: async (values) => {
+          const otherValue = values[otherVariable];
+          return writeSubmissionResult(
+            await dispatch(
+              updateNode({
+                nodeId,
+                attributePatch: {
+                  set: {
+                    [otherVariable]:
+                      typeof otherValue === 'string' ? otherValue : '',
+                  },
+                  unset: [variable],
+                },
+                currentStep,
+              }),
+            ),
+          );
+        },
       });
 
+      // The dialog only resolves with values once they have been saved.
       if (!result) return false;
-
-      const updateResult = await dispatch(
-        updateNode({
-          nodeId,
-          attributePatch: {
-            set: {
-              [otherVariable]:
-                typeof result[otherVariable] === 'string'
-                  ? result[otherVariable]
-                  : '',
-            },
-            unset: [variable],
-          },
-          currentStep,
-        }),
-      );
-
-      if (!updateNode.fulfilled.match(updateResult)) return false;
 
       recordCommittedDrop();
       return true;
@@ -379,7 +419,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
       }),
     );
 
-    if (!updateNode.fulfilled.match(updateResult)) return false;
+    if (!committed(updateResult)) return false;
 
     recordCommittedDrop();
     return true;

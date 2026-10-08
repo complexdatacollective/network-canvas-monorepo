@@ -120,6 +120,7 @@ jobs:
       docs: ${{ steps.flags.outputs.docs }}
       website: ${{ steps.flags.outputs.website }}
       studio: ${{ steps.flags.outputs.studio }}
+      studio_upgrade: ${{ steps.flags.outputs.studio_upgrade }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -133,6 +134,9 @@ jobs:
           # detection (replaces the old per-workflow rerun buttons).
           FORCE_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.force_run == true }}
           EVENT_ACTION: ${{ github.event.action }}
+          # The Studio release PR always runs the upgrade lane (#1901). Only a
+          # PR into main is that release PR.
+          HEAD_REF: ${{ github.base_ref == 'main' && github.head_ref || '' }}
         run: |
           # Determine the comparison base — the commit range whose diff decides
           # which conditional jobs run. We DON'T use turbo-ignore because it
@@ -152,7 +156,9 @@ jobs:
           #   - synchronize (subsequent pushes): push-to-push — diff only the
           #     latest push (prior branch commit → new tip) so only impacted
           #     jobs re-run; jobs that already ran keep their prior status via
-          #     the carry-forward job below.
+          #     the carry-forward job below. That holds only for jobs the
+          #     `quality` gate does not require: the flags that decide what
+          #     the gate requires always use the cumulative range (below).
           #
           # GH Actions checks out a synthetic merge commit on PRs; HEAD^2 is
           # the actual PR tip.
@@ -188,8 +194,15 @@ jobs:
 
           # flag <package>: true if any file in the package's workspace dep
           # tree changed between PREV and CURR, false otherwise.
+          # A name that resolves to no workspace fails the step.
           flag() {
             local pkg=$1
+            local paths
+            if ! paths=$(npx --yes "turbo@${TURBO_VERSION}" ls --filter="${pkg}..." --output=json \
+              | jq -r '.packages.items[].path') || [[ -z "$paths" ]]; then
+              echo "::error::detect: '${pkg}' names no workspace package" >&2
+              return 1
+            fi
             if [[ "$FORCE_RUN" == "true" || "$WORKFLOW_CHANGED" == "true" ]]; then
               echo true; return
             fi
@@ -198,9 +211,6 @@ jobs:
             if [[ -z "$PREV" ]]; then
               echo true; return
             fi
-            local paths
-            paths=$(npx --yes "turbo@${TURBO_VERSION}" ls --filter="${pkg}..." --output=json 2>/dev/null \
-              | jq -r '.packages.items[].path')
             local pathspec=()
             while IFS= read -r p; do
               [[ -n "$p" ]] && pathspec+=("$p")
@@ -214,6 +224,31 @@ jobs:
           docs=$(flag @codaco/documentation)
           website=$(flag networkcanvas.com)
 
+          # ── Flags that decide what the `quality` gate requires ──────────
+          #
+          # Every job `quality` requires on a detect flag is decided on the
+          # WHOLE pull request — merge base to tip — never push to push. The
+          # gate requires such a job only when its flag is true and reads no
+          # earlier run's verdict (carry-forward-statuses republishes check
+          # runs; it does not feed `quality`), so a push-to-push flag would let
+          # an unrelated push after a failing run skip the job and pass the
+          # gate. The flags are `studio` (studio-stack) and `studio_upgrade`
+          # (studio-upgrade); ci-workflow.test.mjs fails if `quality` comes to
+          # require a job on any other detect output. The E2E suites and the
+          # `--affected` test jobs are scoped from the PR base the same way.
+          #
+          # This workflow defines both jobs, so it is an input of both, diffed
+          # over the same range: WORKFLOW_CHANGED above is push to push and
+          # cannot stand in for it.
+          gate_base="$PREV"
+          [[ "$GITHUB_EVENT_NAME" == "pull_request" ]] \
+            && gate_base=$(git merge-base "$CURR" "origin/${GITHUB_BASE_REF}" 2>/dev/null || true)
+          echo "gate-required flags compare ${gate_base:-(no base)}..$CURR"
+          # The studio-api package and its dependency closure: what the api
+          # image is built from. A plain assignment, so a stale package name
+          # fails the step rather than reading as false inside a condition.
+          studio_api=$(PREV="$gate_base" WORKFLOW_CHANGED=false flag @codaco/studio-api)
+
           # The Studio deployment stack, for the `studio-stack` job. The
           # package flag is not enough on its own: the compose files, the
           # Dockerfile, the environment template, the stack-test scripts and
@@ -222,17 +257,52 @@ jobs:
           # a change confined to any of them would leave the flag false and
           # the job unrun. The guide is in the list because own-proxy extracts
           # its nginx configuration from it at run time: editing that block
-          # changes what the job runs.
-          studio=$(flag @codaco/studio-api)
-          if [[ "$studio" != "true" && -n "$PREV" ]] \
-            && ! git diff --quiet "$PREV" "$CURR" -- \
-              apps/studio/Dockerfile \
-              'apps/studio/docker-compose*.yml' \
-              apps/studio/.env.example \
-              apps/studio/stack-test \
-              apps/studio/docs/self-host; then
+          # changes what the job runs. The images are built from the repo
+          # root, so the root files that decide what reaches them are inputs
+          # too: `.dockerignore` filters the context, and `turbo prune` and
+          # `pnpm install` read the root manifest, the lockfile, the workspace
+          # file (its catalog and patch list), the patches and `turbo.json`.
+          studio_stack_paths=(
+            apps/studio/Dockerfile
+            'apps/studio/docker-compose*.yml'
+            apps/studio/.env.example
+            apps/studio/stack-test
+            apps/studio/docs/self-host
+            .dockerignore
+            package.json
+            pnpm-lock.yaml
+            pnpm-workspace.yaml
+            patches
+            turbo.json
+          )
+          studio=false
+          if [[ "$studio_api" == "true" || -z "$gate_base" ]] \
+            || ! git diff --quiet "$gate_base" "$CURR" -- \
+              "${studio_stack_paths[@]}" \
+              .github/workflows/ci-and-release.yml; then
             studio=true
-            echo "Studio stack inputs changed outside the package graph."
+            echo "Studio stack inputs changed in ${gate_base:-(no base)}..$CURR."
+          fi
+
+          # The Studio upgrade lane, for the `studio-upgrade` job (#1901): an
+          # upgrade from the candidate to a code-only release and to a release
+          # carrying a migration, run through the self-host guide's own
+          # commands. The lane tests the api image and the generator that
+          # builds the next release's migration, so everything that selects
+          # the stack selects it: the studio-api package and its dependency
+          # closure, the stack's own files and this workflow. A hand-kept list
+          # of "upgrade-path" files inside the package missed the keyring
+          # check, the fingerprint sync and the schema applier in turn. On top
+          # of that, the lane's own inputs that no package graph sees: the
+          # lane itself and the maintenance page its observer reads, served by
+          # studio-web. Every Studio release PR selects it too.
+          studio_upgrade=false
+          if [[ "$studio" == "true" || "$HEAD_REF" == "changeset-release/studio" ]] \
+            || ! git diff --quiet "$gate_base" "$CURR" -- \
+              apps/studio/release-test \
+              apps/studio/web/public/maintenance.html; then
+            studio_upgrade=true
+            echo "Studio upgrade inputs changed in ${gate_base:-(no base)}..$CURR."
           fi
 
           # Either public site can contain inbound links to routes owned by the
@@ -246,6 +316,7 @@ jobs:
           echo "docs=$docs" >> "$GITHUB_OUTPUT"
           echo "website=$website" >> "$GITHUB_OUTPUT"
           echo "studio=$studio" >> "$GITHUB_OUTPUT"
+          echo "studio_upgrade=$studio_upgrade" >> "$GITHUB_OUTPUT"
 
   # Decides per suite whether E2E must run for this ref. Feature PRs select the
   # suites whose subject package or workspace dependency closure changed.
@@ -637,6 +708,20 @@ jobs:
             echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
             echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
           } > packages/protocol-validation/.env
+      # Starts the dev Garage and Azurite from the dev compose stack (project
+      # `studio-dev`) and bootstraps Garage's bucket. The object-store contract
+      # suite inside the Studio server suite runs against both and, like the
+      # Postgres and Valkey suites, refuses to skip under CI; the `asset
+      # storage` suite in src/__tests__/assets.test.ts, which used to skip here
+      # for want of a store, now runs too. A step rather than a `services:`
+      # entry because Garage needs a mounted configuration file and a bootstrap
+      # one-shot, which the compose stack already defines. `continue-on-error`
+      # and an `id:` like the seeding steps below, so a failure here is
+      # reported by name rather than only as the Studio suite failing after it.
+      - name: Start the dev object stores
+        id: object-stores
+        continue-on-error: true
+        run: pnpm --filter @codaco/studio-api dev:object-stores
       # Seeded on its own first, for the reason the `test` job gives: this
       # suite's assertions are wall-clock budgets, and turbo kills the
       # in-flight tasks when any task in the run fails. On 2026-09-06 a
@@ -718,6 +803,7 @@ jobs:
       - name: Report seed step outcomes
         if: always()
         env:
+          OBJECT_STORES_OUTCOME: ${{ steps.object-stores.outcome }}
           STUDIO_SERVER_OUTCOME: ${{ steps.studio-server.outcome }}
           BUILD_TYPECHECK_OUTCOME: ${{ steps.build-typecheck.outcome }}
           TEST_OUTCOME: ${{ steps.test.outcome }}
@@ -725,12 +811,14 @@ jobs:
           {
             echo "### Turbo cache seed outcomes"
             echo
+            echo "- object stores: $OBJECT_STORES_OUTCOME"
             echo "- studio-server: $STUDIO_SERVER_OUTCOME"
             echo "- build typecheck: $BUILD_TYPECHECK_OUTCOME"
             echo "- test: $TEST_OUTCOME"
           } >> "$GITHUB_STEP_SUMMARY"
           failed=false
           for result in \
+            "object stores=$OBJECT_STORES_OUTCOME" \
             "studio-server=$STUDIO_SERVER_OUTCOME" \
             "build typecheck=$BUILD_TYPECHECK_OUTCOME" \
             "test=$TEST_OUTCOME"; do
@@ -968,6 +1056,16 @@ jobs:
             echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
             echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
           } > packages/protocol-validation/.env
+      # Starts the dev Garage and Azurite from the dev compose stack (project
+      # `studio-dev`) and bootstraps Garage's bucket. The object-store contract
+      # suite inside the Studio server suite runs against both and, like the
+      # Postgres and Valkey suites, refuses to skip under CI; the `asset
+      # storage` suite in src/__tests__/assets.test.ts, which used to skip here
+      # for want of a store, now runs too. A step rather than a `services:`
+      # entry because Garage needs a mounted configuration file and a bootstrap
+      # one-shot, which the compose stack already defines.
+      - name: Start the dev object stores
+        run: pnpm --filter @codaco/studio-api dev:object-stores
       - name: Run the Studio server suite
         # The only workspace suite whose assertions are wall-clock budgets
         # rather than logic. The one that a starved event loop actually
@@ -1032,9 +1130,11 @@ jobs:
   # containers are running. The scripts are `apps/studio/stack-test`, and CI
   # runs exactly what a developer runs; see that directory's README.
   #
-  # Conditional on the same `detect` flag machinery the site previews use, with
-  # `test-studio-server`'s exclusions: never on `merge_group` (PR verdicts are
-  # authoritative there) and never on `push`.
+  # Selected by detect's `studio` flag, which — because `quality` requires the
+  # job whenever it is true — is judged on the whole pull request rather than
+  # push to push like the site previews' flags. `test-studio-server`'s
+  # exclusions: never on `merge_group` (PR verdicts are authoritative there)
+  # and never on `push`.
   studio-stack:
     needs: detect
     if: >-
@@ -1044,10 +1144,12 @@ jobs:
       && inputs.interview_e2e_benchmark == true)
       && needs.detect.outputs.studio == 'true'
     runs-on: ubuntu-latest
-    # The build is most of this. Four variant cycles cost about a minute each
-    # once the images exist; a cold build of studio-api is the rest, and the
-    # GitHub Actions cache below is what keeps it off the critical path on
-    # every run after the first.
+    # A cold build of studio-api is most of this, and the GitHub Actions cache
+    # below is what keeps it off the critical path on every run after the
+    # first. Once the images exist, each variant is one up/assert/down cycle.
+    # two-api is the longest: it waits out a lock's 30 second lease with one
+    # replica stopped, then relays a save from one replica to a tab watching
+    # on the other.
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
@@ -1097,6 +1199,10 @@ jobs:
           BUILD_CACHE_TO: type=gha,scope=studio-stack-{target},mode=max,ignore-error=true
         run: apps/studio/stack-test/build.sh
 
+      - uses: ./.github/actions/turbo-ci-setup
+      - name: Install Playwright's Chromium
+        run: pnpm --filter @codaco/studio-web exec playwright install --with-deps chromium
+
       # Serial, and each variant torn down before the next: they share a
       # Compose project name, the host's ports 80 and 443, and two fixed
       # subnets. `down.sh` runs whatever the assertions did, so a failed
@@ -1105,6 +1211,7 @@ jobs:
         run: |
           apps/studio/stack-test/up.sh --variant reference
           apps/studio/stack-test/assert.sh --variant reference
+          apps/studio/stack-test/participants.sh --variant reference
       - name: Tear down the reference stack
         if: always()
         run: apps/studio/stack-test/down.sh --variant reference
@@ -1125,6 +1232,14 @@ jobs:
         if: always()
         run: apps/studio/stack-test/down.sh --variant external-bucket
 
+      - name: A swapped object store (Azure Blob)
+        run: |
+          apps/studio/stack-test/up.sh --variant external-bucket-azure
+          apps/studio/stack-test/assert.sh --variant external-bucket-azure
+      - name: Tear down the swapped object store (Azure Blob)
+        if: always()
+        run: apps/studio/stack-test/down.sh --variant external-bucket-azure
+
       - name: A swapped rate-limit store
         run: |
           apps/studio/stack-test/up.sh --variant external-redis
@@ -1140,6 +1255,14 @@ jobs:
       - name: Tear down the swapped ingress
         if: always()
         run: apps/studio/stack-test/down.sh --variant own-proxy
+
+      - name: Two API replicas
+        run: |
+          apps/studio/stack-test/up.sh --variant two-api
+          apps/studio/stack-test/assert.sh --variant two-api
+      - name: Tear down two API replicas
+        if: always()
+        run: apps/studio/stack-test/down.sh --variant two-api
 
       # The assertions print `docker compose ps` and the last 200 log lines
       # inline, which is where a reader looks first; `down.sh` writes the same
@@ -1160,6 +1283,115 @@ jobs:
             apps/studio/stack-test/.work/*-logs.txt
             apps/studio/stack-test/.work/migrate.log
             apps/studio/stack-test/.work/nginx.conf
+            apps/studio/web/e2e/test-results/
+          if-no-files-found: warn
+          retention-days: 7
+
+  # The Studio upgrade lane (#1901): `apps/studio/release-test`, run exactly as
+  # a developer runs it (see that directory's README). It deploys the
+  # candidate, seeds it, and upgrades it with the self-host guide's own
+  # commands — to a code-only release (run A), to a release carrying a real
+  # migration with a delta and a backfill (run B), and, once a release is
+  # published, from that release to the candidate (run C, which the lane adds
+  # itself and fails without). An observer reads `/readyz` throughout and the
+  # lane fails if the instance served anything between `maintenance on` and
+  # `maintenance off`, or if the data after differs from the data before.
+  #
+  # Selected by detect's `studio_upgrade` flag, judged on the whole pull
+  # request: every Studio release PR, any change the studio flag sees (what
+  # the api image is built from), and the lane's own inputs outside the
+  # package graph. Never on `merge_group` or `push`, like `studio-stack`.
+  studio-upgrade:
+    needs: detect
+    if: >-
+      github.event_name != 'merge_group'
+      && github.event_name != 'push'
+      && !(github.event_name == 'workflow_dispatch'
+      && inputs.interview_e2e_benchmark == true)
+      && needs.detect.outputs.studio_upgrade == 'true'
+    runs-on: ubuntu-latest
+    # Two image builds (the candidate pair, then the migration-bearing api)
+    # and two upgrade cycles of about a minute each. The cache below keeps the
+    # builds warm after the first run.
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      # Run C. The previous release is the newest `@codaco/studio-api@<x.y.z>`
+      # git tag (previous-release.mjs); with none, GHCR is never asked. With
+      # one, run.sh logs in to ghcr.io with this job's token and pulls that
+      # release's images, and any failure fails the job.
+      packages: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+          # build-next.sh seals the generated migration against the
+          # repository's history, and run C checks out the previous release's
+          # tag: both need the full history and tags.
+          fetch-depth: 0
+      # The seed and build-next.sh's migration generator run from the
+      # workspace's own dependencies. Not part of a self-hoster's path: the
+      # upgrade itself runs only Docker commands.
+      - uses: ./.github/actions/turbo-ci-setup
+      # The same cache-capable builder and cache exposure as `studio-stack`;
+      # see the comments there. Created but not made current (no `--use`):
+      # BUILDX_BUILDER selects it for the image builds, and build.sh's
+      # relabel step unsets that variable to build `FROM` an image only the
+      # daemon holds, which the daemon's own builder can see and this one
+      # cannot.
+      - name: Create a cache-capable builder
+        run: docker buildx create --name studio-upgrade --driver docker-container
+      - name: Expose the Actions cache service to the build
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            for (const name of [
+              'ACTIONS_RUNTIME_TOKEN',
+              'ACTIONS_CACHE_URL',
+              'ACTIONS_RESULTS_URL',
+            ]) {
+              const value = process.env[name];
+              if (value) core.exportVariable(name, value);
+            }
+      - name: Run the upgrade lane
+        env:
+          BUILDX_BUILDER: studio-upgrade
+          # The same scopes `studio-stack` writes, so either job warms the
+          # other's build of the candidate images.
+          BUILD_CACHE_FROM: type=gha,scope=studio-stack-{target}
+          BUILD_CACHE_TO: type=gha,scope=studio-stack-{target},mode=max,ignore-error=true
+          # Used only for run C's `docker login ghcr.io`, which happens only
+          # when a release tag exists.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: apps/studio/release-test/run.sh --runs A,B
+
+      # The lane's evidence, kept whatever the verdict: the observer's ticks,
+      # the step timings, the window, diff and restore verdicts, what the new
+      # worker logged, and each run's `docker compose ps` and whole log, both
+      # as upgraded and after the rollback. Named rather than the directory: the
+      # deployment's `.env`, the backup (which holds a copy of the keyring),
+      # the data exports and `migrate`'s output (which can carry a setup
+      # token) also live there.
+      - name: Keep the lane's evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: studio-upgrade-evidence
+          path: |
+            ${{ runner.temp }}/studio-release-test/summary.json
+            ${{ runner.temp }}/studio-release-test/run-*/summary.json
+            ${{ runner.temp }}/studio-release-test/run-*/window.json
+            ${{ runner.temp }}/studio-release-test/run-*/diff.json
+            ${{ runner.temp }}/studio-release-test/run-*/diff-restored.json
+            ${{ runner.temp }}/studio-release-test/run-*/new-worker.json
+            ${{ runner.temp }}/studio-release-test/run-*/restore.log
+            ${{ runner.temp }}/studio-release-test/run-*/logs-upgraded.txt
+            ${{ runner.temp }}/studio-release-test/run-*/events.tsv
+            ${{ runner.temp }}/studio-release-test/run-*/observe.tsv
+            ${{ runner.temp }}/studio-release-test/run-*/ps.txt
+            ${{ runner.temp }}/studio-release-test/run-*/logs.txt
+            ${{ runner.temp }}/studio-release-test/run-*/seed.log
+            ${{ runner.temp }}/studio-release-test/run-*/up.log
           if-no-files-found: warn
           retention-days: 7
 
@@ -1613,6 +1845,7 @@ jobs:
       - test
       - test-studio-server
       - studio-stack
+      - studio-upgrade
       - test-storybook
       - detect
       - e2e-policy
@@ -1636,6 +1869,8 @@ jobs:
           DETECT_RESULT: ${{ needs.detect.result }}
           STUDIO_STACK_REQUIRED: ${{ needs.detect.outputs.studio }}
           STUDIO_STACK_RESULT: ${{ needs.studio-stack.result }}
+          STUDIO_UPGRADE_REQUIRED: ${{ needs.detect.outputs.studio_upgrade }}
+          STUDIO_UPGRADE_RESULT: ${{ needs.studio-upgrade.result }}
           E2E_POLICY_RESULT: ${{ needs.e2e-policy.result }}
           E2E_INTERVIEW_REQUIRED: ${{ needs.e2e-policy.outputs.interview }}
           E2E_INTERVIEWER_REQUIRED: ${{ needs.e2e-policy.outputs.interviewer }}
@@ -1703,6 +1938,17 @@ jobs:
             echo "studio-stack passed"
           else
             echo "studio-stack is not required for this event (result: $STUDIO_STACK_RESULT)"
+          fi
+
+          # The Studio upgrade lane (#1901), keyed on its flag the same way.
+          if [[ "$STUDIO_UPGRADE_REQUIRED" == "true" ]]; then
+            if [[ "$STUDIO_UPGRADE_RESULT" != "success" ]]; then
+              echo "::error::quality gate failed — studio-upgrade concluded '$STUDIO_UPGRADE_RESULT'"
+              exit 1
+            fi
+            echo "studio-upgrade passed"
+          else
+            echo "studio-upgrade is not required for this event (result: $STUDIO_UPGRADE_RESULT)"
           fi
 
           if [[ "$E2E_POLICY_RESULT" != "success" ]]; then
@@ -3124,8 +3370,6 @@ jobs:
       contents: write
       pull-requests: write
       id-token: write
-    env:
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -3392,10 +3636,9 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: write
-    env:
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-      VITE_FRESCO_PREVIEW_URL: ${{ secrets.VITE_FRESCO_PREVIEW_URL }}
-      VITE_FRESCO_PREVIEW_API_TOKEN: ${{ secrets.VITE_FRESCO_PREVIEW_API_TOKEN }}
+    # No job-level secrets: every credential is scoped to the one step that
+    # consumes it, so setup actions, the install, and the release action never
+    # see the Netlify token or the build-time values.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -3433,6 +3676,8 @@ jobs:
         env:
           POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
           POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
+          VITE_FRESCO_PREVIEW_URL: ${{ secrets.VITE_FRESCO_PREVIEW_URL }}
+          VITE_FRESCO_PREVIEW_API_TOKEN: ${{ secrets.VITE_FRESCO_PREVIEW_API_TOKEN }}
         run: pnpm exec turbo run build --filter=@codaco/architect
       # After the turbo-cached build so a cache-restored dist still gets THIS
       # deployment's commit (GITHUB_SHA), matching netlify.toml's dev lane.
@@ -3441,6 +3686,8 @@ jobs:
         run: node apps/architect/scripts/write-build-info.mjs
       - name: Deploy architect to production
         if: steps.guard.outputs.skip != 'true'
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         run: |
           npx --yes netlify-cli@22 deploy --no-build --prod \
             --filter=@codaco/architect \
@@ -3487,8 +3734,6 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: write
-    env:
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -3529,6 +3774,8 @@ jobs:
         run: pnpm exec turbo run build --filter=@codaco/interviewer
       - name: Deploy interviewer to production
         if: steps.guard.outputs.skip != 'true'
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         run: |
           npx --yes netlify-cli@22 deploy --no-build --prod \
             --filter=@codaco/interviewer \
@@ -3574,8 +3821,6 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: write
-    env:
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -3605,6 +3850,8 @@ jobs:
         run: pnpm exec turbo run build --filter=@codaco/background-creator
       - name: Deploy Background Creator to production
         if: steps.guard.outputs.skip != 'true'
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         run: |
           npx --yes netlify-cli@22 deploy --no-build --prod \
             --filter=@codaco/background-creator \
@@ -3757,13 +4004,6 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: write
-    env:
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-      NEXT_PUBLIC_ALGOLIA_APPLICATION_ID: ${{ secrets.NEXT_PUBLIC_ALGOLIA_APPLICATION_ID }}
-      NEXT_PUBLIC_ALGOLIA_INDEX_NAME: ${{ secrets.NEXT_PUBLIC_ALGOLIA_INDEX_NAME }}
-      NEXT_PUBLIC_ALGOLIA_API_KEY: ${{ secrets.NEXT_PUBLIC_ALGOLIA_API_KEY }}
-      NEXT_PUBLIC_MENDABLE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_MENDABLE_ANON_KEY }}
-      NEXT_PUBLIC_GA_ID: ${{ secrets.NEXT_PUBLIC_GA_ID }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -3791,11 +4031,25 @@ jobs:
         env:
           POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
           POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
+          NEXT_PUBLIC_ALGOLIA_APPLICATION_ID: ${{ secrets.NEXT_PUBLIC_ALGOLIA_APPLICATION_ID }}
+          NEXT_PUBLIC_ALGOLIA_INDEX_NAME: ${{ secrets.NEXT_PUBLIC_ALGOLIA_INDEX_NAME }}
+          NEXT_PUBLIC_ALGOLIA_API_KEY: ${{ secrets.NEXT_PUBLIC_ALGOLIA_API_KEY }}
+          NEXT_PUBLIC_MENDABLE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_MENDABLE_ANON_KEY }}
+          NEXT_PUBLIC_GA_ID: ${{ secrets.NEXT_PUBLIC_GA_ID }}
         run: |
-          pnpm exec turbo run build --filter=@codaco/documentation
+          # The footer's copyright year. It is baked into the static export, and
+          # turbo's hash covers declared environment variables rather than the
+          # clock, so without passing it a build cached before 1 January could be
+          # replayed for this deploy and publish the previous year. Declared in
+          # `turbo.json`'s `env` for this task, which is what makes it part of the
+          # cache key.
+          NEXT_PUBLIC_BUILD_YEAR="$(date -u +%Y)" \
+            pnpm exec turbo run build --filter=@codaco/documentation
           cp apps/documentation/netlify.toml apps/documentation/out/netlify.toml
       - name: Deploy documentation to production
         if: steps.guard.outputs.skip != 'true'
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         run: |
           npx --yes netlify-cli@22 deploy --no-build --prod \
             --filter=@codaco/documentation \
@@ -3830,8 +4084,6 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: write
-    env:
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -3856,10 +4108,15 @@ jobs:
         # products these cannot be narrowed past this step. They stay off the
         # job so nothing before or after this step can read them.
         env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
           POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
         run: |
-          json=$(npx --yes netlify-cli@26 deploy --build --prod \
+          # See the note on the documentation build: the footer year has to reach
+          # the build, or a cached export can carry the previous year across
+          # 1 January. netlify-cli runs the build here, so it is passed to that.
+          json=$(NEXT_PUBLIC_BUILD_YEAR="$(date -u +%Y)" \
+                 npx --yes netlify-cli@26 deploy --build --prod \
                    --filter=networkcanvas.com \
                    --site="${{ secrets.NETLIFY_SITE_ID_WEBSITE }}" --json)
           echo "$json" | jq .
@@ -4212,7 +4469,6 @@ jobs:
       group: apps-release-networkcanvas.com-production
       cancel-in-progress: false
     env:
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
       # Classic release metadata is an external build input, so it cannot be
       # represented in Turbo's source hash. Always execute the static build.
       TURBO_FORCE: 'true'
@@ -4229,10 +4485,15 @@ jobs:
         # netlify-cli performs the build (--build), so the credentials cannot be
         # narrowed past this step; they stay off the job regardless.
         env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
           POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
         run: |
-          json=$(npx --yes netlify-cli@26 deploy --build --prod \
+          # See the note on the documentation build: the footer year has to reach
+          # the build, or a cached export can carry the previous year across
+          # 1 January. netlify-cli runs the build here, so it is passed to that.
+          json=$(NEXT_PUBLIC_BUILD_YEAR="$(date -u +%Y)" \
+                 npx --yes netlify-cli@26 deploy --build --prod \
                    --filter=networkcanvas.com \
                    --site="${{ secrets.NETLIFY_SITE_ID_WEBSITE }}" --json)
           echo "$json" | jq .
@@ -4261,6 +4522,12 @@ jobs:
   # cumulative merge-base-to-head diff, while release PRs let e2e-policy
   # decide when an equivalent earlier verdict may be reused. The required
   # quality gate checks that current policy decision in both cases.
+  #
+  # Nothing here feeds `quality`, which is the only required check. A job the
+  # gate requires on a detect flag therefore cannot rely on this job to keep
+  # its verdict: its flag is judged on the cumulative PR diff instead, so the
+  # job re-runs on every push of a pull request that selects it (studio-stack,
+  # studio-upgrade).
   carry-forward-statuses:
     needs:
       - detect

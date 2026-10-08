@@ -3,17 +3,32 @@ import type {
   NcNode,
   EntityAttributesProperty,
   EntitySecureAttributesMeta,
+  VariableValue,
 } from '@codaco/shared-consts';
 
 import { writeOwnProperty } from '../../utils/ownProperty';
+import { isAttributeEncrypted } from './isAttributeEncrypted';
 
-export class UnauthorizedError extends Error {
-  constructor(message?: string) {
-    super('Unauthorized');
-    this.name = 'UnauthorizedError';
-    this.message = message ?? 'Unauthorised';
+/**
+ * An encrypted write was refused because no passphrase that can decrypt this
+ * interview's data is in force.
+ */
+const PASSPHRASE_REQUIRED = 'PassphraseRequiredError';
+
+export class PassphraseRequiredError extends Error {
+  constructor() {
+    super('A valid passphrase is required to save encrypted data');
+    this.name = PASSPHRASE_REQUIRED;
   }
 }
+
+/**
+ * Recognises a PassphraseRequiredError after Redux Toolkit has serialised it
+ * into a rejected thunk action, where only its name survives.
+ */
+export const isPassphraseRequiredError = (
+  error: { name?: string } | undefined,
+) => error?.name === PASSPHRASE_REQUIRED;
 
 /**
  * Creates a key from a passphrase and a random salt. The salt is used to
@@ -80,6 +95,24 @@ export async function decryptData(
   // TODO: We need to look up the variable type and re-cast it here.
 
   return decoder.decode(decryptedData);
+}
+
+/**
+ * Whether storing these attribute values encrypts any of them, by the rule
+ * `generateSecureAttributes` applies: a string value of a variable the
+ * codebook marks encrypted, while encryption is in effect (see
+ * `isAttributeEncrypted`).
+ */
+export function writesEncryptedValue(
+  attributes: Readonly<Record<string, VariableValue | undefined>>,
+  codebookVariables: Record<string, Variable>,
+  encryptionEnabled: boolean,
+): boolean {
+  return Object.entries(attributes).some(
+    ([key, value]) =>
+      isAttributeEncrypted(encryptionEnabled, codebookVariables, key) &&
+      typeof value === 'string',
+  );
 }
 
 export async function generateSecureAttributes(

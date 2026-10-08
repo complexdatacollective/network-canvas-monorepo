@@ -3,36 +3,39 @@
 import { Sparkles } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
 import { useTranslations } from 'next-intl';
-import type { ReactNode } from 'react';
+import { useId } from 'react';
 
 import useHasHydrated from '@codaco/fresco-ui/hooks/useHasHydrated';
-import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Link } from '~/lib/i18n/navigation';
+import { SiteLink } from '~/components/ui/SiteLink';
 import type { NewsItem as NewsItemRecord } from '~/lib/siteContent';
 
-function NewsLink({
-  children,
+function NewsEntry({
+  title,
   href,
   tabIndex,
 }: {
-  children: ReactNode;
+  title: string;
   href: string;
   tabIndex?: number;
 }) {
-  const isInternal = href.startsWith('/');
+  const t = useTranslations('News');
+  const titleId = useId();
+  const linkId = useId();
 
   return (
-    <NativeLink
-      href={href}
-      render={isInternal ? <Link href={href} /> : undefined}
-      target={isInternal ? undefined : '_blank'}
-      rel={isInternal ? undefined : 'noreferrer'}
-      tabIndex={tabIndex}
-      className="text-cerulean-blue font-bold"
-    >
-      {children}
-    </NativeLink>
+    <>
+      <span id={titleId}>{title}</span>{' '}
+      <SiteLink
+        id={linkId}
+        href={href}
+        tabIndex={tabIndex}
+        aria-labelledby={`${linkId} ${titleId}`}
+        className="text-cerulean-blue font-bold"
+      >
+        {t('readMore')}
+      </SiteLink>
+    </>
   );
 }
 
@@ -45,17 +48,16 @@ function NewsItem({
   href: string;
   duplicate?: boolean;
 }) {
-  const t = useTranslations('News');
-
   return (
     <span
       aria-hidden={duplicate || undefined}
       className="text-base-sm text-text/80 inline-flex shrink-0 items-center gap-2 whitespace-nowrap"
     >
-      {title}
-      <NewsLink href={href} tabIndex={duplicate ? -1 : undefined}>
-        {t('fullStory')}
-      </NewsLink>
+      <NewsEntry
+        title={title}
+        href={href}
+        tabIndex={duplicate ? -1 : undefined}
+      />
     </span>
   );
 }
@@ -72,7 +74,6 @@ export function NewsTicker({
 }: {
   newsItems: readonly NewsItemRecord[];
 }) {
-  const t = useTranslations('News');
   const prefersReducedMotion = useReducedMotion() === true;
   // The branch below chooses between two different element trees, so it must
   // not depend on the preference until after hydration: `useReducedMotion()`
@@ -121,7 +122,7 @@ export function NewsTicker({
             key={item.id}
             className="text-base-sm text-text/80"
           >
-            {item.title} <NewsLink href={item.href}>{t('fullStory')}</NewsLink>
+            <NewsEntry title={item.title} href={item.href} />
           </Paragraph>
         ))}
       </div>

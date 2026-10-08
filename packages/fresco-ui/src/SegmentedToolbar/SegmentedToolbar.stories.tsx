@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import {
+  ArrowLeftToLine,
   Bold,
   Download,
   Ellipsis,
@@ -7,6 +8,7 @@ import {
   Italic,
   List,
   Pencil,
+  Printer,
   Redo2,
   Settings2,
   Snowflake,
@@ -15,9 +17,11 @@ import {
   Underline,
   Undo2,
 } from 'lucide-react';
-import type { ComponentProps } from 'react';
-import { expect, userEvent, within } from 'storybook/test';
+import { MotionConfig, motion } from 'motion/react';
+import { type ComponentProps, useState } from 'react';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 
+import { Button } from '../Button';
 import { DropdownMenuItem } from '../DropdownMenu';
 import { awaitPassiveEffects } from '../storybook-support/awaitPassiveEffects';
 import { withTooltipProvider } from '../storybook-support/withTooltipProvider';
@@ -122,6 +126,10 @@ type ConditionalItemsArgs = ComponentProps<typeof SegmentedToolbar> & {
   showDisabledGroup: boolean;
 };
 type ConditionalItemsStory = StoryObj<ConditionalItemsArgs>;
+type TrailingRestArgs = ComponentProps<typeof SegmentedToolbar> & {
+  width: number;
+};
+type TrailingRestStory = StoryObj<TrailingRestArgs>;
 
 const noop = () => {};
 
@@ -616,4 +624,135 @@ export const Draggable: Story = {
       />
     </SegmentedToolbar>
   ),
+};
+
+// Architect's page-actions host slides the toolbar in with this translate.
+// Chrome cannot resolve a translate that mixes `%` and `rem` without layout,
+// and a hand-off that lands while it is still moving is the one where Chrome
+// records the lane's overflow with Motion's scale correction applied, then
+// never measures it again once the correction is removed.
+const HOST_HIDDEN = 'calc(100% + 1.25rem)';
+const HOST_SHOWN = 'calc(0% + 0rem)';
+
+/**
+ * Mirrors Architect's page actions: a trailing primary action, and a route
+ * hand-off that adds a control between it and the leading one while the
+ * toolbar's host is still sliding in.
+ */
+function PageActions({ width, ...args }: TrailingRestArgs) {
+  const [showPrint, setShowPrint] = useState(false);
+
+  return (
+    // The preview skips Motion animations under automation, but the overshoot
+    // these stories guard against only exists while the toolbar animates.
+    <MotionConfig skipAnimations={false}>
+      <div className="flex flex-col items-end gap-4" style={{ width }}>
+        <Button size="sm" onClick={() => setShowPrint(true)}>
+          Add Print
+        </Button>
+        <motion.div
+          initial={{ y: HOST_HIDDEN }}
+          animate={{ y: HOST_SHOWN }}
+          transition={{ duration: 1 }}
+          className="max-w-full"
+        >
+          <SegmentedToolbar {...args}>
+            <ToolbarButtonComponent icon={<ArrowLeftToLine />} onClick={noop}>
+              Return to Start Screen
+            </ToolbarButtonComponent>
+            <ToolbarSeparatorComponent />
+            {showPrint ? (
+              <ToolbarButtonComponent
+                key="print"
+                icon={<Printer />}
+                onClick={noop}
+              >
+                Print
+              </ToolbarButtonComponent>
+            ) : null}
+            {showPrint ? (
+              <ToolbarSeparatorComponent key="print-separator" />
+            ) : null}
+            <ToolbarButtonComponent
+              icon={<Download />}
+              color="success"
+              variant="default"
+              onClick={noop}
+            >
+              Download
+            </ToolbarButtonComponent>
+          </SegmentedToolbar>
+        </motion.div>
+      </div>
+    </MotionConfig>
+  );
+}
+
+/**
+ * Adds Print while the host is still sliding in, then waits for every
+ * animation to finish by reading inline styles only. Querying layout
+ * mid-animation makes Chrome recompute the lane's scrollable overflow, which
+ * would hide the stale `scrollWidth` these stories guard against.
+ */
+async function addPrintAndSettle(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  await document.fonts.ready;
+  await userEvent.click(canvas.getByRole('button', { name: 'Add Print' }));
+  const print = canvas.getByRole('button', { name: 'Print' });
+  const atRest = ['', 'none', `translateY(${HOST_SHOWN})`];
+  await waitFor(() => {
+    expect(print.style.filter).toBe('blur(0px) opacity(100%)');
+    for (const element of canvasElement.querySelectorAll<HTMLElement>('*')) {
+      expect(atRest).toContain(element.style.transform);
+    }
+  });
+  return canvas.getByRole('toolbar', { name: 'Page actions' });
+}
+
+/**
+ * `restAt="end"` keeps a trailing primary action on screen. When every control
+ * fits, the lane rests at its start with no edge fade, including after a
+ * hand-off grows the pill and Motion's scale correction briefly pushes the
+ * lane's `scrollWidth` past its width.
+ */
+export const TrailingRest: TrailingRestStory = {
+  args: { 'aria-label': 'Page actions', 'restAt': 'end', 'width': 640 },
+  render: (args) => <PageActions {...args} />,
+  play: async ({ canvasElement }) => {
+    const lane = await addPrintAndSettle(canvasElement);
+    const frame = lane.parentElement;
+    expect(lane.scrollLeft).toBe(0);
+    expect(
+      frame?.style.getPropertyValue('--scroll-area-overflow-x-start'),
+    ).toBe('0px');
+    expect(frame?.style.getPropertyValue('--scroll-area-overflow-x-end')).toBe(
+      '0px',
+    );
+  },
+};
+
+/**
+ * Where the controls do not fit, the lane rests at its trailing end so the
+ * primary action stays whole, and fades the leading edge it hides.
+ */
+export const TrailingRestOverflowing: TrailingRestStory = {
+  args: { 'aria-label': 'Page actions', 'restAt': 'end', 'width': 320 },
+  render: (args) => <PageActions {...args} />,
+  play: async ({ canvasElement }) => {
+    const lane = await addPrintAndSettle(canvasElement);
+    const frame = lane.parentElement;
+    const download = within(lane)
+      .getByRole('button', { name: 'Download' })
+      .getBoundingClientRect();
+    const visible = lane.getBoundingClientRect();
+    expect(download.left).toBeGreaterThanOrEqual(visible.left);
+    expect(download.right).toBeLessThanOrEqual(visible.right);
+    expect(lane.scrollLeft).toBeGreaterThan(0);
+    expect(
+      frame?.style.getPropertyValue('--scroll-area-overflow-x-start'),
+    ).toBe(`${lane.scrollLeft}px`);
+    expect(frame?.style.getPropertyValue('--scroll-area-overflow-x-end')).toBe(
+      '0px',
+    );
+  },
 };

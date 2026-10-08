@@ -1,7 +1,6 @@
 import { Effect } from 'effect';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { renderSchemaDdl } from '../../scripts/render-schema-ddl.ts';
 import { OwnerDatabase } from '../db/client.ts';
 import { migrateDatabaseEffect } from '../db/migrate.ts';
 import { RATE_LIMITS } from '../rate-limit/scopes.ts';
@@ -10,6 +9,7 @@ import {
   freePort,
   startEntrypoint,
 } from './support/entrypoint.ts';
+import { committedMigrations } from './support/migrations.ts';
 import { createScratchDatabase, reachableDb } from './support/postgres.ts';
 import { reachableRedis, REDIS_DATABASES } from './support/valkey.ts';
 
@@ -51,6 +51,10 @@ async function startApi(env: Record<string, string>): Promise<number> {
   });
   running.push(api);
   await api.waitForOutput(/listening on/);
+  // The gate stays closed until the boot checks pass (#1901): a sign-in
+  // before them is answered 503 and never counted, so the window would not
+  // fill and the request past it would be served.
+  await api.waitForOutput(/Schema current and keyring verified; serving\./);
   return port;
 }
 
@@ -66,9 +70,8 @@ describe.skipIf(!db || !redis)('two API processes on one limiter', () => {
       if (!db || !redis) throw new Error('unreachable: the probes guaranteed');
       const scratch = await createScratchDatabase(db);
       try {
-        const ddl = await renderSchemaDdl();
         await Effect.runPromise(
-          migrateDatabaseEffect(ddl).pipe(
+          migrateDatabaseEffect(committedMigrations()).pipe(
             Effect.provide(OwnerDatabase.layer({ url: scratch.db.url })),
           ),
         );
@@ -106,7 +109,10 @@ describe.skipIf(!db || !redis)('two API processes on one limiter', () => {
         // not refused.
         for (let call = 0; call < SIGN_IN_LIMIT; call += 1) {
           const port = call % 2 === 0 ? first! : second!;
-          expect((await signIn(port)).status).not.toBe(429);
+          const status = (await signIn(port)).status;
+          // Neither refused by the limiter nor closed, which is never counted.
+          expect(status).not.toBe(429);
+          expect(status).not.toBe(503);
         }
 
         // The next one exceeds a window that neither process could see on its

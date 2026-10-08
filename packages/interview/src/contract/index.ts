@@ -17,6 +17,7 @@ export {
 } from './assetUrlOwner';
 export { createDebouncedSyncHandler } from './debouncedSync';
 export { createInitialNetwork } from './network';
+export { currentProtocolToPayload } from './protocolPayload';
 export {
   collectRosterExternalData,
   filterExternalPanelNodes,

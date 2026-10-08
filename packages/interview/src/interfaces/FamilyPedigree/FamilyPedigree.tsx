@@ -35,7 +35,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { PassphraseOverlay } from '../../components/PassphrasePrompter';
+import PassphraseOverlay from '../../components/PassphraseOverlay';
 import Prompts from '../../components/Prompts/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
@@ -244,7 +244,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     passphrase,
     passphraseInvalid,
     requirePassphrase,
-    setPassphrase,
     setPassphraseInvalid,
   } = usePassphrase();
   // Every attribute the stage writes from what the participant types — the
@@ -1866,11 +1865,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         <PassphraseOverlay
           show={passphraseOpen}
           onClose={() => setPassphraseOpen(false)}
-          handleSubmit={(entered) => {
-            if (!entered) return;
-            setPassphrase(entered);
-            setPassphraseOpen(false);
-          }}
+          onAccepted={() => setPassphraseOpen(false)}
         />
       )}
       <PersonDrawer

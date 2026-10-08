@@ -1,4 +1,4 @@
-import { readFileSync, realpathSync } from 'node:fs';
+import { readdirSync, readFileSync, realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,6 +7,7 @@ import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 import { parse as parseYaml } from 'yaml';
 
+import { productionFiles } from './support/source-spans.ts';
 import { sourceTokens } from './support/source-tokens.ts';
 
 const SERVER_ROOT = resolve(
@@ -80,8 +81,14 @@ const JOB_EXECUTION = [
   'src/jobs/handlers/invitation-delivery.ts',
   'src/jobs/handlers/sign-in-email.ts',
   'src/jobs/handlers/protocol-store-gc.ts',
+  'src/jobs/handlers/staged-resources-gc.ts',
   'src/jobs/handlers/denied-attempts-summary.ts',
+  'src/jobs/handlers/update-check.ts',
 ];
+
+const foreign = (name: string) =>
+  /^(?:hono|ws)(?:\/|$)/.test(name) || /^@(?:hono|orpc)\//.test(name);
+const zod = (name: string) => /^zod(?:\/|$)/.test(name);
 
 const ENTRIES = {
   'src/index.ts': './programs/serve.ts',
@@ -137,9 +144,28 @@ describe('every entry', () => {
       expect(packages.has('redis'), entry).toBe(false);
     }
   });
+  it('carries none of the checkout lane: no drizzle-kit, no schema scripts', () => {
+    // The image installs production dependencies only; the scripts that push,
+    // render and generate the schema run from a checkout (#1901 step 6).
+    const CHECKOUT_LANE = [
+      'drizzle-kit',
+      'drizzle-kit/api-postgres',
+      'scripts/apply.ts',
+      'scripts/apply-schema.ts',
+      'scripts/render-migrations.ts',
+      'scripts/migrate-generate.ts',
+    ];
+    for (const entry of Object.keys(ENTRIES)) {
+      const graph = moduleGraph(entry);
+      expect(graph.modules.size, entry).toBeGreaterThan(1);
+      expect(reached(graph, CHECKOUT_LANE), entry).toEqual([]);
+      expect(
+        [...graph.modules].filter((path) => path.startsWith('scripts/')),
+        entry,
+      ).toEqual([]);
+    }
+  });
   it('reaches no Hono, no oRPC and no WebSocket library of its own', () => {
-    const foreign = (name: string) =>
-      /^(?:hono|ws)(?:\/|$)/.test(name) || /^@(?:hono|orpc)\//.test(name);
     for (const entry of Object.keys(ENTRIES)) {
       expect([...moduleGraph(entry).packages].filter(foreign), entry).toEqual(
         [],
@@ -147,10 +173,32 @@ describe('every entry', () => {
     }
   });
   it('imports no zod from its own modules', () => {
-    const zod = (name: string) => /^zod(?:\/|$)/.test(name);
     for (const entry of Object.keys(ENTRIES)) {
       expect([...moduleGraph(entry).packages].filter(zod), entry).toEqual([]);
     }
+  });
+});
+
+describe('the contract package', () => {
+  const CONTRACT_SRC = resolve(REPO_ROOT, 'packages/studio-contract/src');
+  const imports = productionFiles(CONTRACT_SRC).flatMap((file) =>
+    moduleSpecifiers(readFileSync(file, 'utf8')).map(
+      (specifier) => `${relative(REPO_ROOT, file)}: ${specifier}`,
+    ),
+  );
+  const named = (match: (name: string) => boolean) =>
+    imports.filter((line) => match(line.slice(line.lastIndexOf(': ') + 2)));
+
+  it('is scanned module by module', () => {
+    expect(named((name) => name === 'effect/rpc').length).toBeGreaterThan(0);
+  });
+
+  it('imports no Hono, no oRPC and no WebSocket library', () => {
+    expect(named(foreign)).toEqual([]);
+  });
+
+  it('imports no zod', () => {
+    expect(named(zod)).toEqual([]);
   });
 });
 
@@ -222,6 +270,37 @@ describe('the worker process', () => {
       'src/auth/service.ts',
       'src/auth/better-auth.ts',
     ]);
+  });
+
+  it('builds its job worker paused, for the maintenance gate to open', () => {
+    const tokens = sourceTokens(
+      readFileSync(resolve(SERVER_ROOT, 'src/programs/worker.ts'), 'utf8'),
+    );
+    const configs = tokens.flatMap((token, index) => {
+      if (
+        token.raw !== 'JobWorker' ||
+        tokens[index + 1]?.raw !== '.' ||
+        tokens[index + 2]?.raw !== 'layer' ||
+        tokens[index + 3]?.raw !== '('
+      ) {
+        return [];
+      }
+      let depth = 0;
+      let end = index + 3;
+      for (; end < tokens.length; end += 1) {
+        if (tokens[end]?.raw === '(') depth += 1;
+        if (tokens[end]?.raw === ')') depth -= 1;
+        if (depth === 0) break;
+      }
+      return [
+        tokens
+          .slice(index + 4, end)
+          .map((part) => part.raw)
+          .join(' '),
+      ];
+    });
+    expect(configs).toHaveLength(1);
+    expect(configs[0]).toMatch(/(?:^|[{,] )startPaused : true(?: [,}]|$)/);
   });
 
   it('is the process that holds the maintenance TeamAccess', () => {
@@ -321,7 +400,7 @@ const byName = (left: string, right: string): number =>
   left === right ? 0 : left < right ? -1 : 1;
 
 const PROTOCOL_BUILDER_HOST =
-  /\/src\/protocol-builder\/(?:rpc|handlers|session|leases|presence|publisher)\.ts$/;
+  /\/src\/protocol-builder\/(?:rpc|handlers|session|leases|presence|publisher|connections|doorbell)\.ts$/;
 
 const HTTPAPI_BARREL = /\/effect\/dist\/http-api\/index\.js$/;
 
@@ -343,6 +422,8 @@ describe('the protocol-builder host', () => {
     }
     expect(hostModules('src/index.ts')).toEqual(
       [
+        'src/protocol-builder/connections.ts',
+        'src/protocol-builder/doorbell.ts',
         'src/protocol-builder/handlers.ts',
         'src/protocol-builder/leases.ts',
         'src/protocol-builder/presence.ts',
@@ -393,8 +474,16 @@ describe('the migrate process', () => {
         'drizzle-kit',
         'drizzle-kit/api-postgres',
         'scripts/apply.ts',
+        'scripts/render-migrations.ts',
+        'scripts/migrate-generate.ts',
       ]),
     ).toEqual([]);
+  });
+
+  it('verifies and records the migrations it applies', () => {
+    expect(
+      reached(graph, ['src/db/migrations-document.ts', 'src/db/history.ts']),
+    ).toEqual(['src/db/migrations-document.ts', 'src/db/history.ts']);
   });
 
   it('serves nothing', () => {
@@ -607,5 +696,32 @@ describe('the image', () => {
     expect(
       Object.keys(platformNodeSnapshot().dependencies ?? {}),
     ).not.toContain('redis');
+  });
+});
+
+describe('the object-store providers', () => {
+  // Each provider's SDK stays inside its implementation of the port (#2077),
+  // so a third provider is one new directory and nothing else in Studio learns
+  // which store is behind `ObjectStore`.
+  const SDKS = [
+    { scope: '@aws-sdk/', home: 'src/storage/s3/' },
+    { scope: '@azure/', home: 'src/storage/azure-blob/' },
+  ];
+
+  const sources = ['src', 'scripts'].flatMap((dir) =>
+    readdirSync(resolve(SERVER_ROOT, dir), { recursive: true })
+      .map(String)
+      .filter((path) => path.endsWith('.ts'))
+      .map((path) => `${dir}/${path}`),
+  );
+
+  it.each(SDKS)('imports $scope only from $home', ({ scope, home }) => {
+    const importers = sources.filter((path) =>
+      moduleSpecifiers(readFileSync(resolve(SERVER_ROOT, path), 'utf8')).some(
+        (specifier) => specifier.startsWith(scope),
+      ),
+    );
+    expect(importers.length).toBeGreaterThan(0);
+    expect(importers.filter((path) => !path.startsWith(home))).toEqual([]);
   });
 });

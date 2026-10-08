@@ -327,6 +327,7 @@ export default function PersonForm({
       const patch = formValuesToAttributePatch(
         coerceValues(values),
         formFields.map((field) => field.variable),
+        initialResearcherValues ?? {},
       );
       if (!patch.success) {
         return {

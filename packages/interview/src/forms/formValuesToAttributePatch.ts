@@ -14,9 +14,17 @@ export type FormValuesToAttributePatchResult =
       };
     };
 
+/**
+ * The patch that saves a form's values. `shownValues` are the values the form
+ * started from: a field left without a value is unset only when the form
+ * showed it one, which the participant then cleared. A stored value the form
+ * never showed, such as an answer it could not decrypt, is left as it is
+ * unless the participant gives the field a new value.
+ */
 export function formValuesToAttributePatch(
   values: Readonly<Record<string, FieldValue>>,
   mountedFieldNames: readonly string[],
+  shownValues: Readonly<Record<string, unknown>>,
 ): FormValuesToAttributePatchResult {
   const set: Record<string, VariableValue> = {};
   const unset: string[] = [];
@@ -28,7 +36,12 @@ export function formValuesToAttributePatch(
       : undefined;
 
     if (value === undefined) {
-      unset.push(fieldName);
+      if (
+        Object.hasOwn(shownValues, fieldName) &&
+        shownValues[fieldName] !== undefined
+      ) {
+        unset.push(fieldName);
+      }
       continue;
     }
 

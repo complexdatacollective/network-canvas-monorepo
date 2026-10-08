@@ -59,6 +59,7 @@ import {
   type TestDatabaseRuntime,
   testDb,
 } from './support/database.ts';
+import { memoryObjectStore } from './support/object-store.ts';
 import {
   createProtocolBuilderClient,
   makeShiftableClock,
@@ -355,6 +356,8 @@ describe.skipIf(!testDb || !env.auth)(
             Effect.succeed([{ teamId: TEAM_ID, role: 'owner' }]),
         }),
         services,
+        // A staged file's bytes wait in the object store.
+        objectStore: memoryObjectStore().store,
       });
       server = await startStudioServer(
         serverEnv,

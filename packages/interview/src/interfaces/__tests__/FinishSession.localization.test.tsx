@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
@@ -9,6 +9,7 @@ import { getLocaleMetadata } from '@codaco/protocol-validation';
 
 import { ContractProvider } from '../../contract/context';
 import type { FinishHandler, InterviewPayload } from '../../contract/types';
+import { interviewCatalogSource } from '../../i18n/catalog';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import { store as createStore } from '../../store/store';
 import { SyncFlushProvider } from '../../store/SyncFlushContext';
@@ -57,7 +58,7 @@ beforeAll(() => {
   globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
 });
 
-function makeView(flush: () => Promise<void>, onFinish: FinishHandler) {
+function makeView(flush: () => Promise<boolean>, onFinish: FinishHandler) {
   const store = createStore(payload, {
     onSync: () => Promise.resolve(),
     onProtocolLocaleChange: () => Promise.resolve(),
@@ -82,6 +83,14 @@ function makeView(flush: () => Promise<void>, onFinish: FinishHandler) {
   );
 }
 
+// Loaded before anything renders, as a host loads a language before it
+// mounts an interview, so renders in these languages are synchronous.
+beforeAll(async () => {
+  await Promise.all(
+    ['es', 'en-GB'].map((locale) => interviewCatalogSource.load(locale)),
+  );
+});
+
 describe('FinishSession localized recoverable failures', () => {
   it.each(['flush', 'finish'] as const)(
     'keeps a %s failure in the real dialog, changes its language without resubmission, and retries in order',
@@ -95,6 +104,7 @@ describe('FinishSession localized recoverable failures', () => {
           rejected = true;
           throw new Error(diagnostic);
         }
+        return true;
       });
       const finish = vi.fn<FinishHandler>(async (_id, signal) => {
         order.push('finish');
@@ -160,15 +170,15 @@ describe('FinishSession localized recoverable failures', () => {
     },
   );
 
-  it('still passes the cancellation signal to a pending host finish', async () => {
-    const flush = vi.fn(() => Promise.resolve());
+  it('cannot be cancelled while the host finishes, and aborts the signal it passes the host when torn down', async () => {
+    const flush = vi.fn(() => Promise.resolve(true));
     const finish = vi.fn<FinishHandler>(
       (_id, signal) =>
         new Promise((resolve) => {
           signal.addEventListener('abort', () => resolve(), { once: true });
         }),
     );
-    render(makeView(flush, finish)('es'));
+    const { unmount } = render(makeView(flush, finish)('es'));
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Finalizar' }));
     const dialog = await screen.findByRole('dialog');
@@ -180,13 +190,96 @@ describe('FinishSession localized recoverable failures', () => {
     await waitFor(() => expect(finish).toHaveBeenCalledTimes(1));
     const signal = finish.mock.lastCall?.[1];
     expect(signal).toBeInstanceOf(AbortSignal);
-    expect(signal?.aborted).toBe(false);
     expect(flush).toHaveBeenCalledTimes(1);
-    await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
+
+    // A host's finish runs to completion whatever the signal says, so the
+    // participant cannot be told it was cancelled while it runs.
+    const cancel = within(dialog).getByRole('button', { name: 'Cancelar' });
+    expect(cancel).toBeDisabled();
+    await user.click(cancel);
+    await user.keyboard('{Escape}');
+    expect(dialog).toBeVisible();
+    expect(signal?.aborted).toBe(false);
+
+    unmount();
     expect(signal?.aborted).toBe(true);
     expect(finish).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not finish while an answer still being saved was refused', async () => {
+    const flush = vi
+      .fn<() => Promise<boolean>>()
+      .mockResolvedValueOnce(false)
+      .mockResolvedValue(true);
+    const finish = vi.fn<FinishHandler>(() => Promise.resolve());
+    render(makeView(flush, finish)('en'));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Finish' }));
+    const dialog = await screen.findByRole('dialog');
+    const confirmFinish = within(dialog).getByRole('button', {
+      name: 'Finish Interview',
+    });
+
+    await user.click(confirmFinish);
+    expect(
+      await within(dialog).findByText(english, { exact: true }),
+    ).toBeVisible();
+    expect(finish).not.toHaveBeenCalled();
+
+    await user.click(confirmFinish);
+    await waitFor(() => expect(finish).toHaveBeenCalledTimes(1));
+  });
+
+  it('cannot be cancelled while an answer is still being saved, and finishes once it is stored', async () => {
+    let settle: (stored: boolean) => void = () => undefined;
+    const flush = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          settle = resolve;
+        }),
+    );
+    const finish = vi.fn<FinishHandler>(() => Promise.resolve());
+    render(makeView(flush, finish)('en'));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Finish' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Finish Interview' }),
+    );
+    await waitFor(() => expect(flush).toHaveBeenCalledTimes(1));
+
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    expect(dialog).toBeVisible();
+    await act(async () => {
+      settle(true);
+    });
+
+    await waitFor(() => expect(finish).toHaveBeenCalledTimes(1));
+  });
+
+  it('does not finish when torn down while an answer is still being saved', async () => {
+    let settle: (stored: boolean) => void = () => undefined;
+    const flush = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          settle = resolve;
+        }),
+    );
+    const finish = vi.fn<FinishHandler>(() => Promise.resolve());
+    const { unmount } = render(makeView(flush, finish)('en'));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Finish' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Finish Interview' }),
+    );
+    await waitFor(() => expect(flush).toHaveBeenCalledTimes(1));
+
+    unmount();
+    await act(async () => {
+      settle(true);
+    });
+
+    expect(finish).not.toHaveBeenCalled();
   });
 });

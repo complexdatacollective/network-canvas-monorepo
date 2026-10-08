@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import type { ExportWarning } from '@codaco/network-exporters/output';
 import { interviewerProductionLocales } from '~/i18n/locales';
-import { interviewerCatalogs } from '~/locales/catalogs';
+import { interviewerCatalogSource } from '~/locales/catalogs';
 
 import { ExportDialog } from '../ExportDialog';
 import type { ExportFlow } from '../useSessionMutations';
@@ -24,7 +24,7 @@ const view = (flow: ExportFlow) => (
   <AppI18nProvider
     locale="en"
     locales={interviewerProductionLocales}
-    messages={interviewerCatalogs.en}
+    messages={interviewerCatalogSource.peek('en')}
   >
     <ExportDialog
       flow={flow}

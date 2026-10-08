@@ -196,7 +196,7 @@ describe('SlidesForm navigation ownership', () => {
                 form={form}
                 items={[person]}
                 subject={{ entity: 'node', type: 'person' }}
-                updateItem={vi.fn()}
+                updateItem={vi.fn().mockResolvedValue({ success: true })}
                 moveForward={navigation.moveForward}
                 renderHeader={() => <span>Person header</span>}
                 form_kind="alter"
@@ -284,7 +284,7 @@ describe('SlidesForm navigation ownership', () => {
             form={form}
             items={[person, secondPerson]}
             subject={{ entity: 'node', type: 'person' }}
-            updateItem={vi.fn()}
+            updateItem={vi.fn().mockResolvedValue({ success: true })}
             moveForward={navigation.moveForward}
             renderHeader={() => <span>Person header</span>}
             form_kind="alter"
@@ -375,7 +375,7 @@ describe('SlidesForm navigation ownership', () => {
             form={form}
             items={[namelessPerson]}
             subject={{ entity: 'node', type: 'person' }}
-            updateItem={vi.fn()}
+            updateItem={vi.fn().mockResolvedValue({ success: true })}
             moveForward={navigation.moveForward}
             renderHeader={() => <span>Person header</span>}
             form_kind="alter"
@@ -468,7 +468,7 @@ describe('SlidesForm navigation ownership', () => {
             form={form}
             items={[namelessPerson]}
             subject={{ entity: 'node', type: 'person' }}
-            updateItem={vi.fn()}
+            updateItem={vi.fn().mockResolvedValue({ success: true })}
             moveForward={navigation.moveForward}
             renderHeader={() => <span>Person header</span>}
             form_kind="alter"
@@ -564,7 +564,7 @@ describe('SlidesForm navigation ownership', () => {
             form={form}
             items={[person]}
             subject={{ entity: 'node', type: 'person' }}
-            updateItem={vi.fn()}
+            updateItem={vi.fn().mockResolvedValue({ success: true })}
             moveForward={navigation.moveForward}
             renderHeader={() => <span>Person header</span>}
             form_kind="alter"
@@ -662,7 +662,7 @@ describe('SlidesForm navigation ownership', () => {
             form={form}
             items={[person]}
             subject={{ entity: 'node', type: 'person' }}
-            updateItem={vi.fn()}
+            updateItem={vi.fn().mockResolvedValue({ success: true })}
             moveForward={navigation.moveForward}
             renderHeader={() => <span>Person header</span>}
             form_kind="alter"

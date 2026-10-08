@@ -14,6 +14,16 @@
 export const DEPLOYMENT_MODES = ['managed', 'self-hosted'] as const;
 export type DeploymentMode = (typeof DEPLOYMENT_MODES)[number];
 
+/**
+ * Where the self-host upgrade guide is published (#1901). One constant for the
+ * two places that point a self-hosting owner at it, the in-app update notice
+ * and the update email, so they cannot name different pages. A constant, not a
+ * value the server supplies: the guide is a page in this repository, and it is
+ * the same page for every self-hosted instance whichever release it is on.
+ */
+export const UPGRADE_GUIDE_URL =
+  'https://github.com/complexdatacollective/network-canvas-monorepo/blob/main/apps/studio/docs/self-host/upgrade.md';
+
 /** Served by the managed service only; 404 on a self-hosted instance. */
 export const MANAGED_ONLY_PATHS = [
   '/pricing',
@@ -54,9 +64,9 @@ export const BOTH_PATHS = [
 
   // Participant branch — no chrome, no session.
   '/enter/$token',
-  '/enter/$token/consent',
-  '/enter/$token/interview',
-  '/enter/$token/complete',
+  '/session/$sessionToken',
+  '/session/$sessionToken/consent',
+  '/session/$sessionToken/complete',
 
   // App, platform level.
   '/account',

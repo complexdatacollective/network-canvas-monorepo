@@ -611,6 +611,38 @@ describe('traditional family regression', () => {
     // parent1 alone.
     const conn = computeConnectors(result, defaultScaling, ped.parents);
     expect(conn.parentChildLines).toHaveLength(2);
+    // The partner line carries only the couple's own line of descent.
+    expect(conn.groupLines).toHaveLength(1);
+    expect(conn.groupLines[0]!.descentXPositions).toHaveLength(1);
+  });
+
+  it("a single parent's donor joins the sibling bar of their family", () => {
+    // A single mother with two children by a donor.
+    const ped: PedigreeInput = {
+      id: ['mother', 'donor', 'child1', 'child2'],
+      parents: [
+        [],
+        [],
+        [
+          { parentIndex: 0, edgeType: 'biological' },
+          { parentIndex: 1, edgeType: 'donor' },
+        ],
+        [
+          { parentIndex: 0, edgeType: 'biological' },
+          { parentIndex: 1, edgeType: 'donor' },
+        ],
+      ],
+    };
+    const result = alignPedigree(ped, { hints: { order: [1, 2, 3, 4] } });
+    const level = result.nid.findIndex((row) => row.includes(2));
+    expect(result.fam[level]![result.nid[level]!.indexOf(2)]).toBeLessThan(0);
+
+    const conn = computeConnectors(result, defaultScaling, ped.parents);
+    const donorLines = conn.auxiliaryLines.filter(
+      (line) => line.edgeType === 'donor',
+    );
+    // One line to the sibling bar, not one to each child.
+    expect(donorLines).toHaveLength(1);
   });
 
   it('nuclear family: connectors include parent group line and parent-child links', () => {

@@ -12,6 +12,11 @@
  * `traefik`, `web`, `api` and `worker` stay stopped: in development those run
  * from source under watch, with the client's HMR.
  *
+ * `--object-stores` starts only Garage and Azurite and bootstraps Garage's
+ * bucket: the two stores the object-store contract suite runs against
+ * (#2077). CI runs it ahead of the Studio suite, whose Postgres and Valkey are
+ * the workflow's own service containers on the same ports.
+ *
  * `pnpm dev` runs this twice. `--prepare` brings the services up, bootstraps
  * the bucket, resets and seeds the database, and exits; only then does
  * `concurrently` start the server, the worker, the client and this script
@@ -43,7 +48,9 @@ const PROJECT = 'studio-dev';
 
 // The services the development lane runs. The rest of the stack is the same
 // file's, and stays stopped.
-const SERVICES = ['postgres', 'garage', 'valkey', 'mailpit'];
+const SERVICES = ['postgres', 'garage', 'valkey', 'mailpit', 'azurite'];
+
+const OBJECT_STORES = ['garage', 'azurite'];
 
 /**
  * Everything `../../docker-compose.yml` interpolates. Compose validates the
@@ -73,6 +80,7 @@ function composeEnvironment(): Record<string, string> {
     POSTGRES_USER: DEV.pgUser,
     POSTGRES_DB: DEV.pgDatabase,
 
+    STUDIO_OBJECT_STORE: 's3',
     S3_REGION: DEV.s3Region,
     S3_BUCKET: DEV.s3Bucket,
     S3_ACCESS_KEY_ID: DEV.s3AccessKeyId,
@@ -123,9 +131,9 @@ function stopSupersededContainers(): string[] {
   return stopped;
 }
 
-function up(): void {
-  console.log(`Starting ${SERVICES.join(', ')} [project: ${PROJECT}]...`);
-  let result = compose.run(['up', '-d', '--wait', ...SERVICES]);
+function up(services: readonly string[]): void {
+  console.log(`Starting ${services.join(', ')} [project: ${PROJECT}]...`);
+  let result = compose.run(['up', '-d', '--wait', ...services]);
   if (result.status !== 0) {
     const stopped = stopSupersededContainers();
     if (stopped.length === 0) {
@@ -134,7 +142,7 @@ function up(): void {
     console.log(
       `Stopped ${stopped.join(', ')} — containers from the dev scripts this stack replaces, which still held its ports. Retrying.`,
     );
-    result = compose.run(['up', '-d', '--wait', ...SERVICES]);
+    result = compose.run(['up', '-d', '--wait', ...services]);
     if (result.status !== 0) {
       throw new Error(`docker compose up failed:\n${result.stderr}`);
     }
@@ -216,10 +224,11 @@ function down(removeVolumes: boolean): void {
   }
 }
 
-type Mode = 'prepare' | 'follow' | 'down' | 'both';
+type Mode = 'prepare' | 'follow' | 'down' | 'object-stores' | 'both';
 
 function modeFromArgs(argv: readonly string[]): Mode {
   if (argv.includes('--down')) return 'down';
+  if (argv.includes('--object-stores')) return 'object-stores';
   if (argv.includes('--prepare')) return 'prepare';
   if (argv.includes('--follow')) return 'follow';
   return 'both';
@@ -246,7 +255,19 @@ async function main(argv: readonly string[]): Promise<void> {
     return;
   }
 
-  up();
+  if (mode === 'object-stores') {
+    up(OBJECT_STORES);
+    bootstrapObjectStore();
+    console.log(
+      [
+        `Garage (S3)   127.0.0.1:${DEV.s3Port}  bucket '${DEV.s3Bucket}'`,
+        `Azurite       127.0.0.1:${DEV.azuritePort}`,
+      ].join('\n'),
+    );
+    return;
+  }
+
+  up(SERVICES);
   bootstrapObjectStore();
   await resetAndSeed();
   console.log(
@@ -255,6 +276,7 @@ async function main(argv: readonly string[]): Promise<void> {
       `Garage (S3)   127.0.0.1:${DEV.s3Port}  bucket '${DEV.s3Bucket}'`,
       `Valkey        127.0.0.1:${DEV.valkeyPort}`,
       `Mailpit       127.0.0.1:${DEV.smtpPort} (SMTP), http://localhost:${DEV.mailpitUiPort} (inbox)`,
+      `Azurite       127.0.0.1:${DEV.azuritePort}  (the contract suite's Azure Blob store)`,
     ].join('\n'),
   );
   if (mode === 'prepare') return;

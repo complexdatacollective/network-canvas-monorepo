@@ -9,7 +9,7 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { interviewerProductionLocales } from '~/i18n/locales';
 import type { ProtocolWithCounts, StoredSession } from '~/lib/db/types';
 import { recordStoredProtocolMigrationFailures } from '~/lib/protocol/storedProtocolMigrationFailures';
-import { interviewerCatalogs } from '~/locales/catalogs';
+import { interviewerCatalogSource } from '~/locales/catalogs';
 
 const openDialog = vi.fn();
 const createSession = vi.fn();
@@ -36,6 +36,10 @@ vi.mock('@codaco/interview', () => ({
 }));
 
 import { NewSessionForm, NewSessionFormView } from '../NewSessionForm';
+
+// The renders below show Spanish synchronously, as a device that has already
+// loaded it would, so its catalog loads before any of them.
+await interviewerCatalogSource.load('es');
 
 function makeProtocol(stageTypes: string[]): ProtocolWithCounts {
   const stages = stageTypes.map((type, index) => ({
@@ -219,7 +223,7 @@ it('uses the chosen administration language for field-owned required validation'
     <AppI18nProvider
       locale="es"
       locales={interviewerProductionLocales}
-      messages={interviewerCatalogs.es}
+      messages={interviewerCatalogSource.peek('es')}
     >
       <Harness protocol={makeProtocol(['Information'])} />
     </AppI18nProvider>,
@@ -241,7 +245,7 @@ it('keeps a visible Case ID refusal when the administration language changes and
     <AppI18nProvider
       locale={locale}
       locales={interviewerProductionLocales}
-      messages={interviewerCatalogs[locale]}
+      messages={interviewerCatalogSource.peek(locale)}
     >
       <NewSessionFormView
         requiresInternet={false}

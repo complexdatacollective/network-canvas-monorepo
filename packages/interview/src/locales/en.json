@@ -1343,6 +1343,10 @@
     "defaultMessage": "Enter your passphrase in order to unlock the data on this screen. If you cannot remember your passphrase, please contact the person who recruited you to this study.",
     "description": "Instructions for unlocking encrypted data and finding help if the passphrase is forgotten."
   },
+  "interview.runtime.passphraseIncorrect": {
+    "defaultMessage": "This passphrase does not match the one used earlier in this interview. Check it and try again.",
+    "description": "Inline error under the passphrase input when the entered passphrase cannot unlock the information already saved in the interview."
+  },
   "interview.runtime.passphraseNeeded": {
     "defaultMessage": "Your passphrase is needed to show data on this screen. Click here to enter it.",
     "description": "Explains why a passphrase is needed to reveal data on the current screen."
@@ -1350,6 +1354,14 @@
   "interview.runtime.passphrasePlaceholder": {
     "defaultMessage": "Enter your passphrase...",
     "description": "Placeholder for the interview decryption passphrase input."
+  },
+  "interview.runtime.protectedAnswersLocked": {
+    "defaultMessage": "Some answers here are protected by your passphrase. Enter your passphrase to see and change them.",
+    "description": "Shown in place of questions whose answers are protected by the interview passphrase, and as a brief notice when such an answer is asked for, until that passphrase is entered."
+  },
+  "interview.runtime.protectedAnswersNotSaved": {
+    "defaultMessage": "Your answers have not been saved. Enter your passphrase, then try again.",
+    "description": "Error when answers protected by the interview passphrase could not be saved because no working passphrase has been entered."
   },
   "interview.runtime.secondNode": {
     "defaultMessage": "second item",

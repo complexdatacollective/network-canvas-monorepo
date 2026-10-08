@@ -14,6 +14,7 @@ import { InterviewerI18nProvider } from '~/i18n/InterviewerI18nProvider';
 import { interviewerProductionLocales } from '~/i18n/locales';
 import { LOCALE_PREFERENCE_KEY } from '~/i18n/preference';
 import { recordStoredProtocolMigrationFailures } from '~/lib/protocol/storedProtocolMigrationFailures';
+import { interviewerCatalogSource } from '~/locales/catalogs';
 
 const navigateMock = vi.fn();
 const useSearchMock = vi.fn(() => '');
@@ -90,9 +91,14 @@ const { analyticsContext, fakeAnalyticsClient } = vi.hoisted(() => {
     captureException: vi.fn(),
     register: vi.fn(),
   };
-  const context: { enabled: boolean; client: typeof client | null } = {
+  const context: {
+    enabled: boolean;
+    client: typeof client | null;
+    captureException: typeof client.captureException;
+  } = {
     enabled: false,
     client: null,
+    captureException: vi.fn(),
   };
   return { analyticsContext: context, fakeAnalyticsClient: client };
 });
@@ -151,6 +157,12 @@ vi.mock('@codaco/interview', async (importOriginal) => {
 });
 
 import { InterviewRoute } from '../Interview';
+
+// The locale cases switch between these synchronously, as a device that has
+// already loaded them would.
+await Promise.all(
+  ['es', 'en-GB'].map((locale) => interviewerCatalogSource.load(locale)),
+);
 
 function makeSession(overrides: Record<string, unknown> = {}) {
   return {
@@ -843,6 +855,43 @@ describe('InterviewRoute finish flow', () => {
     }
   });
 
+  it('refuses to open a session whose stored data cannot be read, and reports it', async () => {
+    const cause = new Error('stored network failed to parse');
+    getSessionMock.mockRejectedValue(cause);
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(
+      await screen.findByRole('heading', {
+        name: /interview could not be opened/i,
+      }),
+    ).toBeInTheDocument();
+    expect(shellMock).not.toHaveBeenCalled();
+    expect(updateSessionMock).not.toHaveBeenCalled();
+    expect(updateSettingsMock).not.toHaveBeenCalled();
+    expect(analyticsContext.captureException).toHaveBeenCalledWith(cause, {
+      feature: 'interview-load',
+    });
+  });
+
+  it('clears authorization when returning home from an unreadable session', async () => {
+    // Fails after entry was authorized, so the stale id must be cleared.
+    getProtocolByHashMock.mockRejectedValue(new Error('protocol unreadable'));
+
+    render(<InterviewRoute sessionId="s1" />);
+    const button = await screen.findByRole('button', { name: /return home/i });
+    expect(
+      screen.getByRole('heading', { name: /interview could not be opened/i }),
+    ).toBeInTheDocument();
+
+    setAuthorizedInterviewIdMock.mockClear();
+    await invoke(() => button.click());
+
+    expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith(null);
+    expect(navigateMock).toHaveBeenCalledWith('/', { replace: true });
+    expect(shellMock).not.toHaveBeenCalled();
+  });
+
   it('applies the exit gate from the completion screen', async () => {
     getSettingsMock.mockResolvedValue({
       requireUnlockOnEnter: false,
@@ -864,6 +913,61 @@ describe('InterviewRoute finish flow', () => {
     await invoke(() => screen.getByRole('button', { name: /exit/i }).click());
 
     expect(navigateMock).not.toHaveBeenCalledWith('/', { replace: true });
+  });
+});
+
+describe('InterviewRoute session change', () => {
+  beforeEach(() => {
+    getSettingsMock.mockResolvedValue({
+      requireUnlockOnEnter: false,
+      requireUnlockOnExit: false,
+      requireUnlockOnExport: false,
+    });
+  });
+
+  it('unmounts the previous interview while the next one loads, and fails closed if it cannot be read', async () => {
+    let rejectNextSession!: (cause: unknown) => void;
+    getSessionMock.mockImplementation((id: string) =>
+      id === 's1'
+        ? Promise.resolve(makeSession())
+        : new Promise((_resolve, reject) => {
+            rejectNextSession = reject;
+          }),
+    );
+
+    const { rerender } = render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    shellMock.mockClear();
+    updateSessionMock.mockClear();
+
+    useRouteMock.mockReturnValue([true, { sessionId: 's2' }]);
+    rerender(<InterviewRoute sessionId="s2" />);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    // A Shell left mounted here would be handed handlers bound to s2, so its
+    // next step change would write s1's progress into s2.
+    act(() => {
+      shellMock.mock.calls
+        .at(-1)?.[0]
+        .onStepChange(1, { progress: 50, totalSteps: 4 });
+    });
+    expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
+    expect(shellMock).not.toHaveBeenCalled();
+    expect(updateSessionMock).not.toHaveBeenCalled();
+
+    await act(async () => {
+      rejectNextSession(new Error('stored network failed to parse'));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(
+      await screen.findByRole('heading', {
+        name: /interview could not be opened/i,
+      }),
+    ).toBeInTheDocument();
+    expect(shellMock).not.toHaveBeenCalled();
   });
 });
 

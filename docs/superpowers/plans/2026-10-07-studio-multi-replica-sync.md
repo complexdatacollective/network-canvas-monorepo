@@ -1,0 +1,1180 @@
+# Studio API multi-replica sync: implementation plan
+
+Design: `docs/superpowers/specs/2026-10-07-studio-api-multi-replica-sync-design.md`
+(accepted). Base: `a98ddf5b5` (PR #2107, design §7.1 landed); F0 landed as
+`f2f26dcda`. Branch: `feat/studio-multi-replica-sync`. Effect 4
+(`effect@4.0.0`); read `node_modules/effect/AGENTS.md` before writing Effect
+code.
+
+Paths are relative to `apps/studio/api/` unless they start with `apps/`,
+`packages/`, `docs/` or `.github/`. Abbreviations: `pb/` =
+`src/protocol-builder/`, `T/` = `src/__tests__/`.
+
+**Ground rules for every stream:**
+
+- **No interim implementations and no stub exports.** knip runs on push.
+- **Policy and allowlist tests are exact-match.** These are
+  `src/audit/__tests__/policy.test.ts`,
+  `src/audit/__tests__/scope-openers.test.ts` and
+  `src/db/__tests__/raw-sql-policy.test.ts`. A stream adds or removes only
+  its own keys and rows, in the same commit as the code that uses them. The
+  streams that edit these files run serially (C1 → C2 → S).
+- **New code adds no pooler hazards:**
+  - no session-level advisory locks;
+  - no LISTEN;
+  - no session GUCs: tenant settings stay `set_config(…, true)`;
+  - no reliance on connection affinity.
+
+---
+
+## 1. Corrections to the design (verified against the code)
+
+1. **§3.3/§7.1 are done.** `renewHeld` and its tests exist
+   (`packages/studio-sync/src/__tests__/lease.test.ts`). No studio-sync
+   change is needed. The §7.4 comment drift in `pb/leases.ts:19-24` is fixed
+   too; only the docs drift (§11) remains.
+2. **The object store is content-addressed only**
+   (`src/storage/object-store.ts`: `put/get/head`, keys `assets/<hash>`,
+   `ObjectStoreError.operation ∈ 'put'|'get'|'head'`):
+   - it has no delete, list, copy or arbitrary key;
+   - no asset GC exists.
+
+   Staging therefore extends the port and both backends (S).
+
+3. **`SecretsCipher` has no general seal.** A staged secret needs its own
+   identity and a `SECRET_STORES` entry, modelled on `protocol_asset_keys`
+   (`bytea ciphertext` + `key_id`).
+4. **The worker builds no `ObjectStore`, and serve has no
+   `MaintenanceDatabase`.**
+   - Staging GC runs in the worker, which must now build `ObjectStore` (it
+     already shares `*studio-env`).
+   - `T/process-separation.test.ts` forbids the worker from loading the
+     host modules (`PROTOCOL_BUILDER_HOST` = `rpc|handlers|session|leases|
+presence|publisher`). `pb/schema.ts` is outside that set and already
+     reachable through `db/schema.ts`.
+5. **Connection keys are per watch, not per socket or per owner.** One
+   socket can carry several `WatchProtocol` streams.
+   - Socket rows: `connection_id = ws:<socketUuid>:<watchUuid>`, with
+     `socket_id = ws:<socketUuid>` for presence and `setMode`.
+   - Contact rows (any `openSession`, on both planes):
+     `unary:<owner>:<ReplicaId>`, one per `(draft, owner, replica)`. A
+     replica only extends or expires its own.
+
+   The design's `'unary'` kind is `'contact'`. Today's keeper renews any
+   owner touched within `IDLE_MS`, ws-plane calls included, and a test
+   relies on that.
+
+6. **Close marks the row expired; it does not delete it.** Liveness is an
+   `UPDATE` only, with no resurrecting `INSERT`. Grace re-checks the
+   database instead of trusting the local view (§2.3).
+7. **Presence lives in the socket row.** `Presence.join/leave` collapse into
+   `Leases.connect`, and the `WsConnection` branch in `AcquireLock` goes
+   away (`setMode` is an `UPDATE … WHERE socket_id = $`, a no-op on the
+   unary plane).
+8. **The reaper uses an in-memory lock map.**
+   - A per-poll `DISTINCT ON` over the log is too costly, and `leases`
+     cannot tell a clean release from an expiry.
+   - The relay seeds a `section → owner` map once, keeps it up to date from
+     relayed lock events, and checks only believed-held sections.
+   - Migration 0003 adds the partial index `protocol_events (draft_id,
+section_id, cursor DESC) WHERE kind = 'lock'` for the seed and the
+     reaper recheck. The columns are verified in `pb/schema.ts`.
+9. **Ghost presence never rings,** so the safety poll diffs presence.
+10. **A new relay must fix `next` before `subscribe` returns,** or events
+    between the relay's start and the backlog read are lost.
+11. **Valkey subscriber.** The rate limiter's client (`retryStrategy: () =>
+null`, 250 ms timeout) stays untouched. The doorbell opens its own
+    subscriber connection with ioredis reconnects and re-subscribes itself
+    on every `ready` (`autoResubscribe: false`: ioredis's own resubscribe
+    never reports the server's confirmation, and `Resync` must follow it),
+    plus a separate publish connection (`enableOfflineQueue: false`). Pub/sub
+    ignores the DB number, so the channel is configurable.
+12. **Compose keeps the file provider.** `docker-compose.yml` deliberately
+    has no Docker socket, so it uses one named service per replica and a
+    server list moved into its own config.
+13. **`/readyz` draining.** `WebSocketDrain` gains `draining`. `HealthRoutes`
+    reads it with `Effect.serviceOption` when the routes are built, so its
+    `R` stays `HttpRouter` and the worker is untouched.
+14. **The test clock is `makeShiftableClock()`, not `TestClock`.** Database
+    time is real, so tests age rows with SQL instead of waiting (§3 C1).
+15. **Test Valkey is shared and flushed by `reachableRedis(n)`.** Doorbell
+    tests use per-test channels and never flush.
+16. **Epoch-on-Submit is not needed.** Submit re-reads owner and liveness
+    `FOR UPDATE` in the write transaction (`pb/host.ts` submit ~904, create
+    ~1047).
+17. **`protocol_events` reads need nothing new.** `readProtocolEvents`
+    works in any `TenantScope.open`; the relay does not call
+    `requireProtocol`.
+18. **Content staging is refused earlier.** Persisting staging moves the
+    "store not configured" refusal for content from promotion to stage.
+
+---
+
+## 2. Shared shapes
+
+### 2.1 Tables (`pb/schema.ts`, migration `0003_studio_multi_replica_sync`, both owned by C1)
+
+Both tables get a composite FK `(draft_id, team_id)` → `drafts` `ON DELETE
+CASCADE`, `teamIsolationPolicy()`, an entry in `PROTOCOL_BUILDER_TABLES`,
+and an entry in `PROTOCOL_BUILDER_SIDECAR_SQL = tenantTablesSql([...])`.
+Table constants stay unexported until code imports them.
+
+**`protocol_connections`**
+
+- Columns:
+  - `team_id`, `draft_id`, `connection_id`
+  - `socket_id NULL`
+  - `kind CHECK IN ('socket','contact')`
+  - `owner`, `user_id`, `display_name`
+  - `mode CHECK IN ('viewing','editing')`, `section_id NULL`
+  - `replica_id`, `expires_at`
+  - `created_at DEFAULT clock_timestamp()`
+- PK `(draft_id, connection_id)`.
+- Indexes:
+  - `(team_id, draft_id, owner, expires_at)`: grace, renewal and the GC
+    "no live row" test;
+  - `(draft_id, socket_id)`;
+  - `(expires_at)`: connection GC;
+  - `(draft_id, expires_at) WHERE kind = 'socket'`: `livePresence` (its
+    plan ranges the index over both columns).
+
+**`protocol_staged_resources`**
+
+- Columns:
+  - `team_id`, `draft_id`, `owner`, `edit_id`, `resource_id`
+  - `request_id`, `kind`
+  - `descriptor jsonb`
+  - `object_key NULL`, `content_hash NULL`, `byte_length NULL`,
+    `content_type NULL`
+  - `secret_ciphertext bytea NULL`, `secret_key_id NULL`
+  - `created_at`
+- PK `(draft_id, owner, edit_id, resource_id)`.
+- Unique `(draft_id, owner, edit_id, kind, request_id)`. The kind is
+  included because `resources.ts` keys idempotency on `kind\0requestId`.
+- CHECKs: exactly one of `object_key`/`secret_ciphertext` is set; the
+  secret's key id is present iff its ciphertext is.
+- Index `(team_id, created_at)`: GC.
+
+**`protocol_events` addition:** the partial lock index from correction 8.
+
+Generate with `pnpm --filter @codaco/studio-api sync-fingerprint`, then
+`pnpm --filter @codaco/studio-api migrate:generate --name
+studio_multi_replica_sync`. There is no `backfill.sql`. Then run
+`generate:erd` and `check:schema-docs`. S never regenerates the migration.
+
+### 2.2 Final service shapes
+
+`S` = `ProtocolBuilderSession`.
+
+```ts
+// pb/leases.ts (C1)
+class Leases extends Context.Service<Leases, {
+  readonly connect: (session: S,
+      onReleased: (events: ReadonlyArray<LoggedProtocolEvent>) => Effect<void>)
+    => Effect<void, SqlError, Scope.Scope>
+  readonly contact: (session: S) => Effect<void>        // never fails; logs
+  readonly connected: (owner: string) => Effect<boolean> // local view; C1 only, S deletes it
+}>()
+// layer: Layer<Leases, never, Database | MaintenanceTriggers>
+
+// pb/presence.ts (C1)
+class Presence extends Context.Service<Presence, {
+  readonly setMode: (session: S) => Effect<void, SqlError>  // mode from the tab's live leases
+}>()
+
+// pb/doorbell.ts (V)
+const DoorbellMessage = Schema.Union([
+  Schema.TaggedStruct('Advanced', { draftId: Schema.String, cursor: Schema.String }),
+  Schema.TaggedStruct('Presence', { draftId: Schema.String }),
+])
+type DoorbellSignal = typeof DoorbellMessage.Type | { readonly _tag: 'Resync' }
+class Doorbell extends Context.Service<Doorbell, {
+  readonly ring: (message: typeof DoorbellMessage.Type) => Effect<void>  // never fails
+  readonly signals: Effect<Stream<DoorbellSignal>, never, Scope.Scope>
+  readonly subscribed: Effect<boolean>
+}>() {
+  static readonly layerMemory: Layer<Doorbell>
+  static readonly layerValkey: (options: { url: string; channel: string }) => Layer<Doorbell>
+  static readonly layer: Layer<Doorbell, never, Environment>   // REDIS_URL ? Valkey : memory
+}
+const makeMemoryDoorbell: Effect<Doorbell['Service'], never, Scope.Scope>
+
+// pb/publisher.ts (C2)
+class ProtocolEvents extends Context.Service<ProtocolEvents, {
+  readonly publish: (session: S, entries: ReadonlyArray<LoggedProtocolEvent>) => Effect<void>
+  readonly presenceChanged: (session: S) => Effect<void>
+  readonly subscribe: (session: S)
+    => Effect<Stream<LoggedProtocolEvent, SubscriberOverflow | RelayFailed>, SqlError, Scope.Scope>
+  readonly subscribers: (draftId: string) => Effect<number>
+}>()
+// layer / layerWith({ safetyPollMs, maxConsecutiveFailures }):
+//   Layer<ProtocolEvents, never, Database | Doorbell | MaintenanceTriggers>
+
+// pb/resources.ts (S)
+interface StagingEdit { readonly session: S; readonly editId: string }
+class StagedImports extends Context.Service<StagedImports, {
+  readonly stage: (edit, requestId: string, request: StageRequest)
+    => Effect<ResourceOutcome<{ descriptor: Descriptor }>, SqlError>
+  readonly descriptors: (edit) => Effect<ReadonlyArray<Descriptor>, SqlError>  // ORDER BY created_at, resource_id
+  readonly plan: (edit, resourceIds: ReadonlyArray<string>)
+    => Effect<ResourceOutcome<PromotionPlan>, SqlError>
+  readonly discard: (edit, resourceId: string | undefined) => Effect<DiscardOutcome, SqlError>
+  readonly inspect: (edit, assets: SectionDoc, resourceId: string)
+    => Effect<ResourceOutcome<Inspection> | undefined, SqlError>
+  readonly preview: (edit, assets: SectionDoc, resourceId: string)
+    => Effect<ResourceOutcome<Preview> | undefined, SqlError>
+  readonly releaseOwner: (session: S) => Effect<void>
+}>()
+```
+
+### 2.3 Lease and connection transitions (C1, `pb/connections.ts`)
+
+All arithmetic uses `clock_timestamp()`, except `livePresence`'s expiry
+bound: it uses `now()` so the socket index can range over `expires_at`, and
+its transaction is a single read.
+
+**Lock order, the deadlock rule.** Every transaction takes its locks in one
+total order:
+
+1. the `protocols` and `protocol_drafts` rows (`lockProtocolDraft`, and
+   `publishDraft`'s own `protocols … FOR UPDATE`);
+2. the draft head (`drafts` row);
+3. `protocol_connections` rows, ascending `connection_id`;
+4. `leases` rows, ascending `section_id`.
+
+A single-row writer still closes a cycle: one that holds a lease and then
+waits on the head (or on a connection row) deadlocks against a transaction
+that holds the head and waits on that lease. So the order binds every
+locker, not only the multi-row ones.
+
+- `connectSocket`, `upsertContact` and liveness take the head `FOR SHARE`;
+  `releaseOwner` takes it `FOR UPDATE`. Each then locks connection rows (an
+  ordered `SELECT … FOR UPDATE`, or the upsert's own row), then the owner's
+  leases in one ordered statement (`lockOwnerLeases`), and only then calls
+  `sync.renewHeld` or `sync.release`.
+- `setSocketMode` and `expireConnection` lock only connection rows (ordered)
+  and wait on nothing after them, so they skip the head. `setSocketMode` then
+  reads the tab's leases without locking them.
+- `sync.acquire`, `sync.commit` and the host's writes take the head before
+  any lease. The host's writes first lock the `protocols` and
+  `protocol_drafts` rows (`lockProtocolDraft`), which sit before the head.
+- `publishDraft` locks the `protocols` row `FOR UPDATE` before the head, as
+  the host's writes do. Taking the head first would wait on a host write
+  that holds the `protocols` row and is itself waiting on the head.
+- `discardDraft` takes the head `FOR UPDATE`, then the cascade reaches leases
+  and connections. Holding the head exclusively, it waits on no one who
+  holds a row it needs.
+
+The order keeps lock waits finite; `lock_timeout` keeps them short where a
+caller is waiting on a fiber. Liveness, `connectSocket` and `releaseOwner`
+each set `SET LOCAL lock_timeout` first (see C1 As built). Checking a
+connection out of the pool and `BEGIN` are not bounded by it, nor by
+anything else: `@effect/sql-pg` has no acquire timeout.
+
+Liveness is **one transaction per draft**. It renews the replica's own rows
+(`replica_id = ReplicaId`) and the leases of their owners. `40P01` and any
+other failure is logged and retried next tick, and registrations are kept.
+A draft whose head is gone is forgotten: its registrations are dropped.
+
+```ts
+ReplicaId: Context.Reference<string>                 // randomUUID() per process; tests give one per client
+contactKey(session: S, replicaId: string): string    // `unary:<owner>:<replicaId>`
+connectSocket(session: S, key: string): Effect<boolean, SqlError, Database>
+  // noAuditTransaction('protocolBuilder.connect'): FOR SHARE head (false if gone);
+  // upsert socket row as viewing; lockOwnerLeases + renewHeld; then mode/section
+  // from the first held lease by section_id
+renewConnections(access: TeamAccess, draftId: string, local: ReadonlyArray<LocalRegistration>)
+  : Effect<Liveness, SqlError, Database>
+  // 'protocolBuilder.liveness': FOR SHARE head (gone if missing); SELECT own live
+  // rows among `local` ORDER BY connection_id FOR UPDATE; extend them (socket:
+  // now + TTL, contact: greatest(expires_at, …)); lockOwnerLeases + one renewHeld
+  // over every owner. Rows not found are `missing`; the caller re-runs connectSocket (socket)
+  // or upsertContact (contact) for each, each in its own transaction.
+upsertContact(session: S): Effect<boolean, SqlError, Database>  // 'protocolBuilder.contact'; false if gone
+expireConnection(registration: LocalRegistration): Effect<void, SqlError, Database>
+releaseOwner(session: S): Effect<OwnerRelease, SqlError, Database>
+  // 'protocolBuilder.releaseOwner': FOR UPDATE head (a gone draft releases nothing);
+  // if a live socket row exists for (draft, owner) → { released: false }; else
+  // lockOwnerLeases, release each live lease, append lock-null events
+livePresence(access: TeamAccess, draftIds: ReadonlyArray<string>)
+  : Effect<ReadonlyMap<string, ReadonlyArray<PresenceEntry>>, SqlError, Database>
+  // live socket rows, one entry per socket_id (editing wins), sessionId = socket_id
+setSocketMode(session: S, mode, sectionId?): Effect<void, SqlError, Database>
+  // only the caller's own rows on its socket (socket_id and owner); socket callers only
+type Liveness = { readonly gone: true } | { readonly gone: false; readonly missing: ReadonlyArray<LocalRegistration> }
+type OwnerRelease =
+  | { readonly released: true; readonly events: ReadonlyArray<LoggedProtocolEvent> }
+  | { readonly released: false }
+```
+
+**`released` means "no live socket row for the owner"**, not "at least one
+lease was released". It gates the staging release.
+
+**`Leases` local state.** Socket registrations, each with its own
+one-permit semaphore; contact registrations per `(draft, owner)`; graces per
+`(draft, owner)`. `LocalRegistration = {session, key, kind}`.
+`Leases.connect` returns `void`.
+
+- **`connect`:**
+  1. mint `<connectionId>:<watchUuid>`;
+  2. `connectSocket`; if the draft is gone, register nothing;
+  3. register locally;
+  4. only now interrupt a pending grace for the owner, so a reconnect that
+     failed to be recorded leaves the grace to give the leases back;
+  5. scope finalizer: unregister → `expireConnection` under the
+     registration's semaphore (best-effort) → fork the grace into the layer
+     scope, deduped per `(draft, owner)`.
+- **One grace per closure, on the replica whose socket closed:**
+  `sleep(RECONNECT_GRACE_MS)` → drop the owner's local contact registration →
+  `releaseOwner`:
+  - `released: false` (the owner has a live socket elsewhere) → the grace
+    ends, with no re-sleep. The replica holding that socket runs a whole
+    grace of its own when it closes.
+  - `released: true` → `onReleased(events)`;
+  - failure → retried with a bounded exponential backoff (0.5 s doubling,
+    5 retries, 15.5 s in all), then logged (the leases lapse at TTL; C2's
+    reaper publishes). Shutdown and maintenance closure still stop it.
+- **Mode updates:** AcquireLock and ReleaseLock change presence only for a
+  caller on a socket (`WsConnection`), retried with the same backoff, then
+  logged. A unary caller's connection id is its login's session id, which
+  every HTTP watch of that login carries as its socket id too.
+- **Tick:** `Schedule.spaced(RENEW_INTERVAL_MS)`, per draft →
+  `renewConnections`, then re-connect the missing. A socket's re-record runs
+  under its registration's semaphore and re-checks the registration there,
+  so a re-record cannot commit after the close's expiry and leave a live row
+  nothing renews.
+- **`contact`:** `upsertContact`, throttled to once per 30 s per `(draft,
+owner)`, then a local contact registration until `IDLE_MS`.
+- **Maintenance closure:** when `MaintenanceTriggers.closure` is a
+  non-migration closure (`socketClosure` in `pb/rpc.ts:64`, moved to a
+  shared module that `rpc.ts` and `leases.ts` import), the tick, `contact`
+  and `releaseOwner` are skipped.
+- **Shutdown:** layer shutdown interrupts graces; a draining replica never
+  releases.
+
+---
+
+## 3. Workstreams
+
+### F0: split the protocol-builder suite (done, `f2f26dcda`)
+
+70 tests, split across:
+
+- `T/rpc-protocol-builder.test.ts`
+- `T/rpc-protocol-builder-leases.test.ts`
+- `T/rpc-protocol-builder-events.test.ts`
+- `T/rpc-protocol-builder-resources.test.ts`
+
+The fixture is `T/support/protocol-builder-suite.ts`. Its late-bound values
+are getters, which each file copies in its own `beforeAll`.
+
+### C1: foundation + leases, connections, presence (serial, main worktree)
+
+**Owns:**
+
+- Schema and migration:
+  - `pb/schema.ts` (§2.1);
+  - `src/db/fingerprint.generated.ts`;
+  - `migrations/0003_studio_multi_replica_sync/`;
+  - the ERD block.
+- New code:
+  - new `pb/connections.ts` (§2.3);
+  - the shared `socketClosure` module.
+- Rewrites:
+  - `pb/leases.ts`, `pb/presence.ts`;
+  - `pb/host.ts` lease section: delete `renewLease`, `adoptLeases` and
+    `releaseConnection`; `releaseLock` returns `{events, stillHeld}`, with
+    `stillHeld` read from `leases` in the same transaction.
+- Rewiring in `pb/handlers.ts`, `pb/session.ts` and `pb/rpc.ts`:
+  - `openSession`: `leases.contact(session)`. `staged.touch/expire` stay,
+    and `expire` keeps calling `leases.connected` (as built, superseded:
+    `Leases.connected` is deleted; see S).
+  - WatchProtocol:
+    1. `subscribe`
+    2. backlog
+    3. `addFinalizer(publishPresence)`
+    4. `leases.connect(session, onReleased)`
+    5. `publishPresence`
+  - `onReleased(events)` = `staged.releaseMatching(ownerPrefix)` →
+    `publish(events)` → `publishPresence`, running only when `released`.
+  - AcquireLock: `presence.setMode(…'editing'…)`; no `leases.hold`.
+  - ReleaseLock: mode from `stillHeld`.
+- Policy and allowlists:
+  - `src/audit/transaction-policy.ts`: add `protocolBuilder.connect`,
+    `.liveness`, `.contact`, `.expireConnection`, `.releaseOwner`; remove
+    `protocolBuilder.releaseConnection`;
+  - its rows in `raw-sql-policy.test.ts` and `scope-openers.test.ts`;
+  - `T/process-separation.test.ts`: add `connections` to
+    `PROTOCOL_BUILDER_HOST` and the web-only list.
+- Test support:
+  - `T/support/protocol-builder.ts`: provide `MaintenanceTriggers.layerOpen`
+    beneath state;
+  - `T/support/protocol-builder-suite.ts`: the helpers below.
+- Tests:
+  - `pb/__tests__/leases.test.ts`, `presence.test.ts`, `session.test.ts`;
+  - `T/rpc-protocol-builder-leases.test.ts`, `T/ws-protocol-builder.test.ts`,
+    `T/rpc-protocol-reauthorization.test.ts`.
+
+Publisher and staging keep their behaviour; only call sites whose interface
+changed move.
+
+**Test helpers** (suite fixture). Database time is real, so tests never wait
+out a TTL.
+
+- `ageLeases(owner, byMs)` / `ageConnections(match, byMs)`: `UPDATE …
+SET expires_at = clock_timestamp() + interval '2 s'` (or `- …` to lapse).
+- `leaseExpiry(owner)` / `connectionRows(draftId)`: reads.
+- `liveLeases(owner)`: replaces `Leases.heldSections`.
+- Renewal-count seam: a span-recording `Tracer` layer provided beneath
+  `ProtocolBuilderState`, so forked fibers inherit it. It counts
+  `protocolBuilder.liveness` and `sync.renewHeld` spans. This replaces the
+  deleted `hold` counting with no production seam.
+
+**Tests:**
+
+- every moved lease and presence test is green, reading database
+  observables;
+- I2, I12, I13, I17, I18, I19 and I15b from §5.
+
+**Behaviour change in the moved "stops renewing a stranded owner's leases
+even when giving them back fails" test.** When every attempt of
+`releaseOwner` fails, staging is no longer released immediately (it was
+released before the attempt). It stays until GC. Renewal still stops,
+because contact registrations are dropped before the first attempt. The
+test steps through each backoff, then asserts exactly `RETRY_TIMES + 1`
+attempts, no further `sync.renewHeld` spans and an unchanged `leaseExpiry`.
+
+### V: doorbell transport and readiness (parallel with C1; own worktree from `f2f26dcda`; merged before C2)
+
+**Owns:**
+
+- `pb/doorbell.ts` (§2.2);
+- `src/platform/ws-drain.ts` (`draining: Effect<boolean>` = latch
+  `isOpen()`; `layerTest` → `false`);
+- `src/http/health.ts`;
+- the boot-warning text at `src/rate-limit/store.ts:49-51`: add that
+  cross-replica protocol-builder updates fall back to the 5 s poll. No
+  other rate-limit change;
+- `T/health.test.ts`, `src/platform/__tests__/ws-drain.test.ts`, new
+  `T/doorbell-valkey.test.ts`.
+
+**Shapes:**
+
+- `layerValkey`:
+  - one subscriber `Redis` (`connectionName: 'studio-doorbell'`, ioredis
+    default reconnect with capped backoff, `autoResubscribe: false`, an
+    explicit `SUBSCRIBE` on every `ready`, and a periodic `PING` that forces
+    a reconnect on a half-open socket). ioredis's automatic resubscribe
+    gives no confirmation event, which `Resync` needs;
+  - one publisher `Redis` (`enableOfflineQueue: false`);
+  - every `subscribe` confirmation emits `Resync`;
+  - `ready`/`close` drive `subscribed`;
+  - payloads are decoded with
+    `Schema.decodeUnknownOption(Schema.fromJsonString(DoorbellMessage))`;
+    undecodable ones are dropped.
+- `ring` = `PUBLISH`; its errors are logged, never raised.
+- Default channel `studio:protocol-events`.
+- `/readyz`: `Effect.serviceOption(WebSocketDrain)` is read once in
+  `HealthRoutes`. When draining it answers `503 {status:'failing',
+checks:{…, draining: 'failed: draining'}}`. The worker and `router.ts`
+  are untouched. V wires `Doorbell` into no program.
+
+**Tests:**
+
+- `/readyz` is 200, then 503 after `drain` starts (§10 #9);
+- `ws-drain` `draining` flips;
+- Valkey (real server, channel `studio:protocol-events:<uuid>`, no
+  `reachableRedis`, so no flush):
+  - ring on A arrives at B;
+  - `CLIENT KILL TYPE pubsub` → `subscribed` goes false then true, and
+    `Resync` arrives;
+  - a garbage payload is ignored;
+  - `layerMemory` hub fan-out.
+
+### C2: the relay (serial, after C1 and V)
+
+**Owns:**
+
+- `pb/publisher.ts`;
+- additions to `pb/connections.ts`:
+  - `seedRelay(access, draftId) → {next, locks}`: **one statement**, a
+    `max(cursor)+1` subquery plus `DISTINCT ON (section_id)` over the
+    partial index, so both come from one snapshot;
+  - `liveSections(access, pairs) → ReadonlySet<draftId:sectionId>`;
+  - `reapExpired(access, draftId, candidates) → events` (`FOR UPDATE`
+    head; per candidate, latest lock event has a holder AND no live lease
+    → append release);
+  - `readRelayBatch(access, wants: ReadonlyArray<{draftId, next}>)` (one
+    statement, `unnest` join, `ORDER BY draft_id, cursor`);
+- wiring `Doorbell` into `ProtocolBuilderState` and every provider:
+  - `src/http/router.ts`, `src/programs/serve.ts` (both
+    `withDatabase` and `withoutDatabase`: `Doorbell.layer`);
+  - `T/support/serve.ts`, `T/support/protocol-builder.ts` (`doorbell?`
+    option, default `layerMemory`);
+  - `T/maintenance-authority.test.ts`;
+- handlers:
+  - `publish`/`presenceChanged`/`subscribe(session)`;
+  - catch `RelayFailed` like `SubscriberOverflow`, with `Stream.die` so the
+    client resubscribes;
+  - the doorbell readiness check in serve's checks: `'degraded'` when
+    configured and unsubscribed;
+- policy and allowlists: `protocolBuilder.relayRead` and
+  `protocolBuilder.reap`, plus their allowlist rows; `doorbell` and
+  `connections` in `PROTOCOL_BUILDER_HOST` if loaded by web only;
+- tests: `pb/__tests__/publisher.test.ts`,
+  `T/rpc-protocol-builder-events.test.ts`.
+
+**Relay shape (per draft, with ≥1 local queue):**
+
+- **State:** `access`, `next`, `queues` (bounded 1024; overflow →
+  `SubscriberOverflow`), `locks`, `lastPresence`, and dirty flags
+  `{events, presence}` behind a `Ref`, plus a void wake signal. There is no
+  payload in the wake, so nothing can be lost.
+- **`subscribe`:** register the queue; if the relay is new, `seedRelay`,
+  then fork the fiber into the layer scope; return the stream. The relay
+  stops when its last queue leaves.
+- **Wake path (per draft):** read from `next` → offer the contiguous run →
+  advance `next` → update `locks`. On a presence flag, run `livePresence`
+  and emit if it changed.
+- **Safety poll** (`safetyPollMs`, default 5 s), **batched per team:**
+  - one transaction for `readRelayBatch`, `livePresence(draftIds)` and
+    `liveSections` (three statements under READ COMMITTED, so not one
+    snapshot; see As built);
+  - then `reapExpired` only for drafts with candidates; those reaper events
+    are rung.
+- **Failure:** each iteration is caught and logged, and retried on the next
+  wake or poll. After `maxConsecutiveFailures` (default 5), fail every queue
+  of that draft with `RelayFailed` and drop the relay.
+- **Publishing:** `publish` sets the local dirty flag and wakes, then forks
+  `doorbell.ring(Advanced)` into the layer scope, off the write path.
+  `presenceChanged` does the same with `Presence`.
+- **Doorbell signals:** one fiber per layer consumes `doorbell.signals`;
+  `Resync` runs a jittered batched poll (see As built).
+- **Maintenance closure:** reads and the reaper are skipped (§2.3).
+
+**Tests:**
+
+- moved fan-out tests;
+- I4a, I4b, I6b, I7b, I20 and I21 from §5.
+
+**As built (deviations from the shape above):**
+
+- `readRelayBatch` lives in `pb/events.ts`, beside the column mapping it
+  shares with `readProtocolEvents`, and reads at most `RELAY_BATCH` (256)
+  events per draft per read. A relay whose read came back full marks itself
+  dirty and reads again, but only once every watcher's queue is at most half
+  full (512): it waits on a signal each watcher's stream sends as it takes
+  from its queue, so a batch always fits beside what a slow watcher has yet
+  to take. The wait is bounded (`drainStallMs`, default 2 s, from the last
+  take): a watcher that has stopped taking still overflows alone rather than
+  holding back its peers. A poll reads only presence for a relay without
+  room, and leaves its events to the wake path, which waits.
+- The safety poll's read is three statements under READ COMMITTED, not one
+  snapshot: a lease can lapse or be taken between them. Nothing relies on
+  them agreeing. Relays deliver by cursor, and `reapExpired` asks again under
+  the head held exclusively.
+- `liveSections` is private to `pb/connections.ts` and takes draft ids, not
+  pairs. The reads the relay calls are `readRelay(access, draftId, next?)`
+  (the wake path) and `pollRelays(access, wants)` (the safety poll), both
+  under op `protocolBuilder.relayRead`, with spans `protocolBuilder.relayRead`
+  and `protocolBuilder.relayPoll`; the reaper's op and span are
+  `protocolBuilder.reap`. `relaySection(draftId, sectionId)` is the key the
+  relay's `locks` set and `liveSections` share.
+- Reads hold no lock. A relay's state changes only in the synchronous step
+  that delivers a finished read, which offers the run from `next` and skips
+  anything already delivered, so two reads of one relay (a wake and a poll)
+  can overlap safely. Each read of presence is numbered as it begins, and a
+  read never shows its presence over a later one's. Teams poll four at a
+  time.
+- `Resync` runs one batched poll per team after 0–1 s of random jitter,
+  rather than dirtying every relay: every replica hears a resync at once, and
+  a read per relay would stampede the database. One loop runs these polls, so
+  two never overlap. Resyncs that arrive while it waits are covered by the
+  poll that follows; one that arrives during a poll may be a gap that poll
+  already read past, so it is owed exactly one more, run straight after
+  (the pending resync is a one-slot dropping queue, as a relay's wake is).
+- A batched poll that fails is retried draft by draft, so only a draft whose
+  own read fails counts toward `maxConsecutiveFailures`; one warning per team
+  per failed tick.
+- A failed wake read is retried after 100 ms, doubling per consecutive
+  failure up to `safetyPollMs`. A wake the closed database held back is run
+  again within 250 ms of it reopening.
+- A read whose next cursor is missing while a later one is present ends the
+  run there. Cursors are taken under the head lock, so a gap is never
+  transient; three such reads in a row log an error and fail the relay's
+  watchers with `RelayFailed`.
+- A reap that fails is logged and does not count toward
+  `maxConsecutiveFailures`: the reaper's events reach watchers through the
+  log, and a later poll asks again. Three failures in a row for a draft log
+  at error level, and so does every further one until a reap succeeds.
+- The reaper also re-shows the reaped owner's live connection rows that
+  still name the section: as editing the first section the tab still holds,
+  else viewing. It locks them after the head and before appending (it reads
+  `leases` without locking them), and rings `Presence`.
+- `subscribe` reads the seed outside any acquisition and joins the relay
+  afterwards, so a caller that gives up mid-seed returns at once and leaves
+  no relay behind.
+- The lease keeper logs a liveness pass that timed out on a lock at info
+  level, and warns from the third consecutive timeout on the same draft.
+- Each watcher carries a `presented` flag, so a watcher that joins a relay
+  whose presence has not changed is still sent who is present.
+- An `Advanced` signal whose cursor is below the relay's `next` is ignored:
+  the relay has delivered that event already, as with a replica's own ring,
+  which comes back after its read.
+- `publishPresence` in the handlers no longer reads presence itself; it calls
+  `presenceChanged`, and every replica's relay reads presence from the
+  connection rows. This changes C1's handler.
+- At the coordinator's request, `AcquireLock` and `ReleaseLock` publish
+  before recording the socket's mode, and the mode update runs in a fiber
+  forked into the layer scope. `setSocketMode(session)` derives the mode from
+  the tab's live leases after locking its rows, so a retried or late update
+  records what the tab holds now. `releaseLock` no longer returns
+  `stillHeld`.
+- Also at the coordinator's request: the lease keeper runs liveness for up to
+  four drafts at a time; each liveness transaction sets
+  `SET LOCAL lock_timeout` (`LIVENESS_LOCK_TIMEOUT_MS`, 2 s) and a draft that
+  times out is retried at the next tick; `sync.renewHeld` takes several
+  owners, so a pass renews every owner's leases in one `UPDATE`.
+- After the runtime review:
+  - `setSocketMode` shows every live watch of the caller's tab, on any
+    socket or plane, and the handlers record it after every lock change,
+    unary calls included, so an HTTP-plane watch is not left showing a stale
+    mode. `livePresence` is gone; the suite reads presence through
+    `readRelay`.
+  - Every scheduled loop (the lease keeper's tick, the relay's poll and
+    held-back reopen check, the doorbell's probe) and the doorbell signal
+    consumer catch and log a cause before their schedule, so one fault never
+    ends the loop (logged at most once a minute while it recurs; see below). A relay whose run dies ends its watchers with the failure
+    rather than leaving them waiting. The doorbell decodes `cursor` with
+    `Schema.BigIntFromString`.
+  - The connect acquisition and a grace's release were bounded by fiber
+    timeouts; the adversarial review replaced both (below).
+  - An idle watch re-authorizes on a jittered timer and ends with the
+    authorization failure when the caller no longer reaches the protocol
+    (its pace and cost are below).
+  - Every head writer (`lockDraftHead`, `publishDraft`, `sync.commit`,
+    `releaseOwner`, the reaper) takes the head `FOR NO KEY UPDATE`: still
+    exclusive against every other head lock, but not against the
+    `KEY SHARE` an insert of a child row (a staged upload, a connection row)
+    takes on the draft. `discardDraft` keeps `FOR UPDATE`, since it deletes
+    the row. A lock that conflicts with less only removes waits, so this adds
+    no deadlock.
+  - A lease-renewal readiness signal was not added: `Leases` is built inside
+    the RPC routes, not beside `/readyz`.
+- After the adversarial review:
+  - **Work after a commit never depends on the fiber outliving it.**
+    `withTransaction` commits in an uninterruptible finalizer, so a fiber
+    timeout or interrupt that lands as COMMIT runs fails the caller while
+    the transaction stands. Two places did work after a commit that such a
+    failure skipped:
+    - The connect acquisition is uninterruptible and has no fiber timeout. A
+      bound that fired as it committed left a live row that no finalizer
+      would expire (I36). Its lock waits are bounded in the database
+      instead: the transaction sets `lock_timeout`
+      (`CONNECT_LOCK_TIMEOUT_MS`, 5 s), so a head held past it fails the
+      connect with nothing written.
+    - A grace's release attempt is uninterruptible from its `closed` check
+      through `onReleased`, so a release that commits always tells watchers,
+      even when the tab returns or the deadline passes as it commits (I37).
+      `releaseOwner` sets `lock_timeout` (`RELEASE_LOCK_TIMEOUT_MS`, 2 s).
+      Retries stop at `GRACE_RELEASE_TIMEOUT_MS` (25 s) through
+      `Effect.retry`'s `while`, checked between attempts: no attempt begins
+      after it, and one under way finishes. One that gives up leaves the
+      leases to lapse for the reaper.
+
+    Liveness keeps `LIVENESS_LOCK_TIMEOUT_MS`. All three set it through
+    `limitLockWaits` (span `protocolBuilder.lockTimeout`). Pool checkout and
+    `BEGIN` stay unbounded: `@effect/sql-pg` has no acquire timeout, and its
+    10 s `connectTimeout` bounds only opening a new physical connection, so
+    a saturated pool still holds a connect or a release until a connection
+    frees up.
+
+    The rest of the post-commit work in `protocol-builder` was audited:
+    - Already whole: the handlers' writes, which are uninterruptible from
+      the command on; the disconnect in the watch's release finalizer; the
+      watch's presence ring, whose finalizer is registered before the
+      connect.
+    - Idempotent: `Leases.contact` registers before its upsert.
+    - Lost only at shutdown, where durable state covers it:
+      - a tick's reconnect: the rows lapse by TTL;
+      - the reaper's dirtying and ring: the events are in the log, and other
+        replicas read them by cursor;
+      - a mode change's presence ring: the poll diffs presence;
+      - the forked staged-object deletes after a release or promotion: the
+        orphan sweep removes them.
+    - `resources.ts` settles a staged upload by its row (`namedByRow`).
+    - `draft-structure.ts` and `staging-store.ts` do no work after a commit.
+
+  - `publishDraft` locks `protocols` before the draft head, in the order
+    §2.3 gives (I38).
+  - An idle watch re-authorizes on its own `REAUTHORIZE_MS` (30 s) timer,
+    jittered, not at the lease-renewal pace, and a delivered entry
+    re-authorizes once that much time has passed. A pass checks the sign-in,
+    resolves the session again from the caller's current memberships
+    (`resolveSession`, `openSession` without its rate-limit charges and
+    contact) and runs `authorizeCaller` on it. A one-permit semaphore keeps
+    the timer and a delivery from running it at once (I39). Authorizing the
+    session the watch opened would keep its role, and miss a removal.
+  - A scheduled loop logs a defect that recurs pass after pass once, then
+    at most once a minute (`RECURRING_DEFECT_LOG_MS`) with how many passes
+    in a row it has failed. A different defect logs at once, and a pass that
+    succeeds resets the count (`catchLoopDefect`, I40). It covers the lease
+    keeper's tick, the relay's poll and reopen check, the doorbell's probe
+    and its signal consumer.
+
+### S: persistent staging (serial, after C2)
+
+**Owns:**
+
+- `pb/resources.ts`, new `pb/staging-store.ts`;
+- `pb/host.ts` submit/create: delete the promoted staged rows **inside**
+  the write transaction; only object deletes run after commit;
+- `pb/handlers.ts`: Resources* routing to §2.2 and Submit/Create
+  `plan`. `onReleased` calls `staged.releaseOwner`;
+- `pb/session.ts`: remove `staged.touch/expire`;
+- `pb/leases.ts`: delete `connected`, whose only caller goes away;
+- object store:
+  - `src/storage/object-store.ts`;
+  - `storage/s3/object-store-s3.ts` (`DeleteObject`, `ListObjectsV2`,
+    `CopyObject`);
+  - `storage/azure-blob/object-store-azure-blob.ts` (`deleteBlob`,
+    `listBlobsFlat`; copy only if same-account authorization is verified,
+    otherwise fall back);
+  - `storage/__tests__/contract.ts` (per-test key prefix);
+- every `ObjectStore.of` fake:
+  - `T/assets.test.ts`;
+  - the suite fixture stub;
+  - `T/rpc-participant-address.test.ts`;
+  - `src/interview/__tests__/procedures.test.ts`;
+  - `src/rpc/__tests__/team-scope.test.ts`;
+  - `ObjectStore.absent`;
+- secrets:
+  - `src/secrets/cipher.ts`: `seal/open/resealStagedSecret`, identity
+    `['staged-secret', teamId, draftId, owner, resourceId]`;
+  - `src/secrets/stores.ts`: a `SECRET_STORES` entry modelled on
+    `protocolAssetKeysStore`;
+  - `rotate.test.ts`, `no-plaintext-at-rest.test.ts` (seed changes if
+    needed), `stores.test.ts`;
+- worker:
+  - `src/programs/worker.ts` builds `ObjectStore`;
+  - new `src/jobs/handlers/staged-resources-gc.ts`, importing only `db/`,
+    `storage/` and `pb/schema.ts`, all outside `PROTOCOL_BUILDER_HOST`. It
+    is called from `protocolStoreGc` after `gcProtocolStore`, with errors
+    caught and logged at error level. `gcProtocolStore`'s signature, the
+    registrations and studio-sync stay unchanged. It reads `ObjectStore`
+    via `Effect.serviceOption`, so the handler's `R` stays
+    `MaintenanceDatabase`;
+- policy: `protocolBuilder.stageResource`, `.readStaged`,
+  `.discardStaged`, `.releaseStaged`, `protocol.gcStagedResources`,
+  `protocol.gcProtocolConnections`, plus their allowlist rows;
+- tests: `T/rpc-protocol-builder-resources.test.ts`, the gc test, and the
+  backend tests.
+
+**Port shapes:**
+
+```ts
+// ObjectStoreError.operation: + 'delete' | 'list'
+type StagingKey = string & Brand<'StagingKey'>   // staging/<teamId>/<uuid>, minted only in staging-store.ts
+putStaged(key: StagingKey, bytes: Uint8Array, mediaType: string): Effect<void, ObjectStoreError>
+getStaged(key: StagingKey): Effect<Option<Uint8Array>, ObjectStoreError>
+deleteStaged(key: StagingKey): Effect<void, ObjectStoreError>               // idempotent
+listStaged(prefix: string, olderThan: Date): Effect<ReadonlyArray<StagingKey>, ObjectStoreError>
+promoteStaged(key: StagingKey, hash: string, mediaType: string): Effect<void, ObjectStoreError>
+  // head assets/<hash> → present: skip; else backend.copy if defined, else get + write
+// ObjectBackend: + remove(key, signal), list(prefix, olderThan, signal), copy?(from, to, signal)
+```
+
+**Behaviour:**
+
+- **`stage`:**
+  1. Return the existing descriptor on a unique-key hit.
+  2. Validate: empty, too large, store configured for content.
+  3. Content: compute the sha256 → `putStaged` → insert the row (with
+     `content_hash`). Secret: seal → insert.
+  4. On a unique race, delete our object and return the winner's
+     descriptor.
+- **`plan`:**
+  - content: `promoteStaged(key, hash)` → `storedSource(hash, filename)`;
+  - secret: `openStagedSecret` → `entries.value`, as today;
+  - object-store failures keep today's retryable `ResourceOutcome`.
+- **Submit/create:** the write transaction deletes the promoted rows
+  `RETURNING object_key`; `deleteStaged` runs after commit, best-effort.
+- **`discard` and `releaseOwner`:** delete the objects, then the rows.
+- **`inspect`:** open the secret. **`preview`:** `getStaged` → `data:` URL.
+- **GC** (worker, per team, `noAuditMaintenanceTransaction`):
+  1. Select staged rows with **no `protocol_connections` row for `(draft,
+owner)` where `expires_at > clock_timestamp() - IDLE_MS`**.
+  2. Delete each object, **then** the row.
+  3. Orphan sweep: `listStaged('staging/<teamId>/', now - 1 day)` minus
+     keys with rows → delete.
+  4. Delete connection rows expired more than 1 h ago.
+  5. Skip all object work when `!configured`.
+
+**Tests:**
+
+- moved staging tests;
+- restart persistence (stage, dispose the client, new client, promote);
+- I9, I10a-c from §5;
+- contract: staged round-trip, idempotent delete, `list` honours prefix and
+  age, `promoteStaged` skips an existing asset;
+- rotation reseals a staged secret.
+
+**As built (deviations from the shape above):**
+
+- `promoteStaged` returns `boolean`: false when the staged object is gone,
+  which `plan` reports as the resource's not-found outcome.
+  `ObjectBackend.list(prefix, cursor, signal)` returns one page of keys with
+  each key's `lastModified`, and the cursor of the next page; the port's
+  `fromBackend` filters on age, so a backend never interprets `olderThan`,
+  and `listStaged` is a `Stream` of pages, so no caller holds a whole
+  listing. S3 copies with `CopyObject`; Azure has no `copy` and promotes
+  by get and write, because same-account copy authorization was not
+  verified. The memory store in `T/support/object-store.ts` has no copy
+  either.
+- Staging a file now needs a configured object store and is refused with
+  `NO_STORE` otherwise: there is no in-memory fallback. The refusal's reason
+  is `unsupported-kind`, in `stage`, `plan` and `preview` alike, because
+  retrying cannot help until the operator configures a store; the client
+  therefore offers no retry and shows the message as before. A failed
+  `putStaged` stages nothing and answers `unavailable`.
+- A stage that fails or is interrupted after its `putStaged` deletes the
+  object it wrote, unless a row names it: when the insert's outcome is
+  unknown the row is read first, and a read that fails keeps the object for
+  the orphan sweep. A PUT still in flight when the delete runs is left to the
+  orphan sweep too. The insert that loses a unique race reads the winner and
+  retries once if that row vanished in between, then answers `unavailable`.
+- Every best-effort staged delete (`discard`, `releaseOwner`, the
+  promotion's clean-up, a failed stage and the GC) goes through
+  `removeStaged`, which logs a failure at warning level annotated with the
+  key and the operation, and never fails its caller.
+- Every staging call (`stage`, `descriptors`, `plan`, `discard`, `inspect`,
+  `preview`, `releaseOwner`) runs `requireProtocol` inside its own
+  `noAuditTransaction`, under ops `protocolBuilder.stageResource`,
+  `.readStaged`, `.discardStaged` and `.releaseStaged`; `authorizeCaller`
+  remains only for the watch.
+- A staged row discarded, released or collected between `plan` and the write
+  makes the write's consume find fewer rows than it planned; the write then
+  changes nothing and answers `stagingGone`, which Submit and Create report
+  as a not-found `PromotionFailed`. The consume locks the rows `FOR UPDATE`
+  in `resource_id` order under the draft head the write already holds.
+- `discard`, `releaseOwner` and the GC delete staged rows without the draft
+  head: none of them writes a section, and the consume's row locks are what
+  a racing promotion contends on.
+- `discard` still deletes the objects, then the rows: the caller is present
+  and a failure answers it. `releaseOwner` and the GC go row-first instead,
+  because nobody is waiting on them: one statement deletes the rows it finds
+  abandoned and returns their object keys, and only then are the objects
+  deleted. A tab that came back keeps its row and its object together, and an
+  object the store would not delete is unnamed from then on, so a later orphan
+  sweep takes it.
+- `releaseOwner`'s statement locks the owner's rows in `(edit_id,
+resource_id)` order and skips them while a socket connection row of the
+  owner is live, so a tab that reconnected on another replica during the
+  grace keeps its staging.
+- `onReleased` publishes the released locks and the presence change first,
+  then forks `releaseOwner` into the handler's scope: the other tabs see the
+  locks go without waiting on object deletes. `ReleaseLock` returns before
+  publishing anything when the release gave nothing back.
+- `Leases.connected` is deleted. `pb/__tests__/leases.test.ts` and the
+  replica scenarios observe the reconnect grace through the
+  `protocolBuilder.disconnect` and `protocolBuilder.graceElapsed` spans, and
+  the pending sleeps of the shiftable clock.
+- `IDLE_MS` moved from `pb/leases.ts` to `pb/schema.ts`, so the GC reads it
+  without importing the host.
+- The GC (`jobs/handlers/staged-resources-gc.ts`):
+  - requires `ObjectStore` in its `R` rather than reading it with
+    `Effect.serviceOption`, so a worker that forgot to provide it fails to
+    typecheck instead of silently skipping object work. `protocolStoreGc`,
+    `JobHandlersLive` and the two job test layers gain `ObjectStore`; the
+    tests provide `ObjectStore.absent`. `gcProtocolStore` is unchanged.
+  - enumerates teams from the staged rows and the connection rows, collects
+    their rows and connections, and then sweeps `STAGING_ROOT` a page at a
+    time rather than per team prefix, grouping each page's keys by team, so
+    a team whose only trace is an orphaned object is still swept. A listing
+    that fails is logged; the rows and connections are already collected.
+  - collects row-first, in batches of 1000: one statement locks a batch of
+    abandoned rows in key order (as a promotion's consume does), deletes
+    them and returns their object keys; the objects are deleted after
+    commit. The orphan sweep asks, per team and page, which listed keys a
+    row names with one `= ANY` array parameter, served by the
+    `(team_id, object_key)` index, and skips keys this run already deleted.
+  - collects each team's rows, its expired connections, and each page's
+    sweep of its keys inside their own `catchCause`: a failure is logged at
+    error level with its `teamId`, and everything after it still runs, so
+    a team whose staging fails still has its connection rows collected.
+  - runs whether or not `gcProtocolStore` succeeded: `protocolStoreGc` keeps
+    the sweep's `Exit`, runs the staged GC, then fails the job with the
+    sweep's cause if it failed.
+  - treats a row as abandoned when it is older than `IDLE_MS` and no
+    connection row for its `(team, draft, owner)` expires after
+    `now - IDLE_MS`. The age bound keeps a row staged a moment ago by a tab
+    whose connection row is not yet visible.
+- Each backend's `make`, and the memory store, take an optional
+  `listPageSize`, set only by tests, so the contract's paging case makes S3
+  follow its continuation tokens and Azure its `byPage` tokens, and the GC's
+  paging case spans pages.
+- The seed stages one API key per team through the production
+  `insertStaged`, so the no-plaintext-at-rest scan covers the staged-secret
+  store; `protocol_staged_resources.created_at` joins the seed
+  reproducibility test's irreproducible columns.
+
+### H: N-replica harness and scenarios (after S)
+
+**Owns:** `T/support/protocol-builder.ts` (additions) and new
+`T/protocol-builder-replicas.test.ts`.
+
+```ts
+createProtocolBuilderReplicas(studio, {
+  count: number; clock?: ShiftableClock; objectStore?: ObjectStore['Service'];
+  doorbell?: (replica: number, hub: Doorbell['Service']) => Doorbell['Service'];
+  safetyPollMs?: number;
+}): Promise<{ replicas: ProtocolBuilderTestClient[];
+              crash(i: number): Promise<void>;     // swap i's Database for a refusing one, then close its scope
+              restart(i: number): Promise<ProtocolBuilderTestClient>;
+              dispose(): Promise<void> }>
+```
+
+**Scenarios (§10 1-8):** each ages rows with the C1 helpers and asserts
+database observables.
+
+1. Acquire on A, A's watch ends, B reconnects within grace, then grace
+   elapses with `ageLeases(+2 s)`. B's tick advances `leaseExpiry`, and
+   Submit via B succeeds.
+2. No reconnect → after grace, B's watcher sees lock-null.
+3. Dispose A (orderly), `restart(0)`, reconnect → lease kept, no lock-null
+   in the log.
+4. Interleaved writers on A and B, with B's doorbell reordering and
+   dropping 50% → every watcher sees contiguous cursors.
+5. Presence on A and B lists both. `crash(1)`, then `ageConnections` →
+   B's entry disappears by the next poll.
+6. `crash(0)` while holding, then `ageLeases` to lapse → B's reaper emits
+   lock-null. Variant: reconnect on B first → kept, no reaper event.
+7. Concurrent AcquireLock on A and B → exactly one `held`.
+8. Stage on A, promote on B → asset committed, staged row and object gone.
+
+**As built (deviations from the shape above):**
+
+- `clock` is an Effect `Clock.Clock`: the harness only passes it on, and a
+  test keeps the `makeShiftableClock()` handle to advance it.
+- Each entry of `replicas` is a `ProtocolBuilderTestClient` plus its
+  `replicaId` and a `spans` counter of its own, so a scenario can tell one
+  replica's keeper, grace, poll or reap from another's. `restart` replaces
+  the entry in place.
+- A `database` option gives each replica a pool of its own, as a separate
+  process would hold. The suite's `ownPool` (factored out of
+  `studioOnOwnPool`) supplies it; without the option the replicas share the
+  studio's. The suite's application pool has one connection, so replicas on
+  it serialize every transaction: two relays never both read a lapsed lease
+  before one had reaped, and dropping the reaper's recheck (I7b) stayed
+  green in scenario 6. Each replica on a pool of three turns it red on every
+  run.
+- `crash(i)` swaps the replica's `db` for a proxy whose `transaction`
+  fails, then disposes the client. Every tenant write goes through
+  `db.transaction`, so the socket's expiry and the presence publish fail and
+  the rows stay live, as a killed process leaves them. `sql` stays real.
+- `restart(i)` disposes replica i if it is still open, then opens a new
+  replica under a new replica id, as a new process would. The doorbell hook
+  is applied to it again. `dispose()` is idempotent per replica and closes
+  the hub last.
+- Scenario 1 also asserts that A's grace ended without releasing and
+  without sleeping again: one `releaseOwner` span on A, its grace count
+  back to where it was, and its `protocolBuilder.graceElapsed` span ended
+  once (`connected(owner)` false on A, until `Leases.connected` went). A's liveness
+  count does not move across the tick that renews the lease, so the
+  renewal is B's.
+- I1 (drop the owner's renewal from `connectSocket`) does not turn H#1 or
+  H#3 red. Every call, the watch included, records a contact through
+  `HostSessionLive`, and `upsertContact` renews the owner's leases itself.
+  H#1 guards I2/I18 instead: removing the live-socket check releases the
+  lease. H#3 guards I8.
+- Scenario 4 writes in 8 concurrent rounds on A and B, then twice on A, so
+  that no write of B's own wakes its relay for the end of the log. B's view
+  of the hub drops each signal with probability 0.5 (mulberry32, seed
+  `0x5eed`) and shuffles the rest in threes (`Stream.grouped(3)`; a
+  trailing group waits for the next signal). The poll is 250 ms. In this
+  seeded run, later rings cover the dropped ones, so disabling the safety
+  poll's delivery stays green: H#4 guards I4a, not the poll.
+- Scenario 6 runs B and C on one shiftable clock with a 60 s poll. Advancing
+  the clock makes both poll in the same instant. Which of them then reaps
+  depends on scheduling: a replica whose poll reads after the other's reap
+  has committed sees the release already logged, finds nothing lapsed and
+  never reaps, which failed this scenario on a loaded CI runner. The
+  scenario therefore holds the draft head until both replicas wait to reap,
+  so both read the lapsed lease first and both reap. It asserts a `protocolBuilder.reap` span on each and one lock-null
+  in the log and in each watcher, so it covers I7b as well as I7a. The
+  variant ages the lease to +1.5 s, lets B's keeper renew it, then waits
+  past the aged expiry and two polls: no lock-null and no reap. Making the
+  keeper renew no leases turns it red.
+- Scenario 7 runs six rounds, each replica on its own pool, and checks the
+  one live lease row's owner as well as the answers.
+
+### D: deployment, stack-test, docs, changeset (drafts now in own worktree; final after H)
+
+**Owns:**
+
+- `apps/studio/docker-compose.yml`:
+  - move the `api` server list into its own config;
+  - add a Traefik `loadBalancer.healthCheck` on **`/healthz`** (the api's
+    own healthcheck path, `docker-compose.yml:197`; liveness, not readiness;
+    see Q2).
+- Stack-test:
+  - `apps/studio/stack-test/variants/two-api.yml` (`api-b` extending
+    `api`; server list `api:3000`, `api-b:3000`);
+  - `lib.sh` `VARIANTS`, an `assert.sh` two-api block, the stack-test
+    README;
+  - the `studio-stack` job in `.github/workflows/ci-and-release.yml`
+    (up/assert + teardown steps);
+  - `scripts/ci/ci-workflow.test.mjs`: exact variant list, teardown count.
+- Docs:
+  - design §11;
+  - `docs/self-host/requirements.md` ~165-180: the S3 operations table
+    gains `DeleteObject`, `ListObjectsV2`, `CopyObject`, and "no listing,
+    no deletion" is rewritten;
+  - `swap.md` ~144: the worker identity now also opens the container and
+    needs blob delete and list. Storage Blob Data Contributor already
+    grants them; say so;
+  - `upgrade.md`: an IAM step for S3 policies;
+  - `apps/studio/README.md` ~708: the secrets table gains staged secrets;
+  - the Valkey section gains `PUBLISH`/`SUBSCRIBE`;
+  - never hand-edit the generated schema-docs block.
+- The Studio-lane changeset (`@codaco/studio-api` and, for `renewHeld`,
+  `@codaco/studio-sync`).
+
+**Stack-test scenario.** It uses the `rpc` helper and cookie jar, and polls
+for state rather than sleeping.
+
+1. `stop api-b`.
+2. Sign in; `protocols.create`; read a section id.
+3. `AcquireLock` with a fixed client-session header.
+4. `start api-b`; poll until healthy.
+5. `stop api`; poll until requests are served (by api-b).
+6. `ListSections` every 5 s until 40 s have passed since `api` stopped.
+7. `Submit` succeeds. Without contact renewal it returns `NotLockHolder`
+   (I15).
+
+**CI budget.** The last successful `studio-stack` run took 6.9 min (warm
+cache) against `timeout-minutes: 40`. One more variant adds ~2 min, so no
+raise is needed. D rechecks against a cold-build run before finalising. As
+built, two-api takes about 3 min, the longest variant: it waits out the 40 s
+and then runs the cross-replica relay check.
+
+---
+
+## 4. Ordering
+
+```
+F0 (done) ─┬─ C1 (main worktree) ───────┐
+           └─ V (own worktree) ─ merge ─┴─ C2 ─ S ─ H ─ D final ─ PR
+D drafts in its own worktree throughout.
+```
+
+- C1, C2 and S each run their own test files plus `pnpm agent:test`.
+- Only the final integration runs `pnpm --filter @codaco/studio-api test`.
+- No stream edits another's files while that stream is open.
+
+---
+
+## 5. Invariants and oracles
+
+To prove each oracle can fail: apply its mutation once, see red, then
+revert.
+
+| #    | Invariant                                                                                                                      | Test                                           | Observable                                                                     | Mutation                                                        |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| I1   | Reconnect on any replica keeps the owner's live leases                                                                         | none as built (contact renews; see H notes)    | `leaseExpiry` advances after reconnect; Submit succeeds                        | drop `renewHeld` from `connectSocket`                           |
+| I2   | Grace never releases while the owner has a live socket row                                                                     | C1 leases                                      | no lock-null event; `liveLeases` unchanged                                     | remove the live-socket check in `releaseOwner`                  |
+| I3   | Renewal never resurrects an expired lease                                                                                      | studio-sync `lease.test.ts` (exists)           | `renewHeld` returns `[]` after `forceExpire`                                   | drop the expiry predicate                                       |
+| I4a  | Contiguous cursors despite reordered or dropped rings                                                                          | H#4                                            | per-watcher cursor sequence has no gaps                                        | offer only the ringing cursor's row                             |
+| I4b  | Event committed between `subscribe` and backlog arrives once                                                                   | C2 events                                      | exactly one delivery of cursor n                                               | fix `next` lazily in the fiber                                  |
+| I5   | At most one holder per section                                                                                                 | H#7                                            | one `held`, one `readOnly`                                                     | let `acquire` ignore a live foreign lease (local only)          |
+| I6a  | Presence is the union across replicas                                                                                          | H#5                                            | both sessionIds listed                                                         | filter `livePresence` by `ReplicaId`                            |
+| I6b  | Ghost presence clears without a ring                                                                                           | C2 events                                      | presence event without the aged row                                            | emit presence only on rings                                     |
+| I7a  | Crash: unreleased expired lease gets lock-null                                                                                 | H#6                                            | lock-null event after `ageLeases`                                              | skip `reapExpired` in the poll                                  |
+| I7b  | Reaper is idempotent across replicas                                                                                           | C2 events (two relays), H#6                    | exactly one lock-null                                                          | drop the recheck under `FOR UPDATE`                             |
+| I8   | Disposed or draining replica appends no release                                                                                | H#3                                            | no lock-null in the log                                                        | run `onReleased` on grace interruption                          |
+| I9   | Staged secret never plaintext at rest                                                                                          | `no-plaintext-at-rest.test.ts`                 | scan finds no plaintext                                                        | store `request.value` unsealed                                  |
+| I10a | Promotion removes row (in tx) and object (after)                                                                               | S, H#8                                         | row gone at commit; stub records `deleteStaged`                                | delete rows after commit instead of in tx (test kills between)  |
+| I10b | Discard removes object then row                                                                                                | S                                              | both gone                                                                      | skip `deleteStaged`                                             |
+| I10c | GC removes abandoned, keeps live owners                                                                                        | gc test                                        | row+object gone / kept                                                         | invert the live-row predicate                                   |
+| I11  | `/readyz` 503 while draining                                                                                                   | `T/health.test.ts`                             | status code                                                                    | `draining: Effect.succeed(false)`                               |
+| I12  | Failed liveness pass keeps registrations                                                                                       | C1 leases (faulty `Database`)                  | next healthy tick advances `leaseExpiry`                                       | delete registrations on pass failure                            |
+| I13  | Stranded owner stops renewing on the grace's replica even if every release fails                                               | C1 leases                                      | `RETRY_TIMES + 1` attempts; no new `sync.renewHeld` spans                      | drop contact registrations only after a successful release      |
+| I14  | Migration path equals push path                                                                                                | `migrations-converge.test.ts`, fingerprint     | equality                                                                       | edit `schema.ts` without regenerating                           |
+| I15a | Contact keeps a unary owner's lease across a replica stop                                                                      | D stack-test                                   | Submit succeeds                                                                | skip `upsertContact`                                            |
+| I15b | Contact lease lapses after `IDLE_MS` silence                                                                                   | C1 leases                                      | span count stops; `ageLeases` lapse → `readOnly` for others                    | renew contact rows forever                                      |
+| I16  | Valkey resubscribe triggers a read                                                                                             | V Valkey test, C2 (poll 60 s)                  | `Resync` signal; event delivered before poll                                   | omit `Resync` on resubscribe                                    |
+| I17  | Two watches on one socket: ending one does not release                                                                         | C1 leases                                      | no lock-null; other watch's row live                                           | key rows by socket instead of watch                             |
+| I18  | A grace that finds the owner's socket live elsewhere ends; that replica's grace releases a whole grace after its socket closes | C1 leases                                      | A: no release span after 10× grace; B: no release at grace − 1 s, one at grace | re-sleep and retry on `released: false`; ignore the live socket |
+| I19  | Liveness re-creates a missing live row via `connectSocket`                                                                     | C1 leases                                      | row exists after tick following an external expire                             | treat `missing` as success                                      |
+| I20  | Relay failure fails queues after N tries; transient failure recovers                                                           | C2 events (faulty `Database`)                  | stream dies with `RelayFailed` after N; recovers below N                       | never fail queues / fail on first error                         |
+| I21  | Maintenance closure stops relay, liveness, contact, reaper writes                                                              | C1 + C2 with a closing `MaintenanceTriggers`   | no liveness/relay spans while closed                                           | ignore `closure`                                                |
+| I22  | Liveness and contact take the draft head before any connection or lease row                                                    | C1 leases (a second connection holds the head) | the waiter holds no `protocol_connections` or `leases` lock (`pg_locks`)       | drop or move the head lock                                      |
+| I23  | A reconnect that fails to be recorded keeps the grace                                                                          | C1 leases (a trigger refuses the row)          | grace still pending; lease released after it                                   | interrupt the grace before `connectSocket`                      |
+| I24  | A watch closing during its re-record leaves no live row                                                                        | C1 leases (own pool, held row)                 | no live row for the key                                                        | expire outside the registration's semaphore                     |
+| I25  | Mode changes touch only the caller's own rows, and only from a socket                                                          | C1 presence                                    | the other tab's or HTTP watch's row unchanged                                  | drop the owner predicate; drop the `WsConnection` skip          |
+| I26  | A resync reads once per team, not once per relay                                                                               | C2 events (two relays, one team)               | one more `relayPoll` span; no new `relayRead` span                             | dirty every relay on `Resync`                                   |
+| I26a | Resync polls never overlap, and a resync during a poll is owed one more                                                        | C2 events (poll held on its read, six resyncs) | one poll in flight; exactly two `relayPoll` spans end                          | fork a poll per signal; drop signals while a poll runs          |
+| I27  | A burst never overflows a watcher that keeps draining                                                                          | C2 events (slow consumer, 2500 events)         | every cursor delivered; stream ends cleanly                                    | read again without waiting for room                             |
+| I28  | One unreadable draft fails alone                                                                                               | C2 events (unparseable lock row)               | that watcher gets `RelayFailed`; the other draft's write still polled          | fail every relay of the team on a failed batch                  |
+| I29  | A rung write is delivered while a poll's read is held up                                                                       | C2 events (poll transaction gated)             | write delivered within 2 s                                                     | serialize wake reads behind the poll's read                     |
+| I30  | A persistent gap fails the relay                                                                                               | C2 events (cursor skipped)                     | `RelayFailed`; cursor after the gap never delivered                            | drop the gap check in `deliver`                                 |
+| I31  | Repeated reap failures escalate to an error                                                                                    | C2 events (reap transaction fails)             | levels `Warn, Warn, Error`                                                     | always warn                                                     |
+| I32  | A reaped lease's tab is no longer shown editing                                                                                | C2 events (socket live, lease aged)            | connection row `viewing`; presence shows the tab viewing                       | skip the connection update in `reapExpired`                     |
+| I33  | An abandoned seed ends promptly and leaves no relay                                                                            | C2 events (seed transaction gated)             | seed span ends while the gate is shut; no subscribers                          | seed inside the acquisition                                     |
+| I34  | A failed or held-back wake is read again before the poll                                                                       | C2 events (one failed read; closure lifted)    | write delivered within 2 s, with the poll at 60 s                              | drop the retry; drop the reopen wake                            |
+| I35  | Consecutive liveness lock timeouts escalate to a warning                                                                       | C1 leases (head held for three ticks)          | levels `Info, Info, Warn`                                                      | never warn                                                      |
+| I36  | A watch that closes as its connect commits leaves no live row                                                                  | C1 leases (commit held, watch closed)          | no live row for the watch                                                      | bound the connect with a fiber timeout or interrupt             |
+| I37  | A grace release that commits tells watchers, even past its deadline or as the tab returns                                      | C1 leases (release commit held)                | watcher sees the lock release; no failure logged                               | let the deadline or the tab's return interrupt the attempt      |
+| I38  | `publishDraft` takes `protocols` before the draft head                                                                         | protocol publish (`protocols` row held)        | head lockable `NOWAIT` while publish waits                                     | lock the head first                                             |
+| I39  | An idle watch's re-authorization charges no rate limit                                                                         | RPC protocol builder (counting limiter)        | timer passes run; no limiter charge; watch still open                          | re-authorize through the rate-limited RPC path                  |
+| I40  | A loop's recurring defect logs once, not at every pass                                                                         | C2 publisher (reopen check defect)             | one error log across five passes                                               | log every caught cause                                          |
+
+---
+
+## 6. Risks and open questions
+
+- **Q1 Orphan objects.** A crash after `putStaged` but before the insert,
+  or after commit but before `deleteStaged`, leaves an object that only the
+  daily-age orphan sweep removes. Is a 1-day floor acceptable for possibly
+  sensitive rosters?
+- **Q2 Traefik health checks.** The compose health check uses `/healthz`,
+  so a draining replica stays in rotation for its 5 s drain and relies on
+  close-1001 plus client reconnect. `/readyz` would also pull every replica
+  on a database or object-store outage. Confirm this choice.
+- **Q3 Valkey degradation.** With Valkey down, `/readyz` says `degraded`
+  and latency falls to the poll. Confirm `degraded` rather than `failing`.
+- **Q4 Azure server-side copy.** Same-account copy under managed identity
+  needs source authorization. Until verified, promotion falls back to read
+  and write.
+- **Risk: a stalled replica.** One paused past the TTL loses its owners'
+  leases, and I3 prevents resurrection. Its next liveness pass finds its
+  rows lapsed and re-records each socket row, with no leases behind it: the
+  tab is listed as viewing and must take its locks again. This is accepted,
+  same as a crash.
+- **Risk: I13 holds only on the replica running the grace.** Another
+  replica holding a contact for the same owner keeps renewing until that
+  contact idles out (`IDLE_MS`).
+- **Risk: a blip inside another replica's grace.** If the owner's socket on
+  B closes and has not yet come back when A's grace ends, A finds no live
+  socket and releases, although B's own grace would have waited. Accepted:
+  the window is the reconnect itself.
+- **A retried `releaseOwner` publishes nothing new.** When the grace's
+  release is retried, only the attempt that commits returns events for
+  `onReleased` to publish. That is harmless under C2: watchers read lock
+  events from `protocol_events`, so the committed release reaches them
+  through the relay's next read or poll, whether or not it was rung.
+- **Decision: no reaping without watchers.** A lapsed lease on a draft
+  nobody watches is not reaped until someone does. It need not be: `acquire`
+  treats an expired lease as free, and the first subscriber's relay reaps
+  it within one safety poll. The visible consequence is that a newly opened
+  draft can show a stale holder for up to one poll interval (5 s).
+- **Resolved: re-authorization only on delivered entries.** An idle watch
+  now re-authorizes on its own timer (C1 As built).
+- **Out of scope: making the existing DB client pooler-safe.** This is
+  pre-existing, and the user decides separately. It covers:
+  - role and `statement_timeout` startup parameters;
+  - named prepared statements;
+  - the worker's LISTEN;
+  - migrate's session advisory lock.
+
+  This plan adds none of these.

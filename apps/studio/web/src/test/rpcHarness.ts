@@ -3,6 +3,7 @@ import type { RpcGroup } from 'effect/rpc';
 import { RpcTest } from 'effect/rpc';
 import { onTestFinished } from 'vitest';
 
+import { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
 import {
   Authenticated,
   Principal,
@@ -48,6 +49,11 @@ const unimplementedHandlers: StudioHandlers = {
   'audit.get': unimplemented('audit.get'),
   'audit.list': unimplemented('audit.list'),
   'me': unimplemented('me'),
+  'participant.analytics': unimplemented('participant.analytics'),
+  'participant.finish': unimplemented('participant.finish'),
+  'participant.redeem': unimplemented('participant.redeem'),
+  'participant.session': unimplemented('participant.session'),
+  'participant.sync': unimplemented('participant.sync'),
   'protocols.addInformationStage': unimplemented(
     'protocols.addInformationStage',
   ),
@@ -57,6 +63,9 @@ const unimplementedHandlers: StudioHandlers = {
   'protocols.moveStage': unimplemented('protocols.moveStage'),
   'setup.complete': unimplemented('setup.complete'),
   'status': unimplemented('status'),
+  // Answered, not unimplemented: the notice sits in the shell, so every shell
+  // test asks it, and "no update" is the answer that leaves them undisturbed.
+  'status.updateAvailable': () => Effect.succeed(null),
   'studies.counts': unimplemented('studies.counts'),
   'studies.create': unimplemented('studies.create'),
   'studies.get': unimplemented('studies.get'),
@@ -84,7 +93,17 @@ const authenticatedLayer = (
     Authenticated.of((effect) =>
       principal === null
         ? Effect.fail(new Unauthorized({}))
-        : Effect.provideService(effect, Principal, principal),
+        : effect.pipe(
+            Effect.provideService(Principal, principal),
+            Effect.provideService(
+              AuditActor,
+              AuditActor.of({
+                kind: 'user',
+                id: principal.userId,
+                label: principal.name,
+              }),
+            ),
+          ),
     ),
   );
 

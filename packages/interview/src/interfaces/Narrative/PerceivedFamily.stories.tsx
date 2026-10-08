@@ -159,22 +159,23 @@ export const NarrativeReflection: Story = {
   render: () => <PerceivedFamilyStory step={6} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    // The stage animates in, so a name can be in the document before it is
-    // visible; a loaded runner can reach the assertion mid-animation.
-    for (const name of ['Maya', 'Jo', 'Avery']) {
-      const node = await canvas.findByText(name);
-      await waitFor(() => expect(node).toBeVisible());
-    }
+    await canvas.findByText('Maya');
+    // The stage mounts at its `initial` opacity of 0 and only reaches the
+    // `animate` variant on a later tick, so visibility has to be polled.
+    await waitFor(async () => {
+      await expect(canvas.getByText('Maya')).toBeVisible();
+      await expect(canvas.getByText('Jo')).toBeVisible();
+      await expect(canvas.getByText('Avery')).toBeVisible();
+    });
   },
 };
 
 export const FullWalkthrough: Story = {
   render: () => <PerceivedFamilyStory step={1} />,
   play: async ({ canvasElement }) => {
-    const prompt = await within(canvasElement).findByText(
+    const heading = await within(canvasElement).findByText(
       'Who feels like family to you?',
     );
-    // As above: the prompt is in the document before the stage is visible.
-    await waitFor(() => expect(prompt).toBeVisible());
+    await waitFor(() => expect(heading).toBeVisible());
   },
 };

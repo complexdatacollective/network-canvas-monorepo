@@ -25,6 +25,7 @@ import {
   reachableDeniedAuditStore,
   testDeniedAttempts,
 } from '../../__tests__/support/valkey.ts';
+import { provideCaller } from '../../audit/actor.ts';
 import {
   audited,
   auditable,
@@ -240,10 +241,7 @@ describe.skipIf(!testDb)('audited team commands', () => {
       options: { emailVerified?: boolean; requestId?: string } = {},
     ) =>
       command.pipe(
-        Effect.provideService(
-          Principal,
-          principalOf(person, options.emailVerified ?? true),
-        ),
+        provideCaller(principalOf(person, options.emailVerified ?? true)),
         Effect.provideService(
           RequestId,
           RequestId.of(options.requestId ?? randomUUID()),
@@ -878,6 +876,7 @@ describe.skipIf(!testDb)('audited team commands', () => {
           const context = AuditContext.of({
             teamId,
             teamLabel: 'Locked Team',
+            actorKind: 'user',
             actorId: owner.userId,
             actorLabel: owner.name,
             requestId,
@@ -1937,7 +1936,7 @@ const expectCode = Effect.fnUntraced(function* <A, E, R>(
 const waitUntilBlocked = Effect.fnUntraced(function* (
   harness: TestDatabase['Service'],
 ) {
-  yield* Effect.repeat(
+  yield* Effect.retry(
     Effect.flatMap(
       harness.onOwner(
         harness.owner.sql<{ waiting: number }>`

@@ -1,17 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod/mini';
 
-import { createAppIntl } from '@codaco/app-i18n/messages';
+import { createCatalogSource } from '@codaco/app-i18n/locales';
+import { createAppIntl, createMessageError } from '@codaco/app-i18n/messages';
 import type { StageSubject } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   type NcNetwork,
 } from '@codaco/shared-consts';
 
-import { frescoUiCatalogs } from '../../locales/catalogs';
+import { frescoUiCatalogLoaders } from '../../locales/catalogs';
 import type { FieldValue, ValidationContext } from '../store/types';
 import { required, validations } from './functions';
 import { makeValidationFunction } from './helpers';
+
+const catalogs = createCatalogSource(frescoUiCatalogLoaders);
+await catalogs.load('es');
 
 describe('Validation Functions', () => {
   const createMockContext = (
@@ -197,7 +201,7 @@ describe('Validation Functions', () => {
     ({ locale, maxHint, maxError, minHint, minError }) => {
       const intl = createAppIntl({
         locale,
-        messages: frescoUiCatalogs[locale],
+        messages: catalogs.peek(locale),
       });
       const maximum = validations.maxLength(1, createMockContext(), intl)({});
       expect(maximum.safeParse('a').success).toBe(true);
@@ -2044,6 +2048,93 @@ describe('Validation Functions', () => {
       if (!result.success) {
         expect(result.error.issues.map((issue) => issue.message)).toEqual([
           'You must answer this question before continuing.',
+        ]);
+      }
+    });
+  });
+
+  describe('a context whose network is still being resolved', () => {
+    const networkWith = (names: string[]): NcNetwork => ({
+      nodes: names.map((name, index) => ({
+        _uid: `node${index}`,
+        type: 'person',
+        [entityAttributesProperty]: { testAttribute: name },
+      })),
+      edges: [],
+      ego: { _uid: 'ego', [entityAttributesProperty]: {} },
+    });
+
+    it('waits for the network it settles to before comparing', async () => {
+      let settle: (network: NcNetwork) => void = () => undefined;
+      const resolving = new Promise<NcNetwork>((resolve) => {
+        settle = resolve;
+      });
+      const validate = makeValidationFunction({
+        unique: 'testAttribute',
+        validationContext: createMockContext({
+          network: networkWith(['ciphertext']),
+          resolveNetwork: () => resolving,
+        }),
+      });
+
+      let settled = false;
+      const parsed = validate({})
+        .safeParseAsync('Alice')
+        .then((result) => {
+          settled = true;
+          return result;
+        });
+      await Promise.resolve();
+      expect(settled).toBe(false);
+
+      settle(networkWith(['Alice']));
+      const result = await parsed;
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.map((issue) => issue.message)).toEqual([
+          'This value is used elsewhere. It must be unique.',
+        ]);
+      }
+    });
+
+    it('fails, rather than comparing against the stored network, when it rejects', async () => {
+      const validate = makeValidationFunction({
+        unique: 'testAttribute',
+        validationContext: createMockContext({
+          network: networkWith(['ciphertext']),
+          resolveNetwork: () => Promise.reject(new Error('Could not decrypt')),
+        }),
+      });
+
+      const result = await validate({}).safeParseAsync('Alice');
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.map((issue) => issue.message)).toEqual([
+          'An error occurred while validating.',
+        ]);
+      }
+    });
+
+    it('shows the reason a rejection gives as a message error', async () => {
+      const reason = createMessageError({
+        id: 'test.resolveNetwork.reason',
+        defaultMessage: 'Enter your passphrase, then try again.',
+      });
+      const validate = makeValidationFunction({
+        unique: 'testAttribute',
+        validationContext: createMockContext({
+          network: networkWith(['ciphertext']),
+          resolveNetwork: () => Promise.reject(new Error(reason)),
+        }),
+      });
+
+      const result = await validate({}).safeParseAsync('Alice');
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.map((issue) => issue.message)).toEqual([
+          'Enter your passphrase, then try again.',
         ]);
       }
     });

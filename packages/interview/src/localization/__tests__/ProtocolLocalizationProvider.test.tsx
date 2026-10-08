@@ -1,9 +1,10 @@
 import { render } from '@testing-library/react';
 import type { ComponentProps, ReactNode } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { getLocaleMetadata } from '@codaco/protocol-validation';
 
+import { interviewCatalogSource } from '../../i18n/catalog';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import {
   ProtocolLocalizationProvider,
@@ -56,6 +57,10 @@ function StringProbe({
   onRender(useLocalizedString(value));
   return null;
 }
+
+// Loaded before anything renders, as a host loads a language before it
+// mounts an interview, so renders in Spanish are synchronous.
+beforeAll(() => interviewCatalogSource.load('es'));
 
 function Harness({
   props,

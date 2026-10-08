@@ -6,8 +6,8 @@
 #
 #                  serve            HTTP, RPC and the WebSocket endpoint
 #                  worker           background jobs and cron schedules (#1895)
-#                  migrate          create this build's schema in an empty
-#                                   database, once per deployment
+#                  migrate          apply this build's migrations, once per
+#                                   deployment
 #                  maintenance on   close the instance to users (#1901)
 #                  maintenance off  reopen it
 #                  rotate-secrets   re-encrypt every stored secret under the
@@ -69,9 +69,11 @@ FROM node:24-slim AS studio-api
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=builder /deploy .
-# dist/ carries the five entries and dist/schema-ddl.json beside them: the
-# statements `migrate` executes, rendered at build time because drizzle-kit is
-# a development dependency and `pnpm deploy --prod` installs none.
+# dist/ carries the five entries and dist/migrations.json beside them: every
+# numbered migration under apps/studio/api/migrations/, which `migrate`
+# verifies and applies (#1901). Rendered at build time, which refuses a schema
+# change that has no migration, because the image carries neither drizzle-kit
+# (`pnpm deploy --prod` installs no development dependency) nor the directory.
 COPY --from=builder /repo/apps/studio/api/dist ./dist
 COPY apps/studio/api/bin/studio-api /usr/local/bin/studio-api
 USER node

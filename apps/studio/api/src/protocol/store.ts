@@ -704,27 +704,6 @@ export const publishDraft: (
   const name = typeof settings?.name === 'string' ? settings.name : null;
 
   const { tx } = yield* Transaction;
-  const lockedHead = yield* tx
-    .select({
-      headSeq: drafts.headSeq,
-      headManifestHash: drafts.headManifestHash,
-    })
-    .from(drafts)
-    .where(and(eq(drafts.id, params.draftId), eq(drafts.teamId, teamId)))
-    .for('update');
-  const lockedRow = lockedHead[0];
-  if (lockedRow === undefined) {
-    return yield* new ProtocolStoreError({
-      reason: `no draft ${params.draftId}`,
-    });
-  }
-  if (lockedRow.headManifestHash !== head.headManifestHash) {
-    return {
-      status: 'conflict',
-      headManifestHash: lockedRow.headManifestHash,
-    } satisfies PublishResult;
-  }
-
   const draftRows = yield* tx
     .select({
       protocolId: protocolDrafts.protocolId,
@@ -745,7 +724,8 @@ export const publishDraft: (
   }
 
   // The line's own lock serializes two publishes of one protocol, so the version
-  // number below is consecutive rather than colliding.
+  // number below is consecutive rather than colliding. Taken before the head,
+  // as the host's writes take it.
   yield* tx
     .select({ id: protocols.id })
     .from(protocols)
@@ -753,6 +733,27 @@ export const publishDraft: (
       and(eq(protocols.id, draft.protocolId), eq(protocols.teamId, teamId)),
     )
     .for('update');
+
+  const lockedHead = yield* tx
+    .select({
+      headSeq: drafts.headSeq,
+      headManifestHash: drafts.headManifestHash,
+    })
+    .from(drafts)
+    .where(and(eq(drafts.id, params.draftId), eq(drafts.teamId, teamId)))
+    .for('no key update');
+  const lockedRow = lockedHead[0];
+  if (lockedRow === undefined) {
+    return yield* new ProtocolStoreError({
+      reason: `no draft ${params.draftId}`,
+    });
+  }
+  if (lockedRow.headManifestHash !== head.headManifestHash) {
+    return {
+      status: 'conflict',
+      headManifestHash: lockedRow.headManifestHash,
+    } satisfies PublishResult;
+  }
 
   const versionHash = versionContentHash(head.sectionHashes);
   const existing = yield* tx

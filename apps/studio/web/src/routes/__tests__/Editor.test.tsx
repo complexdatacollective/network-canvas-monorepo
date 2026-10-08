@@ -43,8 +43,8 @@ import { closeStudioEditorSessions } from '../../editor/sessionLifecycle.ts';
 import { authClient } from '../../lib/auth.ts';
 import { reportUnauthorizedResponse } from '../../lib/session.ts';
 import { createAppRouter } from '../../router.tsx';
+import { HostClient } from '../../runtime/hostClient.ts';
 import { hostRuntime } from '../../runtime/hostSession.ts';
-import { HostClient } from '../../runtime/runtime.ts';
 import {
   FakeWebSocket,
   installInProcessHost,
@@ -484,6 +484,8 @@ async function findStageNameField() {
  * they got there. Everything here is a way of arriving that does NOT pass
  * through the owning team's screens first.
  */
+await import('../Editor.tsx');
+
 describe('opening a study by its URL', () => {
   it('opens one owned by a team that is not the active one', async () => {
     // A bookmark, or a link a colleague sent. The setting still names the team

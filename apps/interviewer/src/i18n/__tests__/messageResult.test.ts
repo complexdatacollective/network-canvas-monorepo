@@ -8,11 +8,11 @@ import {
 } from '@codaco/app-i18n/messages';
 import type { LocalizedMessage } from '~/i18n/messageResult';
 import { enrolWithPin } from '~/lib/auth/api';
-import { interviewerCatalogs } from '~/locales/catalogs';
+import { interviewerCatalogSource } from '~/locales/catalogs';
 
 const spanish = createAppIntl({
   locale: 'es',
-  messages: interviewerCatalogs.es,
+  messages: await interviewerCatalogSource.load('es'),
 });
 
 beforeEach(() => localStorage.clear());

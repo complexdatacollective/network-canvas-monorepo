@@ -70,6 +70,9 @@
         // Run by name from `pnpm check:mapbox-tokens`; its own test spawns it
         // as a process rather than importing it, so nothing imports it at all.
         "scripts/buildtime/check-mapbox-tokens.mjs",
+        // Studio's upgrade lane (#1901): run with node by the lane's shell
+        // scripts (apps/studio/release-test/*.sh), which knip cannot parse.
+        "apps/studio/release-test/*.mjs",
         // Recognising scripts/vitest.config.ts turns on knip's vitest plugin
         // for the root workspace, which widens the analysis to .claude/ and
         // .agents/. The files below are invoked by name from skill markdown,
@@ -84,7 +87,11 @@
       "ignoreDependencies": [
         "@playwright/test",
         // Resolved by @posthog/plugin-utils and spawned by path at build time.
-        "@posthog/cli"
+        "@posthog/cli",
+        // Netlify's edge bundler resolves npm imports from the base directory's
+        // node_modules only, so networkcanvas.com's locale edge function needs
+        // it installed at the repository root.
+        "@formatjs/intl-localematcher"
       ]
     },
     "apps/networkcanvas.com": {
@@ -238,9 +245,9 @@
       }
     },
     "apps/studio/web": {
-      "entry": ["index.html!"],
+      "entry": ["index.html!", "e2e/specs/**/*.ts"],
       "vite": true,
-      "project": ["src/**/*.{ts,tsx}"]
+      "project": ["src/**/*.{ts,tsx}", "e2e/**/*.ts"]
     },
     "apps/studio/api": {
       // The image's one-shot entries (#1909, #1901). src/index.ts and
@@ -250,8 +257,12 @@
       // named here.
       "entry": [
         "scripts/auth-cli-config.ts!",
+        "scripts/e2e-participant-links.ts",
         "src/migrate.ts!",
-        "src/maintenance.ts!"
+        "src/maintenance.ts!",
+        // Spawned by path from migrate-program.test.ts: the migrate one-shot
+        // over a document the suite hands it.
+        "src/__tests__/support/migrate-entry.ts"
       ],
       "project": ["src/**/*.ts", "scripts/**/*.ts"]
     },

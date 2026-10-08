@@ -14,7 +14,7 @@ export class ArchitectHostClient extends Context.Service<
   ArchitectHostClient,
   ProtocolBuilderClient
 >()('@codaco/architect/protocolBuilder/ArchitectHostClient') {
-  static readonly layer = (store: ArchitectStore, otherTabName: string) =>
+  static readonly layer = (store: ArchitectStore, otherTabName: () => string) =>
     Layer.effect(ArchitectHostClient)(
       makeInProcessClient(ProtocolBuilderGroup),
     ).pipe(
@@ -29,6 +29,6 @@ export class ArchitectHostClient extends Context.Service<
 
 export const makeArchitectHostRuntime = (
   store: ArchitectStore,
-  otherTabName: string,
+  otherTabName: () => string,
 ): ManagedRuntime.ManagedRuntime<ArchitectHostClient, never> =>
   ManagedRuntime.make(ArchitectHostClient.layer(store, otherTabName));

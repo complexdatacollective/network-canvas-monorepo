@@ -38,6 +38,8 @@ Run from the directory holding `docker-compose.yml`. The first line puts
 `.env`'s values in your shell, so the commands below name the same database and
 login the stack does.
 
+<!-- backup-take start -->
+
 ```bash
 set -a && . ./.env && set +a
 mkdir -p backup
@@ -51,28 +53,46 @@ docker compose exec -T postgres \
 docker compose exec -T postgres \
   pg_dumpall -U "$POSTGRES_USER" --globals-only > backup/globals.sql
 
-# 2. The object store: a mirror of the garage-data volume.
+# 2. The object store: a mirror of the garage service's data volume.
 docker run --rm \
-  -v studio_garage-data:/data:ro \
+  --volumes-from "$(docker compose ps -q garage):ro" \
   -v "$PWD/backup:/backup" \
-  alpine tar czf /backup/garage-data.tar.gz -C /data .
+  alpine tar czf /backup/garage-data.tar.gz -C /var/lib/garage .
 
 # 3. The keyring.
 cp secrets/studio-secrets-key backup/studio-secrets-key
 ```
 
+<!-- backup-take end -->
+
 Then encrypt `backup/` and send it off the host. It has left nothing behind on
 this machine that a lost host would not take with it.
 
-The volume is `studio_garage-data` because the compose file names the project
-`studio`; `docker volume ls` confirms it. If you have
-[swapped in a managed bucket](./swap.md), that step is your provider's mirroring
-or versioning instead, and there is no volume to copy.
+`--volumes-from` mounts whatever volume the `garage` container has, read-only,
+at the path Garage keeps it (`/var/lib/garage`), so the command does not depend
+on what Docker named the volume. If you have
+[swapped in a managed bucket or Azure Blob Storage](./swap.md), that step is
+your provider's mirroring or versioning instead, and there is no volume to
+copy.
 
-**Take it while the instance is closed** where you can — step 1 of
-[the upgrade sequence](./upgrade.md) exists partly for this. A scheduled backup
-of a live instance is fine for the database, which is dumped in one consistent
-snapshot, and fine for the object store, which is written additively.
+Studio's release test runs this block as written, inside the upgrade sequence,
+for every release that changes the upgrade path.
+
+**The backup an upgrade rolls back to is taken with nothing running that
+writes to the database** — step 2 of [the upgrade sequence](./upgrade.md)
+stops every API replica and the `worker` first, so that backup holds every
+write the instance accepted before it closed. A scheduled backup of a live
+instance is fine for the database, which is dumped in one consistent
+snapshot, and fine for the object store, which is written additively; it is a
+copy as of the moment the dump started.
+
+**`staging/` is the one part of the object store that comes and goes.** It
+holds files an editor has chosen in the protocol builder but not yet saved.
+Studio deletes them once they are saved, cancelled or left behind. No saved
+protocol points into `staging/`, so a copy that misses some of it loses no
+saved work, and a restored instance clears out whatever is left there on its
+own. You can leave `staging/` out of your object-store copy if your tool
+makes that easy.
 
 ## How often, and the deadline that sets it
 
@@ -98,13 +118,19 @@ daily is much the easier answer.
 
 Same order. Into a **fresh** database rather than over a live one: the schema is
 created by the dump, and restoring across an existing one is how a half-restored
-instance happens.
+instance happens. Set `.env`'s image digests to the release that took the
+backup first — when you are [rolling back an upgrade](./upgrade.md#rollback),
+the digests you replaced. The `stop` and `up` lines below find every API
+replica by name, as [the upgrade](./upgrade.md#the-sequence) does, so what it
+says about running Compose with `-f` holds here too.
+
+<!-- backup-restore start -->
 
 ```bash
 set -a && . ./.env && set +a
 
-# Stop everything that writes.
-docker compose stop api worker
+# Stop everything that writes: every API replica and the worker.
+docker compose stop $(docker compose config --services | grep '^api') worker
 
 # 1a. A fresh, empty database.
 docker compose exec -T postgres \
@@ -121,27 +147,49 @@ docker compose exec -T postgres \
 # 2. The object store.
 docker compose stop garage
 docker run --rm \
-  -v studio_garage-data:/data \
+  --volumes-from "$(docker compose ps -aq garage)" \
   -v "$PWD/backup:/backup:ro" \
-  alpine sh -c 'rm -rf /data/* && tar xzf /backup/garage-data.tar.gz -C /data'
+  alpine sh -c 'rm -rf /var/lib/garage/* && tar xzf /backup/garage-data.tar.gz -C /var/lib/garage'
 docker compose start garage
 
 # 3. The keyring.
 cp backup/studio-secrets-key secrets/studio-secrets-key
 chmod 644 secrets/studio-secrets-key   # readable by the container; secrets/ itself is 700
 
-docker compose up -d api worker
-curl https://studio.example.org/readyz
+# Start the release .env names, then reopen the instance.
+docker compose up -d web $(docker compose config --services | grep '^api') worker
+docker compose run --rm --no-deps api maintenance off
 ```
+
+<!-- backup-restore end -->
+
+Then confirm it is back:
+
+```bash
+curl https://studio.example.org/readyz
+# {"status":"ok","checks":{…}}
+```
+
+**The last line matters.** A backup taken during an upgrade — step 2 of
+[the upgrade sequence](./upgrade.md) — was taken with maintenance mode on, so
+the restored database has it on too, and the instance would stay closed, with
+`/readyz` naming maintenance mode, until something turns it off. On a backup
+taken while the instance was open, `maintenance off` changes nothing.
 
 `globals.sql` will report that roles it is creating already exist, on a host
 that has run Studio before. That is expected and not a failure.
 
-If readiness comes back with a schema complaint, the backup was taken by a
-different build from the one the images now carry: put the matching image
-digests in `.env`, or run `docker compose run --rm migrate` to bring the
-restored database forward to this build. Never restore a backup and then serve
-it with a build that refuses its fingerprint — the refusal is the protection.
+If the images `.env` names are not the release that took the backup,
+`/readyz` names the schema — `failed: the database schema is not this build’s`
+— and the instance stays closed rather than serve it. Put the matching image
+digests in `.env` and run the last two lines again, or run
+`docker compose run --rm migrate` to bring the restored database forward to
+this release. `migrate` refuses a backup taken by a newer release than the
+images, naming it; deploy that release instead.
+
+Studio's release test runs this block as written after each upgrade it
+performs, to roll that upgrade back, and fails unless the instance reopens
+holding every row it had before the upgrade.
 
 **Practise this before you need it.** A backup nobody has restored is a
 hypothesis.

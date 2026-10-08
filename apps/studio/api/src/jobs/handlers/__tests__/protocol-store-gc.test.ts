@@ -11,6 +11,7 @@ import {
 import { MaintenanceDatabase } from '../../../db/client.ts';
 import { MaintenanceScope, Transaction } from '../../../db/tenant.ts';
 import { collectLogs } from '../../../platform/__tests__/support/logs.ts';
+import { ObjectStore } from '../../../storage/object-store.ts';
 import {
   asApp,
   asMaintenance,
@@ -29,7 +30,10 @@ import {
   protocolStoreGc,
 } from '../protocol-store-gc.ts';
 
-const suiteLayer = layerJobs.pipe(Layer.provideMerge(layerDeliveryHarness));
+const suiteLayer = Layer.merge(
+  layerJobs,
+  Layer.succeed(ObjectStore, ObjectStore.absent),
+).pipe(Layer.provideMerge(layerDeliveryHarness));
 
 const PINNED_TEAM = 'gc-team-pinned';
 
@@ -264,11 +268,17 @@ describe.skipIf(!testDb)('the protocol store sweep on the native queue', () => {
 
         assert.deepStrictEqual(
           logs.messages.filter((message) =>
-            message.startsWith(`protocol-store-gc ${jobId}:`),
+            message.startsWith(`protocol-store-gc ${jobId}: manifests`),
           ),
           [
             `protocol-store-gc ${jobId}: manifests 0, sections 1, command log 0`,
           ],
+        );
+        // Its counts are the whole database's, which other suites share.
+        assert.isTrue(
+          logs.messages.some((message) =>
+            message.startsWith(`protocol-store-gc ${jobId}: staged rows`),
+          ),
         );
       }).pipe(Effect.provide(logs.layer));
     });
@@ -299,6 +309,73 @@ describe.skipIf(!testDb)('the protocol store sweep on the native queue', () => {
         assert.strictEqual(row?.state, 'failed');
         assert.match(String(row?.last_error), /must run as studio_maintenance/);
       }),
+    );
+
+    it.effect(
+      'collects staged resources when the sweep fails, then fails the job',
+      () =>
+        Effect.gen(function* () {
+          yield* clearStore;
+          const refusedTeam = `gc-team-${randomUUID()}`;
+          yield* seedSection({ teamId: refusedTeam });
+          const stagingTeam = `gc-team-${randomUUID()}`;
+          const draftId = yield* seedDraft(stagingTeam, 0);
+          const resourceId = randomUUID();
+          yield* Effect.orDie(
+            ownerRows(
+              `INSERT INTO protocol_staged_resources
+                 (team_id, draft_id, owner, edit_id, resource_id, request_id,
+                  kind, descriptor, secret_ciphertext, secret_key_id,
+                  created_at)
+               VALUES ($1, $2, 'gone', 'edit', $3, $3, 'secret', '{}'::jsonb,
+                       '\\x00'::bytea, 'key', clock_timestamp() - interval '1 hour')`,
+              [stagingTeam, draftId, resourceId],
+            ),
+          );
+
+          const name = `refuse_gc_${randomUUID().replaceAll('-', '')}`;
+          yield* Effect.orDie(
+            ownerRows(`
+              CREATE FUNCTION ${name}() RETURNS trigger AS $$
+              BEGIN
+                RAISE EXCEPTION 'section sweep refused';
+              END;
+              $$ LANGUAGE plpgsql`),
+          );
+          yield* Effect.orDie(
+            ownerRows(`
+              CREATE TRIGGER ${name}
+                BEFORE UPDATE ON sections
+                FOR EACH ROW
+                WHEN (OLD.team_id = '${refusedTeam}')
+                EXECUTE FUNCTION ${name}()`),
+          );
+
+          const jobs = yield* Jobs;
+          yield* asApp(
+            MaintenanceScope.open(jobs.enqueue('protocol-store-gc', {})),
+          );
+          const step = yield* Effect.ensuring(
+            drainWith('protocol-store-gc', protocolStoreGc),
+            Effect.orDie(
+              Effect.andThen(
+                ownerRows(`DROP TRIGGER ${name} ON sections`),
+                ownerRows(`DROP FUNCTION ${name}()`),
+              ),
+            ),
+          );
+
+          assert.strictEqual(step._tag, 'failed');
+          const [row] = yield* readJobs('protocol-store-gc');
+          assert.match(String(row?.last_error), /section sweep refused/);
+          const staged = yield* Effect.orDie(
+            ownerRows(
+              'SELECT resource_id FROM protocol_staged_resources WHERE team_id = $1',
+              [stagingTeam],
+            ),
+          );
+          assert.deepStrictEqual(staged, []);
+        }),
     );
 
     it.effect('marks a section nothing references, then deletes it', () =>

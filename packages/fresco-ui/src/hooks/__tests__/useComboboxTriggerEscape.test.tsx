@@ -113,6 +113,29 @@ describe.each(comboboxes)('$name inside a dialog', ({ trigger, control }) => {
 
 const src = join(import.meta.dirname, '../..');
 
+/**
+ * `ComboboxField` hands its remaining props to `Combobox.Root`, so a caller's
+ * `open` controlled the popup before the hook took over the open state. It
+ * still has to.
+ */
+describe('ComboboxField', () => {
+  it("keeps a caller's controlled open", async () => {
+    render(
+      <ComboboxField
+        name="translators"
+        aria-label="Translators"
+        options={[{ value: 'p1', label: 'Alice Johnson' }]}
+        value={[]}
+        open
+      />,
+    );
+
+    expect(
+      await screen.findByRole('combobox', { name: 'Translators' }),
+    ).toHaveAttribute('aria-expanded', 'true');
+  });
+});
+
 describe('a Combobox.Trigger', () => {
   /**
    * Base UI gives `Combobox.Trigger` no Escape handling of its own, so one

@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { Provider } from 'react-redux';
 
+import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import type { NodeDefinition } from '@codaco/protocol-validation';
 import {
   type EntityAttributesProperty,
@@ -155,7 +156,7 @@ type Story = StoryObj<typeof meta>;
 
 function QuickNodeFormWrapper(
   props: Omit<React.ComponentProps<typeof QuickNodeForm>, 'addNode'> & {
-    addNode?: (attributes: NcNode[EntityAttributesProperty]) => Promise<void>;
+    addNode?: (attributes: NcNode[EntityAttributesProperty]) => unknown;
   },
 ) {
   const [addedNodes, setAddedNodes] = useState<
@@ -165,9 +166,10 @@ function QuickNodeFormWrapper(
 
   const handleAddNode = async (
     attributes: NcNode[EntityAttributesProperty],
-  ) => {
+  ): Promise<FormSubmissionResult> => {
     setAddedNodes((prev) => [...prev, attributes]);
     await props.addNode?.(attributes);
+    return { success: true };
   };
 
   const handleShowForm = () => {

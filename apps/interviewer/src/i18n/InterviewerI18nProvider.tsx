@@ -9,22 +9,26 @@ import {
 import type { ReactNode } from 'react';
 
 import { PSEUDO_LOCALE } from '@codaco/app-i18n/locales';
-import { resolveAppLocale } from '@codaco/app-i18n/negotiate';
-import { AppI18nProvider } from '@codaco/app-i18n/react';
+import { AppI18nProvider, useLocaleCatalog } from '@codaco/app-i18n/react';
 
-import { interviewerCatalogs } from '../locales/catalogs';
-import {
-  interviewerDefaultLocale,
-  interviewerLocales,
-  interviewerProductionLocales,
-} from './locales';
+import { interviewerCatalogSource } from '../locales/catalogs';
+import { interviewerDefaultLocale, interviewerLocales } from './locales';
 import {
   browserLanguages,
   LOCALE_PREFERENCE_KEY,
+  negotiateLocale,
   readPreference,
 } from './preference';
 
 type LocalePreference = Readonly<{
+  /**
+   * The language on screen, which trails the requested one while a switch
+   * loads its catalog. Reporting the rendered locale keeps this in step with
+   * `useAppLocale()` and `<html lang>`, and means a component that mounts
+   * mid-switch and reads its own messages for this locale finds them already
+   * loaded rather than suspending. Code that needs the choice itself reads
+   * `preference`.
+   */
   locale: string;
   preference: string | null;
   /** What the automatic entry resolves to on this device right now. */
@@ -91,27 +95,28 @@ export function InterviewerI18nProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const negotiate = (stored: string | null) =>
-    resolveAppLocale({
-      stored,
-      requested,
-      locales: interviewerProductionLocales,
-      defaultLocale: interviewerDefaultLocale,
-    }).locale;
-  const locale =
-    preference === PSEUDO_LOCALE ? preference : negotiate(preference);
-  const automaticLocale = negotiate(null);
+  const requestedLocale =
+    preference === PSEUDO_LOCALE
+      ? preference
+      : negotiateLocale(preference, requested);
+  const automaticLocale = negotiateLocale(null, requested);
+  // main.tsx loads the startup locale before the first render, so this only
+  // suspends if that load failed (it retries here) or the preference changed
+  // in between. If the retry fails too, Interviewer runs in English and
+  // AppProviders tells the user.
+  const catalog = useLocaleCatalog(interviewerCatalogSource, requestedLocale);
 
   return (
     <AppI18nProvider
-      locale={locale}
+      locale={catalog.locale}
       locales={interviewerLocales}
-      messages={interviewerCatalogs[locale]}
+      messages={catalog.messages}
+      loadFailure={catalog.failure}
       onLocaleChange={setPreference}
     >
       <PreferenceContext.Provider
         value={{
-          locale,
+          locale: catalog.locale,
           preference,
           automaticLocale,
           saveState,
@@ -120,7 +125,7 @@ export function InterviewerI18nProvider({ children }: { children: ReactNode }) {
       >
         <DirectionProvider
           direction={
-            interviewerLocales.find((entry) => entry.locale === locale)
+            interviewerLocales.find((entry) => entry.locale === catalog.locale)
               ?.direction ?? 'ltr'
           }
         >

@@ -14,7 +14,7 @@ workflows and staging — is
 
 Seven long-running containers and two one-shots on one network. Three of them —
 the database, the object store and the rate-limit store — are swappable for an
-institution's own service by setting one variable, and the ingress is swappable
+institution's own service from `.env`, and the ingress is swappable
 by reproducing the routing table below in another proxy. See
 [swap an element](./self-host/swap.md).
 
@@ -87,8 +87,10 @@ flowchart TB
 
 The four nodes with a dashed outline are the swappable elements. `traefik` is
 the odd one out: the other three are swapped by pointing `DATABASE_URL`,
-`S3_ENDPOINT` or `REDIS_URL` elsewhere in `.env`, while the ingress is a routing
-table rather than an address, so swapping it means reproducing the table below.
+`S3_ENDPOINT` or `REDIS_URL` elsewhere in `.env` (or, for Azure Blob Storage,
+by setting `STUDIO_OBJECT_STORE=azure-blob` and the `AZURE_STORAGE_*`
+variables), while the ingress is a routing table rather than an address, so
+swapping it means reproducing the table below.
 
 `worker` publishes no port at all. Its readiness listener binds `127.0.0.1`
 inside the container so the compose healthcheck has something to ask; nothing
@@ -111,7 +113,7 @@ flowchart LR
         webrule{{"everything else, including /<br>priority 10"}}
     end
 
-    apisvc["<b>api</b> :3000"]
+    apisvc["<b>api</b> :3000<br>one server per replica"]
     websvc["<b>web</b> :80"]
 
     browser --> health
@@ -131,7 +133,15 @@ flowchart LR
 Four things this picture is drawn to make unmissable:
 
 - **`/ws` is a `Path`, not a `PathPrefix`** — it is one endpoint. Traefik
-  proxies the WebSocket upgrade with no further configuration.
+  proxies the WebSocket upgrade with no further configuration. With more than
+  one `api` replica, each upgrade is balanced to any healthy one and stays on it
+  for the life of that connection; there are no sticky sessions, because an
+  editor who reconnects to another replica finds their locks and their
+  staged files there. The replicas are the `servers` of the `api` service
+  (`traefik-api-servers` in the compose file), which carries a health check on
+  `/healthz` — whether the process is alive, not `/readyz`, so a replica that is
+  draining stays in rotation until it stops
+  ([running more than one API](./self-host/run.md#running-more-than-one-api)).
 - **`/healthz` and `/readyz` carry no middleware**, deliberately and at the
   highest priority. An upgrade script and the container runtime must read the
   real status and the named failing check; a maintenance page in front of these
