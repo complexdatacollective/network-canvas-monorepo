@@ -22,7 +22,7 @@ export type GeneticFamily = {
  * surrogates (who carried the pregnancy but gave no gamete), are not; nor is a
  * partnership.
  */
-export function isGeneticKind(kind: string): boolean {
+function isGeneticKind(kind: string): boolean {
   return kind === 'biological' || kind === 'donor';
 }
 

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import type { Gamete } from '../../../FamilyPedigree/gametes';
 import {
   buildGeneticGraph,
   type GeneticLink,
   type GeneticPerson,
-  type Gamete,
 } from '../geneticGraph';
 import { computeAutosomalRecessive } from '../patterns/autosomal';
 
