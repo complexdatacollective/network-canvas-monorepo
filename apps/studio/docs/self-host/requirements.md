@@ -118,8 +118,11 @@ Two things worth knowing before your firewall team asks:
   codes, counts, durations, versions and ids Studio mints, never names, emails,
   protocol content or participant data.
   Participants' browsers never contact PostHog: their usability events go to
-  your instance, which forwards them. A study can also be created with
-  participant analytics off.
+  your instance, which forwards them. The Studio page's content security
+  policy lets browsers connect only to your instance and to `api.mapbox.com`,
+  where a protocol's Geospatial stage and the editor's map preview load maps
+  and place search with the protocol's own Mapbox key. A study can also be
+  created with participant analytics off.
 
 ## What a swapped-in element must provide
 
