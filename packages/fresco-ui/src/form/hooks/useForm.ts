@@ -61,11 +61,23 @@ export function useForm(config: FormConfig) {
   const submitInvalidHandler = useFormStore(
     (state) => state.submitInvalidHandler,
   );
+  const isSubmitting = useFormStore((state) => state.isSubmitting);
 
   // Keep errors ref in sync with store using useEffect
   useLayoutEffect(() => {
     errorsRef.current = errors;
   }, [errors]);
+
+  /**
+   * A store reset (`ResetFormWhenClosed` runs one when its dialog closes)
+   * clears `isSubmitting`, but the submission it interrupted is still running
+   * and still holds the guard. Report it as submitting again, so the form
+   * shows busy and disabled rather than a submit control that does nothing.
+   * A layout effect, so the cleared state is never painted.
+   */
+  useLayoutEffect(() => {
+    if (submissionInFlightRef.current && !isSubmitting) setSubmitting(true);
+  }, [isSubmitting, setSubmitting]);
 
   /**
    * Run the invalid-submit handler once React has COMMITTED the errors.

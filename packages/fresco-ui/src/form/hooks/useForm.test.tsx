@@ -450,8 +450,9 @@ describe('useForm while a submission is in flight', () => {
   });
 
   // Resetting the store clears `isSubmitting`, but the submission it started
-  // is still running, so a second one must not start beside it.
-  it('ignores a submit after the form is reset while its submission is still running', async () => {
+  // is still running, so a second one must not start beside it — and the
+  // form keeps saying so, rather than offering a submit that does nothing.
+  it('stays submitting, and ignores submits, when reset while its submission is still running', async () => {
     const { onSubmit, resolveNext } = deferredSubmit();
     const { form, outsideButton } = renderHarness({ onSubmit });
 
@@ -461,15 +462,17 @@ describe('useForm while a submission is in flight', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Reset form' }));
-    expect(screen.getByTestId('submitting')).toHaveTextContent('false');
+    expect(screen.getByTestId('submitting')).toHaveTextContent('true');
+    expect(screen.getByRole('textbox', { name: 'Name' })).toBeDisabled();
 
     act(() => form.requestSubmit());
     fireEvent.click(outsideButton);
     await drainMicrotasks();
     expect(onSubmit).toHaveBeenCalledTimes(1);
 
-    // Once the original settles, the form takes the next submit.
+    // Once the original settles, the form is idle and takes the next submit.
     await resolveNext({ success: true });
+    await waitForSubmissionToFinish();
     act(() => form.requestSubmit());
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledTimes(2);

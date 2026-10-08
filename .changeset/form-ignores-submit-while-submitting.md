@@ -10,4 +10,7 @@ button that is not `SubmitButton`, or Enter in an input that is not a field.
 Each one validated the form and called `onSubmit` again, saving the same
 values twice. The ignored submit is still cancelled, so the page never
 navigates. Once the submission finishes, whether it succeeds, returns errors,
-throws or fails validation, the form accepts the next submit.
+throws or fails validation, the form accepts the next submit. A form reset
+while its submission is still running, as `ResetFormWhenClosed` does when a
+dialog closes, stays busy and disabled until that submission finishes, rather
+than showing a submit button that does nothing.
