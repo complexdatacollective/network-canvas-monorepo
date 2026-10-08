@@ -14,6 +14,7 @@ import type {
   CompletedAction,
   FinishHandler,
   InterviewPayload,
+  ProtocolLocaleChangeHandler,
 } from '../contract/types';
 import Shell from '../Shell';
 
@@ -292,5 +293,138 @@ describe('Shell completed state', () => {
         .querySelector('main')
         ?.style.getPropertyValue('--interview-text-scale'),
     ).toBe('1.2');
+  });
+
+  // Exports read the language an interview was taken in. Whoever opens a
+  // finished one later sees it in their own language, but that is never
+  // written back over the recorded one.
+  describe('the recorded language of a finished interview', () => {
+    const bilingual = (finished: boolean, locale: string): InterviewPayload => {
+      const payload = makePayload(
+        finished ? { finishStageId: finishStage.id } : null,
+      );
+      return {
+        session: {
+          ...payload.session,
+          locale,
+          localeOptions: [getLocaleMetadata('en'), getLocaleMetadata('es')],
+        },
+        protocol: {
+          ...payload.protocol,
+          localization: { defaultLocale: 'en', locales: ['en', 'es'] },
+          stages: [
+            information,
+            {
+              ...finishStage,
+              title: { ...finishStage.title, es: 'Todo *listo*' },
+              content: { ...finishStage.content, es: 'Gracias.' },
+            },
+          ],
+        },
+      };
+    };
+
+    const shell = ({
+      payload,
+      requestedLocales,
+      onProtocolLocaleChange,
+      onFinish = () => Promise.resolve(),
+    }: {
+      payload: InterviewPayload;
+      requestedLocales: string[];
+      onProtocolLocaleChange: ProtocolLocaleChangeHandler;
+      onFinish?: FinishHandler;
+    }) => (
+      <Shell
+        payload={payload}
+        currentStep={1}
+        onStepChange={() => undefined}
+        onSync={() => Promise.resolve()}
+        onProtocolLocaleChange={onProtocolLocaleChange}
+        requestedLocales={requestedLocales}
+        onFinish={onFinish}
+        onRequestAsset={() => Promise.resolve('')}
+        analytics={{ installationId: 'test', hostApp: 'test' }}
+        disableAnalytics
+      />
+    );
+
+    it('is reported while the interview is under way', async () => {
+      const onProtocolLocaleChange = vi
+        .fn<ProtocolLocaleChangeHandler>()
+        .mockResolvedValue(undefined);
+      render(
+        shell({
+          payload: bilingual(false, 'es'),
+          requestedLocales: ['en'],
+          onProtocolLocaleChange,
+        }),
+        { wrapper: WithoutMotion },
+      );
+      await waitFor(() =>
+        expect(onProtocolLocaleChange).toHaveBeenCalledWith(
+          'completed-session',
+          { locale: 'en', localePreference: null },
+        ),
+      );
+    });
+
+    it('is not overwritten by opening the interview finished in another language', async () => {
+      const onProtocolLocaleChange = vi
+        .fn<ProtocolLocaleChangeHandler>()
+        .mockResolvedValue(undefined);
+      render(
+        shell({
+          payload: bilingual(true, 'es'),
+          requestedLocales: ['en'],
+          onProtocolLocaleChange,
+        }),
+        { wrapper: WithoutMotion },
+      );
+      // Shown in the language of whoever opened it.
+      expect(
+        await screen.findByRole('heading', { name: 'All done' }),
+      ).toBeInTheDocument();
+      expect(screen.getByText(NOTICE)).toBeInTheDocument();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(onProtocolLocaleChange).not.toHaveBeenCalled();
+    });
+
+    it('is not overwritten once the interview is finished here', async () => {
+      const onProtocolLocaleChange = vi
+        .fn<ProtocolLocaleChangeHandler>()
+        .mockResolvedValue(undefined);
+      // The same payload throughout: a new one is a new interview.
+      const payload = bilingual(false, 'en');
+      const { rerender } = render(
+        shell({
+          payload,
+          requestedLocales: ['en'],
+          onProtocolLocaleChange,
+        }),
+        { wrapper: WithoutMotion },
+      );
+      const user = userEvent.setup();
+      await user.click(await screen.findByRole('button', { name: 'Finish' }));
+      const dialog = await screen.findByRole('dialog');
+      await user.click(
+        within(dialog).getByRole('button', { name: 'Finish Interview' }),
+      );
+      await waitFor(() => expect(screen.queryByText(NOTICE)).not.toBeNull());
+
+      rerender(
+        shell({
+          payload,
+          requestedLocales: ['es'],
+          onProtocolLocaleChange,
+        }),
+      );
+
+      expect(
+        await screen.findByRole('heading', { name: 'Todo listo' }),
+      ).toBeInTheDocument();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(onProtocolLocaleChange).not.toHaveBeenCalled();
+    });
   });
 });

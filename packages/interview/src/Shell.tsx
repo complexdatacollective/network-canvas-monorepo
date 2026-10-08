@@ -788,6 +788,8 @@ const Shell = ({
                   key={payload.session.id}
                   initialCompletion={initialCompletion}
                   completedAction={completedAction}
+                  // A finished interview never records a language change.
+                  onComplete={reduxStore.markFinished}
                 >
                   <CurrentStepProvider
                     currentStep={reviewEntry.currentStep}

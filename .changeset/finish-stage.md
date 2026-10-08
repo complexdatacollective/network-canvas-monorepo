@@ -58,6 +58,12 @@ ended early. That outcome is saved with each interview and exported.
   with no way back into the interview. A host can add one action to it with
   the new `completedAction` prop. Review mode stops before the finish stage,
   and the stages menu no longer lists finish stages.
+- A finished interview is shown in the language of whoever opens it, but
+  never reports a language change: `onProtocolLocaleChange` is not called once
+  the interview is finished, so the language it was taken in, which exports
+  read, is kept.
+- A finish stage with no heading or text, which only an Architect preview of a
+  protocol still being written can have, shows the Finish button alone.
 - Skip logic that skips to the finish goes to the first finish stage after the
   stage that owns the rule.
 

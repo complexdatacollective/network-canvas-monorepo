@@ -45,10 +45,13 @@ export const store = (
   const { middleware: syncMiddleware, flush } = createSyncMiddleware({
     onSync: options.onSync,
   });
-  const { middleware: localeChangeMiddleware, settled: localeChangesSettled } =
-    createLocaleChangeMiddleware({
-      onProtocolLocaleChange: options.onProtocolLocaleChange,
-    });
+  const {
+    middleware: localeChangeMiddleware,
+    settled: localeChangesSettled,
+    markFinished,
+  } = createLocaleChangeMiddleware({
+    onProtocolLocaleChange: options.onProtocolLocaleChange,
+  });
   const {
     middleware: writesInFlightMiddleware,
     writesSettled,
@@ -104,7 +107,8 @@ export const store = (
         protocol: protocolPayload,
       },
     }),
-    { flushSync, writesSettled, trackWrite },
+    // `markFinished` is called once the host has recorded the finish.
+    { flushSync, writesSettled, trackWrite, markFinished },
   );
 };
 
