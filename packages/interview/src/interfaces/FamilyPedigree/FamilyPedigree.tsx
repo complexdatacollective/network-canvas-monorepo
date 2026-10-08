@@ -111,7 +111,7 @@ import {
   missingDetailsFor,
   type PedigreeConfig,
   pedigreeConfigFromStage,
-  planAddRelative,
+  planAdditionUnder,
   planConnection,
   type PlannedLink,
   nameFingerprint,
@@ -148,10 +148,6 @@ type PanelState = {
   /** Changes for every opening, so the form starts fresh. */
   key: string;
   mode: PersonFormMode;
-  /** Adding: ids for the new person (first) and any unnamed parents their
-   * relationship needs, fixed for the opening so the person drawn while the
-   * form is filled in is the one added. */
-  ids: string[];
 } | null;
 
 /** The attributes recording a link. */
@@ -173,18 +169,14 @@ const planAddition = (
   ids: readonly string[],
   details: PersonDraft['details'],
   request: PersonDraft['request'],
-) => {
-  let next = 1;
-  return planAddRelative({
+) =>
+  planAdditionUnder(ids, {
     family,
     anchorId,
-    newPersonId: ids[0] ?? uuid(),
     details,
     request,
-    createId: () => ids[next++] ?? uuid(),
     sexAttribute: config.sexAssignedAtBirthAttribute,
   });
-};
 
 const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const intl = useAppIntl();
@@ -301,7 +293,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // opens, as the form stands, and only recorded when the participant adds
   // them. `shown` is the family drawn; everything else reads `family`.
   const [draft, setDraft] = useState<
-    (PersonDraft & { anchorId: string; ids: string[] }) | null
+    (PersonDraft & { anchorId: string; ids: readonly string[] }) | null
   >(null);
   const shown = useMemo(() => {
     if (!draft) return family;
@@ -435,7 +427,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     ? null
     : panel.mode.kind === 'edit'
       ? panel.mode.person.id
-      : (panel.ids[0] ?? null);
+      : (panel.mode.ids[0] ?? null);
 
   // The connect tool links two people already shown, and the disconnect tool
   // takes such a link away: the first person selected waits (`linkingId`)
@@ -728,8 +720,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     setPanel({
       open: true,
       key: uuid(),
-      mode: { kind: 'add', relation, anchor },
-      ids,
+      mode: { kind: 'add', relation, anchor, ids },
     });
   };
 
@@ -1027,7 +1018,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         missing: missingDetailsFor(person, requiredFormVariables, config),
         unavailable,
       },
-      ids: [],
     });
   };
 
@@ -1042,7 +1032,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   const handleDraftChange = (next: PersonDraft) => {
     if (!panel?.open || panel.mode.kind !== 'add') return;
-    setDraft({ ...next, anchorId: panel.mode.anchor.id, ids: panel.ids });
+    setDraft({
+      ...next,
+      anchorId: panel.mode.anchor.id,
+      ids: panel.mode.ids,
+    });
   };
 
   // Keyboard focus shows the menu; focus from a click (or returned there by
@@ -1314,7 +1308,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       family,
       config,
       mode.anchor.id,
-      panel.ids,
+      mode.ids,
       result.set,
       result.request,
     );

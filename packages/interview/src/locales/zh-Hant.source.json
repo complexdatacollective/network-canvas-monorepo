@@ -20,6 +20,7 @@
   "interview.familyPedigree.cancel": "Cancel",
   "interview.familyPedigree.canvasLabel": "Your family",
   "interview.familyPedigree.carriedPregnancyLabel": "Did this parent carry the pregnancy?",
+  "interview.familyPedigree.carriedSiblingsPregnancyLabel": "{count, plural, =1 {{isYou, select, true {Was this parent pregnant with you?} other {Was this parent pregnant with “{name}”?}}} other {Was this parent pregnant with each of the # people chosen above who have nobody recorded as having carried them?}}",
   "interview.familyPedigree.carrierLabel": "Who carried the pregnancy?",
   "interview.familyPedigree.carrierUnknown": "Someone else, or I don’t know",
   "interview.familyPedigree.childKind.adoptive": "An adopted child",
