@@ -217,6 +217,19 @@ export const suppliedOptionLabel = (
 };
 
 /**
+ * The label Network Canvas writes for one value of a set in a protocol
+ * language: the language's supplied label, or the English one where the
+ * language has none.
+ */
+const seededOptionLabel = (
+  set: SuppliedOptionLabelSet,
+  value: string,
+  locale: LocaleTag,
+): string | undefined =>
+  suppliedOptionLabel(set, value, locale) ??
+  suppliedOptionLabel(set, value, 'en');
+
+/**
  * The label for one value of a set in each of the protocol's languages that
  * has a supplied label. A protocol written only in languages Network Canvas
  * supplies none for still needs one translation, so it gets the English label
@@ -235,7 +248,8 @@ export const suppliedOptionLabels = (
   if (Object.keys(label).length > 0) return label;
   return {
     [localization.defaultLocale]:
-      suppliedOptionLabel(set, value, 'en') ?? escapeMessageText(value),
+      seededOptionLabel(set, value, localization.defaultLocale) ??
+      escapeMessageText(value),
   };
 };
 
@@ -247,8 +261,9 @@ const labelIn = (option: LabelledOption, locale: LocaleTag) =>
     : undefined;
 
 /**
- * Whether every option's label in `locale` is still exactly the supplied
- * label for its value: the researcher has not reworded any of them.
+ * Whether every option's label in `locale` is still exactly the label Network
+ * Canvas wrote for its value: the supplied label, or the English one in a
+ * language that has none. The researcher has not reworded any of them.
  */
 export const hasSuppliedOptionLabels = (
   set: SuppliedOptionLabelSet,
@@ -258,7 +273,7 @@ export const hasSuppliedOptionLabels = (
   options.every((option) => {
     const text =
       typeof option.value === 'string'
-        ? suppliedOptionLabel(set, option.value, locale)
+        ? seededOptionLabel(set, option.value, locale)
         : undefined;
     return text !== undefined && labelIn(option, locale) === text;
   });

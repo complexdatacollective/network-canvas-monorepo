@@ -107,6 +107,28 @@ describe('supplied Family Pedigree option labels', () => {
     );
   });
 
+  it('fills in a new language while a default language with no supplied labels still has the English ones', () => {
+    const options = PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
+      value,
+      label: suppliedOptionLabels('pedigreeSexAssignedAtBirth', value, {
+        defaultLocale: 'hu',
+        locales: ['hu'],
+      }),
+    }));
+    const filled = withSuppliedOptionLabelTranslation(
+      'pedigreeSexAssignedAtBirth',
+      options,
+      'de',
+      'hu',
+    );
+    expect(filled.map((option) => option.label)).toEqual(
+      PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
+        hu: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'en'),
+        de: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'de'),
+      })),
+    );
+  });
+
   it('leaves the labels alone once the researcher has reworded one', () => {
     const options = sexOptions('en').map((option) =>
       option.value === 'intersex'
