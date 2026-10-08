@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { MigrationResultInvalidError } from '../../../migration/errors.ts';
 import {
   getMigrationInfo,
   migrateProtocol,
@@ -232,6 +233,20 @@ const nodeRule = (id: string, attribute: string, value: string | number) => ({
 const nameRule = nodeRule('rule-name', 'name', 'Alice');
 const ageRule = nodeRule('rule-age', 'age', 18);
 
+const presenceRule = (operator: 'EXISTS' | 'NOT_EXISTS') => ({
+  type: 'node' as const,
+  id: `rule-${operator}`,
+  options: { type: 'person', attribute: 'name', operator },
+});
+
+// The name generator's panel over the interview's own network.
+const networkPanel = (filter: object) => ({
+  id: 'panel-network',
+  title: localized('People already named'),
+  dataSource: 'existing',
+  filter,
+});
+
 // A protocol with an encrypted `person.name`, and rules on it in the name
 // generator's skip logic, both of its panels and the sociogram's filter.
 const protocolWithRulesOnEncryptedName = (
@@ -254,12 +269,7 @@ const protocolWithRulesOnEncryptedName = (
         ...nameGenerator,
         skipLogic: { action: 'SKIP', filter: { rules: [nameRule] } },
         panels: [
-          {
-            id: 'panel-network',
-            title: localized('People already named'),
-            dataSource: 'existing',
-            filter: { join: 'AND', rules: [nameRule, ageRule] },
-          },
+          networkPanel({ join: 'AND', rules: [nameRule, ageRule] }),
           {
             id: 'panel-external',
             title: localized('People from before'),
@@ -309,11 +319,90 @@ describe('Migrating rules on encrypted attributes from schema 8 to 9', () => {
     expect(sociogram).toMatchObject({ filter: { rules: [nameRule] } });
   });
 
+  // Encryption turns an answer into another string and leaves an unanswered
+  // attribute without a value, so these rules read the same under schema 8.
+  it('keeps rules that only ask whether the encrypted attribute is answered', () => {
+    const protocol = protocolWithRulesOnEncryptedName({
+      encryptedVariables: true,
+    });
+    const [nameGenerator, sociogram] = protocol.stages;
+    const answered = presenceRule('EXISTS');
+    const unanswered = presenceRule('NOT_EXISTS');
+
+    const migrated = migrateProtocol(
+      asSchema8Protocol({
+        ...protocol,
+        stages: [
+          {
+            ...nameGenerator,
+            skipLogic: { action: 'SKIP', filter: { rules: [answered] } },
+            panels: [
+              networkPanel({ join: 'AND', rules: [nameRule, unanswered] }),
+            ],
+          },
+          {
+            ...sociogram,
+            filter: { join: 'OR', rules: [answered, nameRule] },
+          },
+        ],
+      }),
+      9,
+    );
+    const [migratedNameGenerator, migratedSociogram] = migrated.stages;
+
+    expect(migratedNameGenerator).toMatchObject({
+      skipLogic: { action: 'SKIP', filter: { rules: [answered] } },
+      panels: [{ filter: { join: 'AND', rules: [unanswered] } }],
+    });
+    expect(migratedSociogram).toMatchObject({
+      filter: { join: 'OR', rules: [answered] },
+    });
+  });
+
+  // Schema 8 already refused a filter with no rules, so one the migration did
+  // not empty is left for validation to report rather than removed unseen.
+  it.each([
+    ['on', { encryptedVariables: true }],
+    ['off', undefined],
+  ])(
+    'leaves a filter or skip logic that already had no rules, with the experiment %s',
+    (_, experiments) => {
+      const protocol = protocolWithRulesOnEncryptedName(experiments);
+      const [nameGenerator, sociogram] = protocol.stages;
+      const document = asSchema8Protocol({
+        ...protocol,
+        stages: [
+          {
+            ...nameGenerator,
+            skipLogic: { action: 'SKIP', filter: { rules: [] } },
+            panels: [networkPanel({ rules: [] })],
+          },
+          { ...sociogram, filter: { rules: [] } },
+        ],
+      });
+
+      expect(
+        migrationV8toV9.migrate(ProtocolSchemaV8.parse(document), {}),
+      ).toMatchObject({
+        stages: [
+          {
+            skipLogic: { filter: { rules: [] } },
+            panels: [{ filter: { rules: [] } }],
+          },
+          { filter: { rules: [] } },
+        ],
+      });
+      expect(() => migrateProtocol(document, 9)).toThrow(
+        MigrationResultInvalidError,
+      );
+    },
+  );
+
   it('says so in the migration notes', () => {
     const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
 
     expect(note?.notes).toContain(
-      'Skip logic and filters can no longer use an encrypted attribute.',
+      'Skip logic and filters can no longer compare the answers to an encrypted attribute.',
     );
   });
 });

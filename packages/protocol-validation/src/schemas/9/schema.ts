@@ -18,7 +18,10 @@ import {
   getVariablesForSubject,
   variableExists,
 } from '../../utils/validation-helpers.ts';
-import { OperatorsByVariableType } from './filters/index.ts';
+import {
+  OperatorsByVariableType,
+  TypeLevelOperators,
+} from './filters/index.ts';
 
 // Re-export all the split schemas
 export * from './assets/index.ts';
@@ -71,9 +74,9 @@ type IssueReporter = (issue: {
 
 /**
  * Validate a set of filter rules against the CODEBOOK: entity and attribute
- * existence, that the attribute is not encrypted, and operator validity for
- * the attribute's variable type. Shared between an inline stage.filter,
- * skipLogic.filter and panel filters.
+ * existence, that a rule on an encrypted attribute only checks whether it is
+ * answered, and operator validity for the attribute's variable type. Shared
+ * between an inline stage.filter, skipLogic.filter and panel filters.
  *
  * What shape a rule's operand may have needs no codebook, so it is not asked
  * here: `filterRuleSchema` holds every rule's value to its operator's operand
@@ -86,7 +89,7 @@ type IssueReporter = (issue: {
  *
  * `readsInterview` is false for an external-data panel, whose rules read the
  * researcher's own rows. Those rows are never encrypted, so a rule there may
- * name an encrypted attribute.
+ * compare an encrypted attribute's values.
  */
 const validateFilterRules = (
   rules: FilterRule[],
@@ -146,17 +149,22 @@ const validateFilterRules = (
     }
 
     // An encrypted answer is stored as ciphertext that only the participant's
-    // passphrase opens. Rules are evaluated without it, so a rule on one would
-    // compare the ciphertext, and could reveal the answer through what it
-    // skips or lists.
+    // passphrase opens. Rules are evaluated without it, so a rule comparing
+    // one would compare the ciphertext, and could reveal the answer through
+    // what it skips or lists. Whether it was answered at all survives
+    // encryption: an answer is encrypted into another string, and an
+    // unanswered attribute is stored as no value.
     const variable =
       readsInterview && hasAttribute
         ? getFilterRuleVariable(rule, codebook)
         : undefined;
-    if (variable?.encrypted) {
+    if (
+      variable?.encrypted &&
+      !TypeLevelOperators.safeParse(rule.options.operator).success
+    ) {
       addIssue({
-        message: `Attribute "${variable.name}" is encrypted, so it cannot be used in a rule: rules are checked without the participant's passphrase, so they cannot read its answers.`,
-        path: [...rulePath, 'options', 'attribute'],
+        message: `Attribute "${variable.name}" is encrypted, so a rule can only check whether it is answered (${TypeLevelOperators.options.join(' or ')}): rules are checked without the participant's passphrase, so they cannot compare its answers.`,
+        path: [...rulePath, 'options', 'operator'],
       });
     }
 

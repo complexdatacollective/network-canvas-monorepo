@@ -1,25 +1,43 @@
 import { describe, expect, it } from 'vitest';
 
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
+import {
+  type FilterOperator,
+  TextOperators,
+  TypeLevelOperators,
+} from '../filters/filter.ts';
 import ProtocolSchemaV9 from '../schema.ts';
 
-const ruleOn = (attribute: string) => ({
+const isPresence = (operator: FilterOperator) =>
+  TypeLevelOperators.safeParse(operator).success;
+
+const COMPARING_TEXT_OPERATORS = TextOperators.filter(
+  (operator) => !isPresence(operator),
+);
+
+const ruleOn = (attribute: string, operator: FilterOperator = 'EXACTLY') => ({
   type: 'node' as const,
   id: `rule-${attribute}`,
   options: {
     type: 'person',
     attribute,
-    operator: 'EXACTLY' as const,
-    value: 'Alice',
+    operator,
+    ...(isPresence(operator) ? {} : { value: 'Alice' }),
   },
 });
 
-const filterOn = (attribute: string) => ({ rules: [ruleOn(attribute)] });
+const filterOn = (attribute: string, operator?: FilterOperator) => ({
+  rules: [ruleOn(attribute, operator)],
+});
 
 // The base protocol, with `person.name` encrypted or not, and a rule on
 // `attribute` in the name generator's skip logic, the sociogram's node filter
 // and a name generator panel's filter.
-const protocolWithRulesOn = (attribute: string, encrypted: boolean) => {
+const protocolWithRulesOn = (
+  attribute: string,
+  encrypted: boolean,
+  operator?: FilterOperator,
+) => {
   const base = createBaseProtocol();
   const { person } = base.codebook.node;
   const [nameGenerator, sociogram] = base.stages;
@@ -41,17 +59,17 @@ const protocolWithRulesOn = (attribute: string, encrypted: boolean) => {
     stages: [
       {
         ...nameGenerator,
-        skipLogic: { action: 'SKIP', filter: filterOn(attribute) },
+        skipLogic: { action: 'SKIP', filter: filterOn(attribute, operator) },
         panels: [
           {
             id: 'panel-1',
             title: localized('People already named'),
             dataSource: 'existing',
-            filter: filterOn(attribute),
+            filter: filterOn(attribute, operator),
           },
         ],
       },
-      { ...sociogram, filter: filterOn(attribute) },
+      { ...sociogram, filter: filterOn(attribute, operator) },
     ],
   };
 };
@@ -64,17 +82,29 @@ const issuesOf = (protocol: unknown) =>
 const refusal = (path: string) => ({
   path,
   message:
-    'Attribute "Name" is encrypted, so it cannot be used in a rule: rules are checked without the participant\'s passphrase, so they cannot read its answers.',
+    'Attribute "Name" is encrypted, so a rule can only check whether it is answered (EXISTS or NOT_EXISTS): rules are checked without the participant\'s passphrase, so they cannot compare its answers.',
 });
 
 describe('Schema 9 rules on encrypted attributes', () => {
-  it('refuses a rule on an encrypted attribute in skip logic, a stage filter and a panel filter', () => {
-    expect(issuesOf(protocolWithRulesOn('name', true))).toEqual([
-      refusal('stages.0.skipLogic.filter.rules.0.options.attribute'),
-      refusal('stages.0.panels.0.filter.rules.0.options.attribute'),
-      refusal('stages.1.filter.rules.0.options.attribute'),
-    ]);
-  });
+  it.each(COMPARING_TEXT_OPERATORS)(
+    'refuses a rule comparing an encrypted attribute with %s in skip logic, a stage filter and a panel filter',
+    (operator) => {
+      expect(issuesOf(protocolWithRulesOn('name', true, operator))).toEqual([
+        refusal('stages.0.skipLogic.filter.rules.0.options.operator'),
+        refusal('stages.0.panels.0.filter.rules.0.options.operator'),
+        refusal('stages.1.filter.rules.0.options.operator'),
+      ]);
+    },
+  );
+
+  // Encryption turns an answer into another string and leaves an unanswered
+  // attribute without a value, so whether it was answered is still readable.
+  it.each(TypeLevelOperators.options)(
+    'accepts a rule asking whether an encrypted attribute is answered with %s',
+    (operator) => {
+      expect(issuesOf(protocolWithRulesOn('name', true, operator))).toEqual([]);
+    },
+  );
 
   it('accepts the same rules when the attribute is not encrypted', () => {
     expect(issuesOf(protocolWithRulesOn('name', false))).toEqual([]);

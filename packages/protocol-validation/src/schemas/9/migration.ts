@@ -5,6 +5,7 @@ import {
   collectLocalizedStringSites,
   type LocalizedStringSite,
 } from '../../utils/collectLocalizedStrings.ts';
+import { TypeLevelOperators } from './filters/filter.ts';
 import ProtocolSchemaV9 from './schema.ts';
 
 // Schema 8 never recorded the language its copy was written in.
@@ -109,51 +110,56 @@ const subjectVariables = (
     : {};
 };
 
-const isEncryptedNodeAttribute = (codebook: unknown, rule: unknown) => {
+// Whether a rule compares the value of an encrypted node attribute. A rule
+// that only asks whether the attribute is answered still works on one.
+const comparesEncryptedAttribute = (codebook: unknown, rule: unknown) => {
   if (!isRecord(rule) || rule.type !== 'node' || !isRecord(rule.options)) {
     return false;
   }
-  const { type, attribute } = rule.options;
+  const { type, attribute, operator } = rule.options;
   if (typeof type !== 'string' || typeof attribute !== 'string') return false;
+  if (TypeLevelOperators.safeParse(operator).success) return false;
   const variables = subjectVariables(codebook, 'node', { type });
   const variable = variables[attribute];
   return isRecord(variable) && variable.encrypted === true;
 };
 
-// Whether a filter is left with no rules once those on encrypted attributes
-// are gone.
-const withoutEncryptedRules = (codebook: unknown, filter: unknown) => {
+// Removes a filter's rules that compare an encrypted attribute, and says
+// whether that left it with none. A filter that already had no rules is not
+// this step's to remove.
+const emptiedOfEncryptedComparisons = (codebook: unknown, filter: unknown) => {
   if (!isRecord(filter) || !Array.isArray(filter.rules)) return false;
   const rules = filter.rules.filter(
-    (rule: unknown) => !isEncryptedNodeAttribute(codebook, rule),
+    (rule: unknown) => !comparesEncryptedAttribute(codebook, rule),
   );
+  if (rules.length === filter.rules.length) return false;
   filter.rules = rules;
   return rules.length === 0;
 };
 
-// Schema 9 refuses a rule on an encrypted attribute: rules are checked
-// without the participant's passphrase, so under schema 8 such a rule only
-// ever saw the ciphertext. A filter left with no rules goes, and so does
-// skip logic left with none. An external-data panel reads the researcher's
-// own unencrypted rows, so its rules stay.
-const removeEncryptedAttributeRules = (protocol: unknown) => {
+// Schema 9 refuses a rule that compares an encrypted attribute's value: rules
+// are checked without the participant's passphrase, so under schema 8 such a
+// rule only ever compared the ciphertext. A filter this leaves with no rules
+// goes, and so does skip logic left with none. An external-data panel reads
+// the researcher's own unencrypted rows, so its rules stay.
+const removeEncryptedAttributeComparisons = (protocol: unknown) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
   const { codebook } = protocol;
   for (const stage of protocol.stages) {
     if (!isRecord(stage)) continue;
-    if (withoutEncryptedRules(codebook, stage.filter)) {
+    if (emptiedOfEncryptedComparisons(codebook, stage.filter)) {
       Reflect.deleteProperty(stage, 'filter');
     }
     if (
       isRecord(stage.skipLogic) &&
-      withoutEncryptedRules(codebook, stage.skipLogic.filter)
+      emptiedOfEncryptedComparisons(codebook, stage.skipLogic.filter)
     ) {
       Reflect.deleteProperty(stage, 'skipLogic');
     }
     if (!Array.isArray(stage.panels)) continue;
     for (const panel of stage.panels) {
       if (!isRecord(panel) || panel.dataSource !== 'existing') continue;
-      if (withoutEncryptedRules(codebook, panel.filter)) {
+      if (emptiedOfEncryptedComparisons(codebook, panel.filter)) {
         Reflect.deleteProperty(panel, 'filter');
       }
     }
@@ -278,14 +284,14 @@ const migrationV8toV9 = createMigration({
 - Text that participants see is now marked as written in "Unspecified language", because older protocols do not record which language they use. You can change it to the language it is actually written in on the Languages page in Architect.
 - Encrypted attributes are no longer experimental: the Anonymisation interface is always available, and an attribute marked as encrypted is always encrypted. If this protocol marked attributes as encrypted without turning on the experimental "Encrypted Attributes" feature, those attributes are no longer marked, so they keep being collected without encryption.
 - If an Anonymisation stage required a minimum passphrase length longer than its maximum, no participant could choose a passphrase, so both lengths are removed and the default minimum length applies.
-- Skip logic and filters can no longer use an encrypted attribute. Rules are checked without the participant's passphrase, so under schema 8 a rule on an encrypted attribute only ever saw the encrypted text, never the answer, and never worked. These rules are removed, along with any filter or skip logic left with no rules. Check the stages that used them, because the rules that remain may now match differently. Rules in a panel that lists people from an external data file are kept, because that data is not encrypted.`,
+- Skip logic and filters can no longer compare the answers to an encrypted attribute. Rules are checked without the participant's passphrase, so under schema 8 a rule like this only ever compared the encrypted text, never the answer. These rules are removed. Rules that only check whether an encrypted attribute is answered still work, so they are kept. Skip logic left with no rules is removed, so its stage now always appears: a stage that was shown only when a removed rule matched may never have appeared under schema 8. A filter left with no rules is removed, so it no longer limits what its stage or panel shows. Where other rules remain, they may now match differently: if all rules had to match, they now match at least as often as before; if any one rule could match, at most as often. Check the stages that used the removed rules. Rules in a panel that lists people from an external data file are kept, because that data is not encrypted.`,
   migrate: ({ experiments, ...doc }) => {
     const migrated = structuredClone(doc);
     if (!isRecord(experiments) || experiments.encryptedVariables !== true) {
       removeEncryptedMarks(migrated.codebook);
     }
     removeContradictoryPassphraseRules(migrated);
-    removeEncryptedAttributeRules(migrated);
+    removeEncryptedAttributeComparisons(migrated);
     addCodebookLabels(migrated.codebook);
     addHighlightLabels(migrated);
     addComposerCaptions(migrated);
