@@ -16,6 +16,7 @@ import {
   resumeUnstartedPedigreeAtIntroduction,
 } from './family-pedigree-session-migration.ts';
 import { TypeLevelOperators } from './filters/filter.ts';
+import { ProtocolLocalizationSchema } from './localized-string.ts';
 import ProtocolSchemaV9 from './schema.ts';
 
 // Schema 8 never recorded the language its copy was written in, and a schema 9
@@ -26,9 +27,18 @@ const DEFAULT_LOCALE = 'en';
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const inDefaultLocale = (text: string) => ({
-  [DEFAULT_LOCALE]: escapeMessageText(text),
-});
+/**
+ * The languages the migrated protocol declares. A document already written in
+ * schema 9 form keeps its own: Fresco's deploy normalization re-runs this
+ * migration over rows stored at schema 9, and declaring them English would
+ * leave their text in languages the protocol no longer declares.
+ */
+const localizationOf = (doc: Record<string, unknown>) => {
+  const declared = ProtocolLocalizationSchema.safeParse(doc.localization);
+  return declared.success
+    ? declared.data
+    : { defaultLocale: DEFAULT_LOCALE, locales: [DEFAULT_LOCALE] };
+};
 
 // Under schema 8 the runtime encrypted an attribute marked `encrypted` only
 // while `experiments.encryptedVariables` was on; otherwise it stored the
@@ -264,15 +274,24 @@ type SiteChange =
  * Composer scale, whose parameter record accepted any value. The interview
  * only ever rendered string end labels there, so any other value is dropped.
  * A non-string anywhere else was already invalid and is left for validation.
+ *
+ * Text that is already localized is kept, so a document written in schema 9
+ * form comes through with its text in the languages it declares. A string in
+ * such a document is recorded in its default language.
  */
-const localizeSite = (site: LocalizedStringSite): SiteChange => {
+const localizeSite = (
+  site: LocalizedStringSite,
+  defaultLocale: string,
+): SiteChange => {
   if (typeof site.value === 'string') {
-    const localized = inDefaultLocale(site.value);
+    const localized = { [defaultLocale]: escapeMessageText(site.value) };
     if (site.schema.safeParse(localized).success || !site.optional) {
       return { kind: 'set', value: localized };
     }
     return { kind: 'remove' };
   }
+  // Text already localized, in a document written in schema 9 form.
+  if (site.schema.safeParse(site.value).success) return { kind: 'keep' };
   return site.looseContainer && site.optional
     ? { kind: 'remove' }
     : { kind: 'keep' };
@@ -351,6 +370,7 @@ const migrationV8toV9 = createMigration({
 - A Family Pedigree cannot be converted if two of its answers use the same attribute: two nomination prompts, a nomination prompt and an additional person field, or the name and another answer. Each now needs an attribute of its own. Give each its own attribute in the version of Architect that made the protocol, then upgrade it.`,
   migrate: ({ experiments, ...doc }) => {
     const migrated = structuredClone(doc);
+    const localization = localizationOf(migrated);
     if (!isRecord(experiments) || experiments.encryptedVariables !== true) {
       removeEncryptedMarks(migrated.codebook);
     }
@@ -373,7 +393,7 @@ const migrationV8toV9 = createMigration({
     )) {
       const key = site.path.at(-1);
       if (key === undefined) continue;
-      const change = localizeSite(site);
+      const change = localizeSite(site, localization.defaultLocale);
       if (change.kind === 'keep') continue;
       const container = containerAt(migrated, site.path.slice(0, -1));
       if (change.kind === 'set') Reflect.set(container, key, change.value);
@@ -386,10 +406,7 @@ const migrationV8toV9 = createMigration({
         experiments: withoutEncryptedVariables(experiments),
       }),
       schemaVersion: 9 as const,
-      localization: {
-        defaultLocale: DEFAULT_LOCALE,
-        locales: [DEFAULT_LOCALE],
-      },
+      localization,
     };
   },
   // A pedigree's introduction screen becomes a stage of its own, which moves
