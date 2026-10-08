@@ -1,6 +1,7 @@
 import { escapeMarkdownText } from '../../localization/markdownText.ts';
 import { escapeMessageText } from '../../localization/messageSyntax.ts';
 import { createMigration } from '../../migration/index.ts';
+import { remapStageIndices } from '../../migration/session.ts';
 import {
   collectLocalizedStringSites,
   type LocalizedStringSite,
@@ -9,6 +10,7 @@ import {
   migrateFamilyPedigreeStages,
   migrateNarrativePedigreeStages,
 } from './family-pedigree-migration.ts';
+import { migrateFamilyPedigreeSessionRecords } from './family-pedigree-session-migration.ts';
 import ProtocolSchemaV9 from './schema.ts';
 
 // Schema 8 never recorded the language its copy was written in.
@@ -223,6 +225,17 @@ const migrationV8toV9 = createMigration({
         locales: [UNDETERMINED_LOCALE],
       },
     };
+  },
+  // A pedigree's introduction screen becomes a stage of its own, which moves
+  // the pedigree and every stage after it one place on: each stage record and
+  // the resume position follow their stage. A session resuming at the
+  // pedigree resumes at the pedigree, not at its new introduction. The
+  // redesigned pedigree keeps a different stage record, which is translated
+  // without losing anything the participant recorded.
+  migrateSession: (session, { before, after }) => {
+    const remapped = remapStageIndices(session, before, after);
+    migrateFamilyPedigreeSessionRecords(remapped, after);
+    return remapped;
   },
 });
 
