@@ -27,9 +27,11 @@ export type AnalyticsContextValue = {
   client: PostHog | null;
   // Persist a new preference and apply it immediately (opt in/out).
   setEnabled: (enabled: boolean) => Promise<void>;
-  // App-level event tracking. No-ops when disabled or the client is missing.
+  // App-level event tracking. No-ops when disabled or the client is missing;
+  // held after unlock until the stored preference has been read.
   track: (event: string, properties?: Record<string, unknown>) => void;
-  // App-level error reporting. No-ops when disabled or the client is missing.
+  // App-level error reporting. No-ops when disabled or the client is missing;
+  // held after unlock until the stored preference has been read.
   captureException: (
     error: unknown,
     properties?: Record<string, unknown>,
@@ -45,6 +47,18 @@ const NOOP_CONTEXT: AnalyticsContextValue = {
 };
 
 const AnalyticsContext = createContext<AnalyticsContextValue>(NOOP_CONTEXT);
+
+type Report = (client: PostHog) => void;
+
+const MAX_PENDING_REPORTS = 20;
+
+function deliver(client: PostHog, report: Report) {
+  try {
+    report(client);
+  } catch {
+    // Telemetry never throws.
+  }
+}
 
 // Super properties attached to every app-level event. Built from the shared
 // helper so app and interview events share one schema in PostHog and a mistyped
@@ -78,12 +92,29 @@ function applyPreference(client: PostHog, enabled: boolean) {
 export function AnalyticsProvider({ children }: { children: ReactNode }) {
   const { kind } = useAuth();
   const [enabled, setEnabledState] = useState(false);
+  // Mirrors `enabled` so the stable track/captureException never act on a
+  // stale opt-in.
+  const enabledRef = useRef(false);
   const clientRef = useRef<PostHog | null>(null);
   const [client, setClient] = useState<PostHog | null>(null);
   // Bumped on every explicit user toggle. The async init() captures this at
   // start and bails if it changed, so a slow settings load can't clobber a
   // newer user choice that landed while it was in flight.
   const preferenceRevisionRef = useRef(0);
+  // Reports made after unlock, before init has settled whether analytics are
+  // on; null outside that window. They are sent only if it settles opted in
+  // with a client — exactly what an instantaneous init would have sent — and
+  // are otherwise discarded, including on lock.
+  const pendingReportsRef = useRef<Report[] | null>(null);
+
+  const settlePendingReports = useCallback((send: boolean) => {
+    const pending = pendingReportsRef.current;
+    if (!pending) return;
+    pendingReportsRef.current = null;
+    const c = clientRef.current;
+    if (!send || !c || !enabledRef.current) return;
+    for (const report of pending) deliver(c, report);
+  }, []);
 
   // Load the stored preference once the app is unlocked. Reading settings is
   // DB-backed; the Dexie vault is only readable after unlock, so we must wait
@@ -96,13 +127,18 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
     if (kind !== 'unlocked') return;
     let active = true;
     const revisionAtStart = preferenceRevisionRef.current;
+    pendingReportsRef.current = [];
     const init = async () => {
       try {
         const settings = await getSettings();
         if (!active || revisionAtStart !== preferenceRevisionRef.current)
           return;
+        enabledRef.current = settings.analyticsEnabled;
         setEnabledState(settings.analyticsEnabled);
-        if (!settings.analyticsEnabled) return;
+        if (!settings.analyticsEnabled) {
+          settlePendingReports(false);
+          return;
+        }
         const resolved = await getAnalyticsClient();
         // Re-check after the async client load: bail if torn down, or if the
         // user toggled while we were loading — their choice (already applied by
@@ -112,78 +148,90 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
         clientRef.current = resolved;
         setClient(resolved);
         if (resolved) applyPreference(resolved, true);
+        settlePendingReports(true);
       } catch {
         // Never let telemetry setup break the app.
+        if (active && revisionAtStart === preferenceRevisionRef.current)
+          settlePendingReports(false);
       }
     };
     void init();
     return () => {
       active = false;
+      pendingReportsRef.current = null;
     };
-  }, [kind]);
+  }, [kind, settlePendingReports]);
 
-  const setEnabled = useCallback(async (next: boolean) => {
-    // Reflect the choice in the UI immediately, then persist + apply. Callers
-    // often `void` this, so the promise must never reject: a DB/IPC failure in
-    // updateSettings or a misbehaving client must not surface as an unhandled
-    // rejection (telemetry must never break the app).
-    const revision = (preferenceRevisionRef.current += 1);
-    setEnabledState(next);
-    // Apply an opt-OUT immediately, before persistence: if the settings write
-    // rejects, the client must still stop capturing (privacy). Opt-IN stays
-    // gated behind a successful persist (and lazy client construction) below.
-    if (!next && clientRef.current) {
-      try {
-        applyPreference(clientRef.current, false);
-      } catch {
-        // Telemetry never breaks preference updates.
-      }
-    }
-    try {
-      await updateSettings({ analyticsEnabled: next });
-      // Opting in lazily constructs the client on first use, so a user who
-      // opted out at startup (when we deliberately skip getAnalyticsClient) can
-      // still opt in later without a reload.
-      if (next && !clientRef.current) {
-        const resolved = await getAnalyticsClient();
-        // Bail if a newer toggle landed while the client was loading.
-        if (revision !== preferenceRevisionRef.current) return;
-        if (resolved) {
-          clientRef.current = resolved;
-          setClient(resolved);
+  const setEnabled = useCallback(
+    async (next: boolean) => {
+      // Reflect the choice in the UI immediately, then persist + apply. Callers
+      // often `void` this, so the promise must never reject: a DB/IPC failure in
+      // updateSettings or a misbehaving client must not surface as an unhandled
+      // rejection (telemetry must never break the app).
+      const revision = (preferenceRevisionRef.current += 1);
+      enabledRef.current = next;
+      setEnabledState(next);
+      if (!next) settlePendingReports(false);
+      // Apply an opt-OUT immediately, before persistence: if the settings write
+      // rejects, the client must still stop capturing (privacy). Opt-IN stays
+      // gated behind a successful persist (and lazy client construction) below.
+      if (!next && clientRef.current) {
+        try {
+          applyPreference(clientRef.current, false);
+        } catch {
+          // Telemetry never breaks preference updates.
         }
       }
-      if (next && clientRef.current) applyPreference(clientRef.current, true);
-    } catch {
-      // Swallow — the in-memory preference still took effect above.
+      try {
+        await updateSettings({ analyticsEnabled: next });
+        // Opting in lazily constructs the client on first use, so a user who
+        // opted out at startup (when we deliberately skip getAnalyticsClient) can
+        // still opt in later without a reload.
+        if (next && !clientRef.current) {
+          const resolved = await getAnalyticsClient();
+          // Bail if a newer toggle landed while the client was loading.
+          if (revision !== preferenceRevisionRef.current) return;
+          if (resolved) {
+            clientRef.current = resolved;
+            setClient(resolved);
+          }
+        }
+        if (next && clientRef.current) applyPreference(clientRef.current, true);
+      } catch {
+        // Swallow — the in-memory preference still took effect above.
+      }
+      // A newer toggle owns any reports still held while init was settling.
+      if (next && revision === preferenceRevisionRef.current)
+        settlePendingReports(true);
+    },
+    [settlePendingReports],
+  );
+
+  const report = useCallback((send: Report) => {
+    const pending = pendingReportsRef.current;
+    if (pending) {
+      if (pending.length < MAX_PENDING_REPORTS) pending.push(send);
+      return;
     }
+    const c = clientRef.current;
+    if (c && enabledRef.current) deliver(c, send);
   }, []);
 
   const track = useCallback(
     (event: string, properties?: Record<string, unknown>) => {
-      const c = clientRef.current;
-      if (!c || !enabled) return;
-      try {
-        c.capture(event, properties);
-      } catch {
-        // Telemetry never throws.
-      }
+      report((c) => c.capture(event, properties));
     },
-    [enabled],
+    [report],
   );
 
   const captureException = useCallback(
     (error: unknown, properties?: Record<string, unknown>) => {
-      const c = clientRef.current;
-      if (!c || !enabled) return;
-      try {
+      report((c) => {
         const err = error instanceof Error ? error : new Error(String(error));
         c.captureException(err, properties);
-      } catch {
-        // Telemetry never throws.
-      }
+      });
     },
-    [enabled],
+    [report],
   );
 
   const value = useMemo<AnalyticsContextValue>(
