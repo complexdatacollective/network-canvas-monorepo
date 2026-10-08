@@ -1,5 +1,450 @@
 # @codaco/architect
 
+## 8.4.0
+
+### Minor Changes
+
+- 5751857: A protocol opened in a second tab, while another tab is editing it, can now be
+  looked through in full instead of only as a summary. Every page opens as usual
+  — Stages, Codebook, Resources, Summary and each stage's editor — with editing
+  switched off and a banner explaining why. Search, filters, preview and print
+  still work, and Download exports the copy the other tab has saved. When the
+  other tab closes the protocol, this tab becomes editable again on the page you
+  are looking at.
+- eee8f6b: The Home screen's protocol timeline now draws each station from the shared stage-type maps in `@codaco/fresco-ui` — `STAGE_TYPE_COLORS` for the disc, connector and caption, `STAGE_TYPE_ICONS` for the glyph — instead of six bundled SVG images and its own hardcoded colours. The timeline's stops are real `StageType` values, so a station cannot name an interface the schema does not have, and the animation stays consistent with every other surface that colours a stage.
+- 08fd0f7: Brazilian Portuguese (Português (Brasil), `pt-BR`) is now available as an
+  interface language in Architect, Interviewer and Fresco, alongside English,
+  Spanish and Simplified Chinese. Choose it from the language setting, or let it
+  be selected automatically when your browser prefers Portuguese. The built-in
+  interview controls participants see are translated too; protocol content keeps
+  the language it was written in.
+- ee4ad52: Dutch (Nederlands, `nl`) is now available as an interface language in
+  Architect, Interviewer and Fresco. Choose it from the language setting, or let
+  it be selected automatically when your browser prefers Dutch, whether from the
+  Netherlands or Belgium. The built-in interview controls participants see are
+  translated too; protocol content keeps the language it was written in.
+- bff61d5: French (Français, `fr`) is now available as an interface language in
+  Architect, Interviewer and Fresco, alongside English, Spanish and Simplified
+  Chinese. Choose it from the language setting, or let it be selected
+  automatically when your browser prefers French — including Canadian, Belgian
+  and Swiss French. The built-in interview controls participants see are
+  translated too; protocol content keeps the language it was written in.
+- 62617a9: German (Deutsch, `de`) is now available as an interface language in Architect,
+  Interviewer and Fresco, alongside English, Spanish and Simplified Chinese.
+  Choose it from the language setting, or let it be selected automatically when
+  your browser prefers German, including the Austrian and Swiss variants. The
+  built-in interview controls participants see are translated too; protocol
+  content keeps the language it was written in.
+- 5b12f3b: Italian (Italiano, `it`) is now available as an interface language in
+  Architect, Interviewer and Fresco. Choose it from the language setting, or let
+  it be selected automatically when your browser prefers Italian. The built-in
+  interview controls participants see are translated too; protocol content keeps
+  the language it was written in.
+- f32135f: Simplified Chinese (简体中文, `zh-Hans`) is now available as an interface
+  language in Architect, Interviewer and Fresco, alongside English and Spanish.
+  Choose it from the language setting, or let it be selected automatically when
+  your browser prefers Chinese. The built-in interview controls participants see
+  are translated too; protocol content keeps the language it was written in.
+- e5f6a9a: Traditional Chinese (繁體中文, `zh-Hant`) is now available as an interface
+  language in Architect, Interviewer and Fresco, written in Taiwan-standard
+  vocabulary. Choose it from the language setting, or let it be selected
+  automatically: browsers set to Chinese for Taiwan, Hong Kong or Macau now get
+  Traditional Chinese instead of Simplified Chinese, while other Chinese browser
+  languages still get Simplified Chinese. The built-in interview controls
+  participants see are translated too; protocol content keeps the language it
+  was written in.
+
+  Chinese browser languages are now matched by script rather than by region.
+  `resolveAppLocale` in `@codaco/app-i18n` maps each Chinese tag to its script
+  first, so Hong Kong (`zh-HK`) and Macau (`zh-MO`) resolve to Traditional
+  Chinese even when the browser also sends a generic `zh`, which previously won
+  Simplified Chinese. `@codaco/shared-consts` exports the rule as
+  `toScriptMatchingTag`, which the website uses too. A registry that declares a
+  regional Chinese tag such as `zh-TW` exactly still receives that tag.
+
+### Patch Changes
+
+- 263c5ef: Screen readers now name each person by the label their node shows, wherever
+  the interview names them.
+
+  - Dragging a person with the keyboard, from the Sociogram's drawer or within a
+    list such as a bin, a dyad census or a name generator, announces them by
+    their label. Before, a drawer drag announced "Node" unless the protocol's
+    name variable was itself called `name`, and a list drag announced "Item"
+    followed by an internal id.
+  - Returning a person from the Sociogram to the drawer names them when their
+    name is protected by a passphrase and has been unlocked. Before, the
+    announcement left the name out.
+  - In the narrative pedigree, a person the view cannot relate to the
+    participant shows their own label, and is named and announced by it, rather
+    than by an internal id.
+  - Typing in a list of people finds a protected name once it is unlocked, and
+    never finds anyone by an internal id.
+  - While a protected name is still being unlocked, the person shows the lock
+    rather than "Node".
+
+  Where a name is protected, the announcement says what the node shows: the lock
+  until the name is unlocked, and the warning sign when it cannot be read.
+
+- cfa024a: The hourly check for a new app version no longer reports a crash of its own.
+  Firefox refuses the check outright once the installed app worker has been
+  replaced, and that refusal was being shown as an application error. The check
+  now stays quiet and tries again on the next hour.
+- 9e34183: Changing Architect's language while a stage editor is open no longer loses the
+  files imported in that editor. Saving the stage keeps them, and cancelling
+  still removes them.
+- c5dc35b: Architect's stage editors now reach the protocol they edit through an
+  in-process Effect rpc host instead of an oRPC router. Nothing about editing
+  changes: locks, refusals, undo and imported resources behave as before.
+
+  `@codaco/protocol-validation` exports `isSafeAssetSource`, the predicate
+  `assetSourceSchema` applies to an asset's `source`, so a host that validates
+  with a different schema library can apply the same rule.
+
+- c7aa307: Dialogs no longer close as if nothing happened while the work they started
+  carries on. Before, cancelling or dismissing one of these dialogs mid-way told
+  you the action had been called off, but it still completed behind the dialog,
+  and the page could then update as though it had not.
+
+  While the work runs, Cancel is disabled, the close button is hidden, and
+  Escape and clicks outside the dialog are ignored. If the work fails, the
+  dialog shows why and can be left or retried.
+
+  - **Architect:** deleting an entity type or a variable from the codebook.
+  - **Fresco:** removing a passkey; deleting, adding and resetting the
+    authentication of users; changing your password; switching between password
+    and passkey sign-in; turning off two-factor authentication and regenerating
+    recovery codes; setting up two-factor authentication; deleting interviews,
+    participants, protocols and API tokens; creating an API token; adding or
+    editing a participant; resetting the app; and saving an UploadThing token.
+    A refused two-factor code or action now shows its reason on the form.
+  - **Interviewer:** revoking the device lock or resetting the device; deleting
+    synthetic sessions; unlocking with the recovery passphrase; and setting up
+    a PIN, passphrase or biometric unlock in the setup wizard.
+  - **Interviews:** the finish confirmation cannot be cancelled once the
+    interview has started finishing, because the finish completes regardless.
+    The exit confirmation can still be cancelled while it waits.
+
+- 6dc47ba: When a participant returns to a family pedigree they have already finalized,
+  the "Your family pedigree has been finalized" notice and its reset button now
+  sit below the pedigree instead of on top of it. Previously, a pedigree tall
+  enough to reach the bottom of the screen had its youngest generation hidden
+  behind the notice; now the pedigree scrolls and every person stays visible.
+- 649f7a3: A `SegmentedToolbar` that rests at its trailing end (`restAt="end"`) no longer
+  opens scrolled part-way along when every control fits. If its controls changed
+  while the toolbar was still animating into place, it could cut off the first
+  control, leave an empty gap after the last, and fade an edge that hid nothing.
+  In Architect's page actions this showed as a clipped "Return to Start Screen"
+  button. The toolbar now measures where its controls sit rather than the space
+  their animation briefly took up, so it rests at its start with no fade, and
+  still rests at its end when the controls genuinely do not fit.
+- ad9d1df: Interview analytics now follow their design in three places. `interview_started` is no longer lost when the analytics client arrives after the interview first renders, which happened on every host: stage navigation is recorded from the moment a client is available. `interview_finished` is reported once the host has finished the interview, instead of when the finish screen is reached, so a cancelled or refused finish no longer counts as a completed interview. `form_validation_failed` no longer carries the rendered validation messages, which can contain protocol-authored text; each invalid field is reported by its position and input type only.
+- 0313691: Interview analytics no longer send codebook type keys, which a protocol author
+  chooses and can make readable. `node_added`, `edge_created`, `node_binned` and
+  `node_rebinned` now report the type's position in the codebook
+  (`node_type_index`, `edge_type_index`) in place of `node_type` and `edge_type`.
+- 96405a2: `@codaco/interview/protocol-payload` exports `currentProtocolToPayload` on its own. A host whose server code runs directly under Node, without a bundler, can import the converter from it without loading the rest of the interview contract.
+- 4e6916e: The interview `Shell` accepts any posthog-js client that provides `capture`, `captureException` and `register`, rather than only the `PostHog` class of the default `posthog-js` entrypoint, so a host built on another posthog-js build (such as `posthog-js/dist/module.no-external`) can pass its client without a cast. The runtime's own instance, used when a host passes no client, now loads that no-external build as well: it carries no remote script loader, so it works under a host's `script-src 'self'` policy.
+- 216e8c4: Architect, Interviewer and Fresco now download only the interface language you
+  are using, instead of every translation at once. English needs no download at
+  all, and starting in another language fetches that one language before the
+  first screen appears, so the interface never shows English first and then
+  switches. Changing language loads the new one and then switches over, keeping
+  the current language on screen in the meantime. If a language cannot be
+  downloaded, the app keeps working — in English at startup, or in the current
+  language after a switch — and a notice names the language that could not be
+  loaded and offers to reload; the language still switches in by itself if a
+  later attempt succeeds. In an interview the same notice appears without the
+  reload. Installed offline copies of Architect and Interviewer still hold every
+  language, so switching works without a connection. A Fresco interview in
+  another language now arrives with its messages, so it opens without waiting for
+  a download, and Architect's preview and Interviewer fetch the interview's
+  language while they prepare it rather than afterwards.
+
+  Breaking: each package's catalog map is replaced by per-locale loaders.
+  `commonCatalogs`, `frescoUiCatalogs`, `interviewCatalogs`,
+  `networkExporterCatalogs`, `protocolUtilitiesCatalogs` and
+  `protocolValidationCatalogs` become `commonCatalogLoaders`,
+  `frescoUiCatalogLoaders`, `interviewCatalogLoaders`,
+  `networkExporterCatalogLoaders`, `protocolUtilitiesCatalogLoaders` and
+  `protocolValidationCatalogLoaders`: for each translated locale, a function that
+  dynamically imports that locale's catalog. Combine them with
+  `createCatalogSource(...)` from `@codaco/app-i18n/locales`, then either
+  `await source.load(locale)` before rendering or pass the source to
+  `useLocaleCatalog` from `@codaco/app-i18n/react`, which feeds
+  `AppI18nProvider`. `loadCatalog(locale, ...loaders)` loads and merges one
+  locale where no source is needed, and `checkCatalogLoaders` in
+  `@codaco/app-i18n/catalog-guards` checks that every committed catalog has a
+  loader that loads it. `InterviewI18nProvider` from `@codaco/interview` now
+  suspends while the catalog for a language it has not shown yet loads, so a
+  host that renders it directly needs a `Suspense` boundary above it; `Shell`
+  brings its own and shows a spinner in the interview's frame meanwhile.
+
+  A catalog that cannot be loaded no longer reaches an error boundary.
+  `useLocaleCatalog` falls back to English for a first load, or keeps the current
+  language for a switch, and returns the `failure`; pass it to `AppI18nProvider`
+  as `loadFailure`, and read it anywhere below with `useLocaleLoadFailure()`.
+  `@codaco/fresco-ui/LocaleLoadFailureToast` presents it as a toast that stays
+  until the language arrives, with an optional `onReload` button and an
+  `onFailure` callback for error reporting. A fresco-ui toast with both a
+  description and an action button no longer pushes the button out of view.
+
+  `Shell` takes an optional `catalog`, and the new `@codaco/interview/catalog`
+  entry, which carries no React and can be imported on a server, exports
+  `loadInterviewCatalog(requestedLocale, localePreference)`: it negotiates as
+  `Shell` does and resolves to the `catalog` to pass, so a server-rendered host
+  can deliver the interview's messages with the page and a client host can start
+  the download before mounting `Shell`.
+
+- 56e16d0: Update third-party dependencies to their latest minor and patch releases, including Base UI 1.8, React Aria Components 1.21, Tiptap 3.31.4, Mapbox GL 3.32, Motion 13.4, Lucide 1.49, the Inclusive Sans and Nunito variable fonts 5.3, PostHog, Prisma 7.10 and Electron 43.7.
+- a6c5e2b: A change made in the Network Composer's side panel is no longer lost when the
+  panel closes. Leaving the stage, moving to another person or relationship,
+  tapping the background, closing the side panel or choosing another tool first
+  saves a change that has not been saved yet. If the change cannot be saved,
+  for example because an answer is not valid or the passphrase cannot protect
+  it, the participant is asked before it is discarded and can keep it to go on
+  editing. Before, a change made just before the panel closed, or one that
+  could not be saved, was lost without a word. Deleting the person or
+  relationship removes their unsaved changes with them, without asking.
+
+  Undoing or redoing a change while the side panel is open now shows the
+  restored answers in the panel. Before, the panel went on showing the answers
+  as they were before the undo, and changing any answer in it saved them again.
+  An answer the participant had changed but not yet saved when the undo or redo
+  changed it stays as they typed it, and is not saved over what the undo or redo
+  restored. It is saved once they change that answer again, and closing the
+  panel asks before discarding it.
+
+  One undo now reverts every answer in a run of side-panel edits to the same
+  person or relationship. Before, it put back only the answers the first edit
+  of the run changed, so an answer first given in a later edit stayed. Changes
+  in the Network Composer, undo and redo are now made in the order they are
+  asked for. An undo or redo pressed while a change is still being saved applies
+  after that change instead of before it, and deleting a person while one of
+  their answers is being saved no longer loses that answer when the deletion is
+  undone.
+
+- fb4b061: Ordinal bin headings now have room for four lines of their smallest text.
+
+  A long option label that could not be hyphenated, such as a whole sentence on
+  a device whose browser has no hyphenation dictionary for the interview
+  language, previously needed a fourth line that the heading did not have, so
+  the end of the label was cut off. The heading is now sized to hold that
+  fourth line.
+
+- 7e225bf: Participants can now enter a passphrase when the interview's navigation runs
+  along the bottom of the screen, as it does on phones and other portrait
+  screens. Before this fix, the passphrase button only appeared in the side
+  navigation, so on a portrait screen a participant in an interview with
+  encrypted names could not add people on stages that needed the passphrase. The
+  button now sits next to the settings button in the bottom bar and can be
+  reached with the keyboard. Screen readers announce why the passphrase is
+  needed, once, and the explanation that appears beside the button stays on
+  screen on narrow phones.
+
+  The navigation buttons also stay on screen on small phones at every text size.
+  Before, a larger text size could push the forward button past the edge of the
+  screen, and on a small phone held sideways the side navigation could lose it
+  even at the default size. When space is short the buttons now shrink together,
+  down to a comfortable size for a finger to tap.
+
+- 5dd537e: The family pedigree no longer fails to draw when a child's parents include one of their own descendants, such as a daughter who carries her mother's baby or a son who donates to his mother and her partner, or when two sets of parents cross one another's lines of descent. Every child is now drawn below each of its parents, including a single parent's children when that parent is moved down a row to sit beside a partner.
+- 7d7b84a: Family pedigrees now preserve a participant's chosen terminology when reopened. Narrative pedigrees also use the source pedigree's terminology for family labels, including fixed mother/father framing.
+- 6a88e57: The family pedigree no longer draws a half-sibling as a full sibling. A child
+  of one parent alone was grouped with that parent's children by a partner, and
+  so hung from the couple's line. They now hang from their parent alone.
+- 968624e: The family pedigree keeps every couple side by side when partnerships form a
+  chain — someone between a former and a current partner, whose current partner
+  also has a former partner. Previously one couple was split apart, its
+  partnership line was drawn over the top of the pedigree, and its children hung
+  from another couple's line.
+
+  A child with more than two parents now descends from the couple who are most
+  strongly their parents: their biological or adoptive parents ahead of a couple
+  that includes a step-parent. The step-parent is joined to the child by a dashed
+  line, rather than the child being placed between both couples.
+
+  When someone has more partners than can sit beside them, the children of a
+  couple that had to be drawn apart hang from their own sibling bar, which each
+  parent joins directly, and twins among them keep their twin mark. Their line
+  of descent used to come from the neighbouring partnership, naming a parent the
+  children do not have. A direct line keeps the parent's own relationship, so an
+  adoptive parent's line is recorded as adoptive.
+
+  Someone partnered with their own grandchild, or partnerships that would need a
+  generation to sit both level with and above another, no longer pull people out
+  of their generations. Each child stays below its parents, and a partnership
+  that cannot be drawn on one row is drawn between the two rows' partners,
+  clear of anyone between them, instead of being left out.
+
+  A child whose parents are not a couple, such as a biological parent and a
+  step-parent who are not partners, is now joined to each parent directly.
+  Previously it was drawn with no parent lines at all, or with a line from only
+  one of them.
+
+- 57bba6a: Analytics and error reporting now run entirely from code shipped inside the app. The PostHog relay is contacted only for data: the app's Content Security Policy no longer allows it, or any other remote origin, to supply scripts.
+- 3d0a7d1: Interviews that protect some answers with a passphrase now keep those answers
+  safe and readable. These changes apply only to studies that turn on encrypted
+  answers; other interviews work as before.
+
+  - A passphrase is now checked when it is entered. If it does not match the one
+    used earlier in the interview, a message under the field says so and the
+    participant can try again. Before, a mistyped passphrase was accepted and
+    could protect new answers that could then never be read alongside the
+    earlier ones. The passphrase box in the navigation also hides what is typed.
+    A passphrase box that opens over the interview is emptied as soon as it
+    closes, even if it is opened again straight away.
+  - Entering the passphrase already in use again makes the interview try again
+    to read the protected answers it could not read. If they still cannot be
+    read, the passphrase is asked for again, so a different one can be entered.
+    Before, the request for the passphrase went away and those answers stayed
+    unreadable.
+  - Protected answers stay locked when an interview is resumed, until the
+    passphrase is entered again. Names that had been unlocked no longer stay
+    visible after the passphrase is replaced with one that cannot read them,
+    including in the Family Pedigree.
+  - Stages no longer take protected answers they cannot save. Until a working
+    passphrase is entered, the name generators, the roster, forms, the category
+    "other" question and the map ask for the passphrase instead.
+  - When a save is refused, the answers just typed stay on screen with a message
+    that they were not saved, so the participant can enter the passphrase and
+    try again. Before, they could disappear without a word. The form for adding
+    or editing a person, the category "other" question and the Family Pedigree's
+    questions about a relative offer the passphrase inside the form whenever
+    saving can need it: to protect an answer, or to check an answer against a
+    protected one. The answers can then be saved without closing the form.
+  - A save is refused if the passphrase is replaced, or found not to work, while
+    the save is under way. Before, the answer was still saved with the earlier
+    passphrase, which the one now in use might not be able to read.
+  - A saved location that is protected is shown on the map when the participant
+    returns to it, and stops being shown once the passphrase is replaced or
+    found not to work. An area picked on the map is highlighted once it is
+    saved, so a pick that could not be saved no longer looks chosen.
+  - Answers changed one after another in the Network Composer's side panel, and
+    locations picked one after another on the map, are saved in the order they
+    were made. Before, an earlier answer that took longer to protect could be
+    saved last and replace the later one, and an answer put back while an
+    earlier one was still being protected could be lost.
+  - Leaving a stage, moving to the next or previous question on a stage (or
+    to the next person on the map), finishing or closing the interview waits
+    for answers still being protected, including answers still waiting for an
+    earlier one to be saved and names still being checked, so they are kept
+    and the next stage is chosen with them. When one of them cannot be saved,
+    the participant stays where they are and the interview is not finished or
+    closed, so they see why and can try again. The confirmations to finish and
+    to close the interview stay open while they wait. Cancelling the close
+    confirmation keeps the interview open; the finish confirmation cannot be
+    cancelled once it has started. Before, a location picked or a name added just
+    before pressing Next could be lost or kept under the wrong question, and an
+    answer still being protected could be left out of the stage that came next
+    and of the interview handed back when finishing or closing.
+  - Replacing a protected answer with an unprotected one no longer leaves the
+    answer unreadable.
+  - Saving a form no longer erases a protected answer the form could not show.
+    Before, an answer saved without the details needed to read it appeared
+    empty, and saving the form after changing any other answer deleted it. Now
+    it is kept unless the participant enters a new answer in its place.
+  - The passphrase prompt cannot be closed while it checks a passphrase, the
+    form for adding or editing a person cannot be closed while it saves, and
+    the field for adding a name in the Network Composer or on a name generator
+    stays open while it checks and adds a name. Before, any of them could be
+    closed and still take effect afterwards, a name that could not be added was
+    lost, and pressing Finished again during a save could add the same person
+    twice.
+  - Browsers and password managers no longer offer to save or fill in the
+    passphrase.
+  - The category "other" question shows a protected name as it was entered,
+    not in its scrambled form.
+  - Outside development, the interview no longer shares its state with the
+    Redux DevTools browser extension. In development, protected answers and the
+    passphrase are hidden from the extension and from the action log.
+  - Names added in the Network Composer and the Family Pedigree, and protected
+    answers brought in from a side panel on a name generator, were saved without
+    protection. They are now protected like every other answer, and these stages
+    ask for the passphrase before they show or save them.
+  - While names are protected, the summary of the family that the Family
+    Pedigree saves as plain text names each relative by their relationship to
+    the participant. Before, it held protected names, both as a relative's own
+    label and inside another relative's, such as "Alice's Parent".
+  - Undoing or redoing a change in the Network Composer keeps protected names
+    readable.
+  - A family pedigree is saved whole or not at all. If a relative's name cannot
+    be saved, nothing is saved, the participant is told why, and they can enter
+    the passphrase and save the pedigree again. Choosing to keep editing while
+    the pedigree is being saved now saves none of it.
+  - The Family Pedigree and Narrative Pedigree stages read only the protected
+    answers they show or edit. Before, a relative's other protected answer that
+    the passphrase could not read, such as one saved with a different
+    passphrase by an earlier version, hid every name and marked the passphrase
+    as not working.
+  - Questions that compare an answer with other answers, such as a name that
+    must not repeat or an answer that must match another one, now compare with
+    the protected answers as they were entered. Before, they compared with the
+    stored, scrambled form, so a repeated name was accepted. This includes a
+    relative's name in the Family Pedigree. Only the protected answers a
+    question compares with need to be readable: a question that must match
+    another of the same person's answers reads only that person's answers, and
+    a name that must not repeat reads only everyone else's. Another protected
+    answer that cannot be read no longer stops the question being checked. If
+    the answers it compares with cannot be read, the question says so and asks
+    for the passphrase instead of accepting the answer. A question that waits
+    for those answers to be read compares with them as they are once the wait
+    is over, including a person added meanwhile, and reads them with the
+    passphrase then in use, the one the answer is saved with.
+  - Answers being typed are kept when the passphrase is replaced with one that
+    cannot read them. The Network Composer's side panel, the questions asked
+    about each person or relationship, and the form for adding or editing a
+    person hide those answers and save none of them until the passphrase that
+    reads them is back, then show them as they were left. The side panel then
+    saves them and removes its message that they were not saved. Before, they
+    were lost. Leaving such a question before then warns that its answers have
+    not been saved.
+  - Going back from the first person or relationship on a stage that asks
+    about each one saves the answers entered, or warns that they have not been
+    saved, as going forward does. Before, they were lost.
+
+- 254a887: The field for adding a name on a name generator now clears a name only once
+  the person has been added, and keeps a name that could not be added, with a
+  message above it saying why. Before, the field worked out whether a name had
+  been added from the order in which its updates arrived, so a name that was not
+  added could be cleared and lost, and a name that was added could stay in the
+  field.
+
+  On a roster whose names are protected with a passphrase, a person now leaves
+  the roster as soon as they are dropped, rather than once their name has been
+  protected. Before, they stayed on the roster for that moment and could be
+  dropped again. If they cannot be added, they go back on the roster and a
+  message says why.
+
+- c791b8d: The hourly check for a new app version no longer reports a crash when it
+  cannot reach the network.
+
+  Both apps ask the browser to re-fetch `sw.js` once an hour to see whether a new
+  version has been deployed. That fetch fails routinely — the device is offline,
+  behind a captive portal, or a deploy is swapping assets mid-request — and the
+  failure was left unhandled, so it surfaced as an uncaught `TypeError` and was
+  reported to error tracking as an app crash. A failed background check is now
+  silent; the next hourly check simply tries again, and the update banner is
+  unaffected.
+
+- 0ee7d8a: File drop areas are updated to a newer version of the upload component. A file can now be pasted onto a focused drop area, the hidden file picker carries an accessible label, and dropping a file onto a drop area that is busy or disabled no longer opens it in a new browser tab. Dropping several files where only one is expected still opens nothing.
+- 2959d6a: The interface language list now opens with a search box, so you can find your
+  language by typing its name instead of scrolling through every language on
+  offer.
+- b8405ea: `@codaco/interview/contract` now exports `currentProtocolToPayload`, which turns a validated protocol into the payload the interview runtime receives. The caller supplies the payload's `id` and `importedAt`, so a host can give the same protocol the same identity every time it loads it.
+
+  Architect's preview uses it, so preview assets now carry their display name and source filename the same way they do in Interviewer. An audio or video item with no description is announced by its display name instead of its filename.
+
+- 2ac5bb2: The hint under a node or edge type's name field now suggests only names the field accepts. The English edge example "Works With" contained a space, so a researcher who typed it in was told it was not a valid name; it is now "Colleagues". The Spanish, British English and Simplified Chinese hints had the same problem (spaces, accented letters and Chinese characters) and now use valid examples too, with the Chinese meaning given in parentheses beside each English name. A test checks every language's examples against the field's own rule, so a future translation cannot reintroduce the problem.
+- Updated dependencies ([5339bf8](https://github.com/complexdatacollective/network-canvas-monorepo/commit/5339bf83bd791585b0002381ec2e52792f7e0697), [263c5ef](https://github.com/complexdatacollective/network-canvas-monorepo/commit/263c5ef39a5fb92be91484d41b08ea7dda525fa3), [c5dc35b](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c5dc35b889d75c4f21657ce473ef6ec030660e24), [08fd0f7](https://github.com/complexdatacollective/network-canvas-monorepo/commit/08fd0f7dc2c1a7b757b2caf64ae68aacaaf31572), [4d8ce20](https://github.com/complexdatacollective/network-canvas-monorepo/commit/4d8ce20d1a2a173579d4ac76dfa519126e3d9725), [8e9852f](https://github.com/complexdatacollective/network-canvas-monorepo/commit/8e9852f096c250585d805fa72e0a100d1a682093), [e6f137b](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e6f137b276214e418748bc027afcad797f817ad2), [c7aa307](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c7aa30724b3050d29c4f4f80cf4a56847b3b193f), [ee4ad52](https://github.com/complexdatacollective/network-canvas-monorepo/commit/ee4ad52b14e081d25f883d9d170454932749d5ab), [d0c3ada](https://github.com/complexdatacollective/network-canvas-monorepo/commit/d0c3ada1469ecb345d920e5af8d4fb4e07236a73), [6dc47ba](https://github.com/complexdatacollective/network-canvas-monorepo/commit/6dc47ba0ead3dca990c44ee5be168dacc9730799), [3d0a7d1](https://github.com/complexdatacollective/network-canvas-monorepo/commit/3d0a7d1f0a04bd98a3b8f5c82fbf912e1db9597c), [747ee33](https://github.com/complexdatacollective/network-canvas-monorepo/commit/747ee3366831b85231a17a3a8173404af46c3d3a), [489bf51](https://github.com/complexdatacollective/network-canvas-monorepo/commit/489bf5173aad4d29e79c6a2a29d018223e369031), [bff61d5](https://github.com/complexdatacollective/network-canvas-monorepo/commit/bff61d58f17fbb7b021e6591da9575ed4c12cc16), [649f7a3](https://github.com/complexdatacollective/network-canvas-monorepo/commit/649f7a37175c0910a74393ef95c2656c32a73bd4), [b84263e](https://github.com/complexdatacollective/network-canvas-monorepo/commit/b84263ec1076dc14e407b4919f5fdbaae45c6883), [62617a9](https://github.com/complexdatacollective/network-canvas-monorepo/commit/62617a9c21d7e6e200adc162417090a522fac1e6), [ad9d1df](https://github.com/complexdatacollective/network-canvas-monorepo/commit/ad9d1df75297d9c64abd1d985f4769302a756c79), [0313691](https://github.com/complexdatacollective/network-canvas-monorepo/commit/031369103585699bfe24d77521995bc5c8c92fff), [96405a2](https://github.com/complexdatacollective/network-canvas-monorepo/commit/96405a2396db787e32a530d5c732f10c0b403347), [4e6916e](https://github.com/complexdatacollective/network-canvas-monorepo/commit/4e6916e140d5d0d568ceea140b1054ba8f04cabb), [5b12f3b](https://github.com/complexdatacollective/network-canvas-monorepo/commit/5b12f3b977d4244c398301541d978d825f53ea13), [216e8c4](https://github.com/complexdatacollective/network-canvas-monorepo/commit/216e8c4e1cc63357f121d65150851536996ef3af), [f32135f](https://github.com/complexdatacollective/network-canvas-monorepo/commit/f32135fd036f07157198728377dfdbeb30dff747), [56e16d0](https://github.com/complexdatacollective/network-canvas-monorepo/commit/56e16d0de03049200559dbf6bf07671689e4d99b), [dfcbc73](https://github.com/complexdatacollective/network-canvas-monorepo/commit/dfcbc7382eedbdbfc83aa06e8141d1e04ffdf4e1), [a6c5e2b](https://github.com/complexdatacollective/network-canvas-monorepo/commit/a6c5e2b222f09948cd0bf1e32fbde182a7248900), [3093df5](https://github.com/complexdatacollective/network-canvas-monorepo/commit/3093df504bae4a945b77a7441aefd04c6abb4a7f), [fb4b061](https://github.com/complexdatacollective/network-canvas-monorepo/commit/fb4b061a341f26aef772842ce7dd934dfdb27a56), [7e225bf](https://github.com/complexdatacollective/network-canvas-monorepo/commit/7e225bfd84b6563b47b9d84bffcf1a2b79754314), [5dd537e](https://github.com/complexdatacollective/network-canvas-monorepo/commit/5dd537e08de27371e14b052a5a461992e15ab559), [7d7b84a](https://github.com/complexdatacollective/network-canvas-monorepo/commit/7d7b84a6031a10d7147292c4b043b1ff50c566f6), [6a88e57](https://github.com/complexdatacollective/network-canvas-monorepo/commit/6a88e57c53a947d158486f6544c84334fe115b64), [968624e](https://github.com/complexdatacollective/network-canvas-monorepo/commit/968624e79eb0b4ab7f776cfc505118d6897dcdbe), [810604e](https://github.com/complexdatacollective/network-canvas-monorepo/commit/810604e8e3d5ecfd2d45b38619488660dd69f538), [0554def](https://github.com/complexdatacollective/network-canvas-monorepo/commit/0554def9c17db95f4d61a360a3bf068b3d391994), [254a887](https://github.com/complexdatacollective/network-canvas-monorepo/commit/254a8878ce934e8ebe03b0d7037cb2e98b1d9b0f), [b8405ea](https://github.com/complexdatacollective/network-canvas-monorepo/commit/b8405ea8126f0bc585b73a72f0d0b9b2982380e2), [513d87a](https://github.com/complexdatacollective/network-canvas-monorepo/commit/513d87a73804d2b1dcc96b06e6e138df198bbc77), [73b2af6](https://github.com/complexdatacollective/network-canvas-monorepo/commit/73b2af6e7711638360d58c644f985319ab8f1834), [d8c5523](https://github.com/complexdatacollective/network-canvas-monorepo/commit/d8c552308b298a144b9801c0df5347c248be4fc2), [16b1178](https://github.com/complexdatacollective/network-canvas-monorepo/commit/16b11782aa5f22fb3efbe55f46612d37c5bbb827), [76722bb](https://github.com/complexdatacollective/network-canvas-monorepo/commit/76722bb9d8f3d3e7e5eca94e802f48584ef37e8a), [e5f6a9a](https://github.com/complexdatacollective/network-canvas-monorepo/commit/e5f6a9ac0760f4a67ba353996b43327a5d1b0855))
+  - @codaco/fresco-ui@8.0.0
+  - @codaco/interview@10.0.0
+  - @codaco/protocol-validation@15.0.0
+  - @codaco/app-i18n@0.3.0
+  - @codaco/protocol-utilities@5.0.0
+  - @codaco/shared-consts@6.2.0
+  - @codaco/tailwind-config@1.5.1
+
 ## 8.3.0
 
 ### Minor Changes

@@ -1,5 +1,59 @@
 # @codaco/shared-consts
 
+## 6.2.0
+
+### Minor Changes
+
+- 08fd0f7: Brazilian Portuguese (Português (Brasil), `pt-BR`) is now available as an
+  interface language in Architect, Interviewer and Fresco, alongside English,
+  Spanish and Simplified Chinese. Choose it from the language setting, or let it
+  be selected automatically when your browser prefers Portuguese. The built-in
+  interview controls participants see are translated too; protocol content keeps
+  the language it was written in.
+- ee4ad52: Dutch (Nederlands, `nl`) is now available as an interface language in
+  Architect, Interviewer and Fresco. Choose it from the language setting, or let
+  it be selected automatically when your browser prefers Dutch, whether from the
+  Netherlands or Belgium. The built-in interview controls participants see are
+  translated too; protocol content keeps the language it was written in.
+- bff61d5: French (Français, `fr`) is now available as an interface language in
+  Architect, Interviewer and Fresco, alongside English, Spanish and Simplified
+  Chinese. Choose it from the language setting, or let it be selected
+  automatically when your browser prefers French — including Canadian, Belgian
+  and Swiss French. The built-in interview controls participants see are
+  translated too; protocol content keeps the language it was written in.
+- 62617a9: German (Deutsch, `de`) is now available as an interface language in Architect,
+  Interviewer and Fresco, alongside English, Spanish and Simplified Chinese.
+  Choose it from the language setting, or let it be selected automatically when
+  your browser prefers German, including the Austrian and Swiss variants. The
+  built-in interview controls participants see are translated too; protocol
+  content keeps the language it was written in.
+- 5b12f3b: Italian (Italiano, `it`) is now available as an interface language in
+  Architect, Interviewer and Fresco. Choose it from the language setting, or let
+  it be selected automatically when your browser prefers Italian. The built-in
+  interview controls participants see are translated too; protocol content keeps
+  the language it was written in.
+- f32135f: Simplified Chinese (简体中文, `zh-Hans`) is now available as an interface
+  language in Architect, Interviewer and Fresco, alongside English and Spanish.
+  Choose it from the language setting, or let it be selected automatically when
+  your browser prefers Chinese. The built-in interview controls participants see
+  are translated too; protocol content keeps the language it was written in.
+- e5f6a9a: Traditional Chinese (繁體中文, `zh-Hant`) is now available as an interface
+  language in Architect, Interviewer and Fresco, written in Taiwan-standard
+  vocabulary. Choose it from the language setting, or let it be selected
+  automatically: browsers set to Chinese for Taiwan, Hong Kong or Macau now get
+  Traditional Chinese instead of Simplified Chinese, while other Chinese browser
+  languages still get Simplified Chinese. The built-in interview controls
+  participants see are translated too; protocol content keeps the language it
+  was written in.
+
+  Chinese browser languages are now matched by script rather than by region.
+  `resolveAppLocale` in `@codaco/app-i18n` maps each Chinese tag to its script
+  first, so Hong Kong (`zh-HK`) and Macau (`zh-MO`) resolve to Traditional
+  Chinese even when the browser also sends a generic `zh`, which previously won
+  Simplified Chinese. `@codaco/shared-consts` exports the rule as
+  `toScriptMatchingTag`, which the website uses too. A registry that declares a
+  regional Chinese tag such as `zh-TW` exactly still receives that tag.
+
 ## 6.1.0
 
 ### Minor Changes
