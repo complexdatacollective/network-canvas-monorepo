@@ -149,7 +149,7 @@
         "tsconfig*.json",
         "package.json"
       ],
-      "env": ["NODE_ENV"],
+      "env": ["NODE_ENV", "POSTHOG_PERSONAL_API_KEY", "POSTHOG_PROJECT_ID"],
       "outputs": ["dist/**"]
     },
     // The generic `build` inputs do not cover scripts/ or migrations/, and

@@ -44,6 +44,7 @@ const STUDIO_TAGS = [
   'team.cancelInvitation',
   'team.createInvitation',
   'team.updateMemberRole',
+  'telemetry.report',
 ] as const;
 
 const deps: RpcDeps = {

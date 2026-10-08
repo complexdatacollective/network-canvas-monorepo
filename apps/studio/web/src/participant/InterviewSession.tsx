@@ -8,6 +8,7 @@ import type {
   StepChangeHandler,
 } from '@codaco/interview/contract';
 
+import { useErrorTelemetry } from '../runtime/telemetry.ts';
 import { createParticipantAnalyticsClient } from './analyticsClient.ts';
 import { createAssetResolver } from './assetUrl.ts';
 import {
@@ -40,6 +41,7 @@ function InterviewSessionView() {
   const { payload } = loaded;
 
   const { sessionToken } = route.useParams();
+  useErrorTelemetry('participant', loaded.analytics);
   const analyticsClient = useMemo(
     () =>
       loaded.analytics

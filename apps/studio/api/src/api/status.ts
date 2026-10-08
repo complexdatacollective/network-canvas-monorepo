@@ -22,7 +22,12 @@ export const StatusApiHandlers = (deps: StatusApiDeps) =>
   HttpApiBuilder.group(StudioApi, 'status', (handlers) =>
     handlers.handle('get', () =>
       Effect.map(deps.readInstallation, (installation) =>
-        getInstanceStatus(deps.capabilities, deps.deployment, installation),
+        getInstanceStatus(
+          deps.capabilities,
+          deps.deployment,
+          installation,
+          false,
+        ),
       ).pipe(Effect.flatMap(publicStatus), Effect.orDie),
     ),
   );

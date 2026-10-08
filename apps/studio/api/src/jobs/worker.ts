@@ -31,6 +31,7 @@ import {
 
 import { MaintenanceDatabase } from '../db/client.ts';
 import { MaintenanceScope, Transaction } from '../db/tenant.ts';
+import { ErrorReporter } from '../platform/error-reporter.ts';
 import { JobClock, type JobClockShape } from './clock.ts';
 import {
   causeError,
@@ -252,6 +253,18 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
   const maxInFlight = config.maxInFlight ?? DEFAULTS.maxInFlight;
   const inFlight = Semaphore.makeUnsafe(maxInFlight);
   const clock: JobClockShape = yield* JobClock;
+  const errors = yield* Effect.serviceOption(ErrorReporter);
+
+  const reportFailure = (
+    cause: Cause.Cause<unknown>,
+    queue: JobQueueName,
+    jobId: JobId,
+  ): Effect.Effect<void> =>
+    Option.match(errors, {
+      onNone: () => Effect.void,
+      onSome: (reporter) =>
+        reporter.report(cause, { origin: 'job', queue, jobId }),
+    });
 
   const table = (sql: SqlClient.SqlClient) => sql(schema);
 
@@ -564,6 +577,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
         yield* Effect.logError(
           'job carries a payload this queue does not declare',
         ).pipe(Effect.annotateLogs({ queue, job_id: jobId }));
+        yield* reportFailure(exit.cause, queue, jobId);
         const dead: JobStep = { _tag: 'dead', jobId };
         return dead;
       }
@@ -597,6 +611,9 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
           attempt: claimed.attempts,
         }),
       );
+      if (step._tag !== 'retrying') {
+        yield* reportFailure(exit.cause, queue, jobId);
+      }
       return step;
     },
     // The whole step holds a permit, so a graceful stop cannot interrupt before the

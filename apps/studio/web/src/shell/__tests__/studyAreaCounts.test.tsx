@@ -98,6 +98,7 @@ const STATUS: InstanceStatus = {
   },
   deployment: { mode: 'managed', billing: false },
   setup: { required: false },
+  telemetry: false,
 };
 
 function renderStudy(path = `/study/${STUDY_1}`) {

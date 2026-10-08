@@ -39,6 +39,21 @@ const stackFrames = (stack: string | null | undefined): string =>
     .filter((line) => STACK_FRAME.test(line))
     .join('\n');
 
+const framesAfter = (
+  stack: string | null | undefined,
+  message: string | undefined,
+): string => {
+  const text = stack ?? '';
+  const at =
+    message === undefined || message === '' ? -1 : text.indexOf(message);
+  return stackFrames(
+    at === -1 ? text : text.slice(at + (message ?? '').length),
+  );
+};
+
+export const failureFrames = (error: Error): string =>
+  framesAfter(error.stack, error.message);
+
 const withInstallation = (
   resource: Resource | undefined,
   installationId: Option.Option<string>,
@@ -58,33 +73,47 @@ const withInstallation = (
   });
 };
 
-const exceptionAttribute = (attribute: KeyValue): KeyValue[] => {
-  if (
-    attribute.key === 'exception.message' ||
-    attribute.key === 'effect.cause'
-  ) {
-    return [];
-  }
-  if (attribute.key === 'exception.stacktrace') {
-    return [
-      {
-        key: attribute.key,
-        value: { stringValue: stackFrames(attribute.value.stringValue) },
-      },
-    ];
-  }
-  return [attribute];
+const exceptionAttributes = (
+  attributes: ReadonlyArray<KeyValue>,
+): KeyValue[] => {
+  const valueOf = (key: string) =>
+    attributes.find((attribute) => attribute.key === key)?.value.stringValue ??
+    undefined;
+  const message = valueOf('exception.message');
+  return attributes.flatMap((attribute) => {
+    if (
+      attribute.key === 'exception.message' ||
+      attribute.key === 'effect.cause'
+    ) {
+      return [];
+    }
+    if (attribute.key === 'exception.stacktrace') {
+      return [
+        {
+          key: attribute.key,
+          value: {
+            stringValue: framesAfter(attribute.value.stringValue, message),
+          },
+        },
+      ];
+    }
+    return [attribute];
+  });
 };
 
 const scrubSpan = (span: OtlpSpan): OtlpSpan => ({
   ...span,
-  attributes: span.attributes
-    .filter((attribute) => !INFRASTRUCTURE_ATTRIBUTES.has(attribute.key))
-    .flatMap(exceptionAttribute),
+  attributes: exceptionAttributes(
+    span.attributes.filter(
+      (attribute) => !INFRASTRUCTURE_ATTRIBUTES.has(attribute.key),
+    ),
+  ),
   status: { code: span.status.code },
   events: span.events.map((event) => ({
     ...event,
-    attributes: event.attributes.flatMap(exceptionAttribute),
+    attributes: exceptionAttributes(
+      event.attributes.filter((attribute) => attribute.key !== 'effect.cause'),
+    ),
   })),
 });
 
@@ -113,9 +142,11 @@ const scrubLogs = (
       ...scopeLogs,
       logRecords: scopeLogs.logRecords?.map((record) => ({
         ...record,
-        attributes: record.attributes
-          .filter((attribute) => attribute.key !== 'log.error')
-          .flatMap(exceptionAttribute),
+        attributes: exceptionAttributes(
+          record.attributes.filter(
+            (attribute) => attribute.key !== 'log.error',
+          ),
+        ),
       })),
     })),
   })),
@@ -156,7 +187,7 @@ const failureAttributes = (
   if (first === undefined) return {};
   return {
     'exception.type': first.name,
-    'exception.stacktrace': stackFrames(first.stack),
+    'exception.stacktrace': failureFrames(first),
   };
 };
 

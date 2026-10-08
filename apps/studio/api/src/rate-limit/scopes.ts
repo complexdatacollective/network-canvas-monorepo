@@ -65,6 +65,7 @@ export const RATE_LIMITS = {
   // person and far below a script replaying reads.
   participant_session: { max: 60, windowMs: 1 * MINUTE },
   participant_analytics: { max: 60, windowMs: 1 * MINUTE },
+  error_report_address: { max: 30, windowMs: 1 * MINUTE },
   // The app issues a burst of calls per screen, so this is a ceiling on a
   // runaway client rather than a budget a person can feel: ten calls a second
   // sustained is more than any screen needs.

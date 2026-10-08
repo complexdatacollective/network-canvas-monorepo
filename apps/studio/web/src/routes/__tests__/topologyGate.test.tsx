@@ -137,6 +137,7 @@ beforeEach(() => {
           socialProviders: [],
         },
         setup: { required: true },
+        telemetry: false,
         deployment: fixtures.deployment,
       }),
     me: () =>

@@ -25,6 +25,7 @@ export const InstanceStatus = Schema.Struct({
   setup: Schema.Struct({
     required: Schema.Boolean,
   }),
+  telemetry: Schema.Boolean,
 }).annotate({ identifier: 'InstanceStatus' });
 export type InstanceStatus = (typeof InstanceStatus)['Type'];
 

@@ -34,6 +34,7 @@ const INJECTED: RateLimitSettings = {
   api_docs: { max: 12, windowMs: 60_000 },
   participant_session: { max: 13, windowMs: 60_000 },
   participant_analytics: { max: 14, windowMs: 60_000 },
+  error_report_address: { max: 15, windowMs: 60_000 },
 };
 
 const limiterWith = (limits: Partial<RateLimitSettings> = {}) =>

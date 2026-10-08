@@ -66,6 +66,7 @@ const STATUS: Omit<InstanceStatus, 'setup'> = {
     socialProviders: [],
   },
   deployment: { mode: 'self-hosted', billing: false },
+  telemetry: false,
 };
 
 let setupRequired = true;
