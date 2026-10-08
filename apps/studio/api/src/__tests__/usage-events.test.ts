@@ -226,7 +226,9 @@ describe.skipIf(!testDb || !env.auth)('researcher usage events', () => {
         accountId,
         teamId,
         protocolId: study.protocolId,
-        interfaceTypes: ['Information'],
+        // A new Studio protocol starts with its Finish Screen stage, so the
+        // draft holds that stage and the Information stage added here.
+        interfaceTypes: ['FinishSession', 'Information'],
         operationCount: 1,
       },
     ]);
