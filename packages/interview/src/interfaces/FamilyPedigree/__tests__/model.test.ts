@@ -10,6 +10,7 @@ import {
   nominationsWithdrawnBy,
   partnersOf,
   planAddRelative,
+  possibleCarriers,
   primaryParentsOf,
   readFamily,
   siblingsOf,
@@ -442,6 +443,47 @@ describe('planAddRelative', () => {
     ]);
   });
 
+  test('a parent who carried siblings is recorded only for those with nobody recorded', () => {
+    // A surrogate carried the anchor; Sam, the anchor's sibling, has nobody
+    // recorded, and Kim already has a carrier.
+    const family = readFamily(
+      [
+        person('ego'),
+        person('surrogate', { sex: ['female'] }),
+        person('sam'),
+        person('kim'),
+        person('kimsCarrier', { sex: ['female'] }),
+        person('dad', { sex: ['male'] }),
+      ],
+      [
+        link('surrogate', 'ego', 'surrogate', { carrier: true }),
+        link('dad', 'ego', 'biological'),
+        link('dad', 'sam', 'biological'),
+        link('dad', 'kim', 'biological'),
+        link('kimsCarrier', 'kim', 'surrogate', { carrier: true }),
+      ],
+      config,
+    );
+    const result = plan(family, 'ego', {
+      relation: 'parent',
+      parentKind: 'biological',
+      carriedPregnancy: true,
+      partnerId: null,
+      partnershipCurrent: true,
+      alsoParentOf: ['sam', 'kim'],
+    });
+    expect(
+      result.links.map((planned) => [
+        planned.target,
+        planned.isGestationalCarrier,
+      ]),
+    ).toEqual([
+      ['ego', false],
+      ['sam', true],
+      ['kim', false],
+    ]);
+  });
+
   test('a donor is never partnered and never carries', () => {
     const family = readFamily(
       [person('ego', { isEgo: true }), person('mum', { sex: ['female'] })],
@@ -490,6 +532,7 @@ describe('planAddRelative', () => {
       sharedParentIds: [],
       sharesUnshown: 'both',
       parentKind: 'biological',
+      carrier: null,
     });
     expect(result.people.map((p) => p.id)).toEqual(['added', 'new-1', 'new-2']);
     // An egg parent and a sperm parent.
@@ -512,6 +555,7 @@ describe('planAddRelative', () => {
       sharedParentIds: [],
       sharesUnshown: 'eggParent',
       parentKind: 'biological',
+      carrier: null,
     });
     expect(result.people.map((p) => p.id)).toEqual(['added', 'new-1', 'new-2']);
     const parentsOf = (id: string) =>
@@ -535,6 +579,7 @@ describe('planAddRelative', () => {
       sharedParentIds: [],
       sharesUnshown: 'other',
       parentKind: 'biological',
+      carrier: null,
     });
     expect(result.people.map((p) => p.id)).toEqual(['added', 'new-1']);
     // Mum, female at birth, gave the egg; the parent added gave the sperm.
@@ -557,10 +602,154 @@ describe('planAddRelative', () => {
       sharedParentIds: ['mum'],
       sharesUnshown: 'none',
       parentKind: 'biological',
+      carrier: null,
     });
     expect(result.links).toEqual([
       { source: 'mum', target: 'added', kind: 'biological' },
     ]);
+  });
+
+  describe('who carried a sibling’s pregnancy', () => {
+    const parentsOfEgo = () =>
+      readFamily(
+        [
+          person('ego'),
+          person('mum', { sex: ['female'] }),
+          person('dad', { sex: ['male'] }),
+        ],
+        [
+          link('mum', 'dad', 'partner'),
+          link('mum', 'ego', 'biological', { carrier: true }),
+          link('dad', 'ego', 'biological'),
+        ],
+        config,
+      );
+
+    test('the parent chosen is recorded as having carried it', () => {
+      const family = parentsOfEgo();
+      const result = plan(family, 'ego', {
+        relation: 'sibling',
+        sharedParentIds: ['mum', 'dad'],
+        sharesUnshown: 'none',
+        parentKind: 'biological',
+        carrier: 'mum',
+      });
+      expect(
+        possibleCarriers(
+          family,
+          result,
+          'added',
+          config.sexAssignedAtBirthAttribute,
+        ),
+      ).toEqual(['mum']);
+      expect(result.links).toEqual([
+        {
+          source: 'mum',
+          target: 'added',
+          kind: 'biological',
+          isGestationalCarrier: true,
+        },
+        { source: 'dad', target: 'added', kind: 'biological' },
+      ]);
+    });
+
+    test('nobody is recorded for a parent who could not have carried it', () => {
+      const result = plan(parentsOfEgo(), 'ego', {
+        relation: 'sibling',
+        sharedParentIds: ['mum', 'dad'],
+        sharesUnshown: 'none',
+        parentKind: 'biological',
+        carrier: 'dad',
+      });
+      expect(result.links.some((planned) => planned.isGestationalCarrier)).toBe(
+        false,
+      );
+    });
+
+    test('nobody is recorded for a parent the sibling does not share', () => {
+      const result = plan(parentsOfEgo(), 'ego', {
+        relation: 'sibling',
+        sharedParentIds: ['dad'],
+        sharesUnshown: 'none',
+        parentKind: 'biological',
+        carrier: 'mum',
+      });
+      expect(result.links).toEqual([
+        { source: 'dad', target: 'added', kind: 'biological' },
+      ]);
+    });
+
+    test('nobody is recorded for a sibling who is not a biological child', () => {
+      const result = plan(parentsOfEgo(), 'ego', {
+        relation: 'sibling',
+        sharedParentIds: ['mum', 'dad'],
+        sharesUnshown: 'none',
+        parentKind: 'adoptive',
+        carrier: 'mum',
+      });
+      expect(result.links.some((planned) => planned.isGestationalCarrier)).toBe(
+        false,
+      );
+    });
+
+    test('an unnamed parent added for both can have carried it', () => {
+      const family = readFamily([person('ego')], [], config);
+      const request = {
+        relation: 'sibling',
+        sharedParentIds: [],
+        sharesUnshown: 'both',
+        parentKind: 'biological',
+        carrier: null,
+      } as const;
+      // The egg parent could have; the sperm parent, male at birth, not.
+      expect(
+        possibleCarriers(
+          family,
+          plan(family, 'ego', request),
+          'added',
+          config.sexAssignedAtBirthAttribute,
+        ),
+      ).toEqual(['new-1']);
+      const result = plan(family, 'ego', { ...request, carrier: 'new-1' });
+      expect(
+        result.links.filter((planned) => planned.isGestationalCarrier),
+      ).toEqual([
+        {
+          source: 'new-1',
+          target: 'added',
+          kind: 'biological',
+          isGestationalCarrier: true,
+        },
+      ]);
+    });
+
+    test('the second parent not yet shown can have carried it', () => {
+      const family = readFamily(
+        [person('ego'), person('dad', { sex: ['male'] })],
+        [link('dad', 'ego', 'biological')],
+        config,
+      );
+      const result = plan(family, 'ego', {
+        relation: 'sibling',
+        sharedParentIds: ['dad'],
+        sharesUnshown: 'other',
+        parentKind: 'biological',
+        carrier: 'new-1',
+      });
+      expect(
+        possibleCarriers(
+          family,
+          result,
+          'added',
+          config.sexAssignedAtBirthAttribute,
+        ),
+      ).toEqual(['new-1']);
+      expect(
+        result.links.find(
+          (planned) => planned.source === 'new-1' && planned.target === 'added',
+        )?.isGestationalCarrier,
+      ).toBe(true);
+    });
   });
 
   test('a sibling adopted by the anchor’s biological parents', () => {
@@ -569,6 +758,7 @@ describe('planAddRelative', () => {
       sharedParentIds: ['mum', 'dad'],
       sharesUnshown: 'none',
       parentKind: 'adoptive',
+      carrier: null,
     });
     expect(result.links).toEqual([
       { source: 'mum', target: 'added', kind: 'adoptive' },
@@ -587,6 +777,7 @@ describe('planAddRelative', () => {
       sharedParentIds: ['mum', 'dad'],
       sharesUnshown: 'none',
       parentKind: 'biological',
+      carrier: null,
     });
     expect(result.links).toEqual([
       { source: 'mum', target: 'added', kind: 'biological' },
@@ -601,6 +792,7 @@ describe('planAddRelative', () => {
       sharedParentIds: [],
       sharesUnshown: 'both',
       parentKind: 'adoptive',
+      carrier: null,
     });
     expect(result.links).toEqual(
       expect.arrayContaining([
@@ -623,6 +815,7 @@ describe('planAddRelative', () => {
       sharedParentIds: ['mum'],
       sharesUnshown: 'other',
       parentKind: 'adoptive',
+      carrier: null,
     });
     // Not a gamete parent, so their sex at birth does not follow.
     expect(result.people[1]!.details).toEqual({});
@@ -797,6 +990,7 @@ describe('no addition gives anyone more than two genetic parents', () => {
       sharedParentIds: [],
       sharesUnshown: 'both',
       parentKind: 'biological',
+      carrier: null,
     });
     expect(breaches(family, result)).toEqual([]);
     // The sperm is still to give, so one unnamed parent gives it; the egg
@@ -822,6 +1016,7 @@ describe('no addition gives anyone more than two genetic parents', () => {
       sharedParentIds: [],
       sharesUnshown: 'both',
       parentKind: 'biological',
+      carrier: null,
     });
     expect(breaches(family, result)).toEqual([]);
   });
@@ -841,6 +1036,7 @@ describe('no addition gives anyone more than two genetic parents', () => {
       sharedParentIds: ['mum'],
       sharesUnshown: 'other',
       parentKind: 'biological',
+      carrier: null,
     });
     expect(breaches(family, result)).toEqual([]);
   });

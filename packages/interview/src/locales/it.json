@@ -20,6 +20,7 @@
   "interview.familyPedigree.cancel": "Annulla",
   "interview.familyPedigree.canvasLabel": "La tua famiglia",
   "interview.familyPedigree.carriedPregnancyLabel": "Questo genitore ha portato avanti la gravidanza?",
+  "interview.familyPedigree.carriedSiblingsPregnancyLabel": "{count, plural, =1 {{isYou, select, true {È stato questo genitore a portarti in grembo?} other {È stato questo genitore a portare in grembo «{name}»?}}} other {È stato questo genitore a portare in grembo ciascuna delle # persone scelte sopra per cui non è ancora indicato chi le ha portate in grembo?}}",
   "interview.familyPedigree.carrierLabel": "Chi ha portato avanti la gravidanza?",
   "interview.familyPedigree.carrierUnknown": "Un’altra persona, oppure non lo so",
   "interview.familyPedigree.childKind.adoptive": "Un figlio o una figlia adottivi",

@@ -16,7 +16,8 @@ import {
   resumeUnstartedPedigreeAtIntroduction,
 } from './family-pedigree-session-migration.ts';
 import { TypeLevelOperators } from './filters/filter.ts';
-import { DEFAULT_FINISH_SESSION_TEXT } from './finish-session-defaults.ts';
+import { defaultFinishSessionFields } from './finish-session-defaults.ts';
+import { ProtocolLocalizationSchema } from './localized-string.ts';
 import ProtocolSchemaV9 from './schema.ts';
 
 // Schema 8 never recorded the language its copy was written in, and a schema 9
@@ -27,9 +28,18 @@ const DEFAULT_LOCALE = 'en';
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const inDefaultLocale = (text: string) => ({
-  [DEFAULT_LOCALE]: escapeMessageText(text),
-});
+/**
+ * The languages the migrated protocol declares. A document already written in
+ * schema 9 form keeps its own: Fresco's deploy normalization re-runs this
+ * migration over rows stored at schema 9, and declaring them English would
+ * leave their text in languages the protocol no longer declares.
+ */
+const localizationOf = (doc: Record<string, unknown>) => {
+  const declared = ProtocolLocalizationSchema.safeParse(doc.localization);
+  return declared.success
+    ? declared.data
+    : { defaultLocale: DEFAULT_LOCALE, locales: [DEFAULT_LOCALE] };
+};
 
 // Under schema 8 the runtime encrypted an attribute marked `encrypted` only
 // while `experiments.encryptedVariables` was on; otherwise it stored the
@@ -303,17 +313,17 @@ const endsAtFinishStage = (stages: unknown): boolean => {
   return isRecord(last) && last.type === 'FinishSession';
 };
 
-const finishStageFor = (stages: unknown, defaultLocale: string) => {
-  const text = DEFAULT_FINISH_SESSION_TEXT.en;
-  return {
-    id: finishStageId(stages),
-    type: 'FinishSession' as const,
-    label: { [defaultLocale]: text.label },
-    title: { [defaultLocale]: text.title },
-    content: { [defaultLocale]: text.content },
-    outcome: 'completed' as const,
-  };
-};
+/**
+ * The finish stage the migration appends, with the supplied text in each of
+ * the protocol's languages that has it: English for a schema 8 document, which
+ * is recorded as English, and a schema 9 document's own languages otherwise.
+ */
+const finishStageFor = (stages: unknown, locales: readonly string[]) => ({
+  id: finishStageId(stages),
+  type: 'FinishSession' as const,
+  ...defaultFinishSessionFields(locales),
+  outcome: 'completed' as const,
+});
 
 type SiteChange =
   | { kind: 'set'; value: unknown }
@@ -330,15 +340,24 @@ type SiteChange =
  * Composer scale, whose parameter record accepted any value. The interview
  * only ever rendered string end labels there, so any other value is dropped.
  * A non-string anywhere else was already invalid and is left for validation.
+ *
+ * Text that is already localized is kept, so a document written in schema 9
+ * form comes through with its text in the languages it declares. A string in
+ * such a document is recorded in its default language.
  */
-const localizeSite = (site: LocalizedStringSite): SiteChange => {
+const localizeSite = (
+  site: LocalizedStringSite,
+  defaultLocale: string,
+): SiteChange => {
   if (typeof site.value === 'string') {
-    const localized = inDefaultLocale(site.value);
+    const localized = { [defaultLocale]: escapeMessageText(site.value) };
     if (site.schema.safeParse(localized).success || !site.optional) {
       return { kind: 'set', value: localized };
     }
     return { kind: 'remove' };
   }
+  // Text already localized, in a document written in schema 9 form.
+  if (site.schema.safeParse(site.value).success) return { kind: 'keep' };
   return site.looseContainer && site.optional
     ? { kind: 'remove' }
     : { kind: 'keep' };
@@ -418,6 +437,7 @@ const migrationV8toV9 = createMigration({
 - The screen that ends the interview is now a Finish Screen stage at the end of your protocol, so you can change its heading and text and translate them like the rest of your protocol. It starts with the text the interview has always shown there.`,
   migrate: ({ experiments, ...doc }) => {
     const migrated = structuredClone(doc);
+    const localization = localizationOf(migrated);
     if (!isRecord(experiments) || experiments.encryptedVariables !== true) {
       removeEncryptedMarks(migrated.codebook);
     }
@@ -440,17 +460,12 @@ const migrationV8toV9 = createMigration({
     )) {
       const key = site.path.at(-1);
       if (key === undefined) continue;
-      const change = localizeSite(site);
+      const change = localizeSite(site, localization.defaultLocale);
       if (change.kind === 'keep') continue;
       const container = containerAt(migrated, site.path.slice(0, -1));
       if (change.kind === 'set') Reflect.set(container, key, change.value);
       else Reflect.deleteProperty(container, key);
     }
-
-    const localization = {
-      defaultLocale: DEFAULT_LOCALE,
-      locales: [DEFAULT_LOCALE],
-    };
 
     return {
       ...migrated,
@@ -458,7 +473,7 @@ const migrationV8toV9 = createMigration({
         ? migrated.stages
         : [
             ...(Array.isArray(migrated.stages) ? migrated.stages : []),
-            finishStageFor(migrated.stages, localization.defaultLocale),
+            finishStageFor(migrated.stages, localization.locales),
           ],
       ...(experiments !== undefined && {
         experiments: withoutEncryptedVariables(experiments),

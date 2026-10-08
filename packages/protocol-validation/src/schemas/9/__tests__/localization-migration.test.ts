@@ -668,6 +668,58 @@ describe('v8 to v9 localization migration', () => {
       );
     });
   });
+
+  /**
+   * Fresco's deploy normalization numbers a row stored at schema 9 as schema
+   * 8 and runs this step over it again, so a document whose copy is already
+   * localized must come through with its languages and text unchanged.
+   */
+  describe('a document already in schema 9 form', () => {
+    const FRENCH_AND_GERMAN = { defaultLocale: 'fr', locales: ['fr', 'de'] };
+
+    const inFrenchAndGerman = () => {
+      const document: unknown = {
+        ...completeProtocol(),
+        schemaVersion: 8,
+        localization: FRENCH_AND_GERMAN,
+      };
+      for (const { path: at, value } of collectLocalizedStrings(document)) {
+        setAt(document, at, {
+          fr: `${value.en ?? ''} (fr)`,
+          de: `${value.en ?? ''} (de)`,
+        });
+      }
+      return document;
+    };
+
+    it('keeps the languages it declares', () => {
+      expect(migrateStep(inFrenchAndGerman())).toMatchObject({
+        localization: FRENCH_AND_GERMAN,
+      });
+    });
+
+    it('keeps its text in every language, scale end labels included', () => {
+      const document = inFrenchAndGerman();
+      const text = collectLocalizedStrings(document);
+      expect(text.map(({ path: at }) => at.at(-1))).toContain('minLabel');
+
+      expect(collectLocalizedStrings(migrateStep(document))).toEqual(text);
+    });
+
+    it('migrates to a protocol schema 9 accepts', () => {
+      expect(() => migrateProtocol(inFrenchAndGerman(), 9)).not.toThrow();
+    });
+
+    it('records text it still holds as a string in its default language', () => {
+      const document = inFrenchAndGerman();
+      const title = [...stagePath(document, 'information'), 'title'];
+      setAt(document, title, 'Bienvenue');
+
+      expect(getAt(migrateStep(document), title)).toEqual({
+        fr: 'Bienvenue',
+      });
+    });
+  });
 });
 
 /**

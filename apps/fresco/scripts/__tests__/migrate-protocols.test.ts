@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
-import { hashProtocol, migrateProtocol } from '@codaco/protocol-validation';
+import {
+  DEFAULT_FINISH_SESSION_TEXT,
+  hashProtocol,
+  migrateProtocol,
+} from '@codaco/protocol-validation';
 import {
   buildAssetManifest,
   InterviewMigrationFailedError,
@@ -1322,6 +1326,128 @@ describe('encrypted attributes in the deploy migration', () => {
     const warned = warnSpy.mock.calls.map((call) => String(call[0])).join(' ');
     expect(warned).toMatch(/Legacy Encrypted\.netcanvas/);
     warnSpy.mockRestore();
+  });
+});
+
+/**
+ * Rewrites every English-only text in a migrated protocol as French and
+ * German text, as a researcher who wrote it in those languages would have.
+ */
+function inFrenchAndGerman(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(inFrenchAndGerman);
+  if (typeof value !== 'object' || value === null) return value;
+  const entries = Object.entries(value);
+  const [only] = entries;
+  if (entries.length === 1 && only?.[0] === 'en') {
+    return { fr: `${String(only[1])} (fr)`, de: `${String(only[1])} (de)` };
+  }
+  return Object.fromEntries(
+    entries.map(([key, child]) => [key, inFrenchAndGerman(child)]),
+  );
+}
+
+describe('languages in the deploy migration', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('keeps the languages and text of a row at the compatible version that it normalizes', async () => {
+    const atEncryptionVersion = migrateProtocol(
+      { ...makeV7ProtocolWithEncryptedName(), name: 'Bilingual' },
+      8,
+      { name: 'Bilingual' },
+    );
+    const current = migrateProtocol(
+      atEncryptionVersion,
+      COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+      { name: 'Bilingual' },
+    );
+    const localization = { defaultLocale: 'fr', locales: ['fr', 'de'] };
+    const codebook = inFrenchAndGerman(current.codebook);
+    const stages = inFrenchAndGerman(current.stages);
+    expect(codebook).toHaveProperty('node.person.label', {
+      fr: 'Person (fr)',
+      de: 'Person (de)',
+    });
+    const prisma = makeMockPrisma();
+    prisma.protocol.findMany.mockResolvedValue([
+      {
+        id: 'cm-bilingual',
+        assets: [],
+        name: 'Bilingual.netcanvas',
+        schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+        // Copies, so a migration that rewrites the row in place cannot also
+        // rewrite what the assertions expect.
+        stages: structuredClone(stages),
+        codebook: structuredClone(codebook),
+        localization: structuredClone(localization),
+        // Refused at the compatible version, so the row is normalized.
+        experiments: { encryptedVariables: true },
+      },
+    ]);
+
+    await runMigration(prisma);
+
+    const written = onlyWrite(prisma);
+    expect(written).toHaveProperty('data.localization', localization);
+    expect(written).toHaveProperty('data.codebook', codebook);
+    expect(written).toHaveProperty('data.stages', stages);
+    // The row already ends at its finish stage, and keeps it as its only one,
+    // in its own languages.
+    const finishStages = (stages as { type: string }[]).filter(
+      (stage) => stage.type === 'FinishSession',
+    );
+    expect(finishStages).toHaveLength(1);
+    expect(stages.at(-1)).toBe(finishStages[0]);
+  });
+
+  it('gives a row at the compatible version without a finish stage one in its own languages', async () => {
+    const atEncryptionVersion = migrateProtocol(
+      { ...makeV7ProtocolWithEncryptedName(), name: 'Bilingual' },
+      8,
+      { name: 'Bilingual' },
+    );
+    const current = migrateProtocol(
+      atEncryptionVersion,
+      COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+      { name: 'Bilingual' },
+    );
+    const localization = { defaultLocale: 'fr', locales: ['fr', 'de'] };
+    const codebook = inFrenchAndGerman(current.codebook);
+    const stages = (
+      inFrenchAndGerman(current.stages) as { type: string }[]
+    ).filter((stage) => stage.type !== 'FinishSession');
+    const prisma = makeMockPrisma();
+    prisma.protocol.findMany.mockResolvedValue([
+      {
+        id: 'cm-bilingual-unfinished',
+        assets: [],
+        name: 'Bilingual.netcanvas',
+        schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+        stages: structuredClone(stages),
+        codebook: structuredClone(codebook),
+        localization: structuredClone(localization),
+      },
+    ]);
+
+    await runMigration(prisma);
+
+    const written = onlyWrite(prisma);
+    expect(written).toHaveProperty('data.localization', localization);
+    expect(written).toHaveProperty('data.stages', [
+      ...stages,
+      expect.objectContaining({
+        type: 'FinishSession',
+        title: {
+          fr: DEFAULT_FINISH_SESSION_TEXT.fr.title,
+          de: DEFAULT_FINISH_SESSION_TEXT.de.title,
+        },
+        content: {
+          fr: DEFAULT_FINISH_SESSION_TEXT.fr.content,
+          de: DEFAULT_FINISH_SESSION_TEXT.de.content,
+        },
+      }),
+    ]);
   });
 });
 

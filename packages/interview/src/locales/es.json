@@ -20,6 +20,7 @@
   "interview.familyPedigree.cancel": "Cancelar",
   "interview.familyPedigree.canvasLabel": "Tu familia",
   "interview.familyPedigree.carriedPregnancyLabel": "¿Fue este progenitor quien llevó el embarazo?",
+  "interview.familyPedigree.carriedSiblingsPregnancyLabel": "{count, plural, =1 {{isYou, select, true {¿Fue este progenitor quien te gestó?} other {¿Fue este progenitor quien gestó a «{name}»?}}} other {¿Fue este progenitor quien gestó a cada una de las # personas elegidas arriba que aún no tienen a nadie registrado como gestante?}}",
   "interview.familyPedigree.carrierLabel": "¿Quién llevó el embarazo?",
   "interview.familyPedigree.carrierUnknown": "Otra persona, o no lo sé",
   "interview.familyPedigree.childKind.adoptive": "Un hijo/a adoptivo/a",

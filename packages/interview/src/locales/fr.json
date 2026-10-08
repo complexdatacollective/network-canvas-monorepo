@@ -20,6 +20,7 @@
   "interview.familyPedigree.cancel": "Annuler",
   "interview.familyPedigree.canvasLabel": "Votre famille",
   "interview.familyPedigree.carriedPregnancyLabel": "Ce parent a-t-il porté la grossesse ?",
+  "interview.familyPedigree.carriedSiblingsPregnancyLabel": "{count, plural, =1 {{isYou, select, true {Est-ce ce parent qui vous a porté pendant la grossesse ?} other {Est-ce ce parent qui a porté « {name} » pendant la grossesse ?}}} other {Est-ce ce parent qui a porté pendant la grossesse chacune des # personnes choisies ci-dessus pour lesquelles personne n’est encore indiqué comme l’ayant portée ?}}",
   "interview.familyPedigree.carrierLabel": "Qui a porté la grossesse ?",
   "interview.familyPedigree.carrierUnknown": "Quelqu’un d’autre, ou je ne sais pas",
   "interview.familyPedigree.childKind.adoptive": "Un enfant adopté",

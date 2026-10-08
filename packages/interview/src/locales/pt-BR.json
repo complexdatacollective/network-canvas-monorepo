@@ -20,6 +20,7 @@
   "interview.familyPedigree.cancel": "Cancelar",
   "interview.familyPedigree.canvasLabel": "Sua família",
   "interview.familyPedigree.carriedPregnancyLabel": "Foi essa pessoa quem gestou?",
+  "interview.familyPedigree.carriedSiblingsPregnancyLabel": "{count, plural, =1 {{isYou, select, true {Foi essa pessoa quem gestou você?} other {Foi essa pessoa quem gestou “{name}”?}}} other {Foi essa pessoa quem gestou cada uma das # pessoas escolhidas acima que ainda não têm ninguém registrado como gestante?}}",
   "interview.familyPedigree.carrierLabel": "Quem gestou?",
   "interview.familyPedigree.carrierUnknown": "Outra pessoa, ou não sei",
   "interview.familyPedigree.childKind.adoptive": "Um filho(a) adotivo(a)",

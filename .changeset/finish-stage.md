@@ -30,7 +30,10 @@ ended early. That outcome is saved with each interview and exported.
   next free `finish-2`, `finish-3`, …), outcome `completed`, and the text the
   interview has always shown there, in English under the protocol's default
   language. Its notes say so. A recorded interview that was on the old
-  finish screen resumes on the new finish stage.
+  finish screen resumes on the new finish stage. Run again over a document
+  already in schema 9 form, as Fresco's deploy normalization does, it keeps a
+  finish stage the document already ends at, and gives one that has none the
+  supplied text in the document's own languages.
 - A finish stage's name, heading and text may have no translation at all
   while a protocol is being written, so a protocol in a language Network
   Canvas has no closing text for starts without any. `validateProtocol` still
