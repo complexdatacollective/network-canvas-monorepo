@@ -15,7 +15,7 @@ The Family Pedigree is an interface for collecting family network data. The part
 
 Each family member is saved as a person of the type you choose for the stage, and each relationship as a connection of the relationship type you choose, together with the attributes described below.
 
-The canvas shows the participant's family: the participant, and everyone connected to them through the stage's relationships, however indirectly. Other stages can add people of the same person type who are not family, such as friends or colleagues. They are not drawn on the canvas and the stage never changes them, even if another stage tied them to the participant with a different kind of connection. They are not given labels, not counted towards [completeness](#completeness), and cannot be selected for a [nomination prompt](#nomination-prompts). Everything the participant adds on the canvas is connected to them, so nobody they draw leaves the family.
+The canvas shows the participant's family: the participant, and everyone connected to them through the stage's relationships, however indirectly. Other stages can add people of the same person type who are not family, such as friends or colleagues. They are not drawn on the canvas and the stage never changes them, even if another stage tied them to the participant with a different kind of connection, except to clear a [relationship to the participant](#relationship-to-the-participant) it recorded while they were family. They are not given labels, not counted towards [completeness](#completeness), and cannot be selected for a [nomination prompt](#nomination-prompts). Everything the participant adds on the canvas is connected to them, so nobody they draw leaves the family.
 
 ## How participants build their family
 
@@ -69,12 +69,13 @@ The text shown above the canvas while the participant draws their family. Say ho
 
 Choose the attributes of the person type that the interface records about every family member. For each, you can pick an existing attribute or create a new one from the picker.
 
-| Attribute                  | Type                                                                | What it holds                                                                                                                            |
-| -------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Name                       | Text                                                                | The person's name, typed in the side panel, or the label the interface gives a person the participant leaves unnamed. See [Name](#name). |
-| Sex assigned at birth      | Categorical (female, male, intersex, don't know, prefer not to say) | The sex the person was assigned at birth. The interface sets this attribute's options, and they cannot be changed.                       |
-| Gender identity (optional) | Categorical (your own options)                                      | How the person describes their gender. Asked only when **Ask about gender identity** is switched on.                                     |
-| Participant marker         | Boolean                                                             | True on the participant's own person and blank on everyone else. The interface sets it itself.                                           |
+| Attribute                                  | Type                                                                      | What it holds                                                                                                                                                                  |
+| ------------------------------------------ | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Name                                       | Text                                                                      | The person's name, typed in the side panel, or the label the interface gives a person the participant leaves unnamed. See [Name](#name).                                       |
+| Sex assigned at birth                      | Categorical (female, male, intersex, don't know, prefer not to say)       | The sex the person was assigned at birth. The interface sets this attribute's options, and they cannot be changed.                                                             |
+| Gender identity (optional)                 | Categorical (your own options)                                            | How the person describes their gender. Asked only when **Ask about gender identity** is switched on.                                                                           |
+| Participant marker                         | Boolean                                                                   | True on the participant's own person and blank on everyone else. The interface sets it itself.                                                                                 |
+| Relationship to the participant (optional) | Categorical (the values listed [below](#relationship-to-the-participant)) | How each family member is related to the participant, worked out by the interface. Recorded only when **Record each person's relationship to the participant** is switched on. |
 
 #### Name
 
@@ -121,13 +122,39 @@ A new stage asks about gender identity. Turn **Ask about gender identity** off i
 - The participant is asked each person's gender identity in the side panel.
 - You choose a categorical attribute to hold the answer and define its options. When you create a new attribute, Architect suggests Woman, Man, Non-binary, A different identity, Don't know and Prefer not to say, which you can edit.
 - For each option, you choose the kinship words a person with that option takes. Feminine words are mother, sister, daughter, grandmother, aunt and niece. Masculine words are father, brother, son, grandfather, uncle and nephew. Neutral words are parent, sibling, child, grandparent and parent's sibling. An option you mark **Not known** takes neutral words, except that a biological parent whose gamete is known (see [Which parent gave the egg or the sperm](#which-parent-gave-the-egg-or-the-sperm)) is called a biological mother if they gave the egg or a biological father if they gave the sperm.
-- The options belong to this stage, because it decides the words each one takes. They can only be edited from a Family Pedigree stage that uses the attribute, and are read-only everywhere else in Architect.
+- The options belong to this stage, because it decides the words each one takes. They can only be edited from this stage, and are read-only everywhere else in Architect. Only one stage can manage an attribute's options, so another Family Pedigree stage cannot use the same gender identity attribute: its own words would not follow an edit made here. Give each stage that asks about gender identity its own attribute, or switch the question off on the others.
 
 When it is off, the question is not asked, and the everyday kinship words follow each person's sex assigned at birth instead: female takes feminine words, male takes masculine words, and anyone else takes neutral words.
 
 #### Participant marker
 
 The marker is true on the participant's own person and blank, not false, on everyone else. Use it in a [stage filter](/en/design-protocols/key-concepts/network-filtering) to keep the participant out of later stages that ask about their relatives, or to tell them apart in exports and analysis. Because it is blank on everyone else, filter on "is not" true rather than on false.
+
+#### Relationship to the participant
+
+Later stages can only filter or skip on a person's own attributes, so a family member's relationship to the participant is not available to them unless it is saved on each person. Switch on **Record each person's relationship to the participant** and choose a categorical attribute to hold it. When you create a new attribute, Architect fills in the options with labels in your language, which you can translate; their values are fixed, and an attribute with other options cannot be chosen. The interface writes the attribute itself, so no form field or other answer can collect it, and it is never asked.
+
+The interview works the relationship out from the family the participant has drawn each time they leave the stage, forwards or back. Everyone connected to the participant is given one; the participant is not. Anyone who held a relationship but is no longer connected to the participant, for example because the participant removed the person who connected them, has it cleared, so a filter never finds a stale relative. The values name neither gender nor side of the family:
+
+| Value                                                              | Who it describes                                                                                          |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `parent`, `child`, `sibling`                                       | A biological parent or child, and a full sibling (both biological parents shared)                         |
+| `halfSibling`                                                      | A sibling who shares one biological parent                                                                |
+| `donor`, `donorConceivedChild`                                     | An egg or sperm donor, and a child conceived with the participant as donor                                |
+| `surrogate`, `surrogacyChild`                                      | Someone who carried the participant without giving a gamete, and a child the participant carried that way |
+| `adoptiveParent`, `adoptiveChild`, `adoptiveSibling`               | Related through adoption (an adoptive sibling shares no biological parent)                                |
+| `stepParent`, `stepChild`, `stepSibling`                           | A step or social parent, their child, and a parent's partner's child                                      |
+| `partner`, `formerPartner`                                         | A current and a former partner                                                                            |
+| `grandparent`, `greatGrandparent`, `grandchild`, `greatGrandchild` | Relatives two or three generations away                                                                   |
+| `parentsSibling`, `grandparentsSibling`, `siblingsChild`, `cousin` | Aunts and uncles, great-aunts and great-uncles, nieces and nephews, and first cousins                     |
+| `parentInLaw`, `siblingInLaw`, `childInLaw`                        | A partner's parent, a partner's sibling or a sibling's partner, and a child's partner                     |
+| `otherRelative`                                                    | Anyone connected more distantly, or in a way none of the other values names                               |
+
+Someone related to the participant in more than one way gets one value: the closest biological tie first (`parent`, `child`, `sibling`, then `donor`, `donorConceivedChild` and `halfSibling`), then adoptive ties, then partners, then biological relatives further out, then surrogacy, step and in-law ties, and `otherRelative` last. So a parent's sister who donated the egg is a `donor`, and a grandmother who also carried the participant is a `grandparent`.
+
+For example, to show a later stage only the participant's first-degree biological relatives, filter on the relationship being `parent`, `donor`, `sibling`, `child` or `donorConceivedChild`.
+
+The relationship is not encrypted, even when the study encrypts names, because only text attributes can be encrypted.
 
 #### How each person's symbol is drawn
 
@@ -182,7 +209,7 @@ Optionally check that participants have recorded a minimum part of their family,
 Choose **Relatives to record**. Each choice includes the ones before it:
 
 1. **Both biological parents**: every person has two biological parents, so an unknown parent is still added to the family.
-2. **Parents, siblings and children**: the participant's first-degree relatives.
+2. **Parents, siblings and children**: the participant's first-degree relatives, and the other biological parent of each of the participant's biological children. An unnamed parent added for a child, by choosing **Someone not shown yet**, counts, and that parent's own family is not asked for.
 3. **Three generations**: adds grandparents, and aunts and uncles on both sides.
 4. **All second-degree relatives**: adds nieces, nephews and grandchildren.
 5. **Three generations, to first cousins**: adds first cousins.
@@ -240,6 +267,6 @@ Resist the urge to create long forms with many items. Participants answer the ad
 
 <BadPractice>
 
-Avoid treating a person's kinship word as recorded data. It is shown to participants but not saved, and is worked out from the family the participant has drawn and the wording you chose. Record anything you need for analysis as an attribute.
+Avoid reading how people are related from their names or kinship words. A label saved for an unnamed person is worded for the participant, in their language and the stage's wording, and a named person has no kinship word saved at all. To analyse or filter on how people are related, switch on [Relationship to the participant](#relationship-to-the-participant), which records a fixed value on everyone in the family.
 
 </BadPractice>
