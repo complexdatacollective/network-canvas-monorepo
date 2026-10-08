@@ -116,6 +116,11 @@ Encrypted answers are now protected in a new way:
   and can try again. The confirmations to finish and to close the interview
   stay open while they wait, and cancelling either one keeps the interview
   open.
+- A name entered in the quick-add field of a name generator or the Network
+  Composer counts as being saved from the moment Enter is pressed, while it is
+  still being checked, so leaving the stage waits for it too. The field stays
+  open, with the name in it, until the person is added or the name is refused,
+  so a refusal is shown where the name was entered.
 - An area picked on the map is highlighted once it is saved, so a pick that
   couldn't be saved, such as a protected location picked before the
   passphrase was entered, no longer looks chosen. The map highlights only the

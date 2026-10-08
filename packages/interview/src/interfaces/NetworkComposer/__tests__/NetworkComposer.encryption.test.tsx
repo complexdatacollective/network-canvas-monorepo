@@ -24,6 +24,7 @@ import {
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { ContractProvider } from '../../../contract/context';
+import { WritesInFlightProvider } from '../../../store/WritesInFlightContext';
 import type { RegisterBeforeNext, StageProps } from '../../../types';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import {
@@ -153,6 +154,7 @@ const QUICK_ADD_VAR = 'var-quick-add';
 const LAYOUT_VAR = 'var-layout';
 const NOTES_VAR = 'var-notes';
 const PLACE_VAR = 'var-place';
+const GROUP_VAR = 'var-group';
 const NODE_ID = 'node-a';
 const PASSPHRASE = 'composer passphrase';
 
@@ -264,25 +266,27 @@ async function makeStore({
   fresh = false,
   refused = false,
   nodeVariables = variables,
+  composerStage = stage,
 }: {
   nodes?: NcNode[];
   locked?: boolean;
   fresh?: boolean;
   refused?: boolean;
   nodeVariables?: Record<string, Variable>;
+  composerStage?: StageProps<'NetworkComposer'>['stage'];
 } = {}): Promise<Store> {
   const { header } = await encryptionFor(PASSPHRASE);
-  const store = createEncryptionStore(nodes, [stage], nodeVariables, {
+  const store = createEncryptionStore(nodes, [composerStage], nodeVariables, {
     header: fresh ? undefined : refused ? outOfBoundsHeader(header) : header,
   });
   if (!locked && !refused) await unlockWith(store, PASSPHRASE);
   return store;
 }
 
-function renderComposer(store: Store) {
+function renderComposer(store: Store, composerStage = stage) {
   const registerBeforeNext: RegisterBeforeNext = vi.fn();
   const props: StageProps<'NetworkComposer'> = {
-    stage,
+    stage: composerStage,
     getNavigationHelpers: () => ({
       moveForward: vi.fn(),
       moveBackward: vi.fn(),
@@ -299,14 +303,19 @@ function renderComposer(store: Store) {
             flags={{ isE2E: false, isDevelopment: false }}
           >
             <DialogProvider>
-              <CurrentStepProvider
-                currentStep={0}
-                onStepChange={() => undefined}
+              <WritesInFlightProvider
+                writesSettled={store.writesSettled}
+                trackWrite={store.trackWrite}
               >
-                <StageMetadataContext.Provider value={registerBeforeNext}>
-                  {children}
-                </StageMetadataContext.Provider>
-              </CurrentStepProvider>
+                <CurrentStepProvider
+                  currentStep={0}
+                  onStepChange={() => undefined}
+                >
+                  <StageMetadataContext.Provider value={registerBeforeNext}>
+                    {children}
+                  </StageMetadataContext.Provider>
+                </CurrentStepProvider>
+              </WritesInFlightProvider>
             </DialogProvider>
           </ContractProvider>
         </TestProtocolLocalization>
@@ -641,6 +650,93 @@ describe('NetworkComposer validating an encrypted name', () => {
     await waitFor(() => expect(input).toHaveAttribute('aria-invalid', 'true'));
     expect(store.getState().session.network.nodes).toHaveLength(1);
   });
+
+  const groupedVariables: Record<string, Variable> = {
+    ...uniqueNameVariables,
+    [GROUP_VAR]: {
+      name: 'team',
+      label: 'team',
+      type: 'categorical',
+      options: [{ value: 'red', label: { en: 'Team Red' } }],
+    },
+  };
+  const groupedStage: StageProps<'NetworkComposer'>['stage'] = {
+    ...stage,
+    convexHullVariable: asEntityAttributeReference(GROUP_VAR),
+  };
+
+  // Submits `name` while the stored names are still being decrypted, so it
+  // is checked only once `release` is called.
+  async function submitWhileDecrypting(name: string) {
+    let release: () => void = () => undefined;
+    decryptionGate.held = new Promise((resolve) => {
+      release = resolve;
+    });
+    const store = await makeStore({
+      nodes: [await makeEncryptedNode()],
+      nodeVariables: groupedVariables,
+      composerStage: groupedStage,
+    });
+    renderComposer(store, groupedStage);
+
+    fireEvent.click(screen.getByRole('button', { name: /add node/i }));
+    const input = await screen.findByRole('textbox', { name: /name/i });
+    await act(async () => {
+      fireEvent.change(input, { target: { value: name } });
+      fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+    });
+    return { store, input, release };
+  }
+
+  it('keeps the field open while a name is checked and added', async () => {
+    const { store, input, release } = await submitWhileDecrypting('Bob');
+    try {
+      await act(async () => {
+        fireEvent.keyDown(input, { key: 'Escape', code: 'Escape' });
+      });
+      fireEvent.click(screen.getByRole('button', { name: /^select$/i }));
+      fireEvent.click(screen.getByRole('button', { name: /groups/i }));
+      fireEvent.click(await screen.findByRole('button', { name: /team red/i }));
+      expect(screen.getByRole('button', { name: /add node/i })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+      expect(input).toBeInTheDocument();
+
+      await act(async () => release());
+      await waitFor(() =>
+        expect(store.getState().session.network.nodes).toHaveLength(2),
+      );
+      expect(input).toBeInTheDocument();
+    } finally {
+      release();
+      decryptionGate.held = undefined;
+    }
+  });
+
+  it.each([
+    ['stored once the person is added', 'Bob', true],
+    ['not stored when the name is refused', 'Alice', false],
+  ])(
+    'counts a name being checked as being saved, %s',
+    async (_outcome, name, stored) => {
+      const { store, release } = await submitWhileDecrypting(name);
+      try {
+        const settling = store.writesSettled();
+        expect(settling).toBeDefined();
+
+        await act(async () => release());
+        let allStored: boolean | undefined;
+        await act(async () => {
+          allStored = await settling;
+        });
+        expect(allStored).toBe(stored);
+      } finally {
+        release();
+        decryptionGate.held = undefined;
+      }
+    },
+  );
 
   it('waits for the stored names before checking one submitted while they are being decrypted', async () => {
     let release: () => void = () => undefined;

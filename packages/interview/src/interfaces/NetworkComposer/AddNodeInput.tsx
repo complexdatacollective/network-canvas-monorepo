@@ -12,6 +12,7 @@ import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 
+import { useTrackWrite } from '../../store/WritesInFlightContext';
 import { interfaceMessages } from '../messages';
 
 type AddNodeInputProps = {
@@ -24,6 +25,8 @@ type AddNodeInputProps = {
    * input stays open for the next one, and keeps a name that was not saved.
    */
   onCreate: (name: string) => Promise<boolean>;
+  /** Told when a name starts and stops being checked and added. */
+  onAddingChange?: (adding: boolean) => void;
   /**
    * Context required for context-dependent validations like unique, sameAs,
    * etc. — forwarded to useField exactly as QuickNodeForm's quick-add field
@@ -47,10 +50,12 @@ function AddNodeField({
   entityLabel,
   targetVariable,
   onCreate,
+  onAddingChange,
   validationContext,
   ...validationProps
 }: AddNodeInputProps) {
   const intl = useAppIntl();
+  const trackWrite = useTrackWrite();
   const validateForm = useFormStore((state) => state.validateForm);
   const pathOperations = useFormStore((state) => state.pathOperations);
   const resetField = useFormStore((state) => state.resetField);
@@ -102,13 +107,15 @@ function AddNodeField({
     (event: React.KeyboardEvent<HTMLInputElement>) => {
       if (event.nativeEvent.isComposing || event.key !== 'Enter') return;
       event.preventDefault();
+      if (submissionInProgress.current) return;
+      submissionInProgress.current = true;
+      shouldRestoreFocus.current = true;
+      setIsSubmitting(true);
+      onAddingChange?.(true);
 
-      void (async () => {
-        if (submissionInProgress.current) return;
-        submissionInProgress.current = true;
-        shouldRestoreFocus.current = true;
-        setIsSubmitting(true);
-
+      // The name counts as being saved from Enter, while it is still being
+      // checked, so leaving the stage waits for it.
+      const adding = (async () => {
         try {
           const name =
             typeof fieldProps.value === 'string' ? fieldProps.value.trim() : '';
@@ -117,21 +124,32 @@ function AddNodeField({
           // Gate on the target variable's codebook validation (required,
           // maxLength, unique, ...) before creating anything.
           const isValid = await validateForm();
-          if (!isValid) return;
+          if (!isValid) return false;
 
           // Preserves the pre-existing guard: a blank/whitespace-only name is a
           // silent no-op, independent of codebook rules (no fallback to
           // `required` — a rule-less variable behaves exactly as before).
-          if (name === '') return;
+          if (name === '') return true;
 
-          if (await onCreate(name)) setFieldToReset({ name: targetVariable });
+          const created = await onCreate(name);
+          if (created) setFieldToReset({ name: targetVariable });
+          return created;
         } finally {
           submissionInProgress.current = false;
           setIsSubmitting(false);
+          onAddingChange?.(false);
         }
       })();
+      trackWrite(adding);
     },
-    [validateForm, fieldProps, onCreate, targetVariable],
+    [
+      validateForm,
+      fieldProps,
+      onCreate,
+      onAddingChange,
+      targetVariable,
+      trackWrite,
+    ],
   );
 
   return (
