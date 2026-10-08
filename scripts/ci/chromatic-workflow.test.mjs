@@ -61,6 +61,10 @@ test('all UI Test contexts are emitted for PR SHAs without merge-queue work', ()
   assert.match(statuses, /workflow_run\.actor\.login == 'dependabot\[bot\]'/);
   assert.match(
     statuses,
+    /workflow_run\.pull_requests\[0\]\.base\.ref == 'main'/,
+  );
+  assert.match(
+    statuses,
     /workflow_run\.head_repository\.full_name != github\.repository/,
   );
   assert.match(
