@@ -21,7 +21,7 @@
 // exports in ways that follow exactly from that upgrade, and those are
 // reconciled rather than reported: the interview's recorded language (null or
 // a language tag) in the interview API, the ego CSV and GraphML; a protocol's
-// schemaVersion moving to 9; codebook text held as { und: <message> }; the
+// schemaVersion moving to 9; codebook text held as { en: <message> }; the
 // labels the migration gives entity types and attributes from their names;
 // empty optional text it leaves out; and the GraphML protocol and codebook
 // hashes of a protocol it rewrote. Each is undone in the current file only
