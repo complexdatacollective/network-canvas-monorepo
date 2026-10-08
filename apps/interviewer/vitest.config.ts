@@ -140,6 +140,7 @@ export default defineConfig({
             '@codaco/interview > @reduxjs/toolkit',
             '@codaco/interview > concaveman',
             '@codaco/interview > html-to-image',
+            '@codaco/interview > intl-messageformat',
             '@codaco/interview > mapbox-gl/esm',
             '@codaco/interview > ohash',
             '@codaco/interview > react-redux',
