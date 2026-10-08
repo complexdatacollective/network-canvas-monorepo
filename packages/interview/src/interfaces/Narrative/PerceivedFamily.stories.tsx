@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect, useState } from 'react';
-import { expect, within } from 'storybook/test';
+import { expect, waitFor, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
@@ -155,21 +155,26 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+// The stage is in the document before its fade-in makes it visible, so a
+// loaded runner can reach the assertion while it is still transparent.
+const expectVisible = (element: HTMLElement) =>
+  waitFor(() => expect(element).toBeVisible(), { timeout: 5000 });
+
 export const NarrativeReflection: Story = {
   render: () => <PerceivedFamilyStory step={6} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Maya')).toBeVisible();
-    await expect(await canvas.findByText('Jo')).toBeVisible();
-    await expect(await canvas.findByText('Avery')).toBeVisible();
+    for (const name of ['Maya', 'Jo', 'Avery']) {
+      await expectVisible(await canvas.findByText(name));
+    }
   },
 };
 
 export const FullWalkthrough: Story = {
   render: () => <PerceivedFamilyStory step={1} />,
   play: async ({ canvasElement }) => {
-    await expect(
+    await expectVisible(
       await within(canvasElement).findByText('Who feels like family to you?'),
-    ).toBeVisible();
+    );
   },
 };
