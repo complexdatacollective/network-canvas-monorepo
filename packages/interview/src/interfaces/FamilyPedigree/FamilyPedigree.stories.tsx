@@ -947,11 +947,13 @@ const idInSession = (name: string) =>
     Object.values(node[entityAttributesProperty]).includes(name),
   )?.[entityPrimaryKeyProperty];
 
+const edgesInSession = () => lastSynced?.network.edges ?? [];
+
 /** Whether the session last written records `parentId` as having carried
  * `childId`'s pregnancy: the one yes/no answer on the link between them.
  * Undefined while there is no such link. */
 const carriedInSession = (parentId: string, childId: string) => {
-  const link = (lastSynced?.network.edges ?? []).find(
+  const link = edgesInSession().find(
     (edge) => edge.from === parentId && edge.to === childId,
   );
   if (!link) return undefined;
@@ -1112,6 +1114,151 @@ export const AParentNotYetShownCanHaveCarriedASibling: Story = {
     await expect(carriedInSession('dad', mia)).toBe(false);
     // Only the sister's pregnancy was asked about.
     await expect(carriedInSession(mother ?? '', 'ego')).toBe(false);
+  },
+};
+
+/**
+ * Jun was adopted by Clare, as was his sister Lucy. His birth mother, added
+ * as a biological parent, is not assumed to be Clare's partner, nor Lucy's
+ * mother: the partner question starts at No and Lucy is not chosen. Made an
+ * adoptive parent instead, she is assumed to have raised them with Clare,
+ * until the participant says she was not Clare's partner, which changing
+ * the kind of parent again leaves alone. Nothing records a partnership.
+ */
+export const ABirthParentIsNotAssumedToBeAnAdoptiveParentsPartner: Story = {
+  args: { requirement: 'none' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      onSync={recordSession}
+      family={{
+        people: [
+          { id: 'ego', name: 'Jun', gender: 'man', sex: 'male', ego: true },
+          { id: 'clare', name: 'Clare', gender: 'woman', sex: 'female' },
+          { id: 'lucy', name: 'Lucy', gender: 'woman', sex: 'female' },
+        ],
+        links: [
+          { from: 'clare', to: 'ego', kind: 'adoptive' },
+          { from: 'clare', to: 'lucy', kind: 'adoptive' },
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    lastSynced = undefined;
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+
+    await userEvent.hover(await canvas.findByRole('button', { name: /^You/ }));
+    await userEvent.click(await canvas.findByTestId('pedigree-menu-parent'));
+    await userEvent.type(
+      await body.findByRole('textbox', { name: /^Name/ }),
+      'Mei',
+    );
+    await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
+    await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
+    const kind = await body.findByRole('radiogroup', {
+      name: /^What kind of parent are they\?/,
+    });
+    const partner = await body.findByRole('radiogroup', {
+      name: /^Are they the partner of another parent\?/,
+    });
+    const alsoParentOf = await body.findByRole('group', {
+      name: /^Are they also the parent of/,
+    });
+    const chooseKind = (name: string) =>
+      userEvent.click(within(kind).getByRole('radio', { name }));
+    // The partner chosen, by the option's name.
+    const partnerAnswer = () =>
+      ['Clare', 'No'].find(
+        (name) =>
+          within(partner)
+            .getByRole('radio', { name })
+            .getAttribute('aria-checked') === 'true',
+      );
+    const lucyChosen = () =>
+      within(alsoParentOf).getByRole('checkbox', { name: 'Lucy' });
+
+    // A biological parent, by default.
+    await waitFor(() => expect(partnerAnswer()).toBe('No'));
+    await expect(lucyChosen()).not.toBeChecked();
+
+    await chooseKind('Adoptive parent');
+    await waitFor(() => expect(partnerAnswer()).toBe('Clare'));
+    await waitFor(() => expect(lucyChosen()).toBeChecked());
+
+    await chooseKind('Biological parent');
+    await waitFor(() => expect(partnerAnswer()).toBe('No'));
+    await waitFor(() => expect(lucyChosen()).not.toBeChecked());
+
+    // The participant's own answer is kept.
+    await chooseKind('Adoptive parent');
+    await waitFor(() => expect(partnerAnswer()).toBe('Clare'));
+    await userEvent.click(within(partner).getByRole('radio', { name: 'No' }));
+    await chooseKind('Biological parent');
+    await chooseKind('Adoptive parent');
+    await expect(partnerAnswer()).toBe('No');
+
+    await chooseKind('Biological parent');
+    await userEvent.click(
+      await body.findByRole('button', { name: 'Add to family' }),
+    );
+    await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
+    await waitFor(() => expect(idInSession('Mei')).toBeDefined());
+    const mei = idInSession('Mei') ?? '';
+    // Her link to Jun, and no partnership.
+    await expect(
+      edgesInSession().filter((edge) => [edge.from, edge.to].includes(mei)),
+    ).toHaveLength(1);
+  },
+};
+
+/**
+ * Ella's birth mother Rachel is recorded. Her father, added as a biological
+ * parent, is assumed to be Rachel's partner, as is a stepfather: either
+ * raised Ella with her.
+ */
+export const AParentIsAssumedToBeTheirCoParentsPartner: Story = {
+  args: { requirement: 'none' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      family={{
+        people: [
+          {
+            id: 'ego',
+            name: 'Ella',
+            gender: 'woman',
+            sex: 'female',
+            ego: true,
+          },
+          { id: 'mum', name: 'Rachel', gender: 'woman', sex: 'female' },
+        ],
+        links: [{ from: 'mum', to: 'ego', kind: 'biological', carrier: true }],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+
+    await userEvent.hover(await canvas.findByRole('button', { name: /^You/ }));
+    await userEvent.click(await canvas.findByTestId('pedigree-menu-parent'));
+    await userEvent.click(await body.findByRole('radio', { name: 'Man' }));
+    await userEvent.click(await body.findByRole('radio', { name: 'Male' }));
+    const partner = await body.findByRole('radiogroup', {
+      name: /^Are they the partner of another parent\?/,
+    });
+    const rachel = within(partner).getByRole('radio', { name: 'Rachel' });
+    await waitFor(() => expect(rachel).toBeChecked());
+    await userEvent.click(
+      within(
+        await body.findByRole('radiogroup', {
+          name: /^What kind of parent are they\?/,
+        }),
+      ).getByRole('radio', { name: 'Step or social parent' }),
+    );
+    await expect(rachel).toBeChecked();
   },
 };
 

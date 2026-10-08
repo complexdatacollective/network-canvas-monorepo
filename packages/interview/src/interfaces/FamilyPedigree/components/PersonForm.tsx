@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
@@ -1089,6 +1089,40 @@ function ParentFields({
     if (siblingsDropped) setFieldValue(ROLE.alsoParentOf, keptRef.current);
   }, [siblingsDropped, setFieldValue]);
 
+  // The defaults assume the new parent belongs with the anchor's other
+  // parents — as their partner, and as the parent of the anchor's full
+  // siblings — only where they could have raised the anchor together: never
+  // a biological parent alongside an adoptive one, who are rarely partners
+  // and whose other children are rarely each other's. Each default follows
+  // the kind chosen until the participant answers the question themselves.
+  const kindOfParent = (parentId: string) =>
+    family.links.find(
+      (link) =>
+        link.kind !== 'partner' &&
+        link.source === parentId &&
+        link.target === anchor.id,
+    )?.kind;
+  const belongsWith = (parentId: string) =>
+    !birthAndAdoptive(kindOfParent(parentId), parentKind);
+  const [onlyParent] = existingParents;
+  const partnerInitial = useDefaultUntilAnswered(
+    ROLE.partnerId,
+    partnerChoice,
+    raises &&
+      existingParents.length === 1 &&
+      onlyParent !== undefined &&
+      belongsWith(onlyParent)
+      ? onlyParent
+      : NONE,
+  );
+  const siblingsInitial = useDefaultUntilAnswered(
+    ROLE.alsoParentOf,
+    values[ROLE.alsoParentOf],
+    existingParents.every(belongsWith)
+      ? siblings.filter((id) => fullSiblings.has(id) && siblingPossible(id))
+      : [],
+  );
+
   return (
     <>
       <Field
@@ -1122,9 +1156,7 @@ function ParentFields({
             })),
             { value: NONE, label: intl.formatMessage(messages.no) },
           ]}
-          initialValue={
-            existingParents.length === 1 ? existingParents[0] : NONE
-          }
+          initialValue={partnerInitial}
         />
       )}
       {raises && partnerChoice !== undefined && partnerChoice !== NONE && (
@@ -1140,11 +1172,49 @@ function ParentFields({
             label: displayName(id),
             disabled: !siblingPossible(id),
           }))}
-          initialValue={siblings.filter((id) => fullSiblings.has(id))}
+          initialValue={siblingsInitial}
         />
       )}
     </>
   );
+}
+
+/** A biological parent and an adoptive parent, in either order. */
+const birthAndAdoptive = (first: string | undefined, second: string) =>
+  (first === 'biological' && second === 'adoptive') ||
+  (first === 'adoptive' && second === 'biological');
+
+/**
+ * Keeps a question's answer at its default while the default changes with
+ * earlier answers, until the participant answers it themselves: once the
+ * answer differs from the default it was given, it is theirs and is left
+ * alone. Returns the default the question starts with.
+ */
+function useDefaultUntilAnswered<Answer extends string | string[]>(
+  name: string,
+  answer: FieldValue | undefined,
+  defaultAnswer: Answer,
+): Answer {
+  const setFieldValue = useFormStore((store) => store.setFieldValue);
+  const key = JSON.stringify(defaultAnswer);
+  const [initial] = useState(defaultAnswer);
+  // The default the answer was last given, and whether the participant has
+  // since answered otherwise.
+  const given = useRef(key);
+  const answered = useRef(false);
+  const answerKey = answer === undefined ? undefined : JSON.stringify(answer);
+  useEffect(() => {
+    if (answerKey !== undefined && answerKey !== given.current) {
+      answered.current = true;
+    }
+  }, [answerKey]);
+  const followDefault = useEffectEvent((nextKey: string) => {
+    if (answered.current || given.current === nextKey) return;
+    given.current = nextKey;
+    setFieldValue(name, defaultAnswer);
+  });
+  useEffect(() => followDefault(key), [key]);
+  return initial;
 }
 
 function ChildFields({
