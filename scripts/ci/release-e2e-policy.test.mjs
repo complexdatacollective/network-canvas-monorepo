@@ -84,6 +84,7 @@ test('recognises only the generated release PR refs', () => {
         eventName: 'pull_request',
         headRef: releaseRef,
         refName: '7/merge',
+        baseRef: 'main',
       }),
       releaseRef,
     );
@@ -103,9 +104,48 @@ test('recognises only the generated release PR refs', () => {
     'feature/add-changeset',
   ]) {
     assert.equal(
-      releaseRefForEvent({ eventName: 'pull_request', headRef, refName: '' }),
+      releaseRefForEvent({
+        eventName: 'pull_request',
+        headRef,
+        refName: '',
+        baseRef: 'main',
+      }),
       '',
     );
+  }
+});
+
+test('a release branch name into another base is an ordinary feature PR', () => {
+  // The same generated branch can also back a pull request into an
+  // integration branch. It is not a release PR there: no release lane, no
+  // snapshot regeneration, no verdict reuse.
+  for (const baseRef of ['schema-9', 'integration/x', '']) {
+    assert.equal(
+      releaseRefForEvent({
+        eventName: 'pull_request',
+        headRef: NORMAL_RELEASE_REF,
+        refName: '7/merge',
+        baseRef,
+      }),
+      '',
+    );
+    const policy = releaseE2EPolicy(
+      {
+        eventName: 'pull_request',
+        headRef: NORMAL_RELEASE_REF,
+        baseRef,
+        baseSha: 'b',
+        headSha: 'h',
+      },
+      () => ({
+        required: { interview: false, interviewer: false, architect: true },
+        reasons: { interview: 'x', interviewer: 'x', architect: 'x' },
+      }),
+    );
+    assert.equal(policy.releaseRef, '');
+    assert.equal(policy.snapshotBranch, '');
+    assert.equal(policy.architect, true);
+    assert.equal(policy.interview, false);
   }
 });
 
@@ -274,6 +314,7 @@ test('all release policies share the central snapshot PR target', () => {
         eventName,
         headRef: eventName === 'pull_request' ? releaseRef : '',
         refName: eventName === 'workflow_dispatch' ? releaseRef : '',
+        baseRef: eventName === 'pull_request' ? 'main' : '',
       }),
       {
         ...SUITES_BY_RELEASE_REF[releaseRef],
@@ -757,11 +798,14 @@ function fakeRun(
   id,
   headSha,
   createdAt = `2026-07-${String(id).padStart(2, '0')}T00:00:00Z`,
+  base = 'main',
 ) {
   return {
     id,
     head_sha: headSha,
     created_at: createdAt,
+    // The title the workflow's `run-name` gives a pull request run.
+    display_title: `PR #${id} → ${base} · Version Packages`,
     head_repository: { full_name: 'example/repo' },
     jobs_url: `https://api.example.com/fake-jobs/${id}`,
   };
@@ -1306,5 +1350,55 @@ test('equivalence reuse fails closed when a jobs listing is truncated', async ()
       }),
     ),
     { interview: false, interviewer: false, architect: false },
+  );
+});
+
+test('equivalence reuse ignores runs of pull requests into other bases', async () => {
+  const none = { interview: false, interviewer: false, architect: false };
+  const { cwd, validatedSha } = initReleaseBranchRepo();
+  const headSha = commitManifest(
+    cwd,
+    '.changeset/x.md',
+    'irrelevant\n',
+    'refresh',
+  );
+  const api = (run) =>
+    fakeActionsApi({
+      runs: [run],
+      jobsByRun: { [run.id]: INTERVIEWER_LANE_SUCCESS_JOBS },
+    });
+
+  // The same release branch also backs a pull request into schema-9, and that
+  // run is green. It lists both pull requests, as GitHub does, and says
+  // nothing that would stop it vouching for the main-based release PR except
+  // its title.
+  const integrationRun = {
+    ...fakeRun(1, validatedSha, undefined, 'schema-9'),
+    pull_requests: [
+      { number: 1, base: { ref: 'schema-9' } },
+      { number: 2, base: { ref: 'main' } },
+    ],
+  };
+  assert.deepEqual(
+    await interviewerLaneCall(cwd, headSha, api(integrationRun)),
+    none,
+  );
+
+  // The same run against main is still trusted, so the test above is not
+  // passing for an unrelated reason.
+  assert.deepEqual(
+    await interviewerLaneCall(cwd, headSha, api(fakeRun(1, validatedSha))),
+    { interview: true, interviewer: true, architect: false },
+  );
+
+  // A run started before the workflow titled its runs carries the pull
+  // request's own title and cannot be placed on a base: it never vouches.
+  assert.deepEqual(
+    await interviewerLaneCall(
+      cwd,
+      headSha,
+      api({ ...fakeRun(1, validatedSha), display_title: 'Version Packages' }),
+    ),
+    none,
   );
 });
