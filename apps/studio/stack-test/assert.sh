@@ -84,6 +84,8 @@ request() {
   BODY="$(cat "$body_file")"
   CONTENT_TYPE="$(tr -d '\r' < "$header_file" \
     | awk 'tolower($1) == "content-type:" { print $2; exit }')"
+  CSP="$(tr -d '\r' < "$header_file" \
+    | awk 'tolower($1) == "content-security-policy:" { $1 = ""; sub(/^ /, ""); print; exit }')"
 }
 
 # The transport answers 200 whatever the call did, so assert on RPC_VERDICT.
@@ -204,6 +206,17 @@ section 'the routing table'
 request "$URL/"
 equals '/ is served' 200 "$STATUS"
 contains '/ is the client shell' 'text/html' "$CONTENT_TYPE"
+equals '/ allows connections to this origin and Mapbox only' \
+  "connect-src 'self' https://api.mapbox.com" "$CSP"
+
+request "$URL/teams/a-deep-link"
+contains 'a deep link is the client shell' 'text/html' "$CONTENT_TYPE"
+equals 'a deep link carries the same policy' \
+  "connect-src 'self' https://api.mapbox.com" "$CSP"
+
+request "$URL/maintenance.html"
+equals 'the maintenance page carries the same policy' \
+  "connect-src 'self' https://api.mapbox.com" "$CSP"
 
 request "$URL/rpc"
 equals 'GET /rpc is not a route' 404 "$STATUS"
