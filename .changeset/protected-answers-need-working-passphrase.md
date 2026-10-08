@@ -48,12 +48,12 @@ answers; other interviews work as before.
   earlier one to be saved and names still being checked, so they are kept
   and the next stage is chosen with them. When one of them cannot be saved,
   the participant stays where they are and the interview is not finished or
-  closed, so they see why and can try again. The confirmation to close the
-  interview stays open while it waits, and cancelling it keeps the interview
-  open. Before, a location picked or a name added just before pressing Next
-  could be lost or kept under the wrong question, and an answer still being
-  protected could be left out of the stage that came next and of the
-  interview handed back when finishing or closing.
+  closed, so they see why and can try again. The confirmations to finish and
+  to close the interview stay open while they wait, and cancelling either one
+  keeps the interview open. Before, a location picked or a name added just
+  before pressing Next could be lost or kept under the wrong question, and an
+  answer still being protected could be left out of the stage that came next
+  and of the interview handed back when finishing or closing.
 - Replacing a protected answer with an unprotected one no longer leaves the
   answer unreadable.
 - Saving a form no longer erases a protected answer the form could not show.
@@ -105,7 +105,8 @@ answers; other interviews work as before.
   the answers it compares with cannot be read, the question says so and asks
   for the passphrase instead of accepting the answer. A question that waits
   for those answers to be read compares with them as they are once the wait
-  is over, including a person added meanwhile.
+  is over, including a person added meanwhile, and reads them with the
+  passphrase then in use, the one the answer is saved with.
 - Answers being typed are kept when the passphrase is replaced with one that
   cannot read them. The Network Composer's side panel, the questions asked
   about each person or relationship, and the form for adding or editing a

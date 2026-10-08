@@ -43,7 +43,11 @@ const FinishSession = () => {
         // an interview the moment it is finished and reject anything that
         // arrives afterwards, so the pending write has to land first, and an
         // answer that could not be saved keeps the interview from finishing.
-        if (!(await flushSync())) {
+        const stored = await flushSync();
+        // Cancelled while the answers were being saved, the interview stays
+        // open.
+        if (signal.aborted) return;
+        if (!stored) {
           throw new Error('An answer still being saved was refused');
         }
         await onFinish(interviewId, signal);

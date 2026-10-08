@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useRef } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useStore } from 'react-redux';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
@@ -14,6 +14,7 @@ import {
 import { type NcNetwork, type NcNode } from '@codaco/shared-consts';
 
 import { runtimeMessages } from '../i18n/runtimeMessages';
+import { getDecryptionScope } from '../interfaces/Anonymisation/decryptionScope';
 import { isAttributeEncrypted } from '../interfaces/Anonymisation/isAttributeEncrypted';
 import {
   decryptNodes,
@@ -22,6 +23,8 @@ import {
 import { useDecryptionScope } from '../interfaces/Anonymisation/useDecryptionScope';
 import { usePassphrase } from '../interfaces/Anonymisation/usePassphrase';
 import { makeGetCodebookVariablesForNodeType } from '../selectors/protocol';
+import { getPassphrase } from '../store/modules/ui';
+import type { RootState } from '../store/store';
 
 const NO_NODES: NcNode[] = [];
 const NO_VARIABLES: Record<string, Variable> = {};
@@ -145,9 +148,11 @@ const unavailable = (message: string) => () =>
  * neither block validation nor flag the passphrase. Until they are decrypted,
  * `resolveNetwork` stands in: a validation run waits for the decryption, or
  * fails with the reason when no working passphrase is in force, so a value is
- * never checked against ciphertext. It compares with the network as it is
- * once the wait is over, since people can be added or changed elsewhere on
- * the stage meanwhile. For every other form it is the network as stored.
+ * never checked against ciphertext. It compares with the network, and reads
+ * it with the passphrase, as they are once the wait is over, since people can
+ * be added or changed elsewhere on the stage meanwhile, and the passphrase
+ * replaced, and the answer is saved under the passphrase then in force. For
+ * every other form it is the network as stored.
  */
 export function useValidationNetwork(
   { codebook, network }: { codebook: Codebook; network: NcNetwork },
@@ -218,6 +223,7 @@ export function useValidationNetwork(
     decryptedCurrent.status === 'ready' ? decryptedCurrent.nodes : NO_NODES;
 
   const scope = useDecryptionScope();
+  const store = useStore<RootState>();
   const getCodebookVariablesForNodeType = useSelector(
     makeGetCodebookVariablesForNodeType,
   );
@@ -247,25 +253,41 @@ export function useValidationNetwork(
         ),
       };
     }
-    const decrypt = (nodes: NcNode[], reads: string[]) =>
-      decryptNodes(
-        nodes,
-        reads,
-        scope,
-        getCodebookVariablesForNodeType,
-        isEnabled,
-      );
+    const currentScope = () =>
+      getDecryptionScope(store, getPassphrase(store.getState()));
     // Values already decrypted come back from the scope's cache, so going
     // round again after a change costs only the values that changed.
     const resolveLatest = async (): Promise<NcNetwork> => {
       const checkedAgainst = latestNetwork.current;
+      const checkedWith = currentScope();
+      if (!checkedWith) {
+        throw new Error(
+          createMessageError(runtimeMessages.protectedAnswersNotSaved),
+        );
+      }
+      const decrypt = (nodes: NcNode[], reads: string[]) =>
+        decryptNodes(
+          nodes,
+          reads,
+          checkedWith,
+          getCodebookVariablesForNodeType,
+          isEnabled,
+        );
       const plaintextNodes = await Promise.all([
         decrypt(selectOthers(checkedAgainst.nodes), othersRead),
         decrypt(selectCurrent(checkedAgainst.nodes), currentRead),
-      ]).catch(() => {
+      ]).catch(() => undefined);
+      // Neither a match nor a failure found under a network or passphrase
+      // since replaced decides the check.
+      if (
+        latestNetwork.current !== checkedAgainst ||
+        currentScope() !== checkedWith
+      ) {
+        return resolveLatest();
+      }
+      if (!plaintextNodes) {
         throw new Error(createMessageError(runtimeMessages.decryptRetry));
-      });
-      if (latestNetwork.current !== checkedAgainst) return resolveLatest();
+      }
       return withPlaintextNodes(checkedAgainst, plaintextNodes.flat());
     };
     return { network, resolveNetwork: resolveLatest };
@@ -279,6 +301,7 @@ export function useValidationNetwork(
     selectCurrent,
     currentRead,
     scope,
+    store,
     getCodebookVariablesForNodeType,
     isEnabled,
   ]);

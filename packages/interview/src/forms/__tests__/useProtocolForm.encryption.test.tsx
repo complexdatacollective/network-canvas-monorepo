@@ -361,6 +361,32 @@ describe('useProtocolForm validating against encrypted values', () => {
     expect(valueIn(resolved, NAME_VAR, 'node-2')).toBe('Bob');
   });
 
+  it('reads the compared values again with a passphrase entered while the comparison waited', async () => {
+    const store = makeStore([await encryptedNode()], PASSPHRASE);
+    const { result } = renderForm(store, NICKNAME_VAR, NODE_ID);
+
+    const resolving = resolvedNetwork(result.current.fieldComponents);
+    act(() => {
+      store.dispatch(setPassphrase('a passphrase entered meanwhile'));
+    });
+
+    await expect(resolving).rejects.toThrow(
+      createMessageError(runtimeMessages.decryptRetry),
+    );
+  });
+
+  it('compares with the values that a passphrase entered while the comparison waited can read', async () => {
+    const store = makeStore([await encryptedNode()], 'not the passphrase');
+    const { result } = renderForm(store, NICKNAME_VAR, NODE_ID);
+
+    const resolving = resolvedNetwork(result.current.fieldComponents);
+    act(() => {
+      store.dispatch(setPassphrase(PASSPHRASE));
+    });
+
+    expect(valueIn(await resolving, NAME_VAR)).toBe('Alice');
+  });
+
   it("compares `unique` with everyone else's answers, not the edited person's own", async () => {
     const store = makeStore(
       [
