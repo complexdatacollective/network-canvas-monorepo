@@ -322,13 +322,10 @@ describe('AuthenticationDialog', () => {
     expect(onAuthenticated).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps a reopened recovery dialog open when a cancelled attempt resolves', async () => {
+  it('cannot leave the recovery dialog while its unlock runs, since the unlock completes regardless', async () => {
     useAuthMock.mockReturnValue({ ...authValue, mode: 'biometric' });
-    const staleAttempt = deferred<{ ok: boolean }>();
-    const currentAttempt = deferred<{ ok: boolean }>();
-    unlockWithRecovery
-      .mockImplementationOnce(() => staleAttempt.promise)
-      .mockImplementationOnce(() => currentAttempt.promise);
+    const attempt = deferred<{ ok: boolean }>();
+    unlockWithRecovery.mockImplementationOnce(() => attempt.promise);
     const onAuthenticated = vi.fn();
     const user = userEvent.setup();
     render(
@@ -344,33 +341,26 @@ describe('AuthenticationDialog', () => {
     await user.click(
       screen.getByRole('button', { name: 'Recover with passphrase' }),
     );
-    await user.type(screen.getByTestId('passphrase-input'), 'stale recovery');
+    await user.type(screen.getByTestId('passphrase-input'), 'recovery');
     await user.click(screen.getByRole('button', { name: 'Unlock' }));
     await waitFor(() =>
-      expect(unlockWithRecovery).toHaveBeenCalledWith('stale recovery'),
-    );
-    await user.click(screen.getByRole('button', { name: 'Cancel' }));
-    await user.click(
-      screen.getByRole('button', { name: 'Recover with passphrase' }),
+      expect(unlockWithRecovery).toHaveBeenCalledWith('recovery'),
     );
 
-    await act(async () => {
-      staleAttempt.resolve({ ok: true });
-    });
-    expect(onAuthenticated).not.toHaveBeenCalled();
+    const cancel = screen.getByRole('button', { name: 'Cancel' });
+    await waitFor(() => expect(cancel).toBeDisabled());
+    expect(
+      screen.getByRole('button', { name: 'Recover by resetting' }),
+    ).toBeDisabled();
+    await user.click(cancel);
+    await user.keyboard('{Escape}');
     expect(
       screen.getByRole('heading', { name: 'Recover with passphrase' }),
     ).toBeInTheDocument();
 
-    await user.type(screen.getByTestId('passphrase-input'), 'fresh recovery');
-    await user.click(screen.getByRole('button', { name: 'Unlock' }));
-    await waitFor(() =>
-      expect(unlockWithRecovery).toHaveBeenCalledWith('fresh recovery'),
-    );
     await act(async () => {
-      currentAttempt.resolve({ ok: true });
+      attempt.resolve({ ok: true });
     });
-
     expect(onAuthenticated).toHaveBeenCalledTimes(1);
   });
 

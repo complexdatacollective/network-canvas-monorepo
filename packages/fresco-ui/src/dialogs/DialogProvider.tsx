@@ -362,10 +362,11 @@ function WizardDialogContent({
     <Dialog
       title={wizardProps.title}
       description={wizardProps.description}
-      closeDialog={() => void guardedCloseDialog(dialogId, null)}
+      closeDialog={wizardProps.cancel}
       finalFocus={getDialogFinalFocus(dialog)}
       accent={dialog.intent}
       open={dialog.open}
+      dismissible={!wizardProps.isBusy}
       footer={wizardProps.footer}
       className={dialog.className}
       size={dialog.size ?? 'editor'}

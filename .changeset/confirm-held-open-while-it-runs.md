@@ -17,3 +17,11 @@ cancelled.
 A promise that rejects with an `AbortError` the dialog did not cause, such as
 a request's own timeout, is now shown as an error that can be retried, rather
 than leaving the dialog waiting.
+
+The same rule now applies to two other fresco-ui dialogs:
+
+- A wizard dialog cannot be cancelled, dismissed or stepped back while Next is
+  running a step's async `beforeNext` handler, and a second press of Next is
+  ignored. Before, cancelling mid-way resolved the wizard as cancelled while
+  the handler's work, such as an enrolment or a server call, carried on.
+- The app update dialog cannot be dismissed while the update is installing.
