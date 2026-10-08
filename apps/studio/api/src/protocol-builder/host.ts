@@ -66,6 +66,7 @@ import {
 import {
   addsSecondFinishStage,
   advanceDraftManifest,
+  changesFinishStage,
   creationIndex,
   fenceDraftLeases,
   isLastFinishStage,
@@ -916,6 +917,32 @@ export const submit = Effect.fn('protocolBuilder.submit')(function* (
           outcome: { status: 'invalidShape', issues },
           events: [],
         });
+      }
+      // A protocol always ends at its one finish stage, so a stage is never
+      // rewritten into one or out of one: the first would leave it two, the
+      // second none. Refused as creating a second one is.
+      if (parseSectionId(sectionId).kind === 'stage') {
+        const current = yield* headSection(session, sectionId);
+        if (
+          changesFinishStage(
+            timelineStageOf(current?.document),
+            timelineStageOf(document),
+          )
+        ) {
+          return unchanged<Published<SubmitOutcome | undefined>>({
+            outcome: {
+              status: 'invalidShape',
+              issues: [
+                {
+                  path: ['type'],
+                  message:
+                    'A stage cannot be changed into the finish stage, or the finish stage into another kind of stage.',
+                },
+              ],
+            },
+            events: [],
+          });
+        }
       }
       const writes = new Map<ProtocolSectionId, SectionDoc | undefined>([
         [sectionId, document],

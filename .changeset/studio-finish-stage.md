@@ -14,4 +14,10 @@ it. A protocol has exactly one finish stage, so adding a second is refused.
 Removing a protocol's only finish stage is refused, and so is a reorder
 that would put a screen after the finish stage or leave the interview ending
 somewhere else. In the editor's outline, the move buttons that would do that
-are not offered.
+are not offered. Saving a screen as a different kind is refused when it would
+turn the finish stage into another kind of screen, or another screen into a
+second finish stage.
+
+Publishing refuses a protocol whose finish stage has no heading or text in its
+default language, naming what is missing. A protocol in a language Network
+Canvas has no closing text for starts that way.

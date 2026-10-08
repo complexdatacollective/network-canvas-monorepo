@@ -783,6 +783,75 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     expect(after.revision).toEqual(before.revision);
   });
 
+  // A protocol always ends at its one finish stage, so a submit never turns a
+  // stage into one or the finish stage into something else.
+  it.each([
+    {
+      direction: 'the finish stage into another kind of stage',
+      stageId: () => 'finish',
+      rewrite: (document: Record<string, unknown>) => ({
+        id: document.id,
+        type: 'Information',
+        label: enUS('No longer the end'),
+        title: enUS('No longer the end'),
+        items: [],
+      }),
+    },
+    {
+      direction: 'another stage into a second finish stage',
+      stageId: () => reference.stageId,
+      rewrite: (document: Record<string, unknown>) => ({
+        id: document.id,
+        type: 'FinishSession',
+        label: enUS('A second end'),
+        title: enUS('A second end'),
+        content: enUS('Thank you.'),
+        outcome: 'completed',
+      }),
+    },
+  ])(
+    'refuses a submit that changes $direction',
+    async ({ stageId, rewrite }) => {
+      const sectionId = stageSection(stageId());
+      const held = await call(
+        ADA,
+        host.rpc('AcquireLock', { protocolId, sectionId }),
+      );
+      if (held.lock !== 'held')
+        throw new Error('the section was already taken');
+      try {
+        const error = await expectRpcFailure(
+          callExit(
+            ADA,
+            host.rpc('Submit', {
+              protocolId,
+              requestId: randomUUID(),
+              sectionId,
+              document: rewrite(held.document),
+              revision: held.revision,
+            }),
+          ),
+          'InvalidShape',
+        );
+        expect(error.issues).toEqual([
+          {
+            path: ['type'],
+            message:
+              'A stage cannot be changed into the finish stage, or the finish stage into another kind of stage.',
+          },
+        ]);
+        const read = await call(
+          ADA,
+          host.rpc('GetSection', { protocolId, sectionId }),
+        );
+        expect(read.document).toEqual(held.document);
+        expect(read.revision).toEqual(held.revision);
+      } finally {
+        await call(ADA, host.rpc('ReleaseLock', { protocolId, sectionId }));
+      }
+    },
+  );
+
   it('refuses a refactor whose sections another editor holds, naming them', async () => {
     const sectionId = stageSection(reference.stageId);
     const held = await call(

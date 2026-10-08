@@ -202,6 +202,18 @@ export const addsSecondFinishStage = (
 ): boolean => isFinishSessionStage(stage) && stages.some(isFinishSessionStage);
 
 /**
+ * Whether rewriting a stage as `after` turns a finish stage into another kind
+ * of stage, or another kind into a finish stage. Either breaks the timeline: the
+ * first leaves the interview no finish stage to end at, the second gives the
+ * protocol a second one, or puts one where stages still follow it. A stage
+ * keeps the kind it was created as.
+ */
+export const changesFinishStage = (
+  before: TimelineStage,
+  after: TimelineStage,
+): boolean => isFinishSessionStage(before) !== isFinishSessionStage(after);
+
+/**
  * Whether removing this stage would leave the interview with no finish stage
  * to end at. The last finish stage cannot be removed; a protocol that holds
  * more than one may lose the others.
