@@ -2,6 +2,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { getInterviewProgress } from '@codaco/interview';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import {
   type CurrentProtocol,
@@ -251,6 +252,28 @@ function v8PedigreeSession(id: string, protocolHash: string): StoredSession {
   };
 }
 
+// The pedigree study with a second screen before the pedigree, so a session
+// can be part-way through (stage 1) while the v8 → v9 migration inserts the
+// introduction stage after its position (before the pedigree, now stage 2).
+function v8PedigreeDocumentWithPreamble(): Record<string, unknown> {
+  const document = v8PedigreeDocument();
+  const [welcome, ...rest] = document.stages as unknown[];
+  return {
+    ...document,
+    stages: [
+      welcome,
+      {
+        id: 'about',
+        type: 'Information',
+        label: 'About',
+        title: 'About',
+        items: [{ id: 'about-text', type: 'text', content: 'About' }],
+      },
+      ...rest,
+    ],
+  };
+}
+
 async function seedProtocol(row: StoredProtocol): Promise<void> {
   await db.protocols.put(await encryptProtocol(row));
 }
@@ -387,6 +410,74 @@ describe.each([
     // Progress re-derived for the moved position (stage 2 of 4 + finish).
     expect(session.progress).not.toBe(33);
     expect(session.lastUpdatedAt).toBe('2026-01-02T00:00:00.000Z');
+  });
+
+  // Progress is a share of the protocol's stages, so a migration that changes
+  // how many there are changes every unfinished session's progress, even when
+  // nothing the session holds has to move.
+  it('re-derives the progress of every unfinished session against the migrated stages', async () => {
+    await seedProtocol(
+      storedRow('old-hash', 'Pedigree Study', v8PedigreeDocumentWithPreamble()),
+    );
+    // Stage 1 of 4 stages plus the finish stage.
+    const before = getInterviewProgress(
+      v8PedigreeDocumentWithPreamble().stages as { type: string }[],
+      1,
+    ).progress;
+    // Nothing in this session moves: it is before the inserted stage and
+    // holds no stage records.
+    await db.sessions.put(
+      await encryptSession({
+        ...storedSession('untouched', 'old-hash'),
+        currentStep: 1,
+        progress: before,
+      }),
+    );
+    // This one's pedigree record moves with the pedigree, but its position
+    // does not.
+    const pedigree = v8PedigreeSession('records-moved', 'old-hash');
+    await db.sessions.put(
+      await encryptSession({
+        ...pedigree,
+        currentStep: 1,
+        progress: before,
+        stageMetadata: {
+          2: pedigree.stageMetadata?.[1],
+        } as StoredSession['stageMetadata'],
+      }),
+    );
+    // A finished session's progress stands.
+    await db.sessions.put(
+      await encryptSession({
+        ...storedSession('finished', 'old-hash'),
+        currentStep: 1,
+        progress: 100,
+        finishedAt: '2026-01-03T00:00:00.000Z',
+      }),
+    );
+
+    const result = await migrateStoredProtocols();
+
+    expect(result.failed).toEqual([]);
+    const row = await db.protocols.get(result.migrated[0]?.hash ?? '');
+    if (!row) throw new Error('expected the migrated protocol');
+    const { protocol } = await decryptProtocol(row);
+    expect(protocol.stages).toHaveLength(5);
+    const after = getInterviewProgress(protocol.stages, 1).progress;
+    expect(after).not.toBe(before);
+
+    const untouched = await decryptSession(
+      (await db.sessions.get('untouched'))!,
+    );
+    expect(untouched.currentStep).toBe(1);
+    expect(untouched.progress).toBe(after);
+    const moved = await decryptSession(
+      (await db.sessions.get('records-moved'))!,
+    );
+    expect(moved.currentStep).toBe(1);
+    expect(Object.keys(moved.stageMetadata ?? {})).toEqual(['3']);
+    expect(moved.progress).toBe(after);
+    expect((await db.sessions.get('finished'))?.progress).toBe(100);
   });
 
   it('leaves the protocol and all its sessions as stored when one session cannot be migrated, and tries again at the next launch', async () => {

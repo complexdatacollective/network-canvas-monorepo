@@ -22,7 +22,7 @@ import {
   type StoredProtocolRow,
   type StoredSessionRow,
 } from './recordCrypto';
-import type { StoredProtocol, StoredSession } from './types';
+import type { StoredProtocol } from './types';
 
 // Bring stored protocols up to the schema version this build's interview
 // runtime executes (`COMPATIBLE_PROTOCOL_SCHEMA_VERSION`, read from the
@@ -219,6 +219,43 @@ async function migrateSessionRow(
 }
 
 /**
+ * The row to write for a session carried onto the protocol stored under
+ * `hash`, whose stages are `stages`: its migrated network, stage metadata and
+ * resume position (re-encrypted only when the migration changed them), and,
+ * for an unfinished session, its progress re-derived as the engine reports it
+ * for that position in those stages. Progress is a share of the protocol's
+ * stage count, so it moves whenever the stages do, even when nothing the
+ * session holds had to change. A finished session's progress stands.
+ */
+async function carriedSessionRow(
+  row: StoredSessionRow,
+  record: DecryptedSessionRecord,
+  migration: Pick<
+    Extract<SessionMigrationResult, { success: true }>,
+    'changed' | 'session'
+  >,
+  hash: string,
+  stages: CurrentProtocol['stages'],
+): Promise<StoredSessionRow> {
+  const { network, stageMetadata, currentStep } = migration.session;
+  const progress =
+    record.finishedAt === null
+      ? { progress: getInterviewProgress(stages, currentStep).progress }
+      : {};
+  // Progress is a plaintext field, so an otherwise unchanged session keeps
+  // its stored ciphertext.
+  if (!migration.changed) return { ...row, protocolHash: hash, ...progress };
+  return encryptSession({
+    ...record,
+    protocolHash: hash,
+    network,
+    stageMetadata,
+    currentStep,
+    ...progress,
+  });
+}
+
+/**
  * Every session of the protocol, migrated, or `SessionsNotMigratedError`
  * naming each one that could not be. Every session is tried, so the report is
  * complete.
@@ -248,26 +285,15 @@ async function migrateSessionRows(
     }
     // Nothing will be written once one session has failed.
     if (unmigrated.length > 0) continue;
-    const { record, result } = migration;
-    if (!result.changed) {
-      rows.push({ ...row, protocolHash: hash });
-      continue;
-    }
-    const { network, stageMetadata, currentStep } = result.session;
-    const migrated: StoredSession = {
-      ...record,
-      protocolHash: hash,
-      network,
-      stageMetadata,
-      currentStep,
-      // The stored progress was reported against the old stage count; an
-      // in-progress session's moved position is re-derived as the engine
-      // would report it. A finished session's progress stands.
-      ...(currentStep !== record.currentStep && record.finishedAt === null
-        ? { progress: getInterviewProgress(stages, currentStep).progress }
-        : {}),
-    };
-    rows.push(await encryptSession(migrated));
+    rows.push(
+      await carriedSessionRow(
+        row,
+        migration.record,
+        migration.result,
+        hash,
+        stages,
+      ),
+    );
   }
   if (unmigrated.length > 0)
     throw new SessionsNotMigratedError(name, unmigrated);
