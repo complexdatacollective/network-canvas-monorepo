@@ -506,33 +506,44 @@ describe('migrateStoredProtocols — encrypted attributes of a schema 8 protocol
     expect(stored.protocol.schemaVersion).toBe(
       COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
     );
-    expect(stored.protocol).not.toHaveProperty('experiments');
     expect((await db.sessions.get('s1'))?.protocolHash).toBe(stored.hash);
     return stored;
   }
 
-  it('keeps an attribute encrypted when the protocol had encryption on', async () => {
+  function expectUnmarked(stored: StoredProtocol) {
+    expect(stored.protocol.codebook).not.toHaveProperty(NAME_ENCRYPTED);
+    expect(stored.protocol.codebook).toHaveProperty(
+      ['node', 'person', 'variables', 'name', 'type'],
+      'text',
+    );
+  }
+
+  it('keeps an attribute encrypted when the protocol had encryption on, and keeps its experiments without that one', async () => {
     const stored = await migrateEncryptedNameProtocol({
       encryptedVariables: true,
     });
 
     expect(stored.protocol.codebook).toHaveProperty(NAME_ENCRYPTED, true);
+    expect(stored.protocol.experiments).toStrictEqual({});
   });
 
   it.each([
-    ['no experiments', undefined],
     ['empty experiments', {}],
     ['encryption off', { encryptedVariables: false }],
   ])(
-    'unmarks an encrypted attribute when the protocol had %s',
+    'unmarks an encrypted attribute when the protocol had %s, and keeps its experiments',
     async (_label, experiments) => {
       const stored = await migrateEncryptedNameProtocol(experiments);
 
-      expect(stored.protocol.codebook).not.toHaveProperty(NAME_ENCRYPTED);
-      expect(stored.protocol.codebook).toHaveProperty(
-        ['node', 'person', 'variables', 'name', 'type'],
-        'text',
-      );
+      expectUnmarked(stored);
+      expect(stored.protocol.experiments).toStrictEqual({});
     },
   );
+
+  it('unmarks an encrypted attribute when the protocol had no experiments, and adds none', async () => {
+    const stored = await migrateEncryptedNameProtocol(undefined);
+
+    expectUnmarked(stored);
+    expect(stored.protocol).not.toHaveProperty('experiments');
+  });
 });

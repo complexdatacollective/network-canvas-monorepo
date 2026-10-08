@@ -180,8 +180,8 @@ async function migrateStoredProtocolRow(
   if (hash === previousHash) {
     // Guarded like every other commit in this sweep: the async work above
     // left a gap in which another tab may have re-imported (same hash, and —
-    // because the hash excludes assets — possibly different resources) or
-    // deleted this protocol. Only the revision that was read
+    // because the hash excludes assets and experiments — possibly different
+    // resources) or deleted this protocol. Only the revision that was read
     // may be replaced.
     await db.transaction('rw', db.protocols, async () => {
       const source = await db.protocols.get(row.id);
@@ -201,7 +201,7 @@ async function migrateStoredProtocolRow(
 
   // Two different protocols migrating onto one hash share a structure, but
   // the hash covers structure only — the rows can still carry
-  // different assets (images, API keys). Merging them would
+  // different assets (images, API keys) and experiments. Merging them would
   // resume this row's interviews against the other row's resources, so a
   // cross-row collision is refused: this row, its sessions, and its assets
   // stay exactly as they are, and the failure is reported like any other

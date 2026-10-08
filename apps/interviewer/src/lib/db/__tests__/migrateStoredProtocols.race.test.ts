@@ -129,8 +129,8 @@ describe('the sweep against concurrent writers', () => {
     const pending = migrateStoredProtocols();
     await pause.reached;
     // A peer tab re-imports the same file: same hash, fresh importedAt — and,
-    // because the hash excludes assets, possibly different resources. Its
-    // write must win.
+    // because the hash excludes assets and experiments, possibly different
+    // resources. Its write must win.
     await seedProtocol(
       storedRow(hash, 'Empty Study', doc, '2026-03-03T00:00:00.000Z'),
     );
