@@ -2,6 +2,7 @@ import { Cause, Effect, Exit, Option, Predicate } from 'effect';
 
 import { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
 
+import { recordAuditUsage } from '../analytics/audit-usage.ts';
 import { failureCodes } from '../db/errors.ts';
 import { savepoint, type TeamAccess, TenantScope } from '../db/tenant.ts';
 import { RequestId } from '../http/middleware/request-id.ts';
@@ -104,7 +105,7 @@ const appendRequired = Effect.fnUntraced(function* (
   event: AuditEventInput,
 ) {
   const signal = yield* AuditSignal;
-  return yield* appendEvent(event).pipe(
+  const appended = yield* appendEvent(event).pipe(
     Effect.tapError((error) =>
       signal.warn('STUDIO_AUDIT_APPEND_FAILED', {
         eventType: event.eventType,
@@ -116,6 +117,8 @@ const appendRequired = Effect.fnUntraced(function* (
       }),
     ),
   );
+  yield* recordAuditUsage(event);
+  return appended;
 });
 
 export const audited = <A, E, R>(

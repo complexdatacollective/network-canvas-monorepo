@@ -7,7 +7,10 @@ import { JOB_SCHEDULES, type JobQueueName } from '@codaco/studio-sync/jobs';
 import { type MaintenanceDatabase } from '../db/client.ts';
 import { Environment } from '../env.ts';
 import { type Mailer } from '../mail/mailer.ts';
+import type { Analytics } from '../platform/analytics.ts';
+import type { InstallationIdentity } from '../platform/installation-identity.ts';
 import type { ObjectStore } from '../storage/object-store.ts';
+import { analyticsDelivery } from './handlers/analytics-delivery.ts';
 import { deniedAttemptsSummary } from './handlers/denied-attempts-summary.ts';
 import type { DeniedAttemptsStore } from './handlers/denied-attempts/store.ts';
 import { invitationDelivery } from './handlers/invitation-delivery.ts';
@@ -40,6 +43,8 @@ export const JobHandlersLive: Layer.Layer<
   | DeniedAttemptsStore
   | HttpClient.HttpClient
   | ObjectStore
+  | Analytics
+  | InstallationIdentity
 > = Layer.effectDiscard(
   Effect.gen(function* () {
     const worker = yield* JobWorker;
@@ -57,6 +62,8 @@ export const JobHandlersLive: Layer.Layer<
     yield* worker.work('protocol-store-gc', protocolStoreGc);
 
     yield* worker.work('denied-attempts-summary', deniedAttemptsSummary());
+
+    yield* worker.work('analytics-delivery', analyticsDelivery);
 
     // Before the mail gate below, and not behind it: an instance with no mail
     // transport still records the release, which is what the in-app notice

@@ -7,6 +7,7 @@ import {
 
 import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
 
+import { codebookTypeIndex } from '../../analytics/codebookTypeIndex';
 import type { Tracker } from '../../analytics/tracker';
 import {
   addEdge,
@@ -49,7 +50,11 @@ export function createAnalyticsListenerMiddleware({
       if (!newNode) return;
       tracker.track('node_added', {
         node_id: newNode._uid,
-        node_type: action.payload?.type,
+        node_type_index: codebookTypeIndex(
+          stateAfter.protocol.codebook,
+          'node',
+          action.payload?.type,
+        ),
       });
     },
   });
@@ -58,17 +63,26 @@ export function createAnalyticsListenerMiddleware({
   // relationship as the single adds do.
   startAppListening({
     actionCreator: addNodesAndEdges.fulfilled,
-    effect: (action) => {
+    effect: (action, listenerApi) => {
+      const state = listenerApi.getState();
       for (const node of action.payload.nodes) {
         tracker.track('node_added', {
           node_id: node.nodeId,
-          node_type: node.type,
+          node_type_index: codebookTypeIndex(
+            state.protocol.codebook,
+            'node',
+            node.type,
+          ),
         });
       }
       for (const edge of action.payload.edges) {
         tracker.track('edge_created', {
           edge_id: edge.edgeId,
-          edge_type: edge.type,
+          edge_type_index: codebookTypeIndex(
+            state.protocol.codebook,
+            'edge',
+            edge.type,
+          ),
         });
       }
     },
@@ -78,10 +92,14 @@ export function createAnalyticsListenerMiddleware({
   // again, as its removal was reported.
   startAppListening({
     actionCreator: restoreNode,
-    effect: (action) => {
+    effect: (action, listenerApi) => {
       tracker.track('node_added', {
         node_id: action.payload[entityPrimaryKeyProperty],
-        node_type: action.payload.type,
+        node_type_index: codebookTypeIndex(
+          listenerApi.getState().protocol.codebook,
+          'node',
+          action.payload.type,
+        ),
       });
     },
   });
@@ -95,14 +113,18 @@ export function createAnalyticsListenerMiddleware({
 
   startAppListening({
     actionCreator: addEdge.fulfilled,
-    effect: (action) => {
+    effect: (action, listenerApi) => {
       const payload = action.payload as
         | { edgeId?: string; type?: string }
         | undefined;
       if (!payload?.edgeId) return;
       tracker.track('edge_created', {
         edge_id: payload.edgeId,
-        edge_type: payload.type,
+        edge_type_index: codebookTypeIndex(
+          listenerApi.getState().protocol.codebook,
+          'edge',
+          payload.type,
+        ),
       });
     },
   });

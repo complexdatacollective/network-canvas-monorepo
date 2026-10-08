@@ -34,6 +34,7 @@ import {
 } from '../../../db/tenant.ts';
 import { RequestId } from '../../../http/middleware/request-id.ts';
 import { MailFailed, type MailNotConfigured } from '../../../mail/mailer.ts';
+import { Analytics } from '../../../platform/analytics.ts';
 import { principalOf } from '../../../rpc/authenticated.ts';
 import {
   cancelTeamInvitation,
@@ -912,6 +913,7 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
           Effect.provide(Jobs.layer({ schema: harness.schema })),
           Effect.provideService(Database, harness.app),
           Effect.provide(AuditSignal.layer),
+          Effect.provide(Analytics.layerDisabled),
         ),
       );
 
@@ -970,6 +972,8 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
             ),
             Effect.provideService(Database, harness.app),
             Effect.provide(AuditSignal.layer),
+            Effect.provide(Analytics.layerDisabled),
+            Effect.provide(Analytics.layerDisabled),
           ),
         );
         assert.isTrue(Exit.isFailure(refusal));

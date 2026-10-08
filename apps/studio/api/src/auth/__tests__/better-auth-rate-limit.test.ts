@@ -12,6 +12,7 @@ import {
 } from '../../__tests__/support/valkey.ts';
 import { Environment, readEnv } from '../../env.ts';
 import { Jobs } from '../../jobs/jobs.ts';
+import { Analytics } from '../../platform/analytics.ts';
 import { RateLimiter } from '../../rate-limit/limiter.ts';
 import { RateLimitStore } from '../../rate-limit/store.ts';
 import { SecretsCipher } from '../../secrets/services.ts';
@@ -63,6 +64,7 @@ describe.skipIf(!testDb || !url)("better-auth's sign-in limit", () => {
           ),
           Layer.provide(Layer.succeed(SecretsCipher)(testCipher())),
           Layer.provide(Jobs.layerRecording),
+          Layer.provide(Analytics.layerDisabled),
         );
         const email = `limited-${randomUUID()}@example.org`;
 

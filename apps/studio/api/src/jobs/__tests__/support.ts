@@ -454,6 +454,15 @@ export function payloadFor(queue: JobQueueName): JobPayload<JobQueueName> {
   if (queue.startsWith('invitation-delivery')) {
     return { deliveryId: randomUUID() };
   }
+  if (queue === 'analytics-delivery') {
+    return {
+      usage: {
+        event: 'researcher_signed_up',
+        occurredAt: Date.UTC(2026, 9, 8),
+        accountId: 'account-1',
+      },
+    };
+  }
   return {};
 }
 

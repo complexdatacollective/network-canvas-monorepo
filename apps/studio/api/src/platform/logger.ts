@@ -44,7 +44,7 @@ export const studioStructured = Logger.make((options) => {
   };
 });
 
-const studioJson = Logger.withConsoleLog(
+export const studioJson = Logger.withConsoleLog(
   Logger.map(studioStructured, (record) => Formatter.formatJson(record)),
 );
 

@@ -23,16 +23,16 @@ import { jobsCheck } from '../jobs/readiness.ts';
 import { JobHandlersLive } from '../jobs/registrations.ts';
 import { JobWorker } from '../jobs/worker.ts';
 import { MailerLive } from '../mail/live.ts';
+import { Analytics } from '../platform/analytics.ts';
 import {
   ServerTelemetryLive,
   WorkerHealthServerLive,
 } from '../platform/http-server.ts';
 import { InstallationIdentity } from '../platform/installation-identity.ts';
-import { LoggerLive, LogLevelLive } from '../platform/logger.ts';
 import { MaintenanceState } from '../platform/maintenance-state.ts';
 import { RuntimeMetricsLive } from '../platform/runtime-metrics.ts';
 import { SchemaStatus } from '../platform/schema-gate.ts';
-import { TracingLive } from '../platform/tracing.ts';
+import { ObservabilityLive } from '../platform/tracing.ts';
 import { RateLimiter } from '../rate-limit/limiter.ts';
 import { RateLimitStore } from '../rate-limit/store.ts';
 import { SecretsCipher } from '../secrets/services.ts';
@@ -157,6 +157,7 @@ function workerWith(db: DbEnv) {
         Layer.provide(MaintenanceState.layerMaintenance),
         Layer.provide(JobQueueMetrics.layer()),
         Layer.provide(JobHandlersLive),
+        Layer.provide(Analytics.layerFromEnvironment),
         // The update check's manifest fetch, which contacts the one host
         // `update/manifest.ts` names.
         Layer.provide(FetchHttpClient.layer),
@@ -200,9 +201,7 @@ const WorkerProgramLayer = Layer.unwrap(
   }),
 ).pipe(
   Layer.provide(RuntimeMetricsLive),
-  Layer.provide(
-    Layer.mergeAll(LoggerLive, LogLevelLive, TracingLive('worker')),
-  ),
+  Layer.provide(ObservabilityLive('worker')),
   Layer.provide(Environment.layerWithMail),
 );
 
