@@ -468,7 +468,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'onFinish.cancel-path',
     'onFinish.pending-state',
     'onFinish.error-retry',
-    'onFinish.abort-on-dismiss',
+    'onFinish.held-open-while-pending',
     'interviewId-guard', // dead: unreachable e2e, host always seeds session.id
     'terminal-navigation',
     'progress-100',
