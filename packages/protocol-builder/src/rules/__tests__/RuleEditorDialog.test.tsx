@@ -1011,14 +1011,19 @@ function renderRuleSetOf(
 }
 
 const ENCRYPTED_ROW_PROBLEM =
-  'This rule uses an encrypted attribute. Rules are checked without the participant’s passphrase, so this rule cannot read the attribute’s answers. Edit or delete the rule.';
+  'This rule compares the answers to an encrypted attribute. Rules are checked without the participant’s passphrase, so they can only check whether an encrypted attribute is answered. Edit or delete the rule.';
+
+const ENCRYPTED_OPERATOR_HINT =
+  'This attribute is encrypted. Rules are checked without the participant’s passphrase, so a rule can only check whether it is answered.';
 
 /**
  * An encrypted answer is stored as ciphertext only the participant's
  * passphrase opens, and rules are checked without it. The protocol schema
- * refuses a rule on one wherever the rule reads interview answers, and accepts
- * one in a panel over an imported file, whose rows nothing encrypts — so the
- * editor offers it in exactly that one place.
+ * refuses a rule comparing one wherever the rule reads interview answers, and
+ * accepts one in a panel over an imported file, whose rows nothing encrypts.
+ * Whether it was answered survives encryption, so every rule set may ask that —
+ * and the editor offers the attribute everywhere, with only the operators the
+ * schema accepts for it there.
  */
 describe('an encrypted attribute', () => {
   const ADD_LABELS: Readonly<Record<RuleSetVariant, string>> = {
@@ -1028,9 +1033,10 @@ describe('an encrypted attribute', () => {
     externalDataPanel: 'Add new filter rule',
   };
 
-  const offeredForANewNodeRule = async (variant: RuleSetVariant) => {
-    const user = userEvent.setup();
-    renderRuleSetOf(variant);
+  const startNodeRule = async (
+    user: ReturnType<typeof userEvent.setup>,
+    variant: RuleSetVariant,
+  ) => {
     await user.click(screen.getByRole('button', { name: ADD_LABELS[variant] }));
     await screen.findByRole('dialog', { name: RULE_EDITOR });
     await user.click(
@@ -1040,27 +1046,84 @@ describe('an encrypted attribute', () => {
     );
     await user.click(await screen.findByRole('radio', { name: 'Person' }));
     await user.click(await screen.findByRole('option', { name: /Attribute/ }));
-    return offeredAttributes(
-      user,
-      await waitFor(() => attributeField('Node attribute')),
-    );
+    return waitFor(() => attributeField('Node attribute'));
   };
 
+  const offeredOperators = async () => {
+    const operator = await screen.findByRole('combobox', { name: /Operator/ });
+    return within(operator)
+      .getAllByRole<HTMLOptionElement>('option')
+      .flatMap((option) => (option.value === '' ? [] : [option.value]));
+  };
+
+  it.each<RuleSetVariant>([
+    'query',
+    'filter',
+    'interviewNetworkPanel',
+    'externalDataPanel',
+  ])('is offered: %s', async (variant) => {
+    const user = userEvent.setup();
+    renderRuleSetOf(variant);
+    expect(
+      await offeredAttributes(user, await startNodeRule(user, variant)),
+    ).toContain('secret');
+  });
+
   it.each<RuleSetVariant>(['query', 'filter', 'interviewNetworkPanel'])(
-    'is not offered where a rule reads interview answers: %s',
+    'can only be asked whether it is answered where a rule reads interview answers: %s',
     async (variant) => {
-      const offered = await offeredForANewNodeRule(variant);
-      // The picker is offering the type's other text attribute, so the absence
-      // below is about encryption rather than about an empty list.
-      expect(offered).toContain('note');
-      expect(offered).not.toContain('secret');
+      const user = userEvent.setup();
+      renderRuleSetOf(variant);
+      await chooseAttributeById(
+        user,
+        await startNodeRule(user, variant),
+        'secret',
+      );
+
+      expect(await offeredOperators()).toEqual(['EXISTS', 'NOT_EXISTS']);
+      expect(screen.getByText(ENCRYPTED_OPERATOR_HINT)).toBeInTheDocument();
     },
   );
 
-  it('is offered in a panel over an imported file', async () => {
-    expect(await offeredForANewNodeRule('externalDataPanel')).toContain(
+  it('is compared like any text attribute in a panel over an imported file', async () => {
+    const user = userEvent.setup();
+    renderRuleSetOf('externalDataPanel');
+    await chooseAttributeById(
+      user,
+      await startNodeRule(user, 'externalDataPanel'),
       'secret',
     );
+
+    expect(await offeredOperators()).toEqual([
+      'EXACTLY',
+      'NOT',
+      'CONTAINS',
+      'DOES_NOT_CONTAIN',
+    ]);
+    expect(screen.queryByText(ENCRYPTED_OPERATOR_HINT)).toBeNull();
+  });
+
+  it('saves a rule asking whether it is answered', async () => {
+    const user = userEvent.setup();
+    renderRuleSetOf('query');
+    await chooseAttributeById(
+      user,
+      await startNodeRule(user, 'query'),
+      'secret',
+    );
+    await user.selectOptions(
+      await screen.findByRole('combobox', { name: /Operator/ }),
+      'EXISTS',
+    );
+    await finishAndClose(user);
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: RULE_EDITOR })).toBeNull(),
+    );
+    expect(
+      screen.getByRole('button', { name: /^Edit rule:/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(ENCRYPTED_ROW_PROBLEM)).toBeNull();
   });
 
   const storedRule: RuleDraft = {
@@ -1074,7 +1137,7 @@ describe('an encrypted attribute', () => {
     },
   };
 
-  it('is shown on a rule that already holds one, named for why it cannot stay', async () => {
+  it('marks a stored comparison, and lets it become a question of whether it is answered', async () => {
     const user = userEvent.setup();
     renderRuleSetOf('query', [storedRule]);
 
@@ -1082,25 +1145,33 @@ describe('an encrypted attribute', () => {
 
     await openExistingRule(user);
     const attribute = await waitFor(() => attributeField('Node attribute'));
-    expect(
-      within(attribute).getByText(
-        'Secret — encrypted, so a rule cannot read it',
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'This attribute is encrypted. Rules are checked without the participant’s passphrase, so a rule cannot read its answers. Choose another one.',
-      ),
-    ).toBeInTheDocument();
+    // The attribute is a fine one to ask about; it is the comparison that has
+    // to go, so the attribute is shown as itself.
+    expect(within(attribute).getByText('Secret')).toBeInTheDocument();
     // Still in the codebook, so it is not reported as one that went.
     expect(screen.queryByText(/no longer in the codebook/)).toBeNull();
+    const operator = await screen.findByRole('combobox', { name: /Operator/ });
+    expect(operator).toHaveValue('EXACTLY');
+    expect(
+      within(operator).getByRole('option', {
+        name: 'is exactly (not valid for this attribute)',
+      }),
+    ).toBeDisabled();
+    expect(screen.getByText(ENCRYPTED_OPERATOR_HINT)).toBeInTheDocument();
 
     await finishAndClose(user);
     expect(
       await screen.findByText(
-        'This rule cannot use an encrypted attribute. Choose another attribute.',
+        'A rule can only check whether an encrypted attribute is answered. Choose another operator or another attribute.',
       ),
     ).toBeInTheDocument();
+
+    await user.selectOptions(operator, 'NOT_EXISTS');
+    await finishAndClose(user);
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: RULE_EDITOR })).toBeNull(),
+    );
+    expect(screen.queryByText(ENCRYPTED_ROW_PROBLEM)).toBeNull();
   });
 
   it('is accepted on a rule in a panel over an imported file', async () => {
@@ -1273,7 +1344,7 @@ describe('a rule the codebook has moved out from under', () => {
         },
       },
       // Finished, and about an attribute the codebook still has — which is
-      // encrypted, so no filter over interview answers can read it.
+      // encrypted, so no filter over interview answers can compare it.
       encryptedAttribute: {
         id: 'rule-1',
         type: 'node',

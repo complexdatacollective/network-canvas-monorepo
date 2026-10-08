@@ -12,6 +12,7 @@ import { REQUIRED } from '../../../form/requiredField.ts';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import { useLocalizedText } from '../../../localization/ProtocolLocalization.tsx';
+import { stageNameMessages } from '../../../naming/stageNameInternals.ts';
 import type { CodebookSubject } from '../../../protocol-context.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import FormFieldsSection from '../../../sections/form-fields/FormFieldsSection.tsx';
@@ -244,7 +245,11 @@ export default function PedigreeNodeConfigurationSection() {
     all, is a fact about the reader's language.
   */
   const dependentStageNames = intl.formatList(
-    dependentNarrativeStages.map((stage) => `"${localize(stage.label).text}"`),
+    dependentNarrativeStages.map((stage) =>
+      intl.formatMessage(stageNameMessages.quotedName, {
+        stageName: localize(stage.label).text,
+      }),
+    ),
     { type: 'conjunction' },
   );
 

@@ -3,7 +3,11 @@ import { describe, expect, it } from 'vitest';
 
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { anonymisationStageEditor } from '../AnonymisationStageEditor.ts';
-import { alreadyProtecting } from './anonymisationFixtures.tsx';
+import {
+  alreadyProtecting,
+  personRule,
+  withStageFields,
+} from './anonymisationFixtures.tsx';
 
 const openEditor = () =>
   renderStageEditor({
@@ -138,6 +142,46 @@ describe('the anonymisation sections, read in Spanish', () => {
    * component — `BuilderSection` renders it — so it is where a string handed
    * over instead of a descriptor would still be English here.
    */
+  /**
+   * The stages named in the refusal are the researcher's own, and the
+   * quotation marks around each are the reader's: Spanish quotes a name with
+   * «», not with the English marks.
+   */
+  it('refuses in Spanish, quoting the stages whose rules compare the attribute', async () => {
+    const harness = renderStageEditor({
+      stageId: 'anonymisation-1',
+      locale: 'es',
+      registry: anonymisationStageEditor,
+      adapter: withStageFields({
+        'name-generator-1': {
+          skipLogic: {
+            action: 'SKIP',
+            filter: { rules: [personRule('skip-a', 'name')] },
+          },
+        },
+        'sociogram-1': {
+          filter: { rules: [personRule('filter-a', 'name')] },
+        },
+      }),
+    });
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'person' }),
+    );
+    const group = await screen.findByRole('group', {
+      name: 'Atributos cifrados de person',
+    });
+
+    await harness.user.click(
+      within(group).getByRole('checkbox', { name: 'name' }),
+    );
+
+    expect(
+      await screen.findByText(
+        '«name» no se puede cifrar mientras 2 reglas en «Name Generator» y «Sociogram» comparen las respuestas de este atributo. Las reglas se evalúan sin la frase de contraseña del participante, así que esas reglas no podrían leer las respuestas cifradas. Elimina esas reglas o edítalas para que solo comprueben si el atributo tiene respuesta.',
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('warns in Spanish before the passphrase rules are discarded', async () => {
     const harness = openEditor();
 

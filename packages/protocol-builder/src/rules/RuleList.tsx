@@ -320,8 +320,8 @@ export type RuleListProps = Readonly<{
    */
   allowedTargets: readonly RuleTargetType[];
   /**
-   * Whether a rule in this set may name an encrypted attribute. Off unless the
-   * set says so; see `ruleSetAllowsEncryptedAttributes`.
+   * Whether a rule in this set may compare an encrypted attribute's answers.
+   * Off unless the set says so; see `ruleSetAllowsEncryptedAttributes`.
    */
   allowEncryptedAttributes?: boolean;
   addButtonLabel: string;

@@ -95,13 +95,13 @@ export const ChoosingWhatIsProtected: Story = {
 const ANONYMISATION = loadFixtureStage('anonymisation-1');
 
 /**
- * An attribute a rule reads cannot be protected.
+ * An attribute whose answers a rule compares cannot be protected.
  *
- * Rules are checked without the participant's passphrase, so a rule on an
- * encrypted attribute could never read its answers, and the schema refuses
- * one. The tick is refused before anything is written, and the notice names
- * the stage whose rule reads it — here this stage's own skip logic, so the
- * rule is on the same page as the refusal.
+ * Rules are checked without the participant's passphrase, so a rule comparing
+ * an encrypted attribute would only ever compare its encrypted text, and the
+ * schema refuses one. The tick is refused before anything is written, and the
+ * notice names the stage whose rule compares it — here this stage's own skip
+ * logic, so the rule is on the same page as the refusal.
  */
 export const AttributeARuleReads: Story = {
   args: {
@@ -144,10 +144,63 @@ export const AttributeARuleReads: Story = {
 
     await expect(
       await canvas.findByText(
-        '"name" cannot be encrypted while a rule in "Anonymisation" uses it. Rules are checked without the participant’s passphrase, so that rule could not read the encrypted answers. Remove or change the rule first.',
+        '"name" cannot be encrypted while a rule in "Anonymisation" compares its answers. Rules are checked without the participant’s passphrase, so that rule could not read the encrypted answers. Remove the rule, or change it to check only whether the attribute is answered.',
       ),
     ).toBeInTheDocument();
     await expect(name).not.toBeChecked();
+  },
+};
+
+/**
+ * An attribute a rule only asks about can still be protected.
+ *
+ * Whether an attribute was answered survives encryption — an answer becomes
+ * another string, and no answer stays no answer — so a rule asking only that
+ * keeps working, and the tick goes through.
+ */
+export const AttributeARuleAsksAbout: Story = {
+  args: {
+    stage: {
+      type: ANONYMISATION.type,
+      fields: {
+        ...ANONYMISATION.fields,
+        skipLogic: {
+          action: 'SKIP',
+          filter: {
+            rules: [
+              {
+                id: 'rule-1',
+                type: 'node',
+                options: {
+                  type: 'person',
+                  attribute: 'name',
+                  operator: 'NOT_EXISTS',
+                },
+              },
+            ],
+          },
+        },
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await userEvent.click(
+      await canvas.findByRole('switch', { name: 'person' }),
+    );
+    const group = await canvas.findByRole('group', {
+      name: 'Encrypted attributes for person',
+    });
+    const name = within(group).getByRole('checkbox', { name: 'name' });
+    await userEvent.click(name);
+
+    await waitFor(async () => {
+      await expect(name).toBeChecked();
+    });
+    await expect(canvas.queryByText(/cannot be encrypted/)).toBeNull();
+    await expect(canvas.queryByText(/compares the answers/)).toBeNull();
   },
 };
 

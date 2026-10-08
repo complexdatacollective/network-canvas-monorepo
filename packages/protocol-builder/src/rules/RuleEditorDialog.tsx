@@ -30,7 +30,7 @@ import DialogForm, {
 import { protocolAuthoringLinks } from '../interfaces/documentation.ts';
 import { useLocalizedText } from '../localization/ProtocolLocalization.tsx';
 import { useProtocolContext } from '../state/protocolContext.ts';
-import type { RuleOperatorOption } from './operators.ts';
+import type { RuleOperatorOption, RuleOperatorSubject } from './operators.ts';
 import { incompleteRulePart, type RuleDraft, type RulePart } from './rule.ts';
 import {
   assertNoSuchDateProblem,
@@ -48,6 +48,7 @@ import {
   type RuleTargetType,
   type RuleVariableOption,
   ruleOperatorOptions,
+  ruleOperatorSubject,
   ruleVariableChoices,
   ruleVariableDateParameters,
   ruleVariableOptions,
@@ -274,6 +275,13 @@ const messages = defineMessages({
     description:
       'Guidance under the comparison control, for a rule about one of a node or edge type’s attributes.',
   },
+  encryptedOperatorHint: {
+    id: 'protocolBuilder.ruleEditor.encryptedOperatorHint',
+    defaultMessage:
+      'This attribute is encrypted. Rules are checked without the participant’s passphrase, so a rule can only check whether it is answered.',
+    description:
+      'Guidance under the comparison control, for a rule about an encrypted attribute in skip logic or a filter. An encrypted attribute’s answers can only be read with the passphrase the participant chose, so the control only offers "exists" (it was answered) and "does not exist" (it was not).',
+  },
   entityTypeOperatorHint: {
     id: 'protocolBuilder.ruleEditor.entityTypeOperatorHint',
     defaultMessage:
@@ -416,9 +424,9 @@ const messages = defineMessages({
   refuseEncryptedAttribute: {
     id: 'protocolBuilder.ruleEditor.refuseEncryptedAttribute',
     defaultMessage:
-      'This rule cannot use an encrypted attribute. Choose another attribute.',
+      'A rule can only check whether an encrypted attribute is answered. Choose another operator or another attribute.',
     description:
-      'Refusal shown on the attribute control when the rule asks about an encrypted attribute, in a rule set whose rules are checked without the participant’s passphrase and so cannot read encrypted answers.',
+      'Refusal shown on the comparison control when the rule compares the answers to an encrypted attribute, in a rule set whose rules are checked without the participant’s passphrase and so cannot read encrypted answers. The operators still allowed are "exists" and "does not exist".',
   },
   refuseMissingEgo: {
     id: 'protocolBuilder.ruleEditor.refuseMissingEgo',
@@ -904,8 +912,9 @@ const RULE_PROBLEM_PLACEMENTS: Readonly<
     field: ATTRIBUTE_FIELD,
     message: missingAttributeMessage(draftString(rule, 'attribute')),
   }),
+  // The attribute is a fine one to ask about; what it cannot be is compared.
   encryptedAttribute: () => ({
-    field: ATTRIBUTE_FIELD,
+    field: OPERATOR_FIELD,
     message: ENCRYPTED_ATTRIBUTE_MESSAGE,
   }),
   // The presence of the `attribute` KEY is what tells the two rule shapes
@@ -1059,6 +1068,7 @@ type BranchProps = Readonly<{
   operator: string | undefined;
   variableOptions: readonly RuleVariableOption[];
   operatorOptions: readonly RuleOperatorOption[];
+  operatorSubject: RuleOperatorSubject;
   variableType: VariableType | undefined;
   variableChoices: readonly RuleChoiceOption[] | undefined;
   dateParameters: RuleDateParameters;
@@ -1070,6 +1080,7 @@ function EgoRuleFields({
   operator,
   variableOptions,
   operatorOptions,
+  operatorSubject,
   variableType,
   variableChoices,
   dateParameters,
@@ -1094,7 +1105,11 @@ function EgoRuleFields({
         <Field
           name={OPERATOR_FIELD}
           label={intl.formatMessage(messages.operatorLabel)}
-          hint={intl.formatMessage(messages.egoOperatorHint)}
+          hint={intl.formatMessage(
+            operatorSubject === 'encrypted'
+              ? messages.encryptedOperatorHint
+              : messages.egoOperatorHint,
+          )}
           component={NativeSelectField}
           placeholder={intl.formatMessage(messages.operatorPlaceholder)}
           options={[...operatorOptions]}
@@ -1130,6 +1145,7 @@ function EntityRuleFields({
   operator,
   variableOptions,
   operatorOptions,
+  operatorSubject,
   variableType,
   variableChoices,
   dateParameters,
@@ -1200,7 +1216,11 @@ function EntityRuleFields({
             <Field
               name={OPERATOR_FIELD}
               label={intl.formatMessage(messages.operatorLabel)}
-              hint={intl.formatMessage(messages.attributeOperatorHint)}
+              hint={intl.formatMessage(
+                operatorSubject === 'encrypted'
+                  ? messages.encryptedOperatorHint
+                  : messages.attributeOperatorHint,
+              )}
               component={NativeSelectField}
               placeholder={intl.formatMessage(messages.operatorPlaceholder)}
               options={[...operatorOptions]}
@@ -1254,9 +1274,9 @@ function RuleEditorFields({
       target === undefined ? {} : ruleVariables(codebook, target, entityTypeId);
     const variableType = ruleVariableType(variables, attributeId);
     return {
-      variableOptions: ruleVariableOptions(variables, {
+      variableOptions: ruleVariableOptions(variables),
+      operatorSubject: ruleOperatorSubject(variables, attributeId, {
         allowEncryptedAttributes,
-        intl,
       }),
       variableType,
       variableChoices: ruleVariableChoices(
@@ -1271,7 +1291,6 @@ function RuleEditorFields({
     attributeId,
     codebook,
     entityTypeId,
-    intl,
     localize,
     target,
   ]);
@@ -1281,8 +1300,8 @@ function RuleEditorFields({
   // select's placeholder. Read from the field rather than from the seed, so it
   // goes when the cascade clears it.
   const operatorOptions = useMemo(
-    () => ruleOperatorOptions(derived.variableType, operator, intl),
-    [derived.variableType, intl, operator],
+    () => ruleOperatorOptions(derived.operatorSubject, operator, intl),
+    [derived.operatorSubject, intl, operator],
   );
 
   // The operator is part of the answer: a categorical attribute empties to an
@@ -1302,6 +1321,7 @@ function RuleEditorFields({
     operator,
     variableOptions: derived.variableOptions,
     operatorOptions,
+    operatorSubject: derived.operatorSubject,
     variableType: derived.variableType,
     variableChoices: derived.variableChoices,
     dateParameters: derived.dateParameters,
@@ -1382,8 +1402,8 @@ export type RuleEditorDialogProps = Readonly<{
    */
   allowedTargets: readonly RuleTargetType[];
   /**
-   * Whether this rule may name an encrypted attribute. Off unless the set it
-   * was opened from says so; see `ruleSetAllowsEncryptedAttributes`.
+   * Whether this rule may compare an encrypted attribute's answers. Off unless
+   * the set it was opened from says so; see `ruleSetAllowsEncryptedAttributes`.
    */
   allowEncryptedAttributes?: boolean;
   /**

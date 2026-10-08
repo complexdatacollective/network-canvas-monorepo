@@ -259,13 +259,15 @@ export type DescribeRuleInput = Readonly<{
    */
   duplicateIds?: ReadonlySet<string>;
   /**
-   * Whether the rule set holding this rule may name an encrypted attribute.
+   * Whether the rule set holding this rule may compare an encrypted
+   * attribute's answers, rather than only check whether it is answered.
    *
    * Only an external-data panel may: its rules read the researcher's own rows,
    * which are never encrypted. Every other rule set reads interview answers
-   * without the participant's passphrase, and the protocol schema refuses an
-   * encrypted attribute there. Off unless the set says otherwise, so a caller
-   * that says nothing is told about a rule the schema would refuse.
+   * without the participant's passphrase, and the protocol schema refuses a
+   * comparison on an encrypted attribute there. Off unless the set says
+   * otherwise, so a caller that says nothing is told about a rule the schema
+   * would refuse.
    */
   allowEncryptedAttributes?: boolean;
   /**
@@ -696,17 +698,25 @@ export function describeRule({
     });
   }
 
-  if (definition?.encrypted === true && !allowEncryptedAttributes) {
+  const operatorId =
+    typeof options.operator === 'string' && options.operator !== ''
+      ? options.operator
+      : undefined;
+
+  // Rules here are checked without the participant's passphrase, so they see
+  // an encrypted answer only as ciphertext: comparing it means nothing, while
+  // whether it was answered at all still reads true.
+  if (
+    definition?.encrypted === true &&
+    !allowEncryptedAttributes &&
+    operatorId !== undefined &&
+    !isPresenceOperator(operatorId)
+  ) {
     problems.push({
       code: 'encryptedAttribute',
       message: say(problemMessages.encryptedAttribute),
     });
   }
-
-  const operatorId =
-    typeof options.operator === 'string' && options.operator !== ''
-      ? options.operator
-      : undefined;
   const isEgo = target === 'ego';
   // A presence rule's operator is the whole predicate ("Person exists"), so it
   // reads differently from the same operator inside an attribute rule.
@@ -728,8 +738,7 @@ export function describeRule({
 
   // A presence rule and an attribute-existence rule both compare nothing, so
   // whatever a legacy protocol left at `value` is not part of the sentence.
-  const isExistenceOperator =
-    operatorId === 'EXISTS' || operatorId === 'NOT_EXISTS';
+  const isExistenceOperator = isPresenceOperator(operatorId);
   // The option COUNT operators compare how many options are selected, not
   // which, so their operand is a number and never an option label.
   const countsOptions =
@@ -1135,9 +1144,9 @@ const problemMessages = defineMessages({
   encryptedAttribute: {
     id: 'protocolBuilder.ruleDescription.problemEncryptedAttribute',
     defaultMessage:
-      'This rule uses an encrypted attribute. Rules are checked without the participant’s passphrase, so this rule cannot read the attribute’s answers. Edit or delete the rule.',
+      'This rule compares the answers to an encrypted attribute. Rules are checked without the participant’s passphrase, so they can only check whether an encrypted attribute is answered. Edit or delete the rule.',
     description:
-      'Shown on a rule’s row in the rule list when the attribute the rule asks about is encrypted. An encrypted attribute’s answers can only be read with the passphrase the participant chose, and rules are checked without it.',
+      'Shown on a rule’s row in the rule list when the rule compares the answers to an encrypted attribute, for example "is exactly" or "contains". An encrypted attribute’s answers can only be read with the passphrase the participant chose, and rules are checked without it, so the only rules allowed on one are those that check whether it was answered at all.',
   },
   invalidOperator: {
     id: 'protocolBuilder.ruleDescription.problemInvalidOperator',

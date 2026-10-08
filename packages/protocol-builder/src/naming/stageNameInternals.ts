@@ -44,6 +44,12 @@ export const stageNameMessages = defineMessages({
     defaultMessage: 'Enter stage name...',
     description: 'Placeholder for the researcher-authored stage name field.',
   },
+  quotedName: {
+    id: 'protocolBuilder.stageName.quoted',
+    defaultMessage: '"{stageName}"',
+    description:
+      'One stage’s name in quotation marks, as it appears inside a sentence that names several stages, such as the stages holding a rule. Use the quotation marks your language puts around a quoted name. stageName is the researcher’s own name for the stage and is not translated. A stage is one step of an interview.',
+  },
 });
 
 /**

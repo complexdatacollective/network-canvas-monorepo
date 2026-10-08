@@ -159,11 +159,18 @@ export const alreadyProtecting =
     return host.adapter;
   };
 
-/** A finished node rule about one `person` attribute. */
+/** A finished node rule comparing one `person` attribute's answers. */
 export const personRule = (id: string, attribute: string): SectionDoc => ({
   id,
   type: 'node',
   options: { type: 'person', attribute, operator: 'EXACTLY', value: 'Ada' },
+});
+
+/** A node rule asking only whether one `person` attribute was answered. */
+export const answeredRule = (id: string, attribute: string): SectionDoc => ({
+  id,
+  type: 'node',
+  options: { type: 'person', attribute, operator: 'EXISTS' },
 });
 
 /**

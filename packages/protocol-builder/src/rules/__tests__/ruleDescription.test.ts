@@ -498,8 +498,9 @@ describe('describeRule', () => {
   /**
    * An encrypted answer is stored as ciphertext only the participant's
    * passphrase opens, and rules are checked without it — so the protocol
-   * schema refuses a rule on one wherever the rule reads interview answers.
-   * Only a panel over an imported file may hold one.
+   * schema refuses a rule comparing one wherever the rule reads interview
+   * answers. Only a panel over an imported file may compare one; any rule set
+   * may ask whether it was answered.
    */
   describe('an attribute the participant’s passphrase protects', () => {
     const encryptedRule = {
@@ -526,10 +527,26 @@ describe('describeRule', () => {
         {
           code: 'encryptedAttribute',
           message:
-            'This rule uses an encrypted attribute. Rules are checked without the participant’s passphrase, so this rule cannot read the attribute’s answers. Edit or delete the rule.',
+            'This rule compares the answers to an encrypted attribute. Rules are checked without the participant’s passphrase, so they can only check whether an encrypted attribute is answered. Edit or delete the rule.',
         },
       ]);
     });
+
+    it.each(['EXISTS', 'NOT_EXISTS'])(
+      'reports nothing for a rule that only asks whether it is answered: %s',
+      (operator) => {
+        expect(
+          describeRule({
+            rule: {
+              id: 'rule-12',
+              type: 'node',
+              options: { type: 'person', attribute: 'secret', operator },
+            },
+            codebook,
+          }).problems,
+        ).toEqual([]);
+      },
+    );
 
     it('reports nothing in a rule set that may read encrypted attributes', () => {
       expect(

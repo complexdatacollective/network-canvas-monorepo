@@ -6,6 +6,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
   alreadyProtecting,
+  answeredRule,
   personRule,
 } from '../../../editors/anonymisation/__tests__/anonymisationFixtures.tsx';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
@@ -854,10 +855,11 @@ describe('a panel filter emptied down to nothing', () => {
 
 /**
  * Rules that read the interview are checked without the participant's
- * passphrase, so the schema refuses one on an encrypted attribute there. A
- * panel over an imported file reads the file's own plain values instead, and
- * the schema accepts the same rule — refusing it would hold the panel's dialog
- * shut over an edit nothing is wrong with.
+ * passphrase, so the schema refuses one comparing an encrypted attribute
+ * there; whether it was answered survives encryption, so a rule asking only
+ * that is accepted. A panel over an imported file reads the file's own plain
+ * values instead, and the schema accepts the same comparison — refusing it
+ * would hold the panel's dialog shut over an edit nothing is wrong with.
  */
 describe('a panel filter on an encrypted attribute', () => {
   const panelReading = (dataSource: string) => ({
@@ -900,7 +902,7 @@ describe('a panel filter on an encrypted attribute', () => {
     const dialog = await openPanel(harness, 'Edit panel');
     expect(
       dialog.getByText(
-        'This rule uses an encrypted attribute. Rules are checked without the participant’s passphrase, so this rule cannot read the attribute’s answers. Edit or delete the rule.',
+        'This rule compares the answers to an encrypted attribute. Rules are checked without the participant’s passphrase, so they can only check whether an encrypted attribute is answered. Edit or delete the rule.',
       ),
     ).toBeInTheDocument();
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
@@ -911,6 +913,27 @@ describe('a panel filter on an encrypted attribute', () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('saves a panel over the interview’s own network that only asks whether it is answered', async () => {
+    const panel = {
+      ...panelReading('existing'),
+      filter: {
+        join: 'AND',
+        rules: [answeredRule('rule-1', 'relationship_to_ego')],
+      },
+    };
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([panel]),
+      sections: panels,
+      adapter: alreadyProtecting('relationship_to_ego'),
+    });
+
+    const dialog = await openPanel(harness, 'Edit panel');
+    expect(dialog.queryByText(/encrypted/)).toBeNull();
+    await saveTheRow(harness, dialog);
+
+    expect(panelsOf(await harness.submit())[0]).toEqual(panel);
   });
 });
 

@@ -10,6 +10,10 @@ import {
   useStageEditorForm,
 } from '../../../form/stageEditorContext.ts';
 import {
+  attributeField,
+  chooseAttributeById,
+} from '../../../testing/attributePicker.ts';
+import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
@@ -17,6 +21,7 @@ import { anonymisationStageEditor } from '../AnonymisationStageEditor.ts';
 import EncryptedAttributesSection from '../sections/EncryptedAttributesSection.tsx';
 import {
   alreadyProtecting,
+  answeredRule,
   attributeCheckbox,
   collaboratorSets,
   heldWrites,
@@ -588,12 +593,70 @@ describe('the attributes a passphrase protects', () => {
 
   /**
    * Rules are checked without the participant's passphrase, so the protocol
-   * schema refuses a rule over interview answers on an encrypted attribute.
-   * Encrypting one a rule already reads would leave that rule refused on a
-   * stage this editor is not editing, so the tick is refused here instead,
-   * naming the stages to go to.
+   * schema refuses a rule over interview answers that compares an encrypted
+   * attribute. Encrypting one a rule already compares would leave that rule
+   * refused on a stage this editor is not editing, so the tick is refused here
+   * instead, naming the stages to go to. A rule that only asks whether the
+   * attribute was answered keeps working, so it does not stand in the way.
    */
   describe('an attribute a rule reads', () => {
+    it('encrypts it when the rules only ask whether it is answered', async () => {
+      const harness = renderStageEditor({
+        stageId: 'anonymisation-1',
+        registry: anonymisationStageEditor,
+        adapter: withStageFields({
+          'name-generator-1': {
+            skipLogic: {
+              action: 'SHOW',
+              filter: { rules: [answeredRule('skip-a', 'name')] },
+            },
+          },
+        }),
+      });
+      await switchOnType(harness, 'person');
+
+      await harness.user.click(attributeCheckbox('person', 'name'));
+
+      await waitFor(() =>
+        expect(personVariable(harness, 'name').encrypted).toBe(true),
+      );
+      expect(screen.queryByText(/cannot be encrypted/)).toBeNull();
+    });
+
+    it('counts only the rules that compare its answers', async () => {
+      const harness = renderStageEditor({
+        stageId: 'anonymisation-1',
+        registry: anonymisationStageEditor,
+        adapter: withStageFields({
+          'name-generator-1': {
+            skipLogic: {
+              action: 'SKIP',
+              filter: {
+                join: 'OR',
+                rules: [
+                  answeredRule('skip-a', 'name'),
+                  personRule('skip-b', 'name'),
+                ],
+              },
+            },
+          },
+          'sociogram-1': {
+            filter: { rules: [answeredRule('filter-a', 'name')] },
+          },
+        }),
+      });
+      await switchOnType(harness, 'person');
+
+      await harness.user.click(attributeCheckbox('person', 'name'));
+
+      expect(
+        await screen.findByText(
+          '"name" cannot be encrypted while a rule in "Name Generator" compares its answers. Rules are checked without the participant’s passphrase, so that rule could not read the encrypted answers. Remove the rule, or change it to check only whether the attribute is answered.',
+        ),
+      ).toBeInTheDocument();
+      expect(attributeCheckbox('person', 'name')).not.toBeChecked();
+    });
+
     it('refuses to encrypt it, naming the stages whose rules read it', async () => {
       const harness = renderStageEditor({
         stageId: 'anonymisation-1',
@@ -615,7 +678,7 @@ describe('the attributes a passphrase protects', () => {
       await harness.user.click(attributeCheckbox('person', 'name'));
 
       const refusal = await screen.findByText(
-        '"name" cannot be encrypted while 2 rules in "Name Generator" and "Sociogram" use it. Rules are checked without the participant’s passphrase, so those rules could not read the encrypted answers. Remove or change those rules first.',
+        '"name" cannot be encrypted while 2 rules in "Name Generator" and "Sociogram" compare its answers. Rules are checked without the participant’s passphrase, so those rules could not read the encrypted answers. Remove those rules, or change them to check only whether the attribute is answered.',
       );
       // A notice rather than an alert: nothing is wrong with the protocol, and
       // the tick is fine once the rules are gone.
@@ -661,7 +724,7 @@ describe('the attributes a passphrase protects', () => {
       await harness.user.click(attributeCheckbox('person', 'name'));
       expect(
         await screen.findByText(
-          '"name" cannot be encrypted while a rule in "Name Generator" uses it. Rules are checked without the participant’s passphrase, so that rule could not read the encrypted answers. Remove or change the rule first.',
+          '"name" cannot be encrypted while a rule in "Name Generator" compares its answers. Rules are checked without the participant’s passphrase, so that rule could not read the encrypted answers. Remove the rule, or change it to check only whether the attribute is answered.',
         ),
       ).toBeInTheDocument();
 
@@ -674,6 +737,69 @@ describe('the attributes a passphrase protects', () => {
         ),
       );
       expect(screen.queryByText(/cannot be encrypted/)).toBeNull();
+    });
+
+    /**
+     * The tick reads the SAVED stages: encryption is committed at once, under
+     * the codebook's lock, while this stage's draft may still be discarded —
+     * so a rule only the draft holds does not stop it. That rule is then
+     * marked, and keeps the draft from being saved, because the skip logic
+     * re-reads the codebook it just changed.
+     */
+    it('refuses to save this stage’s own draft rule once its attribute is encrypted', async () => {
+      const harness = renderStageEditor({
+        stageId: 'anonymisation-1',
+        registry: anonymisationStageEditor,
+        adapter: withStageFields({
+          'anonymisation-1': {
+            skipLogic: {
+              action: 'SKIP',
+              filter: {
+                rules: [personRule('skip-a', 'relationship_to_ego')],
+              },
+            },
+          },
+        }),
+      });
+
+      await harness.user.click(
+        await screen.findByRole('button', { name: /^Edit rule:/ }),
+      );
+      await screen.findByRole('dialog', { name: 'Construct a Rule' });
+      await chooseAttributeById(
+        harness.user,
+        await waitFor(() => attributeField('Node attribute')),
+        'name',
+      );
+      await harness.user.selectOptions(
+        await screen.findByRole('combobox', { name: /Operator/ }),
+        'EXACTLY',
+      );
+      await harness.user.type(
+        await screen.findByRole('textbox', { name: /Attribute value/ }),
+        'Ada',
+      );
+      await harness.user.click(
+        screen.getByRole('button', { name: 'Finish and Close' }),
+      );
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('dialog', { name: 'Construct a Rule' }),
+        ).toBeNull(),
+      );
+
+      await switchOnType(harness, 'person');
+      await harness.user.click(attributeCheckbox('person', 'name'));
+      await waitFor(() =>
+        expect(personVariable(harness, 'name').encrypted).toBe(true),
+      );
+
+      expect(
+        await screen.findByText(
+          'This rule compares the answers to an encrypted attribute. Rules are checked without the participant’s passphrase, so they can only check whether an encrypted attribute is answered. Edit or delete the rule.',
+        ),
+      ).toBeInTheDocument();
+      expect(await harness.submit()).toBeNull();
     });
 
     /** Unticking is the way out of a protocol that already holds both. */

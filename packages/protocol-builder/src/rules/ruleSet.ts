@@ -87,12 +87,14 @@ export const ruleSetTargets = (
 ): readonly RuleTargetType[] => RULE_SET_TARGETS[variant];
 
 /**
- * Whether a rule set of this kind may name an encrypted attribute.
+ * Whether a rule set of this kind may compare an encrypted attribute's
+ * answers. Every set may check whether one is answered.
  *
- * Only an external-data panel may. Its rules read the researcher's own rows,
- * which are never encrypted; every other set reads interview answers, and
- * rules are checked without the participant's passphrase. The protocol schema
- * draws the line in the same place (`readsInterview`).
+ * Only an external-data panel may compare them. Its rules read the
+ * researcher's own rows, which are never encrypted; every other set reads
+ * interview answers, and rules are checked without the participant's
+ * passphrase. The protocol schema draws the line in the same place
+ * (`readsInterview`).
  */
 const RULE_SET_ALLOWS_ENCRYPTED_ATTRIBUTES: Readonly<
   Record<RuleSetVariant, boolean>

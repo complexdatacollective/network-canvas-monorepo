@@ -21,7 +21,9 @@ import { useCodebookSectionWrite } from '../../../codebook/writes.ts';
 import { READ_ONLY_MESSAGE } from '../../../form/readOnlyRefusal.ts';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { useLocalizedText } from '../../../localization/ProtocolLocalization.tsx';
+import { stageNameMessages } from '../../../naming/stageNameInternals.ts';
 import type { CodebookSubject } from '../../../protocol-context.ts';
+import { isPresenceOperator } from '../../../rules/operators.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { anonymisationMessages } from './anonymisationMessages.ts';
@@ -54,9 +56,9 @@ const INTERVIEW_NETWORK = 'existing';
 /**
  * The rules in one stage that read interview answers: its own filter, its skip
  * logic, and any side panel over the interview's own network. These are the
- * rule sets the protocol schema refuses an encrypted attribute in — rules are
- * checked without the participant's passphrase. A panel over an imported file
- * reads the researcher's own rows, which are never encrypted.
+ * rule sets the protocol schema refuses a comparison on an encrypted attribute
+ * in — rules are checked without the participant's passphrase. A panel over an
+ * imported file reads the researcher's own rows, which are never encrypted.
  */
 const rulesReadingInterview = (stage: Readonly<Stage>) => [
   ...('filter' in stage ? (stage.filter?.rules ?? []) : []),
@@ -66,8 +68,12 @@ const rulesReadingInterview = (stage: Readonly<Stage>) => [
   ),
 ];
 
-/** How many rules each stage holds about one node attribute. */
-const stagesWithRulesOn = (
+/**
+ * How many rules each stage holds that compare one node attribute's answers.
+ * A rule that only checks whether it is answered still works once it is
+ * encrypted, so it does not count.
+ */
+const stagesWithComparisonsOn = (
   stages: readonly Readonly<Stage>[],
   typeId: string,
   variableId: string,
@@ -78,7 +84,8 @@ const stagesWithRulesOn = (
         rule.type === 'node' &&
         rule.options.type === typeId &&
         'attribute' in rule.options &&
-        rule.options.attribute === variableId,
+        rule.options.attribute === variableId &&
+        !isPresenceOperator(rule.options.operator),
     ).length;
     return ruleCount === 0 ? [] : [{ stage, ruleCount }];
   });
@@ -490,7 +497,7 @@ export default function EncryptedAttributesSection() {
         // would leave a rule elsewhere in the protocol that the schema then
         // refuses — on a stage this editor is not editing. Unticking is never
         // refused: it is the way out of exactly that state.
-        const using = stagesWithRulesOn(
+        const using = stagesWithComparisonsOn(
           protocolContext.orderedStages,
           view.typeId,
           value,
@@ -506,9 +513,12 @@ export default function EncryptedAttributesSection() {
                   0,
                 ),
                 stageNames: {
-                  list: using.map(
-                    ({ stage }) => `"${localize(stage.label).text}"`,
-                  ),
+                  list: using.map(({ stage }) => ({
+                    messageError: createMessageError(
+                      stageNameMessages.quotedName,
+                      { stageName: localize(stage.label).text },
+                    ),
+                  })),
                 },
               },
             ),

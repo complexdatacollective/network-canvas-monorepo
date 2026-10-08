@@ -145,6 +145,25 @@ describe('the pedigree’s own configuration, read in Spanish', () => {
     ).not.toBeNull();
   });
 
+  /**
+   * The stage's name is the researcher's, and the quotation marks around it
+   * are the reader's: Spanish quotes a name with «», not with the English
+   * marks.
+   */
+  it('quotes the stages that read this pedigree the Spanish way', async () => {
+    renderStageEditor({
+      stageId: 'family-pedigree-1',
+      locale: 'es',
+      sections: <PedigreeNodeConfigurationSection />,
+    });
+
+    expect(
+      await screen.findByText(
+        'Estas etapas visualizan la red de esta genealogía y asignan sus propios atributos a su tipo de nodo: «Narrative Pedigree». Si cambias aquí el tipo de nodo, quedarán apuntando a atributos que el nuevo tipo no tiene.',
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('splices an attribute the researcher chose into the Spanish preview', async () => {
     renderStageEditor({
       stage: familyPedigreeStageWith({
