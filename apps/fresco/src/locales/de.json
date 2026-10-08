@@ -558,7 +558,7 @@
   "fresco.notfound.pageNotFound": "Seite nicht gefunden.",
   "fresco.onboard.error.message": "Beim Starten des Interviews ist ein Problem aufgetreten. Bitte wenden Sie sich an die Person, die Sie für diese Studie rekrutiert hat, um Unterstützung zu erhalten.",
   "fresco.onboard.error.title": "Beim Starten des Interviews ist etwas schiefgelaufen",
-  "fresco.onboard.invalidLink.message": "Die Studie, auf die dieser Link verweist, ist nicht verfügbar. Bitte wenden Sie sich an die Person, die Sie für diese Studie angeworben hat.",
+  "fresco.onboard.invalidLink.message": "Die Studie, auf die dieser Link verweist, ist nicht verfügbar. Bitte wenden Sie sich an die Person, die Sie für diese Studie rekrutiert hat, um Unterstützung zu erhalten.",
   "fresco.onboard.invalidLink.title": "Dieser Interview-Link ist nicht mehr gültig",
   "fresco.onboard.noAnonymousRecruitment.message": "Die anonyme Rekrutierung ist für diese Studie deaktiviert. Forschende können die anonyme Rekrutierung bei Bedarf im Dashboard aktivieren.",
   "fresco.onboard.noAnonymousRecruitment.title": "Anonyme Rekrutierung deaktiviert",
