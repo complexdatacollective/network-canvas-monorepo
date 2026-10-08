@@ -346,7 +346,7 @@ describe('FamilyPedigree in a whole protocol', () => {
       ['gender', 'gender identity'],
       ['sab', 'sex assigned at birth'],
       ['hd', 'nomination prompt'],
-    ]) {
+    ] as const) {
       expect(withField(variable)).toContainEqual(
         expect.stringContaining(
           `is the ${role} attribute of this Family Pedigree stage`,

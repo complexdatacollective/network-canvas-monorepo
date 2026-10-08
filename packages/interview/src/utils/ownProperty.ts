@@ -18,10 +18,10 @@ export function readOwnProperty<Value>(
 }
 
 /** Sets `key` as the object's own property, whatever the key. */
-export function writeOwnProperty<Value>(
-  target: Record<string, Value>,
+export function writeOwnProperty<Target extends Record<string, unknown>>(
+  target: Target,
   key: string,
-  value: Value,
+  value: Target[string],
 ): void {
   Object.defineProperty(target, key, {
     configurable: true,
