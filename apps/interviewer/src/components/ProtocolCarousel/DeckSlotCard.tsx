@@ -3,6 +3,7 @@ import { Download } from 'lucide-react';
 import type { MessageDescriptor, IntlShape } from '@codaco/app-i18n/messages';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import type { StoredSession } from '~/lib/db/types';
 import { DEVELOPMENT_PROTOCOL } from '~/lib/protocol/developmentProtocol';
 import type { ImportPhase } from '~/lib/protocol/importProtocol';
@@ -98,6 +99,10 @@ function slotCardProps(
       isActive,
       sessionCount,
       requiresInternetConnection: protocolRequiresInternet(entry.protocol),
+      // The launch sweep left it below the runtime's schema version: it, or
+      // its interviews, could not be updated (opening it says which).
+      unavailable:
+        entry.protocol.schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
       onActivate: activate,
       // While the case-ID form is open it takes over the card: the
       // controls row, description, and metadata animate out (their exits

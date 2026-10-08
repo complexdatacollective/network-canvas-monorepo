@@ -16,6 +16,7 @@ import { createSession, getSettings } from '~/lib/db/api';
 import type { ProtocolWithCounts, StoredSession } from '~/lib/db/types';
 import { useOnline } from '~/lib/net/OnlineStatusProvider';
 import { protocolRequiresInternet } from '~/lib/protocol/protocolRequiresInternet';
+import { useStoredProtocolMigrationFailure } from '~/lib/protocol/storedProtocolMigrationFailures';
 
 const messages = defineMessages({
   caseID: {
@@ -39,6 +40,13 @@ const messages = defineMessages({
     defaultMessage:
       'This protocol could not be updated to work with this version of the app, so new interviews cannot be started from it. Responses already collected remain available on the data screen. Repair the protocol in Architect and import it again.',
     description: 'Visible copy in Interviewer New Session Form.',
+  },
+  interviewsCouldNotBeUpdated: {
+    id: 'interviewer.newSessionForm.interviewsCouldNotBeUpdated',
+    defaultMessage:
+      'Some interviews recorded with this protocol could not be updated to work with this version of the app, so new interviews cannot be started from it yet. The protocol and all its interviews have been kept exactly as they were, and the app will try again each time it starts. Responses already collected remain available on the data screen.',
+    description:
+      'Visible copy in Interviewer New Session Form, shown when the interviews recorded with this protocol could not be updated to work with this version of the app, so the protocol was left as it was. A later version of the app may be able to update them.',
   },
   caseIDIsRequired: {
     id: 'interviewer.newSessionForm.caseIDIsRequired',
@@ -169,6 +177,7 @@ export function NewSessionForm({
   const intl = useAppIntl();
   const { requireFreshUnlock, setAuthorizedInterviewId } = useStepUpAuth();
   const isOnline = useOnline();
+  const migrationFailure = useStoredProtocolMigrationFailure(protocol.hash);
 
   // A protocol the launch-time migration could not bring up to the runtime's
   // schema version cannot run an interview — the interview route would refuse
@@ -178,7 +187,11 @@ export function NewSessionForm({
     return (
       <div className="flex flex-col gap-4">
         <Paragraph>
-          {intl.formatMessage(messages.thisProtocolCouldNotBeUpdatedTo)}
+          {intl.formatMessage(
+            migrationFailure === 'sessions'
+              ? messages.interviewsCouldNotBeUpdated
+              : messages.thisProtocolCouldNotBeUpdatedTo,
+          )}
         </Paragraph>
         <div className="flex justify-end">
           <Button onClick={onCancel}>

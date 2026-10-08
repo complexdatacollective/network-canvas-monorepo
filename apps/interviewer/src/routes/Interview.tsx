@@ -52,6 +52,7 @@ import {
 } from '~/lib/db/api';
 import type { StoredSession } from '~/lib/db/types';
 import { getInstallationId } from '~/lib/installationId';
+import { useStoredProtocolMigrationFailure } from '~/lib/protocol/storedProtocolMigrationFailures';
 import { useHistoryBackGuard } from '~/lib/pwa/useHistoryBackGuard';
 import { interviewerCatalogs } from '~/locales/catalogs';
 
@@ -73,6 +74,13 @@ const messages = defineMessages({
     defaultMessage:
       'The protocol this interview uses could not be updated to work with this version of the app, so this interview cannot be continued. Its responses remain available on the data screen. To start new interviews, repair the protocol in Architect and import it again.',
     description: 'Visible copy in Interviewer Interview.',
+  },
+  interviewsOfProtocolCouldNotBeUpdated: {
+    id: 'interviewer.interview.interviewsOfProtocolCouldNotBeUpdated',
+    defaultMessage:
+      'Some interviews recorded with this protocol could not be updated to work with this version of the app, so this interview cannot be continued yet. The protocol and all its interviews have been kept exactly as they were, and the app will try again each time it starts. Its responses remain available on the data screen.',
+    description:
+      'Visible copy in Interviewer Interview, shown when the interviews recorded with this interview’s protocol could not be updated to work with this version of the app, so the protocol was left as it was. A later version of the app may be able to update them.',
   },
   returnHome: {
     id: 'interviewer.interview.returnHome',
@@ -139,7 +147,7 @@ const SYNC_BATCH_MS = 0;
 type LoadState =
   | { kind: 'loading' }
   | { kind: 'missing' }
-  | { kind: 'incompatible' }
+  | { kind: 'incompatible'; protocolHash: string }
   | {
       kind: 'ready';
       payload: InterviewPayload;
@@ -163,6 +171,9 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   // loads, until the participant chooses a language.
   const [requestedLocales] = useState(browserLanguages);
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
+  const migrationFailure = useStoredProtocolMigrationFailure(
+    state.kind === 'incompatible' ? state.protocolHash : '',
+  );
   const [, navigate] = useLocation();
   const search = useSearch();
   const reviewRequested = new URLSearchParams(search).get('mode') === 'review';
@@ -283,7 +294,9 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       // not be migrated. Refuse to run rather than hand the runtime a document
       // it cannot execute.
       if (protocol.schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION) {
-        if (active) setState({ kind: 'incompatible' });
+        if (active) {
+          setState({ kind: 'incompatible', protocolHash: protocol.hash });
+        }
         return;
       }
       const assets = await buildResolvedAssets(session.protocolHash);
@@ -440,7 +453,11 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
             {intl.formatMessage(messages.interviewUnavailable)}
           </Heading>
           <Paragraph>
-            {intl.formatMessage(messages.theProtocolThisInterviewUsesCouldNot)}
+            {intl.formatMessage(
+              migrationFailure === 'sessions'
+                ? messages.interviewsOfProtocolCouldNotBeUpdated
+                : messages.theProtocolThisInterviewUsesCouldNot,
+            )}
           </Paragraph>
           <Button
             onClick={() => {

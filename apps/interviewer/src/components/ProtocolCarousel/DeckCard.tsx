@@ -1,4 +1,10 @@
-import { CalendarPlus, CalendarSync, Globe, Trash2 } from 'lucide-react';
+import {
+  CalendarPlus,
+  CalendarSync,
+  CircleAlert,
+  Globe,
+  Trash2,
+} from 'lucide-react';
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import {
   isValidElement,
@@ -42,6 +48,12 @@ const messages = defineMessages({
     defaultMessage: 'Requires Internet',
     description:
       'Protocol card badge warning that an interview stage needs an internet connection.',
+  },
+  unavailable: {
+    id: 'interviewer.deckCard.unavailable',
+    defaultMessage: 'Not available',
+    description:
+      'Protocol card badge saying that interviews cannot be started or continued from this protocol in this version of the app, because it could not be updated. Opening the protocol explains why.',
   },
   deleteProtocol: {
     id: 'interviewer.deckCard.deleteProtocol',
@@ -333,6 +345,9 @@ type DeckCardData = Pick<
 
 export type DeckCardProps = {
   requiresInternetConnection?: boolean;
+  // The protocol could not be updated to the schema version this app runs,
+  // so its interviews cannot be started or continued here.
+  unavailable?: boolean;
   // Content for the card's footer slot — a start button, install button,
   // import progress, or a case-ID form. Rendered beneath a divider in a
   // presence group keyed by this element's key (normally
@@ -403,6 +418,7 @@ export function DeckCard(props: DeckCardProps) {
     hideDescription = false,
     hideControls = false,
     requiresInternetConnection = false,
+    unavailable = false,
     footer,
   } = props;
   const loading = props.loading === true;
@@ -510,6 +526,23 @@ export function DeckCard(props: DeckCardProps) {
                   // deletable) never reflows the content below the row.
                   className="flex min-h-[max(40px,10cqi)] shrink-0 items-center justify-end gap-4"
                 >
+                  {unavailable && (
+                    <Badge
+                      render={
+                        <motion.div
+                          layout="position"
+                          transition={REGION_TRANSITION}
+                        />
+                      }
+                      tone="warning"
+                      uppercase
+                      icon={<CircleAlert className="size-4" />}
+                      className="whitespace-nowrap"
+                    >
+                      {intl.formatMessage(messages.unavailable)}
+                    </Badge>
+                  )}
+
                   {requiresInternetConnection && (
                     <Badge
                       render={

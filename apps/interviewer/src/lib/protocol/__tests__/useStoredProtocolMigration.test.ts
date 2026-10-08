@@ -1,10 +1,14 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { StrictMode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { StoredProtocolMigrationResult } from '~/lib/db/migrateStoredProtocols';
 import { renderedMessage } from '~/testUtils/renderedMessage';
 
+import {
+  recordStoredProtocolMigrationFailures,
+  useStoredProtocolMigrationFailure,
+} from '../storedProtocolMigrationFailures';
 import { useStoredProtocolMigration } from '../useStoredProtocolMigration';
 
 const { toastAdd, migrateStoredProtocols } = vi.hoisted(() => ({
@@ -29,7 +33,6 @@ function migrated(...names: string[]): StoredProtocolMigrationResult {
       toVersion: 8,
       previousHash: `old-${name}`,
       hash: `new-${name}`,
-      unmigratedSessionIds: [],
     })),
     failed: [],
   };
@@ -42,6 +45,8 @@ function failed(...names: string[]): StoredProtocolMigrationResult {
       name,
       hash: `hash-${name}`,
       reason: 'nope',
+      kind: 'protocol' as const,
+      sessions: [],
     })),
   };
 }
@@ -122,6 +127,47 @@ describe('useStoredProtocolMigration', () => {
       ),
       variant: 'destructive',
     });
+  });
+
+  it('calmly reports a protocol whose interviews could not be updated, and records why for its screens', async () => {
+    sweepResolvesTo({
+      migrated: [],
+      failed: [
+        ...failed('Broken Study').failed,
+        {
+          name: 'Waiting Study',
+          hash: 'hash-waiting',
+          reason: 'one interview could not be migrated',
+          kind: 'sessions',
+          sessions: [{ id: 's1', reason: 'invalid' }],
+        },
+      ],
+    });
+    const { result } = renderHook(() => useStoredProtocolMigration(true));
+    const failure = renderHook(() => ({
+      waiting: useStoredProtocolMigrationFailure('hash-waiting'),
+      broken: useStoredProtocolMigrationFailure('hash-Broken Study'),
+      other: useStoredProtocolMigrationFailure('hash-other'),
+    }));
+
+    await waitFor(() => expect(result.current).toBe('settled'));
+    expect(toastAdd).toHaveBeenCalledTimes(2);
+    expect(toastAdd).toHaveBeenCalledWith({
+      title: renderedMessage('A protocol is waiting for an update'),
+      description: renderedMessage(
+        'Some interviews recorded with Waiting Study could not be updated to work with this version of the app. The protocol and all its interviews have been kept exactly as they were, and the app will try again each time it starts. Until then, its interviews cannot be started or continued, though their responses remain on the data screen.',
+      ),
+      variant: 'info',
+    });
+    expect(toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ variant: 'destructive' }),
+    );
+    expect(failure.result.current).toEqual({
+      waiting: 'sessions',
+      broken: 'protocol',
+      other: undefined,
+    });
+    act(() => recordStoredProtocolMigrationFailures([]));
   });
 
   it('reports migrations and failures from the same sweep separately', async () => {

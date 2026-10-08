@@ -374,7 +374,6 @@ describe.each([
     const result = await migrateStoredProtocols();
 
     expect(result.failed).toEqual([]);
-    expect(result.migrated[0]?.unmigratedSessionIds).toEqual([]);
     const row = await db.sessions.get('s1');
     if (!row) throw new Error('expected the session to survive');
     expect(row.protocolHash).toBe(result.migrated[0]?.hash);
@@ -390,7 +389,7 @@ describe.each([
     expect(session.lastUpdatedAt).toBe('2026-01-02T00:00:00.000Z');
   });
 
-  it('repoints a session it cannot migrate unchanged, and migrates the rest', async () => {
+  it('leaves the protocol and all its sessions as stored when one session cannot be migrated, and tries again at the next launch', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     await seedProtocol(
       storedRow('old-hash', 'Pedigree Study', v8PedigreeDocument()),
@@ -406,21 +405,56 @@ describe.each([
       },
     } as unknown as StoredSession;
     await db.sessions.put(await encryptSession(damaged));
+    const before = {
+      protocols: await db.protocols.toArray(),
+      sessions: await db.sessions.toArray(),
+      migrations: await db.protocolMigrations.toArray(),
+    };
 
     const result = await migrateStoredProtocols();
 
-    expect(result.migrated[0]?.unmigratedSessionIds).toEqual(['s-damaged']);
-    const hash = result.migrated[0]?.hash;
-    const ok = await db.sessions.get('s-ok');
-    expect(ok?.protocolHash).toBe(hash);
-    expect(ok?.currentStep).toBe(2);
-    const left = await db.sessions.get('s-damaged');
-    expect(left?.protocolHash).toBe(hash);
-    expect(left?.currentStep).toBe(1);
+    expect(result.migrated).toEqual([]);
+    expect(result.failed).toEqual([
+      {
+        name: 'Pedigree Study',
+        hash: 'old-hash',
+        kind: 'sessions',
+        reason: expect.stringContaining('left unchanged') as unknown,
+        sessions: [
+          {
+            id: 's-damaged',
+            reason: expect.stringContaining(
+              'Migrated session is invalid',
+            ) as unknown,
+          },
+        ],
+      },
+    ]);
+    // Nothing was written: not the protocol, not the session that could be
+    // migrated, not the re-keying record.
+    expect({
+      protocols: await db.protocols.toArray(),
+      sessions: await db.sessions.toArray(),
+      migrations: await db.protocolMigrations.toArray(),
+    }).toEqual(before);
     expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining('s-damaged'),
+      expect.stringContaining('Pedigree Study'),
       expect.anything(),
+      [expect.objectContaining({ id: 's-damaged' })],
     );
+
+    // The next launch tries again, and fails the same way while the session
+    // is unchanged...
+    expect((await migrateStoredProtocols()).failed).toHaveLength(1);
+    expect(await db.sessions.toArray()).toEqual(before.sessions);
+    // ...and migrates everything together once every session can be.
+    await db.sessions.delete('s-damaged');
+    const retried = await migrateStoredProtocols();
+    expect(retried.failed).toEqual([]);
+    expect(retried.migrated).toHaveLength(1);
+    const ok = await db.sessions.get('s-ok');
+    expect(ok?.protocolHash).toBe(retried.migrated[0]?.hash);
+    expect(ok?.currentStep).toBe(2);
     errorSpy.mockRestore();
   });
 
