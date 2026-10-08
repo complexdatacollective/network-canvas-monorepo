@@ -28,6 +28,7 @@ import {
   encryptSession,
 } from '../recordCrypto';
 import { setSessionDek } from '../sessionKey';
+import { updateSession } from '../sessions';
 import type { StoredProtocol, StoredSession } from '../types';
 
 async function makeDek(): Promise<CryptoKey> {
@@ -768,6 +769,42 @@ describe.each([
         2,
       ).progress,
     );
+  });
+
+  // The same late write from a tab running this build: `updateSession` is
+  // told which protocol its whole-state write was computed against, stores
+  // it under that hash rather than the migrated one, and the next launch
+  // carries it across the migration.
+  it('migrates a whole-state write a stale tab of this build made after the migration', async () => {
+    await seedProtocol(
+      storedRow('old-hash', 'Pedigree Study', v8PedigreeDocument()),
+    );
+    const stale = v8PedigreeSession('s1', 'old-hash');
+    await db.sessions.put(await encryptSession(stale));
+    const first = await migrateStoredProtocols();
+    const hash = first.migrated[0]?.hash;
+    if (!hash) throw new Error('expected the protocol to migrate');
+
+    await updateSession(
+      's1',
+      {
+        network: stale.network,
+        stageMetadata: stale.stageMetadata,
+        currentStep: 1,
+      },
+      { protocolHash: 'old-hash' },
+    );
+    expect((await db.sessions.get('s1'))?.protocolHash).toBe('old-hash');
+
+    const second = await migrateStoredProtocols();
+
+    expect(second.failed).toEqual([]);
+    const row = await db.sessions.get('s1');
+    if (!row) throw new Error('expected the session to survive');
+    expect(row.protocolHash).toBe(hash);
+    const session = await decryptSession(row);
+    expect(session.currentStep).toBe(2);
+    expect(session.stageMetadata).toEqual({ 2: { framing: 'gamete' } });
   });
 
   it('leaves late-written sessions under their superseded hash, and reports the protocol, when one of them cannot be migrated', async () => {

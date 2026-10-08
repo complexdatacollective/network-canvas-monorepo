@@ -660,11 +660,69 @@ describe('InterviewRoute finish flow', () => {
       lastShellProps().onStepChange(1, { progress: 50, totalSteps: 4 });
     });
 
-    expect(updateSessionMock).toHaveBeenCalledWith('s1', {
-      currentStep: 1,
-      progress: 50,
-      resumeStageOverrideIndex: undefined,
+    expect(updateSessionMock).toHaveBeenCalledWith(
+      's1',
+      expect.objectContaining({
+        currentStep: 1,
+        progress: 50,
+        resumeStageOverrideIndex: undefined,
+      }),
+      { protocolHash: 'h1' },
+    );
+  });
+
+  // Every write names the protocol the interview loaded and carries the
+  // session's whole state, so a write made after another tab migrated the
+  // protocol can be kept under the protocol it was made against and carried
+  // across the migration at the next launch, instead of being refused.
+  it('writes the whole state, against the loaded protocol, on a step change and a sync', async () => {
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    updateSessionMock.mockClear();
+    const stored = makeSession();
+
+    act(() => {
+      lastShellProps().onStepChange(1, { progress: 50, totalSteps: 4 });
     });
+    expect(updateSessionMock).toHaveBeenLastCalledWith(
+      's1',
+      {
+        network: stored.network,
+        stageMetadata: undefined,
+        currentStep: 1,
+        progress: 50,
+        resumeStageOverrideIndex: undefined,
+      },
+      { protocolHash: 'h1' },
+    );
+
+    const answered = {
+      ...stored.network,
+      nodes: [{ _uid: 'n1', type: 'person', attributes: {} }],
+    } as SessionPayload['network'];
+    await act(async () => {
+      await lastShellProps().onSync(
+        's1',
+        makeSyncPayload({ network: answered }),
+        { immediate: true, unloading: false },
+      );
+    });
+    await waitFor(() =>
+      expect(updateSessionMock).toHaveBeenLastCalledWith(
+        's1',
+        expect.objectContaining({ network: answered, currentStep: 1 }),
+        { protocolHash: 'h1' },
+      ),
+    );
+
+    act(() => {
+      lastShellProps().onStepChange(2, { progress: 75, totalSteps: 4 });
+    });
+    expect(updateSessionMock).toHaveBeenLastCalledWith(
+      's1',
+      expect.objectContaining({ network: answered, currentStep: 2 }),
+      { protocolHash: 'h1' },
+    );
   });
 
   it('honours explicit review intent when the stored session is unfinished', async () => {

@@ -49,6 +49,7 @@ import {
   updateSession,
   updateSettings,
 } from '~/lib/db/api';
+import type { SessionWriteBasis } from '~/lib/db/sessions';
 import type { StoredSession } from '~/lib/db/types';
 import { getInstallationId } from '~/lib/installationId';
 import {
@@ -203,6 +204,22 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   // step. Mirror it into a ref so handleSync sees the latest value rather
   // than the stale closure value.
   const currentStepRef = useRef(0);
+  // Every write from this route is the session's whole state — network, stage
+  // metadata and resume position — computed against the protocol it loaded
+  // (`writeBasisRef`). If another tab updates the app and migrates that
+  // protocol while this interview is open, a whole-state write is stored
+  // under the protocol it was made against and the next launch carries it
+  // across the migration, so nothing is lost; a partial one could not be
+  // applied to the migrated data at all (see `updateSession`). The step
+  // change carries no network of its own, so it writes the state most
+  // recently handed to storage, which `syncedStateRef` holds: it is set as
+  // each sync write is queued, and writes to one session land in the order
+  // they were queued, so a step change never puts back an older network.
+  const writeBasisRef = useRef<SessionWriteBasis | null>(null);
+  const syncedStateRef = useRef<Pick<
+    StoredSession,
+    'network' | 'stageMetadata'
+  > | null>(null);
 
   // A history-back (browser button or a swipe gesture the CSS/wheel guards
   // can't intercept, e.g. iPadOS edge swipe) would leave the interview WITHOUT
@@ -337,6 +354,11 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
           : session.currentStep;
       setCurrentStep(initialStep);
       currentStepRef.current = initialStep;
+      writeBasisRef.current = { protocolHash: protocol.hash };
+      syncedStateRef.current = {
+        network: session.network,
+        stageMetadata: session.stageMetadata,
+      };
       setAllowStageNavigation(settings.allowStageNavigation);
       setState({
         kind: 'ready',
@@ -405,11 +427,23 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
             `Sync for interview ${id} reached the handler for ${ownerId}`,
           );
         }
-        await updateSession(id, {
+        const basis = writeBasisRef.current;
+        if (!basis) {
+          throw new Error(`Sync for interview ${id} arrived before it loaded`);
+        }
+        syncedStateRef.current = {
           network: session.network,
-          currentStep: currentStepRef.current,
           stageMetadata: session.stageMetadata,
-        });
+        };
+        await updateSession(
+          id,
+          {
+            network: session.network,
+            currentStep: currentStepRef.current,
+            stageMetadata: session.stageMetadata,
+          },
+          basis,
+        );
       },
       { waitMs: SYNC_BATCH_MS },
     );
@@ -428,11 +462,19 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       // Persist the participant-facing progress alongside the step so the
       // dashboard shows exactly what the participant saw, without re-deriving it
       // (and without needing to know about the engine's appended finish stage).
-      void updateSession(sessionId, {
-        currentStep: step,
-        progress: meta.progress,
-        resumeStageOverrideIndex: undefined,
-      });
+      const basis = writeBasisRef.current;
+      const synced = syncedStateRef.current;
+      if (!basis || !synced) return;
+      void updateSession(
+        sessionId,
+        {
+          ...synced,
+          currentStep: step,
+          progress: meta.progress,
+          resumeStageOverrideIndex: undefined,
+        },
+        basis,
+      );
     },
     [readOnly, sessionId],
   );

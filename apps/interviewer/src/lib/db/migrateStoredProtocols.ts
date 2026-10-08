@@ -679,7 +679,10 @@ async function healSessionsOnto(
  * A tab still executing the pre-update bundle writes sessions
  * unconditionally — and the PWA deliberately lets an interview tab keep its
  * old bundle while other tabs update. Such a late write restores a hash the
- * migration deleted, together with data in that protocol's schema. Every
+ * migration deleted, together with data in that protocol's schema. A tab
+ * running a bundle with `updateSession`'s write basis does the same on
+ * purpose: it stores a whole-state write under the protocol it was computed
+ * against, and refuses a partial one. Every
  * launch therefore follows the durable re-keying records and replays each
  * migration's session migrator over whatever a legacy writer left behind:
  * no session may point at a protocol whose schema its data has not been
