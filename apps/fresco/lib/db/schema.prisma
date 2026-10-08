@@ -77,9 +77,8 @@ model Protocol {
   localization    Json        @default("{\"defaultLocale\":\"und\",\"locales\":[\"und\"]}")
   assets          Asset[]
   interviews      Interview[]
-  // A schema 8 protocol's `experiments`, which the deploy-time migration to
-  // schema 9 needs to know whether its encrypted attributes stay encrypted.
-  // Schema 9 has no experiments, so the column is empty once a row is migrated.
+  // The protocol's `experiments`. A schema 8 row's also tell the deploy-time
+  // migration to schema 9 whether its encrypted attributes stay encrypted.
   experiments     Json?
   originalFileKey String?
   originalFileUrl String?

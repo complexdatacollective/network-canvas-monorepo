@@ -5,6 +5,7 @@ import {
   CodebookSchema,
   type CurrentProtocol,
   CurrentProtocolSchema,
+  ExperimentsSchema,
   stageSchema,
 } from '@codaco/protocol-validation';
 import { NcNetworkSchema, StageMetadataSchema } from '@codaco/shared-consts';
@@ -20,8 +21,6 @@ const createPrismaClient = () => {
   return new PrismaClient({
     adapter,
     log: env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
-    // Only the deploy-time protocol migration reads it, with its own client.
-    omit: { protocol: { experiments: true } },
   }).$extends({
     /**
      * These transformations use our Zod schemas to parse JSON from the DB
@@ -108,7 +107,7 @@ const LocalizationSchema = CurrentProtocolSchema.shape.localization;
 
 /**
  * Result-extension config that structurally parses Protocol's JSON fields
- * (stages, codebook, localization) into typed values.
+ * (stages, codebook, localization, experiments) into typed values.
  *
  * Each field is validated against its own schema rather than the whole-protocol
  * CurrentProtocolSchema. That whole-protocol schema cross-references the
@@ -161,6 +160,24 @@ function protocolJsonExtensions() {
           `${modelName}.localization`,
           { defaultLocale: 'und', locales: ['und'] },
         ),
+    },
+    experiments: {
+      needs: {
+        experiments: true,
+      },
+      compute: ({
+        experiments,
+      }: {
+        experiments: unknown;
+      }): CurrentProtocol['experiments'] => {
+        if (!experiments) return {};
+        return safeParseField(
+          ExperimentsSchema,
+          experiments,
+          `${modelName}.experiments`,
+          {},
+        );
+      },
     },
   };
 }

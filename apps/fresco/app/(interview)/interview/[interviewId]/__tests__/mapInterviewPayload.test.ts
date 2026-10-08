@@ -44,6 +44,7 @@ function makeSource(schemaVersion: number): NonNullable<GetInterviewByIdQuery> {
       stages: [],
       codebook: { node: {}, edge: {} },
       localization: { defaultLocale: 'und', locales: ['und'] },
+      experiments: {},
       originalFileKey: null,
       originalFileUrl: null,
       assets: [],
