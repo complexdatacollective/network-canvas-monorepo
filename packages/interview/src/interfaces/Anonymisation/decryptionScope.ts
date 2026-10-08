@@ -18,18 +18,27 @@ import { decryptData } from './utils';
  * or be served to an interview that has not unlocked it.
  *
  * Each entry of the passphrase gets its own scope, even when the passphrase
- * entered is the one in force. Readers record a failure against the scope
- * they failed under, so entering the passphrase again makes every reader that
+ * entered is the one in force. A failure is recorded against the scope it
+ * failed under, so entering the passphrase again makes every reader that
  * failed try again, and ask for the passphrase again if it still fails. The
  * new scope keeps what the old one decrypted, which is plaintext of the same
- * passphrase.
+ * passphrase, but not what it failed to.
  */
 export type DecryptionScope = {
   readonly passphrase: string;
   readonly entry: number;
   readonly plaintexts: Map<string, string>;
   readonly pending: Map<string, Promise<string>>;
+  readonly failed: Set<string>;
 };
+
+/** What decrypting a value produced, once it is known. */
+export type DecryptOutcome =
+  | { readable: true; plaintext: string }
+  | { readable: false };
+
+/** The outcome of decrypting a value, once it is known. */
+export type OutcomeOf = (value: EncryptedValue) => DecryptOutcome | undefined;
 
 type PassphraseStore = {
   getState: () => {
@@ -67,6 +76,7 @@ export function getDecryptionScope(
     entry,
     plaintexts: enteredAgain ? existing.plaintexts : new Map(),
     pending: enteredAgain ? existing.pending : new Map(),
+    failed: new Set(),
   };
   scopes.set(store.getState, scope);
 
@@ -77,6 +87,7 @@ export function getDecryptionScope(
     }
     scope.plaintexts.clear();
     scope.pending.clear();
+    scope.failed.clear();
     unsubscribe();
   });
 
@@ -148,9 +159,26 @@ export function readCachedPlaintext(
 }
 
 /**
- * Decrypts with the scope's passphrase. Only a successful decryption is kept;
- * a failure rejects every time, so a wrong passphrase is never remembered as
- * if it had produced a value.
+ * What decrypting `value` in `scope` has produced so far: its plaintext, that
+ * it failed, or `undefined` while it has not been tried or is still under way.
+ * It decrypts nothing.
+ */
+export function readCachedOutcome(
+  scope: DecryptionScope,
+  value: EncryptedValue,
+): DecryptOutcome | undefined {
+  const key = valueKey(value);
+  const plaintext = scope.plaintexts.get(key);
+  if (plaintext !== undefined) return { readable: true, plaintext };
+  return scope.failed.has(key) ? { readable: false } : undefined;
+}
+
+/**
+ * Decrypts with the scope's passphrase. Only a successful decryption is kept
+ * as a value; a failure rejects every time, so a wrong passphrase is never
+ * remembered as if it had produced one. The failure is recorded against
+ * `scope`, for `readCachedOutcome`, even when the decryption was begun under
+ * an earlier entry of the same passphrase.
  */
 export function decryptInScope(
   scope: DecryptionScope,
@@ -160,9 +188,21 @@ export function decryptInScope(
   const cached = scope.plaintexts.get(key);
   if (cached !== undefined) return Promise.resolve(cached);
 
-  const inFlight = scope.pending.get(key);
-  if (inFlight) return inFlight;
+  const decryption =
+    scope.pending.get(key) ?? startDecryption(scope, key, value);
+  // Registered before the caller's own handlers, so the failure is readable
+  // by the time the caller hears of it.
+  decryption.catch(() => {
+    scope.failed.add(key);
+  });
+  return decryption;
+}
 
+function startDecryption(
+  scope: DecryptionScope,
+  key: string,
+  value: EncryptedValue,
+): Promise<string> {
   const decryption = decryptData(value, scope.passphrase).then(
     (plaintext) => {
       if (scope.pending.get(key) === decryption) {

@@ -1,15 +1,10 @@
 'use client';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
 import { useDragSource } from '@codaco/fresco-ui/dnd/dnd';
-import {
-  entityAttributesProperty,
-  entityPrimaryKeyProperty,
-  type NcNode,
-} from '@codaco/shared-consts';
+import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
 import { ConnectedMotionNode } from '../../components/ConnectedNode';
-import { interfaceMessages } from '../messages';
+import { useNodeLabel } from '../Anonymisation/useNodeLabel';
 
 type DrawerNodeProps = {
   node: NcNode;
@@ -22,18 +17,14 @@ export default function DrawerNode({
   itemType = 'UNPOSITIONED_NODE',
   onLayoutAnimationComplete,
 }: DrawerNodeProps) {
-  const intl = useAppIntl();
   const nodeId = node[entityPrimaryKeyProperty];
-  const rawName = node[entityAttributesProperty].name;
-  const name =
-    typeof rawName === 'string'
-      ? rawName
-      : intl.formatMessage(interfaceMessages.node);
+  // A drag names the person by the label the drawer shows them with.
+  const label = useNodeLabel(node);
 
   const { dragProps } = useDragSource({
     type: itemType,
     metadata: { ...node, nodeId, id: nodeId },
-    announcedName: name,
+    announcedName: label,
   });
 
   return (

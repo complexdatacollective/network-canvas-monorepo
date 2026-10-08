@@ -377,6 +377,9 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
         ? { ...item, itemType: 'SOURCE_NODES' }
         : { itemType: 'SOURCE_NODES' };
     },
+    // A drag names the person by the label their card shows.
+    getItemAnnouncedName: (key) =>
+      filteredItems.find((i) => i.id === String(key))?.props.label,
     renderPreview: (_key, metadata) => {
       const item = metadata as UseItemElement | undefined;
       if (!item?.props?.label) return null;

@@ -22,6 +22,7 @@ import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
+import { liveRegionTexts } from '../../Anonymisation/__tests__/labelStates';
 import { useFamilyPedigreeStore } from '../../FamilyPedigree/FamilyPedigreeContext';
 import { FamilyPedigreeProvider } from '../../FamilyPedigree/FamilyPedigreeProvider';
 
@@ -237,6 +238,7 @@ type FramingOptions = {
 function makeStore(
   narrativeStage = makeNarrativeStage(),
   framingOptions?: FramingOptions,
+  networkNodes = nodes,
 ) {
   return configureStore({
     reducer: { protocol, session, ui },
@@ -253,14 +255,14 @@ function makeStore(
         id: 'test-session',
         network: {
           nodes: framingOptions
-            ? nodes.map((node) => ({
+            ? networkNodes.map((node) => ({
                 ...node,
                 [entityAttributesProperty]: {
                   ...node[entityAttributesProperty],
                   [NAME_VAR]: '',
                 },
               }))
-            : nodes,
+            : networkNodes,
           edges,
           ego: { [entityAttributesProperty]: {} },
         },
@@ -287,8 +289,9 @@ function renderView(
   stage = makeNarrativeStage(),
   locale = 'en',
   framingOptions?: FramingOptions,
+  networkNodes = nodes,
 ) {
-  const store = makeStore(stage, framingOptions);
+  const store = makeStore(stage, framingOptions, networkNodes);
 
   function Wrapper({ children }: { children: ReactNode }) {
     return (
@@ -1056,5 +1059,55 @@ describe('NarrativePedigreeView — no dimming without a focal node', () => {
     // No focal node is selected → no edge anywhere may be dimmed.
     const view = document.querySelector('[data-narrative-pedigree-view]');
     expect(view?.querySelectorAll('[data-edge-dimmed]').length).toBe(0);
+  });
+});
+
+describe('NarrativePedigreeView — naming people with no relationship to show', () => {
+  // With no ego to derive relationships from, each person is labelled as any
+  // node is; what names them must be that same label.
+  const withoutEgo = nodes.map((node) => ({
+    ...node,
+    [entityAttributesProperty]: {
+      ...node[entityAttributesProperty],
+      [EGO_VAR]: false,
+    },
+  }));
+
+  const members = () =>
+    Array.from(
+      document.querySelectorAll<HTMLElement>('[data-pedigree-member]'),
+    );
+  const shownLabel = (member: HTMLElement) =>
+    member.querySelector('button')?.getAttribute('aria-label');
+
+  it('names each person by the label they show', async () => {
+    renderView(makeNarrativeStage(), 'en', undefined, withoutEgo);
+    await waitFor(() => expect(members()).toHaveLength(withoutEgo.length));
+
+    for (const member of members()) {
+      const shown = shownLabel(member);
+      expect(shown).toBeTruthy();
+      expect(member).toHaveAccessibleName(`Focus on ${shown}`);
+    }
+  });
+
+  it('announces the focused person by the label they show', async () => {
+    renderView(makeNarrativeStage(), 'en', undefined, withoutEgo);
+    await waitFor(() => expect(members()).toHaveLength(withoutEgo.length));
+    const mother = members().find(
+      (member) => member.getAttribute('data-node-id') === 'mother',
+    );
+    if (!mother) throw new Error('No pedigree member for mother');
+    const shown = shownLabel(mother);
+    expect(shown).toBe('Mother');
+
+    await selectCondition('Disease A');
+    await userEvent.click(mother);
+
+    await waitFor(() =>
+      expect(liveRegionTexts()).toContain(
+        `Showing Disease A. Focused on ${shown}. Showing who contributes to their inheritance.`,
+      ),
+    );
   });
 });
