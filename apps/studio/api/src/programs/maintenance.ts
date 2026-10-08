@@ -9,8 +9,7 @@ import {
 import { MaintenanceScope } from '../db/tenant.ts';
 import { Environment } from '../env.ts';
 import { InstallationIdentity } from '../platform/installation-identity.ts';
-import { LoggerLive, LogLevelLive } from '../platform/logger.ts';
-import { TracingLive } from '../platform/tracing.ts';
+import { ObservabilityLive } from '../platform/tracing.ts';
 import { readInstallationId } from '../setup/bootstrap.ts';
 import { STUDIO_VERSION } from '../version.ts';
 import { reportingRefusals } from './command.ts';
@@ -116,7 +115,7 @@ const maintenance = Effect.fnUntraced(function* (args: ReadonlyArray<string>) {
 export const MaintenanceProgram = (args: ReadonlyArray<string>) =>
   maintenance(args).pipe(
     Effect.provide(
-      Layer.mergeAll(LoggerLive, LogLevelLive, TracingLive('maintenance')).pipe(
+      ObservabilityLive('maintenance').pipe(
         Layer.provideMerge(Environment.layer),
       ),
     ),
