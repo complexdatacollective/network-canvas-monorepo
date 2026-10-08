@@ -125,6 +125,45 @@ describe('createUndoStore record', () => {
     },
   );
 
+  it('goes on to earlier steps for a second undo asked for while a change that records nothing is being made', async () => {
+    const store = createUndoStore();
+    const log: string[] = [];
+    await store.getState().record(async () => cmd(log, 'a'));
+    const change = deferred();
+
+    const recording = store.getState().record(async () => {
+      await change.promise;
+      return null;
+    });
+    const undoing = [store.getState().undo(), store.getState().undo()];
+    change.resolve();
+    await Promise.all([recording, ...undoing]);
+
+    expect(log).toEqual(['undo:a']);
+    expect(store.getState().past).toHaveLength(0);
+  });
+
+  it('applies each undo asked for while changes are being made to one of them, newest first', async () => {
+    const store = createUndoStore();
+    const log: string[] = [];
+    await store.getState().record(async () => cmd(log, 'a'));
+    const change = deferred();
+
+    const first = store.getState().record(async () => {
+      await change.promise;
+      return null;
+    });
+    const second = store.getState().record(async () => cmd(log, 'c'));
+    const undoing = [store.getState().undo(), store.getState().undo()];
+    change.resolve();
+    await Promise.all([first, second, ...undoing]);
+
+    // The first undo is for 'c'; the second is for the change that recorded
+    // nothing, so 'a' stays.
+    expect(log).toEqual(['undo:c']);
+    expect(store.getState().past.map((c) => c.label)).toEqual(['a']);
+  });
+
   it('makes a change asked for while an undo is being made once the undo is done', async () => {
     const store = createUndoStore();
     const log: string[] = [];

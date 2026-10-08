@@ -75,8 +75,8 @@ export const createUndoStore = (limit = 50) =>
     };
 
     // The changes asked for and not yet made, oldest first, each marked once
-    // it records a step.
-    const pendingChanges: { recorded: boolean }[] = [];
+    // it records a step and once an undo is asked for it.
+    const pendingChanges: { recorded: boolean; undoAsked: boolean }[] = [];
 
     const addStep = (command: UndoCommand) => {
       set((state) => {
@@ -105,7 +105,7 @@ export const createUndoStore = (limit = 50) =>
       recording: 0,
 
       record: (change) => {
-        const pendingChange = { recorded: false };
+        const pendingChange = { recorded: false, undoAsked: false };
         pendingChanges.push(pendingChange);
         set((state) => ({ recording: state.recording + 1 }));
         return enqueue(async () => {
@@ -124,9 +124,14 @@ export const createUndoStore = (limit = 50) =>
 
       undo: () => {
         // An undo asked for while changes are being made is for the newest of
-        // them, so it does nothing if that change records nothing, as when it
-        // is refused, instead of undoing an earlier step.
-        const forChange = pendingChanges.at(-1);
+        // them that no undo is for yet, so it does nothing if that change
+        // records nothing, as when it is refused, instead of undoing an earlier
+        // step. Each change takes one undo; an undo asked for once every
+        // pending change has one goes back through the history as usual.
+        const forChange = pendingChanges.findLast(
+          (change) => !change.undoAsked,
+        );
+        if (forChange) forChange.undoAsked = true;
         return enqueue(async () => {
           if (forChange && !forChange.recorded) return;
           const { past } = get();
