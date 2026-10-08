@@ -168,12 +168,27 @@ test('carry-forward-statuses copies a verdict only from runs of the same pull re
   const script =
     parsedWorkflow.jobs['carry-forward-statuses'].steps[0].with.script;
   const AsyncFunction = async function () {}.constructor;
-  const run = (id, number, base, jobConclusion) => ({
+  // The title GitHub gives a pull request run, rendered from the workflow's
+  // own `run-name` format string.
+  const format = parsedWorkflow['run-name'].match(/format\('([^']+)'/)?.[1];
+  assert.ok(format, 'the workflow titles pull request runs with run-name');
+  const titleOf = (number, base, prTitle) =>
+    format.replace('{0}', number).replace('{1}', base).replace('{2}', prTitle);
+  // Both pull requests from the branch are open, so GitHub lists BOTH on every
+  // one of the branch's runs: `pull_requests` cannot tell the runs apart, and
+  // the title is the only thing that can.
+  const run = (id, number, base, jobConclusion, displayTitle) => ({
     id,
     run_number: id,
     head_sha: `sha-${id}`,
     html_url: `https://example.test/runs/${id}`,
-    pull_requests: number === null ? [] : [{ number, base: { ref: base } }],
+    display_title:
+      displayTitle ??
+      (number === null ? 'a push' : titleOf(number, base, 'Release')),
+    pull_requests: [
+      { number: 5, base: { ref: 'main' } },
+      { number: 7, base: { ref: 'schema-9' } },
+    ],
     jobConclusion,
   });
   const execute = async (runs, env) => {
@@ -249,8 +264,14 @@ test('carry-forward-statuses copies a verdict only from runs of the same pull re
   });
   assert.deepEqual(created, []);
 
-  // A run that lists no pull request (a fork's) cannot be proven to match.
-  created = await execute([run(2, null, 'main', 'success')], {});
+  // PR #55 is not PR #5, and a run with a title this workflow did not give
+  // it (one started before `run-name` existed) cannot be proven to match.
+  created = await execute([run(2, 55, 'main', 'success')], {});
+  assert.deepEqual(created, []);
+  created = await execute(
+    [run(2, 5, 'main', 'success', 'Release the documentation site')],
+    {},
+  );
   assert.deepEqual(created, []);
 });
 
