@@ -26,19 +26,16 @@ type VariableCaption = {
 
 /**
  * What a field is called, as the researcher wrote it, given the resolved text
- * of its authored caption.
+ * of its caption.
  *
- * The one rule. `useProtocolForm` decides the caption the participant reads
- * from this, and `buildVariableLabels` decides what a validator may name the
- * variable by from this, so the two cannot disagree about which text is the
- * researcher's and which is a fallback.
- *
- * Whitespace-only text counts as nothing authored: a stray space must not
- * produce `your answer to ''`, nor a field captioned with a blank.
+ * A form field's caption is never blank, because the schema requires its
+ * `prompt` or `label` to say something. The screens that name a variable
+ * without a form field of their own (a categorical "other" input, a quick-add
+ * popover, the pedigree's name field) take their caption from text the schema
+ * still lets be spaces, so whitespace-only text counts as nothing authored: a
+ * stray space must not produce `your answer to ''`.
  */
-export const authoredFieldLabel = (
-  text: string | undefined,
-): string | undefined => {
+const authoredFieldLabel = (text: string | undefined): string | undefined => {
   const authored = (text ?? '').trim();
   return authored.length > 0 ? authored : undefined;
 };

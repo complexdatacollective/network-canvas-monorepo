@@ -1,6 +1,8 @@
+import { isBlankText } from '../../localization/blankText.ts';
 import { escapeMarkdownText } from '../../localization/markdownText.ts';
 import { escapeMessageText } from '../../localization/messageSyntax.ts';
 import { createMigration } from '../../migration/index.ts';
+import { collectEntityAttributeReferences } from '../../utils/collectEntityAttributeReferences.ts';
 import {
   collectLocalizedStringSites,
   type LocalizedStringSite,
@@ -29,7 +31,7 @@ const inDefaultLocale = (text: string) => ({
 
 const nameOrKey = (definition: unknown, key: string) => {
   const name = isRecord(definition) ? definition.name : undefined;
-  return typeof name === 'string' && name !== '' ? name : key;
+  return typeof name === 'string' && !isBlankText(name) ? name : key;
 };
 
 /**
@@ -106,7 +108,12 @@ const addFieldCaptions = (
   if (!isRecord(form) || !Array.isArray(form.fields)) return;
   for (const field of form.fields) {
     if (!isRecord(field) || typeof field.variable !== 'string') continue;
-    if (field.label !== undefined && field.label !== '') continue;
+    if (
+      field.label !== undefined &&
+      !(typeof field.label === 'string' && isBlankText(field.label))
+    ) {
+      continue;
+    }
     field.label = escapeMarkdownText(
       nameOrKey(variables[field.variable], field.variable),
     );
@@ -114,8 +121,8 @@ const addFieldCaptions = (
 };
 
 /**
- * A schema 8 Network Composer field with no caption, or an empty one, was
- * captioned with its attribute's name, so the field keeps that name as its
+ * A schema 8 Network Composer field with no caption, or an empty or blank one,
+ * was captioned with its attribute's name, so the field keeps that name as its
  * caption, which schema 9 requires. The caption is markdown, so the name is
  * escaped to render as written. The attribute is looked up on the stage
  * subject's node type for the node form and on each edge type for its form,
@@ -185,12 +192,50 @@ const containerAt = (
   return node;
 };
 
+/** The attribute definitions of the entity a stage subject names. */
+const attributesOf = (
+  codebook: unknown,
+  subject: { entity: 'node' | 'edge' | 'ego'; type?: string },
+): Record<string, unknown> => {
+  if (subject.entity !== 'ego') {
+    return subjectVariables(codebook, subject.entity, subject);
+  }
+  const ego = isRecord(codebook) ? codebook.ego : undefined;
+  return isRecord(ego) && isRecord(ego.variables) ? ego.variables : {};
+};
+
+/**
+ * A schema 8 form field whose prompt was empty or only spaces was captioned
+ * with its attribute's name, so the field keeps that name as its prompt, which
+ * schema 9 requires to say something. The prompt is markdown, so the name is
+ * escaped to render as written. The attribute is looked up on the entity type
+ * the stage's form collects into, and its id stands in for a missing or empty
+ * name. Every form field is found through the attribute it names, so each
+ * stage type that holds a form is covered without being listed here: only a
+ * form field names an attribute it writes with validation and has a prompt.
+ */
+const addFormFieldPrompts = (protocol: unknown) => {
+  if (!isRecord(protocol)) return;
+  const { codebook } = protocol;
+  for (const hit of collectEntityAttributeReferences(protocol)) {
+    if (hit.usage !== 'validatedAttribute' || !hit.subject) continue;
+    const field = containerAt(protocol, hit.path.slice(0, -1));
+    if (!isRecord(field) || typeof field.prompt !== 'string') continue;
+    if (!isBlankText(field.prompt)) continue;
+    const variables = attributesOf(codebook, hit.subject);
+    field.prompt = escapeMarkdownText(
+      nameOrKey(variables[hit.variableId], hit.variableId),
+    );
+  }
+};
+
 const migrationV8toV9 = createMigration({
   from: 8,
   to: 9,
   dependencies: {},
   notes: `- Attribute names can now use letters from any language, as well as spaces and punctuation. Existing attribute names are not changed.
 - Text that participants see is now recorded as English, because older protocols do not record which language they use. After upgrading, confirm the protocol's default language: if your protocol is written in another language, change it on the Languages page in Architect.
+- A form field whose question was empty or contained only spaces now uses the name of its attribute as the question, because every question must contain some text.
 - Family Pedigree stages are converted to the redesigned Family Pedigree. If a stage had an introduction screen, the screen becomes an Information stage just before the pedigree, which is skipped whenever the pedigree is skipped.
 - The Family Pedigree answers for sex assigned at birth and for the kind of each relationship keep the values already recorded, but their labels change to the wording of the redesigned interface. A nomination prompt with the ID "pedigree", which is now reserved, is given a new ID.
 - The old Family Pedigree always required two of the participant's parents. A converted Family Pedigree requires both of the participant's biological parents or, where it required recording grandparents, the family up to the grandparents, which also includes siblings, children, the other biological parent of each of the participant's children, aunts and uncles. Where it recommended recording grandparents, it now recommends recording the family up to the grandparents, so recording both parents becomes a recommendation rather than a requirement, because a stage has only one completeness setting. Only biological parents and gamete donors now count as parents; the old interface also counted adoptive parents and surrogates.
@@ -209,6 +254,7 @@ const migrationV8toV9 = createMigration({
     addCodebookLabels(migrated.codebook);
     addHighlightLabels(migrated);
     addComposerCaptions(migrated);
+    addFormFieldPrompts(migrated);
 
     // Every site is found before any is rewritten, so the walk reads the
     // document as schema 8 left it.

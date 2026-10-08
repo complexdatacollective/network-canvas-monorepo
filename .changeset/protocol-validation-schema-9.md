@@ -51,14 +51,17 @@ Schema 9:
   or edge type's label is wrapped like any other text, and a variable's stays
   plain text. A Narrative preset's `highlight` list of variable IDs becomes a
   list of `{ variable, label }`, each label taken from the variable's name (or
-  its ID) and wrapped as `{ en: <text> }`. A Network Composer form field with
-  no caption, or an empty one, gets its attribute's name (or its ID) as one,
-  escaped so that markdown shows it as written, and wrapped the same way. An
-  empty optional text that schema 9 requires to be non-empty is removed, as are
+  its ID) and wrapped as `{ en: <text> }`. A form field with no caption, or an
+  empty or blank one (a Network Composer field's `label`, or any other form
+  field's `prompt`), gets its attribute's name (or its ID) as one, escaped so
+  that markdown shows it as written, and wrapped the same way. An empty
+  optional text that schema 9 requires to be non-empty is removed, as are
   Network Composer scale end labels that were not strings. Its migration notes
-  tell researchers what the new version allows, and that the text is recorded
-  as English, so they should confirm the default language and change it in
-  Architect if the protocol is written in another one.
+  tell researchers what the new version allows, that the text is recorded as
+  English, so they should confirm the default language and change it in
+  Architect if the protocol is written in another one, and which empty
+  questions were filled in.
+
 - Schema 8 still refuses names outside `a-z`, `A-Z`, digits and `. _ - :`, with
   a message that says so. `VersionlessProtocolSchema`, the version 8 body
   without its `schemaVersion`, is now exported.
@@ -121,8 +124,15 @@ Localization:
   written).
 - A Network Composer form field is now a union on `component`, so its scale
   end labels are localized fields of their own. Its `label`, the caption
-  participants read, is required and non-empty, since the attribute's own
+  participants read, is required and not blank, since the attribute's own
   label is not translated.
+- A form field's `prompt` is held to the same rule: every translation must
+  contain text, so a translation of only spaces (or of invisible characters
+  such as a zero-width space) is invalid, and one blank translation is an
+  error rather than a gap the interview falls back over. A prompt is judged as
+  written, so markdown that draws nothing from visible characters, such as
+  `**` or `&nbsp;`, is not recognised as blank. New exports: `isBlankText` and
+  `isBlankMessage`.
 
 Participant data files (rosters):
 

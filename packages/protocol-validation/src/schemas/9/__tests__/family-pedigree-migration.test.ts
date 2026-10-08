@@ -703,6 +703,17 @@ describe('v8 to v9 Family Pedigree migration', () => {
       expect(pedigreeOf(migrated)).not.toHaveProperty('form');
     });
 
+    it('asks a blank question with the attribute name', () => {
+      const pedigree = schema8Pedigree();
+      (pedigree.nodeConfig as Fields).form = [
+        { variable: 'living', prompt: ' ' },
+      ];
+      const migrated = migrateValid(schema8Protocol([pedigree]));
+      expect(pedigreeOf(migrated).form).toEqual({
+        fields: [{ variable: 'living', prompt: en('living') }],
+      });
+    });
+
     it('keeps an empty hint, which schema 9 accepts', () => {
       const pedigree = schema8Pedigree();
       (pedigree.nodeConfig as Fields).form = [

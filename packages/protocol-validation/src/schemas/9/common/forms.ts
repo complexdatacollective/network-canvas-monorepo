@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
-import { localizedString } from '../localized-string.ts';
+import { localizedString, nonBlankText } from '../localized-string.ts';
 
 export const FormFieldSchema = z.strictObject({
   // Architect assigns a stable id (uuid) on creation so the editor's
@@ -12,7 +12,10 @@ export const FormFieldSchema = z.strictObject({
     subject: 'stageSubject',
     usage: 'validatedAttribute',
   }),
-  prompt: localizedString(z.string().min(1), 'markdown'),
+  // The text captioning the field. Every translation must say something: the
+  // interview has no other caption to show, because the codebook variable's
+  // own label is plain text that is never translated.
+  prompt: localizedString(nonBlankText(), 'markdown'),
   hint: localizedString(z.string(), 'markdown').optional(),
   showValidationHints: z.boolean().optional(),
 });

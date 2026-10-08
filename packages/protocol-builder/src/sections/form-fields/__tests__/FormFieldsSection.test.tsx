@@ -297,6 +297,88 @@ describe('the fields a form collects', () => {
     });
   });
 
+  it('refuses to save a stage holding a field whose question is only spaces', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        id: 'alter-form-1',
+        type: 'AlterForm',
+        fields: {
+          ...loadFixtureStage('alter-form-1').fields,
+          form: {
+            fields: [
+              { variable: 'relationship_to_ego', prompt: { en: '   ' } },
+            ],
+          },
+        },
+      },
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      screen.getByText(
+        'Every field needs both an attribute and a question. Open the incomplete field and finish it.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  describe('a question of nothing but spaces', () => {
+    const REFUSAL = 'Write the question this field asks.';
+
+    it('is refused when a new field is added, and the dialog stays open', async () => {
+      const harness = renderStageEditor({
+        stageId: 'alter-form-1',
+        sections: <FormFieldsSection subject="node" />,
+      });
+
+      const dialog = await openField(harness, 'Create new form field');
+      await chooseAttributeById(harness.user, attributePicker(dialog), 'age');
+      await harness.user.type(
+        dialog.getByRole('textbox', { name: 'Question text' }),
+        '   ',
+      );
+      await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+
+      expect(await dialog.findByText(REFUSAL)).toBeVisible();
+      expect(screen.getAllByRole('dialog')).toHaveLength(1);
+
+      await harness.user.click(dialog.getByRole('button', { name: 'Cancel' }));
+      await harness.user.click(
+        await screen.findByRole('button', { name: 'Discard changes' }),
+      );
+      await waitFor(() =>
+        expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+      );
+      expect(fieldsOf(await harness.submit())).toHaveLength(2);
+    });
+
+    it('is refused when a field is rewritten, and the field keeps its question', async () => {
+      const harness = renderStageEditor({
+        stageId: 'alter-form-1',
+        sections: <FormFieldsSection subject="node" />,
+      });
+
+      const asSeeded = fieldsOf(await harness.submit())[0];
+      const dialog = await openField(harness, 'Edit field');
+      const question = dialog.getByRole('textbox', { name: 'Question text' });
+      await harness.user.clear(question);
+      await harness.user.type(question, '   ');
+      await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+
+      expect(await dialog.findByText(REFUSAL)).toBeVisible();
+      expect(screen.getAllByRole('dialog')).toHaveLength(1);
+
+      await harness.user.click(dialog.getByRole('button', { name: 'Cancel' }));
+      await harness.user.click(
+        await screen.findByRole('button', { name: 'Discard changes' }),
+      );
+      await waitFor(() =>
+        expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+      );
+      expect(fieldsOf(await harness.submit())[0]).toEqual(asSeeded);
+    });
+  });
+
   /**
    * A form is a VALIDATED writer: the participant's answer is checked against
    * the attribute's own rules. `highlighted` is written unvalidated elsewhere

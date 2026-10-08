@@ -72,6 +72,7 @@
   "protocolValidation.migrationNotes.schema8.unsupportedValidation": "新架构无法表达的验证规则会被移除：从未定义过的规则名称、值类型错误的规则（例如带引号的数字），以及不适用于该属性类型的规则（例如文本属性上的 `minValue`，或任何位置的 `requiredAcceptsNull`）。被移除的 `minValue`/`minLength`/`minSelected` 仍会将该属性标记为必填，以保留旧的隐含必填行为。布局属性不接受任何验证规则；其验证规则会被移除。",
   "protocolValidation.migrationNotes.schema8.validationHints": "为表单字段添加了可选的 `showValidationHints` 属性，可自动显示根据验证规则生成的提示。",
   "protocolValidation.migrationNotes.schema9.attributeNames": "属性名称现在可以使用任何语言的文字，也可以包含空格和标点符号。现有的属性名称不会更改。",
+  "protocolValidation.migrationNotes.schema9.blankFieldQuestions": "如果表单字段的问题为空或只包含空格，该字段现在会改用其属性的名称作为问题，因为每个问题都必须包含文字。",
   "protocolValidation.migrationNotes.schema9.defaultLanguage": "参与者看到的文本现在记录为英语，因为旧版协议不会记录其所用的语言。升级后，请确认协议的默认语言：如果您的协议是用其他语言撰写的，请在 Architect 的“语言”页面中更改。",
   "protocolValidation.migrationNotes.schema9.familyPedigree": "家族谱系阶段会转换为重新设计的家族谱系。如果某个阶段有介绍页面，该页面会成为谱系之前的一个信息阶段，并且在跳过谱系时也会被跳过。",
   "protocolValidation.migrationNotes.schema9.familyPedigreeCompleteness": "原先的家族谱系总是要求记录参与者的两位父母。转换后的家族谱系会要求记录参与者的两位生物学父母；如果原先要求记录祖父母，则要求记录直到祖父母的家庭成员，其中也包括兄弟姐妹、子女、参与者每个子女的另一位生物学父母以及姑姨叔舅。如果原先建议记录祖父母，现在会建议记录直到祖父母的家庭成员，因此记录两位父母也变为建议而不是要求，因为一个阶段只有一项完整性设置。现在只有生物学父母和配子捐赠者才算作父母；原先的界面还会把收养父母和代孕者算作父母。",
