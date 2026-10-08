@@ -1,5 +1,17 @@
 name: CI and Release
 
+# A pull request run is titled `PR #<number> → <base> · <pull request title>`.
+# `carry-forward-statuses` matches that prefix to tell apart two pull requests
+# from one branch (for example into `schema-9` and `main`), which a run's
+# `pull_requests` array cannot do. Other events keep a title like GitHub's own
+# default.
+run-name: >-
+  ${{ github.event_name == 'pull_request'
+  && format('PR #{0} → {1} · {2}', github.event.pull_request.number, github.event.pull_request.base.ref, github.event.pull_request.title)
+  || github.event.head_commit.message
+  || github.event.merge_group.head_commit.message
+  || github.workflow }}
+
 on:
   # Release, publish, deploy and mirror jobs hang off this trigger (and are
   # additionally guarded by `github.ref == 'refs/heads/main'`), so it stays
@@ -4585,16 +4597,17 @@ jobs:
                 // don't introduce new information).
                 if (run.head_sha === process.env.PR_HEAD_SHA) continue;
                 // The branch filter above matches every pull request from this
-                // branch, whatever its base. Keep only runs that belong to this
-                // pull request and still target its current base: a run with no
-                // matching pull request (a fork's run lists none) cannot be
-                // proven to describe this merge tree, so it carries nothing.
-                const belongsToThisPullRequest = (run.pull_requests ?? []).some(
-                  (pr) =>
-                    String(pr.number) === process.env.PR_NUMBER &&
-                    pr.base?.ref === process.env.PR_BASE_REF,
-                );
-                if (!belongsToThisPullRequest) continue;
+                // branch, whatever its base, and a run's `pull_requests` array
+                // lists every open pull request whose head matches the run, not
+                // only the one that triggered it — so it cannot tell two pull
+                // requests from one branch apart. The run's own title can: the
+                // top-level `run-name` starts a pull request run's title with
+                // this pull request's number and base. A run with any other
+                // title (for example one started before `run-name` existed)
+                // cannot be proven to describe this merge tree and carries
+                // nothing.
+                const titlePrefix = `PR #${process.env.PR_NUMBER} → ${process.env.PR_BASE_REF} · `;
+                if (!run.display_title?.startsWith(titlePrefix)) continue;
                 // Pull the job list for this run.
                 const { data: jobs } = await github.rest.actions.listJobsForWorkflowRun({
                   owner: context.repo.owner,
