@@ -196,6 +196,20 @@ export const useGeospatialSearch = ({
     setIsLoading(false);
   }, [retireSearch]);
 
+  // Suggestions already on screen are in the previous language: drop them, and
+  // retire any request still on its way, as `resetKey` does. The query stays,
+  // and is asked again in the new language below.
+  // This block stays above the `resetKey` one: when a node change and a
+  // language change land in the same render, the reset's writes are queued
+  // last and win, so the new node starts with no query and nothing loading.
+  const [appliedLanguage, setAppliedLanguage] = useState(language);
+  if (appliedLanguage !== language) {
+    setAppliedLanguage(language);
+    setSuggestions([]);
+    setSearchFailed(false);
+    setIsLoading(query.trim() !== '');
+  }
+
   // Clear state when resetKey changes. The state half is compared during
   // render, so the new node is never painted with the previous node's query
   // and suggestion list still in the field; the side effects stay in the
@@ -208,17 +222,6 @@ export const useGeospatialSearch = ({
     setSuggestions([]);
     setSearchFailed(false);
     setIsLoading(false);
-  }
-
-  // Suggestions already on screen are in the previous language: drop them, and
-  // retire any request still on its way, as `resetKey` does. The query stays,
-  // and is asked again in the new language below.
-  const [appliedLanguage, setAppliedLanguage] = useState(language);
-  if (appliedLanguage !== language) {
-    setAppliedLanguage(language);
-    setSuggestions([]);
-    setSearchFailed(false);
-    setIsLoading(query.trim() !== '');
   }
 
   // A layout effect, not a passive one. React flushes layout effects in the

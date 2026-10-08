@@ -655,6 +655,80 @@ describe('useGeospatialSearch', () => {
       expect(pendingAtLayout).toBe(false);
     });
 
+    describe('a node change and a language change in the same render', () => {
+      const renderWithKey = () =>
+        renderHook(
+          ({ resetKey }: { resetKey: string }) =>
+            useGeospatialSearch({
+              accessToken: 'test-token',
+              map: mockMap,
+              resetKey,
+            }),
+          { initialProps: { resetKey: 'node-1' } },
+        );
+
+      it("leaves the new node's panel empty and not loading", async () => {
+        const { result, rerender } = renderWithKey();
+        act(() => {
+          result.current.handleQueryChange('hungary');
+        });
+        await flushPendingSuggest();
+        mockSuggest.mockClear();
+
+        setLanguages('hu');
+        rerender({ resetKey: 'node-2' });
+        await flushPendingSuggest();
+
+        expect(result.current.query).toBe('');
+        expect(result.current.suggestions).toEqual([]);
+        expect(result.current.isLoading).toBe(false);
+        expect(mockSuggest).not.toHaveBeenCalled();
+      });
+
+      it('is also clean when nothing was typed', async () => {
+        const { result, rerender } = renderWithKey();
+
+        setLanguages('hu');
+        rerender({ resetKey: 'node-2' });
+        await flushPendingSuggest();
+
+        expect(result.current.isLoading).toBe(false);
+        expect(mockSuggest).not.toHaveBeenCalled();
+      });
+
+      it('still asks again in the new language when only the language changes', async () => {
+        const { result, rerender } = renderWithKey();
+        act(() => {
+          result.current.handleQueryChange('hungary');
+        });
+        await flushPendingSuggest();
+        mockSuggest.mockClear();
+
+        setLanguages('hu');
+        rerender({ resetKey: 'node-1' });
+        await flushPendingSuggest();
+
+        expect(mockSuggest).toHaveBeenCalledTimes(1);
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      it('just resets when only the node changes', async () => {
+        const { result, rerender } = renderWithKey();
+        act(() => {
+          result.current.handleQueryChange('hungary');
+        });
+        await flushPendingSuggest();
+        mockSuggest.mockClear();
+
+        rerender({ resetKey: 'node-2' });
+        await flushPendingSuggest();
+
+        expect(result.current.query).toBe('');
+        expect(result.current.isLoading).toBe(false);
+        expect(mockSuggest).not.toHaveBeenCalled();
+      });
+    });
+
     it('does not ask again when the language is unchanged or nothing is typed', async () => {
       const { result, rerender } = renderHook(useSearch);
 
