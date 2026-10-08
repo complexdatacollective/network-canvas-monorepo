@@ -5,6 +5,11 @@ import { transitionStage } from './session';
 type UIState = {
   FORM_IS_READY: boolean;
   passphrase: string | null;
+  /**
+   * Counts the passphrases entered, so that entering the one in force again
+   * can be told apart from it staying in force.
+   */
+  passphraseEntry: number;
   showPassphrasePrompter: boolean;
   passphraseInvalid: boolean;
 };
@@ -12,6 +17,7 @@ type UIState = {
 const initialState = {
   FORM_IS_READY: false,
   passphrase: null,
+  passphraseEntry: 0,
   showPassphrasePrompter: false,
   passphraseInvalid: false,
 } as UIState;
@@ -28,6 +34,7 @@ const uiSlice = createSlice({
       ...state,
       passphraseInvalid: false,
       passphrase: action.payload,
+      passphraseEntry: state.passphraseEntry + 1,
     }),
     setShowPassphrasePrompter: (state, action: PayloadAction<boolean>) => ({
       ...state,
@@ -48,6 +55,7 @@ const uiSlice = createSlice({
   selectors: {
     formIsReady: (state) => state.FORM_IS_READY,
     getPassphrase: (state) => state.passphrase,
+    getPassphraseEntry: (state) => state.passphraseEntry,
     showPassphrasePrompter: (state) =>
       state.showPassphrasePrompter || state.passphraseInvalid,
     getPassphraseInvalid: (state) => state.passphraseInvalid,
@@ -69,6 +77,7 @@ export const {
 export const {
   formIsReady,
   getPassphrase,
+  getPassphraseEntry,
   showPassphrasePrompter,
   getPassphraseInvalid,
 } = uiSlice.selectors;

@@ -291,4 +291,28 @@ describe('plaintext of encrypted writes', () => {
     expect(scope.plaintexts.size).toBe(0);
     expect(getDecryptionScope(store, 'pw')).toBeUndefined();
   });
+
+  it('is kept for the passphrase entered again, and discarded with it', async () => {
+    const store = createEncryptionStore([]);
+    store.dispatch(setPassphrase('pw'));
+    const scope = getDecryptionScope(store, 'pw');
+    if (!scope) throw new Error('expected a decryption scope');
+    await store.dispatch(
+      addNode({
+        type: NODE_TYPE,
+        attributeData: { name: 'Bob' },
+        useEncryption: true,
+        currentStep: 0,
+      }),
+    );
+
+    store.dispatch(setPassphrase('pw'));
+    const enteredAgain = getDecryptionScope(store, 'pw');
+
+    expect(enteredAgain).not.toBe(scope);
+    expect(enteredAgain?.plaintexts.size).toBe(1);
+    store.dispatch(setPassphrase('another passphrase'));
+    expect(enteredAgain?.plaintexts.size).toBe(0);
+    expect(getDecryptionScope(store, 'pw')).toBeUndefined();
+  });
 });

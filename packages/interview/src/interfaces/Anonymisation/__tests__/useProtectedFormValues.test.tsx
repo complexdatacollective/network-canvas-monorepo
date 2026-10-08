@@ -84,4 +84,36 @@ describe('useProtectedFormValues', () => {
     expect(changed).not.toBe(opened);
     expect(changed).toEqual({ name: 'Alice', age: 41 });
   });
+
+  it('tries the answers again, and asks for the passphrase again, when the passphrase in force is entered again after failing', async () => {
+    const person = await makeEncryptedPerson('n1', 'Alice', 'pw');
+    const store = createEncryptionStore([person]);
+    store.dispatch(setPassphrase('not pw'));
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <Provider store={store}>{children}</Provider>
+    );
+    const { result } = renderHook(
+      () => useProtectedFormValues(person, fields, encryptedVariables),
+      { wrapper },
+    );
+    await waitFor(() =>
+      expect(result.current).toEqual({
+        status: 'locked',
+        reason: 'passphrase-invalid',
+      }),
+    );
+
+    act(() => {
+      store.dispatch(setPassphrase('not pw'));
+    });
+    expect(result.current.status).toBe('pending');
+
+    await waitFor(() =>
+      expect(store.getState().ui.passphraseInvalid).toBe(true),
+    );
+    expect(result.current).toEqual({
+      status: 'locked',
+      reason: 'passphrase-invalid',
+    });
+  });
 });

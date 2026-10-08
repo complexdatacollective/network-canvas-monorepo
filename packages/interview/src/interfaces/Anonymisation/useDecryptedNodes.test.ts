@@ -17,12 +17,17 @@ import {
   encryptedVariables,
   makeEncryptedPerson,
 } from './__tests__/encryptionFixtures';
-import { getDecryptionScope } from './decryptionScope';
+import {
+  decryptInScope,
+  getDecryptionScope,
+  getEncryptedValue,
+} from './decryptionScope';
 import {
   type DecryptedNodes,
   decryptNodes,
   useDecryptedNodes,
 } from './useDecryptedNodes';
+import { useDecryptionScope } from './useDecryptionScope';
 import { generateSecureAttributes } from './utils';
 
 const PASSPHRASE = 'test passphrase';
@@ -249,6 +254,76 @@ describe('useDecryptedNodes', () => {
 
     await waitFor(() => expect(result.current.status).toBe('failed'));
     expect(store.getState().ui.passphraseInvalid).toBe(true);
+  });
+
+  it('tries again, and asks for the passphrase again, when the passphrase in force is entered again after failing', async () => {
+    const person = await makeMixedPerson('n1', PASSPHRASE, 'older passphrase');
+    const store = createEncryptionStore([person]);
+    store.dispatch(setPassphrase(PASSPHRASE));
+    const { result } = renderDecrypted(store, [person], ['name', 'nickname']);
+    await waitFor(() => expect(result.current.status).toBe('failed'));
+
+    act(() => {
+      store.dispatch(setPassphrase(PASSPHRASE));
+    });
+    expect(result.current.status).toBe('pending');
+
+    await waitFor(() => expect(result.current.status).toBe('failed'));
+    expect(store.getState().ui.passphraseInvalid).toBe(true);
+  });
+
+  it('keeps what it decrypted when the passphrase in force is entered again', async () => {
+    const person = await makeEncryptedPerson('n1', 'Alice', PASSPHRASE);
+    const store = createEncryptionStore([person]);
+    store.dispatch(setPassphrase(PASSPHRASE));
+    const { result } = renderDecrypted(store, [person]);
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+
+    act(() => {
+      store.dispatch(setPassphrase(PASSPHRASE));
+    });
+
+    expect(readyNodes(result)[0]?.[entityAttributesProperty].name).toBe(
+      'Alice',
+    );
+  });
+});
+
+describe('useDecryptionScope', () => {
+  it('gives each entry of the passphrase a scope of its own', () => {
+    const store = createEncryptionStore([]);
+    store.dispatch(setPassphrase(PASSPHRASE));
+    const { result } = renderHook(() => useDecryptionScope(), {
+      wrapper: ({ children }: { children: ReactNode }) =>
+        Provider({ store, children }),
+    });
+    const first = result.current;
+    expect(first).toBeDefined();
+
+    act(() => {
+      store.dispatch(setPassphrase(PASSPHRASE));
+    });
+
+    expect(result.current).toBeDefined();
+    expect(result.current).not.toBe(first);
+  });
+
+  it('does not start again a decryption under way when the passphrase is entered again', async () => {
+    const person = await makeEncryptedPerson('n1', 'Alice', PASSPHRASE);
+    const value = getEncryptedValue(person, 'name', encryptedVariables, true);
+    if (!value) throw new Error('Expected an encrypted name');
+    const store = createEncryptionStore([person]);
+    store.dispatch(setPassphrase(PASSPHRASE));
+    const scope = getDecryptionScope(store, PASSPHRASE);
+    if (!scope) throw new Error('Expected a decryption scope');
+    const underWay = decryptInScope(scope, value);
+
+    store.dispatch(setPassphrase(PASSPHRASE));
+    const enteredAgain = getDecryptionScope(store, PASSPHRASE);
+    if (!enteredAgain) throw new Error('Expected a decryption scope');
+
+    expect(decryptInScope(enteredAgain, value)).toBe(underWay);
+    await expect(underWay).resolves.toBe('Alice');
   });
 });
 

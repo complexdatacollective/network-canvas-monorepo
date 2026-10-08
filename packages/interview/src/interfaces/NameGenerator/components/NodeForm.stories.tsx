@@ -721,6 +721,7 @@ export const TakesThePassphraseInsideTheForm: Story = {
       },
       ui: {
         passphrase: STORY_PASSPHRASE,
+        passphraseEntry: 1,
         passphraseInvalid: true,
         showPassphrasePrompter: false,
       },

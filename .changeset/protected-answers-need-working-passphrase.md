@@ -16,6 +16,11 @@ answers; other interviews work as before.
   earlier ones. The passphrase box in the navigation also hides what is typed.
   A passphrase box that opens over the interview is emptied as soon as it
   closes, even if it is opened again straight away.
+- Entering the passphrase already in use again makes the interview try again
+  to read the protected answers it could not read. If they still cannot be
+  read, the passphrase is asked for again, so a different one can be entered.
+  Before, the request for the passphrase went away and those answers stayed
+  unreadable.
 - Protected answers stay locked when an interview is resumed, until the
   passphrase is entered again. Names that had been unlocked no longer stay
   visible after the passphrase is replaced with one that cannot read them,

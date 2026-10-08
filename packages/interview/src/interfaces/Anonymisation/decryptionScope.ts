@@ -16,15 +16,25 @@ import { decryptData } from './utils';
  * that store's passphrase changes or is cleared, and it is unreachable from
  * any other store, so plaintext cannot outlive the passphrase that produced it
  * or be served to an interview that has not unlocked it.
+ *
+ * Each entry of the passphrase gets its own scope, even when the passphrase
+ * entered is the one in force. Readers record a failure against the scope
+ * they failed under, so entering the passphrase again makes every reader that
+ * failed try again, and ask for the passphrase again if it still fails. The
+ * new scope keeps what the old one decrypted, which is plaintext of the same
+ * passphrase.
  */
 export type DecryptionScope = {
   readonly passphrase: string;
+  readonly entry: number;
   readonly plaintexts: Map<string, string>;
   readonly pending: Map<string, Promise<string>>;
 };
 
 type PassphraseStore = {
-  getState: () => { ui: { passphrase: string | null } };
+  getState: () => {
+    ui: { passphrase: string | null; passphraseEntry: number };
+  };
   subscribe: (listener: () => void) => () => void;
 };
 
@@ -41,20 +51,22 @@ export function getDecryptionScope(
   store: PassphraseStore,
   passphrase: string | null,
 ): DecryptionScope | undefined {
-  const current = store.getState().ui.passphrase;
+  const { passphrase: current, passphraseEntry: entry } = store.getState().ui;
   if (!passphrase || current !== passphrase) {
     return undefined;
   }
 
   const existing = scopes.get(store.getState);
-  if (existing?.passphrase === passphrase) {
+  if (existing?.passphrase === passphrase && existing.entry === entry) {
     return existing;
   }
 
+  const enteredAgain = existing?.passphrase === passphrase;
   const scope: DecryptionScope = {
     passphrase,
-    plaintexts: new Map(),
-    pending: new Map(),
+    entry,
+    plaintexts: enteredAgain ? existing.plaintexts : new Map(),
+    pending: enteredAgain ? existing.pending : new Map(),
   };
   scopes.set(store.getState, scope);
 
