@@ -40,6 +40,8 @@ import {
 import { getCodebook, getStages } from '../../../store/modules/protocol';
 import type { StageProps } from '../../../types';
 import { useDecryptedNodes } from '../../Anonymisation/useDecryptedNodes';
+import { useCachedOutcomes } from '../../Anonymisation/useDecryptionScope';
+import { useNodeLabeller } from '../../Anonymisation/useNodeLabel';
 import { messages as familyMessages } from '../../FamilyPedigree/messages';
 import PedigreeLayout from '../../FamilyPedigree/pedigree-layout/components/PedigreeLayout';
 import { computeNodeDisplayLabels } from '../../FamilyPedigree/pedigree-layout/components/PedigreeNode';
@@ -382,11 +384,16 @@ export default function NarrativePedigreeView({
     );
   };
 
-  const labelFor = (node: RenderableNode): string => {
-    if (node.id === egoId) return intl.formatMessage(familyMessages.you);
+  const labelNode = useNodeLabeller(useCachedOutcomes());
+
+  // The one label a person is shown, named and announced by.
+  const labelFor = (node: NcNode): string => {
+    if (node._uid === egoId) return intl.formatMessage(familyMessages.you);
     // displayLabels already prefers the person's name (collected by the
-    // FamilyPedigree) and falls back to a derived relationship label.
-    return displayLabels.get(node.id) ?? '';
+    // FamilyPedigree) and falls back to a derived relationship label. With
+    // no relationship to derive one from (no ego), the person shows the
+    // label any node does.
+    return displayLabels.get(node._uid) ?? labelNode(node);
   };
 
   // Plain-text per-node disease-status summary for screen readers. The visual
@@ -466,9 +473,7 @@ export default function NarrativePedigreeView({
     const focalProps: ComponentPropsWithoutRef<'div'> = {
       'role': 'button',
       'tabIndex': 0,
-      'aria-label': intl.formatMessage(messages.focusOn, {
-        name: label || node.id,
-      }),
+      'aria-label': intl.formatMessage(messages.focusOn, { name: label }),
       'aria-describedby': statusSummaryId,
       // Disabled (but still announced, with its status) until a condition is
       // chosen — focusing only makes sense for a single shown condition.
@@ -564,13 +569,10 @@ export default function NarrativePedigreeView({
     return diseases.find((d) => d.id === selectedDiseaseId)?.label ?? null;
   }, [selectedDiseaseId, diseases]);
 
-  const focalLabel = useMemo(() => {
-    if (focalId === null) return null;
-    const node = pedigreeNodes.find((n) => n._uid === focalId);
-    if (!node) return focalId;
-    if (node._uid === egoId) return intl.formatMessage(familyMessages.you);
-    return displayLabels.get(node._uid) || focalId;
-  }, [focalId, pedigreeNodes, displayLabels, egoId, intl]);
+  // The focused person as the diagram labels them; null when no one shown is
+  // focused.
+  const focalNode = focalId === null ? undefined : nodesMap.get(focalId);
+  const focalLabel = focalNode ? labelFor(focalNode) : null;
 
   // Snapshot heading: the stage label, then the shown condition, then the focal
   // person when one is set — e.g. "Inheritance Pathways: Huntington's Disease —
@@ -669,16 +671,16 @@ export default function NarrativePedigreeView({
         <AppMessage
           message={
             selectedDiseaseId === null
-              ? focalId === null
+              ? focalLabel === null
                 ? messages.showingAll
                 : messages.showingAllFocused
-              : focalId === null
+              : focalLabel === null
                 ? messages.showingCondition
                 : messages.showingFocused
           }
           values={{
             condition: selectedDiseaseLabel ?? selectedDiseaseId ?? '',
-            name: focalLabel ?? focalId ?? '',
+            name: focalLabel ?? '',
           }}
         />
       </div>
