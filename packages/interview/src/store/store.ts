@@ -36,6 +36,8 @@ type StoreOptions = {
   isDevelopment?: boolean;
   extraMiddleware?: Middleware[];
   tracker?: Tracker;
+  /** The Shell's `openFinishedAsActive`. */
+  openFinishedAsActive?: boolean;
 };
 
 export const store = (
@@ -51,6 +53,7 @@ export const store = (
     markFinished,
   } = createLocaleChangeMiddleware({
     onProtocolLocaleChange: options.onProtocolLocaleChange,
+    openFinishedAsActive: options.openFinishedAsActive,
   });
   const {
     middleware: writesInFlightMiddleware,

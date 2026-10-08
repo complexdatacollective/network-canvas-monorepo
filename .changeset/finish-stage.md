@@ -70,6 +70,10 @@ ended early. That outcome is saved with each interview and exported.
   never reports a language change: `onProtocolLocaleChange` is not called once
   the interview is finished, so the language it was taken in, which exports
   read, is kept.
+- A host that lets a finished interview be changed passes the new
+  `openFinishedAsActive` Shell prop. The interview then opens at its stages
+  rather than in its completed state, and keeps reporting language changes
+  until it is finished again.
 - A finish stage with no heading or text, which only an Architect preview of a
   protocol still being written can have, shows the Finish button alone, and
   its completed state puts focus on the finished notice.
@@ -115,7 +119,12 @@ ended early. That outcome is saved with each interview and exported.
 **Fresco**
 
 - The `/interview/finished` page is gone: a finished interview's link shows
-  its completed state, including to a participant who returns to it.
+  its completed state, including to a participant who returns to it. That
+  page is sent without the interview's answers, and nothing on it is saved
+  back to the interview.
+- With **Freeze Completed Interviews** off, a researcher who opens a finished
+  interview can still change it, as before. With it on, they see the completed
+  state.
 - Each interview's finish stage and outcome are stored and exported, and
   included in the interview API. Interviews finished before this upgrade have
   no outcome.

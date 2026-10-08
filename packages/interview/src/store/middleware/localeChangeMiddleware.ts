@@ -20,15 +20,19 @@ type LocaleChangeMiddlewareState = { session: SessionSnapshot };
  * still sees it in their own language, but the language it was taken in,
  * which exports read, is never overwritten. That covers a session opened
  * already finished (`finishTime`) and one finished in this Shell
- * (`markFinished`).
+ * (`markFinished`). A host that opens a finished interview as an unfinished
+ * one, to be edited (`openFinishedAsActive`), still has its language changes
+ * recorded until it is finished again.
  *
  * `settled` resolves once every call made so far has finished, so a flush can
  * wait for the locale write as well as the session write.
  */
 export const createLocaleChangeMiddleware = ({
   onProtocolLocaleChange,
+  openFinishedAsActive = false,
 }: {
   onProtocolLocaleChange: ProtocolLocaleChangeHandler;
+  openFinishedAsActive?: boolean;
 }): {
   middleware: Middleware<Record<string, never>, LocaleChangeMiddlewareState>;
   settled: () => Promise<void>;
@@ -48,7 +52,7 @@ export const createLocaleChangeMiddleware = ({
 
     if (
       finishedHere ||
-      finishTime !== null ||
+      (finishTime !== null && !openFinishedAsActive) ||
       locale === null ||
       (locale === before.locale && localePreference === before.localePreference)
     ) {

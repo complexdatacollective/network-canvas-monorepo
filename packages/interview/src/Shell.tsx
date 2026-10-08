@@ -544,6 +544,14 @@ type ShellProps = {
    */
   completedActions?: readonly CompletedAction[];
   /**
+   * Open a finished interview as an unfinished one, at its stages and open to
+   * changes, instead of in its completed state, and keep recording a change of
+   * its language. For a host that lets a finished interview be edited: Fresco
+   * passes it when completed interviews are not frozen. The payload then has
+   * to carry the interview's answers, which the completed state never needs.
+   */
+  openFinishedAsActive?: boolean;
+  /**
    * Adapt the Shell for reviewing an existing interview: show its stages even
    * when it is finished, stop before its finish stage, use review-specific
    * exit messaging, and suppress interview analytics. The host remains responsible for supplying non-persisting sync
@@ -609,6 +617,7 @@ const Shell = ({
   finishConfirmationDescription,
   onExit,
   completedActions,
+  openFinishedAsActive = false,
   reviewMode,
   hideNavigation,
   navigationOrientation,
@@ -658,9 +667,11 @@ const Shell = ({
         onProtocolLocaleChange: stableOnProtocolLocaleChange,
         isDevelopment: flags?.isDevelopment,
         tracker: trackerHolder,
+        openFinishedAsActive,
       }),
     [
       payload,
+      openFinishedAsActive,
       stableOnSync,
       stableOnProtocolLocaleChange,
       flags?.isDevelopment,
@@ -728,16 +739,20 @@ const Shell = ({
   }, []);
 
   // A finished session opens in its completed state, at the finish stage the
-  // host recorded.
+  // host recorded, unless the host opens it as an unfinished one.
   const initialCompletion = useMemo<InterviewCompletion | null>(
     () =>
-      payload.session.finishTime === null
+      payload.session.finishTime === null || openFinishedAsActive
         ? null
         : {
             stageId: payload.session.finishStageId ?? null,
             finishedHere: false,
           },
-    [payload.session.finishTime, payload.session.finishStageId],
+    [
+      payload.session.finishTime,
+      payload.session.finishStageId,
+      openFinishedAsActive,
+    ],
   );
 
   const reviewEntry = useMemo(() => {

@@ -10,13 +10,16 @@ import {
   type FinishHandler,
   type InterviewAnalyticsMetadata,
   type InterviewPayload,
+  type ProtocolLocaleChangeHandler,
   type StepChangeHandler,
+  type SyncHandler,
 } from '@codaco/interview';
 import { env } from '~/env.js';
 import { POSTHOG_APP_NAME, POSTHOG_APP_VERSION } from '~/fresco.config';
 
 import { createInterviewSyncHandler } from './createInterviewSyncHandler';
 import { createProtocolLocaleChangeHandler } from './createProtocolLocaleChangeHandler';
+import type { InterviewView } from './mapInterviewPayload';
 
 type Props = {
   payload: InterviewPayload;
@@ -26,7 +29,15 @@ type Props = {
   requestedLocales: readonly string[];
   installationId: string;
   disableAnalytics: boolean;
+  view: InterviewView;
 };
+
+// The completed view is built from a payload with an empty network, so it must
+// never write anything back: a sync would replace the stored network with that
+// empty one.
+const discardSync: SyncHandler = () => Promise.resolve();
+const discardLocaleChange: ProtocolLocaleChangeHandler = () =>
+  Promise.resolve();
 
 export default function InterviewClient({
   payload,
@@ -36,6 +47,7 @@ export default function InterviewClient({
   requestedLocales,
   installationId,
   disableAnalytics,
+  view,
 }: Props) {
   const [currentStep, setCurrentStep] = useQueryState(
     'step',
@@ -61,22 +73,27 @@ export default function InterviewClient({
     [setCurrentStep],
   );
 
-  const onSync = useMemo(
+  const onSync = useMemo<SyncHandler>(
     () =>
-      createInterviewSyncHandler({
-        interviewId: payload.session.id,
-        initialSyncRevision,
-        // Read through the ref, not the render's value: the memo runs once, and
-        // the step a write should record is the one in force when it goes on
-        // the wire.
-        getCurrentStep: () => currentStepRef.current,
-      }),
-    [payload.session.id, initialSyncRevision],
+      view === 'completed'
+        ? discardSync
+        : createInterviewSyncHandler({
+            interviewId: payload.session.id,
+            initialSyncRevision,
+            // Read through the ref, not the render's value: the memo runs once, and
+            // the step a write should record is the one in force when it goes on
+            // the wire.
+            getCurrentStep: () => currentStepRef.current,
+          }),
+    [view, payload.session.id, initialSyncRevision],
   );
 
-  const onProtocolLocaleChange = useMemo(
-    () => createProtocolLocaleChangeHandler(),
-    [],
+  const onProtocolLocaleChange = useMemo<ProtocolLocaleChangeHandler>(
+    () =>
+      view === 'completed'
+        ? discardLocaleChange
+        : createProtocolLocaleChangeHandler(),
+    [view],
   );
 
   // Once this resolves the Shell shows the interview's completed state in
@@ -135,6 +152,7 @@ export default function InterviewClient({
       analytics={analytics}
       posthogClient={posthog}
       disableAnalytics={disableAnalytics}
+      openFinishedAsActive={view === 'editable-finished'}
       allowUserScaling
     />
   );

@@ -1,5 +1,7 @@
+import SuperJSON from 'superjson';
 import { describe, expect, it } from 'vitest';
 
+import { createInitialNetwork } from '@codaco/interview/contract';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import {
   networkWithEncryptionHeader,
@@ -7,7 +9,10 @@ import {
 } from '~/lib/__tests__/encryptedNetworks';
 import type { GetInterviewByIdQuery } from '~/queries/interviews';
 
-import { mapInterviewPayload } from '../mapInterviewPayload';
+import {
+  mapInterviewForViewer,
+  mapInterviewPayload,
+} from '../mapInterviewPayload';
 
 /**
  * A minimal interview row shaped exactly as `getInterviewById` returns it
@@ -167,4 +172,127 @@ describe('mapInterviewPayload', () => {
 
     expect(payload.session.network).toStrictEqual(stored);
   });
+});
+
+/**
+ * A finished interview holding answers in every place a payload could carry
+ * them: a node, an edge, the ego, and stage metadata. Each value is a marker no
+ * other part of the payload contains, so finding one in a serialised payload
+ * means the answer was sent.
+ */
+function makeFinishedSource(): NonNullable<GetInterviewByIdQuery> {
+  return {
+    ...makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION),
+    finishTime: new Date('2026-01-03T00:00:00.000Z'),
+    finishStageId: 'finish-completed',
+    finishOutcome: 'completed',
+    localePreference: 'fr',
+    locale: 'fr',
+    network: {
+      nodes: [
+        {
+          _uid: 'node-answer-1',
+          type: 'person',
+          attributes: { name: 'NODE_ANSWER' },
+        },
+        {
+          _uid: 'node-answer-2',
+          type: 'person',
+          attributes: { name: 'SECOND_NODE_ANSWER' },
+        },
+      ],
+      edges: [
+        {
+          _uid: 'edge-answer',
+          type: 'friend',
+          from: 'node-answer-1',
+          to: 'node-answer-2',
+          attributes: { closeness: 'EDGE_ANSWER' },
+        },
+      ],
+      ego: { _uid: 'ego-1', attributes: { age: 'EGO_ANSWER' } },
+    },
+    stageMetadata: {
+      'dyad-stage': [[0, 'node-answer-1', 'node-answer-2', true]],
+    },
+  };
+}
+
+const ANSWER_MARKERS = [
+  'node-answer-1',
+  'node-answer-2',
+  'NODE_ANSWER',
+  'edge-answer',
+  'EDGE_ANSWER',
+  'EGO_ANSWER',
+  'dyad-stage',
+  'stageMetadata',
+];
+
+describe('mapInterviewForViewer', () => {
+  it.each([
+    { researcher: false, freezeCompletedInterviews: true },
+    { researcher: false, freezeCompletedInterviews: false },
+    { researcher: true, freezeCompletedInterviews: true },
+  ])(
+    'sends a finished interview with no answers when researcher=$researcher and freezing=$freezeCompletedInterviews',
+    (viewer) => {
+      const result = mapInterviewForViewer(makeFinishedSource(), viewer);
+
+      // Serialised as the page hands it to the browser.
+      const sent = JSON.stringify(SuperJSON.serialize(result));
+      for (const marker of ANSWER_MARKERS) {
+        expect(sent).not.toContain(marker);
+      }
+      // The empty network a new interview starts with, under an ego id of its
+      // own.
+      expect(result.payload.session.network).toStrictEqual({
+        ...createInitialNetwork(),
+        ego: { _uid: expect.any(String), attributes: {} },
+      });
+      expect(result.payload.session.network.ego._uid).not.toBe('ego-1');
+      expect(result.payload.session).not.toHaveProperty('stageMetadata');
+      expect(result.view).toBe('completed');
+      // What the completed view needs is still there.
+      expect(result.payload.session).toMatchObject({
+        finishTime: '2026-01-03T00:00:00.000Z',
+        finishStageId: 'finish-completed',
+        localePreference: 'fr',
+        locale: 'fr',
+      });
+    },
+  );
+
+  it('sends a researcher the whole finished interview to change while freezing is off', () => {
+    const source = makeFinishedSource();
+    const result = mapInterviewForViewer(source, {
+      researcher: true,
+      freezeCompletedInterviews: false,
+    });
+
+    expect(result.view).toBe('editable-finished');
+    expect(result.payload.session.network).toStrictEqual(source.network);
+    expect(result.payload.session.stageMetadata).toStrictEqual(
+      source.stageMetadata,
+    );
+  });
+
+  it.each([
+    { researcher: false, freezeCompletedInterviews: true },
+    { researcher: false, freezeCompletedInterviews: false },
+    { researcher: true, freezeCompletedInterviews: true },
+    { researcher: true, freezeCompletedInterviews: false },
+  ])(
+    'sends an unfinished interview whole when researcher=$researcher and freezing=$freezeCompletedInterviews',
+    (viewer) => {
+      const source = { ...makeFinishedSource(), finishTime: null };
+      const result = mapInterviewForViewer(source, viewer);
+
+      expect(result.view).toBe('active');
+      expect(result.payload.session.network).toStrictEqual(source.network);
+      expect(result.payload.session.stageMetadata).toStrictEqual(
+        source.stageMetadata,
+      );
+    },
+  );
 });

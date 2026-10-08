@@ -120,6 +120,7 @@ function renderShell({
   reviewMode,
   initialTextScale,
   onExit,
+  openFinishedAsActive,
 }: {
   payload: InterviewPayload;
   currentStep?: number;
@@ -128,6 +129,7 @@ function renderShell({
   reviewMode?: boolean;
   initialTextScale?: number;
   onExit?: () => void;
+  openFinishedAsActive?: boolean;
 }) {
   return render(
     <Shell
@@ -145,6 +147,7 @@ function renderShell({
       reviewMode={reviewMode}
       initialTextScale={initialTextScale}
       onExit={onExit}
+      openFinishedAsActive={openFinishedAsActive}
     />,
     { wrapper: WithoutMotion },
   );
@@ -210,6 +213,22 @@ describe('Shell completed state', () => {
       await screen.findByRole('heading', { name: 'Study overview' }),
     ).toBeInTheDocument();
     expect(screen.queryByText(NOTICE)).toBeNull();
+  });
+
+  // Fresco with completed interviews not frozen: a researcher can still
+  // change a finished interview.
+  it('opens a finished interview at its stages when the host opens it as active', async () => {
+    renderShell({
+      payload: makePayload({ finishStageId: finishStage.id }),
+      currentStep: 0,
+      openFinishedAsActive: true,
+    });
+
+    expect(
+      await screen.findByRole('heading', { name: 'Study overview' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(NOTICE)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Next Step' })).toBeEnabled();
   });
 
   it('finishing reports the stage and outcome, then shows the completed state with focus on its heading', async () => {

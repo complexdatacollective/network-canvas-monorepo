@@ -19,7 +19,7 @@ import {
 } from '~/queries/interviews';
 
 import InterviewClient from './InterviewClient';
-import { mapInterviewPayload } from './mapInterviewPayload';
+import { mapInterviewForViewer } from './mapInterviewPayload';
 
 export default function Page(props: {
   params: Promise<{ interviewId: string }>;
@@ -131,8 +131,15 @@ async function InterviewContent({
     }
   });
 
-  const { payload, assetUrls, initialStep, initialSyncRevision } =
-    mapInterviewPayload(interview);
+  // A finished interview's answers reach the browser only for a researcher
+  // who may still change them.
+  const { payload, assetUrls, initialStep, initialSyncRevision, view } =
+    mapInterviewForViewer(interview, {
+      researcher: session !== null,
+      freezeCompletedInterviews: await getAppSetting(
+        'freezeInterviewsAfterCompletion',
+      ),
+    });
 
   const installationId = (await getAppSetting('installationId')) ?? 'unknown';
   // Use the same helper as the rest of the app, so a DISABLE_ANALYTICS
@@ -151,6 +158,7 @@ async function InterviewContent({
       requestedLocales={requestedLocales}
       installationId={installationId}
       disableAnalytics={disableAnalytics}
+      view={view}
     />
   );
 }

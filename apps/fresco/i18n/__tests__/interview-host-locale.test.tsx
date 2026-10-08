@@ -131,6 +131,7 @@ function Host({ initial = spanish }: { initial?: FrescoI18nInitialization }) {
           requestedLocales={serializedRequest}
           installationId="test-installation"
           disableAnalytics
+          view="active"
         />
       </ParticipantLayout>
     </FrescoI18nProvider>
