@@ -80,7 +80,7 @@
   "protocolValidation.migrationNotes.schema9.familyPedigreeRelativesNotRecorded": "系统会为每个转换后的家族谱系中的人员添加一个新属性“relativesNotRecorded”，用于记录参与者表示某人没有兄弟姐妹或没有子女，或不知道的情况。如果该人员类型已有同名属性，新属性的名称会改为以数字结尾，例如“relativesNotRecorded2”。",
   "protocolValidation.migrationNotes.schema9.familyPedigreeRemoved": "由于重新设计的界面不使用以下三项家族谱系设置，它们会被移除：要求记录参与者子女的另一位生物学父母及其家庭、记录每个人与参与者关系的属性，以及记录每位父母提供了哪种配子的属性。这两个属性及已记录的回答仍保留在编码簿中，但不再填写。",
   "protocolValidation.migrationNotes.schema9.familyPedigreeSharedAttributes": "如果家族谱系中有两个回答使用同一个属性，该谱系就无法转换：两个提名提示、一个提名提示和一个附加人员字段，或者姓名和另一个回答。现在每个回答都需要自己的属性。请在创建该协议的 Architect 版本中为每个回答指定各自的属性，然后再升级。",
-  "protocolValidation.migrationNotes.schema9.migratedLanguage": "参与者看到的文字现在被标记为用英语撰写，因为旧版协议没有记录其使用的语言。请在 Architect 的“语言”页面中确认协议的默认语言。如果您的协议是用其他语言撰写的，请在该页面选择“重新标记默认语言”，将现有文字标记为该语言；无需重新输入任何内容。",
+  "protocolValidation.migrationNotes.schema9.migratedLanguage": "参与者看到的文字现在被标记为用英语撰写，因为旧版协议没有记录其使用的语言。如果您的协议是用其他语言撰写的，请在 Architect 的“语言”页面中添加该语言，用该语言输入每段文字，然后删除英语。",
   "protocolValidation.rule.additionalAttributes": "固定属性",
   "protocolValidation.rule.component": "输入控件",
   "protocolValidation.rule.differentFrom": "不同于另一属性",

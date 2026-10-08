@@ -324,8 +324,8 @@
     "description": "One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeSharedAttributes. \"Family Pedigree\" is an interface name and \"Architect\" is an app name."
   },
   "protocolValidation.migrationNotes.schema9.migratedLanguage": {
-    "defaultMessage": "Text that participants see is now marked as written in English, because older protocols do not record which language they use. Check your protocol’s default language on the Languages page in Architect. If your protocol is written in another language, choose Relabel default language there to mark its existing text as that language; nothing needs to be entered again.",
-    "description": "One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. \"Languages\" must match the name of the Architect page where languages are managed, and \"Relabel default language\" the name of the control on that page that marks the default language’s text as another language."
+    "defaultMessage": "Text that participants see is now marked as written in English, because older protocols do not record which language they use. If your protocol is written in another language, add that language on the Languages page in Architect, enter each text in it, and then remove English.",
+    "description": "One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. \"Languages\" must match the name of the Architect page where languages are managed."
   },
   "protocolValidation.rule.additionalAttributes": {
     "defaultMessage": "Fixed attributes",
