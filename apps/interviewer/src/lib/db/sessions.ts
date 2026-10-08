@@ -10,9 +10,11 @@ import type { NcNetwork } from '@codaco/shared-consts';
 
 import { db } from './db';
 import {
+  assertPlaintextStillAllowed,
   decryptSession,
   decryptSessionRecord,
   encryptSession,
+  preparingPlaintext,
   type StoredSessionRow,
   prepareSessionFinish,
   withoutSessionFinish,
@@ -288,8 +290,12 @@ export async function createSession(args: {
     stageMetadata: undefined,
     isSynthetic: args.isSynthetic ?? false,
   };
+  const plaintext = preparingPlaintext();
   const row = await encryptSession(session);
-  await db.sessions.put(row);
+  await db.transaction('rw', db.sessions, db.settings, async () => {
+    await assertPlaintextStillAllowed(plaintext);
+    await db.sessions.put(row);
+  });
   return session;
 }
 
@@ -464,14 +470,17 @@ export function updateSession(
         lastUpdatedAt: new Date().toISOString(),
       };
     }
+    const plaintext = preparingPlaintext();
     const row = await encryptSession(updated);
     // The read above happened before the crypto awaits, and the per-id chain
     // only serialises THIS tab. In the gap, the launch-time protocol
     // migration — possibly in another tab — may have moved this session to
     // another protocol, or the session may have been deleted. Decide against
     // the freshest stored row, and drop the write entirely rather than
-    // resurrect a deleted session.
-    return db.transaction('rw', db.sessions, async () => {
+    // resurrect a deleted session. A plaintext row is refused if the device
+    // was secured meanwhile.
+    return db.transaction('rw', db.sessions, db.settings, async () => {
+      await assertPlaintextStillAllowed(plaintext);
       const latest = await db.sessions.get(id);
       if (!latest) return undefined;
       if (partialBound && latest.protocolHash !== basis.protocolHash) {
@@ -593,17 +602,13 @@ export async function markSessionsExported(ids: string[]): Promise<void> {
   await Promise.all(
     ids.map((id) =>
       enqueueSessionMutation(id, async () => {
-        const existing = await db.sessions.get(id);
-        if (!existing) return;
         // Stamp inside the queued mutation, not before: if this is queued behind
         // an in-flight updateSession, a timestamp captured earlier could write an
         // older lastUpdatedAt than the mutation that actually ran first.
+        // `update` reads and writes in one transaction, so it cannot write
+        // back a plaintext copy over a row another tab has just encrypted.
         const now = new Date().toISOString();
-        await db.sessions.put({
-          ...existing,
-          exportedAt: now,
-          lastUpdatedAt: now,
-        });
+        await db.sessions.update(id, { exportedAt: now, lastUpdatedAt: now });
       }),
     ),
   );
