@@ -1,5 +1,23 @@
 # networkcanvas.com
 
+## 0.7.0
+
+### Minor Changes
+
+- Add a searchable Updates page: an illustrated timeline of news from across the Network Canvas project since 2013 (software releases, funding, research papers, and workshops at Sunbelt and EUSN), linked from the site navigation and footer. The site header and footer now sit outside each page's main landmark. The homepage news ticker now shows the five newest Updates entries and links each one to its place on the Updates page; the stories it carried before are now Updates entries.
+
+### Patch Changes
+
+- Pages no longer re-render part of themselves on load. The footer's copyright
+  year is now fixed when the site is published, instead of being read from the
+  visitor's device, which could disagree with the published page and force the
+  browser to rebuild it.
+- A protocol preview in another language now fetches the interview's messages
+  while the protocol downloads, so the interview opens without a further wait
+  for its language.
+- The language-detection edge function now bundles its locale matcher with the
+  site instead of loading it from a third-party CDN at request time.
+
 ## 0.6.0
 
 ### Minor Changes
