@@ -8,9 +8,12 @@ import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 // Deriving the key takes a moment, and longer under a loaded test run.
 const CHECK_TIMEOUT = 10_000;
 
+// The key button is the navigation's: a stage may offer its own button with
+// the same name, such as Family Pedigree's notice under the family.
 async function openPrompter(title: string) {
+  const navigation = within(await screen.findByRole('navigation'));
   await userEvent.click(
-    await screen.findByRole(
+    await navigation.findByRole(
       'button',
       { name: 'Enter your passphrase' },
       { timeout: CHECK_TIMEOUT },

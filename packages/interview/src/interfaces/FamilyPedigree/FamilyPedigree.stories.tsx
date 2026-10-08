@@ -3700,8 +3700,12 @@ const CHECK_TIMEOUT = 10_000;
 async function openPassphraseFromNotice(canvasElement: HTMLElement) {
   const canvas = within(canvasElement);
   const body = within(canvasElement.ownerDocument.body);
+  // The navigation's key button has the same name.
+  const notice = within(
+    await canvas.findByTestId('pedigree-passphrase-notice'),
+  );
   await userEvent.click(
-    await canvas.findByRole('button', { name: 'Enter your passphrase' }),
+    notice.getByRole('button', { name: 'Enter your passphrase' }),
   );
   return within(
     await body.findByRole('dialog', { name: 'Enter your passphrase' }),
