@@ -1,5 +1,5 @@
 import {
-  Cause,
+  type Cause,
   Context,
   Cron,
   DateTime,
@@ -17,10 +17,17 @@ import {
   Schedule,
   Schema,
   Semaphore,
+  type Tracer,
 } from 'effect';
+import { Headers, HttpTraceContext } from 'effect/http';
 import type { SqlClient, SqlError } from 'effect/sql';
 
-import type { JobPayload, JobQueueName } from '@codaco/studio-sync/jobs';
+import {
+  JOB_PAYLOAD_PARSE_OPTIONS,
+  JobCorrelationSchema,
+  type JobPayload,
+  type JobQueueName,
+} from '@codaco/studio-sync/jobs';
 
 import { MaintenanceDatabase } from '../db/client.ts';
 import { MaintenanceScope, Transaction } from '../db/tenant.ts';
@@ -140,6 +147,7 @@ type ClaimedRow = FrozenPolicy & {
   readonly id: string;
   readonly payload: unknown;
   readonly attempts: number;
+  readonly correlation: unknown;
 };
 
 type ExpiredRow = FrozenPolicy & {
@@ -313,7 +321,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
             FOR UPDATE SKIP LOCKED
           LIMIT 1
        )
-      RETURNING id, payload, attempts,
+      RETURNING id, payload, attempts, correlation,
                 retry_limit, retry_delay, retry_backoff, retry_delay_max`;
     return rows[0];
   });
@@ -431,7 +439,8 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
       INSERT INTO ${table(sql)}.jobs
         (queue, payload, state, policy, attempts, singleton_key,
          retry_limit, retry_delay, retry_backoff, retry_delay_max,
-         expire_in_seconds, run_at, keep_until, created_at, dead_letter_of)
+         expire_in_seconds, run_at, keep_until, created_at, dead_letter_of,
+         correlation)
       SELECT ${deadLetter},
              payload,
              'created',
@@ -446,7 +455,8 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
              ${DateTime.toDate(now)},
              ${DateTime.toDate(keepUntil)},
              ${DateTime.toDate(now)},
-             id
+             id,
+             correlation
         FROM ${table(sql)}.jobs
        WHERE id = ${jobId}
       ON CONFLICT DO NOTHING
@@ -462,8 +472,8 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
 
   const leaseLost = (queue: JobQueueName, jobId: JobId, attempt: number) =>
     Effect.logWarning(
-      `job ${queue} ${jobId} lost its lease before attempt ${attempt} could settle; the row belongs to a later attempt`,
-    );
+      'job lost its lease before its attempt could settle; the row belongs to a later attempt',
+    ).pipe(Effect.annotateLogs({ queue, job_id: jobId, attempt }));
 
   const drainOnce = Effect.fn('JobWorker.drainOnce')(
     function* (queue: JobQueueName) {
@@ -503,7 +513,12 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
           payload: claimed.payload,
           attempt: claimed.attempts,
           finalAttempt: claimed.attempts > claimed.retry_limit,
-        }),
+        }).pipe(
+          Effect.withSpan('JobWorker.handle', {
+            attributes: { queue, attempt: claimed.attempts },
+            parent: Option.getOrUndefined(enqueuingSpan(claimed.correlation)),
+          }),
+        ),
       );
 
       const settledAt = yield* clock.now;
@@ -515,13 +530,20 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
           yield* leaseLost(queue, jobId, claimed.attempts);
           return idle;
         }
-        yield* exit.value === 'uncertain'
-          ? Effect.logWarning(
-              `job ${queue} ${jobId} ended uncertain on attempt ${claimed.attempts}: a side effect left the process and its record could not be written`,
-            )
-          : Effect.logDebug(
-              `job ${queue} ${jobId} ${exit.value} on attempt ${claimed.attempts}`,
-            );
+        yield* (
+          exit.value === 'uncertain'
+            ? Effect.logWarning(
+                'job ended uncertain: a side effect left the process and its record could not be written',
+              )
+            : Effect.logDebug('job settled')
+        ).pipe(
+          Effect.annotateLogs({
+            queue,
+            job_id: jobId,
+            attempt: claimed.attempts,
+            outcome: exit.value,
+          }),
+        );
         const settled: JobStep = {
           _tag: 'settled',
           jobId,
@@ -540,8 +562,8 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
           return idle;
         }
         yield* Effect.logError(
-          `job ${queue} ${jobId} carries a payload this queue does not declare`,
-        );
+          'job carries a payload this queue does not declare',
+        ).pipe(Effect.annotateLogs({ queue, job_id: jobId }));
         const dead: JobStep = { _tag: 'dead', jobId };
         return dead;
       }
@@ -561,13 +583,20 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
         yield* leaseLost(queue, jobId, claimed.attempts);
         return idle;
       }
-      yield* step._tag === 'retrying'
-        ? Effect.logWarning(
-            `job ${queue} ${jobId} retrying after attempt ${claimed.attempts}: ${message}`,
-          )
-        : Effect.logError(
-            `job ${queue} ${jobId} failed on attempt ${claimed.attempts}: ${message}`,
-          );
+      yield* (
+        step._tag === 'retrying'
+          ? Effect.logWarning('job attempt failed; retrying', exit.cause)
+          : Effect.logError(
+              'job attempt failed and will not be retried',
+              exit.cause,
+            )
+      ).pipe(
+        Effect.annotateLogs({
+          queue,
+          job_id: jobId,
+          attempt: claimed.attempts,
+        }),
+      );
       return step;
     },
     // The whole step holds a permit, so a graceful stop cannot interrupt before the
@@ -595,8 +624,8 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
         const declaration = declaredQueues.get(row.queue);
         if (declaration === undefined) {
           yield* Effect.logError(
-            `job ${row.id} sits on ${row.queue}, which no queue declares; its expired lease cannot be settled`,
-          );
+            'job sits on a queue that no queue declares; its expired lease cannot be settled',
+          ).pipe(Effect.annotateLogs({ queue: row.queue, job_id: row.id }));
           continue;
         }
         const step = yield* settleFailure(
@@ -658,7 +687,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
     const parsed = Cron.parse(cron, 'UTC');
     if (Result.isFailure(parsed)) return yield* Effect.fail(parsed.failure);
     const now = yield* clock.now;
-    const encoded = yield* Effect.orDie(payloadCodec(queue).decode(payload));
+    const encoded = yield* Effect.orDie(payloadCodec(queue).encode(payload));
     const nextRunAt = Cron.next(parsed.success, DateTime.toDate(now));
     yield* MaintenanceScope.open(
       Effect.gen(function* () {
@@ -728,8 +757,8 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
         for (const row of due) {
           const parsed = Cron.parse(row.cron, 'UTC');
           if (Result.isFailure(parsed)) {
-            yield* Effect.logError(
-              `schedule ${row.name} carries an unparseable cron ${row.cron}`,
+            yield* Effect.logError('schedule carries an unparseable cron').pipe(
+              Effect.annotateLogs({ schedule: row.name, cron: row.cron }),
             );
             continue;
           }
@@ -737,7 +766,9 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
           // the row, the occurrence it missed still runs.
           if (!isDeclaredQueueName(row.queue)) {
             yield* Effect.logError(
-              `schedule ${row.name} names a queue this build does not declare: ${row.queue}`,
+              'schedule names a queue this build does not declare',
+            ).pipe(
+              Effect.annotateLogs({ schedule: row.name, queue: row.queue }),
             );
             continue;
           }
@@ -746,7 +777,10 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
           );
           if (Exit.isFailure(decoded)) {
             yield* Effect.logError(
-              `schedule ${row.name} carries a payload that does not decode: ${describe(causeError(decoded.cause))}`,
+              'schedule carries a payload that does not decode',
+              decoded.cause,
+            ).pipe(
+              Effect.annotateLogs({ schedule: row.name, queue: row.queue }),
             );
             continue;
           }
@@ -760,11 +794,15 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
           const enqueued = yield* Effect.exit(
             jobs.enqueue(row.queue, decoded.value, {
               singletonKey: row.name,
+              correlate: false,
             }),
           );
           if (Exit.isFailure(enqueued)) {
             yield* Effect.logInfo(
-              `schedule ${row.name} did not enqueue: ${describe(causeError(enqueued.cause))}`,
+              'schedule did not enqueue',
+              enqueued.cause,
+            ).pipe(
+              Effect.annotateLogs({ schedule: row.name, queue: row.queue }),
             );
           }
         }
@@ -859,7 +897,9 @@ const forkBackground = Effect.fnUntraced(function* (
       }
     }).pipe(
       Effect.catchCause((cause) =>
-        Effect.logError(`job poll for ${queue} failed: ${Cause.pretty(cause)}`),
+        Effect.logError('job poll failed', cause).pipe(
+          Effect.annotateLogs({ queue }),
+        ),
       ),
       (drain) =>
         Effect.forever(
@@ -876,12 +916,10 @@ const forkBackground = Effect.fnUntraced(function* (
   const periodic = <A, E, R>(
     interval: Duration.Input,
     effect: Effect.Effect<A, E, R>,
-    label: string,
+    onFailure: (cause: Cause.Cause<E>) => Effect.Effect<void>,
   ) =>
     effect.pipe(
-      Effect.catchCause((cause) =>
-        Effect.logError(`${label} failed: ${Cause.pretty(cause)}`),
-      ),
+      Effect.catchCause(onFailure),
       Effect.repeat(Schedule.spaced(interval)),
     );
 
@@ -896,21 +934,21 @@ const forkBackground = Effect.fnUntraced(function* (
     periodic(
       config.reaperInterval ?? DEFAULTS.reaperInterval,
       worker.reapExpired,
-      'the expiry reaper',
+      (cause) => Effect.logError('the expiry reaper failed', cause),
     ),
   );
   yield* Effect.forkScoped(
     periodic(
       config.retentionInterval ?? DEFAULTS.retentionInterval,
       worker.deleteExpired,
-      'the retention pass',
+      (cause) => Effect.logError('the retention pass failed', cause),
     ),
   );
   yield* Effect.forkScoped(
     periodic(
       config.cronInterval ?? DEFAULTS.cronInterval,
       worker.tickSchedules,
-      'the cron tick',
+      (cause) => Effect.logError('the cron tick failed', cause),
     ),
   );
 
@@ -958,9 +996,11 @@ const forkListener = Effect.fnUntraced(function* (
     MutableRef.set(listening, true);
     const recovered = MutableRef.getAndSet(losses, 0);
     yield* recovered === 0
-      ? Effect.logInfo(`job listener acquired on ${channel}`)
-      : Effect.logInfo(
-          `job listener re-acquired on ${channel} after ${recovered} consecutive losses`,
+      ? Effect.logInfo('job listener acquired').pipe(
+          Effect.annotateLogs({ channel }),
+        )
+      : Effect.logInfo('job listener re-acquired').pipe(
+          Effect.annotateLogs({ channel, consecutive_losses: recovered }),
         );
     return yield* Effect.forever(
       Effect.flatMap(Queue.take(notifications), (notification) => {
@@ -974,14 +1014,15 @@ const forkListener = Effect.fnUntraced(function* (
     Effect.suspend(() => {
       MutableRef.set(listening, false);
       const consecutive = MutableRef.incrementAndGet(losses);
-      const reconnecting = `reconnecting in ${Duration.toMillis(listenRetryDelay(consecutive))}ms`;
-      return consecutive === 1
-        ? Effect.logWarning(
-            `job listener lost; ${reconnecting}: ${Cause.pretty(cause)}`,
-          )
-        : Effect.logDebug(
-            `job listener still down after ${consecutive} consecutive losses; ${reconnecting}: ${Cause.pretty(cause)}`,
-          );
+      const annotations = {
+        consecutive_losses: consecutive,
+        reconnect_in_ms: Duration.toMillis(listenRetryDelay(consecutive)),
+      };
+      return (
+        consecutive === 1
+          ? Effect.logWarning('job listener lost; reconnecting', cause)
+          : Effect.logDebug('job listener still down; reconnecting', cause)
+      ).pipe(Effect.annotateLogs(annotations));
     });
 
   const backoff = Schedule.modifyDelay(Schedule.forever, () =>
@@ -1011,6 +1052,18 @@ export const backoffSeconds = Effect.fnUntraced(function* (
     ? delay
     : Math.min(declaration.retryDelayMax, delay);
 });
+
+const decodeCorrelation = Schema.decodeUnknownOption(
+  JobCorrelationSchema,
+  JOB_PAYLOAD_PARSE_OPTIONS,
+);
+
+const enqueuingSpan = (
+  correlation: unknown,
+): Option.Option<Tracer.ExternalSpan> =>
+  Option.flatMap(decodeCorrelation(correlation), ({ traceparent }) =>
+    HttpTraceContext.w3c(Headers.fromRecordUnsafe({ traceparent })),
+  );
 
 const describe = (error: unknown): string =>
   (deepestMessage(error) ?? String(error)).slice(0, MAX_ERROR_LENGTH);

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { parseEnv } from 'node:util';
 
 import { it } from '@effect/vitest';
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 import { parse as parseConnectionString } from 'pg-connection-string';
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 
@@ -238,6 +238,35 @@ describe('database and auth', () => {
   it('treats an all-blank TRUSTED_PROXIES as unset', () => {
     vi.stubEnv('TRUSTED_PROXIES', ' , ');
     expect(readEnv().auth?.trustedProxies).toBeUndefined();
+  });
+
+  it('reads OTLP headers as URL-decoded pairs held redacted', () => {
+    vi.stubEnv(
+      'OTEL_EXPORTER_OTLP_HEADERS',
+      'Authorization=Bearer%20collector-key, x-tenant=lab',
+    );
+    const headers = readEnv().telemetryHeaders;
+    expect(String(headers)).toBe('<redacted>');
+    expect(headers === undefined ? null : Redacted.value(headers)).toEqual({
+      'Authorization': 'Bearer collector-key',
+      'x-tenant': 'lab',
+    });
+  });
+
+  it.each([
+    ['a name with a space', 'bad header=collector-key'],
+    ['a value with a line break', 'Authorization=collector-key%0Aextra'],
+    ['a pair with no name', '=collector-key'],
+    ['a pair with no separator', 'collector-key'],
+    ['a value that is not URL-encoding', 'Authorization=collector-key%zz'],
+  ])('refuses OTLP headers holding %s without quoting them', (_, value) => {
+    vi.stubEnv('OTEL_EXPORTER_OTLP_HEADERS', value);
+    expect(() => readEnv()).toThrow(/OTEL_EXPORTER_OTLP_HEADERS/);
+    try {
+      readEnv();
+    } catch (error) {
+      expect(String(error)).not.toContain('collector-key');
+    }
   });
 });
 

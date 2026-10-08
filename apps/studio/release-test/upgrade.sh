@@ -233,7 +233,7 @@ wait_for_new_worker() { # container since-ms
   local log started_ms paused schema_current
   for _ in $(seq 1 $((NEW_WORKER_BOUND * 2))); do
     log="$(docker logs "$1" 2>&1 || true)"
-    if grep -q 'Network Canvas Studio worker .* started' <<< "$log"; then
+    if grep -q 'Network Canvas Studio worker started' <<< "$log"; then
       started_ms="$(now_ms)"
       paused=false
       schema_current=false

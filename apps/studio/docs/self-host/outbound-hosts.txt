@@ -19,5 +19,6 @@ acme-v02.api.letsencrypt.org
 # The daily update check (#1901). Not configurable.
 releases.networkcanvas.com
 
-# Analytics, only while STUDIO_TELEMETRY is on (#1897).
+# Analytics, and telemetry unless OTEL_EXPORTER_OTLP_ENDPOINT names another
+# collector; only while STUDIO_TELEMETRY is on (#1897).
 us.i.posthog.com

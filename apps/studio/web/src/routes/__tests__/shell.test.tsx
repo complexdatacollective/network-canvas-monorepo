@@ -6,7 +6,7 @@ import {
   RouterProvider,
 } from '@tanstack/react-router';
 import { render, screen, within } from '@testing-library/react';
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { TeamId } from '@codaco/studio-contract/schema/ids';
@@ -167,9 +167,9 @@ beforeEach(() => {
     'me': () =>
       Effect.succeed({
         userId: 'user-1',
-        email: 'researcher@example.org',
+        email: Redacted.make('researcher@example.org'),
         emailVerified: true,
-        name: 'Researcher',
+        name: Redacted.make('Researcher'),
         locale: null,
         teams: [{ teamId: TeamId.make('team-a'), role: 'owner' }],
       }),

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Context, type Exit } from 'effect';
+import { Context, type Exit, Redacted } from 'effect';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { createStudio, type Studio } from '../app.ts';
@@ -169,10 +169,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           protocolId,
           requestId: randomUUID(),
           sectionId,
-          document: {
-            ...held.document,
+          document: Redacted.make({
+            ...Redacted.value(held.document),
             label: enUS('Saved after the restart'),
-          },
+          }),
           revision: held.revision,
         }),
       );
@@ -216,10 +216,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             protocolId,
             requestId: randomUUID(),
             sectionId,
-            document: {
-              ...behind.document,
+            document: Redacted.make({
+              ...Redacted.value(behind.document),
               label: enUS('Renamed by the second tab'),
-            },
+            }),
             revision: behind.revision,
           }),
         ),
@@ -761,7 +761,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           protocolId,
           editId: EDIT,
           requestId: randomUUID(),
-          request: { kind: 'secret', name: 'Stranded token', value: 'pk.gone' },
+          request: {
+            kind: 'secret',
+            name: Redacted.make('Stranded token'),
+            value: Redacted.make('pk.gone'),
+          },
         }),
       );
       if (staged.status !== 'ok') throw new Error('staging failed');

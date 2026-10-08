@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { assert, layer } from '@effect/vitest';
-import { Effect, Exit } from 'effect';
+import { Effect, Exit, Redacted } from 'effect';
 import { describe } from 'vitest';
 
 import {
@@ -31,9 +31,9 @@ describe.skipIf(!testDb)('a denied-attempts summary', () => {
           const actor: SessionPrincipal = {
             kind: 'user',
             userId: `actor-${randomUUID().slice(0, 8)}`,
-            email: 'denied-summary@example.com',
+            email: Redacted.make('denied-summary@example.com'),
             emailVerified: true,
-            name: 'Denied Summary Actor',
+            name: Redacted.make('Denied Summary Actor'),
             locale: null,
             sessionId: '',
           };
@@ -72,7 +72,7 @@ describe.skipIf(!testDb)('a denied-attempts summary', () => {
           assert.strictEqual(event.category, 'security');
           assert.strictEqual(event.outcome, 'denied');
           assert.strictEqual(event.actor_id, actor.userId);
-          assert.strictEqual(event.actor_label, actor.name);
+          assert.strictEqual(event.actor_label, Redacted.value(actor.name));
           assert.strictEqual(event.team_label, 'Summary Team');
           assert.deepStrictEqual(event.details, {
             operation: 'team.updateMemberRole',

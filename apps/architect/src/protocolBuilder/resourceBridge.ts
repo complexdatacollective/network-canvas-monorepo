@@ -1,3 +1,5 @@
+import { Redacted } from 'effect';
+
 import type {
   ResourceDescriptorSchema,
   ResourceGatewayFailureSchema,
@@ -77,7 +79,7 @@ export class ResourceBridge {
   readonly #byRequest = new Map<string, string>();
   /** Which edit imported each staged resource, by resource id. */
   readonly #staged = new Map<string, string>();
-  readonly #pickedAs = new Map<string, string>();
+  readonly #pickedAs = new Map<string, Redacted.Redacted>();
 
   constructor(store: ArchitectStore) {
     this.#store = store;
@@ -121,7 +123,10 @@ export class ResourceBridge {
     }
 
     if (request.kind === 'secret') {
-      const action = addApiKeyAsset(request.name, request.value);
+      const action = addApiKeyAsset(
+        Redacted.value(request.name),
+        Redacted.value(request.value),
+      );
       this.#store.dispatch(action);
       return {
         status: 'ok',
@@ -135,8 +140,11 @@ export class ResourceBridge {
     // imports of different pictures both called `portrait.png` must stay two
     // assets wherever the protocol is opened next.
     const openedFor = getActiveProtocolId(this.#store.getState());
-    const bytes = new Uint8Array(request.bytes);
-    const source = await contentAddressedSource(bytes, request.source);
+    const bytes = new Uint8Array(Redacted.value(request.bytes));
+    const source = await contentAddressedSource(
+      bytes,
+      Redacted.value(request.source),
+    );
     const file = new File([bytes], source, {
       type: request.contentType,
     });
@@ -153,7 +161,9 @@ export class ResourceBridge {
     }
     try {
       const imported = await this.#store
-        .dispatch(importAssetAsync({ file, name: request.name }))
+        .dispatch(
+          importAssetAsync({ file, name: Redacted.value(request.name) }),
+        )
         .unwrap();
       this.#pickedAs.set(imported.id, request.source);
       return { status: 'ok', data: this.#record(key, editId, imported.id) };
@@ -244,7 +254,10 @@ export class ResourceBridge {
       const value = entry?.type === 'apikey' ? entry.value : undefined;
       return {
         status: 'ok',
-        data: { descriptor, ...(value === undefined ? {} : { value }) },
+        data: {
+          descriptor,
+          ...(value === undefined ? {} : { value: Redacted.make(value) }),
+        },
       };
     }
     if (descriptor.kind !== 'network' && descriptor.kind !== 'geojson') {
@@ -259,7 +272,9 @@ export class ResourceBridge {
         status: 'ok',
         data: {
           descriptor,
-          ...(variableNames === null ? {} : { variableNames }),
+          ...(variableNames === null
+            ? {}
+            : { variableNames: Redacted.make(variableNames) }),
         },
       };
     } catch {
@@ -287,7 +302,7 @@ export class ResourceBridge {
         resourceId,
       );
     }
-    return { status: 'ok', data: { resourceId, url } };
+    return { status: 'ok', data: { resourceId, url: Redacted.make(url) } };
   }
 
   #record(key: string, editId: string, resourceId: string): StagedResource {
@@ -317,7 +332,7 @@ export class ResourceBridge {
       descriptors.push({
         id,
         kind: entry.type,
-        name: entry.name,
+        name: Redacted.make(entry.name),
         status:
           owner === undefined ? ('committed' as const) : ('staged' as const),
         ...(entry.type === 'apikey'
@@ -325,7 +340,7 @@ export class ResourceBridge {
           : {
               source:
                 (owner === undefined ? undefined : this.#pickedAs.get(id)) ??
-                entry.source,
+                Redacted.make(entry.source),
             }),
       });
     }
@@ -336,7 +351,7 @@ export class ResourceBridge {
     const entry = getAssetManifest(this.#store.getState())[resourceId];
     return entry === undefined || entry.type === 'apikey'
       ? {}
-      : { source: entry.source };
+      : { source: Redacted.make(entry.source) };
   }
 
   #descriptor(

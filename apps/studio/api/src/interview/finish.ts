@@ -1,4 +1,4 @@
-import { Clock, Effect } from 'effect';
+import { Clock, Effect, Redacted } from 'effect';
 
 import { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
 import { ParticipantSession } from '@codaco/studio-contract/middleware/session';
@@ -72,11 +72,11 @@ export const finishParticipantSession = Effect.fn(
           edges: rows.edges,
           ego: {
             egoUid: context.egoUid,
-            egoAttributes: context.egoAttributes,
-            egoSecureAttributes: context.egoSecureAttributes,
+            egoAttributes: Redacted.value(context.egoAttributes),
+            egoSecureAttributes: Redacted.value(context.egoSecureAttributes),
           },
         }),
-        stageMetadata: context.stageMetadata,
+        stageMetadata: Redacted.value(context.stageMetadata),
         currentStep: context.stageIndex,
       });
       yield* insertSessionSnapshot({

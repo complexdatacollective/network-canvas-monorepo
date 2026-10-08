@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { and, eq, isNotNull, lt, ne, or, isNull, sql } from 'drizzle-orm';
-import { Effect, Schema } from 'effect';
+import { Effect, Redacted, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
 import { ParticipantSessionStatus } from '@codaco/studio-contract/schema/participant';
@@ -31,6 +31,9 @@ const decodeParticipationMode = Schema.decodeUnknownSync(
   StudyParticipationMode,
 );
 
+const privateCode = (code: string | null): Redacted.Redacted | null =>
+  code === null ? null : Redacted.make(code);
+
 export type RedeemableLink = {
   readonly linkId: string;
   readonly studyId: string;
@@ -45,7 +48,7 @@ export type RedeemableLink = {
   readonly protocolVersionId: string | null;
   readonly waveOpensAt: Date | null;
   readonly waveClosesAt: Date | null;
-  readonly participantCode: string | null;
+  readonly participantCode: Redacted.Redacted | null;
 };
 
 export const findLinkByTokenHash: (
@@ -106,6 +109,7 @@ export const findLinkByTokenHash: (
     if (row === undefined) return null;
     return {
       ...row,
+      participantCode: privateCode(row.participantCode),
       studyState: decodeStudyState(row.studyState),
       participationMode: decodeParticipationMode(row.participationMode),
     };
@@ -241,7 +245,7 @@ export type PresentedSession = {
   readonly studyId: string;
   readonly holderEpoch: number;
   readonly status: ParticipantSessionStatus;
-  readonly participantCode: string | null;
+  readonly participantCode: Redacted.Redacted | null;
 };
 
 export const findSessionByTokenHash: (
@@ -278,6 +282,7 @@ export const findSessionByTokenHash: (
     if (row === undefined) return null;
     return {
       ...row,
+      participantCode: privateCode(row.participantCode),
       holderEpoch: Number(row.holderEpoch),
       status: decodeStatus(row.status),
     };
@@ -432,16 +437,18 @@ export type SessionContext = {
   readonly studyId: string;
   readonly waveId: string;
   readonly participantId: string | null;
-  readonly participantCode: string | null;
+  readonly participantCode: Redacted.Redacted | null;
   readonly status: ParticipantSessionStatus;
   readonly holderEpoch: number;
   readonly clientRevision: bigint;
   readonly stageIndex: number;
   readonly stageId: string | null;
-  readonly stageMetadata: Readonly<Record<string, unknown>>;
+  readonly stageMetadata: Redacted.Redacted<Readonly<Record<string, unknown>>>;
   readonly egoUid: string;
-  readonly egoAttributes: Readonly<Record<string, unknown>>;
-  readonly egoSecureAttributes: EgoColumns['egoSecureAttributes'];
+  readonly egoAttributes: Redacted.Redacted<Readonly<Record<string, unknown>>>;
+  readonly egoSecureAttributes: Redacted.Redacted<
+    EgoColumns['egoSecureAttributes']
+  >;
   readonly startedAt: Date;
   readonly lastActivityAt: Date;
   readonly protocolVersionId: string;
@@ -526,11 +533,14 @@ export const loadSessionContext: (
     if (row === undefined) return null;
     return {
       ...row,
+      participantCode: privateCode(row.participantCode),
       status: decodeStatus(row.status),
       holderEpoch: Number(row.holderEpoch),
-      stageMetadata: decodeAttributes(row.stageMetadata),
-      egoAttributes: decodeAttributes(row.egoAttributes),
-      egoSecureAttributes: decodeSecureAttributes(row.egoSecureAttributes),
+      stageMetadata: Redacted.make(decodeAttributes(row.stageMetadata)),
+      egoAttributes: Redacted.make(decodeAttributes(row.egoAttributes)),
+      egoSecureAttributes: Redacted.make(
+        decodeSecureAttributes(row.egoSecureAttributes),
+      ),
       studyState: decodeStudyState(row.studyState),
     };
   }, sqlErrorsOnly);
@@ -538,7 +548,7 @@ export const loadSessionContext: (
 export type SessionProgress = {
   readonly stageIndex: number;
   readonly stageId: string | null;
-  readonly stageMetadata: Readonly<Record<string, unknown>>;
+  readonly stageMetadata: Redacted.Redacted<Readonly<Record<string, unknown>>>;
   readonly ego: EgoColumns;
 };
 
@@ -555,7 +565,7 @@ export const recordProgress: (
     .set({
       currentStageIndex: progress.stageIndex,
       currentStageId: progress.stageId,
-      stageMetadata: progress.stageMetadata,
+      stageMetadata: Redacted.value(progress.stageMetadata),
       egoUid: progress.ego.egoUid,
       egoAttributes: progress.ego.egoAttributes,
       egoSecureAttributes: progress.ego.egoSecureAttributes,

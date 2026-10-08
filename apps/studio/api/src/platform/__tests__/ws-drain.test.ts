@@ -93,8 +93,12 @@ describe('WebSocketDrain', () => {
           yield* Fiber.interrupt(held);
         }).pipe(Effect.provide(logs.layer));
 
-        expect(logs.messages).toContain(
-          'Closing with 1 WebSocket connection(s) still open after 5 seconds.',
+        expect(logs.records).toContainEqual(
+          expect.objectContaining({
+            message:
+              'Closing with WebSocket connections still open after the drain timeout.',
+            annotations: { open_connections: 1, drain_timeout: '5 seconds' },
+          }),
         );
       }),
   );

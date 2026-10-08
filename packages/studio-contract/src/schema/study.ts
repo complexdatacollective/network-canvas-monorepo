@@ -1,7 +1,7 @@
 import { Schema } from 'effect';
 
 import { DraftId, ProtocolId, StudyId, TeamId } from './ids.ts';
-import { NonBlankString, NonNegativeInt } from './primitives.ts';
+import { NonBlankString, NonNegativeInt, PrivateString } from './primitives.ts';
 import { problemFields } from './problem.ts';
 import { TeamScoped } from './team.ts';
 
@@ -15,11 +15,13 @@ export const StudyParticipationMode = Schema.Literals(
 );
 export type StudyParticipationMode = (typeof StudyParticipationMode)['Type'];
 
-export const StudyName = NonBlankString(320, 'Study name');
+export const StudyName = Schema.RedactedFromValue(
+  NonBlankString(320, 'Study name'),
+);
 
 export const StudySummary = Schema.Struct({
   id: StudyId,
-  name: Schema.String,
+  name: PrivateString,
   state: StudyState,
   participationMode: StudyParticipationMode,
   protocolId: Schema.NullOr(ProtocolId),

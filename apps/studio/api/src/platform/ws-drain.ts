@@ -43,7 +43,12 @@ export class WebSocketDrain extends Context.Service<
             orElse: Effect.fnUntraced(function* () {
               const stuck = yield* Ref.get(entered);
               yield* Effect.logWarning(
-                `Closing with ${stuck} WebSocket connection(s) still open after ${DRAIN_TIMEOUT}.`,
+                'Closing with WebSocket connections still open after the drain timeout.',
+              ).pipe(
+                Effect.annotateLogs({
+                  open_connections: stuck,
+                  drain_timeout: DRAIN_TIMEOUT,
+                }),
               );
             }),
           }),

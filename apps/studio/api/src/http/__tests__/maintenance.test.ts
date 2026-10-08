@@ -1038,11 +1038,13 @@ describe('a schema reading across a closure', () => {
             assert.strictEqual(triggerOf(yield* closure), UNREAD);
             yield* TestClock.adjust(Duration.millis(1001));
           }
-          const failures = logs.messages.filter((line) =>
-            line.includes('could not read the schema fingerprint'),
+          const failures = logs.records.filter(
+            ({ message, annotations }) =>
+              message.startsWith('could not take a reading') &&
+              annotations['reading'] === 'the schema fingerprint',
           );
           assert.strictEqual(failures.length, 1);
-          assert.include(failures[0]!, 'ECONNREFUSED');
+          assert.strictEqual(failures[0]!.annotations['error_type'], 'Error');
         }),
       ).pipe(Effect.provide(logs.layer));
     },

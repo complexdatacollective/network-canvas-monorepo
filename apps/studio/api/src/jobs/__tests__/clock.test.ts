@@ -22,12 +22,8 @@ describe('the job clock’s skew measurement', () => {
 
 describe('what a measured skew is worth warning about', () => {
   it('warns at a minute in either direction', () => {
-    expect(skewWarning(60_000)).toBe(
-      'the job clock is 60.0s behind the database; job timestamps are being corrected by that much',
-    );
-    expect(skewWarning(-60_000)).toBe(
-      'the job clock is 60.0s ahead of the database; job timestamps are being corrected by that much',
-    );
+    expect(skewWarning(60_000)).toBe('behind');
+    expect(skewWarning(-60_000)).toBe('ahead');
   });
 
   it('says nothing a millisecond under it', () => {

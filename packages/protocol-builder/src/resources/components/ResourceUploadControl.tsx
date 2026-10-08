@@ -1,3 +1,4 @@
+import { Redacted } from 'effect';
 import { Upload } from 'lucide-react';
 import { useCallback, useEffect, useId, useState, type DragEvent } from 'react';
 import { v4 as uuid } from 'uuid';
@@ -279,7 +280,7 @@ export default function ResourceUploadControl({
         (descriptor) => {
           setStatus(
             createMessageError(messages.importedAnnouncement, {
-              name: descriptor.name,
+              name: Redacted.value(descriptor.name),
             }),
           );
           onStaged(descriptor);

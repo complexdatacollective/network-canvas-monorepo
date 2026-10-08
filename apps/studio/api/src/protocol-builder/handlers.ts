@@ -5,6 +5,7 @@ import {
   Effect,
   Option,
   Predicate,
+  Redacted,
   Result,
   Schedule,
   Semaphore,
@@ -190,7 +191,8 @@ export const ProtocolBuilderHandlers: Layer.Layer<
           session.protocolId,
           readSection(session, makeSectionId({ kind: 'assets' })),
         ),
-        (assets) => assets?.document ?? {},
+        (assets) =>
+          assets === undefined ? {} : Redacted.value(assets.document),
       );
 
     /**
@@ -223,7 +225,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
               makeSectionId({ kind: 'assets' }),
             );
             const outcome = committedInspection(
-              assets?.document ?? {},
+              assets === undefined ? {} : Redacted.value(assets.document),
               resourceId,
             );
             if (outcome.status !== 'ok') return outcome;
@@ -448,7 +450,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
           Effect.gen(function* () {
             const result = yield* command(
               protocolId,
-              submit(session, sectionId, document, {
+              submit(session, sectionId, Redacted.value(document), {
                 requestId,
                 ...(planned === undefined || promote === undefined
                   ? {}
@@ -545,7 +547,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
               create(session, {
                 requestId,
                 kind,
-                document,
+                document: Redacted.value(document),
                 ...(position === undefined ? {} : { position }),
                 ...(planned === undefined || promote === undefined
                   ? {}

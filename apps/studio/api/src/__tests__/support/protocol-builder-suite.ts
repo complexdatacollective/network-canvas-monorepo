@@ -9,12 +9,18 @@ import {
   Exit,
   Layer,
   Option,
+  Redacted,
+  Schema,
   Scope,
   Stream,
 } from 'effect';
 import { afterAll, beforeAll } from 'vitest';
 
-import { type ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
+import {
+  type ProtocolEvent,
+  ResourceDescriptorSchema,
+  ResourcePreviewSchema,
+} from '@codaco/protocol-builder-core/contract/schemas';
 import { type CurrentProtocol } from '@codaco/protocol-validation';
 import { TEAM_GUC } from '@codaco/studio-sync/rls';
 import {
@@ -79,9 +85,9 @@ function researcher(slug: string): Researcher {
     principal: {
       kind: 'user',
       userId: `pb-${slug}-user`,
-      email: `pb-${slug}@example.com`,
+      email: Redacted.make(`pb-${slug}@example.com`),
       emailVerified: true,
-      name: `Researcher ${slug}`,
+      name: Redacted.make(`Researcher ${slug}`),
       locale: null,
       sessionId: `pb-${slug}-session`,
     },
@@ -121,6 +127,9 @@ function subjectTypeOf(stage: unknown): string | undefined {
   const type = (subject as { type?: unknown } | null | undefined)?.type;
   return typeof type === 'string' ? type : undefined;
 }
+
+export const plainDescriptor = Schema.encodeSync(ResourceDescriptorSchema);
+export const plainPreview = Schema.encodeSync(ResourcePreviewSchema);
 
 export function formFields(stage: unknown): unknown[] | undefined {
   const form: unknown = (stage as { form?: unknown }).form;
@@ -405,12 +414,12 @@ export function setupProtocolBuilderSuite() {
         protocolId,
         requestId: randomUUID(),
         kind: 'stage',
-        document: {
+        document: Redacted.make({
           type: 'Information',
           label: enUS(label),
           title: enUS(label),
           items: [],
-        },
+        }),
       }),
     );
 
@@ -614,7 +623,11 @@ export function setupProtocolBuilderSuite() {
         ownerAffected(
           `INSERT INTO "user" (id, name, email, "emailVerified")
            VALUES ($1, $2, $3, true)`,
-          [who.principal.userId, who.principal.name, who.principal.email],
+          [
+            who.principal.userId,
+            Redacted.value(who.principal.name),
+            Redacted.value(who.principal.email),
+          ],
         ),
       );
       await database.run(
@@ -812,7 +825,11 @@ export function setupProtocolBuilderSuite() {
       ownerAffected(
         `INSERT INTO "user" (id, name, email, "emailVerified")
          VALUES ($1, $2, $3, true) ON CONFLICT (id) DO NOTHING`,
-        [who.principal.userId, who.principal.name, who.principal.email],
+        [
+          who.principal.userId,
+          Redacted.value(who.principal.name),
+          Redacted.value(who.principal.email),
+        ],
       ),
     );
     const restore = () =>
@@ -838,12 +855,12 @@ export function setupProtocolBuilderSuite() {
         protocolId,
         requestId: randomUUID(),
         kind: 'stage',
-        document: {
+        document: Redacted.make({
           type: 'Information',
           label: enUS(label),
           title: enUS(label),
           items: [],
-        },
+        }),
       }),
     );
 

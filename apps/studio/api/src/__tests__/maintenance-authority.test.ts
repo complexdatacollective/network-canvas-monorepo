@@ -1,4 +1,6 @@
 import { readFileSync } from 'node:fs';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -235,6 +237,70 @@ describe.skipIf(!db)('studio-api maintenance on|off', () => {
       expect(await flag(scratch)).toEqual([
         { maintenance: false, reason: null },
       ]);
+    },
+    CASE_TIMEOUT_MS,
+  );
+
+  it(
+    'stamps its exported telemetry with the installation id it reads',
+    async () => {
+      if (!db) throw new Error('unreachable: probe guaranteed a database');
+      const scratch = await ownedScratchDatabaseForTest(db);
+      const document = committedDocument();
+      await Effect.runPromise(
+        migrateDatabaseEffect(
+          Effect.runSync(verifyMigrations(document, document.fingerprint)),
+          { appliedBy: 'test' },
+        ).pipe(
+          Effect.provide(
+            OwnerDatabase.layer({
+              url: scratch.db.url,
+              applicationName: 'studio-maintenance-authority-test',
+            }),
+          ),
+        ),
+      );
+      const [installation] = (
+        await scratch.admin.query<{ installation_id: string }>(
+          'insert into installation (id) values (1) on conflict (id) do update set id = excluded.id returning installation_id',
+        )
+      ).rows;
+      const bodies: string[] = [];
+      const sink = createServer((request, response) => {
+        const chunks: Buffer[] = [];
+        request.on('data', (chunk: Buffer) => chunks.push(chunk));
+        request.on('end', () => {
+          bodies.push(Buffer.concat(chunks).toString('utf8'));
+          response.writeHead(200, { 'content-type': 'application/json' });
+          response.end('{}');
+        });
+      });
+      await new Promise<void>((listening) =>
+        sink.listen(0, '127.0.0.1', () => listening()),
+      );
+      const { port } = sink.address() as AddressInfo;
+      try {
+        const run = startEntrypoint(
+          'src/maintenance.ts',
+          {
+            DATABASE_URL: scratch.db.url,
+            STUDIO_TELEMETRY: 'true',
+            OTEL_EXPORTER_OTLP_ENDPOINT: `http://127.0.0.1:${port}`,
+          },
+          ['off'],
+        );
+        const exit = await run.exited;
+        expect({ code: exit.code, signal: exit.signal }, run.output()).toEqual({
+          code: 0,
+          signal: null,
+        });
+        expect(bodies.length).toBeGreaterThan(0);
+        expect(bodies.join('\n')).toContain(
+          `{"key":"studio.installation_id","value":{"stringValue":"${installation?.installation_id}"}}`,
+        );
+      } finally {
+        await new Promise<void>((closed) => sink.close(() => closed()));
+      }
     },
     CASE_TIMEOUT_MS,
   );

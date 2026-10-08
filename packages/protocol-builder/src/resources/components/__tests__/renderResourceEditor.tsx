@@ -21,12 +21,12 @@ import {
   useResourceClient,
   type ResourceClient,
 } from '../../client.tsx';
-import type { ResourceDescriptor } from '../../types.ts';
 import { TEST_EDIT_ID } from './resourceContext.tsx';
 import {
   committedManifest,
   createResourceHost,
   stagedResources,
+  type PlainDescriptor,
   STAGE_SECTION,
   type ResourceHostSeed,
 } from './resourceHost.ts';
@@ -68,7 +68,7 @@ export type RenderedResourceEditor = Readonly<{
    */
   resourceClient: () => ResourceClient;
   /** What the host says is staged right now. */
-  staged: () => Promise<readonly ResourceDescriptor[]>;
+  staged: () => Promise<readonly PlainDescriptor[]>;
   /** The protocol's own asset manifest, as the host currently holds it. */
   manifest: () => SectionDoc;
 }>;

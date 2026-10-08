@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import { Effect } from 'effect';
+import { Effect, Redacted, Schema } from 'effect';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { MAX_UPLOAD_BYTES } from '@codaco/studio-contract/limits';
@@ -9,6 +9,7 @@ import {
   ProtocolId,
   TeamId,
 } from '@codaco/studio-contract/schema/ids';
+import { ProtocolDraft } from '@codaco/studio-contract/schema/protocol';
 
 import { type Studio } from '../app.ts';
 import { TenantScope } from '../db/tenant.ts';
@@ -27,6 +28,8 @@ import {
   holdingStaging,
   latch,
   OTHER_EDIT,
+  plainDescriptor,
+  plainPreview,
   setupProtocolBuilderSuite,
   STAGE_ORDER,
   TEAM_ID,
@@ -76,7 +79,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         editId: EDIT,
         requestId: 'promoted-secret',
-        request: { kind: 'secret', name: 'Mapbox token', value: 'pk.secret' },
+        request: {
+          kind: 'secret',
+          name: Redacted.make('Mapbox token'),
+          value: Redacted.make('pk.secret'),
+        },
       }),
     );
     if (staged.status !== 'ok') throw new Error('staging failed');
@@ -91,7 +98,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         requestId: randomUUID(),
         sectionId: stage.sectionId,
-        document: { ...held.document, label: enUS('Names a secret') },
+        document: Redacted.make({
+          ...Redacted.value(held.document),
+          label: enUS('Names a secret'),
+        }),
         revision: held.revision,
         promote: { editId: EDIT, resourceIds: [staged.data.descriptor.id] },
       }),
@@ -104,7 +114,9 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('GetSection', { protocolId, sectionId: ASSETS }),
     );
-    expect(assets.document[staged.data.descriptor.id]).toMatchObject({
+    expect(
+      Redacted.value(assets.document)[staged.data.descriptor.id],
+    ).toMatchObject({
       name: 'Mapbox token',
       type: 'apikey',
     });
@@ -134,7 +146,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           protocolId,
           requestId: randomUUID(),
           sectionId: stage.sectionId,
-          document: { ...held.document, label: enUS('Renamed') },
+          document: Redacted.make({
+            ...Redacted.value(held.document),
+            label: enUS('Renamed'),
+          }),
           revision: held.revision,
           promote: { editId: EDIT, resourceIds: ['never-staged'] },
         }),
@@ -150,7 +165,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('GetSection', { protocolId, sectionId: stage.sectionId }),
     );
-    expect(after.document.label).toEqual(
+    expect(Redacted.value(after.document).label).toEqual(
       enUS('Renamed beside a bad promotion'),
     );
     expect(after.revision).toEqual(held.revision);
@@ -158,7 +173,9 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('GetSection', { protocolId, sectionId: ASSETS }),
     );
-    expect(assets.document).toEqual(assetsBefore.document);
+    expect(Redacted.value(assets.document)).toEqual(
+      Redacted.value(assetsBefore.document),
+    );
     await call(
       ADA,
       host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
@@ -175,8 +192,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         requestId: 'readable-secret',
         request: {
           kind: 'secret',
-          name: 'Readable token',
-          value: 'pk.readable',
+          name: Redacted.make('Readable token'),
+          value: Redacted.make('pk.readable'),
         },
       }),
     );
@@ -187,9 +204,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('ResourcesInspect', { protocolId, editId: EDIT, resourceId }),
     );
-    expect(whileStaged.status === 'ok' && whileStaged.data.value).toBe(
-      'pk.readable',
-    );
+    expect(
+      whileStaged.status === 'ok' &&
+        whileStaged.data.value !== undefined &&
+        Redacted.value(whileStaged.data.value),
+    ).toBe('pk.readable');
 
     const held = await call(
       ADA,
@@ -201,7 +220,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         requestId: randomUUID(),
         sectionId: stage.sectionId,
-        document: { ...held.document, label: enUS('Reads its key back') },
+        document: Redacted.make({
+          ...Redacted.value(held.document),
+          label: enUS('Reads its key back'),
+        }),
         revision: held.revision,
         promote: { editId: EDIT, resourceIds: [resourceId] },
       }),
@@ -211,9 +233,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('ResourcesInspect', { protocolId, resourceId }),
     );
-    expect(committed.status === 'ok' && committed.data.value).toBe(
-      'pk.readable',
-    );
+    expect(
+      committed.status === 'ok' &&
+        committed.data.value !== undefined &&
+        Redacted.value(committed.data.value),
+    ).toBe('pk.readable');
     await call(
       ADA,
       host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
@@ -231,7 +255,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         editId: EDIT,
         requestId: 'sealed-secret',
-        request: { kind: 'secret', name: 'Sealed token', value: SECRET },
+        request: {
+          kind: 'secret',
+          name: Redacted.make('Sealed token'),
+          value: Redacted.make(SECRET),
+        },
       }),
     );
     if (staged.status !== 'ok') throw new Error('staging failed');
@@ -247,7 +275,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         requestId: randomUUID(),
         sectionId: stage.sectionId,
-        document: { ...held.document, label: enUS('Seals its key') },
+        document: Redacted.make({
+          ...Redacted.value(held.document),
+          label: enUS('Seals its key'),
+        }),
         revision: held.revision,
         promote: { editId: EDIT, resourceIds: [resourceId] },
       }),
@@ -261,9 +292,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('GetSection', { protocolId, sectionId: ASSETS }),
     );
-    const entry = (manifest?.document as Record<string, unknown> | undefined)?.[
-      resourceId
-    ];
+    const entry =
+      manifest === undefined
+        ? undefined
+        : Redacted.value(manifest.document)[resourceId];
     expect(entry).toEqual({ name: 'Sealed token', type: 'apikey' });
 
     const sealed = await teamRows(
@@ -280,7 +312,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             teamId: TEAM_ID,
             protocolId,
             assetId: resourceId,
-          }),
+          }).pipe(Effect.map((key) => key && Redacted.value(key))),
         ),
       ),
     ).resolves.toBe(SECRET);
@@ -305,7 +337,9 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         draftId: DraftId.make(draftId),
       }),
     );
-    expect(JSON.stringify(draft)).not.toContain(SECRET);
+    expect(
+      JSON.stringify(Schema.encodeSync(ProtocolDraft)(draft)),
+    ).not.toContain(SECRET);
   });
 
   it('admits a submit of the assets section carrying a redacted API key', async () => {
@@ -317,7 +351,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         editId: EDIT,
         requestId: 'redacted-beside',
-        request: { kind: 'secret', name: 'Beside token', value: SECRET },
+        request: {
+          kind: 'secret',
+          name: Redacted.make('Beside token'),
+          value: Redacted.make(SECRET),
+        },
       }),
     );
     if (staged.status !== 'ok') throw new Error('staging failed');
@@ -332,7 +370,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         requestId: randomUUID(),
         sectionId: stage.sectionId,
-        document: { ...held.document, label: enUS('Keeps its key') },
+        document: Redacted.make({
+          ...Redacted.value(held.document),
+          label: enUS('Keeps its key'),
+        }),
         revision: held.revision,
         promote: { editId: EDIT, resourceIds: [resourceId] },
       }),
@@ -346,7 +387,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('AcquireLock', { protocolId, sectionId: ASSETS }),
     );
-    expect((manifest.document as Record<string, unknown>)[resourceId]).toEqual({
+    expect(Redacted.value(manifest.document)[resourceId]).toEqual({
       name: 'Beside token',
       type: 'apikey',
     });
@@ -357,14 +398,14 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         requestId: randomUUID(),
         sectionId: ASSETS,
-        document: {
-          ...manifest.document,
+        document: Redacted.make({
+          ...Redacted.value(manifest.document),
           districts: {
             name: 'Districts',
             type: 'geojson',
             source: 'districts.geojson',
           },
-        },
+        }),
         revision: manifest.revision,
       }),
     );
@@ -386,7 +427,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             teamId: TEAM_ID,
             protocolId,
             assetId: resourceId,
-          }),
+          }).pipe(Effect.map((key) => key && Redacted.value(key))),
         ),
       ),
     ).resolves.toBe(SECRET);
@@ -399,7 +440,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         editId: EDIT,
         requestId: 'discarded-secret',
-        request: { kind: 'secret', name: 'Throwaway', value: 'pk.throwaway' },
+        request: {
+          kind: 'secret',
+          name: Redacted.make('Throwaway'),
+          value: Redacted.make('pk.throwaway'),
+        },
       }),
     );
     if (staged.status !== 'ok') throw new Error('staging failed');
@@ -440,7 +485,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         editId: EDIT,
         requestId: 'created-with-secret',
-        request: { kind: 'secret', name: 'Created token', value: 'pk.created' },
+        request: {
+          kind: 'secret',
+          name: Redacted.make('Created token'),
+          value: Redacted.make('pk.created'),
+        },
       }),
     );
     if (staged.status !== 'ok') throw new Error('staging failed');
@@ -451,12 +500,12 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         requestId: randomUUID(),
         kind: 'stage',
-        document: {
+        document: Redacted.make({
           type: 'Information',
           label: enUS('Carries a secret'),
           title: enUS('Carries a secret'),
           items: [],
-        },
+        }),
         promote: { editId: EDIT, resourceIds: [staged.data.descriptor.id] },
       }),
     );
@@ -468,7 +517,9 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('GetSection', { protocolId, sectionId: ASSETS }),
     );
-    expect(assets.document[staged.data.descriptor.id]).toMatchObject({
+    expect(
+      Redacted.value(assets.document)[staged.data.descriptor.id],
+    ).toMatchObject({
       name: 'Created token',
       type: 'apikey',
     });
@@ -494,12 +545,12 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           protocolId,
           requestId: randomUUID(),
           kind: 'stage',
-          document: {
+          document: Redacted.make({
             type: 'Information',
             label: enUS('Never made'),
             title: enUS('Never made'),
             items: [],
-          },
+          }),
           promote: { editId: EDIT, resourceIds: ['never-staged'] },
         }),
       ),
@@ -515,7 +566,9 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
     );
-    expect(after.document.stages).toEqual(before.document.stages);
+    expect(Redacted.value(after.document).stages).toEqual(
+      Redacted.value(before.document).stages,
+    );
   });
 
   it('replays what a retried promoting submit already wrote', async () => {
@@ -528,8 +581,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         requestId: 'retried-submit-secret',
         request: {
           kind: 'secret',
-          name: 'Resubmitted',
-          value: 'pk.resubmitted',
+          name: Redacted.make('Resubmitted'),
+          value: Redacted.make('pk.resubmitted'),
         },
       }),
     );
@@ -549,7 +602,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         requestId,
         sectionId: stage.sectionId,
-        document: { ...held.document, label: enUS('Saved once') },
+        document: Redacted.make({
+          ...Redacted.value(held.document),
+          label: enUS('Saved once'),
+        }),
         revision: held.revision,
         promote,
       }),
@@ -565,7 +621,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         requestId,
         sectionId: stage.sectionId,
-        document: { ...held.document, label: enUS('Saved once') },
+        document: Redacted.make({
+          ...Redacted.value(held.document),
+          label: enUS('Saved once'),
+        }),
         revision: held.revision,
         promote,
       }),
@@ -584,7 +643,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         editId: EDIT,
         requestId: 'two-edits-secret',
-        request: { kind: 'secret', name: 'One edit’s token', value: 'pk.one' },
+        request: {
+          kind: 'secret',
+          name: Redacted.make('One edit’s token'),
+          value: Redacted.make('pk.one'),
+        },
       }),
     );
     if (staged.status !== 'ok') throw new Error('staging failed');
@@ -644,7 +707,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         editId: EDIT,
         requestId: 'not-this-edits-secret',
-        request: { kind: 'secret', name: 'Not yours', value: 'pk.notyours' },
+        request: {
+          kind: 'secret',
+          name: Redacted.make('Not yours'),
+          value: Redacted.make('pk.notyours'),
+        },
       }),
     );
     if (staged.status !== 'ok') throw new Error('staging failed');
@@ -689,8 +756,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         requestId: 'unnamed-edit-secret',
         request: {
           kind: 'secret',
-          name: 'Still an import',
-          value: 'pk.import',
+          name: Redacted.make('Still an import'),
+          value: Redacted.make('pk.import'),
         },
       }),
     );
@@ -719,10 +786,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         request: {
           kind: 'content',
           contentKind: 'image',
-          name: 'Nook',
-          source: 'nook.png',
+          name: Redacted.make('Nook'),
+          source: Redacted.make('nook.png'),
           contentType: 'image/png',
-          bytes,
+          bytes: Redacted.make(bytes),
         },
       }),
     );
@@ -751,17 +818,21 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('GetSection', { protocolId, sectionId: ASSETS }),
     );
-    expect(assets.document[resourceId]).toEqual({
+    expect(Redacted.value(assets.document)[resourceId]).toEqual({
       name: 'Nook',
       type: 'image',
       source,
     });
-    expect(written.promoted).toEqual([
+    expect(
+      written.promoted?.map((descriptor) => plainDescriptor(descriptor)),
+    ).toEqual([
       expect.objectContaining({ id: resourceId, status: 'committed', source }),
     ]);
     const listed = await call(ADA, host.rpc('ResourcesList', { protocolId }));
     if (listed.status !== 'ok') throw new Error('listing failed');
-    expect(listed.data.resources).toContainEqual(
+    expect(
+      listed.data.resources.map((descriptor) => plainDescriptor(descriptor)),
+    ).toContainEqual(
       expect.objectContaining({
         id: resourceId,
         name: 'Nook',
@@ -773,10 +844,9 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('ResourcesPreview', { protocolId, resourceId }),
     );
-    expect(preview).toMatchObject({
-      status: 'ok',
-      data: { url: `/storage/${digest}` },
-    });
+    expect(
+      preview.status === 'ok' ? plainPreview(preview.data) : preview,
+    ).toMatchObject({ url: `/storage/${digest}` });
     await call(
       ADA,
       host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
@@ -790,7 +860,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         editId: EDIT,
         requestId: 'grace-keeps-this',
-        request: { kind: 'secret', name: 'Grace’s token', value: 'pk.grace' },
+        request: {
+          kind: 'secret',
+          name: Redacted.make('Grace’s token'),
+          value: Redacted.make('pk.grace'),
+        },
       }),
     );
     if (staged.status !== 'ok') throw new Error('staging failed');
@@ -832,10 +906,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         request: {
           kind: 'content',
           contentKind: 'image',
-          name: 'A photograph',
-          source: 'photo.png',
+          name: Redacted.make('A photograph'),
+          source: Redacted.make('photo.png'),
           contentType: 'image/png',
-          bytes,
+          bytes: Redacted.make(bytes),
         },
       }),
     );
@@ -880,7 +954,9 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         second.rpc('ResourcesList', { protocolId, editId: edit }),
       );
       if (listed.status !== 'ok') throw new Error(listed.failure.message);
-      expect(listed.data.resources).toContainEqual(
+      expect(
+        listed.data.resources.map((descriptor) => plainDescriptor(descriptor)),
+      ).toContainEqual(
         expect.objectContaining({ id: resourceId, status: 'staged' }),
       );
       const preview = await second.call(
@@ -891,12 +967,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           resourceId,
         }),
       );
-      expect(preview).toEqual({
-        status: 'ok',
-        data: {
-          resourceId,
-          url: `data:image/png;base64,${Buffer.from(bytes).toString('base64')}`,
-        },
+      expect(
+        preview.status === 'ok' ? plainPreview(preview.data) : preview,
+      ).toEqual({
+        resourceId,
+        url: `data:image/png;base64,${Buffer.from(bytes).toString('base64')}`,
       });
 
       const stage = await createStage(ADA, 'Promoted on another replica');
@@ -916,7 +991,9 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         }),
       );
       const digest = createHash('sha256').update(bytes).digest('hex');
-      expect(written.promoted).toEqual([
+      expect(
+        written.promoted?.map((descriptor) => plainDescriptor(descriptor)),
+      ).toEqual([
         expect.objectContaining({
           id: resourceId,
           status: 'committed',
@@ -1107,10 +1184,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           request: {
             kind: 'content',
             contentKind: 'image',
-            name: 'A photograph',
-            source: 'photo.png',
+            name: Redacted.make('A photograph'),
+            source: Redacted.make('photo.png'),
             contentType: 'image/png',
-            bytes: new Uint8Array([9, 9, 9]),
+            bytes: Redacted.make(new Uint8Array([9, 9, 9])),
           },
         }),
         { signal: abort.signal },
@@ -1139,7 +1216,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         editId: edit,
         requestId: 'gone-before-write',
-        request: { kind: 'secret', name: 'Discarded', value: 'pk.discarded' },
+        request: {
+          kind: 'secret',
+          name: Redacted.make('Discarded'),
+          value: Redacted.make('pk.discarded'),
+        },
       }),
     );
     if (staged.status !== 'ok') throw new Error('staging failed');
@@ -1162,7 +1243,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           protocolId,
           requestId: randomUUID(),
           sectionId: stage.sectionId,
-          document: { ...held.document, label: enUS('Renamed') },
+          document: Redacted.make({
+            ...Redacted.value(held.document),
+            label: enUS('Renamed'),
+          }),
           revision: held.revision,
           promote: { editId: edit, resourceIds: [resourceId] },
         }),
@@ -1188,7 +1272,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         ADA,
         host.rpc('GetSection', { protocolId, sectionId: ASSETS }),
       );
-      expect(assets.document[resourceId]).toBeUndefined();
+      expect(Redacted.value(assets.document)[resourceId]).toBeUndefined();
     } finally {
       await other.dispose();
       await call(
@@ -1209,10 +1293,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         request: {
           kind: 'content',
           contentKind: 'image',
-          name: 'A photograph with no pixels',
-          source: 'blank.png',
+          name: Redacted.make('A photograph with no pixels'),
+          source: Redacted.make('blank.png'),
           contentType: 'image/png',
-          bytes: new Uint8Array(0),
+          bytes: Redacted.make(new Uint8Array(0)),
         },
       }),
     );
@@ -1240,10 +1324,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         request: {
           kind: 'content',
           contentKind: 'image',
-          name: 'A photograph nobody can send',
-          source: 'huge.png',
+          name: Redacted.make('A photograph nobody can send'),
+          source: Redacted.make('huge.png'),
           contentType: 'image/png',
-          bytes: new Uint8Array(MAX_UPLOAD_BYTES + 1),
+          bytes: Redacted.make(new Uint8Array(MAX_UPLOAD_BYTES + 1)),
         },
       }),
     );
@@ -1271,11 +1355,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         request: {
           kind: 'content',
           contentKind: 'network',
-          name: 'People',
-          source: 'people.csv',
+          name: Redacted.make('People'),
+          source: Redacted.make('people.csv'),
           contentType: 'text/csv',
-          bytes: new TextEncoder().encode(
-            `name\nGr${String.fromCharCode(7)}ace\n`,
+          bytes: Redacted.make(
+            new TextEncoder().encode(`name\nGr${String.fromCharCode(7)}ace\n`),
           ),
         },
       }),
@@ -1317,10 +1401,12 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         request: {
           kind: 'content',
           contentKind: 'network',
-          name: 'People',
-          source: 'people.csv',
+          name: Redacted.make('People'),
+          source: Redacted.make('people.csv'),
           contentType: 'text/csv',
-          bytes: new TextEncoder().encode('caf\u00e9,cafe\u0301\nAda,36\n'),
+          bytes: Redacted.make(
+            new TextEncoder().encode('caf\u00e9,cafe\u0301\nAda,36\n'),
+          ),
         },
       }),
     );
@@ -1356,10 +1442,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         request: {
           kind: 'content',
           contentKind: 'image',
-          name: 'A photograph',
-          source: 'photo.png',
+          name: Redacted.make('A photograph'),
+          source: Redacted.make('photo.png'),
           contentType: 'image/png',
-          bytes: new Uint8Array([9, 9, 9]),
+          bytes: Redacted.make(new Uint8Array([9, 9, 9])),
         },
       }),
     );
@@ -1382,7 +1468,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           protocolId,
           requestId: randomUUID(),
           sectionId: stage.sectionId,
-          document: { ...held.document, label: enUS('Renamed with a file') },
+          document: Redacted.make({
+            ...Redacted.value(held.document),
+            label: enUS('Renamed with a file'),
+          }),
           revision: held.revision,
           promote,
         }),
@@ -1406,7 +1495,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         requestId: randomUUID(),
         sectionId: stage.sectionId,
-        document: { ...held.document, label: enUS('Renamed with a file') },
+        document: Redacted.make({
+          ...Redacted.value(held.document),
+          label: enUS('Renamed with a file'),
+        }),
         revision: held.revision,
         promote,
       }),
@@ -1430,7 +1522,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         editId: OTHER_EDIT,
         requestId: randomUUID(),
-        request: { kind: 'secret', name: 'Committed', value: 'pk.committed' },
+        request: {
+          kind: 'secret',
+          name: Redacted.make('Committed'),
+          value: Redacted.make('pk.committed'),
+        },
       }),
     );
     if (staged.status !== 'ok') throw new Error('staging failed');

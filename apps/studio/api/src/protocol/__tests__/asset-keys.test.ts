@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { and, eq } from 'drizzle-orm';
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { NOT_REFUSED } from '../../__tests__/support/database.ts';
@@ -44,7 +44,7 @@ describe('stripAssetKeyValues', () => {
     const { doc, values } = stripAssetKeyValues(assetsDoc());
 
     expect(doc.mapKey).toEqual({ name: 'Mapbox token', type: 'apikey' });
-    expect(values.get('mapKey')).toBe(MAPBOX_KEY);
+    expect(Redacted.value(values.get('mapKey')!)).toBe(MAPBOX_KEY);
     expect(values.size).toBe(1);
   });
 
@@ -156,7 +156,7 @@ describe.skipIf(!storeDb)('protocol_asset_keys', () => {
       sealAssetKeys(
         cipher,
         { teamId: TEST_TEAM_ID, protocolId },
-        new Map([[assetId, value]]),
+        new Map([[assetId, Redacted.make(value)]]),
       ),
     );
 
@@ -169,7 +169,7 @@ describe.skipIf(!storeDb)('protocol_asset_keys', () => {
           teamId: TEST_TEAM_ID,
           protocolId,
           assetId: 'roundTrip',
-        }),
+        }).pipe(Effect.map((key) => key && Redacted.value(key))),
       ),
     ).resolves.toBe(MAPBOX_KEY);
   });
@@ -231,7 +231,7 @@ describe.skipIf(!storeDb)('protocol_asset_keys', () => {
           teamId: TEST_TEAM_ID,
           protocolId,
           assetId: 'rotated',
-        }),
+        }).pipe(Effect.map((key) => key && Redacted.value(key))),
       ),
     ).resolves.toBe('second-value');
   });

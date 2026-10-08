@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Effect } from 'effect';
+import { Effect, type Redacted } from 'effect';
 
 import { TestDatabase } from '../../__tests__/support/database.ts';
 import { TenantScope, type TeamAccess } from '../../db/tenant.ts';
@@ -16,8 +16,14 @@ export type InterviewFixture = {
   readonly versionId: string;
   readonly participantId: string;
   readonly participantCode: string;
-  readonly managedLink: { readonly id: string; readonly token: string };
-  readonly anonymousLink: { readonly id: string; readonly token: string };
+  readonly managedLink: {
+    readonly id: string;
+    readonly token: Redacted.Redacted;
+  };
+  readonly anonymousLink: {
+    readonly id: string;
+    readonly token: Redacted.Redacted;
+  };
 };
 
 export const seedInterviewFixture = Effect.fnUntraced(function* () {

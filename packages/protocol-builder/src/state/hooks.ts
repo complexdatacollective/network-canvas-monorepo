@@ -4,6 +4,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
+import { Redacted } from 'effect';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type {
@@ -12,6 +13,7 @@ import type {
   ResourceGatewayFailureSchema,
   ResourcePromotionRequestSchema,
   Revision,
+  SectionAtRevisionSchema,
   SectionHolderSchema,
   SectionIssueSchema,
 } from '@codaco/protocol-builder-core/contract/schemas';
@@ -36,6 +38,15 @@ export type SectionAtRevision = Readonly<{
   revision: Revision;
 }>;
 
+export type CachedSection = (typeof SectionAtRevisionSchema)['Type'];
+
+function readSection(section: CachedSection): SectionAtRevision {
+  return {
+    document: Redacted.value(section.document),
+    revision: section.revision,
+  };
+}
+
 export type SectionIssue = (typeof SectionIssueSchema)['Type'];
 export type ResourcePromotion = (typeof ResourcePromotionRequestSchema)['Type'];
 export type ResourceFailure = (typeof ResourceGatewayFailureSchema)['Type'];
@@ -50,14 +61,28 @@ const STAGE_ORDER = sectionId({ kind: 'stageOrder' });
  * showing a node type's name and colour is not re-rendered by a change to a
  * variable inside it.
  */
-export function useSection<TSelected = SectionAtRevision>(
+export function useSection(
   id: ProtocolSectionId,
-  select?: (section: SectionAtRevision) => TSelected,
-): TSelected | undefined {
+): SectionAtRevision | undefined;
+export function useSection<TSelected>(
+  id: ProtocolSectionId,
+  select: (section: SectionAtRevision) => TSelected,
+): TSelected | undefined;
+export function useSection(
+  id: ProtocolSectionId,
+  select?: (section: SectionAtRevision) => unknown,
+): unknown {
   const { protocolId, adapter } = useProtocolBuilderContext();
+  const read = useCallback(
+    (section: CachedSection): unknown =>
+      select === undefined
+        ? readSection(section)
+        : select(readSection(section)),
+    [select],
+  );
   const { data } = useQuery({
     ...adapter.rpcQuery('GetSection', { protocolId, sectionId: id }),
-    select,
+    select: read,
   });
   return data;
 }
@@ -86,8 +111,8 @@ export function useEntityTypes(
   return useQueries({
     queries: ids.map((id) => ({
       ...adapter.rpcQuery('GetSection', { protocolId, sectionId: id }),
-      select: (section: SectionAtRevision): EntityTypeSummary =>
-        entityTypeSummary(id, section.document),
+      select: (section: CachedSection): EntityTypeSummary =>
+        entityTypeSummary(id, Redacted.value(section.document)),
     })),
     combine: (results) =>
       results.flatMap((result) =>
@@ -124,8 +149,8 @@ export function useStageIndex(): readonly StageSummary[] {
         protocolId,
         sectionId: sectionId({ kind: 'stage', stageId: id }),
       }),
-      select: (section: SectionAtRevision): StoredStageSummary =>
-        stageSummary(id, section.document),
+      select: (section: CachedSection): StoredStageSummary =>
+        stageSummary(id, Redacted.value(section.document)),
     })),
     combine: (results) =>
       results.flatMap((result) =>
@@ -163,7 +188,7 @@ export function useProtocolRevision(): bigint | undefined {
   return useQueries({
     queries: ids.map((id) => ({
       ...adapter.rpcQuery('GetSection', { protocolId, sectionId: id }),
-      select: (section: SectionAtRevision): bigint => section.revision.sequence,
+      select: (section: CachedSection): bigint => section.revision.sequence,
     })),
     combine: (results) =>
       results.reduce<bigint | undefined>(
@@ -339,7 +364,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
           // has to start from: a cached document from before a revision this
           // client has not seen yet — the channel is reconnecting, say — would
           // be submitted back whole over the newer one.
-          queryClient.setQueryData<SectionAtRevision>(
+          queryClient.setQueryData<CachedSection>(
             adapter.rpcKey('GetSection', { protocolId, sectionId: id }),
             { document: result.document, revision: result.revision },
           );
@@ -393,7 +418,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
         protocolId,
         requestId,
         sectionId: id,
-        document,
+        document: Redacted.make(document),
         revision: section.revision,
         ...(promote === undefined ? {} : { promote }),
       });

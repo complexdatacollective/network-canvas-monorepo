@@ -1,6 +1,13 @@
 import { randomUUID } from 'node:crypto';
 
-import { Cause, type Context, type Effect, Exit, Option } from 'effect';
+import {
+  Cause,
+  type Context,
+  type Effect,
+  Exit,
+  Option,
+  Redacted,
+} from 'effect';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { createStudio, type Studio } from '../app.ts';
@@ -112,10 +119,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         if (Exit.isSuccess(refused)) return;
         expect(Option.isNone(Cause.findErrorOption(refused.cause))).toBe(true);
         expect(
-          logs.messages.filter((line) => line.startsWith('Rate limit reached')),
-        ).toEqual([
-          'Rate limit reached for rpc_user; callers are refused for up to 60s.',
-        ]);
+          logs.records
+            .filter(({ message }) => message.startsWith('Rate limit reached'))
+            .map(({ annotations }) => annotations),
+        ).toEqual([{ scope: 'rpc_user', retry_after_seconds: 60 }]);
       } finally {
         await limited.dispose();
         await store.dispose();
@@ -137,10 +144,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           protocolId,
           requestId: randomUUID(),
           sectionId,
-          document: {
-            ...before.document,
+          document: Redacted.make({
+            ...Redacted.value(before.document),
             label: enUS('Renamed without the lock'),
-          },
+          }),
           revision: before.revision,
         }),
       ),
@@ -151,7 +158,9 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('GetSection', { protocolId, sectionId }),
     );
-    expect(after.document).toEqual(before.document);
+    expect(Redacted.value(after.document)).toEqual(
+      Redacted.value(before.document),
+    );
     expect(after.revision).toEqual(before.revision);
   });
 
@@ -170,7 +179,9 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       expect(second.lock).toBe('readOnly');
       if (second.lock !== 'readOnly') throw new Error('unreachable');
       expect(second.holder.userId).toBe(GRACE.principal.userId);
-      expect(second.holder.displayName).toBe(GRACE.principal.name);
+      expect(Redacted.value(second.holder.displayName)).toBe(
+        Redacted.value(GRACE.principal.name),
+      );
       expect(second.holder.sessionId).toBe(GRACE.connectionId);
     } finally {
       await call(GRACE, host.rpc('ReleaseLock', { protocolId, sectionId }));
@@ -184,7 +195,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       host.rpc('AcquireLock', { protocolId, sectionId }),
     );
     if (held.lock !== 'held') throw new Error('the section was already taken');
-    const document = { ...held.document, label: enUS('Renamed by its holder') };
+    const document = Redacted.make({
+      ...Redacted.value(held.document),
+      label: enUS('Renamed by its holder'),
+    });
     const written = await call(
       ADA,
       host.rpc('Submit', {
@@ -201,7 +215,9 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('GetSection', { protocolId, sectionId }),
     );
-    expect(read.document.label).toEqual(enUS('Renamed by its holder'));
+    expect(Redacted.value(read.document).label).toEqual(
+      enUS('Renamed by its holder'),
+    );
     expect(read.revision.sequence).toBe(written.revision.sequence);
 
     await call(ADA, host.rpc('ReleaseLock', { protocolId, sectionId }));
@@ -218,7 +234,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
     );
-    const orderBefore = before.document.stages;
+    const orderBefore = Redacted.value(before.document).stages;
     if (!Array.isArray(orderBefore))
       throw new Error('stageOrder is not a list');
 
@@ -228,12 +244,12 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         requestId: randomUUID(),
         kind: 'stage',
-        document: {
+        document: Redacted.make({
           type: 'Information',
           label: enUS('Created by the host'),
           title: enUS('Created by the host'),
           items: [],
-        },
+        }),
         position: 1,
       }),
     );
@@ -243,7 +259,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
     );
     const stageId = created.sectionId.slice('stage:'.length);
-    expect(order.document.stages).toEqual([
+    expect(Redacted.value(order.document).stages).toEqual([
       orderBefore[0],
       stageId,
       ...orderBefore.slice(1),
@@ -254,7 +270,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       host.rpc('GetSection', { protocolId, sectionId: created.sectionId }),
     );
     expect(stage.revision.sequence).toBe(created.revision.sequence);
-    expect(stage.document.id).toBe(stageId);
+    expect(Redacted.value(stage.document).id).toBe(stageId);
 
     const listed = await call(ADA, host.rpc('ListSections', { protocolId }));
     expect(listed.sectionIds).toContain(created.sectionId);
@@ -290,7 +306,9 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         (entry) => entry.sectionId === sectionId,
       )?.holder;
       expect(holder?.userId).toBe(GRACE.principal.userId);
-      expect(holder?.displayName).toBe(GRACE.principal.name);
+      expect(holder && Redacted.value(holder.displayName)).toBe(
+        Redacted.value(GRACE.principal.name),
+      );
     } finally {
       await call(GRACE, host.rpc('ReleaseLock', { protocolId, sectionId }));
     }
@@ -298,7 +316,9 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('GetSection', { protocolId, sectionId: codebookSection }),
     );
-    expect(after.document).toEqual(before.document);
+    expect(Redacted.value(after.document)).toEqual(
+      Redacted.value(before.document),
+    );
   });
 
   it('applies a refactor once every section it writes is free', async () => {
@@ -307,7 +327,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('GetSection', { protocolId, sectionId }),
     );
-    const fieldsBefore = formFields(stageBefore.document);
+    const fieldsBefore = formFields(Redacted.value(stageBefore.document));
     if (fieldsBefore === undefined) throw new Error('stage has no form');
     expect(
       fieldsBefore.filter(
@@ -334,7 +354,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       }),
     );
     expect(
-      (codebook.document.variables as Record<string, unknown>)[
+      (Redacted.value(codebook.document).variables as Record<string, unknown>)[
         reference.variableId
       ],
     ).toBeUndefined();
@@ -342,7 +362,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('GetSection', { protocolId, sectionId }),
     );
-    expect(formFields(stage.document)).toEqual(
+    expect(formFields(Redacted.value(stage.document))).toEqual(
       fieldsBefore.filter(
         (field) =>
           (field as { variable?: unknown }).variable !== reference.variableId,
@@ -379,7 +399,9 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('GetSection', { protocolId, sectionId: codebookSection }),
     );
-    expect(after.document).toEqual(before.document);
+    expect(Redacted.value(after.document)).toEqual(
+      Redacted.value(before.document),
+    );
   });
 
   it('removes a stage and its place in the stage order in one revision', async () => {
@@ -396,7 +418,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
     );
-    expect(order.document.stages).not.toContain(stageId);
+    expect(Redacted.value(order.document).stages).not.toContain(stageId);
     expect(order.revision.sequence).toBe(deleted.revision.sequence);
     await expectRpcFailure(
       callExit(
@@ -439,7 +461,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
     );
-    expect(order.document.stages).toContain(
+    expect(Redacted.value(order.document).stages).toContain(
       created.sectionId.slice('stage:'.length),
     );
   });
@@ -457,8 +479,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         requestId: randomUUID(),
         sectionId: source.sectionId,
-        document: {
-          ...held.document,
+        document: Redacted.make({
+          ...Redacted.value(held.document),
           skipLogic: {
             action: 'SKIP',
             filter: {
@@ -471,7 +493,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
               stageId: destination.sectionId.slice('stage:'.length),
             },
           },
-        },
+        }),
         revision: held.revision,
       }),
     );
@@ -497,7 +519,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
     );
-    expect(order.document.stages).toContain(
+    expect(Redacted.value(order.document).stages).toContain(
       destination.sectionId.slice('stage:'.length),
     );
   });
@@ -510,7 +532,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         editId: EDIT,
         requestId: 'blocked-manifest-secret',
-        request: { kind: 'secret', name: 'Blocked token', value: 'pk.blocked' },
+        request: {
+          kind: 'secret',
+          name: Redacted.make('Blocked token'),
+          value: Redacted.make('pk.blocked'),
+        },
       }),
     );
     if (staged.status !== 'ok') throw new Error('staging failed');
@@ -532,7 +558,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             protocolId,
             requestId: randomUUID(),
             sectionId: stage.sectionId,
-            document: { ...held.document, label: enUS('Renamed') },
+            document: Redacted.make({
+              ...Redacted.value(held.document),
+              label: enUS('Renamed'),
+            }),
             revision: held.revision,
             promote: {
               editId: EDIT,
@@ -549,7 +578,9 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         host.rpc('GetSection', { protocolId, sectionId: stage.sectionId }),
       );
       expect(after.revision).toEqual(held.revision);
-      expect(manifest.document[staged.data.descriptor.id]).toBeUndefined();
+      expect(
+        Redacted.value(manifest.document)[staged.data.descriptor.id],
+      ).toBeUndefined();
     } finally {
       await call(
         GRACE,
@@ -581,12 +612,12 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             protocolId,
             requestId: randomUUID(),
             kind: 'stage',
-            document: {
+            document: Redacted.make({
               type: 'Information',
               label: enUS('Never registered'),
               title: enUS('Never registered'),
               items: [],
-            },
+            }),
           }),
         ),
         'SectionsLocked',
@@ -605,7 +636,9 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
     );
-    expect(after.document.stages).toEqual(before.document.stages);
+    expect(Redacted.value(after.document).stages).toEqual(
+      Redacted.value(before.document).stages,
+    );
   });
 
   it('replays the stage a retried create already made, rather than a second one', async () => {
@@ -615,16 +648,20 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         editId: EDIT,
         requestId: 'retried-create-secret',
-        request: { kind: 'secret', name: 'Retried token', value: 'pk.retried' },
+        request: {
+          kind: 'secret',
+          name: Redacted.make('Retried token'),
+          value: Redacted.make('pk.retried'),
+        },
       }),
     );
     if (staged.status !== 'ok') throw new Error('staging failed');
-    const document = {
+    const document = Redacted.make({
       type: 'Information',
       label: enUS('Made once'),
       title: enUS('Made once'),
       items: [],
-    };
+    });
     const promote = {
       editId: EDIT,
       resourceIds: [staged.data.descriptor.id] as const,
@@ -662,7 +699,9 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
     );
-    expect(order.document.stages).toEqual(afterFirst.document.stages);
+    expect(Redacted.value(order.document).stages).toEqual(
+      Redacted.value(afterFirst.document).stages,
+    );
   });
 
   it('replays a retried submit and a retried create that promote nothing', async () => {
@@ -676,7 +715,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       protocolId,
       requestId: submitId,
       sectionId: stage.sectionId,
-      document: { ...held.document, label: enUS('Saved without a promotion') },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: enUS('Saved without a promotion'),
+      }),
       revision: held.revision,
     };
     const written = await call(ADA, host.rpc('Submit', submitted));
@@ -689,12 +731,12 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       protocolId,
       requestId: createId,
       kind: 'stage' as const,
-      document: {
+      document: Redacted.make({
         type: 'Information',
         label: enUS('Made without a promotion'),
         title: enUS('Made without a promotion'),
         items: [],
-      },
+      }),
     };
     const created = await call(ADA, host.rpc('Create', creating));
     const afterFirst = await call(
@@ -712,7 +754,9 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
     );
-    expect(order.document.stages).toEqual(afterFirst.document.stages);
+    expect(Redacted.value(order.document).stages).toEqual(
+      Redacted.value(afterFirst.document).stages,
+    );
   });
 
   it('replays a retried write against a server that restarted in between', async () => {
@@ -725,7 +769,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       protocolId,
       requestId: randomUUID(),
       sectionId: stage.sectionId,
-      document: { ...held.document, label: enUS('Saved before the restart') },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: enUS('Saved before the restart'),
+      }),
       revision: held.revision,
     };
     const written = await call(ADA, host.rpc('Submit', payload));
@@ -777,7 +824,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId: egolessProtocolId,
         requestId: randomUUID(),
         kind: 'codebookEgo',
-        document: {
+        document: Redacted.make({
           variables: {
             ego_age: {
               name: 'ego_age',
@@ -786,7 +833,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
               component: 'Number',
             },
           },
-        },
+        }),
       }),
     );
     expect(created.sectionId).toBe('codebook:ego');
@@ -794,7 +841,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('GetSection', { protocolId: egolessProtocolId, sectionId: EGO }),
     );
-    expect(ego.document.variables).toMatchObject({
+    expect(Redacted.value(ego.document).variables).toMatchObject({
       ego_age: { name: 'ego_age' },
     });
 
@@ -805,7 +852,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           protocolId: egolessProtocolId,
           requestId: randomUUID(),
           kind: 'codebookEgo',
-          document: { variables: {} },
+          document: Redacted.make({ variables: {} }),
         }),
       ),
       'SectionExists',
@@ -815,7 +862,9 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('GetSection', { protocolId: egolessProtocolId, sectionId: EGO }),
     );
-    expect(unchanged.document).toEqual(ego.document);
+    expect(Redacted.value(unchanged.document)).toEqual(
+      Redacted.value(ego.document),
+    );
   });
 
   it('answers a write with the written section’s own content hash', async () => {
@@ -836,10 +885,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         requestId: randomUUID(),
         sectionId: stage.sectionId,
-        document: {
-          ...held.document,
+        document: Redacted.make({
+          ...Redacted.value(held.document),
           label: enUS('Renamed, and hashed as itself'),
-        },
+        }),
         revision: held.revision,
       }),
     );
@@ -882,7 +931,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           protocolId,
           editId: EDIT,
           requestId: randomUUID(),
-          request: { kind: 'secret', name: 'Staged', value: 'pk.removed' },
+          request: {
+            kind: 'secret',
+            name: Redacted.make('Staged'),
+            value: Redacted.make('pk.removed'),
+          },
         }),
     ],
     [
@@ -948,8 +1001,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           requestId: randomUUID(),
           request: {
             kind: 'secret',
-            name: 'Staged before removal',
-            value: 'pk.removed',
+            name: Redacted.make('Staged before removal'),
+            value: Redacted.make('pk.removed'),
           },
         }),
       );
@@ -1098,7 +1151,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       protocolId,
       requestId,
       sectionId,
-      document: { ...held.document, label: enUS('Renamed before the removal') },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: enUS('Renamed before the removal'),
+      }),
       revision: held.revision,
     });
     try {
@@ -1119,12 +1175,12 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       protocolId,
       requestId: randomUUID(),
       kind: 'stage',
-      document: {
+      document: Redacted.make({
         type: 'Information',
         label: enUS(label),
         title: enUS(label),
         items: [],
-      },
+      }),
     });
     try {
       await call(who, create);

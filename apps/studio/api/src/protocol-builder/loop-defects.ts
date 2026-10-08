@@ -10,7 +10,9 @@ const RECURRING_DEFECT_LOG_MS = 60_000;
  * pass. A different defect is logged at once, and a pass that succeeds starts
  * the count again. Made once per loop, since the count is the loop's own.
  */
-export const catchLoopDefect = (message: string) => {
+export const catchLoopDefect = (
+  log: (cause: Cause.Cause<unknown>) => Effect.Effect<void>,
+) => {
   let failing = 0;
   let logged: { readonly at: number; readonly defect: string } | undefined;
   return <A, E, R>(
@@ -36,10 +38,11 @@ export const catchLoopDefect = (message: string) => {
             return;
           }
           logged = { at, defect };
-          yield* Effect.logError(
-            failing === 1 ? message : `${message} (${failing} passes in a row)`,
-            cause,
-          );
+          yield* failing === 1
+            ? log(cause)
+            : log(cause).pipe(
+                Effect.annotateLogs({ passes_in_a_row: failing }),
+              );
         }),
       ),
     );

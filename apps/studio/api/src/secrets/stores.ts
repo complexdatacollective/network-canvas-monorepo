@@ -1,6 +1,6 @@
 import { and, eq, isNotNull, like, ne, sql, type SQL } from 'drizzle-orm';
 import { union, unionAll } from 'drizzle-orm/pg-core';
-import { Effect, Option, Schema } from 'effect';
+import { Effect, Option, type Redacted, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
 import { AUTH_TABLES } from '../db/auth-schema.ts';
@@ -26,7 +26,7 @@ const { webhookSubscriptions } = WEBHOOK_TABLES;
 const { protocolAssetKeys } = PROTOCOL_TABLES;
 const { protocolStagedResources } = PROTOCOL_BUILDER_TABLES;
 
-export type SecretOpener = (cipher: SecretsCipherApi) => string;
+export type SecretOpener = (cipher: SecretsCipherApi) => Redacted.Redacted;
 
 export type SecretStore = {
   name: string;

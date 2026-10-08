@@ -24,9 +24,11 @@ import { withRequestId } from '../bridge.ts';
 import type { RpcDeps } from '../deps.ts';
 import { openTeam } from '../team-scope.ts';
 
-const decodeList = Schema.decodeUnknownSync(AuditListOutput);
-const decodeDetail = Schema.decodeUnknownSync(AuditEventDetail);
-const decodeFilterOptions = Schema.decodeUnknownSync(AuditFilterOptions);
+const decodeList = Schema.decodeUnknownSync(Schema.toType(AuditListOutput));
+const decodeDetail = Schema.decodeUnknownSync(Schema.toType(AuditEventDetail));
+const decodeFilterOptions = Schema.decodeUnknownSync(
+  Schema.toType(AuditFilterOptions),
+);
 
 const refusals = <A, R>(
   read: Effect.Effect<A, AuditReadDenied | NotFound | SqlError.SqlError, R>,

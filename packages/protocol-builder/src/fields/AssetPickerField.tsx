@@ -1,3 +1,4 @@
+import { Redacted } from 'effect';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 
@@ -287,7 +288,9 @@ export default function AssetPickerField({
     action.clear();
     onChange?.(chosen.id);
     setStatus(
-      createMessageError(messages.selectedAnnouncement, { name: chosen.name }),
+      createMessageError(messages.selectedAnnouncement, {
+        name: Redacted.value(chosen.name),
+      }),
     );
   };
 

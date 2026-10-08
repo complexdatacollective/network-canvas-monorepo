@@ -1,3 +1,4 @@
+import { Redacted } from 'effect';
 import { LayoutGroup } from 'motion/react';
 import {
   type Dispatch,
@@ -567,7 +568,7 @@ function StageEditorFormBody({
                     {holder === undefined
                       ? intl.formatMessage(messages.heldByNobodyNamed)
                       : intl.formatMessage(messages.heldBy, {
-                          holder: holder.displayName,
+                          holder: Redacted.value(holder.displayName),
                         })}
                   </Alert>
                 )}

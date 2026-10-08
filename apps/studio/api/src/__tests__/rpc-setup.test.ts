@@ -1,3 +1,4 @@
+import { Redacted } from 'effect';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { createStudio, type Studio } from '../app.ts';
@@ -28,6 +29,16 @@ type SetupInput = {
   instanceName: string;
   owner: { name: string; email: string; password: string };
 };
+
+const asPayload = (input: SetupInput) => ({
+  token: Redacted.make(input.token),
+  instanceName: input.instanceName,
+  owner: {
+    name: Redacted.make(input.owner.name),
+    email: Redacted.make(input.owner.email),
+    password: Redacted.make(input.owner.password),
+  },
+});
 
 describe.skipIf(!testDb)('setup.complete', () => {
   let database: TestDatabaseRuntime;
@@ -116,7 +127,7 @@ describe.skipIf(!testDb)('setup.complete', () => {
     await database.run(ownerAffected('delete from installation'));
     const issued = await database.run(OwnerScope.open(issueBootstrapToken()));
     if (issued.kind !== 'issued') throw new Error('expected a token');
-    token = issued.token;
+    token = Redacted.value(issued.token);
   });
 
   const status = () => client.call(client.rpc('status', undefined));
@@ -131,11 +142,14 @@ describe.skipIf(!testDb)('setup.complete', () => {
   it('refuses a wrong token, and says no more than that', async () => {
     await expectRpcFailure(
       client.callExit(
-        client.rpc('setup.complete', {
-          token: 'not-the-token',
-          instanceName: INSTANCE_NAME,
-          owner: owner(),
-        }),
+        client.rpc(
+          'setup.complete',
+          asPayload({
+            token: 'not-the-token',
+            instanceName: INSTANCE_NAME,
+            owner: owner(),
+          }),
+        ),
       ),
       'Unauthorized',
     );
@@ -168,8 +182,8 @@ describe.skipIf(!testDb)('setup.complete', () => {
     const cookie = setCookie.map((value) => value.split(';')[0]).join('; ');
     const signedIn = await createRpcClient(studio, { cookie });
     const me = await signedIn.call(signedIn.rpc('me', undefined));
-    expect(me.email).toBe(account.email);
-    expect(me.name).toBe(account.name);
+    expect(Redacted.value(me.email)).toBe(account.email);
+    expect(Redacted.value(me.name)).toBe(account.name);
     expect(me.teams).toEqual([]);
     await signedIn.dispose();
 
@@ -236,11 +250,14 @@ describe.skipIf(!testDb)('setup.complete', () => {
     const account = owner();
 
     const completed = await client.call(
-      client.rpc('setup.complete', {
-        token,
-        instanceName: INSTANCE_NAME,
-        owner: account,
-      }),
+      client.rpc(
+        'setup.complete',
+        asPayload({
+          token,
+          instanceName: INSTANCE_NAME,
+          owner: account,
+        }),
+      ),
     );
 
     expect(completed).toEqual({
@@ -262,11 +279,14 @@ describe.skipIf(!testDb)('setup.complete', () => {
 
     await expectRpcFailure(
       client.callExit(
-        client.rpc('setup.complete', {
-          token,
-          instanceName: 'A second instance name',
-          owner: owner(),
-        }),
+        client.rpc(
+          'setup.complete',
+          asPayload({
+            token,
+            instanceName: 'A second instance name',
+            owner: owner(),
+          }),
+        ),
       ),
       'NotFound',
     );
@@ -303,7 +323,7 @@ describe.skipIf(!testDb)('setup.complete', () => {
       .join('; ');
     const signedIn = await createRpcClient(studio, { cookie });
     const me = await signedIn.call(signedIn.rpc('me', undefined));
-    expect(me.email).toBe(account.email);
+    expect(Redacted.value(me.email)).toBe(account.email);
     expect(
       (await database.run(OwnerScope.open(readInstallation())))?.ownerUserId,
     ).toBe(me.userId);
@@ -324,11 +344,14 @@ describe.skipIf(!testDb)('setup.complete', () => {
 
     const refused = await expectRpcFailure(
       client.callExit(
-        client.rpc('setup.complete', {
-          token,
-          instanceName: INSTANCE_NAME,
-          owner: { ...account, password: 'a-different-password' },
-        }),
+        client.rpc(
+          'setup.complete',
+          asPayload({
+            token,
+            instanceName: INSTANCE_NAME,
+            owner: { ...account, password: 'a-different-password' },
+          }),
+        ),
       ),
       'Conflict',
     );
@@ -340,11 +363,14 @@ describe.skipIf(!testDb)('setup.complete', () => {
 
   it('refuses input the contract does not allow', async () => {
     const blankName = await client.callExit(
-      client.rpc('setup.complete', {
-        token,
-        instanceName: '   ',
-        owner: owner(),
-      }),
+      client.rpc(
+        'setup.complete',
+        asPayload({
+          token,
+          instanceName: '   ',
+          owner: owner(),
+        }),
+      ),
     );
     expectPayloadRejected(blankName, 'instanceName');
     expect(
@@ -352,13 +378,16 @@ describe.skipIf(!testDb)('setup.complete', () => {
     ).toBeNull();
 
     const shortPassword = await client.callExit(
-      client.rpc('setup.complete', {
-        token,
-        instanceName: INSTANCE_NAME,
-        owner: owner('short'),
-      }),
+      client.rpc(
+        'setup.complete',
+        asPayload({
+          token,
+          instanceName: INSTANCE_NAME,
+          owner: owner('short'),
+        }),
+      ),
     );
-    expectPayloadRejected(shortPassword, 'owner.password');
+    expectPayloadRejected(shortPassword, 'owner.password.value');
     expect(
       (await database.run(OwnerScope.open(readInstallation())))?.ownerUserId,
     ).toBeNull();

@@ -1,4 +1,4 @@
-import { Effect, Layer } from 'effect';
+import { Effect, Layer, Redacted } from 'effect';
 
 import {
   HostCaller,
@@ -14,6 +14,6 @@ export const ArchitectHostSession: Layer.Layer<HostSession> = Layer.succeed(
     connectionId: ARCHITECT_CONNECTION,
     clientSessionId: ARCHITECT_CONNECTION,
     userId: ARCHITECT_CONNECTION,
-    displayName: 'This device',
+    displayName: Redacted.make('This device'),
   }),
 );

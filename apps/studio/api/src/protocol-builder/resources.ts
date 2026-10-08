@@ -12,7 +12,7 @@
 // transaction also deletes the staged rows.
 import { randomUUID } from 'node:crypto';
 
-import { Context, Effect, Exit, Layer, Option, Schema } from 'effect';
+import { Context, Effect, Exit, Layer, Option, Redacted, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
 import {
@@ -305,9 +305,11 @@ function descriptorFromManifestEntry(
   return {
     id,
     kind: kind.value,
-    name: entry.name,
+    name: Redacted.make(entry.name),
     status: 'committed',
-    ...(typeof entry.source === 'string' ? { source: entry.source } : {}),
+    ...(typeof entry.source === 'string'
+      ? { source: Redacted.make(entry.source) }
+      : {}),
   };
 }
 
@@ -318,20 +320,21 @@ function contentDescriptor(id: string, request: ContentRequest): Descriptor {
     name: request.name,
     status: 'staged',
     source: request.source,
-    byteLength: request.bytes.byteLength,
+    byteLength: Redacted.value(request.bytes).byteLength,
     contentType: request.contentType,
   };
 }
 
 function refusedContent(request: ContentRequest) {
-  if (request.bytes.byteLength === 0) {
+  const bytes = Redacted.value(request.bytes);
+  if (bytes.byteLength === 0) {
     // An empty file promotes into a manifest entry an interview would try to
     // show: an image with no pixels, a roster with no network. The contract's
     // own host refuses it, and a picker that offers it here and nowhere else
     // would be Studio disagreeing with the contract it serves.
     return failure('invalid-content', 'that file is empty');
   }
-  if (request.bytes.byteLength > MAX_UPLOAD_BYTES) {
+  if (bytes.byteLength > MAX_UPLOAD_BYTES) {
     return failure(
       'too-large',
       `this deployment stores at most ${MAX_UPLOAD_BYTES} bytes per resource`,
@@ -352,13 +355,11 @@ export async function rosterRefusal(
   request: ContentRequest,
 ): Promise<ResourceOutcome<never> | undefined> {
   if (request.contentKind !== 'network') return undefined;
+  const bytes = Redacted.value(request.bytes);
+  const source = Redacted.value(request.source);
   return (
-    (await rosterCharacterFailure(request.bytes, request.source)) ??
-    (await rosterContentFailure(
-      request.bytes,
-      request.source,
-      request.contentType,
-    ))
+    (await rosterCharacterFailure(bytes, source)) ??
+    (await rosterContentFailure(bytes, source, request.contentType))
   );
 }
 
@@ -587,7 +588,11 @@ export class StagedImports extends Context.Service<
         });
         return yield* Effect.gen(function* () {
           const put = yield* Effect.exit(
-            store.putStaged(objectKey, request.bytes, request.contentType),
+            store.putStaged(
+              objectKey,
+              Redacted.value(request.bytes),
+              request.contentType,
+            ),
           );
           if (Exit.isFailure(put)) {
             step = 'unnamed';
@@ -598,8 +603,8 @@ export class StagedImports extends Context.Service<
             kind: 'content',
             descriptor,
             objectKey,
-            contentHash: contentHash(request.bytes),
-            byteLength: request.bytes.byteLength,
+            contentHash: contentHash(Redacted.value(request.bytes)),
+            byteLength: Redacted.value(request.bytes).byteLength,
             contentType: request.contentType,
           });
           step = winner?.id === descriptor.id ? 'named' : 'unnamed';
@@ -674,9 +679,9 @@ export class StagedImports extends Context.Service<
             }
             if (row.secret !== undefined) {
               entries[resourceId] = {
-                name: row.descriptor.name,
+                name: Redacted.value(row.descriptor.name),
                 type: 'apikey',
-                value: row.secret(edit.session.cipher),
+                value: Redacted.value(row.secret(edit.session.cipher)),
               };
               promoted.push({ ...row.descriptor, status: 'committed' });
               continue;
@@ -712,13 +717,17 @@ export class StagedImports extends Context.Service<
             if (!copied.value) {
               return failure('not-found', NOT_STAGED, resourceId);
             }
-            const source = storedSource(hash, filename);
+            const source = storedSource(hash, Redacted.value(filename));
             entries[resourceId] = {
-              name: row.descriptor.name,
+              name: Redacted.value(row.descriptor.name),
               type: row.descriptor.kind,
               source,
             };
-            promoted.push({ ...row.descriptor, status: 'committed', source });
+            promoted.push({
+              ...row.descriptor,
+              status: 'committed',
+              source: Redacted.make(source),
+            });
           }
           return { status: 'ok', data: { entries, promoted } };
         }),
@@ -783,7 +792,9 @@ export class StagedImports extends Context.Service<
             status: 'ok',
             data: {
               resourceId,
-              url: `data:${contentType};base64,${base64(bytes.value.value)}`,
+              url: Redacted.make(
+                `data:${contentType};base64,${base64(bytes.value.value)}`,
+              ),
             },
           };
         }),
@@ -858,7 +869,7 @@ export function committedInspection(
     status: 'ok',
     data: {
       descriptor,
-      ...(typeof value === 'string' ? { value } : {}),
+      ...(typeof value === 'string' ? { value: Redacted.make(value) } : {}),
     },
   };
 }
@@ -874,9 +885,12 @@ export function committedPreview(
   const hash =
     descriptor.source === undefined
       ? undefined
-      : hashOfSource(descriptor.source);
+      : hashOfSource(Redacted.value(descriptor.source));
   if (hash === undefined) return failure('not-found', NO_BYTES, resourceId);
-  return { status: 'ok', data: { resourceId, url: `/storage/${hash}` } };
+  return {
+    status: 'ok',
+    data: { resourceId, url: Redacted.make(`/storage/${hash}`) },
+  };
 }
 
 function committedDescriptor(

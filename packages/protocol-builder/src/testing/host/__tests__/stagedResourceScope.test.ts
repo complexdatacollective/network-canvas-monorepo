@@ -1,3 +1,4 @@
+import { Redacted } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
@@ -37,10 +38,10 @@ const PORTRAIT = () =>
   ({
     kind: 'content',
     contentKind: 'image',
-    name: 'Portrait',
-    source: 'portrait.png',
+    name: Redacted.make('Portrait'),
+    source: Redacted.make('portrait.png'),
     contentType: 'image/png',
-    bytes: new Uint8Array([1, 2, 3]),
+    bytes: Redacted.make(new Uint8Array([1, 2, 3])),
   }) as const;
 
 /** Somebody making resource calls: a connection, and the edit they are in. */
@@ -120,7 +121,11 @@ const REACHES: readonly Reach[] = [
         protocolId: host.protocolId,
         editId: caller.editId,
         requestId: REQUEST_ID,
-        request: { kind: 'secret', name: 'Mapbox token', value: 'pk.secret' },
+        request: {
+          kind: 'secret',
+          name: Redacted.make('Mapbox token'),
+          value: Redacted.make('pk.secret'),
+        },
       });
       return secret.status === 'ok' && secret.data.descriptor.id === staged;
     },
@@ -212,10 +217,10 @@ const REACHES: readonly Reach[] = [
         protocolId: host.protocolId,
         requestId: 'write-1',
         kind: 'stage',
-        document: {
+        document: Redacted.make({
           ...template,
           items: [{ id: 'item-1', type: 'asset', content: staged }],
-        },
+        }),
         promote: { editId: caller.editId, resourceIds: [staged] },
       });
       return isSuccess;

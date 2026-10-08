@@ -1,4 +1,4 @@
-import { Cause, Effect, Exit, Layer, Option } from 'effect';
+import { Cause, Effect, Exit, Layer, Option, Redacted } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
@@ -25,9 +25,9 @@ const FORBIDDEN = {
 const PRINCIPAL = Principal.of({
   kind: 'user',
   userId: UserId.make('researcher'),
-  email: 'researcher@example.org',
+  email: Redacted.make('researcher@example.org'),
   emailVerified: true,
-  name: 'A Researcher',
+  name: Redacted.make('A Researcher'),
   locale: null,
   sessionId: 'session-researcher',
 });
@@ -68,7 +68,7 @@ const DEPS: RpcDeps = {
     socialProviders: [],
   },
   deployment: { mode: 'self-hosted', billing: false },
-  readInstallation: () => Promise.resolve(null),
+  readInstallation: Effect.succeed(null),
   services: unusedServices,
 };
 

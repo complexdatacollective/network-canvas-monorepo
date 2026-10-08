@@ -266,8 +266,14 @@ export const protocolStoreGc = Effect.fn('job.protocol-store-gc')(function* (
 > {
   const swept = yield* Effect.exit(gcProtocolStore(PROTOCOL_STORE_GC_BOUNDS));
   if (Exit.isSuccess(swept)) {
-    yield* Effect.logInfo(
-      `protocol-store-gc ${job.id}: manifests ${swept.value.manifestsDeleted}, sections ${swept.value.sectionsDeleted}, command log ${swept.value.commandLogDeleted}`,
+    yield* Effect.logInfo('protocol store swept').pipe(
+      Effect.annotateLogs({
+        queue: 'protocol-store-gc',
+        job_id: job.id,
+        manifests_deleted: swept.value.manifestsDeleted,
+        sections_deleted: swept.value.sectionsDeleted,
+        command_log_deleted: swept.value.commandLogDeleted,
+      }),
     );
   }
   // After the sweep, whether or not it succeeded, and apart from it: an
@@ -275,8 +281,14 @@ export const protocolStoreGc = Effect.fn('job.protocol-store-gc')(function* (
   // nor the reverse. A failed sweep still fails the job, once this has run.
   yield* gcStagedResources().pipe(
     Effect.tap((staged) =>
-      Effect.logInfo(
-        `protocol-store-gc ${job.id}: staged rows ${staged.stagedRowsDeleted}, staged objects ${staged.stagedObjectsDeleted}, connections ${staged.connectionsDeleted}`,
+      Effect.logInfo('staged resources swept').pipe(
+        Effect.annotateLogs({
+          queue: 'protocol-store-gc',
+          job_id: job.id,
+          staged_rows_deleted: staged.stagedRowsDeleted,
+          staged_objects_deleted: staged.stagedObjectsDeleted,
+          connections_deleted: staged.connectionsDeleted,
+        }),
       ),
     ),
     Effect.catchCause((cause) =>

@@ -330,7 +330,13 @@ export class ProtocolEvents extends Context.Service<
             relay.gaps += 1;
             if (relay.gaps < MAX_GAP_READS) return;
             yield* Effect.logError(
-              `Protocol-builder event ${relay.next} is missing from draft ${relay.draftId}'s log after ${relay.gaps} reads; ending its watchers`,
+              "Protocol-builder event is missing from the draft's log; ending its watchers",
+            ).pipe(
+              Effect.annotateLogs({
+                draft_id: relay.draftId,
+                cursor: String(relay.next),
+                reads: relay.gaps,
+              }),
             );
             end(relay);
           });
@@ -372,8 +378,14 @@ export class ProtocolEvents extends Context.Service<
               yield* Ref.update(relay.dirty, (now) => merge(now, dirty));
               readFailed(relay);
               yield* Effect.logWarning(
-                `Reading protocol-builder events failed (${relay.failures} of ${maxFailures})`,
+                'Reading protocol-builder events failed',
                 read.cause,
+              ).pipe(
+                Effect.annotateLogs({
+                  draft_id: relay.draftId,
+                  failures: relay.failures,
+                  max_failures: maxFailures,
+                }),
               );
               return 'failed';
             }
@@ -416,10 +428,22 @@ export class ProtocolEvents extends Context.Service<
             );
             if (Exit.isFailure(reaped)) {
               relay.reapFailures += 1;
-              const message = `Releasing lapsed protocol-builder leases failed (${relay.reapFailures} in a row)`;
-              yield* relay.reapFailures < MAX_REAP_FAILURES
-                ? Effect.logWarning(message, reaped.cause)
-                : Effect.logError(message, reaped.cause);
+              yield* (
+                relay.reapFailures < MAX_REAP_FAILURES
+                  ? Effect.logWarning(
+                      'Releasing lapsed protocol-builder leases failed',
+                      reaped.cause,
+                    )
+                  : Effect.logError(
+                      'Releasing lapsed protocol-builder leases failed',
+                      reaped.cause,
+                    )
+              ).pipe(
+                Effect.annotateLogs({
+                  draft_id: relay.draftId,
+                  failures_in_a_row: relay.reapFailures,
+                }),
+              );
               return;
             }
             relay.reapFailures = 0;
@@ -500,9 +524,9 @@ export class ProtocolEvents extends Context.Service<
               readFailed(asked.relay);
             }
             yield* Effect.logWarning(
-              `Polling protocol-builder events failed for ${failing} of ${asks.length} drafts`,
+              'Polling protocol-builder events failed for some drafts',
               polled.cause,
-            );
+            ).pipe(Effect.annotateLogs({ failing, drafts: asks.length }));
           });
 
         const poll = Effect.gen(function* () {
@@ -517,7 +541,11 @@ export class ProtocolEvents extends Context.Service<
             concurrency: POLL_CONCURRENCY,
             discard: true,
           });
-        }).pipe(catchLoopDefect('Polling protocol-builder relays failed'));
+        }).pipe(
+          catchLoopDefect((cause) =>
+            Effect.logError('Polling protocol-builder relays failed', cause),
+          ),
+        );
 
         yield* poll.pipe(
           Effect.schedule(Schedule.spaced(safetyPollMs)),
@@ -530,7 +558,12 @@ export class ProtocolEvents extends Context.Service<
             Queue.offerUnsafe(relay.wake, undefined);
           heldBack.clear();
         }).pipe(
-          catchLoopDefect('Reopening held-back protocol-builder relays failed'),
+          catchLoopDefect((cause) =>
+            Effect.logError(
+              'Reopening held-back protocol-builder relays failed',
+              cause,
+            ),
+          ),
           Effect.schedule(Schedule.spaced(REOPEN_CHECK_MS)),
           Effect.forkScoped,
         );
@@ -558,8 +591,11 @@ export class ProtocolEvents extends Context.Service<
           Queue.offerUnsafe(resyncs, undefined);
         });
 
-        const signalDefect = catchLoopDefect(
-          'Handling a protocol-builder doorbell signal failed',
+        const signalDefect = catchLoopDefect((cause) =>
+          Effect.logError(
+            'Handling a protocol-builder doorbell signal failed',
+            cause,
+          ),
         );
         const signals = yield* doorbell.signals;
         yield* Stream.runForEach(signals, (signal) =>

@@ -1,4 +1,5 @@
 import {
+  LogLevel,
   Predicate,
   Result,
   Schema,
@@ -169,6 +170,46 @@ const Flag = Schema.Literals(['true', 'false', '1', '0'])
     }),
   );
 
+const headerPairs = (value: string): Array<readonly [string, string]> =>
+  value
+    .split(',')
+    .map((pair) => pair.trim())
+    .filter((pair) => pair.length > 0)
+    .map((pair) => {
+      const separator = pair.indexOf('=');
+      return [
+        pair.slice(0, separator).trim(),
+        decodeURIComponent(pair.slice(separator + 1).trim()),
+      ] as const;
+    });
+
+const OtlpHeaders = Schema.String.check(
+  Schema.makeFilter<string>((value) => {
+    try {
+      const pairs = value.split(',').filter((pair) => pair.trim().length > 0);
+      if (pairs.length === 0 || !pairs.every((pair) => pair.indexOf('=') > 0)) {
+        return false;
+      }
+      const decoded = headerPairs(value);
+      new Headers(decoded.map(([name, header]) => [name, header]));
+      return decoded.every(([name]) => name.length > 0);
+    } catch {
+      return false;
+    }
+  }, refuses('must be comma-separated key=value pairs')),
+).pipe(
+  Schema.decodeTo(Schema.Record(Schema.String, Schema.String), {
+    decode: SchemaGetter.transform((value) =>
+      Object.fromEntries(headerPairs(value)),
+    ),
+    encode: SchemaGetter.transform((headers) =>
+      Object.entries(headers)
+        .map(([name, value]) => `${name}=${encodeURIComponent(value)}`)
+        .join(','),
+    ),
+  }),
+);
+
 export const EnvironmentSchema = Schema.Struct({
   NODE_ENV: variable(
     Schema.Literals(['development', 'test', 'production']).annotate(
@@ -234,20 +275,48 @@ export const EnvironmentSchema = Schema.Struct({
   STUDIO_TELEMETRY: variable(Flag, {
     group: 'Process',
     summary:
-      'Whether this instance reports anonymous usage telemetry: participant usability analytics, which the api forwards to Codaco’s PostHog project, and telemetry export. With it off, no analytics client and no exporter is built, whatever `OTEL_EXPORTER_OTLP_ENDPOINT` says.',
+      'Whether this instance reports telemetry and usage analytics. With it on, logs, traces, metrics and error reports go to Codaco’s PostHog project, or to the OpenTelemetry endpoint `OTEL_EXPORTER_OTLP_ENDPOINT` names, and participant usability analytics go to Codaco’s PostHog project. With it off, no exporter and no analytics client is built, whatever the endpoint says, and logs stay on stdout.',
     deployment:
-      'Unset ⇒ true. Set to `false` to opt an instance out. It does not govern the update check (#1901), which is not configurable and is blocked at the firewall instead.',
+      'Unset ⇒ true. Set to `false` to opt an instance out of everything that leaves the machine except the update check (#1901), which is not governed by this switch and is blocked at the firewall instead. Only public data is ever sent: fixed codes, counts, durations, versions and ids Studio mints, never names, emails, protocol content or participant data.',
     example: 'true',
   }),
+
+  STUDIO_LOG_LEVEL: variable(
+    Schema.Literals(LogLevel.values).annotate(
+      refuses(`must be one of ${LogLevel.values.join(', ')}`),
+    ),
+    {
+      group: 'Process',
+      summary:
+        'The least severe log level this instance writes and exports, using Effect’s level names. The researcher web app logs at the same level.',
+      deployment:
+        'Unset ⇒ `Info`. `Debug` or `Trace` while investigating a problem; `None` writes nothing.',
+      example: 'Info',
+    },
+  ),
 
   OTEL_EXPORTER_OTLP_ENDPOINT: variable(HttpUrl, {
     group: 'Process',
     summary:
-      'OTLP/HTTP collector that receives this instance’s logs, traces and metrics (#1897).',
+      'OTLP/HTTP collector that receives this instance’s logs, traces, metrics and error reports instead of Codaco’s PostHog project (#1897).',
     deployment:
-      'Unset ⇒ nothing is exported; logs stay on stdout. Set to a collector’s base URL (the OTLP/HTTP paths `/v1/logs`, `/v1/traces`, `/v1/metrics` are appended). `STUDIO_TELEMETRY=false` overrides it.',
+      'Unset ⇒ telemetry goes to Codaco’s PostHog project (`https://us.i.posthog.com/i`). Set to a collector’s base URL to keep it in the institution’s own store; the OTLP/HTTP paths `/v1/logs`, `/v1/traces` and `/v1/metrics` are appended. Usage analytics still go to Codaco unless `STUDIO_TELEMETRY=false`, which overrides this variable. Logs are written to stdout either way.',
     example: 'http://otel-collector:4318',
   }),
+
+  OTEL_EXPORTER_OTLP_HEADERS: variable(
+    Schema.RedactedFromValue(OtlpHeaders).annotate(
+      refuses('must be comma-separated key=value pairs'),
+    ),
+    {
+      group: 'Process',
+      summary:
+        'Headers sent with every export to `OTEL_EXPORTER_OTLP_ENDPOINT`, in the OpenTelemetry format `key=value,key=value` with URL-encoded values; usually the collector’s credential.',
+      deployment:
+        'Read only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set; exports to Codaco’s PostHog project carry Codaco’s project key instead. Treated as a secret: it never appears in a log line or an error.',
+      example: 'Authorization=Bearer%20placeholder',
+    },
+  ),
 
   /**
    * Read at run time by every entrypoint, so the managed deployment sets it in

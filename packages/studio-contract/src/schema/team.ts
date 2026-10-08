@@ -8,9 +8,8 @@ export const TEAM_ROLES = ['owner', 'admin', 'member'] as const;
 export const TeamRole = Schema.Literals(TEAM_ROLES);
 export type TeamRole = (typeof TeamRole)['Type'];
 
-const TeamName = Schema.String.check(
-  Schema.isMinLength(1),
-  Schema.isMaxLength(320),
+const TeamName = Schema.RedactedFromValue(
+  Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(320)),
 );
 
 export const TeamScoped = Schema.Struct({

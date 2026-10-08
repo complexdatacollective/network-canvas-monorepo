@@ -40,16 +40,16 @@ const refusals = <A, R>(
   );
 
 const decodeUpdatedMember = Schema.decodeUnknownSync(
-  UpdateTeamMemberRoleResult,
+  Schema.toType(UpdateTeamMemberRoleResult),
 );
 const decodeCreatedInvitation = Schema.decodeUnknownSync(
-  CreateTeamInvitationResult,
+  Schema.toType(CreateTeamInvitationResult),
 );
 const decodeCancelledInvitation = Schema.decodeUnknownSync(
-  CancelTeamInvitationResult,
+  Schema.toType(CancelTeamInvitationResult),
 );
 const decodeAcceptedInvitation = Schema.decodeUnknownSync(
-  AcceptTeamInvitationResult,
+  Schema.toType(AcceptTeamInvitationResult),
 );
 
 export const TeamHandlers = (deps: RpcDeps) =>

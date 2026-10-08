@@ -1,6 +1,15 @@
 import { randomUUID } from 'node:crypto';
 
-import { Cause, Effect, Exit, Layer, Option, Predicate, Result } from 'effect';
+import {
+  Cause,
+  Effect,
+  Exit,
+  Layer,
+  Option,
+  Predicate,
+  Redacted,
+  Result,
+} from 'effect';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import {
@@ -82,9 +91,9 @@ function appOptions(
               Effect.succeedSome({
                 kind: 'user',
                 userId: principalUserId,
-                email: `${principalUserId}@example.org`,
+                email: Redacted.make(`${principalUserId}@example.org`),
                 emailVerified: true,
-                name: 'Researcher',
+                name: Redacted.make('Researcher'),
                 locale: null,
                 sessionId: `session-${principalUserId}`,
               }),
@@ -600,9 +609,9 @@ describe.skipIf(!url)('the limited request paths', () => {
       principal: {
         kind: 'user',
         userId,
-        email: `${userId}@example.org`,
+        email: Redacted.make(`${userId}@example.org`),
         emailVerified: true,
-        name: 'Researcher',
+        name: Redacted.make('Researcher'),
         locale: null,
         sessionId: `session-${userId}`,
       },

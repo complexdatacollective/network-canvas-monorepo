@@ -1,4 +1,4 @@
-import { Schema } from 'effect';
+import { Redacted, Schema } from 'effect';
 
 import {
   AuditActorKind,
@@ -11,8 +11,11 @@ import {
 import { AUDIT_EVENT_REGISTRY } from './events.ts';
 import type { StoredAuditEvent } from './store.ts';
 
-type RenderedSummary = (typeof AuditEventSummary)['Encoded'];
-type RenderedDetail = (typeof AuditEventDetail)['Encoded'];
+type RenderedSummary = Omit<(typeof AuditEventSummary)['Type'], 'id'> & {
+  readonly id: string;
+};
+type RenderedDetail = RenderedSummary &
+  Omit<(typeof AuditEventDetail)['Type'], keyof RenderedSummary>;
 
 const decodeCategory = Schema.decodeUnknownSync(AuditCategory);
 const decodeOutcome = Schema.decodeUnknownSync(AuditOutcome);
@@ -43,20 +46,23 @@ function filteredDetails(
     detailFields: readonly string[];
     sensitiveFields: readonly string[];
   },
-  details: Record<string, unknown>,
-): Record<string, unknown> {
-  return Object.fromEntries(
-    entry.detailFields
-      .filter((field) => !entry.sensitiveFields.includes(field))
-      .filter((field) => Object.hasOwn(details, field))
-      .map((field) => [field, details[field]]),
+  details: Redacted.Redacted<Record<string, unknown>>,
+): Redacted.Redacted<Record<string, unknown>> {
+  const recorded = Redacted.value(details);
+  return Redacted.make(
+    Object.fromEntries(
+      entry.detailFields
+        .filter((field) => !entry.sensitiveFields.includes(field))
+        .filter((field) => Object.hasOwn(recorded, field))
+        .map((field) => [field, recorded[field]]),
+    ),
   );
 }
 
 function reference(
   type: string | null,
   id: string | null,
-  label: string | null,
+  label: Redacted.Redacted | null,
 ): RenderedSummary['subject'] {
   return type === null ? null : { type, id, label };
 }
@@ -91,6 +97,6 @@ export function renderAuditEventDetail(row: StoredAuditEvent): RenderedDetail {
     ...renderAuditEventSummary(row),
     teamLabel: row.teamLabel,
     requestId: row.requestId,
-    details: entry ? filteredDetails(entry, row.details) : {},
+    details: entry ? filteredDetails(entry, row.details) : Redacted.make({}),
   };
 }

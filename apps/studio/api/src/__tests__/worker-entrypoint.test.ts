@@ -5,6 +5,7 @@
 // of the worker layers can answer.
 import { networkInterfaces } from 'node:os';
 
+import { Redacted } from 'effect';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { RPC_PATH } from '@codaco/studio-contract/rpc/studio';
@@ -161,12 +162,14 @@ describe.skipIf(!db)('the worker entrypoint', () => {
     });
     try {
       await worker.waitForOutput(
-        /Network Canvas Studio worker \d+\.\d+\.\d+.* started/,
+        /Network Canvas Studio worker started.*"version":"\d+\.\d+\.\d+/,
       );
       // Unset SMTP is a supported state, not a refusal: the jobs queue until
       // a worker with mail configured returns (#1895). It only has to be loud.
       await worker.waitForOutput(/No mail transport is configured/);
-      expect(worker.output()).toMatch(/invitation-delivery and sign-in-email/);
+      expect(worker.output()).toMatch(
+        /"queues":\["invitation-delivery","sign-in-email"\]/,
+      );
 
       // It serves the health routes and nothing else: the port a deployment
       // would route users to refuses a connection.
@@ -200,7 +203,7 @@ describe.skipIf(!db)('the worker entrypoint', () => {
       );
       try {
         await worker.waitForOutput(
-          /maintenance mode is on: Upgrading: the job worker has stopped claiming jobs/,
+          /the job worker has stopped claiming jobs.*"trigger":"maintenance"/,
           MAINTENANCE_WAIT_MS,
         );
       } finally {
@@ -260,7 +263,7 @@ describe.skipIf(!db)('the worker entrypoint', () => {
 
         await applySchema(scratch.pool);
         await worker.waitForOutput(
-          /Network Canvas Studio worker \d+\.\d+\.\d+.* started/,
+          /Network Canvas Studio worker started.*"version":"\d+\.\d+\.\d+/,
           SCHEMA_WAIT_MS,
         );
 
@@ -297,7 +300,7 @@ describe.skipIf(!db)('the worker entrypoint', () => {
     });
     try {
       await worker.waitForOutput(
-        /Network Canvas Studio worker \d+\.\d+\.\d+.* started/,
+        /Network Canvas Studio worker started.*"version":"\d+\.\d+\.\d+/,
       );
       await vi.waitFor(
         async () => {
@@ -325,7 +328,7 @@ describe.skipIf(!db)('the worker entrypoint', () => {
       });
       try {
         await worker.waitForOutput(
-          /Network Canvas Studio worker \d+\.\d+\.\d+.* started/,
+          /Network Canvas Studio worker started.*"version":"\d+\.\d+\.\d+/,
         );
         await vi.waitFor(
           async () =>
@@ -358,7 +361,7 @@ describe.skipIf(!db)('the worker entrypoint', () => {
       });
       try {
         await worker.waitForOutput(
-          /Network Canvas Studio worker \d+\.\d+\.\d+.* started/,
+          /Network Canvas Studio worker started.*"version":"\d+\.\d+\.\d+/,
         );
         // Reachable on the loopback first, so a refusal below is the bind and
         // not a listener that never came up.
@@ -415,12 +418,14 @@ describe.skipIf(!db)('the worker entrypoint', () => {
 
       try {
         await worker.waitForOutput(
-          /Network Canvas Studio worker \d+\.\d+\.\d+.* started/,
+          /Network Canvas Studio worker started.*"version":"\d+\.\d+\.\d+/,
         );
 
         const jobId = await enqueueAsApplication(applied.db, 'sign-in-email', {
-          email: 'researcher@example.org',
-          url: 'https://studio.example.org/api/auth/magic-link/verify?token=abc',
+          email: Redacted.make('researcher@example.org'),
+          url: Redacted.make(
+            'https://studio.example.org/api/auth/magic-link/verify?token=abc',
+          ),
         });
 
         // `active` is the child holding the job: the handler is inside the send
@@ -499,7 +504,7 @@ describe.skipIf(!db)('the worker entrypoint', () => {
 
       try {
         await worker.waitForOutput(
-          /Network Canvas Studio worker \d+\.\d+\.\d+.* started/,
+          /Network Canvas Studio worker started.*"version":"\d+\.\d+\.\d+/,
         );
 
         const jobId = await enqueueAsApplication(
@@ -510,7 +515,7 @@ describe.skipIf(!db)('the worker entrypoint', () => {
 
         await worker.waitForOutput(
           new RegExp(
-            `denied-attempts-summary ${jobId} attempt 1: no rate limit store is configured`,
+            `no rate limit store is configured.*"queue":"denied-attempts-summary","job_id":"${jobId}","attempt":1`,
           ),
           SETTLE_WAIT_MS,
         );

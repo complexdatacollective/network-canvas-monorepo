@@ -1,4 +1,4 @@
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 
 import type { AuditEventInput } from '../../src/audit/events.ts';
 import { append } from '../../src/audit/store.ts';
@@ -12,10 +12,10 @@ export const seedAuditEvents = Effect.fnUntraced(function* (
 ) {
   const actor = {
     teamId: team.id,
-    teamLabel: team.name,
+    teamLabel: Redacted.make(team.name),
     actorKind: 'user',
     actorId: team.adminUserId,
-    actorLabel: 'Studio Admin',
+    actorLabel: Redacted.make('Studio Admin'),
   } as const;
   const teamAccess = {
     ...actor,
@@ -36,7 +36,7 @@ export const seedAuditEvents = Effect.fnUntraced(function* (
     subjectLabel: null,
     resourceType: 'protocol',
     resourceId: line.protocolId,
-    resourceLabel: line.name,
+    resourceLabel: Redacted.make(line.name),
   } as const;
 
   const sectionIds = Object.keys(line.versions[1].sectionHashes).slice(0, 3);
@@ -89,7 +89,7 @@ export const seedAuditEvents = Effect.fnUntraced(function* (
       requestId: seedUuid(),
       subjectType: 'team_invitation',
       subjectId: invitationId,
-      subjectLabel: member.email,
+      subjectLabel: Redacted.make(member.email),
       details: { role: invitedAs },
     });
     record(seedTime(-398, index * 30), {
@@ -98,7 +98,7 @@ export const seedAuditEvents = Effect.fnUntraced(function* (
       requestId: seedUuid(),
       subjectType: 'team_invitation',
       subjectId: invitationId,
-      subjectLabel: member.email,
+      subjectLabel: Redacted.make(member.email),
       details: { role: invitedAs, memberId: member.memberId },
     });
   }
@@ -110,7 +110,7 @@ export const seedAuditEvents = Effect.fnUntraced(function* (
       requestId: seedUuid(),
       subjectType: 'team_member',
       subjectId: promoted.memberId,
-      subjectLabel: promoted.name,
+      subjectLabel: Redacted.make(promoted.name),
       details: { previousRoles: ['member'], newRoles: [promoted.role] },
     });
   }
@@ -123,7 +123,7 @@ export const seedAuditEvents = Effect.fnUntraced(function* (
     record(seedTime(-12), {
       ...actor,
       actorId: denied.userId,
-      actorLabel: denied.name,
+      actorLabel: Redacted.make(denied.name),
       eventVersion: 1,
       eventType: 'audit.read_denied',
       category: 'audit',

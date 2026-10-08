@@ -1,4 +1,4 @@
-import { Clock, Effect } from 'effect';
+import { Clock, Effect, Redacted } from 'effect';
 
 import { ParticipantSession } from '@codaco/studio-contract/middleware/session';
 import {
@@ -71,18 +71,22 @@ export const readParticipantSession = Effect.fn(
           finishTime: null,
           exportTime: null,
           lastUpdated: context.lastActivityAt.toISOString(),
-          network: networkFromRows({
-            nodes: rows.nodes,
-            edges: rows.edges,
-            ego: {
-              egoUid: context.egoUid,
-              egoAttributes: context.egoAttributes,
-              egoSecureAttributes: context.egoSecureAttributes,
-            },
-          }),
+          network: Redacted.make(
+            networkFromRows({
+              nodes: rows.nodes,
+              edges: rows.edges,
+              ego: {
+                egoUid: context.egoUid,
+                egoAttributes: Redacted.value(context.egoAttributes),
+                egoSecureAttributes: Redacted.value(
+                  context.egoSecureAttributes,
+                ),
+              },
+            }),
+          ),
           stageMetadata: context.stageMetadata,
         },
-        protocol,
+        protocol: Redacted.make(protocol),
         analytics,
       };
     }),

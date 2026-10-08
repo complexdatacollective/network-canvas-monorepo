@@ -35,11 +35,13 @@ describe('GET /api/v1/status', () => {
       });
     }).pipe(
       Effect.provide(
-        handlersReading(async () => ({
-          name: 'Acme Lab',
-          ownerUserId: 'user-1',
-          bootstrapTokenHash: null,
-        })),
+        handlersReading(
+          Effect.succeed({
+            name: 'Acme Lab',
+            ownerUserId: 'user-1',
+            bootstrapTokenHash: null,
+          }),
+        ),
       ),
     ),
   );
@@ -53,7 +55,7 @@ describe('GET /api/v1/status', () => {
           name: 'Network Canvas Studio',
           version: STUDIO_VERSION,
         });
-      }).pipe(Effect.provide(handlersReading(async () => null))),
+      }).pipe(Effect.provide(handlersReading(Effect.succeed(null)))),
   );
 });
 
@@ -66,7 +68,7 @@ describe('an answer the server cannot encode', () => {
     };
     const { handler, dispose } = HttpRouter.toWebHandler(
       HttpApiBuilder.layer(StudioApi).pipe(
-        Layer.provide(handlersReading(async () => corrupt as Installation)),
+        Layer.provide(handlersReading(Effect.succeed(corrupt as Installation))),
       ),
       { disableLogger: true },
     );

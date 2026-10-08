@@ -5,7 +5,7 @@
 // are about the decision the handler makes on top of it, so the read is
 // replaced by a value the test chooses and everything else — the contract, the
 // handler, the owner lookup — is the real thing.
-import { Effect, Layer } from 'effect';
+import { Effect, Layer, Redacted } from 'effect';
 import { RpcTest } from 'effect/rpc';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -50,9 +50,9 @@ const principalFor = (userId: string): Principal['Service'] =>
   Principal.of({
     kind: 'user',
     userId: UserId.make(userId),
-    email: `${userId}@example.org`,
+    email: Redacted.make(`${userId}@example.org`),
     emailVerified: true,
-    name: userId,
+    name: Redacted.make(userId),
     locale: null,
     sessionId: `${userId}-session`,
   });
@@ -97,8 +97,8 @@ async function askAs(
   );
 }
 
-const ownedBy = (ownerUserId: string | null) => () =>
-  Promise.resolve(installation(ownerUserId));
+const ownedBy = (ownerUserId: string | null) =>
+  Effect.succeed(installation(ownerUserId));
 
 describe('status.updateAvailable', () => {
   afterEach(() => {
@@ -136,7 +136,7 @@ describe('status.updateAvailable', () => {
   it('tells nobody when there is no installation to read', async () => {
     stored.read.mockReturnValue(release('1.3.0'));
 
-    expect(await askAs(OWNER_ID, () => Promise.resolve(null))).toBeNull();
+    expect(await askAs(OWNER_ID, Effect.succeed(null))).toBeNull();
   });
 
   it('tells the owner nothing when no release has been recorded', async () => {

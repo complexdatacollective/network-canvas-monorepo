@@ -3,7 +3,7 @@
 // interview could not load it, so a caller other than the editor cannot stage
 // one either. Staging consults `rosterRefusal` before it stores any bytes;
 // the RPC suites cover the staging itself.
-import { Schema } from 'effect';
+import { Redacted, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -19,10 +19,10 @@ function roster(source: string, text: string) {
   return {
     kind: 'content' as const,
     contentKind: 'network' as const,
-    name: source,
-    source,
+    name: Redacted.make(source),
+    source: Redacted.make(source),
     contentType: source.endsWith('.csv') ? 'text/csv' : 'application/json',
-    bytes: new TextEncoder().encode(text),
+    bytes: Redacted.make(new TextEncoder().encode(text)),
   };
 }
 
@@ -91,10 +91,10 @@ describe('staging a roster', () => {
     const outcome = await rosterRefusal({
       kind: 'content',
       contentKind: 'image',
-      name: 'photo.png',
-      source: 'photo.png',
+      name: Redacted.make('photo.png'),
+      source: Redacted.make('photo.png'),
       contentType: 'image/png',
-      bytes: new Uint8Array([7, 7, 7]),
+      bytes: Redacted.make(new Uint8Array([7, 7, 7])),
     });
 
     expect(outcome).toBeUndefined();

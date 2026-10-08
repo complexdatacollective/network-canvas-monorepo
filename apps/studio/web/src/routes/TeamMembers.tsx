@@ -1,4 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
+import { Redacted } from 'effect';
 import {
   useCallback,
   useEffect,
@@ -920,7 +921,7 @@ function TeamManagement(props: {
                   () =>
                     rpcCall('team.createInvitation', {
                       teamId: toTeamId(team.id),
-                      email,
+                      email: Redacted.make(email),
                       role,
                     }),
                   refreshTeamState,

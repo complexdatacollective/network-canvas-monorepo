@@ -1,5 +1,6 @@
 import { isInaccessible, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { Redacted } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
@@ -23,10 +24,10 @@ async function stage(
     request: {
       kind: 'content',
       contentKind,
-      name,
-      source: name,
+      name: Redacted.make(name),
+      source: Redacted.make(name),
       contentType,
-      bytes: new Uint8Array(new TextEncoder().encode(name)),
+      bytes: Redacted.make(new Uint8Array(new TextEncoder().encode(name))),
     },
   });
   if (staged.status !== 'ok') throw new Error(`could not stage ${name}`);

@@ -43,8 +43,8 @@ catalogs:
       specifier: ^8.1.0
       version: 8.1.0
     '@chromatic-com/storybook':
-      specifier: ^5.3.1
-      version: 5.3.1
+      specifier: ^5.4.0
+      version: 5.4.0
     '@effect/platform-node':
       specifier: 4.0.0
       version: 4.0.0
@@ -1245,7 +1245,7 @@ importers:
     devDependencies:
       '@chromatic-com/storybook':
         specifier: 'catalog:'
-        version: 5.3.1(storybook@10.6.1(@types/react@19.3.0)(prettier@2.8.8)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))
+        version: 5.4.0(storybook@10.6.1(@types/react@19.3.0)(prettier@2.8.8)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))
       '@codaco/tsconfig':
         specifier: workspace:^
         version: link:../../tooling/typescript
@@ -1450,7 +1450,7 @@ importers:
     devDependencies:
       '@chromatic-com/storybook':
         specifier: 'catalog:'
-        version: 5.3.1(storybook@10.6.1(@types/react@19.3.0)(prettier@2.8.8)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))
+        version: 5.4.0(storybook@10.6.1(@types/react@19.3.0)(prettier@2.8.8)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))
       '@codaco/vitest-config':
         specifier: workspace:^
         version: link:../../tooling/vitest
@@ -2424,7 +2424,7 @@ importers:
         version: 1.8.0(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@chromatic-com/storybook':
         specifier: 'catalog:'
-        version: 5.3.1(storybook@10.6.1(@types/react@19.3.0)(prettier@2.8.8)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))
+        version: 5.4.0(storybook@10.6.1(@types/react@19.3.0)(prettier@2.8.8)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))
       '@codaco/app-i18n':
         specifier: workspace:^
         version: link:../app-i18n
@@ -2648,7 +2648,7 @@ importers:
     devDependencies:
       '@chromatic-com/storybook':
         specifier: 'catalog:'
-        version: 5.3.1(storybook@10.6.1(@types/react@19.3.0)(prettier@2.8.8)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))
+        version: 5.4.0(storybook@10.6.1(@types/react@19.3.0)(prettier@2.8.8)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))
       '@codaco/development-protocol':
         specifier: workspace:^
         version: link:../development-protocol
@@ -4554,8 +4554,8 @@ packages:
     resolution: {integrity: sha512-q/ThtP9gcnEP6xlv7LrY26C2mHqdGBti/MmOVngt/M/oIGYkssmQGxPK9WzBNt2juVcH/vml2WQ+ra8LXYOTaA==}
     engines: {node: ^22.11 || ^24 || >=26}
 
-  '@chromatic-com/storybook@5.3.1':
-    resolution: {integrity: sha512-eUcbR9CddVmKAnjOiBCOz5rNdT096jiXIjR+qaWbUuTlgRdpc9yjTrk4/hiPAAykZrPYVNJN11p6rJgW9KNpKg==}
+  '@chromatic-com/storybook@5.4.0':
+    resolution: {integrity: sha512-U4Rny8H6BBa8uiRMnL0CFZyqZ0MWogN/szlMugsInfSnX+PtrLCVp2kjrvaG9bv6X5xSgHpnmepOzLm8+QFseA==}
     engines: {node: '>=20.0.0', yarn: '>=1.22.18'}
     peerDependencies:
       storybook: ^0.0.0-0 || ^10.1.0 || ^10.1.0-0 || ^10.2.0-0 || ^10.3.0-0 || ^10.4.0-0 || ^10.5.0-0 || ^10.6.0-0 || ^11.0.0-0
@@ -10326,22 +10326,6 @@ packages:
   chownr@3.0.0:
     resolution: {integrity: sha512-+IxzY9BZOQd/XuYPRmrvEVjF/nqj5kgT4kEq7VofrDoM1MxoRjEWkrCC3EtLi59TVawxTAn+orJwFQcrqEN1+g==}
     engines: {node: '>=18'}
-
-  chromatic@18.1.0:
-    resolution: {integrity: sha512-I9av8lUc5CQRlYzwKpmOG9cwYvZ4AFmTvtHeNrzOMC1353F9xYw45CHpSNIsNKuOiqqmzci9esXQd5akl0fi6w==}
-    engines: {node: '>=22.0.0'}
-    hasBin: true
-    peerDependencies:
-      '@chromatic-com/cypress': ^0.*.* || ^1.0.0
-      '@chromatic-com/playwright': ^0.*.* || ^1.0.0
-      '@chromatic-com/vitest': ^0.*.* || ^1.0.0
-    peerDependenciesMeta:
-      '@chromatic-com/cypress':
-        optional: true
-      '@chromatic-com/playwright':
-        optional: true
-      '@chromatic-com/vitest':
-        optional: true
 
   chromatic@18.10.1:
     resolution: {integrity: sha512-oeCv4HvMrZPB7SzCD9yuzAPgB4c/TfhqLzDn1/K7dIYGvF/mWhOrwDa5sXHIkaXFJ+mYx9rMKy9fPShWPujH5Q==}
@@ -19141,10 +19125,10 @@ snapshots:
       '@changesets/types': 7.0.0
       human-id: 4.2.1
 
-  '@chromatic-com/storybook@5.3.1(storybook@10.6.1(@types/react@19.3.0)(prettier@2.8.8)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))':
+  '@chromatic-com/storybook@5.4.0(storybook@10.6.1(@types/react@19.3.0)(prettier@2.8.8)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))':
     dependencies:
       '@neoconfetti/react': 1.0.0
-      chromatic: 18.1.0
+      chromatic: 18.10.1
       jsonfile: 6.2.1
       storybook: 10.6.1(@types/react@19.3.0)(prettier@2.8.8)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       strip-ansi: 7.2.0
@@ -24510,10 +24494,6 @@ snapshots:
   chownr@2.0.0: {}
 
   chownr@3.0.0: {}
-
-  chromatic@18.1.0:
-    dependencies:
-      semver: 7.8.5
 
   chromatic@18.10.1:
     dependencies:

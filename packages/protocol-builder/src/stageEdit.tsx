@@ -1,3 +1,4 @@
+import { Redacted } from 'effect';
 import {
   createContext,
   useCallback,
@@ -256,7 +257,7 @@ function CreatingStage({
         protocolId,
         requestId,
         kind: 'stage',
-        document,
+        document: Redacted.make(document),
         position,
         ...(promotion === undefined ? {} : { promote: promotion }),
       });

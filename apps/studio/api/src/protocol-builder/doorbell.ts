@@ -1,4 +1,5 @@
 import {
+  Cause,
   Context,
   Duration,
   Effect,
@@ -15,10 +16,7 @@ import { Redis } from 'ioredis';
 
 import { Environment, type StudioEnv } from '../env.ts';
 import type { HealthCheck } from '../http/health.ts';
-import {
-  describeValkeyError,
-  throttledWarning,
-} from '../platform/valkey-log.ts';
+import { throttledWarning } from '../platform/valkey-log.ts';
 import { catchLoopDefect } from './loop-defects.ts';
 
 const DoorbellMessage = Schema.Union([
@@ -173,16 +171,15 @@ const connectValkey = Effect.fnUntraced(function* (options: {
   const connection = MutableRef.make(0);
   const refusals = MutableRef.make(0);
 
-  const trouble = (what: string) => {
-    if (MutableRef.getAndSet(outage, true)) {
-      run(Effect.logDebug(`Protocol-builder doorbell: ${what}`));
-      return;
-    }
-    run(
-      Effect.logWarning(
-        `Protocol-builder doorbell: ${what}; cross-replica updates fall back to the safety poll until it resubscribes.`,
-      ),
-    );
+  const trouble = (event: string, error?: unknown) => {
+    const cause = error === undefined ? Cause.empty : Cause.fail(error);
+    const log = MutableRef.getAndSet(outage, true)
+      ? Effect.logDebug('Protocol-builder doorbell trouble continues', cause)
+      : Effect.logWarning(
+          'Protocol-builder doorbell trouble; cross-replica updates fall back to the safety poll until it resubscribes.',
+          cause,
+        );
+    run(log.pipe(Effect.annotateLogs({ event })));
   };
 
   const isCurrent = (epoch: number) =>
@@ -211,7 +208,7 @@ const connectValkey = Effect.fnUntraced(function* (options: {
           },
           (error: unknown) => {
             if (!isCurrent(epoch)) return;
-            trouble(`subscribing failed (${describeValkeyError(error)})`);
+            trouble('subscribing failed', error);
             // `ready` resets ioredis's own backoff, so a server that keeps
             // refusing SUBSCRIBE is retried on this schedule instead.
             const delay = Math.min(
@@ -233,7 +230,7 @@ const connectValkey = Effect.fnUntraced(function* (options: {
       // Without a listener ioredis rethrows connection errors as an uncaught
       // 'error' event.
       redis.on('error', (error: unknown) => {
-        trouble(`connection error (${describeValkeyError(error)})`);
+        trouble('connection error', error);
       });
       redis.on('message', (from: string, payload: string) => {
         if (from !== channel) return;
@@ -263,12 +260,19 @@ const connectValkey = Effect.fnUntraced(function* (options: {
       Effect.catch((error) =>
         Effect.sync(() => {
           if (!isCurrent(epoch)) return;
-          trouble(`no answer to PING (${describeValkeyError(error)})`);
+          trouble('no answer to PING', error);
           subscriber.disconnect(true);
         }),
       ),
     );
-  }).pipe(catchLoopDefect('Protocol-builder doorbell: probing Valkey failed'));
+  }).pipe(
+    catchLoopDefect((cause) =>
+      Effect.logError(
+        'Protocol-builder doorbell: probing Valkey failed',
+        cause,
+      ),
+    ),
+  );
   yield* Effect.forkScoped(
     Effect.repeat(probe, Schedule.spaced(PING_INTERVAL)),
   );
@@ -283,7 +287,8 @@ const connectValkey = Effect.fnUntraced(function* (options: {
       redis.on('error', (error: unknown) => {
         run(
           Effect.logDebug(
-            `Protocol-builder doorbell publisher: ${describeValkeyError(error)}`,
+            'Protocol-builder doorbell publisher error',
+            Cause.fail(error),
           ),
         );
       });
@@ -292,9 +297,11 @@ const connectValkey = Effect.fnUntraced(function* (options: {
     disconnect,
   );
 
-  const warnRing = throttledWarning(
-    (reason) =>
-      `Protocol-builder doorbell could not ring (${reason}); other replicas see the change at their next safety poll.`,
+  const warnRing = throttledWarning((error) =>
+    Effect.logWarning(
+      'Protocol-builder doorbell could not ring; other replicas see the change at their next safety poll.',
+      Cause.fail(error),
+    ),
   );
 
   const ring = (message: DoorbellMessage): Effect.Effect<void> =>
@@ -306,7 +313,7 @@ const connectValkey = Effect.fnUntraced(function* (options: {
         }),
       ),
       Effect.asVoid,
-      Effect.catch((error) => warnRing(describeValkeyError(error))),
+      Effect.catch((error) => warnRing(error)),
     );
 
   return Doorbell.of({

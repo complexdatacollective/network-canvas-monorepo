@@ -2,7 +2,7 @@
 // and their delivery outbox, the usability experiments the grant runs, and the
 // in-app feedback reports.
 import { faker } from '@faker-js/faker';
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 
 import { Transaction } from '../../src/db/tenant.ts';
 import type { SecretsCipherApi } from '../../src/secrets/cipher.ts';
@@ -263,7 +263,7 @@ export const seedWebhooks = Effect.fnUntraced(function* (
     plaintextSecrets.push(secret);
     const sealed = cipher.sealWebhookSecret(
       { teamId: team.id, subscriptionId: id },
-      secret,
+      Redacted.make(secret),
     );
     subscriptionRows.push([
       id,

@@ -17,7 +17,7 @@ import {
 } from '../audit/read-authorization.ts';
 import { AuditSignal } from '../audit/signal.ts';
 import type { Database } from '../db/client.ts';
-import { deepestMessage } from '../db/errors.ts';
+import { failureCodes } from '../db/errors.ts';
 import type { TeamAccess, Transaction } from '../db/tenant.ts';
 import { RequestId } from '../http/middleware/request-id.ts';
 
@@ -108,10 +108,7 @@ const denyAuditRead = Effect.fnUntraced(function* (
       teamId: access.teamId,
       actorId: principal.userId,
       requestId,
-      causeName: error instanceof Error ? error.name : typeof error,
-      // A `SqlError`'s own message is always `PgConnection: Query failed`; the
-      // operator needs the Postgres one underneath it.
-      causeMessage: deepestMessage(error) ?? String(error),
+      ...failureCodes(error),
     });
   }
   return yield* new AuditReadDenied({});

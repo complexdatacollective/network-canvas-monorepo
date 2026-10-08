@@ -57,14 +57,18 @@ export const TeamInvitationId = Schema.String.check(
 ).pipe(Schema.brand('TeamInvitationId'));
 export type TeamInvitationId = (typeof TeamInvitationId)['Type'];
 
-export const SessionToken = Schema.String.check(
-  Schema.isMinLength(16),
-  Schema.isMaxLength(PRESENTED_TOKEN_MAX_LENGTH),
-).pipe(Schema.brand('SessionToken'));
+export const SessionToken = Schema.RedactedFromValue(
+  Schema.String.check(
+    Schema.isMinLength(16),
+    Schema.isMaxLength(PRESENTED_TOKEN_MAX_LENGTH),
+  ).pipe(Schema.brand('SessionToken')),
+);
 export type SessionToken = (typeof SessionToken)['Type'];
 
-export const LinkToken = Schema.String.check(
-  Schema.isMinLength(16),
-  Schema.isMaxLength(PRESENTED_TOKEN_MAX_LENGTH),
-).pipe(Schema.brand('LinkToken'));
+export const LinkToken = Schema.RedactedFromValue(
+  Schema.String.check(
+    Schema.isMinLength(16),
+    Schema.isMaxLength(PRESENTED_TOKEN_MAX_LENGTH),
+  ).pipe(Schema.brand('LinkToken')),
+);
 export type LinkToken = (typeof LinkToken)['Type'];

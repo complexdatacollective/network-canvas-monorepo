@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Cause, Effect, Exit, Stream } from 'effect';
+import { Cause, Effect, Exit, Redacted, Stream } from 'effect';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { type ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
@@ -55,12 +55,12 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId,
         requestId: randomUUID(),
         kind: 'stage',
-        document: {
+        document: Redacted.make({
           type: 'Information',
           label: enUS('Watched write'),
           title: enUS('Watched write'),
           items: [],
-        },
+        }),
       }),
     );
 
@@ -213,12 +213,12 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         protocolId: suite.egolessProtocolId,
         requestId: randomUUID(),
         kind: 'stage',
-        document: {
+        document: Redacted.make({
           type: 'Information',
           label: enUS('Past the bound'),
           title: enUS('Past the bound'),
           items: [],
-        },
+        }),
       }),
     );
     // An overflowing watcher leaves the relay, though its stream has yet to
@@ -268,10 +268,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             protocolId,
             requestId: randomUUID(),
             sectionId,
-            document: {
-              ...held.document,
+            document: Redacted.make({
+              ...Redacted.value(held.document),
               label: enUS('Written as the tab closed'),
-            },
+            }),
             revision: held.revision,
           }),
           { signal: leaving.signal },
@@ -323,12 +323,12 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             protocolId,
             requestId: randomUUID(),
             kind: 'stage',
-            document: {
+            document: Redacted.make({
               type: 'Information',
               label: enUS('Created as the tab closed'),
               title: enUS('Created as the tab closed'),
               items: [],
-            },
+            }),
           }),
         );
         await until(
@@ -444,17 +444,20 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           protocolId,
           requestId: randomUUID(),
           sectionId: codebookSection,
-          document: {
-            ...held.document,
+          document: Redacted.make({
+            ...Redacted.value(held.document),
             variables: {
-              ...(held.document.variables as Record<string, unknown>),
+              ...(Redacted.value(held.document).variables as Record<
+                string,
+                unknown
+              >),
               [variableId]: {
                 name: variableId,
                 label: 'Interrupted',
                 type: 'text',
               },
             },
-          },
+          }),
           revision: held.revision,
         }),
       );

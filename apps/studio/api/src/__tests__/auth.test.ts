@@ -1,9 +1,18 @@
 import { randomUUID } from 'node:crypto';
 
-import { Cause, Effect, Exit, Option, Predicate } from 'effect';
+import {
+  Cause,
+  Effect,
+  Exit,
+  Option,
+  Predicate,
+  Redacted,
+  Schema,
+} from 'effect';
 import { type Headers, HttpServerRequest } from 'effect/http';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { Me } from '@codaco/studio-contract/schema/account';
 import { TeamId } from '@codaco/studio-contract/schema/ids';
 import { AUTH_NOT_CONFIGURED_PROBLEM_TYPE } from '@codaco/studio-contract/schema/problem';
 
@@ -89,9 +98,9 @@ async function statusOver(studio: Studio) {
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
   userId: 'user-1',
-  email: 'researcher@example.com',
+  email: Redacted.make('researcher@example.com'),
   emailVerified: true,
-  name: 'Researcher',
+  name: Redacted.make('Researcher'),
   locale: 'en-GB',
   sessionId: 'session-1',
 };
@@ -107,7 +116,7 @@ describe('principal resolution', () => {
         ]),
     });
     const me = await meOver(createStudio(readEnv(), { auth }));
-    expect(me).toEqual({
+    expect(Schema.encodeSync(Me)(me)).toEqual({
       userId: 'user-1',
       email: 'researcher@example.com',
       emailVerified: true,
@@ -458,6 +467,8 @@ describe('unconfigured auth', () => {
     devDefaults: false,
     telemetry: true,
     telemetryEndpoint: undefined,
+    telemetryHeaders: undefined,
+    logLevel: 'Info',
     deploymentMode: 'self-hosted',
     seedAdminPassword: undefined,
   };
@@ -577,7 +588,7 @@ describe.skipIf(!testDb)('magic-link sign-in', () => {
       );
 
       const me = await meOver(studio, { cookie });
-      expect(me.email).toBe(email);
+      expect(Redacted.value(me.email)).toBe(email);
       expect(me.emailVerified).toBe(true);
 
       await expectMeUnauthorized(studio);
@@ -636,7 +647,7 @@ describe.skipIf(!testDb)('email/password sign-in', () => {
     const cookie = (setCookie ?? '').split(';')[0]!;
 
     const me = await meOver(studio, { cookie });
-    expect(me.email).toBe(SEED_ADMIN_EMAIL);
+    expect(Redacted.value(me.email)).toBe(SEED_ADMIN_EMAIL);
   });
 
   it('refuses a wrong password with a generic error', async () => {

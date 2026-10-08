@@ -13,7 +13,7 @@ import { UnaryBodyLimit } from '../../http/body.ts';
 import type { HealthChecks } from '../../http/health.ts';
 import { MaintenanceTriggers } from '../../http/middleware/maintenance.ts';
 import { Routes } from '../../http/router.ts';
-import { RedactedHeadersLive } from '../../platform/http-server.ts';
+import { ServerTelemetryLive } from '../../platform/http-server.ts';
 import { WebSocketDrain } from '../../platform/ws-drain.ts';
 import { Doorbell } from '../../protocol-builder/doorbell.ts';
 import { studioServices } from './services.ts';
@@ -32,6 +32,7 @@ export async function startStudioServer(
     readonly unaryBodyLimit?: number;
     readonly clock?: Clock.Clock;
     readonly doorbell?: Layer.Layer<Doorbell>;
+    readonly observability?: Layer.Layer<never>;
   } = {},
 ): Promise<{ origin: string; dispose: () => Promise<void> }> {
   const EnvironmentLive = Layer.succeed(Environment, env);
@@ -44,7 +45,7 @@ export async function startStudioServer(
   const ServeLive = HttpRouter.serve(Routes(studio, checks), {
     disableLogger: true,
     disableListenLog: true,
-  }).pipe(Layer.provide(RedactedHeadersLive));
+  }).pipe(Layer.provide(ServerTelemetryLive));
   const layer = WebSocketDrain.layerShutdown.pipe(
     Layer.provideMerge(ServeLive),
     Layer.provideMerge(WebSocketDrain.layer),
@@ -64,9 +65,15 @@ export async function startStudioServer(
     options.clock === undefined
       ? bounded
       : bounded.pipe(Layer.provide(Layer.succeed(Clock.Clock)(options.clock)));
+  const observed =
+    options.observability === undefined
+      ? clocked
+      : clocked.pipe(Layer.provide(options.observability));
 
   const scope = Scope.makeUnsafe();
-  const context = await Effect.runPromise(Layer.buildWithScope(clocked, scope));
+  const context = await Effect.runPromise(
+    Layer.buildWithScope(observed, scope),
+  );
   const address = Context.get(context, HttpServer.HttpServer).address;
   if (NetAddress.isUnixPathAddress(address)) {
     throw new Error('the test server did not bind a TCP port');

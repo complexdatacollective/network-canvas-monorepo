@@ -1,4 +1,4 @@
-import { Effect } from 'effect';
+import { Effect, Schema } from 'effect';
 import * as FetchHttpClient from 'effect/http/FetchHttpClient';
 
 import { makeRpcAdapter } from '@codaco/effect-query/adapter';
@@ -7,6 +7,7 @@ import type {
   RpcAdapter,
   SuccessOf,
 } from '@codaco/effect-query/types';
+import { SyncInput } from '@codaco/studio-contract/schema/participant';
 
 import {
   ParticipantClient,
@@ -40,6 +41,8 @@ const ANALYTICS_KEEPALIVE_MAX_BYTES = 4_000;
 const bodyBytes = (payload: unknown) =>
   new Blob([JSON.stringify(payload)]).size;
 
+const encodeSync = Schema.encodeSync(SyncInput);
+
 const runWithKeepalive = <A, E>(
   effect: Effect.Effect<A, E, ParticipantClient>,
   keepalive: boolean,
@@ -60,7 +63,7 @@ export const participantUnloadingSync = (
     Effect.flatMap(ParticipantClient, (client) =>
       client('participant.sync', payload),
     ),
-    bodyBytes(payload) <= KEEPALIVE_MAX_BYTES,
+    bodyBytes(encodeSync(payload)) <= KEEPALIVE_MAX_BYTES,
   );
 
 export const participantAnalytics = (

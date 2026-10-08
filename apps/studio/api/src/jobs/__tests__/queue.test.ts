@@ -10,6 +10,7 @@ import {
   Layer,
   Option,
   Random,
+  Redacted,
 } from 'effect';
 import { TestClock } from 'effect/testing';
 
@@ -469,12 +470,12 @@ describe.skipIf(!db)('the native queue', () => {
         yield* clear;
         const signIn = resolvedQueue('sign-in-email');
         yield* enqueue('sign-in-email', {
-          email: 'someone@example.test',
-          url: 'https://studio.example.test/magic',
+          email: Redacted.make('someone@example.test'),
+          url: Redacted.make('https://studio.example.test/magic'),
         });
         const abandoned = yield* enqueue('sign-in-email', {
-          email: 'other@example.test',
-          url: 'https://studio.example.test/other',
+          email: Redacted.make('other@example.test'),
+          url: Redacted.make('https://studio.example.test/other'),
         });
 
         yield* onWorker((worker) =>
@@ -569,12 +570,26 @@ describe.skipIf(!db)('the native queue', () => {
         yield* drainDelivery(() =>
           Effect.succeed<JobOutcome>('uncertain'),
         ).pipe(Effect.provide(logs.layer));
-        assert.deepStrictEqual(logs.lines, [
-          {
-            level: 'Warn',
-            message: `job invitation-delivery ${abandoned} ended uncertain on attempt 1: a side effect left the process and its record could not be written`,
-          },
-        ]);
+        assert.deepStrictEqual(
+          logs.records.map(({ level, message, annotations }) => ({
+            level,
+            message,
+            annotations,
+          })),
+          [
+            {
+              level: 'Warn',
+              message:
+                'job ended uncertain: a side effect left the process and its record could not be written',
+              annotations: {
+                queue: 'invitation-delivery',
+                job_id: abandoned,
+                attempt: 1,
+                outcome: 'uncertain',
+              },
+            },
+          ],
+        );
       }).pipe(Effect.provide(jobsLayer));
     });
 
@@ -603,16 +618,36 @@ describe.skipIf(!db)('the native queue', () => {
         );
         assert.strictEqual(failed._tag, 'failed');
 
-        assert.deepStrictEqual(logs.lines, [
-          {
-            level: 'Warn',
-            message: `job invitation-delivery ${retried} retrying after attempt 1: SMTP refused the recipient`,
-          },
-          {
-            level: 'Error',
-            message: `job invitation-delivery ${lost} failed on attempt 1: SMTP refused the recipient`,
-          },
-        ]);
+        assert.deepStrictEqual(
+          logs.records.map(({ level, message, annotations, cause }) => ({
+            level,
+            message,
+            annotations,
+            failure: String(Cause.squash(cause)),
+          })),
+          [
+            {
+              level: 'Warn',
+              message: 'job attempt failed; retrying',
+              annotations: {
+                queue: 'invitation-delivery',
+                job_id: retried,
+                attempt: 1,
+              },
+              failure: 'Error: SMTP refused the recipient',
+            },
+            {
+              level: 'Error',
+              message: 'job attempt failed and will not be retried',
+              annotations: {
+                queue: 'invitation-delivery',
+                job_id: lost,
+                attempt: 1,
+              },
+              failure: 'Error: SMTP refused the recipient',
+            },
+          ],
+        );
       }).pipe(Effect.provide(jobsLayer));
     });
 

@@ -10,6 +10,7 @@ import {
   MutableRef,
   Option,
   Predicate,
+  Redacted,
   Scope,
 } from 'effect';
 import * as RpcClient from 'effect/rpc/RpcClient';
@@ -32,9 +33,9 @@ import { MaintenanceState } from '../../platform/maintenance-state.ts';
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
   userId: 'ws-route-user',
-  email: 'ws-route@example.com',
+  email: Redacted.make('ws-route@example.com'),
   emailVerified: true,
-  name: 'Socket Researcher',
+  name: Redacted.make('Socket Researcher'),
   locale: null,
   sessionId: 'ws-route-session',
 };

@@ -185,8 +185,8 @@ export type InvitationDeliveryJob = typeof InvitationDeliveryJobSchema.Type;
 
 /** The documented exception to identifiers-only — see JOB_PAYLOAD_POLICY. */
 export const SignInEmailJobSchema = Schema.Struct({
-  email: Schema.String.check(Schema.isMinLength(1)),
-  url: Schema.String.check(isUrlString),
+  email: Schema.RedactedFromValue(Schema.String.check(Schema.isMinLength(1))),
+  url: Schema.RedactedFromValue(Schema.String.check(isUrlString)),
 });
 export type SignInEmailJob = typeof SignInEmailJobSchema.Type;
 
@@ -210,6 +210,16 @@ export type DeniedAttemptsSummaryJob =
 export const UpdateCheckJobSchema = Schema.Struct({}).check(isEmptyObject);
 export type UpdateCheckJob = typeof UpdateCheckJobSchema.Type;
 
+const TRACEPARENT =
+  /^00-(?!0{32})[0-9a-f]{32}-(?!0{16})[0-9a-f]{16}-[0-9a-f]{2}$/;
+
+export const JobCorrelationSchema = Schema.Struct({
+  traceparent: Schema.String.check(
+    Schema.isPattern(TRACEPARENT, { expected: 'a W3C traceparent' }),
+  ),
+});
+export type JobCorrelation = typeof JobCorrelationSchema.Type;
+
 export const JOB_PAYLOAD_SCHEMAS = {
   'invitation-delivery': InvitationDeliveryJobSchema,
   // A dead-lettered job is a copy of the one that failed, so the shape is the
@@ -224,6 +234,9 @@ export const JOB_PAYLOAD_SCHEMAS = {
 
 export type JobPayload<Queue extends JobQueueName> =
   (typeof JOB_PAYLOAD_SCHEMAS)[Queue]['Type'];
+
+export type EncodedJobPayload<Queue extends JobQueueName> =
+  (typeof JOB_PAYLOAD_SCHEMAS)[Queue]['Encoded'];
 
 /**
  * `Schema.Struct` strips an undeclared key by default; a field the policy forbids

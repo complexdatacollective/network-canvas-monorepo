@@ -1,6 +1,6 @@
 import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js';
-import { Option, Schema } from 'effect';
+import { Option, Redacted, Schema } from 'effect';
 
 import {
   type LinkToken,
@@ -10,7 +10,7 @@ import {
 const decodeSessionToken = Schema.decodeUnknownOption(SessionToken);
 
 const keyFor = (linkToken: LinkToken): string =>
-  `studio.participant.${bytesToHex(sha256(utf8ToBytes(linkToken)))}`;
+  `studio.participant.${bytesToHex(sha256(utf8ToBytes(Redacted.value(linkToken))))}`;
 
 // Getters, read inside each caller's `try`: a browser that denies Web Storage
 // throws on reading `sessionStorage` or `localStorage` itself, and one denied
@@ -44,7 +44,7 @@ export const storeSession = (
   try {
     (anonymous ? sessionStorage : localStorage).setItem(
       keyFor(linkToken),
-      sessionToken,
+      Redacted.value(sessionToken),
     );
   } catch {
     return;

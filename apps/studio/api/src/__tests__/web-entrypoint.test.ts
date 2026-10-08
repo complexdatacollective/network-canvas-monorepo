@@ -54,6 +54,12 @@ describe.skipIf(!db)('the web entrypoint', () => {
         // does while `pnpm dev` runs its reset.
         await web.waitForOutput(/Database has no Studio schema/);
         await web.waitForOutput(/listening on/);
+        const listening = web
+          .output()
+          .split('\n')
+          .find((line) => line.includes('listening on'));
+        expect(listening).toMatch(/"version":"\d+\.\d+\.\d+/);
+        expect(listening).not.toMatch(/"address"|127\.0\.0\.1|0\.0\.0\.0/);
 
         await applySchema(scratch.pool);
         await web.waitForOutput(/Database schema current\./, SCHEMA_WAIT_MS);

@@ -21,12 +21,8 @@ const publicStatus = Schema.decodeUnknownEffect(PublicInstanceStatus);
 export const StatusApiHandlers = (deps: StatusApiDeps) =>
   HttpApiBuilder.group(StudioApi, 'status', (handlers) =>
     handlers.handle('get', () =>
-      Effect.promise(async () =>
-        getInstanceStatus(
-          deps.capabilities,
-          deps.deployment,
-          await deps.readInstallation(),
-        ),
+      Effect.map(deps.readInstallation, (installation) =>
+        getInstanceStatus(deps.capabilities, deps.deployment, installation),
       ).pipe(Effect.flatMap(publicStatus), Effect.orDie),
     ),
   );

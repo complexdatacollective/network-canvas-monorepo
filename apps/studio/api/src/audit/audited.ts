@@ -2,11 +2,11 @@ import { Cause, Effect, Exit, Option, Predicate } from 'effect';
 
 import { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
 
-import { deepestMessage } from '../db/errors.ts';
+import { failureCodes } from '../db/errors.ts';
 import { savepoint, type TeamAccess, TenantScope } from '../db/tenant.ts';
 import { RequestId } from '../http/middleware/request-id.ts';
 import { AuditContext } from './context.ts';
-import { type AuditEventInput, parseAuditEventInput } from './events.ts';
+import { type AuditEventInput, checkAuditEventInput } from './events.ts';
 import { AuditSignal } from './signal.ts';
 import { append as appendEvent, lockedTeamLabel, lockTeam } from './store.ts';
 
@@ -88,7 +88,7 @@ export const stamp = (
   body: AuditEventBody,
   outcome: 'succeeded' | 'denied' | 'failed',
 ): AuditEventInput =>
-  parseAuditEventInput({
+  checkAuditEventInput({
     ...body,
     teamId: context.teamId,
     teamLabel: context.teamLabel,
@@ -112,8 +112,7 @@ const appendRequired = Effect.fnUntraced(function* (
         outcome: event.outcome,
         teamId: context.teamId,
         requestId: context.requestId,
-        causeName: error.name,
-        causeMessage: deepestMessage(error) ?? error.message,
+        ...failureCodes(error),
       }),
     ),
   );

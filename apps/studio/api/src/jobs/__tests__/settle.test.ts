@@ -1,5 +1,13 @@
 import { assert, describe, layer } from '@effect/vitest';
-import { DateTime, Deferred, Duration, Effect, Fiber, Random } from 'effect';
+import {
+  DateTime,
+  Deferred,
+  Duration,
+  Effect,
+  Fiber,
+  Random,
+  Redacted,
+} from 'effect';
 import { TestClock } from 'effect/testing';
 
 import { reachableDb } from '../../__tests__/support/postgres.ts';
@@ -146,12 +154,25 @@ describe.skipIf(!db)('settling against the attempt that owns the row', () => {
           assert.strictEqual(row?.attempts, 2);
           assert.strictEqual(row?.outcome, 'suppressed');
 
-          assert.deepStrictEqual(logs.lines, [
-            {
-              level: 'Warn',
-              message: `job invitation-delivery ${jobId} lost its lease before attempt 1 could settle; the row belongs to a later attempt`,
-            },
-          ]);
+          assert.deepStrictEqual(
+            logs.records.map(({ level, message, annotations }) => ({
+              level,
+              message,
+              annotations,
+            })),
+            [
+              {
+                level: 'Warn',
+                message:
+                  'job lost its lease before its attempt could settle; the row belongs to a later attempt',
+                annotations: {
+                  queue: 'invitation-delivery',
+                  job_id: jobId,
+                  attempt: 1,
+                },
+              },
+            ],
+          );
         }).pipe(Effect.provide(jobsLayer), Effect.provide(logs.layer));
       },
     );
@@ -487,8 +508,8 @@ describe.skipIf(!db)('claiming during a graceful stop', () => {
           yield* Deferred.await(deliveryStarted);
 
           const signIn = yield* enqueue('sign-in-email', {
-            email: 'someone@example.test',
-            url: 'https://studio.example.test/magic',
+            email: Redacted.make('someone@example.test'),
+            url: Redacted.make('https://studio.example.test/magic'),
           });
           yield* Effect.sleep(SETTLE);
 

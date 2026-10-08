@@ -141,7 +141,9 @@ const make = Effect.fnUntraced(function* (settings: RateLimitSettings) {
     });
     if (!due) return;
     yield* Effect.logWarning(
-      `Rate limit reached for ${scope}; callers are refused for up to ${retryAfterSeconds}s.`,
+      'Rate limit reached; callers are refused until it resets.',
+    ).pipe(
+      Effect.annotateLogs({ scope, retry_after_seconds: retryAfterSeconds }),
     );
   });
 

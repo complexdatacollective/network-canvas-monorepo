@@ -365,7 +365,7 @@ describe.skipIf(!testDb)('collecting abandoned staged resources', () => {
 
       expect(lines).toContainEqual({
         level: 'Error',
-        annotations: { teamId: failing.teamId },
+        annotations: { team_id: failing.teamId },
       });
     } finally {
       await run(ownerRows(`DROP TRIGGER ${name} ON protocol_staged_resources`));

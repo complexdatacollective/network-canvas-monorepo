@@ -17,8 +17,8 @@ import { syncParticipantSession } from '../../interview/sync.ts';
 import { requireDatabase, withRequestId } from '../bridge.ts';
 import type { RpcDeps } from '../deps.ts';
 
-const decodeRedeemed = Schema.decodeUnknownSync(RedeemResult);
-const decodeSession = Schema.decodeUnknownSync(SessionPayload);
+const decodeRedeemed = Schema.decodeUnknownSync(Schema.toType(RedeemResult));
+const decodeSession = Schema.decodeUnknownSync(Schema.toType(SessionPayload));
 const decodeSynced = Schema.decodeUnknownSync(SyncResult);
 const decodeFinished = Schema.decodeUnknownSync(FinishResult);
 

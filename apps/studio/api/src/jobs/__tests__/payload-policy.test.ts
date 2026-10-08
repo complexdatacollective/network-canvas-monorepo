@@ -10,6 +10,7 @@ import {
   JOB_PAYLOAD_SCHEMAS,
   JOB_QUEUES,
   JOB_SCHEDULES,
+  JobCorrelationSchema,
   type JobQueueName,
 } from '@codaco/studio-sync/jobs';
 
@@ -137,5 +138,47 @@ describe('job payload policy', () => {
     expect(codecAdmits(queue, 'not-a-payload')).toBe(false);
     expect(codecAdmits(queue, new Map())).toBe(false);
     expect(codecAdmits(queue, new Date(0))).toBe(false);
+  });
+});
+
+const TRACE_ID = '4bf92f3577b34da6a3ce929d0e0e4736';
+const SPAN_ID = '00f067aa0ba902b7';
+const TRACEPARENT = `00-${TRACE_ID}-${SPAN_ID}-01`;
+
+describe('job correlation', () => {
+  it('carries the traceparent and nothing else', () => {
+    expect(Object.keys(JobCorrelationSchema.fields)).toEqual(['traceparent']);
+    expect(admits(JobCorrelationSchema, { traceparent: TRACEPARENT })).toBe(
+      true,
+    );
+    expect(
+      admits(JobCorrelationSchema, {
+        traceparent: `00-${TRACE_ID}-${SPAN_ID}-00`,
+      }),
+    ).toBe(true);
+  });
+
+  it.each([
+    ['an extra key', { traceparent: TRACEPARENT, teamId: randomUUID() }],
+    ['a tracestate', { traceparent: TRACEPARENT, tracestate: 'vendor=value' }],
+    ['no traceparent', {}],
+    ['a bare traceparent', TRACEPARENT],
+  ])('refuses %s', (_, value) => {
+    expect(admits(JobCorrelationSchema, value)).toBe(false);
+  });
+
+  it.each([
+    ['another version', `01-${TRACE_ID}-${SPAN_ID}-01`],
+    ['a short trace id', `00-${TRACE_ID.slice(1)}-${SPAN_ID}-01`],
+    ['a short span id', `00-${TRACE_ID}-${SPAN_ID.slice(1)}-01`],
+    ['uppercase hex', `00-${TRACE_ID.toUpperCase()}-${SPAN_ID}-01`],
+    ['a zero trace id', `00-${'0'.repeat(32)}-${SPAN_ID}-01`],
+    ['a zero span id', `00-${TRACE_ID}-${'0'.repeat(16)}-01`],
+    ['no flags', `00-${TRACE_ID}-${SPAN_ID}`],
+    ['a trailing field', `${TRACEPARENT}-00`],
+    ['an address', 'researcher@example.org'],
+    ['a row id', randomUUID()],
+  ])('refuses a traceparent with %s', (_, traceparent) => {
+    expect(admits(JobCorrelationSchema, { traceparent })).toBe(false);
   });
 });

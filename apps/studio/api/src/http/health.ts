@@ -1,4 +1,4 @@
-import { Cause, Duration, Effect, type Layer, Option, Record } from 'effect';
+import { Cause, Duration, Effect, Layer, Option, Record } from 'effect';
 import { HttpRouter, HttpServerResponse } from 'effect/http';
 import type { SqlClient } from 'effect/sql';
 
@@ -6,6 +6,7 @@ import { deepestMessage, isMissingRole } from '../db/errors.ts';
 import { databaseAlive } from '../db/readiness.ts';
 import { checkSchemaEffect, type SchemaState } from '../db/schema.ts';
 import { WebSocketDrain } from '../platform/ws-drain.ts';
+import { HttpSpanLive } from './middleware/http-span.ts';
 
 export type CheckVerdict = 'ok' | 'degraded';
 
@@ -137,4 +138,10 @@ export function HealthRoutes(
       );
     }),
   );
+}
+
+export function WorkerHealthRoutes(
+  checks: HealthChecks,
+): Layer.Layer<never, never, HttpRouter.HttpRouter> {
+  return HealthRoutes(checks).pipe(Layer.provideMerge(HttpSpanLive));
 }

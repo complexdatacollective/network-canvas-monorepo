@@ -1,3 +1,4 @@
+import { Redacted } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
@@ -45,10 +46,10 @@ const PORTRAIT = () =>
   ({
     kind: 'content',
     contentKind: 'image',
-    name: 'Portrait',
-    source: 'portrait.png',
+    name: Redacted.make('Portrait'),
+    source: Redacted.make('portrait.png'),
     contentType: 'image/png',
-    bytes: new Uint8Array([1, 2, 3]),
+    bytes: Redacted.make(new Uint8Array([1, 2, 3])),
   }) as const;
 
 function fixtureHost(): InMemoryHost {
@@ -92,10 +93,10 @@ const WRITES: readonly KeyedWrite[] = [
         protocolId: host.protocolId,
         requestId,
         sectionId: INFORMATION,
-        document: {
+        document: Redacted.make({
           ...host.store.read(INFORMATION).document,
           label: { 'en-US': 'Renamed by the retry enumeration' },
-        },
+        }),
         revision: host.store.read(INFORMATION).revision,
       }),
   },
@@ -108,7 +109,7 @@ const WRITES: readonly KeyedWrite[] = [
         protocolId: host.protocolId,
         requestId,
         sectionId: INFORMATION,
-        document: host.store.read(INFORMATION).document,
+        document: Redacted.make(host.store.read(INFORMATION).document),
         revision: host.store.read(INFORMATION).revision,
         promote: { editId: EDIT, resourceIds: [staged] },
       }),
@@ -123,7 +124,7 @@ const WRITES: readonly KeyedWrite[] = [
         protocolId: host.protocolId,
         requestId,
         kind: 'stage',
-        document: stageTemplate(host),
+        document: Redacted.make(stageTemplate(host)),
       }),
   },
   {
@@ -134,10 +135,10 @@ const WRITES: readonly KeyedWrite[] = [
         protocolId: host.protocolId,
         requestId,
         kind: 'stage',
-        document: {
+        document: Redacted.make({
           ...stageTemplate(host),
           items: [{ id: 'item-1', type: 'asset', content: staged }],
-        },
+        }),
         promote: { editId: EDIT, resourceIds: [staged] },
       }),
   },

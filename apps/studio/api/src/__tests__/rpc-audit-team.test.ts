@@ -1,4 +1,4 @@
-import { Effect, Option } from 'effect';
+import { Effect, Option, Redacted } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -31,9 +31,9 @@ const TEAM_ID = TeamId.make(uniqueTeamId('rpc-audit-team'));
 const PRINCIPAL: SessionPrincipal = {
   kind: 'user',
   userId: 'rpc-audit-owner-user',
-  email: 'rpc-audit-owner@example.com',
+  email: Redacted.make('rpc-audit-owner@example.com'),
   emailVerified: true,
-  name: 'RPC Audit Owner',
+  name: Redacted.make('RPC Audit Owner'),
   locale: null,
   sessionId: 'rpc-audit-owner-session',
 };
@@ -52,7 +52,11 @@ describe.skipIf(!testDb)('audited team RPC', () => {
         `INSERT INTO "user" (id, name, email, "emailVerified") VALUES
            ($1, $2, $3, true),
            ('rpc-audit-member-user', 'RPC Audit Member', 'rpc-audit-member@example.com', true)`,
-        [PRINCIPAL.userId, PRINCIPAL.name, PRINCIPAL.email],
+        [
+          PRINCIPAL.userId,
+          Redacted.value(PRINCIPAL.name),
+          Redacted.value(PRINCIPAL.email),
+        ],
       ),
     );
     await database.run(
@@ -104,12 +108,12 @@ describe.skipIf(!testDb)('audited team RPC', () => {
     const invitation = await client.call(
       client.rpc('team.createInvitation', {
         teamId: TEAM_ID,
-        email: 'rpc-invitee@example.com',
+        email: Redacted.make('rpc-invitee@example.com'),
         role: 'member',
       }),
     );
+    expect(Redacted.value(invitation.email)).toBe('rpc-invitee@example.com');
     expect(invitation).toMatchObject({
-      email: 'rpc-invitee@example.com',
       role: 'member',
       status: 'pending',
     });
@@ -162,7 +166,7 @@ describe.skipIf(!testDb)('audited team RPC', () => {
       client.callExit(
         client.rpc('team.createInvitation', {
           teamId: TeamId.make('unknown-team'),
-          email: 'blocked@example.com',
+          email: Redacted.make('blocked@example.com'),
           role: 'member',
         }),
       ),
@@ -175,9 +179,9 @@ describe.skipIf(!testDb)('audited team RPC', () => {
     const invitee: SessionPrincipal = {
       kind: 'user',
       userId: 'rpc-audit-invitee-user',
-      email: 'rpc-audit-invitee@example.com',
+      email: Redacted.make('rpc-audit-invitee@example.com'),
       emailVerified: true,
-      name: 'RPC Audit Invitee',
+      name: Redacted.make('RPC Audit Invitee'),
       locale: null,
       sessionId: 'rpc-audit-invitee-session',
     };
@@ -185,7 +189,11 @@ describe.skipIf(!testDb)('audited team RPC', () => {
       ownerAffected(
         `INSERT INTO "user" (id, name, email, "emailVerified")
          VALUES ($1, $2, $3, true)`,
-        [invitee.userId, invitee.name, invitee.email],
+        [
+          invitee.userId,
+          Redacted.value(invitee.name),
+          Redacted.value(invitee.email),
+        ],
       ),
     );
     await database.run(
@@ -194,7 +202,7 @@ describe.skipIf(!testDb)('audited team RPC', () => {
            id, team_id, email, role, status, expires_at, inviter_id
          ) VALUES ($1, '${TEAM_ID}', $2, 'admin', 'pending',
                    CURRENT_TIMESTAMP + INTERVAL '1 day', $3)`,
-        [invitationId, invitee.email, PRINCIPAL.userId],
+        [invitationId, Redacted.value(invitee.email), PRINCIPAL.userId],
       ),
     );
     const inviteeAuth = authServiceStub({

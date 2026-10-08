@@ -18,9 +18,8 @@ const UUID_PATTERN =
 const OFFSET_DATETIME_PATTERN =
   /^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/;
 
-const Label = Schema.String.check(
-  Schema.isMinLength(1),
-  Schema.isMaxLength(320),
+const Label = Schema.RedactedFromValue(
+  Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(320)),
 );
 const Identifier = Schema.String.check(
   Schema.isMinLength(1),
@@ -446,6 +445,7 @@ export const AuditEventInputSchema = Schema.Union([
 ]);
 
 export type AuditEventInput = typeof AuditEventInputSchema.Type;
+export type EncodedAuditEventInput = typeof AuditEventInputSchema.Encoded;
 type AuditEventKeyFor<Event extends AuditEventInput> =
   Event extends AuditEventInput
     ? `${Event['eventType']}@${Event['eventVersion']}`
@@ -453,12 +453,12 @@ type AuditEventKeyFor<Event extends AuditEventInput> =
 export type AuditEventKey = AuditEventKeyFor<AuditEventInput>;
 
 type AuditEventDefinition = {
-  inputSchema: Schema.Codec<AuditEventInput, unknown>;
+  inputSchema: Schema.Codec<AuditEventInput, EncodedAuditEventInput>;
   title: string;
   detailFields: readonly string[];
   sensitiveFields: readonly string[];
   createsAlert: boolean;
-  fixture: AuditEventInput;
+  fixture: EncodedAuditEventInput;
 };
 
 const FIXTURE_USER_COMMON = {
@@ -904,7 +904,7 @@ const decodeAuditEventIdentity = Schema.decodeUnknownSync(
   }),
 );
 
-export function parseAuditEventInput(input: unknown): AuditEventInput {
+function definitionOf(input: unknown): AuditEventDefinition {
   const identity = decodeAuditEventIdentity(input);
   const key = `${identity.eventType}@${identity.eventVersion}`;
   const definition = (
@@ -913,8 +913,28 @@ export function parseAuditEventInput(input: unknown): AuditEventInput {
   if (!definition) {
     throw new Error(`unregistered audit event definition: ${key}`);
   }
+  return definition;
+}
+
+export function parseAuditEventInput(input: unknown): AuditEventInput {
   return Schema.decodeUnknownSync(
-    definition.inputSchema,
+    definitionOf(input).inputSchema,
     AUDIT_EVENT_PARSE_OPTIONS,
   )(input);
+}
+
+export function checkAuditEventInput(event: unknown): AuditEventInput {
+  return Schema.decodeUnknownSync(
+    Schema.toType(definitionOf(event).inputSchema),
+    AUDIT_EVENT_PARSE_OPTIONS,
+  )(event);
+}
+
+export function encodeAuditEventInput(
+  event: AuditEventInput,
+): EncodedAuditEventInput {
+  return Schema.encodeUnknownSync(
+    definitionOf(event).inputSchema,
+    AUDIT_EVENT_PARSE_OPTIONS,
+  )(event);
 }

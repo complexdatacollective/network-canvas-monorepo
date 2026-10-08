@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm';
-import { Effect, Schema } from 'effect';
+import { Effect, Redacted, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
 import { escapeMessageText } from '@codaco/protocol-validation';
@@ -53,7 +53,7 @@ export class ProtocolCommandAuthorizationError extends Schema.TaggedError<Protoc
 export type LockedProtocolDraft = {
   protocolId: string;
   draftId: string;
-  protocolLabel: string;
+  protocolLabel: Redacted.Redacted;
 };
 
 export const lockProtocolActorMembership: (input: {
@@ -133,13 +133,13 @@ export const lockProtocolDraft: (input: {
   return {
     protocolId: input.protocolId,
     draftId: input.draftId,
-    protocolLabel: protocolLabel.slice(0, 320),
+    protocolLabel: Redacted.make(protocolLabel.slice(0, 320)),
   };
 }, sqlErrorsOnlyBeside);
 
 const protocolEventFields = (protocol: {
   protocolId: string;
-  protocolLabel: string;
+  protocolLabel: Redacted.Redacted;
 }) =>
   ({
     eventVersion: 1,
@@ -162,7 +162,11 @@ const protocolRevision = (result: {
 
 export const createAuditedProtocol: (
   access: TeamAccess,
-  input: { name: string; protocolId: string; draftId: string },
+  input: {
+    name: Redacted.Redacted;
+    protocolId: string;
+    draftId: string;
+  },
 ) => Effect.Effect<
   CreatedProtocol,
   | ProtocolCommandAuthorizationError
@@ -173,10 +177,18 @@ export const createAuditedProtocol: (
   Database | Principal | AuditActor | RequestId | AuditSignal | SecretsCipher
 > = Effect.fn('protocol.create')(function* (
   access: TeamAccess,
-  input: { name: string; protocolId: string; draftId: string },
+  input: {
+    name: Redacted.Redacted;
+    protocolId: string;
+    draftId: string;
+  },
 ) {
   const protocolName = yield* Effect.sync(() =>
-    Schema.decodeUnknownSync(ProtocolName)(input.name).trim(),
+    Redacted.make(
+      Redacted.value(
+        Schema.decodeUnknownSync(ProtocolName)(Redacted.value(input.name)),
+      ).trim(),
+    ),
   );
   const cipher = yield* SecretsCipher;
 
@@ -190,7 +202,7 @@ export const createAuditedProtocol: (
         actorUserId: principal.userId,
       });
       const result = yield* createProtocol(access.teamId, cipher, {
-        protocol: emptyProtocol(protocolName),
+        protocol: emptyProtocol(Redacted.value(protocolName)),
         protocolId: input.protocolId,
         draftId: input.draftId,
       });

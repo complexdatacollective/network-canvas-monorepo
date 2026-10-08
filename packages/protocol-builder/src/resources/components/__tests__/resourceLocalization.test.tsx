@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { Redacted } from 'effect';
 import { useState, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
@@ -51,9 +52,9 @@ const IMAGE_INSPECTION: ResourceInspection = Object.freeze({
   descriptor: Object.freeze({
     id: 'staged-image',
     kind: 'image' as const,
-    name: 'Skyline',
+    name: Redacted.make('Skyline'),
     status: 'staged' as const,
-    source: 'skyline.png',
+    source: Redacted.make('skyline.png'),
     byteLength: 2048,
     contentType: 'image/png',
   }),

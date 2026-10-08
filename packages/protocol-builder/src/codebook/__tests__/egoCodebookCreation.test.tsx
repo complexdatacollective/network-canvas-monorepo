@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
@@ -209,7 +209,7 @@ function racedByACollaborator(host: InMemoryHost): ProtocolBuilderAdapter {
       protocolId: host.protocolId,
       requestId: 'ana-adds-the-first-attribute',
       kind: 'codebookEgo',
-      document: {
+      document: Redacted.make({
         variables: {
           pronouns: {
             name: 'pronouns',
@@ -217,7 +217,7 @@ function racedByACollaborator(host: InMemoryHost): ProtocolBuilderAdapter {
             type: 'text',
           },
         },
-      },
+      }),
     });
   });
   return host.adapterWith({

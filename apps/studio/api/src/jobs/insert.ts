@@ -1,4 +1,8 @@
-import type { JobPayload, JobQueueName } from '@codaco/studio-sync/jobs';
+import type {
+  EncodedJobPayload,
+  JobCorrelation,
+  JobQueueName,
+} from '@codaco/studio-sync/jobs';
 
 import { resolvedQueue } from './queues.ts';
 import { assertSchemaName } from './schema.ts';
@@ -11,10 +15,11 @@ export type JobInsertStatement = {
 export type JobInsertInput<Queue extends JobQueueName> = {
   readonly schema: string;
   readonly queue: Queue;
-  readonly payload: JobPayload<Queue>;
+  readonly payload: EncodedJobPayload<Queue>;
   readonly singletonKey: string | null;
   readonly now: Date | null;
   readonly startAfter: Date | null;
+  readonly correlation: JobCorrelation | null;
 };
 
 /**
@@ -43,7 +48,7 @@ export function insertJobStatement<Queue extends JobQueueName>(
     INSERT INTO ${schema}.jobs
       (queue, payload, state, policy, attempts, singleton_key,
        retry_limit, retry_delay, retry_backoff, retry_delay_max,
-       expire_in_seconds, run_at, keep_until, created_at)
+       expire_in_seconds, run_at, keep_until, created_at, correlation)
     VALUES (
       ${bind(input.queue)},
       ${bind(JSON.stringify(input.payload))}::jsonb,
@@ -59,7 +64,8 @@ export function insertJobStatement<Queue extends JobQueueName>(
       ${runAt},
       ${runAt} + ${bind(declaration.retentionSeconds)}::double precision
                  * interval '1 second',
-      ${createdAt}
+      ${createdAt},
+      ${bind(input.correlation === null ? null : JSON.stringify(input.correlation))}::jsonb
     )
     ON CONFLICT DO NOTHING
     RETURNING id`;

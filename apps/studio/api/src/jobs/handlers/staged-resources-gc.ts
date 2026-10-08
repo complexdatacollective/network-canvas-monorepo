@@ -9,7 +9,7 @@
 // object together; the object is deleted after. One the store would not delete
 // is unnamed from then on, and a later run's orphan sweep takes it.
 import { and, asc, eq, gt, lt, notExists, sql } from 'drizzle-orm';
-import { Clock, Effect, Option, Stream } from 'effect';
+import { type Cause, Clock, Effect, Option, Stream } from 'effect';
 
 import { noAuditMaintenanceTransaction } from '../../audit/no-audit.ts';
 import { MaintenanceScope, Transaction } from '../../db/tenant.ts';
@@ -77,11 +77,11 @@ const teamOf = (key: StagingKey) =>
  * run asks again.
  */
 const contained =
-  (message: string, teamId: string) =>
+  (log: (cause: Cause.Cause<unknown>) => Effect.Effect<void>, teamId: string) =>
   <E, R>(effect: Effect.Effect<void, E, R>) =>
     effect.pipe(
       Effect.catchCause((cause) =>
-        Effect.logError(message, cause).pipe(Effect.annotateLogs({ teamId })),
+        log(cause).pipe(Effect.annotateLogs({ team_id: teamId })),
       ),
     );
 
@@ -220,10 +220,24 @@ export const gcStagedResources = Effect.fn('protocol.gcStagedResources')(
 
     for (const teamId of teams) {
       yield* collectRows(teamId).pipe(
-        contained('Collecting a team’s staged resources failed', teamId),
+        contained(
+          (cause) =>
+            Effect.logError(
+              'Collecting a team’s staged resources failed',
+              cause,
+            ),
+          teamId,
+        ),
       );
       yield* collectConnections(teamId).pipe(
-        contained('Collecting a team’s expired connections failed', teamId),
+        contained(
+          (cause) =>
+            Effect.logError(
+              'Collecting a team’s expired connections failed',
+              cause,
+            ),
+          teamId,
+        ),
       );
     }
 
@@ -245,7 +259,11 @@ export const gcStagedResources = Effect.fn('protocol.gcStagedResources')(
             for (const [teamId, keys] of byTeam) {
               yield* sweepUnnamed(teamId, keys).pipe(
                 contained(
-                  'Sweeping a team’s unnamed staged objects failed',
+                  (cause) =>
+                    Effect.logError(
+                      'Sweeping a team’s unnamed staged objects failed',
+                      cause,
+                    ),
                   teamId,
                 ),
               );

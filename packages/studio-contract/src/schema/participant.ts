@@ -58,10 +58,38 @@ export const NetworkEdge = Schema.Struct({
   to: NetworkIdentifier,
 });
 
+const ByteArray = Schema.Array(
+  Schema.Number.check(
+    Schema.isInt(),
+    Schema.isBetween({ minimum: 0, maximum: 255 }),
+  ),
+);
+
+/**
+ * The one key a schema 9 interview encrypts its protected answers with, as
+ * `NcNetworkSchema` describes it: how the key is derived from the passphrase,
+ * and a value only that key decrypts.
+ */
+const NetworkEncryptionHeader = Schema.Struct({
+  version: Schema.Literal(1),
+  method: Schema.Literal('AES-256-GCM'),
+  kdf: Schema.Struct({
+    algorithm: Schema.Literal('PBKDF2'),
+    hash: Schema.Literal('SHA-256'),
+    iterations: Schema.Number.check(Schema.isInt(), Schema.isGreaterThan(0)),
+    salt: ByteArray,
+  }),
+  check: Schema.Struct({
+    iv: ByteArray,
+    data: ByteArray,
+  }),
+});
+
 export const InterviewNetwork = Schema.Struct({
   nodes: Schema.Array(NetworkNode),
   edges: Schema.Array(NetworkEdge),
   ego: NetworkEgo,
+  encryption: Schema.optional(NetworkEncryptionHeader),
 });
 
 const StageMetadata = Schema.Record(Schema.String, Schema.Unknown);
@@ -72,8 +100,8 @@ export const InterviewSession = Schema.Struct({
   finishTime: Schema.Null,
   exportTime: Schema.Null,
   lastUpdated: Schema.String,
-  network: InterviewNetwork,
-  stageMetadata: StageMetadata,
+  network: Schema.RedactedFromValue(InterviewNetwork),
+  stageMetadata: Schema.RedactedFromValue(StageMetadata),
 });
 
 export const RedeemInput = Schema.Struct({
@@ -97,7 +125,7 @@ export const SessionPayload = Schema.Struct({
   stageIndex: NonNegativeInt,
   stageId: Schema.NullOr(NetworkIdentifier),
   session: InterviewSession,
-  protocol: Schema.Unknown,
+  protocol: Schema.RedactedFromValue(Schema.Unknown),
   analytics: Schema.Boolean,
 });
 
@@ -138,8 +166,8 @@ export const SyncInput = Schema.Struct({
   revision: DecimalSequence,
   stageIndex: NonNegativeInt,
   stageId: Schema.NullOr(NetworkIdentifier),
-  network: InterviewNetwork,
-  stageMetadata: StageMetadata,
+  network: Schema.RedactedFromValue(InterviewNetwork),
+  stageMetadata: Schema.RedactedFromValue(StageMetadata),
 });
 
 /**

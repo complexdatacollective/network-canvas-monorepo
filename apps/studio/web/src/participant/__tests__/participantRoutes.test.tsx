@@ -7,7 +7,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { Effect } from 'effect';
+import { Effect, Redacted, Schema } from 'effect';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -30,10 +30,17 @@ import { readStoredSession, storeSession } from '../storedSessions.ts';
 
 const fetchStub = installFetchStub();
 
-const LINK = LinkToken.make('l'.repeat(32));
-const SESSION = SessionToken.make('s'.repeat(32));
-const EARLIER_SESSION = SessionToken.make('e'.repeat(32));
-const OTHER_SESSION = SessionToken.make('o'.repeat(32));
+const LINK = 'l'.repeat(32);
+const SESSION = 's'.repeat(32);
+const EARLIER_SESSION = 'e'.repeat(32);
+const OTHER_SESSION = 'o'.repeat(32);
+const linkToken = Schema.decodeSync(LinkToken)(LINK);
+const sessionToken = Schema.decodeSync(SessionToken);
+
+const storedSession = (): string | undefined => {
+  const stored = readStoredSession(linkToken);
+  return stored === undefined ? undefined : Redacted.value(stored);
+};
 
 const sessionPayload = (stageIndex: number, analytics = false) => ({
   analytics,
@@ -48,14 +55,14 @@ const sessionPayload = (stageIndex: number, analytics = false) => ({
     finishTime: null,
     exportTime: null,
     lastUpdated: '2026-10-01T00:00:00.000Z',
-    network: {
+    network: Redacted.make({
       nodes: [],
       edges: [],
       ego: { _uid: 'ego-1', attributes: {} },
-    },
-    stageMetadata: {},
+    }),
+    stageMetadata: Redacted.make({}),
   },
-  protocol: {
+  protocol: Redacted.make({
     id: 'version-1',
     hash: 'protocol-hash',
     importedAt: '2026-10-01T00:00:00.000Z',
@@ -73,7 +80,7 @@ const sessionPayload = (stageIndex: number, analytics = false) => ({
         items: [],
       },
     ],
-  },
+  }),
 });
 
 const readsSession = (
@@ -87,7 +94,7 @@ const readsSession = (
 const redeems: Pick<ParticipantHandlers, 'participant.redeem'> = {
   'participant.redeem': () =>
     Effect.succeed({
-      sessionToken: SESSION,
+      sessionToken: sessionToken(SESSION),
       sessionId: 'session-1',
       anonymous: false,
     }),
@@ -148,7 +155,7 @@ describe('opening a participant link', () => {
       'participant.session',
     ]);
     expect(harness.calls[0]?.payload).toEqual({ linkToken: LINK });
-    expect(readStoredSession(LINK)).toBe(SESSION);
+    expect(storedSession()).toBe(SESSION);
     expect(localStorage).toHaveLength(1);
     expect(sessionStorage).toHaveLength(1);
     expect(fetchStub).not.toHaveBeenCalled();
@@ -158,7 +165,7 @@ describe('opening a participant link', () => {
     installParticipantHarness({
       'participant.redeem': () =>
         Effect.succeed({
-          sessionToken: SESSION,
+          sessionToken: sessionToken(SESSION),
           sessionId: 'session-1',
           anonymous: true,
         }),
@@ -172,12 +179,14 @@ describe('opening a participant link', () => {
       { name: 'Welcome to the study' },
       { timeout: 15_000 },
     );
-    expect(readStoredSession(LINK)).toBe(SESSION);
+    expect(storedSession()).toBe(SESSION);
     expect(localStorage).toHaveLength(0);
   });
 
   it('returns to the session this browser already holds without redeeming again', async () => {
-    storeSession(LINK, EARLIER_SESSION, { anonymous: false });
+    storeSession(linkToken, sessionToken(EARLIER_SESSION), {
+      anonymous: false,
+    });
     const harness = installParticipantHarness(readsSession());
 
     const router = renderAt(`/enter/${LINK}`);
@@ -196,7 +205,9 @@ describe('opening a participant link', () => {
   });
 
   it('redeems again when the session this browser held was replaced', async () => {
-    storeSession(LINK, EARLIER_SESSION, { anonymous: false });
+    storeSession(linkToken, sessionToken(EARLIER_SESSION), {
+      anonymous: false,
+    });
     let reads = 0;
     const harness = installParticipantHarness(
       { ...redeems, ...readsSession() },
@@ -223,7 +234,7 @@ describe('opening a participant link', () => {
       'participant.redeem',
       'participant.session',
     ]);
-    expect(readStoredSession(LINK)).toBe(SESSION);
+    expect(storedSession()).toBe(SESSION);
   });
 
   it('says why a link cannot be used', async () => {
@@ -245,7 +256,9 @@ describe('opening a participant link', () => {
   });
 
   it('tells a participant reopening a finished interview that it is finished', async () => {
-    storeSession(LINK, EARLIER_SESSION, { anonymous: false });
+    storeSession(linkToken, sessionToken(EARLIER_SESSION), {
+      anonymous: false,
+    });
     const harness = installParticipantHarness({
       'participant.session': () =>
         Effect.fail(new SessionEnded({ state: 'completed' })),

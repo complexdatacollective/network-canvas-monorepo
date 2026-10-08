@@ -1,5 +1,5 @@
 import { and, eq, isNull, sql } from 'drizzle-orm';
-import { Effect, Option, Schema } from 'effect';
+import { Effect, Option, type Redacted, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
 import { AuthService } from '../auth/service.ts';
@@ -13,9 +13,13 @@ import { SETUP_TABLES } from './schema.ts';
 const { installation } = SETUP_TABLES;
 
 export type CompleteSetupInput = {
-  token: string;
+  token: Redacted.Redacted;
   instanceName: string;
-  owner: { name: string; email: string; password: string };
+  owner: {
+    name: Redacted.Redacted;
+    email: Redacted.Redacted;
+    password: Redacted.Redacted;
+  };
 };
 
 export type CompletedSetup = {

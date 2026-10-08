@@ -12,7 +12,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Maintenance } from '@codaco/studio-contract/schema/errors';
@@ -62,7 +62,7 @@ const DRAFT_ID = '4d0f5f2e-0000-4000-8000-000000000005';
 
 const STUDY = {
   id: StudyId.make(STUDY_ID),
-  name: 'Shell proof',
+  name: Redacted.make('Shell proof'),
   state: 'draft',
   participationMode: 'managed',
   protocolId: ProtocolId.make(PROTOCOL_ID),
@@ -73,7 +73,7 @@ const STUDY = {
 
 const SIBLING_STUDY = {
   id: StudyId.make(SIBLING_STUDY_ID),
-  name: 'Second study',
+  name: Redacted.make('Second study'),
   state: 'live',
   participationMode: 'managed',
   protocolId: ProtocolId.make(SIBLING_PROTOCOL_ID),
@@ -85,7 +85,7 @@ const SIBLING_STUDY = {
 const PROTOCOL = {
   id: ProtocolId.make(PROTOCOL_ID),
   draftId: DraftId.make(DRAFT_ID),
-  name: 'Shell proof',
+  name: Redacted.make('Shell proof'),
   createdAt: new Date('2026-08-28T00:00:00Z'),
   updatedAt: new Date('2026-08-28T00:00:00Z'),
 } as const;
@@ -474,9 +474,9 @@ beforeEach(() => {
     'me': () =>
       Effect.succeed({
         userId: 'user-1',
-        email: 'researcher@example.org',
+        email: Redacted.make('researcher@example.org'),
         emailVerified: true,
-        name: 'Researcher',
+        name: Redacted.make('Researcher'),
         locale: null,
         teams: [{ teamId: TeamId.make(fixtures.TEAM.id), role: 'owner' }],
       }),
@@ -499,12 +499,12 @@ beforeEach(() => {
         protocol: PROTOCOL,
         revision: { sequence: '1', hash: 'revision-1' },
         sections: {
-          settings: {
-            name: PROTOCOL.name,
+          settings: Redacted.make({
+            name: Redacted.value(PROTOCOL.name),
             schemaVersion: 9,
             localization: { defaultLocale: 'en-US', locales: ['en-US'] },
-          },
-          stageOrder: { stages: [] },
+          }),
+          stageOrder: Redacted.make({ stages: [] }),
         },
       }),
     'audit.list': () => Effect.succeed({ items: [], nextCursor: null }),

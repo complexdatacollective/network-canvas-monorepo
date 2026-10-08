@@ -1,3 +1,4 @@
+import { Redacted } from 'effect';
 import { z } from 'zod';
 
 import type {
@@ -50,7 +51,7 @@ type StagedEntry = Readonly<{
   /** The name the manifest will record these bytes under, once promoted. */
   contentName?: string;
   bytes?: Blob;
-  secret?: string;
+  secret?: Redacted.Redacted;
 }>;
 
 function failure(
@@ -133,9 +134,11 @@ function descriptorFromManifestEntry(
   return {
     id,
     kind: parsed.data,
-    name,
+    name: Redacted.make(name),
     status: 'committed',
-    ...(typeof entry.source === 'string' ? { source: entry.source } : {}),
+    ...(typeof entry.source === 'string'
+      ? { source: Redacted.make(entry.source) }
+      : {}),
   };
 }
 
@@ -263,7 +266,7 @@ export class InMemoryResourceStore {
     // to.
     const named =
       request.kind === 'content'
-        ? await contentName(request.bytes, request.source)
+        ? await contentName(request.bytes, Redacted.value(request.source))
         : undefined;
     if (this.#cancelled.has(key)) {
       // The edit gave up its staging while these bytes were being read.
@@ -327,15 +330,15 @@ export class InMemoryResourceStore {
       }
       if (entry.secret === undefined) {
         entries[resourceId] = {
-          name: entry.descriptor.name,
+          name: Redacted.value(entry.descriptor.name),
           type: entry.descriptor.kind,
           source: entry.contentName,
         };
       } else {
         entries[resourceId] = {
-          name: entry.descriptor.name,
+          name: Redacted.value(entry.descriptor.name),
           type: 'apikey',
-          value: entry.secret,
+          value: Redacted.value(entry.secret),
         };
       }
       promoted.push({
@@ -343,7 +346,7 @@ export class InMemoryResourceStore {
         status: 'committed',
         ...(entry.contentName === undefined
           ? {}
-          : { source: entry.contentName }),
+          : { source: Redacted.make(entry.contentName) }),
       });
     }
     return { status: 'ok', data: { entries, promoted } };
@@ -434,7 +437,9 @@ export class InMemoryResourceStore {
     const roster = await readRosterFacts({
       bytes: new Uint8Array(await bytes.arrayBuffer()),
       contentType: descriptor.contentType ?? '',
-      ...(descriptor.source === undefined ? {} : { source: descriptor.source }),
+      ...(descriptor.source === undefined
+        ? {}
+        : { source: Redacted.value(descriptor.source) }),
     });
     if ('unreadable' in roster) {
       return failure('invalid-content', roster.unreadable, resourceId);
@@ -444,7 +449,7 @@ export class InMemoryResourceStore {
       data: {
         descriptor,
         counts: roster.counts,
-        variableNames: [...roster.variableNames],
+        variableNames: Redacted.make([...roster.variableNames]),
       },
     };
   }
@@ -471,7 +476,7 @@ export class InMemoryResourceStore {
       status: 'ok',
       data: {
         resourceId,
-        url: `data:${contentType};base64,${await base64(bytes)}`,
+        url: Redacted.make(`data:${contentType};base64,${await base64(bytes)}`),
       },
     };
   }
@@ -485,13 +490,15 @@ export class InMemoryResourceStore {
     assets: SectionDoc,
     resourceId: string,
     scope: EditScope | undefined,
-  ): string | undefined {
+  ): Redacted.Redacted | undefined {
     const staged =
       scope === undefined ? undefined : this.#owned(scope, resourceId)?.secret;
     if (staged !== undefined) return staged;
     const entry = assets[resourceId];
     if (!isRecord(entry)) return undefined;
-    return typeof entry.value === 'string' ? entry.value : undefined;
+    return typeof entry.value === 'string'
+      ? Redacted.make(entry.value)
+      : undefined;
   }
 
   /** The bytes behind a resource: this edit's staged ones, or the committed. */
@@ -505,7 +512,7 @@ export class InMemoryResourceStore {
     if (staged !== undefined) return staged;
     return descriptor.source === undefined
       ? undefined
-      : this.#content.get(descriptor.source);
+      : this.#content.get(Redacted.value(descriptor.source));
   }
 
   #descriptor(
@@ -536,7 +543,7 @@ export class InMemoryResourceStore {
     const bytes =
       descriptor.source === undefined
         ? undefined
-        : this.#content.get(descriptor.source);
+        : this.#content.get(Redacted.value(descriptor.source));
     const promoted = this.#committed.get(resourceId);
     const contentType =
       promoted?.contentType ??

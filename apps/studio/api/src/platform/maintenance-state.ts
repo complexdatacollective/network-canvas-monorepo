@@ -53,9 +53,12 @@ export const cachedReading = <A>(options: {
           if (!previous.failing) {
             yield* Ref.set(last, { ...previous, failing: true });
             yield* logFailedReading(
-              `could not read ${options.name}; answering with the last value read until it can`,
+              (level) =>
+                Effect.logWithLevel(level)(
+                  'could not take a reading; answering with the last value read until it can',
+                ),
               cause,
-            );
+            ).pipe(Effect.annotateLogs({ reading: options.name }));
           }
           return previous.value;
         }),
@@ -106,9 +109,12 @@ export const windowedReading = <A>(options: {
             Effect.gen(function* () {
               if (yield* Ref.getAndSet(failing, true)) return;
               yield* logFailedReading(
-                `could not read ${options.name}; answering with the last value read since the deployment last closed, or nothing, until it can`,
+                (level) =>
+                  Effect.logWithLevel(level)(
+                    'could not take a reading; answering with the last value read since the deployment last closed, or nothing, until it can',
+                  ),
                 cause,
-              );
+              ).pipe(Effect.annotateLogs({ reading: options.name }));
             }),
         }),
       );

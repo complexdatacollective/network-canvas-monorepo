@@ -18,3 +18,16 @@ relationship removes their unsaved changes with them, without asking.
 Undoing or redoing a change while the side panel is open now shows the
 restored answers in the panel. Before, the panel went on showing the answers
 as they were before the undo, and changing any answer in it saved them again.
+An answer the participant had changed but not yet saved when the undo or redo
+changed it stays as they typed it, and is not saved over what the undo or redo
+restored. It is saved once they change that answer again, and closing the
+panel asks before discarding it.
+
+One undo now reverts every answer in a run of side-panel edits to the same
+person or relationship. Before, it put back only the answers the first edit
+of the run changed, so an answer first given in a later edit stayed. Changes
+in the Network Composer, undo and redo are now made in the order they are
+asked for. An undo or redo pressed while a change is still being saved applies
+after that change instead of before it, and deleting a person while one of
+their answers is being saved no longer loses that answer when the deletion is
+undone.

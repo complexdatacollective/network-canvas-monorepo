@@ -1,4 +1,4 @@
-import { Effect, Option, Schema } from 'effect';
+import { Effect, Option, Redacted, Schema } from 'effect';
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from 'effect/http';
 
 import { BETTER_AUTH_ORGANIZATION_ROUTE_POLICIES } from '../audit/better-auth-policy.ts';
@@ -23,17 +23,19 @@ const SIGN_IN_EMAIL_PATHS: ReadonlySet<string> = new Set([
 ]);
 
 const decodeSignInBody = Schema.decodeUnknownOption(
-  Schema.fromJsonString(Schema.Struct({ email: Schema.NonEmptyString })),
+  Schema.fromJsonString(
+    Schema.Struct({ email: Schema.RedactedFromValue(Schema.NonEmptyString) }),
+  ),
 );
 
 function signInEmailSubject(
   path: string,
   body: Uint8Array,
-): Option.Option<string> {
+): Option.Option<Redacted.Redacted> {
   if (!SIGN_IN_EMAIL_PATHS.has(path)) return Option.none();
   return Option.map(
     decodeSignInBody(new TextDecoder().decode(body)),
-    ({ email }) => email.toLowerCase(),
+    ({ email }) => Redacted.make(Redacted.value(email).toLowerCase()),
   );
 }
 
@@ -90,7 +92,10 @@ export const AuthMount = HttpRouter.use((router) =>
       const email =
         body === undefined ? Option.none() : signInEmailSubject(path, body);
       if (Option.isSome(email)) {
-        const decision = yield* limiter.check('sign_in_email', email.value);
+        const decision = yield* limiter.check(
+          'sign_in_email',
+          Redacted.value(email.value),
+        );
         if (!decision.allowed) {
           return tooManyRequests(decision.retryAfterSeconds);
         }

@@ -1,4 +1,4 @@
-import { Context, Schema } from 'effect';
+import { Context, type Redacted, Schema } from 'effect';
 import * as RpcMiddleware from 'effect/rpc/RpcMiddleware';
 
 export class HostCaller extends Context.Service<
@@ -7,7 +7,7 @@ export class HostCaller extends Context.Service<
     readonly connectionId: string;
     readonly clientSessionId: string;
     readonly userId: string;
-    readonly displayName: string;
+    readonly displayName: Redacted.Redacted;
   }
 >()('@protocolBuilder/HostCaller') {}
 

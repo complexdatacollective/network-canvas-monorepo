@@ -252,9 +252,13 @@ describe.skipIf(!testDb)('a seeded database at rest', () => {
 
           expect(Exit.isSuccess(yield* rotateUnder(ROTATED))).toBe(true);
 
-          expect(
-            lines.filter((line) => line.includes('re-sealed under test-3')),
-          ).not.toEqual([]);
+          const resealed = lines.filter((line) =>
+            line.includes('re-sealed under the current key'),
+          );
+          expect(resealed).not.toEqual([]);
+          for (const line of resealed) {
+            expect(line).not.toContain('test-3');
+          }
           expect(failures).toHaveLength(3);
           expect(failures[0]).toMatch(/cannot produce: test-1/);
           expect(failures[1]).toMatch(/Key id "test-1" in the keyring/);

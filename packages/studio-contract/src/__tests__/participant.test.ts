@@ -1,4 +1,4 @@
-import { Schema } from 'effect';
+import { Redacted, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { NcNetworkSchema } from '@codaco/shared-consts';
@@ -137,10 +137,10 @@ describe('the participant payloads', () => {
       session: {
         ...Schema.decodeUnknownSync(SessionPayload)(sessionPayload).session,
         holderId: 'leaked',
-        network: {
+        network: Redacted.make({
           ...network,
           nodes: [{ ...network.nodes[0], internalRowId: 'leaked' }],
-        },
+        }),
       },
     } as unknown as typeof SessionPayload.Type);
 

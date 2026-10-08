@@ -1,4 +1,11 @@
-import { Context, Effect, Layer, ManagedRuntime, Queue } from 'effect';
+import {
+  Context,
+  Effect,
+  Layer,
+  ManagedRuntime,
+  Queue,
+  Redacted,
+} from 'effect';
 import * as NetAddress from 'effect/net/NetAddress';
 import * as RpcClient from 'effect/rpc/RpcClient';
 import * as RpcSerialization from 'effect/rpc/RpcSerialization';
@@ -280,7 +287,7 @@ export async function installSocketHost(
               connectionId: tab,
               clientSessionId: tab,
               userId: account.userId,
-              displayName: account.displayName,
+              displayName: Redacted.make(account.displayName),
             }),
             socket: FakeWebSocket.opened.indexOf(webSocket) + 1,
           };
