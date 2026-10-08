@@ -1,24 +1,28 @@
 import { and, eq } from 'drizzle-orm';
-import { Context, Effect, Layer, Option, Redacted } from 'effect';
+import { Clock, Context, Effect, Layer, Option, Redacted } from 'effect';
 import type { Headers } from 'effect/http';
 import type { SqlError } from 'effect/sql';
 
 import { AUTH_NOT_CONFIGURED_PROBLEM_TYPE } from '@codaco/studio-contract/schema/problem';
 import type { SignInEmailJob } from '@codaco/studio-sync/jobs';
 
+import { recordUsage } from '../analytics/usage-events.ts';
 import { AUTH_TABLES } from '../db/auth-schema.ts';
 import { Database } from '../db/client.ts';
 import { sqlErrorsOnly } from '../db/errors.ts';
 import { Transaction, UntenantedScope } from '../db/tenant.ts';
 import { Environment } from '../env.ts';
 import { Jobs } from '../jobs/jobs.ts';
+import { Analytics } from '../platform/analytics.ts';
 import { RateLimiter } from '../rate-limit/limiter.ts';
 import { SecretsCipher } from '../secrets/services.ts';
 import { studioAuthAdapter } from './adapter.ts';
 import {
+  type AccountUsage,
   createBetterAuthInstance,
   isEmailTaken,
   isRefusal,
+  type RecordAccountUsage,
   type SendMagicLink,
 } from './better-auth.ts';
 import { makeSqlBridge } from './sql-bridge.ts';
@@ -111,7 +115,7 @@ export class AuthService extends Context.Service<
   static readonly layer: Layer.Layer<
     AuthService,
     never,
-    Environment | Database | SecretsCipher | RateLimiter | Jobs
+    Environment | Database | SecretsCipher | RateLimiter | Jobs | Analytics
   > = Layer.effect(
     AuthService,
     Effect.suspend(() => makeLive),
@@ -120,7 +124,7 @@ export class AuthService extends Context.Service<
   static readonly layerFromEnvironment: Layer.Layer<
     AuthService,
     never,
-    Environment | Database | SecretsCipher | RateLimiter | Jobs
+    Environment | Database | SecretsCipher | RateLimiter | Jobs | Analytics
   > = Layer.unwrap(
     Effect.gen(function* () {
       const env = yield* Environment;
@@ -198,6 +202,26 @@ export const makeSendMagicLink: Effect.Effect<
       ),
 );
 
+const enqueueAccountUsage = Effect.fn('auth.recordAccountUsage')(
+  function* (usage: AccountUsage) {
+    const occurredAt = yield* Clock.currentTimeMillis;
+    yield* UntenantedScope.open(recordUsage({ ...usage, occurredAt }));
+  },
+  Effect.catchCause((cause) =>
+    Effect.logWarning('An account usage event could not be recorded', cause),
+  ),
+);
+
+const makeRecordAccountUsage: Effect.Effect<
+  RecordAccountUsage | undefined,
+  never,
+  Database | Jobs | Analytics
+> = Effect.gen(function* () {
+  if (!(yield* Analytics).enabled) return undefined;
+  const services = yield* Effect.context<Database | Jobs | Analytics>();
+  return (usage) => Effect.runPromiseWith(services)(enqueueAccountUsage(usage));
+});
+
 const makeLive = Effect.gen(function* () {
   const env = yield* Environment;
   if (env.auth === undefined) {
@@ -211,6 +235,7 @@ const makeLive = Effect.gen(function* () {
     adapter: studioAuthAdapter(yield* makeSqlBridge),
     cipher: yield* SecretsCipher,
     sendMagicLink: yield* makeSendMagicLink,
+    recordAccountUsage: yield* makeRecordAccountUsage,
     limits: {
       limiter: yield* RateLimiter,
       run: Effect.runPromiseWith(yield* Effect.context()),

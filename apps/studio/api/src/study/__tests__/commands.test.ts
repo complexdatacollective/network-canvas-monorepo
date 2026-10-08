@@ -11,6 +11,8 @@ import { AuditSignal } from '../../audit/signal.ts';
 import { DatabaseAbsent } from '../../db/client.ts';
 import { unsafeMakeTeamAccess } from '../../db/tenant.ts';
 import { RequestId } from '../../http/middleware/request-id.ts';
+import { Jobs } from '../../jobs/jobs.ts';
+import { Analytics } from '../../platform/analytics.ts';
 import { RateLimitStore } from '../../rate-limit/store.ts';
 import { SecretsCipher } from '../../secrets/services.ts';
 import { createAuditedStudy } from '../commands.ts';
@@ -29,6 +31,8 @@ const Unreachable = Layer.mergeAll(
   DatabaseAbsent,
   SecretsCipher.layerAbsent,
   AuditSignal.layer,
+  Analytics.layerDisabled,
+  Jobs.layerRecording,
   DeniedAttempts.layer.pipe(Layer.provide(RateLimitStore.layerAbsent)),
   Layer.succeed(RequestId)('request-study-name'),
   Layer.succeed(Principal)(OWNER),

@@ -12,8 +12,7 @@ import { readBundledMigrations } from '../db/migrations-document.ts';
 import { OwnerScope, Transaction } from '../db/tenant.ts';
 import { Environment } from '../env.ts';
 import { InstallationIdentity } from '../platform/installation-identity.ts';
-import { LoggerLive, LogLevelLive } from '../platform/logger.ts';
-import { TracingLive } from '../platform/tracing.ts';
+import { ObservabilityLive } from '../platform/tracing.ts';
 import { SecretsCipher } from '../secrets/services.ts';
 import { verifyStoredKeys } from '../secrets/verify.ts';
 import {
@@ -165,9 +164,7 @@ export const migrateProgramReading = (
   migrate(document).pipe(
     Effect.scoped,
     Effect.provide(
-      Layer.mergeAll(LoggerLive, LogLevelLive, TracingLive('migrate')).pipe(
-        Layer.provideMerge(Environment.layer),
-      ),
+      ObservabilityLive('migrate').pipe(Layer.provideMerge(Environment.layer)),
     ),
     // Outside the environment, so a refusal to read it is printed too.
     reportingRefusals,

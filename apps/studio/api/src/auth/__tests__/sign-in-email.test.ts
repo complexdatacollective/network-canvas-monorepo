@@ -7,6 +7,7 @@ import { testCipher } from '../../__tests__/support/secrets.ts';
 import { limiterWithoutStore } from '../../__tests__/support/valkey.ts';
 import { Environment, readEnv } from '../../env.ts';
 import { JobRefused, Jobs, RecordedJobs } from '../../jobs/jobs.ts';
+import { Analytics } from '../../platform/analytics.ts';
 import { RateLimiter } from '../../rate-limit/limiter.ts';
 import { SecretsCipher } from '../../secrets/services.ts';
 import { AuthService, makeSendMagicLink } from '../service.ts';
@@ -36,6 +37,7 @@ const liveAuth = AuthService.layer.pipe(
   Layer.provide(Layer.succeed(Environment, env)),
   Layer.provide(Layer.succeed(RateLimiter)(limiterWithoutStore)),
   Layer.provide(Layer.succeed(SecretsCipher)(testCipher())),
+  Layer.provide(Analytics.layerDisabled),
 );
 
 const requestMagicLink = (email: string) =>

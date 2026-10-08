@@ -1,6 +1,7 @@
 'use client';
 import { motion } from 'motion/react';
 import { memo, useMemo, useRef } from 'react';
+import { useSelector } from 'react-redux';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
@@ -8,6 +9,7 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { SortOrder, Stage } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
+import { codebookTypeIndex } from '../../../analytics/codebookTypeIndex';
 import { useTrack } from '../../../analytics/useTrack';
 import BinLabel from '../../../components/BinLabel';
 import NodeList from '../../../components/NodeList';
@@ -15,6 +17,7 @@ import { usePrompts } from '../../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../../contexts/CurrentStepContext';
 import useMediaQuery from '../../../hooks/useMediaQuery';
 import useSortedNodeList from '../../../hooks/useSortedNodeList';
+import { getCodebook } from '../../../store/modules/protocol';
 import { updateNode } from '../../../store/modules/session';
 import { useAppDispatch } from '../../../store/store';
 import { getEntityAttributes } from '../../../utils/networkEntities';
@@ -87,6 +90,7 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
   const { prompt } = usePrompts<OrdinalBinPrompt>();
   const isPortrait = useMediaQuery('(orientation: portrait)');
   const track = useTrack();
+  const codebook = useSelector(getCodebook);
   const lastBinIndexRef = useRef<Map<string, number>>(new Map());
   const headerRef = useRef<HTMLDivElement>(null);
   // The label's text, not its markdown source: a screen reader should not read
@@ -116,13 +120,13 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
     if (previousIndex === undefined) {
       track('node_binned', {
         node_id: nodeId,
-        node_type: meta.type,
+        node_type_index: codebookTypeIndex(codebook, 'node', meta.type),
         bin_index: index,
       });
     } else if (previousIndex !== index) {
       track('node_rebinned', {
         node_id: nodeId,
-        node_type: meta.type,
+        node_type_index: codebookTypeIndex(codebook, 'node', meta.type),
         from_bin_index: previousIndex,
         to_bin_index: index,
       });

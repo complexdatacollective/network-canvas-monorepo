@@ -14,6 +14,8 @@ import { AuditSignal } from '../../audit/signal.ts';
 import { DatabaseAbsent } from '../../db/client.ts';
 import { unsafeMakeTeamAccess } from '../../db/tenant.ts';
 import { RequestId } from '../../http/middleware/request-id.ts';
+import { Jobs } from '../../jobs/jobs.ts';
+import { Analytics } from '../../platform/analytics.ts';
 import { SecretsCipher } from '../../secrets/services.ts';
 import { createAuditedProtocol } from '../commands.ts';
 
@@ -30,6 +32,8 @@ const PRINCIPAL = Principal.of({
 const Harness = Layer.mergeAll(
   DatabaseAbsent,
   AuditSignal.layer,
+  Analytics.layerDisabled,
+  Jobs.layerRecording,
   Layer.succeed(SecretsCipher)(testCipher()),
   Layer.succeed(Principal, PRINCIPAL),
   Layer.succeed(AuditActor, userAuditActor(PRINCIPAL)),

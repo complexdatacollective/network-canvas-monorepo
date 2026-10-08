@@ -20,6 +20,8 @@ import type { Database } from '../db/client.ts';
 import { failureCodes } from '../db/errors.ts';
 import type { TeamAccess, Transaction } from '../db/tenant.ts';
 import { RequestId } from '../http/middleware/request-id.ts';
+import type { Jobs } from '../jobs/jobs.ts';
+import type { Analytics } from '../platform/analytics.ts';
 
 export type AuditReadProcedure =
   | 'audit.list'
@@ -155,6 +157,8 @@ export const guardAuditRead = <A, R>(
   | AuditActor
   | RequestId
   | AuditSignal
+  | Analytics
+  | Jobs
   | DeniedAttempts
 > => {
   const predictsDenial = !grantsAuditRead(access.role);

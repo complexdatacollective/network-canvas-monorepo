@@ -13,10 +13,12 @@ import protocol from '../../store/modules/protocol';
 import session, {
   addEdge,
   addNode,
+  addNodesAndEdges,
   addNodeToPrompt,
   deleteEdge,
   deleteNode,
   removeNodeFromPrompt,
+  restoreNode,
 } from '../../store/modules/session';
 import ui from '../../store/modules/ui';
 import { makeVariableUUIDReplacer } from '../../utils/loadExternalData';
@@ -29,7 +31,12 @@ const SENTINELS = [
   'PARTICIPANT_INPUT_TRIGGER',
   'PASSPHRASE_TRIGGER',
   'SESSION_ID_TRIGGER',
+  'Close_Friend_TYPE_KEY_TRIGGER',
+  'Shared_Secret_TYPE_KEY_TRIGGER',
 ];
+
+const NODE_TYPE_KEY = 'Close_Friend_TYPE_KEY_TRIGGER';
+const EDGE_TYPE_KEY = 'Shared_Secret_TYPE_KEY_TRIGGER';
 
 function containsSentinel(value: unknown): boolean {
   if (value == null) return false;
@@ -56,7 +63,7 @@ function buildStore(tracker: Tracker) {
           nodes: [
             {
               _uid: 'n1',
-              type: 'person',
+              type: NODE_TYPE_KEY,
               [entityAttributesProperty]: { label: 'NODE_LABEL_TRIGGER' },
               promptIDs: [],
             },
@@ -73,9 +80,16 @@ function buildStore(tracker: Tracker) {
         description: 'PROMPT_TEXT_TRIGGER',
         codebook: {
           node: {
-            person: {
+            [NODE_TYPE_KEY]: {
               name: 'CODEBOOK_LABEL_TRIGGER',
               color: 'blue',
+              variables: {},
+            },
+          },
+          edge: {
+            [EDGE_TYPE_KEY]: {
+              name: 'CODEBOOK_LABEL_TRIGGER',
+              color: 'red',
               variables: {},
             },
           },
@@ -98,7 +112,7 @@ describe('PII guard — global listener events never leak sentinels', () => {
     // Exercise actions that trigger listeners
     await store.dispatch(
       addNode({
-        type: 'person',
+        type: NODE_TYPE_KEY,
         attributeData: { label: 'NODE_LABEL_TRIGGER' },
         modelData: { stageId: 's0' },
         currentStep: 0,
@@ -110,11 +124,41 @@ describe('PII guard — global listener events never leak sentinels', () => {
       addEdge({
         from: 'ego',
         to: 'n1',
-        type: 'knows',
+        type: EDGE_TYPE_KEY,
         currentStep: 0,
       } as never) as never,
     );
     store.dispatch(deleteEdge('e1') as never);
+    store.dispatch(
+      restoreNode({
+        _uid: 'n2',
+        type: NODE_TYPE_KEY,
+        [entityAttributesProperty]: {},
+      }),
+    );
+    await store.dispatch(
+      addNodesAndEdges({
+        nodes: [
+          { type: NODE_TYPE_KEY, modelData: { _uid: 'n3' } },
+          { type: NODE_TYPE_KEY, modelData: { _uid: 'n4' } },
+        ],
+        edges: [{ from: 'n3', to: 'n4', type: EDGE_TYPE_KEY }],
+        currentStep: 0,
+      }),
+    );
+
+    const typed = tracker.track.mock.calls.filter(
+      ([eventName]) =>
+        eventName === 'node_added' || eventName === 'edge_created',
+    );
+    expect(typed.map(([eventName]) => eventName)).toEqual([
+      'node_added',
+      'edge_created',
+      'node_added',
+      'node_added',
+      'node_added',
+      'edge_created',
+    ]);
 
     for (const call of tracker.track.mock.calls) {
       const [eventName, props] = call;

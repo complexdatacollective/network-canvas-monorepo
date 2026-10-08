@@ -2,7 +2,7 @@ import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
 import { describe, expect, it } from '@effect/vitest';
-import { Cause, Effect, Layer, Metric, Redacted } from 'effect';
+import { Cause, Console, Effect, Layer, Metric, Redacted } from 'effect';
 import { FetchHttpClient } from 'effect/http';
 
 import { POSTHOG_API_KEY } from '@codaco/shared-consts';
@@ -10,7 +10,7 @@ import { POSTHOG_API_KEY } from '@codaco/shared-consts';
 import { Environment, readEnv } from '../../env.ts';
 import { RequestId } from '../../http/middleware/request-id.ts';
 import { InstallationIdentity } from '../installation-identity.ts';
-import { POSTHOG_OTLP_ENDPOINT, TracingLive } from '../tracing.ts';
+import { ObservabilityLive, POSTHOG_OTLP_ENDPOINT } from '../tracing.ts';
 
 type Received = {
   readonly path: string;
@@ -98,10 +98,19 @@ type Options = {
   readonly telemetryHeaders?: Readonly<Record<string, string>> | undefined;
 };
 
+const stdout: string[] = [];
+
+const capturedConsole = Layer.succeed(Console.Console, {
+  ...globalThis.console,
+  log: (...args: ReadonlyArray<unknown>) => {
+    stdout.push(args.map(String).join(' '));
+  },
+});
+
 const exportUnder = (options: Options, fetch: typeof globalThis.fetch) =>
   exercise.pipe(
     Effect.provide(
-      TracingLive('serve').pipe(
+      ObservabilityLive('serve').pipe(
         Layer.provide(
           Layer.succeed(Environment, {
             ...readEnv(),
@@ -116,6 +125,7 @@ const exportUnder = (options: Options, fetch: typeof globalThis.fetch) =>
       ),
     ),
     Effect.provideService(FetchHttpClient.Fetch, fetch),
+    Effect.provide(capturedConsole),
   );
 
 const redirecting =
@@ -137,7 +147,7 @@ const bodyAt = (sink: Sink, path: string): string =>
     .map((request) => request.body)
     .join('\n');
 
-describe('TracingLive', () => {
+describe('ObservabilityLive', () => {
   it.live('builds no exporter and contacts nothing when telemetry is off', () =>
     withSink((sink) =>
       Effect.gen(function* () {
@@ -271,6 +281,36 @@ describe('TracingLive', () => {
           expect(bodyAt(sink, '/v1/logs')).toContain(
             '{"key":"request_id","value":{"stringValue":"request-1"}}',
           );
+        }),
+      ),
+  );
+
+  it.live.each(['off', 'on'] as const)(
+    'writes each record to stdout as Studio’s JSON line with telemetry %s, and copies no record onto a span',
+    (mode) =>
+      withSink((sink) =>
+        Effect.gen(function* () {
+          stdout.length = 0;
+          yield* exportUnder(
+            { telemetry: mode === 'on', telemetryEndpoint: sink.url },
+            globalThis.fetch,
+          );
+          const probe = stdout
+            .map((line): unknown => JSON.parse(line))
+            .find(
+              (record) =>
+                typeof record === 'object' &&
+                record !== null &&
+                'message' in record &&
+                record.message === 'telemetry probe',
+            );
+          expect(probe).toMatchObject({
+            level: 'INFO',
+            annotations: { request_id: 'request-1' },
+          });
+          const traces = bodyAt(sink, '/v1/traces');
+          expect(traces).not.toContain('telemetry probe');
+          expect(traces).not.toContain('effect.cause');
         }),
       ),
   );

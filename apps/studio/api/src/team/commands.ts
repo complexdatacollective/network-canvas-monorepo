@@ -28,6 +28,7 @@ import {
 } from '../db/tenant.ts';
 import type { RequestId } from '../http/middleware/request-id.ts';
 import { Jobs } from '../jobs/jobs.ts';
+import type { Analytics } from '../platform/analytics.ts';
 import { enqueueInvitationDelivery } from './invitation-delivery-store.ts';
 import { isTeamAdministrator, tryParseRoles } from './roles.ts';
 import * as store from './store.ts';
@@ -136,7 +137,14 @@ export const updateTeamMemberRole: (
 ) => Effect.Effect<
   UpdatedTeamMember,
   TeamCommandError | NotFound | SqlError.SqlError,
-  Database | Principal | AuditActor | RequestId | AuditSignal | DeniedAttempts
+  | Database
+  | Principal
+  | AuditActor
+  | RequestId
+  | AuditSignal
+  | DeniedAttempts
+  | Analytics
+  | Jobs
 > = Effect.fn('team.updateMemberRole')(function* (
   access: TeamAccess,
   input: { memberId: string; role: TeamRole },
@@ -245,6 +253,7 @@ export const createTeamInvitation: (
   | AuditActor
   | RequestId
   | AuditSignal
+  | Analytics
   | Jobs
   | DeniedAttempts
 > = Effect.fn('team.createInvitation')(function* (
@@ -360,7 +369,14 @@ export const cancelTeamInvitation: (
 ) => Effect.Effect<
   CancelledTeamInvitation,
   TeamCommandError | NotFound | SqlError.SqlError,
-  Database | Principal | AuditActor | RequestId | AuditSignal | DeniedAttempts
+  | Database
+  | Principal
+  | AuditActor
+  | RequestId
+  | AuditSignal
+  | DeniedAttempts
+  | Analytics
+  | Jobs
 > = Effect.fn('team.cancelInvitation')(function* (
   access: TeamAccess,
   input: { invitationId: string },
@@ -470,7 +486,14 @@ export const acceptTeamInvitation: (input: {
 }) => Effect.Effect<
   AcceptedTeamInvitation,
   TeamCommandError | NotFound | SqlError.SqlError,
-  Database | Principal | AuditActor | RequestId | AuditSignal | DeniedAttempts
+  | Database
+  | Principal
+  | AuditActor
+  | RequestId
+  | AuditSignal
+  | DeniedAttempts
+  | Analytics
+  | Jobs
 > = Effect.fn('team.acceptInvitation')(function* (input: {
   invitationId: string;
 }) {
