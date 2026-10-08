@@ -6,6 +6,7 @@ import { DeniedAttempts } from '../audit/denial-rate-limit.ts';
 import { AuditSignal } from '../audit/signal.ts';
 import { AuthService } from '../auth/service.ts';
 import { Database, DatabaseAbsent, ReadinessDatabase } from '../db/client.ts';
+import { UntenantedScope } from '../db/tenant.ts';
 import { type DbEnv, Environment, type StudioEnv } from '../env.ts';
 import { type HealthChecks, schemaCheck } from '../http/health.ts';
 import {
@@ -20,10 +21,12 @@ import { Analytics } from '../platform/analytics.ts';
 import { BootChecks, type BootRefusal } from '../platform/boot-checks.ts';
 import {
   HttpServerLive,
-  RedactedHeadersLive,
+  ServerTelemetryLive,
 } from '../platform/http-server.ts';
+import { InstallationIdentity } from '../platform/installation-identity.ts';
 import { LoggerLive, LogLevelLive } from '../platform/logger.ts';
 import { MaintenanceState } from '../platform/maintenance-state.ts';
+import { RuntimeMetricsLive } from '../platform/runtime-metrics.ts';
 import { SchemaStatus } from '../platform/schema-gate.ts';
 import { TracingLive } from '../platform/tracing.ts';
 import { WebSocketDrain } from '../platform/ws-drain.ts';
@@ -32,6 +35,7 @@ import { RateLimiter } from '../rate-limit/limiter.ts';
 import { RateLimitStore } from '../rate-limit/store.ts';
 import type { StudioServices } from '../rpc/deps.ts';
 import { SecretsCipher } from '../secrets/services.ts';
+import { readInstallationId } from '../setup/bootstrap.ts';
 import { ObjectStoreLive } from '../storage/live.ts';
 import { ObjectStore } from '../storage/object-store.ts';
 import { STUDIO_VERSION } from '../version.ts';
@@ -60,7 +64,7 @@ function Serve(studio: Studio, checks: HealthChecks) {
         // The default logger would print a second request log line.
         disableLogger: true,
         disableListenLog: true,
-      }).pipe(Layer.provide(RedactedHeadersLive)),
+      }).pipe(Layer.provide(ServerTelemetryLive)),
     ),
     Layer.provideMerge(WebSocketDrain.layer),
     Layer.provideMerge(HttpServerLive),
@@ -100,6 +104,11 @@ function withDatabase(
     }),
   ).pipe(
     Layer.provide(Doorbell.layer),
+    Layer.provide(
+      InstallationIdentity.resolvedBy(
+        UntenantedScope.open(readInstallationId()),
+      ),
+    ),
     // Listening does not wait for the schema or the keyring: an upgrade starts
     // this process before `migrate` runs, and it answers closed meanwhile.
     // `BootChecks` runs both in the background and holds the gate closed
@@ -163,6 +172,7 @@ const ServeProgramLayer = (refusal: Deferred.Deferred<never, BootRefusal>) =>
       return env.db ? withDatabase(env, env.db, refusal) : withoutDatabase(env);
     }),
   ).pipe(
+    Layer.provide(RuntimeMetricsLive),
     Layer.provide(
       Layer.mergeAll(LoggerLive, LogLevelLive, TracingLive('serve')),
     ),

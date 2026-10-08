@@ -210,6 +210,16 @@ export type DeniedAttemptsSummaryJob =
 export const UpdateCheckJobSchema = Schema.Struct({}).check(isEmptyObject);
 export type UpdateCheckJob = typeof UpdateCheckJobSchema.Type;
 
+const TRACEPARENT =
+  /^00-(?!0{32})[0-9a-f]{32}-(?!0{16})[0-9a-f]{16}-[0-9a-f]{2}$/;
+
+export const JobCorrelationSchema = Schema.Struct({
+  traceparent: Schema.String.check(
+    Schema.isPattern(TRACEPARENT, { expected: 'a W3C traceparent' }),
+  ),
+});
+export type JobCorrelation = typeof JobCorrelationSchema.Type;
+
 export const JOB_PAYLOAD_SCHEMAS = {
   'invitation-delivery': InvitationDeliveryJobSchema,
   // A dead-lettered job is a copy of the one that failed, so the shape is the

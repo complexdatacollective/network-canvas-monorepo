@@ -7,6 +7,7 @@ import { ApiV1Routes } from './api-v1.ts';
 import { AuthMount } from './auth-mount.ts';
 import { type HealthChecks, HealthRoutes } from './health.ts';
 import { ClientAddressLive } from './middleware/client-address.ts';
+import { HttpSpanLive } from './middleware/http-span.ts';
 import { MaintenanceGate } from './middleware/maintenance.ts';
 import { ProblemJson } from './middleware/problem-json.ts';
 import { RequestIdLive } from './middleware/request-id.ts';
@@ -27,7 +28,11 @@ export const Routes = (studio: Studio, checks: HealthChecks) =>
         Layer.provideMerge(
           ClientAddressLive.pipe(
             Layer.provideMerge(
-              RequestIdLive.pipe(Layer.provideMerge(ProblemJson)),
+              RequestIdLive.pipe(
+                Layer.provideMerge(
+                  ProblemJson.pipe(Layer.provideMerge(HttpSpanLive)),
+                ),
+              ),
             ),
           ),
         ),

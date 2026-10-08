@@ -3,6 +3,7 @@ import { FetchHttpClient, HttpRouter } from 'effect/http';
 
 import { MaintenanceDatabase, ReadinessDatabase } from '../db/client.ts';
 import { migrationLockHeld } from '../db/readiness.ts';
+import { MaintenanceScope } from '../db/tenant.ts';
 import { type DbEnv, Environment } from '../env.ts';
 import {
   databaseCheck,
@@ -22,15 +23,21 @@ import { jobsCheck } from '../jobs/readiness.ts';
 import { JobHandlersLive } from '../jobs/registrations.ts';
 import { JobWorker } from '../jobs/worker.ts';
 import { MailerLive } from '../mail/live.ts';
-import { WorkerHealthServerLive } from '../platform/http-server.ts';
+import {
+  ServerTelemetryLive,
+  WorkerHealthServerLive,
+} from '../platform/http-server.ts';
+import { InstallationIdentity } from '../platform/installation-identity.ts';
 import { LoggerLive, LogLevelLive } from '../platform/logger.ts';
 import { MaintenanceState } from '../platform/maintenance-state.ts';
+import { RuntimeMetricsLive } from '../platform/runtime-metrics.ts';
 import { SchemaStatus } from '../platform/schema-gate.ts';
 import { TracingLive } from '../platform/tracing.ts';
 import { RateLimiter } from '../rate-limit/limiter.ts';
 import { RateLimitStore } from '../rate-limit/store.ts';
 import { SecretsCipher } from '../secrets/services.ts';
 import { KeyringVerified } from '../secrets/verify.ts';
+import { readInstallationId } from '../setup/bootstrap.ts';
 import { ObjectStoreLive } from '../storage/live.ts';
 import { STUDIO_VERSION } from '../version.ts';
 import { reportingRefusals } from './command.ts';
@@ -96,7 +103,10 @@ function workerWith(db: DbEnv) {
           disableLogger: true,
           disableListenLog: true,
         },
-      ).pipe(Layer.provideMerge(WorkerHealthServerLive));
+      ).pipe(
+        Layer.provide(ServerTelemetryLive),
+        Layer.provideMerge(WorkerHealthServerLive),
+      );
 
       // `Layer.provide` builds what it is given first, so the schema is
       // current before the keyring is read.
@@ -138,6 +148,11 @@ function workerWith(db: DbEnv) {
 
       return Started.pipe(
         Layer.provide(JobMaintenanceGate.layer()),
+        Layer.provide(
+          InstallationIdentity.resolvedBy(
+            MaintenanceScope.open(readInstallationId()),
+          ),
+        ),
         Layer.provide(Triggers),
         Layer.provide(MaintenanceState.layerMaintenance),
         Layer.provide(JobQueueMetrics.layer()),
@@ -184,6 +199,7 @@ const WorkerProgramLayer = Layer.unwrap(
     return workerWith(db);
   }),
 ).pipe(
+  Layer.provide(RuntimeMetricsLive),
   Layer.provide(
     Layer.mergeAll(LoggerLive, LogLevelLive, TracingLive('worker')),
   ),

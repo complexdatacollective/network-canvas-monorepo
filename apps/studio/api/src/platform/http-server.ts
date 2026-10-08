@@ -3,7 +3,7 @@ import { createServer } from 'node:http';
 import * as NodeHttpServer from '@effect/platform-node/NodeHttpServer';
 import type * as NodeServices from '@effect/platform-node/NodeServices';
 import { Effect, Layer } from 'effect';
-import { Headers } from 'effect/http';
+import { Headers, HttpMiddleware } from 'effect/http';
 import type { Etag, HttpPlatform, HttpServer } from 'effect/http';
 import type { ServeError } from 'effect/http/HttpServerError';
 
@@ -19,6 +19,11 @@ export const RedactedHeadersLive = Layer.succeed(Headers.CurrentRedactedNames)([
   ...Headers.CurrentRedactedNames.defaultValue(),
   PARTICIPANT_SESSION_HEADER,
 ]);
+
+export const ServerTelemetryLive: Layer.Layer<never> = Layer.mergeAll(
+  RedactedHeadersLive,
+  Layer.succeed(HttpMiddleware.TracerDisabledWhen)(() => true),
+);
 
 type StudioHttpServer = Layer.Layer<
   | HttpServer.HttpServer

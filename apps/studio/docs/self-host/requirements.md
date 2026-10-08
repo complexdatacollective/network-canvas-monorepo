@@ -76,12 +76,12 @@ anything else an instance appears to contact is worth investigating.
 
 <!-- outbound-hosts start -->
 
-| Host                           | Why                                                                              | When                                     |
-| ------------------------------ | -------------------------------------------------------------------------------- | ---------------------------------------- |
-| `ghcr.io`                      | Container images. Public packages, so no registry credentials are needed         | `docker compose pull`, and a first start |
-| `acme-v02.api.letsencrypt.org` | TLS certificates over ACME HTTP-01                                               | First start, and on renewal              |
-| `releases.networkcanvas.com`   | The version manifest the update check reads, to tell owners a new version exists | Once a day, from the worker              |
-| `us.i.posthog.com`             | Analytics, sent by the api process to Codaco's PostHog project                   | Only while `STUDIO_TELEMETRY` is on      |
+| Host                           | Why                                                                                                                                                                     | When                                     |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `ghcr.io`                      | Container images. Public packages, so no registry credentials are needed                                                                                                | `docker compose pull`, and a first start |
+| `acme-v02.api.letsencrypt.org` | TLS certificates over ACME HTTP-01                                                                                                                                      | First start, and on renewal              |
+| `releases.networkcanvas.com`   | The version manifest the update check reads, to tell owners a new version exists                                                                                        | Once a day, from the worker              |
+| `us.i.posthog.com`             | Analytics, and the logs, traces, metrics and error reports both processes send to Codaco's PostHog project unless `OTEL_EXPORTER_OTLP_ENDPOINT` names another collector | Only while `STUDIO_TELEMETRY` is on      |
 
 <!-- outbound-hosts end -->
 
@@ -95,6 +95,8 @@ because there is no fixed value to name:
 
 - **The SMTP host** in `SMTP_URL`. See
   [Run the stack](./run.md#8-configure-mail).
+- **The OpenTelemetry collector** in `OTEL_EXPORTER_OTLP_ENDPOINT`, if you
+  send telemetry to your own store instead of Codaco's PostHog project.
 - **Any service you [swapped in](./swap.md)** for one of the stack's own: the
   host in `DATABASE_URL`, in `S3_ENDPOINT`, or in `REDIS_URL`. For Azure Blob
   Storage it is the storage account's blob endpoint, normally
@@ -110,8 +112,11 @@ Two things worth knowing before your firewall team asks:
   newer version exists. An institution that must stop it blocks the host; there
   is no switch
   ([#1901](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1901)).
-- **`STUDIO_TELEMETRY=false` stops analytics completely**, because no client is
-  constructed at all rather than constructed and muted. It is on by default.
+- **`STUDIO_TELEMETRY=false` stops analytics and telemetry completely**,
+  because no client and no exporter is constructed at all rather than
+  constructed and muted. It is on by default. Only public data is sent: fixed
+  codes, counts, durations, versions and ids Studio mints, never names, emails,
+  protocol content or participant data.
   Participants' browsers never contact PostHog: their usability events go to
   your instance, which forwards them. A study can also be created with
   participant analytics off.

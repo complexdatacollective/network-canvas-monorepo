@@ -467,6 +467,7 @@ describe('unconfigured auth', () => {
     devDefaults: false,
     telemetry: true,
     telemetryEndpoint: undefined,
+    telemetryHeaders: undefined,
     logLevel: 'Info',
     deploymentMode: 'self-hosted',
     seedAdminPassword: undefined,

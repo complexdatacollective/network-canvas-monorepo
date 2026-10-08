@@ -82,6 +82,7 @@ function workerEnv(
     devDefaults: true,
     telemetry: false,
     telemetryEndpoint: undefined,
+    telemetryHeaders: undefined,
     logLevel: 'Info',
     deploymentMode: 'self-hosted',
     seedAdminPassword: undefined,
