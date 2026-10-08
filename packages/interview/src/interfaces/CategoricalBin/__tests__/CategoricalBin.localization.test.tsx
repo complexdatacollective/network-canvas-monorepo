@@ -147,24 +147,21 @@ function renderInArabic() {
   );
 }
 
-const languageOf = (text: string) => {
-  const tagged = screen.getByText(text).closest('[lang]');
-  return {
-    lang: tagged?.getAttribute('lang'),
-    dir: tagged?.getAttribute('dir'),
-  };
-};
+// The interview sets one language for everything it renders, so a label names
+// none of its own, nor does any wrapper between it and the stage.
+const marksOwnLanguage = (text: string) =>
+  screen.getByText(text).closest('[lang], [dir]') !== null;
 
 describe('CategoricalBin bin labels', () => {
-  it('renders a translated option label right-to-left in the interview locale', () => {
+  it('shows a translated option label in the interview language', () => {
     renderInArabic();
 
-    expect(languageOf('العائلة')).toEqual({ lang: 'ar', dir: 'rtl' });
+    expect(marksOwnLanguage('العائلة')).toBe(false);
   });
 
-  it('tags an untranslated option label with the default locale it fell back to', () => {
+  it('shows an untranslated option label in the default language, with no language of its own', () => {
     renderInArabic();
 
-    expect(languageOf('Friends')).toEqual({ lang: 'en', dir: 'ltr' });
+    expect(marksOwnLanguage('Friends')).toBe(false);
   });
 });

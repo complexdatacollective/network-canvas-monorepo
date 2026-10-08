@@ -10,10 +10,6 @@ import type { FieldProps } from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import UINode from '@codaco/fresco-ui/Node';
-import {
-  type PresentationalText,
-  presentationalTextValue,
-} from '@codaco/fresco-ui/PresentationalText';
 import type { Stage } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -39,7 +35,7 @@ import {
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
-import { useResolvePresentationalText } from '../../localization/ProtocolLocalizationProvider';
+import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
@@ -109,7 +105,7 @@ function OtherResponseField({
 }: Omit<FieldProps<typeof InputField>, 'label' | 'validationContext'> & {
   baseValidationContext: ReturnType<typeof getValidationContext>;
   currentEntityId: string;
-  label: PresentationalText;
+  label: string;
 }) {
   const intl = useAppIntl();
   const { stageSubject } = baseValidationContext;
@@ -143,7 +139,7 @@ function OtherResponseField({
             // label is deliberately not a source: it is the name the
             // participant typed, not something the researcher authored.
             variableLabels: buildVariableLabels([
-              { variable: props.name, label: presentationalTextValue(label) },
+              { variable: props.name, label },
             ]),
           }
         : undefined,
@@ -256,7 +252,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
   // other Field (codebook + network + this stage's subject); the dialog's
   // field scopes it to the specific dropped node.
   const baseValidationContext = useStageSelector(getValidationContext);
-  const toPresentationalText = useResolvePresentationalText();
+  const resolve = useResolveLocalizedString();
   const intl = useAppIntl();
   const { passphrase, passphraseInvalid, requirePassphrase, isEnabled } =
     usePassphrase();
@@ -303,7 +299,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
     // proves otherVariablePrompt exists whenever otherVariable is set.
     if (bin.isOther && prompt.otherVariable !== undefined) {
       const { otherVariable, otherVariablePrompt } = prompt;
-      const otherPromptLabel = toPresentationalText(otherVariablePrompt);
+      const otherPromptLabel = resolve(otherVariablePrompt).text;
 
       // An answer that would be encrypted is not asked for until it could be
       // saved.

@@ -279,16 +279,16 @@ describe('LanguageChooser', () => {
     expect(spanish).toHaveFocus();
   });
 
-  it('lays the stage out right to left for a right-to-left language', async () => {
+  it('switches the whole interview to a right-to-left language', async () => {
     renderChooser();
     const user = userEvent.setup();
     const group = await languageGroup();
 
     await user.click(within(group).getByRole('option', { name: label('ar') }));
 
-    await waitFor(() =>
-      expect(document.getElementById('stage')).toHaveAttribute('dir', 'rtl'),
-    );
+    const shell = screen.getByRole('main');
+    await waitFor(() => expect(shell).toHaveAttribute('dir', 'rtl'));
+    expect(shell).toHaveAttribute('lang', 'ar');
     // The interface has no Arabic, so its own text stays in English.
     expect(
       screen.getByRole('heading', { name: 'Choose a language' }),

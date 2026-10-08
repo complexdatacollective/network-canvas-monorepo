@@ -1,5 +1,6 @@
 'use client';
 
+import { useDirection } from '@base-ui/react/direction-provider';
 import {
   AnimatePresence,
   motion,
@@ -40,6 +41,9 @@ export default function PassphrasePrompter({
   className,
 }: PassphrasePrompterProps) {
   const intl = useAppIntl();
+  // Beside a vertical rail, the tooltip opens away from the screen edge in
+  // the interview's direction.
+  const inlineEnd = useDirection() === 'rtl' ? 'left' : 'right';
   const { showPassphrasePrompter, passphraseInvalid } = usePassphrase();
   const [showPassphraseOverlay, setShowPassphraseOverlay] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
@@ -123,7 +127,7 @@ export default function PassphrasePrompter({
               technology does not meet the same text twice. */}
           <TooltipContent
             aria-hidden="true"
-            side={orientation === 'vertical' ? 'right' : 'top'}
+            side={orientation === 'vertical' ? inlineEnd : 'top'}
             className="max-w-[min(var(--available-width),var(--container-md))]"
           >
             <AppMessage message={promptMessage} />

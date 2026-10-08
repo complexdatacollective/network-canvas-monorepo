@@ -2,29 +2,21 @@
 
 import { cloneElement, type ReactElement, type ReactNode } from 'react';
 
-import {
-  presentationalTextProps,
-  presentationalTextValue,
-} from '@codaco/fresco-ui/PresentationalText';
 import type { LocalizedString } from '@codaco/protocol-validation';
 
-import { usePresentationalText } from './ProtocolLocalizationProvider';
+import { useLocalizedString } from './ProtocolLocalizationProvider';
 
 /**
- * Protocol-authored plain text, shown as the content of `render`, which is
- * given the language and direction the text is written in.
+ * Protocol-authored plain text, shown as the content of `render`. Its language
+ * is the interview's, set once at the interview's boundary.
  */
 export function LocalizedText({
   value,
   render,
 }: {
   value: LocalizedString;
-  render: ReactElement<{ lang?: string; dir?: string; children?: ReactNode }>;
+  render: ReactElement<{ children?: ReactNode }>;
 }) {
-  const text = usePresentationalText(value);
-  return cloneElement(
-    render,
-    presentationalTextProps(text),
-    presentationalTextValue(text),
-  );
+  const { text } = useLocalizedString(value);
+  return cloneElement(render, undefined, text);
 }

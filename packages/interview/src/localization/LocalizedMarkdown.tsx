@@ -2,11 +2,10 @@
 
 import type { ComponentProps } from 'react';
 
-import { presentationalTextValue } from '@codaco/fresco-ui/PresentationalText';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import type { LocalizedString } from '@codaco/protocol-validation';
 
-import { usePresentationalText } from './ProtocolLocalizationProvider';
+import { useLocalizedString } from './ProtocolLocalizationProvider';
 
 type LocalizedMarkdownProps = Omit<
   ComponentProps<typeof RenderMarkdown>,
@@ -28,10 +27,6 @@ export function LocalizedMarkdown({
   value,
   ...markdownOptions
 }: LocalizedMarkdownProps) {
-  const text = usePresentationalText(value);
-  return (
-    <RenderMarkdown {...markdownOptions}>
-      {presentationalTextValue(text)}
-    </RenderMarkdown>
-  );
+  const { text } = useLocalizedString(value);
+  return <RenderMarkdown {...markdownOptions}>{text}</RenderMarkdown>;
 }

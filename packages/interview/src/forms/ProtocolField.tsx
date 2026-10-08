@@ -18,14 +18,13 @@ import ToggleButtonGroupField from '@codaco/fresco-ui/form/fields/ToggleButtonGr
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import VisualAnalogScaleField from '@codaco/fresco-ui/form/fields/VisualAnalogScale';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
-import type { PresentationalText } from '@codaco/fresco-ui/PresentationalText';
 import type {
   ComponentType,
   LocalizedString,
   Variable,
 } from '@codaco/protocol-validation';
 
-import { useResolvePresentationalText } from '../localization/ProtocolLocalizationProvider';
+import { useResolveLocalizedString } from '../localization/ProtocolLocalizationProvider';
 import { buildDatePickerBoundProps } from './buildDatePickerBoundProps';
 import { buildFieldValidationProps } from './buildFieldValidationProps';
 import { resolveRenderedControl } from './resolveRenderedControl';
@@ -95,7 +94,7 @@ export default function ProtocolField({
   autoFocus,
   validationContext,
 }: ProtocolFieldProps) {
-  const toPresentationalText = useResolvePresentationalText();
+  const resolve = useResolveLocalizedString();
   const { component, optionsApply } = resolveRenderedControl({
     type: field.type,
     component: field.component,
@@ -105,16 +104,16 @@ export default function ProtocolField({
   const props: {
     name: string;
     nameMode: 'opaque';
-    label: PresentationalText;
-    hint?: PresentationalText;
+    label: string;
+    hint?: string;
     showValidationHints?: boolean;
     options?: (Omit<ProtocolFieldOption, 'label'> & {
-      label: PresentationalText;
+      label: string;
     })[];
     useColumns?: boolean;
     type?: string;
-    minLabel?: PresentationalText;
-    maxLabel?: PresentationalText;
+    minLabel?: string;
+    maxLabel?: string;
     min?: string | number;
     max?: string | number;
     anchor?: string;
@@ -126,8 +125,8 @@ export default function ProtocolField({
   } & Partial<ValidationPropsCatalogue> = {
     name,
     nameMode: 'opaque',
-    label: toPresentationalText(field.label),
-    ...(field.hint !== undefined && { hint: toPresentationalText(field.hint) }),
+    label: resolve(field.label).text,
+    ...(field.hint !== undefined && { hint: resolve(field.hint).text }),
     ...(field.showValidationHints !== undefined && {
       showValidationHints: field.showValidationHints,
     }),
@@ -153,7 +152,7 @@ export default function ProtocolField({
   if (field.options && optionsApply) {
     props.options = field.options.map((option) => ({
       ...option,
-      label: toPresentationalText(option.label),
+      label: resolve(option.label).text,
     }));
     if (
       (component === 'CheckboxGroup' || component === 'RadioGroup') &&
@@ -169,10 +168,10 @@ export default function ProtocolField({
   if (component === 'VisualAnalogScale' && field.parameters) {
     const { minLabel, maxLabel } = field.parameters;
     if (isLocalizedString(minLabel)) {
-      props.minLabel = toPresentationalText(minLabel);
+      props.minLabel = resolve(minLabel).text;
     }
     if (isLocalizedString(maxLabel)) {
-      props.maxLabel = toPresentationalText(maxLabel);
+      props.maxLabel = resolve(maxLabel).text;
     }
   }
 

@@ -2,11 +2,6 @@
 
 import type { IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import {
-  type PresentationalText,
-  presentationalTextProps,
-  presentationalTextValue,
-} from '@codaco/fresco-ui/PresentationalText';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { VariableValue } from '@codaco/shared-consts';
@@ -17,7 +12,7 @@ import { interfaceMessages } from '../messages';
 
 export type DataCardDetail = {
   id: string;
-  label: PresentationalText;
+  label: string;
   value: VariableValue | undefined;
 };
 
@@ -130,10 +125,9 @@ const DataCard = ({
                 variant="all-caps"
                 margin="none"
                 render={<dt />}
-                {...presentationalTextProps(detailLabel)}
                 className="text-right text-xs leading-tight font-extrabold wrap-break-word"
               >
-                {presentationalTextValue(detailLabel)}
+                {detailLabel}
               </Heading>
               <dd className="text-sm leading-tight font-medium wrap-break-word">
                 {formatValue(value, intl, format)}

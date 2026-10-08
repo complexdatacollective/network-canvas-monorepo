@@ -89,6 +89,8 @@ function WithoutMotion({ children }: { children: ReactNode }) {
 
 const render = (ui: ReactNode) => renderUI(ui, { wrapper: WithoutMotion });
 
+// The protocol is English only, so the interview region is marked English
+// whatever language the interface's own words load in.
 const payload = {
   session: {
     id: 'catalog-loading-session',
@@ -186,7 +188,7 @@ describe('Shell catalog loading', () => {
         await screen.findByRole('button', { name: 'Nächster Schritt' }),
       ).toBeVisible();
       const region = screen.getByRole('main');
-      expect(region).toHaveAttribute('lang', 'de');
+      expect(region).toHaveAttribute('lang', 'en');
       expect(region).not.toHaveAttribute('aria-busy');
       expect(
         screen.getByRole('heading', { name: 'Authored screen title' }),
@@ -256,7 +258,7 @@ describe('Shell catalog loading', () => {
     );
 
     const region = screen.getByRole('main');
-    expect(region).toHaveAttribute('lang', 'nl');
+    expect(region).toHaveAttribute('lang', 'en');
     expect(region).not.toHaveAttribute('aria-busy');
     const next = screen.getByRole('button', { name: 'Volgende stap' });
     await settle();
@@ -293,7 +295,7 @@ describe('Shell catalog loading', () => {
     await settle();
 
     const region = screen.getByRole('main');
-    expect(region).toHaveAttribute('lang', 'es');
+    expect(region).toHaveAttribute('lang', 'en');
     expect(region).not.toHaveAttribute('aria-busy');
     expect(
       screen.getByRole('button', { name: 'Siguiente paso' }),
@@ -304,7 +306,7 @@ describe('Shell catalog loading', () => {
       await screen.findByRole('button', { name: 'Étape suivante' }),
     ).toBeVisible();
     expect(screen.getByRole('main')).toBe(region);
-    expect(region).toHaveAttribute('lang', 'fr');
+    expect(region).toHaveAttribute('lang', 'en');
     expect(screen.getByRole('heading', { name: 'Authored screen title' })).toBe(
       heading,
     );

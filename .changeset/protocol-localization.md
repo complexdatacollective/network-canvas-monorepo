@@ -30,8 +30,12 @@ How an interview picks its language:
 - Text that is missing in the participant's language is shown in the best
   available translation: first in another language their browser lists, then in
   the protocol's default language, then in any language of the protocol that has
-  it. Each step accepts a close regional match, and the text is marked with the
-  language it is written in so that screen readers pronounce it correctly.
+  it. Each step accepts a close regional match.
+- The interview marks itself, once, with the interview language and its
+  direction, and lays everything out in that direction, including its
+  navigation, dialogs and notifications. Text inside it does not mark a
+  language of its own, even when it falls back to another language, apart
+  from the Language Chooser, which names each language in that language.
 - Participants see a node or edge type's label, which can be translated,
   rather than its name. A Narrative preset switcher lists highlighted
   attributes by the translated labels the preset gives them, and a Network

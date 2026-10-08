@@ -30,7 +30,7 @@ import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import useStageValidation from '../../hooks/useStageValidation';
-import { useResolvePresentationalText } from '../../localization/ProtocolLocalizationProvider';
+import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { getNodePairs } from '../../selectors/dyad-census';
 import {
   getEdgeColorForType,
@@ -124,7 +124,7 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
     edgeVariable?: string;
     negativeLabel: LocalizedString;
   }>();
-  const toPresentationalText = useResolvePresentationalText();
+  const resolve = useResolveLocalizedString();
 
   const nodes = useStageSelector(getNetworkNodesForType);
   const edges = useStageSelector(getNetworkEdges);
@@ -149,7 +149,7 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
     (option) =>
       typeof option.value === 'boolean'
         ? []
-        : [{ value: option.value, label: toPresentationalText(option.label) }],
+        : [{ value: option.value, label: resolve(option.label).text }],
   );
 
   // Collision-free decline sentinel: must never equal a real option value, so a
@@ -161,7 +161,7 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
 
   const richSelectOptions: RichSelectOption[] = [
     ...realOptions,
-    { value: declineValue, label: toPresentationalText(negativeLabel) },
+    { value: declineValue, label: resolve(negativeLabel).text },
   ];
 
   const pair =
