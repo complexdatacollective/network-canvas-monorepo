@@ -106,6 +106,12 @@ export const interfaceMessages = defineMessages({
     description:
       'Negative built-in binary response in pair comparisons and human-readable display of false roster values. The stored boolean remains false.',
   },
+  emptyValue: {
+    id: 'interview.interfaces.emptyValue',
+    defaultMessage: 'No value',
+    description:
+      'Shown in place of a roster detail that has no value: a blank field or an empty list. Replaces a bare dash so screen readers announce it.',
+  },
   loading: {
     id: 'interview.interfaces.loading',
     defaultMessage: 'Loading...',
