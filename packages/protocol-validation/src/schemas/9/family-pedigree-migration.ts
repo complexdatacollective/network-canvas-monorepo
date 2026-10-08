@@ -4,7 +4,7 @@
  *
  * Every string written here is plain schema 8 text. The migration's
  * localization pass, which runs afterwards, wraps each participant-facing one
- * in the undetermined locale, so the converted stages and the stage this adds
+ * in the migrated locale (`en`), so the converted stages and the stage this adds
  * are escaped exactly as the rest of the document is.
  */
 import {

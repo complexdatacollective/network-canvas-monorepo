@@ -190,9 +190,21 @@ A [Narrative](/en/design-protocols/interface-documentation/narrative) preset can
 
 You write these labels in the Narrative stage editor. Open the preset, and under **Node highlighting**, each attribute you tick has a **Label for "…"** field, named after the attribute. The label starts as the attribute's name, and it has a language menu like any other text. Every highlighted attribute needs a label.
 
-## Identifying the language of an older protocol
+## The language of an upgraded protocol
 
-Protocols made before Network Canvas recorded which language a protocol is written in have all their text marked as an unspecified language, with the language code `und`. This happens when Architect, Fresco or Interviewer upgrades a protocol to schema 9. Your text isn't changed: Network Canvas just doesn't know which language it's written in.
+Protocols made before Network Canvas recorded which language a protocol is written in have all their text marked as English, with the language code `en`. This happens when Architect, Fresco or Interviewer upgrades a protocol to schema 9. Your text isn't changed: English becomes the protocol's only language, and its default.
+
+If your protocol is written in another language, change it in Architect before you add translations, so participants and your exported data show the right language:
+
+1. Open the **Languages** tab and add the language your protocol is really written in.
+2. Enter each text in that language. You can copy it from the English text, which holds what you originally wrote.
+3. Remove English. Architect lets you remove it once no text exists only in English.
+
+Until you do this, interviews run with the protocol record `en` as their language in your exported data.
+
+## Identifying an unspecified language
+
+A protocol can also mark its text as an unspecified language, with the language code `und`, when it doesn't record which language it is written in. A protocol made in Network Canvas Studio does this, because Studio doesn't yet ask which language you are writing in.
 
 Architect lists this language as **Unspecified language**, and participants on a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) screen see the same name.
 

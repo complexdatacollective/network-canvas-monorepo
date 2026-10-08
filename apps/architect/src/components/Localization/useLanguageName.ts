@@ -12,7 +12,7 @@ const messages = defineMessages({
     id: 'architect.localization.languageName.unspecified',
     defaultMessage: 'Unspecified language',
     description:
-      'Name shown for a protocol language that has not been identified yet (the "und" language tag), usually in a protocol made before protocols declared their languages. Use the same wording as the interview’s name for it.',
+      'Name shown for a protocol language that has not been identified yet (the "und" language tag), for example in a protocol created in Studio. Use the same wording as the interview’s name for it.',
   },
 });
 

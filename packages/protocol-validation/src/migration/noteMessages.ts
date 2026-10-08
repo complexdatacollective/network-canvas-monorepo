@@ -359,12 +359,12 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance: attributeNames. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
   },
-  schema9UnspecifiedLanguage: {
-    id: 'protocolValidation.migrationNotes.schema9.unspecifiedLanguage',
+  schema9MigratedLanguage: {
+    id: 'protocolValidation.migrationNotes.schema9.migratedLanguage',
     defaultMessage:
-      'Text that participants see is now marked as written in "Unspecified language", because older protocols do not record which language they use. You can change it to the language it is actually written in on the Languages page in Architect.',
+      'Text that participants see is now marked as written in English, because older protocols do not record which language they use. If your protocol is written in another language, add that language on the Languages page in Architect, enter each text in it, and then remove English.',
     description:
-      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Unspecified language" must match the name Network Canvas shows for text with no language, and "Languages" must match the name of the Architect page where languages are managed.',
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Languages" must match the name of the Architect page where languages are managed.',
   },
   schema9FamilyPedigree: {
     id: 'protocolValidation.migrationNotes.schema9.familyPedigree',
@@ -500,7 +500,7 @@ const migrationNoteSets = {
     suffix: '',
     messages: [
       migrationNoteMessages.schema9AttributeNames,
-      migrationNoteMessages.schema9UnspecifiedLanguage,
+      migrationNoteMessages.schema9MigratedLanguage,
       migrationNoteMessages.schema9FamilyPedigree,
       migrationNoteMessages.schema9FamilyPedigreeLabels,
       migrationNoteMessages.schema9FamilyPedigreeCompleteness,

@@ -14,7 +14,8 @@ import { UNSPECIFIED_LOCALE, withTranslation } from '~/utils/localizedText';
 export type LocaleOperationFailure =
   /** Not a well-formed BCP 47 language tag. */
   | 'invalid-tag'
-  /** `und` marks migrated text; it can be replaced but never introduced. */
+  /** `und` marks text of no recorded language; it can be replaced but never
+   * introduced. */
   | 'unspecified-tag'
   | 'already-declared'
   | 'not-declared'
@@ -292,8 +293,8 @@ export const setLocalizedString = (
 };
 
 /**
- * Says that text marked as the unidentified language, as a protocol made
- * before protocols declared their languages is, is written in `tag`: the
+ * Says that text marked as the unidentified language (`und`, as in a protocol
+ * made in Studio) is written in `tag`: the
  * declaration entry and every translation move to the new tag together, and
  * the default follows when it is the unidentified language. A language that
  * has been identified is never renamed, and an existing language is never

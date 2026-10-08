@@ -9,7 +9,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 export class SectionizeError extends Error {}
 
 // Nothing asks the researcher for a language yet, so a new protocol declares
-// the undetermined one, as a protocol migrated from schema 8 does.
+// the undetermined one (`und`), which Architect asks its author to identify.
 export function emptyProtocol(name: string): CurrentProtocol {
   return {
     name,

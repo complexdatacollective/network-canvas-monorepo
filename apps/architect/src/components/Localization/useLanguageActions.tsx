@@ -65,7 +65,7 @@ const messages = defineMessages({
   identifyDescription: {
     id: 'architect.localization.languageActions.identifyDescription',
     defaultMessage:
-      'Protocols made before protocols declared their languages have their text marked as an unidentified language. Choose the language it is written in. Nothing is translated or deleted.',
+      'This protocol’s text is marked as an unidentified language, because the protocol does not record which language it is written in. Choose the language it is written in. Nothing is translated or deleted.',
     description:
       'Explanation in the dialog that names the language of text whose language has not been identified.',
   },

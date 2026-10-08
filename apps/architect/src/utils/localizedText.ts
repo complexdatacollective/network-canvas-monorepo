@@ -10,8 +10,12 @@ import {
 export type ProtocolLocalization = CurrentProtocol['localization'];
 
 /**
- * The language migrated content is marked with until its author says which
- * language it is written in. Never offered for new content.
+ * The undetermined language, which marks text whose language its protocol
+ * does not record until its author says which language it is written in.
+ * Architect never offers it for new content. A protocol migrated from schema
+ * 8 does not use it (the migration takes such text to be English, `en`); it
+ * arrives in protocols made in Studio, which does not yet ask for a language,
+ * and in files written by hand.
  */
 export const UNSPECIFIED_LOCALE = 'und';
 

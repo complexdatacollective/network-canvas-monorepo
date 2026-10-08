@@ -1708,7 +1708,7 @@
     "description": "Error when the dialog that identifies the language of unidentified text is submitted without a language."
   },
   "architect.localization.languageActions.identifyDescription": {
-    "defaultMessage": "Protocols made before protocols declared their languages have their text marked as an unidentified language. Choose the language it is written in. Nothing is translated or deleted.",
+    "defaultMessage": "This protocol’s text is marked as an unidentified language, because the protocol does not record which language it is written in. Choose the language it is written in. Nothing is translated or deleted.",
     "description": "Explanation in the dialog that names the language of text whose language has not been identified."
   },
   "architect.localization.languageActions.identifySubmit": {
@@ -1824,7 +1824,7 @@
     "description": "Heading of the list of languages a protocol is written in."
   },
   "architect.localization.languageList.unspecifiedDescription": {
-    "defaultMessage": "This protocol was made before protocols declared their languages, so its text is marked as an unidentified language. Identify the language before you add translations, so participants and exported data show the right language.",
+    "defaultMessage": "This protocol does not record which language it is written in, so its text is marked as an unidentified language. Identify the language before you add translations, so participants and exported data show the right language.",
     "description": "Notice asking the researcher to identify the language of text whose language has not been identified."
   },
   "architect.localization.languageList.unspecifiedTitle": {
@@ -1833,7 +1833,7 @@
   },
   "architect.localization.languageName.unspecified": {
     "defaultMessage": "Unspecified language",
-    "description": "Name shown for a protocol language that has not been identified yet (the \"und\" language tag), usually in a protocol made before protocols declared their languages. Use the same wording as the interview’s name for it."
+    "description": "Name shown for a protocol language that has not been identified yet (the \"und\" language tag), for example in a protocol created in Studio. Use the same wording as the interview’s name for it."
   },
   "architect.localization.localizationAlert.dismissMissing": {
     "defaultMessage": "Dismiss the note about missing translations",
@@ -1856,7 +1856,7 @@
     "description": "Link in the note about missing translations on the stage list. It opens the translation table showing only the texts with a translation missing."
   },
   "architect.localization.localizationAlert.unspecifiedDescription": {
-    "defaultMessage": "This protocol was made before protocols declared their languages, so its text is marked as an unidentified language. Say which language it is written in before you add translations.",
+    "defaultMessage": "This protocol does not record which language it is written in, so its text is marked as an unidentified language. Say which language it is written in before you add translations.",
     "description": "Notice shown when a protocol has text whose language has not been identified."
   },
   "architect.localization.localizationAlert.unspecifiedTitle": {

@@ -57,7 +57,7 @@ const messages = defineMessages({
   unspecifiedDescription: {
     id: 'architect.localization.languageList.unspecifiedDescription',
     defaultMessage:
-      'This protocol was made before protocols declared their languages, so its text is marked as an unidentified language. Identify the language before you add translations, so participants and exported data show the right language.',
+      'This protocol does not record which language it is written in, so its text is marked as an unidentified language. Identify the language before you add translations, so participants and exported data show the right language.',
     description:
       'Notice asking the researcher to identify the language of text whose language has not been identified.',
   },

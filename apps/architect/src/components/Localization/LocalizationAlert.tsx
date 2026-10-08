@@ -33,7 +33,7 @@ const messages = defineMessages({
   unspecifiedDescription: {
     id: 'architect.localization.localizationAlert.unspecifiedDescription',
     defaultMessage:
-      'This protocol was made before protocols declared their languages, so its text is marked as an unidentified language. Say which language it is written in before you add translations.',
+      'This protocol does not record which language it is written in, so its text is marked as an unidentified language. Say which language it is written in before you add translations.',
     description:
       'Notice shown when a protocol has text whose language has not been identified.',
   },

@@ -9,7 +9,7 @@ export const languageMessages = defineMessages({
     id: 'protocolBuilder.localization.unspecifiedLanguage',
     defaultMessage: 'Unspecified language',
     description:
-      'Name shown for a protocol language that has not been identified yet (the "und" language tag), for example a protocol upgraded from an older version.',
+      'Name shown for a protocol language that has not been identified yet (the "und" language tag), for example a protocol made in Studio.',
   },
   editingLanguage: {
     id: 'protocolBuilder.localization.editingLanguage',

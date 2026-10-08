@@ -48,9 +48,9 @@ import { ncInterviewLocaleProperty } from '../../../../packages/shared-consts/sr
 const DIFF_EXCERPT_LINES = 60;
 
 // The first schema whose protocols declare languages; the migration to it
-// writes text as messages in the undetermined language.
+// writes text as messages in English (`en`).
 const SCHEMA_WITH_LANGUAGES = 9;
-const UNDETERMINED_LOCALE = 'und';
+const MIGRATED_LOCALE = 'en';
 const LANGUAGE_TAG = /^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/;
 // Attribute values are matched whole: the normalizer's own <VOLATILE> mask
 // puts a ">" inside one.
@@ -175,11 +175,11 @@ const isLanguageTag = (value) =>
 
 const unquote = (cell) => cell.replace(/^"|"$/g, '');
 
-const isUndeterminedMessage = (value, text) =>
+const isMigratedMessage = (value, text) =>
   typeof text === 'string' &&
   isRecord(value) &&
   Object.keys(value).length === 1 &&
-  value[UNDETERMINED_LOCALE] === escapeMessageText(text);
+  value[MIGRATED_LOCALE] === escapeMessageText(text);
 
 // The label the migration gives a type or attribute that had none.
 const labelFromName = (definition, key) =>
@@ -189,15 +189,12 @@ const labelFromName = (definition, key) =>
 
 /**
  * The current codebook with what the schema-9 migration does to the baseline
- * codebook undone: text wrapped as an undetermined-language message, labels
+ * codebook undone: text wrapped as an English (`en`) message, labels
  * derived from names or keys, and empty text that a field no longer accepts.
  * `key` is the value's key in its parent, which a derived label falls back to.
  */
 function undoLanguageMigration(baseline, current, key, tally) {
-  if (
-    typeof baseline === 'string' &&
-    isUndeterminedMessage(current, baseline)
-  ) {
+  if (typeof baseline === 'string' && isMigratedMessage(current, baseline)) {
     tally.wrapped += 1;
     return baseline;
   }
@@ -216,7 +213,7 @@ function undoLanguageMigration(baseline, current, key, tally) {
     if (!(field in baseline)) {
       if (
         field === 'label' &&
-        isUndeterminedMessage(value, labelFromName(baseline, key))
+        isMigratedMessage(value, labelFromName(baseline, key))
       ) {
         tally.labelsAdded += 1;
         continue;
@@ -292,7 +289,7 @@ function reconcileInterviewJson(baselineText, currentText) {
     };
     differences.push(
       `protocol schemaVersion ${upgrade.before.schemaVersion} -> ${SCHEMA_WITH_LANGUAGES}`,
-      `codebook: ${tally.wrapped} text value(s) held as { ${UNDETERMINED_LOCALE}: <message> }, ${tally.labelsAdded} label(s) derived from a name or key, ${tally.emptyLeftOut} empty text value(s) left out`,
+      `codebook: ${tally.wrapped} text value(s) held as { ${MIGRATED_LOCALE}: <message> }, ${tally.labelsAdded} label(s) derived from a name or key, ${tally.emptyLeftOut} empty text value(s) left out`,
     );
   }
   if (differences.length === 0) return null;

@@ -217,8 +217,8 @@ export const getHasMissingTranslations = createSelector(
 );
 
 /**
- * Whether the protocol still declares the language migrated text is marked
- * with, which the author has to identify before translating.
+ * Whether the protocol still declares the undetermined language, which the
+ * author has to identify before translating.
  */
 export const getHasUnspecifiedLanguage = createSelector(
   [getProtocol],

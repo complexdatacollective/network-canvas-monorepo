@@ -45,8 +45,8 @@ const protocol: CurrentProtocol = {
   stages: [{ id: STAGE_ID, type: 'LanguageChooser', label: LABEL }],
 };
 
-// Made before protocols declared their languages, so its text is marked as
-// the unidentified language.
+// Its language is not recorded (as in a protocol made in Studio), so its
+// text is marked as the unidentified language.
 const migrated: CurrentProtocol = {
   ...protocol,
   localization: { defaultLocale: 'und', locales: ['und'] },

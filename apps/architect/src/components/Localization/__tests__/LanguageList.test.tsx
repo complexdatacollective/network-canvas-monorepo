@@ -30,8 +30,8 @@ const trilingual: CurrentProtocol = {
   ],
 };
 
-// Made before protocols declared their languages, so its text is marked as
-// the unidentified language.
+// Its language is not recorded (as in a protocol made in Studio), so its
+// text is marked as the unidentified language.
 const migrated: CurrentProtocol = {
   ...trilingual,
   localization: { defaultLocale: 'und', locales: ['und'] },

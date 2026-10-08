@@ -12,14 +12,16 @@ import {
 import { migrateFamilyPedigreeSessionRecords } from './family-pedigree-session-migration.ts';
 import ProtocolSchemaV9 from './schema.ts';
 
-// Schema 8 never recorded the language its copy was written in.
-const UNDETERMINED_LOCALE = 'und';
+// Schema 8 never recorded the language its copy was written in, so a migrated
+// protocol is taken to be written in English, tagged plainly as `en` rather
+// than as a regional variant.
+const MIGRATED_LOCALE = 'en';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const inUndeterminedLocale = (text: string) => ({
-  [UNDETERMINED_LOCALE]: escapeMessageText(text),
+const inMigratedLocale = (text: string) => ({
+  [MIGRATED_LOCALE]: escapeMessageText(text),
 });
 
 const nameOrKey = (definition: unknown, key: string) => {
@@ -154,7 +156,7 @@ type SiteChange =
  */
 const localizeSite = (site: LocalizedStringSite): SiteChange => {
   if (typeof site.value === 'string') {
-    const localized = inUndeterminedLocale(site.value);
+    const localized = inMigratedLocale(site.value);
     if (site.schema.safeParse(localized).success || !site.optional) {
       return { kind: 'set', value: localized };
     }
@@ -185,7 +187,7 @@ const migrationV8toV9 = createMigration({
   to: 9,
   dependencies: {},
   notes: `- Attribute names can now use letters from any language, as well as spaces and punctuation. Existing attribute names are not changed.
-- Text that participants see is now marked as written in "Unspecified language", because older protocols do not record which language they use. You can change it to the language it is actually written in on the Languages page in Architect.
+- Text that participants see is now marked as written in English, because older protocols do not record which language they use. If your protocol is written in another language, add that language on the Languages page in Architect, enter each text in it, and then remove English.
 - Family Pedigree stages are converted to the redesigned Family Pedigree. If a stage had an introduction screen, the screen becomes an Information stage just before the pedigree, which is skipped whenever the pedigree is skipped.
 - The Family Pedigree answers for sex assigned at birth and for the kind of each relationship keep the values already recorded, but their labels change to the wording of the redesigned interface. A nomination prompt with the ID "pedigree", which is now reserved, is given a new ID.
 - A Family Pedigree that required or recommended recording grandparents now requires or recommends recording the family up to the grandparents, which also includes siblings, children, aunts and uncles. A new attribute, "relativesNotRecorded", is added for the people in the pedigree, to record when a participant says someone has no siblings or no children, or does not know.
@@ -222,8 +224,8 @@ const migrationV8toV9 = createMigration({
       ...migrated,
       schemaVersion: 9 as const,
       localization: {
-        defaultLocale: UNDETERMINED_LOCALE,
-        locales: [UNDETERMINED_LOCALE],
+        defaultLocale: MIGRATED_LOCALE,
+        locales: [MIGRATED_LOCALE],
       },
     };
   },

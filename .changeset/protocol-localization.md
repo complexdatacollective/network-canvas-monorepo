@@ -72,8 +72,10 @@ In Architect:
   every missing translation.
 - A new protocol asks which languages participants can take it in, and,
   when you choose more than one, which of them is the default. A protocol
-  upgraded from an earlier version is marked as written in "Unspecified
-  language", and the project navigation suggests you set its real language.
+  upgraded from an earlier version is marked as written in English. A
+  protocol whose language is not recorded, such as one created in Studio, is
+  marked as written in "Unspecified language", and the project navigation
+  suggests you set its real language.
 - Once a protocol has more than one language, each text field in the stage
   editors has a language menu that shows which languages its text still needs.
   All the menus switch together, so you can work through a stage in one

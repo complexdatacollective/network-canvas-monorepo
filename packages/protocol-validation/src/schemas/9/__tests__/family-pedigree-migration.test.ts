@@ -22,11 +22,11 @@ type Fields = Record<string, unknown>;
 const isRecord = (value: unknown): value is Fields =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const und = (text: string) => ({ und: escapeMessageText(text) });
+const en = (text: string) => ({ en: escapeMessageText(text) });
 
 const localizedOptions = (
   options: readonly { value: string; label: string }[],
-) => options.map(({ value, label }) => ({ value, label: und(label) }));
+) => options.map(({ value, label }) => ({ value, label: en(label) }));
 
 // The value sets as schema 8 locked them, labels included.
 const SCHEMA_8_BIOLOGICAL_SEX_OPTIONS = [
@@ -260,10 +260,10 @@ describe('v8 to v9 Family Pedigree migration', () => {
     expect(pedigreeOf(migrated)).toEqual({
       id: 'pedigree',
       type: 'FamilyPedigree',
-      label: und('Your family'),
+      label: en('Your family'),
       interviewScript: 'Draw the family with the participant.',
       subject: { entity: 'node', type: 'person' },
-      prompt: und('Who is in your family? {braces} it’s fine'),
+      prompt: en('Who is in your family? {braces} it’s fine'),
       nodeConfiguration: {
         nameAttribute: 'name',
         sexAssignedAtBirthAttribute: 'biologicalSex',
@@ -286,19 +286,19 @@ describe('v8 to v9 Family Pedigree migration', () => {
           {
             id: 'field-age',
             variable: 'age',
-            prompt: und('How old is {name}?'),
+            prompt: en('How old is {name}?'),
           },
           {
             variable: 'living',
-            prompt: und('Is this person living?'),
-            hint: und('Say if you do not know.'),
+            prompt: en('Is this person living?'),
+            hint: en('Say if you do not know.'),
           },
         ],
       },
       nominationPrompts: [
         {
           id: 'nominate-condition',
-          text: und('Who has had **the condition**?'),
+          text: en('Who has had **the condition**?'),
           attribute: 'hasCondition',
         },
       ],
@@ -307,11 +307,11 @@ describe('v8 to v9 Family Pedigree migration', () => {
 
   it('escapes the census prompt so it reads as written', () => {
     const { prompt } = pedigreeOf(migrateStep(schema8Protocol()));
-    if (!isRecord(prompt) || typeof prompt.und !== 'string') {
+    if (!isRecord(prompt) || typeof prompt.en !== 'string') {
       throw new Error('The prompt is not localized');
     }
-    expect(prompt.und).not.toBe('Who is in your family? {braces} it’s fine');
-    expect(messageText(prompt.und)).toBe(
+    expect(prompt.en).not.toBe('Who is in your family? {braces} it’s fine');
+    expect(messageText(prompt.en)).toBe(
       'Who is in your family? {braces} it’s fine',
     );
   });
@@ -471,19 +471,19 @@ describe('v8 to v9 Family Pedigree migration', () => {
       expect(stageById(migrated, 'pedigree-introduction')).toEqual({
         id: 'pedigree-introduction',
         type: 'Information',
-        label: und('Your family (introduction)'),
-        title: und('Your family'),
+        label: en('Your family (introduction)'),
+        title: en('Your family'),
         items: [
           {
             id: 'intro-text',
             type: 'text',
-            content: und('We will draw your *family*.'),
+            content: en('We will draw your *family*.'),
           },
           {
             id: 'intro-image',
             type: 'asset',
             content: 'family-image',
-            description: und('A drawn family tree'),
+            description: en('A drawn family tree'),
           },
         ],
       });
@@ -564,7 +564,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
         ]),
       );
       expect(stageById(migrated, 'pedigree-introduction').items).toEqual([
-        { id: 'kept', type: 'text', content: und('Welcome.') },
+        { id: 'kept', type: 'text', content: en('Welcome.') },
       ]);
     });
 
@@ -600,12 +600,12 @@ describe('v8 to v9 Family Pedigree migration', () => {
       expect(pedigreeOf(migrated).nominationPrompts).toEqual([
         {
           id: 'nomination-2',
-          text: und('Who smokes?'),
+          text: en('Who smokes?'),
           attribute: 'hasCondition',
         },
         {
           id: 'nomination',
-          text: und('Who was tested?'),
+          text: en('Who was tested?'),
           attribute: 'hadTesting',
         },
       ]);
@@ -622,7 +622,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
         ]),
       );
       expect(pedigreeOf(migrated).nominationPrompts).toEqual([
-        { id: 'scaffolding', text: und('Who?'), attribute: 'hasCondition' },
+        { id: 'scaffolding', text: en('Who?'), attribute: 'hasCondition' },
       ]);
     });
 
@@ -699,7 +699,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
       const migrated = migrateValid(schema8Protocol([pedigree]));
       expect(pedigreeOf(migrated).form).toEqual({
         fields: [
-          { variable: 'living', prompt: und('Living?'), hint: { und: '' } },
+          { variable: 'living', prompt: en('Living?'), hint: { en: '' } },
         ],
       });
     });
@@ -744,7 +744,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
     const AGE_FIELD = {
       id: 'field-age',
       variable: 'age',
-      prompt: und('How old?'),
+      prompt: en('How old?'),
     };
 
     // The schema 8 interface asked the name itself and never showed a field
@@ -803,7 +803,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
       expect(pedigreeOf(migrateStep(document)).form).toEqual({
         fields: [
           AGE_FIELD,
-          { variable: 'hasCondition', prompt: und('Their hasCondition?') },
+          { variable: 'hasCondition', prompt: en('Their hasCondition?') },
         ],
       });
       expect(() => migrateValid(document)).toThrow(MigrationResultInvalidError);
@@ -878,9 +878,9 @@ describe('v8 to v9 Family Pedigree migration', () => {
       {
         id: 'pedigree',
         type: 'FamilyPedigree',
-        label: und('Your family'),
+        label: en('Your family'),
         subject: { entity: 'node', type: 'person' },
-        prompt: und('Who is in your family? {braces} it’s fine'),
+        prompt: en('Who is in your family? {braces} it’s fine'),
         nodeConfiguration: {
           nameAttribute: 'name',
           sexAssignedAtBirthAttribute: 'biologicalSex',
@@ -957,7 +957,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
       ]);
       expect(pedigreeOf(migrated)).toMatchObject({
         subject: { entity: 'node', type: 'person' },
-        prompt: und("Let's map out your family. Who is in it?"),
+        prompt: en("Let's map out your family. Who is in it?"),
         nodeConfiguration: {
           nameAttribute: 'name',
           sexAssignedAtBirthAttribute: 'biologicalSex',
@@ -986,7 +986,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
       expect(stageById(migrated, 'family-pedigree-introduction')).toMatchObject(
         {
           type: 'Information',
-          title: und('Family pedigree'),
+          title: en('Family pedigree'),
           items: [{ id: 'pedigree-intro', type: 'text' }],
         },
       );
@@ -1004,7 +1004,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
         diseases: [
           {
             id: 'condition',
-            label: und('This condition'),
+            label: en('This condition'),
             color: 'node-color-seq-1',
             attribute: 'has_condition',
             inheritancePattern: 'unknown',
@@ -1052,20 +1052,20 @@ describe('v8 to v9 Narrative Pedigree migration', () => {
     expect(stage).toEqual({
       id: 'narrative',
       type: 'NarrativePedigree',
-      label: und('How it runs in the family'),
+      label: en('How it runs in the family'),
       sourceStageId: 'pedigree',
       showAtRiskStatuses: true,
       diseases: [
         {
           id: 'condition',
-          label: und('The condition'),
+          label: en('The condition'),
           color: 'node-color-seq-1',
           attribute: 'hasCondition',
           inheritancePattern: 'autosomalDominant',
         },
         {
           id: 'testing',
-          label: und('Tested'),
+          label: en('Tested'),
           color: 'node-color-seq-2',
           attribute: 'hadTesting',
           inheritancePattern: 'unknown',
@@ -1091,7 +1091,7 @@ describe('v8 to v9 Narrative Pedigree migration', () => {
       schema8Protocol([schema8Pedigree(), narrativePedigree([disease])]),
     );
     expect(stageById(migrated, 'narrative').diseases).toEqual([
-      { ...disease, label: und('The condition') },
+      { ...disease, label: en('The condition') },
     ]);
   });
 });

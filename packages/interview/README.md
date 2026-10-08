@@ -346,9 +346,10 @@ same order whatever the host passes. `Shell` throws only if the set of
 languages differs from the declaration. The host derives them rather than the
 package so a server-rendered host serialises the exact labels it rendered:
 display names vary between JavaScript runtimes, and deriving them again on the
-client would break hydration. A
-protocol migrated from schema 8 declares no language and uses the tag `und`,
-which the chooser shows as an unspecified language.
+client would break hydration. A protocol that records no language (one made in
+Studio, for example) uses the tag `und`, which the chooser shows as an
+unspecified language. A protocol migrated from schema 8 declares English
+(`en`).
 
 ##### Outside `Shell`
 
