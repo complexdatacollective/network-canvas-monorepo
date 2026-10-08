@@ -7,11 +7,7 @@ describe('resolveContentLocale', () => {
     expect(resolveContentLocale('hu', 'en')).toBe('hu');
   });
 
-  it('uses the interface language when the protocol language is unspecified', () => {
-    expect(resolveContentLocale('und', 'de')).toBe('de');
-  });
-
-  it('uses the interface language when there is no protocol language', () => {
+  it('uses the interface language when there is no protocol language (outside the protocol provider)', () => {
     expect(resolveContentLocale(undefined, 'de')).toBe('de');
   });
 });

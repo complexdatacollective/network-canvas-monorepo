@@ -1,17 +1,14 @@
 /**
  * The language protocol and participant values are formatted and alphabetised
- * in: the protocol language the interview is showing, unless the protocol does
- * not specify one (`und`), when the interface language stands in. A protocol
- * that has no declared locale at all (a component shown outside the protocol
- * provider) is treated the same way.
+ * in: the protocol language the interview is showing. A component shown
+ * outside the protocol provider has no protocol language, so the interface
+ * language stands in.
  */
 export function resolveContentLocale(
   protocolLocale: string | undefined,
   interfaceLocale: string,
 ): string {
-  return protocolLocale === undefined || protocolLocale === 'und'
-    ? interfaceLocale
-    : protocolLocale;
+  return protocolLocale ?? interfaceLocale;
 }
 
 /** The most fraction digits a coordinate is shown with. */

@@ -4,7 +4,7 @@ import { Slider } from '@base-ui/react/slider';
 import { motion } from 'motion/react';
 import { useRef, useState } from 'react';
 
-import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
+import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import {
@@ -22,6 +22,7 @@ import {
   sliderTrackVariants,
 } from '../../styles/controlVariants';
 import { cx } from '../../utils/cva';
+import { type FieldValueFormat, useFieldValueFormat } from '../ContentLocale';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 import { omitWidgetOnlyAria } from '../utils/omitWidgetOnlyAria';
@@ -44,24 +45,26 @@ type VisualAnalogScaleFieldProps = CreateFormFieldProps<
 // a percentage; custom ranges show the value in their own units. The bubble is
 // only visible mid-drag, so no persistent number anchors the participant.
 //
-// Both forms go through the reader's formatter rather than `Math.round`/
-// `toFixed`, which write the digits, decimal mark and percent sign of the
-// source language whatever language the scale's labels are in.
+// Both forms go through the formatter of the language the scale's labels are
+// written in (the content language where a host names one, else the
+// interface language) rather than `Math.round`/`toFixed`, which write the
+// digits, decimal mark and percent sign of the source language whatever
+// language the labels are in.
 function formatVasValue(
-  intl: IntlShape,
+  format: FieldValueFormat,
   value: number,
   min: number,
   max: number,
 ) {
   if (min === 0 && max === 1) {
-    return intl.formatNumber(value, {
+    return format.formatNumber(value, {
       style: 'percent',
       maximumFractionDigits: 0,
     });
   }
   const range = max - min;
   const decimals = range >= 10 ? 0 : range >= 1 ? 1 : 2;
-  return intl.formatNumber(value, {
+  return format.formatNumber(value, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
@@ -97,6 +100,7 @@ export default function VisualAnalogScaleField(
   props: VisualAnalogScaleFieldProps,
 ) {
   const intl = useAppIntl();
+  const format = useFieldValueFormat();
   const {
     className,
     value,
@@ -246,7 +250,7 @@ export default function VisualAnalogScaleField(
                 aria-describedby={ariaDescribedBy}
                 getAriaValueText={(_, currentValue) =>
                   hasValue
-                    ? formatVasValue(intl, currentValue, min, max)
+                    ? formatVasValue(format, currentValue, min, max)
                     : intl.formatMessage(messages.unansweredValue)
                 }
               >
@@ -270,7 +274,7 @@ export default function VisualAnalogScaleField(
         </Slider.Root>
 
         <ScaleValuePopover visible={active.active && hasValue} anchor={thumbEl}>
-          {formatVasValue(intl, sliderValue, min, max)}
+          {formatVasValue(format, sliderValue, min, max)}
         </ScaleValuePopover>
 
         {(minLabel ?? maxLabel) && (

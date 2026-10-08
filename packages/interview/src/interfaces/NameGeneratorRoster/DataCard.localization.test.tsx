@@ -98,14 +98,10 @@ describe('roster values follow the language the protocol is read in', () => {
     expect(text('None')).toBe('No value');
   });
 
-  it('formats for the interface language when the protocol language is unspecified', () => {
+  it('formats for the interface language outside a protocol provider', () => {
     render(
       <InterviewI18nProvider requestedLocale="de">
-        <TestProtocolLocalization
-          localization={{ defaultLocale: 'und', locales: ['und'] }}
-        >
-          <DataCard label="Card" details={values} />
-        </TestProtocolLocalization>
+        <DataCard label="Card" details={values} />
       </InterviewI18nProvider>,
     );
 
