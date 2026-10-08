@@ -407,7 +407,9 @@ locale, and the resolver's report of how it found that translation tells
 Architect whether the participant's browser could change the result (§9.2).
 This defines what a participant who uses that locale will actually see, unless
 their browser also lists a language that has the text, and keeps Architect
-coverage identical to Interview runtime fallback.
+coverage identical to Interview runtime fallback. A protocol
+using `und` also receives an Architect-level notice that its language is not
+identified, with an "Identify language" action on the Languages page.
 
 This separation prevents production hosts from treating normal translation
 work-in-progress as invalid while giving Architect enough structured data to
@@ -692,8 +694,8 @@ changed by a language the participant's browser lists, which the note says.
   layout and `dir="auto"` may be used on leaf text.
 - `und` has no name of its own: `Intl.DisplayNames` calls it "root", which
   means nothing to a participant. The Interview provider replaces that label
-  with "Unspecified language" in the interface language, and Studio's editor
-  (protocol-builder) does the same wherever it names a language.
+  with "Unspecified language" in the interface language, and Architect does
+  the same wherever it names a language.
 
 Display-name spelling is presentation-only and may vary with the JavaScript
 runtime. It is never validated, persisted, or hashed. Direction fallback is
@@ -1133,8 +1135,7 @@ Architect adds a Languages page, linked from the project navigation at
 - translation coverage by language, as translated and missing counts with a
   progress bar;
 - a list of missing translations that can be filtered by language; and
-- relabelling the default language, which is how a protocol migrated from
-  schema 8, taken to be English, is marked as the language it is written in.
+- changing a language, which is how an `und` protocol identifies its language.
 
 Languages have no order, so the page has no way to reorder them. The default
 language matters because it is the starting language when the browser lists none
@@ -1144,16 +1145,15 @@ languages is alphabetical, and the order in which the file happens to store them
 has no effect on what participants see.
 
 A new protocol asks which language it is written in and declares exactly that
-language. A protocol migrated from schema 8 declares English (`en`). Architect
-has no mode for `und`: a protocol made in Studio declares it, but stays in
-Studio.
+language, so only a protocol migrated from schema 8 starts as `und`.
 
 The Language Chooser stage editor (§8.2) shows the same list of languages and
 manages them with the same operations and refusals as this page: adding,
-making one the default, relabelling the default, and removing one.
+making one the default, changing a language, and removing one.
 
 Adding a language writes only the declaration. It deliberately does not clone
 default strings, so the protocol remains valid and warnings appear immediately.
+`und` cannot be added, only replaced.
 
 Removing a language is an atomic destructive edit. Architect shows how many
 translations will be removed, asks for confirmation, removes that key from every
@@ -1161,17 +1161,17 @@ localized string, and updates the declaration. It is refused for the default
 until another default is chosen, and refused if it would leave any localized
 string with no translation.
 
-Relabelling the default language canonicalizes the new tag and atomically
-moves the default's declaration entry, `defaultLocale` and every matching
-localized-string key (found with `collectLocalizedStrings`) to it. A collision
-with an existing language is refused rather than merged, since a text
-translated into both would lose a translation; choosing another existing
-language as the default is `setDefaultLocale`'s job.
+Changing a language canonicalizes the new tag and atomically moves the
+declaration entry and every matching localized-string key. If the old tag is
+`defaultLocale`, the same edit updates `defaultLocale` to the new tag. A
+collision with an existing language is refused rather than merged. The
+`und` migration action is this operation.
 
 Every language operation (`addLocales`, `removeLocale`, `setDefaultLocale`,
-`relabelDefaultLocale`) is a single draft edit: one undo step, and nothing
+`relabelLocale`) is a single draft edit: one undo step, and nothing
 is written when any part is refused. A refusal names its reason: `invalid-tag`,
-`already-declared`, `not-declared`, `default-locale`, or `would-empty`.
+`unspecified-tag`, `already-declared`, `not-declared`, `default-locale`, or
+`would-empty`.
 
 ### 9.2 Localized fields
 
@@ -1287,8 +1287,7 @@ guess English from the product's history or the device locale. It therefore:
 9. preserves option values, ids, references, stage count and order, codebook
    keys, and collected answer shapes; and
 10. records two migration notes: what the new version allows in attribute
-    names, and that the text was taken to be English, so the researcher
-    should check the default language and relabel it in Architect if needed.
+    names, and that Architect's Languages page identifies the language.
 
 This obeys the migration invariants already documented in the migration
 chain: stages are not added, removed, or reordered, and collected values do
@@ -1399,8 +1398,8 @@ language does not change analysis schema.
   record would otherwise drop that entry unseen.
 - A message that does not parse as ICU, or that contains a placeholder or
   formatting, is a validation error, so the runtime only formats literal text.
-- Locale removal and relabelling the default language are atomic protocol
-  edits with collision checks.
+- Locale removal and `und` relabeling are atomic protocol edits with collision
+  checks.
 - Language changes are validated where they could otherwise corrupt data. The
   Shell refuses a language the protocol does not declare, and Fresco's
   unauthenticated locale endpoint rejects one before it can enter persistence or
@@ -1519,7 +1518,7 @@ language does not change analysis schema.
 - Incomplete localized strings save successfully and appear as warnings.
 - Undeclared keys and empty localized strings fail loudly.
 - Coverage aggregation, grouping, language filter, and navigation to the field.
-- Relabelling the default language.
+- The `und` identification workflow.
 - A blank translation removes that translation; a required field refuses a
   string with none.
 - The shared editing language moves every localized field together and falls

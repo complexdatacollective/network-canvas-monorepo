@@ -9,8 +9,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 export class SectionizeError extends Error {}
 
 // Nothing asks the researcher for a language yet, so a new protocol declares
-// the undetermined one (`und`). Studio's protocols stay in Studio: Architect,
-// which never receives one, has no mode for a protocol in `und`.
+// the undetermined one (`und`), which Architect asks its author to identify.
 export function emptyProtocol(name: string): CurrentProtocol {
   return {
     name,
