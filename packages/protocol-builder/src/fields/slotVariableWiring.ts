@@ -121,6 +121,46 @@ export function ruleOutValuesOutsideOwnedSet<T extends SlotVariableOption>(
   );
 }
 
+/**
+ * The pool, with every attribute whose options another stage manages RULED
+ * OUT rather than dropped, for a slot whose stage manages them: only one stage
+ * may. `managersElsewhere` names those other stages, and is empty for an
+ * attribute this stage may take.
+ */
+export function ruleOutOptionsManagedElsewhere<T extends SlotVariableOption>(
+  options: readonly T[],
+  managersElsewhere: (variableId: string) => readonly string[],
+  words: (
+    attributeName: string,
+    stageLabels: readonly string[],
+  ) => NonNullable<VariablePickerOption['unusableWords']>,
+): T[] {
+  return options.map((option) => {
+    const stageLabels = managersElsewhere(option.value);
+    return stageLabels.length === 0
+      ? option
+      : {
+          ...option,
+          usable: false,
+          unusableWords: words(option.label, stageLabels),
+        };
+  });
+}
+
+/** The refusal for a pick whose options another stage manages. */
+export const managedElsewhereIssue = (
+  allVariables: Readonly<Variables>,
+  variableId: unknown,
+  managersElsewhere: (variableId: string) => readonly string[],
+): string | undefined =>
+  typeof variableId !== 'string' ||
+  variableId === '' ||
+  managersElsewhere(variableId).length === 0
+    ? undefined
+    : createMessageError(slotVariableMessages.managedElsewhereRefusal, {
+        attributeName: variableDisplayName(allVariables, variableId),
+      });
+
 export type SlotPickerOptionsInput<T extends SlotVariableOption> = Readonly<{
   roleMap: VariableRoleMap;
   slotMap: ExclusiveVariableSlotMap;

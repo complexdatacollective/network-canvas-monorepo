@@ -472,6 +472,44 @@ describe('FamilyPedigree in a whole protocol', () => {
     });
   });
 
+  describe('gender identity options managed by one stage', () => {
+    const second = {
+      ...base,
+      id: 'fp2',
+      label: localized('Family again'),
+    };
+    const twoStages = (secondStage: Record<string, unknown>) => ({
+      ...protocolWith(base),
+      stages: [base, secondStage],
+    });
+
+    it('refuses two Family Pedigree stages that manage the same attribute’s options, each naming the other', () => {
+      const at = (stageIndex: number) =>
+        issuesAt(twoStages(second), [
+          'stages',
+          stageIndex,
+          'nodeConfiguration',
+          'genderIdentity',
+          'attribute',
+        ]);
+      expect(at(1)).toEqual([
+        'The options of attribute "Gender" are also managed by the stage "Family Pedigree", but only one stage may manage them, because each decides the kinship words each option takes. Choose another attribute.',
+      ]);
+      expect(at(0)).toEqual([
+        'The options of attribute "Gender" are also managed by the stage "Family again", but only one stage may manage them, because each decides the kinship words each option takes. Choose another attribute.',
+      ]);
+    });
+
+    it('accepts two Family Pedigree stages when only one asks about gender identity', () => {
+      const { genderIdentity: _omitted, ...nodeConfiguration } =
+        base.nodeConfiguration;
+      const result = ProtocolSchemaV9.safeParse(
+        twoStages({ ...second, nodeConfiguration }),
+      );
+      expect(result.success ? null : result.error.issues).toBeNull();
+    });
+  });
+
   it('detects the participant marker being reused as a form field', () => {
     const stage = {
       ...base,

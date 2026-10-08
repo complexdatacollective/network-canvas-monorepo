@@ -59,8 +59,9 @@ const GenderIdentityTermSchema = z.strictObject({
  *
  * The researcher defines the attribute's options, but the options are managed
  * by this stage: they can be added, removed, relabelled or re-valued only from
- * a pedigree stage that binds the attribute (see `stageManagedOptions`), so the
- * words below cannot drift from them. Other parts of the protocol may still
+ * the pedigree stage that binds the attribute (see `stageManagedOptions`), so
+ * the words below cannot drift from them. No other stage may manage the same
+ * attribute's options, because its words would not follow an edit made here. Other parts of the protocol may still
  * write the attribute. A `terms` entry whose value is not (or is no longer) one
  * of the attribute's options is ignored by the interview, as if the option had
  * been left out; no value may be listed twice.

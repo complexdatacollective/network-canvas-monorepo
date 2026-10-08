@@ -103,7 +103,9 @@ const DEFAULT_GENDER_OPTION_LABELS: Record<
  * (`Edit options`), the words on each option's own row, and the stage shows
  * what each option takes read-only beside the button. The dialog writes the
  * options to the codebook, and the words, for every option it saved, into
- * this stage's draft.
+ * this stage's draft. Only this stage keeps words for them, so the picker
+ * rules out an attribute whose options another stage already manages: that
+ * stage's words would not follow an edit made here.
  */
 export default function GenderIdentitySection() {
   const intl = useAppIntl();
@@ -239,6 +241,7 @@ export default function GenderIdentitySection() {
             draftConflicting={validatedPersonVariables}
             draftBoundElsewhere={otherAnswerVariables.genderIdentity}
             draftSlotMap={draftSlotMap}
+            managesOptions
           />
           {genderOptions !== undefined &&
             typeof genderVariableId === 'string' && (

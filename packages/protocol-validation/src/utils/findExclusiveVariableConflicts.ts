@@ -233,8 +233,8 @@ export type StageManagedOptionBinding = {
 /**
  * Every stage that binds a variable whose OPTION LIST that stage manages (see
  * `StageManagedOptionsDescriptor`), with the stage's id and label. A variable
- * several stages bind has one binding per stage, and any of them may edit its
- * options. Ownership is derived here from the stages, never stored in the
+ * several stages bind has one binding per stage, and the protocol schema
+ * refuses each of them: one stage manages a variable's options. Ownership is derived here from the stages, never stored in the
  * codebook, so removing the stage (or unbinding the variable) releases the
  * options. Architect's option editors read this to lock the options everywhere
  * but the owning stage's editor.

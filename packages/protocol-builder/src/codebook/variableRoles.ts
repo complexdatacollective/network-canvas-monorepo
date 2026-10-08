@@ -373,6 +373,22 @@ export const stageManagedOptionsLock = (
 };
 
 /**
+ * The labels of the saved stages OTHER than `stageId` that manage a variable's
+ * option list. Only one stage may manage it (the protocol refuses the rest),
+ * so a stage choosing a variable for such a slot may take only one this
+ * answers with nothing for.
+ */
+export const stageManagersElsewhere = (
+  map: StageManagedOptionMap,
+  subject: CodebookSubject,
+  variableId: string,
+  stageId: string,
+): readonly string[] =>
+  (map[variableRoleKey(subject, variableId)] ?? [])
+    .filter((owner) => owner.stageId !== stageId)
+    .map((owner) => owner.stageLabel);
+
+/**
  * The note naming the stages that manage an option list, as the plain text it
  * is shown in. Whole sentence from one descriptor; the labels are the
  * researcher's own and go in as values.
@@ -395,7 +411,7 @@ export const stageManagedOptionsRefusal = (
     stageLabels: quotedLabels(stageLabels),
   });
 
-const quotedLabels = (stageLabels: readonly string[]): string =>
+export const quotedLabels = (stageLabels: readonly string[]): string =>
   stageLabels.map((label) => `“${label}”`).join(', ');
 
 /**

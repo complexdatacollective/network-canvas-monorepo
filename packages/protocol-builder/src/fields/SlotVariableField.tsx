@@ -20,8 +20,11 @@ import type {
 import CodebookVariableValidationSection from '../codebook/validation/CodebookVariableValidationSection.tsx';
 import {
   buildExclusiveVariableSlotMap,
+  buildStageManagedOptionMap,
   buildVariableRoleMap,
   type ExclusiveVariableSlotMap,
+  quotedLabels,
+  stageManagersElsewhere,
   type WriterClass,
 } from '../codebook/variableRoles.ts';
 import { REQUIRED } from '../form/requiredField.ts';
@@ -35,6 +38,8 @@ import { useCreateAttributeForSlot } from '../sections/create-variable/useCreate
 import { useProtocolContext } from '../state/protocolContext.ts';
 import { slotVariableMessages } from './slotVariableMessages.ts';
 import {
+  managedElsewhereIssue,
+  ruleOutOptionsManagedElsewhere,
   ruleOutValuesOutsideOwnedSet,
   slotCrossClassIssue,
   slotPickerOptions,
@@ -132,6 +137,13 @@ export type SlotVariableFieldProps = Readonly<{
    * slot whose value the participant types.
    */
   offerValidation?: boolean;
+  /**
+   * This slot's stage manages the options of the attribute it binds (see
+   * `StageManagedOptionsDescriptor`). Only one stage may, so an attribute
+   * whose options another saved stage manages is ruled out of the picker and
+   * refused at save.
+   */
+  managesOptions?: boolean;
 }>;
 
 /**
@@ -162,9 +174,10 @@ export default function SlotVariableField({
   draftBoundElsewhere,
   draftSlotMap = NO_CLAIMS,
   offerValidation = false,
+  managesOptions = false,
 }: SlotVariableFieldProps) {
   const intl = useAppIntl();
-  const { committedFields, storeApi } = useStageEditorForm();
+  const { committedFields, storeApi, identity } = useStageEditorForm();
   const protocolContext = useProtocolContext();
   const draftValue = useStageValue(name);
   const currentValue = typeof draftValue === 'string' ? draftValue : undefined;
@@ -217,6 +230,27 @@ export default function SlotVariableField({
     [protocolContext],
   );
 
+  // The labels of the other saved stages that manage an attribute's options,
+  // for a slot whose stage manages them: none for any other slot.
+  const managedOptionMap = useMemo(
+    () =>
+      managesOptions ? buildStageManagedOptionMap(protocolContext) : undefined,
+    [managesOptions, protocolContext],
+  );
+  const managersElsewhere = useMemo(
+    () =>
+      (variableId: string): readonly string[] =>
+        managedOptionMap === undefined || subject === null
+          ? []
+          : stageManagersElsewhere(
+              managedOptionMap,
+              subject,
+              variableId,
+              identity.id,
+            ),
+    [identity.id, managedOptionMap, subject],
+  );
+
   const allVariables = useMemo(
     () =>
       subject === null
@@ -248,6 +282,25 @@ export default function SlotVariableField({
     [intl, lockedOptions, pool],
   );
 
+  const managedCheckedOptions = useMemo(
+    () =>
+      ruleOutOptionsManagedElsewhere(
+        valueCheckedOptions,
+        managersElsewhere,
+        (attributeName, stageLabels) => ({
+          optionLabel: intl.formatMessage(
+            slotVariableMessages.managedElsewhereOptionLabel,
+            { attributeName },
+          ),
+          note: intl.formatMessage(slotVariableMessages.managedElsewhereNote, {
+            count: stageLabels.length,
+            stageLabels: quotedLabels(stageLabels),
+          }),
+        }),
+      ),
+    [intl, managersElsewhere, valueCheckedOptions],
+  );
+
   const pickerOptions = useMemo(
     () =>
       slotPickerOptions({
@@ -255,7 +308,7 @@ export default function SlotVariableField({
         slotMap,
         draftSlotMap,
         subject,
-        options: valueCheckedOptions,
+        options: managedCheckedOptions,
         ...(currentValue === undefined ? {} : { currentValue }),
         ...(ownSlot === undefined ? {} : { ownSlot }),
         writerClass,
@@ -271,7 +324,7 @@ export default function SlotVariableField({
       roleMap,
       slotMap,
       subject,
-      valueCheckedOptions,
+      managedCheckedOptions,
       writerClass,
     ],
   );
@@ -294,6 +347,7 @@ export default function SlotVariableField({
     draftConflicting,
     draftBoundElsewhere,
     allVariables,
+    managersElsewhere,
   });
   judgeAgainst.current = {
     variableType,
@@ -308,6 +362,7 @@ export default function SlotVariableField({
     draftConflicting,
     draftBoundElsewhere,
     allVariables,
+    managersElsewhere,
   };
 
   const slotValidation = useMemo(
@@ -321,6 +376,14 @@ export default function SlotVariableField({
             value,
             judgeAgainst.current.variableType,
             judgeAgainst.current.lockedOptions,
+          ),
+        // No committed-value escape: the protocol refuses a second stage
+        // managing the options, however long it has held the attribute.
+        (value: unknown) =>
+          managedElsewhereIssue(
+            judgeAgainst.current.allVariables,
+            value,
+            judgeAgainst.current.managersElsewhere,
           ),
         (value: unknown) =>
           slotCrossClassIssue({

@@ -68,6 +68,23 @@ const openNewStage = () =>
     editor: familyPedigreeEditor,
   });
 
+/**
+ * A gender identity attribute no stage manages yet, carrying the interface's
+ * default options. The fixture's own gender identity attribute is managed by
+ * its pedigree stage, so a new stage may not take it.
+ */
+const FRESH_GENDER_ID = 'fm_gender';
+const addFreshGenderAttribute = (harness: StageEditorHarness): void => {
+  addFamilyMemberVariable(harness, FRESH_GENDER_ID, {
+    name: FRESH_GENDER_ID,
+    type: 'categorical',
+    options: PEDIGREE_DEFAULT_GENDER_IDENTITIES.map(({ value }) => ({
+      value,
+      label: { 'en-US': value },
+    })),
+  });
+};
+
 const PROMPT_TEXT =
   'Add the people in your family. Select someone to add more.';
 
@@ -210,8 +227,9 @@ describe('the family pedigree stage editor', () => {
     await harness.user.click(
       await screen.findByRole('radio', { name: 'family member' }),
     );
+    addFreshGenderAttribute(harness);
     await bindSlot(harness, 'Name', 'fm_name');
-    await bindSlot(harness, 'Gender identity', 'genderIdentity');
+    await bindSlot(harness, 'Gender identity', FRESH_GENDER_ID);
     await bindSlot(harness, 'Sex assigned at birth', 'sexAssignedAtBirth');
     await bindSlot(harness, 'Participant marker', 'is_ego');
 
@@ -235,9 +253,9 @@ describe('the family pedigree stage editor', () => {
       nodeConfiguration: {
         nameAttribute: 'fm_name',
         genderIdentity: {
-          attribute: 'genderIdentity',
-          // The fixture attribute's options are the interface's defaults, so
-          // binding it maps each to the words its default takes.
+          attribute: FRESH_GENDER_ID,
+          // The attribute's options are the interface's defaults, so binding
+          // it maps each to the words its default takes.
           terms: PEDIGREE_DEFAULT_GENDER_IDENTITIES.map(({ value, words }) => ({
             value,
             words,
@@ -724,6 +742,56 @@ describe('the gender identity options, which this stage manages', () => {
     ).terms;
   };
 
+  // One stage manages an attribute's options: a second stage would keep words
+  // of its own for them, which an options edit made from the first could not
+  // rewrite.
+  it('is not offered to another stage, whose words would not follow an edit made here', async () => {
+    const harness = openNewStage();
+    await harness.user.click(
+      await screen.findByRole('radio', { name: 'family member' }),
+    );
+    addFamilyMemberVariable(harness, 'fm_otherGender', {
+      name: 'fm_otherGender',
+      type: 'categorical',
+      options: [
+        { value: 'woman', label: { 'en-US': 'Woman' } },
+        { value: 'man', label: { 'en-US': 'Man' } },
+      ],
+    });
+    await screen.findByText('Gender identity', { selector: FIELD_LABEL });
+
+    await awaitOfferedAttributes(
+      harness.user,
+      attributeField('Gender identity'),
+      (offered) => {
+        expect(offered).toContain('fm_otherGender');
+        expect(offered).not.toContain('genderIdentity');
+      },
+    );
+  });
+
+  it('refuses another stage that holds it, naming the stage that manages it', async () => {
+    const seeded = familyPedigreeStageWith({ label: 'Family again' });
+    const harness = renderStageEditor({
+      stage: { ...seeded, id: 'family-pedigree-2' },
+      editor: familyPedigreeEditor,
+    });
+    await harness.opened();
+
+    expect(
+      await within(attributeField('Gender identity')).findByText(
+        /Its options are managed by the “Family Pedigree” stage/,
+      ),
+    ).toBeVisible();
+    expect(await harness.submit()).toBeNull();
+    expect(
+      harness
+        .outline()
+        .find((section) => section.title === 'Ask about gender identity')
+        ?.state,
+    ).toBe('Has a problem');
+  });
+
   it('edits the options and their words together in one wide dialog, with the type shown read-only', async () => {
     const harness = openFixture();
     await harness.opened();
@@ -1146,7 +1214,8 @@ describe('the gender identity words', () => {
       screen.queryByRole('table', { name: 'Words for each gender identity' }),
     ).toBeNull();
 
-    await bindSlot(harness, 'Gender identity', 'genderIdentity');
+    addFreshGenderAttribute(harness);
+    await bindSlot(harness, 'Gender identity', FRESH_GENDER_ID);
 
     expect(
       await screen.findByRole('table', {

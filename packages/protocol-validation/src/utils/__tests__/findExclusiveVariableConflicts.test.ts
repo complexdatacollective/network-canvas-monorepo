@@ -201,9 +201,16 @@ describe('findExclusiveVariableConflicts', () => {
   });
 
   it('accepts two FamilyPedigree stages that share one node type and its structural slots', () => {
+    // Only one of them asks about gender identity: the options of a gender
+    // identity attribute are managed by one stage.
+    const { genderIdentity: _omitted, ...withoutGender } = nodeConfiguration;
     const protocol = protocolWith([
       familyPedigree(),
-      familyPedigree({ id: 'fp2', label: localized('Second pedigree') }),
+      familyPedigree({
+        id: 'fp2',
+        label: localized('Second pedigree'),
+        nodeConfiguration: withoutGender,
+      }),
     ]);
     expect(findExclusiveVariableConflicts(protocol)).toEqual([]);
     expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);

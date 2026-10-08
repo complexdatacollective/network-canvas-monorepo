@@ -6,6 +6,7 @@ import { collectLocalizedStringsFromSchema } from '../../utils/collectLocalizedS
 import {
   findExclusiveVariableConflicts,
   findInterfaceOwnedOptionBindings,
+  findStageManagedOptionBindings,
 } from '../../utils/findExclusiveVariableConflicts.ts';
 import { variableNameFor } from '../../utils/referenceSubjects.ts';
 import { validateReferences } from '../../utils/validateEntityAttributeReferences.ts';
@@ -722,6 +723,44 @@ const ProtocolSchema = z
       ctx.addIssue({
         code: 'custom' as const,
         message: `The ${optionSet.label} attribute "${variableNameFor(protocol, subject, binding.variableId)}" used by ${stageNameFor(owningStage?.type)} must keep its fixed options.`,
+        path: binding.path,
+      });
+    }
+
+    // Stage-managed option lists: the stage that manages a variable's options
+    // keeps what each option means beside them (the Family Pedigree's kinship
+    // words), in its own section. A second managing stage would hold its own
+    // copy of that meaning, which an options edit made from the first could
+    // not rewrite, so the two would silently disagree. One stage manages a
+    // variable's options: every stage that shares one is refused, naming the
+    // others, as Architect refuses it in each of them.
+    const managedBindings = findStageManagedOptionBindings(protocol, hits);
+    const managedKey = (binding: (typeof managedBindings)[number]) =>
+      JSON.stringify([
+        binding.subject.entity,
+        binding.subject.type ?? null,
+        binding.variableId,
+      ]);
+    for (const binding of managedBindings) {
+      const { entity, type } = binding.subject;
+      if (entity !== 'ego' && type === undefined) continue;
+      const key = managedKey(binding);
+      const others = [
+        ...new Set(
+          managedBindings
+            .filter(
+              (other) =>
+                other.stageId !== binding.stageId && managedKey(other) === key,
+            )
+            .map((other) => `"${other.stageLabel}"`),
+        ),
+      ];
+      if (others.length === 0) continue;
+      const subject: StageSubject =
+        entity === 'ego' ? { entity } : { entity, type: type ?? '' };
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: `The options of attribute "${variableNameFor(protocol, subject, binding.variableId)}" are also managed by ${others.length === 1 ? 'the stage' : 'the stages'} ${others.join(', ')}, but only one stage may manage them, because each decides ${binding.descriptor.owner}. Choose another attribute.`,
         path: binding.path,
       });
     }

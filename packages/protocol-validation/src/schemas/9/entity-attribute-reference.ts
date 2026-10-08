@@ -60,9 +60,12 @@ export type InterfaceOwnedOptionSetKey =
  * Editing the options anywhere else would leave that meaning describing
  * options that no longer exist.
  *
- * So the options may be added, removed, relabelled or re-valued only from a
- * stage that binds the variable at such a slot (any of them, if several do),
- * and Architect shows them read-only everywhere else. This is NOT write
+ * So the options may be added, removed, relabelled or re-valued only from the
+ * stage that binds the variable at such a slot, and Architect shows them
+ * read-only everywhere else. Only one stage may manage a variable's options:
+ * each managing stage keeps its own copy of what the options mean, and an
+ * options edit made from one stage cannot rewrite another's, so the protocol
+ * refuses every stage that shares a variable's options with another. This is NOT write
  * exclusivity and is independent of `exclusive`: other stages stay free to
  * WRITE the variable (a categorical bin assigning it, a form field asking
  * it). Ownership is derived from the stages that bind the variable, never
