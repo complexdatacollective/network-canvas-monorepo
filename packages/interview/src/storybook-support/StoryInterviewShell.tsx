@@ -157,8 +157,8 @@ const StoryInterviewShell = (props: {
   allowUserScaling?: boolean;
   reviewMode?: boolean;
   initialStep?: number;
-  /** The action offered once the interview is finished. */
-  completedAction?: CompletedAction;
+  /** The actions offered once the interview is finished. */
+  completedActions?: readonly CompletedAction[];
   /** Receives the session each time the interview writes it, so a story can
    * check what was stored. */
   onSync?: SyncHandler;
@@ -225,7 +225,7 @@ const StoryInterviewShell = (props: {
       allowUserScaling={props.allowUserScaling}
       onExit={props.onExit}
       reviewMode={props.reviewMode}
-      completedAction={props.completedAction}
+      completedActions={props.completedActions}
     />
   );
 };

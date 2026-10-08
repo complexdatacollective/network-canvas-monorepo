@@ -2,11 +2,12 @@
 
 import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
+  type CompletedAction,
   type FinishHandler,
   type InterviewPayload,
   Shell,
@@ -67,12 +68,8 @@ export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
     readonly string[] | null
   >(null);
   const [failure, setFailure] = useState<PreviewFailure | null>(null);
-  const [finished, setFinished] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [currentStep, setCurrentStep] = useState(0);
-
-  const finishedHeadingRef = useRef<HTMLHeadingElement>(null);
-  const finishedDescriptionId = useId();
 
   // The install lives in a ref as well as state so the asset resolver, which
   // the Shell holds for its lifetime, reads the current one without being
@@ -98,7 +95,6 @@ export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
     setPayload(null);
     setRequestedLocales(null);
     setFailure(null);
-    setFinished(false);
     setCurrentStep(0);
 
     const load = async () => {
@@ -129,10 +125,6 @@ export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
     };
   }, [wave, attempt]);
 
-  useEffect(() => {
-    if (finished) finishedHeadingRef.current?.focus();
-  }, [finished]);
-
   const onRequestAsset = useCallback(async (assetId: string) => {
     ownerRef.current ??= createAssetUrlOwner();
     return ownerRef.current.resolve({
@@ -148,16 +140,29 @@ export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
     });
   }, []);
 
-  const onFinish = useCallback<FinishHandler>(async () => {
-    setFinished(true);
-  }, []);
+  // Nothing is recorded, so finishing always succeeds and the Shell shows the
+  // protocol's own completed state: its finish stage's text and the notice.
+  const onFinish = useCallback<FinishHandler>(async () => {}, []);
 
-  const restart = () => {
-    if (!install) return;
-    setFinished(false);
-    setCurrentStep(0);
-    setPayload(createPreviewPayload(install));
-  };
+  // Offered on that completed state. Starting again is a new session, so the
+  // Shell starts a new interview rather than reopening the finished one.
+  const completedActions = useMemo<readonly CompletedAction[]>(
+    () => [
+      {
+        label: t('restart'),
+        onAction: () => {
+          if (!install) return;
+          setCurrentStep(0);
+          setPayload(createPreviewPayload(install));
+        },
+      },
+      {
+        label: t('backToProtocol'),
+        onAction: () => window.location.assign(backHref),
+      },
+    ],
+    [t, install, backHref],
+  );
 
   const backAction = (
     <Button asChild color="default">
@@ -190,28 +195,6 @@ export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
     );
   }
 
-  if (finished) {
-    return (
-      <PreviewMessageScreen
-        heading={t('finishedHeading')}
-        headingRef={finishedHeadingRef}
-        describedById={finishedDescriptionId}
-        actions={
-          <>
-            <Button color="primary" onClick={restart}>
-              {t('restart')}
-            </Button>
-            {backAction}
-          </>
-        }
-      >
-        <Paragraph id={finishedDescriptionId} margin="none">
-          {t('finishedDescription')}
-        </Paragraph>
-      </PreviewMessageScreen>
-    );
-  }
-
   if (!payload || !requestedLocales) {
     return <PreviewLoadingScreen label={t('loading')} />;
   }
@@ -228,6 +211,7 @@ export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
         onFinish={onFinish}
         onRequestAsset={onRequestAsset}
         finishConfirmationDescription={t('finishConfirmation')}
+        completedActions={completedActions}
         flags={{ isDevelopment: process.env.NODE_ENV === 'development' }}
         allowStageNavigation
         allowUserScaling

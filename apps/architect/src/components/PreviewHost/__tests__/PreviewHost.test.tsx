@@ -60,11 +60,12 @@ vi.mock('@codaco/interview', async () => {
             <span data-testid="shell-finish-description">
               {props.finishConfirmationDescription}
             </span>
-            {props.completedAction && (
-              <button onClick={props.completedAction.onAction}>
-                {props.completedAction.label}
+            {props.completedActions?.map((action, index) => (
+              // eslint-disable-next-line react/no-array-index-key
+              <button key={index} onClick={action.onAction}>
+                {action.label}
               </button>
-            )}
+            ))}
           </actual.InterviewI18nProvider>
         </div>
       );
@@ -1036,7 +1037,7 @@ describe('PreviewHost', () => {
    * action.
    *
    * The Shell is mocked in this file, so these drive the contract's `onFinish`
-   * and `completedAction` directly. What the real Shell does with them (the
+   * and `completedActions` directly. What the real Shell does with them (the
    * completed state, where focus lands, and that Finish is gone afterwards) is
    * `e2e/specs/preview-finish.spec.ts`.
    */
@@ -1079,7 +1080,7 @@ describe('PreviewHost', () => {
         render(<PreviewHost />);
         postPayload(openerStub, makePayload());
         await screen.findByTestId('shell-mounted');
-        expect(lastShellProps().completedAction).toBeDefined();
+        expect(lastShellProps().completedActions).toHaveLength(1);
         const spanish = createAppIntl({
           locale: 'es',
           messages: architectCatalogs.es,

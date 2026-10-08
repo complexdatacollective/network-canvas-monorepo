@@ -113,7 +113,7 @@ type CapturedShellProps = {
   payload: InterviewPayload;
   onExit: () => void;
   onFinish: FinishHandler;
-  completedAction?: CompletedAction;
+  completedActions?: readonly CompletedAction[];
   onSync: (
     id: string,
     session: SessionPayload,
@@ -149,11 +149,16 @@ vi.mock('@codaco/interview', async (importOriginal) => {
         >
           <div data-testid="shell-mounted">
             {queuedDescription}
-            {props.completedAction && (
-              <button type="button" onClick={props.completedAction.onAction}>
-                {props.completedAction.label}
+            {props.completedActions?.map((action, index) => (
+              <button
+                // eslint-disable-next-line react/no-array-index-key
+                key={index}
+                type="button"
+                onClick={action.onAction}
+              >
+                {action.label}
               </button>
-            )}
+            ))}
           </div>
         </AppI18nProvider>
       );
@@ -596,7 +601,7 @@ describe('InterviewRoute finish flow', () => {
     // navigates nor replaces it, and offers Exit there.
     expect(screen.getByTestId('shell-mounted')).toBeInTheDocument();
     expect(navigateMock).not.toHaveBeenCalled();
-    expect(lastShellProps().completedAction).toBeDefined();
+    expect(lastShellProps().completedActions).toHaveLength(1);
   });
 
   it("offers Exit on the completed state in the interview's interface language", async () => {
@@ -741,7 +746,7 @@ describe('InterviewRoute finish flow', () => {
       'Finishing ends this interview. A researcher can mark it unfinished later if changes are needed.',
     );
     // A review shows the stages; there is no completed state to act on.
-    expect(lastShellProps().completedAction).toBeUndefined();
+    expect(lastShellProps().completedActions).toBeUndefined();
     expect(
       screen.queryByRole('button', { name: 'Exit' }),
     ).not.toBeInTheDocument();

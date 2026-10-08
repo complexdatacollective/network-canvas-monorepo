@@ -255,8 +255,6 @@
       },
       "loading": "Preparazione dell’anteprima…",
       "finishConfirmation": "Questa è un’anteprima, quindi non viene salvato nulla. Se termini, questa esecuzione del protocollo si conclude e potrai avviarla di nuovo in seguito.",
-      "finishedHeading": "Anteprima terminata",
-      "finishedDescription": "L’intervista è terminata esattamente come terminerebbe per una persona partecipante. Non è stato salvato nulla.",
       "restart": "Avvia di nuovo l’anteprima",
       "backToProtocol": "Torna al protocollo",
       "errorHeading": "Non è possibile visualizzare l’anteprima di questo protocollo",

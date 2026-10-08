@@ -55,8 +55,8 @@ ended early. That outcome is saved with each interview and exported.
   interview.
 - A finished interview opens in its completed state: the finish stage's
   heading and text and a notice that the answers can no longer be changed,
-  with no way back into the interview. A host can add one action to it with
-  the new `completedAction` prop. Review mode stops before the finish stage,
+  with no way back into the interview. A host can add its own actions to it with
+  the new `completedActions` prop. Review mode stops before the finish stage,
   and the stages menu no longer lists finish stages.
 - A finished interview is shown in the language of whoever opens it, but
   never reports a language change: `onProtocolLocaleChange` is not called once

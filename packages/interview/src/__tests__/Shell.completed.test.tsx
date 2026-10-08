@@ -116,14 +116,14 @@ function renderShell({
   payload,
   currentStep = 0,
   onFinish = () => Promise.resolve(),
-  completedAction,
+  completedActions,
   reviewMode,
   initialTextScale,
 }: {
   payload: InterviewPayload;
   currentStep?: number;
   onFinish?: FinishHandler;
-  completedAction?: CompletedAction;
+  completedActions?: readonly CompletedAction[];
   reviewMode?: boolean;
   initialTextScale?: number;
 }) {
@@ -139,7 +139,7 @@ function renderShell({
       onRequestAsset={() => Promise.resolve('')}
       analytics={{ installationId: 'test', hostApp: 'test' }}
       disableAnalytics
-      completedAction={completedAction}
+      completedActions={completedActions}
       reviewMode={reviewMode}
       initialTextScale={initialTextScale}
     />,
@@ -177,7 +177,7 @@ describe('Shell completed state', () => {
     const onAction = vi.fn();
     renderShell({
       payload: makePayload({ finishStageId: finishStage.id }),
-      completedAction: { label: 'Exit', onAction },
+      completedActions: [{ label: 'Exit', onAction }],
     });
     await expectCompletedState();
     await userEvent.setup().click(screen.getByRole('button', { name: 'Exit' }));
@@ -274,7 +274,7 @@ describe('Shell completed state', () => {
     renderShell({
       payload,
       reviewMode: true,
-      completedAction: { label: 'Exit', onAction },
+      completedActions: [{ label: 'Exit', onAction }],
     });
 
     expect(

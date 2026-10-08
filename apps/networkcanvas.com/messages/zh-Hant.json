@@ -255,8 +255,6 @@
       },
       "loading": "正在準備預覽…",
       "finishConfirmation": "這只是預覽，不會儲存任何內容。完成後會結束這次的協定執行，您之後可以重新開始。",
-      "finishedHeading": "預覽已結束",
-      "finishedDescription": "訪談的結束方式與參與者實際進行時相同。未儲存任何內容。",
       "restart": "重新開始預覽",
       "backToProtocol": "返回協定",
       "errorHeading": "無法預覽此協定",

@@ -517,11 +517,12 @@ type ShellProps = {
   finishConfirmationDescription?: ReactNode;
   onExit?: () => void;
   /**
-   * One action offered on the completed state of a finished interview, such
-   * as Interviewer's "Exit". The completed state is shown when the payload's
-   * session is finished, and as soon as the participant finishes.
+   * The actions offered on the completed state of a finished interview, such
+   * as Interviewer's "Exit", in order; the first is the primary one. The
+   * completed state is shown when the payload's session is finished, and as
+   * soon as the participant finishes.
    */
-  completedAction?: CompletedAction;
+  completedActions?: readonly CompletedAction[];
   /**
    * Adapt the Shell for reviewing an existing interview: show its stages even
    * when it is finished, stop before its finish stage, use review-specific
@@ -587,7 +588,7 @@ const Shell = ({
   disableAnalytics = false,
   finishConfirmationDescription,
   onExit,
-  completedAction,
+  completedActions,
   reviewMode,
   hideNavigation,
   navigationOrientation,
@@ -787,7 +788,7 @@ const Shell = ({
                   // A new payload is a new interview.
                   key={payload.session.id}
                   initialCompletion={initialCompletion}
-                  completedAction={completedAction}
+                  completedActions={completedActions}
                   // A finished interview never records a language change.
                   onComplete={reduxStore.markFinished}
                 >

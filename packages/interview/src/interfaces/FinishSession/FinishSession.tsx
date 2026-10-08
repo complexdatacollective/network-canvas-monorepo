@@ -168,8 +168,8 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
 
 /**
  * A finished interview: the closing text of the finish stage it ended at, a
- * notice that nothing can be changed, and the host's own action if it offers
- * one. There is no way back into the interview from here.
+ * notice that nothing can be changed, and the host's own actions if it offers
+ * any. There is no way back into the interview from here.
  *
  * `stage` is absent only for a protocol with no finish stage, which a
  * validated protocol cannot be; the notice is then shown alone, and takes
@@ -188,7 +188,7 @@ export function CompletedInterview({
   focusOnMount: boolean;
   notice?: boolean;
 }) {
-  const { completedAction } = useInterviewCompletion();
+  const { completedActions } = useInterviewCompletion();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const noticeRef = useRef<HTMLDivElement>(null);
   // Focus goes to the heading when there is one, and to the notice otherwise:
@@ -218,11 +218,17 @@ export function CompletedInterview({
           </AlertDescription>
         </Alert>
       )}
-      {completedAction && (
-        <Button color="primary" onClick={completedAction.onAction}>
-          {completedAction.label}
+      {completedActions.map((action, index) => (
+        <Button
+          // Actions are fixed for the life of the completed state.
+          // eslint-disable-next-line react/no-array-index-key
+          key={index}
+          color={index === 0 ? 'primary' : 'default'}
+          onClick={action.onAction}
+        >
+          {action.label}
         </Button>
-      )}
+      ))}
     </FinishSessionLayout>
   );
 }

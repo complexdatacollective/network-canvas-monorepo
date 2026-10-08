@@ -419,11 +419,13 @@ export function PreviewHost() {
     setInterviewPayload(null);
     setRetryNonce((n) => n + 1);
   }, []);
-  const completedAction = useMemo(
-    () => ({
-      label: <ShellLanguageMessage message={messages.startThePreviewAgain} />,
-      onAction: restartPreview,
-    }),
+  const completedActions = useMemo(
+    () => [
+      {
+        label: <ShellLanguageMessage message={messages.startThePreviewAgain} />,
+        onAction: restartPreview,
+      },
+    ],
     [restartPreview],
   );
   if (!window.opener) {
@@ -559,7 +561,7 @@ export function PreviewHost() {
           onProtocolLocaleChange={handleProtocolLocaleChange}
           onFinish={handleFinish}
           finishConfirmationDescription={<PreviewFinishConfirmation />}
-          completedAction={completedAction}
+          completedActions={completedActions}
           onRequestAsset={onRequestAsset}
           currentStep={currentStep}
           onStepChange={setCurrentStep}

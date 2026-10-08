@@ -255,8 +255,6 @@
       },
       "loading": "正在准备预览…",
       "finishConfirmation": "这是预览，因此不会保存任何内容。完成将结束本次协议运行，之后您可以重新开始。",
-      "finishedHeading": "预览已完成",
-      "finishedDescription": "访谈已按参与者实际体验的方式完成。未保存任何内容。",
       "restart": "重新开始预览",
       "backToProtocol": "返回协议",
       "errorHeading": "无法预览此协议",

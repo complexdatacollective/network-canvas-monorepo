@@ -25,20 +25,22 @@ type InterviewCompletionValue = Readonly<{
   completion: InterviewCompletion | null;
   /** Called once the host has recorded the finish. */
   complete: (stageId: string) => void;
-  completedAction: CompletedAction | undefined;
+  completedActions: readonly CompletedAction[];
 }>;
+
+const NO_ACTIONS: readonly CompletedAction[] = [];
 
 const InterviewCompletionContext =
   createContext<InterviewCompletionValue | null>(null);
 
 export function InterviewCompletionProvider({
   initialCompletion,
-  completedAction,
+  completedActions = NO_ACTIONS,
   onComplete,
   children,
 }: {
   initialCompletion: InterviewCompletion | null;
-  completedAction: CompletedAction | undefined;
+  completedActions?: readonly CompletedAction[];
   /** Called once the host has recorded the finish, before the state shows. */
   onComplete?: () => void;
   children: ReactNode;
@@ -52,8 +54,8 @@ export function InterviewCompletionProvider({
     [onComplete],
   );
   const value = useMemo(
-    () => ({ completion, complete, completedAction }),
-    [completion, complete, completedAction],
+    () => ({ completion, complete, completedActions }),
+    [completion, complete, completedActions],
   );
   return (
     <InterviewCompletionContext.Provider value={value}>
@@ -65,7 +67,7 @@ export function InterviewCompletionProvider({
 const outsideShell: InterviewCompletionValue = {
   completion: null,
   complete: () => undefined,
-  completedAction: undefined,
+  completedActions: NO_ACTIONS,
 };
 
 /**

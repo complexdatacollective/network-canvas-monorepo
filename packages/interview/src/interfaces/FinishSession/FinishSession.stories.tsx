@@ -42,8 +42,8 @@ const FinishSessionStoryWrapper = (args: StoryArgs) => {
       SuperJSON.stringify(interview.getInterviewPayload({ currentStep: 1 })),
     [interview],
   );
-  const completedAction = useMemo(
-    () => ({ label: 'Exit', onAction: onCompletedAction }),
+  const completedActions = useMemo(
+    () => [{ label: 'Exit', onAction: onCompletedAction }],
     [onCompletedAction],
   );
 
@@ -53,7 +53,7 @@ const FinishSessionStoryWrapper = (args: StoryArgs) => {
         // A new configuration is a new interview, not a finished one.
         key={configKey}
         rawPayload={rawPayload}
-        completedAction={completedAction}
+        completedActions={completedActions}
       />
     </div>
   );

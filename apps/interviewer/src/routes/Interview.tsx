@@ -477,11 +477,13 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
 
   // The one action on a finished interview's completed state: hand the device
   // back through the same gated exit as the Shell's own exit button.
-  const completedAction = useMemo<CompletedAction>(
-    () => ({
-      label: <InterviewLanguageMessage message={messages.exit} />,
-      onAction: () => void handleExit(),
-    }),
+  const completedActions = useMemo<readonly CompletedAction[]>(
+    () => [
+      {
+        label: <InterviewLanguageMessage message={messages.exit} />,
+        onAction: () => void handleExit(),
+      },
+    ],
     [handleExit],
   );
 
@@ -620,7 +622,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         // and is null for good when disabled at build time or failed to load).
         disableAnalytics={readOnly || !analyticsEnabled || !posthogClient}
         reviewMode={reviewMode}
-        completedAction={reviewMode ? undefined : completedAction}
+        completedActions={reviewMode ? undefined : completedActions}
         initialStageOverrideIndex={state.initialStageOverrideIndex}
         finishConfirmationDescription={
           <InterviewLanguageMessage

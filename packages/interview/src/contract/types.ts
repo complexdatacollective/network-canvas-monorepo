@@ -176,7 +176,7 @@ export type FinishHandler = (
 ) => Promise<void>;
 
 /**
- * One action a host offers on a finished interview's completed state, such as
+ * An action a host offers on a finished interview's completed state, such as
  * Interviewer's "Exit". The label is shown in the interview's interface
  * language, so a host resolving its own message must resolve it in that
  * language.
