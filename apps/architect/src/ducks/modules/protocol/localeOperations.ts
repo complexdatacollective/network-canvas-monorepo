@@ -4,19 +4,17 @@ import {
   canonicalizeLocale,
   collectLocalizedStrings,
   type CurrentProtocol,
+  isUndeterminedLocale,
   type LocaleTag,
   type LocalizedString,
   type LocalizedStringHit,
   messageText,
 } from '@codaco/protocol-validation';
-import { UNSPECIFIED_LOCALE, withTranslation } from '~/utils/localizedText';
+import { withTranslation } from '~/utils/localizedText';
 
 export type LocaleOperationFailure =
-  /** Not a well-formed BCP 47 language tag. */
+  /** Not a well-formed BCP 47 language tag, or the undetermined language. */
   | 'invalid-tag'
-  /** `und` marks text of no recorded language; it can be replaced but never
-   * introduced. */
-  | 'unspecified-tag'
   | 'already-declared'
   | 'not-declared'
   /** The default language cannot be removed until another is the default. */
@@ -54,14 +52,14 @@ export const withoutLocale =
     return rest;
   };
 
-/** Marks the translation in the unidentified language as written in `to`. */
-export const identifiedLocale =
-  (to: LocaleTag): LocalizedStringRewrite =>
+/** Moves the translation written in `from` to `to`, keeping its text. */
+export const movedLocale =
+  (from: LocaleTag, to: LocaleTag): LocalizedStringRewrite =>
   (value) =>
-    Object.hasOwn(value, UNSPECIFIED_LOCALE)
+    Object.hasOwn(value, from)
       ? Object.fromEntries(
           Object.entries(value).map(([key, text]) => [
-            key === UNSPECIFIED_LOCALE ? to : key,
+            key === from ? to : key,
             text,
           ]),
         )
@@ -116,9 +114,8 @@ const resolveNewLocale = (
   | { ok: true; locale: LocaleTag }
   | { ok: false; reason: LocaleOperationFailure } => {
   const locale = canonicalizeLocale(tag.trim());
-  if (locale === undefined) return { ok: false, reason: 'invalid-tag' };
-  if (locale === UNSPECIFIED_LOCALE) {
-    return { ok: false, reason: 'unspecified-tag' };
+  if (locale === undefined || isUndeterminedLocale(locale)) {
+    return { ok: false, reason: 'invalid-tag' };
   }
   if (isDeclared(protocol, locale)) {
     return { ok: false, reason: 'already-declared' };
@@ -293,18 +290,18 @@ export const setLocalizedString = (
 };
 
 /**
- * Says that text marked as the unidentified language (`und`, as in a protocol
- * made in Studio) is written in `tag`: the
+ * Says that the text recorded as `from` is really written in `tag`: the
  * declaration entry and every translation move to the new tag together, and
- * the default follows when it is the unidentified language. A language that
- * has been identified is never renamed, and an existing language is never
- * merged into.
+ * the default follows when it is `from`. Nothing is translated or deleted.
+ * A language the protocol already has is never merged into, so a tag it
+ * declares is refused.
  */
-export const identifyUnspecifiedLocale = (
+export const changeLocale = (
   protocol: CurrentProtocol,
+  from: LocaleTag,
   tag: string,
 ): LocaleOperationResult => {
-  if (!isDeclared(protocol, UNSPECIFIED_LOCALE)) return fail('not-declared');
+  if (!isDeclared(protocol, from)) return fail('not-declared');
   const resolved = resolveNewLocale(protocol, tag);
   if (!resolved.ok) return fail(resolved.reason);
   const to = resolved.locale;
@@ -312,14 +309,12 @@ export const identifyUnspecifiedLocale = (
   return {
     ok: true,
     protocol: {
-      ...rewriteLocalizedStrings(protocol, identifiedLocale(to)),
+      ...rewriteLocalizedStrings(protocol, movedLocale(from, to)),
       localization: {
         defaultLocale:
-          localization.defaultLocale === UNSPECIFIED_LOCALE
-            ? to
-            : localization.defaultLocale,
+          localization.defaultLocale === from ? to : localization.defaultLocale,
         locales: localization.locales.map((declared) =>
-          declared === UNSPECIFIED_LOCALE ? to : declared,
+          declared === from ? to : declared,
         ),
       },
     },

@@ -15,16 +15,16 @@ import {
 } from './family-pedigree-session-migration.ts';
 import ProtocolSchemaV9 from './schema.ts';
 
-// Schema 8 never recorded the language its copy was written in, so a migrated
-// protocol is taken to be written in English, tagged plainly as `en` rather
-// than as a regional variant.
-const MIGRATED_LOCALE = 'en';
+// Schema 8 never recorded the language its copy was written in, and a schema 9
+// protocol always has a real one, so migrated copy is recorded as English. The
+// researcher can change it to the language it is really written in.
+const DEFAULT_LOCALE = 'en';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const inMigratedLocale = (text: string) => ({
-  [MIGRATED_LOCALE]: escapeMessageText(text),
+const inDefaultLocale = (text: string) => ({
+  [DEFAULT_LOCALE]: escapeMessageText(text),
 });
 
 const nameOrKey = (definition: unknown, key: string) => {
@@ -159,7 +159,7 @@ type SiteChange =
  */
 const localizeSite = (site: LocalizedStringSite): SiteChange => {
   if (typeof site.value === 'string') {
-    const localized = inMigratedLocale(site.value);
+    const localized = inDefaultLocale(site.value);
     if (site.schema.safeParse(localized).success || !site.optional) {
       return { kind: 'set', value: localized };
     }
@@ -190,7 +190,7 @@ const migrationV8toV9 = createMigration({
   to: 9,
   dependencies: {},
   notes: `- Attribute names can now use letters from any language, as well as spaces and punctuation. Existing attribute names are not changed.
-- Text that participants see is now marked as written in English, because older protocols do not record which language they use. If your protocol is written in another language, add that language on the Languages page in Architect, enter each text in it, and then remove English.
+- Text that participants see is now recorded as English, because older protocols do not record which language they use. After upgrading, confirm the protocol's default language: if your protocol is written in another language, change it on the Languages page in Architect.
 - Family Pedigree stages are converted to the redesigned Family Pedigree. If a stage had an introduction screen, the screen becomes an Information stage just before the pedigree, which is skipped whenever the pedigree is skipped.
 - The Family Pedigree answers for sex assigned at birth and for the kind of each relationship keep the values already recorded, but their labels change to the wording of the redesigned interface. A nomination prompt with the ID "pedigree", which is now reserved, is given a new ID.
 - The old Family Pedigree always required two of the participant's parents. A converted Family Pedigree requires both of the participant's biological parents or, where it required recording grandparents, the family up to the grandparents, which also includes siblings, children, aunts and uncles. Where it recommended recording grandparents, it now recommends recording the family up to the grandparents, so recording both parents becomes a recommendation rather than a requirement, because a stage has only one completeness setting. Only biological parents and gamete donors now count as parents; the old interface also counted adoptive parents and surrogates.
@@ -228,8 +228,8 @@ const migrationV8toV9 = createMigration({
       ...migrated,
       schemaVersion: 9 as const,
       localization: {
-        defaultLocale: MIGRATED_LOCALE,
-        locales: [MIGRATED_LOCALE],
+        defaultLocale: DEFAULT_LOCALE,
+        locales: [DEFAULT_LOCALE],
       },
     };
   },

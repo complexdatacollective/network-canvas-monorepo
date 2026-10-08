@@ -72,10 +72,9 @@ In Architect:
   every missing translation.
 - A new protocol asks which languages participants can take it in, and,
   when you choose more than one, which of them is the default. A protocol
-  upgraded from an earlier version is marked as written in English. A
-  protocol whose language is not recorded, such as one created in Studio, is
-  marked as written in "Unspecified language", and the project navigation
-  suggests you set its real language.
+  upgraded from an earlier version is recorded as written in English, and each
+  language's row has a button that changes which language its text is
+  recorded as, for a protocol that is really written in another language.
 - Once a protocol has more than one language, each text field in the stage
   editors has a language menu that shows which languages its text still needs.
   All the menus switch together, so you can work through a stage in one
@@ -110,7 +109,7 @@ In Interviewer and Fresco:
 - Each interview records the language the participant chose and the language
   they last saw. Exported ego data has a `networkCanvasInterviewLocale` column
   (CSV) and an `nc:interviewLocale` attribute (GraphML) holding the language
-  last shown, or `und` for a protocol whose language is unspecified.
+  last shown.
 - Interviewer's new interview form no longer asks for a language, and the
   confirmation at the end of an interview follows the interview's language.
 - Fresco reads the participant's browser languages from their request, so the

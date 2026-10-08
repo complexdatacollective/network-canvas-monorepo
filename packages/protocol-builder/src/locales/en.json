@@ -2367,10 +2367,6 @@
     "defaultMessage": "Not translated into {language} yet. Participants using {language} will see the {fallback} text, unless their browser also lists a language that has it.",
     "description": "Shown under a text field when the text has no translation in the language being edited, nor in a closely related language. Participants are shown it in another language their web browser lists, when the text has a translation in one, and otherwise in fallback: the protocol’s default language, or failing that another of its languages. language is the language being edited. Both are language names, written in the app’s own language or, in some apps, in their own language."
   },
-  "protocolBuilder.localization.unspecifiedLanguage": {
-    "defaultMessage": "Unspecified language",
-    "description": "Name shown for a protocol language that has not been identified yet (the \"und\" language tag), for example a protocol made in Studio."
-  },
   "protocolBuilder.localizedTextNames.diseasePosition": {
     "defaultMessage": "Disease {position, number}",
     "description": "Names one disease mapping of a narrative pedigree stage where its label is listed without a translation. position is the mapping’s place in the stage’s list of diseases, counting from one."

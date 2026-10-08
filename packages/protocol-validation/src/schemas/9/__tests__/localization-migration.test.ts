@@ -32,7 +32,7 @@ import {
 
 type Path = readonly (string | number)[];
 
-const MIGRATED_LOCALIZATION = { defaultLocale: 'en', locales: ['en'] };
+const ENGLISH_ONLY = { defaultLocale: 'en', locales: ['en'] };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -159,7 +159,7 @@ describe('v8 to v9 localization migration', () => {
   it('declares English as the only language', () => {
     expect(migrateStep(schema8Protocol())).toMatchObject({
       schemaVersion: 9,
-      localization: MIGRATED_LOCALIZATION,
+      localization: ENGLISH_ONLY,
     });
   });
 
@@ -203,7 +203,7 @@ describe('v8 to v9 localization migration', () => {
     expected.stages = expected.stages.filter(
       (stage) => isRecord(stage) && stage.type !== 'LanguageChooser',
     );
-    expected.localization = MIGRATED_LOCALIZATION;
+    expected.localization = ENGLISH_ONLY;
 
     expect(migrateStep(schema8Protocol())).toEqual(expected);
   });
@@ -591,7 +591,7 @@ describe('committed schema 8 protocols', () => {
         result.success,
         JSON.stringify(result.error?.issues, null, 2),
       ).toBe(true);
-      expect(migrated.localization).toEqual(MIGRATED_LOCALIZATION);
+      expect(migrated.localization).toEqual(ENGLISH_ONLY);
       expect(stageOutline(migrated)).toEqual(stageOutline(schema8));
       expect(Object.keys(migrated.codebook.node ?? {})).toEqual(
         Object.keys(getAt(schema8, ['codebook', 'node']) ?? {}),

@@ -271,31 +271,31 @@ describe('resolveLocalizedString', () => {
     });
   });
 
-  it('resolves text in an und-only protocol', () => {
+  it('resolves text in a one-language protocol', () => {
     expect(
       resolveLocalizedString(
-        { und: 'Name' },
-        { defaultLocale: 'und', locales: ['und'] },
-        ['und', 'en-US'],
+        { en: 'Name' },
+        { defaultLocale: 'en', locales: ['en'] },
+        ['en', 'en-US'],
       ),
     ).toMatchObject({
       text: 'Name',
-      locale: 'und',
+      locale: 'en',
       usedFallback: false,
       matchedBy: 'selected',
     });
   });
 
-  it('falls back to und text that has not been translated yet', () => {
+  it('falls back to default-language text that has not been translated yet', () => {
     expect(
       resolveLocalizedString(
-        { und: 'Name' },
-        { defaultLocale: 'und', locales: ['und', 'fr'] },
+        { en: 'Name' },
+        { defaultLocale: 'en', locales: ['en', 'fr'] },
         ['fr'],
       ),
     ).toEqual({
       text: 'Name',
-      locale: 'und',
+      locale: 'en',
       selectedLocale: 'fr',
       usedFallback: true,
       matchedBy: 'default',

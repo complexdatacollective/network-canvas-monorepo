@@ -5,7 +5,7 @@ import { sortByLanguageName } from '@codaco/protocol-validation';
 
 import {
   languageMessages,
-  useLanguageName,
+  languageAutonym,
 } from '../../../localization/languageNames.ts';
 import { localeDirection } from '../../../localization/localizedText.ts';
 import { useProtocolLocalization } from '../../../localization/ProtocolLocalization.tsx';
@@ -22,7 +22,6 @@ import { languageChooserMessages } from './languageChooserMessages.ts';
  */
 export default function ParticipantLanguagesSection() {
   const intl = useAppIntl();
-  const languageName = useLanguageName();
   const localization = useProtocolLocalization();
 
   return (
@@ -42,12 +41,12 @@ export default function ParticipantLanguagesSection() {
           >
             {sortByLanguageName(
               localization.locales,
-              languageName,
+              languageAutonym,
               intl.locale,
             ).map((locale) => (
               <li key={locale} className="flex items-center gap-2">
                 <span lang={locale} dir={localeDirection(locale)}>
-                  {languageName(locale)}
+                  {languageAutonym(locale)}
                 </span>
                 {locale === localization.defaultLocale && (
                   <Badge size="sm" tone="neutral" appearance="outline">

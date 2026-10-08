@@ -136,9 +136,8 @@ key rather than conflicting node and edge keys.
 ### Interview language
 
 Each interview is exported with the language it was last shown in, taken from
-`InterviewExportInput.locale`. The value is a BCP 47 tag. `und` means a protocol
-migrated from schema 8 that declares no language, and `null` means the runtime
-never reported one.
+`InterviewExportInput.locale`. The value is a BCP 47 tag, and `null` means the
+runtime never reported one.
 
 - **CSV**: the ego file has a `networkCanvasInterviewLocale` column, written
   after the other session columns (`APP_VERSION`, `COMMIT_HASH`) and before the

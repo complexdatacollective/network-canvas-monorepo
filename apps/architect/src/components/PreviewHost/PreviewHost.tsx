@@ -35,7 +35,6 @@ import { type StageMetadata, StageMetadataSchema } from '@codaco/shared-consts';
 import { architectCatalogs } from '~/locales/catalogs';
 import { assetKey } from '~/utils/assetDB';
 import { hydrateMemoryAsset } from '~/utils/inMemoryAssetStore';
-import { UNSPECIFIED_LOCALE } from '~/utils/localizedText';
 import { reportError } from '~/utils/reportError';
 
 import { currentProtocolToPayload } from './currentProtocolToPayload';
@@ -244,22 +243,22 @@ async function buildSession(payload: PreviewPayload): Promise<SessionPayload> {
   };
 }
 /**
- * The interview re-created from the session so far with another stated
- * language. The step is the host's and stays put; the prompt reached within it
- * is not part of what the interview reports, so the stage restarts at its first
- * prompt, as a resumed interview does.
+ * The interview re-created from the session so far with no stated language,
+ * so that the languages it is asked to show take effect. The step is the
+ * host's and stays put; the prompt reached within it is not part of what the
+ * interview reports, so the stage restarts at its first prompt, as a resumed
+ * interview does.
  */
-function withLocalePreference(
+function withoutLocalePreference(
   payload: InterviewPayload,
   latestSession: SessionSnapshot | null,
-  localePreference: LocaleTag | null,
 ): InterviewPayload {
   return {
     protocol: payload.protocol,
     session: {
       ...(latestSession ?? payload.session),
       promptIndex: 0,
-      localePreference,
+      localePreference: null,
       localeOptions: payload.session.localeOptions,
     },
   };
@@ -412,26 +411,24 @@ export function PreviewHost() {
   );
   // The Shell applies a change of requested languages in place, keeping the
   // step, answers and unsaved input, so the stated language is passed as the
-  // first requested one. `und` cannot be: the interface language would read a
-  // requested `und` as English, where a stated `und` leaves it to the browser.
+  // first requested one.
   const requestedLocales = useMemo(
     () =>
-      statedLocale === null || statedLocale === UNSPECIFIED_LOCALE
+      statedLocale === null
         ? browserLanguages
         : [statedLocale, ...browserLanguages],
     [statedLocale, browserLanguages],
   );
   const changePreviewLocale = (locale: LocaleTag) => {
     setStatedLocale(locale);
-    const preference = locale === UNSPECIFIED_LOCALE ? locale : null;
-    if (heldPreferenceRef.current === preference) return;
-    // The interview's store holds a preference that has to change, which only a
-    // new payload can do: re-create the interview from the session so far.
-    heldPreferenceRef.current = preference;
+    if (heldPreferenceRef.current === null) return;
+    // The interview's store holds a preference stated by a language chooser
+    // stage, which requested languages cannot override and only a new payload
+    // can clear: re-create the interview from the session so far.
+    heldPreferenceRef.current = null;
     const latestSession = latestSessionRef.current;
     setInterviewPayload(
-      (current) =>
-        current && withLocalePreference(current, latestSession, preference),
+      (current) => current && withoutLocalePreference(current, latestSession),
     );
     setInterviewRun((run) => run + 1);
   };

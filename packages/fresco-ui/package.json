@@ -111,6 +111,7 @@
     "./form/Field/UnconnectedField": "./src/form/Field/UnconnectedField.tsx",
     "./form/Field/fieldElements": "./src/form/Field/fieldElements.ts",
     "./form/Field/types": "./src/form/Field/types.ts",
+    "./form/ContentLocale": "./src/form/ContentLocale.tsx",
     "./form/FieldErrors": "./src/form/FieldErrors.tsx",
     "./form/FieldsDisabled": "./src/form/FieldsDisabled.tsx",
     "./form/FieldGroup": "./src/form/FieldGroup.tsx",
@@ -583,6 +584,10 @@
       "./form/Field/types": {
         "types": "./dist/form/Field/types.d.ts",
         "default": "./dist/form/Field/types.js"
+      },
+      "./form/ContentLocale": {
+        "types": "./dist/form/ContentLocale.d.ts",
+        "default": "./dist/form/ContentLocale.js"
       },
       "./form/FieldErrors": {
         "types": "./dist/form/FieldErrors.d.ts",

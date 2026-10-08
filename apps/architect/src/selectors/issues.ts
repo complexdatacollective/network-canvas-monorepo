@@ -15,7 +15,6 @@ import {
   RETIRED_MAPBOX_TOKEN_IDS,
   TESTING_MAPBOX_TOKEN,
 } from '~/templates/testingMapboxToken';
-import { UNSPECIFIED_LOCALE } from '~/utils/localizedText';
 
 import { getAllVariablesByUUID } from './codebook';
 import { getIsUsed } from './codebook/isUsed';
@@ -29,7 +28,7 @@ import { getAssetManifest, getCodebook, getProtocol } from './protocol';
  * Currently covers:
  *  - Unused resources (assets in the manifest that are never referenced)
  *  - Unused variables (codebook variables that are never referenced)
- *  - Missing translations and text whose language is not yet identified
+ *  - Missing translations (text with no translation in a protocol language)
  */
 
 export type UnusedSummary = {
@@ -214,16 +213,6 @@ export const getLocalizationCoverage = createSelector(
 export const getHasMissingTranslations = createSelector(
   [getLocalizationCoverage],
   (coverage) => coverage.warnings.length > 0,
-);
-
-/**
- * Whether the protocol still declares the undetermined language, which the
- * author has to identify before translating.
- */
-export const getHasUnspecifiedLanguage = createSelector(
-  [getProtocol],
-  (protocol) =>
-    protocol?.localization.locales.includes(UNSPECIFIED_LOCALE) ?? false,
 );
 
 /** Where a localized string is edited. */

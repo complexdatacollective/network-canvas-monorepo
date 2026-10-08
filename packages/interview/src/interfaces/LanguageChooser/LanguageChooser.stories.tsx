@@ -37,7 +37,6 @@ const LANGUAGE_SETS = {
     ],
   },
   'One language': { defaultLocale: 'en', locales: ['en'] },
-  'Unspecified and French': { defaultLocale: 'und', locales: ['und', 'fr'] },
 } as const;
 
 type LanguageSet = keyof typeof LANGUAGE_SETS;
@@ -52,7 +51,6 @@ const AFTER_TITLE = {
   ar: 'مرحباً',
   fa: 'خوش آمدید',
   fr: 'Bienvenue',
-  und: 'Welcome',
 };
 
 const AFTER_TEXT = {
@@ -61,7 +59,6 @@ const AFTER_TEXT = {
   ar: 'تُعرض بقية المقابلة باللغة التي اخترتها.',
   fa: 'بقیهٔ مصاحبه به زبانی که انتخاب کردید نمایش داده می‌شود.',
   fr: 'La suite de l’entretien s’affiche dans la langue que vous avez choisie.',
-  und: 'The rest of the interview is shown in the language you chose.',
 };
 
 // Keeps only the translations the protocol declares, as an authored protocol
@@ -150,9 +147,4 @@ export const ManyLanguages: Story = {
 export const OneLanguage: Story = {
   render: (args) => <LanguageChooserStoryWrapper {...args} />,
   args: { languages: 'One language' },
-};
-
-export const UnspecifiedLanguage: Story = {
-  render: (args) => <LanguageChooserStoryWrapper {...args} />,
-  args: { languages: 'Unspecified and French' },
 };

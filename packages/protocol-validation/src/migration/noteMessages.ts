@@ -359,10 +359,10 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance: attributeNames. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
   },
-  schema9MigratedLanguage: {
-    id: 'protocolValidation.migrationNotes.schema9.migratedLanguage',
+  schema9DefaultLanguage: {
+    id: 'protocolValidation.migrationNotes.schema9.defaultLanguage',
     defaultMessage:
-      'Text that participants see is now marked as written in English, because older protocols do not record which language they use. If your protocol is written in another language, add that language on the Languages page in Architect, enter each text in it, and then remove English.',
+      "Text that participants see is now recorded as English, because older protocols do not record which language they use. After upgrading, confirm the protocol's default language: if your protocol is written in another language, change it on the Languages page in Architect.",
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Languages" must match the name of the Architect page where languages are managed.',
   },
@@ -507,7 +507,7 @@ const migrationNoteSets = {
     suffix: '',
     messages: [
       migrationNoteMessages.schema9AttributeNames,
-      migrationNoteMessages.schema9MigratedLanguage,
+      migrationNoteMessages.schema9DefaultLanguage,
       migrationNoteMessages.schema9FamilyPedigree,
       migrationNoteMessages.schema9FamilyPedigreeLabels,
       migrationNoteMessages.schema9FamilyPedigreeCompleteness,

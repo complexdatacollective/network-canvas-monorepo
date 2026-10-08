@@ -1,16 +1,7 @@
-import { useCallback } from 'react';
-
 import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
 import { getLocaleMetadata, type LocaleTag } from '@codaco/protocol-validation';
 
 export const languageMessages = defineMessages({
-  unspecifiedLanguage: {
-    id: 'protocolBuilder.localization.unspecifiedLanguage',
-    defaultMessage: 'Unspecified language',
-    description:
-      'Name shown for a protocol language that has not been identified yet (the "und" language tag), for example a protocol made in Studio.',
-  },
   editingLanguage: {
     id: 'protocolBuilder.localization.editingLanguage',
     defaultMessage: 'Editing language',
@@ -52,18 +43,7 @@ export const languageMessages = defineMessages({
   },
 });
 
-/**
- * Names a protocol language in its own language ("Español", "日本語"). The
- * undetermined language has no name of its own — `Intl.DisplayNames` calls it
- * "root" — so it is described in the reader's language instead.
- */
-export function useLanguageName(): (locale: LocaleTag) => string {
-  const intl = useAppIntl();
-  return useCallback(
-    (locale: LocaleTag) =>
-      locale === 'und'
-        ? intl.formatMessage(languageMessages.unspecifiedLanguage)
-        : getLocaleMetadata(locale).label,
-    [intl],
-  );
+/** Names a protocol language in its own language ("Español", "日本語"). */
+export function languageAutonym(locale: LocaleTag): string {
+  return getLocaleMetadata(locale).label;
 }

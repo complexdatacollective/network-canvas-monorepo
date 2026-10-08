@@ -1,11 +1,10 @@
-import { Check, Plus, Table2, Trash2 } from 'lucide-react';
+import { Check, Pencil, Plus, Table2, Trash2 } from 'lucide-react';
 import { type MouseEvent, useId, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { Link, useLocation } from 'wouter';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -32,7 +31,6 @@ import {
   type LocaleCoverage,
 } from '~/selectors/issues';
 import { getProtocol } from '~/selectors/protocol';
-import { UNSPECIFIED_LOCALE } from '~/utils/localizedText';
 
 import { describeLanguage } from './languageChoices';
 import TranslationFallback from './TranslationFallback';
@@ -48,19 +46,6 @@ import {
 import { useLanguageName } from './useLanguageName';
 
 const messages = defineMessages({
-  unspecifiedTitle: {
-    id: 'architect.localization.languageList.unspecifiedTitle',
-    defaultMessage: 'Which language is your text written in?',
-    description:
-      'Title of the notice asking the researcher to identify the language of text whose language has not been identified.',
-  },
-  unspecifiedDescription: {
-    id: 'architect.localization.languageList.unspecifiedDescription',
-    defaultMessage:
-      'This protocol does not record which language it is written in, so its text is marked as an unidentified language. Identify the language before you add translations, so participants and exported data show the right language.',
-    description:
-      'Notice asking the researcher to identify the language of text whose language has not been identified.',
-  },
   title: {
     id: 'architect.localization.languageList.title',
     defaultMessage: 'Protocol languages',
@@ -109,11 +94,11 @@ const messages = defineMessages({
     defaultMessage: 'Default',
     description: 'Badge marking the default language of a protocol.',
   },
-  identifyLanguage: {
-    id: 'architect.localization.languageList.identifyLanguage',
-    defaultMessage: 'Identify language',
+  changeLanguage: {
+    id: 'architect.localization.languageList.changeLanguage',
+    defaultMessage: 'Change {language} to a different language',
     description:
-      'Button that names the language of text whose language has not been identified.',
+      'Accessible name and tooltip of the edit button in a protocol language’s row. It opens a dialog that records the text of that language as another language, for text recorded under the wrong one. language is the language name.',
   },
   removeLanguage: {
     id: 'architect.localization.languageList.removeLanguage',
@@ -207,7 +192,7 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
   const coverage = useSelector(getLocalizationCoverage);
   const languageName = useLanguageName();
   const addButtonRef = useRef<HTMLButtonElement>(null);
-  const { addLanguages, identifyLanguage, removeLanguage, removalImpact } =
+  const { addLanguages, changeLanguage, removeLanguage, removalImpact } =
     useLanguageActions(addButtonRef, draft);
   const locales = protocol?.localization.locales ?? EMPTY_LOCALES;
   const sortedLocales = useMemo(
@@ -242,25 +227,6 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
 
   return (
     <>
-      {locales.includes(UNSPECIFIED_LOCALE) && (
-        <Alert variant="warning" className="mb-6">
-          <AlertTitle>
-            {intl.formatMessage(messages.unspecifiedTitle)}
-          </AlertTitle>
-          <AlertDescription className="space-y-4">
-            <span className="block">
-              {intl.formatMessage(messages.unspecifiedDescription)}
-            </span>
-            <Button
-              size="sm"
-              color="warning"
-              onClick={() => void identifyLanguage()}
-            >
-              {intl.formatMessage(messages.identifyLanguage)}
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
       {locales.length > 1 && (
         <UnconnectedField
           name="default-language"
@@ -291,6 +257,7 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
               strandedCount={
                 removalImpacts.get(locale)?.strandedStrings.length ?? 0
               }
+              onChange={(returnFocus) => changeLanguage(locale, returnFocus)}
               onRemove={(returnFocus) => removeLanguage(locale, returnFocus)}
             />
           );
@@ -324,6 +291,7 @@ type LanguageRowProps = {
   entry: LocaleCoverage;
   total: number;
   strandedCount: number;
+  onChange: (returnFocus: ReturnFocus) => Promise<void>;
   onRemove: (returnFocus: ReturnFocus) => Promise<void>;
 };
 
@@ -331,17 +299,18 @@ const LanguageRow = ({
   entry,
   total,
   strandedCount,
+  onChange,
   onRemove,
 }: LanguageRowProps) => {
   const intl = useAppIntl();
   const languageName = useLanguageName();
+  const changeButtonRef = useRef<HTMLButtonElement>(null);
   const removeButtonRef = useRef<HTMLButtonElement>(null);
   const removalReasonId = useId();
   const { locale, isDefault, translated, missing } = entry;
-  const isUnspecified = locale === UNSPECIFIED_LOCALE;
   const isComplete = total > 0 && translated === total;
   const language = languageName(locale);
-  const own = isUnspecified ? null : describeLanguage(locale, intl.locale);
+  const own = describeLanguage(locale, intl.locale);
   const removalBlockedReason = isDefault
     ? intl.formatMessage(messages.defaultNote)
     : strandedCount > 0
@@ -356,7 +325,7 @@ const LanguageRow = ({
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span className="text-lg font-semibold">{language}</span>
-          {own && own.autonym !== language && (
+          {own.autonym !== language && (
             <span
               lang={own.locale}
               dir={own.direction}
@@ -405,6 +374,25 @@ const LanguageRow = ({
           </div>
         )}
       </div>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <IconButton
+              ref={changeButtonRef}
+              variant="text"
+              color="dynamic"
+              aria-label={intl.formatMessage(messages.changeLanguage, {
+                language,
+              })}
+              icon={<Pencil aria-hidden />}
+              onClick={() => void onChange(() => changeButtonRef.current)}
+            />
+          }
+        />
+        <TooltipContent side="left" className="max-w-64">
+          {intl.formatMessage(messages.changeLanguage, { language })}
+        </TooltipContent>
+      </Tooltip>
       {/* An unavailable button stays focusable (aria-disabled rather than
           disabled), so its reason reaches keyboard and pointer users as a
           tooltip and screen readers as its description. */}

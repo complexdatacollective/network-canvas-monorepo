@@ -23,7 +23,7 @@ function makeCodebook(): Codebook {
     node: {
       person: {
         name: 'Person',
-        label: { und: 'Person' },
+        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
@@ -33,8 +33,8 @@ function makeCodebook(): Codebook {
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [
-              { label: { und: 'Family' }, value: 'family' },
-              { label: { und: 'Friend' }, value: 'friend' },
+              { label: { en: 'Family' }, value: 'family' },
+              { label: { en: 'Friend' }, value: 'friend' },
             ],
           },
           [ORD_NODE]: {
@@ -43,8 +43,8 @@ function makeCodebook(): Codebook {
             type: 'ordinal',
             component: 'LikertScale',
             options: [
-              { label: { und: 'Low' }, value: 1 },
-              { label: { und: 'High' }, value: 2 },
+              { label: { en: 'Low' }, value: 1 },
+              { label: { en: 'High' }, value: 2 },
             ],
           },
           [TEXT_NODE]: {
@@ -59,7 +59,7 @@ function makeCodebook(): Codebook {
     edge: {
       friend: {
         name: 'Friend',
-        label: { und: 'Friend' },
+        label: { en: 'Friend' },
         color: 'edge-color-seq-1',
         variables: {
           [CAT_EDGE]: {
@@ -68,8 +68,8 @@ function makeCodebook(): Codebook {
             type: 'categorical',
             component: 'ToggleButtonGroup',
             options: [
-              { label: { und: 'Work' }, value: 'work' },
-              { label: { und: 'School' }, value: 'school' },
+              { label: { en: 'Work' }, value: 'work' },
+              { label: { en: 'School' }, value: 'school' },
             ],
           },
         },
@@ -83,8 +83,8 @@ function makeCodebook(): Codebook {
           type: 'categorical',
           component: 'CheckboxGroup',
           options: [
-            { label: { und: 'A' }, value: 'a' },
-            { label: { und: 'B' }, value: 'b' },
+            { label: { en: 'A' }, value: 'a' },
+            { label: { en: 'B' }, value: 'b' },
           ],
         },
       },

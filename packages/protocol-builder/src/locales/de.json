@@ -591,7 +591,6 @@
   "protocolBuilder.localization.missingTranslation": "Fehlt",
   "protocolBuilder.localization.notTranslated": "Noch keine Übersetzung in {language}. Teilnehmende, die {language} verwenden, sehen stattdessen den Text in der Sprache „{fallback}“.",
   "protocolBuilder.localization.notTranslatedUnlessBrowserLists": "Noch keine Übersetzung in {language}. Teilnehmende, die {language} verwenden, sehen stattdessen den Text in der Sprache „{fallback}“, es sei denn, ihr Browser nennt auch eine Sprache, in der der Text vorliegt.",
-  "protocolBuilder.localization.unspecifiedLanguage": "Nicht angegebene Sprache",
   "protocolBuilder.localizedTextNames.diseasePosition": "Krankheit {position, number}",
   "protocolBuilder.localizedTextNames.fieldPosition": "Feld {position, number}",
   "protocolBuilder.localizedTextNames.itemPosition": "Element {position, number}",

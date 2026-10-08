@@ -7,7 +7,6 @@ import { rootReducer } from '~/ducks/modules/root';
 
 import {
   getHasMissingTranslations,
-  getHasUnspecifiedLanguage,
   getLocalizationCoverage,
   getTranslationGroups,
 } from '../issues';
@@ -159,27 +158,6 @@ describe('getTranslationGroups()', () => {
       format: 'markdown',
       value: { en: 'Name **people**', fr: 'Nommez' },
     });
-  });
-});
-
-describe('getHasUnspecifiedLanguage()', () => {
-  it('is true while migrated text has no identified language', () => {
-    const migrated: CurrentProtocol = {
-      ...protocolIn({ defaultLocale: 'und', locales: ['und'] }),
-      codebook: { node: {}, edge: {}, ego: {} },
-      stages: [
-        {
-          id: 'welcome',
-          type: 'Information',
-          label: { und: 'Welcome' },
-          title: { und: 'Hello' },
-          items: [],
-        },
-      ],
-    };
-
-    expect(getHasUnspecifiedLanguage(stateWith(migrated))).toBe(true);
-    expect(getHasUnspecifiedLanguage(stateWith(trilingual()))).toBe(false);
   });
 });
 

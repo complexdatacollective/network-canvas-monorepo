@@ -21,7 +21,7 @@
 // exports in ways that follow exactly from that upgrade, and those are
 // reconciled rather than reported: the interview's recorded language (null or
 // a language tag) in the interview API, the ego CSV and GraphML; a protocol's
-// schemaVersion moving to 9; codebook text held as { und: <message> }; the
+// schemaVersion moving to 9; codebook text held as { en: <message> }; the
 // labels the migration gives entity types and attributes from their names;
 // empty optional text it leaves out; and the GraphML protocol and codebook
 // hashes of a protocol it rewrote. Each is undone in the current file only
@@ -48,7 +48,7 @@ import { ncInterviewLocaleProperty } from '../../../../packages/shared-consts/sr
 const DIFF_EXCERPT_LINES = 60;
 
 // The first schema whose protocols declare languages; the migration to it
-// writes text as messages in English (`en`).
+// writes text as messages in English.
 const SCHEMA_WITH_LANGUAGES = 9;
 const MIGRATED_LOCALE = 'en';
 const LANGUAGE_TAG = /^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/;
@@ -189,7 +189,7 @@ const labelFromName = (definition, key) =>
 
 /**
  * The current codebook with what the schema-9 migration does to the baseline
- * codebook undone: text wrapped as an English (`en`) message, labels
+ * codebook undone: text wrapped as an English message, labels
  * derived from names or keys, and empty text that a field no longer accepts.
  * `key` is the value's key in its parent, which a derived label falls back to.
  */
