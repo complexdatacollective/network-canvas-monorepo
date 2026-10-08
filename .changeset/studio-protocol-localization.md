@@ -25,8 +25,7 @@ languages.
   draft that has been upgraded to the current format, with its text written in
   English. Before, the draft kept the old format and could not be edited.
 - A protocol created in Studio is written in the unspecified language (`und`),
-  because Studio does not yet ask which language you are writing in. Such a
-  protocol stays in Studio: Architect has no mode for it. A
+  because Studio does not yet ask which language you are writing in. A
   protocol upgraded from an earlier version is written in English (`en`). The
   sample protocol, the demo protocol and the protocols a new instance seeds
   declare their language, US English.
