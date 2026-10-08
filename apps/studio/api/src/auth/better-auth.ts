@@ -78,6 +78,13 @@ export type SendMagicLink = (input: {
   url: string;
 }) => Promise<void>;
 
+export type AccountUsage = {
+  readonly event: 'researcher_signed_up' | 'researcher_signed_in';
+  readonly accountId: string;
+};
+
+export type RecordAccountUsage = (usage: AccountUsage) => Promise<void>;
+
 export type AuthDatabaseAdapter = (options: BetterAuthOptions) => DBAdapter;
 
 export type BetterAuthDeps = {
@@ -85,6 +92,7 @@ export type BetterAuthDeps = {
   readonly adapter: AuthDatabaseAdapter;
   readonly cipher: SecretsCipherApi;
   readonly sendMagicLink: SendMagicLink;
+  readonly recordAccountUsage?: RecordAccountUsage | undefined;
   readonly limits?:
     | { readonly limiter: RateLimiter['Service']; readonly run: RunEffect }
     | undefined;
@@ -95,6 +103,7 @@ export function createBetterAuthInstance({
   adapter,
   cipher,
   sendMagicLink,
+  recordAccountUsage,
   limits,
 }: BetterAuthDeps) {
   return betterAuth({
@@ -180,6 +189,28 @@ export function createBetterAuthInstance({
     emailAndPassword: {
       enabled: true,
     },
+    ...(recordAccountUsage && {
+      databaseHooks: {
+        user: {
+          create: {
+            after: (user: { id: string }) =>
+              recordAccountUsage({
+                event: 'researcher_signed_up',
+                accountId: user.id,
+              }),
+          },
+        },
+        session: {
+          create: {
+            after: (session: { userId: string }) =>
+              recordAccountUsage({
+                event: 'researcher_signed_in',
+                accountId: session.userId,
+              }),
+          },
+        },
+      },
+    }),
     user: {
       // Studio's per-user UI-language preference, stored on the user row
       // (db/auth-schema.ts, localization design §5.2). Declared so

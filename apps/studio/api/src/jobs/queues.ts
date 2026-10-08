@@ -114,6 +114,7 @@ const JOB_PAYLOAD_CODECS: {
   ),
   'update-check': codec(JOB_PAYLOAD_SCHEMAS['update-check']),
   'session-completed': codec(JOB_PAYLOAD_SCHEMAS['session-completed']),
+  'analytics-delivery': codec(JOB_PAYLOAD_SCHEMAS['analytics-delivery']),
 };
 
 export function payloadCodec<Queue extends JobQueueName>(

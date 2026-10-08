@@ -12,6 +12,7 @@ import { POSTHOG_API_KEY } from '@codaco/shared-consts';
 import { Environment, type StudioEnv } from '../env.ts';
 import { STUDIO_VERSION } from '../version.ts';
 import { InstallationIdentity } from './installation-identity.ts';
+import { LoggerLive, LogLevelLive, studioJson } from './logger.ts';
 import { exportedLogger, StudioSerialization } from './telemetry-export.ts';
 
 export const POSTHOG_OTLP_ENDPOINT = 'https://us.i.posthog.com/i';
@@ -76,6 +77,7 @@ const exporters = (
     }),
     Logger.layer(
       [
+        studioJson,
         Effect.map(
           OtlpLogger.make({
             ...options,
@@ -84,7 +86,7 @@ const exporters = (
           exportedLogger,
         ),
       ],
-      { mergeWithExisting: true },
+      { mergeWithExisting: false },
     ).pipe(Layer.provideMerge(OtlpExporter.layerFlusher)),
   ).pipe(
     Layer.provide(StudioSerialization),
@@ -92,14 +94,17 @@ const exporters = (
   );
 };
 
-export const TracingLive = (
+export const ObservabilityLive = (
   program: TracedProgram,
 ): Layer.Layer<InstallationIdentity, never, Environment> =>
   Layer.unwrap(
     Effect.map(Environment, (env) => {
       const destination = telemetryDestination(env);
       return destination === null
-        ? Layer.empty
+        ? LoggerLive
         : exporters(program, destination);
     }),
-  ).pipe(Layer.provideMerge(InstallationIdentity.layer));
+  ).pipe(
+    Layer.provideMerge(LogLevelLive),
+    Layer.provideMerge(InstallationIdentity.layer),
+  );

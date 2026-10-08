@@ -456,7 +456,7 @@ describe('CategoricalBin other-input honours codebook validation', () => {
     expect(celebrate).toHaveBeenCalledOnce();
     expect(track).toHaveBeenCalledWith('node_binned', {
       node_id: 'node-1',
-      node_type: NODE_TYPE,
+      node_type_index: 0,
       bin_index: OTHER_BIN_INDEX,
     });
   });

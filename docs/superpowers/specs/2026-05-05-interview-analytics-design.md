@@ -262,7 +262,7 @@ The package guarantees, by construction, that the following **never** appear in 
 What **is** allowed:
 
 - **Structural identifiers**: `stage_type` (interface kind), `stage_index`, `prompt_index`, `node_id`, `edge_id` — random values, no derivation from participant input. Entity ids are **session pseudonyms, not the interview's `_uid`s** (corrected 2026-09-04, PR #1642): the tracker replaces every `node_id`, `edge_id`, `node_a_id`, `node_b_id` and `entity_id` with a random id minted per session and held in memory (`analytics/entityIds.ts`). Reporting the `_uid` verbatim held only for participant-created nodes; a roster node's `_uid` is a deterministic digest of the roster row's own content, which named the row to anyone holding the roster and named it identically in every interview.
-- **Codebook _internal_ ids**: `node_type`, `edge_type`, `relation_type` — these are stable codes (`person`, `friend`, `parent`), not author-facing labels. Protocol-author-authored _labels_ and _colours_ never flow.
+- **Codebook type positions**: `node_type_index`, `edge_type_index` — the type's position among the codebook's node or edge types. The type keys themselves are not sent (corrected 2026-10-08, #2129): an author chooses them and can make them readable, so they are not Level 1 data. Protocol-author-authored _labels_ and _colours_ never flow.
 - **Counts and durations**: `node_count`, `edge_count`, `field_count`, `duration_ms`, `total_slides`.
 - **Discriminators**: `form_kind`, `selection_kind`, `direction`, `census_kind`, `add_path`, etc. — these are package-defined constants.
 - **Validation kinds and structural rule params**: `kind: 'minLength'`, `config: { minLength: 5 }` — never the rendered error message (which could include protocol-author content) and never variable-name-bearing rule params (`differentFrom: 'name'`).
@@ -291,14 +291,14 @@ Property `node_id`/`edge_id` (and `node_a_id`/`node_b_id` for paired events) app
 
 Fire from Redux middleware on the underlying actions, regardless of which stage dispatched them. `stage_type` super-prop discriminates which interface triggered the event in PostHog queries.
 
-| Event                      | Source                                        | Extra props            |
-| -------------------------- | --------------------------------------------- | ---------------------- |
-| `node_added`               | middleware (`addNode` fulfilled)              | `node_id`, `node_type` |
-| `node_removed`             | middleware (`deleteNode`)                     | `node_id`, `node_type` |
-| `node_added_to_prompt`     | middleware (`addNodeToPrompt` fulfilled)      | `node_id`, `node_type` |
-| `node_removed_from_prompt` | middleware (`removeNodeFromPrompt` fulfilled) | `node_id`, `node_type` |
-| `edge_created`             | middleware (`addEdge` fulfilled)              | `edge_id`, `edge_type` |
-| `edge_removed`             | middleware (`deleteEdge`)                     | `edge_id`, `edge_type` |
+| Event                      | Source                                        | Extra props                  |
+| -------------------------- | --------------------------------------------- | ---------------------------- |
+| `node_added`               | middleware (`addNode` fulfilled)              | `node_id`, `node_type_index` |
+| `node_removed`             | middleware (`deleteNode`)                     | `node_id`                    |
+| `node_added_to_prompt`     | middleware (`addNodeToPrompt` fulfilled)      | `node_id`                    |
+| `node_removed_from_prompt` | middleware (`removeNodeFromPrompt` fulfilled) | `node_id`                    |
+| `edge_created`             | middleware (`addEdge` fulfilled)              | `edge_id`, `edge_type_index` |
+| `edge_removed`             | middleware (`deleteEdge`)                     | `edge_id`                    |
 
 ### 9.3 Per-interface events
 
@@ -356,12 +356,12 @@ Fire from Redux middleware on the underlying actions, regardless of which stage 
 
 #### CategoricalBin & OrdinalBin
 
-| Event           | Source                                           | Extra props                                              |
-| --------------- | ------------------------------------------------ | -------------------------------------------------------- |
-| `node_binned`   | hook (first time the node lands in any bin/rank) | `node_id`, `node_type`, `bin_index`                      |
-| `node_rebinned` | hook (moved between bins)                        | `node_id`, `node_type`, `from_bin_index`, `to_bin_index` |
-| `bin_expanded`  | hook (CategoricalBin only)                       | `bin_index`                                              |
-| `bin_collapsed` | hook (CategoricalBin only)                       | `bin_index`                                              |
+| Event           | Source                                           | Extra props                                                    |
+| --------------- | ------------------------------------------------ | -------------------------------------------------------------- |
+| `node_binned`   | hook (first time the node lands in any bin/rank) | `node_id`, `node_type_index`, `bin_index`                      |
+| `node_rebinned` | hook (moved between bins)                        | `node_id`, `node_type_index`, `from_bin_index`, `to_bin_index` |
+| `bin_expanded`  | hook (CategoricalBin only)                       | `bin_index`                                                    |
+| `bin_collapsed` | hook (CategoricalBin only)                       | `bin_index`                                                    |
 
 `bin_index` is numeric; bin labels never sent. There is no `node_unbinned` (the UI does not support full unbinning).
 

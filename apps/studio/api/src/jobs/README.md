@@ -1,8 +1,9 @@
 # The job queue
 
-This directory is Studio's background-job queue: the six queues
+This directory is Studio's background-job queue: the eight queues
 (`invitation-delivery`, `invitation-delivery-dead-letter`, `sign-in-email`,
-`protocol-store-gc`, `denied-attempts-summary`, `update-check`), the worker
+`protocol-store-gc`, `denied-attempts-summary`, `update-check`,
+`session-completed`, `analytics-delivery`), the worker
 that runs them, the cron schedules, and the handlers. It replaced pg-boss on
 16 Sep 2026 (#1957) and keeps pg-boss's semantics where they mattered — the retry ladder
 and its jittered backoff, the singleton policy, dead letters, retention, the
@@ -184,17 +185,19 @@ comparison, and the ruling that settled a difference where one exists.
 | `errors.ts` helpers                                          | Functions                                                                                                                                       | —                                                                                                               | `causeError`, `exitSqlState`, `deepestMessage`, `isUniqueViolationCause`, `isLockUnavailableCause`, and the SQLSTATE constants `INSUFFICIENT_PRIVILEGE` / `FOREIGN_KEY_VIOLATION`. Not services — read a `Cause`/`Exit` back to a Postgres error code or the deepest human-readable message in its chain, because `@effect/sql-pg` wraps every driver error in a `SqlError` whose own `message` is always `PgConnection: Query failed`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `queues.ts`                                                  | Functions/data, not services                                                                                                                    | —                                                                                                               | `resolvedQueue(name)` / `resolvedQueues` resolve `@codaco/studio-sync/jobs`'s `JOB_QUEUES` declarations against `QUEUE_DEFAULTS` (pg-boss's own defaults: `policy: 'standard'`, `retryLimit: 2`, `retryDelay: 0`, `retryBackoff: false`, `expireInSeconds: 900`, `retentionSeconds: 1,209,600` (14 days), `deleteAfterSeconds: 604,800` (7 days)); `payloadCodec(queue)` returns the decoder and encoder for that queue's payload schema, declared once as an Effect `Schema.Struct` in `@codaco/studio-sync/jobs`'s `JOB_PAYLOAD_SCHEMAS`, with that module's `JOB_PAYLOAD_PARSE_OPTIONS` (`onExcessProperty: 'error'`) so a payload carrying a field the policy forbids is refused rather than silently stripped. Every encode and decode — the enqueue, the claim, a schedule's registration and its tick — goes through it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 
-Studio's six queues, as declared in `packages/studio-sync/src/jobs.ts` and
+Studio's eight queues, as declared in `packages/studio-sync/src/jobs.ts` and
 resolved by `queues.ts` (blank cells take the default above):
 
-| Queue                             | Policy    | Retry limit    | Retry delay | Backoff | Delay max      | Expire (s) | Retention (s)    | Delete after (s) | Dead letter                       |
-| --------------------------------- | --------- | -------------- | ----------- | ------- | -------------- | ---------- | ---------------- | ---------------- | --------------------------------- |
-| `invitation-delivery-dead-letter` | standard  | 0              |             |         |                |            | 2,592,000 (30 d) | 0 (forever)      | —                                 |
-| `invitation-delivery`             | standard  | 7 (8 attempts) | 5           | yes     | 1,800 (30 min) | 60         |                  |                  | `invitation-delivery-dead-letter` |
-| `sign-in-email`                   | standard  | 2 (3 attempts) | 5           | yes     | 60             | 30         | 600              | 60               | —                                 |
-| `protocol-store-gc`               | singleton | 0              |             |         |                | 3,600      |                  |                  | —                                 |
-| `denied-attempts-summary`         | singleton | 0              |             |         |                | 60         |                  |                  | —                                 |
-| `update-check`                    | singleton | 2 (3 attempts) |             |         |                | 120        | 604,800 (7 d)    | 86,400 (1 d)     | —                                 |
+| Queue                             | Policy    | Retry limit      | Retry delay | Backoff | Delay max      | Expire (s) | Retention (s)    | Delete after (s) | Dead letter                       |
+| --------------------------------- | --------- | ---------------- | ----------- | ------- | -------------- | ---------- | ---------------- | ---------------- | --------------------------------- |
+| `invitation-delivery-dead-letter` | standard  | 0                |             |         |                |            | 2,592,000 (30 d) | 0 (forever)      | —                                 |
+| `invitation-delivery`             | standard  | 7 (8 attempts)   | 5           | yes     | 1,800 (30 min) | 60         |                  |                  | `invitation-delivery-dead-letter` |
+| `sign-in-email`                   | standard  | 2 (3 attempts)   | 5           | yes     | 60             | 30         | 600              | 60               | —                                 |
+| `protocol-store-gc`               | singleton | 0                |             |         |                | 3,600      |                  |                  | —                                 |
+| `denied-attempts-summary`         | singleton | 0                |             |         |                | 60         |                  |                  | —                                 |
+| `update-check`                    | singleton | 2 (3 attempts)   |             |         |                | 120        | 604,800 (7 d)    | 86,400 (1 d)     | —                                 |
+| `session-completed`               | standard  |                  |             |         |                |            |                  |                  | —                                 |
+| `analytics-delivery`              | standard  | 20 (21 attempts) | 5           | yes     | 3,600 (1 h)    | 60         | 604,800 (7 d)    | 3,600 (1 h)      | —                                 |
 
 pg-boss's per-queue `notify` flag is carried in the declarations but has no
 counterpart here: the native queue's schema-level trigger notifies on every

@@ -19,6 +19,8 @@ import type { Database } from '../db/client.ts';
 import { sqlErrorsOnlyBeside } from '../db/errors.ts';
 import { type TeamAccess, Transaction } from '../db/tenant.ts';
 import type { RequestId } from '../http/middleware/request-id.ts';
+import type { Jobs } from '../jobs/jobs.ts';
+import type { Analytics } from '../platform/analytics.ts';
 import { requireProtocol } from '../rpc/team-scope.ts';
 import { SecretsCipher } from '../secrets/services.ts';
 import { roleGrantsTeamAdministration } from '../team/roles.ts';
@@ -174,7 +176,14 @@ export const createAuditedProtocol: (
   | SectionValidationFailedError
   | NotFound
   | SqlError.SqlError,
-  Database | Principal | AuditActor | RequestId | AuditSignal | SecretsCipher
+  | Database
+  | Principal
+  | AuditActor
+  | RequestId
+  | AuditSignal
+  | SecretsCipher
+  | Analytics
+  | Jobs
 > = Effect.fn('protocol.create')(function* (
   access: TeamAccess,
   input: {
@@ -238,7 +247,7 @@ export const addAuditedInformationStage: (
   | Forbidden
   | NotFound
   | SqlError.SqlError,
-  Database | Principal | AuditActor | RequestId | AuditSignal
+  Database | Principal | AuditActor | RequestId | AuditSignal | Analytics | Jobs
 > = Effect.fn('protocol.addInformationStage')(function* (
   access: TeamAccess,
   input: { protocolId: string; draftId: string; stageId: string },
@@ -331,7 +340,7 @@ export const moveAuditedProtocolStage: (
   | Forbidden
   | NotFound
   | SqlError.SqlError,
-  Database | Principal | AuditActor | RequestId | AuditSignal
+  Database | Principal | AuditActor | RequestId | AuditSignal | Analytics | Jobs
 > = Effect.fn('protocol.moveStage')(function* (
   access: TeamAccess,
   input: {

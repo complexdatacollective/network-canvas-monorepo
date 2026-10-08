@@ -679,7 +679,10 @@ exception, declared where the policy is (`JOB_PAYLOAD_POLICY` in
 `packages/studio-sync/src/jobs.ts`, where a test refuses any other): a sign-in
 email carries the address and the one-time link, because better-auth stores the
 token hashed and mints the link during the request, so there is no row for the
-handler to load it back from. Two tables beside the audit log —
+handler to load it back from. The `analytics-delivery` queue carries a usage
+event as it will be sent to Codaco, so it holds only identifiers Studio minted,
+fixed codes from source, counts, booleans and a timestamp; a test reads its
+declaration and refuses any free-text field. Two tables beside the audit log —
 `audit_export_jobs` and `audit_alert_outbox` — carry the ordinary policy rather
 than the audit log's stricter `audit_team_isolation` (which admits no
 maintenance role at all), because the jobs that will drain them run across

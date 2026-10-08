@@ -51,7 +51,11 @@ function buildStore(
         hash: 'h',
         schemaVersion: 9,
         codebook: {
-          node: { person: { name: 'Person', color: 'blue', variables: {} } },
+          node: {
+            venue: { name: 'Venue', color: 'green', variables: {} },
+            person: { name: 'Person', color: 'blue', variables: {} },
+          },
+          edge: { knows: { name: 'Knows', color: 'red', variables: {} } },
         },
         stages: [
           { id: 's0', type: 'Information' },
@@ -67,7 +71,7 @@ function buildStore(
 }
 
 describe('analyticsListener — global entity events', () => {
-  it('emits node_added with node_id and node_type when addNode fulfills', async () => {
+  it('emits node_added with node_id and the node type’s codebook position when addNode fulfills', async () => {
     const tracker = makeTracker();
     const store = buildStore(tracker);
     await store.dispatch(
@@ -83,7 +87,7 @@ describe('analyticsListener — global entity events', () => {
       'node_added',
       expect.objectContaining({
         node_id: expect.any(String),
-        node_type: 'person',
+        node_type_index: 1,
       }),
     );
   });
@@ -104,11 +108,11 @@ describe('analyticsListener — global entity events', () => {
 
     const calls = tracker.track.mock.calls;
     expect(calls.filter(([name]) => name === 'node_added')).toEqual([
-      ['node_added', { node_id: 'a', node_type: 'person' }],
-      ['node_added', { node_id: 'b', node_type: 'person' }],
+      ['node_added', { node_id: 'a', node_type_index: 1 }],
+      ['node_added', { node_id: 'b', node_type_index: 1 }],
     ]);
     expect(calls.filter(([name]) => name === 'edge_created')).toEqual([
-      ['edge_created', { edge_id: expect.any(String), edge_type: 'knows' }],
+      ['edge_created', { edge_id: expect.any(String), edge_type_index: 0 }],
     ]);
   });
 
@@ -124,7 +128,7 @@ describe('analyticsListener — global entity events', () => {
     );
     expect(tracker.track).toHaveBeenCalledWith('node_added', {
       node_id: 'node-1',
-      node_type: 'person',
+      node_type_index: 1,
     });
   });
 
@@ -137,7 +141,7 @@ describe('analyticsListener — global entity events', () => {
     });
   });
 
-  it('emits edge_created with edge_id and edge_type when addEdge fulfills', async () => {
+  it('emits edge_created with edge_id and the edge type’s codebook position when addEdge fulfills', async () => {
     const tracker = makeTracker();
     const store = buildStore(tracker, {
       nodes: [
@@ -171,7 +175,7 @@ describe('analyticsListener — global entity events', () => {
     expect(edgeCall).toBeTruthy();
     expect(edgeCall?.[1]).toMatchObject({
       edge_id: expect.any(String),
-      edge_type: 'knows',
+      edge_type_index: 0,
     });
   });
 

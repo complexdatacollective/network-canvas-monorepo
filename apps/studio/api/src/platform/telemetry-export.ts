@@ -59,7 +59,12 @@ const withInstallation = (
 };
 
 const exceptionAttribute = (attribute: KeyValue): KeyValue[] => {
-  if (attribute.key === 'exception.message') return [];
+  if (
+    attribute.key === 'exception.message' ||
+    attribute.key === 'effect.cause'
+  ) {
+    return [];
+  }
   if (attribute.key === 'exception.stacktrace') {
     return [
       {

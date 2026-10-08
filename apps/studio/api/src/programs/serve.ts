@@ -24,11 +24,10 @@ import {
   ServerTelemetryLive,
 } from '../platform/http-server.ts';
 import { InstallationIdentity } from '../platform/installation-identity.ts';
-import { LoggerLive, LogLevelLive } from '../platform/logger.ts';
 import { MaintenanceState } from '../platform/maintenance-state.ts';
 import { RuntimeMetricsLive } from '../platform/runtime-metrics.ts';
 import { SchemaStatus } from '../platform/schema-gate.ts';
-import { TracingLive } from '../platform/tracing.ts';
+import { ObservabilityLive } from '../platform/tracing.ts';
 import { WebSocketDrain } from '../platform/ws-drain.ts';
 import { Doorbell, doorbellCheck } from '../protocol-builder/doorbell.ts';
 import { RateLimiter } from '../rate-limit/limiter.ts';
@@ -170,9 +169,7 @@ const ServeProgramLayer = (refusal: Deferred.Deferred<never, BootRefusal>) =>
     }),
   ).pipe(
     Layer.provide(RuntimeMetricsLive),
-    Layer.provide(
-      Layer.mergeAll(LoggerLive, LogLevelLive, TracingLive('serve')),
-    ),
+    Layer.provide(ObservabilityLive('serve')),
     Layer.provide(Environment.layer),
   );
 
