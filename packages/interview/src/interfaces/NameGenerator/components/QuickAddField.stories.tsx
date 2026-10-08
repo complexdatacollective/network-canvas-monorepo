@@ -134,7 +134,6 @@ const ReduxDecorator = (
 
 const meta: Meta<StoryArgs> = {
   title: 'Interfaces/NameGenerator/QuickAddField',
-  component: QuickAddField,
   decorators: [ReduxDecorator],
   parameters: {
     layout: 'fullscreen',
