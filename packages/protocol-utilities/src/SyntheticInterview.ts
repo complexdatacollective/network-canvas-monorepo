@@ -5,6 +5,7 @@ import {
   CURRENT_SCHEMA_VERSION,
   escapeMarkdownText,
   escapeMessageText,
+  type Experiments,
   type LocalizedString,
   messageText,
   type Stage,
@@ -334,6 +335,7 @@ export class SyntheticInterview {
   private nodeTypeCounter = 0;
   private edgeTypeCounter = 0;
   private ordinalPromptCounter = 0;
+  private experiments: Experiments | undefined;
   private localization: LocalizationInput = DEFAULT_LOCALIZATION;
 
   constructor(seed = DEFAULT_SYNTHETIC_SEED) {
@@ -1948,6 +1950,9 @@ export class SyntheticInterview {
         importedAt: now,
         isPreview: false,
         isPending: false,
+        ...(this.experiments === undefined
+          ? {}
+          : { experiments: this.experiments }),
       },
     };
   }
@@ -2877,6 +2882,13 @@ export class SyntheticInterview {
    */
   setLocalization(localization: LocalizationInput): void {
     this.localization = localization;
+  }
+
+  /**
+   * Set protocol-level experiments, emitted by getInterviewPayload().
+   */
+  setExperiments(experiments: Experiments): void {
+    this.experiments = experiments;
   }
 
   // --- Accessors for internal state (useful for tests) ---

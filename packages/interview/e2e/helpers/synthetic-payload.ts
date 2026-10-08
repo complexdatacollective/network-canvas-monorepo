@@ -145,6 +145,9 @@ export function buildSyntheticPayload(
     codebook: raw.protocol.codebook,
     stages: raw.protocol.stages,
     ...(Object.keys(assetManifest).length > 0 ? { assetManifest } : {}),
+    ...(raw.protocol.experiments
+      ? { experiments: raw.protocol.experiments }
+      : {}),
   };
   const parsed = CurrentProtocolSchema.safeParse(candidate);
   if (!parsed.success) {

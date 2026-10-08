@@ -1528,6 +1528,16 @@ describe('e2e-matrix builder extensions', () => {
     expect(stage.validation).toEqual({ minLength: 4, maxLength: 12 });
   });
 
+  it('emits protocol experiments only once they are set', () => {
+    const synth = new SyntheticInterview();
+    expect(synth.getInterviewPayload().protocol).not.toHaveProperty(
+      'experiments',
+    );
+
+    synth.setExperiments({});
+    expect(synth.getInterviewPayload().protocol.experiments).toStrictEqual({});
+  });
+
   it('passes additionalAttributes through NameGenerator-family prompts', () => {
     const synth = new SyntheticInterview();
     const person = synth.addNodeType({ name: 'Person' });
