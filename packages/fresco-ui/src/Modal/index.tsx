@@ -105,7 +105,14 @@ export default function Modal({
   if (open !== wasOpen) {
     setWasOpen(open);
     if (open && typeof document !== 'undefined') {
-      openerRef.current = asFinalFocusTarget(document.activeElement);
+      // Read from the document this modal renders INTO, which is the one focus
+      // will be returned in. fresco-ui renders into iframes and popped-out
+      // windows through the portal container, and there the ambient
+      // `document` is the page around them: focus inside a frame makes that
+      // page's active element the `<iframe>` itself, so the opener would be
+      // the frame element rather than the control that opened the modal.
+      const ownerDocument = portalContainer?.ownerDocument ?? document;
+      openerRef.current = asFinalFocusTarget(ownerDocument.activeElement);
     }
   }
 

@@ -1,6 +1,7 @@
 'use client';
 
-import { useRef } from 'react';
+import { useEffect, useState } from 'react';
+import { useSelector } from 'react-redux';
 
 import type { FramingId } from '@codaco/protocol-validation';
 import {
@@ -12,8 +13,17 @@ import {
 
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { useStageSelector } from '../../hooks/useStageSelector';
+import { makeGetCodebookVariablesForNodeType } from '../../selectors/protocol';
 import { getStageMetadata } from '../../selectors/session';
 import { useAppDispatch } from '../../store/store';
+import type { DecryptionScope } from '../Anonymisation/decryptionScope';
+import { isAttributeEncrypted } from '../Anonymisation/isAttributeEncrypted';
+import PassphraseNotice, {
+  type PassphraseNoticeStatus,
+} from '../Anonymisation/PassphraseNotice';
+import { useDecryptedNodes } from '../Anonymisation/useDecryptedNodes';
+import { useDecryptionScope } from '../Anonymisation/useDecryptionScope';
+import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { FamilyPedigreeContext } from './FamilyPedigreeContext';
 import {
   createFamilyPedigreeStore,
@@ -31,6 +41,7 @@ import {
 import {
   getBiologicalSexVariable,
   getEgoVariable,
+  getNodeForm,
   getNodeLabelVariable,
   getNodeTypeKey,
   getRelationshipVariable,
@@ -51,7 +62,7 @@ export const FamilyPedigreeProvider = ({
   edges: NcEdge[];
   children: React.ReactNode;
 }) => {
-  const storeRef = useRef<FamilyPedigreeStoreApi>(undefined);
+  const [store, setStore] = useState<FamilyPedigreeStoreApi | null>(null);
   const dispatch = useAppDispatch();
   const { currentStep } = useCurrentStep();
 
@@ -71,6 +82,13 @@ export const FamilyPedigreeProvider = ({
   const biologicalSexVariable = useStageSelector(getBiologicalSexVariable);
   const framingConfig = useStageSelector(getFramingConfig);
   const stageMetadata = useStageSelector(getStageMetadata);
+  const nodeForm = useStageSelector(getNodeForm);
+  const getCodebookVariablesForNodeType = useSelector(
+    makeGetCodebookVariablesForNodeType,
+  );
+  const { passphraseInvalid, requirePassphrase, isEnabled } = usePassphrase();
+  const scope = useDecryptionScope();
+  const [openedUnder, setOpenedUnder] = useState<DecryptionScope>();
   const initialFraming: FramingId | null =
     framingConfig.mode === 'fixed'
       ? framingConfig.value
@@ -91,59 +109,108 @@ export const FamilyPedigreeProvider = ({
     biologicalSexVariable,
   };
 
+  const nodeVariables = getCodebookVariablesForNodeType(nodeType);
+  const encryptedVariableIds = new Set(
+    Object.keys(nodeVariables).filter((variableId) =>
+      isAttributeEncrypted(isEnabled, nodeVariables, variableId),
+    ),
+  );
+  const writesEncrypted = [
+    nodeLabelVariable,
+    relationshipVariable,
+    ...(nodeForm ?? []).map((field) => field.variable),
+  ].some((variableId) => encryptedVariableIds.has(variableId));
+
+  useEffect(() => {
+    if (writesEncrypted) requirePassphrase();
+  }, [writesEncrypted, requirePassphrase]);
+
   // The interview network is a single shared graph. Seed only the pedigree's
   // own node/edge types so the store works against the same entities it owns,
   // and remember which were already in Redux so finalize doesn't duplicate
   // them. Once the pedigree has committed its private membership, also drop
   // same-typed alters nominated in later stages, which are not part of it.
-  const memberIds = pedigreeMemberIds(stageMetadata);
-  const seededNodes = nodes.filter(
-    (node) =>
-      node.type === nodeType &&
-      (memberIds === null || memberIds.has(node._uid)),
-  );
-  const seededNodeIds = new Set(seededNodes.map((node) => node._uid));
-  const seededEdges = edgesWithinPedigreeMembership(
-    edges,
-    edgeType,
-    seededNodeIds,
-    pedigreeEdgeMembership(stageMetadata),
-  );
+  // The store is created once, from the network as it was on mount; nothing
+  // in this stage writes to Redux before then.
+  const [seed] = useState(() => {
+    const memberIds = pedigreeMemberIds(stageMetadata);
+    const seededNodes = nodes.filter(
+      (node) =>
+        node.type === nodeType &&
+        (memberIds === null || memberIds.has(node._uid)),
+    );
+    return {
+      nodes: seededNodes,
+      edges: edgesWithinPedigreeMembership(
+        edges,
+        edgeType,
+        new Set(seededNodes.map((node) => node._uid)),
+        pedigreeEdgeMembership(stageMetadata),
+      ),
+    };
+  });
+  // The pedigree shows and edits each relative's name and the answers to its
+  // node form.
+  const decryptedSeed = useDecryptedNodes(seed.nodes, [
+    nodeLabelVariable,
+    ...(nodeForm ?? []).map((field) => field.variable),
+  ]);
 
-  const initialNodes = new Map<string, NcNode>(
-    seededNodes.map((node) => [node._uid, node]),
-  );
+  // The store holds plaintext, so the pedigree is only shown while a working
+  // passphrase to encrypt with is in force and the seeded relatives are
+  // decrypted through it. The store itself is kept, so a family being entered
+  // survives a lock. A pedigree already open under the passphrase in force
+  // stays open if that passphrase is later found not to work; committing it is
+  // refused, with the reason shown, until a working one is entered.
+  const locked =
+    writesEncrypted && (!scope || (passphraseInvalid && openedUnder !== scope));
+  const shown = !locked && store !== null && decryptedSeed.status === 'ready';
 
-  const initialEdges = new Map<string, NcEdge>(
-    seededEdges.map((edge) => [edge._uid, edge]),
-  );
+  useEffect(() => {
+    if (shown) setOpenedUnder(scope);
+  }, [shown, scope]);
 
-  const initialNodeMetadata = new Map<string, NodeMetadata>(
-    seededNodes.map((node) => [
-      node._uid,
-      { readOnly: node[entityAttributesProperty][egoVariable] === true },
-    ]),
-  );
+  if (locked) return <StageNotice status="locked" />;
+  if (decryptedSeed.status !== 'ready') {
+    return <StageNotice status={decryptedSeed.status} />;
+  }
 
-  const preexistingReduxNodeIds = new Set(seededNodes.map((node) => node._uid));
-  const preexistingReduxEdgeIds = new Set(seededEdges.map((edge) => edge._uid));
-
-  storeRef.current ??= createFamilyPedigreeStore(
-    initialNodes,
-    initialEdges,
-    initialNodeMetadata,
-    variableConfig,
-    dispatch,
-    currentStep,
-    preexistingReduxNodeIds,
-    preexistingReduxEdgeIds,
-    initialFraming,
-    framingConfig.mode,
-  );
+  if (!store) {
+    const seededNodes = decryptedSeed.nodes;
+    setStore(
+      createFamilyPedigreeStore(
+        new Map(seededNodes.map((node) => [node._uid, node])),
+        new Map(seed.edges.map((edge) => [edge._uid, edge])),
+        new Map<string, NodeMetadata>(
+          seededNodes.map((node) => [
+            node._uid,
+            { readOnly: node[entityAttributesProperty][egoVariable] === true },
+          ]),
+        ),
+        variableConfig,
+        dispatch,
+        currentStep,
+        new Set(seededNodes.map((node) => node._uid)),
+        new Set(seed.edges.map((edge) => edge._uid)),
+        initialFraming,
+        framingConfig.mode,
+        encryptedVariableIds,
+      ),
+    );
+    return null;
+  }
 
   return (
-    <FamilyPedigreeContext.Provider value={storeRef.current}>
+    <FamilyPedigreeContext.Provider value={store}>
       {children}
     </FamilyPedigreeContext.Provider>
   );
 };
+
+function StageNotice({ status }: { status: PassphraseNoticeStatus }) {
+  return (
+    <div className="interface">
+      <PassphraseNotice status={status} className="max-w-prose" />
+    </div>
+  );
+}

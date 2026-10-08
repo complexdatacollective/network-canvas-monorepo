@@ -11,6 +11,7 @@ import {
 import type { ExportOptions } from '../../options';
 import {
   getEntityAttributes,
+  hasEncryptedValue,
   isCategoricalOptionSelected,
 } from '../../utils/general';
 
@@ -41,7 +42,7 @@ const processEntityVariables = <Entity extends NcEdge | NcNode | NcEgo>(
 
     const attributeName = codebookAttribute?.name;
     const attributeType = codebookAttribute?.type;
-    const attributeIsEncrypted = codebookAttribute?.encrypted;
+    const attributeIsEncrypted = hasEncryptedValue(entityObject, attributeUUID);
     if (attributeType === 'categorical') {
       const attributeOptions = codebookAttribute?.options ?? [];
 
@@ -102,13 +103,9 @@ const processEntityVariables = <Entity extends NcEdge | NcNode | NcEgo>(
       continue;
     }
 
-    if (attributeName) {
-      attributes[attributeName] = attributeIsEncrypted
-        ? 'ENCRYPTED'
-        : attributeData;
-    } else {
-      attributes[attributeUUID] = attributeData;
-    }
+    attributes[attributeName ?? attributeUUID] = attributeIsEncrypted
+      ? 'ENCRYPTED'
+      : attributeData;
   }
 
   return { ...entityObject, [entityAttributesProperty]: attributes };

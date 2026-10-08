@@ -8,6 +8,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -27,15 +28,23 @@ import Node from '../../components/ConnectedNode';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { useContractFlags } from '../../contract/context';
+import { writeFailureMessage } from '../../forms/writeSubmissionResult';
 import { useAssetUrl } from '../../hooks/useAssetUrl';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
+import useSavesInOrder from '../../hooks/useSavesInOrder';
 import { useStageSelector } from '../../hooks/useStageSelector';
+import { runtimeMessages } from '../../i18n/runtimeMessages';
+import { getCodebookVariablesForSubjectType } from '../../selectors/protocol';
 import { getNetworkNodesForType } from '../../selectors/session';
 import type { AttributePatch } from '../../store/entityAttributePatch';
 import { updateNode as updateNodeAction } from '../../store/modules/session';
 import type { RootState } from '../../store/store';
+import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { Direction, NavigationIntent, StageProps } from '../../types';
+import { isAttributeEncrypted } from '../Anonymisation/isAttributeEncrypted';
+import { usePassphrase } from '../Anonymisation/usePassphrase';
+import { useProtectedFormValues } from '../Anonymisation/useProtectedFormValues';
 import { interfaceMessages } from '../messages';
 import CollapsablePrompts from '../Sociogram/CollapsablePrompts';
 import { isMapboxStubBrowser } from './isMapboxStubBrowser';
@@ -105,6 +114,8 @@ function readFirstFeatureProperty(json: unknown, property: string): unknown {
   return properties[property];
 }
 
+const isStored = (stored: boolean) => stored;
+
 type GeospatialInterfaceProps = StageProps<'Geospatial'>;
 
 export function locationValueToAttributePatch(
@@ -166,39 +177,95 @@ export default function GeospatialInterface({
   );
 
   const track = useTrack();
-  const setLocationValue = useCallback(
-    (value: string | null, selectionKind: 'search' | 'pin' = 'pin') => {
+  const { showToast } = useInterviewToast();
+  const variables = useStageSelector(getCodebookVariablesForSubjectType);
+  const { passphrase, passphraseInvalid, requirePassphrase, isEnabled } =
+    usePassphrase();
+  const promptVariable = currentPrompt.variable;
+  // A location this prompt would encrypt is only taken once it could be saved.
+  const locationLocked =
+    !!promptVariable &&
+    isAttributeEncrypted(isEnabled, variables, promptVariable) &&
+    (!passphrase || passphraseInvalid);
+
+  // Whether the location was stored. A location that is not is reported here.
+  const saveLocationValue = useCallback(
+    async (value: string | null, selectionKind: 'search' | 'pin') => {
       const variable = currentPrompt.variable;
-      if (!variable) return;
+      if (!variable) return true;
       const activeNode = stageNodes[navState.activeIndex];
-      if (!activeNode) return;
+      if (!activeNode) return true;
       const nodeId = activeNode[entityPrimaryKeyProperty];
+
+      if (value !== null && locationLocked) {
+        requirePassphrase();
+        showToast({
+          description: intl.formatMessage(
+            runtimeMessages.protectedAnswersLocked,
+          ),
+          variant: 'info',
+          anchor: 'forward',
+        });
+        return false;
+      }
+
       if (value !== null) {
         track('geospatial_location_selected', {
           node_id: nodeId,
           selection_kind: selectionKind,
         });
       }
-      void updateNode({
+      const result = await updateNode({
         nodeId,
         attributePatch: locationValueToAttributePatch(variable, value),
       });
+      const failure = writeFailureMessage(result);
+      if (failure) {
+        showToast({
+          description: intl.formatMessage(failure),
+          variant: 'destructive',
+          anchor: 'forward',
+        });
+      }
+      return !failure;
     },
     [
       updateNode,
       stageNodes,
       navState.activeIndex,
       currentPrompt.variable,
+      locationLocked,
+      requirePassphrase,
+      showToast,
+      intl,
       track,
     ],
   );
 
+  // A location that takes longer to save, as a protected one can, never lands
+  // after one picked later. Every outcome of a save, including a refusal, is
+  // reported inside it.
+  const saveLocationInOrder = useSavesInOrder(saveLocationValue, isStored);
+  const setLocationValue = useCallback(
+    (value: string | null, selectionKind: 'search' | 'pin' = 'pin') => {
+      void saveLocationInOrder(value, selectionKind);
+    },
+    [saveLocationInOrder],
+  );
+
+  // A saved location that is encrypted is decrypted before it is shown.
+  const locationFields = useMemo(
+    () => (promptVariable ? [{ variable: promptVariable }] : []),
+    [promptVariable],
+  );
+  const savedLocation = useProtectedFormValues(
+    stageNodes[navState.activeIndex] ?? null,
+    locationFields,
+    variables,
+  );
   const initialSelection =
-    currentPrompt?.variable &&
-    stageNodes[navState.activeIndex]?.[entityAttributesProperty]
-      ? stageNodes[navState.activeIndex]?.[entityAttributesProperty]?.[
-          currentPrompt.variable
-        ]
+    promptVariable && savedLocation.status === 'ready'
+      ? savedLocation.values[promptVariable]
       : undefined;
   const initialSelectionValue =
     typeof initialSelection === 'string' ? initialSelection : undefined;
@@ -217,7 +284,6 @@ export default function GeospatialInterface({
     handleResetMapZoom,
     handleZoomIn,
     handleZoomOut,
-    handleResetSelection,
   } = useMapbox({
     mapOptions,
     dataSourceAssetId: mapOptions.dataSourceAssetId,
@@ -336,16 +402,14 @@ export default function GeospatialInterface({
       activeIndex: getNodeIndex(),
       direction: 'backwards',
     });
-    handleResetSelection();
-  }, [getNodeIndex, handleResetSelection]);
+  }, [getNodeIndex]);
 
   const nextNode = useCallback(() => {
     setNavState({
       activeIndex: navState.activeIndex + 1,
       direction: 'forwards',
     });
-    handleResetSelection();
-  }, [handleResetSelection, navState.activeIndex]);
+  }, [navState.activeIndex]);
 
   const beforeNext = (direction: Direction, intent: NavigationIntent) => {
     // Leave the stage if there are no nodes
@@ -354,7 +418,6 @@ export default function GeospatialInterface({
     }
 
     if (intent === 'jump') {
-      handleResetSelection();
       return true;
     }
 
@@ -371,7 +434,6 @@ export default function GeospatialInterface({
 
     // We are moving forwards.
     if (isLastNode()) {
-      handleResetSelection();
       return true;
     }
     nextNode();

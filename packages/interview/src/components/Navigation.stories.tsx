@@ -4,6 +4,7 @@ import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 
+import { expectMaskedPassphraseField } from '../storybook-support/expectMaskedPassphraseField';
 import StoryInterviewShell from '../storybook-support/StoryInterviewShell';
 import { TEXT_SCALE_OPTIONS } from './Navigation';
 
@@ -613,9 +614,13 @@ const enterPassphraseAndAddPerson = async (canvasElement: HTMLElement) => {
   const passphraseDialog = await canvas.findByRole('dialog', {
     name: /enter your passphrase/i,
   });
-  const passphraseField = within(passphraseDialog).getByRole('textbox', {
-    name: /passphrase/i,
-  });
+  // Where the field falls back to a password input it has no ARIA role, so it
+  // is found by its label, which also carries a visual required marker.
+  const passphraseField = within(passphraseDialog).getByLabelText(
+    /^Passphrase/,
+    { selector: 'input' },
+  );
+  await expectMaskedPassphraseField(passphraseField);
   await waitFor(() => expect(passphraseField).toHaveFocus());
   await userEvent.type(passphraseField, 'correct horse battery');
   await userEvent.click(

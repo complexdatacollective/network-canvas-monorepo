@@ -143,8 +143,9 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'passwordField.showToggle',
     'experiments.encryptedVariables=true+encryptedVariable',
     'experiments.encryptedVariables=absent',
+    'encryptedVariable.resume.locked',
     'encryptedVariable.missingPassphrase.prompter',
-    'encryptedVariable.wrongPassphrase.invalid',
+    'encryptedVariable.wrongPassphrase.rejected',
   ],
   DyadCensus: [
     'label',
