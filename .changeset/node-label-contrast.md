@@ -3,6 +3,9 @@
 '@codaco/fresco-ui': patch
 '@codaco/art': patch
 '@codaco/background-creator': patch
+'@codaco/architect': patch
+'@codaco/interviewer': patch
+'fresco': patch
 ---
 
 Every named palette color now carries a paired `-contrast` ink that meets WCAG AA (4.5:1) against both the color and its `-dark` variant, for example `--kiwi-contrast` and the `kiwi-contrast` Tailwind color. The node, edge, ordinal, and categorical sequence tokens gain matching `--node-N-contrast`, `--edge-N-contrast`, `--ord-N-contrast`, and `--cat-N-contrast` tokens that point at those inks.
