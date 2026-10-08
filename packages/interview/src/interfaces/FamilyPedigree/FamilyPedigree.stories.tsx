@@ -49,6 +49,9 @@ type SeedPerson = {
   ego?: boolean;
   /** The nomination prompts (by index) the person is already selected for. */
   nominatedFor?: number[];
+  /** Answers already given that the person has no siblings or children, or
+   * that the participant doesn't know (needs `completeness`). */
+  notRecorded?: string[];
 };
 
 type SeedLink = {
@@ -186,6 +189,9 @@ export function buildInterview({
         ? { [stage.genderIdentity]: [person.gender] }
         : {}),
       ...(person.sex ? { [stage.sexAssignedAtBirth]: [person.sex] } : {}),
+      ...(person.notRecorded && stage.relativesNotRecorded
+        ? { [stage.relativesNotRecorded]: person.notRecorded }
+        : {}),
       ...Object.fromEntries(
         (person.nominatedFor ?? []).flatMap((index) => {
           const attribute = stage.nominations[index];
@@ -708,6 +714,132 @@ export const AnIneligibleNominationCanBeWithdrawn: Story = {
       expect(father()).toHaveAttribute('aria-pressed', 'false'),
     );
     await waitFor(() => expect(father()).toBeDisabled());
+  },
+};
+
+/** The answers about siblings and children not recorded that a person holds
+ * in the session last written. */
+const notRecordedInSession = (personId: string) =>
+  (lastSynced?.network.nodes ?? [])
+    .filter((node) => node[entityPrimaryKeyProperty] === personId)
+    .flatMap((node) => Object.values(node[entityAttributesProperty]))
+    .flatMap((value) =>
+      Array.isArray(value)
+        ? value.filter(
+            (answer) =>
+              typeof answer === 'string' &&
+              /^(noSiblings|siblingsUnknown|noChildren|childrenUnknown)$/.test(
+                answer,
+              ),
+          )
+        : [],
+    );
+
+/** The participant, who said they have no siblings, and their father Tom,
+ * whose daughter Kim from an earlier partnership is in the family only
+ * through her mother Pat. */
+const fatherWithAnotherDaughter: Family = {
+  people: [
+    {
+      id: 'ego',
+      name: 'Ella',
+      gender: 'woman',
+      sex: 'female',
+      ego: true,
+      notRecorded: ['noSiblings'],
+    },
+    { id: 'mum', name: 'Rachel', gender: 'woman', sex: 'female' },
+    { id: 'dad', name: 'Tom', gender: 'man', sex: 'male' },
+    { id: 'pat', name: 'Pat', gender: 'woman', sex: 'female' },
+    { id: 'kim', name: 'Kim', gender: 'woman', sex: 'female' },
+  ],
+  links: [
+    { from: 'mum', to: 'ego', kind: 'biological', carrier: true },
+    { from: 'dad', to: 'ego', kind: 'biological' },
+    { from: 'mum', to: 'dad', kind: 'partner' },
+    { from: 'pat', to: 'dad', kind: 'partner', current: false },
+    { from: 'pat', to: 'kim', kind: 'biological', carrier: true },
+  ],
+};
+
+/**
+ * Connecting Tom to Kim as her biological father makes Kim the participant's
+ * half-sister, so the participant's answer that they have no siblings is
+ * withdrawn — not only answers about Tom and Kim, between whom the
+ * connection is made.
+ */
+export const ConnectingAChildWithdrawsHerNewSiblingsAnswers: Story = {
+  args: { requirement: 'firstDegree', enforcement: 'recommended' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      family={fatherWithAnotherDaughter}
+      onSync={recordSession}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    lastSynced = undefined;
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
+    const person = (id: string) => {
+      const element = canvasElement.querySelector<HTMLButtonElement>(
+        `[data-person-id="${id}"] button`,
+      );
+      if (!element) throw new Error(`No person ${id}`);
+      return element;
+    };
+    await waitFor(() => expect(person('kim')).toBeVisible());
+
+    await userEvent.click(canvas.getByTestId('pedigree-tool-connect'));
+    await userEvent.click(person('dad'));
+    await userEvent.click(person('kim'));
+    await userEvent.click(
+      await page.findByRole('menuitem', { name: '“Tom” is a parent of “Kim”' }),
+    );
+    await userEvent.click(
+      await page.findByRole('menuitem', { name: 'Biological parent' }),
+    );
+    await waitFor(() => expect(notRecordedInSession('ego')).toEqual([]));
+  },
+};
+
+/**
+ * Re-describing Tom as Kim's biological father, where he had adopted her,
+ * makes Kim the participant's half-sister: the participant's answer that
+ * they have no siblings is withdrawn.
+ */
+export const RedescribingAParentWithdrawsNewSiblingsAnswers: Story = {
+  args: { requirement: 'firstDegree', enforcement: 'recommended' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      family={{
+        ...fatherWithAnotherDaughter,
+        links: [
+          ...fatherWithAnotherDaughter.links,
+          { from: 'dad', to: 'kim', kind: 'adoptive' },
+        ],
+      }}
+      onSync={recordSession}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    lastSynced = undefined;
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+
+    await userEvent.click(await canvas.findByRole('button', { name: /^Kim/ }));
+    await waitFor(() => expect(panelOf(canvasElement)).not.toBeNull());
+    const panel = within(panelOf(canvasElement) as HTMLElement);
+    const tom = await panel.findByRole('radiogroup', {
+      name: 'Tom is their…',
+    });
+    await userEvent.click(
+      within(tom).getByRole('radio', { name: 'Biological parent' }),
+    );
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
+    await waitFor(() => expect(notRecordedInSession('ego')).toEqual([]));
   },
 };
 

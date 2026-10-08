@@ -238,6 +238,48 @@ export const RELATIVES_NOT_RECORDED = {
 >;
 
 /**
+ * The answers "has no siblings or children" and "doesn't know" that the family
+ * as it stands contradicts, by the person who gave them: anyone with a
+ * biological sibling recorded (half or full) has their siblings answer
+ * withdrawn, and anyone with a biological child their children answer. Each
+ * person listed is given the answers they keep.
+ *
+ * Asked of the family after every change to it, so an answer cannot outlive
+ * a relative added, connected or re-described anywhere in the family, for
+ * whoever gains them: a new child is a sibling of each of their parents'
+ * other children, too.
+ */
+export function answersContradictedBy(
+  family: Family,
+): Map<string, PedigreeRelativesNotRecorded[]> {
+  const result = new Map<string, PedigreeRelativesNotRecorded[]>();
+  for (const person of family.people) {
+    if (person.relativesNotRecorded.length === 0) continue;
+    const withdrawn = new Set<PedigreeRelativesNotRecorded>();
+    const withdraw = (group: Record<'none' | 'unknown', string>) => {
+      for (const answer of person.relativesNotRecorded) {
+        if (answer === group.none || answer === group.unknown) {
+          withdrawn.add(answer);
+        }
+      }
+    };
+    if (biologicalSiblingsOf(family, person.id).length > 0) {
+      withdraw(RELATIVES_NOT_RECORDED.siblings);
+    }
+    if (biologicalChildrenOf(family, person.id).length > 0) {
+      withdraw(RELATIVES_NOT_RECORDED.children);
+    }
+    if (withdrawn.size > 0) {
+      result.set(
+        person.id,
+        person.relativesNotRecorded.filter((answer) => !withdrawn.has(answer)),
+      );
+    }
+  }
+  return result;
+}
+
+/**
  * Whether a person's details should ask if they have siblings, and children:
  * when the requirement asks about them and none are recorded.
  */

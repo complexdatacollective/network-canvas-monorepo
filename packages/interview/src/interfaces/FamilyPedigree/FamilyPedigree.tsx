@@ -11,7 +11,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useStore } from 'react-redux';
 import { v4 as uuid } from 'uuid';
 
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
@@ -62,7 +62,7 @@ import {
   updateNode,
   updateStageMetadata,
 } from '../../store/modules/session';
-import { useAppDispatch } from '../../store/store';
+import { type RootState, useAppDispatch } from '../../store/store';
 import type { Direction, StageProps } from '../../types';
 import { readOwnProperty, writeOwnProperty } from '../../utils/ownProperty';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
@@ -78,6 +78,7 @@ import {
   usePedigreeZoomButtons,
 } from '../pedigree-common/PedigreeCanvas';
 import {
+  answersContradictedBy,
   type CompletenessItem,
   evaluateCompleteness,
   RELATIVES_NOT_RECORDED,
@@ -181,7 +182,8 @@ const planAddition = (
 const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
-  const { currentStep } = useCurrentStep();
+  const { currentStep, displayedStep } = useCurrentStep();
+  const store = useStore<RootState>();
   const { confirm } = useDialog();
   const formId = useId();
 
@@ -1081,28 +1083,28 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       }),
     ).unwrap();
 
-  // Recording a sibling or child replaces any earlier answer that there are
-  // none, or that the participant didn't know.
-  const clearRelativesAnswers = async (
-    personIds: readonly string[],
-    relatives: 'siblings' | 'children',
-  ) => {
+  // An answer that someone has no siblings or children, or that the
+  // participant doesn't know, is withdrawn once the family records one: read
+  // from the family as stored after each change to it, so whoever the change
+  // gives a sibling or child — not only the person it was made to — loses an
+  // answer it contradicts.
+  const withdrawContradictedAnswers = async () => {
     const notRecordedAttribute = config.relativesNotRecordedAttribute;
     if (!notRecordedAttribute) return;
-    const group = RELATIVES_NOT_RECORDED[relatives];
-    const answers: readonly string[] = [group.none, group.unknown];
-    for (const personId of personIds) {
-      const recorded = family.byId.get(personId)?.relativesNotRecorded ?? [];
-      if (!recorded.some((value) => answers.includes(value))) continue;
+    const state = store.getState();
+    const latest = participantsFamily(
+      readFamily(
+        getNetworkNodes(state, displayedStep),
+        getNetworkEdges(state, displayedStep),
+        config,
+      ),
+    );
+    for (const [personId, kept] of answersContradictedBy(latest)) {
       await dispatch(
         updateNode({
           nodeId: personId,
           attributePatch: {
-            set: {
-              [notRecordedAttribute]: recorded.filter(
-                (value) => !answers.includes(value),
-              ),
-            },
+            set: { [notRecordedAttribute]: kept },
             unset: [],
           },
           currentStep,
@@ -1201,6 +1203,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           }),
         );
       }
+      // A parent re-described as biological gives the person siblings, and
+      // the parent a child.
+      await withdrawContradictedAnswers();
       setAnnouncement(intl.formatMessage(messages.savedAnnouncement));
       return;
     }
@@ -1234,16 +1239,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       ).unwrap();
     }
     for (const link of plan.links) await addLink(link);
-    const request = result.request;
-    if (request.relation === 'sibling') {
-      await clearRelativesAnswers([mode.anchor.id], 'siblings');
-    } else if (request.relation === 'child') {
-      const otherParent =
-        request.otherParent && request.otherParent !== 'unknown'
-          ? [request.otherParent]
-          : [];
-      await clearRelativesAnswers([mode.anchor.id, ...otherParent], 'children');
-    }
+    await withdrawContradictedAnswers();
     // Recorded: the people drawn are now the family's own.
     setDraft(null);
     setJustAddedId(newPersonId);
@@ -1369,18 +1365,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const handleConnect = async (connection: Connection, description: string) => {
     endConnecting();
     await addLink(planConnection(connection));
-    if (connection.kind === 'parent') {
-      const { parentId, childId } = connection;
-      await clearRelativesAnswers([parentId], 'children');
-      // The parent's other children are now the child's siblings.
-      const hasOtherChildren = family.links.some(
-        (link) =>
-          link.kind !== 'partner' &&
-          link.source === parentId &&
-          link.target !== childId,
-      );
-      if (hasOtherChildren) await clearRelativesAnswers([childId], 'siblings');
-    }
+    await withdrawContradictedAnswers();
     setAnnouncement(description);
   };
 

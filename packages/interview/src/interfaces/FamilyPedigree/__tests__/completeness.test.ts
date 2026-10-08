@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
-import { evaluateCompleteness } from '../completeness';
+import { answersContradictedBy, evaluateCompleteness } from '../completeness';
 import { readFamily } from '../model';
 import { config, link, person } from './fixtures';
 
@@ -202,5 +202,62 @@ describe('evaluateCompleteness', () => {
       { kind: 'details', personId: 'ego' },
       { kind: 'details', personId: 'dad' },
     ]);
+  });
+});
+
+describe('answersContradictedBy', () => {
+  const answered = (id: string, notRecorded: string[]) =>
+    person(id, { notRecorded });
+
+  test('withdraws the siblings answer of every child of a parent who gains another', () => {
+    // Dad's child Kim is connected to the family: Kim and the participant are
+    // now half-siblings, so the participant's answer goes as well as Kim's.
+    const contradicted = answersContradictedBy(
+      family(
+        [
+          person('ego', { isEgo: true, notRecorded: ['noSiblings'] }),
+          person('dad', { notRecorded: ['noChildren'] }),
+          answered('kim', ['siblingsUnknown', 'noChildren']),
+        ],
+        [link('dad', 'ego', 'biological'), link('dad', 'kim', 'biological')],
+      ),
+    );
+    expect(Object.fromEntries(contradicted)).toEqual({
+      ego: [],
+      dad: [],
+      kim: ['noChildren'],
+    });
+  });
+
+  test('counts gamete donors, and no other kind of parent', () => {
+    const contradicted = answersContradictedBy(
+      family(
+        [
+          person('ego', { isEgo: true, notRecorded: ['noSiblings'] }),
+          answered('donor', ['noChildren']),
+          answered('adopter', ['noChildren']),
+          answered('sib', ['noSiblings']),
+        ],
+        [
+          link('donor', 'ego', 'donor'),
+          link('adopter', 'sib', 'adoptive'),
+          link('adopter', 'ego', 'adoptive'),
+        ],
+      ),
+    );
+    // The donor has a genetic child; the adoptive siblings share no genetic
+    // parent, and the question asks about biological relatives.
+    expect(Object.fromEntries(contradicted)).toEqual({ donor: [] });
+  });
+
+  test('leaves answers the family does not contradict', () => {
+    expect(
+      answersContradictedBy(
+        family(
+          [person('ego', { isEgo: true, notRecorded: ['noSiblings'] })],
+          [],
+        ),
+      ).size,
+    ).toBe(0);
   });
 });
