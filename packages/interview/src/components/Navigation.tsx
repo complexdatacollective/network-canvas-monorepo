@@ -343,6 +343,9 @@ const Navigation = ({
       // interview between the flush and the hand-over. When an answer still
       // being saved is refused, or the participant cancels while it is
       // saved, the interview stays open, so they see why and can try again.
+      // Cancelling is safe while the flush runs: the answers it saves belong
+      // to the interview either way, and the hand-over is what it stops.
+      abortable: true,
       onConfirm: async (signal) => {
         if ((await flushPendingSync()) && !signal.aborted) onExit();
       },

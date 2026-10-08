@@ -392,6 +392,10 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
       confirmLabel: <AppMessage message={messages.finalize} />,
       cancelLabel: <AppMessage message={messages.keepEditing} />,
       intent: 'default',
+      // Cancelling abandons the write before it is committed (the session
+      // commits the pedigree only when the write is fulfilled), so the
+      // participant may keep editing instead of waiting it out.
+      abortable: true,
       onConfirm: async (signal) => {
         const refused = await finalizeNetwork(signal);
         const failure = refused && writeFailureMessage(refused);

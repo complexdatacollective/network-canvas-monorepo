@@ -180,8 +180,9 @@ export function createParticipantHandlers({
       signal,
     );
 
-  // Cancelling the finish dialog aborts `signal`: the request in flight is
-  // abandoned, and nothing after it runs, so a cancelled finish never shows
+  // The finish dialog cannot be cancelled while this runs, but tearing it down
+  // (the interview unmounting) aborts `signal`: the request in flight is
+  // abandoned, and nothing after it runs, so an abandoned finish never shows
   // the finished notice or finishes again after a resend.
   const onFinish: FinishHandler = async (_id, signal) => {
     try {

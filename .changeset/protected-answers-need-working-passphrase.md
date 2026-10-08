@@ -54,8 +54,9 @@ answers; other interviews work as before.
   and the next stage is chosen with them. When one of them cannot be saved,
   the participant stays where they are and the interview is not finished or
   closed, so they see why and can try again. The confirmations to finish and
-  to close the interview stay open while they wait, and cancelling either one
-  keeps the interview open. Before, a location picked or a name added just
+  to close the interview stay open while they wait. Cancelling the close
+  confirmation keeps the interview open; the finish confirmation cannot be
+  cancelled once it has started. Before, a location picked or a name added just
   before pressing Next could be lost or kept under the wrong question, and an
   answer still being protected could be left out of the stage that came next
   and of the interview handed back when finishing or closing.
