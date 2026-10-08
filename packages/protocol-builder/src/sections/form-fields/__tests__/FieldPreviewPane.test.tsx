@@ -347,9 +347,8 @@ describe('FieldPreviewPane', () => {
   });
 
   it('treats a caption of nothing but spaces as nothing authored', () => {
-    // The same rule the interview applies: `authoredFieldLabel` trims before
-    // deciding whether the researcher wrote anything, so a stray space is not
-    // a caption.
+    // The same rule the schema applies: text of nothing but spaces says
+    // nothing, so a stray space is not a caption.
     renderPreview(
       { variable: 'age', component: 'Number', label: en('   ') },
       { mode: 'composer' },

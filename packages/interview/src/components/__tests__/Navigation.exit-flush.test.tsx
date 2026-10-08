@@ -49,7 +49,7 @@ const payload = {
     lastUpdated: '2026-01-01T00:00:00.000Z',
     localePreference: null,
     locale: null,
-    localeOptions: [getLocaleMetadata('und')],
+    localeOptions: [getLocaleMetadata('en')],
     network: {
       ego: {
         [entityPrimaryKeyProperty]: 'ego-1',
@@ -65,7 +65,7 @@ const payload = {
     importedAt: '2026-01-01T00:00:00.000Z',
     name: 'Exit-flush protocol',
     schemaVersion: 9,
-    localization: { defaultLocale: 'und', locales: ['und'] },
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {
       ego: { variables: {} },
       node: {},
@@ -76,8 +76,8 @@ const payload = {
       {
         id: 'only-stage',
         type: 'Information',
-        label: { und: 'Only stage' },
-        title: { und: 'Only stage' },
+        label: { en: 'Only stage' },
+        title: { en: 'Only stage' },
         items: [],
       },
     ],

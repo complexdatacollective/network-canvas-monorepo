@@ -598,7 +598,6 @@
   "protocolBuilder.localization.missingTranslation": "Ontbreekt",
   "protocolBuilder.localization.notTranslated": "Nog niet vertaald naar {language}. Deelnemers die {language} gebruiken, zien de tekst in {fallback}.",
   "protocolBuilder.localization.notTranslatedUnlessBrowserLists": "Nog niet vertaald naar {language}. Deelnemers die {language} gebruiken, zien de tekst in {fallback}, tenzij hun browser ook een taal opgeeft waarin de tekst beschikbaar is.",
-  "protocolBuilder.localization.unspecifiedLanguage": "Niet-opgegeven taal",
   "protocolBuilder.localizedTextNames.diseasePosition": "Aandoening {position, number}",
   "protocolBuilder.localizedTextNames.fieldPosition": "Veld {position, number}",
   "protocolBuilder.localizedTextNames.itemPosition": "Element {position, number}",

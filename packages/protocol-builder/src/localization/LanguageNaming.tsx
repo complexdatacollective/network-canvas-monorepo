@@ -2,7 +2,7 @@ import { createContext, useContext, type ReactNode } from 'react';
 
 import type { LocaleTag } from '@codaco/protocol-validation';
 
-import { useLanguageName } from './languageNames.ts';
+import { languageAutonym } from './languageNames.ts';
 import { localeDirection } from './localizedText.ts';
 
 type NameLanguage = (locale: LocaleTag) => string;
@@ -39,9 +39,8 @@ type LanguageNaming = Readonly<{
 }>;
 
 export function useLanguageNaming(): LanguageNaming {
-  const autonym = useLanguageName();
   const hostName = useContext(HostLanguageNameContext);
-  return { name: hostName ?? autonym, autonym };
+  return { name: hostName ?? languageAutonym, autonym: languageAutonym };
 }
 
 /**

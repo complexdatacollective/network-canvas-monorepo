@@ -23,7 +23,7 @@ const payload = {
     lastUpdated: '2026-09-06T00:00:00.000Z',
     localePreference: null,
     locale: null,
-    localeOptions: [getLocaleMetadata('und')],
+    localeOptions: [getLocaleMetadata('en')],
     network: { ego: { _uid: 'ego', attributes: {} }, nodes: [], edges: [] },
   },
   protocol: {
@@ -32,7 +32,7 @@ const payload = {
     importedAt: '2026-09-06T00:00:00.000Z',
     name: 'Literal protocol name',
     schemaVersion: 9,
-    localization: { defaultLocale: 'und', locales: ['und'] },
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: { ego: { variables: {} }, node: {}, edge: {} },
     assets: [],
     stages: [],

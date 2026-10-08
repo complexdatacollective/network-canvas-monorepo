@@ -42,23 +42,25 @@ stages }`, so a translation change produces a new hash. Languages have no
 
 Schema 9:
 
-- The v8 to v9 migration keeps existing names as they are. It marks the
-  protocol's text as written in an unspecified language (`und`), since older
-  protocols never recorded one: it adds
-  `localization: { defaultLocale: 'und', locales: ['und'] }` and wraps every
-  participant-facing string as `{ und: <text> }`, escaped as an ICU literal
-  message. Codebook node types, edge types and variables get a `label` taken
+- The v8 to v9 migration keeps existing names as they are. It records the
+  protocol's text as English, since older protocols never recorded a language:
+  it adds `localization: { defaultLocale: 'en', locales: ['en'] }` and wraps
+  every participant-facing string as `{ en: <text> }`, escaped as an ICU literal
+  message. Validation refuses the undetermined language `und` (and `und-*`
+  tags) as a declared language, as the default, and as a localized-string key. Codebook node types, edge types and variables get a `label` taken
   from their name, or from their codebook ID when the name is empty: a node
   or edge type's label is wrapped like any other text, and a variable's stays
   plain text. A Narrative preset's `highlight` list of variable IDs becomes a
   list of `{ variable, label }`, each label taken from the variable's name (or
-  its ID) and wrapped as `{ und: <text> }`. A Network Composer form field with
-  no caption, or an empty one, gets its attribute's name (or its ID) as one,
-  escaped so that markdown shows it as written, and wrapped the same way. An
-  empty optional text that schema 9 requires to be non-empty is removed, as are
-  Network Composer scale end labels that were not strings. Its migration
-  notes tell researchers what the new version allows and how to set the
-  protocol's real language.
+  its ID) and wrapped as `{ en: <text> }`. A form field with no
+  caption, or an empty or blank one (a Network Composer field's `label`, or
+  any other form field's `prompt`), gets its attribute's name (or its ID) as
+  one, escaped so that markdown shows it as written, and wrapped the same way.
+  An empty optional text that schema 9 requires to be non-empty is removed, as
+  are Network Composer scale end labels that were not strings. Its
+  migration notes tell researchers what the new version allows, that the text
+  is recorded as English and can be changed in Architect, and which empty
+  questions were filled in.
 - Schema 9 keeps the optional `experiments` property, for features released
   within a schema version, but `encryptedVariables` is no longer one of them:
   an attribute marked `encrypted` is always encrypted. `ExperimentsSchema` and
@@ -153,8 +155,15 @@ Localization:
   written).
 - A Network Composer form field is now a union on `component`, so its scale
   end labels are localized fields of their own. Its `label`, the caption
-  participants read, is required and non-empty, since the attribute's own
+  participants read, is required and not blank, since the attribute's own
   label is not translated.
+- A form field's `prompt` is held to the same rule: every translation must
+  contain text, so a translation of only spaces (or of invisible characters
+  such as a zero-width space) is invalid, and one blank translation is an
+  error rather than a gap the interview falls back over. A prompt is judged as
+  written, so markdown that draws nothing from visible characters, such as
+  `**` or `&nbsp;`, is not recognised as blank. New exports: `isBlankText` and
+  `isBlankMessage`.
 
 Participant data files (rosters):
 

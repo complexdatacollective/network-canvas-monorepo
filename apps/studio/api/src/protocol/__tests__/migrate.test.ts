@@ -139,10 +139,10 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
     expect(document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(document.name).toBe('Legacy Protocol');
     expect(document.localization).toEqual({
-      defaultLocale: 'und',
-      locales: ['und'],
+      defaultLocale: 'en',
+      locales: ['en'],
     });
-    expect(document.codebook.node.person!.label).toEqual({ und: 'Person' });
+    expect(document.codebook.node.person!.label).toEqual({ en: 'Person' });
     expect(document.codebook.node.person!.displayVariable).toBeUndefined();
     expect(document.codebook.node.person!.shape).toBeDefined();
 
@@ -230,8 +230,8 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
     );
     expect(document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(document.localization).toEqual({
-      defaultLocale: 'und',
-      locales: ['und'],
+      defaultLocale: 'en',
+      locales: ['en'],
     });
 
     const sync = createProtocolSyncServer();

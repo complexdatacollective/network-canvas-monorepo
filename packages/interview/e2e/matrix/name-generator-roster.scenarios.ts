@@ -116,10 +116,13 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
           caraCard.getByText('Denver', { exact: true }),
         ).toBeVisible();
 
-        // Ben Brown's location is '' in roster-small.json — DataCard's
-        // formatValue renders empty/undefined values as '—' (DataCard.tsx:18).
+        // Ben Brown's location is '' in roster-small.json. DataCard renders an
+        // empty value as the interview's "No value" message
+        // (interview.interfaces.emptyValue).
         const benCard = roster.getRosterNode('Ben Brown');
-        await expect(benCard.getByText('—', { exact: true })).toBeVisible();
+        await expect(
+          benCard.getByText('No value', { exact: true }),
+        ).toBeVisible();
 
         // Stage label/interviewScript are authoring/navigation metadata, never
         // rendered as participant-visible copy.

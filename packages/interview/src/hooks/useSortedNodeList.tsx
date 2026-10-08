@@ -21,6 +21,7 @@ import {
   useDecryptedScope,
   useDecryptionScope,
 } from '../interfaces/Anonymisation/useDecryptionScope';
+import { useContentLocale } from '../localization/ProtocolLocalizationProvider';
 import {
   getAllVariableUUIDsByEntity,
   makeGetCodebookVariablesForNodeType,
@@ -100,12 +101,14 @@ function comparedEncryptedValues(
  * be read, the rule is left out, so the nodes keep the order the other rules
  * give them and that order says nothing about the hidden answers. The nodes
  * are returned as stored; their plaintext is only read for the comparison.
+ * Text is ordered for `locale`, as `createSorter` orders it.
  */
 function sortNodes<T extends NcNode>(
   nodes: T[],
   rules: readonly ProcessedSortRule[],
   variablesForType: VariablesForType,
   outcomeOf: OutcomeOf,
+  locale: string,
 ): T[] {
   if (rules.length === 0) return nodes;
 
@@ -134,12 +137,13 @@ function sortNodes<T extends NcNode>(
     [entityAttributesProperty]: attributes[position] ?? {},
     [POSITION]: position,
   }));
-  return createSorter<(typeof comparable)[number]>(applied)(comparable).flatMap(
-    ({ [POSITION]: position }) => {
-      const node = nodes[position];
-      return node ? [node] : [];
-    },
-  );
+  return createSorter<(typeof comparable)[number]>(
+    applied,
+    locale,
+  )(comparable).flatMap(({ [POSITION]: position }) => {
+    const node = nodes[position];
+    return node ? [node] : [];
+  });
 }
 
 type NodeSorter = <T extends NcNode>(subset: T[]) => T[];
@@ -160,6 +164,7 @@ function useSorter(
 ): { sort: NodeSorter; settling: boolean } {
   const codebookVariables = useSelector(getAllVariableUUIDsByEntity);
   const variablesForType = useSelector(makeGetCodebookVariablesForNodeType);
+  const locale = useContentLocale();
 
   const rules = useMemo(
     () => (sortRules ?? []).map(processProtocolSortRule(codebookVariables)),
@@ -176,10 +181,14 @@ function useSorter(
   // than kept here, so the order stops reflecting it as soon as the key goes.
   const sort = useCallback(
     <T extends NcNode>(subset: T[]) =>
-      sortNodes(subset, rules, variablesForType, (value) =>
-        scope ? readCachedOutcome(scope, value) : undefined,
+      sortNodes(
+        subset,
+        rules,
+        variablesForType,
+        (value) => (scope ? readCachedOutcome(scope, value) : undefined),
+        locale,
       ),
-    [rules, variablesForType, scope],
+    [rules, variablesForType, scope, locale],
   );
   return { sort, settling: keyInForce && scope === undefined };
 }

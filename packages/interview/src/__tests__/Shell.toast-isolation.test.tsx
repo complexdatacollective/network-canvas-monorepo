@@ -117,7 +117,7 @@ function makePayload(id: string): InterviewPayload {
       lastUpdated: '2026-01-01T00:00:00.000Z',
       localePreference: null,
       locale: null,
-      localeOptions: [getLocaleMetadata('und')],
+      localeOptions: [getLocaleMetadata('en')],
       network: {
         ego: {
           [entityPrimaryKeyProperty]: `${id}-ego`,
@@ -133,13 +133,13 @@ function makePayload(id: string): InterviewPayload {
       importedAt: '2026-01-01T00:00:00.000Z',
       name: `Authored_${id}`,
       schemaVersion: 9,
-      localization: { defaultLocale: 'und', locales: ['und'] },
+      localization: { defaultLocale: 'en', locales: ['en'] },
       codebook: {
         ego: { variables: {} },
         node: {
           person: {
             name: 'Person',
-            label: { und: 'Person' },
+            label: { en: 'Person' },
             color: 'node-color-seq-1',
             shape: { default: 'circle' },
             icon: 'add-a-person',
@@ -155,11 +155,11 @@ function makePayload(id: string): InterviewPayload {
         {
           id: `${id}-names`,
           type: 'NameGeneratorQuickAdd',
-          label: { und: `Original_${id}` },
+          label: { en: `Original_${id}` },
           subject: { entity: 'node', type: 'person' },
           quickAdd: asEntityAttributeReference('name'),
           prompts: [
-            { id: `${id}-prompt`, text: { und: `Original prompt ${id}` } },
+            { id: `${id}-prompt`, text: { en: `Original prompt ${id}` } },
           ],
           behaviours: { minNodes: 1 },
         },

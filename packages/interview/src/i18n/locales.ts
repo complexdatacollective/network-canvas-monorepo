@@ -17,21 +17,13 @@ export const interviewLocales = defineAppLocales([
 
 export type RequestedLocale = string | readonly string[] | null;
 
-// A protocol written in an unspecified language (`und`) states nothing about
-// the interface language, but best-fit matching reads `und` as English.
-const isUnspecifiedLanguage = (tag: string) =>
-  tag.split('-')[0]?.toLowerCase() === 'und';
-
 /** No browser or storage access: hosts supply their preference at the boundary. */
 function negotiateInterviewLocale(
   requestedLocale?: RequestedLocale,
   preference?: string | null,
 ) {
   return resolveAppLocale({
-    stored:
-      preference == null || isUnspecifiedLanguage(preference)
-        ? null
-        : preference,
+    stored: preference ?? null,
     requested:
       typeof requestedLocale === 'string'
         ? [requestedLocale]

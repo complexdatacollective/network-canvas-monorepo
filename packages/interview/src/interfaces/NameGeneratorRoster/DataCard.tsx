@@ -11,6 +11,8 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { VariableValue } from '@codaco/shared-consts';
 
+import { type ContentFormat } from '../../localization/contentFormat';
+import { useContentFormat } from '../../localization/useContentFormat';
 import { interfaceMessages } from '../messages';
 
 export type DataCardDetail = {
@@ -29,20 +31,32 @@ type DataCardProps = Omit<
   details?: readonly DataCardDetail[];
 };
 
+/**
+ * A roster value as text for the participant. Words (yes, no, an empty value)
+ * are in the interface language; numbers, coordinates and lists follow the
+ * protocol language, since they sit among the protocol's own text.
+ */
 const formatValue = (
   value: VariableValue | undefined,
   intl: IntlShape,
+  format: ContentFormat,
 ): string => {
-  if (value === null || value === undefined || value === '') return '—';
+  const empty = () => intl.formatMessage(interfaceMessages.emptyValue);
+
+  if (value === null || value === undefined || value === '') return empty();
 
   if (typeof value === 'boolean')
     return intl.formatMessage(
       value ? interfaceMessages.yes : interfaceMessages.no,
     );
 
+  if (typeof value === 'number') return format.formatNumber(value);
+
   if (Array.isArray(value)) {
-    if (value.length === 0) return '—';
-    return value.map((item) => formatValue(item, intl)).join(', ');
+    if (value.length === 0) return empty();
+    return format.formatList(
+      value.map((item) => formatValue(item, intl, format)),
+    );
   }
 
   if (
@@ -52,16 +66,22 @@ const formatValue = (
     typeof value.x === 'number' &&
     typeof value.y === 'number'
   ) {
-    return `${value.y.toFixed(4)}, ${value.x.toFixed(4)}`;
+    return format.formatList([
+      format.formatCoordinate(value.y),
+      format.formatCoordinate(value.x),
+    ]);
   }
 
   if (typeof value === 'object') {
-    return Object.entries(value)
-      .map(([k, v]) => `${k}: ${String(v)}`)
-      .join(', ');
+    return format.formatList(
+      Object.entries(value).map(
+        ([k, v]) =>
+          `${k}: ${typeof v === 'number' ? format.formatNumber(v) : String(v)}`,
+      ),
+    );
   }
 
-  return String(value);
+  return value;
 };
 
 /**
@@ -80,6 +100,7 @@ const DataCard = ({
   ...articleProps
 }: DataCardProps) => {
   const intl = useAppIntl();
+  const format = useContentFormat();
   const hasDetails = details && details.length > 0;
 
   return (
@@ -115,7 +136,7 @@ const DataCard = ({
                 {presentationalTextValue(detailLabel)}
               </Heading>
               <dd className="text-sm leading-tight font-medium wrap-break-word">
-                {formatValue(value, intl)}
+                {formatValue(value, intl, format)}
               </dd>
             </div>
           ))}

@@ -231,21 +231,6 @@ describe('ProtocolLocalizationProvider', () => {
     expect(names(['es'])).toEqual(['nb', 'ña']);
   });
 
-  it('names the unspecified language in the interface language', () => {
-    const { latest } = renderLocale(
-      makeProps({
-        localization: { defaultLocale: 'und', locales: ['und'] },
-        localeOptions: [getLocaleMetadata('und')],
-      }),
-      ['es'],
-    );
-
-    expect(latest().options).toEqual([
-      { locale: 'und', label: 'Idioma no especificado', direction: 'ltr' },
-    ]);
-    expect(latest().metadata.label).toBe('Idioma no especificado');
-  });
-
   it('only accepts a declared locale as a stated preference', () => {
     const onLocalePreferenceChange = vi.fn();
     const { latest } = renderLocale(makeProps({ onLocalePreferenceChange }));

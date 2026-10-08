@@ -598,7 +598,6 @@
   "protocolBuilder.localization.missingTranslation": "Ausente",
   "protocolBuilder.localization.notTranslated": "Ainda não traduzido para {language}. Participantes que usam {language} vão ver o texto em {fallback}.",
   "protocolBuilder.localization.notTranslatedUnlessBrowserLists": "Ainda não traduzido para {language}. Participantes que usam {language} vão ver o texto em {fallback}, a menos que o navegador deles também indique um idioma em que o texto esteja disponível.",
-  "protocolBuilder.localization.unspecifiedLanguage": "Idioma não especificado",
   "protocolBuilder.localizedTextNames.diseasePosition": "Doença {position, number}",
   "protocolBuilder.localizedTextNames.fieldPosition": "Campo {position, number}",
   "protocolBuilder.localizedTextNames.itemPosition": "Item {position, number}",

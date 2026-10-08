@@ -394,23 +394,6 @@ describe('protocol text in the interview language', () => {
     expect(heading).toHaveAttribute('dir', 'rtl');
   });
 
-  it('gives text in the unspecified language no language of its own', () => {
-    renderInformation(
-      makeStage(
-        [{ id: 'i1', type: 'text', content: { und: 'Some **context**.' } }],
-        { und: 'Before you begin' },
-      ),
-      [],
-      { localization: { defaultLocale: 'und', locales: ['und'] } },
-    );
-
-    const heading = screen.getByRole('heading', { name: 'Before you begin' });
-    expect(heading).not.toHaveAttribute('lang');
-    expect(heading).not.toHaveAttribute('dir');
-    const emphasis = screen.getByText('context');
-    expect(emphasis.closest('[lang]')).toBeNull();
-  });
-
   it('formats a text item as a message before rendering it as markdown', () => {
     renderInformation(
       makeStage([

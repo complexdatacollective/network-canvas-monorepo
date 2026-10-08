@@ -23,6 +23,7 @@ import {
   getNetworkNodes,
 } from '../../selectors/session';
 import type { StageProps } from '../../types';
+import { compareCodeUnits } from '../../utils/compareCodeUnits';
 import Annotations, { type AnnotationsHandle } from './Annotations';
 import BehavioursPanel from './BehavioursPanel';
 import PresetSwitcher from './PresetSwitcher';
@@ -196,7 +197,7 @@ const Narrative = ({ stage }: NarrativeProps) => {
     () =>
       nodesWithLayout
         .map((node) => node[entityPrimaryKeyProperty])
-        .toSorted((a, b) => a.localeCompare(b))
+        .toSorted(compareCodeUnits)
         .join(','),
     [nodesWithLayout],
   );

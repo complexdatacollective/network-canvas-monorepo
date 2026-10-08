@@ -32,7 +32,7 @@ import {
 
 type Path = readonly (string | number)[];
 
-const UNDETERMINED = { defaultLocale: 'und', locales: ['und'] };
+const ENGLISH_ONLY = { defaultLocale: 'en', locales: ['en'] };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -92,10 +92,10 @@ const nameBehindLabel = (document: unknown, at: Path): unknown => {
   ]);
 };
 
-const isUndeterminedOnly = (value: unknown) =>
+const isEnglishOnly = (value: unknown) =>
   isRecord(value) &&
   Object.keys(value).length === 1 &&
-  typeof value.und === 'string';
+  typeof value.en === 'string';
 
 const literalLabel = (schema: z.ZodObject): string | undefined => {
   for (const field of ['type', 'component']) {
@@ -156,10 +156,10 @@ const localizedDeclarations = (root: z.ZodType): Map<z.ZodType, string> => {
 };
 
 describe('v8 to v9 localization migration', () => {
-  it('declares the undetermined language as the only language', () => {
+  it('declares English as the only language', () => {
     expect(migrateStep(schema8Protocol())).toMatchObject({
       schemaVersion: 9,
-      localization: UNDETERMINED,
+      localization: ENGLISH_ONLY,
     });
   });
 
@@ -172,7 +172,7 @@ describe('v8 to v9 localization migration', () => {
         ProtocolSchemaV9,
         migrateStep(schema8Protocol()),
       )
-        .filter(({ value }) => isUndeterminedOnly(value))
+        .filter(({ value }) => isEnglishOnly(value))
         .map(({ schema }) => schema),
     );
     const missed = [...declarations]
@@ -181,13 +181,13 @@ describe('v8 to v9 localization migration', () => {
     expect(missed).toEqual([]);
   });
 
-  it('produces the complete fixture with its copy in the undetermined language', () => {
+  it('produces the complete fixture with its copy in English', () => {
     const expected: unknown = structuredClone(completeProtocol());
     for (const { path: at, value } of collectLocalizedStrings(expected)) {
-      setAt(expected, at, { und: escapeMessageText(value.en ?? '') });
+      setAt(expected, at, { en: escapeMessageText(value.en ?? '') });
     }
     for (const definition of codebookTypes(expected)) {
-      definition.label = { und: definition.name };
+      definition.label = { en: definition.name };
     }
     for (const definition of codebookVariables(expected)) {
       definition.label = definition.name;
@@ -195,7 +195,7 @@ describe('v8 to v9 localization migration', () => {
     setAt(
       expected,
       [...stagePath(expected, 'narrative'), 'presets', 0, 'highlight', 0],
-      { variable: 'flag', label: { und: 'Flag' } },
+      { variable: 'flag', label: { en: 'Flag' } },
     );
     if (!isRecord(expected) || !Array.isArray(expected.stages)) {
       throw new Error('Fixture has no stages');
@@ -203,7 +203,7 @@ describe('v8 to v9 localization migration', () => {
     expected.stages = expected.stages.filter(
       (stage) => isRecord(stage) && stage.type !== 'LanguageChooser',
     );
-    expected.localization = UNDETERMINED;
+    expected.localization = ENGLISH_ONLY;
 
     expect(migrateStep(schema8Protocol())).toEqual(expected);
   });
@@ -231,8 +231,8 @@ describe('v8 to v9 localization migration', () => {
       const source = getAt(document, at);
       const expectedText =
         typeof source === 'string' ? source : nameBehindLabel(document, at);
-      expect(Object.keys(value)).toEqual(['und']);
-      expect(messageText(value.und ?? '')).toBe(expectedText);
+      expect(Object.keys(value)).toEqual(['en']);
+      expect(messageText(value.en ?? '')).toBe(expectedText);
     }
   });
 
@@ -250,8 +250,8 @@ describe('v8 to v9 localization migration', () => {
         'person',
         'label',
       ]);
-      expect(label).toEqual({ und: escapeMessageText("Friend's {circle}") });
-      expect(isRecord(label) && messageText(String(label.und))).toBe(
+      expect(label).toEqual({ en: escapeMessageText("Friend's {circle}") });
+      expect(isRecord(label) && messageText(String(label.en))).toBe(
         "Friend's {circle}",
       );
     });
@@ -261,7 +261,7 @@ describe('v8 to v9 localization migration', () => {
       setAt(document, ['codebook', 'edge', 'knows', 'name'], '');
       expect(
         getAt(migrateStep(document), ['codebook', 'edge', 'knows', 'label']),
-      ).toEqual({ und: 'knows' });
+      ).toEqual({ en: 'knows' });
     });
 
     it('starts each attribute label as its name, as plain text', () => {
@@ -299,7 +299,7 @@ describe('v8 to v9 localization migration', () => {
       0,
     ];
 
-    it('labels each highlight with its attribute name, in the undetermined language', () => {
+    it('labels each highlight with its attribute name, in English', () => {
       const document = schema8Protocol();
       const preset = presetPath(document);
       setAt(document, [...preset, 'highlight'], ['flag', 'nickname']);
@@ -311,10 +311,10 @@ describe('v8 to v9 localization migration', () => {
 
       const migrated = migrateProtocol(document, 9);
       expect(getAt(migrated, [...preset, 'highlight'])).toEqual([
-        { variable: 'flag', label: { und: 'Flag' } },
+        { variable: 'flag', label: { en: 'Flag' } },
         {
           variable: 'nickname',
-          label: { und: escapeMessageText("Friend's {nickname}") },
+          label: { en: escapeMessageText("Friend's {nickname}") },
         },
       ]);
     });
@@ -330,8 +330,8 @@ describe('v8 to v9 localization migration', () => {
       );
 
       expect(getAt(migrateStep(document), [...preset, 'highlight'])).toEqual([
-        { variable: 'flag', label: { und: 'flag' } },
-        { variable: 'removed', label: { und: 'removed' } },
+        { variable: 'flag', label: { en: 'flag' } },
+        { variable: 'removed', label: { en: 'removed' } },
       ]);
     });
 
@@ -369,13 +369,13 @@ describe('v8 to v9 localization migration', () => {
       delete field.label;
     };
 
-    it('captions a node field that has none with its attribute name, in the undetermined language', () => {
+    it('captions a node field that has none with its attribute name, in English', () => {
       const document = schema8Protocol();
       const field = nodeFieldPath(document, 1);
       removeCaption(document, field);
 
       expect(getAt(migrateProtocol(document, 9), [...field, 'label'])).toEqual({
-        und: 'Nickname',
+        en: 'Nickname',
       });
     });
 
@@ -385,7 +385,7 @@ describe('v8 to v9 localization migration', () => {
       removeCaption(document, field);
 
       expect(getAt(migrateProtocol(document, 9), [...field, 'label'])).toEqual({
-        und: 'Note',
+        en: 'Note',
       });
     });
 
@@ -395,7 +395,7 @@ describe('v8 to v9 localization migration', () => {
       setAt(document, [...field, 'label'], '');
 
       expect(getAt(migrateProtocol(document, 9), [...field, 'label'])).toEqual({
-        und: 'Closeness',
+        en: 'Closeness',
       });
     });
 
@@ -404,7 +404,7 @@ describe('v8 to v9 localization migration', () => {
       const field = nodeFieldPath(document, 1);
 
       expect(getAt(migrateProtocol(document, 9), [...field, 'label'])).toEqual({
-        und: 'Nickname?',
+        en: 'Nickname?',
       });
     });
 
@@ -422,9 +422,9 @@ describe('v8 to v9 localization migration', () => {
       setAt(document, [...missing, 'variable'], 'removed');
 
       const migrated = migrateStep(document);
-      expect(getAt(migrated, [...named, 'label'])).toEqual({ und: 'nickname' });
+      expect(getAt(migrated, [...named, 'label'])).toEqual({ en: 'nickname' });
       expect(getAt(migrated, [...missing, 'label'])).toEqual({
-        und: 'removed',
+        en: 'removed',
       });
     });
 
@@ -440,7 +440,145 @@ describe('v8 to v9 localization migration', () => {
 
       const label = getAt(migrateStep(document), [...field, 'label']);
       expect(label).toEqual({
-        und: escapeMessageText('\\*first\\_name\\* {nick}'),
+        en: escapeMessageText('\\*first\\_name\\* {nick}'),
+      });
+    });
+  });
+
+  describe('blank form field prompts', () => {
+    const fieldPath = (document: unknown, id: string, form: Path) => [
+      ...stagePath(document, id),
+      ...form,
+      'fields',
+      0,
+    ];
+    const egoField = (document: unknown) =>
+      fieldPath(document, 'egoForm', ['form']);
+    const alterField = (document: unknown) =>
+      fieldPath(document, 'alterForm', ['form']);
+    const promptOf = (document: unknown, at: Path) =>
+      getAt(migrateProtocol(document, 9), [...at, 'prompt']);
+
+    it.each([
+      ['an empty prompt', ''],
+      ['a prompt of spaces', '   '],
+      ['a prompt of tabs and line breaks', '\t\n '],
+      ['a prompt of non-breaking spaces', '\u00a0\u00a0'],
+      ['a prompt of zero-width spaces', '\u200b\u200b'],
+    ])('asks with the attribute name for %s', (_name, blank) => {
+      const document = schema8Protocol();
+      const field = alterField(document);
+      setAt(document, [...field, 'prompt'], blank);
+
+      expect(promptOf(document, field)).toEqual({ en: 'Nickname' });
+    });
+
+    it('does so in an ego form, using the ego attribute', () => {
+      const document = schema8Protocol();
+      const field = egoField(document);
+      setAt(document, [...field, 'prompt'], ' ');
+
+      expect(promptOf(document, field)).toEqual({ en: 'EgoName' });
+    });
+
+    it('does so in a name generator form', () => {
+      const document = schema8Protocol();
+      const field = fieldPath(document, 'nameGenerator', ['form']);
+      setAt(document, [...field, 'prompt'], ' ');
+
+      expect(promptOf(document, field)).toEqual({ en: 'Name' });
+    });
+
+    it('does so in an edge form, using the attribute of the edge type', () => {
+      const document = schema8Protocol();
+      const field = fieldPath(document, 'alterEdgeForm', ['form']);
+      setAt(document, [...field, 'prompt'], ' ');
+
+      expect(promptOf(document, field)).toEqual({ en: 'Note' });
+    });
+
+    it('does so in the form of a pedigree person', () => {
+      const document = schema8Protocol();
+      const stage = stagePath(document, 'familyPedigree');
+      const field = [...stage, 'nodeConfig', 'form', 0];
+      setAt(document, [...field, 'prompt'], ' ');
+
+      expect(promptOf(document, field)).toEqual({ en: 'BirthYear' });
+    });
+
+    it('keeps a prompt with text in it, spaces around the text included', () => {
+      const document = schema8Protocol();
+      const field = alterField(document);
+      setAt(document, [...field, 'prompt'], '  Nickname?  ');
+
+      expect(promptOf(document, field)).toEqual({ en: '  Nickname?  ' });
+    });
+
+    it('uses the attribute id when the attribute has no name or is missing', () => {
+      const document = schema8Protocol();
+      const named = alterField(document);
+      const missing = egoField(document);
+      setAt(document, [...named, 'prompt'], ' ');
+      setAt(document, [...missing, 'prompt'], ' ');
+      setAt(
+        document,
+        ['codebook', 'node', 'person', 'variables', 'nickname', 'name'],
+        '  ',
+      );
+      setAt(document, [...missing, 'variable'], 'removed');
+
+      const migrated = migrateStep(document);
+      expect(getAt(migrated, [...named, 'prompt'])).toEqual({
+        en: 'nickname',
+      });
+      expect(getAt(migrated, [...missing, 'prompt'])).toEqual({
+        en: 'removed',
+      });
+    });
+
+    it('escapes the attribute name so markdown shows it as written', () => {
+      const document = schema8Protocol();
+      const field = alterField(document);
+      setAt(document, [...field, 'prompt'], ' ');
+      setAt(
+        document,
+        ['codebook', 'node', 'person', 'variables', 'nickname', 'name'],
+        '*first_name* {nick}',
+      );
+
+      expect(getAt(migrateStep(document), [...field, 'prompt'])).toEqual({
+        en: escapeMessageText('\\*first\\_name\\* {nick}'),
+      });
+    });
+
+    it('migrates to a protocol schema 9 accepts', () => {
+      const document = schema8Protocol();
+      for (const id of ['egoForm', 'alterForm', 'nameGenerator']) {
+        const field = fieldPath(document, id, ['form']);
+        setAt(document, [...field, 'prompt'], ' ');
+      }
+
+      expect(
+        ProtocolSchemaV9.safeParse(migrateProtocol(document, 9)).success,
+      ).toBe(true);
+    });
+
+    it('tells the researcher in the migration notes', () => {
+      expect(migrationV8toV9.notes).toContain('contained only spaces');
+    });
+
+    it('captions a Network Composer field whose caption is only spaces', () => {
+      const document = schema8Protocol();
+      const field = [
+        ...stagePath(document, 'composer'),
+        'nodeForm',
+        'fields',
+        1,
+      ];
+      setAt(document, [...field, 'label'], '   ');
+
+      expect(getAt(migrateProtocol(document, 9), [...field, 'label'])).toEqual({
+        en: 'Nickname',
       });
     });
   });
@@ -463,8 +601,8 @@ describe('v8 to v9 localization migration', () => {
       setAt(document, option, '');
 
       const migrated = migrateProtocol(document, 9);
-      expect(getAt(migrated, [...field, 'hint'])).toEqual({ und: '' });
-      expect(getAt(migrated, option)).toEqual({ und: '' });
+      expect(getAt(migrated, [...field, 'hint'])).toEqual({ en: '' });
+      expect(getAt(migrated, option)).toEqual({ en: '' });
     });
 
     it('leaves out an optional field that may not be empty', () => {
@@ -483,7 +621,7 @@ describe('v8 to v9 localization migration', () => {
       const label = [...stagePath(document, 'information'), 'label'];
       setAt(document, label, '');
 
-      expect(getAt(migrateStep(document), label)).toEqual({ und: '' });
+      expect(getAt(migrateStep(document), label)).toEqual({ en: '' });
       expect(() => migrateProtocol(document, 9)).toThrow(
         MigrationResultInvalidError,
       );
@@ -541,7 +679,7 @@ describe('v8 to v9 localization migration', () => {
  * Every committed protocol at schema 8 or older, brought to schema 8 the way
  * an import does and then migrated to schema 9. The schema 8 documents are
  * what hosts hold today, so each must come out valid, with every localized
- * string in the undetermined language and nothing else about its structure
+ * string in English and nothing else about its structure
  * changed.
  */
 describe('committed schema 8 protocols', () => {
@@ -591,17 +729,17 @@ describe('committed schema 8 protocols', () => {
         result.success,
         JSON.stringify(result.error?.issues, null, 2),
       ).toBe(true);
-      expect(migrated.localization).toEqual(UNDETERMINED);
+      expect(migrated.localization).toEqual(ENGLISH_ONLY);
       expect(stageOutline(migrated)).toEqual(stageOutline(schema8));
       expect(Object.keys(migrated.codebook.node ?? {})).toEqual(
         Object.keys(getAt(schema8, ['codebook', 'node']) ?? {}),
       );
 
       for (const { path: at, value } of collectLocalizedStrings(migrated)) {
-        expect(Object.keys(value)).toEqual(['und']);
+        expect(Object.keys(value)).toEqual(['en']);
         const source = getAt(schema8, at);
         if (typeof source === 'string') {
-          expect(messageText(value.und ?? '')).toBe(source);
+          expect(messageText(value.en ?? '')).toBe(source);
         }
       }
     },

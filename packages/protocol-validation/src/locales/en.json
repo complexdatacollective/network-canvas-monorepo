@@ -291,9 +291,17 @@
     "defaultMessage": "Attribute names can now use letters from any language, as well as spaces and punctuation. Existing attribute names are not changed.",
     "description": "One complete Markdown bullet in schema 9 migration approval guidance: attributeNames. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
   },
+  "protocolValidation.migrationNotes.schema9.blankFieldQuestions": {
+    "defaultMessage": "A form field whose question was empty or contained only spaces now uses the name of its attribute as the question, because every question must contain some text.",
+    "description": "One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. A form field is one question in a form; its attribute is the piece of information the question collects."
+  },
   "protocolValidation.migrationNotes.schema9.contradictoryPassphraseRules": {
     "defaultMessage": "If an Anonymisation stage required a minimum passphrase length longer than its maximum, no participant could choose a passphrase, so both lengths are removed and the default minimum length applies.",
     "description": "One complete Markdown bullet in schema 9 migration approval guidance: contradictoryPassphraseRules. Anonymisation is the name of the interface (stage type) that asks a participant to choose a passphrase protecting some of their answers; the lengths are the shortest and longest passphrase the researcher allowed. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema9.defaultLanguage": {
+    "defaultMessage": "Text that participants see is now recorded as English, because older protocols do not record which language they use. If your protocol is written in another language, you can change it on the Languages page in Architect.",
+    "description": "One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. \"Languages\" must match the name of the Architect page where languages are managed."
   },
   "protocolValidation.migrationNotes.schema9.encryptedAttributeRules": {
     "defaultMessage": "Skip logic and filters can no longer compare the answers to an encrypted attribute. Rules are checked without the participant's passphrase, so under schema 8 a rule like this only ever compared the encrypted text, never the answer. These rules are removed. Rules that only check whether an encrypted attribute is answered still work, so they are kept. Skip logic left with no rules is removed, so its stage now always appears: a stage that was shown only when a removed rule matched may never have appeared under schema 8. A filter left with no rules is removed, so it no longer limits what its stage or panel shows. Where other rules remain, they may now match differently: if all rules had to match, they now match at least as often as before; if any one rule could match, at most as often. Check the stages that used the removed rules. Rules in a panel that lists people from an external data file are kept, because that data is not encrypted.",
@@ -302,10 +310,6 @@
   "protocolValidation.migrationNotes.schema9.encryptedAttributes": {
     "defaultMessage": "Encrypted attributes are no longer experimental: the Anonymisation interface is always available, and an attribute marked as encrypted is always encrypted. If this protocol marked attributes as encrypted without turning on the experimental \"Encrypted Attributes\" feature, those attributes are no longer marked, so they keep being collected without encryption.",
     "description": "One complete Markdown bullet in schema 9 migration approval guidance: encryptedAttributes. \"Encrypted Attributes\" is the name of the former experimental feature switch in Architect. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
-  },
-  "protocolValidation.migrationNotes.schema9.unspecifiedLanguage": {
-    "defaultMessage": "Text that participants see is now marked as written in \"Unspecified language\", because older protocols do not record which language they use. You can change it to the language it is actually written in on the Languages page in Architect.",
-    "description": "One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. \"Unspecified language\" must match the name Network Canvas shows for text with no language, and \"Languages\" must match the name of the Architect page where languages are managed."
   },
   "protocolValidation.rule.additionalAttributes": {
     "defaultMessage": "Fixed attributes",

@@ -47,7 +47,7 @@ const payloadWith = (encryption?: NcEncryptionHeader) =>
       lastUpdated: '2026-01-01T00:00:00.000Z',
       localePreference: null,
       locale: null,
-      localeOptions: [getLocaleMetadata('und')],
+      localeOptions: [getLocaleMetadata('en')],
       network: {
         ego: {
           [entityPrimaryKeyProperty]: 'ego-1',
@@ -64,15 +64,15 @@ const payloadWith = (encryption?: NcEncryptionHeader) =>
       importedAt: '2026-01-01T00:00:00.000Z',
       name: 'Locked answers protocol',
       schemaVersion: 9,
-      localization: { defaultLocale: 'und', locales: ['und'] },
+      localization: { defaultLocale: 'en', locales: ['en'] },
       codebook: { ego: { variables: {} }, node: {}, edge: {} },
       assets: [],
       stages: [
         {
           id: 'locked-stage',
           type: 'Information',
-          label: { und: 'Locked stage' },
-          title: { und: 'Locked stage' },
+          label: { en: 'Locked stage' },
+          title: { en: 'Locked stage' },
           items: [],
         },
       ],

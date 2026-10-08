@@ -74,7 +74,7 @@ model Protocol {
   // default is the declaration every protocol migrated from a schema without
   // languages carries, so rows stored before this column existed, and rows an
   // older server inserts during a rolling deploy, read as that.
-  localization    Json        @default("{\"defaultLocale\":\"und\",\"locales\":[\"und\"]}")
+  localization    Json        @default("{\"defaultLocale\":\"en\",\"locales\":[\"en\"]}")
   assets          Asset[]
   interviews      Interview[]
   // The protocol's `experiments`. A schema 8 row's also tell the deploy-time

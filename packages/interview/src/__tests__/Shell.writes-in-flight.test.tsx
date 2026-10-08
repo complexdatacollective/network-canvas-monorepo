@@ -55,7 +55,7 @@ const payload = {
     lastUpdated: '2026-01-01T00:00:00.000Z',
     localePreference: null,
     locale: null,
-    localeOptions: [getLocaleMetadata('und')],
+    localeOptions: [getLocaleMetadata('en')],
     network: {
       ego: {
         [entityPrimaryKeyProperty]: 'ego-1',
@@ -71,7 +71,7 @@ const payload = {
     importedAt: '2026-01-01T00:00:00.000Z',
     name: 'Writes-in-flight protocol',
     schemaVersion: 9,
-    localization: { defaultLocale: 'und', locales: ['und'] },
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {
       ego: {
         variables: {
@@ -86,15 +86,15 @@ const payload = {
       {
         id: 'first-stage',
         type: 'Information',
-        label: { und: 'First stage' },
-        title: { und: 'First stage' },
+        label: { en: 'First stage' },
+        title: { en: 'First stage' },
         items: [],
       },
       {
         id: 'agreed-stage',
         type: 'Information',
-        label: { und: 'Agreed stage' },
-        title: { und: 'Agreed stage' },
+        label: { en: 'Agreed stage' },
+        title: { en: 'Agreed stage' },
         items: [],
         skipLogic: {
           action: 'SKIP',
@@ -117,8 +117,8 @@ const payload = {
       {
         id: 'last-stage',
         type: 'Information',
-        label: { und: 'Last stage' },
-        title: { und: 'Last stage' },
+        label: { en: 'Last stage' },
+        title: { en: 'Last stage' },
         items: [],
       },
     ],
