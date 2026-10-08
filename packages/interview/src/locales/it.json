@@ -255,6 +255,7 @@
   "interview.interfaces.discardChanges": "Scarta le modifiche",
   "interview.interfaces.discardChangesDescription": "Questo modulo contiene dati non validi, quindi non può essere salvato. Se continui, verrà reimpostato e le modifiche andranno perse. Vuoi scartare le modifiche?",
   "interview.interfaces.discardChangesTitle": "Vuoi scartare le modifiche?",
+  "interview.interfaces.discardOvertakenEditDescription": "Annulla o Ripeti ha cambiato una risposta mentre la stavi modificando, quindi la modifica non è stata salvata. Per mantenerla, cambia di nuovo quella risposta. Se continui, la modifica andrà persa.",
   "interview.interfaces.dragToReposition": "Trascina per riposizionare",
   "interview.interfaces.drawEdge": "Traccia un legame",
   "interview.interfaces.drawingControls": "Controlli di disegno",

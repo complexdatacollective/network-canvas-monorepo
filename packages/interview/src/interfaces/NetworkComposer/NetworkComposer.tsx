@@ -3,7 +3,7 @@
 import { Toggle } from '@base-ui/react/toggle';
 import { ToggleGroup } from '@base-ui/react/toggle-group';
 import { AnimatePresence, useReducedMotion } from 'motion/react';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -17,7 +17,6 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   isNetworkComposerStageMetadata,
-  type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
 
@@ -44,7 +43,7 @@ import {
   getStageMetadata,
 } from '../../selectors/session';
 import { getCodebook } from '../../store/modules/protocol';
-import { updateNode, updateStageMetadata } from '../../store/modules/session';
+import { updateStageMetadata } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
@@ -64,14 +63,6 @@ import { useComposerStore, createComposerStore } from './useComposerStore';
 import { createUndoStore } from './useUndoStore';
 
 type NetworkComposerProps = StageProps<'NetworkComposer'>;
-
-const isPosition = (value: unknown): value is { x: number; y: number } =>
-  typeof value === 'object' &&
-  value !== null &&
-  'x' in value &&
-  'y' in value &&
-  typeof value.x === 'number' &&
-  typeof value.y === 'number';
 
 const hasGroupValue = (raw: unknown, value: string): boolean => {
   if (raw == null) return false;
@@ -121,8 +112,48 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     ? 'AUTOMATIC'
     : 'MANUAL';
 
-  const nodes = useStageSelector(getNetworkNodesForType);
-  const edges = useStageSelector(getNetworkEdges);
+  // People and relationships whose deletion has been asked for. A deletion
+  // waits its turn in the history, so until it is made they are shown as
+  // gone, and cannot be selected again.
+  const [deleting, setDeleting] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const storedNodes = useStageSelector(getNetworkNodesForType);
+  const storedEdges = useStageSelector(getNetworkEdges);
+  const nodes = useMemo(
+    () =>
+      deleting.size === 0
+        ? storedNodes
+        : storedNodes.filter(
+            (node) => !deleting.has(node[entityPrimaryKeyProperty]),
+          ),
+    [storedNodes, deleting],
+  );
+  const edges = useMemo(
+    () =>
+      deleting.size === 0
+        ? storedEdges
+        : storedEdges.filter(
+            (edge) =>
+              !deleting.has(edge[entityPrimaryKeyProperty]) &&
+              !deleting.has(edge.from) &&
+              !deleting.has(edge.to),
+          ),
+    [storedEdges, deleting],
+  );
+  const deleteEntities = useCallback(
+    (ids: readonly string[], remove: () => Promise<void>) => {
+      setDeleting((current) => new Set([...current, ...ids]));
+      void remove().finally(() => {
+        setDeleting((current) => {
+          const next = new Set(current);
+          for (const id of ids) next.delete(id);
+          return next;
+        });
+      });
+    },
+    [],
+  );
 
   const codebook = useSelector(getCodebook);
   const nodeLabel =
@@ -289,40 +320,17 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
 
   const handleNodeDragEnd = useCallback(
     (nodeId: string, position: { x: number; y: number }) => {
-      const node = nodes.find((n) => n[entityPrimaryKeyProperty] === nodeId);
-      const rawPrev = node?.[entityAttributesProperty]?.[layoutVariable];
-      const previous = isPosition(rawPrev) ? rawPrev : null;
-
-      if (previous !== null) {
-        void actions.repositionNode(nodeId, position, previous);
-      } else {
-        // Node has no persisted layout position yet (e.g. auto-positioned by
-        // the simulation). No meaningful prior position to restore, so fall
-        // back to a direct update without an undo entry.
-        void dispatch(
-          updateNode({
-            nodeId,
-            attributePatch: {
-              set: { [layoutVariable]: position },
-              unset: [],
-            },
-            currentStep,
-          }),
-        );
-      }
+      void actions.repositionNode(nodeId, position);
     },
-    [actions, nodes, dispatch, layoutVariable, currentStep],
+    [actions],
   );
 
   // Nodes are added by name from the tool palette (not by tapping the canvas),
   // each landing on the next free grid cell from the top-left.
   const handleAddNode = useCallback(
     async (name: string) => {
-      const occupied = nodes
-        .map((n) => n[entityAttributesProperty]?.[layoutVariable])
-        .filter(isPosition);
       try {
-        await actions.createNodeAt(name, nextGridPosition(occupied));
+        await actions.createNodeAt(name, nextGridPosition);
         return true;
       } catch (error) {
         showToast({
@@ -333,7 +341,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         return false;
       }
     },
-    [nodes, layoutVariable, actions, showToast, intl],
+    [actions, showToast, intl],
   );
 
   const handleBackgroundTap = useCallback(() => {
@@ -401,30 +409,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
       // Complete: tap on a different node — toggle the edge undo-aware.
       const source = pendingEdgeSource;
       setPendingEdgeSource(null);
-
-      // Read live edges at call time to avoid stale-closure bugs.
-      let currentEdges: NcEdge[] = [];
-      dispatch((_, getState) => {
-        const { session: sessionState } = getState() as {
-          session: { network: { edges: NcEdge[] } };
-        };
-        currentEdges = sessionState.network.edges;
-      });
-
-      const existing = currentEdges.find(
-        (e) =>
-          e.type === edgeType &&
-          ((e.from === source && e.to === tappedId) ||
-            (e.from === tappedId && e.to === source)),
-      );
-
-      if (existing) {
-        actions.deleteEdgeById(existing[entityPrimaryKeyProperty]);
-      } else {
-        await actions.connect(source, tappedId, edgeType);
-      }
+      await actions.toggleEdge(source, tappedId, edgeType);
     },
-    [composerStore, dispatch, actions],
+    [composerStore, actions],
   );
 
   const handleEdgeTap = useCallback(
@@ -476,15 +463,16 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
           deselectDeleted,
         } = composerStore.getState();
         if (nodeIds.size > 0) {
-          actions.deleteNodesById([...nodeIds]);
+          const ids = [...nodeIds];
+          deleteEntities(ids, () => actions.deleteNodesById(ids));
           deselectDeleted();
         } else if (edgeId !== null) {
-          actions.deleteEdgeById(edgeId);
+          deleteEntities([edgeId], () => actions.deleteEdgeById(edgeId));
           deselectDeleted();
         }
       }
     },
-    [composerStore, undoStore, actions],
+    [composerStore, undoStore, actions, deleteEntities],
   );
 
   const handleToggleAutomaticLayout = useCallback(
@@ -824,9 +812,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
             }
             onDelete={(id) => {
               if (editor.kind === 'node') {
-                actions.deleteNodeById(id);
+                deleteEntities([id], () => actions.deleteNodeById(id));
               } else {
-                actions.deleteEdgeById(id);
+                deleteEntities([id], () => actions.deleteEdgeById(id));
               }
               composerStore.getState().deselectDeleted();
             }}

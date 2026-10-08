@@ -414,3 +414,79 @@ export const UnsavedEditInDrawer: Story = {
     );
   },
 };
+
+const buildUndoInDrawer = () => {
+  const { si, quickAddVar, layoutVar } = createComposerInterview(12);
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  si.addStage('NetworkComposer', {
+    quickAdd: quickAddVar.id,
+    layoutVariable: layoutVar.id,
+    nodeForm: { fields: [{ component: 'Number', label: 'Age' }] },
+  });
+  si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
+  return si;
+};
+
+/**
+ * Undo and redo with the drawer open. An answer the participant has not
+ * changed since it was saved follows the undo. An edit not saved yet when an
+ * undo changes its answer stays on screen but is not saved over the undo:
+ * closing the drawer asks before discarding it, and changing the answer again
+ * saves it.
+ */
+export const UndoInDrawer: Story = {
+  render: () => <NetworkComposerStoryWrapper buildFn={buildUndoInDrawer} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const openAlex = async () => {
+      await userEvent.click(
+        await canvas.findByRole('button', { name: /alex/i }),
+      );
+      return screen.findByLabelText(/age/i);
+    };
+    const closeDrawer = () =>
+      userEvent.click(screen.getByRole('button', { name: 'Close' }));
+    const overtaken = /undo or redo changed an answer/i;
+
+    await userEvent.click(
+      await canvas.findByRole('button', { name: /add node/i }),
+    );
+    await userEvent.type(
+      await screen.findByRole('textbox', { name: /name/i }),
+      'Alex{Enter}',
+    );
+    await userEvent.keyboard('{Escape}');
+
+    // Closing the drawer saves the age before the undo.
+    await userEvent.type(await openAlex(), '30');
+    await closeDrawer();
+    const age = await openAlex();
+    await expect(age).toHaveValue(30);
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Undo' }));
+    await waitFor(() => expect(age).toHaveValue(null));
+    await userEvent.click(canvas.getByRole('button', { name: 'Redo' }));
+    await waitFor(() => expect(age).toHaveValue(30));
+
+    // An undo pressed before the new age is saved overtakes it.
+    await userEvent.clear(age);
+    await userEvent.type(age, '31');
+    await userEvent.click(canvas.getByRole('button', { name: 'Undo' }));
+    await closeDrawer();
+    await expect(await screen.findByText(overtaken)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Keep changes' }));
+    await waitFor(() =>
+      expect(screen.queryByText(overtaken)).not.toBeInTheDocument(),
+    );
+    await expect(age).toHaveValue(31);
+
+    // Changing the answer again saves it.
+    await userEvent.clear(age);
+    await userEvent.type(age, '32');
+    await closeDrawer();
+    await waitFor(() =>
+      expect(screen.queryByLabelText(/age/i)).not.toBeInTheDocument(),
+    );
+    await expect(await openAlex()).toHaveValue(32);
+  },
+};
