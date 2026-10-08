@@ -14,6 +14,8 @@ import Form from '@codaco/fresco-ui/form/Form';
 import type { NcNode } from '@codaco/shared-consts';
 
 const fixtures = vi.hoisted(() => {
+  const nameValidation: Record<string, unknown> = {};
+  const aliasValidation: Record<string, unknown> = {};
   const codebook = {
     ego: { variables: {} },
     node: {
@@ -25,12 +27,19 @@ const fixtures = vi.hoisted(() => {
             name: 'name',
             type: 'text' as const,
             component: 'Text' as const,
-            validation: { required: true, unique: true },
+            validation: nameValidation,
           },
           alias: {
             name: 'Alias',
             type: 'text' as const,
             component: 'Text' as const,
+            validation: aliasValidation,
+          },
+          secret: {
+            name: 'Secret',
+            type: 'text' as const,
+            component: 'Text' as const,
+            encrypted: true,
           },
         },
       },
@@ -40,6 +49,14 @@ const fixtures = vi.hoisted(() => {
 
   return {
     codebook,
+    nameValidation,
+    aliasValidation,
+    passphrase: {
+      isEnabled: false,
+      passphrase: undefined,
+      passphraseInvalid: false,
+      submitPassphrase: () => Promise.resolve(false),
+    },
     nodeForm: [{ variable: 'alias', prompt: 'What else do they go by?' }],
     localNodes: new Map<string, NcNode>(),
     validationContext: {
@@ -87,6 +104,24 @@ vi.mock('../../../../store/modules/protocol', async (importOriginal) => {
   };
 });
 
+// Decrypting stored values for validation reads the passphrase from Redux;
+// these people have none to decrypt. FamilyPedigree.encryption.test.tsx
+// checks the name against encrypted ones.
+vi.mock('../../../../forms/useValidationNetwork', async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import('../../../../forms/useValidationNetwork')
+    >();
+  return {
+    ...actual,
+    useValidationNetwork: ({ network }: { network: unknown }) => ({ network }),
+  };
+});
+
+vi.mock('../../../Anonymisation/usePassphrase', () => ({
+  usePassphrase: () => fixtures.passphrase,
+}));
+
 vi.mock('../../../../selectors/forms', async (importOriginal) => {
   const actual =
     await importOriginal<typeof import('../../../../selectors/forms')>();
@@ -118,11 +153,15 @@ function renderForm(
 describe('PersonNameField', () => {
   beforeEach(() => {
     fixtures.localNodes = new Map();
-    const validation = fixtures.codebook.node.person.variables.name
-      .validation as Record<string, unknown>;
-    validation.required = true;
-    validation.unique = true;
-    delete validation.sameAs;
+    for (const validation of [
+      fixtures.nameValidation,
+      fixtures.aliasValidation,
+    ]) {
+      for (const rule of Object.keys(validation)) delete validation[rule];
+    }
+    fixtures.nameValidation.required = true;
+    fixtures.nameValidation.unique = true;
+    fixtures.passphrase.isEnabled = false;
   });
 
   it('applies the label variable required rule', async () => {
@@ -184,9 +223,7 @@ describe('PersonNameField', () => {
   });
 
   it('allows multiple optional pedigree names to be left blank', async () => {
-    const validation = fixtures.codebook.node.person.variables.name
-      .validation as Record<string, unknown>;
-    validation.required = false;
+    fixtures.nameValidation.required = false;
     fixtures.localNodes = new Map([
       [
         'unnamed',
@@ -313,10 +350,8 @@ describe('PersonNameField', () => {
   });
 
   it('applies comparison rules within the current person namespace', async () => {
-    const validation = fixtures.codebook.node.person.variables.name
-      .validation as Record<string, unknown>;
-    validation.unique = false;
-    validation.sameAs = 'alias';
+    fixtures.nameValidation.unique = false;
+    fixtures.nameValidation.sameAs = 'alias';
     const user = userEvent.setup();
     const onSubmit = renderForm(
       <FieldNamespace prefix="parent">
@@ -333,5 +368,43 @@ describe('PersonNameField', () => {
       /same as/i,
     );
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+});
+
+describe('PersonNameField offering the passphrase', () => {
+  beforeEach(() => {
+    fixtures.localNodes = new Map();
+    for (const validation of [
+      fixtures.nameValidation,
+      fixtures.aliasValidation,
+    ]) {
+      for (const rule of Object.keys(validation)) delete validation[rule];
+    }
+    fixtures.passphrase.isEnabled = true;
+  });
+
+  const passphraseButton = () =>
+    screen.queryByRole('button', { name: /^enter your passphrase$/i });
+
+  it('offers it when the name is compared with a protected answer of the person being edited', () => {
+    fixtures.nameValidation.differentFrom = 'secret';
+    renderForm(<PersonNameField label="Name" currentEntityId="existing" />);
+
+    expect(passphraseButton()).toBeVisible();
+  });
+
+  it('offers it when a node form answer is compared with a protected answer of the person being edited', () => {
+    fixtures.aliasValidation.sameAs = 'secret';
+    renderForm(<PersonNameField label="Name" currentEntityId="existing" />);
+
+    expect(passphraseButton()).toBeVisible();
+  });
+
+  it('does not offer it for a new person, who has no protected answers to compare with', () => {
+    fixtures.nameValidation.differentFrom = 'secret';
+    fixtures.aliasValidation.sameAs = 'secret';
+    renderForm(<PersonNameField label="Name" />);
+
+    expect(passphraseButton()).not.toBeInTheDocument();
   });
 });

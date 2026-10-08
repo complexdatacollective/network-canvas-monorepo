@@ -355,7 +355,9 @@ export default function QuickAddField({
         onPressedChange={(pressed) => {
           if (pressed) {
             showInput();
-          } else {
+          } else if (!isFormSubmitting) {
+            // While a name is being checked and added the field stays open,
+            // so a refusal is shown, and the name kept, where it was entered.
             resetField();
           }
         }}

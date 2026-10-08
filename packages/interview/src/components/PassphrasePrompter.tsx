@@ -9,11 +9,6 @@ import {
 import { useCallback, useEffect, useId, useState } from 'react';
 
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
-import Field from '@codaco/fresco-ui/form/Field/Field';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
-import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
-import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import {
   Tooltip,
   TooltipContent,
@@ -25,7 +20,7 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import { usePassphrase } from '../interfaces/Anonymisation/usePassphrase';
 import type { NavigationOrientation } from '../Shell';
-import Overlay from './Overlay';
+import PassphraseOverlay from './PassphraseOverlay';
 
 const transition: Transition = {
   type: 'spring',
@@ -45,24 +40,14 @@ export default function PassphrasePrompter({
   className,
 }: PassphrasePrompterProps) {
   const intl = useAppIntl();
-  const { setPassphrase, showPassphrasePrompter, passphraseInvalid } =
-    usePassphrase();
+  const { showPassphrasePrompter, passphraseInvalid } = usePassphrase();
   const [showPassphraseOverlay, setShowPassphraseOverlay] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const descriptionId = useId();
 
   const willChange = useWillChange();
 
-  const handleSetPassphrase = useCallback(
-    (passphrase: string) => {
-      if (!passphrase) {
-        return;
-      }
-      setPassphrase(passphrase);
-      setShowPassphraseOverlay(false);
-    },
-    [setPassphrase],
-  );
+  const closeOverlay = useCallback(() => setShowPassphraseOverlay(false), []);
 
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout> | null = null;
@@ -146,70 +131,10 @@ export default function PassphrasePrompter({
         </Tooltip>
       </TooltipProvider>
       <PassphraseOverlay
-        handleSubmit={handleSetPassphrase}
         show={showPassphraseOverlay}
-        onClose={() => setShowPassphraseOverlay(false)}
+        onAccepted={closeOverlay}
+        onClose={closeOverlay}
       />
     </>
   );
 }
-
-const PassphraseOverlay = ({
-  handleSubmit,
-  show,
-  onClose,
-}: {
-  handleSubmit: (passphrase: string) => void;
-  show: boolean;
-  onClose: () => void;
-}) => {
-  const intl = useAppIntl();
-  const { passphraseInvalid } = usePassphrase();
-  const formId = useId();
-
-  const onSubmitForm = (values: unknown) => {
-    const fields = values as { passphrase: string };
-    handleSubmit(fields.passphrase);
-    return { success: true };
-  };
-
-  return (
-    <FormStoreProvider>
-      <Overlay
-        show={show}
-        title={intl.formatMessage(messages.enterPassphrase)}
-        onClose={onClose}
-        footer={
-          <SubmitButton form={formId}>
-            <AppMessage message={messages.submitPassphrase} />
-          </SubmitButton>
-        }
-      >
-        <div className="flex flex-col">
-          {passphraseInvalid && (
-            <p className="bg-accent/50 rounded p-6 text-white">
-              <AppMessage message={messages.decryptFailed} />
-            </p>
-          )}
-          <p>
-            <AppMessage message={messages.passphraseHelp} />
-          </p>
-          <FormWithoutProvider
-            id={formId}
-            className="mt-6"
-            onSubmit={onSubmitForm}
-          >
-            <Field
-              component={InputField}
-              name="passphrase"
-              label={intl.formatMessage(messages.passphrase)}
-              placeholder={intl.formatMessage(messages.passphrasePlaceholder)}
-              required
-              autoFocus
-            />
-          </FormWithoutProvider>
-        </div>
-      </Overlay>
-    </FormStoreProvider>
-  );
-};

@@ -104,6 +104,7 @@ describe('useComposerActions', () => {
           subjectType: NODE_TYPE,
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
+          useEncryption: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -142,6 +143,7 @@ describe('useComposerActions', () => {
           subjectType: NODE_TYPE,
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
+          useEncryption: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -191,6 +193,7 @@ describe('useComposerActions', () => {
           subjectType: NODE_TYPE,
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
+          useEncryption: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -244,6 +247,7 @@ describe('useComposerActions', () => {
           subjectType: NODE_TYPE,
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
+          useEncryption: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -297,6 +301,7 @@ describe('useComposerActions', () => {
           subjectType: NODE_TYPE,
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
+          useEncryption: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -345,6 +350,7 @@ describe('useComposerActions', () => {
           subjectType: NODE_TYPE,
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
+          useEncryption: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -417,6 +423,7 @@ describe('useComposerActions', () => {
           subjectType: NODE_TYPE,
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
+          useEncryption: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -464,6 +471,7 @@ describe('useComposerActions', () => {
           subjectType: NODE_TYPE,
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
+          useEncryption: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -529,6 +537,7 @@ describe('useComposerActions', () => {
           subjectType: NODE_TYPE,
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
+          useEncryption: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -593,6 +602,7 @@ describe('useComposerActions', () => {
           subjectType: NODE_TYPE,
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
+          useEncryption: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<
@@ -671,6 +681,7 @@ describe('useComposerActions', () => {
           subjectType: NODE_TYPE,
           quickAdd: QUICK_ADD_VAR,
           layoutVariable: LAYOUT_VAR,
+          useEncryption: false,
           currentStep: 0,
           undoStore,
           dispatch: store.dispatch as Parameters<

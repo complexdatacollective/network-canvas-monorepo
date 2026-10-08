@@ -95,8 +95,11 @@ export function applyEntityAttributePatch(
     delete nextSecureAttributes[key];
   }
 
+  // Secure metadata describes the stored value, so a newly written value
+  // carries metadata only when `secureSet` supplies it for that write.
   for (const [key, value] of Object.entries(patch.set)) {
     writeOwnProperty(nextAttributes, key, value);
+    delete nextSecureAttributes[key];
   }
 
   for (const [key, value] of Object.entries(secureSet ?? {})) {

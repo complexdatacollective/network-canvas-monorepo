@@ -15,6 +15,7 @@ import {
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
+import ui from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
 import NarrativePedigreeView from './NarrativePedigreeView';
 
@@ -206,7 +207,7 @@ const codebook = {
 
 function makeStore() {
   return configureStore({
-    reducer: { protocol, session },
+    reducer: { protocol, session, ui },
     preloadedState: {
       protocol: {
         codebook,

@@ -97,6 +97,37 @@ describe('applyEntityAttributePatch', () => {
     });
   });
 
+  it('drops secure metadata when an attribute is replaced by a plain value', () => {
+    // Without this, the plaintext would keep the previous ciphertext's iv and
+    // salt and be read back as ciphertext, which can never decrypt.
+    const result = applyEntityAttributePatch(
+      { name: [1, 2, 3], other: [4, 5] },
+      {
+        name: { iv: [1], salt: [2] },
+        other: { iv: [3], salt: [4] },
+      },
+      { set: { name: 'Alice' }, unset: [] },
+    );
+
+    expect(result.attributes).toStrictEqual({ name: 'Alice', other: [4, 5] });
+    expect(result.secureAttributes).toStrictEqual({
+      other: { iv: [3], salt: [4] },
+    });
+  });
+
+  it('replaces secure metadata when an attribute is re-encrypted', () => {
+    const result = applyEntityAttributePatch(
+      { name: [1, 2, 3] },
+      { name: { iv: [1], salt: [2] } },
+      { set: { name: [7, 8, 9] }, unset: [] },
+      { name: { iv: [5], salt: [6] } },
+    );
+
+    expect(result.secureAttributes).toStrictEqual({
+      name: { iv: [5], salt: [6] },
+    });
+  });
+
   it('collapses empty secure metadata to undefined', () => {
     const result = applyEntityAttributePatch(
       { encrypted: [1, 2, 3] },

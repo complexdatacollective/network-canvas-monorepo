@@ -8,7 +8,11 @@ import type { DragMetadata, DropCallback } from '@codaco/fresco-ui/dnd/types';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { Panel as PanelType } from '@codaco/protocol-validation';
-import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 import Loading from '../../../components/Loading';
 import NodeList from '../../../components/NodeList';
@@ -16,7 +20,11 @@ import Panel from '../../../components/Panel';
 import useExternalData from '../../../hooks/useExternalData';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import { getPanelNodes } from '../../../selectors/name-generator';
+import { getCodebookVariablesForSubjectType } from '../../../selectors/protocol';
 import { getStageSubject } from '../../../selectors/session';
+import PassphraseNotice from '../../Anonymisation/PassphraseNotice';
+import { usePassphrase } from '../../Anonymisation/usePassphrase';
+import { writesEncryptedValue } from '../../Anonymisation/utils';
 import { interfaceMessages } from '../../messages';
 import ExternalNodeItem from './ExternalNodeItem';
 
@@ -56,6 +64,27 @@ function NodePanel(props: NodePanelProps) {
   const isExternalData = panelConfig.dataSource !== 'existing';
 
   const nodes = useStageSelector(getPanelNodes(panelConfig, externalData));
+
+  // Adding a person from external data stores its values, and those of
+  // encrypted variables can only be stored once a working passphrase is in
+  // force.
+  const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
+  const { passphrase, passphraseInvalid, requirePassphrase, isEnabled } =
+    usePassphrase();
+  const needsPassphrase =
+    isExternalData &&
+    (!passphrase || passphraseInvalid) &&
+    nodes.some((node) =>
+      writesEncryptedValue(
+        node[entityAttributesProperty],
+        stageVariables,
+        isEnabled,
+      ),
+    );
+
+  useEffect(() => {
+    if (needsPassphrase) requirePassphrase();
+  }, [needsPassphrase, requirePassphrase]);
 
   // Because the index is used to determine whether node originated in this list
   // we need to supply an index for the unfiltered list for externalData.
@@ -138,6 +167,8 @@ function NodePanel(props: NodePanelProps) {
             <AppMessage message={interfaceMessages.externalDataUnavailable} />
           </Paragraph>
         </div>
+      ) : needsPassphrase ? (
+        <PassphraseNotice status="locked" className="flex-1" />
       ) : (
         <NodeList
           items={nodes}

@@ -2,16 +2,20 @@
 
 import { ArrowRight } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useContext, useEffect, useRef } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
+import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import PasswordField from '@codaco/fresco-ui/form/fields/PasswordField';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
-import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
+import FormStoreProvider, {
+  FormStoreContext,
+} from '@codaco/fresco-ui/form/store/formStoreProvider';
+import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Surface, { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import {
@@ -22,6 +26,7 @@ import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 
 import EncryptionBackground from '../../components/EncryptedBackground';
+import { submitRegisteredForm } from '../../forms/submitRegisteredForm';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import { useCelebrate } from '../../hooks/useCelebrate';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
@@ -42,10 +47,11 @@ function AnonymisationInner(props: AnonymisationProps) {
   } = props;
   const minLength = validation?.minLength;
   const maxLength = validation?.maxLength;
-  const { passphrase, setPassphrase } = usePassphrase();
+  const { passphrase, submitPassphrase } = usePassphrase();
   const celebrate = useCelebrate(alertRef);
 
   const validateForm = useFormStore((state) => state.validateForm);
+  const formStore = useContext(FormStoreContext);
 
   useEffect(() => {
     if (passphrase) {
@@ -66,23 +72,44 @@ function AnonymisationInner(props: AnonymisationProps) {
     // in flight and would block a genuinely valid direct-Next attempt.
     const valid = await validateForm();
 
-    // requestSubmit (NOT native submit()) so the React onSubmit handler runs
-    // and its preventDefault applies — native submit() bypasses it entirely
-    // and performs a real GET navigation to `/?passphrase=…`, throwing the
-    // participant out of the interview.
-    formRef.current?.requestSubmit();
+    if (!valid || !formStore) {
+      // requestSubmit (NOT native submit()) so the React onSubmit handler runs
+      // and its preventDefault applies — native submit() bypasses it entirely
+      // and performs a real GET navigation to `/?passphrase=…`, throwing the
+      // participant out of the interview.
+      formRef.current?.requestSubmit();
+      return false;
+    }
 
-    return valid;
+    // Leaving waits for the passphrase to be checked, so a rejected one keeps
+    // the participant here with the error rather than moving on without it.
+    return submitRegisteredForm(formStore);
   });
 
-  const handleSetPassphrase = useCallback(
-    (values: unknown) => {
-      const fields = values as { passphrase: string };
-      setPassphrase(fields.passphrase);
+  const handleSetPassphrase: FormSubmitHandler = useCallback(
+    async ({ passphrase: candidate }) => {
+      if (typeof candidate !== 'string') {
+        return {
+          success: false,
+          formErrors: [createMessageError(runtimeMessages.submissionFailed)],
+        };
+      }
+
+      if (!(await submitPassphrase(candidate))) {
+        return {
+          success: false,
+          fieldErrors: {
+            passphrase: [
+              createMessageError(runtimeMessages.passphraseIncorrect),
+            ],
+          },
+        };
+      }
+
       updateReady(true);
       return { success: true };
     },
-    [setPassphrase, updateReady],
+    [submitPassphrase, updateReady],
   );
 
   return (
@@ -151,6 +178,7 @@ function AnonymisationInner(props: AnonymisationProps) {
                         label={intl.formatMessage(runtimeMessages.passphrase)}
                         required
                         autoFocus
+                        suppressPasswordManager
                         {...(minLength !== undefined && { minLength })}
                         {...(maxLength !== undefined && { maxLength })}
                       />
@@ -165,6 +193,7 @@ function AnonymisationInner(props: AnonymisationProps) {
                         )}
                         required
                         sameAs="passphrase"
+                        suppressPasswordManager
                         {...(minLength !== undefined && { minLength })}
                         {...(maxLength !== undefined && { maxLength })}
                       />

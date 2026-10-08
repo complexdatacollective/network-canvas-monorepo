@@ -205,9 +205,11 @@ export default function PedigreeView({
 
     const name = typeof result.name === 'string' ? result.name : '';
 
+    // A new person: the form showed no stored values.
     const formPatchResult = formValuesToAttributePatch(
       result,
       resolvedFormFields.map((field) => field.variableId),
+      {},
     );
     if (!formPatchResult.success) {
       return {
@@ -324,6 +326,7 @@ export default function PedigreeView({
     const formPatchResult = formValuesToAttributePatch(
       result,
       resolvedFormFields.map((field) => field.variableId),
+      currentNode[entityAttributesProperty],
     );
     if (!formPatchResult.success) {
       return {

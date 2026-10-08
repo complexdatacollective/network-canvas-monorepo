@@ -57,6 +57,7 @@ import type { RequestedLocale } from './i18n/locales';
 import { getLastAvailableAuthoredStageIndex } from './selectors/skip-logic';
 import { store, type RootState } from './store/store';
 import { SyncFlushProvider } from './store/SyncFlushContext';
+import { WritesInFlightProvider } from './store/WritesInFlightContext';
 import {
   InterviewToastProvider,
   InterviewToastViewport,
@@ -639,36 +640,42 @@ const Shell = ({
         >
           <Provider store={reduxStore}>
             <SyncFlushProvider flush={reduxStore.flushSync}>
-              <ContractProvider
-                onFinish={onFinish}
-                onRequestAsset={onRequestAsset}
-                flags={flags}
-                finishConfirmationDescription={finishConfirmationDescription}
+              <WritesInFlightProvider
+                writesSettled={reduxStore.writesSettled}
+                trackWrite={reduxStore.trackWrite}
               >
-                <CurrentStepProvider
-                  currentStep={reviewEntry.currentStep}
-                  onStepChange={onStepChange}
+                <ContractProvider
+                  onFinish={onFinish}
+                  onRequestAsset={onRequestAsset}
+                  flags={flags}
+                  finishConfirmationDescription={finishConfirmationDescription}
                 >
-                  <Interview
-                    onExit={onExit}
-                    hideNavigation={hideNavigation}
-                    navigationOrientation={navigationOrientation}
-                    navigationClassnames={navigationClassnames}
-                    allowStageNavigation={
-                      allowStageNavigation &&
-                      (currentStep === undefined || onStepChange !== undefined)
-                    }
-                    allowUserScaling={allowUserScaling}
-                    allowLanguageSelection={allowLanguageSelection}
-                    initialTextScale={initialTextScale}
-                    onTextScaleChange={onTextScaleChange}
-                    initialStageOverrideIndex={
-                      reviewEntry.initialStageOverrideIndex
-                    }
-                    reviewMode={reviewMode}
-                  />
-                </CurrentStepProvider>
-              </ContractProvider>
+                  <CurrentStepProvider
+                    currentStep={reviewEntry.currentStep}
+                    onStepChange={onStepChange}
+                  >
+                    <Interview
+                      onExit={onExit}
+                      hideNavigation={hideNavigation}
+                      navigationOrientation={navigationOrientation}
+                      navigationClassnames={navigationClassnames}
+                      allowStageNavigation={
+                        allowStageNavigation &&
+                        (currentStep === undefined ||
+                          onStepChange !== undefined)
+                      }
+                      allowUserScaling={allowUserScaling}
+                      allowLanguageSelection={allowLanguageSelection}
+                      initialTextScale={initialTextScale}
+                      onTextScaleChange={onTextScaleChange}
+                      initialStageOverrideIndex={
+                        reviewEntry.initialStageOverrideIndex
+                      }
+                      reviewMode={reviewMode}
+                    />
+                  </CurrentStepProvider>
+                </ContractProvider>
+              </WritesInFlightProvider>
             </SyncFlushProvider>
           </Provider>
         </AnalyticsProvider>
