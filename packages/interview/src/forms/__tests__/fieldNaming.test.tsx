@@ -132,11 +132,11 @@ function variableLabelsOf(fields: FormField[], wrapper = makeWrapper()) {
 }
 
 /**
- * What a field is called has one rule, `authoredFieldLabel`, and two outputs:
- * the caption the participant reads, and the name a comparison validator may
- * use for the same variable in an error message. They are derived from one
- * computation so a participant can never be sent to fix "your answer to X"
- * when nothing on the screen is called X.
+ * A field is captioned with the prompt the researcher authored, and a
+ * comparison validator names the same variable by that caption in an error
+ * message, so a participant can never be sent to fix "your answer to X" when
+ * nothing on the screen is called X. The codebook variable's own label is
+ * never a caption: it is plain text that is not translated.
  */
 describe('the caption and the validator name come from one rule', () => {
   it('captions a field with the prompt the researcher authored', () => {
@@ -145,22 +145,6 @@ describe('the caption and the validator name come from one rule', () => {
     });
 
     expect(screen.getByLabelText('How old are you?')).toBeInTheDocument();
-  });
-
-  it('captions a field whose prompt is blank with the codebook label, never the variable name', () => {
-    render(<Fields fields={[field('age', { en: '   ' })]} />, {
-      wrapper: makeWrapper(),
-    });
-
-    expect(screen.getByLabelText('Age')).toBeInTheDocument();
-    expect(screen.queryByText('age_years')).not.toBeInTheDocument();
-  });
-
-  it('does not offer that fallback caption to a validator', () => {
-    // The participant sees "Age" because something has to name the control,
-    // but the researcher wrote no question, so no error message may repeat a
-    // caption back as though they had.
-    expect(variableLabelsOf([field('age', { en: '   ' })])).toEqual({});
   });
 
   it('names a variable in an error exactly as the field captions it', () => {
@@ -178,18 +162,22 @@ describe('the caption and the validator name come from one rule', () => {
     expect(screen.getByLabelText('How many siblings?')).toBeInTheDocument();
   });
 
-  it('captions and names a field in the interview language, and falls back to the untranslated attribute label', () => {
+  it('captions and names a field in the interview language', () => {
     const fields = [
       field('age', { en: 'How old are you?', fr: 'Quel âge avez-vous ?' }),
-      field('siblings', { en: '' }),
+      field('siblings', { en: 'How many siblings?' }),
     ];
     const wrapper = makeWrapper(ENGLISH_AND_FRENCH, 'fr');
     render(<Fields fields={fields} />, { wrapper });
 
     expect(screen.getByLabelText('Quel âge avez-vous ?')).toBeInTheDocument();
-    expect(screen.getByLabelText('Siblings')).toBeInTheDocument();
+    // No French translation: the field is captioned in the protocol's
+    // default language, never with the attribute's untranslated label.
+    expect(screen.getByLabelText('How many siblings?')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Siblings')).not.toBeInTheDocument();
     expect(variableLabelsOf(fields, wrapper)).toEqual({
       age: 'Quel âge avez-vous ?',
+      siblings: 'How many siblings?',
     });
   });
 

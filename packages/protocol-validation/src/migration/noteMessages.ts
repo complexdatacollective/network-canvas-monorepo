@@ -366,6 +366,13 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Languages" must match the name of the Architect page where languages are managed.',
   },
+  schema9BlankFieldQuestions: {
+    id: 'protocolValidation.migrationNotes.schema9.blankFieldQuestions',
+    defaultMessage:
+      'A form field whose question was empty or contained only spaces now uses the name of its attribute as the question, because every question must contain some text.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. A form field is one question in a form; its attribute is the piece of information the question collects.',
+  },
 });
 
 // Each descriptor is a whole bullet. Markdown separators are structural:
@@ -452,6 +459,7 @@ const migrationNoteSets = {
     messages: [
       migrationNoteMessages.schema9AttributeNames,
       migrationNoteMessages.schema9DefaultLanguage,
+      migrationNoteMessages.schema9BlankFieldQuestions,
     ],
   },
 };

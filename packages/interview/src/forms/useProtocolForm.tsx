@@ -17,17 +17,13 @@ import type {
 
 import { useStageSelector } from '../hooks/useStageSelector';
 import {
-  useResolveLocalizedString,
-  useUntranslatedText,
-} from '../localization/ProtocolLocalizationProvider';
-import {
   getValidationContext,
   type Subject,
   selectFieldMetadataFromVariables,
   selectFieldMetadataWithSubject,
 } from '../selectors/forms';
 import { getCodebookVariablesForSubjectType } from '../selectors/protocol';
-import { authoredFieldLabel, useVariableLabels } from './buildVariableLabels';
+import { useVariableLabels } from './buildVariableLabels';
 import { coerceFormValues } from './coerceFormValues';
 import ProtocolField from './ProtocolField';
 
@@ -128,7 +124,7 @@ export default function useProtocolForm({
   const variableLabels = useVariableLabels(
     fieldsMetadata.map((field) => ({
       variable: field.variable,
-      label: field.authoredLabel,
+      label: field.label,
     })),
   );
 
@@ -201,17 +197,7 @@ export default function useProtocolForm({
     );
   }, [fieldsMetadata, namespace]);
 
-  const resolve = useResolveLocalizedString();
-  const untranslated = useUntranslatedText();
-
   const renderedFields = fieldsMetadata.map((field, index) => {
-    // A caption that is blank in the interview language counts as unauthored,
-    // by the same rule `variableLabels` applies, so the field falls back to
-    // the codebook variable's own label, which is not translated.
-    const label =
-      authoredFieldLabel(resolve(field.authoredLabel).text) !== undefined
-        ? field.authoredLabel
-        : untranslated(field.label);
     const initialValue =
       initialValues &&
       Object.hasOwn(initialValues, field.variable) &&
@@ -222,7 +208,7 @@ export default function useProtocolForm({
     return (
       <ProtocolField
         key={index}
-        field={{ ...field, label }}
+        field={field}
         initialValue={initialValue}
         autoFocus={autoFocus && index === 0}
         validationContext={validationContext ?? undefined}
