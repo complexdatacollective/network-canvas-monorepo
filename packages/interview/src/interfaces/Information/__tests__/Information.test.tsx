@@ -433,6 +433,34 @@ describe('protocol text in the interview language', () => {
     ).toBeInTheDocument();
   });
 
+  it('keeps the blocks of a text item in a named language beside the title', () => {
+    renderInformation(
+      makeStage(
+        [
+          {
+            id: 'i1',
+            type: 'text',
+            content: { en: '## Section\n\nSome **context**.' },
+          },
+        ],
+        { en: 'Before you begin' },
+      ),
+      [],
+    );
+
+    // Siblings, exactly as text in the unspecified language renders: the
+    // typography's `not-first:`/`not-last:` spacing reads that order, so a
+    // wrapper carrying the language would respace the item.
+    const title = screen.getByRole('heading', { name: 'Before you begin' });
+    const section = screen.getByRole('heading', { name: 'Section' });
+    expect(section.previousElementSibling).toBe(title);
+    expect(section.nextElementSibling).toBe(
+      screen.getByText('context').closest('p'),
+    );
+    expect(section).toHaveAttribute('lang', 'en');
+    expect(section.nextElementSibling).toHaveAttribute('lang', 'en');
+  });
+
   it('marks a text item shown in a fallback language with that language and direction', () => {
     renderInformation(
       makeStage([

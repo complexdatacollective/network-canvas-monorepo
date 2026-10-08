@@ -1,29 +1,27 @@
+import type { ComponentPropsWithoutRef } from 'react';
+
 import { cx } from '../utils/cva';
 
 export function UnorderedList({
-  children,
   className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+  ...props
+}: ComponentPropsWithoutRef<'ul'>) {
   return (
-    <ul className={cx('ms-8 list-disc not-last:mb-[1em]', className)}>
-      {children}
-    </ul>
+    <ul
+      className={cx('ms-8 list-disc not-last:mb-[1em]', className)}
+      {...props}
+    />
   );
 }
 
 export function OrderedList({
-  children,
   className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+  ...props
+}: ComponentPropsWithoutRef<'ol'>) {
   return (
-    <ol className={cx('ms-8 list-decimal not-last:mb-[1em]', className)}>
-      {children}
-    </ol>
+    <ol
+      className={cx('ms-8 list-decimal not-last:mb-[1em]', className)}
+      {...props}
+    />
   );
 }
