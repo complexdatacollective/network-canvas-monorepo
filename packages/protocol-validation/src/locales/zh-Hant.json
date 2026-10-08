@@ -80,7 +80,7 @@
   "protocolValidation.migrationNotes.schema9.familyPedigreeRelativesNotRecorded": "系統會為每個轉換後的家族譜系中的人員新增一個屬性「relativesNotRecorded」，用於記錄參與者表示某人沒有兄弟姊妹或沒有子女，或不知道的情況。如果該人員類型已有同名屬性，新屬性的名稱會改為以數字結尾，例如「relativesNotRecorded2」。",
   "protocolValidation.migrationNotes.schema9.familyPedigreeRemoved": "由於重新設計的介面不使用以下三項家族譜系設定，它們會被移除：要求記錄參與者子女的另一位生物學父母及其家人、記錄每個人與參與者關係的屬性，以及記錄每位父母提供哪種配子的屬性。這兩個屬性及已記錄的回答仍保留在編碼簿中，但不再填寫。",
   "protocolValidation.migrationNotes.schema9.familyPedigreeSharedAttributes": "如果家族譜系中有兩個回答使用同一個屬性，該譜系就無法轉換：兩個提名提示、一個提名提示和一個附加人員欄位，或者姓名和另一個回答。現在每個回答都需要自己的屬性。請在建立該協定的 Architect 版本中為每個回答指定各自的屬性，然後再升級。",
-  "protocolValidation.migrationNotes.schema9.migratedLanguage": "參與者看到的文字現在標示為以英文撰寫，因為舊版協定沒有記錄其使用的語言。如果您的協定是以其他語言撰寫，請在 Architect 的「語言」頁面新增該語言，以該語言輸入每段文字，然後移除英文。",
+  "protocolValidation.migrationNotes.schema9.migratedLanguage": "參與者看到的文字現在標示為以英文撰寫，因為舊版協定沒有記錄其使用的語言。請在 Architect 的「語言」頁面確認協定的預設語言。如果您的協定是以其他語言撰寫，請在該頁面選擇「重新標示預設語言」，將現有文字標示為該語言；不需要重新輸入任何內容。",
   "protocolValidation.rule.additionalAttributes": "固定屬性",
   "protocolValidation.rule.component": "輸入控制項",
   "protocolValidation.rule.differentFrom": "與另一個屬性不同",
