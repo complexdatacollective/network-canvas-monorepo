@@ -83,11 +83,14 @@ function job(name) {
   )?.groups?.body;
 }
 
-test('full CI runs on PRs to main while merge groups request only quality', () => {
+test('full CI runs on PRs to main and integration branches while merge groups request only quality', () => {
   assert.match(
     workflow,
-    /^  pull_request:\n(?: {4}#.*\n)*    branches: \[main\]$/m,
+    /^ {2}pull_request:\n(?: {4}#.*\n)*? {4}branches: \[main, 'integration\/\*\*', 'schema-\*'\]$/m,
   );
+  // Pushes stay main-only: the release, publish, deploy and mirror jobs are
+  // reached from this trigger, and an integration branch must never release.
+  assert.match(workflow, /^ {2}push:\n {4}branches: \[main\]$/m);
   assert.match(workflow, /^  merge_group:\n    types: \[checks_requested\]$/m);
 
   for (const jobName of [
@@ -110,6 +113,50 @@ test('full CI runs on PRs to main while merge groups request only quality', () =
   assert.ok(quality, 'quality job exists');
   assert.match(quality, /if \[\[ "\$EVENT_NAME" == "merge_group" \]\]; then/);
   assert.match(quality, /PR quality verdicts are authoritative/);
+});
+
+test('release, publish, deploy and mirror jobs never run for an integration base', () => {
+  // Every job below is reachable only from a push to (or a dispatch on) main,
+  // directly or through a `needs:` chain rooted in a job that is. A
+  // pull_request event, whatever its base, can start none of them.
+  for (const jobName of [
+    'release',
+    'product-release-pr',
+    'apps-release-detect',
+  ]) {
+    assert.match(
+      job(jobName),
+      /if: github\.ref == 'refs\/heads\/main' && github\.event_name == 'push'/,
+      `${jobName} runs only for a push to main`,
+    );
+  }
+  assert.match(
+    job('legacy-release-detect'),
+    /github\.ref == 'refs\/heads\/main'\n\s+&& \(github\.event_name == 'push' \|\| github\.event_name == 'workflow_dispatch'\)/,
+  );
+  for (const [jobName, root] of [
+    ['apps-release-architect', 'apps-release-detect'],
+    ['apps-release-interviewer', 'apps-release-detect'],
+    ['apps-release-background-creator', 'apps-release-detect'],
+    ['apps-release-fresco', 'apps-release-detect'],
+    ['apps-release-documentation', 'apps-release-detect'],
+    ['apps-release-website', 'apps-release-detect'],
+    ['interviewer-release-build', 'legacy-release-detect'],
+    ['architect-release-build', 'legacy-release-detect'],
+    ['interviewer-mirror', 'legacy-release-detect'],
+    ['architect-mirror', 'legacy-release-detect'],
+    ['interviewer-release-publish', 'legacy-release-detect'],
+    ['architect-release-publish', 'legacy-release-detect'],
+  ]) {
+    const body = job(jobName);
+    assert.ok(body, `${jobName} exists`);
+    assert.match(body, new RegExp(`needs[:\\s\\[][^]*?${root}`));
+    assert.match(
+      body,
+      new RegExp(`needs\\.${root}\\.outputs\\.\\w+_released == 'true'`),
+      `${jobName} is gated on ${root}'s release decision`,
+    );
+  }
 });
 
 test('superseded CI runs are cancelled for every pull request', () => {
