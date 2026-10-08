@@ -390,7 +390,7 @@ export default function StagesMenu({
           // `transition` is scoped off `transform` so it can't fight motion's y.
           'relative block shrink-0 overflow-hidden rounded-xs ring-1 ring-white/0 transition-[filter,box-shadow] duration-200 ring-inset [&>picture]:block [&>picture]:size-full',
           'group-hover:ring-white/25 group-hover:brightness-115',
-          'group-data-[selected]:ring-white/30 group-data-[selected]:brightness-110',
+          'group-data-selected:ring-white/30 group-data-selected:brightness-110',
           isHorizontal ? 'aspect-4/3 w-full' : 'aspect-4/3 w-24',
         )}
       >
