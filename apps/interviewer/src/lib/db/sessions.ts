@@ -10,9 +10,11 @@ import type { NcNetwork } from '@codaco/shared-consts';
 
 import { db } from './db';
 import {
+  assertPlaintextStillAllowed,
   decryptSession,
   decryptSessionRecord,
   encryptSession,
+  preparingPlaintext,
   type StoredSessionRow,
 } from './recordCrypto';
 import type {
@@ -289,8 +291,12 @@ export async function createSession(args: {
     localePreference: null,
     locale: null,
   };
+  const plaintext = preparingPlaintext();
   const row = await encryptSession(session);
-  await db.sessions.put(row);
+  await db.transaction('rw', db.sessions, db.settings, async () => {
+    await assertPlaintextStillAllowed(plaintext);
+    await db.sessions.put(row);
+  });
   return session;
 }
 
@@ -465,6 +471,7 @@ export function updateSession(
         lastUpdatedAt: new Date().toISOString(),
       };
     }
+    const plaintext = preparingPlaintext();
     const row = await encryptSession(updated);
     // The read above happened before the crypto awaits, and the per-id chain
     // only serialises THIS tab. In the gap, the launch-time protocol
@@ -473,8 +480,9 @@ export function updateSession(
     // the freshest stored row, and drop the write entirely rather than
     // resurrect a deleted session. The locale fields are committed from it
     // too: only `setSessionLocale` writes them, and another tab may have just
-    // done so.
-    return db.transaction('rw', db.sessions, async () => {
+    // done so. A plaintext row is refused if the device was secured meanwhile.
+    return db.transaction('rw', db.sessions, db.settings, async () => {
+      await assertPlaintextStillAllowed(plaintext);
       const latest = await db.sessions.get(id);
       if (!latest) return undefined;
       if (partialBound && latest.protocolHash !== basis.protocolHash) {
@@ -510,15 +518,12 @@ export function setSessionLocale(
 
 export function markSessionFinished(id: string): Promise<void> {
   return enqueueSessionMutation(id, async () => {
-    const existing = await db.sessions.get(id);
-    if (!existing) return;
-    // Only plaintext index fields change; spread preserves `_enc` — no key
-    // needed.
-    await db.sessions.put({
-      ...existing,
-      finishedAt: new Date().toISOString(),
-      lastUpdatedAt: new Date().toISOString(),
-    });
+    // Only plaintext index fields change, so no key is needed. `update`
+    // reads and writes in one transaction, so it cannot write back a
+    // plaintext copy over a row another tab's re-encryption has just
+    // encrypted; it skips a session that has been deleted.
+    const now = new Date().toISOString();
+    await db.sessions.update(id, { finishedAt: now, lastUpdatedAt: now });
   });
 }
 
@@ -574,17 +579,12 @@ export async function markSessionsExported(ids: string[]): Promise<void> {
   await Promise.all(
     ids.map((id) =>
       enqueueSessionMutation(id, async () => {
-        const existing = await db.sessions.get(id);
-        if (!existing) return;
         // Stamp inside the queued mutation, not before: if this is queued behind
         // an in-flight updateSession, a timestamp captured earlier could write an
         // older lastUpdatedAt than the mutation that actually ran first.
+        // `update` is atomic, like in markSessionFinished.
         const now = new Date().toISOString();
-        await db.sessions.put({
-          ...existing,
-          exportedAt: now,
-          lastUpdatedAt: now,
-        });
+        await db.sessions.update(id, { exportedAt: now, lastUpdatedAt: now });
       }),
     ),
   );

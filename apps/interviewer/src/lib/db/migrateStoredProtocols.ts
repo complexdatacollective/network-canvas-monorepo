@@ -12,13 +12,16 @@ import {
 
 import { db, type StoredProtocolMigrationRecord } from './db';
 import {
+  assertPlaintextStillAllowed,
   decryptAsset,
   decryptProtocol,
+  DeviceSecuredError,
   type DecryptedSessionRecord,
   decryptSessionRecord,
   encryptAsset,
   encryptProtocol,
   encryptSession,
+  preparingPlaintext,
   type StoredAssetRow,
   type StoredProtocolRow,
   type StoredSessionRow,
@@ -58,6 +61,12 @@ import type { StoredProtocol } from './types';
 // the body awaits a non-Dexie promise. Every `crypto.subtle` await (decrypt /
 // re-encrypt) and every validation await therefore happens BEFORE the
 // transaction opens; the transaction body performs Dexie reads and writes only.
+//
+// Rows prepared as plaintext (no vault configured) are committed only while
+// the device is still unsecured (`assertPlaintextStillAllowed`). If another
+// tab secures it in the gap, nothing is written and the sweep stops: this tab
+// holds no key, so it can neither encrypt the rows nor read the ones that tab
+// has encrypted. Unlocking this tab runs the sweep again.
 
 export type MigratedStoredProtocol = {
   name: string;
@@ -377,6 +386,7 @@ async function migrateStoredProtocolRow(
 ): Promise<MigratedStoredProtocol> {
   const previousHash = row.hash;
   const fromVersion = row.schemaVersion;
+  const plaintext = preparingPlaintext();
 
   const stored = await decryptProtocol(row);
 
@@ -437,15 +447,22 @@ async function migrateStoredProtocolRow(
     // because the hash excludes assets and experiments — possibly different
     // resources) or deleted this protocol, or written one of its sessions.
     // Only the revision that was read may be replaced.
-    await db.transaction('rw', db.protocols, db.sessions, async () => {
-      const source = await db.protocols.get(row.id);
-      if (!sourceUnchanged(source, row)) {
-        throw new SourceChangedError(row.name);
-      }
-      await assertSessionsUnchanged(previousHash, sessions, row.name);
-      await db.protocols.put(protocolRow);
-      if (sessions.rows.length > 0) await db.sessions.bulkPut(sessions.rows);
-    });
+    await db.transaction(
+      'rw',
+      db.protocols,
+      db.sessions,
+      db.settings,
+      async () => {
+        await assertPlaintextStillAllowed(plaintext);
+        const source = await db.protocols.get(row.id);
+        if (!sourceUnchanged(source, row)) {
+          throw new SourceChangedError(row.name);
+        }
+        await assertSessionsUnchanged(previousHash, sessions, row.name);
+        await db.protocols.put(protocolRow);
+        if (sessions.rows.length > 0) await db.sessions.bulkPut(sessions.rows);
+      },
+    );
     return {
       name: nextStored.name,
       fromVersion,
@@ -490,7 +507,9 @@ async function migrateStoredProtocolRow(
     db.sessions,
     db.assets,
     db.protocolMigrations,
+    db.settings,
     async () => {
+      await assertPlaintextStillAllowed(plaintext);
       // The source must still be the revision that was read — another tab
       // re-importing or deleting it in the gap wins, and this row waits for
       // the next launch sweep.
@@ -631,6 +650,7 @@ async function healSessionsOnto(
   read: readonly StoredSessionRow[],
   records: ReadonlyMap<string, StoredProtocolMigrationRecord>,
 ): Promise<void> {
+  const plaintext = preparingPlaintext();
   const target = await db.protocols.get(hash);
   // The protocol was deleted: there is nothing to carry the sessions onto,
   // so they stay where they are.
@@ -659,17 +679,24 @@ async function healSessionsOnto(
 
   // Guarded like the migration's own commit: a write in the gap wins, and
   // the next launch tries again.
-  await db.transaction('rw', db.protocols, db.sessions, async () => {
-    if (!sourceUnchanged(await db.protocols.get(hash), target)) {
-      throw new SourceChangedError(name);
-    }
-    for (const row of read) {
-      if (!sessionUnchanged(await db.sessions.get(row.id), row)) {
+  await db.transaction(
+    'rw',
+    db.protocols,
+    db.sessions,
+    db.settings,
+    async () => {
+      await assertPlaintextStillAllowed(plaintext);
+      if (!sourceUnchanged(await db.protocols.get(hash), target)) {
         throw new SourceChangedError(name);
       }
-    }
-    await db.sessions.bulkPut(rows);
-  });
+      for (const row of read) {
+        if (!sessionUnchanged(await db.sessions.get(row.id), row)) {
+          throw new SourceChangedError(name);
+        }
+      }
+      await db.sessions.bulkPut(rows);
+    },
+  );
 }
 
 /**
@@ -720,6 +747,8 @@ async function healSupersededSessions(): Promise<
       await healSessionsOnto(hash, read, records);
     } catch (cause) {
       if (cause instanceof SourceChangedError) continue;
+      // Ends the whole sweep (see the top of this file).
+      if (cause instanceof DeviceSecuredError) throw cause;
       if (cause instanceof SessionsNotMigratedError) {
         failed.push(reportFailure(cause.protocolName, hash, cause));
         continue;
@@ -778,6 +807,7 @@ export async function migrateStoredProtocols(): Promise<StoredProtocolMigrationR
   try {
     failed.push(...(await healSupersededSessions()));
   } catch (cause) {
+    if (cause instanceof DeviceSecuredError) return { migrated, failed };
     // No other signal: this healing step is silently skipped for this launch,
     // and the next launch retries it. Only the console records why.
     // oxlint-disable-next-line no-console -- only diagnostic for a healing-step failure that is otherwise silently skipped
@@ -831,6 +861,10 @@ export async function migrateStoredProtocols(): Promise<StoredProtocolMigrationR
         // nothing was changed. The next launch sweep re-evaluates it.
         continue;
       }
+      // Not a failure either: the device was secured mid-migration and
+      // nothing was changed. The sweep that unlocking starts migrates this
+      // row and the rest.
+      if (cause instanceof DeviceSecuredError) break;
       failed.push(reportFailure(row?.name ?? id, row?.hash ?? id, cause));
     }
   }

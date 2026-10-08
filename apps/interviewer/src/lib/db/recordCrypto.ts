@@ -14,6 +14,7 @@ import {
   type EncryptedField,
 } from '../vault/crypto';
 import { readVault } from '../vault/vaultStore';
+import { isDatabaseSecured } from './db';
 import { getSessionDek } from './sessionKey';
 import type { StoredAsset, StoredProtocol, StoredSession } from './types';
 
@@ -22,10 +23,55 @@ import type { StoredAsset, StoredProtocol, StoredSession } from './types';
 // Passing through plaintext for a locked secured vault would silently persist
 // research data unencrypted at rest, so the write side must fail closed exactly
 // as the decrypt side does. Consult the vault mode to disambiguate.
-function assertNotLockedSecuredVault(kind: 'session' | 'protocol' | 'asset') {
+function vaultIsSecured(): boolean {
   const mode = readVault()?.mode;
-  if (mode === 'pin' || mode === 'passphrase' || mode === 'biometric') {
+  return mode === 'pin' || mode === 'passphrase' || mode === 'biometric';
+}
+
+function assertNotLockedSecuredVault(kind: 'session' | 'protocol' | 'asset') {
+  if (vaultIsSecured()) {
     throw new Error(`Cannot encrypt ${kind}: vault is locked (no key)`);
+  }
+}
+
+/**
+ * The device was secured — possibly in another tab — after a write prepared
+ * its rows as plaintext and before it committed them, so nothing was written.
+ */
+export class DeviceSecuredError extends Error {
+  constructor() {
+    super(
+      'This device was secured while the change was being saved, so it was not saved. Unlock the app to continue.',
+    );
+    this.name = 'DeviceSecuredError';
+  }
+}
+
+/**
+ * Whether the rows a write is about to prepare will be plaintext: no key is
+ * held, because no vault is configured. Read it before preparing them, and
+ * pass it to `assertPlaintextStillAllowed` when committing them.
+ */
+export function preparingPlaintext(): boolean {
+  return getSessionDek() === null;
+}
+
+/**
+ * No row may be stored as plaintext once the device is secured. Rows are
+ * encrypted (or, with no vault, left plaintext) before the transaction that
+ * writes them opens, since `crypto.subtle` awaits would end it, and another
+ * tab can secure the device in that gap. Its re-encryption sweep only
+ * encrypts the rows it lists, so plaintext committed after it lists them
+ * would stay plaintext. Call inside the commit transaction, whose scope must
+ * include `db.settings`; throws `DeviceSecuredError`, aborting the
+ * transaction, when `plaintext` rows would land on a secured device.
+ */
+export async function assertPlaintextStillAllowed(
+  plaintext: boolean,
+): Promise<void> {
+  if (!plaintext) return;
+  if (vaultIsSecured() || (await isDatabaseSecured())) {
+    throw new DeviceSecuredError();
   }
 }
 

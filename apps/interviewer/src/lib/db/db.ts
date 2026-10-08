@@ -86,6 +86,32 @@ class InterviewerV8DB extends Dexie {
 
 export const db = new InterviewerV8DB();
 
+/**
+ * The settings-table row recording that this device's vault has been
+ * secured. Initial enrolment's re-encryption sweep writes it before it lists
+ * the rows to encrypt, and every write that prepared plaintext rows reads it
+ * inside the transaction that commits them (`assertPlaintextStillAllowed`).
+ * IndexedDB orders the two transactions, so a plaintext write either commits
+ * before the sweep lists rows — and is encrypted by it — or sees this row and
+ * writes nothing. The vault record cannot serve here: it is in localStorage,
+ * which reaches other tabs only some time after it is written.
+ */
+type SecuredMarker = { id: 'secured'; securedAt: string };
+
+const securedMarkers = () => db.table<SecuredMarker, 'secured'>('settings');
+
+export async function markDatabaseSecured(): Promise<void> {
+  await securedMarkers().put({
+    id: 'secured',
+    securedAt: new Date().toISOString(),
+  });
+}
+
+/** Inside a transaction, its scope must include `db.settings`. */
+export async function isDatabaseSecured(): Promise<boolean> {
+  return (await securedMarkers().get('secured')) !== undefined;
+}
+
 export async function getSettings(): Promise<StoredSettings> {
   const existing = await db.settings.get('device');
   if (existing) {
