@@ -97,7 +97,7 @@ export default function PassphrasePrompter() {
             )}
           </AnimatePresence>
           <Tooltip.Portal container={portalContainer ?? undefined}>
-            <Tooltip.Positioner sideOffset={5} side="right">
+            <Tooltip.Positioner sideOffset={5} side="inline-end">
               <Tooltip.Popup
                 render={
                   <motion.div

@@ -1,5 +1,6 @@
 'use client';
 
+import { useDirection } from '@base-ui/react/direction-provider';
 import { Drawer } from '@base-ui/react/drawer';
 import {
   ChevronDown,
@@ -192,8 +193,18 @@ const Navigation = ({
   goToStage,
 }: NavigationProps) => {
   const intl = useAppIntl();
-  const BackIcon = orientation === 'vertical' ? ChevronUp : ChevronLeft;
-  const ForwardIcon = orientation === 'vertical' ? ChevronDown : ChevronRight;
+  // The Shell lays the navigation out in the interview's direction, so in a
+  // right-to-left interview Back sits on the right and points right.
+  const direction = useDirection();
+  const isRtl = direction === 'rtl';
+  const BackIcon =
+    orientation === 'vertical' ? ChevronUp : isRtl ? ChevronRight : ChevronLeft;
+  const ForwardIcon =
+    orientation === 'vertical'
+      ? ChevronDown
+      : isRtl
+        ? ChevronLeft
+        : ChevronRight;
 
   const shouldReduceMotion = useReducedMotion();
 
@@ -370,7 +381,13 @@ const Navigation = ({
                 }
               />
               <PopoverContent
-                side={orientation === 'vertical' ? 'right' : 'top'}
+                side={
+                  orientation === 'vertical'
+                    ? isRtl
+                      ? 'left'
+                      : 'right'
+                    : 'top'
+                }
                 align="start"
                 className="w-72 max-w-full"
                 aria-label={intl.formatMessage(messages.interviewSettings)}
@@ -439,7 +456,7 @@ const Navigation = ({
                           }}
                           // oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- Unit symbol; the live output formats the complete percentage for the active locale.
                           suffixComponent={<span aria-hidden="true">%</span>}
-                          className="w-full! [&_input]:text-right"
+                          className="w-full! [&_input]:text-end"
                         />
                         <output
                           aria-live="polite"
@@ -565,7 +582,9 @@ const Navigation = ({
               void goToStage?.(target, confirmUnavailable);
             }
           }}
-          swipeDirection={orientation === 'vertical' ? 'left' : 'down'}
+          swipeDirection={
+            orientation === 'vertical' ? (isRtl ? 'right' : 'left') : 'down'
+          }
         >
           <Drawer.Portal container={portalContainer ?? undefined}>
             <Drawer.Backdrop className="bg-overlay publish-colors fixed inset-0 backdrop-blur-xs transition-opacity duration-300 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none" />
@@ -573,7 +592,7 @@ const Navigation = ({
               className={cx(
                 'fixed',
                 orientation === 'vertical'
-                  ? 'inset-y-0 left-0'
+                  ? 'inset-y-0 inset-s-0'
                   : 'inset-x-0 bottom-0',
               )}
             >
@@ -586,7 +605,7 @@ const Navigation = ({
                   'bg-surface elevation-medium flex flex-col overflow-hidden transition-transform duration-300 ease-out',
                   'data-swiping:duration-0 motion-reduce:transition-none',
                   orientation === 'vertical'
-                    ? 'h-full w-[min(34rem,92vw)] transform-[translateX(var(--drawer-swipe-movement-x,0px))] data-ending-style:transform-[translateX(-100%)] data-starting-style:transform-[translateX(-100%)]'
+                    ? 'h-full w-[min(34rem,92vw)] transform-[translateX(var(--drawer-swipe-movement-x,0px))] data-ending-style:transform-[translateX(-100%)] data-starting-style:transform-[translateX(-100%)] rtl:data-ending-style:transform-[translateX(100%)] rtl:data-starting-style:transform-[translateX(100%)]'
                     : 'max-h-[85vh] w-full transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-ending-style:transform-[translateY(100%)] data-starting-style:transform-[translateY(100%)]',
                 )}
               >

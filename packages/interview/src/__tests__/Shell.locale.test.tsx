@@ -259,6 +259,29 @@ describe('Shell interview languages', () => {
     ).toBeVisible();
   });
 
+  it.each([
+    { requested: ['ar'], back: 'chevron-right', next: 'chevron-left' },
+    { requested: ['en'], back: 'chevron-left', next: 'chevron-right' },
+  ])(
+    'points the horizontal Back and Next arrows along the interview direction ($requested)',
+    async ({ requested, back, next }) => {
+      render(
+        <Shell
+          {...handlers}
+          payload={payload}
+          requestedLocales={requested}
+          navigationOrientation="horizontal"
+          disableAnalytics
+        />,
+      );
+      const region = screen.getByRole('main');
+      const arrow = (name: string) =>
+        within(region).getByRole('button', { name }).querySelector('svg');
+      expect(arrow('Previous Step')).toHaveClass(`lucide-${back}`);
+      expect(arrow('Next Step')).toHaveClass(`lucide-${next}`);
+    },
+  );
+
   it('uses its own supported languages and catalogs, independently of the host document', async () => {
     render(
       <AppI18nProvider

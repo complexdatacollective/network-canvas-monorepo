@@ -797,12 +797,6 @@ function useResolveLocalizedString(): (
 ) => ResolvedLocalizedString;
 
 function useLocalizedString(value: LocalizedString): ResolvedLocalizedString;
-
-function useResolvePresentationalText(): (
-  value: LocalizedString,
-) => PresentationalText;
-
-function usePresentationalText(value: LocalizedString): PresentationalText;
 ```
 
 The provider takes the protocol's declaration, the host-supplied
@@ -823,11 +817,14 @@ passed explicitly.
 
 The resolver hooks return the formatted message: `IntlMessageFormat` formats
 each message in the locale it is written in, with `ignoreTag`, and caches the
-result per locale and message. `LocalizedText` and `LocalizedMarkdown` render a
-resolved string with its `lang` and `dir`.
+result per locale and message. `LocalizedText` and `LocalizedMarkdown` render
+the resolved text with no language attributes of their own: the Shell root
+carries the interview language for everything inside it (§8.8, revision 17).
+Interview components hand fresco-ui plain strings.
 
-Fresco UI remains protocol-agnostic but must be able to retain resolved locale
-metadata. It adds a small presentation value, exported from
+Fresco UI remains protocol-agnostic. For text written in a language other than
+the page's, such as a language's name written in itself, it accepts a small
+presentation value, exported from
 `@codaco/fresco-ui/PresentationalText` with the helpers `isPresentationalText`,
 `presentationalTextValue`, and `presentationalTextProps`, accepted alongside its
 existing plain-string APIs:
@@ -842,16 +839,10 @@ type PresentationalText =
     }>;
 ```
 
-Interview adapters convert `ResolvedLocalizedString` to this shape for field
-labels, hints, option labels, scalar endpoints, Network Composer endpoints,
-and roster details. Fresco UI components unwrap
-`text` wherever a primitive string is operationally required, while the nearest
-visible text element or native option receives `lang` and `dir`.
-Markdown-capable labels retain their current rendering behavior inside that
-attributed wrapper. Existing application-owned strings remain valid without
-locale metadata. A ReactNode escape hatch alone is insufficient because
-select/filter/ARIA code paths also need a stable primitive value and explicit
-locale attributes.
+Fresco UI components unwrap `text` wherever a primitive string is
+operationally required, while the nearest visible text element or native
+option receives `lang` and `dir`. `LocaleSelect` and the Language Chooser's
+options use it; protocol text inside the interview does not (revision 17).
 
 The protocol schema's type change is intentionally used as a compiler-driven
 inventory: every participant renderer that expects a plain string must be
@@ -1500,9 +1491,9 @@ language does not change analysis schema.
   Pedigree snapshot title.
 - Network Composer Visual Analog Scale override endpoints resolve through the
   typed component branch rather than the former string-only runtime checks.
-- Fresco UI form labels, hints, option labels, and endpoint labels receive the
-  resolved `PresentationalText`; string extraction cannot discard source
-  `lang`/`dir` on the visible leaf or native option.
+- Protocol text inside the Shell, including fresco-ui form labels, hints,
+  option labels and endpoint labels, carries no `lang` or `dir` of its own;
+  the Shell root carries the interview language and direction (revision 17).
 - Name Generator Roster renders two distinct detail rows when stable
   properties resolve to the same translated label, retaining each value and
   each label's actual source locale.
