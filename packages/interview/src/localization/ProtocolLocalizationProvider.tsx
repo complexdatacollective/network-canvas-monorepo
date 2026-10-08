@@ -12,6 +12,7 @@ import {
 } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { ContentLocaleProvider } from '@codaco/fresco-ui/form/ContentLocale';
 import type { PresentationalText } from '@codaco/fresco-ui/PresentationalText';
 import {
   type LocaleMetadata,
@@ -25,6 +26,7 @@ import {
 } from '@codaco/protocol-validation';
 
 import { languageMessages } from '../i18n/languageMessages';
+import { resolveContentLocale } from './contentFormat';
 import {
   createLocalizedMessageFormatter,
   type LocalizedMessageFormatter,
@@ -186,7 +188,7 @@ export function ProtocolLocalizationProvider({
 
   return (
     <ProtocolLocalizationContext.Provider value={value}>
-      {children}
+      <ContentLocaleProvider locale={locale}>{children}</ContentLocaleProvider>
     </ProtocolLocalizationContext.Provider>
   );
 }
@@ -209,6 +211,25 @@ export function useProtocolLocale(): Readonly<{
     () => ({ locale, metadata, options, setLocale }),
     [locale, metadata, options, setLocale],
   );
+}
+
+/**
+ * The language the protocol's own values are written for, to format and
+ * alphabetise them in: the protocol language the interview shows. Participant
+ * and protocol data sit among the protocol's text, so a participant reading
+ * Hungarian gets Hungarian number formats and Hungarian alphabetical order even
+ * when the interface falls back to English for want of a Hungarian catalog.
+ * The form fields inside the interview follow it too (see
+ * `ContentLocaleProvider`); sentences the interface itself speaks stay in the
+ * interface language.
+ *
+ * Outside a `ProtocolLocalizationProvider` (a component shown on its own) it is
+ * the interface language.
+ */
+export function useContentLocale(): string {
+  const interfaceLocale = useAppIntl().locale;
+  const protocolLocale = useContext(ProtocolLocalizationContext)?.locale;
+  return resolveContentLocale(protocolLocale, interfaceLocale);
 }
 
 /**

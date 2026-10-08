@@ -1695,3 +1695,17 @@ describe('processProtocolSortRule', () => {
     ]);
   });
 });
+
+describe('alphabetical order follows the locale it is given', () => {
+  const items = [{ name: 'z' }, { name: 'ö' }, { name: 'a' }];
+  const rules = [
+    { property: 'name', direction: 'asc' as const, type: 'string' as const },
+  ];
+  const order = (locale: string) =>
+    createSorter<{ name: string }>(rules, locale)(items).map((i) => i.name);
+
+  it('puts ö after z in Swedish and between a and z in German', () => {
+    expect(order('sv')).toEqual(['a', 'z', 'ö']);
+    expect(order('de')).toEqual(['a', 'ö', 'z']);
+  });
+});

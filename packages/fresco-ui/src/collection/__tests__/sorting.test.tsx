@@ -123,3 +123,50 @@ describe('Collection uncontrolled initial sort', () => {
     expect(names(markup)).toEqual(['Apple', 'Banana', 'Carrot']);
   });
 });
+
+function LocaleSortCollection({ sortLocale }: { sortLocale: string }) {
+  const layout = useMemo(() => new ListLayout<Item>({ gap: 2 }), []);
+  const letters: Item[] = useMemo(
+    () => [
+      { id: 'z', name: 'z' },
+      { id: 'o', name: 'ö' },
+      { id: 'a', name: 'a' },
+    ],
+    [],
+  );
+
+  return (
+    <Collection
+      items={letters}
+      keyExtractor={(item) => item.id}
+      textValueExtractor={(item) => item.name}
+      layout={layout}
+      sortRules={[{ property: 'name', direction: 'asc', type: 'string' }]}
+      sortLocale={sortLocale}
+      renderItem={(item, itemProps) => (
+        <div {...itemProps} data-testid="sorted-item">
+          {item.name}
+        </div>
+      )}
+    >
+      {(collectionElements) => collectionElements}
+    </Collection>
+  );
+}
+
+describe('Collection text order follows sortLocale', () => {
+  const shown = () =>
+    screen.getAllByTestId('sorted-item').map((element) => element.textContent);
+
+  it('orders by the given language and re-orders when it changes', async () => {
+    const { rerender } = render(<LocaleSortCollection sortLocale="sv" />);
+    await waitFor(() => {
+      expect(shown()).toEqual(['a', 'z', 'ö']);
+    });
+
+    rerender(<LocaleSortCollection sortLocale="de" />);
+    await waitFor(() => {
+      expect(shown()).toEqual(['a', 'ö', 'z']);
+    });
+  });
+});
