@@ -4,7 +4,10 @@ import { nameLocalizedText } from '@codaco/protocol-builder/localization/localiz
 import type { CurrentProtocol, LocaleTag } from '@codaco/protocol-validation';
 import { codebookHref } from '~/components/Codebook/codebookLinks';
 import type { TranslationPlace, TranslationRow } from '~/selectors/issues';
-import { resolveLocalizedText } from '~/utils/localizedText';
+import {
+  resolveLocalizedText,
+  UNSPECIFIED_LOCALE,
+} from '~/utils/localizedText';
 
 const messages = defineMessages({
   stagePosition: {
@@ -76,7 +79,10 @@ export const describePlace = (
       const name =
         label === null || label.text === ''
           ? { text: unnamed, lang: null }
-          : { text: label.text, lang: label.locale };
+          : {
+              text: label.text,
+              lang: label.locale === UNSPECIFIED_LOCALE ? null : label.locale,
+            };
       return {
         kind: intl.formatMessage(messages.stagePosition, {
           position: index + 1,

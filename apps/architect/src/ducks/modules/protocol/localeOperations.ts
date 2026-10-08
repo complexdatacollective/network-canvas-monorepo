@@ -9,13 +9,14 @@ import {
   type LocalizedStringHit,
   messageText,
 } from '@codaco/protocol-validation';
-import { withTranslation } from '~/utils/localizedText';
+import { UNSPECIFIED_LOCALE, withTranslation } from '~/utils/localizedText';
 
 export type LocaleOperationFailure =
   /** Not a well-formed BCP 47 language tag. */
   | 'invalid-tag'
-  /** The language is already one of the protocol's. Relabelling never merges
-   * one language into another. */
+  /** `und` marks text of no recorded language; it can be replaced but never
+   * introduced. */
+  | 'unspecified-tag'
   | 'already-declared'
   | 'not-declared'
   /** The default language cannot be removed until another is the default. */
@@ -53,14 +54,14 @@ export const withoutLocale =
     return rest;
   };
 
-/** Marks the translation written as `from` as written in `to`. */
-export const relabelledLocale =
-  (from: LocaleTag, to: LocaleTag): LocalizedStringRewrite =>
+/** Marks the translation in the unidentified language as written in `to`. */
+export const identifiedLocale =
+  (to: LocaleTag): LocalizedStringRewrite =>
   (value) =>
-    Object.hasOwn(value, from)
+    Object.hasOwn(value, UNSPECIFIED_LOCALE)
       ? Object.fromEntries(
           Object.entries(value).map(([key, text]) => [
-            key === from ? to : key,
+            key === UNSPECIFIED_LOCALE ? to : key,
             text,
           ]),
         )
@@ -116,6 +117,9 @@ const resolveNewLocale = (
   | { ok: false; reason: LocaleOperationFailure } => {
   const locale = canonicalizeLocale(tag.trim());
   if (locale === undefined) return { ok: false, reason: 'invalid-tag' };
+  if (locale === UNSPECIFIED_LOCALE) {
+    return { ok: false, reason: 'unspecified-tag' };
+  }
   if (isDeclared(protocol, locale)) {
     return { ok: false, reason: 'already-declared' };
   }
@@ -289,42 +293,33 @@ export const setLocalizedString = (
 };
 
 /**
- * Says that the text written in the default language is really written in
- * `tag`, as when a protocol upgraded from schema 8, which was taken to be
- * English, is in fact in French. The default language's declaration and every
- * translation in it move to the new tag together, in one protocol edit, and
- * nothing is translated or deleted.
- *
- * A language the protocol already has is refused rather than merged into: a
- * text translated into both would have to lose one of its translations. To
- * make another of the protocol's languages the default, `setDefaultLocale`
- * does that without relabelling anything.
+ * Says that text marked as the unidentified language (`und`, as in a protocol
+ * made in Studio) is written in `tag`: the
+ * declaration entry and every translation move to the new tag together, and
+ * the default follows when it is the unidentified language. A language that
+ * has been identified is never renamed, and an existing language is never
+ * merged into.
  */
-export const relabelDefaultLocale = (
+export const identifyUnspecifiedLocale = (
   protocol: CurrentProtocol,
   tag: string,
 ): LocaleOperationResult => {
+  if (!isDeclared(protocol, UNSPECIFIED_LOCALE)) return fail('not-declared');
   const resolved = resolveNewLocale(protocol, tag);
   if (!resolved.ok) return fail(resolved.reason);
-  const from = protocol.localization.defaultLocale;
   const to = resolved.locale;
-  // A translation already stored under the new tag, which only a protocol
-  // that validation has not seen can hold, would be overwritten.
-  if (
-    collectLocalizedStrings(protocol).some((hit) =>
-      Object.hasOwn(hit.value, to),
-    )
-  ) {
-    return fail('already-declared');
-  }
+  const { localization } = protocol;
   return {
     ok: true,
     protocol: {
-      ...rewriteLocalizedStrings(protocol, relabelledLocale(from, to)),
+      ...rewriteLocalizedStrings(protocol, identifiedLocale(to)),
       localization: {
-        defaultLocale: to,
-        locales: protocol.localization.locales.map((declared) =>
-          declared === from ? to : declared,
+        defaultLocale:
+          localization.defaultLocale === UNSPECIFIED_LOCALE
+            ? to
+            : localization.defaultLocale,
+        locales: localization.locales.map((declared) =>
+          declared === UNSPECIFIED_LOCALE ? to : declared,
         ),
       },
     },

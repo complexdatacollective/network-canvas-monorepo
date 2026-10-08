@@ -100,6 +100,14 @@ describe('protocol text in the printable summary', () => {
     expect(screen.getByText('Hello')).toHaveAttribute('lang', 'en');
   });
 
+  it('prints the text plainly in a protocol whose language is unspecified', () => {
+    renderText({ und: 'Hello' }, { defaultLocale: 'und', locales: ['und'] });
+
+    expect(screen.queryByRole('term')).toBeNull();
+    expect(screen.queryByText('Unspecified language')).toBeNull();
+    expect(screen.getByText('Hello')).toHaveAttribute('lang', 'und');
+  });
+
   it('renders markdown in every language', () => {
     renderText(
       { en: '**Welcome**', fr: '**Bienvenue**' },

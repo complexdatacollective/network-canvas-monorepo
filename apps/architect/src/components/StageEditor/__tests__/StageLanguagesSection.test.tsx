@@ -45,11 +45,12 @@ const protocol: CurrentProtocol = {
   stages: [{ id: STAGE_ID, type: 'LanguageChooser', label: LABEL }],
 };
 
-// Upgraded from schema 8, so its text was taken to be English.
+// Its language is not recorded (as in a protocol made in Studio), so its
+// text is marked as the unidentified language.
 const migrated: CurrentProtocol = {
   ...protocol,
-  localization: { defaultLocale: 'en', locales: ['en'] },
-  stages: [{ id: STAGE_ID, type: 'LanguageChooser', label: { en: LABEL.en } }],
+  localization: { defaultLocale: 'und', locales: ['und'] },
+  stages: [{ id: STAGE_ID, type: 'LanguageChooser', label: { und: LABEL.en } }],
 };
 
 const target = { sectionId: sectionId({ kind: 'stage', stageId: STAGE_ID }) };
@@ -260,27 +261,22 @@ describe('the language chooser’s languages in Architect', () => {
     expect(savedStage(store)?.label).toEqual({ en: LABEL.en });
   });
 
-  it('relabels the default language in the open stage too, keeping its unsaved text', async () => {
-    const { store, name } = await openEditor(migrated);
+  it('identifies the language of unidentified text in the open stage too', async () => {
+    const { store } = await openEditor(migrated);
     globalThis.__architectDialogMocks.openDialog.mockResolvedValueOnce({
-      language: 'en-GB',
+      language: 'en',
     });
 
-    await userEvent.clear(name);
-    await userEvent.type(name, 'Pick a language');
     await userEvent.click(
-      screen.getByRole('button', { name: 'Relabel default language' }),
+      screen.getByRole('button', { name: 'Identify language' }),
     );
 
+    const identified = { en: LABEL.en };
+    await waitFor(() => expect(savedStage(store)?.label).toEqual(identified));
     await waitFor(() =>
-      expect(savedStage(store)?.label).toEqual({ 'en-GB': LABEL.en }),
+      expect(readStageDraft().stage?.label).toEqual(identified),
     );
-    await waitFor(() =>
-      expect(readStageDraft().stage?.label).toEqual({
-        'en-GB': 'Pick a language',
-      }),
-    );
-    expect(readStageDraft().dirty).toBe(true);
+    await waitFor(() => expect(readStageDraft().dirty).toBe(false));
   });
 
   it('saves a stage edited across a language’s removal as a valid protocol', async () => {

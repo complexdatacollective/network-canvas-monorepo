@@ -35,6 +35,7 @@ import { type StageMetadata, StageMetadataSchema } from '@codaco/shared-consts';
 import { architectCatalogs } from '~/locales/catalogs';
 import { assetKey } from '~/utils/assetDB';
 import { hydrateMemoryAsset } from '~/utils/inMemoryAssetStore';
+import { UNSPECIFIED_LOCALE } from '~/utils/localizedText';
 import { reportError } from '~/utils/reportError';
 
 import { currentProtocolToPayload } from './currentProtocolToPayload';
@@ -411,25 +412,26 @@ export function PreviewHost() {
   );
   // The Shell applies a change of requested languages in place, keeping the
   // step, answers and unsaved input, so the stated language is passed as the
-  // first requested one.
+  // first requested one. `und` cannot be: the interface language would read a
+  // requested `und` as English, where a stated `und` leaves it to the browser.
   const requestedLocales = useMemo(
     () =>
-      statedLocale === null
+      statedLocale === null || statedLocale === UNSPECIFIED_LOCALE
         ? browserLanguages
         : [statedLocale, ...browserLanguages],
     [statedLocale, browserLanguages],
   );
   const changePreviewLocale = (locale: LocaleTag) => {
     setStatedLocale(locale);
-    if (heldPreferenceRef.current === null) return;
-    // The interview's store holds a preference, which would outrank the
-    // requested languages. Only a new payload can clear it: re-create the
-    // interview from the session so far.
-    heldPreferenceRef.current = null;
+    const preference = locale === UNSPECIFIED_LOCALE ? locale : null;
+    if (heldPreferenceRef.current === preference) return;
+    // The interview's store holds a preference that has to change, which only a
+    // new payload can do: re-create the interview from the session so far.
+    heldPreferenceRef.current = preference;
     const latestSession = latestSessionRef.current;
     setInterviewPayload(
       (current) =>
-        current && withLocalePreference(current, latestSession, null),
+        current && withLocalePreference(current, latestSession, preference),
     );
     setInterviewRun((run) => run + 1);
   };

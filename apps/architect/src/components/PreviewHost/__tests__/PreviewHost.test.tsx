@@ -901,17 +901,21 @@ describe('PreviewHost', () => {
 
     it('lists every language the protocol declares, each named in itself', async () => {
       const control = await openPreview(
-        makeProtocol({ defaultLocale: 'en', locales: ['en', 'fr'] }),
+        makeProtocol({ defaultLocale: 'en', locales: ['en', 'fr', 'und'] }),
       );
 
       const options = within(control).getAllByRole('option');
       expect(options.map((option) => option.textContent)).toEqual([
         getLocaleMetadata('en').label,
         getLocaleMetadata('fr').label,
+        'Unspecified language',
       ]);
+      // An unspecified language has no name of its own, so its option keeps
+      // the page's language.
       expect(options.map((option) => option.getAttribute('lang'))).toEqual([
         'en',
         'fr',
+        null,
       ]);
       expect(control).toBeEnabled();
     });
@@ -1020,6 +1024,26 @@ describe('PreviewHost', () => {
       });
       expect(rebuilt.currentStep).toBe(2);
       expect(rebuilt.requestedLocales).toEqual(['en', 'en-US']);
+    });
+
+    it('states an unspecified language through the interview’s own preference', async () => {
+      const control = await openPreview(
+        makeProtocol({ defaultLocale: 'und', locales: ['und', 'fr'] }),
+        ['fr-CA'],
+      );
+      expect(control).toHaveValue('fr');
+      const { payload } = lastShellProps();
+
+      fireEvent.change(control, { target: { value: 'und' } });
+
+      expect(control).toHaveValue('und');
+      expect(lastShellProps().payload.session).toEqual({
+        ...payload.session,
+        promptIndex: 0,
+        localePreference: 'und',
+      });
+      // A requested `und` would set the interview's own wording in English.
+      expect(lastShellProps().requestedLocales).toEqual(['fr-CA']);
     });
   });
 
