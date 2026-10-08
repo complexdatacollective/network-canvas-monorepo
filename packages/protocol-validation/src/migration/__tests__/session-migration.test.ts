@@ -237,6 +237,60 @@ describe('session migration', () => {
   });
 });
 
+describe('migrationV7toV8 session step', () => {
+  const information = (id: string) => ({
+    id,
+    type: 'Information',
+    label: id,
+    title: id,
+    items: [{ id: `${id}-text`, type: 'text', content: id }],
+  });
+
+  it('follows the stages left after an empty form is dropped', () => {
+    const { protocol, migrateSession } = migrateProtocolWithSessions(
+      {
+        schemaVersion: 7,
+        codebook: { node: {}, edge: {}, ego: {} },
+        stages: [
+          information('first'),
+          {
+            id: 'empty',
+            type: 'EgoForm',
+            label: 'Empty',
+            form: { fields: [] },
+          },
+          information('last'),
+        ],
+      },
+      9,
+      { name: 'Forms' },
+    );
+    expect(protocol.stages.map((stage) => stage.id)).toEqual(['first', 'last']);
+
+    const result = migrateSession(
+      session({
+        stageMetadata: {
+          1: { automaticLayout: true },
+          2: [[0, 'a', 'b', true]],
+        },
+        currentStep: 2,
+      }),
+    );
+    expect(result).toEqual({
+      success: true,
+      changed: true,
+      session: {
+        network: emptyNetwork(),
+        // The dropped form's record goes with it.
+        stageMetadata: { 1: [[0, 'a', 'b', true]] },
+        currentStep: 1,
+      },
+    });
+    const atDropped = migrateSession(session({ currentStep: 1 }));
+    expect(atDropped.success && atDropped.session.currentStep).toBe(1);
+  });
+});
+
 describe('stageIndexMap', () => {
   it('follows each stage by id, and the finish stage by its distance from the end', () => {
     const map = stageIndexMap(
