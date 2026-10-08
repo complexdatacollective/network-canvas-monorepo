@@ -1,4 +1,7 @@
-import type { LocaleTag } from '../../localization/localeTag.ts';
+import type {
+  LocaleTag,
+  LocalizationDeclaration,
+} from '../../localization/localeTag.ts';
 import type { LocalizedString } from './localized-string.ts';
 
 /** The finish stage text a participant reads. */
@@ -25,7 +28,7 @@ export type FinishStageTextProblem = Readonly<{
 }>;
 
 type ProtocolLike = Readonly<{
-  localization: Readonly<{ defaultLocale: LocaleTag }>;
+  localization: LocalizationDeclaration;
   stages: readonly Readonly<{
     id: string;
     type: string;
