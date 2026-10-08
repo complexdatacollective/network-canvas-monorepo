@@ -7,14 +7,16 @@ import {
 } from '../../utils/collectLocalizedStrings.ts';
 import ProtocolSchemaV9 from './schema.ts';
 
-// Schema 8 never recorded the language its copy was written in.
-const UNDETERMINED_LOCALE = 'und';
+// Schema 8 never recorded the language its copy was written in, and a schema 9
+// protocol always has a real one, so migrated copy is recorded as English. The
+// researcher can change it to the language it is really written in.
+const DEFAULT_LOCALE = 'en';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const inUndeterminedLocale = (text: string) => ({
-  [UNDETERMINED_LOCALE]: escapeMessageText(text),
+const inDefaultLocale = (text: string) => ({
+  [DEFAULT_LOCALE]: escapeMessageText(text),
 });
 
 const nameOrKey = (definition: unknown, key: string) => {
@@ -149,7 +151,7 @@ type SiteChange =
  */
 const localizeSite = (site: LocalizedStringSite): SiteChange => {
   if (typeof site.value === 'string') {
-    const localized = inUndeterminedLocale(site.value);
+    const localized = inDefaultLocale(site.value);
     if (site.schema.safeParse(localized).success || !site.optional) {
       return { kind: 'set', value: localized };
     }
@@ -180,7 +182,7 @@ const migrationV8toV9 = createMigration({
   to: 9,
   dependencies: {},
   notes: `- Attribute names can now use letters from any language, as well as spaces and punctuation. Existing attribute names are not changed.
-- Text that participants see is now marked as written in "Unspecified language", because older protocols do not record which language they use. You can change it to the language it is actually written in on the Languages page in Architect.`,
+- Text that participants see is now recorded as English, because older protocols do not record which language they use. If your protocol is written in another language, you can change it on the Languages page in Architect.`,
   migrate: (doc) => {
     const migrated = structuredClone(doc);
     addCodebookLabels(migrated.codebook);
@@ -206,8 +208,8 @@ const migrationV8toV9 = createMigration({
       ...migrated,
       schemaVersion: 9 as const,
       localization: {
-        defaultLocale: UNDETERMINED_LOCALE,
-        locales: [UNDETERMINED_LOCALE],
+        defaultLocale: DEFAULT_LOCALE,
+        locales: [DEFAULT_LOCALE],
       },
     };
   },

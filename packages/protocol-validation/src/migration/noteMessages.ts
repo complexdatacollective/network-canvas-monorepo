@@ -359,12 +359,12 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance: attributeNames. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
   },
-  schema9UnspecifiedLanguage: {
-    id: 'protocolValidation.migrationNotes.schema9.unspecifiedLanguage',
+  schema9DefaultLanguage: {
+    id: 'protocolValidation.migrationNotes.schema9.defaultLanguage',
     defaultMessage:
-      'Text that participants see is now marked as written in "Unspecified language", because older protocols do not record which language they use. You can change it to the language it is actually written in on the Languages page in Architect.',
+      'Text that participants see is now recorded as English, because older protocols do not record which language they use. If your protocol is written in another language, you can change it on the Languages page in Architect.',
     description:
-      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Unspecified language" must match the name Network Canvas shows for text with no language, and "Languages" must match the name of the Architect page where languages are managed.',
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Languages" must match the name of the Architect page where languages are managed.',
   },
 });
 
@@ -451,7 +451,7 @@ const migrationNoteSets = {
     suffix: '',
     messages: [
       migrationNoteMessages.schema9AttributeNames,
-      migrationNoteMessages.schema9UnspecifiedLanguage,
+      migrationNoteMessages.schema9DefaultLanguage,
     ],
   },
 };

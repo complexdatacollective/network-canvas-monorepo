@@ -72,7 +72,7 @@
   "protocolValidation.migrationNotes.schema8.unsupportedValidation": "Validation rules the new schema cannot express are removed: rule names it has never defined, rules whose value has the wrong type (e.g. a quoted number), and rules that do not apply to the attribute's type (e.g. `minValue` on a text attribute, or `requiredAcceptsNull` anywhere). A removed `minValue`/`minLength`/`minSelected` still marks the attribute required, preserving the old implied-required behaviour. Layout attributes take no validation at all; theirs is removed.",
   "protocolValidation.migrationNotes.schema8.validationHints": "Added optional 'showValidationHints' property to form fields, enabling automatic display of hints derived from validation rules.",
   "protocolValidation.migrationNotes.schema9.attributeNames": "Attribute names can now use letters from any language, as well as spaces and punctuation. Existing attribute names are not changed.",
-  "protocolValidation.migrationNotes.schema9.unspecifiedLanguage": "Text that participants see is now marked as written in \"Unspecified language\", because older protocols do not record which language they use. You can change it to the language it is actually written in on the Languages page in Architect.",
+  "protocolValidation.migrationNotes.schema9.defaultLanguage": "Text that participants see is now recorded as English, because older protocols do not record which language they use. If your protocol is written in another language, you can change it on the Languages page in Architect.",
   "protocolValidation.rule.additionalAttributes": "Fixed attributes",
   "protocolValidation.rule.component": "Input control",
   "protocolValidation.rule.differentFrom": "Different from another attribute",

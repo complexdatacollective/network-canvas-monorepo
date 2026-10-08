@@ -1,6 +1,6 @@
 /**
  * A BCP 47 language tag in the canonical form `Intl.getCanonicalLocales`
- * produces (`en-US`, `zh-Hant-TW`, `und`). It is a plain string so that
+ * produces (`en-US`, `zh-Hant-TW`). It is a plain string so that
  * schema-inferred types and caller-supplied tags interoperate; canonical form
  * is guaranteed by validation, not by the type.
  */
@@ -29,6 +29,16 @@ export function compareLocaleTags(a: LocaleTag, b: LocaleTag): number {
   if (a < b) return -1;
   if (a > b) return 1;
   return 0;
+}
+
+/**
+ * Whether a tag is the "undetermined" language (`und`, in any case or with
+ * subtags, such as `und-Latn`): the tag BCP 47 reserves for text whose
+ * language is not known. A protocol is always written in a real language, so
+ * it is never one a protocol declares or keys text by.
+ */
+export function isUndeterminedLocale(value: string): boolean {
+  return value.split('-')[0]?.toLowerCase() === 'und';
 }
 
 export function isCanonicalLocale(value: string): boolean {

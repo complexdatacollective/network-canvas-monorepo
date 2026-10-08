@@ -72,7 +72,7 @@
   "protocolValidation.migrationNotes.schema8.unsupportedValidation": "新架构无法表达的验证规则会被移除：从未定义过的规则名称、值类型错误的规则（例如带引号的数字），以及不适用于该属性类型的规则（例如文本属性上的 `minValue`，或任何位置的 `requiredAcceptsNull`）。被移除的 `minValue`/`minLength`/`minSelected` 仍会将该属性标记为必填，以保留旧的隐含必填行为。布局属性不接受任何验证规则；其验证规则会被移除。",
   "protocolValidation.migrationNotes.schema8.validationHints": "为表单字段添加了可选的 `showValidationHints` 属性，可自动显示根据验证规则生成的提示。",
   "protocolValidation.migrationNotes.schema9.attributeNames": "属性名称现在可以使用任何语言的文字，也可以包含空格和标点符号。现有的属性名称不会更改。",
-  "protocolValidation.migrationNotes.schema9.unspecifiedLanguage": "参与者看到的文字现在被标记为“未指定语言”，因为旧版协议没有记录其使用的语言。您可以在 Architect 的“语言”页面中将其更改为实际使用的语言。",
+  "protocolValidation.migrationNotes.schema9.defaultLanguage": "参与者看到的文本现在记录为英语，因为旧版协议不会记录其所用的语言。如果您的协议是用其他语言撰写的，可以在 Architect 的“语言”页面中更改。",
   "protocolValidation.rule.additionalAttributes": "固定属性",
   "protocolValidation.rule.component": "输入控件",
   "protocolValidation.rule.differentFrom": "不同于另一属性",

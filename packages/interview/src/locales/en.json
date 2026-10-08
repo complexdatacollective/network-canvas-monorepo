@@ -1403,10 +1403,6 @@
     "defaultMessage": "Choose a language",
     "description": "Heading of the interview screen where the participant picks the language the interview is shown in."
   },
-  "interview.language.unspecifiedLanguage": {
-    "defaultMessage": "Unspecified language",
-    "description": "Name of the language choice for interview content whose language the researcher did not specify."
-  },
   "interview.narrativePedigree.affected": {
     "defaultMessage": "Affected",
     "description": "Clinical status tooltip and screen-reader label for a person recorded as affected by the condition; the stable model key remains affected."

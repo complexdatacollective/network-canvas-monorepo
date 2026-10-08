@@ -45,14 +45,6 @@ const protocol: CurrentProtocol = {
   stages: [{ id: STAGE_ID, type: 'LanguageChooser', label: LABEL }],
 };
 
-// Made before protocols declared their languages, so its text is marked as
-// the unidentified language.
-const migrated: CurrentProtocol = {
-  ...protocol,
-  localization: { defaultLocale: 'und', locales: ['und'] },
-  stages: [{ id: STAGE_ID, type: 'LanguageChooser', label: { und: LABEL.en } }],
-};
-
 const target = { sectionId: sectionId({ kind: 'stage', stageId: STAGE_ID }) };
 
 const renderHeader = () => <StageEditorHeader stageId={STAGE_ID} />;
@@ -261,21 +253,21 @@ describe('the language chooser’s languages in Architect', () => {
     expect(savedStage(store)?.label).toEqual({ en: LABEL.en });
   });
 
-  it('identifies the language of unidentified text in the open stage too', async () => {
-    const { store } = await openEditor(migrated);
+  it('changes the language of a language’s text in the open stage too', async () => {
+    const { store } = await openEditor();
     globalThis.__architectDialogMocks.openDialog.mockResolvedValueOnce({
-      language: 'en',
+      language: 'es',
     });
 
     await userEvent.click(
-      screen.getByRole('button', { name: 'Identify language' }),
+      within(rowOf('French')).getByRole('button', {
+        name: 'Change French to a different language',
+      }),
     );
 
-    const identified = { en: LABEL.en };
-    await waitFor(() => expect(savedStage(store)?.label).toEqual(identified));
-    await waitFor(() =>
-      expect(readStageDraft().stage?.label).toEqual(identified),
-    );
+    const changed = { en: LABEL.en, es: LABEL.fr };
+    await waitFor(() => expect(savedStage(store)?.label).toEqual(changed));
+    await waitFor(() => expect(readStageDraft().stage?.label).toEqual(changed));
     await waitFor(() => expect(readStageDraft().dirty).toBe(false));
   });
 

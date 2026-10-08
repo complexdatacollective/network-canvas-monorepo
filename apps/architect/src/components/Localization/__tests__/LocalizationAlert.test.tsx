@@ -50,20 +50,6 @@ const protocolWithGaps = (count: number): CurrentProtocol => ({
   })),
 });
 
-const unidentifiedLanguageProtocol: CurrentProtocol = {
-  ...protocolWithStages(1),
-  localization: { defaultLocale: 'und', locales: ['und'] },
-  stages: [
-    {
-      id: 'welcome',
-      type: 'Information',
-      label: { und: 'Welcome' },
-      title: { und: 'Hello' },
-      items: [],
-    },
-  ],
-};
-
 const createStore = (app: RootState['app'] = {}) => {
   const store = configureStore({
     reducer: rootReducer,
@@ -199,37 +185,6 @@ describe('LocalizationAlert', () => {
     renderAlert(store);
 
     expect(screen.getByText(MISSING_NOTE)).toBeInTheDocument();
-  });
-
-  it('gives the unidentified-language notice no dismiss control', () => {
-    const store = createStore();
-    store.dispatch(setActiveProtocol(unidentifiedLanguageProtocol));
-    renderAlert(store);
-
-    expect(
-      screen.getByText('Identify the language of your protocol'),
-    ).toBeInTheDocument();
-    // The language is identified on the Languages page.
-    expect(
-      screen.getByRole('link', { name: 'Go to Languages' }),
-    ).toHaveAttribute('href', '/protocol/localization');
-    expect(
-      screen.queryByRole('button', DISMISS_BUTTON),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: /dismiss/i }),
-    ).not.toBeInTheDocument();
-  });
-
-  it('still shows the unidentified-language notice after a dismissal', () => {
-    const store = createStore();
-    store.dispatch(dismissMissingTranslations(PROTOCOL_ID, 10));
-    store.dispatch(setActiveProtocol(unidentifiedLanguageProtocol));
-    renderAlert(store);
-
-    expect(
-      screen.getByText('Identify the language of your protocol'),
-    ).toBeInTheDocument();
   });
 
   describe('when fewer translations are missing than when it was dismissed', () => {

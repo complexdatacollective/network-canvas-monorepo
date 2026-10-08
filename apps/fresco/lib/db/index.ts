@@ -158,7 +158,7 @@ function protocolJsonExtensions() {
           LocalizationSchema,
           localization,
           `${modelName}.localization`,
-          { defaultLocale: 'und', locales: ['und'] },
+          { defaultLocale: 'en', locales: ['en'] },
         ),
     },
     experiments: {
