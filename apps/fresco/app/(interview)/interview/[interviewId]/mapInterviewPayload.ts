@@ -41,8 +41,9 @@ type ViewedInterview =
  * - `editable-finished`: a finished interview, at its stages and open to
  *   changes, for a researcher while completed interviews are not frozen.
  * - `completed`: a finished interview's completed state, from a payload that
- *   holds none of the interview's answers. Nothing in this view may be written
- *   back: its network is empty, so a write would erase the stored one.
+ *   holds none of the interview's answers and none of the protocol's
+ *   resources. Nothing in this view may be written back: its network is
+ *   empty, so a write would erase the stored one.
  */
 export type InterviewView = 'active' | 'editable-finished' | 'completed';
 
@@ -52,9 +53,11 @@ export type InterviewView = 'active' | 'editable-finished' | 'completed';
  *
  * - An unfinished interview opens as it is, to anyone with its link.
  * - A finished interview opens on its completed state, from a payload with
- *   none of the interview's answers: no network and no stage metadata. Only
- *   the protocol, where the interview ended, and its language go to the
- *   browser. Before finish stages, a participant who opened a finished
+ *   none of the interview's answers: no network and no stage metadata. Nor
+ *   does it carry the protocol's resources, whose entries can hold API keys
+ *   and whose URLs open the files: the completed state shows only the finish
+ *   stage's text. Only the protocol's design, where the interview ended, and
+ *   its language go to the browser. Before finish stages, a participant who opened a finished
  *   interview was sent to a page with no interview on it at all.
  * - A researcher opening a finished interview while completed interviews are
  *   not frozen gets it in full, to change, as before finish stages.
@@ -79,9 +82,10 @@ export function mapInterviewForViewer(
   return {
     ...mapped,
     payload: {
-      ...mapped.payload,
+      protocol: { ...mapped.payload.protocol, assets: [] },
       session: { ...session, network: createInitialNetwork() },
     },
+    assetUrls: {},
     view: 'completed',
   };
 }

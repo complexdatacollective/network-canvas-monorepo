@@ -120,8 +120,8 @@ ended early. That outcome is saved with each interview and exported.
 
 - The `/interview/finished` page is gone: a finished interview's link shows
   its completed state, including to a participant who returns to it. That
-  page is sent without the interview's answers, and nothing on it is saved
-  back to the interview.
+  page is sent without the interview's answers or the protocol's resources,
+  and nothing on it is saved back to the interview.
 - With **Freeze Completed Interviews** off, a researcher who opens a finished
   interview can still change it, as before. With it on, they see the completed
   state.
@@ -131,7 +131,9 @@ ended early. That outcome is saved with each interview and exported.
 - The finish request must name a finish stage of the interview's protocol and
   its outcome.
 - The cookie that limits a participant to one interview per protocol now holds
-  the finished interview's id, and the browser no longer lets scripts read it.
+  the finished interview's id. The browser no longer lets scripts read it, and
+  it is sent only over HTTPS when the session cookie is (in production, unless
+  `COOKIE_SECURE` says otherwise).
 - The dashboard's progress counts the finish stage as a stage.
 - Deploy normalization leaves a protocol in place, with a logged reason,
   when the normalized protocol would not be accepted on import, such as one

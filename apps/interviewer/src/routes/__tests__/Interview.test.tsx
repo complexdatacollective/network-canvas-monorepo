@@ -616,6 +616,32 @@ describe('InterviewRoute finish flow', () => {
     expect(lastShellProps().completedActions).toHaveLength(1);
   });
 
+  it('writes no finish once the finish has been abandoned', async () => {
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    const abandoned = new AbortController();
+    abandoned.abort();
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await lastShellProps()
+        .onFinish(
+          's1',
+          { stageId: 'finish-ineligible', outcome: 'ineligible' },
+          abandoned.signal,
+        )
+        .then(
+          () => 'resolved',
+          (error: unknown) => error,
+        );
+    });
+
+    // Rejected, so the Shell does not show a completed state, and nothing is
+    // stored that it would then not be showing.
+    expect(outcome).toMatchObject({ name: 'AbortError' });
+    expect(markSessionFinishedMock).not.toHaveBeenCalled();
+  });
+
   it("offers Exit on the completed state in the interview's interface language", async () => {
     localStorage.setItem(LOCALE_PREFERENCE_KEY, 'en');
     shellInterfaceLocale.current = 'es';

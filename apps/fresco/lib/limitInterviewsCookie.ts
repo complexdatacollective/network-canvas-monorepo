@@ -2,6 +2,7 @@ import 'server-only';
 import { cookies } from 'next/headers';
 
 import { prisma } from '~/lib/db';
+import { secureCookies } from '~/lib/secureCookies';
 
 /**
  * The "limit interviews" setting allows one interview per protocol per
@@ -10,8 +11,8 @@ import { prisma } from '~/lib/db';
  * back to that interview's completed state rather than starting another.
  *
  * The value is the interview's access capability, so the cookie is never
- * readable by script. It lasts as long as the browser session, as it always
- * has.
+ * readable by script and, like the session cookie, is sent only over HTTPS in
+ * production. It lasts as long as the browser session, as it always has.
  */
 export async function setLimitInterviewsCookie(
   protocolId: string,
@@ -19,6 +20,7 @@ export async function setLimitInterviewsCookie(
 ) {
   (await cookies()).set(protocolId, interviewId, {
     httpOnly: true,
+    secure: secureCookies(),
     sameSite: 'lax',
   });
 }

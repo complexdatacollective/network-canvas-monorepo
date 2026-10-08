@@ -333,8 +333,34 @@ describe('mapInterviewPayload', () => {
  * means the answer was sent.
  */
 function makeFinishedSource(): NonNullable<GetInterviewByIdQuery> {
+  const source = makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION);
   return {
-    ...makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION),
+    ...source,
+    // Resources whose entries a completed view must not carry either: an API
+    // key's value, and the URL that opens a file.
+    protocol: {
+      ...source.protocol,
+      assets: [
+        {
+          key: 'asset-key-1',
+          assetId: 'mapbox',
+          name: 'Mapbox key',
+          type: 'apikey',
+          url: '',
+          size: 0,
+          value: 'APIKEY_SECRET',
+        },
+        {
+          key: 'asset-key-2',
+          assetId: 'roster',
+          name: 'Roster',
+          type: 'network',
+          url: 'https://files.example/ASSET_URL_SECRET.csv',
+          size: 10,
+          value: null,
+        },
+      ],
+    },
     finishTime: new Date('2026-01-03T00:00:00.000Z'),
     finishStageId: 'finish-completed',
     finishOutcome: 'completed',
@@ -388,6 +414,8 @@ const ANSWER_MARKERS = [
   'EGO_ANSWER',
   'dyad-stage',
   'stageMetadata',
+  'APIKEY_SECRET',
+  'ASSET_URL_SECRET',
 ];
 
 describe('mapInterviewForViewer', () => {
@@ -414,6 +442,8 @@ describe('mapInterviewForViewer', () => {
       expect(result.payload.session.network.ego._uid).not.toBe('ego-1');
       expect(result.payload.session).not.toHaveProperty('stageMetadata');
       expect(result.view).toBe('completed');
+      expect(result.payload.protocol.assets).toEqual([]);
+      expect(result.assetUrls).toEqual({});
       // What the completed view needs is still there.
       expect(result.payload.session).toMatchObject({
         finishTime: '2026-01-03T00:00:00.000Z',
@@ -433,6 +463,11 @@ describe('mapInterviewForViewer', () => {
 
     expect(result.view).toBe('editable-finished');
     expect(result.payload.session.network).toStrictEqual(source.network);
+    // The interview runs, so its resources are there.
+    expect(result.payload.protocol.assets).toHaveLength(2);
+    expect(result.assetUrls).toEqual({
+      roster: 'https://files.example/ASSET_URL_SECRET.csv',
+    });
     expect(result.payload.session.stageMetadata).toStrictEqual(
       source.stageMetadata,
     );

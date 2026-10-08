@@ -546,9 +546,15 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   }, [sessionId]);
 
   // Once this resolves the Shell shows its completed state in place; the
-  // route stays where it is.
+  // route stays where it is. The finish confirmation cannot be dismissed while
+  // this runs, so the signal aborts only when the interview is torn down, and
+  // then nothing is written: a stored finish must always be one the Shell went
+  // on to show as completed.
   const handleFinish = useCallback<FinishHandler>(
-    (id, finish) => markSessionFinished(id, finish),
+    async (id, finish, signal) => {
+      signal.throwIfAborted();
+      await markSessionFinished(id, finish);
+    },
     [],
   );
 
