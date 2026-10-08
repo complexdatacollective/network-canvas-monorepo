@@ -21,6 +21,11 @@ export type CompletenessItem =
   | { kind: 'parents'; personId: string; missing: number }
   | { kind: 'siblings' | 'children' | 'details'; personId: string };
 
+/** What an item asks for, the same however many of it are still missing:
+ * a person's parents, siblings, children or details. */
+export const completenessItemKey = (item: CompletenessItem) =>
+  `${item.kind}:${item.personId}`;
+
 export type CompletenessProgress = {
   /** What is still needed, about people already in the family. */
   items: CompletenessItem[];

@@ -80,6 +80,7 @@ import {
 import {
   answersContradictedBy,
   type CompletenessItem,
+  completenessItemKey,
   evaluateCompleteness,
   RELATIVES_NOT_RECORDED,
   relativesToAskAbout,
@@ -791,19 +792,26 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   // Next is held back, with the list of what is still needed shown, until
   // the family is complete. A recommendation lets the participant through on
-  // pressing Next again with the list already open.
+  // pressing Next again, but only past what that list showed them: once the
+  // family changes so that something new is recommended, the next press
+  // shows the list again. Answering or adding what was listed only shortens
+  // it, and lets them through.
   // (Pressing Next closes the list, as a press outside it, before this runs;
-  // so a recommendation remembers that it has been shown instead.)
-  const shownBeforeNext = useRef(false);
+  // so a recommendation remembers what it has shown instead.)
+  const shownBeforeNext = useRef<ReadonlySet<string>>(new Set());
   const completeEnoughToLeave = (direction: Direction) => {
     if (direction !== 'forwards' || !progress || !completeness) return true;
     // Only the family's own prompt asks for it to be complete.
     if (nomination) return true;
     if (progress.items.length === 0) return true;
-    if (completeness.enforcement === 'recommended' && shownBeforeNext.current) {
+    const outstanding = progress.items.map(completenessItemKey);
+    if (
+      completeness.enforcement === 'recommended' &&
+      outstanding.every((key) => shownBeforeNext.current.has(key))
+    ) {
       return true;
     }
-    shownBeforeNext.current = true;
+    shownBeforeNext.current = new Set(outstanding);
     setTrackerOpen(true);
     return false;
   };
