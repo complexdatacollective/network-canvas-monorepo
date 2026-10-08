@@ -5,7 +5,7 @@
 The documentation now describes encrypted attributes as a standard feature
 of schema 9, not an experiment. The Anonymisation interface page no longer
 says it must be turned on from Architect's Experimental Features page, which
-schema 9 removes, and the Interfaces, Variables and Export Data Dictionary
+Architect no longer has, and the Interfaces, Variables and Export Data Dictionary
 pages no longer call it experimental. The Anonymisation page also now gives
 the exported placeholder for an encrypted value as `ENCRYPTED`, the string
 exports actually write.
@@ -27,8 +27,11 @@ use an encrypted attribute, except a panel over an external data file, that
 upgrading removes such rules, and that a list sorted by an encrypted attribute
 is sorted by the participant's answers only once the passphrase is entered.
 
-The schema information page explains what upgrading a schema 8 protocol does
-to its encrypted attributes. If the experiment was on, they stay marked and
+The schema information page says that schema 9 keeps a protocol's
+`experiments` setting, for features released within a schema version, and
+that encrypted attributes are no longer one of them. It explains that
+upgrading a schema 8 protocol removes the Encrypted Attributes experiment,
+and what that does to its encrypted attributes. If the experiment was on, they stay marked and
 new answers are encrypted, but answers the experimental version protected
 can't be read after the upgrade: those interviews still open, and the old
 answers show as "Answer unavailable" and export as `ENCRYPTED`. If the
