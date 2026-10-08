@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import {
+  collectLocalizedStrings,
   CurrentProtocolSchema,
   hashProtocol,
   migrateProtocolWithSessions,
@@ -23,6 +24,15 @@ const TARGET_SCHEMA_VERSION = COMPATIBLE_PROTOCOL_SCHEMA_VERSION;
  * carry, and it is the oldest version this deployment accepts at all.
  */
 const NORMALIZATION_SOURCE_VERSION = 7;
+
+/**
+ * The last version whose participant-facing text was plain strings. A row
+ * whose text is already localized is normalized from here instead of from
+ * `NORMALIZATION_SOURCE_VERSION`: the earlier migrations read localized text
+ * as missing and replace it with defaults, and only the migration out of this
+ * version keeps it, with the languages the row declares.
+ */
+const LOCALIZED_TEXT_SOURCE_VERSION = 8;
 
 /**
  * The last version whose `experiments` had `encryptedVariables`, which
@@ -408,7 +418,9 @@ async function migrateOneProtocol(
  * example object-form `automaticLayout`, or `iconVariant` in place of `icon`).
  * Re-running the migration from `NORMALIZATION_SOURCE_VERSION` applies exactly
  * those rewrites; it does not repair content, so a row whose body genuinely
- * violates the schema throws here and is left in place by the caller.
+ * violates the schema throws here and is left in place by the caller. A row
+ * whose text is already localized re-runs only the migrations after
+ * `LOCALIZED_TEXT_SOURCE_VERSION`, which keep its languages and text.
  *
  * Its interviews cross the same rewrite, like those of any migrated protocol
  * (see `migrateInterviewsOf`). A row numbered with the target version can
@@ -421,6 +433,12 @@ async function normalizeNonConformantProtocol(
   row: ProtocolRow,
 ): Promise<InterviewMigrationCounts> {
   const cleanName = row.name.replace(/\.netcanvas$/i, '');
+
+  const sourceVersion =
+    collectLocalizedStrings({ stages: row.stages, codebook: row.codebook })
+      .length > 0
+      ? LOCALIZED_TEXT_SOURCE_VERSION
+      : NORMALIZATION_SOURCE_VERSION;
 
   // A row stored after the encryption experiment's version always encrypts
   // an attribute marked `encrypted`, as `encryptedVariables` did, so its
@@ -441,9 +459,14 @@ async function normalizeNonConformantProtocol(
 
   const asSourceVersion = {
     name: cleanName,
-    schemaVersion: NORMALIZATION_SOURCE_VERSION,
+    schemaVersion: sourceVersion,
     stages: row.stages,
     codebook: row.codebook,
+    // The languages localized text is written in. The migration out of
+    // `LOCALIZED_TEXT_SOURCE_VERSION` keeps them; without them it would
+    // declare the protocol English, and its text would be in languages it
+    // no longer declares.
+    localization: row.localization,
     experiments,
     assetManifest: buildAssetManifest(row.assets),
   };
