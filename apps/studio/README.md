@@ -1050,6 +1050,16 @@ docker build -f apps/studio/Dockerfile --target studio-api -t studio-api .
 docker build -f apps/studio/Dockerfile --target studio-web -t studio-web .
 ```
 
+Codaco's release builds of `studio-web` pass two BuildKit secrets,
+`posthog_personal_api_key` and `posthog_project_id`
+(`--secret id=posthog_personal_api_key,env=POSTHOG_PERSONAL_API_KEY --secret
+id=posthog_project_id,env=POSTHOG_PROJECT_ID`). With both present, the web
+build uploads the source maps of the bundle the image ships to Codaco's PostHog
+project, so browser error reports resolve to source, and deletes them before
+the image is assembled. Without them, as in every self-hosted or local build,
+nothing is uploaded and the image is the same. Secrets are mounted for that one
+build step only and never reach an image layer.
+
 `studio-api` carries the server bundle. Its entrypoint dispatches on the first
 argument, so one image runs every Studio process and a deployment names a
 command rather than a path into the bundle:

@@ -62,7 +62,11 @@ ENV HUSKY=0
 COPY --from=pruner /repo/out/json/ .
 RUN pnpm install --frozen-lockfile
 COPY --from=pruner /repo/out/full/ .
-RUN pnpm --filter @codaco/studio-web build && pnpm --filter @codaco/studio-api build
+COPY scripts/buildtime/posthog-source-maps-plugin.ts scripts/buildtime/
+RUN --mount=type=secret,id=posthog_personal_api_key,env=POSTHOG_PERSONAL_API_KEY \
+    --mount=type=secret,id=posthog_project_id,env=POSTHOG_PROJECT_ID \
+    pnpm --filter @codaco/studio-web build
+RUN pnpm --filter @codaco/studio-api build
 RUN pnpm --filter @codaco/studio-api deploy --prod --legacy /deploy
 
 FROM node:24-slim AS studio-api

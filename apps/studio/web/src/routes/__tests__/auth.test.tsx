@@ -53,6 +53,7 @@ const STATUS: InstanceStatus = {
   // This instance has an owner: first-run setup (#1909) is closed everywhere
   // except the screen that is for it.
   setup: { required: false },
+  telemetry: false,
 };
 let currentStatus: InstanceStatus = STATUS;
 

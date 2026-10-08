@@ -30,6 +30,7 @@ const STUDIO_TAGS = [
   'team.cancelInvitation',
   'team.createInvitation',
   'team.updateMemberRole',
+  'telemetry.report',
 ] as const;
 
 const AUTHENTICATED = '@studio/Authenticated';
@@ -66,6 +67,7 @@ const STUDIO_MIDDLEWARE: Record<
   'team.cancelInvitation': [AUTHENTICATED],
   'team.createInvitation': [AUTHENTICATED],
   'team.updateMemberRole': [AUTHENTICATED],
+  'telemetry.report': [],
 };
 
 type DeclaredRpc = {

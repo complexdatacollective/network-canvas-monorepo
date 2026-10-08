@@ -316,6 +316,7 @@ const STATUS: InstanceStatus = {
   },
   deployment: { mode: 'managed', billing: false },
   setup: { required: false },
+  telemetry: false,
 };
 
 /** The two halves §5.4 split the shipped team screen into. */

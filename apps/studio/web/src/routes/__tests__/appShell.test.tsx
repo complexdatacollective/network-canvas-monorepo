@@ -207,6 +207,7 @@ beforeEach(() => {
           socialProviders: [],
         },
         setup: { required: false },
+        telemetry: false,
         deployment: { mode: 'managed', billing: false },
       }),
     'me': () =>

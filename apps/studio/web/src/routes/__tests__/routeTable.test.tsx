@@ -470,6 +470,7 @@ beforeEach(() => {
         },
         deployment: fixtures.deployment,
         setup: fixtures.setup,
+        telemetry: false,
       }),
     'me': () =>
       Effect.succeed({

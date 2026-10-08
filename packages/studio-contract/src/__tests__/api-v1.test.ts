@@ -97,6 +97,7 @@ const FULL_STATUS: InstanceStatus = {
   },
   deployment: { mode: 'managed', billing: false },
   setup: { required: true },
+  telemetry: true,
 };
 
 const answering = HttpApiBuilder.group(StudioApi, 'status', (handlers) =>
