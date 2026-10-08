@@ -5959,6 +5959,10 @@
     "defaultMessage": "Stage {position, number} — Untitled stage",
     "description": "The same offered destination as stageOption, for a stage the researcher has not named yet, so there is no name to show. position is where that stage will sit in the finished interview, counting from one."
   },
+  "protocolBuilder.slotVariable.draftBoundElsewhereRefusal": {
+    "defaultMessage": "\"{attributeName}\" already records another of this stage’s answers, so it cannot record this one as well. Choose another attribute.",
+    "description": "Refusal shown under an attribute control when the attribute picked is already chosen for a different answer the same stage records, such as gender identity and sex assigned at birth, so one answer would overwrite the other. attributeName is the codebook name of the attribute, which is not translated."
+  },
   "protocolBuilder.slotVariable.draftFormCollectsRefusal": {
     "defaultMessage": "\"{attributeName}\" is collected by another field of this stage, so it cannot also be written by this control (values written here would bypass its validation)",
     "description": "Refusal shown under an attribute control the interface writes directly, when the attribute picked is already collected, with validation, by another field of the stage the researcher has open. attributeName is the codebook name of the attribute, which is not translated."

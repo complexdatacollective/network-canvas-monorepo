@@ -1489,6 +1489,7 @@
   "protocolBuilder.skipLogicDestination.unreadableOption": "Un destino que este editor no puede leer",
   "protocolBuilder.skipLogicDestination.unreadableProblem": "No se puede leer la etapa de destino del salto. Elige dónde debe continuar la entrevista.",
   "protocolBuilder.skipLogicDestination.untitledStageOption": "Etapa {position, number} — Etapa sin título",
+  "protocolBuilder.slotVariable.draftBoundElsewhereRefusal": "«{attributeName}» ya registra otra de las respuestas de esta etapa, así que no puede registrar también esta. Elige otro atributo.",
   "protocolBuilder.slotVariable.draftFormCollectsRefusal": "Otro campo de esta etapa recoge «{attributeName}», así que este control no puede escribirlo también (los valores escritos aquí se saltarían su validación)",
   "protocolBuilder.slotVariable.draftSlotWritesRefusal": "Otro control de esta etapa escribe «{attributeName}» sin validación, así que no se puede recoger aquí también (los valores que escribe ese control se saltan la validación de este atributo)",
   "protocolBuilder.slotVariable.emptyState": "Todavía no se puede usar aquí ningún atributo de este tipo. Crea uno para continuar.",

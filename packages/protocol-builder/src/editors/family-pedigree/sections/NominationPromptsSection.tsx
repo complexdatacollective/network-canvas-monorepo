@@ -54,6 +54,19 @@ const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
 
 /**
+ * The attributes the stage's other answers hold, as seen from one prompt:
+ * every attribute the stage's other answers and prompts are bound to, which
+ * is the stage's list less this prompt's own attribute, once.
+ */
+const boundElsewhereFrom = (
+  bound: readonly string[],
+  ownAttribute: string | undefined,
+): string[] => {
+  const own = ownAttribute === undefined ? -1 : bound.indexOf(ownAttribute);
+  return own === -1 ? [...bound] : bound.toSpliced(own, 1);
+};
+
+/**
  * A fresh id for a nomination prompt.
  *
  * Never the id the interview gives the family-building step, which comes
@@ -80,7 +93,17 @@ const newNominationPrompt = (): Partial<RowValues> => ({
 function NominationPromptEditor({ item }: RowEditorProps) {
   const intl = useAppIntl();
   const subject = useStageSubject('node');
-  const { draftSlotMap, validatedPersonVariables } = usePedigreeDraftBindings();
+  const { draftSlotMap, validatedPersonVariables, otherAnswerVariables } =
+    usePedigreeDraftBindings();
+  const committedAttribute = asString(item[VARIABLE_FIELD]);
+  const draftBoundElsewhere = useMemo(
+    () =>
+      boundElsewhereFrom(
+        otherAnswerVariables.nominationPrompts,
+        committedAttribute,
+      ),
+    [committedAttribute, otherAnswerVariables.nominationPrompts],
+  );
 
   // Held for as long as the reader's language does not change: a control's
   // options are part of what it registers with, and a fresh array every render
@@ -120,6 +143,7 @@ function NominationPromptEditor({ item }: RowEditorProps) {
         createLabel={intl.formatMessage(messages.nominationVariableCreateLabel)}
         draftConflicting={validatedPersonVariables}
         draftSlotMap={draftSlotMap}
+        draftBoundElsewhere={draftBoundElsewhere}
         editsValues={false}
       />
       <Field<typeof DefaultChoiceField>
@@ -151,7 +175,8 @@ export default function NominationPromptsSection() {
   const { identity } = useStageEditorForm();
   const protocolContext = useProtocolContext();
   const subject = useStageSubject('node');
-  const { draftSlotMap, validatedPersonVariables } = usePedigreeDraftBindings();
+  const { draftSlotMap, validatedPersonVariables, otherAnswerVariables } =
+    usePedigreeDraftBindings();
 
   const beforeSave = useCallback(
     (row: RowValues, context: RowSaveContext): RowSaveOutcome => {
@@ -164,6 +189,10 @@ export default function NominationPromptsSection() {
         openedOnVariableId: asString(context.openedOn[VARIABLE_FIELD]) ?? '',
         draftConflicting: validatedPersonVariables,
         draftSlotMap,
+        draftBoundElsewhere: boundElsewhereFrom(
+          otherAnswerVariables.nominationPrompts,
+          asString(context.openedOn[VARIABLE_FIELD]),
+        ),
       });
       return issue === undefined
         ? { row }
@@ -172,6 +201,7 @@ export default function NominationPromptsSection() {
     [
       draftSlotMap,
       identity.id,
+      otherAnswerVariables.nominationPrompts,
       protocolContext,
       subject,
       validatedPersonVariables,

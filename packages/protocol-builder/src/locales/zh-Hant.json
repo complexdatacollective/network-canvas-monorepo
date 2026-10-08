@@ -1489,6 +1489,7 @@
   "protocolBuilder.skipLogicDestination.unreadableOption": "此編輯器無法讀取的目的地",
   "protocolBuilder.skipLogicDestination.unreadableProblem": "無法讀取略過後要前往的階段。請改為選擇訪談要從何處繼續。",
   "protocolBuilder.skipLogicDestination.untitledStageOption": "階段 {position, number}：未命名的階段",
+  "protocolBuilder.slotVariable.draftBoundElsewhereRefusal": "「{attributeName}」已記錄此階段的另一個回答，因此不能再記錄這個回答。請選擇其他屬性。",
   "protocolBuilder.slotVariable.draftFormCollectsRefusal": "「{attributeName}」已由此階段的另一個欄位收集，因此此控制項不能再寫入它（在此寫入的值會略過其驗證）",
   "protocolBuilder.slotVariable.draftSlotWritesRefusal": "「{attributeName}」已由此階段的另一個控制項在未經驗證的情況下寫入，因此不能再在此收集（該控制項寫入的值會略過此屬性的驗證）",
   "protocolBuilder.slotVariable.emptyState": "目前沒有可在此使用的此類型屬性。請建立一個以繼續。",

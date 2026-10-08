@@ -1489,6 +1489,7 @@
   "protocolBuilder.skipLogicDestination.unreadableOption": "Ein Ziel, das dieser Editor nicht lesen kann",
   "protocolBuilder.skipLogicDestination.unreadableProblem": "Der Zielabschnitt dieses Sprungs kann nicht gelesen werden. Wählen Sie stattdessen aus, wo das Interview fortgesetzt werden soll.",
   "protocolBuilder.skipLogicDestination.untitledStageOption": "Abschnitt {position, number} – Unbenannter Abschnitt",
+  "protocolBuilder.slotVariable.draftBoundElsewhereRefusal": "„{attributeName}“ erfasst bereits eine andere Antwort dieses Abschnitts und kann daher nicht auch diese erfassen. Wählen Sie ein anderes Attribut.",
   "protocolBuilder.slotVariable.draftFormCollectsRefusal": "„{attributeName}“ wird von einem anderen Feld dieses Abschnitts erhoben und kann daher nicht zusätzlich von diesem Steuerelement geschrieben werden (hier geschriebene Werte würden seine Validierung umgehen)",
   "protocolBuilder.slotVariable.draftSlotWritesRefusal": "„{attributeName}“ wird von einem anderen Steuerelement dieses Abschnitts ohne Validierung geschrieben und kann daher hier nicht zusätzlich erhoben werden (die Werte, die dieses Steuerelement schreibt, umgehen die Validierung dieses Attributs)",
   "protocolBuilder.slotVariable.emptyState": "Hier können noch keine Attribute dieses Typs verwendet werden. Erstellen Sie eines, um fortzufahren.",

@@ -1489,6 +1489,7 @@
   "protocolBuilder.skipLogicDestination.unreadableOption": "Una destinazione che questo editor non può leggere",
   "protocolBuilder.skipLogicDestination.unreadableProblem": "Non è possibile leggere la fase a cui si salta. Scegli invece dove deve proseguire l’intervista.",
   "protocolBuilder.skipLogicDestination.untitledStageOption": "Fase {position, number}: Fase senza titolo",
+  "protocolBuilder.slotVariable.draftBoundElsewhereRefusal": "«{attributeName}» registra già un’altra risposta di questa fase, quindi non può registrare anche questa. Scegli un altro attributo.",
   "protocolBuilder.slotVariable.draftFormCollectsRefusal": "«{attributeName}» viene raccolto da un altro campo di questa fase, quindi questo controllo non può anche scriverlo (i valori scritti qui eluderebbero la sua convalida)",
   "protocolBuilder.slotVariable.draftSlotWritesRefusal": "«{attributeName}» viene scritto senza convalida da un altro controllo di questa fase, quindi non può anche essere raccolto qui (i valori scritti da quel controllo eludono la convalida di questo attributo)",
   "protocolBuilder.slotVariable.emptyState": "Qui non è ancora possibile usare nessun attributo di questo tipo. Creane uno per continuare.",

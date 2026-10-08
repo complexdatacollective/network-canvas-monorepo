@@ -1489,6 +1489,7 @@
   "protocolBuilder.skipLogicDestination.unreadableOption": "Une destination que cet éditeur ne peut pas lire",
   "protocolBuilder.skipLogicDestination.unreadableProblem": "L’étape vers laquelle ce saut mène ne peut pas être lue. Choisissez plutôt où l’entretien doit se poursuivre.",
   "protocolBuilder.skipLogicDestination.untitledStageOption": "Étape {position, number} — Étape sans titre",
+  "protocolBuilder.slotVariable.draftBoundElsewhereRefusal": "« {attributeName} » enregistre déjà une autre réponse de cette étape : il ne peut donc pas aussi enregistrer celle-ci. Choisissez un autre attribut.",
   "protocolBuilder.slotVariable.draftFormCollectsRefusal": "« {attributeName} » est recueilli par un autre champ de cette étape : cette commande ne peut donc pas aussi l’écrire (les valeurs écrites ici contourneraient sa validation)",
   "protocolBuilder.slotVariable.draftSlotWritesRefusal": "« {attributeName} » est écrit sans validation par une autre commande de cette étape : il ne peut donc pas aussi être recueilli ici (les valeurs écrites par cette commande contournent la validation de cet attribut)",
   "protocolBuilder.slotVariable.emptyState": "Aucun attribut de ce type ne peut encore être utilisé ici. Créez-en un pour continuer.",

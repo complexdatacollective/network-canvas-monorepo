@@ -137,7 +137,25 @@ export type SlotPickerOptionsInput<T extends SlotVariableOption> = Readonly<{
    * writer class.
    */
   draftConflicting?: readonly string[];
+  /**
+   * Attributes this stage's own draft already binds to its OTHER answers,
+   * whatever their writer class: an attribute holding two of a stage's
+   * answers would have one overwrite the other.
+   */
+  draftBoundElsewhere?: readonly string[];
 }>;
+
+/** The refusal for a pick another of this stage's answers already holds. */
+export const draftBoundElsewhereIssue = (
+  draftBoundElsewhere: readonly string[] | undefined,
+  pick: string,
+  allVariables: Readonly<Variables>,
+): string | undefined =>
+  draftBoundElsewhere?.includes(pick) === true
+    ? createMessageError(slotVariableMessages.draftBoundElsewhereRefusal, {
+        attributeName: variableDisplayName(allVariables, pick),
+      })
+    : undefined;
 
 /**
  * The attributes a slot picker may offer: none another writer class claims
@@ -154,20 +172,19 @@ export function slotPickerOptions<T extends SlotVariableOption>({
   ownSlot,
   writerClass,
   draftConflicting,
+  draftBoundElsewhere,
 }: SlotPickerOptionsInput<T>): T[] {
   if (subject === null) return [];
   const crossClassFiltered =
     writerClass === 'validated'
       ? excludeUnvalidatedUses(roleMap, subject, options, currentValue)
       : excludeValidatedUses(roleMap, subject, options, currentValue);
-  const draftFiltered =
-    draftConflicting === undefined
-      ? crossClassFiltered
-      : crossClassFiltered.filter(
-          (option) =>
-            option.value === currentValue ||
-            !draftConflicting.includes(option.value),
-        );
+  const draftFiltered = crossClassFiltered.filter(
+    (option) =>
+      option.value === currentValue ||
+      (draftConflicting?.includes(option.value) !== true &&
+        draftBoundElsewhere?.includes(option.value) !== true),
+  );
   const savedOwnerFiltered = excludeInterfaceOwned(
     slotMap,
     subject,
@@ -196,6 +213,7 @@ export type SlotCrossClassInput = Readonly<{
   ownSlot?: string;
   writerClass: WriterClass;
   draftConflicting?: readonly string[];
+  draftBoundElsewhere?: readonly string[];
   /** The subject's codebook attributes, read only for display names. */
   allVariables: Readonly<Variables>;
 }>;
@@ -217,6 +235,7 @@ export function slotCrossClassIssue({
   ownSlot,
   writerClass,
   draftConflicting,
+  draftBoundElsewhere,
   allVariables,
 }: SlotCrossClassInput): string | undefined {
   if (subject === null) return undefined;
@@ -228,6 +247,13 @@ export function slotCrossClassIssue({
 
   const ownedIssue = interfaceOwnedPickIssue(slotMap, subject, pick, ownSlot);
   if (ownedIssue !== undefined) return ownedIssue;
+
+  const boundElsewhere = draftBoundElsewhereIssue(
+    draftBoundElsewhere,
+    pick,
+    allVariables,
+  );
+  if (boundElsewhere !== undefined) return boundElsewhere;
 
   if (draftConflicting?.includes(pick) === true) {
     return draftCrossClassMessage[writerClass](

@@ -109,8 +109,12 @@ export default function GenderIdentitySection() {
   const intl = useAppIntl();
   const { committedFields, creation, storeApi } = useStageEditorForm();
   const protocolContext = useProtocolContext();
-  const { personSubject, draftSlotMap, validatedPersonVariables } =
-    usePedigreeDraftBindings();
+  const {
+    personSubject,
+    draftSlotMap,
+    validatedPersonVariables,
+    otherAnswerVariables,
+  } = usePedigreeDraftBindings();
 
   // What a new gender identity attribute starts with. The words each of those
   // options takes are chosen beside it in the same dialog, and staged on the
@@ -233,6 +237,7 @@ export default function GenderIdentitySection() {
                 );
             }}
             draftConflicting={validatedPersonVariables}
+            draftBoundElsewhere={otherAnswerVariables.genderIdentity}
             draftSlotMap={draftSlotMap}
           />
           {genderOptions !== undefined &&

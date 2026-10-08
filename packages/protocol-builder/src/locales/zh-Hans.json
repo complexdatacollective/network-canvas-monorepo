@@ -1489,6 +1489,7 @@
   "protocolBuilder.skipLogicDestination.unreadableOption": "此编辑器无法读取的跳转目标",
   "protocolBuilder.skipLogicDestination.unreadableProblem": "无法读取此处跳转到的阶段。请改为选择访谈从何处继续。",
   "protocolBuilder.skipLogicDestination.untitledStageOption": "阶段 {position, number} — 未命名阶段",
+  "protocolBuilder.slotVariable.draftBoundElsewhereRefusal": "“{attributeName}”已记录此阶段的另一个回答，因此不能再记录这个回答。请选择其他属性。",
   "protocolBuilder.slotVariable.draftFormCollectsRefusal": "“{attributeName}”已由此阶段的另一个字段收集，因此此控件不能再写入它（在此写入的值会绕过其验证）",
   "protocolBuilder.slotVariable.draftSlotWritesRefusal": "“{attributeName}”已由此阶段的另一个控件在未经验证的情况下写入，因此不能再在此处收集（该控件写入的值会绕过此属性的验证）",
   "protocolBuilder.slotVariable.emptyState": "此处暂无可使用的此类型属性。请创建一个以继续。",

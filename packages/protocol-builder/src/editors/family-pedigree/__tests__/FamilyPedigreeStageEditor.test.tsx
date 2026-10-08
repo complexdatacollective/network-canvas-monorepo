@@ -478,6 +478,23 @@ describe('the attribute slots', () => {
     ).toEqual(['isCurrentPartner']);
   });
 
+  /**
+   * Gender identity and sex assigned at birth are both categorical attributes
+   * the interface writes itself, and neither slot is exclusive: only this
+   * rule keeps one stage from recording both answers in one attribute.
+   */
+  it('withholds the attribute another of the stage’s answers holds', async () => {
+    const harness = openFixture();
+    await harness.opened();
+
+    const offered = await offeredAttributes(
+      harness.user,
+      attributeField('Gender identity'),
+    );
+    expect(offered).toContain('genderIdentity');
+    expect(offered).not.toContain('sexAssignedAtBirth');
+  });
+
   it('keeps the person attributes out of the additional fields', async () => {
     const harness = openFixture();
     await harness.opened();
@@ -1395,6 +1412,36 @@ describe('the nomination prompts', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   };
 
+  /**
+   * Two prompts setting one attribute would record their answers as one, so
+   * a new prompt is not offered the attribute an existing prompt sets — while
+   * the existing prompt keeps it on offer for itself.
+   */
+  it('offers a new prompt no attribute another prompt sets', async () => {
+    const harness = await openWithAPrompt();
+    const dialog = await startAPrompt(harness);
+    expect(
+      await offeredAttributes(
+        harness.user,
+        attributeField('Attribute', dialog),
+      ),
+    ).not.toContain(HEART_DISEASE);
+  });
+
+  it('keeps a prompt’s own attribute on offer when it is edited', async () => {
+    const harness = await openWithAPrompt();
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Edit nomination prompt' }),
+    );
+    const editing = await screen.findByRole('dialog');
+    expect(
+      await offeredAttributes(
+        harness.user,
+        attributeField('Attribute', editing),
+      ),
+    ).toContain(HEART_DISEASE);
+  });
+
   it('asks nothing of the whole family until a prompt is created, and saves no key', async () => {
     const harness = openWithoutPrompts();
     await harness.opened();
@@ -1574,14 +1621,14 @@ describe('the nomination prompts', () => {
 
     // Not the participant marker, which the interface owns; not the attribute
     // an additional field of this very stage collects, which is validated;
-    // and not the text one. The fixture's own prompt flag is offered: two
-    // prompts may set the same attribute.
+    // not the text one; and not the fixture's own prompt flag, since two
+    // prompts setting one attribute would record their answers as one.
     expect(
       await offeredAttributes(
         harness.user,
         attributeField('Attribute', dialog),
       ),
-    ).toEqual([HEART_DISEASE, FIXTURE_PROMPT_FLAG]);
+    ).toEqual([HEART_DISEASE]);
   });
 
   /**

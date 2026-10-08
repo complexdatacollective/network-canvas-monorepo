@@ -37,6 +37,7 @@ export default function NodeConfigurationSection() {
     draftWriterMap,
     validatedPersonVariables,
     unvalidatedPersonVariables,
+    otherAnswerVariables,
   } = usePedigreeDraftBindings();
   const waiting = personSubject === null;
 
@@ -61,6 +62,7 @@ export default function NodeConfigurationSection() {
             variableType="text"
             writerClass="validated"
             draftConflicting={unvalidatedPersonVariables}
+            draftBoundElsewhere={otherAnswerVariables.name}
             draftSlotMap={draftSlotMap}
             offerValidation
           />
@@ -74,6 +76,7 @@ export default function NodeConfigurationSection() {
             writerClass="unvalidated"
             ownedOptions="pedigreeSexAssignedAtBirth"
             draftConflicting={validatedPersonVariables}
+            draftBoundElsewhere={otherAnswerVariables.sexAssignedAtBirth}
             draftSlotMap={draftSlotMap}
           />
           <SlotVariableField

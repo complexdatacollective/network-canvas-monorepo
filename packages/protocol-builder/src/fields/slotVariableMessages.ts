@@ -33,6 +33,13 @@ export const slotVariableMessages = defineMessages({
     description:
       'Refusal shown under an attribute control that collects an answer from the participant, when the attribute picked is already written directly by another control of the stage the researcher has open. attributeName is the codebook name of the attribute, which is not translated.',
   },
+  draftBoundElsewhereRefusal: {
+    id: 'protocolBuilder.slotVariable.draftBoundElsewhereRefusal',
+    defaultMessage:
+      '"{attributeName}" already records another of this stage’s answers, so it cannot record this one as well. Choose another attribute.',
+    description:
+      'Refusal shown under an attribute control when the attribute picked is already chosen for a different answer the same stage records, such as gender identity and sex assigned at birth, so one answer would overwrite the other. attributeName is the codebook name of the attribute, which is not translated.',
+  },
   variableGoneRefusal: {
     id: 'protocolBuilder.slotVariable.variableGoneRefusal',
     defaultMessage:

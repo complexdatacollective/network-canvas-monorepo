@@ -83,6 +83,13 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * - `unvalidatedPersonVariables` is what the interface writes onto people
  *   itself: gender identity, sex assigned at birth, the participant marker, the
  *   relatives not recorded and the attribute each nomination prompt sets.
+ * - `otherAnswerVariables` holds, for each of the stage's own answers about a
+ *   person that is no exclusive slot (name, gender identity, sex assigned at
+ *   birth, and the nomination prompts together), the attributes the OTHER
+ *   such answers are bound to. No two of them may share an attribute, or one
+ *   would overwrite the other. A nomination prompt's own attribute is among
+ *   `nominationPrompts`' list once for every prompt that sets it, so its
+ *   editor takes its own committed attribute out once.
  */
 export function usePedigreeDraftBindings(): Readonly<{
   personSubject: CodebookSubject | null;
@@ -93,6 +100,12 @@ export function usePedigreeDraftBindings(): Readonly<{
   validatedPersonVariables: readonly string[];
   unvalidatedPersonVariables: readonly string[];
   formFieldVariables: readonly string[];
+  otherAnswerVariables: Readonly<
+    Record<
+      'name' | 'genderIdentity' | 'sexAssignedAtBirth' | 'nominationPrompts',
+      readonly string[]
+    >
+  >;
 }> {
   const personSubject = useStageSubject('node') ?? null;
   const relationshipType = useStageValue(EDGE_CONFIGURATION_TYPE_PATH);
@@ -231,6 +244,28 @@ export function usePedigreeDraftBindings(): Readonly<{
     [name, unvalidatedPersonVariables],
   );
 
+  const otherAnswerVariables = useMemo(() => {
+    const answers = {
+      name: name === undefined ? [] : [name],
+      genderIdentity: gender === undefined ? [] : [gender],
+      sexAssignedAtBirth: sex === undefined ? [] : [sex],
+      nominationPrompts: nominationVariables,
+    };
+    const except = (own: keyof typeof answers) =>
+      Object.entries(answers).flatMap(([answer, variables]) =>
+        answer === own ? [] : variables,
+      );
+    return {
+      name: except('name'),
+      genderIdentity: except('genderIdentity'),
+      sexAssignedAtBirth: except('sexAssignedAtBirth'),
+      nominationPrompts: [
+        ...except('nominationPrompts'),
+        ...nominationVariables,
+      ],
+    };
+  }, [gender, name, nominationVariables, sex]);
+
   const validatedPersonVariables = useMemo(
     () =>
       name === undefined ? formFieldVariables : [name, ...formFieldVariables],
@@ -246,6 +281,7 @@ export function usePedigreeDraftBindings(): Readonly<{
     validatedPersonVariables,
     unvalidatedPersonVariables,
     formFieldVariables,
+    otherAnswerVariables,
   };
 }
 

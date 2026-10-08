@@ -1489,6 +1489,7 @@
   "protocolBuilder.skipLogicDestination.unreadableOption": "A destination this editor cannot read",
   "protocolBuilder.skipLogicDestination.unreadableProblem": "The stage this skips to cannot be read. Choose where the interview should continue instead.",
   "protocolBuilder.skipLogicDestination.untitledStageOption": "Stage {position, number} — Untitled stage",
+  "protocolBuilder.slotVariable.draftBoundElsewhereRefusal": "\"{attributeName}\" already records another of this stage’s answers, so it cannot record this one as well. Choose another attribute.",
   "protocolBuilder.slotVariable.draftFormCollectsRefusal": "\"{attributeName}\" is collected by another field of this stage, so it cannot also be written by this control (values written here would bypass its validation)",
   "protocolBuilder.slotVariable.draftSlotWritesRefusal": "\"{attributeName}\" is written without validation by another control of this stage, so it cannot also be collected here (the values that control writes bypass this attribute’s validation)",
   "protocolBuilder.slotVariable.emptyState": "No attributes of this type can be used here yet. Create one to continue.",

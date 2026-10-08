@@ -112,6 +112,12 @@ export type SlotVariableFieldProps = Readonly<{
    * writer class.
    */
   draftConflicting?: readonly string[];
+  /**
+   * Attributes this stage's own draft already binds to its OTHER answers, in
+   * either writer class: ruled out of the picker and refused at save, so no
+   * two of a stage's answers share an attribute.
+   */
+  draftBoundElsewhere?: readonly string[];
   /** Exclusive claims this stage's own unsaved draft has made. */
   draftSlotMap?: ExclusiveVariableSlotMap;
   /**
@@ -145,6 +151,7 @@ export default function SlotVariableField({
   onCreated,
   onBound,
   draftConflicting,
+  draftBoundElsewhere,
   draftSlotMap = NO_CLAIMS,
   offerValidation = false,
 }: SlotVariableFieldProps) {
@@ -241,9 +248,11 @@ export default function SlotVariableField({
         ...(ownSlot === undefined ? {} : { ownSlot }),
         writerClass,
         ...(draftConflicting === undefined ? {} : { draftConflicting }),
+        ...(draftBoundElsewhere === undefined ? {} : { draftBoundElsewhere }),
       }),
     [
       currentValue,
+      draftBoundElsewhere,
       draftConflicting,
       draftSlotMap,
       ownSlot,
@@ -271,6 +280,7 @@ export default function SlotVariableField({
     ownSlot,
     writerClass,
     draftConflicting,
+    draftBoundElsewhere,
     allVariables,
   });
   judgeAgainst.current = {
@@ -284,6 +294,7 @@ export default function SlotVariableField({
     ownSlot,
     writerClass,
     draftConflicting,
+    draftBoundElsewhere,
     allVariables,
   };
 

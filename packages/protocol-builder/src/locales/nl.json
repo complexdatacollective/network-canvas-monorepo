@@ -1489,6 +1489,7 @@
   "protocolBuilder.skipLogicDestination.unreadableOption": "Een bestemming die deze editor niet kan lezen",
   "protocolBuilder.skipLogicDestination.unreadableProblem": "De fase waarnaar wordt overgeslagen, kan niet worden gelezen. Kies waar het interview in plaats daarvan moet verdergaan.",
   "protocolBuilder.skipLogicDestination.untitledStageOption": "Fase {position, number} – Naamloze fase",
+  "protocolBuilder.slotVariable.draftBoundElsewhereRefusal": "“{attributeName}” legt al een ander antwoord van deze fase vast, dus kan dit antwoord niet ook vastleggen. Kies een ander attribuut.",
   "protocolBuilder.slotVariable.draftFormCollectsRefusal": "“{attributeName}” wordt verzameld door een ander veld van deze fase, dus dit invoerelement kan het niet ook schrijven (waarden die hier worden geschreven, zouden de validatie ervan omzeilen)",
   "protocolBuilder.slotVariable.draftSlotWritesRefusal": "“{attributeName}” wordt zonder validatie geschreven door een ander invoerelement van deze fase, dus het kan hier niet ook worden verzameld (de waarden die dat element schrijft, omzeilen de validatie van dit attribuut)",
   "protocolBuilder.slotVariable.emptyState": "Er kunnen hier nog geen attributen van dit type worden gebruikt. Maak er een aan om verder te gaan.",
