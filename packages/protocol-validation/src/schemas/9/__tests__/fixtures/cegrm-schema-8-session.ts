@@ -74,7 +74,7 @@ export const pedigreePeople = [
  * well as on current partnerships, and the gestational carrier flag only when
  * it was true.
  */
-export const pedigreeRelationships = [
+const pedigreeRelationships = [
   relationship('edge-mother-ego', 'mother-1', 'ego-1', {
     relationshipType: ['biological'],
     isActive: true,

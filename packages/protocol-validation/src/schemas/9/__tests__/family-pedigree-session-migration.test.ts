@@ -278,8 +278,7 @@ describe('migrationV8toV9 session step', () => {
     });
 
     it('rewrites them when the pedigree left no record', () => {
-      const session = committedSession(9);
-      session.stageMetadata = {};
+      const session = { ...committedSession(9), stageMetadata: {} };
       expect(migrated(migrateSession(session)).network.edges).toEqual(
         migratedRelationships,
       );
@@ -291,7 +290,9 @@ describe('migrationV8toV9 session step', () => {
     const withoutSex = (ids: readonly string[]) => {
       const session = committedSession(9);
       for (const node of session.network.nodes) {
-        if (!ids.includes(node._uid)) continue;
+        if (typeof node._uid !== 'string' || !ids.includes(node._uid)) {
+          continue;
+        }
         const { biologicalSex: _biologicalSex, ...attributes } =
           node.attributes as Fields;
         node.attributes = attributes;
