@@ -308,10 +308,15 @@ export async function equivalentValidatedSuites({
       // Same-repo runs only: a fork branch may share the generated branch's
       // name, but its runs must never vouch for ours. Sort defensively even
       // though the API returns newest-first.
+      //
+      // And only runs of pull requests into main: the same branch may also
+      // back a pull request into an integration branch, whose green run
+      // describes a different merge tree and must never vouch for this one.
       trustedRunsByBranch.set(
         releaseBranch,
         runs
           .filter((run) => run.head_repository?.full_name === repository)
+          .filter((run) => runBelongsToBase(run, RELEASE_BASE_REF))
           .toSorted(compareRunsNewestFirst),
       );
     }
@@ -469,14 +474,39 @@ export const SUITES_BY_RELEASE_REF = {
   'changeset-release/website': suites('interview'),
 };
 
-export function releaseRefForEvent({ eventName, headRef, refName }) {
+// Generated release PRs always target main. A pull request that merely shares
+// a release branch's name but targets another base (an integration branch,
+// say) is an ordinary feature PR: its tree, its verdicts and its snapshot
+// handling are not the release lane's.
+export const RELEASE_BASE_REF = 'main';
+
+export function releaseRefForEvent({ eventName, headRef, refName, baseRef }) {
   const candidate =
     eventName === 'pull_request'
-      ? headRef
+      ? baseRef === RELEASE_BASE_REF
+        ? headRef
+        : ''
       : eventName === 'workflow_dispatch'
         ? refName
         : '';
   return candidate in SUITES_BY_RELEASE_REF ? candidate : '';
+}
+
+// The title a pull request run is given by the workflow's top-level
+// `run-name`. A run's `pull_requests` array lists every open pull request
+// whose head matches, not only the one that triggered it, so the title is the
+// only per-run record of which pull request, and which base, a run belongs to.
+function runBelongsToBase(run, baseRef) {
+  return (
+    typeof run.display_title === 'string' &&
+    new RegExp(`^PR #\\d+ \u2192 ${escapeRegExp(baseRef)} \u00b7 `).test(
+      run.display_title,
+    )
+  );
+}
+
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function git(args, cwd) {
@@ -522,10 +552,22 @@ function reasonForEverySuite(reason) {
 }
 
 export function releaseE2EPolicy(
-  { eventName, headRef = '', refName = '', baseSha = '', headSha = '' },
+  {
+    eventName,
+    headRef = '',
+    refName = '',
+    baseRef = '',
+    baseSha = '',
+    headSha = '',
+  },
   pullRequestDetector = pullRequestSuiteSelection,
 ) {
-  const releaseRef = releaseRefForEvent({ eventName, headRef, refName });
+  const releaseRef = releaseRefForEvent({
+    eventName,
+    headRef,
+    refName,
+    baseRef,
+  });
   if (releaseRef) {
     const laneSuites = SUITES_BY_RELEASE_REF[releaseRef];
     return {
@@ -579,6 +621,7 @@ async function main() {
     eventName,
     headRef: process.env.HEAD_REF ?? '',
     refName: process.env.REF_NAME ?? '',
+    baseRef: process.env.BASE_REF ?? '',
     baseSha: process.env.BASE_SHA ?? '',
     headSha: process.env.HEAD_SHA ?? '',
   });
