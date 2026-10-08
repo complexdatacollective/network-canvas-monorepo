@@ -25,7 +25,7 @@ const DEFAULT_COLORS = [
   'var(--edge-1, oklch(0.81 0.17 86.39))',
   'var(--ord-1, oklch(0.7 0.2 171.52))',
   'var(--edge-8, oklch(0.55 0.198 281))',
-  'var(--node-6, oklch(0.5824 0.229 260.09))',
+  'var(--node-6, oklch(0.572 0.229 260.09))',
 ];
 
 type NetworkWeaveBackgroundProps = {
