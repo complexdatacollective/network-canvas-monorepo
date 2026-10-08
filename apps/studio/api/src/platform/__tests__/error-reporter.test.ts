@@ -28,6 +28,7 @@ import {
   updateJob,
 } from '../../jobs/__tests__/support.ts';
 import { RateLimiter } from '../../rate-limit/limiter.ts';
+import { RATE_LIMITS } from '../../rate-limit/scopes.ts';
 import { RateLimitStore } from '../../rate-limit/store.ts';
 import { TelemetryHandlers } from '../../rpc/handlers/telemetry.ts';
 import { POSTHOG_INGESTION_HOST } from '../analytics.ts';
@@ -219,42 +220,71 @@ const ProbeHandlers = Probes.toLayer({
     recordRequestTeam(TEAM).pipe(Effect.andThen(Effect.never)),
 });
 
-const ProbeRoutes = Layer.mergeAll(
-  RpcServer.layerHttp({ group: Probes, path: '/rpc', protocol: 'http' }).pipe(
-    Layer.provide(ProbeHandlers),
-    Layer.provide(RpcSerialization.layerNdjson),
-  ),
-  RpcServer.layerHttp({
-    group: TelemetryRpcs,
-    path: '/telemetry',
-    protocol: 'http',
-  }).pipe(
-    Layer.provide(TelemetryHandlers),
-    Layer.provide(RpcSerialization.layerNdjson),
-    Layer.provide(RateLimiter.layer),
-    Layer.provide(RateLimitStore.layerAbsent),
-  ),
-  HttpRouter.add(
-    'GET',
-    '/defect',
-    recordRequestTeam(TEAM).pipe(
-      Effect.andThen(Effect.die(new Error('the route exploded'))),
+const SHARED_DEFECT = new Error('one error object thrown by every request');
+
+const LEAKY_NAME = Object.assign(new Error('named by a library'), {
+  name: `Refused for ${TEAM} by jane.doe`,
+});
+
+const DEFAULT_LIMITER = RateLimiter.layer.pipe(
+  Layer.provide(RateLimitStore.layerAbsent),
+);
+
+const probeRoutes = (limiter: Layer.Layer<RateLimiter>) =>
+  Layer.mergeAll(
+    RpcServer.layerHttp({ group: Probes, path: '/rpc', protocol: 'http' }).pipe(
+      Layer.provide(ProbeHandlers),
+      Layer.provide(RpcSerialization.layerNdjson),
     ),
-  ),
-  HttpRouter.add(
-    'GET',
-    '/failure',
-    recordRequestTeam(TEAM).pipe(
-      Effect.andThen(Effect.fail(new Error(`the store said ${SECRET}`))),
+    RpcServer.layerHttp({
+      group: TelemetryRpcs,
+      path: '/telemetry',
+      protocol: 'http',
+    }).pipe(
+      Layer.provide(TelemetryHandlers),
+      Layer.provide(RpcSerialization.layerNdjson),
+      Layer.provide(limiter),
     ),
-  ),
-  HttpRouter.add(
-    'GET',
-    '/hang',
-    recordRequestTeam(TEAM).pipe(Effect.andThen(Effect.never)),
-  ),
-  HttpRouter.add('GET', '/ok', HttpServerResponse.text('ok')),
-).pipe(Layer.provideMerge(RequestIdLive.pipe(Layer.provideMerge(ProblemJson))));
+    HttpRouter.add(
+      'GET',
+      '/primitive',
+      recordRequestTeam(TEAM).pipe(Effect.andThen(Effect.die('failed'))),
+    ),
+    HttpRouter.add(
+      'GET',
+      '/shared',
+      recordRequestTeam(TEAM).pipe(Effect.andThen(Effect.die(SHARED_DEFECT))),
+    ),
+    HttpRouter.add(
+      'GET',
+      '/named',
+      recordRequestTeam(TEAM).pipe(Effect.andThen(Effect.die(LEAKY_NAME))),
+    ),
+    HttpRouter.add(
+      'GET',
+      '/defect',
+      recordRequestTeam(TEAM).pipe(
+        Effect.andThen(Effect.die(new Error('the route exploded'))),
+      ),
+    ),
+    HttpRouter.add(
+      'GET',
+      '/failure',
+      recordRequestTeam(TEAM).pipe(
+        Effect.andThen(Effect.fail(new Error(`the store said ${SECRET}`))),
+      ),
+    ),
+    HttpRouter.add(
+      'GET',
+      '/hang',
+      recordRequestTeam(TEAM).pipe(Effect.andThen(Effect.never)),
+    ),
+    HttpRouter.add('GET', '/ok', HttpServerResponse.text('ok')),
+  ).pipe(
+    Layer.provideMerge(RequestIdLive.pipe(Layer.provideMerge(ProblemJson))),
+  );
+
+const ProbeRoutes = probeRoutes(DEFAULT_LIMITER);
 
 type Probe = (origin: string) => Promise<Response | null>;
 
@@ -306,13 +336,14 @@ const serveAndProbe = (
   destination: Destination,
   probe: Probe,
   telemetry = true,
+  routes = ProbeRoutes,
 ) =>
   Effect.gen(function* () {
     const sent: Sent[] = [];
     const response = yield* Effect.scoped(
       Effect.gen(function* () {
         const context = yield* Layer.build(
-          HttpRouter.serve(ProbeRoutes, {
+          HttpRouter.serve(routes, {
             disableLogger: true,
             disableListenLog: true,
           }).pipe(
@@ -434,6 +465,43 @@ describe.each(DESTINATIONS)('ErrorReporter ($name)', (destination) => {
     }),
   );
 
+  it.live('captures a primitive defect once', () =>
+    Effect.gen(function* () {
+      const { response, captures } = yield* serveAndProbe(
+        destination,
+        get('/primitive'),
+      );
+      expect(response?.status).toBe(500);
+      expect(captures).toHaveLength(1);
+    }),
+  );
+
+  it.live('captures every request that fails with the same error object', () =>
+    Effect.gen(function* () {
+      const { captures } = yield* serveAndProbe(destination, async (origin) => {
+        await get('/shared')(origin);
+        return get('/shared')(origin);
+      });
+      expect(captures).toHaveLength(2);
+      expect(new Set(captures.map((capture) => capture.requestId)).size).toBe(
+        2,
+      );
+    }),
+  );
+
+  it.live('exports a type that is not an identifier as Error', () =>
+    Effect.gen(function* () {
+      const { captures, everything } = yield* serveAndProbe(
+        destination,
+        get('/named'),
+      );
+      expect(captures).toHaveLength(1);
+      expect(captures[0]?.type).toBe('Error');
+      expect(everything).not.toContain('jane.doe');
+      expect(everything).not.toContain(`Refused for ${TEAM}`);
+    }),
+  );
+
   it.live(
     'forwards a browser report with its type, bundle frames and surface',
     () =>
@@ -484,6 +552,31 @@ describe.each(DESTINATIONS)('ErrorReporter ($name)', (destination) => {
     }),
   );
 
+  it.live('charges the browser report limit even with telemetry off', () =>
+    Effect.gen(function* () {
+      const charged: string[] = [];
+      const recording = Layer.succeed(RateLimiter, {
+        configured: true,
+        rules: RATE_LIMITS,
+        check: (scope) =>
+          Effect.sync(() => {
+            charged.push(scope);
+            return { allowed: true };
+          }),
+        consume: () => Effect.succeed({ allowed: true }),
+        readiness: Effect.succeed('ok' as const),
+      });
+      const { captures } = yield* serveAndProbe(
+        destination,
+        rpc('telemetry.report', undefined, BROWSER_REPORT, '/telemetry'),
+        false,
+        probeRoutes(recording),
+      );
+      expect(charged).toEqual(['error_report_address']);
+      expect(captures).toEqual([]);
+    }),
+  );
+
   it.live('is never built, and sends nothing, with telemetry off', () =>
     Effect.gen(function* () {
       const built = yield* Effect.scoped(
@@ -515,6 +608,54 @@ const db = await reachableDb();
 describe.skipIf(!db)('ErrorReporter in the job worker', () => {
   layer(layerQueueHarness(db!))('with the queue installed', (queued) => {
     for (const destination of DESTINATIONS) {
+      queued.effect(
+        `captures a job the lease reaper fails, never one it retries (${destination.name})`,
+        () =>
+          Effect.gen(function* () {
+            yield* clearQueue;
+            const sent: Sent[] = [];
+            yield* Effect.scoped(
+              Effect.gen(function* () {
+                const context = yield* Layer.build(telemetryUnder(destination));
+                yield* Context.get(context, InstallationIdentity).record(
+                  INSTALLATION,
+                );
+                const retried = yield* enqueueDelivery();
+                yield* updateJob(
+                  retried,
+                  `state = 'active', attempts = 1, locked_until = to_timestamp(0)`,
+                );
+                const final = yield* enqueueDelivery(
+                  '77777777-7777-4777-8777-777777777777',
+                );
+                yield* updateJob(
+                  final,
+                  `state = 'active', attempts = 1, retry_limit = 0, locked_until = to_timestamp(0)`,
+                );
+                const reaped = yield* onWorker(
+                  (worker) => worker.reapExpired,
+                ).pipe(Effect.provide(context));
+                expect(reaped).toBe(2);
+              }),
+            ).pipe(
+              Effect.provideService(
+                FetchHttpClient.Fetch,
+                recordingFetch(sent),
+              ),
+            );
+            expect(identities(capturesAt(destination, sent))).toEqual([
+              {
+                type: 'JobLeaseExpired',
+                requestId: undefined,
+                teamId: undefined,
+                installationId: INSTALLATION,
+                origin: 'job',
+                queue: 'invitation-delivery',
+              },
+            ]);
+          }).pipe(Effect.provide(layerJobs)),
+      );
+
       queued.effect(
         `captures a job's final failure once, never a retried attempt (${destination.name})`,
         () =>

@@ -12,24 +12,25 @@ import {
   defectReporter,
   ErrorReporter,
   reportHttpFailure,
+  reportingOnce,
 } from '../../platform/error-reporter.ts';
 
-const reporting = (
-  reporter: ErrorReporter['Service'],
-): (<A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>) => {
-  const defects = defectReporter(reporter);
-  return (effect) =>
-    effect.pipe(
-      Effect.tapCause((cause) => reportHttpFailure(reporter, cause)),
-      Effect.provideServiceEffect(
-        EffectErrorReporter.CurrentErrorReporters,
-        Effect.map(
+const reporting =
+  (reporter: ErrorReporter['Service']) =>
+  <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+    Effect.suspend(() => {
+      const report = reportingOnce(reporter);
+      return effect.pipe(
+        Effect.tapCause((cause) => reportHttpFailure(report, cause)),
+        Effect.provideServiceEffect(
           EffectErrorReporter.CurrentErrorReporters,
-          (current) => new Set([...current, defects]),
+          Effect.map(
+            EffectErrorReporter.CurrentErrorReporters,
+            (current) => new Set([...current, defectReporter(report)]),
+          ),
         ),
-      ),
-    );
-};
+      );
+    });
 
 // Only empty bodies are rewritten: anything a handler chose, such as
 // better-auth's `{ message }` errors, is already an answer. A pre-response

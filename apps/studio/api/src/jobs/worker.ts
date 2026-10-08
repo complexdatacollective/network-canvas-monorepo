@@ -266,6 +266,19 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
         reporter.report(cause, { origin: 'job', queue, jobId }),
     });
 
+  const reportLeaseExpired = (
+    queue: JobQueueName,
+    jobId: JobId,
+  ): Effect.Effect<void> =>
+    Option.match(errors, {
+      onNone: () => Effect.void,
+      onSome: (reporter) =>
+        reporter.reportException(
+          { type: 'JobLeaseExpired', platform: 'node:javascript', frames: [] },
+          { origin: 'job', queue, jobId },
+        ),
+    });
+
   const table = (sql: SqlClient.SqlClient) => sql(schema);
 
   const work = Effect.fnUntraced(function* <Queue extends JobQueueName, E, R>(
@@ -637,6 +650,7 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
              FOR UPDATE SKIP LOCKED
            LIMIT ${EXPIRY_BATCH_SIZE}`;
       let reaped = 0;
+      const ended: { queue: JobQueueName; jobId: JobId }[] = [];
       for (const row of expired) {
         const declaration = declaredQueues.get(row.queue);
         if (declaration === undefined) {
@@ -654,13 +668,19 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
           now,
         );
         if (step !== null) reaped += 1;
+        if (step !== null && step._tag !== 'retrying') {
+          ended.push({ queue: declaration.name, jobId: row.id });
+        }
       }
-      return reaped;
+      return { reaped, ended };
     });
 
     let settled = 0;
     for (;;) {
-      const reaped = yield* MaintenanceScope.open(onePass);
+      const { reaped, ended } = yield* MaintenanceScope.open(onePass);
+      for (const { queue, jobId } of ended) {
+        yield* reportLeaseExpired(queue, jobId);
+      }
       settled += reaped;
       if (reaped < EXPIRY_BATCH_SIZE) return settled;
     }

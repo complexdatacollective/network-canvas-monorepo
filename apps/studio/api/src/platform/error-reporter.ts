@@ -7,7 +7,6 @@ import {
   FiberSet,
   Layer,
   Option,
-  Predicate,
 } from 'effect';
 import {
   FetchHttpClient,
@@ -23,13 +22,11 @@ import { STUDIO_VERSION } from '../version.ts';
 import { POSTHOG_INGESTION_HOST } from './analytics.ts';
 import { InstallationIdentity } from './installation-identity.ts';
 import { correlationOf } from './logger.ts';
-import { failureFrames } from './telemetry-export.ts';
+import { failureFrames, safeExceptionType } from './telemetry-export.ts';
 
 const DELIVERY_TIMEOUT = '5 seconds';
 
 const MAX_FRAMES = 50;
-
-const ERROR_TYPE = /^[A-Za-z][\w.]{0,99}$/;
 
 const FUNCTION_NAME = /^[\w$.<>[\] -]{1,200}$/;
 
@@ -70,9 +67,6 @@ export type ErrorContext = {
 
 export type ReportOrigin = Omit<ErrorContext, 'program'>;
 
-const exceptionType = (name: string): string =>
-  ERROR_TYPE.test(name) ? name : 'Error';
-
 const functionName = (name: string | undefined): string =>
   name !== undefined && FUNCTION_NAME.test(name) ? name : '?';
 
@@ -105,17 +99,10 @@ const serverFrames = (frames: string): ExceptionFrame[] =>
     })
     .slice(0, MAX_FRAMES);
 
-const originalOf = (reason: Cause.Reason<unknown>): unknown =>
-  Cause.isFailReason(reason)
-    ? reason.error
-    : Cause.isDieReason(reason)
-      ? reason.defect
-      : undefined;
-
 const exceptionOf = (reason: Cause.Reason<unknown>): ReportedException => {
   const [pretty] = Cause.prettyErrors(Cause.fromReasons([reason]));
   return {
-    type: exceptionType(pretty?.name ?? 'Error'),
+    type: safeExceptionType(pretty?.name),
     platform: 'node:javascript',
     frames: pretty === undefined ? [] : serverFrames(failureFrames(pretty)),
   };
@@ -154,7 +141,6 @@ const installationDistinctId = (
 type Deliver = (
   exception: ReportedException,
   context: ErrorContext,
-  cause: Option.Option<Cause.Cause<unknown>>,
 ) => Effect.Effect<void>;
 
 export class ErrorReporter extends Context.Service<
@@ -173,33 +159,19 @@ export class ErrorReporter extends Context.Service<
   static readonly make = (
     program: string,
     deliver: Deliver,
-  ): ErrorReporter['Service'] => {
-    const reported = new WeakSet<object>();
-    const firstSighting = (original: unknown): boolean => {
-      if (!Predicate.isObject(original)) return true;
-      if (reported.has(original)) return false;
-      reported.add(original);
-      return true;
-    };
-    return ErrorReporter.of({
+  ): ErrorReporter['Service'] =>
+    ErrorReporter.of({
       report: (cause, origin) =>
         Effect.suspend(() => {
           const reason = cause.reasons.find(
             (candidate) => !Cause.isInterruptReason(candidate),
           );
-          if (reason === undefined || !firstSighting(originalOf(reason))) {
-            return Effect.void;
-          }
-          return deliver(
-            exceptionOf(reason),
-            { ...origin, program },
-            Option.some(Cause.fromReasons([reason])),
-          );
+          if (reason === undefined) return Effect.void;
+          return deliver(exceptionOf(reason), { ...origin, program });
         }),
       reportException: (exception, origin) =>
-        deliver(exception, { ...origin, program }, Option.none()),
+        deliver(exception, { ...origin, program }),
     });
-  };
 
   static readonly layerPostHog = (
     program: string,
@@ -301,18 +273,14 @@ export class ErrorReporter extends Context.Service<
 
   static readonly layerOtlp = (program: string): Layer.Layer<ErrorReporter> =>
     Layer.sync(ErrorReporter, () =>
-      ErrorReporter.make(program, (exception, context, cause) =>
-        Option.match(cause, {
-          onSome: (failure) =>
-            Effect.logError('An unexpected failure was reported', failure),
-          onNone: () =>
-            Effect.logError('An unexpected failure was reported').pipe(
-              Effect.annotateLogs({
-                'exception.type': exception.type,
-                'exception.stacktrace': renderedFrames(exception.frames),
-              }),
-            ),
-        }).pipe(Effect.annotateLogs(contextProperties(context))),
+      ErrorReporter.make(program, (exception, context) =>
+        Effect.logError('An unexpected failure was reported').pipe(
+          Effect.annotateLogs({
+            ...contextProperties(context),
+            'exception.type': exception.type,
+            'exception.stacktrace': renderedFrames(exception.frames),
+          }),
+        ),
       ),
     );
 }
@@ -344,29 +312,48 @@ const unexpectedOverHttp = (
   );
 };
 
-export const reportHttpFailure = (
+export type RequestReport = (
+  cause: Cause.Cause<unknown>,
+  origin: ReportOrigin,
+) => Effect.Effect<void>;
+
+export const reportingOnce = (
   reporter: ErrorReporter['Service'],
+): RequestReport => {
+  const seen = new Set<Cause.Reason<unknown>>();
+  return (cause, origin) =>
+    Effect.suspend(() => {
+      const fresh = cause.reasons.filter((reason) => !seen.has(reason));
+      for (const reason of fresh) seen.add(reason);
+      return fresh.length === 0
+        ? Effect.void
+        : reporter.report(Cause.fromReasons(fresh), origin);
+    });
+};
+
+export const reportHttpFailure = (
+  report: RequestReport,
   cause: Cause.Cause<unknown>,
 ): Effect.Effect<void> =>
   Effect.gen(function* () {
     if (Cause.hasInterruptsOnly(cause)) return;
     const unexpected = yield* Effect.filter(cause.reasons, unexpectedOverHttp);
     if (unexpected.length === 0) return;
-    yield* reporter.report(
+    yield* report(
       Cause.fromReasons(unexpected),
       requestOrigin(Cause.annotations(cause)),
     );
   });
 
 export const defectReporter = (
-  reporter: ErrorReporter['Service'],
+  report: RequestReport,
 ): EffectErrorReporter.ErrorReporter => ({
   [EffectErrorReporter.TypeId]: EffectErrorReporter.TypeId,
   report: ({ cause, fiber }) => {
     const defects = cause.reasons.filter(Cause.isDieReason);
     if (defects.length === 0) return;
     Effect.runForkWith(fiber.context)(
-      reporter.report(Cause.fromReasons(defects), requestOrigin(fiber.context)),
+      report(Cause.fromReasons(defects), requestOrigin(fiber.context)),
     );
   },
 });

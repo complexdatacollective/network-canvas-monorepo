@@ -17,6 +17,14 @@ const instructions = (source: string): string[] =>
 
 const dockerfile = instructions(read('Dockerfile'));
 const viteConfig = read('web/vite.config.ts');
+const turboConfig = readFileSync(
+  fileURLToPath(new URL('../../turbo.json', studioRoot)),
+  'utf8',
+);
+
+const outsideImports = [
+  ...viteConfig.matchAll(/import\(\s*'(\.\.\/\.\.\/\.\.\/[^']+)'\s*\)/g),
+].map(([, path]) => path!.replace('../../../', '$TURBO_ROOT$/'));
 
 const SECRET_MOUNTS = [
   '--mount=type=secret,id=posthog_personal_api_key,env=POSTHOG_PERSONAL_API_KEY',
@@ -70,5 +78,18 @@ describe('the studio-web image build', () => {
       'if (!posthogPersonalApiKey || !posthogProjectId) return [];',
     );
     expect(viteConfig).toContain('deleteAfterUpload: true');
+  });
+
+  it('lists every file outside the package the web build imports among its cache inputs', () => {
+    const block =
+      /"@codaco\/studio-web#build":\s*\{[\s\S]*?"inputs":\s*\[([\s\S]*?)\]/.exec(
+        turboConfig,
+      )?.[1];
+    expect(outsideImports).toContain(
+      '$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts',
+    );
+    for (const path of outsideImports) {
+      expect(block).toContain(`"${path}"`);
+    }
   });
 });

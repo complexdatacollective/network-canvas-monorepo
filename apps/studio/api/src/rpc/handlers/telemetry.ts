@@ -27,9 +27,9 @@ const browserException = (report: ErrorReport): ReportedException => ({
 export const TelemetryHandlers = TelemetryRpcs.toLayer({
   'telemetry.report': (report) =>
     Effect.gen(function* () {
+      yield* enforceRateLimit('error_report_address', yield* clientAddress);
       const reporter = yield* Effect.serviceOption(ErrorReporter);
       if (Option.isNone(reporter)) return;
-      yield* enforceRateLimit('error_report_address', yield* clientAddress);
       const context = yield* Effect.context();
       yield* reporter.value.reportException(browserException(report), {
         ...requestOrigin(context),

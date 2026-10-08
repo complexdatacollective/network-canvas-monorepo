@@ -51,6 +51,11 @@ const framesAfter = (
   );
 };
 
+const ERROR_TYPE = /^[A-Za-z][\w.]{0,99}$/;
+
+export const safeExceptionType = (name: string | null | undefined): string =>
+  typeof name === 'string' && ERROR_TYPE.test(name) ? name : 'Error';
+
 export const failureFrames = (error: Error): string =>
   framesAfter(error.stack, error.message);
 
@@ -93,6 +98,16 @@ const exceptionAttributes = (
           key: attribute.key,
           value: {
             stringValue: framesAfter(attribute.value.stringValue, message),
+          },
+        },
+      ];
+    }
+    if (attribute.key === 'exception.type') {
+      return [
+        {
+          key: attribute.key,
+          value: {
+            stringValue: safeExceptionType(attribute.value.stringValue),
           },
         },
       ];
@@ -186,7 +201,7 @@ const failureAttributes = (
   const [first] = Cause.prettyErrors(cause);
   if (first === undefined) return {};
   return {
-    'exception.type': first.name,
+    'exception.type': safeExceptionType(first.name),
     'exception.stacktrace': failureFrames(first),
   };
 };
