@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useReducer, useState } from 'react';
+import { useEffect, useMemo, useReducer, useState } from 'react';
 import { useSelector, useStore } from 'react-redux';
 
 import { getEncryptionKeyId } from '../../store/modules/ui';
@@ -60,6 +60,17 @@ const outcomesIn =
   (scope: DecryptionScope | undefined): OutcomeOf =>
   (value) =>
     scope ? readCachedOutcome(scope, value) : undefined;
+
+/**
+ * The outcome of decrypting each value with this interview's key, as far as
+ * it is known when asked. It decrypts nothing, and reads the key's decryption
+ * scope on every call rather than keeping any plaintext, so a function that
+ * runs later (an event handler) reads what is shown then.
+ */
+export function useCachedOutcomes(): OutcomeOf {
+  const scope = useDecryptionScope();
+  return useMemo(() => outcomesIn(scope), [scope]);
+}
 
 /**
  * The outcome of decrypting each of `values` with this interview's key, as

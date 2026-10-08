@@ -11,6 +11,7 @@ import { InlineGridLayout } from '@codaco/fresco-ui/collection/layout/InlineGrid
 import type {
   CollectionProps,
   ItemProps,
+  Key,
 } from '@codaco/fresco-ui/collection/types';
 import type { DragMetadata, DropCallback } from '@codaco/fresco-ui/dnd/types';
 import { useSafeAnimate } from '@codaco/fresco-ui/hooks/useSafeAnimate';
@@ -149,26 +150,6 @@ const NodeList = memo(
       });
     }, [animationKey, containerRef, safeAnimate]);
 
-    // Build drag and drop hooks if accepts or onDrop is provided
-    const { dragAndDropHooks } = useDragAndDrop<NcNode>({
-      announcedName,
-      getItems: (keys) => [{ type: itemType, keys }],
-      acceptTypes: accepts,
-      acceptsFilter,
-      onDrop: onDrop
-        ? (e) => {
-            // Map Collection's DropEvent to the old metadata format
-            onDrop(e.metadata);
-          }
-        : undefined,
-      getItemMetadata: (key) => {
-        const node = items.find(
-          (n) => n[entityPrimaryKeyProperty] === String(key),
-        );
-        return node ? { ...node, itemType } : { itemType };
-      },
-    });
-
     const keyExtractor = useCallback(
       (node: NcNode) => node[entityPrimaryKeyProperty],
       [],
@@ -210,15 +191,39 @@ const NodeList = memo(
     const typeahead = useMemo(() => {
       const texts = new Map(
         displayItems.map((node) => [
-          node,
+          node[entityPrimaryKeyProperty],
           labelNode(node, labelSources.get(node)),
         ]),
       );
       return {
         items: [...displayItems],
-        textOf: (node: NcNode) => texts.get(node) ?? labelNode(node),
+        textOf: (node: NcNode) =>
+          texts.get(node[entityPrimaryKeyProperty]) ?? labelNode(node),
+        // A drag names the person by the label their card shows.
+        ofKey: (key: Key) => texts.get(String(key)),
       };
     }, [displayItems, labelSources, labelNode]);
+
+    // Build drag and drop hooks if accepts or onDrop is provided
+    const { dragAndDropHooks } = useDragAndDrop<NcNode>({
+      announcedName,
+      getItems: (keys) => [{ type: itemType, keys }],
+      acceptTypes: accepts,
+      acceptsFilter,
+      onDrop: onDrop
+        ? (e) => {
+            // Map Collection's DropEvent to the old metadata format
+            onDrop(e.metadata);
+          }
+        : undefined,
+      getItemMetadata: (key) => {
+        const node = items.find(
+          (n) => n[entityPrimaryKeyProperty] === String(key),
+        );
+        return node ? { ...node, itemType } : { itemType };
+      },
+      getItemAnnouncedName: typeahead.ofKey,
+    });
 
     // Styling classes including drop state styling via data attributes
     const containerClasses = cx(

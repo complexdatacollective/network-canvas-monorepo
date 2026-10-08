@@ -1,6 +1,5 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { useSelector } from 'react-redux';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { DragMetadata } from '@codaco/fresco-ui/dnd/types';
@@ -28,7 +27,6 @@ import {
   getPlacedNodes,
   getUnplacedNodes,
 } from '../../selectors/canvas';
-import { makeGetCodebookForNodeType } from '../../selectors/protocol';
 import {
   getNetworkNodesForType,
   getPromptSortOrder,
@@ -41,7 +39,8 @@ import {
 } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
-import { getNodeLabelAttribute } from '../../utils/getNodeLabelAttribute';
+import { useCachedOutcomes } from '../Anonymisation/useDecryptionScope';
+import { useNodeLabeller } from '../Anonymisation/useNodeLabel';
 import { interfaceMessages } from '../messages';
 import CollapsablePrompts from './CollapsablePrompts';
 import SimulationPanel from './SimulationPanel';
@@ -263,7 +262,10 @@ const Sociogram = (stageProps: SociogramProps) => {
     [store, dispatch, layoutVariable, currentStep, layoutMode, track],
   );
 
-  const getCodebookForNodeType = useSelector(makeGetCodebookForNodeType);
+  // Reads each label as its node shows it when the node is unplaced: the
+  // decrypted name once it is readable, never anything derived from it
+  // otherwise.
+  const labelNode = useNodeLabeller(useCachedOutcomes());
 
   // Unplace a node: clearing the layout variable returns it to the drawer.
   // Reached by dragging a placed node onto the drawer, or by pressing
@@ -271,22 +273,7 @@ const Sociogram = (stageProps: SociogramProps) => {
   const handleUnplaceNode = useCallback(
     (nodeId: string) => {
       const node = allNodes.find((n) => n[entityPrimaryKeyProperty] === nodeId);
-
-      // Resolve the node's visible label synchronously for the announcement.
-      // Non-string values (e.g. encrypted attributes) fall back to a nameless
-      // announcement rather than leaking or garbling the label.
-      let name: string | null = null;
-      if (node) {
-        const attributes = node[entityAttributesProperty];
-        const labelAttribute = getNodeLabelAttribute(
-          getCodebookForNodeType(node.type)?.variables,
-          attributes,
-        );
-        const rawLabel = labelAttribute ? attributes[labelAttribute] : null;
-        if (typeof rawLabel === 'string' || typeof rawLabel === 'number') {
-          name = String(rawLabel);
-        }
-      }
+      const name = node ? labelNode(node) : null;
 
       track('node_unplaced', { node_id: nodeId });
       void dispatch(
@@ -307,7 +294,7 @@ const Sociogram = (stageProps: SociogramProps) => {
     },
     [
       allNodes,
-      getCodebookForNodeType,
+      labelNode,
       dispatch,
       layoutVariable,
       currentStep,
