@@ -10,8 +10,13 @@ import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { DndStoreProvider } from '@codaco/fresco-ui/dnd/DndStoreProvider';
 import { asEntityAttributeReference } from '@codaco/protocol-validation';
-import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataProvider } from '../../../contexts/StageMetadataContext';
@@ -36,6 +41,20 @@ vi.mock('../../../hooks/useCelebrate', () => ({
   useCelebrate: () => vi.fn(),
 }));
 vi.mock('../../../hooks/useMediaQuery', () => ({ default: () => false }));
+
+// A panel's roster row whose name the codebook marks encrypted.
+vi.mock('../../../hooks/useExternalData', () => ({
+  default: () => ({
+    externalData: [
+      {
+        [entityPrimaryKeyProperty]: 'roster-row-1',
+        type: NODE_TYPE,
+        [entityAttributesProperty]: { name: 'Alice' },
+      },
+    ],
+    status: { state: 'ready' },
+  }),
+}));
 
 // The list's virtualised rows do not lay out in jsdom; the tap it reports is
 // what is under test, so its handler is captured and called directly.
@@ -117,13 +136,15 @@ async function renderNameGenerator({
         <InterviewI18nProvider requestedLocale="en">
           <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
             <Navigation>
-              <NameGenerator
-                stage={stage}
-                getNavigationHelpers={() => ({
-                  moveForward: vi.fn(),
-                  moveBackward: vi.fn(),
-                })}
-              />
+              <DndStoreProvider>
+                <NameGenerator
+                  stage={stage}
+                  getNavigationHelpers={() => ({
+                    moveForward: vi.fn(),
+                    moveBackward: vi.fn(),
+                  })}
+                />
+              </DndStoreProvider>
             </Navigation>
           </CurrentStepProvider>
         </InterviewI18nProvider>
@@ -181,6 +202,31 @@ const twoPeopleStages: Stages = [
   },
 ];
 
+/**
+ * As `twoPeopleStages`, but the form asks only for an age, so an encrypted
+ * name can only arrive with a row from the stage's panel.
+ */
+const panelEncryptsStages: Stages = [
+  {
+    id: 'stage-1',
+    type: 'NameGenerator',
+    label: { en: 'Name generator' },
+    subject: { entity: 'node', type: NODE_TYPE },
+    behaviours: { minNodes: 2 },
+    form: {
+      title: { en: 'Add a person' },
+      fields: [
+        { variable: asEntityAttributeReference('age'), prompt: { en: 'Age' } },
+      ],
+    },
+    panels: [
+      { id: 'panel-1', title: { en: 'Roster' }, dataSource: 'roster-asset' },
+    ],
+    prompts: [{ id: 'prompt-1', text: { en: 'Name people' } }],
+  },
+  ...twoPeopleStages.slice(1),
+];
+
 describe('NameGenerator under an encryption header no passphrase can open', () => {
   it('says why no one can be added, and lets the participant move on short of the minimum', async () => {
     const toast = vi.spyOn(interviewToastManager, 'add');
@@ -209,6 +255,24 @@ describe('NameGenerator under an encryption header no passphrase can open', () =
     expect(onStepChange).toHaveBeenCalled();
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);
     toast.mockRestore();
+  });
+
+  // Only the panel's rows are refused, and the panel says why. The form still
+  // adds people, so the minimum can still be met and still holds.
+  it('keeps the form open and the minimum in force when only the panel would save encrypted answers', async () => {
+    const { onStepChange, next } = await renderNameGenerator({
+      stages: panelEncryptsStages,
+      refused: true,
+    });
+
+    expect(
+      await screen.findByText(/cannot be shown or saved in this interview/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add a person' })).toBeEnabled();
+
+    await next();
+
+    expect(onStepChange).not.toHaveBeenCalled();
   });
 
   it('opens a tapped person with their protected answers shown as unavailable', async () => {

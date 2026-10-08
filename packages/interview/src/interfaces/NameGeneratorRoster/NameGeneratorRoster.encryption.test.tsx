@@ -1,9 +1,18 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
 import { DndStoreProvider } from '@codaco/fresco-ui/dnd/dnd';
 import type { DropCallback } from '@codaco/fresco-ui/dnd/types';
+import type { Variable } from '@codaco/protocol-validation';
 import {
   entityPrimaryKeyProperty,
   entitySecureAttributesMeta,
@@ -27,18 +36,25 @@ import { decryptValue } from '../Anonymisation/encryptionFormat';
 import NameGeneratorRoster from './NameGeneratorRoster';
 import type { UseItemElement } from './useItems';
 
-const { rosterPeople } = vi.hoisted(() => ({
-  rosterPeople: [
-    {
-      _uid: 'roster-alice',
-      type: 'person',
-      attributes: { name: 'Alice', age: 40 },
-    },
-  ],
+const aliceRow = {
+  _uid: 'roster-alice',
+  type: 'person',
+  attributes: { name: 'Alice', age: 40 },
+};
+
+const external = vi.hoisted(() => ({
+  rosterPeople: [] as {
+    _uid: string;
+    type: string;
+    attributes: Record<string, string | number>;
+  }[],
 }));
 
 vi.mock('../../hooks/useExternalData', () => ({
-  default: () => ({ externalData: rosterPeople, status: { state: 'ready' } }),
+  default: () => ({
+    externalData: external.rosterPeople,
+    status: { state: 'ready' },
+  }),
 }));
 
 // The roster's virtualised cards do not lay out in jsdom, nor can a drag be
@@ -76,6 +92,10 @@ beforeAll(() => {
   vi.stubGlobal('IntersectionObserver', StubObserver);
 });
 
+beforeEach(() => {
+  external.rosterPeople = [aliceRow];
+});
+
 afterEach(() => {
   vi.restoreAllMocks();
 });
@@ -98,9 +118,10 @@ const PASSPHRASE = 'roster passphrase';
  */
 async function renderRoster(
   interview: 'fresh' | 'refused' | { resumed: true; locked: boolean },
+  variables?: Record<string, Variable>,
 ) {
   const { header } = await encryptionFor(PASSPHRASE);
-  const store = createEncryptionStore([], [stage], undefined, {
+  const store = createEncryptionStore([], [stage], variables, {
     header:
       interview === 'fresh'
         ? undefined
@@ -182,6 +203,33 @@ describe('NameGeneratorRoster adding people whose answers are encrypted', () => 
 
     expect(store.getState().session.network.nodes).toEqual([]);
     expect(toast).not.toHaveBeenCalled();
+  });
+
+  // A roster's columns are keyed by variable id once read, and an id is rarely
+  // the variable's name.
+  it('holds back a row whose encrypted column is keyed by a variable id unlike its name', async () => {
+    external.rosterPeople = [
+      { ...aliceRow, attributes: { 'var-name': 'Alice', 'var-age': 40 } },
+    ];
+    const { store, draggable } = await renderRoster('fresh', {
+      'var-name': {
+        name: 'name',
+        label: 'name',
+        type: 'text',
+        component: 'Text',
+        encrypted: true,
+      },
+      'var-age': {
+        name: 'age',
+        label: 'age',
+        type: 'number',
+        component: 'Number',
+      },
+    });
+
+    expect(roster.items).toHaveLength(1);
+    expect(draggable()).toEqual([]);
+    expect(store.getState().ui.showPassphrasePrompter).toBe(true);
   });
 
   it('takes no one in a resumed interview, asking for the passphrase rather than trying to save, until it is entered again', async () => {
