@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
@@ -16,6 +17,7 @@ import {
   type AssetUrlOwner,
   createAssetUrlOwner,
 } from '@codaco/interview/contract';
+import { defaultLocale, isLocale, type Locale } from '~/lib/i18n/locales';
 import {
   createPreviewPayload,
   installPreviewProtocol,
@@ -31,9 +33,18 @@ export type PreviewWave = {
   protocolPath: string;
 };
 
+/**
+ * The completed state's action labels in every site language, so they can be
+ * shown in the interview's language rather than the page's.
+ */
+export type CompletionLabels = Readonly<
+  Record<Locale, Readonly<{ restart: string; backToProtocol: string }>>
+>;
+
 export type ProtocolPreviewProps = {
   waves: PreviewWave[];
   backHref: string;
+  completionLabels: CompletionLabels;
 };
 
 type PreviewFailure = PreviewInstallFailure | 'unavailable';
@@ -58,7 +69,25 @@ async function fetchProtocolBytes(path: string): Promise<Uint8Array> {
   return new Uint8Array(await response.arrayBuffer());
 }
 
-export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
+// Rendered inside the Shell, whose interface language is the interview's own
+// and can change while it runs (a language chooser, the visitor's choice). The
+// interview's English is US English, the site's default.
+function InterviewLanguageLabel({
+  labels,
+  name,
+}: {
+  labels: CompletionLabels;
+  name: keyof CompletionLabels[Locale];
+}) {
+  const { locale } = useAppIntl();
+  return labels[isLocale(locale) ? locale : defaultLocale][name];
+}
+
+export function ProtocolPreview({
+  waves,
+  backHref,
+  completionLabels,
+}: ProtocolPreviewProps) {
   const t = useTranslations('ProtocolGallery.preview');
   const wave = useWave(waves);
 
@@ -144,12 +173,15 @@ export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
   // protocol's own completed state: its finish stage's text and the notice.
   const onFinish = useCallback<FinishHandler>(async () => {}, []);
 
-  // Offered on that completed state. Starting again is a new session, so the
-  // Shell starts a new interview rather than reopening the finished one.
+  // Offered on that completed state, in the interview's language like the rest
+  // of it. Starting again is a new session, so the Shell starts a new interview
+  // rather than reopening the finished one.
   const completedActions = useMemo<readonly CompletedAction[]>(
     () => [
       {
-        label: t('restart'),
+        label: (
+          <InterviewLanguageLabel labels={completionLabels} name="restart" />
+        ),
         onAction: () => {
           if (!install) return;
           setCurrentStep(0);
@@ -157,11 +189,16 @@ export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
         },
       },
       {
-        label: t('backToProtocol'),
+        label: (
+          <InterviewLanguageLabel
+            labels={completionLabels}
+            name="backToProtocol"
+          />
+        ),
         onAction: () => window.location.assign(backHref),
       },
     ],
-    [t, install, backHref],
+    [completionLabels, install, backHref],
   );
 
   const backAction = (

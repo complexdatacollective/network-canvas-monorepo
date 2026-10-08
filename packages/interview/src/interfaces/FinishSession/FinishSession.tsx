@@ -21,6 +21,7 @@ import {
   useContractHandlers,
   useFinishConfirmationDescription,
 } from '../../contract/context';
+import type { CompletedAction } from '../../contract/types';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { LocalizedMarkdown } from '../../localization/LocalizedMarkdown';
 import { useLocalizedString } from '../../localization/ProtocolLocalizationProvider';
@@ -183,12 +184,16 @@ export function CompletedInterview({
   stage,
   focusOnMount,
   notice = true,
+  actions,
 }: {
   stage: FinishSessionText | undefined;
   focusOnMount: boolean;
   notice?: boolean;
+  /** In place of the host's completed-state actions. */
+  actions?: readonly CompletedAction[];
 }) {
-  const { completedActions } = useInterviewCompletion();
+  const { completedActions: hostActions } = useInterviewCompletion();
+  const completedActions = actions ?? hostActions;
   const headingRef = useRef<HTMLHeadingElement>(null);
   const noticeRef = useRef<HTMLDivElement>(null);
   // Focus goes to the heading when there is one, and to the notice otherwise:

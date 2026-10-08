@@ -45,4 +45,33 @@ describe('Protocol Summary stage', () => {
 
     expect(passphraseRow()).not.toBeInTheDocument();
   });
+
+  // The heading a participant reads on the finish stage is its `title`, not
+  // its name: the summary prints it as the stage's page heading, with the
+  // text and outcome below it.
+  it('prints a finish stage’s heading, text and outcome, apart from its name', () => {
+    render(
+      <SummaryContext.Provider
+        value={{ protocol, protocolName: protocol.name, index: [] }}
+      >
+        <Stage
+          id="finish"
+          label={{ en: 'End of the interview' }}
+          stageNumber={2}
+          type="FinishSession"
+          configuration={{
+            title: { en: 'Thank you for taking part' },
+            content: { en: 'Your answers have been recorded.' },
+            outcome: 'ineligible',
+          }}
+        />
+      </SummaryContext.Provider>,
+    );
+
+    expect(screen.getByText('Thank you for taking part')).toBeInTheDocument();
+    expect(
+      screen.getByText('Your answers have been recorded.'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('End of the interview')).toBeInTheDocument();
+  });
 });

@@ -1,3 +1,4 @@
+import { isBlankMessage } from '../../localization/blankText.ts';
 import type {
   LocaleTag,
   LocalizationDeclaration,
@@ -38,7 +39,7 @@ type ProtocolLike = Readonly<{
 }>;
 
 const isWritten = (text: string | undefined): boolean =>
-  text !== undefined && text.trim() !== '';
+  text !== undefined && !isBlankMessage(text);
 
 /**
  * Every finish stage missing its heading or text in the protocol's default

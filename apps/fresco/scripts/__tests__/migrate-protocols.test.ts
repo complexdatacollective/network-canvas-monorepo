@@ -1346,6 +1346,23 @@ function inFrenchAndGerman(value: unknown): unknown {
   );
 }
 
+/**
+ * Rewrites every English-only text in a migrated protocol as Japanese text, a
+ * language Network Canvas supplies no closing text for.
+ */
+function inJapanese(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(inJapanese);
+  if (typeof value !== 'object' || value === null) return value;
+  const entries = Object.entries(value);
+  const [only] = entries;
+  if (entries.length === 1 && only?.[0] === 'en') {
+    return { ja: `${String(only[1])} (ja)` };
+  }
+  return Object.fromEntries(
+    entries.map(([key, child]) => [key, inJapanese(child)]),
+  );
+}
+
 describe('languages in the deploy migration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -1449,6 +1466,47 @@ describe('languages in the deploy migration', () => {
         },
       }),
     ]);
+  });
+
+  it('leaves in place a row that would come out with a finish stage with no text', async () => {
+    const warnSpy = vi
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    const atEncryptionVersion = migrateProtocol(
+      { ...makeV7ProtocolWithEncryptedName(), name: 'Japanese' },
+      8,
+      { name: 'Japanese' },
+    );
+    const current = migrateProtocol(
+      atEncryptionVersion,
+      COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+      { name: 'Japanese' },
+    );
+    const stages = (inJapanese(current.stages) as { type: string }[]).filter(
+      (stage) => stage.type !== 'FinishSession',
+    );
+    const prisma = makeMockPrisma();
+    prisma.protocol.findMany.mockResolvedValue([
+      {
+        id: 'cm-japanese-unfinished',
+        assets: [],
+        name: 'Japanese.netcanvas',
+        schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+        stages,
+        codebook: inJapanese(current.codebook),
+        localization: { defaultLocale: 'ja', locales: ['ja'] },
+      },
+    ]);
+
+    await expect(runMigration(prisma)).resolves.toBeUndefined();
+
+    expect(prisma.protocol.update).not.toHaveBeenCalled();
+    const warned = warnSpy.mock.calls.map((call) => String(call[0])).join(' ');
+    expect(warned).toMatch(/Japanese\.netcanvas/);
+    expect(warned).toMatch(
+      /has no heading in the protocol's default language \(ja\)/,
+    );
+    warnSpy.mockRestore();
   });
 });
 

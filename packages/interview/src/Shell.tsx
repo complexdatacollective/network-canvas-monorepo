@@ -16,6 +16,7 @@ import {
 } from 'react';
 import { Provider, useSelector } from 'react-redux';
 
+import { AppMessage } from '@codaco/app-i18n/react';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { DndStoreProvider } from '@codaco/fresco-ui/dnd/dnd';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
@@ -53,6 +54,7 @@ import type {
 import useInterviewNavigation from './hooks/useInterviewNavigation';
 import useMediaQuery from './hooks/useMediaQuery';
 import { InterviewI18nProvider } from './i18n/InterviewI18nProvider';
+import { navigationMessages } from './i18n/navigationMessages';
 import { CompletedInterview } from './interfaces/FinishSession/FinishSession';
 import {
   ProtocolLocalizationProvider,
@@ -155,12 +157,27 @@ function Interview(props: InterviewProps) {
     const hasReviewableStage =
       stages.length > 0 && stages[0]?.type !== 'FinishSession';
     if (!hasReviewableStage) {
+      // Nothing to review and no navigation: the host's exit is the only way
+      // out, so it is offered here in place of the completed-state actions.
+      const { onExit } = props;
       return (
         <CompletedShell
           stageId={undefined}
           focusOnMount={false}
           notice={false}
           textScaleStyle={textScaleStyle}
+          actions={
+            onExit
+              ? [
+                  {
+                    label: (
+                      <AppMessage message={navigationMessages.exitReview} />
+                    ),
+                    onAction: onExit,
+                  },
+                ]
+              : undefined
+          }
         />
       );
     }
@@ -193,11 +210,13 @@ function CompletedShell({
   focusOnMount,
   notice,
   textScaleStyle,
+  actions,
 }: {
   stageId: string | null | undefined;
   focusOnMount: boolean;
   notice: boolean;
   textScaleStyle: TextScaleStyle;
+  actions?: readonly CompletedAction[];
 }) {
   const { metadata: interviewLocale } = useProtocolLocale();
   const stages = useSelector(getStages);
@@ -232,6 +251,7 @@ function CompletedShell({
             stage={stage}
             focusOnMount={focusOnMount}
             notice={notice}
+            actions={actions}
           />
         </div>
       </DirectionProvider>

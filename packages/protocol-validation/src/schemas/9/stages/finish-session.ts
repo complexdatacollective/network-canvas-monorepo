@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { localizedString } from '../localized-string.ts';
+import { localizedString, nonBlankText } from '../localized-string.ts';
 import { baseStageSchema } from './base.ts';
 
 /**
@@ -48,15 +48,12 @@ export const finishSessionStage = baseStageSchema.extend({
   // and content may be empty only while the protocol is being written: it
   // cannot leave its editor until both are written in its default language
   // (`findFinishStageTextProblems`, checked by `validateProtocol`).
-  label: localizedString(
-    z.string().min(1, { message: 'Stage label cannot be empty' }),
-    'plain',
-    { mayBeEmpty: true },
-  ),
-  title: localizedString(z.string().min(1), 'markdown', { mayBeEmpty: true }),
-  content: localizedString(z.string().min(1), 'markdown', {
-    mayBeEmpty: true,
-  }),
+  //
+  // A translation that is there is never blank: the interview would choose
+  // it over falling back, and show a participant nothing.
+  label: localizedString(nonBlankText(), 'plain', { mayBeEmpty: true }),
+  title: localizedString(nonBlankText(), 'markdown', { mayBeEmpty: true }),
+  content: localizedString(nonBlankText(), 'markdown', { mayBeEmpty: true }),
   outcome: FinishOutcomeSchema,
 });
 

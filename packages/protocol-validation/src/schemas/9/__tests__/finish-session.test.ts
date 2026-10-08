@@ -485,6 +485,46 @@ describe('closing text missing in the default language', () => {
     ).toBe(true);
   });
 
+  it.each(['label', 'title', 'content'] as const)(
+    'refuses a blank %s translation in any language, not only the default',
+    (field) => {
+      const localization = { defaultLocale: 'en', locales: ['en', 'fr'] };
+      const stage = {
+        ...finish('end'),
+        [field]: { ...finish('end')[field], fr: ' \u200B\t' },
+      };
+      const result = ProtocolSchemaV9.safeParse({
+        ...createBaseProtocol(),
+        codebook: { node: {}, edge: {}, ego: {} },
+        localization,
+        stages: [stage],
+      });
+      expect(result.error?.issues).toContainEqual(
+        expect.objectContaining({
+          path: ['stages', 0, field, 'fr'],
+          message: 'Text cannot be blank.',
+        }),
+      );
+    },
+  );
+
+  it('still allows a finish stage with no translation while the protocol is a draft', async () => {
+    expect(
+      (await validateProtocol(japaneseProtocol(), { draft: true })).success,
+    ).toBe(true);
+  });
+
+  it('counts default-language text made of invisible characters as missing', () => {
+    expect(
+      findFinishStageTextProblems({
+        localization: { defaultLocale: 'en', locales: ['en'] },
+        stages: [{ ...finish('end'), content: { en: '\u200B\u00AD' } }],
+      }),
+    ).toEqual([
+      { stageId: 'end', stageIndex: 0, locale: 'en', missing: ['content'] },
+    ]);
+  });
+
   it('allows empty text only on the finish stage', () => {
     expect(
       issues([{ ...information('intro'), title: {} }, finish()]),

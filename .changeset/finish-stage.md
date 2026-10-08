@@ -42,6 +42,9 @@ ended early. That outcome is saved with each interview and exported.
   (`FINISH_STAGE_TEXT_MISSING`) naming what is missing. An editor passes
   `{ draft: true }` to allow it while the protocol is written.
   `findFinishStageTextProblems` reports the same problem without validating.
+  Text made only of spaces or invisible characters counts as missing, and a
+  translation of a finish stage's name, heading or text that is given at all
+  must not be blank, in any language and in a draft too.
 - `createDefaultFinishSessionStage`, `defaultFinishSessionText`,
   `defaultFinishSessionFields`, `hasDefaultFinishSessionText` and
   `withDefaultFinishSessionTranslation` supply that text in English, German,
@@ -60,7 +63,9 @@ ended early. That outcome is saved with each interview and exported.
   heading and text and a notice that the answers can no longer be changed,
   with no way back into the interview. A host can add its own actions to it with
   the new `completedActions` prop. Review mode stops before the finish stage,
-  and the stages menu no longer lists finish stages.
+  and the stages menu no longer lists finish stages. A review of a protocol
+  with nothing before its finish stage shows that stage's text read-only,
+  with an **Exit review** button when the host passes `onExit`.
 - A finished interview is shown in the language of whoever opens it, but
   never reports a language change: `onProtocolLocaleChange` is not called once
   the interview is finished, so the language it was taken in, which exports
@@ -119,3 +124,6 @@ ended early. That outcome is saved with each interview and exported.
 - The cookie that limits a participant to one interview per protocol now holds
   the finished interview's id, and the browser no longer lets scripts read it.
 - The dashboard's progress counts the finish stage as a stage.
+- Deploy normalization leaves a protocol in place, with a logged reason,
+  when the normalized protocol would not be accepted on import, such as one
+  given a finish stage with no text in its default language.

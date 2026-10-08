@@ -119,6 +119,7 @@ function renderShell({
   completedActions,
   reviewMode,
   initialTextScale,
+  onExit,
 }: {
   payload: InterviewPayload;
   currentStep?: number;
@@ -126,6 +127,7 @@ function renderShell({
   completedActions?: readonly CompletedAction[];
   reviewMode?: boolean;
   initialTextScale?: number;
+  onExit?: () => void;
 }) {
   return render(
     <Shell
@@ -142,6 +144,7 @@ function renderShell({
       completedActions={completedActions}
       reviewMode={reviewMode}
       initialTextScale={initialTextScale}
+      onExit={onExit}
     />,
     { wrapper: WithoutMotion },
   );
@@ -182,6 +185,20 @@ describe('Shell completed state', () => {
     await expectCompletedState();
     await userEvent.setup().click(screen.getByRole('button', { name: 'Exit' }));
     expect(onAction).toHaveBeenCalledTimes(1);
+  });
+
+  // With no navigation, and a host that guards the browser's Back button,
+  // the host's exit is the only way out of such a review.
+  it('offers the host’s exit on a review with nothing before the finish stage', async () => {
+    const onExit = vi.fn();
+    const payload = makePayload(null);
+    payload.protocol.stages = [finishStage];
+    renderShell({ payload, reviewMode: true, onExit });
+
+    await userEvent
+      .setup()
+      .click(await screen.findByRole('button', { name: 'Exit review' }));
+    expect(onExit).toHaveBeenCalledTimes(1);
   });
 
   it('shows the interview itself, not the completed state, to a review', async () => {
