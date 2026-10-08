@@ -73,7 +73,7 @@
   "protocolValidation.migrationNotes.schema8.validationHints": "Formularfelder erhalten die optionale Eigenschaft `showValidationHints`, mit der aus Prüfregeln abgeleitete Hinweise automatisch angezeigt werden.",
   "protocolValidation.migrationNotes.schema9.attributeNames": "Attributnamen dürfen jetzt Buchstaben aus beliebigen Sprachen sowie Leerzeichen und Satzzeichen enthalten. Vorhandene Attributnamen werden nicht geändert.",
   "protocolValidation.migrationNotes.schema9.blankFieldQuestions": "Ein Formularfeld, dessen Frage leer war oder nur aus Leerzeichen bestand, verwendet jetzt den Namen seines Attributs als Frage, weil jede Frage einen Text enthalten muss.",
-  "protocolValidation.migrationNotes.schema9.unspecifiedLanguage": "Text, den Teilnehmende sehen, ist jetzt als „Nicht angegebene Sprache“ gekennzeichnet, weil ältere Protokolle nicht festhalten, in welcher Sprache sie verfasst sind. Auf der Seite „Sprachen“ in Architect können Sie die Sprache angeben, in der er tatsächlich verfasst ist.",
+  "protocolValidation.migrationNotes.schema9.defaultLanguage": "Texte, die Teilnehmende sehen, werden jetzt als Englisch erfasst, weil ältere Protokolle nicht festhalten, welche Sprache sie verwenden. Wenn Ihr Protokoll in einer anderen Sprache verfasst ist, können Sie dies in Architect auf der Seite „Sprachen“ ändern.",
   "protocolValidation.rule.additionalAttributes": "Feste Attribute",
   "protocolValidation.rule.component": "Eingabeelement",
   "protocolValidation.rule.differentFrom": "Verschieden von einem anderen Attribut",

@@ -25,7 +25,6 @@ import {
   sortByLanguageName,
 } from '@codaco/protocol-validation';
 
-import { languageMessages } from '../i18n/languageMessages';
 import { resolveContentLocale } from './contentFormat';
 import {
   createLocalizedMessageFormatter,
@@ -55,8 +54,6 @@ const useProtocolLocalizationState = () => {
   );
   return state;
 };
-
-const UNSPECIFIED_LOCALE = 'und';
 
 /** The options describe each declared locale once, in any order. */
 function assertOptionsMatchDeclaration(
@@ -110,21 +107,14 @@ export function ProtocolLocalizationProvider({
   children: ReactNode;
 }) {
   const intl = useAppIntl();
-  const unspecifiedLabel = intl.formatMessage(
-    languageMessages.unspecifiedLanguage,
-  );
-
   const options = useMemo(() => {
     assertOptionsMatchDeclaration(localization, localeOptions);
-    // `Intl.DisplayNames` names `und` "root", which means nothing to a
-    // participant.
-    const named = localeOptions.map((option) =>
-      option.locale === UNSPECIFIED_LOCALE
-        ? { ...option, label: unspecifiedLabel }
-        : option,
+    return sortByLanguageName(
+      localeOptions,
+      (option) => option.label,
+      intl.locale,
     );
-    return sortByLanguageName(named, (option) => option.label, intl.locale);
-  }, [localization, localeOptions, unspecifiedLabel, intl.locale]);
+  }, [localization, localeOptions, intl.locale]);
 
   // A stated preference is passed as the only request, so a preference the
   // protocol no longer matches yields its default rather than a browser

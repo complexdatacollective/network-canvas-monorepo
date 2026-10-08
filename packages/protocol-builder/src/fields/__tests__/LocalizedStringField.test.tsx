@@ -293,8 +293,8 @@ describe('LocalizedStringField', () => {
 
   it('draws no language menu for a protocol written in one language', () => {
     renderTitle({
-      initialValue: { und: 'Hello' },
-      localization: { defaultLocale: 'und', locales: ['und'] },
+      initialValue: { en: 'Hello' },
+      localization: { defaultLocale: 'en', locales: ['en'] },
     });
 
     expect(

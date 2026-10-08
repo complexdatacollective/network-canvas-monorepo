@@ -4,6 +4,7 @@ import { isBlankMessage } from '../../localization/blankText.ts';
 import {
   canonicalizeLocale,
   isCanonicalLocale,
+  isUndeterminedLocale,
   type LocaleTag,
 } from '../../localization/localeTag.ts';
 import { findMessageSyntaxProblem } from '../../localization/messageSyntax.ts';
@@ -32,6 +33,9 @@ export type LocalizedString = Readonly<Record<LocaleTag, string>>;
  * suggestion only, so `EN_us` is still rejected.
  */
 const findLocaleTagProblem = (value: string): string | undefined => {
+  if (isUndeterminedLocale(value)) {
+    return `"${value}" does not name a language. A protocol must be written in a specific language, such as "en".`;
+  }
   if (isCanonicalLocale(value)) return undefined;
   const canonical =
     canonicalizeLocale(value) ?? canonicalizeLocale(value.replaceAll('_', '-'));

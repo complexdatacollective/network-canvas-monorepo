@@ -73,7 +73,7 @@
   "protocolValidation.migrationNotes.schema8.validationHints": "Adiciona a propriedade opcional `showValidationHints` aos campos de formulário, permitindo exibir automaticamente dicas derivadas das regras de validação.",
   "protocolValidation.migrationNotes.schema9.attributeNames": "Os nomes de atributos agora podem usar letras de qualquer idioma, além de espaços e pontuação. Os nomes de atributos já existentes não são alterados.",
   "protocolValidation.migrationNotes.schema9.blankFieldQuestions": "Um campo de formulário cuja pergunta estava vazia ou continha apenas espaços agora usa o nome do seu atributo como pergunta, porque toda pergunta precisa conter algum texto.",
-  "protocolValidation.migrationNotes.schema9.unspecifiedLanguage": "O texto que as pessoas participantes veem agora está marcado como escrito em “Idioma não especificado”, porque protocolos mais antigos não registram em que idioma foram escritos. Você pode alterá-lo para o idioma em que ele foi realmente escrito na página “Idiomas” do Architect.",
+  "protocolValidation.migrationNotes.schema9.defaultLanguage": "O texto que os participantes veem agora é registrado como inglês, porque protocolos mais antigos não registram qual idioma usam. Se o seu protocolo está escrito em outro idioma, você pode alterá-lo na página Idiomas do Architect.",
   "protocolValidation.rule.additionalAttributes": "Atributos fixos",
   "protocolValidation.rule.component": "Controle de entrada",
   "protocolValidation.rule.differentFrom": "Diferente de outro atributo",

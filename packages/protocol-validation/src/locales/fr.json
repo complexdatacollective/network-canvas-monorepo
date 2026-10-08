@@ -73,7 +73,7 @@
   "protocolValidation.migrationNotes.schema8.validationHints": "Ajout d’une propriété facultative « showValidationHints » aux champs de formulaire, qui permet d’afficher automatiquement des indications dérivées des règles de validation.",
   "protocolValidation.migrationNotes.schema9.attributeNames": "Les noms d’attributs peuvent désormais contenir des lettres de n’importe quelle langue, ainsi que des espaces et de la ponctuation. Les noms d’attributs existants ne sont pas modifiés.",
   "protocolValidation.migrationNotes.schema9.blankFieldQuestions": "Un champ de formulaire dont la question était vide ou ne contenait que des espaces utilise désormais le nom de son attribut comme question, car chaque question doit contenir du texte.",
-  "protocolValidation.migrationNotes.schema9.unspecifiedLanguage": "Le texte que voient les personnes participantes est désormais marqué comme rédigé en « Langue non précisée », car les anciens protocoles n’indiquent pas dans quelle langue ils sont rédigés. Vous pouvez le rattacher à la langue dans laquelle il est réellement rédigé sur la page « Langues » d’Architect.",
+  "protocolValidation.migrationNotes.schema9.defaultLanguage": "Le texte que voient les personnes participantes est désormais enregistré en anglais, car les anciens protocoles n’indiquent pas la langue qu’ils utilisent. Si votre protocole est rédigé dans une autre langue, vous pouvez la modifier dans la page « Langues » d’Architect.",
   "protocolValidation.rule.additionalAttributes": "Attributs fixes",
   "protocolValidation.rule.component": "Commande de saisie",
   "protocolValidation.rule.differentFrom": "Différent d’un autre attribut",

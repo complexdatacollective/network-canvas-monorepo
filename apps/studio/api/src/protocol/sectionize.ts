@@ -9,12 +9,12 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 export class SectionizeError extends Error {}
 
 // Nothing asks the researcher for a language yet, so a new protocol declares
-// the undetermined one, as a protocol migrated from schema 8 does.
+// English, as a protocol migrated from schema 8 does.
 export function emptyProtocol(name: string): CurrentProtocol {
   return {
     name,
     schemaVersion: CURRENT_SCHEMA_VERSION,
-    localization: { defaultLocale: 'und', locales: ['und'] },
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {},
     stages: [],
   };

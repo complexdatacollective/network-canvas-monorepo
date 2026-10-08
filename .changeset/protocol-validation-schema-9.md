@@ -41,24 +41,25 @@ stages }`, so a translation change produces a new hash. Languages have no
 
 Schema 9:
 
-- The v8 to v9 migration keeps existing names as they are. It marks the
-  protocol's text as written in an unspecified language (`und`), since older
-  protocols never recorded one: it adds
-  `localization: { defaultLocale: 'und', locales: ['und'] }` and wraps every
-  participant-facing string as `{ und: <text> }`, escaped as an ICU literal
-  message. Codebook node types, edge types and variables get a `label` taken
+- The v8 to v9 migration keeps existing names as they are. It records the
+  protocol's text as English, since older protocols never recorded a language:
+  it adds `localization: { defaultLocale: 'en', locales: ['en'] }` and wraps
+  every participant-facing string as `{ en: <text> }`, escaped as an ICU literal
+  message. Validation refuses the undetermined language `und` (and `und-*`
+  tags) as a declared language, as the default, and as a localized-string key. Codebook node types, edge types and variables get a `label` taken
   from their name, or from their codebook ID when the name is empty: a node
   or edge type's label is wrapped like any other text, and a variable's stays
   plain text. A Narrative preset's `highlight` list of variable IDs becomes a
   list of `{ variable, label }`, each label taken from the variable's name (or
-  its ID) and wrapped as `{ und: <text> }`. A form field with no
+  its ID) and wrapped as `{ en: <text> }`. A form field with no
   caption, or an empty or blank one (a Network Composer field's `label`, or
   any other form field's `prompt`), gets its attribute's name (or its ID) as
-  one, escaped so that markdown shows it as written, and wrapped the same way. An
-  empty optional text that schema 9 requires to be non-empty is removed, as are
-  Network Composer scale end labels that were not strings. Its three migration
-  notes tell researchers what the new version allows, how to set the
-  protocol's real language, and which empty questions were filled in.
+  one, escaped so that markdown shows it as written, and wrapped the same way.
+  An empty optional text that schema 9 requires to be non-empty is removed, as
+  are Network Composer scale end labels that were not strings. Its three
+  migration notes tell researchers what the new version allows, that the text
+  is recorded as English and can be changed in Architect, and which empty
+  questions were filled in.
 - Schema 8 still refuses names outside `a-z`, `A-Z`, digits and `. _ - :`, with
   a message that says so. `VersionlessProtocolSchema`, the version 8 body
   without its `schemaVersion`, is now exported.

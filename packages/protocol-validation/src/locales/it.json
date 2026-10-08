@@ -73,7 +73,7 @@
   "protocolValidation.migrationNotes.schema8.validationHints": "Aggiunta ai campi dei moduli la proprietà facoltativa `showValidationHints`, che attiva la visualizzazione automatica di suggerimenti ricavati dalle regole di convalida.",
   "protocolValidation.migrationNotes.schema9.attributeNames": "I nomi degli attributi possono ora usare lettere di qualsiasi lingua, oltre a spazi e punteggiatura. I nomi di attributo esistenti non vengono modificati.",
   "protocolValidation.migrationNotes.schema9.blankFieldQuestions": "Un campo di un modulo la cui domanda era vuota o conteneva solo spazi ora usa il nome del suo attributo come domanda, perché ogni domanda deve contenere del testo.",
-  "protocolValidation.migrationNotes.schema9.unspecifiedLanguage": "Il testo che vedono le persone partecipanti è ora contrassegnato come «Lingua non specificata», perché i protocolli meno recenti non registrano in quale lingua sono scritti. Nella pagina «Lingue» di Architect è possibile indicare la lingua in cui è effettivamente scritto.",
+  "protocolValidation.migrationNotes.schema9.defaultLanguage": "Il testo che le persone partecipanti vedono è ora registrato come inglese, perché i protocolli meno recenti non indicano quale lingua usano. Se il tuo protocollo è scritto in un’altra lingua, puoi cambiarla nella pagina Lingue di Architect.",
   "protocolValidation.rule.additionalAttributes": "Attributi fissi",
   "protocolValidation.rule.component": "Controllo di inserimento",
   "protocolValidation.rule.differentFrom": "Diverso da un altro attributo",

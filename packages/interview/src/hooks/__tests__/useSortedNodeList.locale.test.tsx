@@ -56,11 +56,4 @@ describe('useSortedNodeList', () => {
       'z',
     ]);
   });
-
-  it('uses the interface language when the protocol language is unspecified', () => {
-    const { result } = renderHook(() => useSortedNodeList(nodes, sortOrder), {
-      wrapper: wrapperFor('de', 'und'),
-    });
-    expect(result.current.map((node) => node.name)).toEqual(['a', 'ö', 'z']);
-  });
 });

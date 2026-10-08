@@ -62,7 +62,6 @@ const sessions = [
   { id: 'interview-es', locale: 'es' },
   { id: 'interview-pt', locale: 'pt-BR' },
   { id: 'interview-ar', locale: 'ar-EG' },
-  { id: 'interview-und', locale: 'und' },
   { id: 'interview-none', locale: null },
 ] as const;
 

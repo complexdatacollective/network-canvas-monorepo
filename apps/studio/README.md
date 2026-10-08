@@ -594,9 +594,8 @@ one, which have no order). Labels, prompts and other participant-facing text
 are translations keyed by declared language, stored inside the section that owns
 them, so a structural diff names a stage by its label in the default language,
 or in another declared language that has one when the default has none. A
-protocol created in Studio declares the undetermined language (`und`), as one
-migrated from schema 8 does, because nothing asks the researcher for a language
-yet. A draft branched from a version stored under an older schema is migrated to
+protocol created in Studio declares English (`en`), as one migrated from schema
+8 does, because nothing asks the researcher for a language yet. A draft branched from a version stored under an older schema is migrated to
 the current one, so it can be edited.
 
 ### Tenancy
