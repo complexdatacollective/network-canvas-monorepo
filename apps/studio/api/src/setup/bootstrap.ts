@@ -57,6 +57,19 @@ export const readInstallation: () => Effect.Effect<
   return rows[0] ?? null;
 }, sqlErrorsOnly);
 
+export const readInstallationId: () => Effect.Effect<
+  string | null,
+  SqlError.SqlError,
+  Transaction
+> = Effect.fn('setup.readInstallationId')(function* () {
+  const { tx } = yield* Transaction;
+  const rows = yield* tx
+    .select({ installationId: installation.installationId })
+    .from(installation)
+    .where(eq(installation.id, 1));
+  return rows[0]?.installationId ?? null;
+}, sqlErrorsOnly);
+
 export function hashBootstrapToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }

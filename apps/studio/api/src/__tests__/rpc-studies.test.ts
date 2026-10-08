@@ -398,6 +398,40 @@ describe.skipIf(!testDb)('the studies RPC', () => {
     );
   });
 
+  it('records whether the study collects participant analytics', async () => {
+    const byDefault = await createStudy('Analytics by default');
+    const input = {
+      teamId: TEAM_ID,
+      studyId: StudyId.make(randomUUID()),
+      protocolId: ProtocolId.make(randomUUID()),
+      draftId: DraftId.make(randomUUID()),
+      name: 'Analytics off',
+      participantAnalytics: false,
+    };
+    await asClient(ADMIN).call(asClient(ADMIN).rpc('studies.create', input));
+
+    expect(
+      await ownerQuery(
+        `SELECT id, settings FROM studies WHERE id IN ($1, $2) ORDER BY name`,
+        [byDefault.studyId, input.studyId],
+      ),
+    ).toEqual([
+      { id: byDefault.studyId, settings: { participantAnalytics: true } },
+      { id: input.studyId, settings: { participantAnalytics: false } },
+    ]);
+
+    const refused = await expectRpcFailure(
+      asClient(ADMIN).callExit(
+        asClient(ADMIN).rpc('studies.create', {
+          ...input,
+          participantAnalytics: true,
+        }),
+      ),
+      'StudyCommandError',
+    );
+    expect(refused.code).toBe('CONFLICT');
+  });
+
   it('refuses study creation by a team Member and records the denial', async () => {
     const input = {
       teamId: TEAM_ID,

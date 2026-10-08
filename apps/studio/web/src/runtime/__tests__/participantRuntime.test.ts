@@ -7,6 +7,7 @@ import { LinkToken } from '@codaco/studio-contract/schema/ids';
 import { installFetchStub, requestUrl } from '../../test/fetchStub.ts';
 import {
   participantCall,
+  participantAnalytics,
   participantUnloadingSync,
 } from '../participantRpc.ts';
 import { setParticipantSessionToken } from '../participantRuntime.ts';
@@ -109,5 +110,75 @@ describe('the participant runtime', () => {
 
     expect(lastInit().keepalive).toBe(false);
     expect(lastInit().credentials).toBe('omit');
+  });
+
+  it('sends a small leave-time analytics batch with keepalive', async () => {
+    answerEmptyOk();
+    setParticipantSessionToken('s'.repeat(32));
+
+    await participantAnalytics(
+      {
+        events: [
+          {
+            event: 'stage_exited',
+            properties: { stage_index: 1 },
+            timestamp: '2026-10-07T09:00:00.000Z',
+          },
+        ],
+      },
+      { sessionToken: 's'.repeat(32), unloading: true },
+    ).then(ignore, ignore);
+
+    expect(lastInit().keepalive).toBe(true);
+    expect(lastInit().credentials).toBe('omit');
+  });
+
+  it('leaves the keepalive budget to answers for a larger analytics batch', async () => {
+    answerEmptyOk();
+    setParticipantSessionToken('s'.repeat(32));
+
+    await participantAnalytics(
+      {
+        events: Array.from({ length: 4 }, () => ({
+          event: 'stage_exited',
+          properties: { padding: 'x'.repeat(1_500) },
+          timestamp: '2026-10-07T09:00:00.000Z',
+        })),
+      },
+      { sessionToken: 's'.repeat(32), unloading: true },
+    ).then(ignore, ignore);
+
+    expect(lastInit().keepalive).toBe(false);
+  });
+
+  it('sends analytics under the session they came from, not the one held now', async () => {
+    answerEmptyOk();
+    setParticipantSessionToken('n'.repeat(32));
+
+    await participantAnalytics(
+      {
+        events: [
+          {
+            event: 'stage_exited',
+            properties: {},
+            timestamp: '2026-10-07T09:00:00.000Z',
+          },
+        ],
+      },
+      { sessionToken: 'o'.repeat(32), unloading: false },
+    ).then(ignore, ignore);
+
+    expect(headerOf(lastInit(), PARTICIPANT_SESSION_HEADER)).toBe(
+      'o'.repeat(32),
+    );
+    expect(lastInit().keepalive).toBe(false);
+
+    await participantCall('participant.session', { holderId: 'holder' }).then(
+      ignore,
+      ignore,
+    );
+    expect(headerOf(lastInit(), PARTICIPANT_SESSION_HEADER)).toBe(
+      'n'.repeat(32),
+    );
   });
 });

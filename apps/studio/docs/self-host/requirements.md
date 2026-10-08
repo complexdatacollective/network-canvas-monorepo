@@ -81,7 +81,7 @@ anything else an instance appears to contact is worth investigating.
 | `ghcr.io`                      | Container images. Public packages, so no registry credentials are needed         | `docker compose pull`, and a first start |
 | `acme-v02.api.letsencrypt.org` | TLS certificates over ACME HTTP-01                                               | First start, and on renewal              |
 | `releases.networkcanvas.com`   | The version manifest the update check reads, to tell owners a new version exists | Once a day, from the worker              |
-| `ph-relay.networkcanvas.com`   | Analytics and error reporting, through the Codaco-managed relay                  | Only while `STUDIO_TELEMETRY` is on      |
+| `us.i.posthog.com`             | Analytics, sent by the api process to Codaco's PostHog project                   | Only while `STUDIO_TELEMETRY` is on      |
 
 <!-- outbound-hosts end -->
 
@@ -110,8 +110,11 @@ Two things worth knowing before your firewall team asks:
   newer version exists. An institution that must stop it blocks the host; there
   is no switch
   ([#1901](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1901)).
-- **`STUDIO_TELEMETRY=false` stops the relay completely**, because no client is
+- **`STUDIO_TELEMETRY=false` stops analytics completely**, because no client is
   constructed at all rather than constructed and muted. It is on by default.
+  Participants' browsers never contact PostHog: their usability events go to
+  your instance, which forwards them. A study can also be created with
+  participant analytics off.
 
 ## What a swapped-in element must provide
 
@@ -265,6 +268,7 @@ seconds, minutes or hours:
 | `participant_redeem_link`    | `5/10m`   | One participant's own link, against repeated redemption                   |
 | `participant_sync`           | `600/1m`  | Interview sync, against a script replaying a session                      |
 | `participant_session`        | `60/1m`   | Reading an interview, against a script repeating the protocol's assembly  |
+| `participant_analytics`      | `60/1m`   | Interview usability events, against a page flooding the forwarder         |
 | `rpc_user`                   | `600/1m`  | The instance, against one runaway client                                  |
 | `rpc_team`                   | `3000/1m` | The instance, against a whole team at once                                |
 | `storage_read`               | `2000/5m` | Asset delivery, generously: an interview fetches every stimulus it shows  |

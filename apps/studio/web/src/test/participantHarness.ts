@@ -33,6 +33,7 @@ const unimplemented = (tag: string) => () =>
   Effect.die(new Error(`the participant harness has no handler for "${tag}"`));
 
 const unimplementedHandlers: ParticipantHandlers = {
+  'participant.analytics': unimplemented('participant.analytics'),
   'participant.finish': unimplemented('participant.finish'),
   'participant.redeem': unimplemented('participant.redeem'),
   'participant.session': unimplemented('participant.session'),

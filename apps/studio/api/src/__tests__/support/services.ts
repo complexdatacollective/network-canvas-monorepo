@@ -7,6 +7,7 @@ import { AuthService } from '../../auth/service.ts';
 import { DatabaseAbsent } from '../../db/client.ts';
 import { Jobs } from '../../jobs/jobs.ts';
 import { JOB_SCHEMA } from '../../jobs/queues.ts';
+import { Analytics } from '../../platform/analytics.ts';
 import { RateLimiter } from '../../rate-limit/limiter.ts';
 import { RateLimitStore } from '../../rate-limit/store.ts';
 import type { RpcServices, StudioServices } from '../../rpc/deps.ts';
@@ -18,6 +19,7 @@ export const absentDataServices: Layer.Layer<StudioServices> = Layer.mergeAll(
   DatabaseAbsent,
   SecretsCipher.layerAbsent,
   AuditSignal.layer,
+  Analytics.layerDisabled,
   Jobs.layer({ schema: JOB_SCHEMA }),
   DeniedAttempts.layer.pipe(Layer.provide(RateLimitStore.layerAbsent)),
 );

@@ -486,7 +486,11 @@ describe('the team studies list', () => {
 
     await waitFor(() =>
       expect(fixtures.createStudy.mock.calls[0]?.[0]).toEqual(
-        expect.objectContaining({ teamId: TEAM_A.id, name: 'New study' }),
+        expect.objectContaining({
+          teamId: TEAM_A.id,
+          name: 'New study',
+          participantAnalytics: true,
+        }),
       ),
     );
     // A new study's first act is designing its protocol (§10.2), so the
@@ -494,6 +498,31 @@ describe('the team studies list', () => {
     await waitFor(() =>
       expect(router.state.location.pathname).toMatch(
         /^\/study\/[0-9a-f-]+\/editor$/,
+      ),
+    );
+  });
+
+  it('creates a study without participant analytics when the researcher turns them off', async () => {
+    renderTeam(STUDIES);
+
+    fireEvent.change(
+      await screen.findByRole('textbox', { name: 'Study name' }),
+      { target: { value: 'Quiet study' } },
+    );
+    const analytics = screen.getByRole('switch', {
+      name: 'Collect anonymous usability analytics from participants',
+    });
+    expect(analytics).toBeChecked();
+    fireEvent.click(analytics);
+    expect(analytics).not.toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Create study' }));
+
+    await waitFor(() =>
+      expect(fixtures.createStudy.mock.calls[0]?.[0]).toEqual(
+        expect.objectContaining({
+          name: 'Quiet study',
+          participantAnalytics: false,
+        }),
       ),
     );
   });

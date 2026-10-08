@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useContext, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
 import type { RootState } from '../store/store';
+import { AnalyticsContext } from './AnalyticsContext';
 import { SUPER_PROPS } from './PROPERTY_KEYS';
-import { useTrack } from './useTrack';
+import { NULL_TRACKER } from './tracker';
 
 type StageDescriptor = {
   stage_type?: string;
@@ -27,7 +28,8 @@ export function useStageNavigationAnalytics({
   stage_type,
   enabled = true,
 }: StageDescriptor): void {
-  const track = useTrack();
+  const tracker = useContext(AnalyticsContext);
+  const { track } = tracker;
   const stages = useSelector((s: RootState) => s.protocol?.stages) as
     | Array<{ type?: string }>
     | undefined;
@@ -37,6 +39,7 @@ export function useStageNavigationAnalytics({
   const startedRef = useRef(false);
 
   useEffect(() => {
+    if (tracker === NULL_TRACKER) return;
     const now = Date.now();
 
     if (!startedRef.current) {
@@ -90,11 +93,7 @@ export function useStageNavigationAnalytics({
       direction,
     });
 
-    if (stage_type === 'FinishSession') {
-      track('interview_finished', { stage_count: stages?.length ?? 0 });
-    }
-
     lastIndexRef.current = stage_index;
     lastEnteredAtRef.current = now;
-  }, [enabled, stage_index, stage_type, stages, track]);
+  }, [enabled, stage_index, stage_type, stages, track, tracker]);
 }

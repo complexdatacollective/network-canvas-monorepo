@@ -97,6 +97,39 @@ export const SessionPayload = Schema.Struct({
   stageId: Schema.NullOr(NetworkIdentifier),
   session: InterviewSession,
   protocol: Schema.Unknown,
+  analytics: Schema.Boolean,
+});
+
+export const MAX_ANALYTICS_EVENTS = 100;
+
+export const MAX_ANALYTICS_PROPERTIES_BYTES = 4096;
+
+const utf8 = new TextEncoder();
+
+export const analyticsPropertiesBytes = (properties: unknown): number =>
+  utf8.encode(JSON.stringify(properties) ?? '').byteLength;
+
+export const AnalyticsEvent = Schema.Struct({
+  event: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)),
+  properties: Schema.Record(
+    Schema.String.check(Schema.isMaxLength(200)),
+    Schema.Unknown,
+  ).check(
+    Schema.makeFilter<Readonly<Record<string, unknown>>>(
+      (properties) =>
+        analyticsPropertiesBytes(properties) <=
+          MAX_ANALYTICS_PROPERTIES_BYTES ||
+        `must serialize to at most ${MAX_ANALYTICS_PROPERTIES_BYTES} UTF-8 bytes`,
+    ),
+  ),
+  timestamp: Schema.String.check(Schema.isMaxLength(64)),
+});
+
+export const AnalyticsInput = Schema.Struct({
+  events: Schema.Array(AnalyticsEvent).check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(MAX_ANALYTICS_EVENTS),
+  ),
 });
 
 export const SyncInput = Schema.Struct({

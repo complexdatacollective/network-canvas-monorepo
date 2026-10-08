@@ -9,6 +9,7 @@ import {
 } from '@codaco/studio-contract/schema/participant';
 
 import { clientAddress } from '../../http/middleware/rate-limit.ts';
+import { forwardParticipantEvents } from '../../interview/analytics.ts';
 import { finishParticipantSession } from '../../interview/finish.ts';
 import { redeemLink } from '../../interview/redeem.ts';
 import { readParticipantSession } from '../../interview/session.ts';
@@ -57,5 +58,12 @@ export const ParticipantHandlers = (deps: RpcDeps) =>
           Effect.catchTag('NotFound', Effect.die),
         );
         return decodeFinished(finished);
+      }),
+    'participant.analytics': (payload) =>
+      Effect.gen(function* () {
+        yield* requireDatabase(deps);
+        yield* forwardParticipantEvents(payload).pipe(
+          Effect.catchTag('SqlError', Effect.die),
+        );
       }),
   });

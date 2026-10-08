@@ -26,15 +26,23 @@ export const setParticipantSessionToken = (token: string | null): void => {
   sessionToken = token;
 };
 
+export const ParticipantSessionToken = Context.Reference<string | null>(
+  '@studio/ParticipantSessionToken',
+  { defaultValue: () => null },
+);
+
 const stampSession = (client: HttpClient.HttpClient): HttpClient.HttpClient =>
-  HttpClient.mapRequest(client, (request) =>
-    sessionToken === null
-      ? request
-      : HttpClientRequest.setHeader(
-          request,
-          PARTICIPANT_SESSION_HEADER,
-          sessionToken,
-        ),
+  HttpClient.mapRequestEffect(client, (request) =>
+    Effect.map(ParticipantSessionToken, (bound) => {
+      const token = bound ?? sessionToken;
+      return token === null
+        ? request
+        : HttpClientRequest.setHeader(
+            request,
+            PARTICIPANT_SESSION_HEADER,
+            token,
+          );
+    }),
   );
 
 export const participantRequestInit: globalThis.RequestInit = {

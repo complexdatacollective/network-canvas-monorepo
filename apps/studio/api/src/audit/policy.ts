@@ -58,6 +58,11 @@ export const RPC_MUTATION_AUDIT_POLICIES = {
     reason:
       'Reading a session for the page that opens it claims the session for that page and changes nothing a researcher acts on; the redemption that led here is audited.',
   },
+  'participant.analytics': {
+    kind: 'none',
+    reason:
+      'Usability events are forwarded to product analytics and change nothing in the study; they are not research data and leave no row behind.',
+  },
   'participant.sync': {
     kind: 'none',
     reason:

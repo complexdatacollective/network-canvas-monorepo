@@ -11,6 +11,7 @@ import type {
 import {
   ParticipantClient,
   participantRequestInit,
+  ParticipantSessionToken,
   type ParticipantRpcsType,
   participantRuntime,
 } from './participantRuntime.ts';
@@ -32,18 +33,45 @@ export const { rpcCall: participantCall } = adapter;
 
 type SyncPayload = PayloadOf<ParticipantRpcsType, 'participant.sync'>;
 type SyncSuccess = SuccessOf<ParticipantRpcsType, 'participant.sync'>;
+type AnalyticsPayload = PayloadOf<ParticipantRpcsType, 'participant.analytics'>;
+
+const ANALYTICS_KEEPALIVE_MAX_BYTES = 4_000;
+
+const bodyBytes = (payload: unknown) =>
+  new Blob([JSON.stringify(payload)]).size;
+
+const runWithKeepalive = <A, E>(
+  effect: Effect.Effect<A, E, ParticipantClient>,
+  keepalive: boolean,
+): Promise<A> =>
+  participantRuntime.runPromise(
+    effect.pipe(
+      Effect.provideService(FetchHttpClient.RequestInit, {
+        ...participantRequestInit,
+        keepalive,
+      }),
+    ),
+  );
 
 export const participantUnloadingSync = (
   payload: SyncPayload,
 ): Promise<SyncSuccess> =>
-  participantRuntime.runPromise(
+  runWithKeepalive(
     Effect.flatMap(ParticipantClient, (client) =>
       client('participant.sync', payload),
-    ).pipe(
-      Effect.provideService(FetchHttpClient.RequestInit, {
-        ...participantRequestInit,
-        keepalive:
-          new Blob([JSON.stringify(payload)]).size <= KEEPALIVE_MAX_BYTES,
-      }),
     ),
+    bodyBytes(payload) <= KEEPALIVE_MAX_BYTES,
+  );
+
+export const participantAnalytics = (
+  payload: AnalyticsPayload,
+  options: { readonly sessionToken: string; readonly unloading: boolean },
+): Promise<void> =>
+  runWithKeepalive(
+    Effect.flatMap(ParticipantClient, (client) =>
+      client('participant.analytics', payload),
+    ).pipe(
+      Effect.provideService(ParticipantSessionToken, options.sessionToken),
+    ),
+    options.unloading && bodyBytes(payload) <= ANALYTICS_KEEPALIVE_MAX_BYTES,
   );

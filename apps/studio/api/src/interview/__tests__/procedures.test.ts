@@ -1,6 +1,6 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
-import { Effect, Exit, Schema } from 'effect';
+import { Context, Effect, Exit, Schema } from 'effect';
 import { RpcClient } from 'effect/rpc';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
@@ -28,11 +28,13 @@ import {
 import { createStudio } from '../../app.ts';
 import { TenantScope, unsafeMakeTeamAccess } from '../../db/tenant.ts';
 import { readEnv } from '../../env.ts';
+import { Analytics, RecordedAnalytics } from '../../platform/analytics.ts';
 import { baseProtocol } from '../../protocol/__tests__/helpers.ts';
 import { createProtocol, publishDraft } from '../../protocol/store.ts';
 import type { RateLimiter } from '../../rate-limit/limiter.ts';
 import { RATE_LIMITS, type RateLimitScope } from '../../rate-limit/scopes.ts';
 import { SecretsCipher } from '../../secrets/services.ts';
+import { STUDIO_VERSION } from '../../version.ts';
 import { mintSessionToken } from '../token.ts';
 
 const MAPBOX_KEY = 'pk.participant-test-key';
@@ -426,6 +428,15 @@ describe.skipIf(!testDb)('the participant procedures', () => {
   });
 
   describe('participant.session', () => {
+    it('carries no analytics configuration while telemetry is off', async () => {
+      await exec(
+        'INSERT INTO installation (id) VALUES (1) ON CONFLICT (id) DO NOTHING',
+      );
+      const f = await fixture();
+      const { sessionToken } = await redeemed(f.linkToken);
+      expect((await opened(sessionToken)).analytics).toBe(false);
+    });
+
     it('returns the pinned protocol with its API key and the session as stored', async () => {
       const f = await fixture();
       const { sessionId, sessionToken } = await redeemed(f.linkToken);
@@ -781,5 +792,317 @@ describe.skipIf(!testDb)('the participant procedures', () => {
         (await auditEvents(f.teamId)).map((event) => event.event_type),
       ).toEqual(['interview.started']);
     });
+  });
+});
+
+describe.skipIf(!testDb)('participant analytics', () => {
+  let database: TestDatabaseRuntime;
+  let client: RpcTestClient;
+  let recorded: RecordedAnalytics['Service'];
+  let installationId: string;
+  const charged: string[] = [];
+  const refused = new Set<RateLimitScope>();
+
+  const limiter: RateLimiter['Service'] = {
+    configured: true,
+    rules: RATE_LIMITS,
+    check: (scope, subject) =>
+      Effect.sync(() => {
+        charged.push(`${scope}:${subject}`);
+        return refused.has(scope)
+          ? { allowed: false, retryAfterSeconds: 7 }
+          : { allowed: true };
+      }),
+    consume: () => Effect.succeed({ allowed: true }),
+    readiness: Effect.succeed('ok'),
+  };
+
+  beforeAll(async () => {
+    database = await openTestDatabase();
+    const analytics = Effect.runSync(
+      Effect.context<Analytics | RecordedAnalytics>().pipe(
+        Effect.provide(Analytics.layerRecording),
+      ),
+    );
+    recorded = Context.get(analytics, RecordedAnalytics);
+    await database.run(
+      ownerAffected(
+        'INSERT INTO installation (id) VALUES (1) ON CONFLICT (id) DO NOTHING',
+      ),
+    );
+    const rows = await database.run(
+      ownerRows<{ installation_id: string }>(
+        'SELECT installation_id FROM installation WHERE id = 1',
+      ),
+    );
+    installationId = rows[0]!.installation_id;
+    client = await createRpcClient(
+      createStudio(readEnv(), {
+        auth: authServiceStub(),
+        services: Context.merge(database.services, analytics),
+        limiter,
+      }),
+    );
+  });
+
+  afterAll(async () => {
+    await client.dispose();
+    await database.dispose();
+  });
+
+  beforeEach(async () => {
+    charged.length = 0;
+    refused.clear();
+    await Effect.runPromise(recorded.clear);
+  });
+
+  const asParticipant = <A, E, R>(
+    token: string,
+    effect: Effect.Effect<A, E, R>,
+  ) => RpcClient.withHeaders(effect, { [PARTICIPANT_SESSION_HEADER]: token });
+
+  const begin = async (participantAnalytics?: boolean) => {
+    const f = await database.run(seed());
+    if (participantAnalytics !== undefined) {
+      await database.run(
+        ownerAffected('UPDATE studies SET settings = $2::jsonb WHERE id = $1', [
+          f.studyId,
+          JSON.stringify({ participantAnalytics }),
+        ]),
+      );
+    }
+    const redeemed = await client.call(
+      client.rpc('participant.redeem', {
+        linkToken: Schema.decodeSync(LinkToken)(f.linkToken),
+      }),
+    );
+    const session = await client.call(
+      asParticipant(
+        redeemed.sessionToken,
+        client.rpc('participant.session', { holderId: 'page-a' }),
+      ),
+    );
+    return { ...redeemed, session };
+  };
+
+  const send = (
+    token: string,
+    events: { event: string; properties: Record<string, unknown> }[],
+  ) =>
+    client.callExit(
+      asParticipant(
+        token,
+        client.rpc('participant.analytics', {
+          events: events.map((captured) => ({
+            ...captured,
+            timestamp: '2026-10-07T09:00:00.000Z',
+          })),
+        }),
+      ),
+    );
+
+  const captured = () => Effect.runPromise(recorded.captured);
+
+  it('tells the page to report usability events', async () => {
+    const { session } = await begin();
+    expect(session.analytics).toBe(true);
+    expect(JSON.stringify(session)).not.toContain(installationId);
+  });
+
+  it('tells the page not to report when the study turned participant analytics off', async () => {
+    const { session } = await begin(false);
+    expect(session.analytics).toBe(false);
+  });
+
+  it('treats a setting it cannot read as off', async () => {
+    const f = await database.run(seed());
+    await database.run(
+      ownerAffected(
+        `UPDATE studies SET settings = '{"participantAnalytics":"false"}'::jsonb WHERE id = $1`,
+        [f.studyId],
+      ),
+    );
+    const redeemed = await client.call(
+      client.rpc('participant.redeem', {
+        linkToken: Schema.decodeSync(LinkToken)(f.linkToken),
+      }),
+    );
+    const session = await client.call(
+      asParticipant(
+        redeemed.sessionToken,
+        client.rpc('participant.session', { holderId: 'page-a' }),
+      ),
+    );
+    expect(session.analytics).toBe(false);
+  });
+
+  it('forwards usability events unidentified and stamped by the server', async () => {
+    const { sessionId, sessionToken } = await begin();
+    charged.length = 0;
+    const exit = await send(sessionToken, [
+      {
+        event: 'stage_entered',
+        properties: {
+          distinct_id: 'page-pseudonym',
+          stage_type: 'NameGenerator',
+          installation_id: 'chosen-by-the-page',
+          app: 'chosen-by-the-page',
+          $app_name: 'chosen-by-the-page',
+          $app_version: 'chosen-by-the-page',
+          host_version: 'chosen-by-the-page',
+          $process_person_profile: true,
+          $geoip_disable: false,
+          token: 'phc_another_project',
+          api_key: 'phc_another_project',
+          $set: { email: 'participant@example.com' },
+          $set_once: { email: 'participant@example.com' },
+          $unset: ['name'],
+          $groups: { team: 'chosen-by-the-page' },
+          $ip: '203.0.113.9',
+          $anon_distinct_id: 'another-person',
+          $session_id: 'session-token-shaped',
+          $current_url: 'http://localhost/session/secret',
+          $lib: 'chosen-by-the-page',
+        },
+      },
+      {
+        event: '$identify',
+        properties: { distinct_id: 'page-pseudonym', $set: { name: 'Ada' } },
+      },
+      { event: 'stage_left', properties: { stage_type: 'NameGenerator' } },
+    ]);
+
+    expect(Exit.isSuccess(exit)).toBe(true);
+    expect(charged).toEqual([`participant_analytics:${sessionId}`]);
+    const stamped = {
+      app: 'studio',
+      $app_name: 'Network Canvas Studio',
+      $app_version: STUDIO_VERSION,
+      host_version: STUDIO_VERSION,
+      installation_id: installationId,
+      $process_person_profile: false,
+      $geoip_disable: true,
+    };
+    const distinctId = `participant:${createHash('sha256').update(`${installationId}:${sessionId}`).digest('hex').slice(0, 32)}`;
+    expect(await captured()).toEqual([
+      {
+        event: 'stage_entered',
+        distinctId,
+        timestamp: '2026-10-07T09:00:00.000Z',
+        properties: { stage_type: 'NameGenerator', ...stamped },
+      },
+      {
+        event: 'stage_left',
+        distinctId,
+        timestamp: '2026-10-07T09:00:00.000Z',
+        properties: { stage_type: 'NameGenerator', ...stamped },
+      },
+    ]);
+  });
+
+  it('keeps one identity for a session across pages, and a different one per session', async () => {
+    const first = await begin();
+    const second = await begin();
+    const event = [
+      { event: 'stage_entered', properties: { distinct_id: 'page-a' } },
+    ];
+    await send(first.sessionToken, event);
+    await client.call(
+      asParticipant(
+        first.sessionToken,
+        client.rpc('participant.session', { holderId: 'page-b' }),
+      ),
+    );
+    await send(first.sessionToken, [
+      { event: 'stage_entered', properties: { distinct_id: 'page-b' } },
+    ]);
+    await send(second.sessionToken, event);
+
+    const [before, after, other] = (await captured()).map(
+      (forwarded) => forwarded.distinctId,
+    );
+    expect(after).toBe(before);
+    expect(other).not.toBe(before);
+    expect(before).not.toContain(first.sessionId);
+  });
+
+  it('forwards an exception by its type only, never its message', async () => {
+    const { sessionToken } = await begin();
+    await send(sessionToken, [
+      {
+        event: '$exception',
+        properties: {
+          feature: 'external-data',
+          $exception_list: [
+            {
+              type: 'SyntaxError',
+              value: 'Unexpected token in ROSTER_ROW_SENTINEL',
+              stacktrace: { frames: [{ filename: 'ROSTER_ROW_SENTINEL' }] },
+            },
+          ],
+          $exception_message: 'ROSTER_ROW_SENTINEL',
+        },
+      },
+      {
+        event: '$exception',
+        properties: {
+          $exception_list: [{ type: 'not a type: ROSTER_ROW_SENTINEL' }],
+        },
+      },
+    ]);
+    const forwarded = await captured();
+    expect(JSON.stringify(forwarded)).not.toContain('ROSTER_ROW_SENTINEL');
+    expect(
+      forwarded.map((event) => [
+        event.properties.feature,
+        event.properties.$exception_list,
+      ]),
+    ).toEqual([
+      [
+        'external-data',
+        [
+          {
+            type: 'SyntaxError',
+            value: 'SyntaxError',
+            mechanism: { handled: true, synthetic: false },
+          },
+        ],
+      ],
+      [
+        undefined,
+        [
+          {
+            type: 'Error',
+            value: 'Error',
+            mechanism: { handled: true, synthetic: false },
+          },
+        ],
+      ],
+    ]);
+  });
+
+  it('forwards nothing for a study that turned participant analytics off', async () => {
+    const { sessionToken } = await begin(false);
+    const exit = await send(sessionToken, [
+      { event: 'stage_entered', properties: { distinct_id: 'page-pseudonym' } },
+    ]);
+    expect(Exit.isSuccess(exit)).toBe(true);
+    expect(await captured()).toEqual([]);
+  });
+
+  it('is refused past the per-session limit', async () => {
+    const { sessionToken } = await begin();
+    refused.add('participant_analytics');
+    const limited = await expectRpcFailure(
+      send(sessionToken, [
+        {
+          event: 'stage_entered',
+          properties: { distinct_id: 'page-pseudonym' },
+        },
+      ]),
+      'RateLimited',
+    );
+    expect(limited.retryAfterSeconds).toBe(7);
+    expect(await captured()).toEqual([]);
   });
 });
