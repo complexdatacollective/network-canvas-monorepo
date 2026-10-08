@@ -80,7 +80,7 @@
   "interview.familyPedigree.otherParentNone": "Pas d’autre parent",
   "interview.familyPedigree.otherParentUnknown": "Une personne qui n’apparaît pas encore",
   "interview.familyPedigree.parentCarriedLabel": "{parentIsYou, select, true {Avez-vous porté la grossesse ?} other {Est-ce que {parent} a porté la grossesse ?}}",
-  "interview.familyPedigree.parentKind.biologicalCarrier": "Parent biologique qui a porté la grossesse",
+  "interview.familyPedigree.parentKind.biologicalCarrier": "{parentKind} (a porté la grossesse)",
   "interview.familyPedigree.parentKindLabel": "De quel type de parent s’agit-il ?",
   "interview.familyPedigree.parentLinkKindLabel": "{parentIsYou, select, true {Pour cette personne, vous êtes…} other {{personIsYou, select, true {Pour vous, {parent} est…} other {Pour cette personne, {parent} est…}}}}",
   "interview.familyPedigree.parentPartnerLabel": "Cette personne est-elle partenaire d’un autre parent ?",

@@ -80,7 +80,7 @@
   "interview.familyPedigree.otherParentNone": "沒有另一位家長",
   "interview.familyPedigree.otherParentUnknown": "尚未顯示的人",
   "interview.familyPedigree.parentCarriedLabel": "{parentIsYou, select, true {是由您懷孕的嗎？} other {是由{parent}懷孕的嗎？}}",
-  "interview.familyPedigree.parentKind.biologicalCarrier": "親自懷孕的親生父母",
+  "interview.familyPedigree.parentKind.biologicalCarrier": "{parentKind}（親自懷孕）",
   "interview.familyPedigree.parentKindLabel": "此人是哪種父母？",
   "interview.familyPedigree.parentLinkKindLabel": "{parentIsYou, select, true {對此人而言，您是……} other {{personIsYou, select, true {對您而言，{parent}是……} other {對此人而言，{parent}是……}}}}",
   "interview.familyPedigree.parentPartnerLabel": "此人是否為另一位家長的伴侶？",

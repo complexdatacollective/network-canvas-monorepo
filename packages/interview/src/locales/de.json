@@ -80,7 +80,7 @@
   "interview.familyPedigree.otherParentNone": "Kein anderer Elternteil",
   "interview.familyPedigree.otherParentUnknown": "Jemand, der noch nicht angezeigt wird",
   "interview.familyPedigree.parentCarriedLabel": "{parentIsYou, select, true {Haben Sie das Kind ausgetragen?} other {Hat {parent} das Kind ausgetragen?}}",
-  "interview.familyPedigree.parentKind.biologicalCarrier": "Leiblicher Elternteil, der das Kind ausgetragen hat",
+  "interview.familyPedigree.parentKind.biologicalCarrier": "{parentKind} (hat das Kind ausgetragen)",
   "interview.familyPedigree.parentKindLabel": "Welche Art von Elternteil ist diese Person?",
   "interview.familyPedigree.parentLinkKindLabel": "{parentIsYou, select, true {Sie sind für diese Person…} other {{personIsYou, select, true {{parent} ist für Sie…} other {{parent} ist für diese Person…}}}}",
   "interview.familyPedigree.parentPartnerLabel": "Ist diese Person die Partnerperson eines anderen Elternteils?",

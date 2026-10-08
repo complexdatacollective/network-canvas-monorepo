@@ -603,9 +603,9 @@ export const messages = defineMessages({
   },
   parentKindBiologicalCarrier: {
     id: 'interview.familyPedigree.parentKind.biologicalCarrier',
-    defaultMessage: 'Biological parent who carried the pregnancy',
+    defaultMessage: '{parentKind} (carried the pregnancy)',
     description:
-      'Option in the menu for connecting a parent and child: a genetic parent who was also pregnant with the child.',
+      'Option in the menu for connecting a parent and child: a genetic parent who was also pregnant with the child. parentKind is the protocol’s wording for a biological parent (for example Biological parent); keep the qualifier separate from it, since the wording is the researcher’s.',
   },
   disconnectTool: {
     id: 'interview.familyPedigree.disconnectTool',

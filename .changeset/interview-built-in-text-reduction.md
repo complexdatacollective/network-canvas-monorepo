@@ -4,7 +4,7 @@
 '@codaco/interviewer': patch
 'fresco': patch
 '@codaco/protocol-validation': minor
-'@codaco/fresco-ui': patch
+'@codaco/fresco-ui': major
 ---
 
 The interview shows less built-in text, and some of it reads more
@@ -13,7 +13,10 @@ consistently:
 - In Family Pedigree, the answers to the sex assigned at birth question and
   the kinds of parent a participant chooses from now show the labels the
   protocol's codebook gives them, so a researcher can reword and translate
-  them like any other protocol text. Architect fills those labels in for each
+  them like any other protocol text. The choice of a biological parent who
+  carried the pregnancy uses the protocol's label for a biological parent.
+  Since participants choose from these answers, none of their labels may be
+  blank. Architect fills those labels in for each
   of the protocol's languages that Network Canvas has wording for, when the
   attribute is created and when a language is added. The supplied English
   label for a donor is now "Egg or sperm donor".
@@ -28,4 +31,4 @@ consistently:
 - A stage name made only of spaces is no longer valid, so the interview never
   needs a name of its own for an unnamed stage.
 - `ResizableFlexPanel` breakpoints no longer take a `label`, which nothing
-  read.
+  read. A caller that passes one must remove it.

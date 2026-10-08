@@ -324,8 +324,8 @@
     "description": "Yes/no question in the details panel: whether this biological parent was pregnant with the family member. {parent} is the parent’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant."
   },
   "interview.familyPedigree.parentKind.biologicalCarrier": {
-    "defaultMessage": "Biological parent who carried the pregnancy",
-    "description": "Option in the menu for connecting a parent and child: a genetic parent who was also pregnant with the child."
+    "defaultMessage": "{parentKind} (carried the pregnancy)",
+    "description": "Option in the menu for connecting a parent and child: a genetic parent who was also pregnant with the child. parentKind is the protocol’s wording for a biological parent (for example Biological parent); keep the qualifier separate from it, since the wording is the researcher’s."
   },
   "interview.familyPedigree.parentKindLabel": {
     "defaultMessage": "What kind of parent are they?",

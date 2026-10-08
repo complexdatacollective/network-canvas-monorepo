@@ -80,7 +80,7 @@
   "interview.familyPedigree.otherParentNone": "Geen andere ouder",
   "interview.familyPedigree.otherParentUnknown": "Iemand die nog niet getoond wordt",
   "interview.familyPedigree.parentCarriedLabel": "{parentIsYou, select, true {Heb jij de zwangerschap gedragen?} other {Heeft {parent} de zwangerschap gedragen?}}",
-  "interview.familyPedigree.parentKind.biologicalCarrier": "Biologische ouder die de zwangerschap droeg",
+  "interview.familyPedigree.parentKind.biologicalCarrier": "{parentKind} (droeg de zwangerschap)",
   "interview.familyPedigree.parentKindLabel": "Wat voor ouder is deze persoon?",
   "interview.familyPedigree.parentLinkKindLabel": "{parentIsYou, select, true {Voor deze persoon ben jij…} other {{personIsYou, select, true {Voor jou is {parent}…} other {Voor deze persoon is {parent}…}}}}",
   "interview.familyPedigree.parentPartnerLabel": "Is deze persoon de partner van een andere ouder?",

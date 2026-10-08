@@ -80,7 +80,7 @@
   "interview.familyPedigree.otherParentNone": "Nessun altro genitore",
   "interview.familyPedigree.otherParentUnknown": "Qualcuno non ancora presente",
   "interview.familyPedigree.parentCarriedLabel": "{parentIsYou, select, true {Hai portato avanti tu la gravidanza?} other {{parent} ha portato avanti la gravidanza?}}",
-  "interview.familyPedigree.parentKind.biologicalCarrier": "Genitore biologico che ha portato avanti la gravidanza",
+  "interview.familyPedigree.parentKind.biologicalCarrier": "{parentKind} (ha portato avanti la gravidanza)",
   "interview.familyPedigree.parentKindLabel": "Che tipo di genitore è?",
   "interview.familyPedigree.parentLinkKindLabel": "{parentIsYou, select, true {Per questa persona, tu sei…} other {{personIsYou, select, true {Per te, {parent} è…} other {Per questa persona, {parent} è…}}}}",
   "interview.familyPedigree.parentPartnerLabel": "È partner di un altro genitore?",

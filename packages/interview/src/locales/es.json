@@ -80,7 +80,7 @@
   "interview.familyPedigree.otherParentNone": "Ningún otro progenitor",
   "interview.familyPedigree.otherParentUnknown": "Alguien que aún no aparece",
   "interview.familyPedigree.parentCarriedLabel": "{parentIsYou, select, true {¿Llevaste tú el embarazo?} other {¿Llevó {parent} el embarazo?}}",
-  "interview.familyPedigree.parentKind.biologicalCarrier": "Progenitor biológico que llevó el embarazo",
+  "interview.familyPedigree.parentKind.biologicalCarrier": "{parentKind} (llevó el embarazo)",
   "interview.familyPedigree.parentKindLabel": "¿Qué tipo de progenitor es?",
   "interview.familyPedigree.parentLinkKindLabel": "{parentIsYou, select, true {Para esta persona, eres…} other {{personIsYou, select, true {Para ti, {parent} es…} other {Para esta persona, {parent} es…}}}}",
   "interview.familyPedigree.parentPartnerLabel": "¿Es pareja de otro progenitor?",

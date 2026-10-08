@@ -80,7 +80,7 @@
   "interview.familyPedigree.otherParentNone": "没有另一位家长",
   "interview.familyPedigree.otherParentUnknown": "尚未显示的人",
   "interview.familyPedigree.parentCarriedLabel": "{parentIsYou, select, true {是由您怀孕的吗？} other {是由{parent}怀孕的吗？}}",
-  "interview.familyPedigree.parentKind.biologicalCarrier": "亲自怀孕的亲生父母",
+  "interview.familyPedigree.parentKind.biologicalCarrier": "{parentKind}（亲自怀孕）",
   "interview.familyPedigree.parentKindLabel": "此人是哪种父母？",
   "interview.familyPedigree.parentLinkKindLabel": "{parentIsYou, select, true {对此人来说，您是……} other {{personIsYou, select, true {对您来说，{parent}是……} other {对此人来说，{parent}是……}}}}",
   "interview.familyPedigree.parentPartnerLabel": "此人是否是另一位家长的伴侣？",

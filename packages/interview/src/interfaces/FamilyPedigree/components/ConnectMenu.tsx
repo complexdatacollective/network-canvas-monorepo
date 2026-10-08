@@ -68,11 +68,13 @@ export default function ConnectMenu({
   onClose,
 }: ConnectMenuProps) {
   const intl = useAppIntl();
-  // A biological parent who carried the pregnancy is offered as its own
-  // choice; every other kind by the codebook's label.
+  // Every kind is offered by the codebook's label; a biological parent who
+  // carried the pregnancy is its own choice, qualifying that label.
   const parentChoiceLabel = (choice: ParentChoice) =>
     choice.parentKind === 'biological' && choice.carriedPregnancy
-      ? intl.formatMessage(messages.parentKindBiologicalCarrier)
+      ? intl.formatMessage(messages.parentKindBiologicalCarrier, {
+          parentKind: parentKindLabels.biological,
+        })
       : parentKindLabels[choice.parentKind];
   // The parent and child chosen in the first step, for the current pair.
   const [choice, setChoice] = useState<{

@@ -8,7 +8,7 @@ import { readFamily } from '../model';
 import { config, person } from './fixtures';
 
 const PARENT_KIND_LABELS = {
-  biological: 'Biological parent',
+  biological: 'Genetic parent',
   adoptive: 'Adoptive parent',
   social: 'Step or social parent',
   donor: '*Egg* or sperm donor',
@@ -16,7 +16,7 @@ const PARENT_KIND_LABELS = {
 };
 
 describe('ConnectMenu', () => {
-  it('shows the codebook’s kinds of parent as markdown, and announces their text', async () => {
+  it('names every kind of parent by the codebook’s label, shown as markdown and announced as text', async () => {
     const family = readFamily(
       [person('julie', { name: 'Julie' }), person('rob', { name: 'Rob' })],
       [],
@@ -49,6 +49,9 @@ describe('ConnectMenu', () => {
     expect(donor.querySelector('em')).toHaveTextContent('Egg');
     expect(donor).toHaveTextContent('Egg or sperm donor');
     expect(donor).not.toHaveTextContent('*');
+    expect(
+      screen.getByTestId('pedigree-connect-kind-biological-carrier'),
+    ).toHaveTextContent('Genetic parent (carried the pregnancy)');
 
     await userEvent.click(donor);
     expect(onConnect).toHaveBeenCalledWith(
