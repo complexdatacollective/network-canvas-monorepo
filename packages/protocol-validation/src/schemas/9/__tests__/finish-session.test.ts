@@ -229,6 +229,35 @@ describe('v8 to v9 migration', () => {
     const migrated = migrateProtocol(schema8(), 9);
     expect(ProtocolSchemaV9.safeParse(migrated).success).toBe(true);
   });
+
+  // Fresco's deploy normalization re-runs this migration over rows already
+  // stored at schema 9, so a document that already ends at its finish stage
+  // keeps that stage, with whatever the researcher wrote in it.
+  it('keeps the finish stage a document already ends at, rather than adding a second', () => {
+    const migrated = migrateProtocol(schema8(), 9);
+    const finishStage = migrated.stages.at(-1);
+    if (finishStage?.type !== 'FinishSession') {
+      throw new Error('no finish stage');
+    }
+    const edited = {
+      ...finishStage,
+      title: { [migrated.localization.defaultLocale]: 'Thanks' },
+    };
+
+    const again = migrateProtocol(
+      {
+        ...migrated,
+        schemaVersion: 8,
+        stages: [...migrated.stages.slice(0, -1), edited],
+      },
+      9,
+    );
+
+    expect(again.stages.filter(({ type }) => type === 'FinishSession')).toEqual(
+      [edited],
+    );
+    expect(again.stages.at(-1)).toEqual(edited);
+  });
 });
 
 describe('supplied finish text', () => {

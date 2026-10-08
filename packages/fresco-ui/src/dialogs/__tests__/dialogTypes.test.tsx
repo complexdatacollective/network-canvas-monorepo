@@ -1,8 +1,20 @@
-import { act, render, renderHook, screen } from '@testing-library/react';
+import {
+  act,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React, { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import Field from '../../form/Field/Field';
+import InputField from '../../form/fields/InputField';
+import type {
+  FormSubmissionResult,
+  FormSubmitHandler,
+} from '../../form/store/types';
 import type {
   AcknowledgeDialog,
   AnyDialog,
@@ -800,5 +812,136 @@ describe('confirm with async onConfirm', () => {
 
     expect(callbackCalled).toBe(true);
     expect(capturedResult).toBe(true);
+  });
+});
+
+describe('form dialog onSubmit', () => {
+  function FormDialogTestComponent({
+    onResult,
+    onSubmit,
+  }: {
+    onResult: (result: unknown) => void;
+    onSubmit?: FormSubmitHandler;
+  }) {
+    const { openDialog } = useDialog();
+
+    const handleClick = async () => {
+      onResult(
+        await openDialog({
+          type: 'form',
+          title: 'Rename',
+          children: <Field component={InputField} name="name" label="Name" />,
+          onSubmit,
+        }),
+      );
+    };
+
+    return (
+      <button type="button" onClick={handleClick}>
+        Open Form
+      </button>
+    );
+  }
+
+  it('keeps the dialog open with the values and the error when the submission is refused, and closes once it succeeds', async () => {
+    const user = userEvent.setup();
+    let capturedResult: unknown = 'not-set';
+    let accept = false;
+
+    render(
+      <DialogProvider>
+        <FormDialogTestComponent
+          onResult={(r) => (capturedResult = r)}
+          onSubmit={async () =>
+            accept
+              ? { success: true }
+              : { success: false, formErrors: ['The name was not saved.'] }
+          }
+        />
+      </DialogProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Open Form' }));
+    await user.type(await screen.findByRole('textbox'), 'Alice');
+    await user.click(screen.getByTestId('dialog-submit'));
+
+    expect(await screen.findByText('The name was not saved.')).toBeVisible();
+    expect(screen.getByRole('textbox')).toHaveValue('Alice');
+    expect(capturedResult).toBe('not-set');
+
+    accept = true;
+    await user.click(screen.getByTestId('dialog-submit'));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+
+    expect(capturedResult).toEqual({ name: 'Alice' });
+  });
+
+  it('cannot be cancelled or dismissed while the submission is under way', async () => {
+    const user = userEvent.setup();
+    let capturedResult: unknown = 'not-set';
+    const pending: ((result: FormSubmissionResult) => void)[] = [];
+
+    render(
+      <DialogProvider>
+        <FormDialogTestComponent
+          onResult={(r) => (capturedResult = r)}
+          onSubmit={() =>
+            new Promise((resolve) => {
+              pending.push(resolve);
+            })
+          }
+        />
+      </DialogProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Open Form' }));
+    await user.type(await screen.findByRole('textbox'), 'Alice');
+    await user.click(screen.getByTestId('dialog-submit'));
+    await waitFor(() => expect(pending).toHaveLength(1));
+
+    expect(screen.getByTestId('dialog-cancel')).toBeDisabled();
+    expect(
+      screen.queryByRole('button', { name: 'Close' }),
+    ).not.toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByTestId('dialog-cancel'));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+    expect(screen.getByRole('dialog')).toBeVisible();
+    expect(capturedResult).toBe('not-set');
+
+    // Once a refused submission settles the participant may leave again.
+    await act(async () => {
+      pending[0]?.({ success: false, formErrors: ['Not saved.'] });
+    });
+    expect(await screen.findByText('Not saved.')).toBeVisible();
+    await user.click(screen.getByTestId('dialog-cancel'));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+    expect(capturedResult).toBeNull();
+  });
+
+  it('closes with the values on submit when no onSubmit is given', async () => {
+    const user = userEvent.setup();
+    let capturedResult: unknown = 'not-set';
+
+    render(
+      <DialogProvider>
+        <FormDialogTestComponent onResult={(r) => (capturedResult = r)} />
+      </DialogProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Open Form' }));
+    await user.type(await screen.findByRole('textbox'), 'Alice');
+    await user.click(screen.getByTestId('dialog-submit'));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+
+    expect(capturedResult).toEqual({ name: 'Alice' });
   });
 });

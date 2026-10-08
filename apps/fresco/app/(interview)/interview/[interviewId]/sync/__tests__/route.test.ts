@@ -32,6 +32,13 @@ vi.mock('~/lib/posthog-server', () => ({
   flushPostHog: vi.fn(),
 }));
 
+import { NcNetworkSchema } from '@codaco/shared-consts';
+import {
+  networkWithEncryptionHeader,
+  schema8EncryptedNetwork,
+} from '~/lib/__tests__/encryptedNetworks';
+import { safeParseField } from '~/lib/db/safeParseField';
+
 import { POST } from '../route';
 
 const legacyNetwork = {
@@ -207,6 +214,55 @@ describe('interview sync route', () => {
     });
     expect(updateManyMock).not.toHaveBeenCalled();
   });
+  describe('encrypted interviews', () => {
+    // The next page load reads the row through the Prisma result extension in
+    // lib/db/index.ts, which makes exactly this call — and falls back to an
+    // empty network, losing every answer, when the parse fails.
+    const loadStoredNetwork = (stored: unknown) =>
+      safeParseField(
+        NcNetworkSchema,
+        stored,
+        'interview.network',
+        NcNetworkSchema.parse({
+          nodes: [],
+          edges: [],
+          ego: { _uid: 'empty', attributes: {} },
+        }),
+      );
+
+    it.each([
+      {
+        label: 'the encryption header and IV-only values',
+        network: networkWithEncryptionHeader,
+      },
+      {
+        label: 'schema 8 values without a header',
+        network: schema8EncryptedNetwork,
+      },
+    ])(
+      'keeps $label unchanged from a sync to the next load',
+      async ({ network }) => {
+        const readRow = installInterviewRow({
+          syncRevision: 0,
+          network: networkNamed('initial'),
+        });
+
+        const response = await post(makeRequest(network, { syncRevision: 1 }));
+
+        await expect(response.json()).resolves.toEqual({
+          success: true,
+          applied: true,
+          syncRevision: 1,
+        });
+        expect(readRow()?.network).toStrictEqual(network);
+
+        // What a jsonb column hands back.
+        const stored: unknown = JSON.parse(JSON.stringify(readRow()?.network));
+        expect(loadStoredNetwork(stored)).toStrictEqual(network);
+      },
+    );
+  });
+
   describe('write ordering', () => {
     it('discards a write that lands after a newer one instead of rolling the interview back', async () => {
       const readRow = installInterviewRow({

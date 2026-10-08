@@ -139,7 +139,7 @@ describe('AddNodeInput ARIA references', () => {
       <AddNodeInput
         entityLabel="Person"
         targetVariable="name"
-        onCreate={async () => {}}
+        onCreate={async () => true}
       />,
     );
 
@@ -151,7 +151,7 @@ describe('AddNodeInput ARIA references', () => {
       <AddNodeInput
         entityLabel="Person"
         targetVariable="name"
-        onCreate={async () => {}}
+        onCreate={async () => true}
         required
       />,
     );
@@ -164,7 +164,7 @@ describe('AddNodeInput ARIA references', () => {
       <AddNodeInput
         entityLabel="Person"
         targetVariable="name"
-        onCreate={async () => {}}
+        onCreate={async () => true}
       />,
     );
 

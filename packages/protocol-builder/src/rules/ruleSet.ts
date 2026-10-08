@@ -87,6 +87,35 @@ export const ruleSetTargets = (
 ): readonly RuleTargetType[] => RULE_SET_TARGETS[variant];
 
 /**
+ * Whether a rule set of this kind may compare an encrypted attribute's
+ * answers. Every set may check whether one is answered.
+ *
+ * Only an external-data panel may compare them. Its rules read the
+ * researcher's own rows, which are never encrypted; every other set reads
+ * interview answers, and rules are checked without the participant's
+ * passphrase. The protocol schema draws the line in the same place
+ * (`readsInterview`).
+ */
+const RULE_SET_ALLOWS_ENCRYPTED_ATTRIBUTES: Readonly<
+  Record<RuleSetVariant, boolean>
+> = Object.freeze({
+  filter: false,
+  query: false,
+  interviewNetworkPanel: false,
+  externalDataPanel: true,
+});
+
+export const ruleSetAllowsEncryptedAttributes = (
+  variant: RuleSetVariant,
+): boolean => RULE_SET_ALLOWS_ENCRYPTED_ATTRIBUTES[variant];
+
+type RuleSetReading = Readonly<{
+  intl?: IntlShape;
+  /** See `ruleSetAllowsEncryptedAttributes`. Off unless the set says so. */
+  allowEncryptedAttributes?: boolean;
+}>;
+
+/**
  * The stored shape of a filter or skip-logic field: one opaque object value
  * holding the rules and how they combine.
  */
@@ -263,6 +292,9 @@ const RULE_PROBLEM_SUMMARIES: Readonly<
   targetNotOffered: 'unusable',
   missingEntityType: 'codebook',
   missingAttribute: 'codebook',
+  // Like `targetNotOffered`: whether the rule can read this attribute depends
+  // on where the rule sits, not on anything that changed in the codebook.
+  encryptedAttribute: 'unusable',
   invalidOperator: 'codebook',
   invalidOperand: 'codebook',
   invalidPattern: 'unusable',
@@ -311,7 +343,7 @@ export const ruleSetIssues = (
   value: unknown,
   codebook: Readonly<Codebook>,
   targets: readonly RuleTargetType[],
-  intl: IntlShape = englishIntl,
+  { intl = englishIntl, allowEncryptedAttributes = false }: RuleSetReading = {},
 ): RuleSetIssue[] => {
   const rules = ruleSetRules(value);
   // Worked out once for the set rather than per rule: whether an id is a
@@ -324,6 +356,7 @@ export const ruleSetIssues = (
       codebook,
       targets,
       duplicateIds,
+      allowEncryptedAttributes,
       intl,
     });
     return problems.map((problem) => ({
@@ -344,12 +377,15 @@ export const ruleSetValidationMessage = (
   value: unknown,
   codebook: Readonly<Codebook>,
   targets: readonly RuleTargetType[],
-  intl: IntlShape = englishIntl,
+  { intl = englishIntl, allowEncryptedAttributes = false }: RuleSetReading = {},
 ): string | undefined => {
   const shape = ruleSetProblem(value, intl);
   if (shape !== undefined) return shape;
 
-  const issues = ruleSetIssues(value, codebook, targets, intl);
+  const issues = ruleSetIssues(value, codebook, targets, {
+    intl,
+    allowEncryptedAttributes,
+  });
   const first = issues[0];
   if (first === undefined) return undefined;
   // Counted by ROW, not by problem. One rule can carry several — losing its

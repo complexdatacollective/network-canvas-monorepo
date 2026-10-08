@@ -1,25 +1,27 @@
 'use client';
 
-import { Tooltip } from '@base-ui/react/tooltip';
+import { useDirection } from '@base-ui/react/direction-provider';
 import {
   AnimatePresence,
   motion,
   type Transition,
   useWillChange,
 } from 'motion/react';
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useId, useState } from 'react';
 
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
-import Field from '@codaco/fresco-ui/form/Field/Field';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
-import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
-import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
-import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@codaco/fresco-ui/Tooltip';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import { usePassphrase } from '../interfaces/Anonymisation/usePassphrase';
-import Overlay from './Overlay';
+import type { NavigationOrientation } from '../Shell';
+import PassphraseOverlay from './PassphraseOverlay';
 
 const transition: Transition = {
   type: 'spring',
@@ -28,55 +30,62 @@ const transition: Transition = {
   delay: 0.1,
 };
 
-export default function PassphrasePrompter() {
+type PassphrasePrompterProps = {
+  orientation: NavigationOrientation;
+  /** Placement and flex behaviour of the trigger within the navigation bar. */
+  className?: string;
+};
+
+export default function PassphrasePrompter({
+  orientation,
+  className,
+}: PassphrasePrompterProps) {
   const intl = useAppIntl();
-  const { setPassphrase, showPassphrasePrompter, passphraseInvalid } =
+  const isRtl = useDirection() === 'rtl';
+  const { showPassphrasePrompter, passphraseChosen, encryptionUnavailable } =
     usePassphrase();
-  const [showPassphraseOverlay, setShowPassphraseOverlay] = useState(false);
+  // No passphrase can open a refused header, so none is offered, whatever
+  // raised the prompter.
+  const offerPassphrase = showPassphrasePrompter && !encryptionUnavailable;
+  // Whether the open dialog chooses the interview's passphrase or asks for
+  // it, fixed when it opens so that it does not change while it closes.
+  const [overlay, setOverlay] = useState({ show: false, choosing: false });
   const [showTooltip, setShowTooltip] = useState(false);
-  const portalContainer = usePortalContainer();
+  const descriptionId = useId();
 
   const willChange = useWillChange();
 
-  const handleSetPassphrase = useCallback(
-    (passphrase: string) => {
-      if (!passphrase) {
-        return;
-      }
-      setPassphrase(passphrase);
-      setShowPassphraseOverlay(false);
-    },
-    [setPassphrase],
+  const closeOverlay = useCallback(
+    () => setOverlay((current) => ({ ...current, show: false })),
+    [],
   );
-
-  useEffect(() => {
-    let timeout: ReturnType<typeof setTimeout> | null = null;
-    if (passphraseInvalid) {
-      timeout = setTimeout(() => {
-        setShowTooltip(true);
-      }, 500);
-    }
-
-    return () => {
-      if (timeout) {
-        clearTimeout(timeout);
-      }
-    };
-  }, [passphraseInvalid]);
 
   return (
     <>
-      <Tooltip.Provider>
-        <Tooltip.Root open={showTooltip} onOpenChange={setShowTooltip}>
+      <TooltipProvider>
+        <Tooltip open={showTooltip} onOpenChange={setShowTooltip}>
           <AnimatePresence>
-            {showPassphrasePrompter && (
-              <Tooltip.Trigger
+            {offerPassphrase && (
+              <TooltipTrigger
                 render={
                   <motion.button
+                    type="button"
                     aria-label={intl.formatMessage(messages.enterPassphrase)}
+                    aria-describedby={descriptionId}
                     key="lock"
                     layout
-                    className="bg-platinum group flex size-[calc(4.8*var(--theme-root-size))] cursor-pointer items-center justify-center rounded-full"
+                    className={cx(
+                      'bg-platinum focusable group flex aspect-square cursor-pointer items-center justify-center rounded-full',
+                      // Only the length along the bar is stated, so when the
+                      // bar shrinks that length the ratio keeps the button
+                      // round. Safari can collapse a flex item whose main
+                      // size comes from its ratio, so the ratio only ever
+                      // derives the cross size.
+                      orientation === 'vertical'
+                        ? 'h-[calc(4.8*var(--theme-root-size))]'
+                        : 'w-[calc(4.8*var(--theme-root-size))]',
+                      className,
+                    )}
                     initial={{ scale: 0, opacity: 0 }}
                     animate={{
                       scale: 1,
@@ -85,109 +94,44 @@ export default function PassphrasePrompter() {
                     exit={{ scale: 0, opacity: 0 }}
                     transition={transition}
                     style={{ willChange }}
-                    onClick={() => setShowPassphraseOverlay(true)}
+                    onClick={() =>
+                      setOverlay({ show: true, choosing: !passphraseChosen })
+                    }
                   >
                     <motion.span className="animate-shake scale-90 text-4xl transition-transform group-hover:scale-100">
                       {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- Decorative status glyph; the button has a localized accessible name. */}
-                      {passphraseInvalid ? '⚠️' : '🔑'}
+                      {'🔑'}
                     </motion.span>
+                    {/* The tooltip opens only on hover or focus, so screen
+                        readers get the same explanation as the button's
+                        description. */}
+                    <span id={descriptionId} hidden>
+                      <AppMessage message={messages.passphraseNeeded} />
+                    </span>
                   </motion.button>
                 }
               />
             )}
           </AnimatePresence>
-          <Tooltip.Portal container={portalContainer ?? undefined}>
-            <Tooltip.Positioner sideOffset={5} side="inline-end">
-              <Tooltip.Popup
-                render={
-                  <motion.div
-                    key="tooltip"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="bg-surface flex w-96 flex-col justify-center gap-4 rounded-xl p-6 shadow-xl"
-                  />
-                }
-              >
-                <div>
-                  <AppMessage
-                    message={
-                      passphraseInvalid
-                        ? messages.decryptRetry
-                        : messages.passphraseNeeded
-                    }
-                  />
-                </div>
-                <Tooltip.Arrow className="fill-surface" />
-              </Tooltip.Popup>
-            </Tooltip.Positioner>
-          </Tooltip.Portal>
-        </Tooltip.Root>
-      </Tooltip.Provider>
+          {/* A visual echo of the button's description, so assistive
+              technology does not meet the same text twice. */}
+          <TooltipContent
+            aria-hidden="true"
+            side={
+              orientation === 'vertical' ? (isRtl ? 'left' : 'right') : 'top'
+            }
+            className="max-w-[min(var(--available-width),var(--container-md))]"
+          >
+            <AppMessage message={messages.passphraseNeeded} />
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       <PassphraseOverlay
-        handleSubmit={handleSetPassphrase}
-        show={showPassphraseOverlay}
-        onClose={() => setShowPassphraseOverlay(false)}
+        show={overlay.show}
+        choosing={overlay.choosing}
+        onAccepted={closeOverlay}
+        onClose={closeOverlay}
       />
     </>
   );
 }
-
-export const PassphraseOverlay = ({
-  handleSubmit,
-  show,
-  onClose,
-}: {
-  handleSubmit: (passphrase: string) => void;
-  show: boolean;
-  onClose: () => void;
-}) => {
-  const intl = useAppIntl();
-  const { passphraseInvalid } = usePassphrase();
-  const formId = useId();
-
-  const onSubmitForm = (values: unknown) => {
-    const fields = values as { passphrase: string };
-    handleSubmit(fields.passphrase);
-    return { success: true };
-  };
-
-  return (
-    <FormStoreProvider>
-      <Overlay
-        show={show}
-        title={intl.formatMessage(messages.enterPassphrase)}
-        onClose={onClose}
-        footer={
-          <SubmitButton form={formId}>
-            <AppMessage message={messages.submitPassphrase} />
-          </SubmitButton>
-        }
-      >
-        <div className="flex flex-col">
-          {passphraseInvalid && (
-            <p className="bg-accent/50 rounded p-6 text-white">
-              <AppMessage message={messages.decryptFailed} />
-            </p>
-          )}
-          <p>
-            <AppMessage message={messages.passphraseHelp} />
-          </p>
-          <FormWithoutProvider
-            id={formId}
-            className="mt-6"
-            onSubmit={onSubmitForm}
-          >
-            <Field
-              component={InputField}
-              name="passphrase"
-              label={intl.formatMessage(messages.passphrase)}
-              placeholder={intl.formatMessage(messages.passphrasePlaceholder)}
-              required
-              autoFocus
-            />
-          </FormWithoutProvider>
-        </div>
-      </Overlay>
-    </FormStoreProvider>
-  );
-};

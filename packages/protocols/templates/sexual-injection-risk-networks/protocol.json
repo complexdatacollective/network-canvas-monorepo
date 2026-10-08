@@ -4,7 +4,7 @@
   "schemaVersion": 9,
   "localization": { "defaultLocale": "en-US", "locales": ["en-US"] },
   "lastModified": "2026-06-15T00:00:00.000Z",
-  "experiments": { "encryptedVariables": true },
+  "experiments": {},
   "codebook": {
     "ego": {
       "variables": {

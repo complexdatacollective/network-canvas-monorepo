@@ -32,7 +32,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { formValuesToAttributePatch } from '../../../forms/formValuesToAttributePatch';
+import PassphraseEntry from '../../../components/PassphraseEntry';
 import useProtocolForm from '../../../forms/useProtocolForm';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import { runtimeMessages } from '../../../i18n/runtimeMessages';
@@ -76,7 +76,14 @@ import {
 
 export type PersonFormMode =
   | { kind: 'add'; relation: Relation; anchor: Person }
-  | { kind: 'edit'; person: Person; missing: MissingDetail[] };
+  | {
+      kind: 'edit';
+      person: Person;
+      missing: MissingDetail[];
+      /** The researcher's questions whose stored answer can never be shown.
+       * Each is left as stored unless a new answer is given. */
+      unavailable: readonly string[];
+    };
 
 export type PersonFormResult = {
   /** Attributes to set on the person. */
@@ -275,12 +282,14 @@ export default function PersonForm({
     return values;
   }, [person, formFields]);
 
-  const { fieldComponents, coerceValues } = useProtocolForm({
-    fields: formFields,
-    subject: { entity: 'node', type: config.personType },
-    initialValues: initialResearcherValues,
-    currentEntityId: person?.id,
-  });
+  const { fieldComponents, toAttributePatch, passphraseNeeded } =
+    useProtocolForm({
+      fields: formFields,
+      subject: { entity: 'node', type: config.personType },
+      initialValues: initialResearcherValues,
+      currentEntityId: person?.id,
+      unavailableVariables: mode.kind === 'edit' ? mode.unavailable : undefined,
+    });
 
   const handleSubmit: FormSubmitHandler = (values) => {
     const set: PersonDetails = readOwnDetails(values, config);
@@ -323,10 +332,7 @@ export default function PersonForm({
     // An answer the network cannot hold fails the whole save, as on the
     // interview's other forms: nothing is saved, and the panel stays open.
     if (formFields.length > 0) {
-      const patch = formValuesToAttributePatch(
-        coerceValues(values),
-        formFields.map((field) => field.variable),
-      );
+      const patch = toAttributePatch(values);
       if (!patch.success) {
         return {
           success: false,
@@ -490,6 +496,7 @@ export default function PersonForm({
                 values={{ isYou: isEgo ? 'true' : 'false' }}
               />
             </Heading>
+            <PassphraseEntry needed={passphraseNeeded} />
             {fieldComponents}
           </section>
         )}

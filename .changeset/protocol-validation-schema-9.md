@@ -3,8 +3,9 @@
 ---
 
 Adds protocol schema 9, in which attribute (variable) names can use any
-script, spaces and punctuation, and every string a participant reads can be
-translated into several languages.
+script, spaces and punctuation, every string a participant reads can be
+translated into several languages, and encrypted attributes are no longer
+experimental.
 
 **Breaking:**
 
@@ -61,6 +62,41 @@ Schema 9:
   English, so they should confirm the default language and change it in
   Architect if the protocol is written in another one, and which empty
   questions were filled in.
+- Schema 9 keeps the optional `experiments` property, for features released
+  within a schema version, but `encryptedVariables` is no longer one of them:
+  an attribute marked `encrypted` is always encrypted. `ExperimentsSchema` and
+  the `Experiments` type now describe schema 9's experiments, and none is
+  defined yet, so schema 9 refuses `encryptedVariables` or any other key in
+  `experiments`. Schema 8 still accepts `experiments.encryptedVariables`.
+- The v8 to v9 migration keeps `experiments` but removes `encryptedVariables`
+  from it, and leaves a protocol without `experiments` without it. If
+  `experiments.encryptedVariables` was not `true`, it also removes `encrypted`
+  from every node attribute, because schema 8 interviews stored those
+  attributes without encryption. A host that stores `experiments` apart from
+  the rest of the protocol must put it back into the document it migrates, or
+  an encrypted protocol loses its encryption. The v7 to v8 migration now keeps
+  an `experiments` object the document already carries, rather than replacing
+  it with an empty one, so this holds for a document migrated from schema 7
+  too.
+- Schema 9 refuses an Anonymisation stage whose minimum passphrase length is
+  longer than its maximum, since no participant could choose a passphrase.
+  The v8 to v9 migration removes both lengths from such a stage, so the
+  interview's default minimum applies, and its migration notes say so.
+- Schema 9 refuses a skip logic, stage filter or panel filter rule that
+  compares the answers to an encrypted node attribute. Rules are checked
+  without the participant's passphrase, so such a rule only ever compared the
+  encrypted text. A rule that only checks whether the attribute is answered
+  (`EXISTS` or `NOT_EXISTS`) still works, so schema 9 accepts it. A panel over
+  an external data file may still compare one, because that file's rows are
+  not encrypted. When `experiments.encryptedVariables` was on, the v8 to v9
+  migration removes the comparing rules and keeps the others. A filter that
+  this leaves with no rules is removed, and so is skip logic left with none,
+  so that stage is always shown; a stage shown only when a removed rule
+  matched may never have appeared before. A filter or skip logic that already
+  had no rules is left alone, and schema 9 still refuses it. Its migration
+  notes tell researchers to check those stages: rules joined with `AND` that
+  lose one match at least as often as before, and rules joined with `OR`
+  match at most as often.
 
 - Schema 8 still refuses names outside `a-z`, `A-Z`, digits and `. _ - :`, with
   a message that says so. `VersionlessProtocolSchema`, the version 8 body

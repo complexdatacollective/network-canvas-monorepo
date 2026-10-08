@@ -17,6 +17,7 @@ import {
   ruleEntityTypeExists,
   ruleEntityTypeOptions,
   ruleOperatorOptions,
+  ruleOperatorSubject,
   ruleVariableChoices,
   ruleVariableDateParameters,
   ruleVariableOptions,
@@ -50,7 +51,7 @@ describe('the rule variable-type catalogue', () => {
   });
 
   it('offers only the existence operators before an attribute is chosen', () => {
-    expect(ruleOperatorOptions(undefined).map(({ value }) => value)).toEqual([
+    expect(ruleOperatorOptions('exists').map(({ value }) => value)).toEqual([
       'EXISTS',
       'NOT_EXISTS',
     ]);
@@ -125,6 +126,46 @@ describe('an operator a stored rule holds that the list leaves out', () => {
     expect(ruleOperatorOptions('number', 'GREATER_THAN')).toEqual(offered);
     expect(ruleOperatorOptions('number', undefined)).toEqual(offered);
     expect(ruleOperatorOptions('number', 'NOT_AN_OPERATOR')).toEqual(offered);
+  });
+});
+
+describe('the operators an encrypted attribute is offered', () => {
+  const variables = ruleVariables(codebook, 'node', 'person');
+
+  it('asks only whether it is answered, where rules read interview answers', () => {
+    expect(ruleOperatorSubject(variables, 'secret')).toBe('encrypted');
+    expect(ruleOperatorOptions('encrypted').map(({ value }) => value)).toEqual([
+      'EXISTS',
+      'NOT_EXISTS',
+    ]);
+  });
+
+  it('compares it like any text attribute where the rule set allows that', () => {
+    expect(
+      ruleOperatorSubject(variables, 'secret', {
+        allowEncryptedAttributes: true,
+      }),
+    ).toBe('text');
+  });
+
+  it('leaves an attribute that is not encrypted to its type', () => {
+    expect(ruleOperatorSubject(variables, 'note')).toBe('text');
+    expect(ruleOperatorSubject(variables, 'age')).toBe('number');
+  });
+
+  it('offers the presence operators for a rule with no attribute it can type', () => {
+    expect(ruleOperatorSubject(variables, undefined)).toBe('exists');
+    expect(ruleOperatorSubject(variables, 'favouriteColour')).toBe('exists');
+  });
+
+  it('keeps a stored comparison on screen, disabled', () => {
+    // The schema refuses every comparison on it, so the stored one has to be
+    // replaced rather than saved back.
+    expect(ruleOperatorOptions('encrypted', 'EXACTLY').at(-1)).toEqual({
+      value: 'EXACTLY',
+      label: 'is exactly (not valid for this attribute)',
+      disabled: true,
+    });
   });
 });
 
@@ -528,6 +569,8 @@ describe('reading the codebook for a rule', () => {
       { value: 'note', label: 'Note', type: 'text', usable: true },
       { value: 'born', label: 'Born', type: 'datetime', usable: true },
       { value: 'home', label: 'Home', type: 'layout', usable: false },
+      // Whether it was answered can still be asked of an encrypted attribute.
+      { value: 'secret', label: 'Secret', type: 'text', usable: true },
     ]);
   });
 

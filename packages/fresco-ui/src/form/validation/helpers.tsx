@@ -3,6 +3,7 @@ import { z } from 'zod/mini';
 import {
   createAppIntl,
   defineMessages,
+  formatMessageError,
   type IntlShape,
 } from '@codaco/app-i18n/messages';
 
@@ -144,6 +145,32 @@ export function makeValidationFunction(
   return (formValues: Record<string, FieldValue>) =>
     z.unknown().check(
       z.superRefine(async (fieldValue, ctx) => {
+        let context = validationContext;
+        if (validationContext?.resolveNetwork) {
+          try {
+            context = {
+              ...validationContext,
+              network: await validationContext.resolveNetwork(),
+            };
+          } catch (error) {
+            // A host that can say why the network is unavailable rejects with
+            // a message error, which the field shows, in the participant's
+            // language, in place of the generic failure.
+            const reason =
+              error instanceof Error &&
+              formatMessageError(error.message, helperIntl(intl)) !== undefined
+                ? error.message
+                : undefined;
+            ctx.addIssue({
+              code: 'custom',
+              message:
+                reason ??
+                helperIntl(intl).formatMessage(messages.unexpectedError),
+            });
+            return;
+          }
+        }
+
         // Handle built-in validations from the validations object
         const validationEntries = Object.entries(props).filter(
           ([key]) =>
@@ -160,7 +187,7 @@ export function makeValidationFunction(
 
             const validationFn = validationFnFactory(
               parameter as ValidationParameter,
-              validationContext,
+              context,
               intl,
             )(formValues);
 
@@ -196,7 +223,7 @@ export function makeValidationFunction(
               // Resolve schema if it's a function
               const resolvedSchema =
                 typeof schema === 'function'
-                  ? await schema(formValues, validationContext)
+                  ? await schema(formValues, context)
                   : schema;
 
               const result = await resolvedSchema.safeParseAsync(fieldValue);

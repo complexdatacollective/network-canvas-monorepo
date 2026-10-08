@@ -73,6 +73,15 @@ export type ValidationContext = {
   stageSubject: StageSubject;
   codebook: Codebook;
   network: NcNetwork;
+  /**
+   * Supplies the network to compare against when `network` does not hold it
+   * yet, such as while the host is still decrypting stored values. A
+   * validation run waits for it and compares against what it resolves to; if
+   * it rejects, the run fails rather than comparing against `network`. A
+   * rejection whose message is a message error (`createMessageError`) is the
+   * field's error; any other shows a generic validation failure.
+   */
+  resolveNetwork?: () => Promise<NcNetwork>;
   currentEntityId?: string;
   currentEntityAttributes?: NcNode[EntityAttributesProperty];
   /** Resolve form-to-form comparison rules within this FieldNamespace. */

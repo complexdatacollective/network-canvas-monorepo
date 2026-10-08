@@ -108,13 +108,6 @@ export const runtimeMessages = defineMessages({
     description:
       'Fallback accessible name for the second item when its name is missing.',
   },
-  decryptRetry: {
-    id: 'interview.runtime.decryptRetry',
-    defaultMessage:
-      'There was a problem decrypting the data. Please re-enter your passphrase.',
-    description:
-      'Message asking for another passphrase after decryption fails.',
-  },
   passphraseNeeded: {
     id: 'interview.runtime.passphraseNeeded',
     defaultMessage:
@@ -132,19 +125,64 @@ export const runtimeMessages = defineMessages({
     defaultMessage: 'Submit passphrase',
     description: 'Action that submits a passphrase to decrypt interview data.',
   },
-  decryptFailed: {
-    id: 'interview.runtime.decryptFailed',
-    defaultMessage:
-      'There was an error decrypting the data with the passphrase entered. Please try again.',
+  choosePassphrase: {
+    id: 'interview.runtime.choosePassphrase',
+    defaultMessage: 'Choose a passphrase',
     description:
-      'Error after the entered passphrase could not decrypt the data.',
+      'Title of the dialog in which the participant chooses the passphrase that will protect some of their answers, when none has been chosen yet in this interview.',
+  },
+  choosePassphraseHelp: {
+    id: 'interview.runtime.choosePassphraseHelp',
+    defaultMessage:
+      'Some answers on this screen are protected by a passphrase. Choose one, and keep it safe: you will need it to see or change these answers later, and it cannot be recovered if it is forgotten.',
+    description:
+      'Instructions in the dialog for choosing the interview passphrase, explaining that it cannot be recovered.',
+  },
+  enterChosenPassphrase: {
+    id: 'interview.runtime.enterChosenPassphrase',
+    defaultMessage:
+      'You chose a passphrase earlier in this interview. Enter it to continue.',
+    description:
+      'Shown on the passphrase screen when the participant already chose a passphrase earlier in this interview and needs to enter it again.',
+  },
+  checkingPassphrase: {
+    id: 'interview.runtime.checkingPassphrase',
+    defaultMessage: 'Checking your passphrase…',
+    description:
+      'Status shown and announced while an entered passphrase is being checked, which can take a few seconds.',
+  },
+  answerUnavailable: {
+    id: 'interview.runtime.answerUnavailable',
+    defaultMessage: 'Answer unavailable',
+    description:
+      'Shown in place of a protected answer, such as a name, that was saved earlier but can no longer be shown.',
+  },
+  answerUnavailableKept: {
+    id: 'interview.runtime.answerUnavailableKept',
+    defaultMessage:
+      'This answer was saved earlier but cannot be shown here. It will be kept as it is unless you enter a new one.',
+    description:
+      'Explains, under a question whose earlier protected answer can no longer be shown, that the earlier answer is kept unless the participant replaces it.',
+  },
+  replaceUnavailableAnswer: {
+    id: 'interview.runtime.replaceUnavailableAnswer',
+    defaultMessage: 'Enter a new answer',
+    description:
+      'Button beside an earlier answer that can no longer be shown, which lets the participant type a new answer to replace it.',
+  },
+  replacingUnavailableAnswer: {
+    id: 'interview.runtime.replacingUnavailableAnswer',
+    defaultMessage:
+      'Your new answer will replace the earlier one, which cannot be shown. Leave this empty to keep the earlier answer.',
+    description:
+      'Hint under a question the participant chose to answer again because its earlier protected answer can no longer be shown.',
   },
   passphraseHelp: {
     id: 'interview.runtime.passphraseHelp',
     defaultMessage:
-      'Enter your passphrase in order to unlock the data on this screen. If you cannot remember your passphrase, please contact the person who recruited you to this study.',
+      'Enter the passphrase you chose earlier in this interview to see and change the answers on this screen. A passphrase cannot be recovered if it is forgotten.',
     description:
-      'Instructions for unlocking encrypted data and finding help if the passphrase is forgotten.',
+      'Instructions in the dialog for entering the passphrase chosen earlier in this interview. It must not suggest that anyone can recover or reset a forgotten passphrase, because no one can.',
   },
   passphrase: {
     id: 'interview.runtime.passphrase',
@@ -156,6 +194,41 @@ export const runtimeMessages = defineMessages({
     id: 'interview.runtime.passphrasePlaceholder',
     defaultMessage: 'Enter your passphrase...',
     description: 'Placeholder for the interview decryption passphrase input.',
+  },
+  passphraseIncorrect: {
+    id: 'interview.runtime.passphraseIncorrect',
+    defaultMessage:
+      'This passphrase does not match the one used earlier in this interview. Check it and try again.',
+    description:
+      'Inline error under the passphrase input when the entered passphrase cannot unlock the information already saved in the interview.',
+  },
+  protectedAnswersLocked: {
+    id: 'interview.runtime.protectedAnswersLocked',
+    defaultMessage:
+      'Some answers here are protected by your passphrase. Enter your passphrase to see and change them.',
+    description:
+      'Shown in place of questions whose answers are protected by the interview passphrase, and as a brief notice when such an answer is asked for, until that passphrase is entered.',
+  },
+  protectedAnswersUnavailable: {
+    id: 'interview.runtime.protectedAnswersUnavailable',
+    defaultMessage:
+      'Answers protected by a passphrase cannot be shown or saved in this interview. Please let the person who recruited you to this study know.',
+    description:
+      'Shown in place of questions whose answers are protected by a passphrase, and on the passphrase screen, when the information this interview needs to check a passphrase is damaged, so no passphrase can be entered.',
+  },
+  protectedAnswersNotSaved: {
+    id: 'interview.runtime.protectedAnswersNotSaved',
+    defaultMessage:
+      'Your answers have not been saved. Enter your passphrase, then try again.',
+    description:
+      'Error when answers protected by the interview passphrase could not be saved because no working passphrase has been entered.',
+  },
+  protectedAnswersNotChecked: {
+    id: 'interview.runtime.protectedAnswersNotChecked',
+    defaultMessage:
+      'This answer is checked against answers protected by your passphrase. Enter your passphrase, then try again.',
+    description:
+      'Error under a question whose answer must be compared with answers protected by the interview passphrase, shown until that passphrase is entered.',
   },
   offlineTaskTitle: {
     id: 'interview.runtime.offlineTaskTitle',

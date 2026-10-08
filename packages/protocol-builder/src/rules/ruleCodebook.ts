@@ -34,6 +34,7 @@ import {
   operatorsForSubject,
   rangeSatisfiesComparison,
   type RuleOperatorOption,
+  type RuleOperatorSubject,
 } from './operators.ts';
 
 /**
@@ -64,6 +65,10 @@ export type RuleVariableOption = Readonly<{
    * apart. It read a stored layout reference, still described by the codebook
    * and still on screen in the codebook editor, as an attribute that had been
    * deleted.
+   *
+   * An encrypted attribute is usable everywhere. Where a rule set reads
+   * interview answers it is offered only the presence operators — see
+   * `ruleOperatorSubject` — rather than being kept out of the picker.
    */
   usable: boolean;
 }>;
@@ -363,9 +368,37 @@ export const ruleVariableChoices = (
   });
 
 /**
- * The operators offered for an attribute of this type. A rule with no
- * attribute yet — a presence rule, or a variable rule mid-authoring — gets the
- * existence operators, which is what the `exists` subject holds.
+ * What a rule's operator list is chosen for, once its attribute is known.
+ *
+ * An encrypted attribute in a rule set that reads interview answers is its
+ * own subject: rules there are checked without the participant's passphrase,
+ * so its answers are ciphertext to them and only whether it was answered can
+ * be asked. A rule with no attribute, or one the codebook no longer types, is
+ * offered the presence operators, as before an attribute is chosen.
+ */
+export const ruleOperatorSubject = (
+  variables: Readonly<Variables>,
+  variableId: string | undefined,
+  {
+    allowEncryptedAttributes = false,
+  }: Readonly<{
+    /** Whether the rule set may compare an encrypted attribute; see `describeRule`. */
+    allowEncryptedAttributes?: boolean;
+  }> = {},
+): RuleOperatorSubject => {
+  const variableType = ruleVariableType(variables, variableId);
+  if (variableType === undefined) return 'exists';
+  return ruleVariable(variables, variableId)?.encrypted === true &&
+    !allowEncryptedAttributes
+    ? 'encrypted'
+    : variableType;
+};
+
+/**
+ * The operators offered for a rule's subject: an attribute of a given type,
+ * an encrypted one, or — for a rule with no attribute yet, a presence rule or
+ * a variable rule mid-authoring — the existence operators the `exists`
+ * subject holds.
  *
  * The operator the rule ALREADY holds is added to the list when the list does
  * not contain it, in the same way `stageDestinationOptions` keeps an
@@ -381,23 +414,26 @@ export const ruleVariableChoices = (
  * Whether the extra option can be CHOSEN again is the difference between the
  * two cases. One the schema still accepts is the researcher's own rule, so it
  * stays selectable; one the attribute's type does not allow has to be replaced,
- * so it is shown and disabled.
+ * so it is shown and disabled. An encrypted attribute's list already holds
+ * every operator the schema accepts for it, so anything else is disabled.
  */
 export const ruleOperatorOptions = (
-  variableType: VariableType | undefined,
+  subject: RuleOperatorSubject,
   operator?: unknown,
   intl: IntlShape = englishIntl,
 ): RuleOperatorOption[] => {
-  const allowed =
-    variableType === undefined
-      ? operatorsForSubject('exists')
-      : operatorsForSubject(variableType);
+  const allowed = operatorsForSubject(subject);
   const offered = operatorsAsOptions(intl).filter((option) =>
     allowed.has(option.value),
   );
   if (!isFilterOperator(operator) || allowed.has(operator)) return offered;
 
-  const stillValid = isOperatorValidForAttributeType(operator, variableType);
+  const stillValid =
+    subject !== 'encrypted' &&
+    isOperatorValidForAttributeType(
+      operator,
+      subject === 'exists' ? undefined : subject,
+    );
   return [
     ...offered,
     {

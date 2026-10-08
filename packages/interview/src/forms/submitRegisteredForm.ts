@@ -2,7 +2,10 @@ import type { ContextType } from 'react';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { type FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
-import type { FlattenedErrors } from '@codaco/fresco-ui/form/store/types';
+import type {
+  FlattenedErrors,
+  FormSubmissionResult,
+} from '@codaco/fresco-ui/form/store/types';
 
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 
@@ -27,8 +30,17 @@ const surfaceSubmissionErrors = (
   state.requestErrorFocus();
 };
 
+/**
+ * Submits the form registered in `storeApi` as its own submit would.
+ *
+ * With `showSubmitting`, the form is marked as submitting while its handler
+ * runs, as its own submit marks it, and unmarked before any error is shown:
+ * the fields are disabled while it is submitting, and the request to focus
+ * the first error would otherwise find them disabled and skip them.
+ */
 export async function submitRegisteredForm(
   storeApi: FormStoreApi,
+  { showSubmitting = false }: { showSubmitting?: boolean } = {},
 ): Promise<boolean> {
   const state = storeApi.getState();
   const submitHandler = state.submitHandler;
@@ -38,21 +50,29 @@ export async function submitRegisteredForm(
     return false;
   }
 
+  let result: FormSubmissionResult | undefined;
+  if (showSubmitting) state.setSubmitting(true);
   try {
-    const result = await submitHandler(state.getFormValues());
-
-    if (result.success) {
-      state.setErrors(null);
-      return true;
-    }
-
-    surfaceSubmissionErrors(storeApi, {
-      formErrors: result.formErrors ?? [],
-      fieldErrors: result.fieldErrors ?? {},
-    });
-    return false;
+    result = await submitHandler(state.getFormValues());
   } catch {
+    result = undefined;
+  } finally {
+    if (showSubmitting) state.setSubmitting(false);
+  }
+
+  if (!result) {
     surfaceSubmissionErrors(storeApi, genericSubmissionErrors);
     return false;
   }
+
+  if (result.success) {
+    state.setErrors(null);
+    return true;
+  }
+
+  surfaceSubmissionErrors(storeApi, {
+    formErrors: result.formErrors ?? [],
+    fieldErrors: result.fieldErrors ?? {},
+  });
+  return false;
 }

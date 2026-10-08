@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
-import { createBaseProtocol } from '../../../utils/test-utils.ts';
+import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
+import ProtocolSchemaV8 from '../../8/schema.ts';
 import ProtocolSchemaV9 from '../schema.ts';
 import { asSchema8Protocol } from './schema-8-protocol.ts';
 
@@ -168,5 +169,66 @@ describe('Schema 8 attribute names', () => {
     expect(ProtocolSchemaV9.safeParse(withFinishStage(migrated)).success).toBe(
       true,
     );
+  });
+});
+
+const protocolWithPassphraseRules = (validation: {
+  minLength?: number;
+  maxLength?: number;
+}) => {
+  const base = createBaseProtocol();
+  return withFinishStage({
+    ...base,
+    stages: [
+      ...base.stages,
+      {
+        id: 'anonymisation',
+        type: 'Anonymisation',
+        label: localized('Anonymisation'),
+        explanationText: {
+          title: localized('Privacy'),
+          body: localized('Choose a passphrase.'),
+        },
+        validation,
+      },
+    ],
+  });
+};
+
+describe('Schema 9 passphrase length rules', () => {
+  it.each([
+    { minLength: 4, maxLength: 12 },
+    { minLength: 6, maxLength: 6 },
+    { maxLength: 6 },
+    { minLength: 10 },
+  ])('accepts %j', (validation) => {
+    expect(
+      ProtocolSchemaV9.safeParse(protocolWithPassphraseRules(validation))
+        .success,
+    ).toBe(true);
+  });
+
+  it('refuses a minimum longer than the maximum, at the minimum', () => {
+    const protocol = protocolWithPassphraseRules({
+      minLength: 9,
+      maxLength: 6,
+    });
+    const stageIndex = protocol.stages.findIndex(
+      ({ type }) => type === 'Anonymisation',
+    );
+
+    expect(issuePaths(ProtocolSchemaV9.safeParse(protocol))).toEqual([
+      `stages.${stageIndex}.validation.minLength`,
+    ]);
+  });
+
+  it('leaves schema 8 accepting it, so the migration can repair it', () => {
+    expect(
+      ProtocolSchemaV8.safeParse(
+        asSchema8Protocol(
+          protocolWithPassphraseRules({ minLength: 9, maxLength: 6 }),
+        ),
+      ).success,
+    ).toBe(true);
   });
 });

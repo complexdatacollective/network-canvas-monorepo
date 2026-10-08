@@ -90,6 +90,29 @@ const containerVariants = {
   }),
 };
 
+/**
+ * The bar's controls share its length. When a small screen and an enlarged
+ * text size leave too little of it, they give up length together, down to a
+ * touch-target floor, rather than push one another out of the bar. The
+ * progress bar only grows, so by then it has already given way.
+ */
+const barControlVariants = cva({
+  base: 'shrink',
+  variants: {
+    orientation: {
+      vertical: 'min-h-11',
+      horizontal: 'min-w-11',
+    },
+  },
+  defaultVariants: {
+    orientation: 'vertical',
+  },
+});
+
+// Icon buttons hold a fixed size, and the bar shrinks the wrapper around them.
+// Button already caps its width at the wrapper's; this caps its height too.
+const barIconButtonClassName = 'max-h-full';
+
 const NavigationButton = ({
   disabled,
   className,
@@ -106,7 +129,7 @@ const NavigationButton = ({
         ref={buttonRef}
         color="dynamic"
         variant="text"
-        className={cx('[&>.lucide]:h-[2em]', className)}
+        className={cx('[&>.lucide]:h-[2em]', barIconButtonClassName, className)}
         disabled={disabled}
         {...props}
         size="xl"
@@ -295,7 +318,7 @@ const Navigation = ({
 
   const handleExit = useCallback(async () => {
     if (!onExit) return;
-    const confirmed = await confirm({
+    await confirm({
       title: (
         <AppMessage
           message={
@@ -319,9 +342,6 @@ const Navigation = ({
       ),
       cancelLabel: <AppMessage message={commonMessages.cancel} />,
       intent: 'warning',
-      onConfirm: () => {},
-    });
-    if (confirmed === true) {
       // Hand control back to the host only after pending session state is
       // written. The Shell's unmount-cleanup flush alone cannot enqueue the
       // final snapshot synchronously when a write is already on the wire (it
@@ -329,10 +349,15 @@ const Navigation = ({
       // unmounting the Shell — could re-read the session between the
       // in-flight write and the final one. Exit is the one teardown the
       // Shell controls, so wait out the full flush here; it never rejects
-      // and typically resolves in milliseconds.
-      await flushPendingSync();
-      onExit();
-    }
+      // and typically resolves in milliseconds. It runs while the
+      // confirmation is still open, so nothing more can be asked of the
+      // interview between the flush and the hand-over. When an answer still
+      // being saved is refused, or the participant cancels while it is
+      // saved, the interview stays open, so they see why and can try again.
+      onConfirm: async (signal) => {
+        if ((await flushPendingSync()) && !signal.aborted) onExit();
+      },
+    });
   }, [confirm, onExit, reviewMode, flushPendingSync]);
 
   const closeMenu = useCallback(
@@ -374,7 +399,10 @@ const Navigation = ({
         {showSettingsPopover && (
           <motion.div
             variants={variants}
-            className={orientation === 'horizontal' ? 'order-1' : undefined}
+            className={cx(
+              barControlVariants({ orientation }),
+              orientation === 'horizontal' && 'order-1',
+            )}
           >
             <Popover open={settingsOpen} onOpenChange={setSettingsOpen}>
               <PopoverTrigger
@@ -384,7 +412,10 @@ const Navigation = ({
                     variant="text"
                     size="xl"
                     icon={<Settings />}
-                    className="[&>.lucide]:h-[1.5em]!"
+                    className={cx(
+                      '[&>.lucide]:h-[1.5em]!',
+                      barIconButtonClassName,
+                    )}
                     aria-label={intl.formatMessage(messages.settings)}
                     data-testid="settings-button"
                   />
@@ -512,9 +543,10 @@ const Navigation = ({
           </motion.div>
         )}
         <NavigationButton
-          wrapperClassName={
-            orientation === 'horizontal' ? 'order-3' : undefined
-          }
+          wrapperClassName={cx(
+            barControlVariants({ orientation }),
+            orientation === 'horizontal' && 'order-3',
+          )}
           onClick={moveBackward}
           disabled={disableMoveBackward}
           icon={<BackIcon />}
@@ -522,7 +554,16 @@ const Navigation = ({
           buttonRef={backButtonRef}
           data-testid="previous-button"
         />
-        {orientation === 'vertical' && <PassphrasePrompter />}
+        <PassphrasePrompter
+          orientation={orientation}
+          // Horizontally it joins the settings button at the leading edge,
+          // clear of the back and forward buttons. Sharing settings' `order-1`
+          // keeps it straight after settings, as it is in the DOM.
+          className={cx(
+            barControlVariants({ orientation }),
+            orientation === 'horizontal' && 'order-1',
+          )}
+        />
         {stageNavigationEnabled ? (
           <motion.button
             type="button"
@@ -558,9 +599,10 @@ const Navigation = ({
               'bg-success ui-enabled:hover:bg-success outline-success',
             pulseNext && !shouldReduceMotion && 'animate-pulse-glow',
           )}
-          wrapperClassName={
-            orientation === 'horizontal' ? 'order-4' : undefined
-          }
+          wrapperClassName={cx(
+            barControlVariants({ orientation }),
+            orientation === 'horizontal' && 'order-4',
+          )}
           onClick={moveForward}
           disabled={disableMoveForward}
           icon={<ForwardIcon className="size-8" strokeWidth="3px" />}

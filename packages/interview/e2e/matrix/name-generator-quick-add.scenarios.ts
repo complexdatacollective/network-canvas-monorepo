@@ -6,6 +6,7 @@ import {
   entitySecureAttributesMeta,
 } from '@codaco/shared-consts';
 
+import { AnonymisationFixture } from '../fixtures/anonymisation-fixture.js';
 import { expect } from '../fixtures/matrix-test.js';
 import { DEV_PROTOCOL_ASSETS_DIR } from '../helpers/protocol-paths.js';
 import type { InterfaceScenarios, ScenarioDefinition } from './types.js';
@@ -623,7 +624,6 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
           component: 'Text',
           encrypted: true,
         });
-        synth.setExperiments({ encryptedVariables: true });
         const stage = synth.addStage('NameGeneratorQuickAdd', {
           label: 'Confidential contacts',
           subject: { entity: 'node', type: person.id },
@@ -633,17 +633,17 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         return synth;
       },
       run: async ({ page, stage, protocol, interview }) => {
+        const anon = new AnonymisationFixture(page);
         // Before a passphrase is set, quick-add is disabled.
         expect(await stage.quickAdd.isDisabled()).toBe(true);
 
-        const lockButton = page.getByRole('button').filter({ hasText: '🔑' });
-        await expect(lockButton).toBeVisible();
-        await lockButton.click();
-
-        await page
-          .getByRole('textbox', { name: 'Passphrase' })
-          .fill('correct horse battery');
-        await page.getByRole('button', { name: 'Submit passphrase' }).click();
+        // No Anonymisation stage came first, so nothing has been chosen yet:
+        // the 🔑 prompter asks for a passphrase to be chosen and confirmed.
+        await expect(anon.prompterButton()).toBeVisible();
+        await anon.openPrompter();
+        await expect(anon.prompterDialog('Choose a passphrase')).toBeVisible();
+        await anon.choosePrompterPassphrase('correct horse battery');
+        await expect(anon.prompterDialog('Choose a passphrase')).toHaveCount(0);
 
         await expect.poll(async () => stage.quickAdd.isDisabled()).toBe(false);
         await stage.quickAdd.addNode('Alice');
@@ -651,12 +651,18 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
 
         const network = await protocol.getNetworkState(interview.interviewId);
         expect(network?.nodes).toHaveLength(1);
-        const node = network!.nodes[0]!;
-        const attrValues = Object.values(node[entityAttributesProperty]);
+        // Choosing the passphrase created the interview's encryption header.
+        expect(network?.encryption?.version).toBe(1);
+        const node = network?.nodes[0];
+        const attrValues = Object.values(
+          node?.[entityAttributesProperty] ?? {},
+        );
         // Ciphertext is a number[], never the plaintext string.
         expect(attrValues.some((v) => Array.isArray(v))).toBe(true);
         expect(attrValues).not.toContain('Alice');
-        expect(node[entitySecureAttributesMeta]).toBeTruthy();
+        expect(Object.values(node?.[entitySecureAttributesMeta] ?? {})).toEqual(
+          [{ iv: expect.any(Array) }],
+        );
       },
     },
   ],

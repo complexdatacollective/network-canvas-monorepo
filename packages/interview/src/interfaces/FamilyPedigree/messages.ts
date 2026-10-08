@@ -850,26 +850,12 @@ export const messages = defineMessages({
     description:
       'Notice shown under the family tree when the study protects names with a passphrase that has not been entered yet. Until it is, people are shown by how they are related to the participant, and the family cannot be changed.',
   },
-  passphraseInvalidNotice: {
-    id: 'interview.familyPedigree.passphraseInvalidNotice',
-    defaultMessage:
-      'Your passphrase did not unlock the names in your family. Enter it again to see them and to add or change people.',
-    description:
-      'Notice shown under the family tree when the passphrase entered could not unlock the names saved earlier. Until the right one is entered, people are shown by how they are related to the participant, and the family cannot be changed.',
-  },
   detailsPassphraseNeededNotice: {
     id: 'interview.familyPedigree.detailsPassphraseNeededNotice',
     defaultMessage:
       'Enter your passphrase to add or change people in your family.',
     description:
       'Notice shown under the family tree when the study protects some of the answers about each family member (but not their names) with a passphrase that has not been entered yet. Until it is, the family cannot be changed.',
-  },
-  detailsPassphraseInvalidNotice: {
-    id: 'interview.familyPedigree.detailsPassphraseInvalidNotice',
-    defaultMessage:
-      'Your passphrase did not unlock the answers saved about your family. Enter it again to add or change people.',
-    description:
-      'Notice shown under the family tree when the passphrase entered could not unlock the protected answers saved earlier about a family member (names are not protected in this study). Until the right one is entered, the family cannot be changed.',
   },
   enterPassphrase: {
     id: 'interview.familyPedigree.enterPassphrase',

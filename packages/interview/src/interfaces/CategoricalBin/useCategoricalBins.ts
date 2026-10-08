@@ -2,24 +2,17 @@
 
 import { isNil } from 'es-toolkit';
 import { get } from 'es-toolkit/compat';
-import { useSelector } from 'react-redux';
 
 import type { Stage } from '@codaco/protocol-validation';
 import { entityAttributesProperty, type NcNode } from '@codaco/shared-consts';
 
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import useSortedNodeList, {
-  getSortedNodeList,
+  useNodeSorter,
 } from '../../hooks/useSortedNodeList';
 import { useStageSelector } from '../../hooks/useStageSelector';
-import {
-  useContentLocale,
-  useResolveLocalizedString,
-} from '../../localization/ProtocolLocalizationProvider';
-import {
-  getAllVariableUUIDsByEntity,
-  makeGetCodebookVariableById,
-} from '../../selectors/protocol';
+import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
+import { makeGetCodebookVariableById } from '../../selectors/protocol';
 import { getNetworkNodesForType } from '../../selectors/session';
 
 const matchVariableValue = (
@@ -73,8 +66,6 @@ export function useCategoricalBins() {
   } = prompt;
 
   const resolve = useResolveLocalizedString();
-  const locale = useContentLocale();
-  const codebookVariables = useSelector(getAllVariableUUIDsByEntity);
   const getVariableDefinition = useStageSelector(makeGetCodebookVariableById);
   const variableDefinition = getVariableDefinition(activePromptVariable);
 
@@ -97,6 +88,9 @@ export function useCategoricalBins() {
     uncategorisedNodes,
     bucketSortOrder,
   );
+  // Within-bin node order is governed by binSortOrder (mirroring OrdinalBin);
+  // bucketSortOrder is reserved for the drawer (uncategorised nodes).
+  const sortBinNodes = useNodeSorter(stageNodes, binSortOrder);
 
   type Bin = {
     label: string;
@@ -111,18 +105,9 @@ export function useCategoricalBins() {
       return matchVariableValue(node, activePromptVariable, option.value);
     });
 
-    // Within-bin node order is governed by binSortOrder (mirroring OrdinalBin);
-    // bucketSortOrder is reserved for the drawer (uncategorised nodes).
-    const sortedNodes = getSortedNodeList(
-      nodes,
-      binSortOrder,
-      codebookVariables,
-      locale,
-    );
-
     return {
       label: resolve(option.label).text,
-      nodes: sortedNodes,
+      nodes: sortBinNodes(nodes),
       value: option.value,
       isOther: false,
     };
@@ -136,16 +121,9 @@ export function useCategoricalBins() {
       (node) => !isNil(get(node, [entityAttributesProperty, otherVariable])),
     );
 
-    const sortedOtherNodes = getSortedNodeList(
-      otherNodes,
-      binSortOrder,
-      codebookVariables,
-      locale,
-    );
-
     bins.push({
       label: resolve(otherOptionLabel).text,
-      nodes: sortedOtherNodes,
+      nodes: sortBinNodes(otherNodes),
       value: null,
       isOther: true,
     });

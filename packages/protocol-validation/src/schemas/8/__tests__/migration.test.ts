@@ -1082,6 +1082,21 @@ describe('Migration V7 to V8', () => {
       expect(migrated.experiments).toEqual({});
     });
 
+    it('keeps the experiments a host carries into a version 7 document', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: { node: {}, edge: {}, ego: {} },
+        stages: [],
+        experiments: { encryptedVariables: true },
+      } as Protocol<7>;
+
+      const migrated = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+
+      expect(migrated.experiments).toEqual({ encryptedVariables: true });
+    });
+
     it('preserves other top-level fields while adding experiments', () => {
       const v7Protocol = {
         schemaVersion: 7 as const,
@@ -2402,22 +2417,25 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = V8OutputSchema.parse(migratedRaw);
+      expect(V8OutputSchema.safeParse(migratedRaw).success).toBe(true);
 
+      // Read from the version 8 document: migrating it on to 9 unmarks every
+      // attribute, since this migration leaves the experiments empty.
       // Node text variable keeps encrypted.
-      expect(
-        parsed.codebook.node?.person?.variables?.secretName,
-      ).toHaveProperty('encrypted', true);
+      expect(migratedRaw).toHaveProperty(
+        'codebook.node.person.variables.secretName.encrypted',
+        true,
+      );
       // Non-text node variable loses encrypted.
-      expect(
-        parsed.codebook.node?.person?.variables?.secretAge,
-      ).not.toHaveProperty('encrypted');
+      expect(migratedRaw).not.toHaveProperty(
+        'codebook.node.person.variables.secretAge.encrypted',
+      );
       // Edge and ego variables lose encrypted regardless of type.
-      expect(
-        parsed.codebook.edge?.knows?.variables?.edgeSecret,
-      ).not.toHaveProperty('encrypted');
-      expect(parsed.codebook.ego?.variables?.egoSecret).not.toHaveProperty(
-        'encrypted',
+      expect(migratedRaw).not.toHaveProperty(
+        'codebook.edge.knows.variables.edgeSecret.encrypted',
+      );
+      expect(migratedRaw).not.toHaveProperty(
+        'codebook.ego.variables.egoSecret.encrypted',
       );
     });
   });

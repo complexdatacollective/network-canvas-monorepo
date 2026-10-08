@@ -1,5 +1,10 @@
 import { createMessageError } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
+import {
+  DEFAULT_PASSPHRASE_MIN_LENGTH,
+  effectivePassphraseMinLength,
+} from '@codaco/shared-consts';
 
 import VariableValidationEditor from '../codebook/validation/VariableValidationEditor.tsx';
 import {
@@ -37,6 +42,15 @@ export type PassphraseRulesFieldProps = CreateFormFieldProps<
  * There is deliberately nothing to compare a passphrase against — it is not a
  * codebook attribute and there are no sibling attributes in scope — so the
  * editor is handed no variables and offers only the two length rules.
+ *
+ * The minimum row says what applies when none is set, from the same
+ * `effectivePassphraseMinLength` the interview applies: the default, lowered
+ * to the maximum when that is shorter. A minimum the researcher sets replaces
+ * it even when it is shorter.
+ *
+ * A short maximum without a minimum is explained rather than refused: schema 8
+ * protocols holding one exist and the interview accepts them, so refusing it
+ * here would make a working stage unsaveable.
  */
 export default function PassphraseRulesField({
   value,
@@ -53,18 +67,42 @@ export default function PassphraseRulesField({
   // `aria-invalid` describing nothing.
   'aria-describedby': ariaDescribedBy,
 }: PassphraseRulesFieldProps) {
+  const intl = useAppIntl();
+  const rules = isValidationMap(value) ? value : {};
+  // Only the maximum: the hint says what applies if no minimum is set, so it
+  // stays the same while the minimum is switched on and off.
+  const defaultMinimum = effectivePassphraseMinLength({
+    maxLength:
+      typeof rules.maxLength === 'number' ? rules.maxLength : undefined,
+  });
+
   return (
     <VariableValidationEditor
       entity={ENTITY}
       variableType={PASSPHRASE}
       currentVariableId=""
       allVariables={NO_VARIABLES}
-      value={isValidationMap(value) ? value : {}}
+      value={rules}
       onChange={(next: ValidationMap) => {
         if (disabled || readOnly) return;
         onChange?.(next);
       }}
       readOnly={disabled || readOnly}
+      ruleHints={{
+        minLength:
+          defaultMinimum < DEFAULT_PASSPHRASE_MIN_LENGTH
+            ? intl.formatMessage(
+                anonymisationMessages.passphraseRulesMinimumDefaultLowered,
+                {
+                  count: defaultMinimum,
+                  defaultCount: DEFAULT_PASSPHRASE_MIN_LENGTH,
+                },
+              )
+            : intl.formatMessage(
+                anonymisationMessages.passphraseRulesMinimumDefault,
+                { count: DEFAULT_PASSPHRASE_MIN_LENGTH },
+              ),
+      }}
       aria-invalid={ariaInvalid}
       {...(ariaDescribedBy === undefined
         ? {}

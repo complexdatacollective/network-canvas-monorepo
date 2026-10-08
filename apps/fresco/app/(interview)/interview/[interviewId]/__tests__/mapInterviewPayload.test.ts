@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
+import {
+  networkWithEncryptionHeader,
+  schema8EncryptedNetwork,
+} from '~/lib/__tests__/encryptedNetworks';
 import type { GetInterviewByIdQuery } from '~/queries/interviews';
 
 import { mapInterviewPayload } from '../mapInterviewPayload';
@@ -144,5 +148,23 @@ describe('mapInterviewPayload', () => {
     expect(() =>
       mapInterviewPayload(makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION + 1)),
     ).toThrow(/must be migrated/);
+  });
+
+  it.each([
+    {
+      label: 'the encryption header and IV-only values',
+      stored: networkWithEncryptionHeader,
+    },
+    {
+      label: 'schema 8 values without a header',
+      stored: schema8EncryptedNetwork,
+    },
+  ])('hands the interview a network with $label unchanged', ({ stored }) => {
+    const { payload } = mapInterviewPayload({
+      ...makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION),
+      network: stored,
+    });
+
+    expect(payload.session.network).toStrictEqual(stored);
   });
 });

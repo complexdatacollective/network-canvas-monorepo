@@ -5,6 +5,7 @@ import { createElement, useEffect, useRef } from 'react';
 import { AppMessage } from '@codaco/app-i18n/react';
 
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
+import { usePassphrase } from '../interfaces/Anonymisation/usePassphrase';
 import useReadyForNextStage from './useReadyForNextStage';
 import useStageValidation from './useStageValidation';
 
@@ -13,6 +14,12 @@ type UseNodeLimitsOptions = {
   minNodes: number;
   maxNodes: number;
   isLastPrompt: boolean;
+  /**
+   * Whether the people this stage adds carry encrypted answers. Under an
+   * encryption header no passphrase can open, none of them can be added, so
+   * the stage says why, and its minimum no longer holds the participant back.
+   */
+  writesEncrypted: boolean;
 };
 
 function useNodeLimits({
@@ -20,9 +27,17 @@ function useNodeLimits({
   minNodes,
   maxNodes,
   isLastPrompt,
+  writesEncrypted,
 }: UseNodeLimitsOptions) {
+  const { encryptionUnavailable, lockedNotice } = usePassphrase();
+  const addingUnavailable = writesEncrypted && encryptionUnavailable;
+
   const maxNodesReached = stageNodeCount >= maxNodes;
-  const minNodesMet = !minNodes || !isLastPrompt || stageNodeCount >= minNodes;
+  const minNodesMet =
+    addingUnavailable ||
+    !minNodes ||
+    !isLastPrompt ||
+    stageNodeCount >= minNodes;
 
   const { updateReady } = useReadyForNextStage();
 
@@ -86,6 +101,30 @@ function useNodeLimits({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [maxNodesReached]);
+
+  // Once the maximum is reached nothing more could be added anyway, and the
+  // stage says it is complete instead.
+  const showAddingUnavailable = addingUnavailable && !maxNodesReached;
+
+  useEffect(() => {
+    if (!showAddingUnavailable) return;
+
+    let toastId: string | null = null;
+    // Deferred for the same reason as the maximum's toast.
+    const timeout = setTimeout(() => {
+      toastId = showToast({
+        description: createElement(AppMessage, { message: lockedNotice }),
+        variant: 'info',
+        anchor: 'forward',
+        timeout: 0,
+      });
+    }, 0);
+
+    return () => {
+      clearTimeout(timeout);
+      if (toastId) closeToast(toastId);
+    };
+  }, [showAddingUnavailable, lockedNotice, showToast, closeToast]);
 
   useEffect(() => {
     updateReady(minNodesMet || maxNodesReached);

@@ -1,19 +1,25 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it, vi } from 'vitest';
 
-import { entityAttributesProperty } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+} from '@codaco/shared-consts';
 
 import type { Tracker } from '../../../analytics/tracker';
+import { unlockEncryption } from '../../../interfaces/Anonymisation/unlockEncryption';
 import protocol from '../../modules/protocol';
 import session, {
   addEdge,
   addNode,
+  addNodesAndEdges,
   addNodeToPrompt,
   deleteEdge,
   deleteNode,
   removeNodeFromPrompt,
+  restoreNode,
 } from '../../modules/session';
-import ui, { setPassphrase, setPassphraseInvalid } from '../../modules/ui';
+import ui from '../../modules/ui';
 import { createAnalyticsListenerMiddleware } from '../analyticsListener';
 
 function makeTracker() {
@@ -80,6 +86,46 @@ describe('analyticsListener — global entity events', () => {
         node_type: 'person',
       }),
     );
+  });
+
+  it('emits node_added and edge_created for each entity a batch adds', async () => {
+    const tracker = makeTracker();
+    const store = buildStore(tracker);
+    await store.dispatch(
+      addNodesAndEdges({
+        nodes: [
+          { type: 'person', modelData: { _uid: 'a' } },
+          { type: 'person', modelData: { _uid: 'b' } },
+        ],
+        edges: [{ from: 'a', to: 'b', type: 'knows' }],
+        currentStep: 1,
+      }),
+    );
+
+    const calls = tracker.track.mock.calls;
+    expect(calls.filter(([name]) => name === 'node_added')).toEqual([
+      ['node_added', { node_id: 'a', node_type: 'person' }],
+      ['node_added', { node_id: 'b', node_type: 'person' }],
+    ]);
+    expect(calls.filter(([name]) => name === 'edge_created')).toEqual([
+      ['edge_created', { edge_id: expect.any(String), edge_type: 'knows' }],
+    ]);
+  });
+
+  it('emits node_added when undo or redo puts a removed node back', () => {
+    const tracker = makeTracker();
+    const store = buildStore(tracker);
+    store.dispatch(
+      restoreNode({
+        [entityPrimaryKeyProperty]: 'node-1',
+        type: 'person',
+        [entityAttributesProperty]: {},
+      }),
+    );
+    expect(tracker.track).toHaveBeenCalledWith('node_added', {
+      node_id: 'node-1',
+      node_type: 'person',
+    });
   });
 
   it('emits node_removed on deleteNode', () => {
@@ -191,22 +237,23 @@ describe('analyticsListener — global entity events', () => {
 });
 
 describe('analyticsListener — anonymisation', () => {
-  it('emits passphrase_set on setPassphrase (no value sent)', () => {
+  it('emits passphrase_set and passphrase_validation_failed without the passphrase', async () => {
     const tracker = makeTracker();
     const store = buildStore(tracker);
-    store.dispatch(setPassphrase('DO_NOT_LEAK'));
+
+    await expect(unlockEncryption(store, 'DO_NOT_LEAK-1')).resolves.toBe(
+      'chosen',
+    );
     expect(tracker.track).toHaveBeenCalledWith('passphrase_set');
+
+    tracker.track.mockClear();
+    await expect(unlockEncryption(store, 'DO_NOT_LEAK-2')).resolves.toBe(
+      'incorrect',
+    );
+    expect(tracker.track).toHaveBeenCalledWith('passphrase_validation_failed');
+    expect(tracker.track).not.toHaveBeenCalledWith('passphrase_set');
+
     const allArgs = JSON.stringify(tracker.track.mock.calls);
     expect(allArgs).not.toContain('DO_NOT_LEAK');
-  });
-
-  it('emits passphrase_validation_failed on setPassphraseInvalid(true) only', () => {
-    const tracker = makeTracker();
-    const store = buildStore(tracker);
-    store.dispatch(setPassphraseInvalid(true));
-    expect(tracker.track).toHaveBeenCalledWith('passphrase_validation_failed');
-    tracker.track.mockClear();
-    store.dispatch(setPassphraseInvalid(false));
-    expect(tracker.track).not.toHaveBeenCalled();
   });
 });

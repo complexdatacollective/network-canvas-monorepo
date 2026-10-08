@@ -64,6 +64,7 @@ import { getProtocolLocalization, getStages } from './store/modules/protocol';
 import { recordLocale, setLocalePreference } from './store/modules/session';
 import { store, useAppDispatch, type RootState } from './store/store';
 import { SyncFlushProvider } from './store/SyncFlushContext';
+import { WritesInFlightProvider } from './store/WritesInFlightContext';
 import {
   InterviewToastProvider,
   InterviewToastViewport,
@@ -772,42 +773,48 @@ const Shell = ({
           localeOptions={payload.session.localeOptions}
         >
           <SyncFlushProvider flush={reduxStore.flushSync}>
-            <ContractProvider
-              onFinish={onFinish}
-              onRequestAsset={onRequestAsset}
-              flags={flags}
-              finishConfirmationDescription={finishConfirmationDescription}
+            <WritesInFlightProvider
+              writesSettled={reduxStore.writesSettled}
+              trackWrite={reduxStore.trackWrite}
             >
-              <InterviewCompletionProvider
-                // A new payload is a new interview.
-                key={payload.session.id}
-                initialCompletion={initialCompletion}
-                completedAction={completedAction}
+              <ContractProvider
+                onFinish={onFinish}
+                onRequestAsset={onRequestAsset}
+                flags={flags}
+                finishConfirmationDescription={finishConfirmationDescription}
               >
-                <CurrentStepProvider
-                  currentStep={reviewEntry.currentStep}
-                  onStepChange={onStepChange}
+                <InterviewCompletionProvider
+                  // A new payload is a new interview.
+                  key={payload.session.id}
+                  initialCompletion={initialCompletion}
+                  completedAction={completedAction}
                 >
-                  <Interview
-                    onExit={onExit}
-                    hideNavigation={hideNavigation}
-                    navigationOrientation={navigationOrientation}
-                    navigationClassnames={navigationClassnames}
-                    allowStageNavigation={
-                      allowStageNavigation &&
-                      (currentStep === undefined || onStepChange !== undefined)
-                    }
-                    allowUserScaling={allowUserScaling}
-                    initialTextScale={initialTextScale}
-                    onTextScaleChange={onTextScaleChange}
-                    initialStageOverrideIndex={
-                      reviewEntry.initialStageOverrideIndex
-                    }
-                    reviewMode={reviewMode}
-                  />
-                </CurrentStepProvider>
-              </InterviewCompletionProvider>
-            </ContractProvider>
+                  <CurrentStepProvider
+                    currentStep={reviewEntry.currentStep}
+                    onStepChange={onStepChange}
+                  >
+                    <Interview
+                      onExit={onExit}
+                      hideNavigation={hideNavigation}
+                      navigationOrientation={navigationOrientation}
+                      navigationClassnames={navigationClassnames}
+                      allowStageNavigation={
+                        allowStageNavigation &&
+                        (currentStep === undefined ||
+                          onStepChange !== undefined)
+                      }
+                      allowUserScaling={allowUserScaling}
+                      initialTextScale={initialTextScale}
+                      onTextScaleChange={onTextScaleChange}
+                      initialStageOverrideIndex={
+                        reviewEntry.initialStageOverrideIndex
+                      }
+                      reviewMode={reviewMode}
+                    />
+                  </CurrentStepProvider>
+                </InterviewCompletionProvider>
+              </ContractProvider>
+            </WritesInFlightProvider>
           </SyncFlushProvider>
         </InterviewLocalization>
       </Provider>

@@ -16,7 +16,7 @@ import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import useBeforeNext from '../../hooks/useBeforeNext';
-import useSortedNodeList from '../../hooks/useSortedNodeList';
+import useSortedNodeList, { useStepOrder } from '../../hooks/useSortedNodeList';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import {
   getNetworkEdges,
@@ -37,12 +37,11 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
     },
   } = props;
 
-  const [currentStep, setCurrentStep] = useState(0);
   const { currentStep: stageStep } = useCurrentStep();
 
   // Records the direction of the navigation that crosses a prompt boundary so
-  // the prompt-change effect can seed the focal node: forward entry starts at
-  // the first focal node, backward entry resumes at the last (#668).
+  // the prompt change can seed the focal node: forward entry starts at the
+  // first focal node, backward entry resumes at the last (#668).
   const crossingDirection = useRef<'forwards' | 'backwards'>('forwards');
 
   // The ScrollArea viewport uses overflow-auto which clips nodes during
@@ -64,14 +63,29 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
   const nodes = useStageSelector(getNetworkNodesForType);
   const edges = useStageSelector(getNetworkEdges);
 
-  const sortedSource = useSortedNodeList(nodes, bucketSortOrder);
+  // The focal people are stepped through by position, so each prompt keeps the
+  // order it began with even when the list re-sorts, such as once the
+  // passphrase is entered. Undefined while that order is still settling.
+  const focalPeople = useStepOrder(nodes, bucketSortOrder, promptIndex);
 
-  // Mirrors sortedSource.length for the prompt-change effect, which re-runs only
-  // on promptIndex and must read the live focal-node count.
-  const lastFocalIndexRef = useRef(0);
-  lastFocalIndexRef.current = Math.max(sortedSource.length - 1, 0);
+  // The index of the last step. With removeAfterConsideration the last person
+  // is never focal: by then they have been considered with everyone else.
+  const lastStep =
+    (focalPeople ?? nodes).length - (removeAfterConsideration ? 2 : 1);
 
-  const source = sortedSource[currentStep]!;
+  const [step, setStep] = useState({ prompt: promptIndex, index: 0 });
+  // Seeded in the render that changes the prompt, so that no render shows the
+  // new prompt's people at the step reached on the previous one.
+  if (step.prompt !== promptIndex) {
+    setStep({
+      prompt: promptIndex,
+      index:
+        crossingDirection.current === 'backwards' ? Math.max(lastStep, 0) : 0,
+    });
+  }
+  const currentStep = step.index;
+
+  const source = focalPeople?.[currentStep];
 
   const track = useTrack();
   useEffect(() => {
@@ -80,19 +94,18 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
     }
   }, [source, track]);
 
-  const sortedTargets = useSortedNodeList(
-    nodes.filter(
-      (node) =>
-        node[entityPrimaryKeyProperty] !== source[entityPrimaryKeyProperty],
-    ),
-    binSortOrder,
+  const targets = useMemo(
+    () =>
+      source
+        ? nodes.filter(
+            (node) =>
+              node[entityPrimaryKeyProperty] !==
+              source[entityPrimaryKeyProperty],
+          )
+        : [],
+    [nodes, source],
   );
-
-  // Takes into account removeAfterConsideration
-  // There is one less step if we are removing the source node from the list
-  const numberOfSteps = removeAfterConsideration
-    ? sortedTargets.length - 1
-    : sortedTargets.length;
+  const sortedTargets = useSortedNodeList(targets, binSortOrder);
 
   /**
    * Hijack stage navigation:
@@ -107,9 +120,12 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
       return true;
     }
 
+    // Nobody is shown until the order settles, so there is no step to leave.
+    if (!focalPeople) return false;
+
     if (direction === 'forwards') {
-      if (currentStep + 1 <= numberOfSteps) {
-        setCurrentStep((prev) => prev + 1);
+      if (currentStep < lastStep) {
+        setStep((prev) => ({ ...prev, index: prev.index + 1 }));
         setIsTransitioning(true);
         return false;
       }
@@ -120,7 +136,7 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
 
     if (direction === 'backwards') {
       if (currentStep > 0) {
-        setCurrentStep((prev) => prev - 1);
+        setStep((prev) => ({ ...prev, index: prev.index - 1 }));
         setIsTransitioning(true);
         return false;
       }
@@ -132,13 +148,7 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
     return true;
   });
 
-  // Seed the focal node when the prompt changes. Entering forwards starts on the
-  // first focal node; entering backwards resumes on the last so Back across a
-  // prompt boundary doesn't reset iteration to the first node (#668).
   useEffect(() => {
-    setCurrentStep(
-      crossingDirection.current === 'backwards' ? lastFocalIndexRef.current : 0,
-    );
     crossingDirection.current = 'forwards';
     setIsTransitioning(true);
   }, [promptIndex]);
@@ -166,17 +176,20 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
   );
 
   const filteredTargets = useMemo(() => {
-    if (!removeAfterConsideration) return sortedTargets;
-    return sortedTargets.filter((node) => {
-      const sortedIndex = sortedSource.findIndex(
-        (s) => s[entityPrimaryKeyProperty] === node[entityPrimaryKeyProperty],
-      );
-      return sortedIndex >= currentStep;
-    });
-  }, [sortedTargets, sortedSource, removeAfterConsideration, currentStep]);
+    if (!removeAfterConsideration || !focalPeople) return sortedTargets;
+    const considered = new Set(
+      focalPeople
+        .slice(0, currentStep)
+        .map((node) => node[entityPrimaryKeyProperty]),
+    );
+    return sortedTargets.filter(
+      (node) => !considered.has(node[entityPrimaryKeyProperty]),
+    );
+  }, [sortedTargets, focalPeople, removeAfterConsideration]);
 
   const renderItem = useCallback(
     (node: NcNode, itemProps: ItemProps) => {
+      if (!source) return null;
       const selected = !!edgeExists(
         edges,
         node[entityPrimaryKeyProperty],
@@ -212,11 +225,11 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
             key={source[entityPrimaryKeyProperty]}
             onLayoutAnimationComplete={() => setIsTransitioning(false)}
           />
-        ) : (
+        ) : focalPeople ? (
           <div key="missing" className="flex h-24 items-center justify-center">
             <AppMessage message={interfaceMessages.noNodesAvailable} />
           </div>
-        )}
+        ) : null}
       </AnimatePresence>
       <Panel
         title={intl.formatMessage(interfaceMessages.selectAllThenNext)}
@@ -234,9 +247,11 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
           aria-label={intl.formatMessage(interfaceMessages.targetNodes)}
           announcedName={intl.formatMessage(interfaceMessages.targetNodes)}
           emptyState={
-            <h3>
-              <AppMessage message={interfaceMessages.noNodes} />
-            </h3>
+            focalPeople ? (
+              <h3>
+                <AppMessage message={interfaceMessages.noNodes} />
+              </h3>
+            ) : null
           }
         />
       </Panel>

@@ -22,7 +22,6 @@ import {
 import type { SessionWithResequencedIDs } from '../../input';
 import type { ExportOptions } from '../../options';
 import type { ExportWarning } from '../../output';
-import { getEntityAttributes } from '../../utils/general';
 import { planEgoColumns } from './columns';
 import {
   csvEOL,
@@ -70,8 +69,7 @@ export function* egoListRows(
     [interviewLocaleProperty]: sessionVariables[interviewLocaleProperty],
     [finishOutcomeProperty]: sessionVariables[finishOutcomeProperty],
   };
-  const attributes = getEntityAttributes(network.ego);
-  const columns = planEgoColumns(codebook.ego?.variables, attributes, {
+  const columns = planEgoColumns(codebook.ego?.variables, network.ego, {
     exportOptions,
     protocolName: sessionVariables[protocolName],
     reportWarning,
@@ -87,7 +85,10 @@ export function* egoListRows(
   );
 
   yield (
-    [...Object.values(topLevel), ...columns.map(({ cell }) => cell(attributes))]
+    [
+      ...Object.values(topLevel),
+      ...columns.map(({ cell }) => cell(network.ego)),
+    ]
       .map((value) => String(sanitizeCellValue(value) ?? ''))
       .join(',') + csvEOL
   );

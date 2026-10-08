@@ -20,7 +20,7 @@ beforeAll(() => {
 import { getInterfaceTypes } from './interfaceOptions';
 import NewStageScreen from './NewStageScreen';
 
-const renderScreen = (experiments?: { encryptedVariables?: boolean }) => {
+const renderScreen = () => {
   const store = configureStore({
     reducer: {
       activeProtocol: (
@@ -29,7 +29,6 @@ const renderScreen = (experiments?: { encryptedVariables?: boolean }) => {
           present: {
             name: 'Test',
             localization: { defaultLocale: 'en', locales: ['en'] },
-            experiments,
           },
           future: [],
         },
@@ -54,6 +53,18 @@ const offeredInterfaces = () =>
     .map(({ title }) => title)
     .filter((title) => screen.queryByRole('button', { name: title }) !== null);
 
+describe('NewStageScreen', () => {
+  // Encrypted attributes are part of every protocol, so there is no per-protocol
+  // switch that hides this interface from the picker.
+  it('offers the Anonymisation interface', () => {
+    renderScreen();
+
+    expect(
+      screen.getByRole('button', { name: 'Anonymisation Interface' }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe('New Stage screen capability filters', () => {
   // A stage with no capability disappears as soon as any filter is pressed,
   // which is how the Language Chooser went missing from every filter.
@@ -63,7 +74,7 @@ describe('New Stage screen capability filters', () => {
     }
   });
 
-  it('finds Information and the Language Chooser under Utilities', () => {
+  it('finds Information, the Language Chooser and Anonymisation under Utilities', () => {
     renderScreen();
 
     fireEvent.click(capabilityFilter('Utilities'));
@@ -72,14 +83,6 @@ describe('New Stage screen capability filters', () => {
       'aria-pressed',
       'true',
     );
-    expect(offeredInterfaces()).toEqual(['Information', 'Language Chooser']);
-  });
-
-  it('lists Anonymisation under Utilities when its experiment is on', () => {
-    renderScreen({ encryptedVariables: true });
-
-    fireEvent.click(capabilityFilter('Utilities'));
-
     expect(offeredInterfaces()).toEqual([
       'Information',
       'Language Chooser',
@@ -88,7 +91,7 @@ describe('New Stage screen capability filters', () => {
   });
 
   it('no longer lists Anonymisation as capturing node attributes', () => {
-    renderScreen({ encryptedVariables: true });
+    renderScreen();
 
     fireEvent.click(capabilityFilter('Capture Node Attributes'));
 
@@ -101,7 +104,7 @@ describe('New Stage screen capability filters', () => {
 // the researcher is never offered another, under any filter or search.
 describe('New Stage screen and the finish stage', () => {
   it('never offers the Finish Screen', () => {
-    renderScreen({ encryptedVariables: true });
+    renderScreen();
 
     expect(
       screen.queryByRole('button', { name: 'Finish Screen' }),

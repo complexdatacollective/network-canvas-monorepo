@@ -44,6 +44,14 @@ describe('sectionize/assemble round trip', () => {
     expect(assembled).toEqual(protocol);
   });
 
+  it('keeps the experiments setting in the settings section', () => {
+    const protocol = { ...baseProtocol(), experiments: {} };
+    const sections = sectionizeProtocol(protocol);
+
+    expect(sections.settings).toHaveProperty('experiments', {});
+    expect(assembleProtocolSections(sections)).toEqual(protocol);
+  });
+
   it('round-trips a __proto__ entity type id without losing it', () => {
     const protocol = JSON.parse(
       JSON.stringify(baseProtocol()).replaceAll('"person"', '"__proto__"'),

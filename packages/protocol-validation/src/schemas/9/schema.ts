@@ -18,11 +18,15 @@ import {
   filterRuleAttributeExists,
   filterRuleEntityExists,
   findDuplicateId,
+  getFilterRuleVariable,
   getFilterRuleVariableType,
   getVariablesForSubject,
   variableExists,
 } from '../../utils/validation-helpers.ts';
-import { OperatorsByVariableType } from './filters/index.ts';
+import {
+  OperatorsByVariableType,
+  TypeLevelOperators,
+} from './filters/index.ts';
 
 // Re-export all the split schemas
 export * from './assets/index.ts';
@@ -76,7 +80,8 @@ type IssueReporter = (issue: {
 
 /**
  * Validate a set of filter rules against the CODEBOOK: entity and attribute
- * existence, and operator validity for the attribute's variable type. Shared
+ * existence, that a rule on an encrypted attribute only checks whether it is
+ * answered, and operator validity for the attribute's variable type. Shared
  * between an inline stage.filter, skipLogic.filter and panel filters.
  *
  * What shape a rule's operand may have needs no codebook, so it is not asked
@@ -87,13 +92,20 @@ type IssueReporter = (issue: {
  *
  * `allowEgoRules` is false for stage NODE/EDGE filters, where an ego rule has no
  * meaning as a node/edge filter (it is silently dropped at runtime).
+ *
+ * `readsInterview` is false for an external-data panel, whose rules read the
+ * researcher's own rows. Those rows are never encrypted, so a rule there may
+ * compare an encrypted attribute's values.
  */
 const validateFilterRules = (
   rules: FilterRule[],
   codebook: Codebook,
   basePath: (string | number)[],
   addIssue: IssueReporter,
-  allowEgoRules: boolean,
+  {
+    allowEgoRules,
+    readsInterview,
+  }: { allowEgoRules: boolean; readsInterview: boolean },
 ) => {
   rules.forEach((rule, ruleIndex) => {
     const rulePath = [...basePath, ruleIndex];
@@ -139,6 +151,26 @@ const validateFilterRules = (
       addIssue({
         message: `"${rule.options.attribute}" is not a valid attribute ID`,
         path: [...rulePath, 'options', 'attribute'],
+      });
+    }
+
+    // An encrypted answer is stored as ciphertext that only the participant's
+    // passphrase opens. Rules are evaluated without it, so a rule comparing
+    // one would compare the ciphertext, and could reveal the answer through
+    // what it skips or lists. Whether it was answered at all survives
+    // encryption: an answer is encrypted into another string, and an
+    // unanswered attribute is stored as no value.
+    const variable =
+      readsInterview && hasAttribute
+        ? getFilterRuleVariable(rule, codebook)
+        : undefined;
+    if (
+      variable?.encrypted &&
+      !TypeLevelOperators.safeParse(rule.options.operator).success
+    ) {
+      addIssue({
+        message: `Attribute "${variable.name}" is encrypted, so a rule can only check whether it is answered (${TypeLevelOperators.options.join(' or ')}): rules are checked without the participant's passphrase, so they cannot compare its answers.`,
+        path: [...rulePath, 'options', 'operator'],
       });
     }
 
@@ -950,6 +982,26 @@ const ProtocolSchema = z
         }
       }
 
+      // Schema 9 alone refuses an Anonymisation stage whose minimum
+      // passphrase length is above its maximum, since no participant could
+      // choose a passphrase. Schema 8 still accepts one, so the 8 to 9
+      // migration can remove the pair rather than refuse the protocol.
+      if (stage.type === 'Anonymisation') {
+        const minLength = stage.validation?.minLength;
+        const maxLength = stage.validation?.maxLength;
+        if (
+          minLength !== undefined &&
+          maxLength !== undefined &&
+          minLength > maxLength
+        ) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `The minimum passphrase length (${minLength}) is longer than the maximum (${maxLength}), so no participant could choose a passphrase.`,
+            path: ['stages', stageIndex, 'validation', 'minLength'],
+          });
+        }
+      }
+
       // Check stage subject exists in codebook
       if ('subject' in stage && stage.subject) {
         if (!entityExists(protocol.codebook, stage.subject)) {
@@ -1431,7 +1483,7 @@ const ProtocolSchema = z
           protocol.codebook,
           ['stages', stageIndex, 'filter', 'rules'],
           (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
-          false,
+          { allowEgoRules: false, readsInterview: true },
         );
       }
 
@@ -1443,7 +1495,7 @@ const ProtocolSchema = z
           protocol.codebook,
           ['stages', stageIndex, 'skipLogic', 'filter', 'rules'],
           (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
-          true,
+          { allowEgoRules: true, readsInterview: true },
         );
       }
 
@@ -1456,7 +1508,10 @@ const ProtocolSchema = z
               protocol.codebook,
               ['stages', stageIndex, 'panels', panelIndex, 'filter', 'rules'],
               (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
-              true,
+              {
+                allowEgoRules: true,
+                readsInterview: panel.dataSource === 'existing',
+              },
             );
           }
         });
