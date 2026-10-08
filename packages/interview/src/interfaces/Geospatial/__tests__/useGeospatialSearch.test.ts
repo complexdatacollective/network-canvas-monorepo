@@ -1,9 +1,18 @@
-import { act, renderHook } from '@testing-library/react';
+import {
+  act,
+  renderHook as renderHookBase,
+  type RenderHookOptions,
+} from '@testing-library/react';
+import { createElement, type ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // --- Module mocks (must appear before imports that use them) ---
 
-type SuggestOptions = { sessionToken: string; proximity?: unknown };
+type SuggestOptions = {
+  sessionToken: string;
+  proximity?: unknown;
+  language?: string;
+};
 const mockSuggest = vi
   .fn<
     (query: string, options: SuggestOptions) => Promise<{ suggestions: [] }>
@@ -13,7 +22,7 @@ const mockRetrieve = vi
   .fn<
     (
       suggestion: unknown,
-      options: { sessionToken: string },
+      options: { sessionToken: string; language?: string },
     ) => Promise<{
       features: { geometry: { type: string; coordinates: number[] } }[];
     }>
@@ -26,7 +35,8 @@ vi.mock('@mapbox/search-js-react', () => ({
 
 // Make debounce synchronous with a trackable `cancel` so tests can assert on it
 const mockCancel = vi.fn();
-vi.mock('es-toolkit', () => ({
+vi.mock('es-toolkit', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('es-toolkit')>()),
   debounce: (fn: (...args: unknown[]) => unknown) => {
     const wrapped = (...args: unknown[]) => fn(...args);
     wrapped.cancel = mockCancel;
@@ -37,7 +47,41 @@ vi.mock('es-toolkit', () => ({
 // The hook under test (imported after mocks are declared)
 import type { Map as MapboxMap } from 'mapbox-gl/esm';
 
+import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import { type Suggestion, useGeospatialSearch } from '../useGeospatialSearch';
+
+const PROTOCOL_LOCALES = {
+  defaultLocale: 'en',
+  locales: ['en', 'hu', 'pt-BR', 'zh-Hans', 'sw'],
+};
+
+// The protocol language (the participant's stated preference) and interface
+// language (the Shell's) the hook runs in. Read at render, so a test changes
+// them and re-renders.
+const current = { protocol: 'en', interface: 'en' };
+const setLanguages = (protocol: string, interfaceLocale = 'en') => {
+  current.protocol = protocol;
+  current.interface = interfaceLocale;
+};
+
+function Languages({ children }: { children: ReactNode }) {
+  return createElement(
+    InterviewI18nProvider,
+    { requestedLocale: current.interface },
+    createElement(
+      TestProtocolLocalization,
+      { localization: PROTOCOL_LOCALES, locale: current.protocol },
+      children,
+    ),
+  );
+}
+
+// Every hook here runs inside a protocol localization, as it does in the Shell.
+const renderHook = <Result, Props>(
+  render: (initialProps: Props) => Result,
+  options?: RenderHookOptions<Props>,
+) => renderHookBase(render, { wrapper: Languages, ...options });
 
 // Minimal Map stub (only flyTo is called by the hook)
 const mockFlyTo = vi.fn();
@@ -469,6 +513,156 @@ describe('useGeospatialSearch', () => {
       // The useEffect cleanup for the old fetchSuggestions should cancel it
       expect(mockCancel).toHaveBeenCalled();
       unmount();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Language
+  // -------------------------------------------------------------------------
+
+  describe('language', () => {
+    const useSearch = () =>
+      useGeospatialSearch({ accessToken: 'test-token', map: mockMap });
+
+    beforeEach(() => {
+      setLanguages('en');
+    });
+
+    it('asks suggest() and retrieve() in the protocol language', async () => {
+      setLanguages('hu');
+      mockRetrieve.mockResolvedValue({
+        features: [{ geometry: { type: 'Point', coordinates: [19, 47] } }],
+      });
+      const { result } = renderHook(useSearch);
+
+      act(() => {
+        result.current.handleQueryChange('Budapest');
+      });
+      await flushPendingSuggest();
+      await act(async () => {
+        await result.current.handleSelect({} as Suggestion);
+      });
+
+      expect(mockSuggest.mock.calls[0]?.[1]?.language).toBe('hu');
+      expect(mockRetrieve.mock.calls[0]?.[1]?.language).toBe('hu');
+    });
+
+    it('sends the language Search Box lists for a regional protocol language', async () => {
+      setLanguages('pt-BR');
+      const { result } = renderHook(useSearch);
+
+      act(() => {
+        result.current.handleQueryChange('Lisboa');
+      });
+      await flushPendingSuggest();
+
+      expect(mockSuggest.mock.calls[0]?.[1]?.language).toBe('pt');
+    });
+
+    it('uses the interface language when Search Box lacks the protocol language', async () => {
+      // Search Box has no Chinese, but the interface is in German.
+      setLanguages('zh-Hans', 'de');
+      const { result } = renderHook(useSearch);
+
+      act(() => {
+        result.current.handleQueryChange('Berlin');
+      });
+      await flushPendingSuggest();
+
+      expect(mockSuggest.mock.calls[0]?.[1]?.language).toBe('de');
+    });
+
+    it('uses English when Search Box has neither language', async () => {
+      // No Search Box support for Swahili or for a Chinese interface.
+      setLanguages('sw', 'zh-Hans');
+      const { result } = renderHook(useSearch);
+
+      act(() => {
+        result.current.handleQueryChange('Nairobi');
+      });
+      await flushPendingSuggest();
+
+      expect(mockSuggest.mock.calls[0]?.[1]?.language).toBe('en');
+    });
+
+    it('drops suggestions in the old language and asks again in the new one', async () => {
+      const englishSuggestion = { name: 'Hungary' } as unknown as Suggestion;
+      const hungarianSuggestion = {
+        name: 'Magyarország',
+      } as unknown as Suggestion;
+      mockSuggest.mockImplementation((_query, { language }) =>
+        Promise.resolve({
+          suggestions: [
+            language === 'hu' ? hungarianSuggestion : englishSuggestion,
+          ] as never,
+        }),
+      );
+      const { result, rerender } = renderHook(useSearch);
+
+      act(() => {
+        result.current.handleQueryChange('hungary');
+      });
+      await flushPendingSuggest();
+      expect(result.current.suggestions).toEqual([englishSuggestion]);
+
+      setLanguages('hu');
+      rerender();
+      // The old-language list is gone before the new request settles.
+      expect(result.current.suggestions).toEqual([]);
+      expect(result.current.query).toBe('hungary');
+      expect(result.current.isLoading).toBe(true);
+      await flushPendingSuggest();
+
+      expect(mockSuggest).toHaveBeenCalledTimes(2);
+      expect(mockSuggest.mock.calls[1]?.[0]).toBe('hungary');
+      expect(mockSuggest.mock.calls[1]?.[1]?.language).toBe('hu');
+      expect(result.current.suggestions).toEqual([hungarianSuggestion]);
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    it('discards a response still in flight in the old language', async () => {
+      let settleEnglish: (value: { suggestions: never[] }) => void = () => {};
+      mockSuggest.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            settleEnglish = resolve;
+          }),
+      );
+      const { result, rerender } = renderHook(useSearch);
+
+      act(() => {
+        result.current.handleQueryChange('hungary');
+      });
+      setLanguages('hu');
+      rerender();
+      await act(async () => {
+        settleEnglish({ suggestions: [{ name: 'Hungary' } as never] });
+        await Promise.resolve();
+      });
+
+      expect(result.current.suggestions).not.toContainEqual({
+        name: 'Hungary',
+      });
+    });
+
+    it('does not ask again when the language is unchanged or nothing is typed', async () => {
+      const { result, rerender } = renderHook(useSearch);
+
+      rerender();
+      setLanguages('hu');
+      rerender();
+      await flushPendingSuggest();
+      expect(result.current.query).toBe('');
+      expect(mockSuggest).not.toHaveBeenCalled();
+
+      act(() => {
+        result.current.handleQueryChange('budapest');
+      });
+      await flushPendingSuggest();
+      rerender();
+      await flushPendingSuggest();
+
+      expect(mockSuggest).toHaveBeenCalledTimes(1);
     });
   });
 });

@@ -12,6 +12,11 @@ import {
   useState,
 } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
+
+import { useProtocolLocale } from '../../localization/ProtocolLocalizationProvider';
+import { getSearchLanguage } from './mapboxLanguage';
+
 // Zoom level when flying to a selected location
 const FLY_TO_ZOOM = 14;
 
@@ -91,6 +96,14 @@ export const useGeospatialSearch = ({
   const [initialSessionToken] = useState(() => crypto.randomUUID());
   const sessionTokenRef = useRef(initialSessionToken);
 
+  // Suggestions follow the protocol language the participant is reading, else
+  // the interface language, else English (Search Box's own default). Search
+  // Box takes the language per call, so it is sent with every request rather
+  // than set once on the client, which would default every call to English.
+  const { locale: protocolLocale } = useProtocolLocale();
+  const { locale: interfaceLocale } = useAppIntl();
+  const language = getSearchLanguage(protocolLocale, interfaceLocale);
+
   // Use the hook from @mapbox/search-js-react
   const searchBox = useSearchBoxCore({
     accessToken: accessToken ?? '',
@@ -139,6 +152,7 @@ export const useGeospatialSearch = ({
         const response = await searchBoxRef.current.suggest(value, {
           sessionToken: sessionTokenRef.current,
           proximity: proximityOption,
+          language,
         });
         if (isStale()) return;
         setSuggestions(response.suggestions);
@@ -158,7 +172,7 @@ export const useGeospatialSearch = ({
         }
       }
     }, 300);
-  }, [accessToken, proximityOption]);
+  }, [accessToken, proximityOption, language]);
 
   const fetchSuggestionsRef = useRef(fetchSuggestions);
   fetchSuggestionsRef.current = fetchSuggestions;
@@ -196,6 +210,17 @@ export const useGeospatialSearch = ({
     setIsLoading(false);
   }
 
+  // Suggestions already on screen are in the previous language: drop them, and
+  // retire any request still on its way, as `resetKey` does. The query stays,
+  // and is asked again in the new language below.
+  const [appliedLanguage, setAppliedLanguage] = useState(language);
+  if (appliedLanguage !== language) {
+    setAppliedLanguage(language);
+    setSuggestions([]);
+    setSearchFailed(false);
+    setIsLoading(query.trim() !== '');
+  }
+
   // A layout effect, not a passive one. React flushes layout effects in the
   // same synchronous block as the commit, so no microtask can run between the
   // render that clears the state and the bump that retires the request. A
@@ -205,7 +230,19 @@ export const useGeospatialSearch = ({
   // the generation counter exists to close.
   useLayoutEffect(() => {
     retireSearch();
-  }, [resetKey, retireSearch]);
+  }, [resetKey, language, retireSearch]);
+
+  // Ask again, in the new language, for the query already typed. The first
+  // value seen is the language the hook mounted with, which needs no re-ask.
+  const queryRef = useRef(query);
+  queryRef.current = query;
+  const askedLanguageRef = useRef(language);
+  useEffect(() => {
+    if (askedLanguageRef.current === language) return;
+    askedLanguageRef.current = language;
+    if (queryRef.current.trim())
+      fetchSuggestionsRef.current?.(queryRef.current);
+  }, [language]);
 
   // Cancel pending debounced fetch when fetchSuggestions changes (new instance
   // created because accessToken/proximityOption changed) or on unmount.
@@ -259,6 +296,7 @@ export const useGeospatialSearch = ({
       try {
         const result = await searchBoxRef.current.retrieve(suggestion, {
           sessionToken: spentToken,
+          language,
         });
         const feature = result.features[0];
         if (feature?.geometry.type !== 'Point') return 'unavailable';
@@ -276,7 +314,7 @@ export const useGeospatialSearch = ({
         }
       }
     },
-    [map, accessToken],
+    [map, accessToken, language],
   );
 
   const clear = reset;
