@@ -80,15 +80,72 @@ describe('evaluateCompleteness', () => {
     ).toEqual([]);
 
     const halfSibling = family(
-      [...nodes, person('half'), person('kid')],
+      [...nodes, person('half'), person('kid'), person('coParent')],
       [
         ...parented,
         link('mum', 'half', 'biological'),
         link('ego', 'kid', 'biological'),
+        link('coParent', 'kid', 'biological'),
       ],
     );
     expect(
       evaluateCompleteness(halfSibling, 'firstDegree', noneMissing).items,
+    ).toEqual([]);
+  });
+
+  test('first degree: each biological child’s other biological parent, but not their family', () => {
+    const answeredEgo = person('ego', {
+      isEgo: true,
+      notRecorded: ['noSiblings'],
+    });
+    const parents = [answeredEgo, person('mum'), person('dad')];
+    // A child added with no other parent does not complete the family.
+    const childAlone = family(
+      [...parents, person('kid')],
+      [...parented, link('ego', 'kid', 'biological')],
+    );
+    expect(
+      evaluateCompleteness(childAlone, 'firstDegree', noneMissing).items,
+    ).toEqual([{ kind: 'parents', personId: 'kid', missing: 1 }]);
+    // Nor for the parents scope, which does not ask about children.
+    expect(
+      evaluateCompleteness(childAlone, 'parents', noneMissing).items,
+    ).toEqual([]);
+
+    // The other parent the participant does not know is added unnamed, as
+    // "Don't know" does, and satisfies it; their own parents and siblings
+    // are never asked for, whatever the scope.
+    const withUnknownCoParent = family(
+      [...parents, person('kid'), person('unknown')],
+      [
+        ...parented,
+        link('ego', 'unknown', 'partner'),
+        link('ego', 'kid', 'biological'),
+        link('unknown', 'kid', 'biological'),
+      ],
+    );
+    expect(
+      evaluateCompleteness(withUnknownCoParent, 'firstDegree', noneMissing)
+        .items,
+    ).toEqual([]);
+    expect(
+      evaluateCompleteness(withUnknownCoParent, 'thirdDegree', noneMissing)
+        .items,
+    ).not.toContainEqual(expect.objectContaining({ personId: 'unknown' }));
+
+    // A donor who gave the other gamete counts; an adopted child is not a
+    // biological child, so needs no second biological parent.
+    const donorAndAdopted = family(
+      [...parents, person('kid'), person('donor'), person('adopted')],
+      [
+        ...parented,
+        link('ego', 'kid', 'biological'),
+        link('donor', 'kid', 'donor'),
+        link('ego', 'adopted', 'adoptive'),
+      ],
+    );
+    expect(
+      evaluateCompleteness(donorAndAdopted, 'firstDegree', noneMissing).items,
     ).toEqual([]);
   });
 
@@ -129,12 +186,14 @@ describe('evaluateCompleteness', () => {
         person('aunt'),
         person('dg1'),
         person('dg2'),
+        person('coParent'),
       ],
       [
         ...parented,
         link('mum', 'sis', 'biological'),
         link('dad', 'sis', 'biological'),
         link('ego', 'kid', 'biological'),
+        link('coParent', 'kid', 'biological'),
         link('nan', 'mum', 'biological'),
         link('gramps', 'mum', 'biological'),
         link('nan', 'aunt', 'biological'),

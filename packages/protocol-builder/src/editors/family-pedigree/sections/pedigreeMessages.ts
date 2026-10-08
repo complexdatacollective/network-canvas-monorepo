@@ -516,9 +516,10 @@ export const familyPedigreeMessages = defineMessages({
   },
   completenessScopeFirstDegreeDescription: {
     id: 'protocolBuilder.pedigree.completenessScopeFirstDegreeDescription',
-    defaultMessage: 'First-degree relatives.',
+    defaultMessage:
+      'First-degree relatives, and the other biological parent of each of the participant’s biological children.',
     description:
-      'Says what the parents-siblings-and-children choice requires. First-degree relatives are a person’s parents, siblings and children.',
+      'Says what the parents-siblings-and-children choice requires. First-degree relatives are a person’s parents, siblings and children. The other biological parent of a child is the person who gave the egg or sperm the participant did not; their own family is not required.',
   },
   completenessScopeGrandparents: {
     id: 'protocolBuilder.pedigree.completenessScopeGrandparents',

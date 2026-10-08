@@ -68,8 +68,17 @@ const includes = (
   PEDIGREE_COMPLETENESS_SCOPES.indexOf(level);
 
 /** Where a person sits relative to the participant, which decides what is
- * asked about them. */
-type Role = 'ego' | 'parent' | 'sibling' | 'child' | 'auntOrUncle' | 'none';
+ * asked about them. A `coParent` is the participant's partner in conceiving
+ * one of their children: required to be recorded, but nothing about their
+ * own family is. */
+type Role =
+  | 'ego'
+  | 'parent'
+  | 'sibling'
+  | 'child'
+  | 'coParent'
+  | 'auntOrUncle'
+  | 'none';
 
 type Requirements = {
   /** The role their parents have, when their parents are required. */
@@ -91,11 +100,19 @@ function requirementsFor(
       return includes(scope, 'grandparents')
         ? { parents: 'none', siblings: 'auntOrUncle' }
         : {};
-    case 'sibling':
     case 'child':
+      // Each of the participant's biological children has two biological
+      // parents: the participant, and whoever gave the other gamete, who is
+      // recorded too (an unnamed person when the participant does not know
+      // them). Their own parents and relatives are not asked for.
+      return includes(scope, 'secondDegree')
+        ? { parents: 'coParent', children: 'none' }
+        : { parents: 'coParent' };
+    case 'sibling':
       return includes(scope, 'secondDegree') ? { children: 'none' } : {};
     case 'auntOrUncle':
       return includes(scope, 'thirdDegree') ? { children: 'none' } : {};
+    case 'coParent':
     case 'none':
       return {};
   }
@@ -106,7 +123,9 @@ function requirementsFor(
  * scope. Each scope adds to the one before:
  *
  * - `parents`: the participant's two biological parents.
- * - `firstDegree`: their siblings and children.
+ * - `firstDegree`: their siblings and children, and each biological child's
+ *   other biological parent (the participant's co-parent), but not that
+ *   co-parent's own family.
  * - `grandparents`: each biological parent's own two biological parents and
  *   siblings (the participant's grandparents, aunts and uncles).
  * - `secondDegree`: each sibling's children and each child's children
