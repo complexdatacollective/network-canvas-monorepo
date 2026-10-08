@@ -444,7 +444,7 @@
   "architect.localization.languageList.coverageLabel": "{language} translation progress",
   "architect.localization.languageList.defaultBadge": "Default",
   "architect.localization.languageList.defaultLanguage": "Default language",
-  "architect.localization.languageList.defaultLanguageHint": "Participants see a text in this language when it has no translation in a language they use.",
+  "architect.localization.languageList.defaultLanguageHint": "Participants see text in this language when it has no translation in a language they use.",
   "architect.localization.languageList.defaultNote": "To remove the default language, make another language the default first.",
   "architect.localization.languageList.description": "Participants can take the interview in any of these languages. They see each text in the first of the following languages that has a translation of it:",
   "architect.localization.languageList.descriptionSingle": "Participants take the interview in this language. Add more languages to let them choose one.",

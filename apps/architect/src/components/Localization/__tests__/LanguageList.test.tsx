@@ -221,7 +221,7 @@ describe('LanguageList', () => {
 
     const select = screen.getByRole('combobox', { name: 'Default language' });
     expect(select).toHaveAccessibleDescription(
-      'Participants see a text in this language when it has no translation in a language they use.',
+      'Participants see text in this language when it has no translation in a language they use.',
     );
     expect(select).toHaveDisplayValue('English');
     expect(

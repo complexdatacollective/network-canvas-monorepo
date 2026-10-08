@@ -1780,7 +1780,7 @@
     "description": "Label of the list above the protocol languages that chooses which of them is the default."
   },
   "architect.localization.languageList.defaultLanguageHint": {
-    "defaultMessage": "Participants see a text in this language when it has no translation in a language they use.",
+    "defaultMessage": "Participants see text in this language when it has no translation in a language they use.",
     "description": "Hint under the list that chooses the protocol’s default language, saying what the default language does."
   },
   "architect.localization.languageList.defaultNote": {
