@@ -165,6 +165,75 @@ export const PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS: {
 }));
 
 /**
+ * A person's relationship to the participant, which a Family Pedigree stage
+ * may record in a categorical attribute so that later stages can filter and
+ * skip on it (a filter tests only a person's own attributes). The interface
+ * works it out from the family the participant drew, and owns the values:
+ * they are language-independent and neutral, naming neither gender nor the
+ * side of the family. Their labels are the researcher's codebook copy;
+ * Architect seeds them in the researcher's language.
+ *
+ * - Parents: `parent` (a biological parent), `adoptiveParent`, `stepParent`
+ *   (a step or social parent, or a parent's partner), `donor`, `surrogate`.
+ * - Children: `child` (a biological child), `adoptiveChild`, `stepChild`,
+ *   `donorConceivedChild`, `surrogacyChild`.
+ * - Siblings: `sibling` (sharing every biological parent), `halfSibling`,
+ *   `adoptiveSibling` (related through adoption only), `stepSibling`.
+ * - Partners: `partner`, `formerPartner`.
+ * - Further along the family: `grandparent`, `greatGrandparent`,
+ *   `grandchild`, `greatGrandchild`, `parentsSibling`, `grandparentsSibling`,
+ *   `siblingsChild`, `cousin`.
+ * - In-laws: `parentInLaw`, `siblingInLaw`, `childInLaw`.
+ * - `otherRelative`: connected to the participant, but by none of these.
+ *
+ * The participant themselves has no value, nor does anyone not connected to
+ * them.
+ */
+export const PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT = [
+  'parent',
+  'adoptiveParent',
+  'stepParent',
+  'donor',
+  'surrogate',
+  'child',
+  'adoptiveChild',
+  'stepChild',
+  'donorConceivedChild',
+  'surrogacyChild',
+  'sibling',
+  'halfSibling',
+  'adoptiveSibling',
+  'stepSibling',
+  'partner',
+  'formerPartner',
+  'grandparent',
+  'greatGrandparent',
+  'grandchild',
+  'greatGrandchild',
+  'parentsSibling',
+  'grandparentsSibling',
+  'siblingsChild',
+  'cousin',
+  'parentInLaw',
+  'siblingInLaw',
+  'childInLaw',
+  'otherRelative',
+] as const;
+
+export type PedigreeRelationshipToParticipant =
+  (typeof PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT)[number];
+
+/**
+ * The relationship values as an interface-owned option set. They carry no
+ * labels: unlike the older sets, whose English labels a migrated schema 8
+ * protocol is written with, these are only ever created in Architect, which
+ * labels them through its translations.
+ */
+export const PEDIGREE_RELATIONSHIP_TO_PARTICIPANT_OPTIONS: {
+  value: PedigreeRelationshipToParticipant;
+}[] = PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT.map((value) => ({ value }));
+
+/**
  * How much of the family a participant must record before continuing. Each
  * scope includes the ones before it; "biological" parents are those who gave
  * genes, so a gamete donor counts and a gestational carrier does not.

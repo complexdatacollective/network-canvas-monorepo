@@ -51,7 +51,7 @@ const countTagged = (
 // (cardOptions.additionalProperties[].variable,
 // sortOptions.sortableProperties[].variable, searchOptions.matchProperties[]).
 // The value is verified against the runtime count computed below.
-const EXPECTED_TAGGED_FIELD_COUNT = 40;
+const EXPECTED_TAGGED_FIELD_COUNT = 41;
 
 // Every slot an interface owns outright, and every slot whose OPTION SET it
 // owns, and every slot whose option LIST a stage manages. All drive
@@ -64,10 +64,12 @@ const EXPECTED_EXCLUSIVE_SLOTS = [
   'familyPedigree.edgeConfiguration.gestationalCarrierAttribute',
   'familyPedigree.edgeConfiguration.kindAttribute',
   'familyPedigree.nodeConfiguration.egoAttribute',
+  'familyPedigree.nodeConfiguration.relationshipToParticipantAttribute',
 ];
 
 const EXPECTED_OWNED_OPTION_SETS = [
   'pedigreeRelationship',
+  'pedigreeRelationshipToParticipant',
   'pedigreeRelativesNotRecorded',
   'pedigreeSexAssignedAtBirth',
 ];

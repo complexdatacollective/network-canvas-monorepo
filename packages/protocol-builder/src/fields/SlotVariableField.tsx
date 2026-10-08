@@ -79,6 +79,13 @@ export type SlotVariableFieldProps = Readonly<{
    */
   ownedOptions?: InterfaceOwnedOptionSetKey;
   /**
+   * The label a created attribute's option takes, by value, for an owned set
+   * whose values carry no label of their own: words from the researcher's
+   * translations rather than English defaults. An owned value with a label of
+   * its own is seeded with that.
+   */
+  ownedOptionLabel?: (value: string) => string;
+  /**
    * Options a created attribute starts with, for a slot whose interface
    * suggests a list but does not own it: unlike `ownedOptions`, the researcher
    * may edit, add to and remove from them, and an existing attribute with other
@@ -146,6 +153,7 @@ export default function SlotVariableField({
   writerClass,
   ownSlot,
   ownedOptions,
+  ownedOptionLabel,
   seedOptions,
   editorOptions,
   onCreated,
@@ -167,7 +175,8 @@ export default function SlotVariableField({
       : INTERFACE_OWNED_OPTION_SETS[ownedOptions].options;
 
   const localization = useProtocolLocalization();
-  // The canonical set's labels are plain text; an attribute created here holds
+  // The canonical set's labels are plain text (or, for a set without labels
+  // of its own, the host's translated words); an attribute created here holds
   // them as participant copy in the protocol's default language. Until the
   // protocol's languages are known they cannot be written, so creating an
   // attribute for an owned set is not offered.
@@ -177,9 +186,12 @@ export default function SlotVariableField({
         ? undefined
         : lockedOptions.map((option) => ({
             value: option.value,
-            label: localizedFromText(localization, option.label),
+            label: localizedFromText(
+              localization,
+              option.label ?? ownedOptionLabel?.(option.value) ?? option.value,
+            ),
           })),
-    [localization, lockedOptions],
+    [localization, lockedOptions, ownedOptionLabel],
   );
   const createOffered =
     lockedOptions === undefined || seededOptions !== undefined;

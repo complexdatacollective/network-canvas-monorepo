@@ -31,6 +31,8 @@ export const FAMILY_PEDIGREE_SLOTS = {
     'familyPedigree.edgeConfiguration.currentPartnerAttribute',
   relativesNotRecordedAttribute:
     'familyPedigree.completeness.relativesNotRecordedAttribute',
+  relationshipToParticipantAttribute:
+    'familyPedigree.nodeConfiguration.relationshipToParticipantAttribute',
 } as const;
 
 /**
@@ -116,6 +118,22 @@ export const NodeConfigurationSchema = z.strictObject({
       owner: 'the Family Pedigree interface, which marks the participant',
     },
   }),
+  // Optional: a categorical attribute holding each person's relationship to
+  // the participant (`PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT`), so that later
+  // stages can filter and skip on it. Worked out from the family, not asked:
+  // written for everyone connected to the participant each time they leave
+  // the stage, and cleared for anyone no longer connected.
+  relationshipToParticipantAttribute: entityAttributeReference({
+    subject: 'stageSubject',
+    usage: 'unvalidatedAttribute',
+    requireType: ['categorical'],
+    exclusive: {
+      slot: FAMILY_PEDIGREE_SLOTS.relationshipToParticipantAttribute,
+      owner:
+        "the Family Pedigree interface, which records each person's relationship to the participant",
+    },
+    ownedOptions: 'pedigreeRelationshipToParticipant',
+  }).optional(),
 });
 
 /**

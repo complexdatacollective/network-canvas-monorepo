@@ -763,9 +763,9 @@ const ProtocolSchema = z
     // birth and each nomination prompt's selection. Two of them sharing an
     // attribute would overwrite each other, and the stage's additional person
     // fields may collect none of them, as the stage already asks or sets them
-    // itself. (The participant marker and the relatives-not-recorded
-    // attribute are exclusive slots, which the exclusivity check above
-    // already keeps from every other writer.)
+    // itself. (The participant marker, the relationship to the participant
+    // and the relatives-not-recorded attribute are exclusive slots, which the
+    // exclusivity check above already keeps from every other writer.)
     protocol.stages.forEach((stage, stageIndex) => {
       if (stage.type !== 'FamilyPedigree') return;
       const { nodeConfiguration } = stage;

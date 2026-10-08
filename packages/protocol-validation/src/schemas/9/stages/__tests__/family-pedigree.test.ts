@@ -8,6 +8,7 @@ import {
 } from '../../__tests__/pedigreeGenderFixtures.ts';
 import {
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../../family-pedigree-values.ts';
 import ProtocolSchemaV9 from '../../schema.ts';
@@ -77,6 +78,29 @@ const protocolWith = (
             label: 'Sab',
             type: 'categorical' as const,
             options: localizedOptions(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS),
+          },
+          rel: {
+            name: 'Relationship',
+            label: 'Relationship',
+            type: 'categorical' as const,
+            options: PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT.map((value) => ({
+              value,
+              label: localized(value),
+            })),
+          },
+          relText: {
+            name: 'RelationshipText',
+            label: 'RelationshipText',
+            type: 'text' as const,
+          },
+          partial: {
+            name: 'Partial',
+            label: 'Partial',
+            type: 'categorical' as const,
+            options: [
+              { value: 'parent', label: localized('Parent') },
+              { value: 'sibling', label: localized('Sibling') },
+            ],
           },
         },
       },
@@ -390,6 +414,62 @@ describe('FamilyPedigree in a whole protocol', () => {
         'is already the attribute of another nomination prompt of this Family Pedigree stage. Each nomination prompt needs an attribute of its own.',
       ),
     ]);
+  });
+
+  describe('relationship to the participant', () => {
+    const withRelationship = (
+      attribute: string,
+      extra: Record<string, unknown> = {},
+    ) =>
+      protocolWith({
+        ...base,
+        nodeConfiguration: {
+          ...base.nodeConfiguration,
+          relationshipToParticipantAttribute: attribute,
+        },
+        ...extra,
+      });
+    const relationshipPath = [
+      'stages',
+      0,
+      'nodeConfiguration',
+      'relationshipToParticipantAttribute',
+    ];
+
+    it('accepts a categorical attribute carrying exactly the fixed values, or none', () => {
+      expect(ProtocolSchemaV9.safeParse(withRelationship('rel')).success).toBe(
+        true,
+      );
+      expect(ProtocolSchemaV9.safeParse(protocolWith(base)).success).toBe(true);
+    });
+
+    it('refuses an attribute whose options are not the fixed values, or that is not categorical', () => {
+      expect(
+        issuesAt(withRelationship('partial'), relationshipPath),
+      ).toContainEqual(
+        expect.stringContaining(
+          'The relationship to the participant attribute "Partial" used by',
+        ),
+      );
+      expect(
+        ProtocolSchemaV9.safeParse(withRelationship('relText')).success,
+      ).toBe(false);
+    });
+
+    it('refuses an additional person field, or another of the stage’s answers, on the same attribute', () => {
+      const asField = withRelationship('rel', {
+        form: { fields: [{ variable: 'rel', prompt: localized('Who?') }] },
+      });
+      expect(
+        issuesAt(asField, ['stages', 0, 'form', 'fields', 0, 'variable']),
+      ).toContainEqual(
+        expect.stringContaining(
+          "is set by the Family Pedigree interface, which records each person's relationship to the participant",
+        ),
+      );
+      const sharedWithSex = withRelationship('sab');
+      expect(ProtocolSchemaV9.safeParse(sharedWithSex).success).toBe(false);
+    });
   });
 
   it('detects the participant marker being reused as a form field', () => {

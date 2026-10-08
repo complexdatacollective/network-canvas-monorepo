@@ -119,6 +119,7 @@ export {
   PEDIGREE_GENDER_WORDS,
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
   PEDIGREE_RELATIONSHIP_KINDS,
+  PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT,
   PEDIGREE_RELATIVES_NOT_RECORDED,
   PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
@@ -128,6 +129,7 @@ export {
   type PedigreeGenderWords,
   type PedigreeParentKind,
   type PedigreeRelationshipKind,
+  type PedigreeRelationshipToParticipant,
   type PedigreeRelativesNotRecorded,
   type PedigreeSexAssignedAtBirth,
 } from './schemas/9/family-pedigree-values.ts';

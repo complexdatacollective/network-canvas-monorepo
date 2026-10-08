@@ -853,6 +853,17 @@ describe('v8 to v9 Family Pedigree migration', () => {
       });
     });
 
+    it('leaves the relationship to the participant unrecorded, rather than binding the old text attribute', () => {
+      // Schema 8 wrote English text; the schema 9 binding holds fixed
+      // categorical values, which a text attribute cannot. The migration
+      // notes tell the researcher how to record it again.
+      const migrated = migrateValid(schema8Protocol());
+      const nodeConfiguration = pedigreeOf(migrated)?.nodeConfiguration;
+      expect(nodeConfiguration).not.toHaveProperty(
+        'relationshipToParticipantAttribute',
+      );
+    });
+
     it('leaves options whose values differ for validation to report', () => {
       const document = schema8Protocol();
       const sex = variableAt(document, 'node', 'person', 'biologicalSex');

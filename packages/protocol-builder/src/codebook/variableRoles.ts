@@ -477,11 +477,28 @@ export const lockedVariableOptions = (
   variableId: string | undefined,
   interfaceOwnedOptionSet?: InterfaceOwnedOptionSetKey,
 ): LockedOptionList | undefined => {
+  const variable =
+    variableId === undefined || variableId === ''
+      ? undefined
+      : variables?.[variableId];
   if (interfaceOwnedOptionSet !== undefined) {
-    return INTERFACE_OWNED_OPTION_SETS[interfaceOwnedOptionSet].options;
+    // A set whose values carry no label of their own shows the codebook's
+    // label for each value, which is the researcher's (translated) copy.
+    const own =
+      variable?.type === 'categorical' || variable?.type === 'ordinal'
+        ? variable.options
+        : [];
+    return INTERFACE_OWNED_OPTION_SETS[interfaceOwnedOptionSet].options.map(
+      (option) => ({
+        value: option.value,
+        label:
+          option.label ??
+          own.find((candidate) => candidate.value === option.value)?.label ??
+          option.value,
+      }),
+    );
   }
   if (variableId === undefined || variableId === '') return undefined;
-  const variable = variables?.[variableId];
   if (
     variable === undefined ||
     (variable.type !== 'categorical' && variable.type !== 'ordinal')

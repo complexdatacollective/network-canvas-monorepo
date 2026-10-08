@@ -383,7 +383,7 @@ export const migrationNoteMessages = defineMessages({
   schema9FamilyPedigreeCompleteness: {
     id: 'protocolValidation.migrationNotes.schema9.familyPedigreeCompleteness',
     defaultMessage:
-      "The old Family Pedigree always required two of the participant's parents. A converted Family Pedigree requires both of the participant's biological parents or, where it required recording grandparents, the family up to the grandparents, which also includes siblings, children, aunts and uncles. Where it recommended recording grandparents, it now recommends recording the family up to the grandparents, so recording both parents becomes a recommendation rather than a requirement, because a stage has only one completeness setting. Only biological parents and gamete donors now count as parents; the old interface also counted adoptive parents and surrogates.",
+      "The old Family Pedigree always required two of the participant's parents. A converted Family Pedigree requires both of the participant's biological parents or, where it required recording grandparents, the family up to the grandparents, which also includes siblings, children, the other biological parent of each of the participant's children, aunts and uncles. Where it recommended recording grandparents, it now recommends recording the family up to the grandparents, so recording both parents becomes a recommendation rather than a requirement, because a stage has only one completeness setting. Only biological parents and gamete donors now count as parents; the old interface also counted adoptive parents and surrogates.",
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeCompleteness. "Family Pedigree" is an interface name. "Parents" are the participant\'s mother and father or other parents; "biological parents" are those who gave the participant their genes.',
   },
@@ -397,9 +397,16 @@ export const migrationNoteMessages = defineMessages({
   schema9FamilyPedigreeRemoved: {
     id: 'protocolValidation.migrationNotes.schema9.familyPedigreeRemoved',
     defaultMessage:
-      "Three Family Pedigree settings are removed because the redesigned interface does not use them: requiring the other biological parent of the participant's children and that parent's family, the attribute for each person's relationship to the participant, and the attribute for which gamete each parent gave. Both attributes stay in the codebook with any answers already recorded, but are no longer filled in.",
+      "Two Family Pedigree settings change because the redesigned interface does not use them as they were. Requiring the other biological parent of the participant's children is now part of every completeness setting from parents, siblings and children upwards, and that parent's own family is no longer required. The attribute for which gamete each parent gave is removed, because the interface now works the gamete out from sex assigned at birth; it stays in the codebook with any answers already recorded, but is no longer filled in.",
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeRemoved. "Family Pedigree" and "Information" are interface names. Keep quoted IDs and attribute names ("pedigree", "relativesNotRecorded") exactly as written.',
+  },
+  schema9FamilyPedigreeRelationshipToParticipant: {
+    id: 'protocolValidation.migrationNotes.schema9.familyPedigreeRelationshipToParticipant',
+    defaultMessage:
+      "The old Family Pedigree could write each person's relationship to the participant as English text. The redesigned interface records it in a categorical attribute with fixed values that do not depend on language, which a text attribute cannot hold, so a converted stage records no relationship. To keep recording it, for example to filter later stages to the participant's parents, choose or create a categorical attribute for it in the Family Pedigree stage in Architect. The old attribute stays in the codebook with any answers already recorded, but is no longer filled in.",
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeRelationshipToParticipant. "Family Pedigree" is an interface name and "Architect" is an app name. A categorical attribute is one whose answers are chosen from a fixed list of options.',
   },
   schema9FamilyPedigreeGenderIdentity: {
     id: 'protocolValidation.migrationNotes.schema9.familyPedigreeGenderIdentity',
@@ -513,6 +520,7 @@ const migrationNoteSets = {
       migrationNoteMessages.schema9FamilyPedigreeCompleteness,
       migrationNoteMessages.schema9FamilyPedigreeRelativesNotRecorded,
       migrationNoteMessages.schema9FamilyPedigreeRemoved,
+      migrationNoteMessages.schema9FamilyPedigreeRelationshipToParticipant,
       migrationNoteMessages.schema9FamilyPedigreeGenderIdentity,
       migrationNoteMessages.schema9FamilyPedigreeOwnFields,
       migrationNoteMessages.schema9FamilyPedigreeSharedAttributes,

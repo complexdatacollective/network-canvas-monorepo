@@ -1,11 +1,17 @@
 import type { InterfaceOwnedOptionSetKey } from './entity-attribute-reference.ts';
 import {
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  PEDIGREE_RELATIONSHIP_TO_PARTICIPANT_OPTIONS,
   PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from './family-pedigree-values.ts';
 
-export type InterfaceOwnedOption = { value: string; label: string };
+/**
+ * One value of an interface-owned set. `label` is the default label written
+ * when a migration creates the attribute; a set no migration creates has
+ * none, and Architect labels its values through its own translations.
+ */
+export type InterfaceOwnedOption = { value: string; label?: string };
 
 export type InterfaceOwnedOptionSet = {
   /**
@@ -39,6 +45,10 @@ export const INTERFACE_OWNED_OPTION_SETS: Record<
   pedigreeRelativesNotRecorded: {
     label: 'relatives not recorded',
     options: PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
+  },
+  pedigreeRelationshipToParticipant: {
+    label: 'relationship to the participant',
+    options: PEDIGREE_RELATIONSHIP_TO_PARTICIPANT_OPTIONS,
   },
 };
 

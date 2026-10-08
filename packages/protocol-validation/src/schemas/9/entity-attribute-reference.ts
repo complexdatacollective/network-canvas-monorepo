@@ -50,7 +50,8 @@ export type ExclusiveSlotDescriptor = {
 export type InterfaceOwnedOptionSetKey =
   | 'pedigreeSexAssignedAtBirth'
   | 'pedigreeRelationship'
-  | 'pedigreeRelativesNotRecorded';
+  | 'pedigreeRelativesNotRecorded'
+  | 'pedigreeRelationshipToParticipant';
 
 /**
  * Declares a reference as a stage-managed OPTION LIST: the variable's options
