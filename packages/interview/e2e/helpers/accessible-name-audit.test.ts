@@ -286,44 +286,10 @@ describe('expectNoUnnamedControls', () => {
     expect(String(error)).toContain('gained NO accessible name');
   });
 
-  it.each([
-    'matrix-family-pedigree-familypedigree-checklist-resting-state-final',
-    'matrix-family-pedigree-familypedigree-boundaries-grandparents-required-blocked-final',
-    'matrix-family-pedigree-familypedigree-boundaries-children-contributors-required-final',
-  ])('rejects losing the repaired ego name in %s', async (key) => {
-    vi.useFakeTimers();
-    const snapshot = readFileSync(
-      resolve(
-        import.meta.dirname,
-        `../aria-snapshots/chromium/${key}.aria.yml`,
-      ),
-      'utf8',
-    );
-    const egoName = /^(\s*- button) "You"(?=\s*(?:\[|:|$))/gm;
-    expect([...snapshot.matchAll(egoName)]).toHaveLength(1);
-    await expect(
-      expectNoUnnamedControls(source(snapshot), key),
-    ).resolves.toBeUndefined();
-
-    // Mutate only the in-memory snapshot. The real source and baselines stay
-    // untouched, while the public guard must refuse this lost accessible name.
-    const unnamed = snapshot.replace(egoName, '$1');
-    expect(findUnnamedControls(unnamed)).toEqual(['button']);
-    const error = await settle(expectNoUnnamedControls(source(unnamed), key));
-    expect(String(error)).toContain('observed unnamed controls: [button]');
-    expect(String(error)).toContain('recorded for this snapshot: []');
-    expect(String(error)).toContain('gained NO accessible name: button');
-  });
-
   it('reports every unnamed control, including a flagged control with a value', async () => {
     vi.useFakeTimers();
     const main = source('- main:\n  - button\n  - textbox [invalid]: Teacher');
-    const error = await settle(
-      expectNoUnnamedControls(
-        main,
-        'matrix-family-pedigree-familypedigree-checklist-resting-state-final',
-      ),
-    );
+    const error = await settle(expectNoUnnamedControls(main, 'no-such-key'));
     expect(String(error)).toContain(
       'observed unnamed controls: [button, textbox]',
     );

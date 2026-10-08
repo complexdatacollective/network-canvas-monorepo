@@ -125,7 +125,7 @@ const QuickNodeForm = ({
   // subject. Prompt-fixed attributes are the new node's sibling values even
   // though only the quick-add target is registered as a form field.
   // stageSubject is only ever null for stage types that carry no subject at
-  // all (Information/Anonymisation/FamilyPedigree/NarrativePedigree);
+  // all (Information/Anonymisation/NarrativePedigree);
   // NameGenerator always has a node subject, so the undefined fallback here
   // is defensive only, matching the "Missing codebook entry" guard above.
   //

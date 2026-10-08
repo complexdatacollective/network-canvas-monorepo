@@ -20,7 +20,7 @@ import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { useCreateVariableEditor } from '../useCreateVariableEditor.tsx';
 
 const SUBJECT: CodebookSubject = { entity: 'node', type: 'person' };
-const SLOT = 'nodeConfig.egoVariable';
+const SLOT = 'nodeConfig.egoAttribute';
 const LABEL = 'Attribute the bins sort by';
 
 /**

@@ -121,14 +121,8 @@ import {
   useInventingAttribute,
 } from './inventedAttribute.ts';
 
-/**
- * Where an interface that holds a whole form keeps it.
- *
- * The default rather than the rule: FamilyPedigree's family-member form is the
- * same list of the same fields hung off its node configuration
- * (`nodeConfig.form`), which is why the path is a prop.
- */
-const DEFAULT_FIELDS_PATH = 'form.fields';
+/** Where every interface that holds a whole form keeps its fields. */
+const FIELDS_PATH = 'form.fields';
 const TITLE = 'form.title';
 
 const INPUT_CONTROL = '_component';
@@ -462,11 +456,10 @@ const asString = (value: unknown): string | undefined =>
  * cannot render, so the rows go with it and no row can be finished.
  *
  * A value that is not a list at all is the same answer, and only `undefined`
- * is absence — which is what `FormFieldArraySchema.optional()` accepts and all
- * it accepts. A string or an object left at an optional form's path would
- * otherwise pass every rule here while the schema refuses the stage, and with
- * no entries to draw rows from the researcher would be looking at an empty
- * form for the reason their save keeps failing.
+ * is absence. A string or an object left at the form's path would otherwise
+ * pass every rule here while the schema refuses the stage, and with no
+ * entries to draw rows from the researcher would be looking at an empty form
+ * for the reason their save keeps failing.
  */
 const everyEntryIsAField = (value: unknown) => {
   if (value === undefined) return undefined;
@@ -510,8 +503,8 @@ const noAttributeTwice = (value: unknown) =>
  * A rule about the LIST rather than about a row, because either side of the
  * collision can move: the researcher can point a row at the reserved
  * attribute, and the interface can reserve an attribute a row is already
- * collecting — a Family Pedigree makes an attribute its display label, and the
- * form field asking for it stops being asked. Only the list is registered with
+ * collecting — a Family Pedigree binds an attribute to one of its person
+ * attribute slots. Only the list is registered with
  * the form, so only a rule here is re-asked when the second thing happens.
  */
 const noReservedAttribute = (
@@ -536,11 +529,8 @@ const noReservedAttribute = (
  * codebook subject the fields collect into, and where the list itself lives,
  * are decided by the section, so the section is what says them.
  *
- * Read here rather than from the stage document because there is nothing
- * reliable to read: a Family Pedigree names its node type at `nodeConfig.type`
- * and keeps its fields at `nodeConfig.form`, so a row that went looking for
- * `subject` would draw its picker from an empty codebook and refuse every
- * sibling attribute silently.
+ * Read here rather than from the stage document, so the row and the section
+ * cannot disagree about which codebook the fields collect into.
  */
 type FormFieldsScope = Readonly<{
   fieldsPath: string;
@@ -605,27 +595,13 @@ export type FormFieldsSectionProps = Readonly<{
   /** Whose codebook these fields collect into. */
   subject: SubjectEntity;
   /**
-   * Where the stage names that subject's TYPE, for a stage that does not hold
-   * a `subject` of its own. See `useStageSubject`.
-   */
-  subjectTypePath?: string;
-  /** Where the list of fields lives. See `DEFAULT_FIELDS_PATH`. */
-  fieldsPath?: string;
-  /**
-   * The schema accepts this form with nothing in it, so the section does too.
-   *
-   * True only for a form hung off another section as an extra — a Family
-   * Pedigree may ask nothing at all about each family member. A form that IS
-   * the stage collects nothing when it is empty, which is why that is the
-   * default.
-   */
-  optional?: boolean;
-  /**
    * Makes the whole form something the researcher switches on and off.
    *
-   * For an optional form: switching it off is how the protocol says "this
-   * stage does not do this", and the confirmation is written in the words of
-   * the interface that owns the form rather than in this section's.
+   * For a stage whose form is optional (a Family Pedigree's additional person
+   * fields): switching it off is how the protocol says "this stage does not do
+   * this", and the confirmation is written in the words of the interface that
+   * owns the form rather than in this section's. While it is on, the form
+   * still needs at least one field, as the schema requires.
    */
   capability?: SectionCapability;
   /**
@@ -658,7 +634,7 @@ export type FormFieldsSectionProps = Readonly<{
    *
    * The interface that owns those slots supplies this, because only it knows
    * where its own unvalidated writes live: a name generator reads its prompts'
-   * `additionalAttributes`, a Family Pedigree its node configuration — so an
+   * `additionalAttributes`, a Family Pedigree its person attribute slots — so an
    * interface that supplies this has to name EVERY unvalidated write its stage
    * makes, not only the ones it has changed. Give a stable array — a fresh one
    * each render re-registers the list's validator.
@@ -669,17 +645,14 @@ export type FormFieldsSectionProps = Readonly<{
    * already collects them through a control of its own.
    *
    * Not a conflict between writers — both are validated collections — but the
-   * same attribute asked for twice on one screen, which the INTERVIEW resolves
-   * by dropping the form field: a Family Pedigree collects each relative's
-   * name through its own name control and filters the display label (and any
-   * attribute whose id is literally `name`) out of the form it renders
-   * (`interview/src/interfaces/FamilyPedigree/utils/nodeUtils.ts`). A field
-   * bound to one is a question the researcher wrote that no participant is
-   * ever asked, recorded nowhere and reported by nothing.
+   * same attribute asked for twice on one screen: a Family Pedigree collects
+   * each person's name, gender identity and sex assigned at birth through its
+   * own controls, so a field bound to one of those attributes would ask the
+   * same question twice.
    *
    * Live, and read whole on every save: the interface can reserve an attribute
-   * a field is already collecting, which is what making an existing field's
-   * attribute the display label does.
+   * a field is already collecting, which is what binding an existing field's
+   * attribute to one of its slots does.
    */
   reservedVariables?: readonly string[];
   /**
@@ -701,11 +674,10 @@ export type FormFieldsSectionProps = Readonly<{
    * across a seam like this is extracted by nothing and translated by nobody,
    * so an interface's own words would be the only words left in English.
    *
-   * Only for a form hung off another section as an extra, where "Form fields"
-   * is not what the researcher is looking at: a Family Pedigree's is the
-   * FAMILY MEMBER form, and every sentence around it — what it asks about,
-   * when the participant answers it — is about a relative rather than about a
-   * form. A form that IS the stage overrides nothing.
+   * Only for a form that is an extra on another interface, where "Form
+   * fields" is not what the researcher is looking at: a Family Pedigree's are
+   * the additional questions about each family member. A form that IS the
+   * stage overrides nothing.
    *
    * `waitingDescription` and the dialog's own titles stay shared: they are
    * said about the CONTROL rather than about what it collects.
@@ -740,9 +712,6 @@ export type FormFieldsSectionProps = Readonly<{
  */
 export default function FormFieldsSection({
   subject,
-  subjectTypePath,
-  fieldsPath = DEFAULT_FIELDS_PATH,
-  optional = false,
   capability,
   hasTitle = false,
   draftUnvalidatedVariables,
@@ -756,7 +725,8 @@ export default function FormFieldsSection({
   emptyState = formFieldsMessages.emptyState,
 }: FormFieldsSectionProps) {
   const intl = useAppIntl();
-  const codebookSubject = useStageSubject(subject, subjectTypePath);
+  const fieldsPath = FIELDS_PATH;
+  const codebookSubject = useStageSubject(subject);
   const waiting = codebookSubject === undefined;
   const draftUnvalidated = useMemo(
     () => new Set(draftUnvalidatedVariables ?? []),
@@ -783,11 +753,7 @@ export default function FormFieldsSection({
    *
    * Memoised rather than rebuilt per render because a validation object is
    * part of what a field registers with: a fresh one each time re-registers
-   * the rules on every keystroke. Which rules apply is the `optional` prop —
-   * a form that IS the stage must collect something, while a form hung off
-   * another section is a capability the researcher may leave switched off, and
-   * the schema says exactly that (`FormSchema.fields.min(1)` against
-   * `FormFieldArraySchema.optional()`).
+   * the rules on every keystroke.
    */
   const fieldsValidation = useMemo(
     () => ({
@@ -803,7 +769,7 @@ export default function FormFieldsSection({
           ),
       ]),
     }),
-    [optional],
+    [],
   );
   // The stage whose saved unvalidated writes the draft above replaces, where
   // there is a draft to replace them with. See `draftUnvalidatedVariables`.
@@ -901,7 +867,7 @@ export default function FormFieldsSection({
             editorComponent={RowDialog}
             itemTemplate={rowTemplate()}
             sortable
-            required={optional ? false : AT_LEAST_ONE_FIELD}
+            required={AT_LEAST_ONE_FIELD}
             {...fieldsValidation}
           />
         </RowList>
@@ -1422,8 +1388,8 @@ function useFormFieldValidate(
  * form field is a VALIDATED writer, so a stage's own form contributes nothing
  * this map is read for — but a stage may write the same subject unvalidated
  * somewhere else in itself: a name generator's prompt stamps an attribute onto
- * every node it adds, and a Family Pedigree derives three from the tree the
- * participant draws. Those are exactly the picks the schema's own
+ * every node it adds, and a Family Pedigree writes three person attributes
+ * itself. Those are exactly the picks the schema's own
  * role-conflict rule refuses, so dropping the open stage from a map nothing
  * replaces it in would offer every one of them and let the researcher author a
  * stage that cannot be saved.
@@ -1631,8 +1597,7 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
  * The preview beside this family's fields.
  *
  * Here rather than in the pane because whose codebook the form collects into
- * is the SECTION's answer — a Family Pedigree names its node type somewhere a
- * row could not find — and the shared list threads no props of its own.
+ * is the SECTION's answer, and the shared list threads no props of its own.
  */
 function FormFieldPreviewPane({ item }: RowAsideProps) {
   const { subject } = useFormFieldsScope();

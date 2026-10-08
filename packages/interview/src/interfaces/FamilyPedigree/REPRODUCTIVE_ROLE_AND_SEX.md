@@ -1,49 +1,70 @@
-# Reproductive role and sex recorded at birth
+# Which gamete a parent gave, and sex assigned at birth
 
 ## Decision
 
-Family Pedigree records reproductive role separately from the participant's
-answer to the biological-sex question:
+The Family Pedigree asks each person's sex assigned at birth, and never asks
+which gamete a genetic parent (a biological parent or a donor) gave. The
+gamete is derived from sex assigned at birth by one rule, `inferGametes` in
+`gametes.ts`, which everything that needs it reads: the kinship words (egg
+parent, sperm parent, biological mother, egg donor), the Narrative Pedigree's
+genetics engine, and the documentation analysts read.
 
-| Fact                      | Storage                                      | Meaning                                                        |
-| ------------------------- | -------------------------------------------- | -------------------------------------------------------------- |
-| Sex recorded at birth     | Node `biologicalSex` attribute               | The answer to “What sex was this person recorded as at birth?” |
-| Egg or sperm contribution | Parent edge `gameteRole` attribute           | The gamete contributed to this conception                      |
-| Gestation                 | Parent edge `isGestationalCarrier` attribute | The person who carried this pregnancy                          |
+For each genetic parent of a child:
 
-Reproductive role does not determine the answer to the sex-at-birth question,
-and sex at birth does not determine eligibility for a reproductive role. The
-interface therefore:
+1. Recorded female at birth: they gave the egg. Recorded male: the sperm. Sex
+   at birth governs, whatever the person's gender identity, so a trans man
+   recorded female at birth gave the egg.
+2. Recorded otherwise (intersex, don't know, prefer not to say, or not
+   answered), when the child's one other genetic parent is recorded female or
+   male: they gave the other gamete, by elimination.
+3. Anything else is not known: a single genetic parent who is neither female
+   nor male, or two genetic parents who are both neither.
 
-- never filters egg-parent, sperm-parent, or gestational-carrier candidates by
-  `biologicalSex`;
-- asks the complete biological-sex question when a new person is created in
-  any of those roles, including all five configured answers;
-- may use a known binary value to choose a convenient initial egg/sperm
-  selection, but leaves both candidate lists complete and editable;
-- excludes a person from the gestational-carrier follow-up only when that
-  person was the subject of the immediately preceding “Did this person carry
-  the pregnancy?” question and the participant answered “No”; and
-- never replaces a captured biological-sex answer with a value inferred from a
-  reproductive role.
+The interface allows a child at most two genetic parents, at most one recorded
+female at birth and at most one recorded male, so the rule never meets two
+eggs or two sperm.
 
-The edge roles remain available to downstream genetics code. In particular,
-sex-linked inheritance can use an egg/sperm role when a binary genetic lineage
-signal is required without changing the person's recorded node attribute. See
-[Narrative Pedigree modelling decision 5b](../NarrativePedigree/genetics/MODELLING_DECISIONS.md#5b-resolvesex-sex-blocked--unknown-with-an-inclusive-gamete-role-fallback).
+## Why
 
-## Rationale
+A separate gamete question (as schema 8 had, on each parent relationship) is a
+second answer that can contradict sex at birth: a parent recorded female at
+birth who gave the sperm, or two parents who both gave the egg. Each such
+contradiction is either a rare variation the interface would have to
+interpret, or a mistake it would have to catch. Deriving the gamete leaves one
+answer per person, asked once, and nothing for the two to disagree about. It
+also keeps the question participants find hardest to answer about a relative
+(which gamete they gave) out of the interview, while the question they can
+answer (the sex recorded at birth) carries the same information in nearly
+every family.
 
-Sex is a multidimensional construct. A birth assignment, sex characteristics,
-gonadal or chromosomal variation, gamete contribution, and capacity to carry a
-pregnancy are related but not interchangeable observations. Treating one as a
-proxy for another would manufacture data the participant was never asked to
-provide and would prevent the pedigree from representing some intersex people.
+## What the model cannot record
 
-This separation also follows the broader pedigree-design principle used
-throughout the interface: record the fact that was elicited on the entity to
-which it belongs. A reproductive role belongs to a particular parent-child
-edge; sex recorded at birth belongs to the person node.
+- **Both genetic parents neither female nor male at birth.** Their gametes are
+  not known, so they are not named egg parent or sperm parent, and the
+  genetics engine falls back to its sex rule (which treats them as unknown).
+- **A known gamete with an unknown sex at birth**, where elimination cannot
+  supply it: for example an anonymous sperm donor recorded as "don't know",
+  for a child whose other genetic parent is not recorded female or male
+  either. The participant knows the donor gave sperm, but the model has
+  nowhere to put it.
+- **Differences of sex development where binary sex at birth and gamete
+  disagree**, such as a person recorded male at birth who gave an egg. These
+  are rare. The interface forbids recording them (it will not accept two
+  genetic parents recorded male) rather than misrecording which gamete each
+  gave. Recording such a person's sex at birth as intersex lets elimination
+  derive their gamete instead.
+- **Mitochondrial donation**, which needs three genetic contributors (the
+  nuclear egg, the donor egg's cytoplasm and the sperm). The interface allows
+  two genetic parents. The genetics engine can model a third contributor (see
+  `../NarrativePedigree/genetics/MODELLING_DECISIONS.md` §2–3), but the Family
+  Pedigree never produces one.
+
+## For analysts
+
+A pedigree file format with "father" and "mother" columns, such as the PED
+format used by linkage and segregation software, means the sperm-giver and the
+egg-giver. Export those columns from the derived gamete, not from gender
+identity, and leave them unknown where the rule above does.
 
 ## Literature
 
@@ -52,24 +73,13 @@ edge; sex recorded at birth belongs to the person node.
   gender inclusivity](https://pubmed.ncbi.nlm.nih.gov/36106433/). _Journal of
   Genetic Counseling_. 2022;31(6):1238-1248.
   [doi:10.1002/jgc4.1621](https://doi.org/10.1002/jgc4.1621). The revision
-  clarifies the distinction between sex assigned at birth and gender in
-  standardized human pedigrees and explicitly addresses intersex-inclusive
-  practice.
+  distinguishes sex assigned at birth from gender in standardized human
+  pedigrees and addresses intersex-inclusive practice.
 - National Academies of Sciences, Engineering, and Medicine. [_Measuring Sex,
   Gender Identity, and Sexual
   Orientation_](https://doi.org/10.17226/26424). Washington, DC: The National
   Academies Press; 2022. The consensus report describes sex as
   multidimensional and recommends measuring the component relevant to the
   research purpose rather than treating sex-related measures as
-  interchangeable.
-- American Society for Reproductive Medicine. [Inclusive language and
-  environment to welcome lesbian, gay, bisexual, transgender, queer,
-  questioning, intersex, and asexual+
-  patients](https://www.asrm.org/practice-guidance/practice-committee-documents/inclusive-language-and-environment-to-welcome-lesbian-gay-bisexual-transgender-queer-questioning-intersex-and-asexual-patients/). 2024. The guidance distinguishes sex assigned at birth from intersex status
-  and other sex characteristics.
-- Zhang H, et al. [Successful live birth after interstitial ectopic pregnancy
-  in a patient with Swyer syndrome following IVF: a case
-  report](https://pmc.ncbi.nlm.nih.gov/articles/PMC13261976/). 2026. This case
-  illustrates why gestational capacity and individual sex-related
-  characteristics cannot safely be collapsed into one inferred categorical
-  answer.
+  interchangeable. Here the component is sex assigned at birth, and the
+  gamete is derived from it rather than measured a second time.

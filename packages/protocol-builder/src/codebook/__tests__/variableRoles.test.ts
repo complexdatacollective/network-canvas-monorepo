@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { BIOLOGICAL_SEX_OPTIONS } from '@codaco/protocol-validation';
+import { PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -10,6 +10,7 @@ import {
   buildEntityTypeUsageIndex,
   buildExclusiveVariableSlotMap,
   buildInterfaceOwnedOptionMap,
+  buildStageManagedOptionMap,
   buildVariableRoleMap,
   buildVariableUsageIndex,
   entityTypeUsageKey,
@@ -22,6 +23,7 @@ import {
   interfaceOwnedOptionsIssue,
   interfaceOwnedPickIssue,
   lockedVariableOptions,
+  stageManagedOptionsLock,
   variableRoleConflicts,
   variableRoleKey,
 } from '../variableRoles.ts';
@@ -31,7 +33,7 @@ const BIN_STAGE_ID = 'bin-stage';
 const SUBJECT = { entity: 'node', type: 'person' } as const;
 const FAMILY_SUBJECT = { entity: 'node', type: 'family-member' } as const;
 const FAMILY_STAGE_ID = 'family-stage';
-const EGO_SLOT = 'familyPedigree.nodeConfig.egoVariable';
+const EGO_SLOT = 'familyPedigree.nodeConfiguration.egoAttribute';
 
 const settings = {
   [sectionId({ kind: 'settings' })]: {
@@ -91,25 +93,19 @@ const familySections = (): Record<string, SectionDoc> => ({
     id: FAMILY_STAGE_ID,
     type: 'FamilyPedigree',
     label: { en: 'Family Pedigree' },
-    nodeConfig: {
-      type: FAMILY_SUBJECT.type,
-      nodeLabelVariable: 'name',
-      egoVariable: 'isEgo',
-      relationshipVariable: 'relationshipToEgo',
-      biologicalSexVariable: 'biologicalSex',
+    subject: FAMILY_SUBJECT,
+    prompt: { en: 'Build your family' },
+    nodeConfiguration: {
+      nameAttribute: 'name',
+      genderIdentity: { attribute: 'genderIdentity', terms: [] },
+      sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
+      egoAttribute: 'isEgo',
     },
-    edgeConfig: {
+    edgeConfiguration: {
       type: 'family-edge',
-      relationshipTypeVariable: 'relationshipType',
-      isActiveVariable: 'isActive',
-      isGestationalCarrierVariable: 'isGestationalCarrier',
-      gameteRoleVariable: 'gameteRole',
-    },
-    censusPrompt: { en: 'Build your family' },
-    framing: { mode: 'fixed', value: 'gamete' },
-    boundaries: {
-      requireGrandparents: 'off',
-      requireChildrenContributors: 'off',
+      kindAttribute: 'relationshipKind',
+      gestationalCarrierAttribute: 'isGestationalCarrier',
+      currentPartnerAttribute: 'isCurrentPartner',
     },
   },
   [sectionId({ kind: 'stageOrder' })]: { stages: [FAMILY_STAGE_ID] },
@@ -235,20 +231,24 @@ describe('variable role helpers', () => {
     const optionMap = buildInterfaceOwnedOptionMap(
       protocolContextFromSections(familySections()),
     );
-    const reversedCanonical = BIOLOGICAL_SEX_OPTIONS.toReversed();
-    const reworded = BIOLOGICAL_SEX_OPTIONS.map(({ value }) => ({
-      value,
-      label: { es: value },
-    }));
-    const staleOptions = BIOLOGICAL_SEX_OPTIONS.map((option, index) =>
-      index === 0 ? { ...option, value: 'changed' } : option,
+    const reversedCanonical =
+      PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS.toReversed();
+    const reworded = PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS.map(
+      ({ value }) => ({
+        value,
+        label: { es: value },
+      }),
+    );
+    const staleOptions = PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS.map(
+      (option, index) =>
+        index === 0 ? { ...option, value: 'changed' } : option,
     );
 
     expect(
       interfaceOwnedOptionsIssue(
         optionMap,
         FAMILY_SUBJECT,
-        'biologicalSex',
+        'sexAssignedAtBirth',
         reversedCanonical,
       ),
     ).toBeUndefined();
@@ -257,7 +257,7 @@ describe('variable role helpers', () => {
       interfaceOwnedOptionsIssue(
         optionMap,
         FAMILY_SUBJECT,
-        'biologicalSex',
+        'sexAssignedAtBirth',
         reworded,
       ),
     ).toBeUndefined();
@@ -268,7 +268,7 @@ describe('variable role helpers', () => {
         interfaceOwnedOptionsIssue(
           optionMap,
           FAMILY_SUBJECT,
-          'biologicalSex',
+          'sexAssignedAtBirth',
           staleOptions,
         ) ?? '',
       ),
@@ -279,7 +279,7 @@ describe('variable role helpers', () => {
       interfaceOwnedOptionsIssue(
         optionMap,
         { entity: 'node', type: 'someone-else' },
-        'biologicalSex',
+        'sexAssignedAtBirth',
         staleOptions,
       ),
     ).toBeUndefined();
@@ -308,9 +308,9 @@ describe('variable role helpers', () => {
       protocolContextFromSections(familySections()),
     );
     const variables = {
-      biologicalSex: {
-        name: 'biologicalSex',
-        label: 'biologicalSex',
+      sexAssignedAtBirth: {
+        name: 'sexAssignedAtBirth',
+        label: 'sexAssignedAtBirth',
         type: 'categorical' as const,
         options: [{ label: { en: 'Drifted' }, value: 'drifted' }],
       },
@@ -336,10 +336,10 @@ describe('variable role helpers', () => {
     expect(
       lockedVariableOptions(
         variables,
-        'biologicalSex',
-        optionMap[variableRoleKey(FAMILY_SUBJECT, 'biologicalSex')],
+        'sexAssignedAtBirth',
+        optionMap[variableRoleKey(FAMILY_SUBJECT, 'sexAssignedAtBirth')],
       ),
-    ).toEqual(BIOLOGICAL_SEX_OPTIONS);
+    ).toEqual(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS);
     expect(lockedVariableOptions(variables, 'stamped')).toEqual([
       { label: { en: 'Low' }, value: 1 },
     ]);
@@ -349,6 +349,87 @@ describe('variable role helpers', () => {
     expect(lockedVariableOptions(variables, 'missing')).toBeUndefined();
     expect(lockedVariableOptions(variables, undefined)).toBeUndefined();
     expect(lockedVariableOptions(undefined, 'stamped')).toBeUndefined();
+  });
+
+  /**
+   * Which stages manage a variable's options is derived from the stages that
+   * bind it. Nothing is stored in the codebook, so removing the stage releases
+   * them, and sex assigned at birth (a fixed set, not a managed one) is not
+   * among them.
+   */
+  describe('options a stage manages', () => {
+    const GENDER_KEY = variableRoleKey(FAMILY_SUBJECT, 'genderIdentity');
+
+    it('derives the managing stages from the stages that bind the variable', () => {
+      const map = buildStageManagedOptionMap(
+        protocolContextFromSections(familySections()),
+      );
+
+      expect(map[GENDER_KEY]).toEqual([
+        { stageId: FAMILY_STAGE_ID, stageLabel: 'Family Pedigree' },
+      ]);
+      expect(
+        map[variableRoleKey(FAMILY_SUBJECT, 'sexAssignedAtBirth')],
+      ).toBeUndefined();
+    });
+
+    it('holds nothing once no stage binds the variable', () => {
+      const released = protocolContextFromSections({
+        ...familySections(),
+        [sectionId({ kind: 'stage', stageId: FAMILY_STAGE_ID })]: {
+          id: FAMILY_STAGE_ID,
+          type: 'FamilyPedigree',
+          label: 'Family Pedigree',
+          subject: FAMILY_SUBJECT,
+          prompt: 'Build your family',
+          nodeConfiguration: {
+            nameAttribute: 'name',
+            sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
+            egoAttribute: 'isEgo',
+          },
+          edgeConfiguration: {
+            type: 'family-edge',
+            kindAttribute: 'relationshipKind',
+            gestationalCarrierAttribute: 'isGestationalCarrier',
+            currentPartnerAttribute: 'isCurrentPartner',
+          },
+        },
+      });
+
+      expect(buildStageManagedOptionMap(released)).toEqual({});
+    });
+
+    it('locks the options everywhere but an owning stage’s editor', () => {
+      const map = buildStageManagedOptionMap(
+        protocolContextFromSections(familySections()),
+      );
+      const ask = (
+        editingFrom?: Parameters<typeof stageManagedOptionsLock>[3],
+      ) =>
+        stageManagedOptionsLock(
+          map,
+          FAMILY_SUBJECT,
+          'genderIdentity',
+          editingFrom,
+        );
+
+      // The codebook's own editor, and any other stage.
+      expect(ask()).toEqual(['Family Pedigree']);
+      expect(ask({ stageId: 'another', draftBindings: new Set() })).toEqual([
+        'Family Pedigree',
+      ]);
+      // The stage that binds it, and a stage whose unsaved draft does.
+      expect(
+        ask({ stageId: FAMILY_STAGE_ID, draftBindings: new Set() }),
+      ).toBeUndefined();
+      expect(
+        ask({ stageId: 'new-stage', draftBindings: new Set([GENDER_KEY]) }),
+      ).toBeUndefined();
+      // Another attribute of the same type is not managed.
+      expect(
+        stageManagedOptionsLock(map, FAMILY_SUBJECT, 'isEgo'),
+      ).toBeUndefined();
+    });
   });
 
   it('keeps colon-containing subjects and variables in distinct keys', () => {

@@ -6,20 +6,8 @@ import type {
   VariableValue,
 } from '@codaco/shared-consts';
 
+import { writeOwnProperty } from '../../utils/ownProperty';
 import { encryptValue } from './encryptionFormat';
-
-const writeOwnProperty = <Value>(
-  target: Record<string, Value>,
-  key: string,
-  value: Value,
-): void => {
-  Object.defineProperty(target, key, {
-    configurable: true,
-    enumerable: true,
-    value,
-    writable: true,
-  });
-};
 
 /**
  * An encrypted write was refused because the interview's encryption key is

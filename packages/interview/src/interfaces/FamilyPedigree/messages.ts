@@ -1,1457 +1,866 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 
 export const messages = defineMessages({
-  eggParent: {
-    id: 'interview.familyPedigree.eggParent',
-    defaultMessage: 'Egg Parent',
+  canvasLabel: {
+    id: 'interview.familyPedigree.canvasLabel',
+    defaultMessage: 'Your family',
     description:
-      'Heading and unnamed-person label in the gamete framing: the person who contributed the egg at conception, regardless of sex or parental gender. Distinct from the person who carried the pregnancy.',
-  },
-  spermParent: {
-    id: 'interview.familyPedigree.spermParent',
-    defaultMessage: 'Sperm Parent',
-    description:
-      'Heading and unnamed-person label in the gamete framing: the person who contributed the sperm at conception, regardless of sex or parental gender.',
-  },
-  gestationalCarrier: {
-    id: 'interview.familyPedigree.gestationalCarrier',
-    defaultMessage: 'Gestational Carrier',
-    description:
-      'Heading for the person who carried a pregnancy but did not contribute the egg. This term is identical in both the gamete and mother/father framings.',
-  },
-  eggDonor: {
-    id: 'interview.familyPedigree.eggDonor',
-    defaultMessage: 'Egg Donor',
-    description:
-      'Unnamed-person label for someone whose donated egg contributed to conception. Donation is distinct from having a social parental role; used in both framings.',
-  },
-  spermDonor: {
-    id: 'interview.familyPedigree.spermDonor',
-    defaultMessage: 'Sperm Donor',
-    description:
-      'Unnamed-person label for someone whose donated sperm contributed to conception. Donation is distinct from having a social parental role; used in both framings.',
-  },
-  eggProviderQuestion: {
-    id: 'interview.familyPedigree.eggProviderQuestion',
-    defaultMessage: 'Who provided the egg?',
-    description:
-      'Question selecting the person who contributed the egg to a child. Used only in the gamete framing, without inferring their gender.',
-  },
-  eggProviderHint: {
-    id: 'interview.familyPedigree.eggProviderHint',
-    defaultMessage:
-      'Select the person who provided the egg. If they were an egg donor, you can indicate that below.',
-    description:
-      'Help for selecting an egg contributor from existing people or creating a person. A separate question below records whether this contribution was a donation.',
-  },
-  spermProviderQuestion: {
-    id: 'interview.familyPedigree.spermProviderQuestion',
-    defaultMessage: 'Who provided the sperm?',
-    description:
-      'Question selecting the person who contributed the sperm to a child. Used only in the gamete framing, without inferring their gender.',
-  },
-  spermProviderHint: {
-    id: 'interview.familyPedigree.spermProviderHint',
-    defaultMessage:
-      'Select the person who provided the sperm. If they were a sperm donor, you can indicate that below.',
-    description:
-      'Help for selecting a sperm contributor from existing people or creating a person. A separate question below records whether this contribution was a donation.',
-  },
-  eggDonorQuestion: {
-    id: 'interview.familyPedigree.eggDonorQuestion',
-    defaultMessage: 'Was this person an egg donor?',
-    description:
-      'Yes/no question recording whether the selected egg contributor was a donor. The same wording is used in both pedigree framings.',
-  },
-  spermDonorQuestion: {
-    id: 'interview.familyPedigree.spermDonorQuestion',
-    defaultMessage: 'Was this person a sperm donor?',
-    description:
-      'Yes/no question recording whether the selected sperm contributor was a donor. The same wording is used in both pedigree framings.',
-  },
-  yourEggParent: {
-    id: 'interview.familyPedigree.yourEggParent',
-    defaultMessage: 'your egg parent',
-    description:
-      "Complete fallback person reference used in questions about the participant's parents when the egg contributor has no entered name. Includes the possessive; do not assume gender.",
-  },
-  yourSpermParent: {
-    id: 'interview.familyPedigree.yourSpermParent',
-    defaultMessage: 'your sperm parent',
-    description:
-      "Complete fallback person reference used in questions about the participant's parents when the sperm contributor has no entered name. Includes the possessive; do not assume gender.",
-  },
-  newEggParent: {
-    id: 'interview.familyPedigree.newEggParent',
-    defaultMessage: 'New egg parent',
-    description:
-      'Fallback name in a partnership question for a newly added, unnamed egg contributor. New means added in the current wizard, not a newborn or new biological relationship.',
-  },
-  newSpermParent: {
-    id: 'interview.familyPedigree.newSpermParent',
-    defaultMessage: 'New sperm parent',
-    description:
-      'Fallback name in a partnership question for a newly added, unnamed sperm contributor. New means added in the current wizard, not a newborn or new biological relationship.',
-  },
-  unknownEggParent: {
-    id: 'interview.familyPedigree.unknownEggParent',
-    defaultMessage: 'Unknown egg parent',
-    description:
-      "Fallback reference to an unidentified egg contributor in a partnership question. It is the person's identity, not their reproductive role, that is unknown.",
-  },
-  unknownSpermParent: {
-    id: 'interview.familyPedigree.unknownSpermParent',
-    defaultMessage: 'Unknown sperm parent',
-    description:
-      "Fallback reference to an unidentified sperm contributor in a partnership question. It is the person's identity, not their reproductive role, that is unknown.",
-  },
-  mother: {
-    id: 'interview.familyPedigree.mother',
-    defaultMessage: 'Mother',
-    description:
-      'Heading and unnamed-person label in the mother/father framing. Refers specifically to a biological parent, not a gestational carrier or a social/adoptive parent.',
-  },
-  father: {
-    id: 'interview.familyPedigree.father',
-    defaultMessage: 'Father',
-    description:
-      'Heading and unnamed-person label in the mother/father framing. Refers specifically to a biological parent, not a gestational carrier or a social/adoptive parent.',
-  },
-  motherQuestion: {
-    id: 'interview.familyPedigree.motherQuestion',
-    defaultMessage: 'Who is the biological mother?',
-    description:
-      "Person-selection question in the mother/father framing. Identifies the child's biological parent; the selected person may have been a gamete donor.",
-  },
-  motherHint: {
-    id: 'interview.familyPedigree.motherHint',
-    defaultMessage:
-      'Select the biological mother. If she was an egg donor, you can indicate that below.',
-    description:
-      'Help accompanying the biological-parent selection in mother/father framing. The separate donor question below records whether that parent contributed a donated gamete.',
-  },
-  fatherQuestion: {
-    id: 'interview.familyPedigree.fatherQuestion',
-    defaultMessage: 'Who is the biological father?',
-    description:
-      "Person-selection question in the mother/father framing. Identifies the child's biological parent; the selected person may have been a gamete donor.",
-  },
-  fatherHint: {
-    id: 'interview.familyPedigree.fatherHint',
-    defaultMessage:
-      'Select the biological father. If he was a sperm donor, you can indicate that below.',
-    description:
-      'Help accompanying the biological-parent selection in mother/father framing. The separate donor question below records whether that parent contributed a donated gamete.',
-  },
-  yourMother: {
-    id: 'interview.familyPedigree.yourMother',
-    defaultMessage: 'your mother',
-    description:
-      'Complete possessive reference to an unnamed biological parent of the participant, used inside partnership questions in mother/father framing.',
-  },
-  yourFather: {
-    id: 'interview.familyPedigree.yourFather',
-    defaultMessage: 'your father',
-    description:
-      'Complete possessive reference to an unnamed biological parent of the participant, used inside partnership questions in mother/father framing.',
-  },
-  newMother: {
-    id: 'interview.familyPedigree.newMother',
-    defaultMessage: 'New mother',
-    description:
-      'Fallback reference to a newly entered, unnamed biological parent in a partnership question. New means added in this wizard; used in mother/father framing.',
-  },
-  newFather: {
-    id: 'interview.familyPedigree.newFather',
-    defaultMessage: 'New father',
-    description:
-      'Fallback reference to a newly entered, unnamed biological parent in a partnership question. New means added in this wizard; used in mother/father framing.',
-  },
-  unknownMother: {
-    id: 'interview.familyPedigree.unknownMother',
-    defaultMessage: 'Unknown mother',
-    description:
-      'Fallback reference to a biological parent whose identity is unknown. Used in partnership questions under mother/father framing.',
-  },
-  unknownFather: {
-    id: 'interview.familyPedigree.unknownFather',
-    defaultMessage: 'Unknown father',
-    description:
-      'Fallback reference to a biological parent whose identity is unknown. Used in partnership questions under mother/father framing.',
-  },
-  sexSelf: {
-    id: 'interview.familyPedigree.sexSelf',
-    defaultMessage: 'What sex were you recorded as at birth?',
-    description:
-      "Required question about the participant's own sex recorded at birth, used for inheritance modelling. This asks about the birth record, not current gender identity.",
-  },
-  sexOther: {
-    id: 'interview.familyPedigree.sexOther',
-    defaultMessage: 'What sex was this person recorded as at birth?',
-    description:
-      "Required question about a relative's sex recorded at birth, used for inheritance modelling. This asks about the birth record, not current gender identity.",
-  },
-  sexHint: {
-    id: 'interview.familyPedigree.sexHint',
-    defaultMessage:
-      'If you’re not sure, choose “Don’t know” — please don’t guess.',
-    description:
-      'Help under the birth-recorded-sex question. Use the same translation of the unknown option as sexUnknown and explicitly discourage guessing.',
-  },
-  sexLeadIn: {
-    id: 'interview.familyPedigree.sexLeadIn',
-    defaultMessage:
-      'To understand how conditions can be passed down a family, we need the sex each person was recorded as at birth — not how they describe their gender.',
-    description:
-      "One-time explanation before the participant's birth-recorded-sex question, distinguishing the inheritance information being collected from gender identity.",
-  },
-  sexFemale: {
-    id: 'interview.familyPedigree.sexFemale',
-    defaultMessage: 'Female',
-    description:
-      'Option for sex recorded at birth. Translate only the label; the corresponding schema value remains a stable English identifier.',
-  },
-  sexMale: {
-    id: 'interview.familyPedigree.sexMale',
-    defaultMessage: 'Male',
-    description:
-      'Option for sex recorded at birth. Translate only the label; the corresponding schema value remains a stable English identifier.',
-  },
-  sexIntersex: {
-    id: 'interview.familyPedigree.sexIntersex',
-    defaultMessage: 'Intersex or a variation in sex characteristics',
-    description:
-      'Birth-recorded-sex option covering intersex and variations in sex characteristics. Preserve both parts rather than shortening it to one category.',
-  },
-  sexUnknown: {
-    id: 'interview.familyPedigree.sexUnknown',
-    defaultMessage: 'Don’t know',
-    description:
-      'Birth-recorded-sex answer when the participant does not know. It is distinct from choosing not to disclose, and must match the option quoted in sexHint.',
-  },
-  familyMember: {
-    id: 'interview.familyPedigree.familyMember',
-    defaultMessage: 'Family Member',
-    description:
-      'Generic display label when no entered name or relationship path is available for a person in the family tree. Does not alter stored research attributes.',
-  },
-  unknownPerson: {
-    id: 'interview.familyPedigree.unknownPerson',
-    defaultMessage: 'Unknown person',
-    description:
-      'Fallback label in a person-selection list when neither a name nor a relationship label can be resolved.',
+      'Accessible name for the area showing the family members the participant has added, drawn as a family tree.',
   },
   you: {
     id: 'interview.familyPedigree.you',
     defaultMessage: 'You',
     description:
-      "Display and accessible label for the participant's own position in the family tree and person-selection lists. This label is never written as their name.",
+      'Label shown inside the participant’s own symbol in their family tree.',
   },
-  parent: {
-    id: 'interview.familyPedigree.parent',
-    defaultMessage: 'Parent',
+  relativeTerm: {
+    id: 'interview.familyPedigree.relativeTerm',
+    defaultMessage:
+      "{term, select, mother {Mother} father {Father} parent {Parent} eggParent {Egg parent} spermParent {Sperm parent} biologicalMother {Bio\u00ADlogical mother} biologicalFather {Bio\u00ADlogical father} adoptiveMother {Adoptive mother} adoptiveFather {Adoptive father} adoptiveParent {Adoptive parent} stepmother {Step\u00ADmother} stepfather {Step\u00ADfather} stepparent {Step-parent} eggDonor {Egg donor} spermDonor {Sperm donor} donor {Donor} surrogate {Surro\u00ADgate} daughter {Daughter} son {Son} child {Child} stepdaughter {Step\u00ADdaughter} stepson {Stepson} stepchild {Stepchild} donorConceivedChild {Donor-conceived child} surrogacyChild {Surro\u00ADgacy child} sister {Sister} brother {Brother} sibling {Sibling} halfSister {Half-sister} halfBrother {Half-brother} halfSibling {Half-sibling} stepsister {Step\u00ADsister} stepbrother {Step\u00ADbrother} stepsibling {Step-sibling} partner {Partner} formerPartner {Former partner} grandmother {Grand\u00ADmother} grandfather {Grand\u00ADfather} grandparent {Grand\u00ADparent} maternalGrandmother {Maternal grand\u00ADmother} maternalGrandfather {Maternal grand\u00ADfather} maternalGrandparent {Maternal grand\u00ADparent} paternalGrandmother {Paternal grand\u00ADmother} paternalGrandfather {Paternal grand\u00ADfather} paternalGrandparent {Paternal grand\u00ADparent} greatGrandmother {Great-grand\u00ADmother} greatGrandfather {Great-grand\u00ADfather} greatGrandparent {Great-grand\u00ADparent} granddaughter {Grand\u00ADdaughter} grandson {Grandson} grandchild {Grand\u00ADchild} greatGranddaughter {Great-grand\u00ADdaughter} greatGrandson {Great-grandson} greatGrandchild {Great-grand\u00ADchild} aunt {Aunt} uncle {Uncle} maternalAunt {Maternal aunt} maternalUncle {Maternal uncle} paternalAunt {Paternal aunt} paternalUncle {Paternal uncle} parentsSibling {Parent's sibling} greatAunt {Great-aunt} greatUncle {Great-uncle} grandparentsSibling {Grand\u00ADparent's sibling} niece {Niece} nephew {Nephew} siblingsChild {Sibling's child} cousin {Cousin} motherInLaw {Mother-in-law} fatherInLaw {Father-in-law} parentInLaw {Parent-in-law} sisterInLaw {Sister-in-law} brotherInLaw {Brother-in-law} siblingInLaw {Sibling-in-law} daughterInLaw {Daugh\u00ADter-in-law} sonInLaw {Son-in-law} childInLaw {Child-in-law} other {Relative}}",
     description:
-      'Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged.',
+      'Label for a family member whose name is not known: their kinship to the participant (for example, the participant’s maternal grandmother). Depending on the study, either gendered words (mother, aunt) or words that do not assume gender (egg parent, parent’s sibling) are used. Also saved as the name of a family member the participant did not name, when they leave this part of the interview, so they can be recognised later. Labels sit inside a small symbol, so each long word carries a soft hyphen (U+00AD, invisible unless the word breaks there) at a syllable break, as between “Grand” and “mother” in Grandmother, or “Step” and “daughter” in Stepdaughter: the word breaks there, with a hyphen, only when it does not fit on one line, and otherwise reads whole. Place your own soft hyphens at sensible syllable breaks in any word longer than about nine letters in your language, rather than copying these positions; a word without one may break between any two letters. Soft hyphens are removed from the label saved as a name.',
   },
-  socialParent: {
-    id: 'interview.familyPedigree.socialParent',
-    defaultMessage: 'Social Parent',
+  relativeOf: {
+    id: 'interview.familyPedigree.relativeOf',
+    defaultMessage:
+      "{owner}'s {term, select, mother {mother} father {father} parent {parent} eggParent {egg parent} spermParent {sperm parent} biologicalMother {bio\u00ADlogical mother} biologicalFather {bio\u00ADlogical father} adoptiveMother {adoptive mother} adoptiveFather {adoptive father} adoptiveParent {adoptive parent} stepmother {step\u00ADmother} stepfather {step\u00ADfather} stepparent {step-parent} eggDonor {egg donor} spermDonor {sperm donor} donor {donor} surrogate {surro\u00ADgate} daughter {daughter} son {son} child {child} stepdaughter {step\u00ADdaughter} stepson {stepson} stepchild {stepchild} donorConceivedChild {donor-conceived child} surrogacyChild {surro\u00ADgacy child} sister {sister} brother {brother} sibling {sibling} halfSister {half-sister} halfBrother {half-brother} halfSibling {half-sibling} stepsister {step\u00ADsister} stepbrother {step\u00ADbrother} stepsibling {step-sibling} partner {partner} formerPartner {former partner} other {relative}}",
     description:
-      'Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged.',
-  },
-  donor: {
-    id: 'interview.familyPedigree.donor',
-    defaultMessage: 'Donor',
-    description:
-      'Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged.',
-  },
-  surrogate: {
-    id: 'interview.familyPedigree.surrogate',
-    defaultMessage: 'Surrogate',
-    description:
-      'Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged.',
-  },
-  child: {
-    id: 'interview.familyPedigree.child',
-    defaultMessage: 'Child',
-    description:
-      'Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged.',
-  },
-  partner: {
-    id: 'interview.familyPedigree.partner',
-    defaultMessage: 'Partner',
-    description:
-      'Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged.',
-  },
-  sibling: {
-    id: 'interview.familyPedigree.sibling',
-    defaultMessage: 'Sibling',
-    description:
-      'Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged.',
-  },
-  stepParent: {
-    id: 'interview.familyPedigree.stepParent',
-    defaultMessage: 'Step-Parent',
-    description:
-      'Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged.',
-  },
-  stepChild: {
-    id: 'interview.familyPedigree.stepChild',
-    defaultMessage: 'Step-Child',
-    description:
-      'Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged.',
-  },
-  grandparent: {
-    id: 'interview.familyPedigree.grandparent',
-    defaultMessage: 'Grandparent',
-    description:
-      'Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged.',
-  },
-  grandparentPartner: {
-    id: 'interview.familyPedigree.grandparentPartner',
-    defaultMessage: "Grandparent's Partner",
-    description:
-      'Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged.',
-  },
-  grandchild: {
-    id: 'interview.familyPedigree.grandchild',
-    defaultMessage: 'Grandchild',
-    description:
-      'Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged.',
-  },
-  auntUncle: {
-    id: 'interview.familyPedigree.auntUncle',
-    defaultMessage: 'Aunt/Uncle',
-    description:
-      'Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged.',
-  },
-  cousin: {
-    id: 'interview.familyPedigree.cousin',
-    defaultMessage: 'Cousin',
-    description:
-      'Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged.',
-  },
-  nieceNephew: {
-    id: 'interview.familyPedigree.nieceNephew',
-    defaultMessage: 'Niece/Nephew',
-    description:
-      'Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged.',
-  },
-  siblingPartner: {
-    id: 'interview.familyPedigree.siblingPartner',
-    defaultMessage: "Sibling's Partner",
-    description:
-      'Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged.',
-  },
-  childPartner: {
-    id: 'interview.familyPedigree.childPartner',
-    defaultMessage: "Child's Partner",
-    description:
-      'Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged.',
-  },
-  greatGrandparent: {
-    id: 'interview.familyPedigree.greatGrandparent',
-    defaultMessage: 'Great-Grandparent',
-    description:
-      'Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged.',
-  },
-  greatGrandchild: {
-    id: 'interview.familyPedigree.greatGrandchild',
-    defaultMessage: 'Great-Grandchild',
-    description:
-      'Display-only kinship label for an unnamed person, relative to the participant. Do not infer a sex that the English label leaves unspecified. Canonical relationship values written to research data are separate and remain unchanged.',
-  },
-  namedParent: {
-    id: 'interview.familyPedigree.namedParent',
-    defaultMessage: "{name}'s Parent",
-    description:
-      "Whole display label for an unnamed parent reached through a named relative. name is that relative's entered name; translate the possessive grammar without changing the name.",
-  },
-  namedChild: {
-    id: 'interview.familyPedigree.namedChild',
-    defaultMessage: "{name}'s Child",
-    description:
-      "Whole display label for an unnamed child reached through a named relative. name is that relative's entered name; the child's sex is unspecified.",
-  },
-  namedPartner: {
-    id: 'interview.familyPedigree.namedPartner',
-    defaultMessage: "{name}'s Partner",
-    description:
-      "Whole display label for an unnamed partner of a named relative. name is that relative's entered name, which remains verbatim.",
-  },
-  namedRelative: {
-    id: 'interview.familyPedigree.namedRelative',
-    defaultMessage: "{name}'s Relative",
-    description:
-      'Whole generic label for an unnamed relative reached through a named person. name is the entered intermediary name, which remains verbatim.',
+      'Label for a family member whose name is not known and who has no everyday kinship word, described through a relative of theirs: owner is that relative’s label (for example “Cousin”), and term is how this person is related to them. Translate the possessive grammar as a whole; owner stays verbatim. Also saved as the name of a family member the participant did not name. As in the kinship words label, each long word carries a soft hyphen (U+00AD) at a syllable break where it may break inside the small symbol; place your own at sensible syllable breaks in long words in your language. Soft hyphens are removed from the label saved as a name.',
   },
   numberedRelative: {
     id: 'interview.familyPedigree.numberedRelative',
-    defaultMessage: '{role} #{number, number}',
+    defaultMessage: '{label} {number, number}',
     description:
-      'Disambiguates several unnamed people with the same relationship label. role is an already localized kinship label; number is a stable one-based position, not a count of relatives.',
+      'Tells apart several family members who would otherwise share a label (for example two unnamed children). label is the already translated label; number is their position in the order they were added. Shown in the family tree, and saved as the name of an unnamed family member when nothing else tells them apart.',
   },
-  grandparentsRequired: {
-    id: 'interview.familyPedigree.grandparentsRequired',
-    defaultMessage: 'Each of your parents needs at least two parents recorded.',
-    description:
-      'Completeness warning when a biological parent of the participant has fewer than two genetic parents recorded. May be a required block or recommended checklist nudge.',
-  },
-  contributorsRequired: {
-    id: 'interview.familyPedigree.contributorsRequired',
+  generatedLabelPartnerOf: {
+    id: 'interview.familyPedigree.generatedLabelPartnerOf',
     defaultMessage:
-      "Each of your children's other parents needs their own parents and grandparents recorded.",
+      '{isYou, select, true {{term} (your partner)} other {{term} (partner of {name})}}',
     description:
-      "Completeness warning requiring the other genetic parents of the participant's children to have their own parents and grandparents recorded. Preserve both generations.",
+      'Label for a family member the participant did not name, when their kinship word alone is shared with someone else. Shown inside their symbol in the family tree, and saved as their name so later parts of the interview show the same label. term is the already translated kinship word, such as “Sister” or “Family member”; name is the name of their partner, or that partner’s own kinship word, such as “Tom” or “Uncle”. The first form is used when their partner is the participant.',
   },
-  missingSelf: {
-    id: 'interview.familyPedigree.missingSelf',
+  generatedLabelParentOf: {
+    id: 'interview.familyPedigree.generatedLabelParentOf',
     defaultMessage:
-      'Your own place in this family tree could not be found. Please ask the person running this interview for help.',
+      '{isYou, select, true {{term} (your parent)} other {{term} (parent of {name})}}',
     description:
-      "Blocking validation error when the participant's own person is missing from the tree. Direct them to the person running the interview; this cannot be repaired by ignoring the checklist.",
+      'Label for a family member the participant did not name, when their kinship word alone is shared with someone else. Shown inside their symbol in the family tree, and saved as their name so later parts of the interview show the same label. term is the already translated kinship word, such as “Grandmother”; name is the name of their child, or that child’s own kinship word, such as “Julie” or “Mother”. The first form is used when their child is the participant.',
   },
-  duplicateSelf: {
-    id: 'interview.familyPedigree.duplicateSelf',
+  generatedLabelChildOf: {
+    id: 'interview.familyPedigree.generatedLabelChildOf',
     defaultMessage:
-      'More than one person in this family tree is marked as you. Please ask the person running this interview for help.',
+      '{isYou, select, true {{term} (your child)} other {{term} (child of {name})}}',
     description:
-      'Blocking validation error when several people are marked as the participant. Direct them to the person running the interview, without exposing stored identifiers.',
+      'Label for a family member the participant did not name, when their kinship word alone is shared with someone else. Shown inside their symbol in the family tree, and saved as their name so later parts of the interview show the same label. term is the already translated kinship word, such as “Half-sister”; name is the name of their parent, or that parent’s own kinship word, such as “Ana” or “Stepmother”. The first form is used when their parent is the participant.',
   },
-  parentsRequired: {
-    id: 'interview.familyPedigree.parentsRequired',
-    defaultMessage: 'You must have at least two parents defined.',
-    description:
-      'Minimum completeness requirement before finalizing: the participant must have at least two parent relationships recorded. This does not require exactly two.',
-  },
-  addOneParent: {
-    id: 'interview.familyPedigree.addOneParent',
-    defaultMessage: 'Add 1 more parent for {name}',
-    description:
-      'Optional checklist nudge when exactly one more parent is needed for a named person. name is participant-entered text and remains unchanged.',
-  },
-  addParentsFor: {
-    id: 'interview.familyPedigree.addParentsFor',
-    defaultMessage: 'Add parents for {name}',
-    description:
-      'Optional checklist item asking for the parents of a named person. name is participant-entered text; this wording also remains visible when the item is checked.',
-  },
-  whatName: {
-    id: 'interview.familyPedigree.whatName',
-    defaultMessage: 'What is their name?',
-    description:
-      'Caption for the built-in person-name field. The entered name is research data and is never translated; unknown names may be left blank unless the protocol requires them.',
-  },
-  unknownNameHint: {
-    id: 'interview.familyPedigree.unknownNameHint',
-    defaultMessage: 'Leave blank if the name is not known',
-    description:
-      'Hint for an optional person-name field. Protocol-required names suppress this hint, so it must not imply that all fields can be skipped.',
-  },
-  name: {
-    id: 'interview.familyPedigree.name',
-    defaultMessage: 'Name',
-    description:
-      'Caption for the built-in person-name field. The entered name is research data and is never translated; unknown names may be left blank unless the protocol requires them.',
-  },
-  enterName: {
-    id: 'interview.familyPedigree.enterName',
-    defaultMessage: 'Enter name',
-    description:
-      "Placeholder for entering a relative's name in the pedigree wizard or editor. It is not an example name and is never stored as a response.",
-  },
-  pendingUniqueHint: {
-    id: 'interview.familyPedigree.pendingUniqueHint',
-    defaultMessage: 'Must also be unique within this family setup.',
-    description:
-      'Additional validation hint when the protocol requires a unique name: uniqueness also includes people still being entered in the unfinished pedigree wizard.',
-  },
-  pendingUniqueError: {
-    id: 'interview.familyPedigree.pendingUniqueError',
-    defaultMessage: 'This value is used elsewhere. It must be unique.',
-    description:
-      'Field-owned error when a value duplicates another entry in the pending family wizard. Do not include the duplicated value in the message.',
-  },
-  framingMotherFather: {
-    id: 'interview.familyPedigree.framingMotherFather',
-    defaultMessage: 'Mother & father',
-    description:
-      'Label for choosing mother/father terminology for biological parents. This changes displayed wording, not how reproductive roles are stored.',
-  },
-  framingMotherFatherDescription: {
-    id: 'interview.familyPedigree.framingMotherFatherDescription',
+  generatedLabelSiblingOf: {
+    id: 'interview.familyPedigree.generatedLabelSiblingOf',
     defaultMessage:
-      "We'll talk about your biological mother and biological father.",
+      '{isYou, select, true {{term} (your sibling)} other {{term} (sibling of {name})}}',
     description:
-      'Description of the mother/father terminology option. Make clear that the biological parents, rather than adoptive or other social parents, use these terms.',
+      'Label for a family member the participant did not name, when their kinship word alone is shared with someone else. Shown inside their symbol in the family tree, and saved as their name so later parts of the interview show the same label. term is the already translated kinship word, such as “Cousin”; name is the name of their brother or sister, or that sibling’s own kinship word, such as “Sam” or “Niece”. The first form is used when their sibling is the participant.',
   },
-  framingGamete: {
-    id: 'interview.familyPedigree.framingGamete',
-    defaultMessage: 'Egg parent & sperm parent',
+  familyMember: {
+    id: 'interview.familyPedigree.familyMember',
+    defaultMessage: 'Family member',
     description:
-      'Label for choosing terminology based on contribution of the egg and sperm. Both roles must remain explicit and distinct from gestation.',
+      'Label for a family member whose name is not known and who is not connected to the participant in the family tree. Also saved as their name when they leave this part of the interview, so they can be recognised later.',
   },
-  framingGameteDescription: {
-    id: 'interview.familyPedigree.framingGameteDescription',
+  personAccessibleName: {
+    id: 'interview.familyPedigree.personAccessibleName',
     defaultMessage:
-      "We'll talk about the person whose egg you came from and the person whose sperm you came from.",
+      '{isYou, select, true {You} other {{name}}}{missing, select, true {, some details missing} other {}}',
     description:
-      'Description of the gamete terminology option. Identifies the two people by their contributions to conception, without assigning gender.',
+      'Accessible name of a family member’s symbol in the family tree. {name} is the person’s name or, when it is not known, how they are related to the participant. The second part is read out when required details about the person have not been given yet.',
   },
-  framingQuestion: {
-    id: 'interview.familyPedigree.framingQuestion',
+  missingDetails: {
+    id: 'interview.familyPedigree.missingDetails',
+    defaultMessage: 'Some details are missing',
+    description:
+      'Tooltip on the warning icon next to a family member whose required details have not been given yet.',
+  },
+  missingDetailsList: {
+    id: 'interview.familyPedigree.missingDetailsList',
+    defaultMessage: 'Some details are missing: {details}.',
+    description:
+      'Notice at the top of the panel showing a family member’s details. {details} is a list of the questions not yet answered, e.g. “Name and Gender identity”.',
+  },
+  actionsLabel: {
+    id: 'interview.familyPedigree.actionsLabel',
     defaultMessage:
-      "How would you like us to refer to the people you're biologically related to?",
+      '{isYou, select, true {Add your relatives} other {Add relatives of {name}}}',
     description:
-      "Accessible prompt for the participant's choice between mother/father and egg/sperm terminology. It asks for a language preference, not new biological information.",
-  },
-  eggIntro: {
-    id: 'interview.familyPedigree.eggIntro',
-    defaultMessage:
-      'Please answer the following questions about your egg parent. This is the person who contributed the egg that you were conceived with, which may be different from the person who carried you during pregnancy.',
-    description:
-      "Introduction to questions about the participant's egg contributor in gamete framing. Preserve the distinction from the person who carried the pregnancy.",
-  },
-  motherIntro: {
-    id: 'interview.familyPedigree.motherIntro',
-    defaultMessage:
-      'Please answer the following questions about your mother. This is your biological mother, who may be different from the person who carried you during pregnancy.',
-    description:
-      "Introduction to questions about the participant's biological mother in mother/father framing. Preserve that she may be different from the person who carried the pregnancy.",
-  },
-  spermIntro: {
-    id: 'interview.familyPedigree.spermIntro',
-    defaultMessage:
-      'Please answer the following questions about your sperm parent. This is the person who contributed the sperm that you were conceived with.',
-    description:
-      "Introduction to questions about the participant's sperm contributor in gamete framing. Refers to conception and does not assume parental gender.",
-  },
-  fatherIntro: {
-    id: 'interview.familyPedigree.fatherIntro',
-    defaultMessage:
-      'Please answer the following questions about your father. This is your biological father.',
-    description:
-      "Introduction to questions about the participant's biological father in mother/father framing, distinct from a social or adoptive father.",
-  },
-  carrierGameteIntro: {
-    id: 'interview.familyPedigree.carrierGameteIntro',
-    defaultMessage:
-      'Please answer the following questions about your gestational carrier. This is the person who carried you during pregnancy but did not contribute the egg, including gestational surrogates.',
-    description:
-      "Introduction to questions about the person who carried the participant's pregnancy but did not contribute the egg. Uses gamete framing and explicitly includes gestational surrogacy.",
-  },
-  carrierGenderedIntro: {
-    id: 'interview.familyPedigree.carrierGenderedIntro',
-    defaultMessage:
-      'Please answer the following questions about your gestational carrier. This is the person who carried you during pregnancy but is not your biological mother, including gestational surrogates.',
-    description:
-      "Introduction to questions about the person who carried the participant's pregnancy but is not their biological mother. Uses mother/father framing and includes gestational surrogacy.",
-  },
-  parentCarriedYou: {
-    id: 'interview.familyPedigree.parentCarriedYou',
-    defaultMessage: 'Did this parent carry you during pregnancy?',
-    description:
-      'Yes/no question asking whether the selected biological parent also carried the pregnancy that produced the participant. A no answer opens separate gestational-carrier questions.',
-  },
-  anyAdditionalParents: {
-    id: 'interview.familyPedigree.anyAdditionalParents',
-    defaultMessage: 'Do you have any additional parents?',
-    description:
-      "Initial wizard question about the participant's additional non-biological parents. The count controls how many subsequent person forms are shown.",
-  },
-  additionalParentsHint: {
-    id: 'interview.familyPedigree.additionalParentsHint',
-    defaultMessage:
-      'This includes adoptive parents, stepparents, or any other parents who are not your biological parents.',
-    description:
-      "Explains the additional-parents part of the participant's family setup, including adoptive parents, stepparents and other parental figures, separately from genetic contributors.",
-  },
-  additionalParentsCount: {
-    id: 'interview.familyPedigree.additionalParentsCount',
-    defaultMessage: 'How many additional parents do you have?',
-    description:
-      "Initial wizard question about the participant's additional non-biological parents. The count controls how many subsequent person forms are shown.",
-  },
-  stepParentRole: {
-    id: 'interview.familyPedigree.stepParentRole',
-    defaultMessage: 'Step-parent',
-    description:
-      "Option describing a non-biological parent's social role in the family. Translate only the display label; the role identifier is stored unchanged.",
-  },
-  adoptiveParentRole: {
-    id: 'interview.familyPedigree.adoptiveParentRole',
-    defaultMessage: 'Adoptive parent',
-    description:
-      "Option describing a non-biological parent's social role in the family. Translate only the display label; the role identifier is stored unchanged.",
-  },
-  raisedMeRole: {
-    id: 'interview.familyPedigree.raisedMeRole',
-    defaultMessage: 'Parent who raised me',
-    description:
-      'Social-parent role option for someone who raised the participant, distinct from the explicitly adoptive and stepparent options.',
-  },
-  additionalParentNumber: {
-    id: 'interview.familyPedigree.additionalParentNumber',
-    defaultMessage: 'Additional Parent {number, number}',
-    description:
-      "Repeated form heading for an additional non-biological parent. number is the one-based form position, not the person's name or generation.",
-  },
-  parentRole: {
-    id: 'interview.familyPedigree.parentRole',
-    defaultMessage: 'What role did this parent have?',
-    description:
-      'Question selecting the social role of an additional parent, such as stepparent, adoptive parent or the person who raised the subject.',
-  },
-  additionalParentsIntro: {
-    id: 'interview.familyPedigree.additionalParentsIntro',
-    defaultMessage:
-      'Please tell us about each of your additional parents. This includes step-parents, adoptive parents, or other people who played a parental role in your life.',
-    description:
-      "Explains the additional-parents part of the participant's family setup, including adoptive parents, stepparents and other parental figures, separately from genetic contributors.",
-  },
-  currentPartnerQuestion: {
-    id: 'interview.familyPedigree.currentPartnerQuestion',
-    defaultMessage: 'Do you have a current partner?',
-    description:
-      "Yes/no question about whether the participant currently has a romantic partner. A yes answer reveals that partner's details and shared children.",
-  },
-  childrenWithPartnerCount: {
-    id: 'interview.familyPedigree.childrenWithPartnerCount',
-    defaultMessage: 'How many children do you have with this partner?',
-    description:
-      'Numeric question counting only children the participant has with the current partner identified above, not all children in the family.',
-  },
-  yourPartner: {
-    id: 'interview.familyPedigree.yourPartner',
-    defaultMessage: 'Your partner',
-    description:
-      "Fallback person reference for the participant's current partner when no name was entered. Used in biological-parent candidate lists for their children.",
-  },
-  childrenIntro: {
-    id: 'interview.familyPedigree.childrenIntro',
-    defaultMessage:
-      'Please tell us about each of your children with your current partner, and confirm who their biological parents are.',
-    description:
-      'Instructions before collecting each child of the participant and current partner, including confirmation of genetic parentage rather than assuming it from the partnership.',
-  },
-  childNumber: {
-    id: 'interview.familyPedigree.childNumber',
-    defaultMessage: 'Child {number, number}',
-    description:
-      "Heading for a repeated child-details form. number is the one-based form position; leave the child's sex unspecified.",
-  },
-  currentPartner: {
-    id: 'interview.familyPedigree.currentPartner',
-    defaultMessage: 'Current partner',
-    description:
-      'Partnership-status option for a named person: currently romantically involved versus a former romantic relationship. These are not co-parenting statuses.',
-  },
-  exPartner: {
-    id: 'interview.familyPedigree.exPartner',
-    defaultMessage: 'Ex-partner',
-    description:
-      'Partnership-status option for a named person: currently romantically involved versus a former romantic relationship. These are not co-parenting statuses.',
-  },
-  notPartnerUnknown: {
-    id: 'interview.familyPedigree.notPartnerUnknown',
-    defaultMessage: "Not a partner or Don't know",
-    description:
-      'Partnership matrix option combining no romantic relationship with unknown relationship status. Preserve both alternatives.',
-  },
-  yourCarrier: {
-    id: 'interview.familyPedigree.yourCarrier',
-    defaultMessage: 'your gestational carrier',
-    description:
-      "Complete fallback reference to the person who carried the participant's pregnancy when their name is unknown. Includes the possessive for use in a whole partnership question.",
-  },
-  yourAdditionalParent: {
-    id: 'interview.familyPedigree.yourAdditionalParent',
-    defaultMessage: 'your additional parent',
-    description:
-      "Complete fallback reference to one of the participant's additional social parents when no name is available. Includes the possessive.",
-  },
-  partnershipIntro: {
-    id: 'interview.familyPedigree.partnershipIntro',
-    defaultMessage:
-      'We now want to ask about partnerships between the parents you named.',
-    description:
-      "Introduction to the matrix asking about romantic relationships among the participant's recorded parents.",
-  },
-  partnershipDefinition: {
-    id: 'interview.familyPedigree.partnershipDefinition',
-    defaultMessage:
-      'Partnership means current and past romantic relationships, but <strong>not co-parenting</strong> (where two people raised a child together but were never romantically involved).',
-    description:
-      'Explains that partnership includes current and past romantic relationships but excludes raising a child together without romance. strong emphasizes this exclusion; keep the whole explanation together.',
-  },
-  partnersOf: {
-    id: 'interview.familyPedigree.partnersOf',
-    defaultMessage:
-      'Please indicate which of these people are partners of <strong>{name}</strong>.',
-    description:
-      'Matrix question about romantic partners of one recorded parent. name is an entered name or localized role fallback; strong emphasis surrounds it and must be preserved. strong emphasizes the literal person name; render it as rich text without interpreting markup in the name.',
-  },
-  deceasedPartnerHint: {
-    id: 'interview.familyPedigree.deceasedPartnerHint',
-    defaultMessage:
-      'If either person is deceased, please answer based on whether they were partners while both were alive.',
-    description:
-      'Help for partnership questions when one or both people have died: answer about their relationship while both were alive.',
-  },
-  biologicalParent: {
-    id: 'interview.familyPedigree.biologicalParent',
-    defaultMessage: 'Biological Parent',
-    description:
-      'Parent-type choice for a genetic contributor to the person being added. Keep distinct from social parenthood and gestation without a genetic contribution.',
-  },
-  biologicalParentDescription: {
-    id: 'interview.familyPedigree.biologicalParentDescription',
-    defaultMessage: 'A parent who is genetically related to this person',
-    description:
-      'Parent-type choice for a genetic contributor to the person being added. Keep distinct from social parenthood and gestation without a genetic contribution.',
-  },
-  socialParentDescription: {
-    id: 'interview.familyPedigree.socialParentDescription',
-    defaultMessage: 'An adoptive, step, or foster parent',
-    description:
-      'Description of the non-genetic social-parent choice, including adoption, step-parenthood and foster care.',
-  },
-  donorDescription: {
-    id: 'interview.familyPedigree.donorDescription',
-    defaultMessage:
-      "Someone who donated sperm or an egg for this person's conception",
-    description:
-      "Description of the donor parent-type choice: a donated gamete contributed to this person's conception. It does not imply a social parental relationship.",
-  },
-  surrogateDescription: {
-    id: 'interview.familyPedigree.surrogateDescription',
-    defaultMessage: 'Someone who carried this person during pregnancy',
-    description:
-      'Description of the gestational parent-type choice: the person who carried the pregnancy. Do not imply that they also contributed a gamete.',
-  },
-  current: {
-    id: 'interview.familyPedigree.current',
-    defaultMessage: 'Current',
-    description:
-      'Short radio option for whether a romantic relationship is current or former. The question above supplies the person and relationship context.',
-  },
-  ex: {
-    id: 'interview.familyPedigree.ex',
-    defaultMessage: 'Ex',
-    description:
-      'Short radio option for whether a romantic relationship is current or former. The question above supplies the person and relationship context.',
-  },
-  alreadyInTree: {
-    id: 'interview.familyPedigree.alreadyInTree',
-    defaultMessage: 'Yes — already in the family tree',
-    description:
-      'Partner-addition option reusing a person already recorded in the family tree. It must not imply that a duplicate person will be created.',
-  },
-  addNewPersonOption: {
-    id: 'interview.familyPedigree.addNewPersonOption',
-    defaultMessage: 'No — add a new person',
-    description:
-      'Partner-addition option creating a new person because they are not already in the tree. Preserve the negative answer and the resulting action.',
-  },
-  personAlreadyRelated: {
-    id: 'interview.familyPedigree.personAlreadyRelated',
-    defaultMessage:
-      'Is this person already in your family tree / related to you?',
-    description:
-      'Question deciding whether a partner should reuse an existing relative/person in the tree. Allows relationships between people already in the recorded family.',
-  },
-  selectPerson: {
-    id: 'interview.familyPedigree.selectPerson',
-    defaultMessage: 'Select the person',
-    description:
-      'Caption for the list of existing people that can be reused when adding a partner or parent. Names are entered research data.',
-  },
-  currentOrExPartner: {
-    id: 'interview.familyPedigree.currentOrExPartner',
-    defaultMessage: 'Are they a current or ex partner?',
-    description:
-      'Question classifying the selected partner relationship as current or former. It appears for both newly entered and reused people.',
-  },
-  alsoParentOf: {
-    id: 'interview.familyPedigree.alsoParentOf',
-    defaultMessage: 'Is this person also a parent of <strong>{name}</strong>?',
-    description:
-      'Question asking whether the partner being added is also a parent of an existing child. name identifies that child; preserve the strong emphasis and do not translate the name. strong emphasizes the literal person name; render it as rich text without interpreting markup in the name.',
-  },
-  notParent: {
-    id: 'interview.familyPedigree.notParent',
-    defaultMessage: 'Not a parent',
-    description:
-      'Parent-type option indicating that the newly added partner is not a parent of the particular existing child named in the question.',
-  },
-  notParentDescription: {
-    id: 'interview.familyPedigree.notParentDescription',
-    defaultMessage: 'Select this if not a parent of this child',
-    description:
-      'Parent-type option indicating that the newly added partner is not a parent of the particular existing child named in the question.',
-  },
-  addParentSiblings: {
-    id: 'interview.familyPedigree.addParentSiblings',
-    defaultMessage: "Add parent's siblings",
-    description:
-      "Optional checklist task to add siblings of the participant's parents: the participant's aunts and uncles, not their own siblings.",
-  },
-  addSiblings: {
-    id: 'interview.familyPedigree.addSiblings',
-    defaultMessage: 'Add siblings',
-    description:
-      "Optional checklist task to add the participant's siblings. Checking it manually also allows the participant to mark it as not applicable.",
-  },
-  addPartners: {
-    id: 'interview.familyPedigree.addPartners',
-    defaultMessage: 'Add partners',
-    description:
-      "Optional checklist task to record the participant's partners, including former relationships where applicable.",
-  },
-  addChildren: {
-    id: 'interview.familyPedigree.addChildren',
-    defaultMessage: 'Add children',
-    description:
-      "Checklist task to record the participant's children, shown once at least one child is already present.",
-  },
-  noChildrenConfirmed: {
-    id: 'interview.familyPedigree.noChildrenConfirmed',
-    defaultMessage: 'No children (confirmed)',
-    description:
-      "Completed checklist state recording the participant's explicit affirmation that they have no children; this is distinct from simply leaving the task unfinished.",
-  },
-  addOrConfirmChildren: {
-    id: 'interview.familyPedigree.addOrConfirmChildren',
-    defaultMessage: 'Add children (or confirm none)',
-    description:
-      'Checklist task that can be satisfied either by recording children or explicitly confirming that there are none.',
-  },
-  recordGrandparents: {
-    id: 'interview.familyPedigree.recordGrandparents',
-    defaultMessage: "Record each parent's two parents",
-    description:
-      "Checklist boundary requirement to record two parents for each of the participant's genetic parents, completing the grandparent generation.",
-  },
-  recordCoParents: {
-    id: 'interview.familyPedigree.recordCoParents',
-    defaultMessage: "Record children's co-parents and their parents",
-    description:
-      "Checklist boundary requirement to record the other genetic parents of the participant's children and those co-parents' parents.",
-  },
-  checklistTitle: {
-    id: 'interview.familyPedigree.checklistTitle',
-    defaultMessage: 'Pedigree Checklist',
-    description:
-      'Heading of the floating checklist that tracks completeness of the family tree while it is being built.',
-  },
-  checklistInstructions: {
-    id: 'interview.familyPedigree.checklistInstructions',
-    defaultMessage:
-      "Complete the following tasks before continuing. If a task doesn't apply you can click it to mark it as done.",
-    description:
-      'Instructions for completing checklist tasks, including marking a non-applicable task as done by selecting it.',
-  },
-  finalizePedigree: {
-    id: 'interview.familyPedigree.finalizePedigree',
-    defaultMessage: 'Finalize family pedigree',
-    description:
-      'Action committing the family tree and ending structural editing. People can still have their details edited, but relatives cannot be added or removed afterward.',
-  },
-  helpName: {
-    id: 'interview.familyPedigree.helpName',
-    defaultMessage: 'How to build your pedigree',
-    description:
-      'Accessible name for opening the explanatory dialog about adding relatives through the pedigree context menu.',
-  },
-  help: {
-    id: 'interview.familyPedigree.help',
-    defaultMessage: 'Help',
-    description:
-      'Short visible action opening family-tree construction guidance from the floating checklist.',
-  },
-  incompleteTitle: {
-    id: 'interview.familyPedigree.incompleteTitle',
-    defaultMessage: 'Pedigree is incomplete',
-    description:
-      'Heading of a blocking dialog shown when the family tree cannot yet be finalized.',
-  },
-  incompleteNoFamily: {
-    id: 'interview.familyPedigree.incompleteNoFamily',
-    defaultMessage:
-      'You have not created your family pedigree yet. Please complete the pedigree wizard to create your pedigree before continuing. Click the button in the bottom right to get started.',
-    description:
-      'Blocking guidance when the initial family wizard has not been completed. Direct the participant to the existing start button in the lower-right corner.',
-  },
-  okay: {
-    id: 'interview.familyPedigree.okay',
-    defaultMessage: 'OK',
-    description:
-      'Acknowledgment action closing the incomplete-tree explanation without advancing to another interview screen.',
-  },
-  incompleteIssues: {
-    id: 'interview.familyPedigree.incompleteIssues',
-    defaultMessage:
-      "It looks like you haven't completed all the required tasks for your family pedigree. The following issues must be resolved before you can continue:",
-    description:
-      'Introduction to a list of required family-tree validation problems. These must be resolved before the participant can continue.',
-  },
-  returnToEditing: {
-    id: 'interview.familyPedigree.returnToEditing',
-    defaultMessage: 'Return to editing',
-    description:
-      'Action dismissing a completeness or finalization dialog and preserving the editable family tree.',
-  },
-  finalizeQuestion: {
-    id: 'interview.familyPedigree.finalizeQuestion',
-    defaultMessage: 'Finalize your family pedigree?',
-    description:
-      'Confirmation title before permanently ending the add/remove phase of this family tree. Finalization is different from finishing the entire interview.',
-  },
-  finalizeDescription: {
-    id: 'interview.familyPedigree.finalizeDescription',
-    defaultMessage:
-      'Once you continue, you will not be able to add or remove family members. You can still edit their details.',
-    description:
-      'Consequence of finalizing the tree: adding and removing people will be disabled, but editing their details remains available. Preserve both parts.',
-  },
-  finalize: {
-    id: 'interview.familyPedigree.finalize',
-    defaultMessage: 'Finalize',
-    description:
-      'Action committing the family tree and ending structural editing. People can still have their details edited, but relatives cannot be added or removed afterward.',
-  },
-  keepEditing: {
-    id: 'interview.familyPedigree.keepEditing',
-    defaultMessage: 'Keep editing',
-    description:
-      'Action dismissing a completeness or finalization dialog and preserving the editable family tree.',
-  },
-  resetQuestion: {
-    id: 'interview.familyPedigree.resetQuestion',
-    defaultMessage: 'Reset family pedigree?',
-    description:
-      'Destructive reset action for an already finalized family tree, returning it to an empty setup state.',
-  },
-  resetDescription: {
-    id: 'interview.familyPedigree.resetDescription',
-    defaultMessage:
-      'This will delete all family members and relationships. This action cannot be undone.',
-    description:
-      'Destructive confirmation explaining that all family members and their relationships will be removed and that this reset cannot be undone.',
-  },
-  reset: {
-    id: 'interview.familyPedigree.reset',
-    defaultMessage: 'Reset',
-    description:
-      'Short confirmation action that executes the family-tree reset described in the dialog.',
-  },
-  copied: {
-    id: 'interview.familyPedigree.copied',
-    defaultMessage: 'Copied to clipboard!',
-    description:
-      'Temporary feedback on the development-only network-data copy button after JSON has reached the clipboard.',
-  },
-  dump: {
-    id: 'interview.familyPedigree.dump',
-    defaultMessage: 'Dump',
-    description:
-      'Development-only button copying the current family graph as JSON for debugging. It is not a participant data-export workflow.',
-  },
-  load: {
-    id: 'interview.familyPedigree.load',
-    defaultMessage: 'Load',
-    description:
-      'Development-only action and browser prompt for loading family-graph JSON from the clipboard. Keep JSON as the technical format name.',
-  },
-  pasteJson: {
-    id: 'interview.familyPedigree.pasteJson',
-    defaultMessage: 'Paste network JSON:',
-    description:
-      'Development-only action and browser prompt for loading family-graph JSON from the clipboard. Keep JSON as the technical format name.',
-  },
-  buildTitle: {
-    id: 'interview.familyPedigree.buildTitle',
-    defaultMessage: 'Build your family pedigree',
-    description:
-      'Welcome heading shown before any relatives have been entered in the family pedigree interface.',
-  },
-  buildDefinition: {
-    id: 'interview.familyPedigree.buildDefinition',
-    defaultMessage:
-      'A family pedigree is a diagram of your relatives and how they are connected to you.',
-    description:
-      'Plain-language explanation of the diagram before the participant starts entering their family. Avoid technical graph terminology.',
-  },
-  buildInstructions: {
-    id: 'interview.familyPedigree.buildInstructions',
-    defaultMessage:
-      'To begin, we will ask a few quick questions and sketch out your immediate family for you. From there, you can click on any person to add more relatives and fill in their details.',
-    description:
-      'Introduction explaining that initial questions draw an immediate family, then selecting people lets the participant add relatives and edit details.',
-  },
-  buildGetStarted: {
-    id: 'interview.familyPedigree.buildGetStarted',
-    defaultMessage: 'Click the button below to get started.',
-    description:
-      'Instruction pointing to the initial family-wizard action below the welcome text.',
-  },
-  finalized: {
-    id: 'interview.familyPedigree.finalized',
-    defaultMessage: 'Your family pedigree has been finalized.',
-    description:
-      'Status shown when revisiting a committed family tree whose structure can no longer be edited without resetting it.',
-  },
-  resetPedigree: {
-    id: 'interview.familyPedigree.resetPedigree',
-    defaultMessage: 'Reset family pedigree',
-    description:
-      'Destructive reset action for an already finalized family tree, returning it to an empty setup state.',
-  },
-  buildComplete: {
-    id: 'interview.familyPedigree.buildComplete',
-    defaultMessage:
-      'All tasks are complete. You can now finalize your family pedigree.',
-    description:
-      'Live screen-reader announcement when all checklist tasks become complete. It says finalization is now available, not that finalization has already happened.',
-  },
-  memberAdded: {
-    id: 'interview.familyPedigree.memberAdded',
-    defaultMessage:
-      'Family member added. Your family pedigree now has {count, plural, one {# member} other {# members}}.',
-    description:
-      'Live screen-reader announcement after a relative is added or removed. count is the remaining number of family members excluding the participant; use locale plural rules.',
-  },
-  memberRemoved: {
-    id: 'interview.familyPedigree.memberRemoved',
-    defaultMessage:
-      'Family member removed. Your family pedigree now has {count, plural, one {# member} other {# members}}.',
-    description:
-      'Live screen-reader announcement after a relative is added or removed. count is the remaining number of family members excluding the participant; use locale plural rules.',
-  },
-  buildHelpTitle: {
-    id: 'interview.familyPedigree.buildHelpTitle',
-    defaultMessage: 'Building the rest of your pedigree',
-    description:
-      'Title of guidance shown after the immediate-family wizard, explaining how to extend the family tree.',
-  },
-  buildHelpLead: {
-    id: 'interview.familyPedigree.buildHelpLead',
-    defaultMessage:
-      'You now need to add family members to build out your pedigree.',
-    description:
-      'Opening explanation that more relatives can be added after the initial immediate family has been created.',
-  },
-  buildHelpMenu: {
-    id: 'interview.familyPedigree.buildHelpMenu',
-    defaultMessage:
-      'Select any person in the diagram to open a menu where you can add parents, children, partners, and siblings. Not all options are available for every person — the menu will show the actions relevant to that family member.',
-    description:
-      "Explains how selecting a person opens actions for adding relatives and that available actions depend on that person's relationships.",
-  },
-  buildHelpChecklist: {
-    id: 'interview.familyPedigree.buildHelpChecklist',
-    defaultMessage:
-      'Please try to be as thorough as possible. Use the checklist to keep track of your progress.',
-    description:
-      'Encourages thorough family recording and points to the checklist as a progress aid, without implying unknown answers should be guessed.',
-  },
-  buildHelpContinue: {
-    id: 'interview.familyPedigree.buildHelpContinue',
-    defaultMessage: 'When you are finished, click the next button to continue.',
-    description:
-      'Final instruction in the construction-help dialog, pointing to the interview navigation control after family entry is complete.',
-  },
-  buildHelpImage: {
-    id: 'interview.familyPedigree.buildHelpImage',
-    defaultMessage:
-      'Example of the context menu showing options to add parent, child, partner, sibling, edit, or delete',
-    description:
-      'Alternative text for an illustration of the person context menu. Name its add-relative, edit and delete functions without relying on text embedded in the image.',
-  },
-  buildHelpCaption: {
-    id: 'interview.familyPedigree.buildHelpCaption',
-    defaultMessage: 'Select a person to see this menu',
-    description:
-      'Caption below the context-menu illustration explaining that the menu appears when a person is selected.',
-  },
-  gotIt: {
-    id: 'interview.familyPedigree.gotIt',
-    defaultMessage: 'Got it',
-    description:
-      'Acknowledgment action dismissing the construction-help dialog so the participant can continue building the tree.',
-  },
-  addChild: {
-    id: 'interview.familyPedigree.addChild',
-    defaultMessage: 'Add child',
-    description:
-      'Person-context-menu action and wizard title for adding this relative of the selected person, who may be someone other than the participant.',
-  },
-  childDetails: {
-    id: 'interview.familyPedigree.childDetails',
-    defaultMessage: 'Child details',
-    description:
-      'Wizard step title collecting details for the new relative. The family relationship is relative to the person whose context menu opened the wizard.',
-  },
-  biologicalParents: {
-    id: 'interview.familyPedigree.biologicalParents',
-    defaultMessage: 'Biological parents',
-    description:
-      'Wizard step title identifying the genetic contributors to the person being added or edited. Gestation and social parents are captured separately.',
-  },
-  otherParents: {
-    id: 'interview.familyPedigree.otherParents',
-    defaultMessage: 'Other parents',
-    description:
-      'Wizard step title for non-biological parental figures, separate from the two genetic contributors.',
-  },
-  additionalParents: {
-    id: 'interview.familyPedigree.additionalParents',
-    defaultMessage: 'Additional parents',
-    description:
-      'Wizard step title for non-biological parental figures, separate from the two genetic contributors.',
-  },
-  parentPartnerships: {
-    id: 'interview.familyPedigree.parentPartnerships',
-    defaultMessage: 'Parent partnerships',
-    description:
-      'Wizard step title for romantic relationships among the recorded parents, not for the parent-child relationships.',
-  },
-  addSibling: {
-    id: 'interview.familyPedigree.addSibling',
-    defaultMessage: 'Add sibling',
-    description:
-      'Person-context-menu action and wizard title for adding this relative of the selected person, who may be someone other than the participant.',
-  },
-  siblingDetails: {
-    id: 'interview.familyPedigree.siblingDetails',
-    defaultMessage: 'Sibling details',
-    description:
-      'Wizard step title collecting details for the new relative. The family relationship is relative to the person whose context menu opened the wizard.',
-  },
-  yourBiologicalParents: {
-    id: 'interview.familyPedigree.yourBiologicalParents',
-    defaultMessage: 'Your Biological Parents',
-    description:
-      "Wizard title when recording the participant's own genetic parents. Keep the complete possessive phrase together.",
-  },
-  namedBiologicalParents: {
-    id: 'interview.familyPedigree.namedBiologicalParents',
-    defaultMessage: "{name}'s Biological Parents",
-    description:
-      'Whole wizard title for the biological parents of a named relative. name is the unchanged entered name; translate the possessive grammar.',
-  },
-  personBiologicalParents: {
-    id: 'interview.familyPedigree.personBiologicalParents',
-    defaultMessage: "This Person's Biological Parents",
-    description:
-      'Wizard title for biological parents when the selected person has no entered name. Keep the complete generic-subject phrase together.',
-  },
-  closeSetupQuestion: {
-    id: 'interview.familyPedigree.closeSetupQuestion',
-    defaultMessage: 'Close family pedigree setup?',
-    description:
-      'Confirmation title when attempting to abandon the unfinished initial family wizard.',
-  },
-  closeSetupDescription: {
-    id: 'interview.familyPedigree.closeSetupDescription',
-    defaultMessage:
-      'If you continue, all information you have entered in this family pedigree will be lost. You will need to start again.',
-    description:
-      'Warning that closing the unfinished family wizard discards all information entered there and requires starting the wizard again.',
-  },
-  closeLoseProgress: {
-    id: 'interview.familyPedigree.closeLoseProgress',
-    defaultMessage: 'Close and lose progress',
-    description:
-      'Destructive confirmation action that abandons the initial family wizard and discards its unfinished entries.',
-  },
-  continueSetup: {
-    id: 'interview.familyPedigree.continueSetup',
-    defaultMessage: 'Continue setup',
-    description:
-      "Cancel-abandonment action that keeps the initial family wizard open and preserves the participant's progress.",
-  },
-  introduction: {
-    id: 'interview.familyPedigree.introduction',
-    defaultMessage: 'Introduction',
-    description:
-      "Wizard step heading above the protocol-author's introduction. Only this generic heading is translated; the authored content below is not.",
-  },
-  referToParents: {
-    id: 'interview.familyPedigree.referToParents',
-    defaultMessage: 'How we’ll refer to your parents',
-    description:
-      'Wizard step title for choosing between gamete and mother/father terminology before parent details are collected.',
-  },
-  aboutYou: {
-    id: 'interview.familyPedigree.aboutYou',
-    defaultMessage: 'About you',
-    description:
-      "Wizard step title for recording the participant's own birth-recorded sex, before asking about relatives.",
-  },
-  partnerChildren: {
-    id: 'interview.familyPedigree.partnerChildren',
-    defaultMessage: 'Partner and children',
-    description:
-      "Wizard step title asking about the participant's current partner and the children they have with that partner.",
-  },
-  childrenDetails: {
-    id: 'interview.familyPedigree.childrenDetails',
-    defaultMessage: 'Children details',
-    description:
-      "Wizard step title collecting each child's details and biological parentage.",
-  },
-  buildAccessible: {
-    id: 'interview.familyPedigree.buildAccessible',
-    defaultMessage: 'Build family pedigree',
-    description:
-      'Accessible name of the icon button that launches the initial family setup wizard from the welcome screen.',
-  },
-  createNewPerson: {
-    id: 'interview.familyPedigree.createNewPerson',
-    defaultMessage: 'Create a new person',
-    description:
-      'Person-selection option creating a new relative instead of reusing an existing graph person. The stored option key remains new.',
-  },
-  whoCarried: {
-    id: 'interview.familyPedigree.whoCarried',
-    defaultMessage: 'Who carried the pregnancy?',
-    description:
-      "Question and help identifying the person who carried a child's pregnancy, separately from the egg and sperm contributors. An existing person can be reused or a new one created.",
-  },
-  selectCarrier: {
-    id: 'interview.familyPedigree.selectCarrier',
-    defaultMessage:
-      'Select the person who carried the pregnancy, or create a new person.',
-    description:
-      "Question and help identifying the person who carried a child's pregnancy, separately from the egg and sperm contributors. An existing person can be reused or a new one created.",
-  },
-  personCarried: {
-    id: 'interview.familyPedigree.personCarried',
-    defaultMessage: 'Did this person carry the pregnancy?',
-    description:
-      'Yes/no question asking whether the selected egg contributor also carried the pregnancy. It does not infer gestation from sex or parental title.',
-  },
-  otherCarrierHint: {
-    id: 'interview.familyPedigree.otherCarrierHint',
-    defaultMessage:
-      "If someone else carried the pregnancy (e.g. a gestational carrier or surrogate), select 'No'.",
-    description:
-      'Help explaining when to answer no to whether the egg contributor carried the pregnancy; a no answer enables selecting a separate gestational carrier.',
-  },
-  sexPreferNotToSay: {
-    id: 'interview.familyPedigree.sexPreferNotToSay',
-    defaultMessage: 'Prefer not to say',
-    description:
-      'Birth-recorded-sex answer declining disclosure. Keep distinct from the unknown answer; the two choices are stored separately.',
-  },
-  currentPartners: {
-    id: 'interview.familyPedigree.currentPartners',
-    defaultMessage: 'Current partners',
-    description:
-      'Radio answer describing the romantic relationship between two named people: ongoing, former, or never romantically involved. These options do not describe co-parenting.',
-  },
-  exPartners: {
-    id: 'interview.familyPedigree.exPartners',
-    defaultMessage: 'Ex-partners',
-    description:
-      'Radio answer describing the romantic relationship between two named people: ongoing, former, or never romantically involved. These options do not describe co-parenting.',
-  },
-  neverPartners: {
-    id: 'interview.familyPedigree.neverPartners',
-    defaultMessage: 'Never partners',
-    description:
-      'Radio answer describing the romantic relationship between two named people: ongoing, former, or never romantically involved. These options do not describe co-parenting.',
-  },
-  whoParent: {
-    id: 'interview.familyPedigree.whoParent',
-    defaultMessage: 'Who is this parent?',
-    description:
-      'Caption and help for reusing an existing person as a parent or creating a new person, avoiding duplicate relatives in the graph.',
-  },
-  selectExistingPerson: {
-    id: 'interview.familyPedigree.selectExistingPerson',
-    defaultMessage: 'Select an existing person or create a new one.',
-    description:
-      'Caption and help for reusing an existing person as a parent or creating a new person, avoiding duplicate relatives in the graph.',
-  },
-  parentType: {
-    id: 'interview.familyPedigree.parentType',
-    defaultMessage: 'Parent type',
-    description:
-      'Caption for choosing the new parent relationship type: biological, social, donor or surrogate. The displayed label does not change the stored type identifier.',
-  },
-  newParentAndPartner: {
-    id: 'interview.familyPedigree.newParentAndPartner',
-    defaultMessage: 'Is {name} a current or former partner of the new parent?',
-    description:
-      'Whole question about a current or former romantic relationship between an existing parent and the newly added parent. name is the existing person’s literal entered name or localized fallback. The answer options distinguish current, former and never partners.',
+      'Accessible name of the group of buttons that appears around a selected family member, used to add their parent, sibling, partner or child.',
   },
   addParent: {
     id: 'interview.familyPedigree.addParent',
-    defaultMessage: 'Add parent',
+    defaultMessage: 'Parent',
     description:
-      'Person-context-menu action and wizard title for adding this relative of the selected person, who may be someone other than the participant.',
+      'Short button label next to a selected family member: adds a parent of that person.',
   },
-  parentDetails: {
-    id: 'interview.familyPedigree.parentDetails',
-    defaultMessage: 'Parent details',
+  addSibling: {
+    id: 'interview.familyPedigree.addSibling',
+    defaultMessage: 'Sibling',
     description:
-      'Wizard step title collecting details for the new relative. The family relationship is relative to the person whose context menu opened the wizard.',
-  },
-  partnerships: {
-    id: 'interview.familyPedigree.partnerships',
-    defaultMessage: 'Partnerships',
-    description:
-      'Wizard step heading for romantic relationships involving the newly added parent and existing parents.',
-  },
-  raisedThemRole: {
-    id: 'interview.familyPedigree.raisedThemRole',
-    defaultMessage: 'Parent who raised them',
-    description:
-      'Social-parent role option for someone who raised the relative currently being added, rather than the participant.',
-  },
-  otherAdditionalParentsIntro: {
-    id: 'interview.familyPedigree.otherAdditionalParentsIntro',
-    defaultMessage:
-      "Please tell us about each of this person's additional parents. This includes step-parents, adoptive parents, or other people who played a parental role in their life.",
-    description:
-      "Instructions about additional non-biological parents of the relative currently being entered. This is about that person's upbringing, not the participant's own upbringing.",
-  },
-  otherAdditionalParents: {
-    id: 'interview.familyPedigree.otherAdditionalParents',
-    defaultMessage: 'Did this person have any additional parents?',
-    description:
-      'Questions determining whether a relative has additional social parents and how many repeated parent forms to show.',
-  },
-  otherAdditionalParentsHint: {
-    id: 'interview.familyPedigree.otherAdditionalParentsHint',
-    defaultMessage:
-      'This includes adoptive parents, stepparents, or any other parents who are not biological parents.',
-    description:
-      "Instructions about additional non-biological parents of the relative currently being entered. This is about that person's upbringing, not the participant's own upbringing.",
-  },
-  otherAdditionalParentsCount: {
-    id: 'interview.familyPedigree.otherAdditionalParentsCount',
-    defaultMessage: 'How many additional parents did they have?',
-    description:
-      'Questions determining whether a relative has additional social parents and how many repeated parent forms to show.',
-  },
-  newCarrier: {
-    id: 'interview.familyPedigree.newCarrier',
-    defaultMessage: 'New gestational carrier',
-    description:
-      'Fallback reference to a newly entered, unnamed person who carried the pregnancy. New means entered in the current wizard, not a new pregnancy.',
-  },
-  unknownCarrier: {
-    id: 'interview.familyPedigree.unknownCarrier',
-    defaultMessage: 'Unknown gestational carrier',
-    description:
-      'Fallback reference to the person who carried the pregnancy when their identity is unknown.',
-  },
-  newPartnershipIntro: {
-    id: 'interview.familyPedigree.newPartnershipIntro',
-    defaultMessage:
-      'We now want to ask about relationships between the parents you named. This includes current and past romantic partnerships, but <strong>not co-parenting partnerships</strong> where the parents were never romantically involved.',
-    description:
-      "Explains romantic partnerships among a relative's recorded parents. strong emphasizes the exclusion of non-romantic co-parenting; preserve the complete distinction.",
-  },
-  arePartners: {
-    id: 'interview.familyPedigree.arePartners',
-    defaultMessage: 'Are {people} partners?',
-    description:
-      'Whole question about a current or former romantic relationship. people is the current locale’s formatted list of two literal entered names or localized role fallbacks; do not add a conjunction or infer a gender.',
+      'Short button label next to a selected family member: adds a brother, sister or sibling of that person.',
   },
   addPartner: {
     id: 'interview.familyPedigree.addPartner',
-    defaultMessage: 'Add partner',
+    defaultMessage: 'Partner',
     description:
-      'Person-context-menu action and wizard title for adding this relative of the selected person, who may be someone other than the participant.',
+      'Short button label next to a selected family member: adds a partner (spouse or romantic partner, current or former) of that person.',
   },
-  addParentFirst: {
-    id: 'interview.familyPedigree.addParentFirst',
-    defaultMessage: 'Add a parent first',
+  addChild: {
+    id: 'interview.familyPedigree.addChild',
+    defaultMessage: 'Child',
     description:
-      'Disabled-menu explanation: a parent must be recorded for the selected person before a sibling can be added through this action.',
+      'Short button label next to a selected family member: adds a child of that person.',
   },
-  edit: {
-    id: 'interview.familyPedigree.edit',
-    defaultMessage: 'Edit',
+  addParentTitle: {
+    id: 'interview.familyPedigree.addParentTitle',
+    defaultMessage:
+      '{isYou, select, true {Add your parent} other {Add a parent of {name}}}',
     description:
-      "Context-menu action and dialog title for editing a recorded family member's details without replacing their graph identity.",
+      'Title of the side panel used to add a parent of a family member. {name} is that family member’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
   },
-  biologicalKey: {
-    id: 'interview.familyPedigree.biologicalKey',
-    defaultMessage: 'Biological parent (incl. donor, surrogate)',
+  addSiblingTitle: {
+    id: 'interview.familyPedigree.addSiblingTitle',
+    defaultMessage:
+      '{isYou, select, true {Add your sibling} other {Add a sibling of {name}}}',
     description:
-      'Legend label for solid parent-child connectors in the current pedigree notation, including the donor and surrogate relationship categories represented by that line style.',
+      'Title of the side panel used to add a sibling of a family member. {name} is that family member’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
   },
-  socialKey: {
-    id: 'interview.familyPedigree.socialKey',
-    defaultMessage: 'Social parent (adoptive, step)',
+  addPartnerTitle: {
+    id: 'interview.familyPedigree.addPartnerTitle',
+    defaultMessage:
+      '{isYou, select, true {Add your partner} other {Add a partner of {name}}}',
     description:
-      'Legend label for dashed parent-child connectors representing social parents, including adoptive parents and stepparents.',
+      'Title of the side panel used to add a partner of a family member. {name} is that family member’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
   },
-  adopted: {
-    id: 'interview.familyPedigree.adopted',
-    defaultMessage: 'Adopted',
+  addChildTitle: {
+    id: 'interview.familyPedigree.addChildTitle',
+    defaultMessage:
+      '{isYou, select, true {Add your child} other {Add a child of {name}}}',
     description:
-      "Accessible description of adoption brackets drawn around a person's diagram symbol. Do not infer that person's sex.",
+      'Title of the side panel used to add a child of a family member. {name} is that family member’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
+  },
+  editTitle: {
+    id: 'interview.familyPedigree.editTitle',
+    defaultMessage: '{isYou, select, true {About you} other {About {name}}}',
+    description:
+      'Title of the side panel showing the details about a family member. {name} is that family member’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
+  },
+  aboutThisPerson: {
+    id: 'interview.familyPedigree.aboutThisPerson',
+    defaultMessage:
+      '{isYou, select, true {About you} other {About this person}}',
+    description:
+      'Heading above the questions about the person themselves (their name, gender identity and sex assigned at birth) in the side panel for adding or editing a family member. On the participant’s own panel, where their name is not asked, it addresses them.',
+  },
+  relationshipSection: {
+    id: 'interview.familyPedigree.relationshipSection',
+    defaultMessage: 'How you are related',
+    description:
+      'Heading above the questions about how a new family member is related to the selected person.',
+  },
+  relationshipsSection: {
+    id: 'interview.familyPedigree.relationshipsSection',
+    defaultMessage: 'Relationships',
+    description:
+      'Heading above the questions about a family member’s existing partnerships and parents, in the panel showing their details.',
+  },
+  stillTogetherLabel: {
+    id: 'interview.familyPedigree.stillTogetherLabel',
+    defaultMessage:
+      '{personIsYou, select, true {Are you still together with {partner}?} other {{partnerIsYou, select, true {Are you still together?} other {Are they still together with {partner}?}}}}',
+    description:
+      'Yes/no question in the details panel about one of the family member’s partnerships: whether it is current, rather than separated or ended. {partner} is the partner’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
+  },
+  parentLinkKindLabel: {
+    id: 'interview.familyPedigree.parentLinkKindLabel',
+    defaultMessage:
+      '{parentIsYou, select, true {You are their…} other {{personIsYou, select, true {{parent} is your…} other {{parent} is their…}}}}',
+    description:
+      'Question in the details panel about one of the family member’s parents, as the start of a sentence that the chosen option completes: “Father is your… Adoptive parent”. {parent} is the parent’s name, or how they are related to the participant (such as “Father”) when unnamed; “their” is the family member whose details are open. Options are the kinds of parent: “Biological parent”, “Adoptive parent”, “Step or social parent”, “Egg or sperm donor”, “Surrogate”.',
+  },
+  parentCarriedLabel: {
+    id: 'interview.familyPedigree.parentCarriedLabel',
+    defaultMessage:
+      '{parentIsYou, select, true {Did you carry the pregnancy?} other {Did {parent} carry the pregnancy?}}',
+    description:
+      'Yes/no question in the details panel: whether this biological parent was pregnant with the family member. {parent} is the parent’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
+  },
+  moreAboutThisPerson: {
+    id: 'interview.familyPedigree.moreAboutThisPerson',
+    defaultMessage:
+      '{isYou, select, true {More about you} other {More about this person}}',
+    description:
+      'Heading above the study’s own additional questions about a family member, in the side panel for adding or editing them. On the participant’s own panel it addresses them.',
+  },
+  nameLabel: {
+    id: 'interview.familyPedigree.nameLabel',
+    defaultMessage: 'Name (optional)',
+    description:
+      'Label of the field for a family member’s name, which the participant may not know.',
+  },
+  nameHint: {
+    id: 'interview.familyPedigree.nameHint',
+    defaultMessage:
+      'A first name or nickname is fine. If you don’t know it, leave this blank and they will be shown by how they are related to you.',
+    description: 'Hint beneath the field for a family member’s name.',
+  },
+  genderIdentityLabel: {
+    id: 'interview.familyPedigree.genderIdentityLabel',
+    defaultMessage: 'Gender identity',
+    description: 'Label of the question about a family member’s gender.',
+  },
+  sexAssignedAtBirthLabel: {
+    id: 'interview.familyPedigree.sexAssignedAtBirthLabel',
+    defaultMessage: 'Sex assigned at birth',
+    description:
+      'Label of the question about the sex a family member was assigned at birth.',
+  },
+  dontKnow: {
+    id: 'interview.familyPedigree.dontKnow',
+    defaultMessage: 'Don’t know',
+    description:
+      'Answer option for a question about a family member, when the participant does not know.',
+  },
+  preferNotToSay: {
+    id: 'interview.familyPedigree.preferNotToSay',
+    defaultMessage: 'Prefer not to say',
+    description:
+      'Answer option for a question about a family member, when the participant would rather not answer.',
+  },
+  sexFemale: {
+    id: 'interview.familyPedigree.sex.female',
+    defaultMessage: 'Female',
+    description: 'Sex assigned at birth option.',
+  },
+  sexMale: {
+    id: 'interview.familyPedigree.sex.male',
+    defaultMessage: 'Male',
+    description: 'Sex assigned at birth option.',
+  },
+  sexIntersex: {
+    id: 'interview.familyPedigree.sex.intersex',
+    defaultMessage: 'Intersex',
+    description: 'Sex assigned at birth option.',
+  },
+  parentKindLabel: {
+    id: 'interview.familyPedigree.parentKindLabel',
+    defaultMessage: 'What kind of parent are they?',
+    description:
+      'Question in the side panel for adding a parent: how the new person is a parent of the selected family member.',
+  },
+  parentKindBiological: {
+    id: 'interview.familyPedigree.parentKind.biological',
+    defaultMessage: 'Biological parent',
+    description:
+      'Option: a genetic parent, who contributed an egg or sperm and raised the child or was otherwise their parent.',
+  },
+  parentKindAdoptive: {
+    id: 'interview.familyPedigree.parentKind.adoptive',
+    defaultMessage: 'Adoptive parent',
+    description: 'Option: a parent through adoption.',
+  },
+  parentKindSocial: {
+    id: 'interview.familyPedigree.parentKind.social',
+    defaultMessage: 'Step or social parent',
+    description:
+      'Option: a parent who is not genetically related and did not adopt — for example a step-parent.',
+  },
+  parentKindDonor: {
+    id: 'interview.familyPedigree.parentKind.donor',
+    defaultMessage: 'Egg or sperm donor',
+    description:
+      'Option: someone who donated an egg or sperm but did not raise the child.',
+  },
+  parentKindSurrogate: {
+    id: 'interview.familyPedigree.parentKind.surrogate',
+    defaultMessage: 'Surrogate',
+    description:
+      'Option: someone who carried the pregnancy for someone else and is not genetically related to the child.',
+  },
+  childKindLabel: {
+    id: 'interview.familyPedigree.childKindLabel',
+    defaultMessage: 'Is this child…',
+    description:
+      'Question in the side panel for adding a child: how the child is related to their parents. Followed by the options below.',
+  },
+  childKindBiological: {
+    id: 'interview.familyPedigree.childKind.biological',
+    defaultMessage: 'A biological child',
+    description: 'Option: a genetically related child.',
+  },
+  childKindAdoptive: {
+    id: 'interview.familyPedigree.childKind.adoptive',
+    defaultMessage: 'An adopted child',
+    description: 'Option: a child through adoption.',
+  },
+  childKindSocial: {
+    id: 'interview.familyPedigree.childKind.social',
+    defaultMessage: 'A step-child or other child they raise',
+    description:
+      'Option: a child who is neither genetically related nor adopted, such as a step-child.',
+  },
+  carriedPregnancyLabel: {
+    id: 'interview.familyPedigree.carriedPregnancyLabel',
+    defaultMessage: 'Did this parent carry the pregnancy?',
+    description:
+      'Yes/no question in the side panel for adding a biological parent: whether they were pregnant with the child.',
+  },
+  yes: {
+    id: 'interview.familyPedigree.yes',
+    defaultMessage: 'Yes',
+    description: 'Answer to a yes/no question.',
+  },
+  no: {
+    id: 'interview.familyPedigree.no',
+    defaultMessage: 'No',
+    description: 'Answer to a yes/no question.',
+  },
+  parentPartnerLabel: {
+    id: 'interview.familyPedigree.parentPartnerLabel',
+    defaultMessage: 'Are they the partner of another parent?',
+    description:
+      'Question in the side panel for adding a parent: whether the new parent is (or was) the partner of a parent already in the family tree. Options are those parents’ names, or “No”.',
+  },
+  partnershipCurrentLabel: {
+    id: 'interview.familyPedigree.partnershipCurrentLabel',
+    defaultMessage: 'Are they still together?',
+    description:
+      'Yes/no question: whether a partnership is current, rather than separated or ended.',
+  },
+  alsoParentOfLabel: {
+    id: 'interview.familyPedigree.alsoParentOfLabel',
+    defaultMessage: 'Are they also the parent of…',
+    description:
+      'Question in the side panel for adding a parent: which of the selected person’s siblings share this parent. Options are the siblings’ names.',
+  },
+  zoomIn: {
+    id: 'interview.familyPedigree.zoomIn',
+    defaultMessage: 'Zoom in',
+    description: 'Toolbar button that makes the family tree larger.',
+  },
+  zoomOut: {
+    id: 'interview.familyPedigree.zoomOut',
+    defaultMessage: 'Zoom out',
+    description: 'Toolbar button that makes the family tree smaller.',
+  },
+  showWholeFamily: {
+    id: 'interview.familyPedigree.showWholeFamily',
+    defaultMessage: 'Show the whole family',
+    description:
+      'Toolbar button that zooms and moves the family tree so everyone in it fits on screen.',
+  },
+  framingControlLabel: {
+    id: 'interview.familyPedigree.framingControlLabel',
+    defaultMessage: 'Wording',
+    description:
+      'Short label of the toolbar button, shown beside its icon, that opens the choice of words used to describe family members (such as “mother” or “egg parent”). Keep it brief.',
+  },
+  framingChoiceTitle: {
+    id: 'interview.familyPedigree.framingChoiceTitle',
+    defaultMessage: 'How should we describe your family?',
+    description:
+      'Heading of the popover, opened from the stage’s toolbar, that asks which words to use for family members. Open when the participant first reaches the stage.',
+  },
+  framingChoiceDescription: {
+    id: 'interview.familyPedigree.framingChoiceDescription',
+    defaultMessage:
+      'Choose the words you would like us to use for the people in your family. You can change this at any time.',
+    description:
+      'Explanation under the heading of the popover asking which words to use for family members.',
+  },
+  framingChoiceGendered: {
+    id: 'interview.familyPedigree.framingChoiceGendered',
+    defaultMessage: 'Mother, father, sister, brother',
+    description:
+      'Option in the popover asking which words to use for family members: the usual words, chosen by each person’s gender.',
+  },
+  framingChoiceGenderedDescription: {
+    id: 'interview.familyPedigree.framingChoiceGenderedDescription',
+    defaultMessage:
+      'Words that follow each person’s gender, such as grandmother, uncle or niece. Anyone who is neither a woman nor a man is described with words like parent or sibling.',
+    description:
+      'Explanation of the option to describe family members by their gender.',
+  },
+  framingChoiceGamete: {
+    id: 'interview.familyPedigree.framingChoiceGamete',
+    defaultMessage: 'Egg parent, sperm parent, sibling',
+    description:
+      'Option in the popover asking which words to use for family members: words that do not depend on anyone’s gender.',
+  },
+  framingChoiceGameteDescription: {
+    id: 'interview.familyPedigree.framingChoiceGameteDescription',
+    defaultMessage:
+      'Words that do not depend on anyone’s gender. Biological parents are described by whether they gave the egg or the sperm, and everyone else with words like grandparent or parent’s sibling.',
+    description:
+      'Explanation of the option to describe family members without reference to gender.',
+  },
+  siblingKindLabel: {
+    id: 'interview.familyPedigree.siblingKindLabel',
+    defaultMessage: 'To the parents they share, are they…',
+    description:
+      'Question in the side panel for adding a sibling: how the new sibling is related to the parents chosen above. Followed by the options "A biological child", "An adopted child", "A step-child or other child they raise".',
+  },
+  siblingKindHint: {
+    id: 'interview.familyPedigree.siblingKindHint',
+    defaultMessage:
+      '{isYou, select, true {This can differ from how you are related to them, for example if only one of you was adopted.} other {This can differ from how “{name}” is related to them, for example if only one of the two siblings was adopted.}}',
+    description:
+      'Hint under the question about how a new sibling is related to the parents they share. name is the person the sibling is being added to.',
+  },
+  placeholderParentsNote: {
+    id: 'interview.familyPedigree.placeholderParentsNote',
+    defaultMessage:
+      '{framing, select, gamete {An egg parent and a sperm parent will be added for you to fill in later, so the family tree can show these siblings together.} other {A biological mother and a biological father will be added for you to fill in later, so the family tree can show these siblings together.}}',
+    description:
+      'Note in the side panel for adding a sibling, shown when the selected person has no parents yet.',
+  },
+  otherParentLabel: {
+    id: 'interview.familyPedigree.otherParentLabel',
+    defaultMessage: 'Who is the child’s other parent?',
+    description:
+      'Question in the side panel for adding a child. Options are the selected person’s partners, someone not in the family tree yet, or no other parent.',
+  },
+  otherParentUnknown: {
+    id: 'interview.familyPedigree.otherParentUnknown',
+    defaultMessage: 'Someone not shown yet',
+    description:
+      'Option: the child’s other parent is not in the family tree yet; an unnamed person is added to fill in later.',
+  },
+  otherParentNone: {
+    id: 'interview.familyPedigree.otherParentNone',
+    defaultMessage: 'No other parent',
+    description: 'Option: the child has only the one parent.',
+  },
+  carrierLabel: {
+    id: 'interview.familyPedigree.carrierLabel',
+    defaultMessage: 'Who carried the pregnancy?',
+    description:
+      'Question in the side panel for adding a biological child. Options are the child’s parents’ names, or someone else / not known.',
+  },
+  carrierUnknown: {
+    id: 'interview.familyPedigree.carrierUnknown',
+    defaultMessage: 'Someone else, or I don’t know',
+    description:
+      'Option: neither parent shown carried the pregnancy, or the participant does not know.',
   },
   add: {
     id: 'interview.familyPedigree.add',
-    defaultMessage: 'Add',
+    defaultMessage: 'Add to family',
     description:
-      'Submit action in the add-partner form; creates the selected relationship after the person details are entered.',
+      'Button at the bottom of the side panel that adds the new family member.',
   },
-  unnamedPerson: {
-    id: 'interview.familyPedigree.unnamedPerson',
-    defaultMessage: 'Unnamed person',
+  save: {
+    id: 'interview.familyPedigree.save',
+    defaultMessage: 'Save',
     description:
-      "Fallback row label in the editor's partnership matrix when the related person has no usable name or computed relationship label.",
+      'Button at the bottom of the side panel that saves changes to a family member’s details.',
   },
-  thisPerson: {
-    id: 'interview.familyPedigree.thisPerson',
-    defaultMessage: 'this person',
+  cancel: {
+    id: 'interview.familyPedigree.cancel',
+    defaultMessage: 'Cancel',
+    description: 'Button that closes the side panel without saving.',
+  },
+  remove: {
+    id: 'interview.familyPedigree.remove',
+    defaultMessage: 'Remove from family',
     description:
-      'Generic person reference used in an edit or delete question only when neither entered name nor generated relationship label is available.',
+      'Button in the side panel that removes a family member from the family tree.',
   },
-  editPartnerships: {
-    id: 'interview.familyPedigree.editPartnerships',
+  removeConfirmTitle: {
+    id: 'interview.familyPedigree.removeConfirmTitle',
+    defaultMessage: 'Remove {name}?',
+    description:
+      'Title of the confirmation shown before removing a family member. {name} is their name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
+  },
+  removeConfirmDescription: {
+    id: 'interview.familyPedigree.removeConfirmDescription',
     defaultMessage:
-      'Are these people current or ex-partners of <strong>{name}</strong>?',
+      'They will be removed from your family tree, along with their connections to other people.',
     description:
-      'Matrix question editing existing romantic relationships of a recorded person. name is an entered name or localized role; keep its strong emphasis. strong emphasizes the literal person name; render it as rich text without interpreting markup in the name.',
+      'Explanation in the confirmation shown before removing a family member.',
   },
-  detailsUpdatedFor: {
-    id: 'interview.familyPedigree.detailsUpdatedFor',
-    defaultMessage: 'Details updated for {name}.',
-    description:
-      'Live screen-reader confirmation after saving a person editor. name is the newly submitted name, not the name the dialog originally opened with.',
-  },
-  detailsUpdated: {
-    id: 'interview.familyPedigree.detailsUpdated',
-    defaultMessage: 'Details updated.',
-    description:
-      'Live screen-reader confirmation after saving a person editor when no name remains. Do not invent or expose an earlier name.',
-  },
-  deleteNamedPerson: {
-    id: 'interview.familyPedigree.deleteNamedPerson',
-    defaultMessage: 'Delete {name}?',
-    description:
-      'Whole destructive confirmation title for removing a relative. name is an entered name or a live localized relationship fallback and remains a separate value.',
-  },
-  deletePersonDescription: {
-    id: 'interview.familyPedigree.deletePersonDescription',
+  removeConfirmDescriptionWithOthers: {
+    id: 'interview.familyPedigree.removeConfirmDescriptionWithOthers',
     defaultMessage:
-      'This will delete this person and all of their relationships from the family pedigree. This action cannot be undone.',
+      'They will be removed from your family tree, along with their connections to other people. {count, plural, one {{names} is connected to you only through them, so will be removed too.} other {{names} are connected to you only through them, so will be removed too.}}',
     description:
-      'Destructive confirmation explaining that removing a person also removes every relationship involving them from this family tree and cannot be undone.',
+      'Explanation in the confirmation shown before removing a family member who is the only link between the participant and other people in the family tree. Those people would no longer be connected to the participant, so they are removed as well. names is a list of their names, or, when they have none, how they are related to the participant, each quoted and already joined in the participant’s language (for example “Grandmother” and “Grandfather”); count is how many people it names.',
   },
-  deletePerson: {
-    id: 'interview.familyPedigree.deletePerson',
-    defaultMessage: 'Delete person',
+  trackerProgressLabel: {
+    id: 'interview.familyPedigree.trackerProgressLabel',
+    defaultMessage:
+      '{complete, select, true {Your family tree has everything needed} other {Family tree {percent, number, percent} complete}}. Show what’s still needed.',
     description:
-      'Action confirming removal of the person and their relationships after the destructive warning has been read.',
+      'Accessible name of the round progress indicator in the corner of the family tree, which opens the list of family members still needed. percent is a fraction between 0 and 1.',
+  },
+  trackerTitle: {
+    id: 'interview.familyPedigree.trackerTitle',
+    defaultMessage: 'Before you continue, please complete the following:',
+    description:
+      'Heading of the list of family members the participant still needs to add before moving on.',
+  },
+  trackerRecommendedNote: {
+    id: 'interview.familyPedigree.trackerRecommendedNote',
+    defaultMessage:
+      'You can also continue without these by pressing Next again.',
+    description:
+      'Note beneath the list of family members still needed, when the study recommends rather than requires them.',
+  },
+  trackerComplete: {
+    id: 'interview.familyPedigree.trackerComplete',
+    defaultMessage: 'Your family tree has everything needed. You can continue.',
+    description:
+      'Shown in the list of family members still needed once nothing more is needed.',
+  },
+  itemParents: {
+    id: 'interview.familyPedigree.itemParents',
+    defaultMessage:
+      '{isYou, select, true {{missing, plural, one {Add your other biological parent} other {Add your biological parents}}} other {{missing, plural, one {Add another biological parent for “{name}”} other {Add biological parents for “{name}”}}}}',
+    description:
+      'Item in the list of family members still needed. missing is how many biological parents the person still needs (1 or 2). name is the person’s name or how they are related to the participant. Biological parents include an egg or sperm donor.',
+  },
+  itemSiblings: {
+    id: 'interview.familyPedigree.itemSiblings',
+    defaultMessage:
+      '{isYou, select, true {Add your biological brothers and sisters, or say you have none} other {Add biological brothers and sisters for “{name}”, or say they have none}}',
+    description:
+      'Item in the list of family members still needed: the person’s siblings (including half-siblings), or an answer that they have none or that the participant does not know. name is the person’s name or how they are related to the participant.',
+  },
+  itemChildren: {
+    id: 'interview.familyPedigree.itemChildren',
+    defaultMessage:
+      '{isYou, select, true {Add your biological children, or say you have none} other {Add biological children for “{name}”, or say they have none}}',
+    description:
+      'Item in the list of family members still needed: the person’s biological children, or an answer that they have none or that the participant does not know. name is the person’s name or how they are related to the participant.',
+  },
+  itemDetails: {
+    id: 'interview.familyPedigree.itemDetails',
+    defaultMessage:
+      '{isYou, select, true {Some details are missing about you} other {Some details are missing for “{name}”}}',
+    description:
+      'Item in the list of what is still needed before continuing: questions about this person that the study requires have not been answered. name is the person’s name or how they are related to the participant.',
+  },
+  familySection: {
+    id: 'interview.familyPedigree.familySection',
+    defaultMessage: 'Their family',
+    description:
+      'Heading of the questions in a family member’s details about whether they have siblings or children.',
+  },
+  hasSiblingsQuestion: {
+    id: 'interview.familyPedigree.hasSiblingsQuestion',
+    defaultMessage:
+      '{isYou, select, true {Do you have any biological brothers or sisters, including half-brothers and half-sisters?} other {Does {name} have any biological brothers or sisters, including half-brothers and half-sisters?}}',
+    description:
+      'Question in a family member’s details. Answering yes means the participant will add them to the family tree. Includes half-siblings who share one biological parent.',
+  },
+  hasChildrenQuestion: {
+    id: 'interview.familyPedigree.hasChildrenQuestion',
+    defaultMessage:
+      '{isYou, select, true {Do you have any biological children?} other {Does {name} have any biological children?}}',
+    description:
+      'Question in a family member’s details. Answering yes means the participant will add them to the family tree.',
+  },
+  hasRelativesYes: {
+    id: 'interview.familyPedigree.hasRelativesYes',
+    defaultMessage: 'Yes — I’ll add them to the family tree',
+    description:
+      'Answer to whether a family member has siblings or children: yes, and the participant will add them.',
+  },
+  addedAnnouncement: {
+    id: 'interview.familyPedigree.addedAnnouncement',
+    defaultMessage: '{name} added to your family.',
+    description:
+      'Screen reader announcement after a family member is added. {name} is their name or, when it is not known, how they are related to the participant.',
+  },
+  savedAnnouncement: {
+    id: 'interview.familyPedigree.savedAnnouncement',
+    defaultMessage: 'Details saved.',
+    description:
+      'Screen reader announcement after a family member’s details are saved.',
+  },
+  removedWithOthersAnnouncement: {
+    id: 'interview.familyPedigree.removedWithOthersAnnouncement',
+    defaultMessage:
+      '{count, plural, one {{name} and one other person removed from your family.} other {{name} and # other people removed from your family.}}',
+    description:
+      'Screen reader announcement after a family member is removed along with the people who were connected to the participant only through them. {name} is the name of the person the participant chose to remove or, when it is not known, how they are related to the participant; count is how many other people were removed with them.',
+  },
+  removedAnnouncement: {
+    id: 'interview.familyPedigree.removedAnnouncement',
+    defaultMessage: '{name} removed from your family.',
+    description:
+      'Screen reader announcement after a family member is removed. {name} is their name or, when it is not known, how they are related to the participant.',
+  },
+  toolsLabel: {
+    id: 'interview.familyPedigree.toolsLabel',
+    defaultMessage: 'Family tree tools',
+    description:
+      'Accessible name of the toolbar above the family tree, which switches between adding or editing people, connecting two people, and removing the connection between two people.',
+  },
+  toolGroupLabel: {
+    id: 'interview.familyPedigree.toolGroupLabel',
+    defaultMessage: 'What clicking a person does',
+    description:
+      'Accessible name of the pair of buttons in the toolbar that choose what selecting a person does.',
+  },
+  pointerTool: {
+    id: 'interview.familyPedigree.pointerTool',
+    defaultMessage: 'Add and edit',
+    description:
+      'Short label of a toolbar button, shown beside its icon, so keep it brief. While it is on, selecting a person opens their details and shows buttons to add their relatives.',
+  },
+  connectTool: {
+    id: 'interview.familyPedigree.connectTool',
+    defaultMessage: 'Connect',
+    description:
+      'Short label of a toolbar button, shown beside its icon, so keep it brief. While it is on, selecting one person and then another connects them, for relatives added separately.',
+  },
+  connectHint: {
+    id: 'interview.familyPedigree.connectHint',
+    defaultMessage: 'Select a person, then select another to connect them.',
+    description:
+      'Instruction shown under the toolbar while the tool for connecting two people is on.',
+  },
+  connectHintLinking: {
+    id: 'interview.familyPedigree.connectHintLinking',
+    defaultMessage:
+      '{isYou, select, true {Now select the person to connect to you.} other {Now select the person to connect to “{name}”.}}',
+    description:
+      'Instruction shown under the toolbar once the first of two people to connect has been selected. name is that person’s name or how they are related to the participant.',
+  },
+  connectQuestion: {
+    id: 'interview.familyPedigree.connectQuestion',
+    defaultMessage:
+      '{firstIsYou, select, true {How are you and “{second}” related?} other {How are “{first}” and “{second}” related?}}',
+    description:
+      'Heading of the menu that appears after selecting two people to connect. first and second are their names or how they are related to the participant.',
+  },
+  connectPartners: {
+    id: 'interview.familyPedigree.connectPartners',
+    defaultMessage:
+      '{firstIsYou, select, true {You and “{second}” are partners} other {“{first}” and “{second}” are partners}}',
+    description:
+      'Option in the menu for connecting two people: they are, or were, a couple.',
+  },
+  connectParent: {
+    id: 'interview.familyPedigree.connectParent',
+    defaultMessage:
+      '{parentIsYou, select, true {You are a parent of “{child}”} other {{childIsYou, select, true {“{parent}” is your parent} other {“{parent}” is a parent of “{child}”}}}}',
+    description:
+      'Option in the menu for connecting two people, opening a list of kinds of parent (biological, adoptive and so on). parent and child are names or how the people are related to the participant.',
+  },
+  connectedParentAnnouncement: {
+    id: 'interview.familyPedigree.connectedParentAnnouncement',
+    defaultMessage: '{relationship} ({kind})',
+    description:
+      'Screen reader announcement after connecting two people as parent and child. relationship is the chosen menu option (for example “Julie” is a parent of “Rob”); kind is the kind of parent chosen (for example Adoptive parent).',
+  },
+  connectBack: {
+    id: 'interview.familyPedigree.connectBack',
+    defaultMessage: 'Back',
+    description:
+      'Option in the menu for connecting two people, after choosing that one is the other’s parent: return to the list of relationships.',
+  },
+  connectAlreadyConnected: {
+    id: 'interview.familyPedigree.connectAlreadyConnected',
+    defaultMessage:
+      '{firstIsYou, select, true {You and “{second}” are already connected.} other {“{first}” and “{second}” are already connected.}}',
+    description:
+      'Shown under the toolbar, and read out, when the participant selects two people to connect who are already connected. first and second are their names or how they are related to the participant.',
+  },
+  connectFormerPartners: {
+    id: 'interview.familyPedigree.connectFormerPartners',
+    defaultMessage:
+      '{firstIsYou, select, true {You and “{second}” were partners} other {“{first}” and “{second}” were partners}}',
+    description:
+      'Option in the menu for connecting two people: they were a couple but are no longer together.',
+  },
+  parentKindBiologicalCarrier: {
+    id: 'interview.familyPedigree.parentKind.biologicalCarrier',
+    defaultMessage: 'Biological parent who carried the pregnancy',
+    description:
+      'Option in the menu for connecting a parent and child: a genetic parent who was also pregnant with the child.',
+  },
+  disconnectTool: {
+    id: 'interview.familyPedigree.disconnectTool',
+    defaultMessage: 'Disconnect',
+    description:
+      'Short label of a toolbar button, shown beside its icon, so keep it brief. While it is on, selecting one person and then someone they are connected to removes the connection between them, leaving both people in the family tree.',
+  },
+  disconnectHint: {
+    id: 'interview.familyPedigree.disconnectHint',
+    defaultMessage:
+      'Select a person, then select someone they are connected to, to remove that connection.',
+    description:
+      'Instruction shown under the toolbar while the tool for removing a connection between two people is on.',
+  },
+  disconnectHintLinking: {
+    id: 'interview.familyPedigree.disconnectHintLinking',
+    defaultMessage:
+      '{isYou, select, true {Now select the person to disconnect from you.} other {Now select the person to disconnect from “{name}”.}}',
+    description:
+      'Instruction shown under the toolbar once the first of two people to disconnect has been selected. name is that person’s name or how they are related to the participant.',
+  },
+  disconnectNotConnected: {
+    id: 'interview.familyPedigree.disconnectNotConnected',
+    defaultMessage:
+      '{firstIsYou, select, true {You and “{second}” are not connected.} other {“{first}” and “{second}” are not connected.}}',
+    description:
+      'Shown under the toolbar, and read out, when the participant selects two people to disconnect who have no connection between them. first and second are their names or how they are related to the participant.',
+  },
+  listedName: {
+    id: 'interview.familyPedigree.listedName',
+    defaultMessage: '“{name}”',
+    description:
+      'One person in a list of people named in a sentence, such as the people who would be left outside the family tree. name is their name or, when it is not known, how they are related to the participant. The list is joined in the participant’s language, so this is one item: quote the name as names are quoted in the rest of this part of the interview.',
+  },
+  disconnectWouldCutOff: {
+    id: 'interview.familyPedigree.disconnectWouldCutOff',
+    defaultMessage:
+      '{count, plural, one {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.} other {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.}}',
+    description:
+      'Shown under the toolbar, and read out, when the participant selects two people to disconnect whose connection is the only link between the participant and other people in the family tree, so it cannot be removed. names is a list of those people’s names, or, when they have none, how they are related to the participant, each quoted and already joined in the participant’s language (for example “Aunt” and “Cousin”); count is how many people it names.',
+  },
+  disconnectConfirmTitle: {
+    id: 'interview.familyPedigree.disconnectConfirmTitle',
+    defaultMessage:
+      '{firstIsYou, select, true {Remove the connection between you and “{second}”?} other {Remove the connection between “{first}” and “{second}”?}}',
+    description:
+      'Title of the confirmation shown before removing the connection between two people. first and second are their names or how they are related to the participant.',
+  },
+  disconnectConfirmDescription: {
+    id: 'interview.familyPedigree.disconnectConfirmDescription',
+    defaultMessage:
+      'Both people stay in your family tree. Only the connection between them is removed.',
+    description:
+      'Explanation in the confirmation shown before removing the connection between two people.',
+  },
+  disconnectConfirm: {
+    id: 'interview.familyPedigree.disconnectConfirm',
+    defaultMessage: 'Remove connection',
+    description:
+      'Button in the confirmation that removes the connection between two people.',
+  },
+  disconnectedAnnouncement: {
+    id: 'interview.familyPedigree.disconnectedAnnouncement',
+    defaultMessage:
+      '{firstIsYou, select, true {The connection between you and “{second}” was removed.} other {The connection between “{first}” and “{second}” was removed.}}',
+    description:
+      'Screen reader announcement after the connection between two people is removed. first and second are their names or how they are related to the participant.',
+  },
+  sexRuledOutHint: {
+    id: 'interview.familyPedigree.sexRuledOutHint',
+    defaultMessage:
+      '{isYou, select, true {Some answers are unavailable because they do not fit how you are connected to your children. To choose one, change or remove that connection first.} other {Some answers are unavailable because they do not fit how this person is connected to their children. To choose one, change or remove that connection first.}}',
+    description:
+      'Hint under the sex assigned at birth question when some answers contradict the person’s recorded children: for example, a child cannot have two biological parents who were both assigned male at birth.',
+  },
+  biologicalParentLabel: {
+    id: 'interview.familyPedigree.biologicalParentLabel',
+    defaultMessage: 'Who is the child’s biological parent?',
+    description:
+      'Question in the side panel for adding a biological child with a partner as the other parent. Options are both of them, or either one.',
+  },
+  biologicalParentHint: {
+    id: 'interview.familyPedigree.biologicalParentHint',
+    defaultMessage:
+      'A parent who is not a biological parent is added as a step or social parent.',
+    description:
+      'Hint under the question asking which parent of a new child is a biological parent.',
+  },
+  biologicalParentBoth: {
+    id: 'interview.familyPedigree.biologicalParentBoth',
+    defaultMessage:
+      '{firstIsYou, select, true {Both you and “{second}”} other {Both “{first}” and “{second}”}}',
+    description:
+      'Option: both parents of the new child are its biological parents. first and second are their names or how they are related to the participant.',
+  },
+  trackerNoSiblings: {
+    id: 'interview.familyPedigree.trackerNoSiblings',
+    defaultMessage:
+      '{isYou, select, true {I have no biological siblings} other {“{name}” has no biological siblings}}',
+    description:
+      'Button under an item in the list of family members still needed: records that the person has no siblings who share a biological parent. name is the person’s name or how they are related to the participant.',
+  },
+  trackerNoChildren: {
+    id: 'interview.familyPedigree.trackerNoChildren',
+    defaultMessage:
+      '{isYou, select, true {I have no biological children} other {“{name}” has no biological children}}',
+    description:
+      'Button under an item in the list of family members still needed: records that the person has no biological children. name is the person’s name or how they are related to the participant.',
+  },
+  siblingsAnsweredAnnouncement: {
+    id: 'interview.familyPedigree.siblingsAnsweredAnnouncement',
+    defaultMessage:
+      '{isYou, select, true {Recorded that you have no biological brothers or sisters.} other {Recorded that “{name}” has no biological brothers or sisters.}}',
+    description:
+      'Screen reader announcement after answering, from the list of family members still needed, that a person has no siblings. name is the person’s name or how they are related to the participant.',
+  },
+  childrenAnsweredAnnouncement: {
+    id: 'interview.familyPedigree.childrenAnsweredAnnouncement',
+    defaultMessage:
+      '{isYou, select, true {Recorded that you have no biological children.} other {Recorded that “{name}” has no biological children.}}',
+    description:
+      'Screen reader announcement after answering, from the list of family members still needed, that a person has no children. name is the person’s name or how they are related to the participant.',
+  },
+  sharedParentCountLabel: {
+    id: 'interview.familyPedigree.sharedParentCountLabel',
+    defaultMessage:
+      '{isYou, select, true {Which parents do they share with you?} other {Which parents do they share with “{name}”?}}',
+    description:
+      'Question in the side panel for adding a sibling: which parents the two siblings have in common. Options are the parents’ names, or for someone with no parents yet, both or one of the parents who will be added. name is that person’s name or how they are related to the participant.',
+  },
+  sharedParentCountBoth: {
+    id: 'interview.familyPedigree.sharedParentCountBoth',
+    defaultMessage: 'Both parents',
+    description:
+      'Option: the new sibling shares both parents (a full sibling).',
+  },
+  sharedParentEggOnly: {
+    id: 'interview.familyPedigree.sharedParentEggOnly',
+    defaultMessage:
+      '{framing, select, gamete {Only the egg parent} other {Only the biological mother}}',
+    description:
+      'Option: the new sibling shares only the parent who provided the egg (a half-sibling). Gendered or gamete wording depends on the study.',
+  },
+  sharedParentSpermOnly: {
+    id: 'interview.familyPedigree.sharedParentSpermOnly',
+    defaultMessage:
+      '{framing, select, gamete {Only the sperm parent} other {Only the biological father}}',
+    description:
+      'Option: the new sibling shares only the parent who provided the sperm (a half-sibling). Gendered or gamete wording depends on the study.',
+  },
+  sharedParentUnshown: {
+    id: 'interview.familyPedigree.sharedParentUnshown',
+    defaultMessage:
+      '{isYou, select, true {Your other parent, not shown yet} other {The other parent of “{name}”, not shown yet}}',
+    description:
+      'Option when choosing which parents a new sibling shares, for someone with one parent recorded: their second parent, who is added unnamed for both of them.',
+  },
+  passphraseNeededNotice: {
+    id: 'interview.familyPedigree.passphraseNeededNotice',
+    defaultMessage:
+      'Enter your passphrase to see the names in your family and to add or change people.',
+    description:
+      'Notice shown under the family tree when the study protects names with a passphrase that has not been entered yet. Until it is, people are shown by how they are related to the participant, and the family cannot be changed.',
+  },
+  detailsPassphraseNeededNotice: {
+    id: 'interview.familyPedigree.detailsPassphraseNeededNotice',
+    defaultMessage:
+      'Enter your passphrase to add or change people in your family.',
+    description:
+      'Notice shown under the family tree when the study protects some of the answers about each family member (but not their names) with a passphrase that has not been entered yet. Until it is, the family cannot be changed.',
+  },
+  enterPassphrase: {
+    id: 'interview.familyPedigree.enterPassphrase',
+    defaultMessage: 'Enter passphrase',
+    description:
+      'Button in the notice under the family tree that opens the box for entering the passphrase protecting names.',
   },
 });

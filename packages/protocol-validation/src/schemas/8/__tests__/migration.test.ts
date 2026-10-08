@@ -1082,6 +1082,21 @@ describe('Migration V7 to V8', () => {
       expect(migrated.experiments).toEqual({});
     });
 
+    it('keeps the experiments a host carries into a version 7 document', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: { node: {}, edge: {}, ego: {} },
+        stages: [],
+        experiments: { encryptedVariables: true },
+      } as Protocol<7>;
+
+      const migrated = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+
+      expect(migrated.experiments).toEqual({ encryptedVariables: true });
+    });
+
     it('preserves other top-level fields while adding experiments', () => {
       const v7Protocol = {
         schemaVersion: 7 as const,

@@ -362,7 +362,7 @@ export const migrationNoteMessages = defineMessages({
   schema9DefaultLanguage: {
     id: 'protocolValidation.migrationNotes.schema9.defaultLanguage',
     defaultMessage:
-      'Text that participants see is now recorded as English, because older protocols do not record which language they use. If your protocol is written in another language, you can change it on the Languages page in Architect.',
+      "Text that participants see is now recorded as English, because older protocols do not record which language they use. After upgrading, confirm the protocol's default language: if your protocol is written in another language, change it on the Languages page in Architect.",
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Languages" must match the name of the Architect page where languages are managed.',
   },
@@ -393,6 +393,69 @@ export const migrationNoteMessages = defineMessages({
       "Skip logic and filters can no longer compare the answers to an encrypted attribute. Rules are checked without the participant's passphrase, so under schema 8 a rule like this only ever compared the encrypted text, never the answer. These rules are removed. Rules that only check whether an encrypted attribute is answered still work, so they are kept. Skip logic left with no rules is removed, so its stage now always appears: a stage that was shown only when a removed rule matched may never have appeared under schema 8. A filter left with no rules is removed, so it no longer limits what its stage or panel shows. Where other rules remain, they may now match differently: if all rules had to match, they now match at least as often as before; if any one rule could match, at most as often. Check the stages that used the removed rules. Rules in a panel that lists people from an external data file are kept, because that data is not encrypted.",
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance: encryptedAttributeRules. An encrypted attribute is one whose answers are stored encrypted with a passphrase the participant chooses. Skip logic decides whether a stage is shown; a filter decides which people a stage or panel lists; each is made of rules. A rule either compares an answer (for example, "the name is Alice") or only checks whether the question was answered. A panel is the side list on a name generator stage. "All rules had to match" and "any one rule could match" are the two ways a set of rules can be combined. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
+  },
+  schema9FamilyPedigree: {
+    id: 'protocolValidation.migrationNotes.schema9.familyPedigree',
+    defaultMessage:
+      'Family Pedigree stages are converted to the redesigned Family Pedigree. If a stage had an introduction screen, the screen becomes an Information stage just before the pedigree, which is skipped whenever the pedigree is skipped.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigree. "Family Pedigree" and "Information" are interface names. Keep quoted IDs and attribute names ("pedigree", "relativesNotRecorded") exactly as written.',
+  },
+  schema9FamilyPedigreeLabels: {
+    id: 'protocolValidation.migrationNotes.schema9.familyPedigreeLabels',
+    defaultMessage:
+      'The Family Pedigree answers for sex assigned at birth and for the kind of each relationship keep the values already recorded, but their labels change to the wording of the redesigned interface. A nomination prompt with the ID "pedigree", which is now reserved, is given a new ID.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeLabels. "Family Pedigree" and "Information" are interface names. Keep quoted IDs and attribute names ("pedigree", "relativesNotRecorded") exactly as written.',
+  },
+  schema9FamilyPedigreeCompleteness: {
+    id: 'protocolValidation.migrationNotes.schema9.familyPedigreeCompleteness',
+    defaultMessage:
+      "The old Family Pedigree always required two of the participant's parents. A converted Family Pedigree requires both of the participant's biological parents or, where it required recording grandparents, the family up to the grandparents, which also includes siblings, children, the other biological parent of each of the participant's children, aunts and uncles. Where it recommended recording grandparents, it now recommends recording the family up to the grandparents, so recording both parents becomes a recommendation rather than a requirement, because a stage has only one completeness setting. Only biological parents and gamete donors now count as parents; the old interface also counted adoptive parents and surrogates.",
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeCompleteness. "Family Pedigree" is an interface name. "Parents" are the participant\'s mother and father or other parents; "biological parents" are those who gave the participant their genes.',
+  },
+  schema9FamilyPedigreeRelativesNotRecorded: {
+    id: 'protocolValidation.migrationNotes.schema9.familyPedigreeRelativesNotRecorded',
+    defaultMessage:
+      'A new attribute, "relativesNotRecorded", is added for the people in every converted Family Pedigree, to record when a participant says someone has no siblings or no children, or does not know. If the person type already has an attribute with that name, the new attribute\'s name ends in a number instead, such as "relativesNotRecorded2".',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeRelativesNotRecorded. "Family Pedigree" is an interface name. Keep the attribute names "relativesNotRecorded" and "relativesNotRecorded2" exactly as written.',
+  },
+  schema9FamilyPedigreeRemoved: {
+    id: 'protocolValidation.migrationNotes.schema9.familyPedigreeRemoved',
+    defaultMessage:
+      "Two Family Pedigree settings change because the redesigned interface does not use them as they were. Requiring the other biological parent of the participant's children is now part of every completeness setting from parents, siblings and children upwards, and that parent's own family is no longer required. The attribute for which gamete each parent gave is removed, because the interface now works the gamete out from sex assigned at birth; it stays in the codebook with any answers already recorded, but is no longer filled in.",
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeRemoved. "Family Pedigree" and "Information" are interface names. Keep quoted IDs and attribute names ("pedigree", "relativesNotRecorded") exactly as written.',
+  },
+  schema9FamilyPedigreeRelationshipToParticipant: {
+    id: 'protocolValidation.migrationNotes.schema9.familyPedigreeRelationshipToParticipant',
+    defaultMessage:
+      "The old Family Pedigree could write each person's relationship to the participant as English text. The redesigned interface records it in a categorical attribute with fixed values that do not depend on language, which a text attribute cannot hold, so a converted stage records no relationship. To keep recording it, for example to filter later stages to the participant's parents, choose or create a categorical attribute for it in the Family Pedigree stage in Architect. The old attribute stays in the codebook with any answers already recorded, but is no longer filled in.",
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeRelationshipToParticipant. "Family Pedigree" is an interface name and "Architect" is an app name. A categorical attribute is one whose answers are chosen from a fixed list of options.',
+  },
+  schema9FamilyPedigreeGenderIdentity: {
+    id: 'protocolValidation.migrationNotes.schema9.familyPedigreeGenderIdentity',
+    defaultMessage:
+      "The converted Family Pedigree does not ask about gender identity. Where it uses gendered words such as mother or sister, they follow each person's sex assigned at birth.",
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeGenderIdentity. "Family Pedigree" and "Information" are interface names. Keep quoted IDs and attribute names ("pedigree", "relativesNotRecorded") exactly as written.',
+  },
+  schema9FamilyPedigreeOwnFields: {
+    id: 'protocolValidation.migrationNotes.schema9.familyPedigreeOwnFields',
+    defaultMessage:
+      'Additional person fields on a Family Pedigree that collected the name or sex assigned at birth are removed, because the redesigned interface asks every person for both itself. The old interface never showed a field for the name. Answers already recorded are kept.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeOwnFields. "Family Pedigree" is an interface name and "Architect" is an app name.',
+  },
+  schema9FamilyPedigreeSharedAttributes: {
+    id: 'protocolValidation.migrationNotes.schema9.familyPedigreeSharedAttributes',
+    defaultMessage:
+      'A Family Pedigree cannot be converted if two of its answers use the same attribute: two nomination prompts, a nomination prompt and an additional person field, or the name and another answer. Each now needs an attribute of its own. Give each its own attribute in the version of Architect that made the protocol, then upgrade it.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded: familyPedigreeSharedAttributes. "Family Pedigree" is an interface name and "Architect" is an app name.',
   },
 });
 
@@ -484,6 +547,15 @@ const migrationNoteSets = {
       migrationNoteMessages.schema9EncryptedAttributes,
       migrationNoteMessages.schema9ContradictoryPassphraseRules,
       migrationNoteMessages.schema9EncryptedAttributeRules,
+      migrationNoteMessages.schema9FamilyPedigree,
+      migrationNoteMessages.schema9FamilyPedigreeLabels,
+      migrationNoteMessages.schema9FamilyPedigreeCompleteness,
+      migrationNoteMessages.schema9FamilyPedigreeRelativesNotRecorded,
+      migrationNoteMessages.schema9FamilyPedigreeRemoved,
+      migrationNoteMessages.schema9FamilyPedigreeRelationshipToParticipant,
+      migrationNoteMessages.schema9FamilyPedigreeGenderIdentity,
+      migrationNoteMessages.schema9FamilyPedigreeOwnFields,
+      migrationNoteMessages.schema9FamilyPedigreeSharedAttributes,
     ],
   },
 };

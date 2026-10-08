@@ -7,6 +7,7 @@ import Section from '@codaco/fresco-ui/Section';
 import { normalizeCodebookName } from '@codaco/shared-consts';
 
 import { variableValuesMessages } from '../codebook/codebookMessages.ts';
+import { useStageManagedOptionsLock } from '../codebook/useStageManagedOptionsLock.ts';
 import {
   heldBooleanAnswersReason,
   optionsShapeFor,
@@ -15,6 +16,7 @@ import {
 import {
   buildInterfaceOwnedOptionMap,
   lockedVariableOptions,
+  stageManagedOptionsNote,
   variableRoleKey,
 } from '../codebook/variableRoles.ts';
 import BooleanAnswersField from '../fields/BooleanAnswersField.tsx';
@@ -251,6 +253,15 @@ export default function AttributeValueFields({
     [protocolContext, subject, variableId, variables],
   );
 
+  // A list a stage manages is shown, not offered, anywhere but in that stage's
+  // own editor. Its own caption, naming the stage: the reason is not that an
+  // interface set the options but that a stage decides what each one means.
+  const stageManagedLock = useStageManagedOptionsLock();
+  const managedBy =
+    subject === undefined || variableId === undefined || variableId === ''
+      ? undefined
+      : stageManagedLock(subject, variableId);
+
   // An attribute being invented: its answers, on the same terms as an
   // attribute that exists.
   if (inventedShape !== undefined) {
@@ -310,6 +321,21 @@ export default function AttributeValueFields({
   // Under the same heading either way: what the section is about is the
   // answers this attribute offers, and whether they are the researcher's to
   // change is a fact about this attribute rather than a different subject.
+  if (managedBy !== undefined && shape === 'choice') {
+    return (
+      <RevealWhenChosen chosenIn={revealWhenChosenIn} revealKey="locked">
+        <Section
+          title={intl.formatMessage(variableValuesMessages.optionsLegend)}
+          description={intl.formatMessage(variableValuesMessages.optionsHint)}
+        >
+          <LockedOptions
+            options={isOptionList(heldOptions) ? heldOptions : []}
+            caption={stageManagedOptionsNote(managedBy, intl)}
+          />
+        </Section>
+      </RevealWhenChosen>
+    );
+  }
   if (locked !== undefined) {
     return (
       <RevealWhenChosen chosenIn={revealWhenChosenIn} revealKey="locked">

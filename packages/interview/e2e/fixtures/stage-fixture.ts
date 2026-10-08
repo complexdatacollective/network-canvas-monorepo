@@ -1382,26 +1382,6 @@ class SlidesFormFixture {
 }
 
 /**
- * Placeholder fixture for FamilyPedigree stages.
- *
- * Multi-step wizard (15 steps) for building family tree data.
- * Creates multiple node types and edge types for family relationships.
- *
- * TODO: Implement interaction methods:
- * - getWizardStep() — get current wizard step
- * - advanceWizard() — advance to next wizard step
- * - getPedigreeView() — get the pedigree visualization locator
- * - getNodeCount() — count non-ego nodes in pedigree
- */
-class FamilyPedigreeFixture {
-  readonly page: Page;
-
-  constructor(page: Page) {
-    this.page = page;
-  }
-}
-
-/**
  * Stage fixture for e2e tests.
  *
  * Handles stage-specific elements and interactions.
@@ -1423,7 +1403,6 @@ export class StageFixture {
   readonly narrative: NarrativeFixture;
   readonly anonymisation: AnonymisationFixture;
   readonly slidesForm: SlidesFormFixture;
-  readonly familyPedigree: FamilyPedigreeFixture;
 
   constructor(page: Page) {
     this.page = page;
@@ -1442,7 +1421,6 @@ export class StageFixture {
     this.narrative = new NarrativeFixture(page);
     this.anonymisation = new AnonymisationFixture(page);
     this.slidesForm = new SlidesFormFixture(page);
-    this.familyPedigree = new FamilyPedigreeFixture(page);
   }
 
   /**

@@ -1,0 +1,44 @@
+- main:
+  - status:
+    - heading "Add the members of your family." [level=2]
+  - region "Your family":
+    - button "Vera"
+    - button "Ernest"
+    - button "Iris"
+    - button "Frank"
+    - button "Rob"
+    - button "Julie"
+    - button "May"
+    - button "Sam"
+    - button "You"
+    - button "Bea"
+    - button "Leo"
+  - toolbar "Family tree tools":
+    - group "What clicking a person does":
+      - button "Add and edit" [pressed]
+      - button "Connect"
+      - button "Disconnect"
+    - separator
+    - button "Zoom out"
+    - button "Zoom in"
+    - button "Show the whole family"
+    - separator
+    - button /Family tree \d+% complete\. Show what’s still needed\./ [expanded]
+    - dialog:
+      - heading "Before you continue, please complete the following:" [level=4]
+      - region "Before you continue, please complete the following:":
+        - list:
+          - listitem:
+            - button "Add biological children for “Bea”, or say they have none"
+            - button "“Bea” has no biological children"
+          - listitem:
+            - button "Add biological children for “Leo”, or say they have none"
+            - button "“Leo” has no biological children"
+          - listitem:
+            - button "Add biological children for “May”, or say they have none"
+            - button "“May” has no biological children"
+  - navigation:
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

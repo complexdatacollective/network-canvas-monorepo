@@ -56,27 +56,6 @@ export class StagePreview {
     return this.page.getByRole('button', { name: this.labels.settings });
   }
 
-  /**
-   * Set 'Start preview with example data'. Off starts the stage from its empty
-   * state (for FamilyPedigree, the quick-start wizard) instead of a generated
-   * synthetic network.
-   */
-  async setUseExampleData(enabled: boolean): Promise<void> {
-    await this.settingsButton.click();
-    const toggle = this.page.getByRole('switch', {
-      name: 'Start preview with example data',
-      exact: true,
-    });
-    await expect(toggle).toBeVisible();
-    if (((await toggle.getAttribute('aria-checked')) === 'true') !== enabled) {
-      await toggle.click();
-      await expect(toggle).toHaveAttribute('aria-checked', String(enabled));
-    }
-    // Dismiss the popover so its backdrop stops intercepting the launch click.
-    await this.page.keyboard.press('Escape');
-    await expect(toggle).toBeHidden();
-  }
-
   /** Launch the preview and return its popup Page, ready to interact with. */
   async open(): Promise<Page> {
     const popup = this.page.waitForEvent('popup');
@@ -90,14 +69,4 @@ export class StagePreview {
     ).toBeVisible({ timeout: 20_000 });
     return preview;
   }
-}
-
-/**
- * Architect's global error boundary (`AppErrorBoundary.tsx`), which is what a
- * throw from inside dialog content reaches — dialog children render in
- * DialogProvider's own subtree, outside the interview's stage boundary. Its
- * absence is the assertion for issue #1390.
- */
-export function appErrorBoundary(page: Page): Locator {
-  return page.getByText('Something went wrong.');
 }

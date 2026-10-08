@@ -497,15 +497,6 @@ describe('v8 to v9 localization migration', () => {
       expect(promptOf(document, field)).toEqual({ en: 'Note' });
     });
 
-    it('does so in the form of a pedigree person', () => {
-      const document = schema8Protocol();
-      const stage = stagePath(document, 'familyPedigree');
-      const field = [...stage, 'nodeConfig', 'form', 0];
-      setAt(document, [...field, 'prompt'], ' ');
-
-      expect(promptOf(document, field)).toEqual({ en: 'BirthYear' });
-    });
-
     it('keeps a prompt with text in it, spaces around the text included', () => {
       const document = schema8Protocol();
       const field = alterField(document);

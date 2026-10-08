@@ -538,6 +538,18 @@ lib/
 - **Next.js** (App Router, Turbopack) with `cacheComponents` and `typedRoutes`
 - **React** with the React Compiler enabled
 - **PostgreSQL** via **Prisma**, schema at `lib/db/schema.prisma`
+- **Deploy-time data migration is all or nothing.** `migrate-and-start.sh`
+  runs `scripts/setup-database.ts`, which applies the Prisma migrations and
+  then, in one transaction, brings every stored protocol up to the schema
+  version the embedded interview runtime executes, together with every
+  interview recorded against it (`scripts/migrate-protocols.ts`, using
+  `migrateProtocolWithSessions`). If any interview cannot be migrated, every
+  protocol is still tried, then `InterviewMigrationFailedError` rolls the
+  whole transaction back and startup stops with a report naming each failed
+  interview (id, protocol, reason). Nothing is left half-migrated, so
+  restoring the previous image works. A protocol that cannot be migrated at
+  all is different: it is logged and left in place with its interviews, and
+  the interview route refuses it.
 - **Auth** is first-party: sessions in `lib/auth/session.ts`, plus WebAuthn
   passkeys and TOTP. There is no third-party auth library.
 - **Tailwind** with `@codaco/tailwind-config`, components from

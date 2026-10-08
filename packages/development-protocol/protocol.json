@@ -5,7 +5,10 @@
     {
       "id": "language-chooser",
       "type": "LanguageChooser",
-      "label": { "en-US": "Language", "es": "Idioma" }
+      "label": {
+        "en-US": "Language",
+        "es": "Idioma"
+      }
     },
     {
       "id": "anonymisation-interface",
@@ -33,7 +36,10 @@
       "id": "ego-form-1",
       "interviewScript": "This is a **markdown field** that contains notes for the interviewer that are printed with the codebook, and can be reviewed during the interview.\n\nFor now it will only support rich text, but not images or audio.",
       "type": "EgoForm",
-      "label": { "en-US": "Ego Form", "es": "Formulario de ego" },
+      "label": {
+        "en-US": "Ego Form",
+        "es": "Formulario de ego"
+      },
       "form": {
         "fields": [
           {
@@ -247,7 +253,10 @@
         "es": "GN con datos externos"
       },
       "form": {
-        "title": { "en-US": "Add A Person", "es": "Añadir una persona" },
+        "title": {
+          "en-US": "Add A Person",
+          "es": "Añadir una persona"
+        },
         "fields": [
           {
             "variable": "name_variable",
@@ -279,7 +288,10 @@
       "panels": [
         {
           "id": "cab85e8a-0a9e-4d5f-9242-930b5d9ce3e4",
-          "title": { "en-US": "Already mentioned", "es": "Ya mencionados" },
+          "title": {
+            "en-US": "Already mentioned",
+            "es": "Ya mencionados"
+          },
           "dataSource": "existing"
         },
         {
@@ -356,9 +368,15 @@
     {
       "id": "namegen1a",
       "type": "NameGenerator",
-      "label": { "en-US": "NG CSV File", "es": "GN con archivo CSV" },
+      "label": {
+        "en-US": "NG CSV File",
+        "es": "GN con archivo CSV"
+      },
       "form": {
-        "title": { "en-US": "Add A Person", "es": "Añadir una persona" },
+        "title": {
+          "en-US": "Add A Person",
+          "es": "Añadir una persona"
+        },
         "fields": [
           {
             "variable": "name_variable",
@@ -410,7 +428,10 @@
     {
       "id": "namegen2",
       "type": "NameGeneratorQuickAdd",
-      "label": { "en-US": "NG Quick add", "es": "GN de adición rápida" },
+      "label": {
+        "en-US": "NG Quick add",
+        "es": "GN de adición rápida"
+      },
       "quickAdd": "venue_name_variable",
       "subject": {
         "entity": "node",
@@ -419,7 +440,10 @@
       "panels": [
         {
           "id": "cab85e8a-0a9e-4d5f-9242-930b5d9ce3e4",
-          "title": { "en-US": "Other Venues", "es": "Otros lugares" },
+          "title": {
+            "en-US": "Other Venues",
+            "es": "Otros lugares"
+          },
           "dataSource": "existing"
         }
       ],
@@ -453,7 +477,10 @@
     {
       "id": "dyadcensus",
       "type": "DyadCensus",
-      "label": { "en-US": "Dyad Census", "es": "Censo de díadas" },
+      "label": {
+        "en-US": "Dyad Census",
+        "es": "Censo de díadas"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
@@ -603,7 +630,10 @@
     {
       "id": "ordinalBin2",
       "type": "OrdinalBin",
-      "label": { "en-US": "Contact Freq.", "es": "Frec. de contacto" },
+      "label": {
+        "en-US": "Contact Freq.",
+        "es": "Frec. de contacto"
+      },
       "subject": {
         "entity": "node",
         "type": "venue_node_type"
@@ -623,7 +653,10 @@
     {
       "id": "namegenroster2a",
       "type": "NameGeneratorRoster",
-      "label": { "en-US": "NG HIV Services", "es": "GN de servicios de VIH" },
+      "label": {
+        "en-US": "NG HIV Services",
+        "es": "GN de servicios de VIH"
+      },
       "subject": {
         "entity": "node",
         "type": "venue_node_type"
@@ -646,7 +679,10 @@
     {
       "id": "namegenroster2",
       "type": "NameGeneratorRoster",
-      "label": { "en-US": "NG Classmates", "es": "GN de compañeros de clase" },
+      "label": {
+        "en-US": "NG Classmates",
+        "es": "GN de compañeros de clase"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
@@ -655,11 +691,17 @@
       "cardOptions": {
         "additionalProperties": [
           {
-            "label": { "en-US": "Name", "es": "Nombre" },
+            "label": {
+              "en-US": "Name",
+              "es": "Nombre"
+            },
             "variable": "last_name"
           },
           {
-            "label": { "en-US": "Age", "es": "Edad" },
+            "label": {
+              "en-US": "Age",
+              "es": "Edad"
+            },
             "variable": "age"
           }
         ]
@@ -673,11 +715,17 @@
         ],
         "sortableProperties": [
           {
-            "label": { "en-US": "Nickname", "es": "Apodo" },
+            "label": {
+              "en-US": "Nickname",
+              "es": "Apodo"
+            },
             "variable": "nickname"
           },
           {
-            "label": { "en-US": "Age", "es": "Edad" },
+            "label": {
+              "en-US": "Age",
+              "es": "Edad"
+            },
             "variable": "age"
           }
         ]
@@ -701,7 +749,10 @@
     {
       "id": "namegen4",
       "type": "NameGenerator",
-      "label": { "en-US": "NG Inputs", "es": "GN de campos" },
+      "label": {
+        "en-US": "NG Inputs",
+        "es": "GN de campos"
+      },
       "form": {
         "title": {
           "en-US": "Test for form input controls",
@@ -790,7 +841,10 @@
     {
       "id": "sociogram",
       "type": "Sociogram",
-      "label": { "en-US": "Sociogram", "es": "Sociograma" },
+      "label": {
+        "en-US": "Sociogram",
+        "es": "Sociograma"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
@@ -925,7 +979,10 @@
     {
       "id": "namegenroster1",
       "type": "NameGeneratorRoster",
-      "label": { "en-US": "NG Classmates", "es": "GN de compañeros de clase" },
+      "label": {
+        "en-US": "NG Classmates",
+        "es": "GN de compañeros de clase"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
@@ -934,11 +991,17 @@
       "cardOptions": {
         "additionalProperties": [
           {
-            "label": { "en-US": "Name", "es": "Nombre" },
+            "label": {
+              "en-US": "Name",
+              "es": "Nombre"
+            },
             "variable": "last_name"
           },
           {
-            "label": { "en-US": "Age", "es": "Edad" },
+            "label": {
+              "en-US": "Age",
+              "es": "Edad"
+            },
             "variable": "age"
           }
         ]
@@ -991,7 +1054,10 @@
       "cardOptions": {
         "additionalProperties": [
           {
-            "label": { "en-US": "Address", "es": "Dirección" },
+            "label": {
+              "en-US": "Address",
+              "es": "Dirección"
+            },
             "variable": "67132d2b-c371-4c57-a5eb-6520083f9d22"
           },
           {
@@ -1030,7 +1096,10 @@
     {
       "id": "catBin1",
       "type": "CategoricalBin",
-      "label": { "en-US": "Contact Types", "es": "Tipos de contacto" },
+      "label": {
+        "en-US": "Contact Types",
+        "es": "Tipos de contacto"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
@@ -1047,17 +1116,26 @@
         {
           "variable": "e343a91f-628d-4175-870c-957beffa0153",
           "id": "cat3",
-          "text": { "en-US": "Three with other", "es": "Tres con otro" },
+          "text": {
+            "en-US": "Three with other",
+            "es": "Tres con otro"
+          },
           "otherVariable": "979c9ad7-74cb-402d-8574-3f0a91c9174d",
           "otherVariablePrompt": {
             "en-US": "What were you thinking of instead?",
             "es": "¿En qué estabas pensando en su lugar?"
           },
-          "otherOptionLabel": { "en-US": "Not Listed", "es": "No aparece" }
+          "otherOptionLabel": {
+            "en-US": "Not Listed",
+            "es": "No aparece"
+          }
         },
         {
           "id": "cat4",
-          "text": { "en-US": "Four", "es": "Cuatro" },
+          "text": {
+            "en-US": "Four",
+            "es": "Cuatro"
+          },
           "variable": "e343a91f-628d-4175-870c-957beffa0154"
         },
         {
@@ -1101,7 +1179,10 @@
     {
       "id": "alter-form-1",
       "type": "AlterForm",
-      "label": { "en-US": "Alter Form", "es": "Formulario de alter" },
+      "label": {
+        "en-US": "Alter Form",
+        "es": "Formulario de alter"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
@@ -1117,7 +1198,10 @@
           },
           {
             "variable": "9b56bc6d-6b20-4e38-9aab-4057e78e1130",
-            "prompt": { "en-US": "Choose a date", "es": "Elige una fecha" }
+            "prompt": {
+              "en-US": "Choose a date",
+              "es": "Elige una fecha"
+            }
           },
           {
             "variable": "490db003-3289-4969-b426-919cefb4cdf0",
@@ -1263,7 +1347,10 @@
     {
       "id": "narrative1",
       "type": "Narrative",
-      "label": { "en-US": "Narrative", "es": "Narrativa" },
+      "label": {
+        "en-US": "Narrative",
+        "es": "Narrativa"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
@@ -1271,7 +1358,10 @@
       "presets": [
         {
           "id": "preset1",
-          "label": { "en-US": "My preset", "es": "Mi ajuste predefinido" },
+          "label": {
+            "en-US": "My preset",
+            "es": "Mi ajuste predefinido"
+          },
           "layoutVariable": "layout_variable",
           "groupVariable": "e343a91f-628d-4175-870c-957beffa0154",
           "edges": {
@@ -1280,11 +1370,17 @@
           "highlight": [
             {
               "variable": "03b03617-46ae-41cb-9462-9acd8a17edd6",
-              "label": { "en-US": "has_given_advice", "es": "ha dado consejos" }
+              "label": {
+                "en-US": "has_given_advice",
+                "es": "ha dado consejos"
+              }
             },
             {
               "variable": "ae44b6ba-ad49-4ecf-bf38-b65decfce000",
-              "label": { "en-US": "close_friend", "es": "amigo cercano" }
+              "label": {
+                "en-US": "close_friend",
+                "es": "amigo cercano"
+              }
             }
           ]
         },
@@ -1302,7 +1398,10 @@
           "highlight": [
             {
               "variable": "03b03617-46ae-41cb-9462-9acd8a17edd6",
-              "label": { "en-US": "has_given_advice", "es": "ha dado consejos" }
+              "label": {
+                "en-US": "has_given_advice",
+                "es": "ha dado consejos"
+              }
             }
           ]
         }
@@ -1318,7 +1417,10 @@
     },
     {
       "id": "rubberduck",
-      "label": { "en-US": "Audio test", "es": "Prueba de audio" },
+      "label": {
+        "en-US": "Audio test",
+        "es": "Prueba de audio"
+      },
       "type": "Information",
       "title": {
         "en-US": "Title for the screen",
@@ -1347,7 +1449,10 @@
     },
     {
       "id": "info-sound",
-      "label": { "en-US": "InfoSound", "es": "Información con sonido" },
+      "label": {
+        "en-US": "InfoSound",
+        "es": "Información con sonido"
+      },
       "type": "Information",
       "title": {
         "en-US": "This interface has a video with sound.",
@@ -1372,9 +1477,15 @@
     },
     {
       "id": "markdown",
-      "label": { "en-US": "Markdown", "es": "Markdown" },
+      "label": {
+        "en-US": "Markdown",
+        "es": "Markdown"
+      },
       "type": "Information",
-      "title": { "en-US": "Testing markdown", "es": "Prueba de markdown" },
+      "title": {
+        "en-US": "Testing markdown",
+        "es": "Prueba de markdown"
+      },
       "items": [
         {
           "id": "d3e52e4b-0d22-42e3-a82f-7a150daf7b6b",
@@ -1388,7 +1499,10 @@
     },
     {
       "id": "skippable screen",
-      "label": { "en-US": "Skip or Show", "es": "Omitir o mostrar" },
+      "label": {
+        "en-US": "Skip or Show",
+        "es": "Omitir o mostrar"
+      },
       "type": "Information",
       "title": {
         "en-US": "To skip or not to skip...",
@@ -1425,7 +1539,10 @@
     {
       "id": "network-composer-dev",
       "type": "NetworkComposer",
-      "label": { "en-US": "Network Composer", "es": "Compositor de redes" },
+      "label": {
+        "en-US": "Network Composer",
+        "es": "Compositor de redes"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
@@ -1439,7 +1556,10 @@
     {
       "id": "geospatial-dev",
       "type": "Geospatial",
-      "label": { "en-US": "Geospatial", "es": "Geoespacial" },
+      "label": {
+        "en-US": "Geospatial",
+        "es": "Geoespacial"
+      },
       "subject": {
         "entity": "node",
         "type": "venue_node_type"
@@ -1447,7 +1567,7 @@
       "mapOptions": {
         "tokenAssetId": "mapbox_token",
         "style": "mapbox://styles/mapbox/standard",
-        "center": [-74.0, 40.7],
+        "center": [-74, 40.7],
         "initialZoom": 10,
         "dataSourceAssetId": "geo_data",
         "color": "ord-color-seq-6",
@@ -1471,32 +1591,64 @@
         "en-US": "Family Pedigree",
         "es": "Árbol genealógico familiar"
       },
-      "nodeConfig": {
-        "type": "family_member",
-        "nodeLabelVariable": "fm_name",
-        "egoVariable": "is_ego",
-        "relationshipVariable": "fm_relationship_to_ego",
-        "biologicalSexVariable": "biologicalSex"
+      "subject": {
+        "entity": "node",
+        "type": "family_member"
       },
-      "edgeConfig": {
-        "type": "family_edge",
-        "relationshipTypeVariable": "relationshipType",
-        "isActiveVariable": "isActive",
-        "isGestationalCarrierVariable": "isGestationalCarrier",
-        "gameteRoleVariable": "gameteRole"
-      },
-      "framing": {
-        "mode": "fixed",
-        "value": "gamete"
-      },
-      "boundaries": {
-        "requireGrandparents": "off",
-        "requireChildrenContributors": "off"
-      },
-      "censusPrompt": {
+      "prompt": {
         "en-US": "Who is in your family?",
         "es": "¿Quién forma parte de tu familia?"
-      }
+      },
+      "nodeConfiguration": {
+        "nameAttribute": "fm_name",
+        "genderIdentity": {
+          "attribute": "genderIdentity",
+          "terms": [
+            {
+              "value": "woman",
+              "words": "feminine"
+            },
+            {
+              "value": "man",
+              "words": "masculine"
+            },
+            {
+              "value": "nonBinary",
+              "words": "neutral"
+            },
+            {
+              "value": "differentIdentity",
+              "words": "neutral"
+            },
+            {
+              "value": "unknown",
+              "words": "unknown"
+            },
+            {
+              "value": "preferNotToSay",
+              "words": "neutral"
+            }
+          ]
+        },
+        "sexAssignedAtBirthAttribute": "sexAssignedAtBirth",
+        "egoAttribute": "is_ego"
+      },
+      "edgeConfiguration": {
+        "type": "family_edge",
+        "kindAttribute": "relationshipKind",
+        "gestationalCarrierAttribute": "isGestationalCarrier",
+        "currentPartnerAttribute": "isCurrentPartner"
+      },
+      "nominationPrompts": [
+        {
+          "id": "nom-conditionx",
+          "text": {
+            "en-US": "Who in your family has been diagnosed with **condition X**?",
+            "es": "¿Quién en tu familia ha recibido un diagnóstico de **la condición X**?"
+          },
+          "attribute": "hasConditionX"
+        }
+      ]
     },
     {
       "id": "narrative-pedigree-dev",
@@ -1509,9 +1661,12 @@
       "diseases": [
         {
           "id": "disease-conditionx",
-          "label": { "en-US": "Condition X", "es": "Condición X" },
+          "label": {
+            "en-US": "Condition X",
+            "es": "Condición X"
+          },
           "color": "node-color-seq-1",
-          "variable": "hasConditionX",
+          "attribute": "hasConditionX",
           "inheritancePattern": "autosomalDominant"
         }
       ]
@@ -1521,10 +1676,15 @@
     "node": {
       "person_node_type": {
         "name": "person",
-        "label": { "en-US": "person", "es": "persona" },
+        "label": {
+          "en-US": "person",
+          "es": "persona"
+        },
         "color": "node-color-seq-1",
         "icon": "add-a-person",
-        "shape": { "default": "circle" },
+        "shape": {
+          "default": "circle"
+        },
         "variables": {
           "name_variable": {
             "encrypted": true,
@@ -1587,11 +1747,17 @@
             "type": "ordinal",
             "options": [
               {
-                "label": { "en-US": "Last 24 hours", "es": "Últimas 24 horas" },
+                "label": {
+                  "en-US": "Last 24 hours",
+                  "es": "Últimas 24 horas"
+                },
                 "value": 4
               },
               {
-                "label": { "en-US": "Last week", "es": "La última semana" },
+                "label": {
+                  "en-US": "Last week",
+                  "es": "La última semana"
+                },
                 "value": 3
               },
               {
@@ -1627,19 +1793,31 @@
             },
             "options": [
               {
-                "label": { "en-US": "Three", "es": "Tres" },
+                "label": {
+                  "en-US": "Three",
+                  "es": "Tres"
+                },
                 "value": 3
               },
               {
-                "label": { "en-US": "Two", "es": "Dos" },
+                "label": {
+                  "en-US": "Two",
+                  "es": "Dos"
+                },
                 "value": 2
               },
               {
-                "label": { "en-US": "One", "es": "Uno" },
+                "label": {
+                  "en-US": "One",
+                  "es": "Uno"
+                },
                 "value": 1
               },
               {
-                "label": { "en-US": "Missing Value", "es": "Valor faltante" },
+                "label": {
+                  "en-US": "Missing Value",
+                  "es": "Valor faltante"
+                },
                 "value": -1
               }
             ]
@@ -1650,11 +1828,17 @@
             "type": "categorical",
             "options": [
               {
-                "label": { "en-US": "One", "es": "Uno" },
+                "label": {
+                  "en-US": "One",
+                  "es": "Uno"
+                },
                 "value": "one"
               },
               {
-                "label": { "en-US": "Two", "es": "Dos" },
+                "label": {
+                  "en-US": "Two",
+                  "es": "Dos"
+                },
                 "value": "two"
               }
             ]
@@ -1665,11 +1849,17 @@
             "type": "categorical",
             "options": [
               {
-                "label": { "en-US": "One", "es": "Uno" },
+                "label": {
+                  "en-US": "One",
+                  "es": "Uno"
+                },
                 "value": "one"
               },
               {
-                "label": { "en-US": "Two", "es": "Dos" },
+                "label": {
+                  "en-US": "Two",
+                  "es": "Dos"
+                },
                 "value": "two"
               }
             ]
@@ -1684,19 +1874,31 @@
             },
             "options": [
               {
-                "label": { "en-US": "One", "es": "Uno" },
+                "label": {
+                  "en-US": "One",
+                  "es": "Uno"
+                },
                 "value": "one"
               },
               {
-                "label": { "en-US": "Two", "es": "Dos" },
+                "label": {
+                  "en-US": "Two",
+                  "es": "Dos"
+                },
                 "value": "two"
               },
               {
-                "label": { "en-US": "***Three***", "es": "***Tres***" },
+                "label": {
+                  "en-US": "***Three***",
+                  "es": "***Tres***"
+                },
                 "value": "three"
               },
               {
-                "label": { "en-US": "Four", "es": "Cuatro" },
+                "label": {
+                  "en-US": "Four",
+                  "es": "Cuatro"
+                },
                 "value": "four"
               }
             ]
@@ -1707,23 +1909,38 @@
             "type": "categorical",
             "options": [
               {
-                "label": { "en-US": "In person", "es": "En persona" },
+                "label": {
+                  "en-US": "In person",
+                  "es": "En persona"
+                },
                 "value": "person"
               },
               {
-                "label": { "en-US": "Phone call", "es": "Llamada telefónica" },
+                "label": {
+                  "en-US": "Phone call",
+                  "es": "Llamada telefónica"
+                },
                 "value": "call"
               },
               {
-                "label": { "en-US": "Text", "es": "Mensaje de texto" },
+                "label": {
+                  "en-US": "Text",
+                  "es": "Mensaje de texto"
+                },
                 "value": "text"
               },
               {
-                "label": { "en-US": "Email", "es": "Correo electrónico" },
+                "label": {
+                  "en-US": "Email",
+                  "es": "Correo electrónico"
+                },
                 "value": "email"
               },
               {
-                "label": { "en-US": "Social media", "es": "Redes sociales" },
+                "label": {
+                  "en-US": "Social media",
+                  "es": "Redes sociales"
+                },
                 "value": "media"
               }
             ]
@@ -1740,35 +1957,59 @@
             },
             "options": [
               {
-                "label": { "en-US": "Politics", "es": "Política" },
+                "label": {
+                  "en-US": "Politics",
+                  "es": "Política"
+                },
                 "value": "politics"
               },
               {
-                "label": { "en-US": "Weather", "es": "El tiempo" },
+                "label": {
+                  "en-US": "Weather",
+                  "es": "El tiempo"
+                },
                 "value": "weather"
               },
               {
-                "label": { "en-US": "Work", "es": "Trabajo" },
+                "label": {
+                  "en-US": "Work",
+                  "es": "Trabajo"
+                },
                 "value": "work"
               },
               {
-                "label": { "en-US": "Current events", "es": "Actualidad" },
+                "label": {
+                  "en-US": "Current events",
+                  "es": "Actualidad"
+                },
                 "value": "current"
               },
               {
-                "label": { "en-US": "Entertainment", "es": "Entretenimiento" },
+                "label": {
+                  "en-US": "Entertainment",
+                  "es": "Entretenimiento"
+                },
                 "value": "entertainment"
               },
               {
-                "label": { "en-US": "School", "es": "Escuela" },
+                "label": {
+                  "en-US": "School",
+                  "es": "Escuela"
+                },
                 "value": "school"
               },
               {
-                "label": { "en-US": "Friends", "es": "Amigos" },
+                "label": {
+                  "en-US": "Friends",
+                  "es": "Amigos"
+                },
                 "value": "friends"
               },
               {
-                "label": { "en-US": "Money", "es": "Dinero" },
+                "label": {
+                  "en-US": "Money",
+                  "es": "Dinero"
+                },
                 "value": "money"
               }
             ]
@@ -1803,15 +2044,24 @@
             "component": "LikertScale",
             "options": [
               {
-                "label": { "en-US": "Yes", "es": "Sí" },
+                "label": {
+                  "en-US": "Yes",
+                  "es": "Sí"
+                },
                 "value": "yes"
               },
               {
                 "value": "maybe",
-                "label": { "en-US": "Maybe", "es": "Quizás" }
+                "label": {
+                  "en-US": "Maybe",
+                  "es": "Quizás"
+                }
               },
               {
-                "label": { "en-US": "No", "es": "No" },
+                "label": {
+                  "en-US": "No",
+                  "es": "No"
+                },
                 "value": "no"
               }
             ],
@@ -1847,9 +2097,14 @@
       },
       "dummy_node_type": {
         "name": "dummytype",
-        "label": { "en-US": "dummytype", "es": "tipo ficticio" },
+        "label": {
+          "en-US": "dummytype",
+          "es": "tipo ficticio"
+        },
         "color": "node-color-seq-6",
-        "shape": { "default": "circle" },
+        "shape": {
+          "default": "circle"
+        },
         "variables": {
           "2377af3f-3c79-41da-9b0b-6570fb519b93": {
             "name": "label",
@@ -1879,11 +2134,17 @@
             },
             "options": [
               {
-                "label": { "en-US": "Yes", "es": "Sí" },
+                "label": {
+                  "en-US": "Yes",
+                  "es": "Sí"
+                },
                 "value": true
               },
               {
-                "label": { "en-US": "No", "es": "No" },
+                "label": {
+                  "en-US": "No",
+                  "es": "No"
+                },
                 "value": false
               }
             ]
@@ -1908,7 +2169,10 @@
             },
             "options": [
               {
-                "label": { "en-US": "Value Four", "es": "Valor cuatro" },
+                "label": {
+                  "en-US": "Value Four",
+                  "es": "Valor cuatro"
+                },
                 "value": 4
               },
               {
@@ -1919,7 +2183,10 @@
                 "value": 3
               },
               {
-                "label": { "en-US": "Value Two", "es": "Valor dos" },
+                "label": {
+                  "en-US": "Value Two",
+                  "es": "Valor dos"
+                },
                 "value": 2
               },
               {
@@ -1930,7 +2197,10 @@
                 "value": 1
               },
               {
-                "label": { "en-US": "Missing Value", "es": "Valor faltante" },
+                "label": {
+                  "en-US": "Missing Value",
+                  "es": "Valor faltante"
+                },
                 "value": -1
               }
             ]
@@ -1952,7 +2222,10 @@
                 "value": "Value_A"
               },
               {
-                "label": { "en-US": "Value B", "es": "Valor B" },
+                "label": {
+                  "en-US": "Value B",
+                  "es": "Valor B"
+                },
                 "value": "Value_B"
               },
               {
@@ -1963,11 +2236,17 @@
                 "value": "Value_C"
               },
               {
-                "label": { "en-US": "Value D", "es": "Valor D" },
+                "label": {
+                  "en-US": "Value D",
+                  "es": "Valor D"
+                },
                 "value": "Value_D"
               },
               {
-                "label": { "en-US": "Value E", "es": "Valor E" },
+                "label": {
+                  "en-US": "Value E",
+                  "es": "Valor E"
+                },
                 "value": "Value_E"
               }
             ]
@@ -1983,27 +2262,45 @@
             },
             "options": [
               {
-                "label": { "en-US": "Friends", "es": "Amigos" },
+                "label": {
+                  "en-US": "Friends",
+                  "es": "Amigos"
+                },
                 "value": "Value_A"
               },
               {
-                "label": { "en-US": "Family", "es": "Familia" },
+                "label": {
+                  "en-US": "Family",
+                  "es": "Familia"
+                },
                 "value": "Value_B"
               },
               {
-                "label": { "en-US": "Work", "es": "Trabajo" },
+                "label": {
+                  "en-US": "Work",
+                  "es": "Trabajo"
+                },
                 "value": "Value_C"
               },
               {
-                "label": { "en-US": "Church", "es": "Iglesia" },
+                "label": {
+                  "en-US": "Church",
+                  "es": "Iglesia"
+                },
                 "value": "Value_D"
               },
               {
-                "label": { "en-US": "Vikings", "es": "Vikingos" },
+                "label": {
+                  "en-US": "Vikings",
+                  "es": "Vikingos"
+                },
                 "value": "Value_E"
               },
               {
-                "label": { "en-US": "German Course", "es": "Curso de alemán" },
+                "label": {
+                  "en-US": "German Course",
+                  "es": "Curso de alemán"
+                },
                 "value": "Value_F"
               },
               {
@@ -2014,7 +2311,10 @@
                 "value": "Value_G"
               },
               {
-                "label": { "en-US": "Neighbors", "es": "Vecinos" },
+                "label": {
+                  "en-US": "Neighbors",
+                  "es": "Vecinos"
+                },
                 "value": "Value_H"
               },
               {
@@ -2025,7 +2325,10 @@
                 "value": "Value_I"
               },
               {
-                "label": { "en-US": "Band", "es": "Banda" },
+                "label": {
+                  "en-US": "Band",
+                  "es": "Banda"
+                },
                 "value": "Value_J"
               }
             ]
@@ -2035,16 +2338,25 @@
             "component": "LikertScale",
             "options": [
               {
-                "label": { "en-US": "Agree", "es": "De acuerdo" },
+                "label": {
+                  "en-US": "Agree",
+                  "es": "De acuerdo"
+                },
                 "value": "agree"
               },
               {
-                "label": { "en-US": "Somewhat Agree", "es": "Algo de acuerdo" },
+                "label": {
+                  "en-US": "Somewhat Agree",
+                  "es": "Algo de acuerdo"
+                },
                 "value": "somewhat_agree"
               },
               {
                 "value": "neutral",
-                "label": { "en-US": "Neutral", "es": "Neutral" }
+                "label": {
+                  "en-US": "Neutral",
+                  "es": "Neutral"
+                }
               },
               {
                 "label": {
@@ -2054,7 +2366,10 @@
                 "value": "somewhat_disagree"
               },
               {
-                "label": { "en-US": "Disagree", "es": "En desacuerdo" },
+                "label": {
+                  "en-US": "Disagree",
+                  "es": "En desacuerdo"
+                },
                 "value": "disagree"
               }
             ],
@@ -2068,7 +2383,10 @@
             "type": "scalar",
             "component": "VisualAnalogScale",
             "parameters": {
-              "minLabel": { "en-US": "Not very far", "es": "No muy lejos" },
+              "minLabel": {
+                "en-US": "Not very far",
+                "es": "No muy lejos"
+              },
               "maxLabel": {
                 "en-US": "Really quite far",
                 "es": "Realmente bastante lejos"
@@ -2084,10 +2402,15 @@
       },
       "venue_node_type": {
         "name": "venue",
-        "label": { "en-US": "venue", "es": "lugar" },
+        "label": {
+          "en-US": "venue",
+          "es": "lugar"
+        },
         "color": "node-color-seq-4",
         "icon": "add-a-place",
-        "shape": { "default": "circle" },
+        "shape": {
+          "default": "circle"
+        },
         "variables": {
           "venue_name_variable": {
             "name": "name",
@@ -2108,23 +2431,38 @@
             "type": "ordinal",
             "options": [
               {
-                "label": { "en-US": "Every day", "es": "Todos los días" },
+                "label": {
+                  "en-US": "Every day",
+                  "es": "Todos los días"
+                },
                 "value": 4
               },
               {
-                "label": { "en-US": "Every other day", "es": "Cada dos días" },
+                "label": {
+                  "en-US": "Every other day",
+                  "es": "Cada dos días"
+                },
                 "value": 3
               },
               {
-                "label": { "en-US": "Every week", "es": "Cada semana" },
+                "label": {
+                  "en-US": "Every week",
+                  "es": "Cada semana"
+                },
                 "value": 2
               },
               {
-                "label": { "en-US": "Sometimes", "es": "A veces" },
+                "label": {
+                  "en-US": "Sometimes",
+                  "es": "A veces"
+                },
                 "value": 1
               },
               {
-                "label": { "en-US": "Never", "es": "Nunca" },
+                "label": {
+                  "en-US": "Never",
+                  "es": "Nunca"
+                },
                 "value": -1
               }
             ]
@@ -2188,10 +2526,11 @@
       },
       "family_member": {
         "name": "family member",
-        "label": { "en-US": "family member", "es": "familiar" },
         "color": "node-color-seq-2",
         "icon": "add-a-person",
-        "shape": { "default": "circle" },
+        "shape": {
+          "default": "circle"
+        },
         "variables": {
           "fm_name": {
             "name": "fm_name",
@@ -2208,35 +2547,44 @@
             "type": "boolean",
             "component": "Toggle"
           },
-          "fm_relationship_to_ego": {
-            "name": "fm_relationship_to_ego",
-            "label": "fm_relationship_to_ego",
-            "type": "text",
-            "component": "Text"
-          },
-          "biologicalSex": {
-            "name": "biologicalSex",
-            "label": "biologicalSex",
+          "genderIdentity": {
+            "name": "genderIdentity",
             "type": "categorical",
             "options": [
               {
-                "value": "female",
-                "label": { "en-US": "Female", "es": "Mujer" }
-              },
-              {
-                "value": "male",
-                "label": { "en-US": "Male", "es": "Hombre" }
-              },
-              {
-                "value": "intersex",
+                "value": "woman",
                 "label": {
-                  "en-US": "Intersex or a variation in sex characteristics",
-                  "es": "Intersexual o con una variación en las características sexuales"
+                  "en-US": "Woman",
+                  "es": "Mujer"
+                }
+              },
+              {
+                "value": "man",
+                "label": {
+                  "en-US": "Man",
+                  "es": "Hombre"
+                }
+              },
+              {
+                "value": "nonBinary",
+                "label": {
+                  "en-US": "Non-binary",
+                  "es": "No binario"
+                }
+              },
+              {
+                "value": "differentIdentity",
+                "label": {
+                  "en-US": "A different identity",
+                  "es": "Otra identidad"
                 }
               },
               {
                 "value": "unknown",
-                "label": { "en-US": "Don’t know", "es": "No lo sé" }
+                "label": {
+                  "en-US": "Don’t know",
+                  "es": "No lo sé"
+                }
               },
               {
                 "value": "preferNotToSay",
@@ -2245,13 +2593,61 @@
                   "es": "Prefiero no decirlo"
                 }
               }
-            ]
+            ],
+            "label": "genderIdentity"
+          },
+          "sexAssignedAtBirth": {
+            "name": "sexAssignedAtBirth",
+            "type": "categorical",
+            "options": [
+              {
+                "value": "female",
+                "label": {
+                  "en-US": "Female",
+                  "es": "Femenino"
+                }
+              },
+              {
+                "value": "male",
+                "label": {
+                  "en-US": "Male",
+                  "es": "Masculino"
+                }
+              },
+              {
+                "value": "intersex",
+                "label": {
+                  "en-US": "Intersex",
+                  "es": "Intersexual"
+                }
+              },
+              {
+                "value": "unknown",
+                "label": {
+                  "en-US": "Don’t know",
+                  "es": "No lo sé"
+                }
+              },
+              {
+                "value": "preferNotToSay",
+                "label": {
+                  "en-US": "Prefer not to say",
+                  "es": "Prefiero no decirlo"
+                }
+              }
+            ],
+            "label": "sexAssignedAtBirth"
           },
           "hasConditionX": {
             "name": "hasConditionX",
             "label": "hasConditionX",
-            "type": "boolean"
+            "type": "boolean",
+            "component": "Toggle"
           }
+        },
+        "label": {
+          "en-US": "family member",
+          "es": "familiar"
         }
       }
     },
@@ -2301,7 +2697,10 @@
           },
           "options": [
             {
-              "label": { "en-US": "Value Four", "es": "Valor cuatro" },
+              "label": {
+                "en-US": "Value Four",
+                "es": "Valor cuatro"
+              },
               "value": 4
             },
             {
@@ -2312,7 +2711,10 @@
               "value": 3
             },
             {
-              "label": { "en-US": "Value Two", "es": "Valor dos" },
+              "label": {
+                "en-US": "Value Two",
+                "es": "Valor dos"
+              },
               "value": 2
             },
             {
@@ -2323,7 +2725,10 @@
               "value": 1
             },
             {
-              "label": { "en-US": "Missing Value", "es": "Valor faltante" },
+              "label": {
+                "en-US": "Missing Value",
+                "es": "Valor faltante"
+              },
               "value": -1
             }
           ]
@@ -2345,7 +2750,10 @@
               "value": "Value_A"
             },
             {
-              "label": { "en-US": "Value B", "es": "Valor B" },
+              "label": {
+                "en-US": "Value B",
+                "es": "Valor B"
+              },
               "value": "Value_B"
             },
             {
@@ -2356,11 +2764,17 @@
               "value": "Value_C"
             },
             {
-              "label": { "en-US": "Value D", "es": "Valor D" },
+              "label": {
+                "en-US": "Value D",
+                "es": "Valor D"
+              },
               "value": "Value_D"
             },
             {
-              "label": { "en-US": "Value E", "es": "Valor E" },
+              "label": {
+                "en-US": "Value E",
+                "es": "Valor E"
+              },
               "value": "Value_E"
             }
           ]
@@ -2376,27 +2790,45 @@
           },
           "options": [
             {
-              "label": { "en-US": "Friends", "es": "Amigos" },
+              "label": {
+                "en-US": "Friends",
+                "es": "Amigos"
+              },
               "value": "Value_A"
             },
             {
-              "label": { "en-US": "Family", "es": "Familia" },
+              "label": {
+                "en-US": "Family",
+                "es": "Familia"
+              },
               "value": "Value_B"
             },
             {
-              "label": { "en-US": "Work", "es": "Trabajo" },
+              "label": {
+                "en-US": "Work",
+                "es": "Trabajo"
+              },
               "value": "Value_C"
             },
             {
-              "label": { "en-US": "Church", "es": "Iglesia" },
+              "label": {
+                "en-US": "Church",
+                "es": "Iglesia"
+              },
               "value": "Value_D"
             },
             {
-              "label": { "en-US": "Vikings", "es": "Vikingos" },
+              "label": {
+                "en-US": "Vikings",
+                "es": "Vikingos"
+              },
               "value": "Value_E"
             },
             {
-              "label": { "en-US": "German Course", "es": "Curso de alemán" },
+              "label": {
+                "en-US": "German Course",
+                "es": "Curso de alemán"
+              },
               "value": "Value_F"
             },
             {
@@ -2407,15 +2839,24 @@
               "value": "Value_G"
             },
             {
-              "label": { "en-US": "Neighbors", "es": "Vecinos" },
+              "label": {
+                "en-US": "Neighbors",
+                "es": "Vecinos"
+              },
               "value": "Value_H"
             },
             {
-              "label": { "en-US": "Oxford Friends", "es": "Amigos de Oxford" },
+              "label": {
+                "en-US": "Oxford Friends",
+                "es": "Amigos de Oxford"
+              },
               "value": "Value_I"
             },
             {
-              "label": { "en-US": "Band", "es": "Banda" },
+              "label": {
+                "en-US": "Band",
+                "es": "Banda"
+              },
               "value": "Value_J"
             }
           ]
@@ -2431,15 +2872,24 @@
           "component": "LikertScale",
           "options": [
             {
-              "label": { "en-US": "0", "es": "0" },
+              "label": {
+                "en-US": "0",
+                "es": "0"
+              },
               "value": 0
             },
             {
-              "label": { "en-US": "Sometimes", "es": "A veces" },
+              "label": {
+                "en-US": "Sometimes",
+                "es": "A veces"
+              },
               "value": "sometimes"
             },
             {
-              "label": { "en-US": "_Lots_", "es": "_Mucho_" },
+              "label": {
+                "en-US": "_Lots_",
+                "es": "_Mucho_"
+              },
               "value": "lots"
             }
           ],
@@ -2450,8 +2900,14 @@
           "type": "scalar",
           "component": "VisualAnalogScale",
           "parameters": {
-            "minLabel": { "en-US": "Here", "es": "Aquí" },
-            "maxLabel": { "en-US": "There", "es": "Allí" }
+            "minLabel": {
+              "en-US": "Here",
+              "es": "Aquí"
+            },
+            "maxLabel": {
+              "en-US": "There",
+              "es": "Allí"
+            }
           },
           "name": "vas_scale",
           "label": "vas_scale"
@@ -2498,7 +2954,10 @@
     "edge": {
       "friend_edge_type": {
         "name": "friend",
-        "label": { "en-US": "friend", "es": "amigo" },
+        "label": {
+          "en-US": "friend",
+          "es": "amigo"
+        },
         "color": "edge-color-seq-1",
         "variables": {
           "e343a91f-628d-4175-870c-75429857399e": {
@@ -2507,15 +2966,24 @@
             "type": "ordinal",
             "options": [
               {
-                "label": { "en-US": "Very close", "es": "Muy cercanos" },
+                "label": {
+                  "en-US": "Very close",
+                  "es": "Muy cercanos"
+                },
                 "value": 3
               },
               {
-                "label": { "en-US": "Sort of close", "es": "Algo cercanos" },
+                "label": {
+                  "en-US": "Sort of close",
+                  "es": "Algo cercanos"
+                },
                 "value": 2
               },
               {
-                "label": { "en-US": "Not very close", "es": "No muy cercanos" },
+                "label": {
+                  "en-US": "Not very close",
+                  "es": "No muy cercanos"
+                },
                 "value": 1
               }
             ]
@@ -2527,11 +2995,17 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
-                "label": { "en-US": "One", "es": "Uno" },
+                "label": {
+                  "en-US": "One",
+                  "es": "Uno"
+                },
                 "value": "one"
               },
               {
-                "label": { "en-US": "Two", "es": "Dos" },
+                "label": {
+                  "en-US": "Two",
+                  "es": "Dos"
+                },
                 "value": "two"
               }
             ]
@@ -2543,15 +3017,24 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
-                "label": { "en-US": "One", "es": "Uno" },
+                "label": {
+                  "en-US": "One",
+                  "es": "Uno"
+                },
                 "value": "one"
               },
               {
-                "label": { "en-US": "Two", "es": "Dos" },
+                "label": {
+                  "en-US": "Two",
+                  "es": "Dos"
+                },
                 "value": "two"
               },
               {
-                "label": { "en-US": "Three", "es": "Tres" },
+                "label": {
+                  "en-US": "Three",
+                  "es": "Tres"
+                },
                 "value": "three"
               }
             ],
@@ -2566,19 +3049,31 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
-                "label": { "en-US": "One", "es": "Uno" },
+                "label": {
+                  "en-US": "One",
+                  "es": "Uno"
+                },
                 "value": "one"
               },
               {
-                "label": { "en-US": "Two", "es": "Dos" },
+                "label": {
+                  "en-US": "Two",
+                  "es": "Dos"
+                },
                 "value": "two"
               },
               {
-                "label": { "en-US": "Three", "es": "Tres" },
+                "label": {
+                  "en-US": "Three",
+                  "es": "Tres"
+                },
                 "value": "three"
               },
               {
-                "label": { "en-US": "Four", "es": "Cuatro" },
+                "label": {
+                  "en-US": "Four",
+                  "es": "Cuatro"
+                },
                 "value": "four"
               }
             ]
@@ -2587,7 +3082,10 @@
       },
       "professional_edge_type": {
         "name": "professional",
-        "label": { "en-US": "professional", "es": "profesional" },
+        "label": {
+          "en-US": "professional",
+          "es": "profesional"
+        },
         "color": "edge-color-seq-2",
         "variables": {
           "f984jk23-628d-4175-870c-ejd8e7al8vc3": {
@@ -2596,11 +3094,17 @@
             "type": "ordinal",
             "options": [
               {
-                "label": { "en-US": "Constantly", "es": "Constantemente" },
+                "label": {
+                  "en-US": "Constantly",
+                  "es": "Constantemente"
+                },
                 "value": 5
               },
               {
-                "label": { "en-US": "Very often", "es": "Muy a menudo" },
+                "label": {
+                  "en-US": "Very often",
+                  "es": "Muy a menudo"
+                },
                 "value": 4
               },
               {
@@ -2611,11 +3115,17 @@
                 "value": 3
               },
               {
-                "label": { "en-US": "Rarely", "es": "Rara vez" },
+                "label": {
+                  "en-US": "Rarely",
+                  "es": "Rara vez"
+                },
                 "value": 2
               },
               {
-                "label": { "en-US": "Almost never", "es": "Casi nunca" },
+                "label": {
+                  "en-US": "Almost never",
+                  "es": "Casi nunca"
+                },
                 "value": 1
               }
             ]
@@ -2627,11 +3137,17 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
-                "label": { "en-US": "One", "es": "Uno" },
+                "label": {
+                  "en-US": "One",
+                  "es": "Uno"
+                },
                 "value": "one"
               },
               {
-                "label": { "en-US": "Two", "es": "Dos" },
+                "label": {
+                  "en-US": "Two",
+                  "es": "Dos"
+                },
                 "value": "two"
               }
             ]
@@ -2640,70 +3156,79 @@
       },
       "visits_edge_type": {
         "name": "visits",
-        "label": { "en-US": "visits", "es": "visitas" },
+        "label": {
+          "en-US": "visits",
+          "es": "visitas"
+        },
         "color": "edge-color-seq-3"
       },
       "family_edge": {
         "name": "family_edge",
-        "label": { "en-US": "family_edge", "es": "vínculo familiar" },
         "color": "edge-color-seq-1",
         "variables": {
-          "relationshipType": {
-            "name": "relationshipType",
-            "label": "relationshipType",
+          "relationshipKind": {
+            "name": "relationshipKind",
             "type": "categorical",
             "options": [
               {
+                "value": "partner",
+                "label": {
+                  "en-US": "Partner",
+                  "es": "Pareja"
+                }
+              },
+              {
                 "value": "biological",
-                "label": { "en-US": "Biological", "es": "Biológica" }
-              },
-              {
-                "value": "social",
-                "label": { "en-US": "Social", "es": "Social" }
-              },
-              {
-                "value": "donor",
-                "label": { "en-US": "Donor", "es": "Donante" }
-              },
-              {
-                "value": "surrogate",
-                "label": { "en-US": "Surrogate", "es": "Gestante subrogada" }
+                "label": {
+                  "en-US": "Biological parent",
+                  "es": "Progenitor biológico"
+                }
               },
               {
                 "value": "adoptive",
-                "label": { "en-US": "Adoptive", "es": "Adoptiva" }
+                "label": {
+                  "en-US": "Adoptive parent",
+                  "es": "Progenitor adoptivo"
+                }
               },
               {
-                "value": "partner",
-                "label": { "en-US": "Partner", "es": "Pareja" }
+                "value": "social",
+                "label": {
+                  "en-US": "Step or social parent",
+                  "es": "Padrastro, madrastra o progenitor social"
+                }
+              },
+              {
+                "value": "donor",
+                "label": {
+                  "en-US": "Donor",
+                  "es": "Donante"
+                }
+              },
+              {
+                "value": "surrogate",
+                "label": {
+                  "en-US": "Surrogate",
+                  "es": "Gestante subrogada"
+                }
               }
-            ]
-          },
-          "isActive": {
-            "name": "isActive",
-            "label": "isActive",
-            "type": "boolean"
+            ],
+            "label": "relationshipKind"
           },
           "isGestationalCarrier": {
             "name": "isGestationalCarrier",
             "label": "isGestationalCarrier",
             "type": "boolean"
           },
-          "gameteRole": {
-            "name": "gameteRole",
-            "label": "gameteRole",
-            "type": "categorical",
-            "options": [
-              {
-                "value": "egg",
-                "label": { "en-US": "Egg", "es": "Óvulo" }
-              },
-              {
-                "value": "sperm",
-                "label": { "en-US": "Sperm", "es": "Espermatozoide" }
-              }
-            ]
+          "isCurrentPartner": {
+            "name": "isCurrentPartner",
+            "type": "boolean",
+            "label": "isCurrentPartner"
           }
+        },
+        "label": {
+          "en-US": "family_edge",
+          "es": "vínculo familiar"
         }
       }
     }
@@ -2768,5 +3293,8 @@
   "description": "The Network Canvas development protocol is designed for our team to test new features. It is not intended for general use.",
   "lastModified": "2022-09-09T13:58:16.838Z",
   "schemaVersion": 9,
-  "localization": { "defaultLocale": "en-US", "locales": ["en-US", "es"] }
+  "localization": {
+    "defaultLocale": "en-US",
+    "locales": ["en-US", "es"]
+  }
 }

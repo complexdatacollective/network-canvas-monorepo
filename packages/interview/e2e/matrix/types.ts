@@ -40,7 +40,7 @@ export type ScenarioDefinition = {
    * no encryption header (needs seedNetwork)
    */
   schema8Encryption?: true;
-  /** seeded stage metadata (e.g. NarrativePedigree source-stage state) */
+  /** seeded stage metadata (e.g. dyad-census pair state) */
   stageMetadata?: unknown;
   /** extra pixel-capture masks (visual suite only, e.g. EncryptedBackground) */
   captureMask?: (page: Page) => Locator[];

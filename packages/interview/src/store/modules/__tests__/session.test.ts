@@ -1225,18 +1225,15 @@ describe('deleteNode', () => {
     expect(result).toEqual([[0, 'node-2', 'node-3', false]]);
   });
 
-  it('leaves non-census (FamilyPedigree) stage metadata untouched', () => {
-    const familyPedigreeMetadata = {
-      isNetworkCommitted: true,
-      nodes: [{ id: 'node-1', label: 'Ego', isEgo: true }],
-    };
+  it('leaves non-census (NetworkComposer) stage metadata untouched', () => {
+    const composerMetadata = { automaticLayout: false };
 
-    const store = createTestStoreWithMetadata({ 1: familyPedigreeMetadata });
+    const store = createTestStoreWithMetadata({ 1: composerMetadata });
 
     store.dispatch(deleteNode('node-1'));
 
     const result = store.getState().session.stageMetadata?.[1];
-    expect(result).toEqual(familyPedigreeMetadata);
+    expect(result).toEqual(composerMetadata);
   });
 });
 

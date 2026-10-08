@@ -1,7 +1,10 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { StageType } from '@codaco/protocol-validation';
+import {
+  PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT,
+  type StageType,
+} from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { stageEditorRegistry } from '../../stageEditorRegistry.ts';
@@ -9,7 +12,14 @@ import {
   loadFixtureStage,
   type FixtureStageId,
 } from '../../testing/protocolFixture.ts';
-import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import {
+  renderStageEditor,
+  type StageEditorHarness,
+} from '../../testing/renderStageEditor.tsx';
+import {
+  addFamilyMemberVariables,
+  RELATIVES_NOT_RECORDED_VARIABLE,
+} from '../family-pedigree/__tests__/pedigreeFixtures.ts';
 import { schemaKeysFor } from './schemaKeys.ts';
 
 /** See each editor's own test for why the rich-text editor is stood in for. */
@@ -66,6 +76,12 @@ type MaximalStage = Readonly<{
   /** Names the case, and is what a failure reports. */
   interfaceName: string;
   type: StageType;
+  /**
+   * The fixture stage this one stands in for, where opening it as a stage of
+   * its own would clash with that one: a second Family Pedigree may not
+   * manage the gender identity attribute the fixture's pedigree manages.
+   */
+  stageId?: string;
   /** Every key this interface's schema offers, filled in. */
   fields: SectionDoc;
   /**
@@ -76,6 +92,14 @@ type MaximalStage = Readonly<{
    * covers the sections that come after it.
    */
   settle?: () => Promise<unknown>;
+  /** Puts in place what the stage needs that the fixture protocol lacks. */
+  prepare?: (harness: StageEditorHarness) => void;
+  /**
+   * Keys the interface's schema has and its editor has no section for yet.
+   * They round-trip untouched, so a researcher cannot see or change them;
+   * naming one here is the way to say so rather than to claim it is owned.
+   */
+  unowned?: readonly string[];
 }>;
 
 const stageName = () => screen.findByRole('textbox', { name: 'Stage name' });
@@ -400,18 +424,58 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
   {
     interfaceName: 'FamilyPedigree',
     type: 'FamilyPedigree',
+    stageId: 'family-pedigree-1',
     fields: fixtureMaximal('family-pedigree-1', {
       ...EVERY_STAGE,
-      introScreen: {
-        items: [
+      nodeConfiguration: {
+        ...(loadFixtureStage('family-pedigree-1').fields
+          .nodeConfiguration as SectionDoc),
+        relationshipToParticipantAttribute: 'fm_relationship',
+      },
+      form: {
+        fields: [
           {
-            id: 'pedigree-intro-1',
-            type: 'text',
-            content: { 'en-US': 'We are going to draw your family.' },
+            variable: 'fm_occupation',
+            prompt: { 'en-US': 'What do they do?' },
           },
         ],
       },
+      completeness: {
+        scope: 'thirdDegree',
+        enforcement: 'recommended',
+        relativesNotRecordedAttribute: 'relativesNotRecorded',
+      },
+      framing: 'participantPreference',
+      nominationPrompts: [
+        {
+          id: 'nomination-1',
+          text: { 'en-US': 'Who in your family has had heart disease?' },
+          attribute: 'has_heart_disease',
+          onlyForSexAssignedAtBirth: 'female',
+        },
+      ],
     }),
+    // Every attribute the fixture's person type carries is bound to one of the
+    // pedigree's own slots, so the attribute its extra field collects arrives
+    // the way a collaborator's would.
+    prepare: (harness) =>
+      addFamilyMemberVariables(harness, {
+        fm_occupation: {
+          name: 'fm_occupation',
+          type: 'text',
+          component: 'Text',
+        },
+        relativesNotRecorded: RELATIVES_NOT_RECORDED_VARIABLE,
+        has_heart_disease: { name: 'has_heart_disease', type: 'boolean' },
+        fm_relationship: {
+          name: 'fm_relationship',
+          type: 'categorical',
+          options: PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT.map((value) => ({
+            value,
+            label: { 'en-US': value },
+          })),
+        },
+      }),
   },
   {
     interfaceName: 'NarrativePedigree',
@@ -485,20 +549,27 @@ describe('a maximal stage of each interface', () => {
 
   it.each(EVERY_MAXIMAL_STAGE)(
     '$interfaceName: is fully editable, and saves every key unchanged',
-    async ({ type, fields, settle }) => {
+    async ({ type, stageId, fields, settle, prepare, unowned = [] }) => {
       // No registry passed: every interface is claimed by the package's own,
       // so the dispatcher finding the editor is part of what the case shows.
-      const harness = renderStageEditor({ stage: { type, fields } });
+      const harness = renderStageEditor({
+        stage: {
+          ...(stageId === undefined ? {} : { id: stageId }),
+          type,
+          fields,
+        },
+      });
+      prepare?.(harness);
       await (settle ?? stageName)();
       // Every section registers its fields on mount, and the outline is built
       // from what is registered — so a mount that has not filled the outline
       // has not finished registering.
       await waitFor(() => expect(harness.outline().length).toBeGreaterThan(2));
 
-      // Nothing is excused: a maximal stage is the one case where every key
-      // the interface offers must be on screen, so an empty `unowned` is the
-      // whole claim about the outline.
-      await harness.roundTrip({ unowned: [] });
+      // Nothing is excused unless the case says so: a maximal stage is the one
+      // case where every key the interface offers must be on screen, so an
+      // empty `unowned` is the whole claim about the outline.
+      await harness.roundTrip({ unowned });
     },
   );
 });

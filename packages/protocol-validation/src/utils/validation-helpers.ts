@@ -96,8 +96,8 @@ export const findDuplicateId = <T extends { id: string }>(
 
 /**
  * A `superRefine` callback that flags duplicate `id`s in an array of content
- * items. Shared by the Information stage and the FamilyPedigree intro screen,
- * which validate their own (separate) item schemas with the same rule.
+ * items. Shared by every content-item collection that validates its own item
+ * schema with the same rule.
  * `label` names the collection in the error message.
  */
 export const duplicateIdRefinement =

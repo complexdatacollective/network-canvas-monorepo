@@ -39,17 +39,22 @@ const developmentProtocolWithRawColors = (): unknown => {
     return stage;
   };
 
-  const narrative = findStage('NarrativePedigree');
-  if (!Array.isArray(narrative.diseases) || !isRecord(narrative.diseases[0])) {
-    throw new Error('Narrative Pedigree fixture has no disease');
-  }
-  narrative.diseases[0].color = '#cc0000';
-
   const geospatial = findStage('Geospatial');
   if (!isRecord(geospatial.mapOptions)) {
     throw new Error('Geospatial fixture has no map options');
   }
   geospatial.mapOptions.color = '#3399ff';
+
+  const nodeTypes = isRecord(document.codebook)
+    ? document.codebook.node
+    : undefined;
+  const firstNodeType = isRecord(nodeTypes)
+    ? Object.values(nodeTypes).find(isRecord)
+    : undefined;
+  if (!firstNodeType) {
+    throw new Error('Development protocol fixture has no node types');
+  }
+  firstNodeType.color = '#cc0000';
 
   return document;
 };

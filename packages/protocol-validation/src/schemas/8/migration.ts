@@ -1892,14 +1892,24 @@ const migrationV7toV8 = createMigration({
         },
       },
       {
-        // Update schema version and add experiments field
+        // Update schema version and add experiments field. A version 7
+        // document has none, but a host that keeps a protocol's experiments
+        // apart from it, and migrates it again from version 7, puts them back
+        // in, and they are kept so that later migrations can read them.
         paths: [''],
-        fn: <V>(protocol: V) =>
-          ({
+        fn: <V>(protocol: V) => {
+          const { experiments } = protocol as Record<string, unknown>;
+          return {
             ...(protocol as Record<string, unknown>),
             schemaVersion: 8 as const,
-            experiments: {},
-          }) as V,
+            experiments:
+              typeof experiments === 'object' &&
+              experiments !== null &&
+              !Array.isArray(experiments)
+                ? experiments
+                : {},
+          } as V;
+        },
       },
     ]);
 
@@ -1965,6 +1975,9 @@ const migrationV7toV8 = createMigration({
 
     return result as ProtocolDocument<8>;
   },
+  // Dropping a form stage with no fields moves every later stage up. The
+  // framework moves each session's stage records and resume position with
+  // their stages, so this step needs no session step of its own.
 });
 
 export default migrationV7toV8;

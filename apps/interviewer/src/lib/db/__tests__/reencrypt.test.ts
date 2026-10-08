@@ -104,6 +104,7 @@ async function clearAll(): Promise<void> {
   await db.sessions.clear();
   await db.protocols.clear();
   await db.assets.clear();
+  await db.protocolMigrations.clear();
 }
 
 // Write each row in the PLAINTEXT (mode-none) shape: no DEK held, so the
@@ -162,6 +163,36 @@ describe('reencryptAllRecords — sweep after enrolment', () => {
     expect(backProtocol.protocol.name).toBe('Study');
     const backAsset = await decryptAsset(assetRow);
     expect(backAsset.data).toBe('secret-token');
+  });
+
+  // A re-keying record keeps the protocol row its migration replaced, as it
+  // was stored; written before the device was secured, that copy is
+  // plaintext like every other row.
+  it('encrypts the protocol row a re-keying record keeps', async () => {
+    setSessionDek(null);
+    await db.protocolMigrations.put({
+      previousHash: 'h1',
+      hash: 'h2',
+      migratedAt: '2026-01-03T00:00:00.000Z',
+      source: { row: await encryptProtocol(protocol), toVersion: 9 },
+    });
+    expect((await db.protocolMigrations.get('h1'))?.source?.row._enc).toBe(
+      undefined,
+    );
+
+    setSessionDek(await makeDek());
+    const result = await reencryptAllRecords();
+
+    expect(result).toEqual({ total: 1, failed: 0 });
+    const record = await db.protocolMigrations.get('h1');
+    if (!record?.source) throw new Error('expected the record to survive');
+    expect(record.source.row._enc?.protocol).toBeDefined();
+    expect(record.source.row.protocol).toBeUndefined();
+    expect(record.source.row.codebook).toBeUndefined();
+    expect(record.source.toVersion).toBe(9);
+    expect((await decryptProtocol(record.source.row)).protocol).toEqual(
+      protocol.protocol,
+    );
   });
 
   it('leaves rows already encrypted under the DEK intact (round-trips a stored blob)', async () => {

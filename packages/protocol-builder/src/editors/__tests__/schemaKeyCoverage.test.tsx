@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import type { StageType } from '@codaco/protocol-validation';
+import {
+  PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT,
+  type StageType,
+} from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { StageEditorComponent } from '../../stage-editor-contract.ts';
@@ -9,7 +12,10 @@ import {
   familyPedigreeEditor,
   shimMarkdownEditorMeasurement,
 } from '../family-pedigree/__tests__/editorFixtures.ts';
-import { addFamilyMemberVariable } from '../family-pedigree/sections/__tests__/pedigreeFixtures.tsx';
+import {
+  addFamilyMemberVariables,
+  RELATIVES_NOT_RECORDED_VARIABLE,
+} from '../family-pedigree/__tests__/pedigreeFixtures.ts';
 import { schemaKeysFor } from './schemaKeys.ts';
 
 shimMarkdownEditorMeasurement();
@@ -38,73 +44,89 @@ const SKIP_LOGIC: SectionDoc = {
   destination: { type: 'finish' },
 };
 
+/** Not in the fixture protocol, so it is added to the person type as well. */
+const RELATIVES_NOT_RECORDED_ATTRIBUTE = 'relativesNotRecorded';
+
+/** The boolean attribute the maximal pedigree's nomination prompt records. */
+const NOMINATION_ATTRIBUTE = 'has_heart_disease';
+/** The relationship to the participant, with the interface's fixed values. */
+const RELATIONSHIP_ATTRIBUTE = 'fm_relationship';
+
 const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
   label: { 'en-US': 'Family Pedigree' },
   interviewScript: INTERVIEW_SCRIPT,
   skipLogic: SKIP_LOGIC,
-  nodeConfig: {
-    type: 'family_member',
-    nodeLabelVariable: 'fm_name',
-    egoVariable: 'is_ego',
-    relationshipVariable: 'fm_relationship_to_ego',
-    biologicalSexVariable: 'biologicalSex',
-    // What the participant is asked as they add each family member. NOT the
-    // display label: the interview collects each relative's name through the
-    // pedigree's own name control and drops a form field bound to it, so a
-    // stage that collected it here would be one no participant ever answers.
-    // See `MEMBER_FORM_ATTRIBUTE`.
-    form: [
-      { variable: 'fm_occupation', prompt: { 'en-US': 'What do they do?' } },
-    ],
+  subject: { entity: 'node', type: 'family_member' },
+  prompt: { 'en-US': 'Add the members of your family.' },
+  nodeConfiguration: {
+    nameAttribute: 'fm_name',
+    genderIdentity: {
+      attribute: 'genderIdentity',
+      terms: [
+        { value: 'woman', words: 'feminine' },
+        { value: 'man', words: 'masculine' },
+        { value: 'nonBinary', words: 'neutral' },
+        { value: 'differentIdentity', words: 'neutral' },
+        { value: 'unknown', words: 'unknown' },
+        { value: 'preferNotToSay', words: 'neutral' },
+      ],
+    },
+    sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
+    egoAttribute: 'is_ego',
+    relationshipToParticipantAttribute: RELATIONSHIP_ATTRIBUTE,
   },
-  edgeConfig: {
+  edgeConfiguration: {
     type: 'family_edge',
-    relationshipTypeVariable: 'relationshipType',
-    isActiveVariable: 'isActive',
-    isGestationalCarrierVariable: 'isGestationalCarrier',
-    gameteRoleVariable: 'gameteRole',
+    kindAttribute: 'relationshipKind',
+    gestationalCarrierAttribute: 'isGestationalCarrier',
+    currentPartnerAttribute: 'isCurrentPartner',
   },
-  framing: { mode: 'fixed', value: 'gamete' },
-  boundaries: {
-    requireGrandparents: 'off',
-    requireChildrenContributors: 'off',
+  completeness: {
+    scope: 'thirdDegree',
+    enforcement: 'recommended',
+    relativesNotRecordedAttribute: RELATIVES_NOT_RECORDED_ATTRIBUTE,
   },
-  introScreen: {
-    items: [
-      {
-        id: 'intro-1',
-        type: 'text',
-        content: { 'en-US': 'We are going to draw your family.' },
-      },
-    ],
-  },
-  censusPrompt: { 'en-US': 'Who is in your family?' },
+  framing: 'participantPreference',
   nominationPrompts: [
     {
       id: 'nomination-1',
-      text: { 'en-US': 'Who has been unwell?' },
-      variable: 'hasConditionX',
+      text: { 'en-US': 'Who in your family has had heart disease?' },
+      attribute: NOMINATION_ATTRIBUTE,
+      onlyForSexAssignedAtBirth: 'female',
     },
   ],
+  // NOT one of the person attributes: the interface already collects those
+  // itself, so the extra fields may not. See `MEMBER_FORM_ATTRIBUTE`.
+  form: {
+    fields: [
+      { variable: 'fm_occupation', prompt: { 'en-US': 'What do they do?' } },
+    ],
+  },
 };
 
 /**
- * The attribute the maximal pedigree's member form collects, and the fact that
- * it has to be put on the type first.
- *
- * Every attribute the fixture's `family_member` type carries is already
- * claimed: three are the pedigree's structural slots, one is the display label
- * the interview collects through its own control, and the last is the
- * nomination prompt's. A maximal stage has to fill `nodeConfig.form` with
- * something a form may legally collect, so this one arrives the way a
- * collaborator's would — through the host, under a revision it issued.
+ * The attribute the maximal pedigree's extra person field collects, and the
+ * fact that it has to be put on the type first: every attribute the fixture's
+ * `family_member` type carries is bound to one of the pedigree's own person
+ * attribute slots, so this one arrives the way a collaborator's would.
  */
 const MEMBER_FORM_ATTRIBUTE = 'fm_occupation';
 
 type MaximalStage = Readonly<{
   stageType: StageType;
+  /**
+   * The fixture stage this one stands in for. Opened as a stage of its own,
+   * it would bind the gender identity attribute the fixture's pedigree
+   * already manages, which only one stage may.
+   */
+  stageId: string;
   editor: StageEditorComponent;
   fields: SectionDoc;
+  /**
+   * Keys the schema has and the editor has no section for yet. They round-trip
+   * untouched, so a researcher cannot see or change them.
+   */
+  unowned?: readonly string[];
 }>;
 
 /**
@@ -127,6 +149,7 @@ type MaximalStage = Readonly<{
 const MAXIMAL: readonly MaximalStage[] = [
   {
     stageType: 'FamilyPedigree',
+    stageId: 'family-pedigree-1',
     editor: familyPedigreeEditor,
     fields: FAMILY_PEDIGREE_FIELDS,
   },
@@ -134,7 +157,7 @@ const MAXIMAL: readonly MaximalStage[] = [
 
 describe.each(MAXIMAL)(
   'a $stageType stage holding every key its schema declares',
-  ({ stageType, editor, fields }: MaximalStage) => {
+  ({ stageType, stageId, editor, fields, unowned = [] }: MaximalStage) => {
     /**
      * The stage above is the schema's key list, spelled as a stage. A key
      * added to this interface fails here first, with the key named, rather
@@ -148,24 +171,41 @@ describe.each(MAXIMAL)(
      * Two claims about one save. Every key is owned by something the editor
      * mounts — `unowned` is empty, so a key no section renders fails rather
      * than surviving untouched — and the save gives back exactly what it was
-     * given, which is where a nested optional key is caught: `form` inside
-     * `nodeConfig`, `value` inside `framing`. Those are inside a value a
+     * given, which is where a nested key is caught: a slot inside
+     * `nodeConfiguration` or `edgeConfiguration`. Those are inside a value a
      * section already owns, so only the comparison notices when one stops
      * being rendered.
      */
     it('is edited by a section, and saved back exactly as it arrived', async () => {
       const harness = renderStageEditor({
-        stage: { type: stageType, fields },
+        stage: { id: stageId, type: stageType, fields },
         editor,
       });
-      addFamilyMemberVariable(harness, MEMBER_FORM_ATTRIBUTE, {
-        name: MEMBER_FORM_ATTRIBUTE,
-        label: MEMBER_FORM_ATTRIBUTE,
-        type: 'text',
-        component: 'Text',
+      addFamilyMemberVariables(harness, {
+        [MEMBER_FORM_ATTRIBUTE]: {
+          name: MEMBER_FORM_ATTRIBUTE,
+          label: MEMBER_FORM_ATTRIBUTE,
+          type: 'text',
+          component: 'Text',
+        },
+        [RELATIVES_NOT_RECORDED_ATTRIBUTE]: RELATIVES_NOT_RECORDED_VARIABLE,
+        [NOMINATION_ATTRIBUTE]: {
+          name: NOMINATION_ATTRIBUTE,
+          label: NOMINATION_ATTRIBUTE,
+          type: 'boolean',
+        },
+        [RELATIONSHIP_ATTRIBUTE]: {
+          name: RELATIONSHIP_ATTRIBUTE,
+          label: RELATIONSHIP_ATTRIBUTE,
+          type: 'categorical',
+          options: PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT.map((value) => ({
+            value,
+            label: { 'en-US': value },
+          })),
+        },
       });
 
-      await harness.roundTrip({ unowned: [] });
+      await harness.roundTrip({ unowned: [...unowned] });
     });
   },
 );

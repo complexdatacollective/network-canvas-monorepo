@@ -1,1293 +1,1750 @@
-import path from 'node:path';
+import type { Locator, Page } from '@playwright/test';
+import { z } from 'zod';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
-import {
-  GAMETE_ROLE_OPTIONS,
-  RELATIONSHIP_TYPE_OPTIONS,
+import type {
+  FramingSetting,
+  PedigreeCompletenessScope,
+  PedigreeGenderWords,
+  PedigreeRelationshipKind,
+  PedigreeSexAssignedAtBirth,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  entitySecureAttributesMeta,
   type NcEdge,
   type NcNetwork,
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { FamilyPedigreeFixture } from '../fixtures/family-pedigree-fixture.js';
+import { AnonymisationFixture } from '../fixtures/anonymisation-fixture.js';
 import { expect } from '../fixtures/matrix-test.js';
-import { pedigreeField } from '../fixtures/pedigree-field-driver.js';
-import type { ProtocolFixture } from '../fixtures/protocol-fixture.js';
-import { DEV_PROTOCOL_ASSETS_DIR } from '../helpers/protocol-paths.js';
-import type { InterfaceScenarios, ScenarioDefinition } from './types.js';
+import type {
+  InterfaceScenarios,
+  ScenarioContext,
+  ScenarioDefinition,
+} from './types.js';
 
 const ATTR = entityAttributesProperty;
 const PK = entityPrimaryKeyProperty;
 
-const FIXED_GAMETE = { mode: 'fixed', value: 'gamete' } as const;
-const FIXED_GENDERED = { mode: 'fixed', value: 'gendered' } as const;
-const PARTICIPANT_CHOICE = { mode: 'participantChoice' } as const;
-const BOUNDARIES_OFF = {
-  requireGrandparents: 'off',
-  requireChildrenContributors: 'off',
-} as const;
-const CENSUS_PROMPT = 'Please build your family pedigree.';
+const PROMPT = 'Add the members of your family.';
+/** The researcher's own question, encrypted, when a scaffold adds it. */
+const NICKNAME = 'Nickname';
+const BEFORE_TITLE = 'Before your family';
+const AFTER_TITLE = 'After your family';
 
-type FormFieldEntry = {
-  variable: string;
-  prompt: string;
-  hint?: string;
-  showValidationHints?: boolean;
+type PedigreeOptions = {
+  label?: string;
+  interviewScript?: string;
+  framing?: FramingSetting;
+  askGenderIdentity?: boolean;
+  genderIdentities?: {
+    value: string;
+    label: string;
+    words?: PedigreeGenderWords;
+  }[];
+  completeness?: {
+    scope: PedigreeCompletenessScope;
+    enforcement: 'required' | 'recommended';
+  };
+  nominationPrompts?: {
+    text: string;
+    variableName?: string;
+    onlyForSexAssignedAtBirth?: 'female' | 'male';
+  }[];
+  /** Encrypts the name attribute with the participant's passphrase. */
+  encryptedNames?: boolean;
+  /** Adds a text field, Nickname, encrypted with the participant's
+   * passphrase (the name is encrypted only with `encryptedNames`). */
+  encryptedFormField?: boolean;
+  /** What comes before the pedigree. The pedigree is the first stage without
+   * one; an Information stage, or an Information stage and then an
+   * Anonymisation stage, otherwise. An Information stage always follows it. */
+  before?: 'information' | 'anonymisation';
+  /** Records each person's relationship to the participant. */
+  recordRelationshipToParticipant?: boolean;
+};
+
+type Seed = {
+  name?: string;
+  sex?: PedigreeSexAssignedAtBirth;
+  /** The value of one of the gender identity attribute's options. */
+  gender?: string;
+  isEgo?: boolean;
+  relativesNotRecorded?: string[];
+  /** A relationship to the participant already recorded (needs
+   * `recordRelationshipToParticipant`). */
+  relationship?: string;
 };
 
 /**
- * Create the Person node type and Family edge type with the full variable set a
- * FamilyPedigree stage references, returning every variable ref so a scenario's
- * `run()` can assert against the committed network by real ids. `nodeConfig.form`
- * is left empty here — the wizard's built-in fields (name/is-donor/
- * gestationalCarrier/biologicalSex) are enough to walk it, and biological sex is
- * inferred from gamete role rather than asked, so no gender/attribute form field
- * is needed. The one scenario that exercises form fields adds them itself.
+ * A Family Pedigree stage on a fresh SyntheticInterview, followed by an
+ * Information stage so leaving it can be observed. The person type's symbol
+ * follows sex assigned at birth (female circle, male square, anyone else a
+ * diamond). `person` and `relate` seed a family the stage opens on, through
+ * the stage's own attributes; a scenario seeding one sets `seedNetwork`.
  */
-function buildBaseFamilyPedigree(si: SyntheticInterview) {
-  const nodeType = si.addNodeType({
-    name: 'Person',
-    shape: { default: 'diamond' },
+function scaffold(options: PedigreeOptions = {}) {
+  const synth = new SyntheticInterview();
+  if (options.before) {
+    synth.addInformationStage({
+      title: BEFORE_TITLE,
+      text: 'Your family tree is next.',
+    });
+  }
+  if (options.before === 'anonymisation') {
+    synth.addStage('Anonymisation', {
+      explanationText: {
+        title: 'Protect your data',
+        body: 'This study encrypts the names of your family.',
+      },
+    });
+  }
+  const people = synth.addNodeType({ name: 'Person' });
+  if (options.encryptedNames) {
+    people.addVariable({ name: 'name', type: 'text', encrypted: true });
+  }
+  const fp = synth.addStage('FamilyPedigree', {
+    subject: { entity: 'node', type: people.id },
+    prompt: PROMPT,
+    ...(options.label ? { label: options.label } : {}),
+    ...(options.interviewScript
+      ? { interviewScript: options.interviewScript }
+      : {}),
+    framing: options.framing,
+    askGenderIdentity: options.askGenderIdentity,
+    genderIdentities: options.genderIdentities,
+    completeness: options.completeness,
+    nominationPrompts: options.nominationPrompts,
+    recordRelationshipToParticipant: options.recordRelationshipToParticipant,
   });
-  const nameVar = nodeType.addVariable({
-    name: 'name',
-    type: 'text',
-    component: 'Text',
+  const nickname = options.encryptedFormField
+    ? people.addVariable({
+        name: 'nickname',
+        type: 'text',
+        component: 'Text',
+        encrypted: true,
+      }).id
+    : undefined;
+  if (nickname) {
+    fp.addFormField({
+      component: 'Text',
+      variable: nickname,
+      prompt: NICKNAME,
+    });
+  }
+  people.setShape({
+    default: 'diamond',
+    dynamic: {
+      variable: fp.sexAssignedAtBirth,
+      type: 'discrete',
+      map: [
+        { value: 'female', shape: 'circle' },
+        { value: 'male', shape: 'square' },
+      ],
+    },
   });
-  const isEgoVar = nodeType.addVariable({ name: 'isEgo', type: 'boolean' });
-  const relToEgoVar = nodeType.addVariable({
-    name: 'relationshipToEgo',
-    type: 'text',
-  });
-  const bioSexVar = nodeType.addVariable({
-    name: 'biologicalSex',
-    type: 'text',
+  synth.addInformationStage({
+    title: AFTER_TITLE,
+    text: 'Your family tree is saved.',
   });
 
-  const edgeType = si.addEdgeType({ name: 'Family' });
-  // relationshipType and gameteRole are locked to canonical option sets by the
-  // FamilyPedigree superRefine (schema.ts:625-645) — use them verbatim.
-  const relTypeVar = edgeType.addVariable({
-    name: 'relationship',
-    type: 'categorical',
-    options: RELATIONSHIP_TYPE_OPTIONS.map((o) => ({
-      label: o.label,
-      value: o.value,
-    })),
-  });
-  const isActiveVar = edgeType.addVariable({
-    name: 'isActive',
-    type: 'boolean',
-  });
-  const isGestCarrierVar = edgeType.addVariable({
-    name: 'isGestationalCarrier',
-    type: 'boolean',
-  });
-  const gameteRoleVar = edgeType.addVariable({
-    name: 'gameteRole',
-    type: 'categorical',
-    options: GAMETE_ROLE_OPTIONS.map((o) => ({
-      label: o.label,
-      value: o.value,
-    })),
-  });
-
-  return {
-    nodeType,
-    nameVar,
-    isEgoVar,
-    relToEgoVar,
-    bioSexVar,
-    edgeType,
-    relTypeVar,
-    isActiveVar,
-    isGestCarrierVar,
-    gameteRoleVar,
+  const flags = [fp.ego, ...fp.nominations];
+  const person = (uid: string, seed: Seed) =>
+    synth.addManualNode(fp.id, people.id, uid, {
+      ...Object.fromEntries(flags.map((id) => [id, false])),
+      ...(seed.isEgo ? { [fp.ego]: true } : {}),
+      ...(seed.name === undefined ? {} : { [fp.name]: seed.name }),
+      ...(seed.sex === undefined
+        ? {}
+        : { [fp.sexAssignedAtBirth]: [seed.sex] }),
+      ...(seed.gender === undefined || fp.genderIdentity === undefined
+        ? {}
+        : { [fp.genderIdentity]: [seed.gender] }),
+      ...(seed.relativesNotRecorded === undefined ||
+      fp.relativesNotRecorded === undefined
+        ? {}
+        : { [fp.relativesNotRecorded]: seed.relativesNotRecorded }),
+      ...(seed.relationship === undefined ||
+      fp.relationshipToParticipant === undefined
+        ? {}
+        : { [fp.relationshipToParticipant]: [seed.relationship] }),
+    });
+  const relate = (
+    from: string,
+    to: string,
+    kind: PedigreeRelationshipKind,
+    link?: { current?: boolean; carrier?: boolean },
+  ) =>
+    synth.addManualEdge(fp.edgeType, `${from}-${to}-${kind}`, from, to, {
+      [fp.kind]: [kind],
+      ...(kind === 'partner'
+        ? { [fp.currentPartner]: link?.current ?? true }
+        : { [fp.gestationalCarrier]: link?.carrier ?? false }),
+    });
+  /** Two partnered biological parents of `child`, the first carrying. */
+  const parents = (first: string, second: string, child: string) => {
+    relate(first, child, 'biological', { carrier: true });
+    relate(second, child, 'biological');
   };
+
+  /** The pedigree's step: its index among the stages. */
+  const step = options.before === 'anonymisation' ? 2 : options.before ? 1 : 0;
+
+  return { synth, fp, step, person, relate, parents, nickname };
 }
 
-type Base = ReturnType<typeof buildBaseFamilyPedigree>;
+/** A person on the canvas, by their accessible name. */
+const member = (page: Page, name: string | RegExp): Locator =>
+  page.getByTestId('pedigree-person').getByLabel(name, { exact: true });
 
-function nodeConfigOf(base: Base, form: FormFieldEntry[] = []) {
-  return {
-    type: base.nodeType.id,
-    nodeLabelVariable: base.nameVar.id,
-    egoVariable: base.isEgoVar.id,
-    relationshipVariable: base.relToEgoVar.id,
-    biologicalSexVariable: base.bioSexVar.id,
-    form,
-  };
-}
+const panel = (page: Page): Locator =>
+  page.getByTestId('pedigree-person-panel');
 
-function edgeConfigOf(base: Base) {
-  return {
-    type: base.edgeType.id,
-    relationshipTypeVariable: base.relTypeVar.id,
-    isActiveVariable: base.isActiveVar.id,
-    isGestationalCarrierVariable: base.isGestCarrierVar.id,
-    gameteRoleVariable: base.gameteRoleVar.id,
-  };
-}
-
-function commonConfig(base: Base) {
-  return {
-    subject: { entity: 'node' as const, type: base.nodeType.id },
-    edgeConfig: edgeConfigOf(base),
-    censusPrompt: CENSUS_PROMPT,
-  };
-}
-
-function firstValue(value: unknown): unknown {
-  return Array.isArray(value) ? value[0] : value;
-}
-
-function nodeByName(
-  net: NcNetwork,
-  nameVarId: string,
+/** Opens the add menu around a person with the mouse and picks a relation. */
+async function addRelativeOf(
+  page: Page,
   name: string,
-): NcNode | undefined {
-  return net.nodes.find((n) => n[ATTR][nameVarId] === name);
+  relation: 'parent' | 'sibling' | 'partner' | 'child',
+) {
+  await member(page, name).hover();
+  await page.getByTestId(`pedigree-menu-${relation}`).click();
+  await expect(panel(page)).toBeVisible();
 }
 
-function egoNode(net: NcNetwork, egoVarId: string): NcNode | undefined {
-  return net.nodes.find((n) => n[ATTR][egoVarId] === true);
+/** Answers the panel's own questions about a person. */
+async function describe(
+  page: Page,
+  details: { name?: string; gender?: string; sex: string },
+) {
+  const form = panel(page);
+  if (details.name !== undefined) {
+    await form.getByRole('textbox', { name: /^Name/ }).fill(details.name);
+  }
+  if (details.gender !== undefined) {
+    await form
+      .getByRole('radiogroup', { name: /^Gender identity/ })
+      .getByRole('radio', { name: details.gender, exact: true })
+      .click();
+  }
+  await form
+    .getByRole('radiogroup', { name: /^Sex assigned at birth/ })
+    .getByRole('radio', { name: details.sex, exact: true })
+    .click();
 }
 
-function edgeBetween(
-  net: NcNetwork,
-  from: string | undefined,
-  to: string | undefined,
-): NcEdge | undefined {
-  return net.edges.find((e) => e.from === from && e.to === to);
+/** Submits the panel with the named button and waits for it to close. */
+async function submitPanel(page: Page, button: 'Add to family' | 'Save') {
+  await panel(page).getByRole('button', { name: button, exact: true }).click();
+  await expect(panel(page)).toHaveCount(0);
 }
 
-/**
- * Poll the interview network until the pedigree finalize has written its nodes,
- * then return the committed network. The pedigree lives in a private Zustand
- * store until finalize commits it to the shared interview graph, so the write is
- * asynchronous relative to the confirm click.
- */
-async function pollCommittedNetwork(
-  protocol: ProtocolFixture,
-  interviewId: string,
-  expectedNodeCount: number,
-): Promise<NcNetwork> {
-  await expect
-    .poll(
-      async () =>
-        (await protocol.getNetworkState(interviewId))?.nodes.length ?? 0,
-    )
-    .toBe(expectedNodeCount);
-  const network = await protocol.getNetworkState(interviewId);
-  if (!network)
-    throw new Error('Committed network was undefined after finalize');
+async function networkOf({
+  protocol,
+  interview,
+}: ScenarioContext): Promise<NcNetwork> {
+  const network = await protocol.getNetworkState(interview.interviewId);
+  if (!network) throw new Error('No network in the interview session');
   return network;
 }
 
-// --- Scenario builders -----------------------------------------------------
-// Each factory builds its SyntheticInterview once so `build()` and `run()` share
-// the generated variable ids through the closure (the ids are assigned at
-// addNodeType/addVariable time and are stable across the non-mutating
-// getInterviewPayload reads the payload adapter performs).
+const nodeNamed = (
+  network: NcNetwork,
+  nameAttribute: string,
+  name: string,
+): NcNode | undefined =>
+  network.nodes.find((node) => node[ATTR][nameAttribute] === name);
 
-function smokeNuclearFamily(): ScenarioDefinition {
-  const si = new SyntheticInterview();
-  const base = buildBaseFamilyPedigree(si);
-  const {
-    nodeType,
-    nameVar,
-    isEgoVar,
-    bioSexVar,
-    edgeType,
-    isGestCarrierVar,
-    gameteRoleVar,
-  } = base;
+/** The links between two people, in either direction. */
+const linksBetween = (
+  network: NcNetwork,
+  a: string | undefined,
+  b: string | undefined,
+): NcEdge[] =>
+  network.edges.filter(
+    (edge) =>
+      (edge.from === a && edge.to === b) || (edge.from === b && edge.to === a),
+  );
 
-  si.addStage('FamilyPedigree', {
-    ...commonConfig(base),
-    label: 'INTERNAL: Do Not Show This',
-    interviewScript:
-      'Author-only note: walk the participant through the quick-start wizard.',
-    nodeConfig: nodeConfigOf(base),
-    framing: FIXED_GAMETE,
-    boundaries: BOUNDARIES_OFF,
+const StageMetadataSchema = z.record(z.string(), z.unknown());
+const PedigreeMetadataSchema = z.looseObject({
+  framing: z.enum(['gendered', 'gamete']).optional(),
+  generatedLabels: z.record(z.string(), z.string()).optional(),
+});
+
+/** The pedigree's own stage metadata, which the session keys by step. */
+async function pedigreeMetadata(page: Page, step: number) {
+  const raw: unknown = await page.evaluate(
+    'window.__interviewStore.getState().session.stageMetadata ?? {}',
+  );
+  const entry = StageMetadataSchema.parse(raw)[String(step)];
+  return entry === undefined ? undefined : PedigreeMetadataSchema.parse(entry);
+}
+
+/** Leaves the pedigree with Next for the Information stage after it. */
+async function leaveForward({ page, interview }: ScenarioContext) {
+  await interview.next();
+  await expect(
+    page.getByRole('heading', { name: AFTER_TITLE, exact: true }),
+  ).toBeVisible();
+}
+
+const trackerRing = (page: Page): Locator =>
+  page.getByTestId('pedigree-completeness');
+
+/** The list of what is still needed, open in the toolbar's popover. */
+const trackerList = (page: Page): Locator =>
+  page.getByRole('region', {
+    name: 'Before you continue, please complete the following:',
   });
 
+// --- Scenarios ---------------------------------------------------------------
+
+/**
+ * The participant, alone on the canvas, adds both parents with the mouse.
+ * Every attribute the stage binds is written: names, gender identity, sex
+ * assigned at birth, the participant marker, and on the family edges the
+ * kind, the gestational carrier and whether the partnership is current.
+ */
+function smokeAddBothParents(): ScenarioDefinition {
+  const { synth, fp, person } = scaffold({
+    label: 'INTERNAL: Do Not Show This',
+    interviewScript: 'Author-only note: start with the participant.',
+  });
+  person('ego', { isEgo: true, gender: 'nonBinary', sex: 'intersex' });
+
   return {
-    id: 'smoke-nuclear-family',
+    id: 'smoke-add-both-parents',
     covers: [
       'label',
       'interviewScript',
-      'nodeConfig.type',
-      'nodeConfig.nodeLabelVariable',
-      'nodeConfig.egoVariable',
-      'nodeConfig.biologicalSexVariable',
-      'edgeConfig.type',
-      'edgeConfig.relationshipTypeVariable',
-      'edgeConfig.gameteRoleVariable',
-      'edgeConfig.isGestationalCarrierVariable',
-      'framing=fixed(gamete)',
-      'censusPrompt',
+      'subject',
+      'prompt',
+      'completeness=absent',
+      'form=absent',
       'nominationPrompts=absent',
-      'boundaries.requireGrandparents=off',
+      'participantShownAsYou',
+      'addRelative.parent',
+      'nodeConfiguration.nameAttribute',
+      'nodeConfiguration.genderIdentity.attribute',
+      'nodeConfiguration.sexAssignedAtBirthAttribute',
+      'nodeConfiguration.egoAttribute',
+      'edgeConfiguration.type',
+      'edgeConfiguration.kindAttribute=partner',
+      'edgeConfiguration.kindAttribute=biological',
+      'edgeConfiguration.gestationalCarrierAttribute',
+      'edgeConfiguration.currentPartnerAttribute',
     ],
     smoke: true,
     visual: true,
-    build: () => si,
-    run: async ({ page, interview, stage, protocol }) => {
-      await expect(stage.getPrompt(CENSUS_PROMPT)).toBeVisible();
-
-      // Dead config: label/interviewScript never reach the DOM.
+    seedNetwork: true,
+    build: () => synth,
+    run: async (ctx) => {
+      const { page } = ctx;
+      await expect(page.getByText(PROMPT)).toBeVisible();
+      // Dead config: neither the label nor the interview script is shown.
       await expect(page.getByText('INTERNAL: Do Not Show This')).toHaveCount(0);
+      await expect(page.getByText('Author-only note')).toHaveCount(0);
+
+      // The participant is "You", alone, with the add menu showing.
+      await expect(page.getByTestId('pedigree-person')).toHaveCount(1);
+      await expect(member(page, 'You')).toBeVisible();
+      await expect(page.getByTestId('pedigree-menu-parent')).toBeVisible();
+
+      await addRelativeOf(page, 'You', 'parent');
       await expect(
-        page.getByText('Author-only note: walk the participant through'),
-      ).toHaveCount(0);
-
-      const fp = new FamilyPedigreeFixture(page);
-      await fp.clickGetStarted();
-      await fp.selectEgoSex();
-
-      await fp.setField('egg-parent.is-donor', false);
-      await fp.setField('egg-parent.name', 'Linda');
-      await fp.setField('egg-parent.gestationalCarrier', true);
-      await fp.clickWizardNext();
-
-      await fp.setField('sperm-parent.is-donor', false);
-      await fp.setField('sperm-parent.name', 'Robert');
-      await fp.clickWizardNext();
-
-      await fp.setField('hasOtherParents', false);
-      await fp.clickWizardNext();
-
-      await fp.setPartnership('egg-parent', 'Robert', 'current');
-      await fp.clickWizardNext();
-
-      await fp.setField('hasPartner', false);
-      await fp.clickWizardNext();
-      await fp.dismissBuildHint();
-
-      // requireGrandparents:'off' — the boundary item never renders.
-      await expect(fp.checklistItem('boundary-grandparents')).toHaveCount(0);
-
-      await interview.nextButton.click();
-      await fp.confirmFinalize();
-
-      const network = await pollCommittedNetwork(
-        protocol,
-        interview.interviewId,
-        3,
-      );
-      expect(network.nodes.every((n) => n.type === nodeType.id)).toBe(true);
-      expect(network.edges.every((e) => e.type === edgeType.id)).toBe(true);
-
-      const linda = nodeByName(network, nameVar.id, 'Linda');
-      const robert = nodeByName(network, nameVar.id, 'Robert');
-      const ego = egoNode(network, isEgoVar.id);
-      expect(
-        network.nodes.filter((n) => n[ATTR][isEgoVar.id] === true),
-      ).toHaveLength(1);
-      expect(linda?.[ATTR][isEgoVar.id]).not.toBe(true);
-
-      expect(linda?.[ATTR][bioSexVar.id]).toEqual(['female']);
-      expect(robert?.[ATTR][bioSexVar.id]).toEqual(['male']);
-
-      const eggEdge = edgeBetween(network, linda?.[PK], ego?.[PK]);
-      expect(eggEdge?.[ATTR][gameteRoleVar.id]).toEqual(['egg']);
-      expect(eggEdge?.[ATTR][isGestCarrierVar.id]).toBe(true);
-
-      const spermEdge = edgeBetween(network, robert?.[PK], ego?.[PK]);
-      expect(spermEdge?.[ATTR][gameteRoleVar.id]).toEqual(['sperm']);
-    },
-  };
-}
-
-function relationshipFormFieldsAndActivePartnerEdge(): ScenarioDefinition {
-  const si = new SyntheticInterview();
-  const base = buildBaseFamilyPedigree(si);
-  const { nameVar, isEgoVar, relToEgoVar, relTypeVar, isActiveVar } = base;
-
-  const diseaseVar = base.nodeType.addVariable({
-    name: 'diagnosedConditionX',
-    type: 'boolean',
-    component: 'Boolean',
-  });
-  const notesVar = base.nodeType.addVariable({
-    name: 'healthNotes',
-    type: 'text',
-    component: 'Text',
-    validation: { minLength: 2 },
-  });
-
-  si.addStage('FamilyPedigree', {
-    ...commonConfig(base),
-    nodeConfig: nodeConfigOf(base, [
-      {
-        variable: diseaseVar.id,
-        prompt: 'Has this person been diagnosed with condition X?',
-        hint: 'Leave blank if unsure',
-      },
-      {
-        variable: notesVar.id,
-        prompt: 'Any additional health notes about this person?',
-        showValidationHints: true,
-      },
-    ]),
-    framing: FIXED_GAMETE,
-    boundaries: BOUNDARIES_OFF,
-  });
-
-  return {
-    id: 'relationship-form-fields-and-active-partner-edge',
-    covers: [
-      'nodeConfig.relationshipVariable',
-      'nodeConfig.form',
-      'nodeConfig.form[].hint',
-      'nodeConfig.form[].showValidationHints',
-      'edgeConfig.isActiveVariable',
-    ],
-    build: () => si,
-    run: async ({ page, interview, protocol }) => {
-      const fp = new FamilyPedigreeFixture(page);
-      await fp.clickGetStarted();
-      await fp.selectEgoSex();
-
-      // Egg-parent step: the disease field shows only its authored hint; the
-      // notes field additionally surfaces its validation-requirement summary
-      // (showValidationHints), which the disease field must NOT.
-      const diseaseField = pedigreeField(
-        fp.dialog,
-        `egg-parent.${diseaseVar.id}`,
-      );
-      const notesField = pedigreeField(fp.dialog, `egg-parent.${notesVar.id}`);
-      await expect(
-        diseaseField.getByText('Leave blank if unsure'),
+        panel(page).getByRole('heading', { name: 'Add your parent' }),
       ).toBeVisible();
+      await describe(page, { name: 'Linda', gender: 'Woman', sex: 'Female' });
+      await panel(page)
+        .getByRole('radiogroup', {
+          name: /^Did this parent carry the pregnancy\?/,
+        })
+        .getByRole('radio', { name: 'Yes', exact: true })
+        .click();
+      await submitPanel(page, 'Add to family');
+      await expect(member(page, 'Linda')).toBeVisible();
+
+      await addRelativeOf(page, 'You', 'parent');
+      await describe(page, { name: 'Robert', gender: 'Man', sex: 'Male' });
+      // Linda is offered as Robert's partner, and chosen already.
       await expect(
-        notesField.getByText(/Enter at least 2 characters/i),
-      ).toBeVisible();
-      await expect(
-        diseaseField.getByText(/Enter at least 2 characters/i),
-      ).toHaveCount(0);
+        panel(page)
+          .getByRole('radiogroup', {
+            name: /^Are they the partner of another parent\?/,
+          })
+          .getByRole('radio', { name: 'Linda', exact: true }),
+      ).toBeChecked();
+      await submitPanel(page, 'Add to family');
+      await expect(member(page, 'Robert')).toBeVisible();
+      await expect(page.getByTestId('pedigree-person')).toHaveCount(3);
 
-      await fp.setField('egg-parent.is-donor', false);
-      await fp.setField('egg-parent.name', 'Linda');
-      await fp.setField('egg-parent.gestationalCarrier', true);
-      await fp.setField(`egg-parent.${diseaseVar.id}`, true);
-      // notes is left blank (minLength tolerates empty), proving the field
-      // renders and validates without blocking the wizard.
-      await fp.clickWizardNext();
-
-      await fp.setField('sperm-parent.is-donor', false);
-      await fp.setField('sperm-parent.name', 'Robert');
-      await fp.clickWizardNext();
-
-      await fp.setField('hasOtherParents', false);
-      await fp.clickWizardNext();
-
-      await fp.setPartnership('egg-parent', 'Robert', 'ex');
-      await fp.clickWizardNext();
-
-      await fp.setField('hasPartner', false);
-      await fp.clickWizardNext();
-      await fp.dismissBuildHint();
-
-      await interview.nextButton.click();
-      await fp.confirmFinalize();
-
-      const network = await pollCommittedNetwork(
-        protocol,
-        interview.interviewId,
-        3,
-      );
-      const linda = nodeByName(network, nameVar.id, 'Linda');
-      const robert = nodeByName(network, nameVar.id, 'Robert');
-      const ego = egoNode(network, isEgoVar.id);
-
-      expect(linda?.[ATTR][relToEgoVar.id]).toBe('Parent');
-      expect(linda?.[ATTR][diseaseVar.id]).toBe(true);
-
-      const partnerEdge = network.edges.find(
-        (e) => firstValue(e[ATTR][relTypeVar.id]) === 'partner',
-      );
-      expect(partnerEdge?.[ATTR][isActiveVar.id]).toBe(false);
-
-      const lindaToEgo = edgeBetween(network, linda?.[PK], ego?.[PK]);
-      expect(lindaToEgo?.[ATTR][isActiveVar.id]).toBe(true);
-      expect(robert?.[ATTR][relToEgoVar.id]).toBe('Parent');
-    },
-  };
-}
-
-function framingParticipantChoiceWithIntro(): ScenarioDefinition {
-  const si = new SyntheticInterview();
-  const base = buildBaseFamilyPedigree(si);
-
-  si.addStage('FamilyPedigree', {
-    ...commonConfig(base),
-    nodeConfig: nodeConfigOf(base),
-    framing: PARTICIPANT_CHOICE,
-    boundaries: BOUNDARIES_OFF,
-    introScreen: {
-      items: [
-        {
-          id: 'intro-text',
-          type: 'text',
-          content:
-            'This pedigree helps us understand your family health history.',
-        },
-      ],
-    },
-  });
-
-  return {
-    id: 'framing-participant-choice-with-intro',
-    covers: [
-      'framing=participantChoice',
-      'introScreen',
-      'introScreen.items[].type=text',
-    ],
-    build: () => si,
-    run: async ({ page }) => {
-      const fp = new FamilyPedigreeFixture(page);
-      await fp.clickGetStarted();
-
-      // Intro screen precedes the framing-selection step (order assertion).
-      await expect(fp.dialog.getByText(/family health history/i)).toBeVisible();
-      await expect(fp.dialog.getByRole('option')).toHaveCount(0);
-
-      await fp.clickWizardNext();
-      // Framing-selection step now offers the framing options.
-      await expect(fp.dialog.getByRole('option').first()).toBeVisible();
-      await fp.selectFraming('gamete');
-      await fp.clickWizardNext();
-
-      await fp.selectEgoSex();
-      // gamete framing → the egg-parent step speaks of an "egg parent".
-      await expect(fp.dialog.getByText(/egg parent/i).first()).toBeVisible();
-    },
-  };
-}
-
-function framingFixedGendered(): ScenarioDefinition {
-  const si = new SyntheticInterview();
-  const base = buildBaseFamilyPedigree(si);
-
-  si.addStage('FamilyPedigree', {
-    ...commonConfig(base),
-    nodeConfig: nodeConfigOf(base),
-    framing: FIXED_GENDERED,
-    boundaries: BOUNDARIES_OFF,
-  });
-
-  return {
-    id: 'framing-fixed-gendered',
-    covers: ['framing=fixed(gendered)'],
-    build: () => si,
-    run: async ({ page }) => {
-      const fp = new FamilyPedigreeFixture(page);
-      await fp.clickGetStarted();
-
-      // Fixed framing skips the framing-selection step (no rich-select options).
-      await expect(fp.dialog.getByRole('option')).toHaveCount(0);
-
-      await fp.selectEgoSex();
-      // gendered framing → the first parent step speaks of a "mother".
-      await expect(fp.dialog.getByText(/mother/i).first()).toBeVisible();
-    },
-  };
-}
-
-function introScreenAssetImage(): ScenarioDefinition {
-  const si = new SyntheticInterview();
-  const base = buildBaseFamilyPedigree(si);
-
-  si.addAsset({
-    id: 'img-1',
-    name: 'quadrant',
-    type: 'image',
-    source: 'quadrant.png',
-  });
-
-  si.addStage('FamilyPedigree', {
-    ...commonConfig(base),
-    nodeConfig: nodeConfigOf(base),
-    framing: FIXED_GAMETE,
-    boundaries: BOUNDARIES_OFF,
-    introScreen: {
-      items: [
-        { id: 'intro-image', type: 'asset', content: 'img-1' },
-        {
-          id: 'intro-heading',
-          type: 'text',
-          content: '# Disallowed heading\n\nAn allowed paragraph.',
-        },
-      ],
-    },
-  });
-
-  return {
-    id: 'intro-screen-asset-image',
-    covers: ['introScreen', 'introScreen.items[].type=asset'],
-    visual: true,
-    assets: [
-      {
-        assetId: 'img-1',
-        name: 'quadrant',
-        type: 'image',
-        source: 'quadrant.png',
-        localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'quadrant.png'),
-      },
-    ],
-    build: () => si,
-    run: async ({ page }) => {
-      const fp = new FamilyPedigreeFixture(page);
-      await fp.clickGetStarted();
-
-      const img = fp.dialog.locator('img[src*="quadrant.png"]');
-      await expect(img).toBeVisible();
       await expect
-        .poll(() => img.evaluate((el: HTMLImageElement) => el.naturalWidth))
-        .toBeGreaterThan(0);
+        .poll(async () => (await networkOf(ctx)).edges.length)
+        .toBe(3);
+      const network = await networkOf(ctx);
+      expect(network.nodes.every((node) => node.type === fp.personType)).toBe(
+        true,
+      );
+      expect(network.edges.every((edge) => edge.type === fp.edgeType)).toBe(
+        true,
+      );
+      const ego = network.nodes.find((node) => node[ATTR][fp.ego] === true);
+      const linda = nodeNamed(network, fp.name, 'Linda');
+      const robert = nodeNamed(network, fp.name, 'Robert');
+      expect(
+        network.nodes.filter((node) => node[ATTR][fp.ego] === true),
+      ).toHaveLength(1);
+      expect(linda?.[ATTR][fp.sexAssignedAtBirth]).toEqual(['female']);
+      expect(linda?.[ATTR][fp.genderIdentity ?? '']).toEqual(['woman']);
+      expect(robert?.[ATTR][fp.sexAssignedAtBirth]).toEqual(['male']);
+      expect(robert?.[ATTR][fp.genderIdentity ?? '']).toEqual(['man']);
 
-      // h1 is not in IntroStep's INTRO_ALLOWED_TAGS — the markdown heading must
-      // not render as an <h1>, but the following paragraph must render.
-      await expect(fp.dialog.locator('h1')).toHaveCount(0);
-      await expect(fp.dialog.getByText('An allowed paragraph.')).toBeVisible();
+      const [lindaToEgo] = linksBetween(network, linda?.[PK], ego?.[PK]);
+      expect(lindaToEgo?.from).toBe(linda?.[PK]);
+      expect(lindaToEgo?.[ATTR][fp.kind]).toEqual(['biological']);
+      expect(lindaToEgo?.[ATTR][fp.gestationalCarrier]).toBe(true);
+      const [robertToEgo] = linksBetween(network, robert?.[PK], ego?.[PK]);
+      expect(robertToEgo?.from).toBe(robert?.[PK]);
+      expect(robertToEgo?.[ATTR][fp.kind]).toEqual(['biological']);
+      expect(robertToEgo?.[ATTR][fp.gestationalCarrier]).toBe(false);
+      const [partnership] = linksBetween(network, linda?.[PK], robert?.[PK]);
+      expect(partnership?.[ATTR][fp.kind]).toEqual(['partner']);
+      expect(partnership?.[ATTR][fp.currentPartner]).toBe(true);
     },
   };
 }
 
-function boundariesGrandparentsRequiredBlocked(): ScenarioDefinition {
-  const si = new SyntheticInterview();
-  const base = buildBaseFamilyPedigree(si);
+/** The person seed and link helpers a scaffold returns. */
+type Seeders = Pick<
+  ReturnType<typeof scaffold>,
+  'person' | 'relate' | 'parents'
+>;
 
-  si.addStage('FamilyPedigree', {
-    ...commonConfig(base),
-    nodeConfig: nodeConfigOf(base),
-    framing: FIXED_GAMETE,
-    boundaries: {
-      requireGrandparents: 'required',
-      requireChildrenContributors: 'off',
-    },
+/**
+ * The participant described as intersex and non-binary, with partnered
+ * biological parents Julie (who carried them) and Rob, both described.
+ */
+function seedDescribedParents(
+  { person, relate, parents }: Seeders,
+  ego: Seed = {},
+) {
+  person('ego', {
+    name: 'Ari',
+    gender: 'nonBinary',
+    sex: 'intersex',
+    isEgo: true,
+    ...ego,
   });
-
-  return {
-    id: 'boundaries-grandparents-required-blocked',
-    covers: ['boundaries.requireGrandparents=required'],
-    build: () => si,
-    run: async ({ page, interview, protocol }) => {
-      const fp = new FamilyPedigreeFixture(page);
-      await walkMinimalTwoParents(fp);
-
-      await expect(fp.checklist).toBeVisible();
-      await expect(fp.checklistItem('boundary-grandparents')).toHaveAttribute(
-        'data-required',
-        'true',
-      );
-      // Required + unmet boundary means no finalize affordance.
-      await expect(fp.finalizeChecklistButton).toHaveCount(0);
-
-      await interview.nextButton.click();
-      await expect(
-        fp.dialog.getByText(/pedigree is incomplete/i),
-      ).toBeVisible();
-      await fp.clickDialogPrimary();
-
-      // Nothing was committed to the interview network pre-finalize.
-      const network = await protocol.getNetworkState(interview.interviewId);
-      expect(network?.nodes ?? []).toHaveLength(0);
-    },
-  };
+  person('mum', { name: 'Julie', gender: 'woman', sex: 'female' });
+  person('dad', { name: 'Rob', gender: 'man', sex: 'male' });
+  relate('mum', 'dad', 'partner');
+  parents('mum', 'dad', 'ego');
 }
 
-function boundariesGrandparentsRecommendedNudge(): ScenarioDefinition {
-  const si = new SyntheticInterview();
-  const base = buildBaseFamilyPedigree(si);
-
-  si.addStage('FamilyPedigree', {
-    ...commonConfig(base),
-    nodeConfig: nodeConfigOf(base),
-    framing: FIXED_GAMETE,
-    boundaries: {
-      requireGrandparents: 'recommended',
-      requireChildrenContributors: 'off',
-    },
+/** Unnamed parents and an unnamed sister, each described. */
+function seedUnnamedFamily({ person, relate, parents }: Seeders) {
+  person('ego', {
+    name: 'Ari',
+    gender: 'nonBinary',
+    sex: 'intersex',
+    isEgo: true,
   });
-
-  return {
-    id: 'boundaries-grandparents-recommended-nudge',
-    covers: ['boundaries.requireGrandparents=recommended'],
-    build: () => si,
-    run: async ({ page, interview, protocol }) => {
-      const fp = new FamilyPedigreeFixture(page);
-      await walkMinimalTwoParents(fp);
-
-      // The grandparents boundary surfaces as a recommended (non-required)
-      // checklist nudge.
-      await expect(fp.checklistItem('boundary-grandparents')).toHaveAttribute(
-        'data-required',
-        'false',
-      );
-
-      // A recommended boundary never blocks finalize: advancing goes straight to
-      // the finalize confirm, not the "pedigree is incomplete" acknowledge.
-      await interview.nextButton.click();
-      await fp.confirmFinalize();
-
-      const network = await pollCommittedNetwork(
-        protocol,
-        interview.interviewId,
-        3,
-      );
-      expect(network.nodes).toHaveLength(3);
-    },
-  };
+  person('mum', { gender: 'woman', sex: 'female' });
+  person('dad', { gender: 'man', sex: 'male' });
+  person('sister', { gender: 'woman', sex: 'female' });
+  relate('mum', 'dad', 'partner');
+  parents('mum', 'dad', 'ego');
+  parents('mum', 'dad', 'sister');
 }
 
-function boundariesChildrenContributorsRequired(): ScenarioDefinition {
-  const si = new SyntheticInterview();
-  const base = buildBaseFamilyPedigree(si);
-
-  si.addStage('FamilyPedigree', {
-    ...commonConfig(base),
-    nodeConfig: nodeConfigOf(base),
-    framing: FIXED_GAMETE,
-    boundaries: {
-      requireGrandparents: 'off',
-      requireChildrenContributors: 'required',
-    },
+/**
+ * A sibling, a partner and a child added with the mouse, none of them named,
+ * on a stage that does not ask about gender identity: the gendered words
+ * follow sex assigned at birth. Leaving the stage saves each unnamed
+ * person's label as their name, and the stage's metadata records who holds
+ * one; the participant's own name and a typed name are left alone.
+ */
+function siblingPartnerChildAndGeneratedLabels(): ScenarioDefinition {
+  const { synth, fp, step, person, relate, parents } = scaffold({
+    framing: 'gendered',
+    askGenderIdentity: false,
   });
+  person('ego', { name: 'Ari', sex: 'intersex', isEgo: true });
+  person('mum', { sex: 'female' });
+  person('dad', { name: 'Rob', sex: 'male' });
+  relate('mum', 'dad', 'partner');
+  parents('mum', 'dad', 'ego');
 
   return {
-    id: 'boundaries-children-contributors-required',
-    covers: ['boundaries.requireChildrenContributors=required'],
-    build: () => si,
-    run: async ({ page, interview, protocol }) => {
-      const fp = new FamilyPedigreeFixture(page);
-      await fp.clickGetStarted();
-      await fp.selectEgoSex();
-
-      await fp.setField('egg-parent.is-donor', false);
-      await fp.setField('egg-parent.gestationalCarrier', true);
-      await fp.clickWizardNext();
-
-      await fp.setField('sperm-parent.is-donor', false);
-      await fp.clickWizardNext();
-
-      await fp.setField('hasOtherParents', false);
-      await fp.clickWizardNext();
-
-      // Accept the partnership-matrix defaults.
-      await fp.clickWizardNext();
-
-      await fp.setField('hasPartner', true);
-      await fp.setField('partner.name', 'Jennifer');
-      await fp.setField('partner.biologicalSex', 'female');
-      await fp.setField('childrenWithPartnerCount', 1);
-      await fp.clickWizardNext();
-
-      await fp.setField('childWithPartner[0].name', 'Daniel');
-      await fp.setField('childWithPartner[0].biologicalSex', 'male');
-      // Both prospective parents are recorded female, so the interface cannot
-      // infer a sperm contributor. Select one explicitly, as a participant
-      // must, now that reproductive roles are not filtered by recorded sex.
-      await fp.setField(
-        'childWithPartner[0].parentage.sperm-source',
-        'partner',
-      );
-      await fp.clickWizardNext();
-      await fp.dismissBuildHint();
-
-      // Jennifer's own parents are unrecorded, so the co-parent boundary is
-      // required and unmet — and, unlike the recommended nudge, it genuinely
-      // gates finalizing (validatePedigreeCompleteness ignores manual checklist
-      // overrides for required boundaries).
-      await expect(
-        fp.checklistItem('boundary-children-contributors'),
-      ).toHaveAttribute('data-required', 'true');
-
-      await interview.nextButton.click();
-      await expect(
-        fp.dialog.getByText(/pedigree is incomplete/i),
-      ).toBeVisible();
-      await expect(
-        fp.dialog.getByText(/other parents needs their own parents/i),
-      ).toBeVisible();
-      await fp.clickDialogPrimary();
-
-      // The required boundary blocked finalize, so nothing reached the network.
-      const network = await protocol.getNetworkState(interview.interviewId);
-      expect(network?.nodes ?? []).toHaveLength(0);
-    },
-  };
-}
-
-function adoptiveRelationshipEdgeStyling(): ScenarioDefinition {
-  const si = new SyntheticInterview();
-  const base = buildBaseFamilyPedigree(si);
-  const { nameVar, isEgoVar, relTypeVar } = base;
-
-  si.addStage('FamilyPedigree', {
-    ...commonConfig(base),
-    nodeConfig: nodeConfigOf(base),
-    framing: FIXED_GAMETE,
-    boundaries: BOUNDARIES_OFF,
-  });
-
-  return {
-    id: 'adoptive-relationship-edge-styling',
-    covers: ['edgeConfig.relationshipTypeVariable=adoptive'],
-    visual: true,
-    build: () => si,
-    run: async ({ page, interview, protocol }) => {
-      const fp = new FamilyPedigreeFixture(page);
-      await fp.clickGetStarted();
-      await fp.selectEgoSex();
-
-      // Unnamed, absent biological parents.
-      await fp.setField('egg-parent.is-donor', false);
-      await fp.setField('egg-parent.gestationalCarrier', true);
-      await fp.clickWizardNext();
-
-      await fp.setField('sperm-parent.is-donor', false);
-      await fp.clickWizardNext();
-
-      await fp.setField('hasOtherParents', true);
-      await fp.setField('otherParentCount', 2);
-      await fp.clickWizardNext();
-
-      await fp.setField('additional-parent[0].role', 'adoptive-parent');
-      await fp.setField('additional-parent[0].name', 'James');
-      await fp.setField('additional-parent[1].role', 'adoptive-parent');
-      await fp.setField('additional-parent[1].name', 'Barbara');
-      await fp.clickWizardNext();
-
-      await fp.setPartnership('additional-parent-0', 'Barbara', 'current');
-      await fp.clickWizardNext();
-
-      await fp.setField('hasPartner', false);
-      await fp.clickWizardNext();
-      await fp.dismissBuildHint();
-
-      await interview.nextButton.click();
-      await fp.confirmFinalize();
-
-      const network = await pollCommittedNetwork(
-        protocol,
-        interview.interviewId,
-        5,
-      );
-      const ego = egoNode(network, isEgoVar.id);
-      const james = nodeByName(network, nameVar.id, 'James');
-      const barbara = nodeByName(network, nameVar.id, 'Barbara');
-
-      const jamesEdge = edgeBetween(network, james?.[PK], ego?.[PK]);
-      const barbaraEdge = edgeBetween(network, barbara?.[PK], ego?.[PK]);
-      expect(jamesEdge?.[ATTR][relTypeVar.id]).toEqual(['adoptive']);
-      expect(barbaraEdge?.[ATTR][relTypeVar.id]).toEqual(['adoptive']);
-    },
-  };
-}
-
-function nominationPromptsSequentialToggle(): ScenarioDefinition {
-  const si = new SyntheticInterview();
-  const base = buildBaseFamilyPedigree(si);
-  const diseaseVar = base.nodeType.addVariable({
-    name: 'hasBreastCancer',
-    type: 'boolean',
-  });
-  const diabetesVar = base.nodeType.addVariable({
-    name: 'hasType2Diabetes',
-    type: 'boolean',
-  });
-
-  si.addStage('FamilyPedigree', {
-    ...commonConfig(base),
-    nodeConfig: nodeConfigOf(base),
-    framing: FIXED_GAMETE,
-    boundaries: BOUNDARIES_OFF,
-    nominationPrompts: [
-      {
-        id: '1',
-        text: 'Please nominate any family members who have been diagnosed with breast cancer.',
-        variable: diseaseVar.id,
-      },
-      {
-        id: '2',
-        text: 'Please nominate any family members who have been diagnosed with type 2 diabetes.',
-        variable: diabetesVar.id,
-      },
-    ],
-  });
-
-  si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
-
-  return {
-    id: 'nomination-prompts-sequential-toggle',
+    id: 'sibling-partner-child-generated-labels',
     covers: [
-      'nominationPrompts[].text',
-      'nominationPrompts[].variable',
-      'nominationPrompts[].id',
+      'framing=gendered',
+      'nodeConfiguration.genderIdentity=absent',
+      'addRelative.sibling',
+      'addRelative.partner',
+      'addRelative.child',
+      'nodeConfiguration.nameAttribute=generatedLabelOnLeave',
     ],
-    build: () => si,
-    run: async ({ page, interview, stage }) => {
-      const fp = new FamilyPedigreeFixture(page);
-      await fp.clickGetStarted();
-      await fp.selectEgoSex();
+    seedNetwork: true,
+    build: () => synth,
+    run: async (ctx) => {
+      const { page } = ctx;
+      // An unnamed parent is shown by the gendered word her sex at birth
+      // gives her.
+      await expect(member(page, 'Mother')).toBeVisible();
 
-      await fp.setField('egg-parent.is-donor', false);
-      await fp.setField('egg-parent.name', 'Linda');
-      await fp.setField('egg-parent.gestationalCarrier', true);
-      await fp.clickWizardNext();
-
-      await fp.setField('sperm-parent.is-donor', false);
-      await fp.setField('sperm-parent.name', 'Robert');
-      await fp.clickWizardNext();
-
-      await fp.setField('hasOtherParents', false);
-      await fp.clickWizardNext();
-
-      await fp.setPartnership('egg-parent', 'Robert', 'current');
-      await fp.clickWizardNext();
-
-      await fp.setField('hasPartner', false);
-      await fp.clickWizardNext();
-      await fp.dismissBuildHint();
-
-      await interview.nextButton.click();
-      await fp.confirmFinalize();
-
-      // First nomination prompt (breast cancer): nominate, un-nominate, then
-      // re-nominate Linda — a round-trip toggle of the active attribute.
+      await addRelativeOf(page, 'You', 'sibling');
       await expect(
-        stage.getPrompt(/diagnosed with breast cancer/i),
+        panel(page).getByRole('heading', { name: 'Add your sibling' }),
       ).toBeVisible();
-      await fp.node('Linda').click();
-      await expect(fp.node('Linda')).toHaveAttribute('aria-pressed', 'true');
-      await fp.node('Linda').click();
-      await expect(fp.node('Linda')).toHaveAttribute('aria-pressed', 'false');
-      await fp.node('Linda').click();
-      await expect(fp.node('Linda')).toHaveAttribute('aria-pressed', 'true');
-
-      // Advance to the second nomination prompt (diabetes): nominate Robert.
-      await interview.nextButton.click();
+      // No gender identity question on this stage.
       await expect(
-        stage.getPrompt(/diagnosed with type 2 diabetes/i),
-      ).toBeVisible();
-      await fp.node('Robert').click();
-      await expect(fp.node('Robert')).toHaveAttribute('aria-pressed', 'true');
+        panel(page).getByRole('radiogroup', { name: /^Gender identity/ }),
+      ).toHaveCount(0);
+      await describe(page, { sex: 'Female' });
+      await submitPanel(page, 'Add to family');
+      await expect(member(page, 'Sister')).toBeVisible();
 
-      // The last prompt advances out of the stage entirely.
-      await interview.nextButton.click();
-      await expect(page.getByText('After the main stage.')).toBeVisible();
-    },
-  };
-}
+      await addRelativeOf(page, 'You', 'partner');
+      await describe(page, { sex: 'Male' });
+      await submitPanel(page, 'Add to family');
+      await expect(member(page, 'Partner')).toBeVisible();
 
-function surrogateTwoDonorsGestationalCarrier(): ScenarioDefinition {
-  const si = new SyntheticInterview();
-  const base = buildBaseFamilyPedigree(si);
-  const { isEgoVar, bioSexVar, isGestCarrierVar, gameteRoleVar } = base;
-
-  si.addStage('FamilyPedigree', {
-    ...commonConfig(base),
-    nodeConfig: nodeConfigOf(base),
-    framing: FIXED_GAMETE,
-    boundaries: BOUNDARIES_OFF,
-  });
-
-  return {
-    id: 'surrogate-two-donors-gestational-carrier',
-    covers: [
-      'edgeConfig.isGestationalCarrierVariable=true-surrogate',
-      'edgeConfig.gameteRoleVariable=donor-both',
-    ],
-    build: () => si,
-    run: async ({ page, interview, protocol }) => {
-      const fp = new FamilyPedigreeFixture(page);
-      await fp.clickGetStarted();
-      await fp.selectEgoSex();
-
-      // Egg donor who did not carry — a separate carrier ("Mum") carried.
-      await fp.setField('egg-parent.is-donor', true);
-      await fp.setField('egg-parent.gestationalCarrier', false);
-      await fp.clickWizardNext();
-
-      // GestationalCarrierStep only renders when the egg parent did not carry.
-      await fp.setField('gestational-carrier.name', 'Mum');
-      await fp.clickWizardNext();
-
-      // Sperm donor.
-      await fp.setField('sperm-parent.is-donor', true);
-      await fp.clickWizardNext();
-
-      await fp.setField('hasOtherParents', false);
-      await fp.clickWizardNext();
-
-      // Accept the partnership-matrix defaults.
-      await fp.clickWizardNext();
-
-      await fp.setField('hasPartner', false);
-      await fp.clickWizardNext();
-      await fp.dismissBuildHint();
-
-      await interview.nextButton.click();
-      await fp.confirmFinalize();
-
-      const network = await pollCommittedNetwork(
-        protocol,
-        interview.interviewId,
-        4,
-      );
-      const ego = egoNode(network, isEgoVar.id);
-
-      const eggEdge = network.edges.find(
-        (e) =>
-          e.to === ego?.[PK] && firstValue(e[ATTR][gameteRoleVar.id]) === 'egg',
-      );
-      expect(eggEdge?.[ATTR][gameteRoleVar.id]).toEqual(['egg']);
-      // A non-carrier donor edge carries no gestational-carrier flag at all.
-      expect(eggEdge?.[ATTR][isGestCarrierVar.id]).toBeFalsy();
-
-      const carrierEdge = network.edges.find(
-        (e) => e.to === ego?.[PK] && e[ATTR][isGestCarrierVar.id] === true,
-      );
-      // The carrier is not a genetic parent, so it has no gamete role (the
-      // committed session network stores the absent attribute as null).
-      expect(carrierEdge).toBeDefined();
-      expect(carrierEdge?.[ATTR][gameteRoleVar.id] ?? null).toBeNull();
-
-      const spermEdge = network.edges.find(
-        (e) =>
-          e.to === ego?.[PK] &&
-          firstValue(e[ATTR][gameteRoleVar.id]) === 'sperm',
-      );
-      expect(spermEdge?.[ATTR][gameteRoleVar.id]).toEqual(['sperm']);
-
-      const eggParentNode = network.nodes.find((n) => n[PK] === eggEdge?.from);
-      const carrierNode = network.nodes.find(
-        (n) => n[PK] === carrierEdge?.from,
-      );
-      expect(eggParentNode?.[ATTR][bioSexVar.id]).toEqual(['female']);
-      expect(carrierNode?.[ATTR][bioSexVar.id]).toEqual(['female']);
-    },
-  };
-}
-
-function blendedFamilyStepParentRelationshipType(): ScenarioDefinition {
-  const si = new SyntheticInterview();
-  const base = buildBaseFamilyPedigree(si);
-  const { nameVar, isEgoVar, relTypeVar, isActiveVar } = base;
-
-  si.addStage('FamilyPedigree', {
-    ...commonConfig(base),
-    nodeConfig: nodeConfigOf(base),
-    framing: FIXED_GAMETE,
-    boundaries: BOUNDARIES_OFF,
-  });
-
-  return {
-    id: 'blended-family-step-parent-relationship-type',
-    covers: ['edgeConfig.relationshipTypeVariable=social'],
-    build: () => si,
-    run: async ({ page, interview, protocol }) => {
-      const fp = new FamilyPedigreeFixture(page);
-      await fp.clickGetStarted();
-      await fp.selectEgoSex();
-
-      await fp.setField('egg-parent.is-donor', false);
-      await fp.setField('egg-parent.name', 'Susan');
-      await fp.setField('egg-parent.gestationalCarrier', true);
-      await fp.clickWizardNext();
-
-      await fp.setField('sperm-parent.is-donor', false);
-      await fp.setField('sperm-parent.name', 'Robert');
-      await fp.clickWizardNext();
-
-      await fp.setField('hasOtherParents', true);
-      await fp.setField('otherParentCount', 1);
-      await fp.clickWizardNext();
-
-      await fp.setField('additional-parent[0].role', 'step-parent');
-      await fp.setField('additional-parent[0].name', 'Karen');
-      await fp.clickWizardNext();
-
-      await fp.setPartnership('egg-parent', 'Robert', 'ex');
-      await fp.setPartnership('sperm-parent', 'Karen', 'current');
-      await fp.clickWizardNext();
-
-      await fp.setField('hasPartner', false);
-      await fp.clickWizardNext();
-      await fp.dismissBuildHint();
-
-      await interview.nextButton.click();
-      await fp.confirmFinalize();
-
-      const network = await pollCommittedNetwork(
-        protocol,
-        interview.interviewId,
-        4,
-      );
-      const ego = egoNode(network, isEgoVar.id);
-      const susan = nodeByName(network, nameVar.id, 'Susan');
-      const robert = nodeByName(network, nameVar.id, 'Robert');
-      const karen = nodeByName(network, nameVar.id, 'Karen');
-
-      const karenEdge = edgeBetween(network, karen?.[PK], ego?.[PK]);
-      expect(karenEdge?.[ATTR][relTypeVar.id]).toEqual(['social']);
-
-      const susanRobert = network.edges.find(
-        (e) =>
-          e.from === susan?.[PK] &&
-          e.to === robert?.[PK] &&
-          firstValue(e[ATTR][relTypeVar.id]) === 'partner',
-      );
-      expect(susanRobert?.[ATTR][isActiveVar.id]).toBe(false);
-
-      const robertKaren = network.edges.find(
-        (e) =>
-          e.from === robert?.[PK] &&
-          e.to === karen?.[PK] &&
-          firstValue(e[ATTR][relTypeVar.id]) === 'partner',
-      );
-      expect(robertKaren?.[ATTR][relTypeVar.id]).toEqual(['partner']);
-      expect(robertKaren?.[ATTR][isActiveVar.id]).toBe(true);
-    },
-  };
-}
-
-function singleParentAbsentSecondParent(): ScenarioDefinition {
-  const si = new SyntheticInterview();
-  const base = buildBaseFamilyPedigree(si);
-  const { nodeType, nameVar, isEgoVar, relToEgoVar } = base;
-
-  si.addStage('FamilyPedigree', {
-    ...commonConfig(base),
-    nodeConfig: nodeConfigOf(base),
-    framing: FIXED_GAMETE,
-    boundaries: BOUNDARIES_OFF,
-  });
-
-  return {
-    id: 'single-parent-absent-second-parent',
-    covers: ['nodeConfig.nodeLabelVariable=unset-name-fallback'],
-    build: () => si,
-    run: async ({ page, interview, protocol }) => {
-      const fp = new FamilyPedigreeFixture(page);
-      await fp.clickGetStarted();
-      await fp.selectEgoSex();
-
-      await fp.setField('egg-parent.is-donor', false);
-      await fp.setField('egg-parent.name', 'Linda');
-      await fp.setField('egg-parent.gestationalCarrier', true);
-      await fp.clickWizardNext();
-
-      // Absent second parent: not a donor, no name.
-      await fp.setField('sperm-parent.is-donor', false);
-      await fp.clickWizardNext();
-
-      await fp.setField('hasOtherParents', false);
-      await fp.clickWizardNext();
-
-      // Accept the partnership-matrix defaults.
-      await fp.clickWizardNext();
-
-      await fp.setField('hasPartner', false);
-      await fp.clickWizardNext();
-      await fp.dismissBuildHint();
-
-      await interview.nextButton.click();
-      await fp.confirmFinalize();
-
-      const network = await pollCommittedNetwork(
-        protocol,
-        interview.interviewId,
-        3,
-      );
-      const linda = nodeByName(network, nameVar.id, 'Linda');
-      expect(linda?.[ATTR][nameVar.id]).toBe('Linda');
-
-      // The absent parent is the non-ego node without Linda's name.
-      const unnamedParent = network.nodes.find(
-        (n) => n[ATTR][isEgoVar.id] !== true && n[ATTR][nameVar.id] !== 'Linda',
-      );
-      const unnamedLabel = unnamedParent?.[ATTR][nameVar.id];
-      expect(unnamedLabel === undefined || unnamedLabel === '').toBe(true);
-
-      // Both parents are still typed nodes with a computed relationship, named
-      // or not.
-      expect(unnamedParent?.type).toBe(nodeType.id);
-      expect(linda?.type).toBe(nodeType.id);
-      expect(unnamedParent?.[ATTR][relToEgoVar.id]).toBe('Parent');
-      expect(linda?.[ATTR][relToEgoVar.id]).toBe('Parent');
-    },
-  };
-}
-
-/** Minimal quick-start walk producing ego plus two unnamed biological parents. */
-async function walkMinimalTwoParents(fp: FamilyPedigreeFixture): Promise<void> {
-  await fp.clickGetStarted();
-  await fp.selectEgoSex();
-
-  await fp.setField('egg-parent.is-donor', false);
-  await fp.setField('egg-parent.gestationalCarrier', true);
-  await fp.clickWizardNext();
-
-  await fp.setField('sperm-parent.is-donor', false);
-  await fp.clickWizardNext();
-
-  await fp.setField('hasOtherParents', false);
-  await fp.clickWizardNext();
-
-  // Accept the partnership-matrix defaults.
-  await fp.clickWizardNext();
-
-  await fp.setField('hasPartner', false);
-  await fp.clickWizardNext();
-  await fp.dismissBuildHint();
-}
-
-function checklistRestingState(): ScenarioDefinition {
-  const si = new SyntheticInterview();
-  const base = buildBaseFamilyPedigree(si);
-
-  si.addStage('FamilyPedigree', {
-    ...commonConfig(base),
-    nodeConfig: nodeConfigOf(base),
-    framing: FIXED_GAMETE,
-    boundaries: BOUNDARIES_OFF,
-  });
-
-  return {
-    id: 'checklist-resting-state',
-    covers: [],
-    visual: true,
-    slow: true,
-    build: () => si,
-    run: async ({ page }) => {
-      const fp = new FamilyPedigreeFixture(page);
-      await walkMinimalTwoParents(fp);
-
-      await expect(fp.checklist).toBeVisible();
+      await addRelativeOf(page, 'You', 'child');
+      // The child's other parent is the partner just added.
       await expect(
-        page.getByRole('heading', { name: 'Pedigree Checklist' }),
-      ).toBeVisible();
+        panel(page)
+          .getByRole('radiogroup', {
+            name: /^Who is the child’s other parent\?/,
+          })
+          .getByRole('radio', { name: 'Partner', exact: true }),
+      ).toBeChecked();
+      await describe(page, { sex: 'Male' });
+      await submitPanel(page, 'Add to family');
+      await expect(member(page, 'Son')).toBeVisible();
+      await expect(page.getByTestId('pedigree-person')).toHaveCount(6);
+
+      // Nothing is named until the participant leaves.
+      const before = await networkOf(ctx);
+      expect(
+        before.nodes.filter((node) => {
+          const name = node[ATTR][fp.name];
+          return typeof name === 'string' && name !== '';
+        }),
+      ).toHaveLength(2);
+
+      await leaveForward(ctx);
+      const after = await networkOf(ctx);
+      const named = (label: string) => nodeNamed(after, fp.name, label);
+      for (const label of ['Mother', 'Sister', 'Partner', 'Son']) {
+        expect(named(label), `${label} saved as a name`).toBeDefined();
+      }
+      expect(named('Rob')).toBeDefined();
+      expect(named('Ari')?.[ATTR][fp.ego]).toBe(true);
+
+      const kindBetween = (a: string | undefined, b: string | undefined) =>
+        linksBetween(after, a, b)[0]?.[ATTR][fp.kind];
+      const ego = named('Ari')?.[PK];
+      const partner = named('Partner')?.[PK];
+      const son = named('Son')?.[PK];
+      const sister = named('Sister')?.[PK];
+      expect(kindBetween(partner, ego)).toEqual(['partner']);
+      expect(kindBetween(son, ego)).toEqual(['biological']);
+      expect(kindBetween(son, partner)).toEqual(['biological']);
+      expect(kindBetween('mum', sister)).toEqual(['biological']);
+      expect(kindBetween('dad', sister)).toEqual(['biological']);
+
+      // The stage records who holds a saved label, and only them.
+      const metadata = await pedigreeMetadata(page, step);
+      expect(Object.keys(metadata?.generatedLabels ?? {}).toSorted()).toEqual(
+        ['Mother', 'Sister', 'Partner', 'Son']
+          .map((label) => named(label)?.[PK] ?? label)
+          .toSorted(),
+      );
     },
   };
 }
 
 /**
- * The node context menu's Edit action — the only pedigree dialog no test had
- * ever opened, which is how issue #1390 shipped: its `PersonFields` were
- * rendered without the store bridge every other pedigree dialog carries, so
- * `PersonNameField` threw the moment the editor mounted.
- *
- * Covers the whole editor round trip rather than just "it opens": cancelling
- * discards, saving writes the name AND a protocol-authored `nodeConfig.form`
- * value, and the rest of the pedigree survives the edit.
+ * The stage records each person's relationship to the participant as it is
+ * left, worked out from the family drawn: a child added here is a child, the
+ * parents are parents, and the participant has none. Someone who held a value
+ * but is no longer connected to the participant has it cleared, so a later
+ * filter never finds a stale relative.
  */
-function personEditorRoundTrip(): ScenarioDefinition {
-  const si = new SyntheticInterview();
-  const base = buildBaseFamilyPedigree(si);
-  const { nameVar, isEgoVar } = base;
-
-  const conditionVar = base.nodeType.addVariable({
-    name: 'diagnosedConditionY',
-    type: 'boolean',
-    component: 'Boolean',
+function relationshipToParticipantRecorded(): ScenarioDefinition {
+  const { synth, fp, person, relate, parents } = scaffold({
+    recordRelationshipToParticipant: true,
   });
+  person('ego', {
+    isEgo: true,
+    name: 'Ari',
+    sex: 'intersex',
+    gender: 'nonBinary',
+    relationship: 'child',
+  });
+  person('mum', { name: 'Julie', sex: 'female', gender: 'woman' });
+  person('dad', { name: 'Rob', sex: 'male', gender: 'man' });
+  person('former', { name: 'Kim', sex: 'female', relationship: 'sibling' });
+  relate('mum', 'dad', 'partner');
+  parents('mum', 'dad', 'ego');
 
-  si.addStage('FamilyPedigree', {
-    ...commonConfig(base),
-    nodeConfig: nodeConfigOf(base, [
-      {
-        variable: conditionVar.id,
-        prompt: 'Has this person been diagnosed with condition Y?',
-      },
-    ]),
-    framing: FIXED_GAMETE,
-    boundaries: BOUNDARIES_OFF,
+  return {
+    id: 'relationship-to-participant-recorded',
+    covers: ['nodeConfiguration.relationshipToParticipantAttribute'],
+    seedNetwork: true,
+    build: () => synth,
+    run: async (ctx) => {
+      const { page } = ctx;
+      const relationship = fp.relationshipToParticipant ?? '';
+
+      await addRelativeOf(page, 'You', 'child');
+      await describe(page, { name: 'Mia', gender: 'Woman', sex: 'Female' });
+      await submitPanel(page, 'Add to family');
+      await expect(member(page, 'Mia')).toBeVisible();
+
+      await leaveForward(ctx);
+      const network = await networkOf(ctx);
+      const relationshipOf = (name: string) =>
+        nodeNamed(network, fp.name, name)?.[ATTR][relationship];
+      expect(relationshipOf('Julie')).toEqual(['parent']);
+      expect(relationshipOf('Rob')).toEqual(['parent']);
+      expect(relationshipOf('Mia')).toEqual(['child']);
+      expect(relationshipOf('Ari')).toBeUndefined();
+      expect(relationshipOf('Kim')).toBeUndefined();
+    },
+  };
+}
+
+/**
+ * The participant reaches the stage for the first time and is created there,
+ * then adds a parent and opens their own details with the keyboard alone: the
+ * family is one tab stop, Tab enters a person's add menu, the arrow keys move
+ * through it and between people, and Escape closes the side panel, returning
+ * focus to the person it was opened from.
+ */
+function keyboardFirstVisit(): ScenarioDefinition {
+  const { synth, fp } = scaffold({ before: 'information' });
+
+  return {
+    id: 'keyboard-first-visit',
+    covers: [
+      'keyboardOperation',
+      'nodeConfiguration.egoAttribute=createdOnFirstVisit',
+    ],
+    build: () => synth,
+    run: async (ctx) => {
+      const { page, interview } = ctx;
+      await interview.next();
+      const you = member(page, 'You, some details missing');
+      await expect(you).toBeVisible();
+      // Created on arrival, marked as the participant and nothing else.
+      await expect
+        .poll(async () => (await networkOf(ctx)).nodes.length)
+        .toBe(1);
+      const [ego] = (await networkOf(ctx)).nodes;
+      expect(ego?.[ATTR][fp.ego]).toBe(true);
+
+      // Tab reaches the family; the person holding focus shows their menu.
+      await expect(you).toHaveAttribute('tabindex', '0');
+      for (let presses = 0; presses < 20; presses++) {
+        const focused = await you.evaluate(
+          (element) => element === document.activeElement,
+        );
+        if (focused) break;
+        await page.keyboard.press('Tab');
+      }
+      await expect(you).toBeFocused();
+      await expect(page.getByTestId('pedigree-menu-parent')).toBeVisible();
+
+      // Tab moves into the menu; the arrow keys move along it.
+      await page.keyboard.press('Tab');
+      await expect(page.getByTestId('pedigree-menu-parent')).toBeFocused();
+      await page.keyboard.press('ArrowRight');
+      await expect(page.getByTestId('pedigree-menu-sibling')).toBeFocused();
+      await page.keyboard.press('ArrowLeft');
+      await expect(page.getByTestId('pedigree-menu-parent')).toBeFocused();
+      await page.keyboard.press('Enter');
+      await expect(
+        panel(page).getByRole('heading', { name: 'Add your parent' }),
+      ).toBeVisible();
+
+      await panel(page).getByRole('textbox', { name: /^Name/ }).focus();
+      await page.keyboard.type('Linda');
+      await panel(page)
+        .getByRole('radio', { name: 'Woman', exact: true })
+        .focus();
+      await page.keyboard.press('Space');
+      await panel(page)
+        .getByRole('radio', { name: 'Female', exact: true })
+        .focus();
+      await page.keyboard.press('Space');
+      await panel(page)
+        .getByRole('button', { name: 'Add to family', exact: true })
+        .focus();
+      await page.keyboard.press('Enter');
+      await expect(panel(page)).toHaveCount(0);
+
+      // Focus returns to the participant; the parent sits above them.
+      await expect(you).toBeFocused();
+      await page.keyboard.press('ArrowUp');
+      await expect(member(page, 'Linda')).toBeFocused();
+      await page.keyboard.press('ArrowDown');
+      await expect(you).toBeFocused();
+
+      // Enter opens the participant's own details, which never ask their
+      // name; Escape closes them.
+      await page.keyboard.press('Enter');
+      await expect(
+        panel(page).getByRole('heading', { name: 'About you', level: 2 }),
+      ).toBeVisible();
+      await expect(
+        panel(page).getByRole('textbox', { name: /^Name/ }),
+      ).toHaveCount(0);
+      await page.keyboard.press('Escape');
+      await expect(panel(page)).toHaveCount(0);
+      await expect(you).toBeFocused();
+
+      const network = await networkOf(ctx);
+      const linda = nodeNamed(network, fp.name, 'Linda');
+      expect(linda?.[ATTR][fp.genderIdentity ?? '']).toEqual(['woman']);
+      expect(
+        linksBetween(network, linda?.[PK], ego?.[PK])[0]?.[ATTR][fp.kind],
+      ).toEqual(['biological']);
+    },
+  };
+}
+
+/**
+ * The gamete framing describes unnamed relatives without reference to gender:
+ * biological parents by the gamete they gave, everyone else by a neutral
+ * word, whatever their gender identity. The same words are saved on leaving.
+ */
+function framingGamete(): ScenarioDefinition {
+  const scaffolded = scaffold({ framing: 'gamete' });
+  const { synth, fp } = scaffolded;
+  seedUnnamedFamily(scaffolded);
+
+  return {
+    id: 'framing-gamete',
+    covers: ['framing=gamete'],
+    seedNetwork: true,
+    build: () => synth,
+    run: async (ctx) => {
+      const { page } = ctx;
+      await expect(member(page, 'Egg parent')).toBeVisible();
+      await expect(member(page, 'Sperm parent')).toBeVisible();
+      await expect(member(page, 'Sibling')).toBeVisible();
+      await expect(member(page, /^(Mother|Father|Sister)/)).toHaveCount(0);
+      // No choice of words is offered when the stage makes it.
+      await expect(page.getByTestId('pedigree-framing')).toHaveCount(0);
+
+      await leaveForward(ctx);
+      const network = await networkOf(ctx);
+      for (const label of ['Egg parent', 'Sperm parent', 'Sibling']) {
+        expect(nodeNamed(network, fp.name, label), label).toBeDefined();
+      }
+    },
+  };
+}
+
+/**
+ * The stage leaves the words to the participant. The choice opens a moment
+ * after they arrive, with neither answer chosen, and Escape does not close
+ * it; choosing applies at once and is kept in the stage's metadata, and the
+ * words can be changed again from the toolbar.
+ */
+function framingParticipantPreference(): ScenarioDefinition {
+  const scaffolded = scaffold({
+    framing: 'participantPreference',
+    before: 'information',
+  });
+  const { synth, step } = scaffolded;
+  seedUnnamedFamily(scaffolded);
+
+  return {
+    id: 'framing-participant-preference',
+    covers: ['framing=participantPreference'],
+    seedNetwork: true,
+    build: () => synth,
+    run: async (ctx) => {
+      const { page, interview } = ctx;
+      await interview.next();
+      const title = page.getByText('How should we describe your family?');
+      await expect(title).toBeVisible();
+      const gamete = page.getByRole('option', {
+        name: /^Egg parent, sperm parent, sibling/,
+      });
+      const gendered = page.getByRole('option', {
+        name: /^Mother, father, sister, brother/,
+      });
+      await expect(gamete).toHaveAttribute('aria-selected', 'false');
+      await expect(gendered).toHaveAttribute('aria-selected', 'false');
+      // Until a choice is made, nothing closes the popover.
+      const wording = page.getByRole('button', { name: 'Wording' });
+      await page.keyboard.press('Escape');
+      await expect(title).toBeVisible();
+      await expect(wording).toHaveAttribute('aria-expanded', 'true');
+
+      await gamete.click();
+      await expect(title).toHaveCount(0);
+      await expect(member(page, 'Egg parent')).toBeVisible();
+      await expect
+        .poll(async () => (await pedigreeMetadata(page, step))?.framing)
+        .toBe('gamete');
+
+      await wording.click();
+      await gendered.click();
+      await expect(title).toHaveCount(0);
+      await expect(member(page, 'Mother')).toBeVisible();
+      await expect(member(page, 'Sister')).toBeVisible();
+      await expect
+        .poll(async () => (await pedigreeMetadata(page, step))?.framing)
+        .toBe('gendered');
+    },
+  };
+}
+
+/**
+ * The researcher's own gender identity options and the words each takes, in
+ * the gendered framing. "Trans woman", mapped to feminine words, is a mother
+ * whatever her sex at birth; "Agender", left unmapped, takes neutral words;
+ * an option whose words are unknown names a biological parent from their sex
+ * at birth. The side panel asks the question with the researcher's options.
+ */
+function genderIdentityTerms(): ScenarioDefinition {
+  const { synth, person, relate } = scaffold({
+    framing: 'gendered',
+    genderIdentities: [
+      { value: 'woman', label: 'Woman', words: 'feminine' },
+      { value: 'man', label: 'Man', words: 'masculine' },
+      { value: 'nonBinary', label: 'Non-binary', words: 'neutral' },
+      { value: 'unknown', label: 'Don’t know', words: 'unknown' },
+      { value: 'transWoman', label: 'Trans woman', words: 'feminine' },
+      { value: 'agender', label: 'Agender' },
+    ],
+  });
+  person('ego', {
+    name: 'Ari',
+    gender: 'nonBinary',
+    sex: 'intersex',
+    isEgo: true,
+  });
+  person('mum', { gender: 'transWoman', sex: 'male' });
+  person('other', { gender: 'unknown', sex: 'female' });
+  person('brother', { gender: 'man', sex: 'male' });
+  person('agender', { gender: 'agender', sex: 'female' });
+  person('nonBinary', { gender: 'nonBinary', sex: 'male' });
+  relate('mum', 'other', 'partner');
+  for (const child of ['ego', 'brother', 'agender', 'nonBinary']) {
+    relate('other', child, 'biological', { carrier: true });
+    relate('mum', child, 'biological');
+  }
+
+  return {
+    id: 'gender-identity-terms',
+    covers: [
+      'nodeConfiguration.genderIdentity.terms[].words=feminine',
+      'nodeConfiguration.genderIdentity.terms[].words=masculine',
+      'nodeConfiguration.genderIdentity.terms[].words=neutral',
+      'nodeConfiguration.genderIdentity.terms[].words=unknown',
+      'nodeConfiguration.genderIdentity.terms=unmapped',
+    ],
+    seedNetwork: true,
+    build: () => synth,
+    run: async ({ page }) => {
+      await expect(member(page, 'Mother')).toBeVisible();
+      await expect(member(page, 'Biological mother')).toBeVisible();
+      await expect(member(page, 'Brother')).toBeVisible();
+      await expect(member(page, /^Sibling/)).toHaveCount(2);
+
+      await member(page, 'Mother').click();
+      await expect(
+        panel(page).getByRole('radio', { name: 'Trans woman', exact: true }),
+      ).toBeChecked();
+      await expect(
+        panel(page).getByRole('radio', { name: 'Agender', exact: true }),
+      ).not.toBeChecked();
+      // Only the researcher's options are offered.
+      await expect(
+        panel(page).getByRole('radio', { name: 'A different identity' }),
+      ).toHaveCount(0);
+      await panel(page)
+        .getByRole('button', { name: 'Cancel', exact: true })
+        .click();
+      await expect(panel(page)).toHaveCount(0);
+    },
+  };
+}
+
+/**
+ * Both biological parents are required. The participant starts alone and
+ * undescribed: Next is held back, opening the list of what is still needed,
+ * and pressing it again does not get through. Each item leads to where it is
+ * resolved — adding a parent, or the participant's own details — and once
+ * the list is empty the ring says so and Next moves on.
+ */
+function completenessParentsRequired(): ScenarioDefinition {
+  const { synth, fp, person } = scaffold({
+    completeness: { scope: 'parents', enforcement: 'required' },
+  });
+  person('ego', { isEgo: true });
+
+  return {
+    id: 'completeness-parents-required',
+    covers: [
+      'completeness.scope=parents',
+      'completeness.enforcement=required',
+      'framing=absent',
+    ],
+    seedNetwork: true,
+    build: () => synth,
+    run: async (ctx) => {
+      const { page, interview } = ctx;
+      await expect(trackerRing(page)).toHaveAccessibleName(
+        /^Family tree \d+% complete\. Show what’s still needed\.$/,
+      );
+
+      // Next is held back, and shows what is missing.
+      await interview.nextButton.click();
+      await expect(trackerList(page)).toBeVisible();
+      const parentsItem = trackerList(page).getByRole('button', {
+        name: 'Add your biological parents',
+      });
+      await expect(parentsItem).toBeVisible();
+      await expect(
+        trackerList(page).getByRole('button', {
+          name: 'Some details are missing about you',
+        }),
+      ).toBeVisible();
+      // Required: there is no way past it.
+      await expect(
+        page.getByText('You can also continue without these'),
+      ).toHaveCount(0);
+      await interview.nextButton.click();
+      await expect(page).toHaveURL(/step=0/);
+      await expect(trackerList(page)).toBeVisible();
+
+      // The item adds the missing parent.
+      await parentsItem.click();
+      await expect(
+        panel(page).getByRole('heading', { name: 'Add your parent' }),
+      ).toBeVisible();
+      await describe(page, { gender: 'Woman', sex: 'Female' });
+      await submitPanel(page, 'Add to family');
+      // Without a framing set, the gendered words describe her.
+      await expect(member(page, 'Mother')).toBeVisible();
+
+      await trackerRing(page).click();
+      await trackerList(page)
+        .getByRole('button', { name: 'Add your other biological parent' })
+        .click();
+      await describe(page, { gender: 'Man', sex: 'Male' });
+      await submitPanel(page, 'Add to family');
+      await expect(member(page, 'Father')).toBeVisible();
+
+      // The last item opens the participant's own details.
+      await trackerRing(page).click();
+      await trackerList(page)
+        .getByRole('button', { name: 'Some details are missing about you' })
+        .click();
+      await expect(
+        panel(page).getByText(
+          'Some details are missing: Gender identity and Sex assigned at birth.',
+        ),
+      ).toBeVisible();
+      await describe(page, { gender: 'Non-binary', sex: 'Intersex' });
+      await submitPanel(page, 'Save');
+
+      await expect(trackerRing(page)).toHaveAccessibleName(
+        'Your family tree has everything needed. Show what’s still needed.',
+      );
+      await leaveForward(ctx);
+      const network = await networkOf(ctx);
+      expect(network.nodes).toHaveLength(3);
+      // Both parents, partnered: the second was offered the first as partner.
+      expect(
+        network.edges
+          .map((edge) => JSON.stringify(edge[ATTR][fp.kind]))
+          .toSorted(),
+      ).toEqual(['["biological"]', '["biological"]', '["partner"]']);
+    },
+  };
+}
+
+/**
+ * First-degree relatives are recommended. Next opens the list — siblings and
+ * children, with the note that the participant may go on without them — and
+ * answering from the list that they have no siblings records it on them.
+ * Pressing Next again with the list shown goes on, children unanswered.
+ */
+function completenessFirstDegreeRecommended(): ScenarioDefinition {
+  const scaffolded = scaffold({
+    completeness: { scope: 'firstDegree', enforcement: 'recommended' },
+  });
+  const { synth, fp } = scaffolded;
+  seedDescribedParents(scaffolded);
+
+  return {
+    id: 'completeness-first-degree-recommended',
+    covers: [
+      'completeness.scope=firstDegree',
+      'completeness.enforcement=recommended',
+      'completeness.relativesNotRecordedAttribute',
+    ],
+    seedNetwork: true,
+    build: () => synth,
+    run: async (ctx) => {
+      const { page, interview } = ctx;
+      await interview.nextButton.click();
+      await expect(trackerList(page)).toBeVisible();
+      await expect(
+        trackerList(page).getByRole('button', {
+          name: 'Add your biological brothers and sisters, or say you have none',
+        }),
+      ).toBeVisible();
+      await expect(
+        trackerList(page).getByRole('button', {
+          name: 'Add your biological children, or say you have none',
+        }),
+      ).toBeVisible();
+      await expect(
+        trackerList(page).getByText(
+          'You can also continue without these by pressing Next again.',
+        ),
+      ).toBeVisible();
+      await expect(page).toHaveURL(/step=0/);
+
+      await trackerList(page)
+        .getByRole('button', { name: 'I have no biological siblings' })
+        .click();
+      await expect
+        .poll(async () => {
+          const network = await networkOf(ctx);
+          return network.nodes.find((node) => node[ATTR][fp.ego] === true)?.[
+            ATTR
+          ][fp.relativesNotRecorded ?? ''];
+        })
+        .toEqual(['noSiblings']);
+      await expect(
+        trackerList(page).getByRole('button', {
+          name: 'Add your biological brothers and sisters, or say you have none',
+        }),
+      ).toHaveCount(0);
+
+      // Recommended: Next again, with the list shown, goes on.
+      await leaveForward(ctx);
+    },
+  };
+}
+
+/**
+ * Three generations are required. With the participant's own siblings and
+ * children answered, the list asks for each parent's parents and siblings.
+ * Answering in a parent's details that the participant doesn't know about
+ * her siblings records it and resolves that item.
+ */
+function completenessGrandparentsRequired(): ScenarioDefinition {
+  const scaffolded = scaffold({
+    completeness: { scope: 'grandparents', enforcement: 'required' },
+  });
+  const { synth, fp } = scaffolded;
+  seedDescribedParents(scaffolded, {
+    relativesNotRecorded: ['noSiblings', 'noChildren'],
   });
 
   return {
-    id: 'person-editor-round-trip',
-    covers: ['nodeConfig.form'],
-    slow: true,
-    build: () => si,
-    run: async ({ page, interview, protocol }) => {
-      const fp = new FamilyPedigreeFixture(page);
+    id: 'completeness-grandparents-required',
+    covers: ['completeness.scope=grandparents'],
+    visual: true,
+    seedNetwork: true,
+    build: () => synth,
+    run: async (ctx) => {
+      const { page, interview } = ctx;
+      await trackerRing(page).click();
+      const items = trackerList(page).getByRole('listitem');
+      for (const name of ['Julie', 'Rob']) {
+        await expect(
+          trackerList(page).getByRole('button', {
+            name: `Add biological parents for “${name}”`,
+          }),
+        ).toBeVisible();
+        await expect(
+          trackerList(page).getByRole('button', {
+            name: `Add biological brothers and sisters for “${name}”, or say they have none`,
+          }),
+        ).toBeVisible();
+      }
+      await expect(items).toHaveCount(4);
 
-      await fp.clickGetStarted();
-      await fp.selectEgoSex();
-
-      await fp.setField('egg-parent.is-donor', false);
-      await fp.setField('egg-parent.name', 'Linda');
-      await fp.setField('egg-parent.gestationalCarrier', true);
-      await fp.clickWizardNext();
-
-      await fp.setField('sperm-parent.is-donor', false);
-      await fp.setField('sperm-parent.name', 'Robert');
-      await fp.clickWizardNext();
-
-      await fp.setField('hasOtherParents', false);
-      await fp.clickWizardNext();
-
-      await fp.setPartnership('egg-parent', 'Robert', 'current');
-      await fp.clickWizardNext();
-
-      await fp.setField('hasPartner', false);
-      await fp.clickWizardNext();
-      await fp.dismissBuildHint();
-
-      // Open the editor, change the name, then cancel: nothing is written.
-      await fp.openNodeContextMenu('Linda');
-      await fp.clickMenuItem('edit');
-      await expect(
-        pedigreeField(fp.dialog, 'name').getByRole('textbox'),
-      ).toHaveValue('Linda');
-      await fp.setField('name', 'Discarded Name');
-      await fp.clickDialogCancel();
-      // Wait the dialog out rather than reopening straight into its close
-      // animation, which would briefly leave two `role="dialog"` elements for
-      // `fp.dialog` to resolve.
-      await expect(fp.dialog).toBeHidden();
-      await expect(fp.node('Linda')).toBeVisible();
-
-      // Reopen — the cancelled edit left no trace — then save a new name and a
-      // protocol-authored form value.
-      await fp.openNodeContextMenu('Linda');
-      await fp.clickMenuItem('edit');
-      await expect(
-        pedigreeField(fp.dialog, 'name').getByRole('textbox'),
-      ).toHaveValue('Linda');
-      await fp.setField('name', 'Linda Edited');
-      await fp.setField(conditionVar.id, true);
-      await fp.clickDialogSubmit();
-      await expect(fp.dialog).toBeHidden();
-
-      await expect(fp.node('Linda Edited')).toBeVisible();
-      // The edit must not disturb the rest of the pedigree.
-      await expect(fp.node('Robert')).toBeVisible();
+      await page.keyboard.press('Escape');
+      await member(page, 'Julie').click();
+      await panel(page)
+        .getByRole('radiogroup', {
+          name: /^Does Julie have any biological brothers or sisters/,
+        })
+        .getByRole('radio', { name: 'Don’t know', exact: true })
+        .click();
+      await submitPanel(page, 'Save');
+      await expect
+        .poll(
+          async () =>
+            nodeNamed(await networkOf(ctx), fp.name, 'Julie')?.[ATTR][
+              fp.relativesNotRecorded ?? ''
+            ],
+        )
+        .toEqual(['siblingsUnknown']);
 
       await interview.nextButton.click();
-      await fp.confirmFinalize();
+      await expect(trackerList(page)).toBeVisible();
+      await expect(items).toHaveCount(3);
+      await expect(page).toHaveURL(/step=0/);
+    },
+  };
+}
 
-      const network = await pollCommittedNetwork(
-        protocol,
-        interview.interviewId,
-        3,
+/**
+ * The participant with parents, maternal grandparents and an aunt, a sister
+ * and a son with his other parent, every group the narrower scopes ask about
+ * answered. Second
+ * degree asks for the sister's and son's children; third degree also for the
+ * aunt's (first cousins).
+ */
+function extendedScope(
+  scope: 'secondDegree' | 'thirdDegree',
+): ScenarioDefinition {
+  const scaffolded = scaffold({
+    completeness: { scope, enforcement: 'required' },
+  });
+  const { synth, person, relate, parents } = scaffolded;
+  person('ego', {
+    name: 'Ari',
+    gender: 'nonBinary',
+    sex: 'intersex',
+    isEgo: true,
+  });
+  person('mum', { name: 'Julie', gender: 'woman', sex: 'female' });
+  // Rob has no siblings.
+  person('dad', {
+    name: 'Rob',
+    gender: 'man',
+    sex: 'male',
+    relativesNotRecorded: ['noSiblings'],
+  });
+  relate('mum', 'dad', 'partner');
+  parents('mum', 'dad', 'ego');
+  person('gran', { name: 'Iris', gender: 'woman', sex: 'female' });
+  person('grandad', { name: 'Frank', gender: 'man', sex: 'male' });
+  person('aunt', { name: 'May', gender: 'woman', sex: 'female' });
+  person('dadsMum', { name: 'Vera', gender: 'woman', sex: 'female' });
+  person('dadsDad', { name: 'Ernest', gender: 'man', sex: 'male' });
+  person('sister', { name: 'Bea', gender: 'woman', sex: 'female' });
+  person('son', { name: 'Leo', gender: 'man', sex: 'male' });
+  relate('gran', 'grandad', 'partner');
+  parents('gran', 'grandad', 'mum');
+  parents('gran', 'grandad', 'aunt');
+  relate('dadsMum', 'dadsDad', 'partner');
+  parents('dadsMum', 'dadsDad', 'dad');
+  parents('mum', 'dad', 'sister');
+  relate('ego', 'son', 'biological');
+  // Leo's other biological parent, whose own family is never asked for.
+  person('leosMum', { name: 'Sam', gender: 'woman', sex: 'female' });
+  relate('leosMum', 'son', 'biological', { carrier: true });
+
+  const cousinsItem =
+    'Add biological children for “May”, or say they have none';
+  return {
+    id: `completeness-${scope === 'secondDegree' ? 'second' : 'third'}-degree-required`,
+    covers: [`completeness.scope=${scope}`],
+    seedNetwork: true,
+    build: () => synth,
+    run: async ({ page }) => {
+      await trackerRing(page).click();
+      const list = trackerList(page);
+      await expect(
+        list.getByRole('button', {
+          name: 'Add biological children for “Bea”, or say they have none',
+        }),
+      ).toBeVisible();
+      await expect(
+        list.getByRole('button', {
+          name: 'Add biological children for “Leo”, or say they have none',
+        }),
+      ).toBeVisible();
+      if (scope === 'thirdDegree') {
+        await expect(
+          list.getByRole('button', { name: cousinsItem }),
+        ).toBeVisible();
+        await expect(list.getByRole('listitem')).toHaveCount(3);
+      } else {
+        await expect(
+          list.getByRole('button', { name: cousinsItem }),
+        ).toHaveCount(0);
+        await expect(list.getByRole('listitem')).toHaveCount(2);
+      }
+    },
+  };
+}
+
+/**
+ * The researcher's own questions follow the interface's in the side panel:
+ * a required age, with a hint, and whether the person is still living. A
+ * person whose required answer is missing is marked, on the canvas and in
+ * their details, until it is given; a relative added through the panel is
+ * asked the same questions.
+ */
+function formFieldsMissingDetails(): ScenarioDefinition {
+  const scaffolded = scaffold();
+  const { synth, fp } = scaffolded;
+  seedDescribedParents(scaffolded);
+  fp.addFormField({
+    component: 'Number',
+    prompt: 'How old are they?',
+    hint: 'In whole years.',
+    validation: { required: true },
+  });
+  fp.addFormField({
+    component: 'Boolean',
+    prompt: 'Is this person still living?',
+  });
+
+  return {
+    id: 'form-fields-missing-details',
+    covers: ['form', 'form.fields[].hint', 'form.fields[].validation.required'],
+    seedNetwork: true,
+    build: () => synth,
+    run: async (ctx) => {
+      const { page } = ctx;
+      await expect(member(page, 'Julie, some details missing')).toBeVisible();
+      await expect(member(page, 'You, some details missing')).toBeVisible();
+
+      await member(page, 'Julie, some details missing').click();
+      await expect(
+        panel(page).getByText('Some details are missing: How old are they?.'),
+      ).toBeVisible();
+      await expect(
+        panel(page).getByRole('heading', { name: 'More about this person' }),
+      ).toBeVisible();
+      await expect(panel(page).getByText('In whole years.')).toBeVisible();
+      await panel(page)
+        .getByRole('spinbutton', { name: /^How old are they\?/ })
+        .fill('62');
+      await panel(page)
+        .getByRole('radiogroup', { name: /^Is this person still living\?/ })
+        .getByRole('radio', { name: 'Yes', exact: true })
+        .click();
+      await submitPanel(page, 'Save');
+      await expect(member(page, 'Julie')).toBeVisible();
+
+      await addRelativeOf(page, 'You, some details missing', 'sibling');
+      await describe(page, { name: 'Bea', gender: 'Woman', sex: 'Female' });
+      await panel(page)
+        .getByRole('spinbutton', { name: /^How old are they\?/ })
+        .fill('30');
+      await submitPanel(page, 'Add to family');
+      await expect(member(page, 'Bea')).toBeVisible();
+
+      const network = await networkOf(ctx);
+      const age = (name: string) => {
+        const node = nodeNamed(network, fp.name, name);
+        const variable = Object.keys(node?.[ATTR] ?? {}).find(
+          (id) => typeof node?.[ATTR][id] === 'number',
+        );
+        return variable ? node?.[ATTR][variable] : undefined;
+      };
+      expect(age('Julie')).toBe(62);
+      expect(age('Bea')).toBe(30);
+    },
+  };
+}
+
+const HEART = 'Who in your family has had heart disease?';
+const OVARIAN = 'Who in your family has had ovarian cancer?';
+const PROSTATE = 'Who in your family has had prostate cancer?';
+
+/**
+ * Once the family is drawn, each nomination prompt asks who it applies to.
+ * Selecting a person sets the prompt's attribute on them, and selecting them
+ * again clears it. A prompt limited to one sex at birth leaves out people
+ * recorded as the other, but not someone intersex. The family cannot be
+ * changed while a nomination prompt is showing.
+ */
+function nominationPrompts(): ScenarioDefinition {
+  const scaffolded = scaffold({
+    nominationPrompts: [
+      { text: HEART, variableName: 'heartDisease' },
+      {
+        text: OVARIAN,
+        variableName: 'ovarianCancer',
+        onlyForSexAssignedAtBirth: 'female',
+      },
+      {
+        text: PROSTATE,
+        variableName: 'prostateCancer',
+        onlyForSexAssignedAtBirth: 'male',
+      },
+    ],
+  });
+  const { synth, fp } = scaffolded;
+  seedDescribedParents(scaffolded);
+  const [heart, ovarian, prostate] = fp.nominations;
+
+  return {
+    id: 'nomination-prompts',
+    covers: [
+      'nominationPrompts[].id',
+      'nominationPrompts[].text',
+      'nominationPrompts[].attribute',
+      'nominationPrompts[].onlyForSexAssignedAtBirth=female',
+      'nominationPrompts[].onlyForSexAssignedAtBirth=male',
+    ],
+    visual: true,
+    seedNetwork: true,
+    build: () => synth,
+    run: async (ctx) => {
+      const { page, interview } = ctx;
+      const flag = async (name: string, attribute: string | undefined) =>
+        nodeNamed(await networkOf(ctx), fp.name, name)?.[ATTR][attribute ?? ''];
+
+      await interview.nextButton.click();
+      await expect(page.getByRole('heading', { name: HEART })).toBeVisible();
+      // Selecting is all there is: no tools, and no add menu.
+      await expect(page.getByTestId('pedigree-tool-connect')).toHaveCount(0);
+      const rob = member(page, 'Rob');
+      const julie = member(page, 'Julie');
+      const you = member(page, 'You');
+      await expect(rob).toHaveAttribute('aria-pressed', 'false');
+      await rob.click();
+      await expect(rob).toHaveAttribute('aria-pressed', 'true');
+      await expect.poll(() => flag('Rob', heart)).toBe(true);
+      await expect(panel(page)).toHaveCount(0);
+      await expect(page.getByTestId('pedigree-menu-parent')).toHaveCount(0);
+      await rob.click();
+      await expect(rob).toHaveAttribute('aria-pressed', 'false');
+      await expect.poll(() => flag('Rob', heart)).toBe(false);
+      await rob.click();
+      await expect.poll(() => flag('Rob', heart)).toBe(true);
+
+      await interview.nextButton.click();
+      await expect(page.getByRole('heading', { name: OVARIAN })).toBeVisible();
+      await expect(rob).toBeDisabled();
+      await expect(rob).toHaveAttribute('aria-pressed', 'false');
+      await expect(you).toBeEnabled();
+      await julie.click();
+      await expect(julie).toHaveAttribute('aria-pressed', 'true');
+      await expect.poll(() => flag('Julie', ovarian)).toBe(true);
+
+      await interview.nextButton.click();
+      await expect(page.getByRole('heading', { name: PROSTATE })).toBeVisible();
+      await expect(julie).toBeDisabled();
+      await expect(rob).toBeEnabled();
+      await expect(you).toBeEnabled();
+      await you.click();
+      await expect(you).toHaveAttribute('aria-pressed', 'true');
+      await expect.poll(() => flag('Ari', prostate)).toBe(true);
+
+      // Each prompt keeps its own answers.
+      await page.getByTestId('previous-button').click();
+      await expect(page.getByRole('heading', { name: OVARIAN })).toBeVisible();
+      await expect(julie).toHaveAttribute('aria-pressed', 'true');
+      await expect(you).toHaveAttribute('aria-pressed', 'false');
+      expect(await flag('Julie', heart)).not.toBe(true);
+    },
+  };
+}
+
+/**
+ * A change of sex at birth withdraws the nominations it rules out. The
+ * participant, intersex, is selected for a prompt limited to people assigned
+ * female at birth; back on the family, their sex at birth is changed to
+ * male, which sets that prompt's attribute to false, and the prompt then
+ * leaves them out.
+ */
+function sexChangeWithdrawsNomination(): ScenarioDefinition {
+  const scaffolded = scaffold({
+    nominationPrompts: [
+      {
+        text: OVARIAN,
+        variableName: 'ovarianCancer',
+        onlyForSexAssignedAtBirth: 'female',
+      },
+    ],
+  });
+  const { synth, fp } = scaffolded;
+  seedDescribedParents(scaffolded);
+  const [ovarian] = fp.nominations;
+
+  return {
+    id: 'sex-change-withdraws-nomination',
+    covers: ['nominationPrompts[].onlyForSexAssignedAtBirth=withdrawnOnChange'],
+    seedNetwork: true,
+    build: () => synth,
+    run: async (ctx) => {
+      const { page, interview } = ctx;
+      const ariFlag = async () =>
+        nodeNamed(await networkOf(ctx), fp.name, 'Ari')?.[ATTR][ovarian ?? ''];
+      const you = member(page, 'You');
+
+      await interview.nextButton.click();
+      await expect(page.getByRole('heading', { name: OVARIAN })).toBeVisible();
+      await expect(you).toBeEnabled();
+      await you.click();
+      await expect(you).toHaveAttribute('aria-pressed', 'true');
+      await expect.poll(ariFlag).toBe(true);
+
+      await page.getByTestId('previous-button').click();
+      await expect(page.getByRole('heading', { name: PROMPT })).toBeVisible();
+      await you.click();
+      await expect(panel(page)).toBeVisible();
+      await panel(page)
+        .getByRole('radiogroup', { name: /^Sex assigned at birth/ })
+        .getByRole('radio', { name: 'Male', exact: true })
+        .click();
+      await submitPanel(page, 'Save');
+      await expect.poll(ariFlag).toBe(false);
+
+      await interview.nextButton.click();
+      await expect(page.getByRole('heading', { name: OVARIAN })).toBeVisible();
+      await expect(you).toBeDisabled();
+      await expect(you).toHaveAttribute('aria-pressed', 'false');
+    },
+  };
+}
+
+/**
+ * Connecting and disconnecting people already shown. Tom is recorded only as
+ * Rachel's partner, so that partnership cannot be removed: he would leave the
+ * family tree. The connect tool makes him the participant's adoptive parent,
+ * after which the partnership can be removed, and the pair connected again as
+ * former partners.
+ */
+function connectAndDisconnect(): ScenarioDefinition {
+  const { synth, fp, person, relate } = scaffold();
+  person('ego', { name: 'Ella', gender: 'woman', sex: 'female', isEgo: true });
+  person('mum', { name: 'Rachel', gender: 'woman', sex: 'female' });
+  person('dad', { name: 'Tom', gender: 'man', sex: 'male' });
+  relate('mum', 'ego', 'biological', { carrier: true });
+  relate('mum', 'dad', 'partner');
+
+  return {
+    id: 'connect-and-disconnect',
+    covers: [
+      'connect',
+      'disconnect',
+      'edgeConfiguration.kindAttribute=adoptive',
+    ],
+    seedNetwork: true,
+    build: () => synth,
+    run: async (ctx) => {
+      const { page } = ctx;
+      const hint = page.getByTestId('pedigree-connect-hint');
+      const tom = member(page, 'Tom');
+      const rachel = member(page, 'Rachel');
+
+      // The partnership is Tom's only connection to Ella.
+      await page.getByTestId('pedigree-tool-disconnect').click();
+      await expect(hint).toHaveText(
+        'Select a person, then select someone they are connected to, to remove that connection.',
       );
-      const edited = nodeByName(network, nameVar.id, 'Linda Edited');
-      expect(edited).toBeDefined();
-      expect(edited?.[ATTR][conditionVar.id]).toBe(true);
-      expect(edited?.[ATTR][isEgoVar.id]).not.toBe(true);
-      expect(nodeByName(network, nameVar.id, 'Linda')).toBeUndefined();
-      expect(nodeByName(network, nameVar.id, 'Discarded Name')).toBeUndefined();
-      expect(nodeByName(network, nameVar.id, 'Robert')).toBeDefined();
+      await tom.click();
+      await rachel.click();
+      await expect(hint).toHaveText(
+        'Removing this connection would leave “Tom” outside your family tree. Connect them to someone else in your family first.',
+      );
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await page.keyboard.press('Escape');
+
+      await page.getByTestId('pedigree-tool-connect').click();
+      await tom.click();
+      await expect(hint).toHaveText(
+        'Now select the person to connect to “Tom”.',
+      );
+      await member(page, 'You').click();
+      await page
+        .getByRole('menuitem', { name: '“Tom” is your parent' })
+        .click();
+      await page.getByRole('menuitem', { name: 'Adoptive parent' }).click();
+      await expect(page.getByRole('menu')).toHaveCount(0);
+      await expect
+        .poll(async () =>
+          linksBetween(await networkOf(ctx), 'dad', 'ego').map(
+            (edge) => edge[ATTR][fp.kind],
+          ),
+        )
+        .toEqual([['adoptive']]);
+      const [adoption] = linksBetween(await networkOf(ctx), 'dad', 'ego');
+      expect(adoption?.from).toBe('dad');
+
+      // Already connected: no second link.
+      await rachel.click();
+      await tom.click();
+      await expect(hint).toHaveText(
+        '“Rachel” and “Tom” are already connected.',
+      );
+      await expect(page.getByRole('menu')).toHaveCount(0);
+      await page.keyboard.press('Escape');
+
+      // Now the partnership can go, leaving both people.
+      await page.getByTestId('pedigree-tool-disconnect').click();
+      await tom.click();
+      await rachel.click();
+      const dialog = page.getByRole('dialog', {
+        name: 'Remove the connection between “Tom” and “Rachel”?',
+      });
+      await dialog.getByRole('button', { name: 'Remove connection' }).click();
+      await expect(dialog).toHaveCount(0);
+      await expect
+        .poll(async () => linksBetween(await networkOf(ctx), 'dad', 'mum'))
+        .toHaveLength(0);
+      await expect(tom).toBeVisible();
+      await expect(rachel).toBeVisible();
+
+      await page.getByTestId('pedigree-tool-connect').click();
+      await tom.click();
+      await rachel.click();
+      await page
+        .getByRole('menuitem', { name: '“Tom” and “Rachel” were partners' })
+        .click();
+      await expect
+        .poll(async () =>
+          linksBetween(await networkOf(ctx), 'dad', 'mum').map((edge) => [
+            edge[ATTR][fp.kind],
+            edge[ATTR][fp.currentPartner],
+          ]),
+        )
+        .toEqual([[['partner'], false]]);
+      await page.getByTestId('pedigree-tool-pointer').click();
+    },
+  };
+}
+
+/**
+ * A family made through assisted reproduction and a new partnership: an egg
+ * donor, a surrogate who carried the participant, a social mother, and the
+ * father's former partner. Every kind of relationship the stage records is
+ * drawn, from the seeded network alone.
+ */
+function relationshipKindsDrawn(): ScenarioDefinition {
+  const { synth, person, relate } = scaffold({
+    completeness: { scope: 'parents', enforcement: 'required' },
+  });
+  person('ego', { name: 'Maya', gender: 'woman', sex: 'female', isEgo: true });
+  person('mother', { name: 'Ana', gender: 'woman', sex: 'female' });
+  person('father', { name: 'Luis', gender: 'man', sex: 'male' });
+  person('donor', { gender: 'woman', sex: 'female' });
+  person('carrier', { gender: 'woman', sex: 'female' });
+  person('former', { name: 'Sofia', gender: 'woman', sex: 'female' });
+  relate('mother', 'father', 'partner');
+  relate('father', 'former', 'partner', { current: false });
+  relate('mother', 'ego', 'social');
+  relate('father', 'ego', 'biological');
+  relate('donor', 'ego', 'donor');
+  relate('carrier', 'ego', 'surrogate', { carrier: true });
+
+  return {
+    id: 'relationship-kinds-drawn',
+    covers: [
+      'edgeConfiguration.kindAttribute=social',
+      'edgeConfiguration.kindAttribute=donor',
+      'edgeConfiguration.kindAttribute=surrogate',
+    ],
+    visual: true,
+    seedNetwork: true,
+    build: () => synth,
+    run: async ({ page }) => {
+      await expect(page.getByTestId('pedigree-person')).toHaveCount(6);
+      // The unnamed donor and surrogate are shown by their part.
+      for (const name of [
+        'Ana',
+        'Luis',
+        'Sofia',
+        'You',
+        'Egg donor',
+        'Surrogate',
+      ]) {
+        await expect(member(page, name)).toBeVisible();
+      }
+      // The donor counts as a biological parent; the surrogate does not.
+      await expect(trackerRing(page)).toHaveAccessibleName(
+        'Your family tree has everything needed. Show what’s still needed.',
+      );
+
+      // The participant's details say how each parent is related to them.
+      await member(page, 'You').click();
+      await expect(
+        panel(page)
+          .getByRole('radiogroup', { name: /^Ana is your…/ })
+          .getByRole('radio', { name: 'Step or social parent', exact: true }),
+      ).toBeChecked();
+      await expect(
+        panel(page)
+          .getByRole('radiogroup', { name: /^Luis is your…/ })
+          .getByRole('radio', { name: 'Biological parent', exact: true }),
+      ).toBeChecked();
+      await panel(page)
+        .getByRole('button', { name: 'Cancel', exact: true })
+        .click();
+      await expect(panel(page)).toHaveCount(0);
+    },
+  };
+}
+
+/**
+ * The study encrypts names. Once the participant has set their passphrase, a
+ * name typed for a new relative is stored encrypted and shown decrypted, and
+ * the labels saved on leaving for the unnamed parents are stored encrypted
+ * too.
+ */
+function encryptedNames(): ScenarioDefinition {
+  const scaffolded = scaffold({
+    encryptedNames: true,
+    before: 'anonymisation',
+    framing: 'gendered',
+  });
+  const { synth, fp, person, relate, parents } = scaffolded;
+  person('ego', { gender: 'nonBinary', sex: 'intersex', isEgo: true });
+  person('mum', { gender: 'woman', sex: 'female' });
+  person('dad', { gender: 'man', sex: 'male' });
+  relate('mum', 'dad', 'partner');
+  parents('mum', 'dad', 'ego');
+
+  const SecureNodeSchema = z.object({
+    [entitySecureAttributesMeta]: z.record(
+      z.string(),
+      z.strictObject({ iv: z.array(z.number()) }),
+    ),
+  });
+
+  return {
+    id: 'encrypted-names',
+    covers: ['nodeConfiguration.nameAttribute=encrypted'],
+    slow: true,
+    seedNetwork: true,
+    build: () => synth,
+    run: async (ctx) => {
+      const { page, interview } = ctx;
+      const anonymisation = new AnonymisationFixture(page);
+      await interview.next();
+      await anonymisation.fillPassphrase('correct-horse-battery');
+      await anonymisation.submit();
+      await expect(anonymisation.successAlert()).toBeVisible();
+      await interview.next();
+
+      await expect(page.getByTestId('pedigree-passphrase-notice')).toHaveCount(
+        0,
+      );
+      await addRelativeOf(page, 'You', 'sibling');
+      await describe(page, { name: 'Bea', gender: 'Woman', sex: 'Female' });
+      await submitPanel(page, 'Add to family');
+      await expect(member(page, 'Bea')).toBeVisible();
+
+      const isCiphertext = (value: unknown) =>
+        Array.isArray(value) && value.every((item) => typeof item === 'number');
+      await expect
+        .poll(
+          async () =>
+            (await networkOf(ctx)).nodes.filter((node) =>
+              isCiphertext(node[ATTR][fp.name]),
+            ).length,
+        )
+        .toBe(1);
+      const stored = await networkOf(ctx);
+      expect(nodeNamed(stored, fp.name, 'Bea')).toBeUndefined();
+
+      await leaveForward(ctx);
+      const network = await networkOf(ctx);
+      const encrypted = network.nodes.filter((node) =>
+        isCiphertext(node[ATTR][fp.name]),
+      );
+      // Bea, and the labels saved for both parents.
+      expect(encrypted.map((node) => node[PK]).toSorted()).toEqual(
+        expect.arrayContaining(['dad', 'mum']),
+      );
+      expect(encrypted).toHaveLength(3);
+      for (const node of encrypted) {
+        expect(
+          SecureNodeSchema.parse(node)[entitySecureAttributesMeta][fp.name],
+        ).toBeDefined();
+      }
+      for (const label of ['Mother', 'Father']) {
+        expect(nodeNamed(network, fp.name, label)).toBeUndefined();
+      }
+    },
+  };
+}
+
+/**
+ * The study encrypts one of its own questions, but not names. Until the
+ * participant chooses their passphrase nobody can be added or changed: the
+ * add menu does not open, and a notice under the family says why and asks
+ * for it. Once it is chosen, an answer to that question is stored
+ * encrypted while the name is stored as typed, and the answer opens
+ * decrypted in the question again.
+ */
+function encryptedFormField(): ScenarioDefinition {
+  const scaffolded = scaffold({ encryptedFormField: true });
+  const { synth, fp, nickname } = scaffolded;
+  seedDescribedParents(scaffolded);
+
+  return {
+    id: 'encrypted-form-field',
+    covers: ['form.fields[].variable=encrypted'],
+    slow: true,
+    seedNetwork: true,
+    build: () => synth,
+    run: async (ctx) => {
+      const { page } = ctx;
+      const notice = page.getByTestId('pedigree-passphrase-notice');
+      await expect(
+        notice.getByText(
+          'Enter your passphrase to add or change people in your family.',
+          { exact: true },
+        ),
+      ).toBeVisible();
+      await member(page, 'You').hover();
+      await expect(page.getByTestId('pedigree-menu-sibling')).toHaveCount(0);
+
+      await notice.getByRole('button', { name: 'Enter passphrase' }).click();
+      // No passphrase has been chosen in this interview yet, so this one
+      // becomes it.
+      const overlay = page.getByRole('dialog', {
+        name: 'Choose a passphrase',
+      });
+      await overlay
+        .getByRole('textbox', { name: 'Passphrase', exact: true })
+        .fill('correct-horse-battery');
+      await overlay
+        .getByRole('textbox', { name: 'Confirm Passphrase' })
+        .fill('correct-horse-battery');
+      await overlay.getByRole('button', { name: 'Submit passphrase' }).click();
+      await expect(notice).toHaveCount(0);
+
+      await addRelativeOf(page, 'You', 'sibling');
+      await describe(page, { name: 'Bea', gender: 'Woman', sex: 'Female' });
+      await panel(page).getByRole('textbox', { name: NICKNAME }).fill('Bee');
+      await submitPanel(page, 'Add to family');
+      await expect(member(page, 'Bea')).toBeVisible();
+
+      const isCiphertext = (value: unknown) =>
+        Array.isArray(value) && value.every((item) => typeof item === 'number');
+      await expect
+        .poll(async () => {
+          const bea = nodeNamed(await networkOf(ctx), fp.name, 'Bea');
+          return isCiphertext(bea?.[ATTR][nickname ?? '']);
+        })
+        .toBe(true);
+      const network = await networkOf(ctx);
+      expect(
+        network.nodes.some((node) => node[ATTR][nickname ?? ''] === 'Bee'),
+      ).toBe(false);
+
+      await member(page, 'Bea').click();
+      await expect(
+        panel(page).getByRole('textbox', { name: NICKNAME }),
+      ).toHaveValue('Bee');
     },
   };
 }
@@ -1295,20 +1752,24 @@ function personEditorRoundTrip(): ScenarioDefinition {
 export const familyPedigreeScenarios: InterfaceScenarios = {
   interfaceType: 'FamilyPedigree',
   scenarios: [
-    smokeNuclearFamily(),
-    checklistRestingState(),
-    personEditorRoundTrip(),
-    relationshipFormFieldsAndActivePartnerEdge(),
-    framingParticipantChoiceWithIntro(),
-    framingFixedGendered(),
-    introScreenAssetImage(),
-    boundariesGrandparentsRequiredBlocked(),
-    boundariesGrandparentsRecommendedNudge(),
-    boundariesChildrenContributorsRequired(),
-    adoptiveRelationshipEdgeStyling(),
-    nominationPromptsSequentialToggle(),
-    surrogateTwoDonorsGestationalCarrier(),
-    blendedFamilyStepParentRelationshipType(),
-    singleParentAbsentSecondParent(),
+    smokeAddBothParents(),
+    siblingPartnerChildAndGeneratedLabels(),
+    keyboardFirstVisit(),
+    framingGamete(),
+    framingParticipantPreference(),
+    genderIdentityTerms(),
+    completenessParentsRequired(),
+    completenessFirstDegreeRecommended(),
+    completenessGrandparentsRequired(),
+    extendedScope('secondDegree'),
+    extendedScope('thirdDegree'),
+    formFieldsMissingDetails(),
+    nominationPrompts(),
+    sexChangeWithdrawsNomination(),
+    connectAndDisconnect(),
+    relationshipKindsDrawn(),
+    encryptedNames(),
+    encryptedFormField(),
+    relationshipToParticipantRecorded(),
   ],
 };

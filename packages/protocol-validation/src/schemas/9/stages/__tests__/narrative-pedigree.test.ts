@@ -1,36 +1,32 @@
 import { describe, expect, it } from 'vitest';
 
-import { localized } from '../../../../utils/test-utils.ts';
+import { localized, localizedOptions } from '../../../../utils/test-utils.ts';
 import { NodeColorSequence } from '../../color-reference.ts';
+import {
+  PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+} from '../../family-pedigree-values.ts';
 import ProtocolSchemaV9 from '../../schema.ts';
 import { narrativePedigreeStage } from '../narrative-pedigree.ts';
 
-// Minimal valid FamilyPedigree stage (source).
-// Node variables are on 'person', edge variables are on 'family' (distinct keys).
-// egoVariable lives on the FamilyPedigree node type and marks which node is ego.
+// Minimal valid FamilyPedigree stage (source). Its person type is its stage
+// subject, which the Narrative Pedigree's diseases resolve against.
 const validFamilyPedigreeStage = {
   id: 'fp1',
   label: localized('FamilyPedigree'),
   type: 'FamilyPedigree' as const,
-  nodeConfig: {
-    type: 'person',
-    nodeLabelVariable: 'personLabel',
-    egoVariable: 'egoIsEgo',
-    relationshipVariable: 'personRel',
-    biologicalSexVariable: 'personBioSex',
+  subject: { entity: 'node' as const, type: 'person' },
+  prompt: localized('Build your family'),
+  nodeConfiguration: {
+    nameAttribute: 'personLabel',
+    sexAssignedAtBirthAttribute: 'personSab',
+    egoAttribute: 'egoIsEgo',
   },
-  edgeConfig: {
+  edgeConfiguration: {
     type: 'family',
-    relationshipTypeVariable: 'familyRelType',
-    isActiveVariable: 'familyIsActive',
-    isGestationalCarrierVariable: 'familyIsGc',
-    gameteRoleVariable: 'familyGameteRole',
-  },
-  censusPrompt: localized('Build your family'),
-  framing: { mode: 'fixed' as const, value: 'gamete' as const },
-  boundaries: {
-    requireGrandparents: 'off' as const,
-    requireChildrenContributors: 'off' as const,
+    kindAttribute: 'familyKind',
+    gestationalCarrierAttribute: 'familyIsGc',
+    currentPartnerAttribute: 'familyIsCurrent',
   },
 };
 
@@ -45,7 +41,7 @@ const validNarrativePedigreeStageShape = {
       id: 'disease1',
       label: localized('Breast Cancer'),
       color: 'node-color-seq-1',
-      variable: 'hasBreastCancer',
+      attribute: 'hasBreastCancer',
       inheritancePattern: 'autosomalDominant' as const,
     },
   ],
@@ -81,15 +77,11 @@ const makeProtocol = (overrides?: {
             label: 'PersonLabel',
             type: 'text',
           },
-          personRel: {
-            name: 'PersonRel',
-            label: 'PersonRel',
-            type: 'text',
-          },
-          personBioSex: {
-            name: 'PersonBioSex',
-            label: 'PersonBioSex',
-            type: 'text',
+          personSab: {
+            name: 'PersonSab',
+            label: 'PersonSab',
+            type: 'categorical',
+            options: localizedOptions(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS),
           },
           hasBreastCancer: {
             name: 'HasBreastCancer',
@@ -110,25 +102,21 @@ const makeProtocol = (overrides?: {
         label: localized('Family'),
         color: 'edge-color-seq-1',
         variables: {
-          familyRelType: {
-            name: 'FamilyRelType',
-            label: 'FamilyRelType',
-            type: 'text',
-          },
-          familyIsActive: {
-            name: 'FamilyIsActive',
-            label: 'FamilyIsActive',
-            type: 'boolean',
+          familyKind: {
+            name: 'FamilyKind',
+            label: 'FamilyKind',
+            type: 'categorical',
+            options: localizedOptions(PEDIGREE_RELATIONSHIP_KIND_OPTIONS),
           },
           familyIsGc: {
             name: 'FamilyIsGc',
             label: 'FamilyIsGc',
             type: 'boolean',
           },
-          familyGameteRole: {
-            name: 'FamilyGameteRole',
-            label: 'FamilyGameteRole',
-            type: 'text',
+          familyIsCurrent: {
+            name: 'FamilyIsCurrent',
+            label: 'FamilyIsCurrent',
+            type: 'boolean',
           },
         },
       },
@@ -198,14 +186,14 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
           id: 'dup',
           label: localized('A'),
           color: 'node-color-seq-1',
-          variable: 'v1',
+          attribute: 'v1',
           inheritancePattern: 'autosomalDominant' as const,
         },
         {
           id: 'dup',
           label: localized('B'),
           color: 'node-color-seq-5',
-          variable: 'v2',
+          attribute: 'v2',
           inheritancePattern: 'yLinked' as const,
         },
       ],
@@ -213,7 +201,7 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
     expect(result.success).toBe(false);
   });
 
-  it('rejects two diseases mapped to the same variable', () => {
+  it('rejects two diseases mapped to the same attribute', () => {
     const result = narrativePedigreeStage.safeParse({
       ...validNarrativePedigreeStageShape,
       diseases: [
@@ -221,14 +209,14 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
           id: 'd1',
           label: localized('Condition X'),
           color: 'node-color-seq-1',
-          variable: 'shared',
+          attribute: 'shared',
           inheritancePattern: 'autosomalDominant' as const,
         },
         {
           id: 'd2',
           label: localized('Condition Y'),
           color: 'node-color-seq-5',
-          variable: 'shared',
+          attribute: 'shared',
           inheritancePattern: 'yLinked' as const,
         },
       ],
@@ -237,11 +225,11 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
     expect(result.error?.issues.map((issue) => issue.path)).toContainEqual([
       'diseases',
       1,
-      'variable',
+      'attribute',
     ]);
   });
 
-  it('accepts two diseases with distinct labels and variables', () => {
+  it('accepts two diseases with distinct labels and attributes', () => {
     const result = narrativePedigreeStage.safeParse({
       ...validNarrativePedigreeStageShape,
       diseases: [
@@ -249,14 +237,14 @@ describe('narrativePedigreeStage (stage-level shape)', () => {
           id: 'd1',
           label: localized('Condition X'),
           color: 'node-color-seq-1',
-          variable: 'v1',
+          attribute: 'v1',
           inheritancePattern: 'autosomalDominant' as const,
         },
         {
           id: 'd2',
           label: localized('Condition Y'),
           color: 'node-color-seq-5',
-          variable: 'v2',
+          attribute: 'v2',
           inheritancePattern: 'yLinked' as const,
         },
       ],
@@ -347,14 +335,14 @@ describe('NarrativePedigree protocol-level cross-references', () => {
               id: 'd1',
               label: labels[0],
               color: 'node-color-seq-1',
-              variable: 'hasBreastCancer',
+              attribute: 'hasBreastCancer',
               inheritancePattern: 'autosomalDominant',
             },
             {
               id: 'd2',
               label: labels[1],
               color: 'node-color-seq-5',
-              variable: 'hasOvarianCancer',
+              attribute: 'hasOvarianCancer',
               inheritancePattern: 'yLinked',
             },
           ],
@@ -501,7 +489,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
     }
   });
 
-  it('rejects when a disease variable does not exist on the source node type', () => {
+  it('rejects when a disease attribute does not exist on the source node type', () => {
     const result = ProtocolSchemaV9.safeParse(
       makeProtocol({
         stages: [
@@ -513,7 +501,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
                 id: 'disease1',
                 label: localized('Breast Cancer'),
                 color: 'node-color-seq-1',
-                variable: 'nonexistentVariable',
+                attribute: 'nonexistentVariable',
                 inheritancePattern: 'autosomalDominant',
               },
             ],
@@ -530,8 +518,8 @@ describe('NarrativePedigree protocol-level cross-references', () => {
     }
   });
 
-  it('rejects when a disease variable is not a boolean', () => {
-    // personBioSex is a 'text' variable; the affection predicate is boolean.
+  it('rejects when a disease attribute is not a boolean', () => {
+    // personLabel is a 'text' attribute; the affection predicate is boolean.
     const result = ProtocolSchemaV9.safeParse(
       makeProtocol({
         stages: [
@@ -543,7 +531,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
                 id: 'disease1',
                 label: localized('Breast Cancer'),
                 color: 'node-color-seq-1',
-                variable: 'personBioSex',
+                attribute: 'personLabel',
                 inheritancePattern: 'autosomalDominant',
               },
             ],
@@ -558,190 +546,5 @@ describe('NarrativePedigree protocol-level cross-references', () => {
       );
       expect(issue).toBeDefined();
     }
-  });
-
-  it('accepts a FamilyPedigree nomination prompt bound to a boolean variable', () => {
-    const result = ProtocolSchemaV9.safeParse(
-      makeProtocol({
-        stages: [
-          {
-            ...validFamilyPedigreeStage,
-            nominationPrompts: [
-              {
-                id: 'nom1',
-                text: localized('Who is affected?'),
-                variable: 'hasBreastCancer',
-              },
-            ],
-          },
-          validNarrativePedigreeStageShape,
-        ],
-      }),
-    );
-    expect(result.success).toBe(true);
-  });
-
-  it('rejects a FamilyPedigree nomination prompt whose variable is missing from the codebook', () => {
-    const result = ProtocolSchemaV9.safeParse(
-      makeProtocol({
-        stages: [
-          {
-            ...validFamilyPedigreeStage,
-            nominationPrompts: [
-              {
-                id: 'nom1',
-                text: localized('Who is affected?'),
-                variable: 'ghostVar',
-              },
-            ],
-          },
-          validNarrativePedigreeStageShape,
-        ],
-      }),
-    );
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      const issue = result.error.issues.find((i) =>
-        i.message.includes('ghostVar'),
-      );
-      expect(issue).toBeDefined();
-    }
-  });
-
-  it('rejects a FamilyPedigree nomination prompt variable that is not a boolean', () => {
-    // personRel is a 'text' variable; a nomination writes a boolean flag.
-    const result = ProtocolSchemaV9.safeParse(
-      makeProtocol({
-        stages: [
-          {
-            ...validFamilyPedigreeStage,
-            nominationPrompts: [
-              {
-                id: 'nom1',
-                text: localized('Who is affected?'),
-                variable: 'personRel',
-              },
-            ],
-          },
-          validNarrativePedigreeStageShape,
-        ],
-      }),
-    );
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      const issue = result.error.issues.find((i) =>
-        i.message.includes('must be a boolean'),
-      );
-      expect(issue).toBeDefined();
-    }
-  });
-
-  it('rejects a FamilyPedigree nodeConfig.form field whose variable has no component', () => {
-    const result = ProtocolSchemaV9.safeParse(
-      makeProtocol({
-        stages: [
-          {
-            ...validFamilyPedigreeStage,
-            nodeConfig: {
-              ...validFamilyPedigreeStage.nodeConfig,
-              form: [{ variable: 'personLabel', prompt: localized('Name?') }],
-            },
-          },
-          validNarrativePedigreeStageShape,
-        ],
-      }),
-    );
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      const issue = result.error.issues.find((i) =>
-        i.message.includes('must define a component'),
-      );
-      expect(issue).toBeDefined();
-    }
-  });
-
-  it('accepts a FamilyPedigree nodeConfig.form field whose variable has a component', () => {
-    const result = ProtocolSchemaV9.safeParse(
-      makeProtocol({
-        codebook: {
-          node: {
-            person: {
-              name: 'Person',
-              label: localized('Person'),
-              color: 'node-color-seq-1',
-              shape: { default: 'circle' as const },
-              variables: {
-                egoIsEgo: {
-                  name: 'EgoIsEgo',
-                  label: 'EgoIsEgo',
-                  type: 'boolean',
-                },
-                personLabel: {
-                  name: 'PersonLabel',
-                  label: 'PersonLabel',
-                  type: 'text',
-                  component: 'Text',
-                },
-                personRel: {
-                  name: 'PersonRel',
-                  label: 'PersonRel',
-                  type: 'text',
-                },
-                personBioSex: {
-                  name: 'PersonBioSex',
-                  label: 'PersonBioSex',
-                  type: 'text',
-                },
-                hasBreastCancer: {
-                  name: 'HasBreastCancer',
-                  label: 'HasBreastCancer',
-                  type: 'boolean',
-                },
-              },
-            },
-          },
-          edge: {
-            family: {
-              name: 'Family',
-              label: localized('Family'),
-              color: 'edge-color-seq-1',
-              variables: {
-                familyRelType: {
-                  name: 'FamilyRelType',
-                  label: 'FamilyRelType',
-                  type: 'text',
-                },
-                familyIsActive: {
-                  name: 'FamilyIsActive',
-                  label: 'FamilyIsActive',
-                  type: 'boolean',
-                },
-                familyIsGc: {
-                  name: 'FamilyIsGc',
-                  label: 'FamilyIsGc',
-                  type: 'boolean',
-                },
-                familyGameteRole: {
-                  name: 'FamilyGameteRole',
-                  label: 'FamilyGameteRole',
-                  type: 'text',
-                },
-              },
-            },
-          },
-        },
-        stages: [
-          {
-            ...validFamilyPedigreeStage,
-            nodeConfig: {
-              ...validFamilyPedigreeStage.nodeConfig,
-              form: [{ variable: 'personLabel', prompt: localized('Name?') }],
-            },
-          },
-          validNarrativePedigreeStageShape,
-        ],
-      }),
-    );
-    expect(result.success).toBe(true);
   });
 });

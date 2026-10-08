@@ -64,7 +64,6 @@ import { readMessage } from './i18n.ts';
 import {
   fixtureAssetContentFor,
   fixtureAssetManifest,
-  fixtureLocalization,
   fixtureProtocolSections,
   type FixtureStageId,
   loadFixtureStage,
@@ -1226,10 +1225,7 @@ function seedFrom<T extends StageType>(
       // What a host opens a create session with: the interface's own authored
       // defaults, not a blank document and not a schema default.
       fields: {
-        ...getInterfaceTemplate(
-          type,
-          options.localization ?? fixtureLocalization(),
-        ),
+        ...getInterfaceTemplate(type),
         ...fields,
       },
       creation: { position },

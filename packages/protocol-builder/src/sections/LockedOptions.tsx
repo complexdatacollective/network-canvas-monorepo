@@ -26,7 +26,16 @@ import { useLocalizedText } from '../localization/ProtocolLocalization.tsx';
  */
 export default function LockedOptions({
   options,
-}: Readonly<{ options: LockedOptionList }>) {
+  caption,
+}: Readonly<{
+  options: LockedOptionList;
+  /**
+   * What says why the list is shown rather than edited, where the usual reason
+   * (an interface sets these) is not the one: a list a stage manages names that
+   * stage.
+   */
+  caption?: string;
+}>) {
   const intl = useAppIntl();
   const localize = useLocalizedText();
 
@@ -35,7 +44,7 @@ export default function LockedOptions({
       <Lock aria-hidden className="absolute top-4 right-4 h-4 w-4" />
       <table className="w-full text-sm">
         <caption className="pr-8 pb-2 text-left text-sm">
-          {intl.formatMessage(binMessages.lockedOptions)}
+          {caption ?? intl.formatMessage(binMessages.lockedOptions)}
         </caption>
         <thead>
           <tr className="text-left">

@@ -87,15 +87,19 @@ const narrativePedigreeStageShape = baseStageSchema.extend({
         id: z.string(),
         label: localizedString(z.string().min(1), 'plain'),
         color: NodeColorReferenceSchema,
+        // Boolean attribute on the source pedigree's people: true marks
+        // someone as affected. Usually one of the Family Pedigree's nomination
+        // prompt attributes ("Who in your family has had…?").
+        //
         // Tagged as a writer even though this stage only renders: a disease
-        // row DECLARES what the variable means ("who is affected by X"), and
+        // row DECLARES what the attribute means ("who is affected by X"), and
         // the synthetic generator writes affected status through exactly this
         // mapping. Untagged it would count as a read, and mapping a disease
         // onto a pedigree's own structural slot — the participant marker, the
         // relationship — would pass validation while painting the participant
         // as affected in every interview. `ExclusiveSlotDescriptor` names a
         // disease mapping as a conflict; this tag is what makes that true.
-        variable: entityAttributeReference({
+        attribute: entityAttributeReference({
           subject: 'stageSubject',
           usage: 'unvalidatedAttribute',
         }),
@@ -113,25 +117,25 @@ const narrativePedigreeStageShape = baseStageSchema.extend({
         });
       }
 
-      // A disease row maps ONE node variable to a colour and an inheritance
-      // pattern. Two rows on one variable give the pedigree contradictory
+      // A disease row maps ONE node attribute to a colour and an inheritance
+      // pattern. Two rows on one attribute give the pedigree contradictory
       // answers for a single affected set — the genetics engine resolves one
-      // inheritance pattern per variable, and the key rendered to the
-      // participant lists that variable twice under different colours. Label
+      // inheritance pattern per attribute, and the key rendered to the
+      // participant lists that attribute twice under different colours. Label
       // uniqueness depends on the protocol's locales, so the protocol-level
       // refinement checks it (`findDuplicateDiseaseLabels`).
       diseases.forEach((disease, index) => {
         if (
           diseases.findIndex(
-            (candidate) => candidate.variable === disease.variable,
+            (candidate) => candidate.attribute === disease.attribute,
           ) === index
         ) {
           return;
         }
         ctx.addIssue({
           code: 'custom' as const,
-          message: `Diseases contain duplicate attribute "${disease.variable}"`,
-          path: [index, 'variable'],
+          message: `Diseases contain duplicate attribute "${disease.attribute}"`,
+          path: [index, 'attribute'],
         });
       });
     }),
@@ -142,7 +146,8 @@ export const narrativePedigreeStage = withStageSubjectResolution(
   {
     from: 'stageRef',
     stageRef: 'sourceStageId',
-    path: ['nodeConfig', 'type'],
+    // The Family Pedigree's people are its stage subject.
+    path: ['subject', 'type'],
     entity: 'node',
   },
 );

@@ -52,14 +52,15 @@ Schema 9:
   or edge type's label is wrapped like any other text, and a variable's stays
   plain text. A Narrative preset's `highlight` list of variable IDs becomes a
   list of `{ variable, label }`, each label taken from the variable's name (or
-  its ID) and wrapped as `{ en: <text> }`. A form field with no
-  caption, or an empty or blank one (a Network Composer field's `label`, or
-  any other form field's `prompt`), gets its attribute's name (or its ID) as
-  one, escaped so that markdown shows it as written, and wrapped the same way.
-  An empty optional text that schema 9 requires to be non-empty is removed, as
-  are Network Composer scale end labels that were not strings. Its
-  migration notes tell researchers what the new version allows, that the text
-  is recorded as English and can be changed in Architect, and which empty
+  its ID) and wrapped as `{ en: <text> }`. A form field with no caption, or an
+  empty or blank one (a Network Composer field's `label`, or any other form
+  field's `prompt`), gets its attribute's name (or its ID) as one, escaped so
+  that markdown shows it as written, and wrapped the same way. An empty
+  optional text that schema 9 requires to be non-empty is removed, as are
+  Network Composer scale end labels that were not strings. Its migration notes
+  tell researchers what the new version allows, that the text is recorded as
+  English, so they should confirm the default language and change it in
+  Architect if the protocol is written in another one, and which empty
   questions were filled in.
 - Schema 9 keeps the optional `experiments` property, for features released
   within a schema version, but `encryptedVariables` is no longer one of them:
@@ -73,7 +74,10 @@ Schema 9:
   from every node attribute, because schema 8 interviews stored those
   attributes without encryption. A host that stores `experiments` apart from
   the rest of the protocol must put it back into the document it migrates, or
-  an encrypted protocol loses its encryption.
+  an encrypted protocol loses its encryption. The v7 to v8 migration now keeps
+  an `experiments` object the document already carries, rather than replacing
+  it with an empty one, so this holds for a document migrated from schema 7
+  too.
 - Schema 9 refuses an Anonymisation stage whose minimum passphrase length is
   longer than its maximum, since no participant could choose a passphrase.
   The v8 to v9 migration removes both lengths from such a stage, so the
@@ -93,6 +97,7 @@ Schema 9:
   notes tell researchers to check those stages: rules joined with `AND` that
   lose one match at least as often as before, and rules joined with `OR`
   match at most as often.
+
 - Schema 8 still refuses names outside `a-z`, `A-Z`, digits and `. _ - :`, with
   a message that says so. `VersionlessProtocolSchema`, the version 8 body
   without its `schemaVersion`, is now exported.

@@ -7,7 +7,10 @@ import type { StageOfType } from './context.ts';
  * for. A content stage presents what other stages collected — an Information
  * screen, an Anonymisation notice, a Narrative's canvas, a NarrativePedigree
  * reading the network its source FamilyPedigree wrote — or, like a
- * LanguageChooser, records a session setting rather than network data, so it
+ * LanguageChooser, records a session setting rather than network data, or, for
+ * the synthetic network, is a FamilyPedigree, whose interface builds the
+ * participant's family tree itself and which the generator does not
+ * fabricate — so it
  * creates no entity and writes no attribute onto one.
  *
  * This list is the dispatch's own record of that decision rather than a second
@@ -34,6 +37,7 @@ export const CONTENT_STAGE_TYPES = [
   'Information',
   'Anonymisation',
   'Narrative',
+  'FamilyPedigree',
   'NarrativePedigree',
   'LanguageChooser',
 ] as const satisfies readonly Stage['type'][];

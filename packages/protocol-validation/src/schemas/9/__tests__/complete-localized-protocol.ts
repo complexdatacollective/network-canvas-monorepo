@@ -1,4 +1,8 @@
-import { localized } from '../../../utils/test-utils.ts';
+import { localized, localizedOptions } from '../../../utils/test-utils.ts';
+import {
+  PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+} from '../family-pedigree-values.ts';
 
 const shape = { default: 'circle' };
 
@@ -121,12 +125,12 @@ export const completeProtocol = () => ({
             label: 'Display name',
             type: 'text',
           },
-          relationship: {
-            name: 'Relationship',
-            label: 'Relationship',
-            type: 'text',
+          sex: {
+            name: 'Sex',
+            label: 'Sex',
+            type: 'categorical',
+            options: localizedOptions(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS),
           },
-          sex: { name: 'Sex', label: 'Sex', type: 'text' },
           birthYear: {
             name: 'BirthYear',
             label: 'Birth year',
@@ -171,7 +175,12 @@ export const completeProtocol = () => ({
         label: localized('Family'),
         color: 'edge-color-seq-2',
         variables: {
-          relType: { name: 'RelType', label: 'Kind', type: 'text' },
+          relType: {
+            name: 'RelType',
+            label: 'Kind',
+            type: 'categorical',
+            options: localizedOptions(PEDIGREE_RELATIONSHIP_KIND_OPTIONS),
+          },
           isActive: {
             name: 'IsActive',
             label: 'Current',
@@ -181,11 +190,6 @@ export const completeProtocol = () => ({
             name: 'IsGc',
             label: 'Carrier',
             type: 'boolean',
-          },
-          gameteRole: {
-            name: 'GameteRole',
-            label: 'Gamete',
-            type: 'text',
           },
         },
       },
@@ -479,13 +483,21 @@ export const completeProtocol = () => ({
       id: 'familyPedigree',
       type: 'FamilyPedigree',
       label: localized('Family'),
-      nodeConfig: {
-        type: 'relative',
-        nodeLabelVariable: 'displayName',
-        egoVariable: 'isEgo',
-        relationshipVariable: 'relationship',
-        biologicalSexVariable: 'sex',
-        form: [
+      subject: { entity: 'node', type: 'relative' },
+      prompt: localized('Build your family'),
+      nodeConfiguration: {
+        nameAttribute: 'displayName',
+        sexAssignedAtBirthAttribute: 'sex',
+        egoAttribute: 'isEgo',
+      },
+      edgeConfiguration: {
+        type: 'family',
+        kindAttribute: 'relType',
+        gestationalCarrierAttribute: 'isGc',
+        currentPartnerAttribute: 'isActive',
+      },
+      form: {
+        fields: [
           {
             variable: 'birthYear',
             prompt: localized('Birth year?'),
@@ -493,35 +505,11 @@ export const completeProtocol = () => ({
           },
         ],
       },
-      edgeConfig: {
-        type: 'family',
-        relationshipTypeVariable: 'relType',
-        isActiveVariable: 'isActive',
-        isGestationalCarrierVariable: 'isGc',
-        gameteRoleVariable: 'gameteRole',
-      },
-      framing: { mode: 'participantChoice' },
-      boundaries: {
-        requireGrandparents: 'off',
-        requireChildrenContributors: 'off',
-      },
-      introScreen: {
-        items: [
-          { id: 'f1', type: 'text', content: localized('Family intro') },
-          {
-            id: 'f2',
-            type: 'asset',
-            content: 'img',
-            description: localized('Family image'),
-          },
-        ],
-      },
-      censusPrompt: localized('Build your family'),
       nominationPrompts: [
         {
           id: 'n1',
           text: localized('Who is affected?'),
-          variable: 'nominated',
+          attribute: 'nominated',
         },
       ],
     },
@@ -535,7 +523,7 @@ export const completeProtocol = () => ({
           id: 'd1',
           label: localized('Condition'),
           color: 'node-color-seq-3',
-          variable: 'affected',
+          attribute: 'affected',
           inheritancePattern: 'autosomalDominant',
         },
       ],

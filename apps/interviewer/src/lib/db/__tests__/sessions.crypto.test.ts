@@ -21,6 +21,7 @@ import {
   markSessionsExported,
   querySessions,
   reencryptSession,
+  SessionProtocolChangedError,
   updateSession,
 } from '../sessions';
 
@@ -194,7 +195,11 @@ describe('sessions repo — encryption at boundary', () => {
       initialNetwork,
     });
     const nextNetwork: NcNetwork = { ...initialNetwork, nodes: [] };
-    await updateSession(created.id, { network: nextNetwork, progress: 55 });
+    await updateSession(
+      created.id,
+      { network: nextNetwork, progress: 55 },
+      { protocolHash: 'h1' },
+    );
 
     const raw = await db.sessions.get(created.id);
     expect(raw?.network).toBeUndefined();
@@ -264,7 +269,11 @@ describe('sessions repo — participant passphrase encryption', () => {
         initialNetwork,
       });
       // What the interview route's sync handler writes.
-      await updateSession(created.id, { network, currentStep: 1 });
+      await updateSession(
+        created.id,
+        { network, currentStep: 1 },
+        { protocolHash: 'h1' },
+      );
       expect((await getSession(created.id))?.network).toStrictEqual(network);
 
       // Securing the device re-encrypts every stored session under its key.
@@ -273,7 +282,11 @@ describe('sessions repo — participant passphrase encryption', () => {
       expect((await db.sessions.get(created.id))?._enc).toBeDefined();
       expect((await getSession(created.id))?.network).toStrictEqual(network);
 
-      await updateSession(created.id, { network, currentStep: 2 });
+      await updateSession(
+        created.id,
+        { network, currentStep: 2 },
+        { protocolHash: 'h1' },
+      );
       expect((await getSession(created.id))?.network).toStrictEqual(network);
       const [exported] = await getSessionsByIds([created.id]);
       expect(exported?.network).toStrictEqual(network);
@@ -451,11 +464,17 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
       caseId: 'case-1',
       initialNetwork,
     });
-    await updateSession(created.id, { currentStep: 4, progress: 100 });
+    await updateSession(
+      created.id,
+      { currentStep: 4, progress: 100 },
+      { protocolHash: 'h1' },
+    );
     await markSessionFinished(created.id);
     await markSessionsExported([created.id]);
 
-    await markSessionUnfinished(created.id, authoredStages);
+    await markSessionUnfinished(created.id, authoredStages, {
+      protocolHash: 'h1',
+    });
 
     const session = await getSession(created.id);
     expect(session?.finishedAt).toBeNull();
@@ -476,10 +495,16 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
       caseId: 'case-1',
       initialNetwork,
     });
-    await updateSession(created.id, { currentStep: 4, progress: 100 });
+    await updateSession(
+      created.id,
+      { currentStep: 4, progress: 100 },
+      { protocolHash: 'h1' },
+    );
     await markSessionFinished(created.id);
 
-    await markSessionUnfinished(created.id, stagesWithFinishRoute);
+    await markSessionUnfinished(created.id, stagesWithFinishRoute, {
+      protocolHash: 'h1',
+    });
 
     const session = await getSession(created.id);
     expect(session?.finishedAt).toBeNull();
@@ -495,16 +520,44 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
       caseId: 'case-1',
       initialNetwork,
     });
-    await updateSession(created.id, { currentStep: 4, progress: 100 });
+    await updateSession(
+      created.id,
+      { currentStep: 4, progress: 100 },
+      { protocolHash: 'h1' },
+    );
     await markSessionFinished(created.id);
 
-    await markSessionUnfinished(created.id, stagesWithNoActiveAuthoredStage);
+    await markSessionUnfinished(created.id, stagesWithNoActiveAuthoredStage, {
+      protocolHash: 'h1',
+    });
 
     const session = await getSession(created.id);
     expect(session?.finishedAt).toBeNull();
     expect(session?.currentStep).toBe(0);
     expect(session?.progress).toBe(20);
     expect(session?.resumeStageOverrideIndex).toBe(0);
+  });
+
+  it('refuses to reopen a session that has moved to another protocol', async () => {
+    const created = await createSession({
+      protocolHash: 'h1',
+      protocolName: 'Study',
+      caseId: 'case-moved',
+      initialNetwork,
+    });
+    await updateSession(
+      created.id,
+      { currentStep: 4, progress: 100 },
+      { protocolHash: 'h1' },
+    );
+    await markSessionFinished(created.id);
+    await db.sessions.update(created.id, { protocolHash: 'h2' });
+    const migrated = await db.sessions.get(created.id);
+
+    await expect(
+      markSessionUnfinished(created.id, authoredStages, { protocolHash: 'h1' }),
+    ).rejects.toBeInstanceOf(SessionProtocolChangedError);
+    expect(await db.sessions.get(created.id)).toEqual(migrated);
   });
 
   it('does not reset an interview that is already unfinished', async () => {
@@ -514,9 +567,15 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
       caseId: 'case-1',
       initialNetwork,
     });
-    await updateSession(created.id, { currentStep: 2, progress: 60 });
+    await updateSession(
+      created.id,
+      { currentStep: 2, progress: 60 },
+      { protocolHash: 'h1' },
+    );
 
-    await markSessionUnfinished(created.id, authoredStages);
+    await markSessionUnfinished(created.id, authoredStages, {
+      protocolHash: 'h1',
+    });
 
     const session = await getSession(created.id);
     expect(session?.currentStep).toBe(2);
@@ -546,8 +605,8 @@ describe('sessions repo — concurrent updateSession (#756)', () => {
     // write both read the same pre-update row and the last put would overwrite
     // the other's field; serialised, both must survive.
     await Promise.all([
-      updateSession(created.id, { currentStep: 1 }),
-      updateSession(created.id, { progress: 77 }),
+      updateSession(created.id, { currentStep: 1 }, { protocolHash: 'h1' }),
+      updateSession(created.id, { progress: 77 }, { protocolHash: 'h1' }),
     ]);
 
     const back = await getSession(created.id);

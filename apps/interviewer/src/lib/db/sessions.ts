@@ -11,6 +11,7 @@ import type { NcNetwork } from '@codaco/shared-consts';
 import { db } from './db';
 import {
   decryptSession,
+  decryptSessionRecord,
   encryptSession,
   type StoredSessionRow,
 } from './recordCrypto';
@@ -362,33 +363,125 @@ export async function whenSessionWritesSettle(): Promise<void> {
   }
 }
 
+/**
+ * The protocol a session write was computed against. A session's network,
+ * stage metadata and resume position are in its protocol's schema, and its
+ * progress and stage override are positions in that protocol's stages, so a
+ * write naming them is only meaningful against the protocol it was computed
+ * from.
+ */
+export type SessionWriteBasis = { protocolHash: string };
+
+/**
+ * The stored session has moved to another protocol since the write was
+ * computed — the launch migration, possibly in another tab, re-keyed it and
+ * carried its data across — and the write changes only part of what it holds
+ * in that protocol's schema. Applied to the migrated data, it would mix
+ * schemas (an old resume position over a migrated network), so nothing is
+ * written. Reload the session to continue from the migrated data.
+ */
+export class SessionProtocolChangedError extends Error {
+  constructor(id: string) {
+    super(
+      `Interview ${id} moved to another protocol version after this change was made, so the change was not saved.`,
+    );
+    this.name = 'SessionProtocolChangedError';
+  }
+}
+
+// Everything a session holds in its protocol's schema. A patch carrying all
+// three is the session's whole state as its writer saw it.
+const FULL_STATE_FIELDS = ['network', 'stageMetadata', 'currentStep'] as const;
+// Everything that means something only against one protocol's stages.
+const PROTOCOL_BOUND_FIELDS = [
+  ...FULL_STATE_FIELDS,
+  'progress',
+  'resumeStageOverrideIndex',
+] as const;
+
+type FullStatePatch = StoredSessionPatch &
+  Pick<StoredSession, 'network' | 'currentStep'> & {
+    stageMetadata: StoredSession['stageMetadata'];
+  };
+
+const isFullState = (patch: StoredSessionPatch): patch is FullStatePatch =>
+  FULL_STATE_FIELDS.every((field) => Object.hasOwn(patch, field));
+
+const isProtocolBound = (patch: StoredSessionPatch) =>
+  PROTOCOL_BOUND_FIELDS.some((field) => Object.hasOwn(patch, field));
+
+/**
+ * Apply `patch`, computed against the protocol `basis` names, to a stored
+ * session.
+ *
+ * No session may point at a protocol whose schema its data is not in. When
+ * the stored session still belongs to `basis.protocolHash`, the patch is
+ * applied as it always was. When the launch migration has since moved it to
+ * another protocol (a tab kept running while another updated the app and
+ * migrated the protocol):
+ *
+ * - a patch with the session's whole state (network, stage metadata and
+ *   resume position) replaces it under the writer's protocol hash, so the
+ *   data and the hash agree. The next launch carries it across the migration
+ *   again, following the durable re-keying records (`migrateStoredProtocols`),
+ *   and nothing the participant did is lost.
+ * - any other patch that names something protocol-bound is refused with
+ *   `SessionProtocolChangedError`, and nothing is written.
+ *
+ * A patch naming nothing protocol-bound (for example only `finishedAt`) is
+ * applied whichever protocol the session belongs to now.
+ */
 export function updateSession(
   id: string,
   patch: StoredSessionPatch,
+  basis: SessionWriteBasis,
 ): Promise<StoredSession | undefined> {
   return enqueueSessionMutation(id, async () => {
     const existingRow = await db.sessions.get(id);
     if (!existingRow) return undefined;
-    const existing = await decryptSession(existingRow);
-    const updated: StoredSession = {
-      ...existing,
-      ...patch,
-      lastUpdatedAt: new Date().toISOString(),
-    };
+    const full = isFullState(patch);
+    const partialBound = !full && isProtocolBound(patch);
+    if (partialBound && existingRow.protocolHash !== basis.protocolHash) {
+      throw new SessionProtocolChangedError(id);
+    }
+    let updated: StoredSession;
+    if (full) {
+      // The whole state comes from the patch, so the stored data is not
+      // parsed: once migrated, it can be in a schema this build cannot read.
+      const {
+        network: _network,
+        stageMetadata: _stageMetadata,
+        ...record
+      } = await decryptSessionRecord(existingRow);
+      updated = {
+        ...record,
+        ...patch,
+        lastUpdatedAt: new Date().toISOString(),
+      };
+    } else {
+      updated = {
+        ...(await decryptSession(existingRow)),
+        ...patch,
+        lastUpdatedAt: new Date().toISOString(),
+      };
+    }
     const row = await encryptSession(updated);
     // The read above happened before the crypto awaits, and the per-id chain
     // only serialises THIS tab. In the gap, the launch-time protocol
-    // migration — possibly in another tab — may have repointed this session's
-    // `protocolHash`, or the session may have been deleted. `protocolHash` is
-    // never legitimately part of a session patch, so commit it from the
-    // freshest stored row, and drop the write entirely rather than resurrect
-    // a deleted session. The locale fields are committed the same way: only
-    // `setSessionLocale` writes them, and another tab may have just done so.
+    // migration — possibly in another tab — may have moved this session to
+    // another protocol, or the session may have been deleted. Decide against
+    // the freshest stored row, and drop the write entirely rather than
+    // resurrect a deleted session. The locale fields are committed from it
+    // too: only `setSessionLocale` writes them, and another tab may have just
+    // done so.
     return db.transaction('rw', db.sessions, async () => {
       const latest = await db.sessions.get(id);
       if (!latest) return undefined;
+      if (partialBound && latest.protocolHash !== basis.protocolHash) {
+        throw new SessionProtocolChangedError(id);
+      }
       const owned = {
-        protocolHash: latest.protocolHash,
+        protocolHash: full ? basis.protocolHash : latest.protocolHash,
         localePreference: latest.localePreference,
         locale: latest.locale,
       };
@@ -429,13 +522,24 @@ export function markSessionFinished(id: string): Promise<void> {
   });
 }
 
+/**
+ * Reopen a finished session at its last available stage of `stages`, the
+ * stages of the protocol `basis` names. Refused with
+ * `SessionProtocolChangedError` if the session has since moved to another
+ * protocol, as a resume position in one protocol's stages means nothing in
+ * another's (see `updateSession`).
+ */
 export function markSessionUnfinished(
   id: string,
   stages: CurrentProtocol['stages'],
+  basis: SessionWriteBasis,
 ): Promise<void> {
   return enqueueSessionMutation(id, async () => {
     const existingRow = await db.sessions.get(id);
     if (!existingRow?.finishedAt) return;
+    if (existingRow.protocolHash !== basis.protocolHash) {
+      throw new SessionProtocolChangedError(id);
+    }
 
     const existing = await decryptSession(existingRow);
     const lastAvailableStage = getLastAvailableAuthoredStageIndex(
@@ -448,6 +552,9 @@ export function markSessionUnfinished(
     await db.transaction('rw', db.sessions, async () => {
       const latest = await db.sessions.get(id);
       if (!latest?.finishedAt) return;
+      if (latest.protocolHash !== basis.protocolHash) {
+        throw new SessionProtocolChangedError(id);
+      }
 
       const now = new Date().toISOString();
       await db.sessions.put({

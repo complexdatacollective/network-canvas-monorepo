@@ -211,7 +211,7 @@ test('adds a language, keeps the default language from being removed, translates
 
   // Make French the default.
   await expect(defaultLanguage).toHaveAccessibleDescription(
-    'Participants see a text in this language when it has no translation in a language they use.',
+    'Participants see text in this language when it has no translation in a language they use.',
   );
   await defaultLanguage.selectOption({ label: 'French' });
   await expect(french.getByText('Default', { exact: true })).toBeVisible();

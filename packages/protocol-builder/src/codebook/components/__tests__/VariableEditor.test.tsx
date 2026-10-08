@@ -100,7 +100,10 @@ const APPLIED: CodebookWriteOutcome = {
   sectionId: PERSON_SECTION,
 };
 
-type SubmitDocument = (document: SectionDoc) => Promise<CodebookWriteOutcome>;
+type SubmitDocument = (
+  document: SectionDoc,
+  ownedProperties?: readonly string[],
+) => Promise<CodebookWriteOutcome>;
 
 const submitting = (
   outcome: CodebookWriteOutcome = APPLIED,
@@ -305,6 +308,229 @@ describe('VariableEditor', () => {
       label: 'preference',
       type: 'ordinal',
       options: existing.options,
+    });
+  });
+
+  /**
+   * Some stages manage the options of an attribute they bind, because they
+   * decide what each option means. From anywhere but such a stage the options
+   * are shown, naming the stage, and a save of the rest of the attribute
+   * leaves them exactly as they are.
+   */
+  describe('options a stage manages', () => {
+    const MANAGED = {
+      name: 'gender',
+      label: 'gender',
+      type: 'categorical',
+      options: [
+        { label: { en: 'Woman' }, value: 'woman' },
+        { label: { en: 'Man' }, value: 'man' },
+      ],
+    } as const;
+
+    const openManaged = (
+      onSubmitDocument: ReturnType<typeof vi.fn<SubmitDocument>>,
+      managedByStages: readonly string[] | null,
+    ) =>
+      render(
+        <VariableEditor
+          openId="managed"
+          mode="update"
+          subject={SUBJECT}
+          authoritativeDocument={personDocument({ gender: MANAGED })}
+          variableId="gender"
+          initialDraft={MANAGED}
+          managedByStages={managedByStages}
+          onSubmitDocument={onSubmitDocument}
+          onComplete={() => undefined}
+        />,
+      );
+
+    it('shows them read-only under a note naming the stage', () => {
+      openManaged(submitting(), ['Family Pedigree']);
+
+      const table = screen.getByRole('table', {
+        name: 'These options are managed by the “Family Pedigree” stage, which decides the kinship words each one takes. Edit them there.',
+      });
+      expect(within(table).getByText('Woman')).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Create new option' }),
+      ).toBeNull();
+      expect(
+        screen.queryByRole('textbox', { name: 'Option 1 label' }),
+      ).toBeNull();
+    });
+
+    it('names every stage that manages them', () => {
+      openManaged(submitting(), ['Family', 'Household']);
+
+      expect(
+        screen.getByRole('table', {
+          name: 'These options are managed by the stages “Family”, “Household”, which decide the kinship words each one takes. Edit them in any of those stages.',
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it('leaves the options out of what a save writes', async () => {
+      const user = userEvent.setup();
+      const onSubmitDocument = submitting();
+      openManaged(onSubmitDocument, ['Family Pedigree']);
+
+      const name = screen.getByRole('textbox', { name: /attribute name/i });
+      await user.clear(name);
+      await user.type(name, 'gender_identity');
+      await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+      await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+      // The options the host held are carried through untouched: the save
+      // asked for the name alone, so `options` is not among the properties it
+      // owns.
+      expect(onSubmitDocument.mock.calls[0]?.[1]).not.toContain('options');
+      expect(submittedVariables(onSubmitDocument).gender).toEqual({
+        ...MANAGED,
+        name: 'gender_identity',
+      });
+    });
+
+    it('edits them as usual when no stage manages them', () => {
+      openManaged(submitting(), null);
+
+      expect(
+        screen.getByRole('button', { name: 'Create new option' }),
+      ).toBeEnabled();
+    });
+  });
+
+  /**
+   * A host may add a choice of its own to every option row: held by the
+   * editor beside the options, never written to the codebook, and handed back
+   * one entry per saved option.
+   */
+  describe('a host’s choice on every option row', () => {
+    const GENDER = {
+      name: 'gender',
+      label: 'gender',
+      type: 'categorical',
+      options: [
+        { label: { en: 'Woman' }, value: 'woman' },
+        { label: { en: 'Man' }, value: 'man' },
+      ],
+    } as const;
+    const ROW_CHOICE = {
+      label: (index: string) => `Option ${index} words`,
+      choices: [
+        { value: 'feminine', label: 'Feminine' },
+        { value: 'masculine', label: 'Masculine' },
+        { value: 'neutral', label: 'Neutral' },
+      ],
+      initialValue: (option: Readonly<{ value: string | number }>) =>
+        option.value === 'woman' ? 'feminine' : 'masculine',
+      addedValue: 'neutral',
+    };
+
+    const openWithChoice = (
+      onSubmitDocument: ReturnType<typeof vi.fn<SubmitDocument>>,
+      onComplete: (...args: unknown[]) => void,
+      managedByStages: readonly string[] | null = null,
+    ) =>
+      render(
+        <VariableEditor
+          openId="row-choice"
+          mode="update"
+          subject={SUBJECT}
+          authoritativeDocument={personDocument({ gender: GENDER })}
+          variableId="gender"
+          initialDraft={GENDER}
+          managedByStages={managedByStages}
+          optionRowChoice={ROW_CHOICE}
+          typeFixed
+          onSubmitDocument={onSubmitDocument}
+          onComplete={onComplete}
+        />,
+      );
+
+    it('shows a fixed type read-only, and each row opens on the host’s choice', () => {
+      openWithChoice(submitting(), vi.fn());
+
+      const type = screen.getByRole('textbox', { name: 'Attribute type' });
+      expect(type).toHaveAttribute('readonly');
+      expect(type).toHaveValue('Categorical');
+      expect(
+        screen.queryByRole('combobox', { name: 'Attribute type' }),
+      ).toBeNull();
+      expect(
+        screen.getByRole('combobox', { name: 'Option 1 words' }),
+      ).toHaveValue('feminine');
+      expect(
+        screen.getByRole('combobox', { name: 'Option 2 words' }),
+      ).toHaveValue('masculine');
+    });
+
+    it('hands back a changed choice with no codebook write when the options are unchanged', async () => {
+      const user = userEvent.setup();
+      const onSubmitDocument = submitting();
+      const onComplete = vi.fn();
+      openWithChoice(onSubmitDocument, onComplete);
+
+      const save = screen.getByRole('button', { name: 'Save attribute' });
+      expect(save).toBeDisabled();
+      await user.selectOptions(
+        screen.getByRole('combobox', { name: 'Option 2 words' }),
+        'neutral',
+      );
+      expect(save).toBeEnabled();
+      await user.click(save);
+
+      expect(onSubmitDocument).not.toHaveBeenCalled();
+      expect(onComplete).toHaveBeenCalledWith('gender', 'gender', [
+        { value: 'woman', choice: 'feminine' },
+        { value: 'man', choice: 'neutral' },
+      ]);
+    });
+
+    it('starts an added row on the added value, drops a removed one, and writes none of it to the codebook', async () => {
+      const user = userEvent.setup();
+      const onSubmitDocument = submitting();
+      const onComplete = vi.fn();
+      openWithChoice(onSubmitDocument, onComplete);
+
+      await user.click(screen.getByRole('button', { name: 'Remove option 1' }));
+      await user.click(
+        screen.getByRole('button', { name: 'Create new option' }),
+      );
+      expect(
+        screen.getByRole('combobox', { name: 'Option 2 words' }),
+      ).toHaveValue('neutral');
+      await user.type(
+        screen.getByRole('textbox', { name: 'Option 2 label' }),
+        'Agender',
+      );
+      await user.type(
+        screen.getByRole('textbox', { name: 'Option 2 value' }),
+        'agender',
+      );
+      await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+      await waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1));
+      expect(submittedVariables(onSubmitDocument).gender).toEqual({
+        ...GENDER,
+        options: [
+          { label: { en: 'Man' }, value: 'man' },
+          { label: { en: 'Agender' }, value: 'agender' },
+        ],
+      });
+      expect(onComplete).toHaveBeenCalledWith('gender', 'gender', [
+        { value: 'man', choice: 'masculine' },
+        { value: 'agender', choice: 'neutral' },
+      ]);
+    });
+
+    it('offers no choice on options a stage it was not opened from manages', () => {
+      openWithChoice(submitting(), vi.fn(), ['Family Pedigree']);
+
+      expect(
+        screen.queryByRole('combobox', { name: 'Option 1 words' }),
+      ).toBeNull();
     });
   });
 
@@ -1655,7 +1881,7 @@ describe('the two answers a boolean offers', () => {
     ).toBeNull();
     expect(
       screen.getByText(
-        'A yes/no attribute is written here as two answers, and this one offers a different number of them. They are shown as they are, and saving leaves them unchanged.',
+        'A boolean attribute is written here as two answers, and this one offers a different number of them. They are shown as they are, and saving leaves them unchanged.',
       ),
     ).toBeVisible();
     // All three, with the boolean each one records — which is what the
@@ -1766,7 +1992,7 @@ describe('the two answers a boolean offers', () => {
     // would be looking for an answer that is not on the screen.
     expect(
       screen.getByText(
-        'A yes/no attribute is written here as two answers, one recording “true” and the other “false”. This one’s answers record something else, so they are shown as they are, and saving leaves them unchanged.',
+        'A boolean attribute is written here as two answers, one recording “true” and the other “false”. This one’s answers record something else, so they are shown as they are, and saving leaves them unchanged.',
       ),
     ).toBeVisible();
     const answers = within(screen.getByRole('table'));
