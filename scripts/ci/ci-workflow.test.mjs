@@ -1,5 +1,16 @@
 import assert from 'node:assert/strict';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import { test } from 'vitest';
 import { parse } from 'yaml';
@@ -146,6 +157,190 @@ test('release, publish, deploy and mirror jobs never run for an integration base
       `${jobName} is gated on ${root}'s release decision`,
     );
   }
+});
+
+// One branch can back pull requests into several bases (say `schema-9` and
+// `main`), and their merge trees differ. These two tests run the real
+// carry-forward script and the real report-key script against stand-ins for
+// GitHub, and fail if a verdict or a report crosses from one pull request to
+// the other.
+test('carry-forward-statuses copies a verdict only from runs of the same pull request and base', async () => {
+  const script =
+    parsedWorkflow.jobs['carry-forward-statuses'].steps[0].with.script;
+  const AsyncFunction = async function () {}.constructor;
+  const run = (id, number, base, jobConclusion) => ({
+    id,
+    run_number: id,
+    head_sha: `sha-${id}`,
+    html_url: `https://example.test/runs/${id}`,
+    pull_requests: number === null ? [] : [{ number, base: { ref: base } }],
+    jobConclusion,
+  });
+  const execute = async (runs, env) => {
+    const created = [];
+    const github = {
+      rest: {
+        actions: {
+          listWorkflowRunsForRepo: async () => ({
+            data: { workflow_runs: runs },
+          }),
+          listJobsForWorkflowRun: async ({ run_id: runId }) => ({
+            data: {
+              jobs: [
+                {
+                  name: 'docs-preview-checks',
+                  conclusion: runs.find(({ id }) => id === runId).jobConclusion,
+                  html_url: `https://example.test/jobs/${runId}`,
+                },
+              ],
+            },
+          }),
+        },
+        checks: { create: async (args) => created.push(args) },
+      },
+    };
+    const saved = { ...process.env };
+    Object.assign(process.env, {
+      FLAG_DOCS: 'false',
+      FLAG_WEBSITE: 'true',
+      PR_HEAD_REF: 'changeset-release/documentation',
+      PR_HEAD_SHA: 'sha-current',
+      PR_NUMBER: '5',
+      PR_BASE_REF: 'main',
+      ...env,
+    });
+    try {
+      await new AsyncFunction('github', 'context', 'core', script)(
+        github,
+        {
+          repo: { owner: 'o', repo: 'r' },
+          runId: 999,
+          sha: 'sha-current',
+        },
+        { info() {} },
+      );
+    } finally {
+      for (const key of Object.keys(process.env)) {
+        if (!(key in saved)) delete process.env[key];
+      }
+      Object.assign(process.env, saved);
+    }
+    return created;
+  };
+
+  // The newest run is the other pull request's (same branch, base schema-9)
+  // and failed; the older run is this pull request's and passed. Only the
+  // latter may be carried.
+  let created = await execute(
+    [run(3, 7, 'schema-9', 'failure'), run(2, 5, 'main', 'success')],
+    {},
+  );
+  assert.equal(created.length, 1);
+  assert.equal(created[0].conclusion, 'success');
+  assert.match(created[0].output.summary, /#2\b/);
+
+  // Nothing from another pull request is ever carried.
+  created = await execute([run(3, 7, 'schema-9', 'success')], {});
+  assert.deepEqual(created, []);
+
+  // A pull request retargeted to another base starts over.
+  created = await execute([run(2, 5, 'main', 'success')], {
+    PR_BASE_REF: 'schema-9',
+  });
+  assert.deepEqual(created, []);
+
+  // A run that lists no pull request (a fork's) cannot be proven to match.
+  created = await execute([run(2, null, 'main', 'success')], {});
+  assert.deepEqual(created, []);
+});
+
+test('e2e-report keys a pull request report by its number and sweeps by open pull request', () => {
+  const meta = parsedWorkflow.jobs['e2e-report'].steps.find(
+    ({ id }) => id === 'meta',
+  );
+  const dir = mkdtempSync(join(tmpdir(), 'e2e-report-meta-'));
+  try {
+    const bin = join(dir, 'bin');
+    mkdirSync(bin);
+    // `git ls-remote` lists two branches; `gh api` lists the open pull
+    // requests, one of them from a branch that is gone.
+    writeFileSync(
+      join(bin, 'git'),
+      '#!/bin/sh\nprintf "aaa\\trefs/heads/feat/x\\nbbb\\trefs/heads/gh-pages\\n"\n',
+      { mode: 0o755 },
+    );
+    writeFileSync(
+      join(bin, 'gh'),
+      '#!/bin/sh\nif [ "$GH_FAIL" = 1 ]; then exit 1; fi\nprintf "feat/x\\t11\\nfeat/x\\t12\\ngone/branch\\t13\\n"\n',
+      { mode: 0o755 },
+    );
+    const execute = (env) => {
+      const output = join(dir, 'output');
+      writeFileSync(output, '');
+      rmSync(join(dir, 'live-slugs.txt'), { force: true });
+      const result = spawnSync('bash', ['-e', '-c', meta.run], {
+        encoding: 'utf8',
+        env: {
+          PATH: `${bin}:${process.env.PATH}`,
+          GITHUB_OUTPUT: output,
+          GITHUB_REPOSITORY: 'o/r',
+          GH_TOKEN: 'token',
+          RUNNER_TEMP: dir,
+          REF: 'feat/x',
+          ...env,
+        },
+      });
+      assert.equal(result.status, 0, result.stderr);
+      const outputs = Object.fromEntries(
+        readFileSync(output, 'utf8')
+          .split('\n')
+          .filter(Boolean)
+          .map((line) => line.split(/=(.*)/s).slice(0, 2)),
+      );
+      const live = existsSync(join(dir, 'live-slugs.txt'))
+        ? readFileSync(join(dir, 'live-slugs.txt'), 'utf8')
+            .split('\n')
+            .filter(Boolean)
+        : null;
+      return { outputs, live };
+    };
+
+    const first = execute({ PR_NUMBER: '11' });
+    const second = execute({ PR_NUMBER: '12' });
+    const push = execute({ PR_NUMBER: '' });
+    // Two pull requests from one branch never share a directory ...
+    assert.notEqual(first.outputs.slug, second.outputs.slug);
+    assert.match(first.outputs.slug, /^feat-x-[0-9a-f]{8}-pr11$/);
+    assert.match(second.outputs.slug, /^feat-x-[0-9a-f]{8}-pr12$/);
+    // ... the number-less key is still reported so the old directory can be
+    // dropped, and a run with no pull request keeps using it.
+    assert.equal(first.outputs.legacy_slug, push.outputs.slug);
+    assert.match(first.outputs.legacy_slug, /^feat-x-[0-9a-f]{8}$/);
+    // Every open pull request's key is live, so the sweep keeps its report;
+    // the key of a pull request that is no longer open is not.
+    for (const key of [first.outputs.slug, second.outputs.slug]) {
+      assert.ok(first.live.includes(key), `${key} is live`);
+    }
+    assert.ok(first.live.includes(first.outputs.legacy_slug));
+    assert.ok(!first.live.some((key) => key.endsWith('-pr99')));
+    assert.ok(first.live.some((key) => key.startsWith('gone-branch-')));
+
+    // A failed pull-request listing removes the file: the sweep is skipped
+    // rather than deleting every pull request's report on doubt.
+    assert.equal(execute({ PR_NUMBER: '11', GH_FAIL: '1' }).live, null);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+
+  const merge = parsedWorkflow.jobs['e2e-report'].steps.find(
+    ({ id }) => id === 'merge',
+  );
+  assert.match(merge.env.LEGACY_SLUG, /steps\.meta\.outputs\.legacy_slug/);
+  assert.match(
+    merge.run,
+    /local legacy="merged\/\$job\/\$LEGACY_SLUG"[\s\S]*?rm -rf "\$legacy"/,
+    'a report under the old number-less key is dropped',
+  );
 });
 
 test('superseded CI runs are cancelled for every pull request', () => {

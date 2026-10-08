@@ -2605,9 +2605,10 @@ jobs:
       source_run_url: ${{ format('{0}/{1}/actions/runs/{2}', github.server_url, github.repository, github.run_id) }}
 
   # One consolidated E2E report per run: publishes the Playwright report of
-  # every FAILED suite job to GitHub Pages under <job-name>/<branch-slug>/
-  # (replacing that branch's previous report; a later green run removes it, so
-  # only the latest run's report is ever kept), then upserts a single sticky
+  # every FAILED suite job to GitHub Pages under
+  # <job-name>/<branch-slug>-pr<number>/ (replacing that pull request's
+  # previous report; a later green run removes it, so only the latest run's
+  # report is ever kept), then upserts a single sticky
   # PR status comment showing the policy's decision matrix plus each job's
   # outcome. Purely informational: whether the report PUBLISHED says nothing
   # about whether the code is sound — the actual verdicts are the suite jobs.
@@ -2655,10 +2656,16 @@ jobs:
       - id: meta
         env:
           REF: ${{ github.head_ref || github.ref_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           GH_TOKEN: ${{ github.token }}
         run: |
           # Report directory scheme: the normalised ref for readability plus a
-          # short digest of the raw ref. Normalisation alone is lossy
+          # short digest of the raw ref. On a pull request the key also ends in
+          # `-pr<number>`, because one branch can back several pull requests
+          # (for example into `schema-9` and into `main`) and their runs must
+          # not replace or delete each other's reports. A branch slug always
+          # ends in eight hex digits and `-pr<n>` never does, so the two key
+          # shapes cannot collide. Normalisation alone is lossy
           # (feature/foo and feature-foo collide), and a collision would let
           # one branch's run overwrite or delete another branch's
           # still-current report. The orphan sweep in the merge step
@@ -2678,10 +2685,17 @@ jobs:
             s=${s:0:100}
             printf '%s-%s\n' "$s" "$(printf '%s' "$1" | sha256sum | cut -c1-8)"
           }
-          printf 'slug=%s\n' "$(slugify "$REF")" >> "$GITHUB_OUTPUT"
-          # Slugs of every live branch, for the merge step's orphan sweep. A
-          # failed listing leaves the file absent and the sweep skipped —
-          # never delete on doubt.
+          branch_slug=$(slugify "$REF")
+          slug=$branch_slug
+          [ -n "$PR_NUMBER" ] && slug="${branch_slug}-pr${PR_NUMBER}"
+          printf 'slug=%s\n' "$slug" >> "$GITHUB_OUTPUT"
+          # The key reports used before pull requests were part of it. The
+          # merge step drops it whenever this branch publishes under its new
+          # key, so a report published by an earlier run cannot linger.
+          printf 'legacy_slug=%s\n' "$branch_slug" >> "$GITHUB_OUTPUT"
+          # Keys of every live branch and every open pull request, for the
+          # merge step's orphan sweep. A failed listing leaves the file absent
+          # and the sweep skipped — never delete on doubt.
           pending_deploy=false
           if refs=$(git ls-remote --heads \
             "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
@@ -2691,6 +2705,20 @@ jobs:
               | while IFS= read -r branch; do
                   [ -n "$branch" ] && slugify "$branch" >> "$RUNNER_TEMP/live-slugs.txt"
                 done
+            # Open pull requests, under the same `<branch slug>-pr<number>`
+            # key as above. Without them the sweep would delete every
+            # pull-request report as an orphan. If the listing fails, drop the
+            # file so the sweep is skipped rather than deleting on doubt.
+            if prs=$(gh api --paginate \
+              "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" \
+              --jq '.[] | "\(.head.ref)\t\(.number)"' 2>/dev/null); then
+              printf '%s\n' "$prs" \
+                | while IFS=$'\t' read -r pr_ref pr_number; do
+                    [ -n "$pr_ref" ] && echo "$(slugify "$pr_ref")-pr${pr_number}" >> "$RUNNER_TEMP/live-slugs.txt"
+                  done
+            else
+              rm -f "$RUNNER_TEMP/live-slugs.txt"
+            fi
             # gh-pages-deployed tracks the last tree deploy-pages actually
             # accepted (see the record step below). If gh-pages has advanced
             # past it, an earlier deploy failed after its state was
@@ -2751,6 +2779,7 @@ jobs:
         if: steps.guard.outputs.current == 'true'
         env:
           SLUG: ${{ steps.meta.outputs.slug }}
+          LEGACY_SLUG: ${{ steps.meta.outputs.legacy_slug }}
           PENDING_DEPLOY: ${{ steps.meta.outputs.pending_deploy }}
           R_INTERVIEW_PIXEL: ${{ needs.interview-e2e.result }}
           R_INTERVIEW_NATIVE: ${{ needs.interview-e2e-native.result }}
@@ -2769,13 +2798,22 @@ jobs:
           # would make the state-branch commit below fail and leave the stale
           # report live instead of deleted.
           printf '%s\n' \
-            '<!doctype html><title>Network Canvas E2E reports</title><p>E2E failure reports are published under <code>/&lt;job-name&gt;/&lt;branch-slug&gt;/</code>.</p>' \
+            '<!doctype html><title>Network Canvas E2E reports</title><p>E2E failure reports are published under <code>/&lt;job-name&gt;/&lt;branch-slug&gt;-pr&lt;number&gt;/</code>.</p>' \
             > merged/index.html
           changed=false
           published='{}'
           merge_report() {
             local job=$1 result=$2 artifact=$3
             local dir="merged/$job/$SLUG"
+            # Reports published before the pull request number joined the key
+            # live under the bare branch slug. This branch now publishes under
+            # SLUG, so the old directory describes a superseded run and nothing
+            # else would ever replace it while the branch lives.
+            local legacy="merged/$job/$LEGACY_SLUG"
+            if [ "$legacy" != "$dir" ] && [ -d "$legacy" ]; then
+              rm -rf "$legacy"
+              changed=true
+            fi
             case "$result" in
               failure)
                 local src="reports/$artifact"
@@ -4219,6 +4257,12 @@ jobs:
           FLAG_WEBSITE: ${{ needs.detect.outputs.website }}
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          # One branch can back several pull requests (for example one into
+          # `schema-9` and one into `main`), whose merge trees differ. A
+          # verdict is carried forward only from a run of THIS pull request
+          # against THIS base.
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
         with:
           script: |
             const flagToJobs = {
@@ -4274,6 +4318,17 @@ jobs:
                 // Skip runs against the same commit (re-runs of the same SHA
                 // don't introduce new information).
                 if (run.head_sha === process.env.PR_HEAD_SHA) continue;
+                // The branch filter above matches every pull request from this
+                // branch, whatever its base. Keep only runs that belong to this
+                // pull request and still target its current base: a run with no
+                // matching pull request (a fork's run lists none) cannot be
+                // proven to describe this merge tree, so it carries nothing.
+                const belongsToThisPullRequest = (run.pull_requests ?? []).some(
+                  (pr) =>
+                    String(pr.number) === process.env.PR_NUMBER &&
+                    pr.base?.ref === process.env.PR_BASE_REF,
+                );
+                if (!belongsToThisPullRequest) continue;
                 // Pull the job list for this run.
                 const { data: jobs } = await github.rest.actions.listJobsForWorkflowRun({
                   owner: context.repo.owner,
