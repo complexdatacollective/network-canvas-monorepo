@@ -143,6 +143,23 @@ it('adds no element for text outside any element', () => {
   expect(host).toHaveTextContent('tail');
 });
 
+it('gives label markdown in a named language one inline element to carry it', () => {
+  render(
+    <h4 data-testid="label">
+      <RenderMarkdown>
+        {{ text: 'Hello **world**', lang: 'ar', dir: 'rtl' }}
+      </RenderMarkdown>
+    </h4>,
+  );
+  const owner = screen.getByTestId('label').firstElementChild;
+  expect(owner?.tagName).toBe('SPAN');
+  expect(owner).toHaveAttribute('lang', 'ar');
+  expect(owner).toHaveAttribute('dir', 'rtl');
+  // All of the text is inside it, not only the emphasised part.
+  expect(owner).toHaveTextContent('Hello world');
+  expect(screen.getByTestId('label').childNodes).toHaveLength(1);
+});
+
 it('puts a named language on the render element', () => {
   render(
     <RenderMarkdown render={<span data-testid="label" />}>

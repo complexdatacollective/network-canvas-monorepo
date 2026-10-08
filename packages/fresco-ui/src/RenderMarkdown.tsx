@@ -144,10 +144,10 @@ const defaultMarkdownRenderers = {
 } satisfies Components;
 
 /**
- * Gives each element at the top of the rendered markdown the text's `lang` and
- * `dir`. A wrapper could carry them for everything at once, but it would make
- * the blocks children of the wrapper instead of siblings of the content around
- * them, and that sibling order is what the typography's `not-first:` and
+ * Gives each element at the top of rendered section markdown the text's `lang`
+ * and `dir`. A wrapper could carry them for everything at once, but it would
+ * make the blocks children of the wrapper instead of siblings of the content
+ * around them, and that sibling order is what the typography's `not-first:` and
  * `not-last:` spacing reads. Text outside any element (only ever left by raw
  * HTML or an unwrapped tag) keeps the surrounding language: naming its own
  * would mean adding exactly that element.
@@ -168,7 +168,9 @@ const withLanguage = (markdown: ReactElement, language: LanguageAttributes) =>
 type RenderMarkdownProps = Omit<Options, 'children'> & {
   /**
    * The markdown. Text in a named language carries it on what it renders: on
-   * `render` when given, otherwise on each top-level element.
+   * `render` when given; for section markdown (paragraphs allowed) on each
+   * top-level block; for label markdown, which renders inline, on a `span`
+   * around it.
    */
   children?: PresentationalText | null;
   render?: ReactElement;
@@ -205,6 +207,17 @@ const RenderMarkdown = ({
 
   if (language.lang === undefined) {
     return <ReactMarkdown {...options} />;
+  }
+
+  // Label markdown has no paragraphs, so its text is inline with no element of
+  // its own: it gets the one inline element that can carry the language, as a
+  // caller's `render` would. Inline content has no block siblings to respace.
+  if (!options.allowedElements?.includes('p')) {
+    return (
+      <span {...language}>
+        <ReactMarkdown {...options} />
+      </span>
+    );
   }
 
   // Synchronous like the component, so the top-level elements can be reached
