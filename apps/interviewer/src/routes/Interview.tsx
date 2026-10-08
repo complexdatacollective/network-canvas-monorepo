@@ -25,7 +25,6 @@ import {
   type SyncHandler,
   getLastAvailableAuthoredStageIndex,
 } from '@codaco/interview';
-import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import {
   getLocaleMetadata,
   type LocalizationDeclaration,
@@ -52,7 +51,11 @@ import {
 } from '~/lib/db/api';
 import type { StoredSession } from '~/lib/db/types';
 import { getInstallationId } from '~/lib/installationId';
-import { useStoredProtocolMigrationFailure } from '~/lib/protocol/storedProtocolMigrationFailures';
+import {
+  canRunStoredProtocol,
+  getStoredProtocolMigrationFailure,
+  useStoredProtocolMigrationFailure,
+} from '~/lib/protocol/storedProtocolMigrationFailures';
 import { useHistoryBackGuard } from '~/lib/pwa/useHistoryBackGuard';
 import { interviewerCatalogs } from '~/locales/catalogs';
 
@@ -291,9 +294,15 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       }
       // The launch-time sweep migrates stored protocols before routes render,
       // so a row still below the runtime's schema version is one that could
-      // not be migrated. Refuse to run rather than hand the runtime a document
-      // it cannot execute.
-      if (protocol.schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION) {
+      // not be migrated, and a row it reported a failure for was held back
+      // with its interviews. Refuse to run rather than hand the runtime a
+      // document it cannot execute or a session it cannot read.
+      if (
+        !canRunStoredProtocol(
+          protocol,
+          getStoredProtocolMigrationFailure(protocol.hash),
+        )
+      ) {
         if (active) {
           setState({ kind: 'incompatible', protocolHash: protocol.hash });
         }

@@ -13,6 +13,7 @@ import { getLocaleMetadata } from '@codaco/protocol-validation';
 import { InterviewerI18nProvider } from '~/i18n/InterviewerI18nProvider';
 import { interviewerProductionLocales } from '~/i18n/locales';
 import { LOCALE_PREFERENCE_KEY } from '~/i18n/preference';
+import { recordStoredProtocolMigrationFailures } from '~/lib/protocol/storedProtocolMigrationFailures';
 
 const navigateMock = vi.fn();
 const useSearchMock = vi.fn(() => '');
@@ -748,6 +749,40 @@ describe('InterviewRoute finish flow', () => {
       await screen.findByRole('heading', { name: /interview unavailable/i }),
     ).toBeInTheDocument();
     expect(shellMock).not.toHaveBeenCalled();
+  });
+
+  // A protocol at the runtime's version is held back when interviews a
+  // pre-update tab wrote back under a hash it superseded could not be
+  // carried onto it: none of its interviews runs until every one can.
+  it('refuses to run a session whose protocol the sweep held back with its interviews', async () => {
+    const protocol = makeProtocol();
+    act(() => {
+      recordStoredProtocolMigrationFailures([
+        {
+          name: 'Study',
+          hash: protocol.hash,
+          reason: 'one interview could not be migrated',
+          kind: 'sessions',
+          sessions: [{ id: 'late', reason: 'invalid' }],
+        },
+      ]);
+    });
+
+    try {
+      render(<InterviewRoute sessionId="s1" />);
+
+      expect(
+        await screen.findByRole('heading', { name: /interview unavailable/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /Some interviews recorded with this protocol could not be updated/,
+        ),
+      ).toBeInTheDocument();
+      expect(shellMock).not.toHaveBeenCalled();
+    } finally {
+      act(() => recordStoredProtocolMigrationFailures([]));
+    }
   });
 
   it('applies the exit gate from the completion screen', async () => {

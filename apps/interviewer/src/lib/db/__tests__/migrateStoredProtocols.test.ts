@@ -18,6 +18,7 @@ import {
 
 import { db } from '../db';
 import { migrateStoredProtocols } from '../migrateStoredProtocols';
+import { deleteProtocol } from '../protocols';
 import {
   decryptAsset,
   decryptProtocol,
@@ -672,20 +673,32 @@ describe.each([
     expect(record?.hash).toBe(newHash);
   });
 
-  it('heals a session a legacy writer pointed back at a superseded hash', async () => {
-    // A tab still running the pre-update bundle wrote the session AFTER the
-    // migration deleted its protocol row: its updateSession predates the
-    // commit-time hash guard, so the stale hash landed. The next launch
-    // follows the durable record — including a chain of them — and repairs.
+  it('repoints a session written back under a hash superseded before sessions were migrated', async () => {
+    // Records written by Interviewer 8.3 and earlier keep no source row:
+    // those migrations repointed every session without changing it, so
+    // healing a late write across them does the same — including along a
+    // chain of them.
     await db.protocolMigrations.bulkPut([
       { previousHash: 'dead', hash: 'mid', migratedAt: '2026-01-01' },
       { previousHash: 'mid', hash: 'live', migratedAt: '2026-02-01' },
     ]);
+    const current = migrateProtocol(
+      v7Document(),
+      COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+      { name: 'Alpha Study' },
+    );
+    await seedProtocol({
+      ...storedRow('live', 'Alpha Study', v7Document()),
+      schemaVersion: current.schemaVersion,
+      codebook: current.codebook,
+      protocol: current,
+    });
     await seedSession('stale-session', 'dead');
     await seedSession('healthy-session', 'live');
 
-    await migrateStoredProtocols();
+    const result = await migrateStoredProtocols();
 
+    expect(result.failed).toEqual([]);
     const sessions = await db.sessions.toArray();
     expect(sessions.find((s) => s.id === 'stale-session')?.protocolHash).toBe(
       'live',
@@ -693,6 +706,132 @@ describe.each([
     expect(sessions.find((s) => s.id === 'healthy-session')?.protocolHash).toBe(
       'live',
     );
+  });
+
+  it('leaves a session under a superseded hash when the protocol it leads to was deleted', async () => {
+    await db.protocolMigrations.put({
+      previousHash: 'dead',
+      hash: 'deleted',
+      migratedAt: '2026-01-01',
+    });
+    await seedSession('orphan', 'dead');
+
+    await expect(migrateStoredProtocols()).resolves.toEqual({
+      migrated: [],
+      failed: [],
+    });
+    expect((await db.sessions.get('orphan'))?.protocolHash).toBe('dead');
+  });
+
+  // A tab still running the pre-update bundle can write a session after the
+  // migration committed, restoring the superseded hash together with the
+  // schema 8 payload it holds in memory. Healing must carry that payload
+  // across the same migration, not only repoint it.
+  it('migrates a session a legacy writer wrote back under a superseded hash', async () => {
+    await seedProtocol(
+      storedRow('old-hash', 'Pedigree Study', v8PedigreeDocument()),
+    );
+    const first = await migrateStoredProtocols();
+    const hash = first.migrated[0]?.hash;
+    if (!hash) throw new Error('expected the protocol to migrate');
+
+    // The late write: the pre-update tab's whole session, old hash and all.
+    await db.sessions.put(
+      await encryptSession(v8PedigreeSession('late', 'old-hash')),
+    );
+
+    const second = await migrateStoredProtocols();
+
+    expect(second.failed).toEqual([]);
+    const row = await db.sessions.get('late');
+    if (!row) throw new Error('expected the session to survive');
+    expect(row.protocolHash).toBe(hash);
+    const session = await decryptSession(row);
+    expect(session.currentStep).toBe(2);
+    expect(session.stageMetadata).toEqual({ 2: { framing: 'gamete' } });
+    const protocolRow = await db.protocols.get(hash);
+    if (!protocolRow) throw new Error('expected the migrated protocol');
+    expect(session.progress).toBe(
+      getInterviewProgress(
+        (await decryptProtocol(protocolRow)).protocol.stages,
+        2,
+      ).progress,
+    );
+  });
+
+  it('leaves late-written sessions under their superseded hash, and reports the protocol, when one of them cannot be migrated', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await seedProtocol(
+      storedRow('old-hash', 'Pedigree Study', v8PedigreeDocument()),
+    );
+    const first = await migrateStoredProtocols();
+    const hash = first.migrated[0]?.hash;
+    if (!hash) throw new Error('expected the protocol to migrate');
+
+    await db.sessions.put(
+      await encryptSession(v8PedigreeSession('late-ok', 'old-hash')),
+    );
+    await db.sessions.put(
+      await encryptSession({
+        ...v8PedigreeSession('late-damaged', 'old-hash'),
+        stageMetadata: {
+          1: { isNetworkCommitted: true },
+          7: { notAStageRecord: true },
+        },
+      } as unknown as StoredSession),
+    );
+    const before = {
+      protocols: await db.protocols.toArray(),
+      sessions: await db.sessions.toArray(),
+    };
+
+    const second = await migrateStoredProtocols();
+
+    expect(second.failed).toEqual([
+      {
+        name: 'Pedigree Study',
+        hash,
+        kind: 'sessions',
+        reason: expect.stringContaining('left unchanged') as unknown,
+        sessions: [
+          {
+            id: 'late-damaged',
+            reason: expect.stringContaining(
+              'Migrated session is invalid',
+            ) as unknown,
+          },
+        ],
+      },
+    ]);
+    expect({
+      protocols: await db.protocols.toArray(),
+      sessions: await db.sessions.toArray(),
+    }).toEqual(before);
+
+    // Every launch tries again, and heals them together once all can be.
+    await db.sessions.delete('late-damaged');
+    const third = await migrateStoredProtocols();
+    expect(third.failed).toEqual([]);
+    expect((await db.sessions.get('late-ok'))?.protocolHash).toBe(hash);
+    errorSpy.mockRestore();
+  });
+
+  it('deletes the re-keying records, and the rows they keep, with the protocol they lead to', async () => {
+    await seedProtocol(
+      storedRow('old-hash', 'Pedigree Study', v8PedigreeDocument()),
+    );
+    await seedProtocol(storedRow('other-hash', 'Alpha Study', v7Document()));
+    const result = await migrateStoredProtocols();
+    const pedigree = result.migrated.find((m) => m.name === 'Pedigree Study');
+    if (!pedigree) throw new Error('expected the protocol to migrate');
+    expect(
+      (await db.protocolMigrations.get('old-hash'))?.source?.row.hash,
+    ).toBe('old-hash');
+
+    await deleteProtocol(pedigree.hash);
+
+    expect(await db.protocolMigrations.get('old-hash')).toBeUndefined();
+    expect(await db.protocolMigrations.get('other-hash')).toBeDefined();
   });
 
   it('leaves a protocol it cannot migrate untouched and carries on with the rest', async () => {

@@ -10,13 +10,15 @@ import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { createInitialNetwork } from '@codaco/interview';
-import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import { useStepUpAuth } from '~/lib/auth/StepUpAuthProvider';
 import { createSession, getSettings } from '~/lib/db/api';
 import type { ProtocolWithCounts, StoredSession } from '~/lib/db/types';
 import { useOnline } from '~/lib/net/OnlineStatusProvider';
 import { protocolRequiresInternet } from '~/lib/protocol/protocolRequiresInternet';
-import { useStoredProtocolMigrationFailure } from '~/lib/protocol/storedProtocolMigrationFailures';
+import {
+  canRunStoredProtocol,
+  useStoredProtocolMigrationFailure,
+} from '~/lib/protocol/storedProtocolMigrationFailures';
 
 const messages = defineMessages({
   caseID: {
@@ -179,11 +181,10 @@ export function NewSessionForm({
   const isOnline = useOnline();
   const migrationFailure = useStoredProtocolMigrationFailure(protocol.hash);
 
-  // A protocol the launch-time migration could not bring up to the runtime's
-  // schema version cannot run an interview — the interview route would refuse
-  // the session it produced. Explain instead of creating a permanently
-  // unusable session.
-  if (protocol.schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION) {
+  // A protocol the launch-time migration could not bring up to date cannot
+  // run an interview — the interview route would refuse the session it
+  // produced. Explain instead of creating a permanently unusable session.
+  if (!canRunStoredProtocol(protocol, migrationFailure)) {
     return (
       <div className="flex flex-col gap-4">
         <Paragraph>
