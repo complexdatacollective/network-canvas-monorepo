@@ -59,11 +59,14 @@ Schema 9:
   Network Composer scale end labels that were not strings. Its migration
   notes tell researchers what the new version allows and how to set the
   protocol's real language.
-- Schema 9 has no `experiments` property, and refuses a document that has one:
-  an attribute marked `encrypted` is always encrypted. Schema 8 still accepts
-  `experiments`. `ExperimentsSchema` and the `Experiments` type, which
-  described it, are removed.
-- The v8 to v9 migration removes `experiments`. If
+- Schema 9 keeps the optional `experiments` property, for features released
+  within a schema version, but `encryptedVariables` is no longer one of them:
+  an attribute marked `encrypted` is always encrypted. `ExperimentsSchema` and
+  the `Experiments` type now describe schema 9's experiments, and none is
+  defined yet, so schema 9 refuses `encryptedVariables` or any other key in
+  `experiments`. Schema 8 still accepts `experiments.encryptedVariables`.
+- The v8 to v9 migration keeps `experiments` but removes `encryptedVariables`
+  from it, and leaves a protocol without `experiments` without it. If
   `experiments.encryptedVariables` was not `true`, it also removes `encrypted`
   from every node attribute, because schema 8 interviews stored those
   attributes without encryption. A host that stores `experiments` apart from

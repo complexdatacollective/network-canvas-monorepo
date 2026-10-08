@@ -160,9 +160,9 @@ been considered, going back to an earlier prompt now resumes on the last
 person that prompt showed, rather than on one it never shows on the way
 forward.
 
-For hosts of `@codaco/interview`: `ProtocolPayload` no longer has
-`experiments`, and the engine no longer reads it. A session's network can now
-carry an `encryption` header, which must be stored and returned with the rest
+For hosts of `@codaco/interview`: `ProtocolPayload.experiments` no longer has
+`encryptedVariables`, because an attribute marked as encrypted is always
+encrypted. A session's network can now carry an `encryption` header, which must be stored and returned with the rest
 of the network; without it, the interview treats the passphrase as never
 chosen and earlier encrypted answers can no longer be read. A header outside
 the runtime's bounds is left as it is. Encrypted values' metadata is now
