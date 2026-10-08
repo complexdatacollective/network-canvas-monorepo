@@ -27,6 +27,9 @@ export const PrismaInterviewRepository = Layer.succeed(InterviewRepository, {
         network: NcNetworkSchema.parse(row.network),
         protocolHash: row.protocol.hash,
         locale: row.locale,
+        // Null for an interview that is not finished, and for one finished
+        // before outcomes were recorded: those are never given one.
+        finishOutcome: row.finishOutcome ?? null,
       }));
 
       return inputs;

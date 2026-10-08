@@ -36,14 +36,14 @@ export const interfaceMessages = defineMessages({
     id: 'interview.interfaces.finishInterview',
     defaultMessage: 'Finish Interview',
     description:
-      'End-of-interview page heading and confirmation action that finishes the current interview.',
+      'Confirmation action in the dialog opened by the finish button at the end of an interview; it finishes the current interview.',
   },
-  finishDescription: {
-    id: 'interview.interfaces.finishDescription',
+  interviewFinishedNotice: {
+    id: 'interview.interfaces.interviewFinishedNotice',
     defaultMessage:
-      'You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now.',
+      'This interview is finished, and its answers can no longer be changed.',
     description:
-      'Guidance on the final interview screen before the participant opens the finish confirmation dialog.',
+      'Notice shown below the closing text of the last interview screen once the interview has been finished, including whenever a finished interview is opened again. Addressed to whoever is holding the device, which may be the participant or a researcher.',
   },
   finish: {
     id: 'interview.interfaces.finish',

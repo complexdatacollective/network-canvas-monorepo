@@ -217,6 +217,7 @@ export function nodeVariablesWrittenOnCreation(
     case 'CategoricalBin':
     case 'DyadCensus':
     case 'EgoForm':
+    case 'FinishSession':
     case 'Geospatial':
     case 'Information':
     case 'LanguageChooser':
@@ -283,6 +284,7 @@ function nodeVariablesWrittenOnExisting(
     case 'Anonymisation':
     case 'DyadCensus':
     case 'EgoForm':
+    case 'FinishSession':
     case 'Information':
     case 'LanguageChooser':
     case 'NameGenerator':

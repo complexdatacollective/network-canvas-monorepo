@@ -39,8 +39,13 @@ describe('installPreviewProtocol', () => {
         expect(install.protocol.schemaVersion).toBe(
           COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
         );
+        // A gallery protocol older than schema 9 gains the finish stage the
+        // v8 → v9 migration appends.
+        const downloadTypes = download.stages.map(({ type }) => type);
         expect(install.protocol.stages.map(({ type }) => type)).toEqual(
-          download.stages.map(({ type }) => type),
+          downloadTypes.at(-1) === 'FinishSession'
+            ? downloadTypes
+            : [...downloadTypes, 'FinishSession'],
         );
         expect(install.protocol.hash).toMatch(/\S/);
         expect(install.protocol.assets.map(({ assetId }) => assetId)).toEqual(

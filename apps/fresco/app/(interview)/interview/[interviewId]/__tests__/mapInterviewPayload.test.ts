@@ -30,6 +30,8 @@ function makeSource(schemaVersion: number): NonNullable<GetInterviewByIdQuery> {
     syncRevision: 7,
     localePreference: null,
     locale: null,
+    finishStageId: null,
+    finishOutcome: null,
     protocol: {
       id: 'protocol-1',
       hash: 'abc123',
@@ -102,6 +104,29 @@ describe('mapInterviewPayload', () => {
 
     expect(payload.session.localePreference).toBe('fr');
     expect(payload.session.locale).toBe('en');
+  });
+
+  it('carries a finished interview’s finish stage into the session', () => {
+    const source = makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION);
+    const { payload } = mapInterviewPayload({
+      ...source,
+      finishTime: new Date('2026-01-03T00:00:00.000Z'),
+      finishStageId: 'finish-ineligible',
+      finishOutcome: 'ineligible',
+    });
+
+    expect(payload.session.finishTime).toBe('2026-01-03T00:00:00.000Z');
+    expect(payload.session.finishStageId).toBe('finish-ineligible');
+  });
+
+  it('leaves the finish stage null for an interview finished before one was recorded', () => {
+    const source = makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION);
+    const { payload } = mapInterviewPayload({
+      ...source,
+      finishTime: new Date('2026-01-03T00:00:00.000Z'),
+    });
+
+    expect(payload.session.finishStageId).toBeNull();
   });
 
   it('refuses a protocol row stored below the compatible version rather than mislabelling it', () => {

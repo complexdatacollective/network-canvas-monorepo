@@ -74,6 +74,7 @@
   "protocolValidation.migrationNotes.schema9.attributeNames": "属性名称现在可以使用任何语言的文字，也可以包含空格和标点符号。现有的属性名称不会更改。",
   "protocolValidation.migrationNotes.schema9.blankFieldQuestions": "如果表单字段的问题为空或只包含空格，该字段现在会改用其属性的名称作为问题，因为每个问题都必须包含文字。",
   "protocolValidation.migrationNotes.schema9.defaultLanguage": "参与者看到的文本现在记录为英语，因为旧版协议不会记录其所用的语言。如果您的协议是用其他语言撰写的，可以在 Architect 的“语言”页面中更改。",
+  "protocolValidation.migrationNotes.schema9.finishStage": "结束访谈的屏幕现在是协议末尾的一个“完成屏幕”阶段，因此您可以更改其标题和文本，并像协议的其他内容一样进行翻译。其初始内容就是访谈一直以来在此处显示的文字。",
   "protocolValidation.rule.additionalAttributes": "固定属性",
   "protocolValidation.rule.component": "输入控件",
   "protocolValidation.rule.differentFrom": "不同于另一属性",

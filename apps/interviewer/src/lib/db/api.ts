@@ -1,4 +1,4 @@
-import type { ProtocolLocaleChange } from '@codaco/interview';
+import type { ProtocolLocaleChange, SessionFinish } from '@codaco/interview';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
 
@@ -120,8 +120,11 @@ export async function whenSessionWritesSettle(): Promise<void> {
   return dexieSessions.whenSessionWritesSettle();
 }
 
-export async function markSessionFinished(id: string): Promise<void> {
-  return dexieSessions.markSessionFinished(id);
+export async function markSessionFinished(
+  id: string,
+  finish: SessionFinish,
+): Promise<void> {
+  return dexieSessions.markSessionFinished(id, finish);
 }
 
 export async function markSessionUnfinished(

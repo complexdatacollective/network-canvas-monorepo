@@ -362,6 +362,33 @@ test('blocks deleting a FamilyPedigree stage referenced by NarrativePedigree', a
   expect(after.length).toBe(before.length);
 });
 
+test('refuses to delete the stage that ends the interview', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await gotoProtocol(architectPage);
+
+  const before = stagesOf(await readProtocolJson(architectPage));
+  const finish = before.at(-1);
+  if (finish?.type !== 'FinishSession') {
+    throw new Error('fixture does not end at a FinishSession stage');
+  }
+
+  await new Timeline(architectPage).deleteStage(finish.label);
+  const guardDialog = architectPage.getByRole('dialog', {
+    name: 'Cannot delete stage',
+  });
+  await expect(guardDialog).toContainText(
+    'This stage ends the interview, and every protocol needs one',
+  );
+  await acknowledgeRefusal(guardDialog);
+  await settleAfterRefusal(architectPage, editDescription(architectPage));
+  const after = stagesOf(await readProtocolJson(architectPage));
+  expect(after.map(({ id }) => id)).toEqual(before.map(({ id }) => id));
+});
+
 test('deletes a leaf stage after confirming the destructive dialog', async ({
   architectPage,
   seed,
@@ -788,14 +815,20 @@ test('returns focus to the delete control when the confirm is cancelled', async 
   await expect(deleteControl).toBeFocused();
 });
 
-test('falls back to the add control when the last stage is deleted', async ({
+test('moves focus to the finish stage when the only other stage is deleted', async ({
   architectPage,
   seed,
 }) => {
   const { protocol, assets } = loadAllInterfacesFixture();
   const [only] = protocol.stages;
-  if (!only) throw new Error('fixture has no stages');
-  await seed({ ...protocol, stages: [only] }, { name: 'Single stage', assets });
+  const finish = protocol.stages.at(-1);
+  if (!only || finish?.type !== 'FinishSession') {
+    throw new Error('fixture has no stages, or does not end at a finish stage');
+  }
+  await seed(
+    { ...protocol, stages: [only, finish] },
+    { name: 'Single stage', assets },
+  );
   await gotoProtocol(architectPage);
   await recordAnnouncements(architectPage);
 
@@ -810,11 +843,15 @@ test('falls back to the add control when the last stage is deleted', async ({
     .getByRole('button', { name: 'Delete stage' })
     .click();
 
-  await expect(timeline.rows()).toHaveCount(0);
-  // No neighbouring stage survives, so the list's own add control is the only
-  // place left to put focus.
-  await expect(timeline.addNewStageButton()).toBeFocused();
+  await expect(timeline.rows()).toHaveCount(1);
+  // The finish stage cannot be deleted, so a protocol always keeps a stage to
+  // put focus on.
+  await expect(
+    architectPage.getByRole('button', {
+      name: `Edit stage 1: ${defaultLanguageText(protocol, finish.label)},`,
+    }),
+  ).toBeFocused();
   await expect
     .poll(() => readAnnouncements(architectPage))
-    .toContain('Deleted stage 1. No stages remain.');
+    .toContain('Deleted stage 1. 1 stage remains.');
 });

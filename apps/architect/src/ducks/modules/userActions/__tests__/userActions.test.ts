@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   type CurrentProtocol,
+  DEFAULT_FINISH_SESSION_TEXT,
   ProtocolValidationError,
 } from '@codaco/protocol-validation';
 import { messageFields } from '~/test/messageText';
@@ -156,6 +157,40 @@ describe('userActions', () => {
           }),
         }),
       );
+    });
+  });
+
+  describe('a new protocol', () => {
+    it('starts with one finish stage, with the supplied closing text in each language that has it', async () => {
+      await runThunk(
+        createNetcanvas({
+          name: 'Étude',
+          localization: { defaultLocale: 'fr', locales: ['fr', 'en', 'ja'] },
+        }),
+      );
+
+      const [[{ protocol }]] = putStoredProtocol.mock.calls as [
+        [{ protocol: CurrentProtocol }],
+      ];
+      expect(protocol.stages).toEqual([
+        {
+          id: expect.any(String),
+          type: 'FinishSession',
+          label: {
+            fr: DEFAULT_FINISH_SESSION_TEXT.fr.label,
+            en: DEFAULT_FINISH_SESSION_TEXT.en.label,
+          },
+          title: {
+            fr: DEFAULT_FINISH_SESSION_TEXT.fr.title,
+            en: DEFAULT_FINISH_SESSION_TEXT.en.title,
+          },
+          content: {
+            fr: DEFAULT_FINISH_SESSION_TEXT.fr.content,
+            en: DEFAULT_FINISH_SESSION_TEXT.en.content,
+          },
+          outcome: 'completed',
+        },
+      ]);
     });
   });
 

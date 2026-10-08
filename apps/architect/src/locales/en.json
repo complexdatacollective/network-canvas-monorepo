@@ -2279,10 +2279,6 @@
     "defaultMessage": "Loading preview…",
     "description": "Visible text in components / PreviewHost / PreviewHost."
   },
-  "architect.previewHost.previewHost.previewFinished": {
-    "defaultMessage": "Preview finished",
-    "description": "Visible text in components / PreviewHost / PreviewHost."
-  },
   "architect.previewHost.previewHost.returnToArchitectAndClickPreview": {
     "defaultMessage": "Return to Architect and click Preview again to start a new one.",
     "description": "Visible text in components / PreviewHost / PreviewHost."
@@ -2295,16 +2291,8 @@
     "defaultMessage": "Start the preview again",
     "description": "Visible text in components / PreviewHost / PreviewHost."
   },
-  "architect.previewHost.previewHost.startingAgainRerunsTheProtocolAs": {
-    "defaultMessage": "Starting again reruns the protocol as it was when this preview opened. To preview changes you have made in Architect since then, start a new preview from there.",
-    "description": "Visible text in components / PreviewHost / PreviewHost."
-  },
   "architect.previewHost.previewHost.syntheticDataCouldnTBeGeneratedBecause": {
     "defaultMessage": "Synthetic data couldn't be generated because these validation rules can't all be satisfied. Return to Architect, update the protocol, and preview it again.",
-    "description": "Visible text in components / PreviewHost / PreviewHost."
-  },
-  "architect.previewHost.previewHost.theInterviewFinishedJustAsIt": {
-    "defaultMessage": "The interview finished, just as it would for a participant. Nothing was saved — preview responses are never stored.",
     "description": "Visible text in components / PreviewHost / PreviewHost."
   },
   "architect.previewHost.previewHost.thePreviewCouldnTBeLoadedThe": {
@@ -3338,6 +3326,22 @@
   "architect.timeline.announcement.moved": {
     "defaultMessage": "Moved stage {fromPosition, number} to position {toPosition, number} of {total, number}.",
     "description": "Live announcement after a timeline operation succeeds."
+  },
+  "architect.timeline.finishStageGuards.cannotDeleteStage": {
+    "defaultMessage": "Cannot delete stage",
+    "description": "Title of the notice shown when a researcher tries to delete the stage that ends the interview."
+  },
+  "architect.timeline.finishStageGuards.cannotMoveStage": {
+    "defaultMessage": "Cannot move stage",
+    "description": "Title of the notice shown when a move would put a stage after the stage that ends the interview."
+  },
+  "architect.timeline.finishStageGuards.finishStageCannotBeDeleted": {
+    "defaultMessage": "This stage ends the interview, and every protocol needs one, so it cannot be deleted. You can change its text and outcome instead.",
+    "description": "Explanation shown when a researcher tries to delete the stage that ends the interview (the finish screen)."
+  },
+  "architect.timeline.finishStageGuards.finishStageStaysLast": {
+    "defaultMessage": "The stage that ends the interview has to stay at the end of the protocol. No participant could reach a stage placed after it.",
+    "description": "Explanation shown when a researcher tries to move the stage that ends the interview, or to move another stage after it."
   },
   "architect.timeline.insertButton.addStageHere": {
     "defaultMessage": "Add stage here",

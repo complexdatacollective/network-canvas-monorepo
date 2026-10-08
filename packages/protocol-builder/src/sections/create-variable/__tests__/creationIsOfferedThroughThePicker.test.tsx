@@ -232,6 +232,7 @@ const PICKERS_REACHED: Readonly<Record<string, number>> = {
   'dyad-census-1': 0,
   'ego-form-1': 1,
   'family-pedigree-1': 9,
+  'finish': 0,
   'geospatial-1': 1,
   'information-1': 0,
   'language-chooser-1': 0,

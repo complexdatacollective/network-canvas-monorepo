@@ -1,6 +1,11 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-import type { SkipLogicDestination, Stage } from '@codaco/protocol-validation';
+import {
+  findTimelineStructureProblems,
+  isFinishSessionStage,
+  type SkipLogicDestination,
+  type Stage,
+} from '@codaco/protocol-validation';
 import { createAppAsyncThunk } from '~/ducks/createAppAsyncThunk';
 import { getProtocol, getStage } from '~/selectors/protocol';
 import prune from '~/utils/prune';
@@ -30,6 +35,37 @@ type StageDependencyCandidate = Pick<Stage, 'id' | 'type'> & {
   skipLogic?: {
     destination?: SkipLogicDestination;
   };
+};
+
+/**
+ * Whether deleting this stage would leave the interview with no finish stage
+ * to end at. The last finish stage of a protocol cannot be deleted; a protocol
+ * that somehow holds more than one may lose the others.
+ */
+export const isLastFinishStage = (
+  stages: readonly Pick<Stage, 'id' | 'type'>[],
+  stageId: string,
+) => {
+  const finishStageIds = stages.flatMap((stage) =>
+    stage.type === 'FinishSession' ? [stage.id] : [],
+  );
+  return finishStageIds.length === 1 && finishStageIds[0] === stageId;
+};
+
+/**
+ * Where a stage being created is inserted when it is not itself a finish
+ * stage: never after a finish stage, where no participant could reach it. A
+ * position at or past the first finish stage puts it just before that stage.
+ */
+export const creationIndex = (
+  stages: readonly Pick<Stage, 'type'>[],
+  stage: Pick<Stage, 'type'>,
+  index: number | undefined,
+) => {
+  const requested = index ?? stages.length;
+  if (isFinishSessionStage(stage)) return requested;
+  const firstFinish = stages.findIndex(isFinishSessionStage);
+  return firstFinish === -1 ? requested : Math.min(requested, firstFinish);
 };
 
 export const getFamilyPedigreeDependentStages = <
@@ -109,6 +145,10 @@ const deleteStageAsync = createAppAsyncThunk(
       return stageId;
     }
 
+    if (isLastFinishStage(allStages, stageId)) {
+      return stageId;
+    }
+
     // A NarrativePedigree renders a FamilyPedigree's finalised network via
     // sourceStageId; deleting that source leaves the dependent stage invalid.
     if (stage?.type === 'FamilyPedigree') {
@@ -164,6 +204,15 @@ const stagesSlice = createSlice({
         return;
       }
 
+      // The interview ends at its finish stage: a move that would leave a
+      // stage after it, or the interview ending anywhere else, is refused.
+      if (
+        findTimelineStructureProblems(reorderedStages).length >
+        findTimelineStructureProblems(state).length
+      ) {
+        return;
+      }
+
       const movedStage = state[oldIndex];
       if (!movedStage) {
         return;
@@ -181,6 +230,10 @@ const stagesSlice = createSlice({
           return;
         }
 
+        if (isLastFinishStage(state, stageId)) {
+          return;
+        }
+
         return state.filter((stage) => stage.id !== stageId);
       })
       // The ONLY way a stage is created or edited. It always saves the whole
@@ -191,7 +244,7 @@ const stagesSlice = createSlice({
 
         if (!stageId) {
           state.splice(
-            index ?? state.length,
+            creationIndex(state, stage, index),
             0,
             prune({ ...initialStage, ...stage }),
           );

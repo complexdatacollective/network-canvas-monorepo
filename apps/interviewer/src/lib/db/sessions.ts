@@ -4,6 +4,7 @@ import {
   getInterviewProgress,
   getLastAvailableAuthoredStageIndex,
   type ProtocolLocaleChange,
+  type SessionFinish,
 } from '@codaco/interview';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
@@ -13,6 +14,7 @@ import {
   decryptSession,
   encryptSession,
   type StoredSessionRow,
+  withoutSessionFinish,
 } from './recordCrypto';
 import type {
   SessionQueryParams,
@@ -32,8 +34,7 @@ function deriveStatusKind(session: StoredSessionRow): SessionStatusKind {
   return 'in-progress';
 }
 
-// The interview engine reports participant-facing progress (which accounts for
-// the appended finish stage) via onStepChange; we persist it on the session and
+// The interview engine reports participant-facing progress via onStepChange; we persist it on the session and
 // read it straight back here. A finished session is always 100% — `progress`
 // may not have been persisted for the finish step, so `finishedAt` is the
 // authoritative completion signal.
@@ -415,16 +416,36 @@ export function setSessionLocale(
   });
 }
 
-export function markSessionFinished(id: string): Promise<void> {
+// Records the finish the participant confirmed: when, at which finish stage,
+// and that stage's outcome. The stage id and outcome are encrypted with the
+// network, so this needs the key, like any write of answers.
+export function markSessionFinished(
+  id: string,
+  finish: SessionFinish,
+): Promise<void> {
   return enqueueSessionMutation(id, async () => {
-    const existing = await db.sessions.get(id);
-    if (!existing) return;
-    // Only plaintext index fields change; spread preserves `_enc` — no key
-    // needed.
-    await db.sessions.put({
+    const existingRow = await db.sessions.get(id);
+    if (!existingRow) return;
+    const existing = await decryptSession(existingRow);
+    const now = new Date().toISOString();
+    const row = await encryptSession({
       ...existing,
-      finishedAt: new Date().toISOString(),
-      lastUpdatedAt: new Date().toISOString(),
+      finishedAt: now,
+      finishStageId: finish.stageId,
+      finishOutcome: finish.outcome,
+      lastUpdatedAt: now,
+    });
+    // As in updateSession: the fields only other writers own come from the
+    // freshest row, and a session deleted in the gap stays deleted.
+    await db.transaction('rw', db.sessions, async () => {
+      const latest = await db.sessions.get(id);
+      if (!latest) return;
+      await db.sessions.put({
+        ...row,
+        protocolHash: latest.protocolHash,
+        localePreference: latest.localePreference,
+        locale: latest.locale,
+      });
     });
   });
 }
@@ -450,8 +471,10 @@ export function markSessionUnfinished(
       if (!latest?.finishedAt) return;
 
       const now = new Date().toISOString();
+      // The finish stage and outcome belong to the finish being undone, so
+      // they go with it.
       await db.sessions.put({
-        ...latest,
+        ...withoutSessionFinish(latest),
         finishedAt: null,
         currentStep,
         progress,

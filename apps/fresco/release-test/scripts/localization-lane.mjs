@@ -285,8 +285,9 @@ try {
   checks.push(
     await attempt('localization-seeds-interview-controls', async () => {
       // A new interview of its own, through the participant's own route: an
-      // interview that has been finished redirects away, and the controls this
-      // check is about are the ones a participant is looking at.
+      // interview that has been finished shows only its completed state, and
+      // the controls this check is about are the ones a participant is looking
+      // at.
       const protocolId = psql(
         `select id from "Protocol" where name like 'fresco-release-test%' order by "importedAt" desc limit 1;`,
       );

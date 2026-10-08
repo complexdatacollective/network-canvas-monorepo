@@ -119,6 +119,7 @@ describe('diffProtocolSections', () => {
       after.stages[0]!,
       informationStage({ en: 'About this study' }),
       after.stages[1]!,
+      after.stages[2]!,
     ];
 
     const added = diff(before, after);
@@ -149,12 +150,15 @@ describe('diffProtocolSections', () => {
     before.localization = localization;
     const after = baseProtocol();
     after.localization = localization;
+    // In front of the finish stage, where a new stage goes.
     after.stages = [
-      ...after.stages,
+      after.stages[0]!,
+      after.stages[1]!,
       informationStage({
         en: 'About this study',
         fr: escapeMessageText("L'étude {pilote}"),
       }),
+      after.stages[2]!,
     ];
 
     expect(diff(before, after)).toEqual([
@@ -257,7 +261,7 @@ describe('diffProtocolSections', () => {
   it('reports a pure reorder as exactly one stage-moved', () => {
     const before = baseProtocol();
     const after = baseProtocol();
-    after.stages = [after.stages[1]!, after.stages[0]!];
+    after.stages = [after.stages[1]!, after.stages[0]!, after.stages[2]!];
 
     const changes = diff(before, after);
     expect(changes).toHaveLength(1);

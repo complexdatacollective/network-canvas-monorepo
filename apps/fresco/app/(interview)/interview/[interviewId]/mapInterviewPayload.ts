@@ -55,6 +55,10 @@ export function mapInterviewPayload(
       id: session.id,
       startTime: session.startTime.toISOString(),
       finishTime: session.finishTime?.toISOString() ?? null,
+      // Where a finished interview ended, so it opens on that finish stage's
+      // completed state. Null for an unfinished interview, and for one
+      // finished before finish stages were recorded.
+      finishStageId: session.finishStageId,
       exportTime: session.exportTime?.toISOString() ?? null,
       lastUpdated: session.lastUpdated.toISOString(),
       network: session.network,

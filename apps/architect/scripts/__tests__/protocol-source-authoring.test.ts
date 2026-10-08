@@ -57,7 +57,16 @@ const makeProtocol = (
   name: 'Test Template',
   schemaVersion: 9,
   localization: { defaultLocale: 'en', locales: ['en'] },
-  stages: [],
+  stages: [
+    {
+      id: 'finish',
+      type: 'FinishSession',
+      label: { en: 'Finish' },
+      title: { en: 'All done' },
+      content: { en: 'Thank you.' },
+      outcome: 'completed',
+    },
+  ],
   codebook: {
     node: {},
     edge: {},

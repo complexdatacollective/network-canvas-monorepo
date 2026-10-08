@@ -149,6 +149,7 @@ describe('STAGE_TYPE_NAMES', () => {
       Information: 'Information',
       Anonymisation: 'Anonymisation',
       LanguageChooser: 'Language Chooser',
+      FinishSession: 'Finish Screen',
     };
     expect(STAGE_TYPE_NAMES).toStrictEqual(expected);
   });

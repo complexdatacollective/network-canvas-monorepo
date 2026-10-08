@@ -120,8 +120,6 @@
   "interviewer.interview.theProtocolThisInterviewUsesCouldNot": "Das Protokoll dieses Interviews konnte nicht für diese App-Version aktualisiert werden, daher kann das Interview nicht fortgesetzt werden. Die Antworten bleiben in der Datenansicht verfügbar. Um neue Interviews zu starten, reparieren Sie das Protokoll in Architect und importieren Sie es erneut.",
   "interviewer.interview.thisInterviewMayHaveBeenDeletedOr": "Dieses Interview wurde möglicherweise gelöscht, oder das verwendete Protokoll ist nicht mehr installiert.",
   "interviewer.interviewComplete.exit": "Verlassen",
-  "interviewer.interviewComplete.interviewComplete": "Interview abgeschlossen",
-  "interviewer.interviewComplete.thankYouThisInterviewIsFinishedAnd": "Vielen Dank. Dieses Interview ist abgeschlossen, und die Antworten können nicht mehr geändert werden. Bitte geben Sie das Gerät an die forschende Person zurück.",
   "interviewer.language.automatic": "Automatisch (Browser)",
   "interviewer.language.failed": "Die Sprache wurde für diese Sitzung geändert, aber die Einstellung konnte nicht gespeichert werden. Möglicherweise blockiert Ihr Browser den Gerätespeicher.",
   "interviewer.language.hint": "Wählen Sie die Sprache, die Interviewer auf diesem Gerät verwendet. Interviews werden in der Browsersprache der teilnehmenden Person angezeigt oder in der Sprache, die sie während des Interviews auswählt.",

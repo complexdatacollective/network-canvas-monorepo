@@ -14,6 +14,7 @@ import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
 import { resolve } from '../env/resolve.ts';
+import { NEW_PROTOCOL_FINISH_STAGE_ID } from '../protocol/sectionize.ts';
 import { authServiceStub } from './support/auth.ts';
 import {
   insertTeam,
@@ -160,7 +161,10 @@ describe.skipIf(!testDb)('team-scoped procedures', () => {
     );
 
     const opened = await client.call(client.rpc('protocols.draft', scope));
-    expect(opened.sections.stageOrder).toEqual({ stages: [stageB, stageA] });
+    // Both screens went in front of the finish stage a new protocol starts with.
+    expect(opened.sections.stageOrder).toEqual({
+      stages: [stageB, stageA, NEW_PROTOCOL_FINISH_STAGE_ID],
+    });
     const staleMove = await expectRpcFailure(
       client.callExit(
         client.rpc('protocols.moveStage', {

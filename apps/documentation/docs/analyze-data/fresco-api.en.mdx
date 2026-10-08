@@ -98,6 +98,7 @@ curl -H "Authorization: Bearer $FRESCO_TOKEN" \
       "finishTime": "2026-06-10T11:12:00.000Z",
       "lastUpdated": "2026-06-10T11:12:00.000Z",
       "currentStep": 5,
+      "finishOutcome": "completed",
       "protocolId": "protocol123",
       "participantId": "participant456",
       "participant": {
@@ -116,17 +117,18 @@ curl -H "Authorization: Bearer $FRESCO_TOKEN" \
 
 Each object in `data` is an interview summary:
 
-| Field           | Description                                         |
-| --------------- | --------------------------------------------------- |
-| `id`            | Unique interview identifier.                        |
-| `startTime`     | When the interview started.                         |
-| `finishTime`    | When it was completed, or `null` while in progress. |
-| `lastUpdated`   | When the interview data last changed.               |
-| `currentStep`   | The stage the participant has reached.              |
-| `protocolId`    | id of the protocol used.                            |
-| `participantId` | id of the participant.                              |
-| `participant`   | Participant summary: `id`, `identifier`, `label`.   |
-| `protocol`      | Protocol summary: `id`, `name`.                     |
+| Field           | Description                                                                                                                                                           |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`            | Unique interview identifier.                                                                                                                                          |
+| `startTime`     | When the interview started.                                                                                                                                           |
+| `finishTime`    | When it was completed, or `null` while in progress.                                                                                                                   |
+| `lastUpdated`   | When the interview data last changed.                                                                                                                                 |
+| `currentStep`   | The stage the participant has reached.                                                                                                                                |
+| `finishOutcome` | How the interview ended: `completed`, `ineligible` or `terminated`. `null` for interviews that are not finished, or were finished before Fresco recorded the outcome. |
+| `protocolId`    | id of the protocol used.                                                                                                                                              |
+| `participantId` | id of the participant.                                                                                                                                                |
+| `participant`   | Participant summary: `id`, `identifier`, `label`.                                                                                                                     |
+| `protocol`      | Protocol summary: `id`, `name`.                                                                                                                                       |
 
 The `meta` object describes the current page:
 
@@ -164,6 +166,8 @@ curl -H "Authorization: Bearer $FRESCO_TOKEN" \
     "exportTime": null,
     "lastUpdated": "2026-06-10T11:12:00.000Z",
     "currentStep": 5,
+    "finishStageId": "finish",
+    "finishOutcome": "completed",
     "isSynthetic": false,
     "network": {
       "nodes": [
@@ -207,21 +211,23 @@ curl -H "Authorization: Bearer $FRESCO_TOKEN" \
 
 The `data` object contains the full interview record:
 
-| Field           | Description                                                                                                    |
-| --------------- | -------------------------------------------------------------------------------------------------------------- |
-| `id`            | Unique interview identifier.                                                                                   |
-| `startTime`     | When the interview started.                                                                                    |
-| `finishTime`    | When it was completed, or `null` while in progress.                                                            |
-| `exportTime`    | When the interview was last exported from the dashboard, or `null` if never.                                   |
-| `lastUpdated`   | When the interview data last changed.                                                                          |
-| `currentStep`   | The stage the participant has reached.                                                                         |
-| `isSynthetic`   | `true` for generated test data, `false` for a real interview.                                                  |
-| `network`       | The collected network data (nodes, edges, ego).                                                                |
-| `stageMetadata` | Internal metadata for certain stages, such as Dyad and Tie-Strength Census negative responses. Usually `null`. |
-| `protocolId`    | id of the protocol used.                                                                                       |
-| `participantId` | id of the participant.                                                                                         |
-| `participant`   | Participant summary: `id`, `identifier`, `label`.                                                              |
-| `protocol`      | Protocol detail: `id`, `name`, `schemaVersion`, `description`, `codebook`.                                     |
+| Field           | Description                                                                                                                                                        |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `id`            | Unique interview identifier.                                                                                                                                       |
+| `startTime`     | When the interview started.                                                                                                                                        |
+| `finishTime`    | When it was completed, or `null` while in progress.                                                                                                                |
+| `exportTime`    | When the interview was last exported from the dashboard, or `null` if never.                                                                                       |
+| `lastUpdated`   | When the interview data last changed.                                                                                                                              |
+| `currentStep`   | The stage the participant has reached.                                                                                                                             |
+| `finishStageId` | The id of the protocol's Finish Screen stage that ended the interview, or `null` for interviews that are not finished, or were finished before Fresco recorded it. |
+| `finishOutcome` | How the interview ended: `completed`, `ineligible` or `terminated`. `null` in the same cases as `finishStageId`.                                                   |
+| `isSynthetic`   | `true` for generated test data, `false` for a real interview.                                                                                                      |
+| `network`       | The collected network data (nodes, edges, ego).                                                                                                                    |
+| `stageMetadata` | Internal metadata for certain stages, such as Dyad and Tie-Strength Census negative responses. Usually `null`.                                                     |
+| `protocolId`    | id of the protocol used.                                                                                                                                           |
+| `participantId` | id of the participant.                                                                                                                                             |
+| `participant`   | Participant summary: `id`, `identifier`, `label`.                                                                                                                  |
+| `protocol`      | Protocol detail: `id`, `name`, `schemaVersion`, `description`, `codebook`.                                                                                         |
 
 ### List protocols
 
@@ -362,6 +368,7 @@ get_all_interviews <- function(...) {
       protocol_name = interview$protocol$name,
       start_time = interview$startTime,
       finish_time = ifelse(is.null(interview$finishTime), NA, interview$finishTime),
+      finish_outcome = ifelse(is.null(interview$finishOutcome), NA, interview$finishOutcome),
       current_step = interview$currentStep,
       stringsAsFactors = FALSE
     )
@@ -376,11 +383,12 @@ cat(sprintf("Total interviews: %d\n", result$meta$total))
 
 for (interview in result$data) {
   cat(sprintf(
-    "  %s  participant=%s  protocol=%s  finished=%s\n",
+    "  %s  participant=%s  protocol=%s  finished=%s  outcome=%s\n",
     interview$id,
     interview$participant$identifier,
     interview$protocol$name,
-    ifelse(is.null(interview$finishTime), "NA", interview$finishTime)
+    ifelse(is.null(interview$finishTime), "NA", interview$finishTime),
+    ifelse(is.null(interview$finishOutcome), "NA", interview$finishOutcome)
   ))
 }
 
@@ -465,7 +473,8 @@ if __name__ == "__main__":
             f"  {interview['id']}  "
             f"participant={interview['participant']['identifier']}  "
             f"protocol={interview['protocol']['name']}  "
-            f"finished={interview['finishTime']}"
+            f"finished={interview['finishTime']}  "
+            f"outcome={interview.get('finishOutcome')}"
         )
 
     # Fetch full network data for the first interview

@@ -32,7 +32,11 @@ describe('mockFinish', () => {
   it('resolves without error', async () => {
     const controller = new AbortController();
     await expect(
-      mockFinish('interview-1', controller.signal),
+      mockFinish(
+        'interview-1',
+        { stageId: 'finish', outcome: 'completed' },
+        controller.signal,
+      ),
     ).resolves.toBeUndefined();
   });
 });

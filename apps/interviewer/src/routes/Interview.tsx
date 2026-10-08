@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useRoute, useSearch } from 'wouter';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
+import {
+  defineMessages,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
 import {
   AppI18nProvider,
   AppMessage,
@@ -15,6 +18,7 @@ import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
+  type CompletedAction,
   createDebouncedSyncHandler,
   type FinishHandler,
   type InterviewPayload,
@@ -30,7 +34,6 @@ import {
   getLocaleMetadata,
   type LocalizationDeclaration,
 } from '@codaco/protocol-validation';
-import { InterviewComplete } from '~/components/InterviewComplete';
 import { interviewerLocales } from '~/i18n/locales';
 import { browserLanguages } from '~/i18n/preference';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
@@ -56,6 +59,15 @@ import { useHistoryBackGuard } from '~/lib/pwa/useHistoryBackGuard';
 import { interviewerCatalogs } from '~/locales/catalogs';
 
 const messages = defineMessages({
+  // The id is older than this file: the message moved here from the
+  // completion screen this host used to show, and kept its id so its
+  // translations still apply.
+  exit: {
+    id: 'interviewer.interviewComplete.exit',
+    defaultMessage: 'Exit',
+    description:
+      'Participant completion-screen action handing control back to the researcher, with authentication if required.',
+  },
   finishConfirmationDescription: {
     id: 'interviewer.interview.finishConfirmationDescription',
     defaultMessage:
@@ -144,7 +156,12 @@ type LoadState =
       kind: 'ready';
       payload: InterviewPayload;
       resolver: (id: string) => Promise<string>;
-      readOnly: boolean;
+      // An explicit review request: the Shell shows the stages, read-only.
+      reviewMode: boolean;
+      // Whether anything the interview does is saved. Not in a review, and not
+      // for a session already finished when it loaded, which the Shell shows
+      // in its completed state.
+      writable: boolean;
       initialStageOverrideIndex?: number;
     };
 
@@ -182,7 +199,6 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   );
   const isLiveRoute =
     interviewRouteMatches && interviewRouteParams.sessionId === sessionId;
-  const [finished, setFinished] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [allowStageNavigation, setAllowStageNavigation] = useState(false);
   // SessionPayload from @codaco/interview's onSync does not carry the current
@@ -230,7 +246,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     [textScaleStorageKey],
   );
 
-  // Gated exit shared by the Shell exit button and the completion screen.
+  // Gated exit shared by the Shell exit button and the completed state's Exit.
   const handleExit = useCallback(async () => {
     const settings = await getSettings();
     if (settings.requireUnlockOnExit) {
@@ -298,7 +314,8 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         },
       };
       if (!active) return;
-      const readOnly = reviewRequested || session.finishedAt !== null;
+      const writable = !reviewRequested && session.finishedAt === null;
+      const readOnly = !writable;
       const lastAvailableStage = getLastAvailableAuthoredStageIndex(
         protocol.protocol.stages,
         session.network,
@@ -320,12 +337,13 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         kind: 'ready',
         payload,
         resolver: makeAssetResolver(session.protocolHash, protocol.importedAt),
-        readOnly,
+        reviewMode: reviewRequested,
+        writable,
         initialStageOverrideIndex: shouldOverrideUnavailableStage
           ? 0
           : undefined,
       });
-      if (!readOnly) {
+      if (writable) {
         void updateSettings({
           lastActiveSessionId: session.id,
           lastActiveProtocolHash: session.protocolHash,
@@ -347,7 +365,8 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   ]);
 
   const { client: posthogClient, enabled: analyticsEnabled } = useAnalytics();
-  const readOnly = state.kind === 'ready' && state.readOnly;
+  const reviewMode = state.kind === 'ready' && state.reviewMode;
+  const readOnly = state.kind === 'ready' && !state.writable;
 
   const analytics = useMemo(
     () => ({
@@ -393,10 +412,22 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     );
   }, [sessionId]);
 
-  const handleFinish = useCallback(async (id: string) => {
-    await markSessionFinished(id);
-    setFinished(true);
-  }, []);
+  // Once this resolves the Shell shows its completed state in place; the
+  // route stays where it is.
+  const handleFinish = useCallback<FinishHandler>(
+    (id, finish) => markSessionFinished(id, finish),
+    [],
+  );
+
+  // The one action on a finished interview's completed state: hand the device
+  // back through the same gated exit as the Shell's own exit button.
+  const completedAction = useMemo<CompletedAction>(
+    () => ({
+      label: <InterviewLanguageMessage message={messages.exit} />,
+      onAction: () => void handleExit(),
+    }),
+    [handleExit],
+  );
 
   const handleStepChange = useCallback<StepChangeHandler>(
     (step, meta) => {
@@ -404,8 +435,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       setCurrentStep(step);
       if (readOnly) return;
       // Persist the participant-facing progress alongside the step so the
-      // dashboard shows exactly what the participant saw, without re-deriving it
-      // (and without needing to know about the engine's appended finish stage).
+      // dashboard shows exactly what the participant saw, without re-deriving it.
       void updateSession(sessionId, {
         currentStep: step,
         progress: meta.progress,
@@ -414,10 +444,6 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     },
     [readOnly, sessionId],
   );
-
-  if (finished) {
-    return <InterviewComplete onExit={() => void handleExit()} />;
-  }
 
   if (state.kind === 'loading') {
     return (
@@ -492,7 +518,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         aria-hidden
         className="bg-background pointer-events-none fixed inset-0 z-[-1]"
       />
-      {readOnly && (
+      {reviewMode && (
         <Alert
           variant="info"
           appearance="soft"
@@ -525,9 +551,14 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         // resolved (it lags the opt-in state at unlock and on a later opt-in,
         // and is null for good when disabled at build time or failed to load).
         disableAnalytics={readOnly || !analyticsEnabled || !posthogClient}
-        reviewMode={readOnly}
+        reviewMode={reviewMode}
+        completedAction={reviewMode ? undefined : completedAction}
         initialStageOverrideIndex={state.initialStageOverrideIndex}
-        finishConfirmationDescription={<InterviewFinishDescription />}
+        finishConfirmationDescription={
+          <InterviewLanguageMessage
+            message={messages.finishConfirmationDescription}
+          />
+        }
         onExit={() => void handleExit()}
         allowStageNavigation={allowStageNavigation}
         allowUserScaling
@@ -539,10 +570,10 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   );
 }
 
-// This host-specific message renders inside the Shell's finish dialog, so it
-// takes the interview's interface language from the Shell's provider; the
-// interview never uses Interviewer's own language.
-function InterviewFinishDescription() {
+// Host messages that render inside the Shell (the finish dialog's explanation,
+// the completed state's Exit) take the interview's interface language from the
+// Shell's provider; the interview never uses Interviewer's own language.
+function InterviewLanguageMessage({ message }: { message: MessageDescriptor }) {
   const { locale, direction } = useAppLocale();
   return (
     <AppI18nProvider
@@ -552,7 +583,7 @@ function InterviewFinishDescription() {
       manageDocument={false}
     >
       <span lang={locale} dir={direction}>
-        <AppMessage message={messages.finishConfirmationDescription} />
+        <AppMessage message={message} />
       </span>
     </AppI18nProvider>
   );
@@ -566,6 +597,9 @@ function hydrateSession(
     id: stored.id,
     startTime: stored.startedAt,
     finishTime: stored.finishedAt,
+    // Null for a session finished before finish stages were recorded; the
+    // Shell then shows the protocol's last finish stage.
+    finishStageId: stored.finishStageId ?? null,
     exportTime: stored.exportedAt,
     lastUpdated: stored.lastUpdatedAt,
     network: stored.network,

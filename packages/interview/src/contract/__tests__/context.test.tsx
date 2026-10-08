@@ -32,9 +32,14 @@ describe('ContractProvider', () => {
       wrapper: wrap({ onFinish, onRequestAsset }),
     });
 
-    void result.current.onFinish('interview-1', new AbortController().signal);
+    void result.current.onFinish(
+      'interview-1',
+      { stageId: 'finish', outcome: 'completed' },
+      new AbortController().signal,
+    );
     expect(onFinish).toHaveBeenCalledWith(
       'interview-1',
+      { stageId: 'finish', outcome: 'completed' },
       expect.any(AbortSignal),
     );
 

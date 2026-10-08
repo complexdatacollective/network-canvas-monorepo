@@ -1,5 +1,8 @@
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
-import type { StageType } from '@codaco/protocol-validation';
+import {
+  defaultFinishSessionFields,
+  type StageType,
+} from '@codaco/protocol-validation';
 
 import {
   localizedFromText,
@@ -74,6 +77,9 @@ const INTERFACE_TEMPLATES: Partial<
       requireChildrenContributors: 'off',
     },
   },
+  FinishSession: {
+    outcome: 'completed',
+  },
   NarrativePedigree: {
     sourceStageId: '',
     diseases: [],
@@ -86,13 +92,21 @@ const FAMILY_PEDIGREE_INTRO =
 
 /**
  * Template copy a participant reads, written in the protocol's default
- * language: the editor's English, for the researcher to translate.
+ * language: the editor's English, for the researcher to translate. The finish
+ * stage's closing text is the exception, supplied already translated.
  */
 const localizedTemplateCopy = (
   interfaceType: StageType,
   localization: ProtocolLocalization,
-): Record<string, FieldValue> =>
-  interfaceType === 'FamilyPedigree'
+): Record<string, FieldValue> => {
+  if (interfaceType === 'FinishSession') {
+    // The closing text Network Canvas supplies, in every protocol language it
+    // is supplied in, already translated: the same text a new protocol's
+    // finish stage starts with.
+    const { title, content } = defaultFinishSessionFields(localization.locales);
+    return { title, content };
+  }
+  return interfaceType === 'FamilyPedigree'
     ? {
         introScreen: {
           items: [
@@ -105,6 +119,7 @@ const localizedTemplateCopy = (
         },
       }
     : {};
+};
 
 /**
  * The authored defaults of `interfaceType` without any of its template copy,

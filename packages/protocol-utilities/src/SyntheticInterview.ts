@@ -3,8 +3,11 @@ import { invariant } from 'es-toolkit';
 import {
   type ComponentType,
   CURRENT_SCHEMA_VERSION,
+  defaultFinishSessionFields,
+  DEFAULT_FINISH_SESSION_TEXT,
   escapeMarkdownText,
   escapeMessageText,
+  type FinishOutcome,
   type LocalizedString,
   messageText,
   type Stage,
@@ -270,6 +273,7 @@ type GeospatialHandle = StageHandleBase & {
 
 type NarrativePedigreeHandle = StageHandleBase;
 type LanguageChooserHandle = StageHandleBase;
+type FinishSessionHandle = StageHandleBase;
 type NetworkComposerHandle = StageHandleBase & {
   // Each call appends an entry to the stage's `edges[]`, returning the edge
   // type id so callers can seed edges of that type via `addEdges`.
@@ -298,6 +302,7 @@ type StageHandleMap = {
   NarrativePedigree: NarrativePedigreeHandle;
   NetworkComposer: NetworkComposerHandle;
   LanguageChooser: LanguageChooserHandle;
+  FinishSession: FinishSessionHandle;
 };
 
 // Stage types that have no subject (node/edge)
@@ -307,6 +312,7 @@ const SUBJECTLESS_STAGES = new Set<StageType>([
   'Anonymisation',
   'NarrativePedigree',
   'LanguageChooser',
+  'FinishSession',
 ]);
 
 // Stage types where the subject is an edge, not a node
@@ -918,6 +924,37 @@ export class SyntheticInterview {
     return { id: stageId, stageEntry: entry };
   }
 
+  /**
+   * End the interview with a finish stage carrying this text. A protocol
+   * whose last stage is not a finish stage gets one from `getProtocol`, with
+   * the supplied default text, so most fixtures never need to call this.
+   */
+  addFinishSessionStage(opts?: {
+    title?: TextInput;
+    content?: TextInput;
+    label?: TextInput;
+    outcome?: FinishOutcome;
+    interviewScript?: string;
+  }): FinishSessionHandle {
+    const stageId = this.nextId('stage');
+    const title = opts?.title ?? DEFAULT_FINISH_SESSION_TEXT.en.title;
+    const entry: StageEntry = {
+      id: stageId,
+      type: 'FinishSession',
+      label: opts?.label ?? title,
+      interviewScript: opts?.interviewScript,
+      title,
+      content: opts?.content ?? DEFAULT_FINISH_SESSION_TEXT.en.content,
+      outcome: opts?.outcome ?? 'completed',
+      prompts: [],
+      presets: [],
+      panels: [],
+      initialEdges: [],
+    };
+    this.stages.push(entry);
+    return { id: stageId, stageEntry: entry };
+  }
+
   private createStageHandle<T extends StageType>(
     type: T,
     entry: StageEntry,
@@ -1130,6 +1167,7 @@ export class SyntheticInterview {
 
       case 'NarrativePedigree':
       case 'LanguageChooser':
+      case 'FinishSession':
         return base as StageHandleMap[T];
       case 'NetworkComposer':
         return {
@@ -1687,6 +1725,9 @@ export class SyntheticInterview {
   getProtocol() {
     const codebook = this.buildCodebook();
     const stages = this.stages.map((s) => this.buildStageConfig(s));
+    if (this.stages.at(-1)?.type !== 'FinishSession') {
+      stages.push(this.defaultFinishStage());
+    }
 
     return {
       id: `protocol-${this.seed}`,
@@ -2511,6 +2552,29 @@ export class SyntheticInterview {
     };
   }
 
+  /**
+   * The finish stage a protocol built without one ends at: the supplied text
+   * in each of the protocol's languages that has it, and English text under
+   * the default language when that language has none, so the fixture stays
+   * valid whatever languages it declares.
+   */
+  private defaultFinishStage(): Record<string, unknown> {
+    const taken = new Set(this.stages.map((stage) => stage.id));
+    let id = 'finish';
+    for (let suffix = 2; taken.has(id); suffix += 1) id = `finish-${suffix}`;
+    const fields = defaultFinishSessionFields(this.localization.locales);
+    const { defaultLocale } = this.localization;
+    for (const field of ['label', 'title', 'content'] as const) {
+      if (fields[field][defaultLocale] === undefined) {
+        fields[field] = {
+          ...fields[field],
+          [defaultLocale]: DEFAULT_FINISH_SESSION_TEXT.en[field],
+        };
+      }
+    }
+    return { id, type: 'FinishSession', ...fields, outcome: 'completed' };
+  }
+
   private buildStageConfig(stage: StageEntry): unknown {
     const config: Record<string, unknown> = {
       id: stage.id,
@@ -2589,6 +2653,14 @@ export class SyntheticInterview {
         title: this.localized(stage.introductionPanel.title),
         text: this.localized(stage.introductionPanel.text),
       };
+    }
+
+    if (stage.content !== undefined) {
+      config.content = this.localized(stage.content);
+    }
+
+    if (stage.outcome !== undefined) {
+      config.outcome = stage.outcome;
     }
 
     if (stage.title !== undefined) {

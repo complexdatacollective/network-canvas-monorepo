@@ -52,6 +52,7 @@ const session: InterviewExportInput = {
   participantIdentifier: 'participant',
   startTime: new Date(0),
   finishTime: new Date(1000),
+  finishOutcome: 'completed',
   protocolHash: 'hash-1',
   locale: null,
   network: {

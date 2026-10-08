@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { stageSchema } from '@codaco/protocol-validation';
+import {
+  DEFAULT_FINISH_SESSION_TEXT,
+  stageSchema,
+} from '@codaco/protocol-validation';
 
 import type { ProtocolLocalization } from '../../localization/localizedText.ts';
 import { STAGE_TYPES } from '../../stage-types.ts';
@@ -101,6 +104,28 @@ describe('getInterfaceTemplate', () => {
       showAtRiskStatuses: false,
     });
   });
+
+  it('seeds a finish screen with the supplied closing text in each language that has it, ending as completed', () => {
+    expect(
+      getInterfaceTemplate('FinishSession', {
+        defaultLocale: 'en',
+        locales: ['en', 'fr', 'ja'],
+      }),
+    ).toEqual({
+      outcome: 'completed',
+      title: {
+        en: DEFAULT_FINISH_SESSION_TEXT.en.title,
+        fr: DEFAULT_FINISH_SESSION_TEXT.fr.title,
+      },
+      content: {
+        en: DEFAULT_FINISH_SESSION_TEXT.en.content,
+        fr: DEFAULT_FINISH_SESSION_TEXT.fr.content,
+      },
+    });
+    expect(getInterfaceDefaults('FinishSession')).toEqual({
+      outcome: 'completed',
+    });
+  });
 });
 
 describe('getInterfaceDefaults', () => {
@@ -140,6 +165,8 @@ const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
   DyadCensus: ['introductionPanel', 'prompts', 'subject'],
   EgoForm: ['form', 'introductionPanel'],
   FamilyPedigree: ['censusPrompt', 'edgeConfig', 'nodeConfig'],
+  // Its closing text is supplied, so a name is all it needs.
+  FinishSession: [],
   Geospatial: ['mapOptions', 'prompts', 'subject'],
   Information: ['items', 'title'],
   // Its choices are the protocol's own languages, so a name is all it needs.
@@ -207,15 +234,16 @@ describe('a new stage given nothing but a name', () => {
    * Stated once, plainly, because it is what a reader of the list above would
    * otherwise have to work out by scanning it. The day another interface can
    * be saved straight from its template, this fails and someone reads the
-   * list. The language chooser is the one exception: it has nothing to
-   * configure beyond its name.
+   * list. The language chooser and the finish screen are the exceptions: one
+   * has nothing to configure beyond its name, and the other starts with the
+   * closing text Network Canvas supplies.
    */
-  it('is a saveable stage only for the language chooser', () => {
+  it('is a saveable stage only for the finish screen and the language chooser', () => {
     const saveable = STAGE_TYPES.filter(
       (type) => stageSchema.safeParse(newStage(type)).success,
     );
 
-    expect(saveable).toEqual(['LanguageChooser']);
+    expect(saveable).toEqual(['FinishSession', 'LanguageChooser']);
   });
 
   /**

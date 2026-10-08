@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { withFinishStage } from '../../__tests__/finishStage.ts';
 import {
   BIOLOGICAL_SEX_OPTIONS,
   GAMETE_ROLE_OPTIONS,
@@ -156,7 +157,9 @@ describe('findExclusiveVariableConflicts', () => {
       narrativePedigree('hasConditionX'),
     ]);
     expect(findExclusiveVariableConflicts(protocol)).toEqual([]);
-    expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
+    expect(ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success).toBe(
+      true,
+    );
   });
 
   it('reports a nomination prompt bound to the ego variable', () => {
@@ -180,7 +183,9 @@ describe('findExclusiveVariableConflicts', () => {
       'familyPedigree.nodeConfig.egoVariable',
     );
     expect(conflicts[0]?.variableName).toBe('is_ego');
-    expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
+    expect(ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success).toBe(
+      false,
+    );
   });
 
   // A disease row DECLARES what a variable means — "who is affected by this" —
@@ -204,7 +209,9 @@ describe('findExclusiveVariableConflicts', () => {
     expect(conflicts[0]?.owner.slot).toBe(
       'familyPedigree.nodeConfig.egoVariable',
     );
-    expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
+    expect(ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success).toBe(
+      false,
+    );
   });
 
   it('does not report a skip-logic filter rule that tests an interface-derived variable', () => {
@@ -269,7 +276,7 @@ describe('findExclusiveVariableConflicts', () => {
       },
     ]);
     expect(findExclusiveVariableConflicts(protocol)).toEqual([]);
-    const result = ProtocolSchemaV9.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
     expect(result.success ? null : result.error.issues).toBeNull();
   });
 
@@ -298,7 +305,9 @@ describe('findExclusiveVariableConflicts', () => {
     expect(conflicts.map((conflict) => conflict.path)).toEqual([
       ['stages', 1, 'prompts', 0, 'highlight', 'variable'],
     ]);
-    expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(false);
+    expect(ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success).toBe(
+      false,
+    );
   });
 
   it('reports a form field bound to an exclusive structural variable', () => {
@@ -331,7 +340,9 @@ describe('findExclusiveVariableConflicts', () => {
       familyPedigree({ id: 'fp2', label: localized('Second pedigree') }),
     ]);
     expect(findExclusiveVariableConflicts(protocol)).toEqual([]);
-    expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
+    expect(ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success).toBe(
+      true,
+    );
   });
 
   it('reports one variable claimed by two DIFFERENT exclusive slots', () => {
@@ -403,7 +414,7 @@ describe('findExclusiveVariableConflicts', () => {
         option.value === 'female' ? { ...option, value: 'woman' } : option,
       ),
     };
-    const result = ProtocolSchemaV9.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
     expect(result.success).toBe(false);
     expect(
       result.error?.issues.some((issue) =>

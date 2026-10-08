@@ -31,7 +31,7 @@ import {
   type StageAvailability,
 } from '../selectors/skip-logic';
 import type { NavigationOrientation } from '../Shell';
-import { getProtocolStages } from '../store/modules/protocol';
+import { getStages } from '../store/modules/protocol';
 
 type StagesMenuProps = {
   onSelect: (index: number) => void;
@@ -201,7 +201,7 @@ export default function StagesMenu({
 }: StagesMenuProps) {
   const intl = useAppIntl();
   const toPresentationalText = useResolvePresentationalText();
-  const stages = useSelector(getProtocolStages);
+  const stages = useSelector(getStages);
   const { displayedStep: currentStageIndex } = useCurrentStep();
   const availabilityMap = useSelector(getStageAvailabilityMap);
   const skipMap = useSelector(getSkipMap);
@@ -218,9 +218,12 @@ export default function StagesMenu({
     [orientation, isHorizontal],
   );
 
+  // Finish stages are left out: a participant reaches the end of the
+  // interview with Next, and a review never goes there.
   const items = useMemo<StageItem[]>(
     () =>
-      stages.map((stage, index) => {
+      stages.flatMap((stage, index) => {
+        if (stage.type === 'FinishSession') return [];
         const authored = toPresentationalText(stage.label);
         const title = presentationalTextValue(authored).trim()
           ? authored
@@ -247,7 +250,7 @@ export default function StagesMenu({
     ],
   );
 
-  const currentId = items[currentStageIndex]?.id;
+  const currentId = items.find((item) => item.isCurrent)?.id;
 
   const [matchingKeys, setMatchingKeys] = useState<Set<Key> | null>(null);
   const visibleItems = useMemo(

@@ -1,0 +1,292 @@
+import { describe, expect, it } from 'vitest';
+
+import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
+import { createBaseProtocol } from '../../../utils/test-utils.ts';
+import {
+  createDefaultFinishSessionStage,
+  DEFAULT_FINISH_SESSION_TEXT,
+  defaultFinishSessionText,
+  hasDefaultFinishSessionText,
+  withDefaultFinishSessionTranslation,
+} from '../finish-session-defaults.ts';
+import ProtocolSchemaV9 from '../schema.ts';
+import { finishSessionStage } from '../stages/finish-session.ts';
+import { findTimelineStructureProblems } from '../timeline-structure.ts';
+import { completeProtocol } from './complete-localized-protocol.ts';
+import { asSchema8Protocol } from './schema-8-protocol.ts';
+
+const finish = (id = 'finish', outcome = 'completed') => ({
+  id,
+  type: 'FinishSession',
+  label: { en: 'Finish' },
+  title: { en: 'All done' },
+  content: { en: 'Thank you.' },
+  outcome,
+});
+
+const information = (id: string) => ({
+  id,
+  type: 'Information',
+  label: { en: id },
+  title: { en: id },
+  items: [{ id: `${id}-text`, type: 'text', content: { en: 'Text' } }],
+});
+
+const protocolWith = (stages: unknown[]) => ({
+  ...createBaseProtocol(),
+  stages,
+});
+
+const issues = (stages: unknown[]) => {
+  const result = ProtocolSchemaV9.safeParse(protocolWith(stages));
+  return result.success
+    ? []
+    : result.error.issues.map(({ path, message }) => ({ path, message }));
+};
+
+describe('FinishSession stage schema', () => {
+  it.each(['completed', 'ineligible', 'terminated'])(
+    'accepts the %s outcome',
+    (outcome) => {
+      expect(finishSessionStage.safeParse(finish('f', outcome)).success).toBe(
+        true,
+      );
+    },
+  );
+
+  it('refuses an outcome outside the three kinds', () => {
+    expect(finishSessionStage.safeParse(finish('f', 'withdrawn')).success).toBe(
+      false,
+    );
+  });
+
+  it('refuses a stage without an outcome', () => {
+    const { outcome: _outcome, ...withoutOutcome } = finish();
+    expect(finishSessionStage.safeParse(withoutOutcome).success).toBe(false);
+  });
+
+  it.each(['title', 'content'] as const)('requires %s text', (field) => {
+    expect(
+      finishSessionStage.safeParse({ ...finish(), [field]: { en: '' } })
+        .success,
+    ).toBe(false);
+  });
+
+  it('refuses skip logic: every route ends at a finish stage', () => {
+    expect(
+      finishSessionStage.safeParse({
+        ...finish(),
+        skipLogic: { action: 'SKIP', filter: { rules: [] } },
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe('timeline structure', () => {
+  it('accepts a timeline that ends at its only finish stage', () => {
+    expect(issues([information('a'), finish()])).toEqual([]);
+  });
+
+  it('refuses a timeline with no stages', () => {
+    expect(issues([])).toEqual([
+      {
+        path: ['stages'],
+        message:
+          'A protocol must have at least one stage: a finish stage to end the interview.',
+      },
+    ]);
+  });
+
+  it('refuses a timeline that ends without a finish stage, at its last stage', () => {
+    expect(issues([information('a'), information('b')])).toEqual([
+      {
+        path: ['stages', 1],
+        message:
+          'The interview must end with a finish stage, but it ends after this stage.',
+      },
+    ]);
+  });
+
+  it('refuses every stage after a finish stage as unreachable', () => {
+    expect(
+      issues([information('a'), finish(), information('b'), finish('f2')]),
+    ).toEqual([
+      {
+        path: ['stages', 2],
+        message:
+          'This stage comes after the finish stage at position 2, so no participant can reach it.',
+      },
+      {
+        path: ['stages', 3],
+        message:
+          'This stage comes after the finish stage at position 2, so no participant can reach it.',
+      },
+    ]);
+  });
+
+  it('reports problems by stage index without validating the stages', () => {
+    expect(
+      findTimelineStructureProblems([
+        { type: 'FinishSession' },
+        { type: 'Information' },
+      ]),
+    ).toEqual([{ kind: 'unreachable', stageIndex: 1, finishStageIndex: 0 }]);
+  });
+});
+
+describe('v8 to v9 migration', () => {
+  const schema8 = () => asSchema8Protocol(completeProtocol());
+
+  it('appends one completed finish stage with the supplied English text, under the default language', () => {
+    const migrated = migrateProtocol(schema8(), 9);
+    const { defaultLocale } = migrated.localization;
+    expect(migrated.stages.at(-1)).toEqual({
+      id: 'finish',
+      type: 'FinishSession',
+      label: { [defaultLocale]: DEFAULT_FINISH_SESSION_TEXT.en.label },
+      title: { [defaultLocale]: DEFAULT_FINISH_SESSION_TEXT.en.title },
+      content: { [defaultLocale]: DEFAULT_FINISH_SESSION_TEXT.en.content },
+      outcome: 'completed',
+    });
+    expect(
+      migrated.stages.filter((stage) => stage.type === 'FinishSession'),
+    ).toHaveLength(1);
+  });
+
+  it('gives the finish stage an id no schema 8 stage holds', () => {
+    const document = schema8();
+    document.stages = [
+      { ...document.stages[0]!, id: 'finish' },
+      { ...document.stages[1]!, id: 'finish-2' },
+      ...document.stages.slice(2),
+    ];
+    const migrated = migrateProtocol(document, 9);
+    expect(migrated.stages.at(-1)?.id).toBe('finish-3');
+  });
+
+  it('migrates the same document to the same finish stage every time', () => {
+    const first = migrateProtocol(schema8(), 9);
+    const second = migrateProtocol(schema8(), 9);
+    expect(first.stages.at(-1)).toEqual(second.stages.at(-1));
+  });
+
+  it('produces a protocol that validates, ending at its finish stage', () => {
+    const migrated = migrateProtocol(schema8(), 9);
+    expect(ProtocolSchemaV9.safeParse(migrated).success).toBe(true);
+  });
+});
+
+describe('supplied finish text', () => {
+  it('serves a regional variant from its language', () => {
+    expect(defaultFinishSessionText('en-US')).toBe(
+      DEFAULT_FINISH_SESSION_TEXT.en,
+    );
+    expect(defaultFinishSessionText('en-GB')).toBe(
+      DEFAULT_FINISH_SESSION_TEXT.en,
+    );
+    expect(defaultFinishSessionText('es-MX')).toBe(
+      DEFAULT_FINISH_SESSION_TEXT.es,
+    );
+  });
+
+  it('serves Chinese by script', () => {
+    expect(defaultFinishSessionText('zh-TW')).toBe(
+      DEFAULT_FINISH_SESSION_TEXT['zh-Hant'],
+    );
+    expect(defaultFinishSessionText('zh-CN')).toBe(
+      DEFAULT_FINISH_SESSION_TEXT['zh-Hans'],
+    );
+  });
+
+  it.each(['pt', 'pt-PT', 'ca', 'gl', 'ja', 'und'])(
+    'has none for %s, rather than a neighbouring language',
+    (locale) => {
+      expect(defaultFinishSessionText(locale)).toBeUndefined();
+    },
+  );
+
+  it('creates a stage with text in each language that has it', () => {
+    expect(
+      createDefaultFinishSessionStage({
+        id: 'end',
+        localization: { defaultLocale: 'en-US', locales: ['en-US', 'ja'] },
+      }),
+    ).toEqual({
+      id: 'end',
+      type: 'FinishSession',
+      label: { 'en-US': DEFAULT_FINISH_SESSION_TEXT.en.label },
+      title: { 'en-US': DEFAULT_FINISH_SESSION_TEXT.en.title },
+      content: { 'en-US': DEFAULT_FINISH_SESSION_TEXT.en.content },
+      outcome: 'completed',
+    });
+  });
+
+  it('is valid message text in every language', () => {
+    const locales = Object.keys(DEFAULT_FINISH_SESSION_TEXT);
+    const stage = createDefaultFinishSessionStage({
+      id: 'end',
+      localization: { defaultLocale: 'en', locales },
+    });
+    expect(
+      ProtocolSchemaV9.safeParse({
+        ...createBaseProtocol(),
+        localization: { defaultLocale: 'en', locales },
+        stages: [stage],
+      }).success,
+    ).toBe(true);
+  });
+
+  describe('adding a language', () => {
+    const stage = createDefaultFinishSessionStage({
+      id: 'end',
+      localization: { defaultLocale: 'en', locales: ['en'] },
+    });
+
+    it('fills in the new language while the default language text is still the supplied text', () => {
+      expect(hasDefaultFinishSessionText(stage, 'en')).toBe(true);
+      expect(withDefaultFinishSessionTranslation(stage, 'fr', 'en')).toEqual({
+        ...stage,
+        label: { ...stage.label, fr: DEFAULT_FINISH_SESSION_TEXT.fr.label },
+        title: { ...stage.title, fr: DEFAULT_FINISH_SESSION_TEXT.fr.title },
+        content: {
+          ...stage.content,
+          fr: DEFAULT_FINISH_SESSION_TEXT.fr.content,
+        },
+      });
+    });
+
+    it('leaves the new language untranslated once the researcher has changed any of the text', () => {
+      const edited = { ...stage, content: { en: 'Thanks for taking part.' } };
+      expect(hasDefaultFinishSessionText(edited, 'en')).toBe(false);
+      expect(withDefaultFinishSessionTranslation(edited, 'fr', 'en')).toBe(
+        edited,
+      );
+    });
+
+    it('still fills in the text when only the stage was renamed, leaving the new name untranslated', () => {
+      const renamed = { ...stage, label: { en: 'End' } };
+      expect(hasDefaultFinishSessionText(renamed, 'en')).toBe(true);
+      expect(withDefaultFinishSessionTranslation(renamed, 'fr', 'en')).toEqual({
+        ...renamed,
+        title: { ...stage.title, fr: DEFAULT_FINISH_SESSION_TEXT.fr.title },
+        content: {
+          ...stage.content,
+          fr: DEFAULT_FINISH_SESSION_TEXT.fr.content,
+        },
+      });
+    });
+
+    it('leaves a language with no supplied text untranslated', () => {
+      expect(withDefaultFinishSessionTranslation(stage, 'ja', 'en')).toBe(
+        stage,
+      );
+    });
+
+    it('keeps text the stage already has in the new language', () => {
+      const translated = { ...stage, title: { ...stage.title, fr: 'Fin' } };
+      expect(
+        withDefaultFinishSessionTranslation(translated, 'fr', 'en').title,
+      ).toEqual({ ...stage.title, fr: 'Fin' });
+    });
+  });
+});

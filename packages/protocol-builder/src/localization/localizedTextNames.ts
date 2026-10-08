@@ -10,6 +10,7 @@ import { anonymisationMessages } from '../editors/anonymisation/sections/anonymi
 import { categoricalBinPromptMessages } from '../editors/categorical-bin/sections/CategoricalBinPromptsSection.tsx';
 import { censusMessages } from '../editors/dyad-census/sections/censusMessages.ts';
 import { pedigreeMessages } from '../editors/family-pedigree/sections/pedigreeMessages.ts';
+import { finishSessionMessages } from '../editors/finish-session/sections/finishSessionMessages.ts';
 import { cardDisplayMessages } from '../editors/name-generator-roster/sections/CardDisplaySection.tsx';
 import { sortOptionsMessages } from '../editors/name-generator-roster/sections/SortOptionsSection.tsx';
 import { narrativePedigreeMessages } from '../editors/narrative-pedigree/sections/narrativePedigreeMessages.ts';
@@ -291,6 +292,7 @@ const contentItemRules = (
 // The page heading and the page's items sit side by side in one section, so
 // the section names no segment of its own.
 const PAGE_CONTENT: Step = [0, words(pageContentMessages.pageTitle)];
+const FINISH_SCREEN: Step = [0, words(finishSessionMessages.closingTitle)];
 
 const NARRATIVE_PRESETS: Step = [
   1,
@@ -431,6 +433,13 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
     ...contentItemRules(PAGE_CONTENT, 'items'),
   ],
   LanguageChooser: [],
+  FinishSession: [
+    rule('title', FINISH_SCREEN, [
+      1,
+      words(finishSessionMessages.headingLabel),
+    ]),
+    rule('content', FINISH_SCREEN, [1, words(finishSessionMessages.textLabel)]),
+  ],
   NameGenerator: [
     NAME_GENERATOR_PROMPT,
     ...PANEL_RULES,

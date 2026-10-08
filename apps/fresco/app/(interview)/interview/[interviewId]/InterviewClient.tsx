@@ -1,9 +1,8 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { parseAsInteger, useQueryState } from 'nuqs';
 import posthog from 'posthog-js';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import {
   Shell,
@@ -13,7 +12,6 @@ import {
   type InterviewPayload,
   type StepChangeHandler,
 } from '@codaco/interview';
-import InterviewCompleted from '~/app/(interview)/interview/_components/InterviewCompleted';
 import { env } from '~/env.js';
 import { POSTHOG_APP_NAME, POSTHOG_APP_VERSION } from '~/fresco.config';
 
@@ -39,7 +37,6 @@ export default function InterviewClient({
   installationId,
   disableAnalytics,
 }: Props) {
-  const router = useRouter();
   const [currentStep, setCurrentStep] = useQueryState(
     'step',
     parseAsInteger.withDefault(initialStep).withOptions({ history: 'push' }),
@@ -82,12 +79,15 @@ export default function InterviewClient({
     [],
   );
 
-  const [finished, setFinished] = useState(false);
-
+  // Once this resolves the Shell shows the interview's completed state in
+  // place, so there is nothing to navigate to. A refused finish throws, which
+  // the Shell's confirmation dialog reports and lets the participant retry.
   const onFinish = useCallback<FinishHandler>(
-    async (id, signal) => {
+    async (id, { stageId, outcome }, signal) => {
       const response = await fetch(`/api/interviews/${id}/finish`, {
         method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ stageId, outcome }),
         signal,
         keepalive: true,
       });
@@ -95,12 +95,8 @@ export default function InterviewClient({
       if (!response.ok) {
         throw new Error('Your interview could not be submitted.');
       }
-
-      setFinished(true);
-
-      router.replace('/interview/finished');
     },
-    [router],
+    [],
   );
 
   const onRequestAsset = useCallback<AssetRequestHandler>((assetId) => {
@@ -124,10 +120,6 @@ export default function InterviewClient({
     }),
     [installationId],
   );
-
-  if (finished) {
-    return <InterviewCompleted />;
-  }
 
   return (
     <Shell

@@ -74,6 +74,7 @@
   "protocolValidation.migrationNotes.schema9.attributeNames": "屬性名稱現在可以使用任何語言的文字，也可以包含空格與標點符號。既有的屬性名稱不會變更。",
   "protocolValidation.migrationNotes.schema9.blankFieldQuestions": "若表單欄位的問題為空白或只含空格，現在會改以其屬性的名稱作為問題，因為每個問題都必須包含文字。",
   "protocolValidation.migrationNotes.schema9.defaultLanguage": "參與者看到的文字現在記錄為英文，因為舊版協定不會記錄其所用的語言。如果您的協定是以其他語言撰寫，可以在 Architect 的「語言」頁面中變更。",
+  "protocolValidation.migrationNotes.schema9.finishStage": "結束訪談的畫面現在是協定末尾的一個「完成畫面」階段，因此您可以變更其標題和文字，並像協定的其他內容一樣進行翻譯。其初始內容就是訪談一直以來在此處顯示的文字。",
   "protocolValidation.rule.additionalAttributes": "固定屬性",
   "protocolValidation.rule.component": "輸入控制項",
   "protocolValidation.rule.differentFrom": "與另一個屬性不同",

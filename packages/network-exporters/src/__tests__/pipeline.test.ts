@@ -107,6 +107,7 @@ describe('exportPipeline', () => {
       },
       protocolHash: 'h1',
       locale: null,
+      finishOutcome: 'completed',
     };
 
     const MockRepo = Layer.succeed(InterviewRepository, {
@@ -165,6 +166,7 @@ describe('exportPipeline', () => {
       },
       protocolHash: 'h2',
       locale: null,
+      finishOutcome: 'completed',
     };
 
     const MockRepo = Layer.succeed(InterviewRepository, {
@@ -210,6 +212,7 @@ describe('exportPipeline', () => {
         },
         protocolHash: 'hA',
         locale: null,
+        finishOutcome: 'completed',
       },
       {
         id: 's-missing',
@@ -223,6 +226,7 @@ describe('exportPipeline', () => {
         },
         protocolHash: 'hMISSING',
         locale: null,
+        finishOutcome: 'completed',
       },
     ];
 

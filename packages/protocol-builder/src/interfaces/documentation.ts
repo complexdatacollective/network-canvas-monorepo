@@ -21,6 +21,7 @@ const INTERFACE_DOCUMENTATION_SLUGS: Record<StageType, string> = {
   DyadCensus: 'dyad-census',
   EgoForm: 'ego-form',
   FamilyPedigree: 'family-pedigree',
+  FinishSession: 'finish-screen',
   Geospatial: 'geospatial',
   Information: 'information',
   LanguageChooser: 'language-chooser',

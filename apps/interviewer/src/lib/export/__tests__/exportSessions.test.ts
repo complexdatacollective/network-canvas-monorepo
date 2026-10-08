@@ -26,6 +26,8 @@ function seedDb() {
       network: { nodes: [], edges: [], ego: {} },
       protocolHash: 'hash-1',
       locale: 'fr',
+      finishStageId: 'finish-ineligible',
+      finishOutcome: 'ineligible',
     },
   ]);
   getProtocolsByHashes.mockResolvedValue([
@@ -100,6 +102,9 @@ describe('runExport via the export worker', () => {
     expect(start.type).toBe('start');
     expect(start.data.sessions.map((s) => s.id)).toEqual(['s1']);
     expect(start.data.sessions.map((s) => s.locale)).toEqual(['fr']);
+    expect(start.data.sessions.map((s) => s.finishOutcome)).toEqual([
+      'ineligible',
+    ]);
     expect(Object.keys(start.data.protocols)).toEqual(['hash-1']);
 
     worker.reply({
@@ -129,6 +134,63 @@ describe('runExport via the export worker', () => {
     expect(run.fileName).toBe('export.zip');
     expect(worker.terminated).toBe(true);
     expect(runPipelineWithData).not.toHaveBeenCalled();
+  });
+
+  it("exports each session's finish outcome, and none it did not record", async () => {
+    const network = { nodes: [], edges: [], ego: {} };
+    getSessionsByIds.mockResolvedValue([
+      {
+        id: 'recorded',
+        caseId: 'case-1',
+        startedAt: 1722772800000,
+        finishedAt: 1722776400000,
+        network,
+        protocolHash: 'hash-1',
+        locale: null,
+        finishStageId: 'finish-terminated',
+        finishOutcome: 'terminated',
+      },
+      {
+        // Finished before outcomes were recorded: not backfilled.
+        id: 'unrecorded',
+        caseId: 'case-2',
+        startedAt: 1722772800000,
+        finishedAt: 1722776400000,
+        network,
+        protocolHash: 'hash-1',
+        locale: null,
+      },
+      {
+        id: 'unfinished',
+        caseId: 'case-3',
+        startedAt: 1722772800000,
+        finishedAt: null,
+        network,
+        protocolHash: 'hash-1',
+        locale: null,
+      },
+    ]);
+    getProtocolsByHashes.mockResolvedValue([
+      { hash: 'hash-1', name: 'Protocol', codebook: {} },
+    ]);
+    vi.stubGlobal('Worker', FakeWorker);
+
+    void runExport({
+      options: exportOptions,
+      sessionIds: ['recorded', 'unrecorded', 'unfinished'],
+    }).catch(() => {});
+    await vi.waitFor(() => {
+      expect(FakeWorker.instances[0]?.posted).toHaveLength(1);
+    });
+
+    const start = FakeWorker.instances[0]?.posted[0];
+    expect(
+      start?.data.sessions.map(({ id, finishOutcome }) => [id, finishOutcome]),
+    ).toEqual([
+      ['recorded', 'terminated'],
+      ['unrecorded', null],
+      ['unfinished', null],
+    ]);
   });
 
   it('rejects with the worker-reported error, preserving the stack', async () => {

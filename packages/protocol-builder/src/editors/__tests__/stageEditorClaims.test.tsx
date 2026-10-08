@@ -17,6 +17,7 @@ import { dyadCensusStageEditor } from '../dyad-census/DyadCensusStageEditor.ts';
 import { egoFormStageEditor } from '../ego-form/EgoFormStageEditor.ts';
 import { shimMarkdownEditorMeasurement } from '../family-pedigree/__tests__/editorFixtures.ts';
 import { familyPedigreeStageEditor } from '../family-pedigree/FamilyPedigreeStageEditor.ts';
+import { finishSessionStageEditor } from '../finish-session/FinishSessionStageEditor.ts';
 import { geospatialStageEditor } from '../geospatial/GeospatialStageEditor.ts';
 import { informationStageEditor } from '../information/InformationStageEditor.ts';
 import { languageChooserStageEditor } from '../language-chooser/LanguageChooserStageEditor.ts';
@@ -106,6 +107,11 @@ const CLAIMS = [
     stageType: 'FamilyPedigree',
     stageId: 'family-pedigree-1',
     editor: familyPedigreeStageEditor.FamilyPedigree,
+  },
+  {
+    stageType: 'FinishSession',
+    stageId: 'finish',
+    editor: finishSessionStageEditor.FinishSession,
   },
   {
     stageType: 'Geospatial',

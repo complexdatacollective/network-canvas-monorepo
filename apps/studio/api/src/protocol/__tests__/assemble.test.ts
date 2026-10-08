@@ -21,13 +21,16 @@ describe('assembleProtocolSections', () => {
 
   it('orders stages from the stageOrder section', () => {
     const sections = sectionizeProtocol(baseProtocol());
-    sections.stageOrder = { stages: ['sociogram1', 'nameGenerator1'] };
+    sections.stageOrder = {
+      stages: ['sociogram1', 'nameGenerator1', 'finish'],
+    };
     const assembled = assembleProtocolSections(sections) as {
       stages: { id: string }[];
     };
     expect(assembled.stages.map((stage) => stage.id)).toEqual([
       'sociogram1',
       'nameGenerator1',
+      'finish',
     ]);
   });
 

@@ -16,6 +16,7 @@ import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { MaintenanceScope, Transaction } from '../db/tenant.ts';
 import { readEnv } from '../env.ts';
+import { NEW_PROTOCOL_FINISH_STAGE_ID } from '../protocol/sectionize.ts';
 import { authServiceStub } from './support/auth.ts';
 import {
   insertTeam,
@@ -282,7 +283,9 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
         draftId: ungranted.draftId,
       }),
     );
-    expect(draft.sections.stageOrder).toEqual({ stages: [] });
+    expect(draft.sections.stageOrder).toEqual({
+      stages: [NEW_PROTOCOL_FINISH_STAGE_ID],
+    });
     expect(draft.sections[`stage:${stageId}`]).toBeUndefined();
 
     const grantedStageId = StageId.make(randomUUID());
@@ -301,7 +304,10 @@ describe.skipIf(!testDb)('the protocol RPC surface', () => {
         draftId: granted.draftId,
       }),
     );
-    expect(edited.sections.stageOrder).toEqual({ stages: [grantedStageId] });
+    // A new screen goes in front of the finish stage the protocol started with.
+    expect(edited.sections.stageOrder).toEqual({
+      stages: [grantedStageId, NEW_PROTOCOL_FINISH_STAGE_ID],
+    });
   });
 
   it('refuses protocol creation by a team Member', async () => {

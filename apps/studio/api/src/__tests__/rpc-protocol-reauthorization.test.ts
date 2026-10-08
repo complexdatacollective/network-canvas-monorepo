@@ -14,6 +14,7 @@ import {
 import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
+import { NEW_PROTOCOL_FINISH_STAGE_ID } from '../protocol/sectionize.ts';
 import { authServiceStub } from './support/auth.ts';
 import {
   insertTeam,
@@ -209,7 +210,9 @@ describe.skipIf(!testDb)(
       );
 
       await expectRpcFailure(Promise.resolve(exit), 'Forbidden');
-      expect(await stageOrder(study)).toEqual({ stages: [] });
+      expect(await stageOrder(study)).toEqual({
+        stages: [NEW_PROTOCOL_FINISH_STAGE_ID],
+      });
     });
 
     it('refuses a draft read from an Admin demoted while the request is in flight', async () => {
@@ -273,7 +276,9 @@ describe.skipIf(!testDb)(
       );
 
       await expectRpcFailure(Promise.resolve(exit), 'Forbidden');
-      expect(await stageOrder(study)).toEqual({ stages: [] });
+      expect(await stageOrder(study)).toEqual({
+        stages: [NEW_PROTOCOL_FINISH_STAGE_ID],
+      });
     });
   },
 );

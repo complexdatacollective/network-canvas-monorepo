@@ -7,6 +7,7 @@ import {
   collectLocalizedStringSites,
   type LocalizedStringSite,
 } from '../../utils/collectLocalizedStrings.ts';
+import { DEFAULT_FINISH_SESSION_TEXT } from './finish-session-defaults.ts';
 import ProtocolSchemaV9 from './schema.ts';
 
 // Schema 8 never recorded the language its copy was written in, and a schema 9
@@ -140,6 +141,43 @@ const addComposerCaptions = (protocol: unknown) => {
   }
 };
 
+// The id the appended finish stage takes, unless a schema 8 stage already
+// has it. Deterministic, so migrating one document twice gives one result.
+const FINISH_STAGE_ID = 'finish';
+
+const finishStageId = (stages: unknown): string => {
+  const taken = new Set(
+    Array.isArray(stages)
+      ? stages.flatMap((stage) =>
+          isRecord(stage) && typeof stage.id === 'string' ? [stage.id] : [],
+        )
+      : [],
+  );
+  let id = FINISH_STAGE_ID;
+  for (let suffix = 2; taken.has(id); suffix += 1) {
+    id = `${FINISH_STAGE_ID}-${suffix}`;
+  }
+  return id;
+};
+
+/**
+ * Schema 8 ended every interview with a built-in screen the runtime added.
+ * Schema 9 makes that screen a stage, so every migrated protocol gains one at
+ * the end, carrying the text that screen showed, recorded in the protocol's
+ * default language.
+ */
+const finishStageFor = (stages: unknown, defaultLocale: string) => {
+  const text = DEFAULT_FINISH_SESSION_TEXT.en;
+  return {
+    id: finishStageId(stages),
+    type: 'FinishSession' as const,
+    label: { [defaultLocale]: text.label },
+    title: { [defaultLocale]: text.title },
+    content: { [defaultLocale]: text.content },
+    outcome: 'completed' as const,
+  };
+};
+
 type SiteChange =
   | { kind: 'set'; value: unknown }
   | { kind: 'remove' }
@@ -227,7 +265,8 @@ const migrationV8toV9 = createMigration({
   dependencies: {},
   notes: `- Attribute names can now use letters from any language, as well as spaces and punctuation. Existing attribute names are not changed.
 - Text that participants see is now recorded as English, because older protocols do not record which language they use. If your protocol is written in another language, you can change it on the Languages page in Architect.
-- A form field whose question was empty or contained only spaces now uses the name of its attribute as the question, because every question must contain some text.`,
+- A form field whose question was empty or contained only spaces now uses the name of its attribute as the question, because every question must contain some text.
+- The screen that ends the interview is now a Finish Screen stage at the end of your protocol, so you can change its heading and text and translate them like the rest of your protocol. It starts with the text the interview has always shown there.`,
   migrate: (doc) => {
     const migrated = structuredClone(doc);
     addCodebookLabels(migrated.codebook);
@@ -250,13 +289,19 @@ const migrationV8toV9 = createMigration({
       else Reflect.deleteProperty(container, key);
     }
 
+    const localization = {
+      defaultLocale: DEFAULT_LOCALE,
+      locales: [DEFAULT_LOCALE],
+    };
+
     return {
       ...migrated,
+      stages: [
+        ...(Array.isArray(migrated.stages) ? migrated.stages : []),
+        finishStageFor(migrated.stages, localization.defaultLocale),
+      ],
       schemaVersion: 9 as const,
-      localization: {
-        defaultLocale: DEFAULT_LOCALE,
-        locales: [DEFAULT_LOCALE],
-      },
+      localization,
     };
   },
 });

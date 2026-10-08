@@ -95,6 +95,9 @@ describe('e2e matrix coverage manifest', () => {
       const inventory = OPTION_INVENTORY[literal] ?? [];
       for (const key of Object.keys(shape)) {
         if (BASE_KEYS.has(key)) continue;
+        // A key the schema declares only to refuse (a finish stage's
+        // `skipLogic`) can never be configured, so there is nothing to cover.
+        if (unwrap(shape[key]!) instanceof z.ZodNever) continue;
         if (!inventoryCoversSchemaKey(inventory, key)) {
           missing.push(`${literal}:${key}`);
         }

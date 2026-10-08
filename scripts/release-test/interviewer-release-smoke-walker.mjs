@@ -536,12 +536,15 @@ try {
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: 'Finish Interview' }).click();
-  await expect(page.getByTestId('interview-complete')).toBeVisible({
-    timeout: 15_000,
-  });
+  // The interview stays on its finish stage, now in its completed state.
+  await expect(
+    page.getByText(
+      'This interview is finished, and its answers can no longer be changed.',
+    ),
+  ).toBeVisible({ timeout: 15_000 });
   await shot('finish-complete');
   record('finish', true, 'interview completed');
-  await page.getByRole('button', { name: 'Exit' }).click();
+  await page.getByRole('button', { name: 'Exit', exact: true }).click();
   // Let the exit flow finish its own navigation before navigating ourselves —
   // a goto raced against it gets yanked back to Home (seen empirically).
   await expect(

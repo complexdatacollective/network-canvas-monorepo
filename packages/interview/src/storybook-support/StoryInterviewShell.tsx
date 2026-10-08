@@ -8,6 +8,7 @@ import { StageMetadataSchema } from '@codaco/shared-consts';
 
 import {
   type AssetRequestHandler,
+  type CompletedAction,
   type InterviewPayload,
   isValidAssetType,
   type NavigationOrientation,
@@ -155,6 +156,8 @@ const StoryInterviewShell = (props: {
   allowUserScaling?: boolean;
   reviewMode?: boolean;
   initialStep?: number;
+  /** The action offered once the interview is finished. */
+  completedAction?: CompletedAction;
 }) => {
   const { payload, initialStep, assetUrls } = useMemo(() => {
     const raw = SuperJSON.parse<RawSyntheticPayload>(props.rawPayload);
@@ -207,6 +210,7 @@ const StoryInterviewShell = (props: {
       allowUserScaling={props.allowUserScaling}
       onExit={props.onExit}
       reviewMode={props.reviewMode}
+      completedAction={props.completedAction}
     />
   );
 };

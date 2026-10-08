@@ -299,6 +299,10 @@
     "defaultMessage": "Text that participants see is now recorded as English, because older protocols do not record which language they use. If your protocol is written in another language, you can change it on the Languages page in Architect.",
     "description": "One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. \"Languages\" must match the name of the Architect page where languages are managed."
   },
+  "protocolValidation.migrationNotes.schema9.finishStage": {
+    "defaultMessage": "The screen that ends the interview is now a Finish Screen stage at the end of your protocol, so you can change its heading and text and translate them like the rest of your protocol. It starts with the text the interview has always shown there.",
+    "description": "One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. \"Finish Screen\" is the name Architect gives the stage type that ends an interview, where the participant reads closing text and presses Finish; use the same name Architect uses for it."
+  },
   "protocolValidation.rule.additionalAttributes": {
     "defaultMessage": "Fixed attributes",
     "description": "Researcher-facing label for a protocol validation rule or generation constraint. The protocol identifier remains unchanged."

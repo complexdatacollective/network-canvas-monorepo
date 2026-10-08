@@ -642,7 +642,17 @@ The Narrative interface also supports free-form annotation using the mouse, a fi
 
 ## The Finish Screen
 
+<AppOnly axis="interviewer" app="classic">
+
 Each interview protocol has a "finish" screen automatically inserted by Interviewer. This screen presents a single button that will exit the interview. Clicking this button will also set, or update, the "finished at" property of the interview session. This property is exported along with your interview data, and can be used to calculate interview duration.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="current">
+
+Every protocol ends with a [Finish Screen](/en/design-protocols/interface-documentation/finish-screen), which shows the closing heading and text written by the protocol's designer, and a **Finish** button. Pressing **Finish** sets, or updates, the "finished at" property of the interview session. This property is exported along with your interview data, and can be used to calculate interview duration. Interviewer also stores which Finish Screen ended the interview, and the outcome the protocol's designer chose for it, with the session. The outcome is included in the exported data (see [How the interview ended](/en/analyze-data/data-export#how-the-interview-ended)).
+
+</AppOnly>
 
 <Screenshot axis="interviewer" name="finish" alt="The finish screen"></Screenshot>
 
@@ -652,7 +662,7 @@ Interviewer asks you to confirm before finishing, since responses can't be chang
 
 ![Confirming that you want to finish the interview](/assets/img/interviewer-guide/finish-confirm.png)
 
-After confirming, you arrive at a short completion screen, and from there return to the dashboard.
+After confirming, the interview shows its completed state: the Finish Screen's heading and text, and a notice that the interview is finished and its answers can no longer be changed. There is no navigation and no way back. The only action is **Exit**, which returns you to the dashboard. Opening a finished interview from the dashboard shows the completed state again.
 
 ![The interview-complete screen](/assets/img/interviewer-guide/interview-complete.png)
 
@@ -684,7 +694,7 @@ Every session you collect — whether in progress, finished, or already exported
 
 <Screenshot axis="interviewer" name="resume-section" alt="The Interviews list"></Screenshot>
 
-Select a session to resume an in-progress interview or review a finished one. You can also select several sessions at once to **export** or **delete** them in bulk. The data export process is covered below; export formats are configured in **Settings** rather than chosen at export time.
+Select a session to resume an in-progress interview or review a finished one. When you review a finished interview, its stages are shown read-only. The Finish Screen isn't part of the review, and it isn't listed in the stages menu. You can also select several sessions at once to **export** or **delete** them in bulk. The data export process is covered below; export formats are configured in **Settings** rather than chosen at export time.
 
 </AppOnly>
 

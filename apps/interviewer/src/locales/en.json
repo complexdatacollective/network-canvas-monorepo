@@ -483,14 +483,6 @@
     "defaultMessage": "Exit",
     "description": "Participant completion-screen action handing control back to the researcher, with authentication if required."
   },
-  "interviewer.interviewComplete.interviewComplete": {
-    "defaultMessage": "Interview complete",
-    "description": "Visible copy in Interviewer Interview Complete."
-  },
-  "interviewer.interviewComplete.thankYouThisInterviewIsFinishedAnd": {
-    "defaultMessage": "Thank you. This interview is finished and its responses can no longer be changed. Please hand the device back to the researcher.",
-    "description": "Visible copy in Interviewer Interview Complete."
-  },
   "interviewer.language.automatic": {
     "defaultMessage": "Automatic (browser)",
     "description": "Language option that follows this device browser preferences instead of storing an explicit choice."

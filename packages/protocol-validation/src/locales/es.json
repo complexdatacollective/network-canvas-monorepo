@@ -74,6 +74,7 @@
   "protocolValidation.migrationNotes.schema9.attributeNames": "Los nombres de atributo ahora pueden usar letras de cualquier idioma, además de espacios y signos de puntuación. Los nombres de atributo existentes no cambian.",
   "protocolValidation.migrationNotes.schema9.blankFieldQuestions": "Un campo de formulario cuya pregunta estaba vacía o solo contenía espacios ahora usa el nombre de su atributo como pregunta, porque toda pregunta debe contener texto.",
   "protocolValidation.migrationNotes.schema9.defaultLanguage": "El texto que ven los participantes ahora se registra como inglés, porque los protocolos antiguos no registran qué idioma usan. Si tu protocolo está escrito en otro idioma, puedes cambiarlo en la página Idiomas de Architect.",
+  "protocolValidation.migrationNotes.schema9.finishStage": "La pantalla que finaliza la entrevista ahora es una etapa «Pantalla de finalización» al final de tu protocolo, de modo que puedes cambiar su encabezado y su texto y traducirlos como el resto de tu protocolo. Al principio contiene el texto que la entrevista siempre ha mostrado ahí.",
   "protocolValidation.rule.additionalAttributes": "Atributos fijos",
   "protocolValidation.rule.component": "Control de entrada",
   "protocolValidation.rule.differentFrom": "Diferente de otro atributo",

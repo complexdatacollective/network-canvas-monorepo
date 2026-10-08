@@ -373,6 +373,13 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. A form field is one question in a form; its attribute is the piece of information the question collects.',
   },
+  schema9FinishStage: {
+    id: 'protocolValidation.migrationNotes.schema9.finishStage',
+    defaultMessage:
+      'The screen that ends the interview is now a Finish Screen stage at the end of your protocol, so you can change its heading and text and translate them like the rest of your protocol. It starts with the text the interview has always shown there.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Finish Screen" is the name Architect gives the stage type that ends an interview, where the participant reads closing text and presses Finish; use the same name Architect uses for it.',
+  },
 });
 
 // Each descriptor is a whole bullet. Markdown separators are structural:
@@ -460,6 +467,7 @@ const migrationNoteSets = {
       migrationNoteMessages.schema9AttributeNames,
       migrationNoteMessages.schema9DefaultLanguage,
       migrationNoteMessages.schema9BlankFieldQuestions,
+      migrationNoteMessages.schema9FinishStage,
     ],
   },
 };

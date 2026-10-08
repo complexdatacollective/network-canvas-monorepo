@@ -215,6 +215,15 @@ export function baseProtocol(): CurrentProtocol {
           },
         ],
       },
+      // Every schema 9 interview ends at a finish stage.
+      {
+        id: 'finish',
+        type: 'FinishSession',
+        label: { en: 'Finish' },
+        title: { en: 'Thank you' },
+        content: { en: 'The interview is complete.' },
+        outcome: 'completed',
+      },
     ],
   });
 }

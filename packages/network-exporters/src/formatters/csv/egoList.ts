@@ -5,8 +5,10 @@ import {
   commitHashProperty,
   egoProperty,
   entityPrimaryKeyProperty,
+  finishOutcomeProperty,
   interviewLocaleProperty,
   ncCaseProperty,
+  ncFinishOutcomeProperty,
   ncInterviewLocaleProperty,
   ncProtocolNameProperty,
   ncSessionProperty,
@@ -39,6 +41,8 @@ const printableAttribute = (attribute: string) => {
       return ncProtocolNameProperty;
     case interviewLocaleProperty:
       return ncInterviewLocaleProperty;
+    case finishOutcomeProperty:
+      return ncFinishOutcomeProperty;
     case entityPrimaryKeyProperty:
       return egoProperty;
     default:
@@ -64,6 +68,7 @@ export function* egoListRows(
     [appVersionProperty]: sessionVariables[appVersionProperty],
     [commitHashProperty]: sessionVariables[commitHashProperty],
     [interviewLocaleProperty]: sessionVariables[interviewLocaleProperty],
+    [finishOutcomeProperty]: sessionVariables[finishOutcomeProperty],
   };
   const attributes = getEntityAttributes(network.ego);
   const columns = planEgoColumns(codebook.ego?.variables, attributes, {

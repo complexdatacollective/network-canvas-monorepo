@@ -10,6 +10,7 @@ import reducer, {
   getFamilyPedigreeNodeTypeChangeBlock,
   getInvalidSkipDestinationReferences,
   getSkipDestinationDependentStages,
+  isLastFinishStage,
   test,
 } from '../stages';
 
@@ -73,6 +74,80 @@ describe('protocol.stages', () => {
         expect(updatedStages).toEqual([
           { id: '3', type: 'Information', label: localized('Foo') },
           { id: '5', type: 'OrdinalBin', label: localized('Baz') },
+        ]);
+      });
+    });
+
+    describe('the finish stage', () => {
+      const finish = {
+        id: 'finish',
+        type: 'FinishSession',
+        label: localized('Finish'),
+        title: localized('All done'),
+        content: localized('Thank you.'),
+        outcome: 'completed',
+      } as Stage;
+      const withFinish = [...mockStages, finish];
+      const ids = (stages: readonly Stage[]) => stages.map(({ id }) => id);
+
+      it('puts a new stage before the finish stage, wherever it was asked to go', () => {
+        const newStage = {
+          id: 'new',
+          type: 'Information',
+          label: localized('New'),
+        } as Stage;
+        for (const index of [undefined, 3, 4, 10]) {
+          expect(
+            ids(
+              reducer(
+                withFinish,
+                commitStage({ stageId: null, stage: newStage, index }),
+              ),
+            ),
+          ).toEqual(['3', '9', '5', 'new', 'finish']);
+        }
+        expect(
+          ids(
+            reducer(
+              withFinish,
+              commitStage({ stageId: null, stage: newStage, index: 1 }),
+            ),
+          ),
+        ).toEqual(['3', 'new', '9', '5', 'finish']);
+      });
+
+      it('refuses to delete the only finish stage', () => {
+        expect(isLastFinishStage(withFinish, 'finish')).toBe(true);
+        expect(reducer(withFinish, test.deleteStage('finish'))).toEqual(
+          withFinish,
+        );
+      });
+
+      it('deletes a finish stage when another one remains', () => {
+        const twoFinishes = [...withFinish, { ...finish, id: 'finish-2' }];
+        expect(isLastFinishStage(twoFinishes, 'finish')).toBe(false);
+        expect(ids(reducer(twoFinishes, test.deleteStage('finish')))).toEqual([
+          '3',
+          '9',
+          '5',
+          'finish-2',
+        ]);
+      });
+
+      it('refuses a move that would take the finish stage off the end', () => {
+        expect(reducer(withFinish, test.moveStage(3, 1))).toEqual(withFinish);
+      });
+
+      it('refuses a move that would put a stage after the finish stage', () => {
+        expect(reducer(withFinish, test.moveStage(0, 3))).toEqual(withFinish);
+      });
+
+      it('moves stages around before the finish stage', () => {
+        expect(ids(reducer(withFinish, test.moveStage(0, 2)))).toEqual([
+          '9',
+          '5',
+          '3',
+          'finish',
         ]);
       });
     });

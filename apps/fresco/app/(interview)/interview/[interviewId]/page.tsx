@@ -1,4 +1,3 @@
-import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { after, connection } from 'next/server';
 import { Suspense } from 'react';
@@ -11,6 +10,7 @@ import { getRequestedLocales } from '~/i18n/server';
 import { getAdmittedSession } from '~/lib/auth/guards';
 import { safeRevalidateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
+import { getLimitedInterviewId } from '~/lib/limitInterviewsCookie';
 import { captureEvent, flushPostHog } from '~/lib/posthog-server';
 import { getAppSetting, getDisableAnalytics } from '~/queries/appSettings';
 import {
@@ -65,20 +65,23 @@ async function InterviewContent({
 
   const limitInterviews = await getAppSetting('limitInterviews');
 
-  // The completion cookie is a per-browser participant guard. Authenticated
-  // users (e.g. an admin opening an interview from the dashboard) must not be
-  // locked out of every interview for a protocol they previously completed a
-  // test interview for in this browser.
-  if (
-    !session &&
-    limitInterviews &&
-    (await cookies()).get(interview.protocol.id)
-  ) {
-    redirect('/interview/finished');
-  }
+  // The completion cookie is a per-browser participant guard: a browser that
+  // finished an interview of this protocol is sent back to that interview,
+  // which shows its completed state, rather than into another one.
+  // Authenticated users (e.g. an admin opening an interview from the
+  // dashboard) must not be locked out of every interview for a protocol they
+  // previously completed a test interview for in this browser.
+  //
+  // A finished interview is not redirected anywhere: it opens on its completed
+  // state, for participants and researchers alike.
+  if (!session && limitInterviews) {
+    const limitedInterviewId = await getLimitedInterviewId(
+      interview.protocol.id,
+    );
 
-  if (!session && interview?.finishTime) {
-    redirect('/interview/finished');
+    if (limitedInterviewId && limitedInterviewId !== interview.id) {
+      redirect(`/interview/${limitedInterviewId}`);
+    }
   }
 
   after(async () => {

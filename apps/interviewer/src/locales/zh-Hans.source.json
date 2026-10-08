@@ -120,8 +120,6 @@
   "interviewer.interview.theProtocolThisInterviewUsesCouldNot": "The protocol this interview uses could not be updated to work with this version of the app, so this interview cannot be continued. Its responses remain available on the data screen. To start new interviews, repair the protocol in Architect and import it again.",
   "interviewer.interview.thisInterviewMayHaveBeenDeletedOr": "This interview may have been deleted, or the protocol it used is no longer installed.",
   "interviewer.interviewComplete.exit": "Exit",
-  "interviewer.interviewComplete.interviewComplete": "Interview complete",
-  "interviewer.interviewComplete.thankYouThisInterviewIsFinishedAnd": "Thank you. This interview is finished and its responses can no longer be changed. Please hand the device back to the researcher.",
   "interviewer.language.automatic": "Automatic (browser)",
   "interviewer.language.failed": "The language changed for this session, but the preference could not be saved. Your browser may be blocking device storage.",
   "interviewer.language.hint": "Choose the language Interviewer uses on this device. Interviews follow the participant's browser language, or the language they choose during the interview.",

@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   collectLocalizedStrings,
+  createDefaultFinishSessionStage,
   type CurrentProtocol,
+  DEFAULT_FINISH_SESSION_TEXT,
   escapeMessageText,
   type LocalizedStringHit,
   messageText,
@@ -71,6 +73,14 @@ const protocolIn = (
       title: text.title,
       items: [],
     },
+    {
+      id: 'finish',
+      type: 'FinishSession',
+      label: text.stage,
+      title: text.title,
+      content: text.title,
+      outcome: 'completed',
+    },
   ],
 });
 
@@ -130,6 +140,58 @@ describe('addLocales', () => {
     expect(textOf(protocol)).toEqual(textOf(bilingual()));
   });
 
+  describe('a finish stage with the supplied closing text', () => {
+    const withSuppliedFinish = (): CurrentProtocol => {
+      const protocol = monolingual();
+      return {
+        ...protocol,
+        stages: [
+          ...protocol.stages.slice(0, -1),
+          createDefaultFinishSessionStage({
+            id: 'finish',
+            localization: protocol.localization,
+          }),
+        ],
+      };
+    };
+
+    it('gets that text in each new language it is supplied in, and nothing else is translated', async () => {
+      const protocol = protocolOf(
+        addLocales(withSuppliedFinish(), ['pt-BR', 'ja']),
+      );
+      const finish = protocol.stages.at(-1);
+      expect(finish).toMatchObject({
+        label: {
+          'en': DEFAULT_FINISH_SESSION_TEXT.en.label,
+          'pt-BR': DEFAULT_FINISH_SESSION_TEXT['pt-BR'].label,
+        },
+        title: {
+          'en': DEFAULT_FINISH_SESSION_TEXT.en.title,
+          'pt-BR': DEFAULT_FINISH_SESSION_TEXT['pt-BR'].title,
+        },
+        content: {
+          'en': DEFAULT_FINISH_SESSION_TEXT.en.content,
+          'pt-BR': DEFAULT_FINISH_SESSION_TEXT['pt-BR'].content,
+        },
+      });
+      expect(Object.keys(finish?.label ?? {})).not.toContain('ja');
+      expect(protocol.stages[0]).toEqual(withSuppliedFinish().stages[0]);
+      expect((await validateProtocol(protocol)).success).toBe(true);
+    });
+
+    it('stays untranslated once the researcher has rewritten it', () => {
+      const edited = withSuppliedFinish();
+      const finish = edited.stages.at(-1);
+      if (finish?.type !== 'FinishSession') throw new Error('No finish stage');
+      edited.stages = [
+        ...edited.stages.slice(0, -1),
+        { ...finish, content: { en: 'Thanks for taking part.' } },
+      ];
+      const protocol = protocolOf(addLocales(edited, ['fr']));
+      expect(protocol.stages).toEqual(edited.stages);
+    });
+  });
+
   it('refuses a tag that is not a language, and adds none of the batch', () => {
     expect(addLocales(bilingual(), ['de', 'not a tag'])).toEqual({
       ok: false,
@@ -164,7 +226,7 @@ describe('removeLocale', () => {
     expect(
       getLocaleRemovalImpact(collectLocalizedStrings(bilingual()), 'fr')
         .translationCount,
-    ).toBe(4);
+    ).toBe(7);
   });
 
   it('counts each text once however many readings of it there are', () => {
@@ -180,7 +242,7 @@ describe('removeLocale', () => {
       'fr',
     );
 
-    expect(impact.translationCount).toBe(4);
+    expect(impact.translationCount).toBe(7);
     expect(impact.strandedStrings).toEqual([unsaved]);
   });
 

@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import {
+  createDefaultFinishSessionStage,
   type FilterOperator,
   filterRuleSchema,
   filterValueSchema,
@@ -284,10 +285,12 @@ const buildRule = async (
  * find out whether it IS a valid protocol, and a fixture typed as one would
  * have the question answered by the compiler instead.
  */
+const localization = { defaultLocale: 'en', locales: ['en'] };
+
 const protocolWith = (rule: RuleDraft): unknown => ({
   name: 'Operand table',
   schemaVersion: 9,
-  localization: { defaultLocale: 'en', locales: ['en'] },
+  localization,
   codebook,
   stages: [
     {
@@ -296,6 +299,7 @@ const protocolWith = (rule: RuleDraft): unknown => ({
       ...stageFields,
       filter: { rules: [rule] },
     },
+    createDefaultFinishSessionStage({ id: 'finish', localization }),
   ],
 });
 

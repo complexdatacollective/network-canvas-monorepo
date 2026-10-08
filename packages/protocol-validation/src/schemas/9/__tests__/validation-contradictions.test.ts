@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { dateWithinPickerRange } from '@codaco/shared-consts';
 
+import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import ProtocolSchemaV9 from '../schema.ts';
 import { findValidationContradictions } from '../variables/validation-contradictions.ts';
@@ -3013,21 +3014,23 @@ describe('R2 — reference target type must equal the source type', () => {
 
   it('rejects sameAs referencing a differently-typed variable', () => {
     const result = ProtocolSchemaV9.safeParse(
-      protocolWith({
-        a: {
-          name: 'first_name',
-          label: 'first_name',
-          type: 'text',
-          component: 'Text',
-          validation: { sameAs: 'b' },
-        },
-        b: {
-          name: 'age',
-          label: 'age',
-          type: 'number',
-          component: 'Number',
-        },
-      }),
+      withFinishStage(
+        protocolWith({
+          a: {
+            name: 'first_name',
+            label: 'first_name',
+            type: 'text',
+            component: 'Text',
+            validation: { sameAs: 'b' },
+          },
+          b: {
+            name: 'age',
+            label: 'age',
+            type: 'number',
+            component: 'Number',
+          },
+        }),
+      ),
     );
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -3041,21 +3044,23 @@ describe('R2 — reference target type must equal the source type', () => {
 
   it('accepts a comparator referencing a same-typed variable', () => {
     const result = ProtocolSchemaV9.safeParse(
-      protocolWith({
-        a: {
-          name: 'start_age',
-          label: 'start_age',
-          type: 'number',
-          component: 'Number',
-          validation: { lessThanVariable: 'b' },
-        },
-        b: {
-          name: 'end_age',
-          label: 'end_age',
-          type: 'number',
-          component: 'Number',
-        },
-      }),
+      withFinishStage(
+        protocolWith({
+          a: {
+            name: 'start_age',
+            label: 'start_age',
+            type: 'number',
+            component: 'Number',
+            validation: { lessThanVariable: 'b' },
+          },
+          b: {
+            name: 'end_age',
+            label: 'end_age',
+            type: 'number',
+            component: 'Number',
+          },
+        }),
+      ),
     );
     expect(result.success).toBe(true);
   });
@@ -4747,7 +4752,7 @@ describe('findValidationContradictions — Twenty-first-wave Finding 1: componen
       networkComposerStage('Toggle'),
     ]);
 
-    const result = ProtocolSchemaV9.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
 
     expect(result.success).toBe(true);
   });
@@ -4766,7 +4771,7 @@ describe('findValidationContradictions — Twenty-first-wave Finding 1: componen
       networkComposerStage('Boolean'),
     ]);
 
-    const result = ProtocolSchemaV9.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -4789,7 +4794,7 @@ describe('findValidationContradictions — Twenty-first-wave Finding 1: componen
   it('accepts a componentless singleton-true boolean pair with no composer stage at all', () => {
     const protocol = protocolWithBooleanPair(undefined, undefined);
 
-    const result = ProtocolSchemaV9.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
 
     expect(result.success).toBe(true);
   });
@@ -4805,7 +4810,7 @@ describe('findValidationContradictions — Twenty-first-wave Finding 1: componen
       networkComposerStage('Toggle'),
     ]);
 
-    const result = ProtocolSchemaV9.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
 
     expect(result.success).toBe(true);
   });
@@ -4820,7 +4825,7 @@ describe('findValidationContradictions — Twenty-first-wave Finding 1: componen
       networkComposerStage('Boolean'),
     ]);
 
-    const result = ProtocolSchemaV9.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -4844,7 +4849,7 @@ describe('findValidationContradictions — Twenty-first-wave Finding 1: componen
   it('accepts an explicit component: Boolean singleton pair with no composer stage at all', () => {
     const protocol = protocolWithBooleanPair('Boolean', undefined);
 
-    const result = ProtocolSchemaV9.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
 
     expect(result.success).toBe(true);
   });
@@ -4920,7 +4925,7 @@ describe('findValidationContradictions — Twenty-first-wave Finding 1: componen
       ],
     };
 
-    const result = ProtocolSchemaV9.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
 
     expect(result.success).toBe(false);
     if (!result.success) {

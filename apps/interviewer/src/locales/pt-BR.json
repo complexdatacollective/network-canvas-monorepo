@@ -120,8 +120,6 @@
   "interviewer.interview.theProtocolThisInterviewUsesCouldNot": "O protocolo usado por esta entrevista não pôde ser atualizado para funcionar com esta versão do aplicativo, por isso esta entrevista não pode ser continuada. As respostas dela continuam disponíveis na tela de dados. Para iniciar novas entrevistas, corrija o protocolo no Architect e importe-o novamente.",
   "interviewer.interview.thisInterviewMayHaveBeenDeletedOr": "Esta entrevista pode ter sido excluída, ou o protocolo usado por ela não está mais instalado.",
   "interviewer.interviewComplete.exit": "Sair",
-  "interviewer.interviewComplete.interviewComplete": "Entrevista concluída",
-  "interviewer.interviewComplete.thankYouThisInterviewIsFinishedAnd": "Agradecemos sua participação. Esta entrevista foi concluída e as respostas não podem mais ser alteradas. Devolva o dispositivo à equipe de pesquisa.",
   "interviewer.language.automatic": "Automático (navegador)",
   "interviewer.language.failed": "O idioma foi alterado nesta sessão, mas a preferência não pôde ser salva. Seu navegador pode estar bloqueando o armazenamento no dispositivo.",
   "interviewer.language.hint": "Escolha o idioma que o Interviewer usa neste dispositivo. As entrevistas seguem o idioma do navegador de quem participa ou o idioma escolhido durante a entrevista.",

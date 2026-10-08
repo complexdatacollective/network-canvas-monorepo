@@ -2,6 +2,10 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import { Effect, Result, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
+import {
+  findTimelineStructureProblems,
+  isFinishSessionStage,
+} from '@codaco/protocol-validation';
 import { CodebookIdSchema } from '@codaco/shared-consts';
 import {
   type SectionDoc,
@@ -133,6 +137,89 @@ const stageOrderOf = (
         }),
       );
 };
+
+type TimelineStage = Readonly<{ type: string }>;
+
+export const timelineStageOf = (
+  doc: SectionDoc | undefined,
+): TimelineStage => ({
+  type: typeof doc?.type === 'string' ? doc.type : '',
+});
+
+/**
+ * The type of each stage the order names, in the order's order: what the
+ * timeline's structural rules read. One query for the whole order; a stage the
+ * manifest does not hold reads as a stage of no type, which none of the rules
+ * mistake for a finish stage.
+ */
+export const loadStageTypes: (
+  teamId: string,
+  head: HeadState,
+  order: readonly string[],
+) => Effect.Effect<TimelineStage[], SqlError.SqlError, Transaction> = Effect.fn(
+  'protocol.store.loadStageTypes',
+)(function* (teamId: string, head: HeadState, order: readonly string[]) {
+  const hashes = order.flatMap((stageId) => {
+    const hash = head.sectionHashes[sectionId({ kind: 'stage', stageId })];
+    return hash === undefined ? [] : [hash];
+  });
+  if (hashes.length === 0) return order.map(() => timelineStageOf(undefined));
+  const { tx } = yield* Transaction;
+  const rows = yield* tx
+    .select({ hash: sections.hash, doc: sections.doc })
+    .from(sections)
+    .where(and(eq(sections.teamId, teamId), inArray(sections.hash, hashes)));
+  const byHash = new Map(rows.map((row) => [row.hash, row.doc]));
+  return order.map((stageId) => {
+    const hash = head.sectionHashes[sectionId({ kind: 'stage', stageId })];
+    return timelineStageOf(hash === undefined ? undefined : byHash.get(hash));
+  });
+}, sqlErrorsOnly);
+
+/**
+ * Where a stage being created goes, following Architect's rule: a stage that
+ * is not itself a finish stage is never put after a finish stage, where no
+ * participant could reach it, so a position at or past the first finish stage
+ * — or no position at all — puts it just before that stage.
+ */
+export const creationIndex = (
+  stages: readonly TimelineStage[],
+  stage: TimelineStage,
+  requested: number,
+): number => {
+  if (isFinishSessionStage(stage)) return requested;
+  const firstFinish = stages.findIndex(isFinishSessionStage);
+  return firstFinish === -1 ? requested : Math.min(requested, firstFinish);
+};
+
+/**
+ * Whether removing this stage would leave the interview with no finish stage
+ * to end at. The last finish stage cannot be removed; a protocol that holds
+ * more than one may lose the others.
+ */
+export const isLastFinishStage = (
+  order: readonly string[],
+  stages: readonly TimelineStage[],
+  stageId: string,
+): boolean => {
+  const finishIds = order.filter((_, index) =>
+    isFinishSessionStage(stages[index]),
+  );
+  return finishIds.length === 1 && finishIds[0] === stageId;
+};
+
+/**
+ * Whether a reorder adds a problem to the timeline's structure: a stage after
+ * the finish stage, or the interview ending anywhere else. Only problems it
+ * ADDS refuse it, so a draft already in such a shape can still be reordered
+ * into a better one.
+ */
+const reorderAddsTimelineProblems = (
+  current: readonly TimelineStage[],
+  proposed: readonly TimelineStage[],
+): boolean =>
+  findTimelineStructureProblems(proposed).length >
+  findTimelineStructureProblems(current).length;
 
 export const failOnSectionValidation = (
   assert: () => void,
@@ -290,12 +377,21 @@ export const addStage: (
     });
   }
   const order = yield* stageOrderOf(yield* loadDoc(teamId, orderHash));
-  const index = params.index ?? order.length;
-  if (!Number.isInteger(index) || index < 0 || index > order.length) {
+  const requested = params.index ?? order.length;
+  if (
+    !Number.isInteger(requested) ||
+    requested < 0 ||
+    requested > order.length
+  ) {
     return yield* new DraftStructureError({
-      reason: `stage index ${index} out of range`,
+      reason: `stage index ${requested} out of range`,
     });
   }
+  const index = creationIndex(
+    yield* loadStageTypes(teamId, head, order),
+    timelineStageOf(params.stage),
+    requested,
+  );
   const newOrder = [...order];
   newOrder.splice(index, 0, stageId);
   yield* fenceDraftLeases(teamId, params.draftId, [orderId, id]);
@@ -339,6 +435,17 @@ export const removeStage: (
     });
   }
   const order = yield* stageOrderOf(yield* loadDoc(teamId, orderHash));
+  if (
+    isLastFinishStage(
+      order,
+      yield* loadStageTypes(teamId, head, order),
+      params.stageId,
+    )
+  ) {
+    return yield* new DraftStructureError({
+      reason: `stage ${params.stageId} is the only finish stage, and the interview has to end at one`,
+    });
+  }
   const newOrder = order.filter((entry) => entry !== params.stageId);
   yield* fenceDraftLeases(teamId, params.draftId, [orderId, id]);
   return yield* advanceDraftManifest(
@@ -409,6 +516,18 @@ export const moveStage: (
     });
   }
   newOrder.splice(params.toIndex, 0, stageId);
+  const types = yield* loadStageTypes(teamId, head, order);
+  const typeOf = new Map(order.map((entry, index) => [entry, types[index]]));
+  if (
+    reorderAddsTimelineProblems(
+      types,
+      newOrder.map((entry) => typeOf.get(entry) ?? timelineStageOf(undefined)),
+    )
+  ) {
+    return yield* new DraftStructureError({
+      reason: `moving stage ${params.stageId} to index ${params.toIndex} would leave a stage after the finish stage, or the interview ending without one`,
+    });
+  }
   yield* fenceDraftLeases(teamId, params.draftId, [orderId]);
   return yield* advanceDraftManifest(
     teamId,

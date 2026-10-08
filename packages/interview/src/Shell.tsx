@@ -33,10 +33,16 @@ import { GeospatialOfflineIndicator } from './components/GeospatialOfflineIndica
 import Navigation, { TEXT_SCALE_OPTIONS } from './components/Navigation';
 import StageErrorBoundary from './components/StageErrorBoundary';
 import { CurrentStepProvider } from './contexts/CurrentStepContext';
+import {
+  type InterviewCompletion,
+  InterviewCompletionProvider,
+  useInterviewCompletion,
+} from './contexts/InterviewCompletionContext';
 import { StageMetadataProvider } from './contexts/StageMetadataContext';
 import { ContractProvider } from './contract/context';
 import type {
   AssetRequestHandler,
+  CompletedAction,
   FinishHandler,
   InterviewAnalyticsMetadata,
   InterviewerFlags,
@@ -48,13 +54,14 @@ import type {
 import useInterviewNavigation from './hooks/useInterviewNavigation';
 import useMediaQuery from './hooks/useMediaQuery';
 import { InterviewI18nProvider } from './i18n/InterviewI18nProvider';
+import { CompletedInterview } from './interfaces/FinishSession/FinishSession';
 import {
   ProtocolLocalizationProvider,
   useProtocolLocale,
 } from './localization/ProtocolLocalizationProvider';
 import { getLocalePreference, getRecordedLocale } from './selectors/session';
 import { getLastAvailableAuthoredStageIndex } from './selectors/skip-logic';
-import { getProtocolLocalization } from './store/modules/protocol';
+import { getProtocolLocalization, getStages } from './store/modules/protocol';
 import { recordLocale, setLocalePreference } from './store/modules/session';
 import { store, useAppDispatch, type RootState } from './store/store';
 import { SyncFlushProvider } from './store/SyncFlushContext';
@@ -102,18 +109,7 @@ function snapTextScale(scale: number | undefined): number {
   );
 }
 
-function Interview({
-  onExit,
-  hideNavigation = false,
-  navigationOrientation: orientationProp,
-  navigationClassnames,
-  allowStageNavigation,
-  allowUserScaling,
-  initialTextScale,
-  onTextScaleChange,
-  initialStageOverrideIndex,
-  reviewMode,
-}: {
+type InterviewProps = {
   onExit?: () => void;
   hideNavigation?: boolean;
   navigationOrientation?: NavigationOrientation;
@@ -124,7 +120,75 @@ function Interview({
   onTextScaleChange?: (scale: number) => void;
   initialStageOverrideIndex?: number;
   reviewMode?: boolean;
-}) {
+};
+
+/**
+ * A finished interview shows its completed state; a review of one shows its
+ * stages, because reading them is what a review is for.
+ */
+function Interview(props: InterviewProps) {
+  const { completion } = useInterviewCompletion();
+  if (completion && props.reviewMode !== true) {
+    return <CompletedShell completion={completion} />;
+  }
+  return <ActiveInterview {...props} />;
+}
+
+/**
+ * A finished interview, opened again or just finished: the finish stage it
+ * ended at, in its completed state. There is no navigation, so there is no
+ * way back into the interview.
+ */
+function CompletedShell({ completion }: { completion: InterviewCompletion }) {
+  const { locale, direction } = useAppLocale();
+  const { metadata: contentLocale } = useProtocolLocale();
+  const stages = useSelector(getStages);
+  const finishStages = stages.filter(
+    (candidate) => candidate.type === 'FinishSession',
+  );
+  // The stage the host recorded, or, for an interview finished before finish
+  // stages were recorded, the last one: where a linear interview ends.
+  const stage =
+    finishStages.find((candidate) => candidate.id === completion.stageId) ??
+    finishStages.at(-1);
+
+  return (
+    <ThemedRegion
+      theme="interview"
+      lang={locale}
+      dir={direction}
+      render={
+        <main className="shell-type-ramp relative flex size-full flex-1 overflow-hidden" />
+      }
+    >
+      <div
+        className="relative flex size-full flex-col items-center justify-center pt-[env(safe-area-inset-top)]"
+        id="stage"
+        dir={contentLocale.direction}
+      >
+        <DirectionProvider direction={contentLocale.direction}>
+          <CompletedInterview
+            stage={stage}
+            focusOnMount={completion.finishedHere}
+          />
+        </DirectionProvider>
+      </div>
+    </ThemedRegion>
+  );
+}
+
+function ActiveInterview({
+  onExit,
+  hideNavigation = false,
+  navigationOrientation: orientationProp,
+  navigationClassnames,
+  allowStageNavigation,
+  allowUserScaling,
+  initialTextScale,
+  onTextScaleChange,
+  initialStageOverrideIndex,
+  reviewMode,
+}: InterviewProps) {
   const { locale, direction } = useAppLocale();
   const { metadata: contentLocale } = useProtocolLocale();
   const {
@@ -398,9 +462,15 @@ type ShellProps = {
   finishConfirmationDescription?: ReactNode;
   onExit?: () => void;
   /**
-   * Adapt the Shell for reviewing an existing interview: stop at the final
-   * authored stage, use review-specific exit messaging, and suppress interview
-   * analytics. The host remains responsible for supplying non-persisting sync
+   * One action offered on the completed state of a finished interview, such
+   * as Interviewer's "Exit". The completed state is shown when the payload's
+   * session is finished, and as soon as the participant finishes.
+   */
+  completedAction?: CompletedAction;
+  /**
+   * Adapt the Shell for reviewing an existing interview: show its stages even
+   * when it is finished, stop before its finish stage, use review-specific
+   * exit messaging, and suppress interview analytics. The host remains responsible for supplying non-persisting sync
    * and finish handlers.
    */
   reviewMode?: boolean;
@@ -462,6 +532,7 @@ const Shell = ({
   disableAnalytics = false,
   finishConfirmationDescription,
   onExit,
+  completedAction,
   reviewMode,
   hideNavigation,
   navigationOrientation,
@@ -580,11 +651,31 @@ const Shell = ({
     trackerRef.current = next;
   }, []);
 
+  // A finished session opens in its completed state, at the finish stage the
+  // host recorded.
+  const initialCompletion = useMemo<InterviewCompletion | null>(
+    () =>
+      payload.session.finishTime === null
+        ? null
+        : {
+            stageId: payload.session.finishStageId ?? null,
+            finishedHere: false,
+          },
+    [payload.session.finishTime, payload.session.finishStageId],
+  );
+
   const reviewEntry = useMemo(() => {
+    // A review stops before the finish stage, so a step at or past it enters
+    // at the last stage the review can show.
+    const finishIndex = payload.protocol.stages.findIndex(
+      (stage) => stage.type === 'FinishSession',
+    );
+    const reviewEnd =
+      finishIndex === -1 ? payload.protocol.stages.length : finishIndex;
     if (
       reviewMode !== true ||
       currentStep === undefined ||
-      currentStep < payload.protocol.stages.length
+      currentStep < reviewEnd
     ) {
       return {
         currentStep,
@@ -596,7 +687,7 @@ const Shell = ({
       payload.protocol.stages,
       payload.session.network,
     );
-    const hasAuthoredStage = payload.protocol.stages.length > 0;
+    const hasAuthoredStage = reviewEnd > 0;
 
     return {
       currentStep: lastAvailableStage ?? 0,
@@ -633,28 +724,35 @@ const Shell = ({
               flags={flags}
               finishConfirmationDescription={finishConfirmationDescription}
             >
-              <CurrentStepProvider
-                currentStep={reviewEntry.currentStep}
-                onStepChange={onStepChange}
+              <InterviewCompletionProvider
+                // A new payload is a new interview.
+                key={payload.session.id}
+                initialCompletion={initialCompletion}
+                completedAction={completedAction}
               >
-                <Interview
-                  onExit={onExit}
-                  hideNavigation={hideNavigation}
-                  navigationOrientation={navigationOrientation}
-                  navigationClassnames={navigationClassnames}
-                  allowStageNavigation={
-                    allowStageNavigation &&
-                    (currentStep === undefined || onStepChange !== undefined)
-                  }
-                  allowUserScaling={allowUserScaling}
-                  initialTextScale={initialTextScale}
-                  onTextScaleChange={onTextScaleChange}
-                  initialStageOverrideIndex={
-                    reviewEntry.initialStageOverrideIndex
-                  }
-                  reviewMode={reviewMode}
-                />
-              </CurrentStepProvider>
+                <CurrentStepProvider
+                  currentStep={reviewEntry.currentStep}
+                  onStepChange={onStepChange}
+                >
+                  <Interview
+                    onExit={onExit}
+                    hideNavigation={hideNavigation}
+                    navigationOrientation={navigationOrientation}
+                    navigationClassnames={navigationClassnames}
+                    allowStageNavigation={
+                      allowStageNavigation &&
+                      (currentStep === undefined || onStepChange !== undefined)
+                    }
+                    allowUserScaling={allowUserScaling}
+                    initialTextScale={initialTextScale}
+                    onTextScaleChange={onTextScaleChange}
+                    initialStageOverrideIndex={
+                      reviewEntry.initialStageOverrideIndex
+                    }
+                    reviewMode={reviewMode}
+                  />
+                </CurrentStepProvider>
+              </InterviewCompletionProvider>
             </ContractProvider>
           </SyncFlushProvider>
         </InterviewLocalization>

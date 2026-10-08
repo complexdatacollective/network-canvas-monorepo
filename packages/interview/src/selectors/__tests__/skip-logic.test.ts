@@ -33,6 +33,8 @@ const stage = (id: string, skipLogic?: SkipLogic) => ({
   ...(skipLogic ? { skipLogic } : {}),
 });
 
+const finishStage = () => ({ id: 'finish', type: 'FinishSession' });
+
 describe('buildStageAvailabilityMap', () => {
   it('does not activate a destination while its owning stage remains visible', () => {
     const destination = { type: 'stage' as const, stageId: 's3' };
@@ -46,7 +48,7 @@ describe('buildStageAvailabilityMap', () => {
         }),
         stage('s2'),
         stage('s3'),
-        stage('finish'),
+        finishStage(),
       ],
       network,
     );
@@ -62,7 +64,7 @@ describe('buildStageAvailabilityMap', () => {
 
   it('preserves legacy one-screen skip behavior without a destination', () => {
     const availability = buildStageAvailabilityMap(
-      [stage('s0'), stage('s1', alwaysSkipped()), stage('s2'), stage('finish')],
+      [stage('s0'), stage('s1', alwaysSkipped()), stage('s2'), finishStage()],
       network,
     );
 
@@ -83,7 +85,7 @@ describe('buildStageAvailabilityMap', () => {
         stage('s2'),
         stage('s3'),
         stage('s4'),
-        stage('finish'),
+        finishStage(),
       ],
       network,
     );
@@ -100,14 +102,14 @@ describe('buildStageAvailabilityMap', () => {
     expect(availability[4]).toEqual({ kind: 'available' });
   });
 
-  it('maps a finish destination to the synthetic final screen', () => {
+  it('maps a finish destination to the finish stage', () => {
     const destination = { type: 'finish' as const };
     const availability = buildStageAvailabilityMap(
       [
         stage('s0', alwaysSkipped(destination)),
         stage('s1'),
         stage('s2'),
-        stage('finish'),
+        finishStage(),
       ],
       network,
     );
@@ -129,7 +131,7 @@ describe('buildStageAvailabilityMap', () => {
         stage('s1', alwaysSkipped({ type: 'finish' })),
         stage('s2'),
         stage('s3'),
-        stage('finish'),
+        finishStage(),
       ],
       network,
     );
@@ -155,7 +157,7 @@ describe('buildStageAvailabilityMap', () => {
         stage('s2', alwaysSkipped(chainedDestination)),
         stage('s3'),
         stage('s4'),
-        stage('finish'),
+        finishStage(),
       ],
       network,
     );
@@ -181,7 +183,7 @@ describe('buildStageAvailabilityMap', () => {
       [
         stage('s0'),
         stage('s1', alwaysSkipped({ type: 'stage', stageId: 'missing-stage' })),
-        stage('finish'),
+        finishStage(),
       ],
       network,
     );
@@ -195,7 +197,7 @@ describe('getLastAvailableAuthoredStageIndex', () => {
   it('returns the final authored stage on a route without skips', () => {
     expect(
       getLastAvailableAuthoredStageIndex(
-        [stage('s0'), stage('s1'), stage('s2')],
+        [stage('s0'), stage('s1'), stage('s2'), finishStage()],
         network,
       ),
     ).toBe(2);
@@ -209,6 +211,7 @@ describe('getLastAvailableAuthoredStageIndex', () => {
           stage('s1', alwaysSkipped({ type: 'finish' })),
           stage('s2'),
           stage('s3'),
+          finishStage(),
         ],
         network,
       ),
@@ -222,6 +225,7 @@ describe('getLastAvailableAuthoredStageIndex', () => {
           stage('s0', alwaysSkipped({ type: 'finish' })),
           stage('s1'),
           stage('s2'),
+          finishStage(),
         ],
         network,
       ),

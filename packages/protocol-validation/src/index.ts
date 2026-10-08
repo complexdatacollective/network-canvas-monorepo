@@ -118,6 +118,22 @@ export {
   type LocalizedString,
   type LocalizedStringFormat,
 } from './schemas/9/localized-string.ts';
+// The finish stage text Network Canvas supplies, written into a protocol by
+// the v8 → v9 migration and by Architect.
+export {
+  createDefaultFinishSessionStage,
+  DEFAULT_FINISH_SESSION_TEXT,
+  defaultFinishSessionFields,
+  defaultFinishSessionText,
+  type FinishSessionText,
+  hasDefaultFinishSessionText,
+  withDefaultFinishSessionTranslation,
+} from './schemas/9/finish-session-defaults.ts';
+export {
+  findTimelineStructureProblems,
+  isFinishSessionStage,
+  type TimelineStructureProblem,
+} from './schemas/9/timeline-structure.ts';
 export {
   INHERITANCE_PATTERNS,
   type InheritancePattern,

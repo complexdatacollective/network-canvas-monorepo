@@ -90,6 +90,27 @@ export class InterviewFixture {
     await this.waitForStageLoad();
   }
 
+  /**
+   * Open a finished interview. It opens in its completed state, which is no
+   * stage the host can step to, so there is no step to wait for: wait for the
+   * completed state's heading instead.
+   */
+  async gotoFinished(stageIndex: number): Promise<void> {
+    if (!this.interviewId) {
+      throw new Error(
+        'interviewId must be set before calling gotoFinished(). Set it in beforeEach.',
+      );
+    }
+
+    await this.page.goto(
+      `/?interviewId=${this.interviewId}&step=${stageIndex}`,
+    );
+    const main = this.page.locator('main[data-theme-interview]');
+    await expect(main).toBeVisible({ timeout: 15_000 });
+    await expect(main.getByRole('heading', { level: 1 })).toBeVisible();
+    await this.waitForMotionCommit();
+  }
+
   async captureInitial(mask?: Locator[]): Promise<void> {
     if (!this.interviewId) {
       throw new Error(

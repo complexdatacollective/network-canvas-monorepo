@@ -186,18 +186,19 @@ export default function InterviewClient({
     [],
   );
 
-  // Called when the participant clicks Finish on the FinishSession
-  // stage. Receives an AbortSignal so you can cancel any in-flight work
-  // if the user backs out.
+  // Called when the participant confirms Finish on a finish stage. Record
+  // the finish stage and its outcome with the finish time; once this
+  // resolves, the interview shows its completed state. Receives an
+  // AbortSignal so you can cancel any in-flight work if the user backs out.
   const onFinish: FinishHandler = useCallback(
-    async (interviewId, signal) => {
+    async (interviewId, finish, signal) => {
       await fetch(`/interview/${interviewId}/finish`, {
         method: 'POST',
+        body: JSON.stringify(finish), // { stageId, outcome }
         signal,
       });
-      router.push(`/interview/${interviewId}/complete`);
     },
-    [router],
+    [],
   );
 
   // Stages reference protocol assets by ID. The package calls this
@@ -244,12 +245,14 @@ different stages without re-creating the Redux store: only the
 | `onStepChange`                  | `(step: number) => void`                                              | yes      | Fired whenever the participant navigates. The host should mirror `step` into its own state.                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `onSync`                        | `(id, session, opts) => Promise`                                      | yes      | Called after every Redux commit — the engine does not batch. `session` is a `SessionSnapshot`. Persist however you like; wrap in `createDebouncedSyncHandler` if writes are expensive. `opts.immediate` marks writes that must not be deferred (exit, finish); `opts.unloading` additionally marks the ones the document may not survive (hidden, pagehide). A change to `locale` or `localePreference` alone never triggers it, and a host persisting the snapshot must not write those two fields (see `onProtocolLocaleChange`). |
 | `onProtocolLocaleChange`        | `(id, { locale, localePreference }) => Promise`                       | yes      | Persists the session's two language fields, which `onSync` never writes. Called when the participant states a preference, and whenever the language shown differs from the stored `locale`. Calls for one interview run one at a time, in order. A rejected call is logged and the next one still runs.                                                                                                                                                                                                                             |
-| `onFinish`                      | `(id, AbortSignal) => Promise`                                        | yes      | Called from the FinishSession stage. The signal aborts if the user navigates away mid-flight.                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `onFinish`                      | `(id, { stageId, outcome }, AbortSignal) => Promise`                  | yes      | Called when the participant confirms Finish on a finish stage, with that stage's id and outcome (`completed`, `ineligible` or `terminated`). Record both with the finish time, and pass the stage id back as `session.finishStageId`. When it resolves, the interview shows its completed state. The signal aborts if the user navigates away mid-flight.                                                                                                                                                                           |
 | `onRequestAsset`                | `(assetId) => Promise<url>`                                           | yes      | Resolve a protocol asset to a URL. Called lazily as stages mount.                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `analytics`                     | `InterviewAnalyticsMetadata`                                          | yes      | Host metadata attached as super-properties on every event: `installationId` (anonymous host UUID), `hostApp` (e.g. `"Fresco"`), `hostVersion?`.                                                                                                                                                                                                                                                                                                                                                                                     |
 | `posthogClient`                 | A posthog-js client (needs `capture`, `captureException`, `register`) | no       | Pre-initialised PostHog client. When provided, the package emits events through it without modifying its config. When absent, the package lazy-initialises its own named instance against `ph-relay.networkcanvas.com`.                                                                                                                                                                                                                                                                                                             |
 | `disableAnalytics`              | `boolean`                                                             | no       | When `true`, all event emission is suppressed (no `posthog-js` import). Default `false`. Use for E2E and synthetic-interview runs.                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `finishConfirmationDescription` | `ReactNode`                                                           | no       | Host-specific explanation shown in the finish confirmation dialog. Defaults to localized neutral guidance that does not promise responses are immutable. A subscribed message component can keep a host override responsive to language changes.                                                                                                                                                                                                                                                                                    |
+| `completedAction`               | `{ label: ReactNode; onAction: () => void }`                          | no       | One action offered on the completed state of a finished interview, such as Interviewer's "Exit". Without it the completed state offers no action.                                                                                                                                                                                                                                                                                                                                                                                   |
+| `reviewMode`                    | `boolean`                                                             | no       | Show a finished interview's stages instead of its completed state, stopping before its finish stage. The host supplies non-persisting sync and finish handlers.                                                                                                                                                                                                                                                                                                                                                                     |
 | `flags`                         | `{ isE2E?, isDevelopment? }`                                          | no       | `isE2E: true` exposes `window.__interviewStore` for Playwright fixtures. `isDevelopment: true` enables redux-logger.                                                                                                                                                                                                                                                                                                                                                                                                                |
 
 The package replaces a previous `onError` callback with internal `posthog.captureException` calls; render errors and asset-load failures are reported via the resolved analytics client (or suppressed when `disableAnalytics` is `true`). The host does not need to wire its own error sink.
@@ -602,6 +605,11 @@ type SessionPayload = SessionSnapshot & {
   // sorts them (`getLocaleMetadata` from @codaco/protocol-validation). Never
   // persisted.
   localeOptions: readonly LocaleMetadata[];
+  // The finish stage a finished interview ended at, as recorded from
+  // `FinishHandler`. A finished interview (`finishTime` set) opens on this
+  // stage in its completed state; when it is null or absent, on the
+  // protocol's last finish stage.
+  finishStageId?: string | null;
 };
 
 type ProtocolPayload = Omit<CurrentProtocol, 'assetManifest'> & {
@@ -649,10 +657,14 @@ function createDebouncedSyncHandler(
   write: SyncHandler,
   options: { waitMs: number },
 ): SyncHandler;
+type FinishOutcome = 'completed' | 'ineligible' | 'terminated';
+type SessionFinish = Readonly<{ stageId: string; outcome: FinishOutcome }>;
 type FinishHandler = (
   interviewId: string,
+  finish: SessionFinish,
   signal: AbortSignal,
 ) => Promise<void>;
+type CompletedAction = Readonly<{ label: ReactNode; onAction: () => void }>;
 type AssetRequestHandler = (assetId: string) => Promise<string>;
 type ErrorHandler = (error: Error, ctx?: Record<string, unknown>) => void;
 type StepChangeMeta = { progress: number; totalSteps: number };
@@ -672,7 +684,7 @@ type InterviewerFlags = {
 
 `Shell` also provides a portal container (via `<PortalContainerProvider>` from `@codaco/fresco-ui/PortalContainer`) so dialogs, popovers, dropdowns, tooltips, toasts, selects, and comboboxes opened from inside the interview render into a node _inside_ the themed subtree — they inherit the interview palette automatically rather than portaling to `document.body`.
 
-If you render interview-themed UI **outside** of `Shell` (e.g. a "thank you" page after the interview ends), wrap that UI with `<ThemedRegion theme="interview">` from `@codaco/fresco-ui/ThemedRegion`:
+A finished interview needs no page of its own: `Shell` shows its completed state. If you render other interview-themed UI **outside** of `Shell`, wrap that UI with `<ThemedRegion theme="interview">` from `@codaco/fresco-ui/ThemedRegion`:
 
 ```tsx
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';

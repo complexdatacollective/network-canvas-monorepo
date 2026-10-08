@@ -7,6 +7,7 @@ import {
   caseProperty,
   codebookHashProperty,
   edgeSourceProperty,
+  finishOutcomeProperty,
   interviewLocaleProperty,
   protocolName,
   protocolProperty,
@@ -103,6 +104,13 @@ export const setUpXml = (
     graph.setAttribute(
       'nc:interviewLocale',
       sessionVariables[interviewLocaleProperty],
+    );
+  }
+
+  if (sessionVariables[finishOutcomeProperty]) {
+    graph.setAttribute(
+      'nc:finishOutcome',
+      sessionVariables[finishOutcomeProperty],
     );
   }
 

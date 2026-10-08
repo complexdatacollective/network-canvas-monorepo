@@ -1,4 +1,5 @@
 import { localized } from '../../../utils/test-utils.ts';
+import { DEFAULT_FINISH_SESSION_TEXT } from '../finish-session-defaults.ts';
 
 const shape = { default: 'circle' };
 
@@ -539,6 +540,16 @@ export const completeProtocol = () => ({
           inheritancePattern: 'autosomalDominant',
         },
       ],
+    },
+    // Schema 8 has no finish stage; the migration adds this one, with this
+    // id and the supplied text.
+    {
+      id: 'finish',
+      type: 'FinishSession',
+      label: localized(DEFAULT_FINISH_SESSION_TEXT.en.label),
+      title: localized(DEFAULT_FINISH_SESSION_TEXT.en.title),
+      content: localized(DEFAULT_FINISH_SESSION_TEXT.en.content),
+      outcome: 'completed',
     },
   ],
 });

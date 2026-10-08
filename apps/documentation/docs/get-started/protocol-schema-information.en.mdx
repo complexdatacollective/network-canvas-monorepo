@@ -106,7 +106,9 @@ Before you run a schema 9 protocol, make sure the app you run it in has been upd
 - **Labels for highlighted Narrative attributes.** Each attribute a [Narrative](/en/design-protocols/interface-documentation/narrative) preset highlights has its own label, which participants see in the preset switcher and which can be translated.
 - **Labels for Network Composer fields.** Every field of a [Network Composer](/en/design-protocols/interface-documentation/network-composer) form needs a label, which participants see and which can be translated.
 - **New "[Language Chooser](/en/design-protocols/interface-documentation/language-chooser)" interface.** A screen where participants choose which of the protocol's languages the rest of the interview is shown in.
+- **New "[Finish Screen](/en/design-protocols/interface-documentation/finish-screen)" interface.** The screen that ends the interview is now a stage at the end of every protocol, with a heading and text you write and can translate. It also records how the interview ended (completed, ineligible, or ended early). Protocols can't have a stage after it.
 - **The interview language in exported data.** Each exported interview records the language it was shown in. See [Interview language](/en/analyze-data/data-export#interview-language).
+- **How the interview ended in exported data.** Each exported interview records its outcome, taken from its Finish Screen. See [How the interview ended](/en/analyze-data/data-export#how-the-interview-ended).
 
 In the protocol file, each translation is stored as an [ICU MessageFormat](https://unicode-org.github.io/icu/userguide/format_parse/messages/) message, so curly braces and some apostrophes are escaped. You never see this escaping: Architect shows and saves your text exactly as you type it, and participants see it the same way. If you edit a protocol file by hand, a translation must be plain text written in this format; placeholders such as `{name}` are not allowed.
 
@@ -118,6 +120,7 @@ Migrating a protocol from schema 8 to schema 9 keeps all of its content, and exi
 - gives every node type, edge type and attribute a label, which starts as its name.
 - gives every attribute a Narrative preset highlights a label, which starts as the attribute's name.
 - gives every Network Composer field that has no label one, which starts as the attribute's name.
+- adds one [Finish Screen](/en/design-protocols/interface-documentation/finish-screen) stage at the end, because every schema 9 protocol must end with one. The screen that ends the interview is now a Finish Screen stage at the end of your protocol, so you can change its heading and text and translate them like the rest of your protocol. It starts with the text the interview has always shown there, recorded as English, and its outcome is **Completed**. The stage's id is `finish`, or `finish-2` and so on if another stage already has that id.
 
 ## Schema version 8
 
@@ -153,7 +156,7 @@ Schema version 8 introduces several new interfaces and authoring features:
 - **New `location` variable type.** Stores the geospatial area a participant selects on the Geospatial interface; it has no input control of its own and is created when you configure a Geospatial stage.
 - **New per-variable `encrypted` flag.** Marks a variable's values for on-device encryption; it is set via the experimental Anonymisation interface rather than the general variable editor.
 - **New comparator options for skip logic and filters:** "contains" and "does not contain".
-- **Targeted skip-logic destinations.** When a stage is hidden, the interview can continue at the next available stage, jump to a selected later stage, or route to the interview finish screen. Destinations must point forward.
+- **Targeted skip-logic destinations.** When a stage is hidden, the interview can continue at the next available stage, jump to a selected later stage, or route to the [Finish Screen](/en/design-protocols/interface-documentation/finish-screen) that ends the interview. Destinations must point forward.
 - **Multi-selection support** for the "includes"/"excludes" comparators on ordinal and categorical variables.
 - **Configurable default and variable-driven node shapes.** Choose circle, square, or diamond as a node type's default, or [map its shape from a node variable](/en/design-protocols/key-concepts/codebook#mapping-a-node-variable-to-shape). The previous `iconVariant` property was renamed to `icon`.
 - **Optional "hint" property on form fields** (a markdown string shown as extra guidance to participants), plus a `showValidationHints` option to automatically display hints derived from validation rules.

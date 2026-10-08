@@ -203,6 +203,7 @@ function protocolWithFamilyPedigreeStage(): CurrentProtocol {
           },
         ],
       },
+      ...emptyProtocol().stages,
     ],
   };
 }

@@ -35,6 +35,12 @@ export type ScenarioDefinition = {
   currentStep?: number;
   /** install synth.getNetwork() as the starting network (default false) */
   seedNetwork?: boolean;
+  /**
+   * open the interview as already finished: at the protocol's finish stage
+   * (`recorded`), or with no finish stage recorded, as an interview finished
+   * before finish stages existed was (`unrecorded`)
+   */
+  finished?: 'recorded' | 'unrecorded';
   /** seeded stage metadata (e.g. NarrativePedigree source-stage state) */
   stageMetadata?: unknown;
   /** extra pixel-capture masks (visual suite only, e.g. EncryptedBackground) */

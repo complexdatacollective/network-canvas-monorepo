@@ -1083,13 +1083,9 @@
     "defaultMessage": "Are you sure you want to finish the interview?",
     "description": "Title of the confirmation dialog opened by the finish button at the end of an interview."
   },
-  "interview.interfaces.finishDescription": {
-    "defaultMessage": "You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now.",
-    "description": "Guidance on the final interview screen before the participant opens the finish confirmation dialog."
-  },
   "interview.interfaces.finishInterview": {
     "defaultMessage": "Finish Interview",
-    "description": "End-of-interview page heading and confirmation action that finishes the current interview."
+    "description": "Confirmation action in the dialog opened by the finish button at the end of an interview; it finishes the current interview."
   },
   "interview.interfaces.finished": {
     "defaultMessage": "Finished",
@@ -1122,6 +1118,10 @@
   "interview.interfaces.historyTools": {
     "defaultMessage": "History tools",
     "description": "Accessible name of the toolbar group containing undo and redo actions."
+  },
+  "interview.interfaces.interviewFinishedNotice": {
+    "defaultMessage": "This interview is finished, and its answers can no longer be changed.",
+    "description": "Notice shown below the closing text of the last interview screen once the interview has been finished, including whenever a finished interview is opened again. Addressed to whoever is holding the device, which may be the participant or a researcher."
   },
   "interview.interfaces.keepChanges": {
     "defaultMessage": "Keep changes",

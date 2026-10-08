@@ -65,8 +65,12 @@ import {
 } from '../protocol/commands.ts';
 import {
   advanceDraftManifest,
+  creationIndex,
   fenceDraftLeases,
+  isLastFinishStage,
+  loadStageTypes,
   lockDraftHead,
+  timelineStageOf,
   type DraftStructureError,
   type HeadState,
 } from '../protocol/draft-structure.ts';
@@ -1081,10 +1085,15 @@ export const create = Effect.fn('protocolBuilder.create')(function* (
           );
         }
         const stages = stageList(order.document);
-        const at =
+        // Never after the finish stage, where no participant could reach it:
+        // a position at or past it, or none, puts the stage just before it.
+        const at = creationIndex(
+          yield* loadStageTypes(teamId, head, stages),
+          timelineStageOf(created),
           input.position === undefined
             ? stages.length
-            : Math.min(input.position, stages.length);
+            : Math.min(input.position, stages.length),
+        );
         stages.splice(at, 0, id);
         writes.set(STAGE_ORDER, { ...order.document, stages });
       }
@@ -1256,9 +1265,30 @@ export function deleteStage(session: ProtocolBuilderSession, stageId: string) {
           new Error(`draft ${session.draftId} has no stageOrder section`),
         );
       }
-      const stages = stageList(order.document).filter(
-        (entry) => entry !== stageId,
-      );
+      const listed = stageList(order.document);
+      // The interview has to end at a finish stage, so the last one stays.
+      // The contract has no refusal of its own for that, and the stage order
+      // naming the stage is the reference this host will not take out, so it
+      // is the one the refusal names.
+      if (
+        isLastFinishStage(
+          listed,
+          yield* loadStageTypes(session.access.teamId, head, listed),
+          stageId,
+        )
+      ) {
+        return {
+          writes: new Map<ProtocolSectionId, SectionDoc | undefined>(),
+          owned: new Set<ProtocolSectionId>(),
+          remaining: [
+            {
+              sectionId: STAGE_ORDER,
+              path: ['stages', listed.indexOf(stageId)],
+            },
+          ],
+        };
+      }
+      const stages = listed.filter((entry) => entry !== stageId);
       return {
         writes: new Map<ProtocolSectionId, SectionDoc | undefined>([
           [target, undefined],

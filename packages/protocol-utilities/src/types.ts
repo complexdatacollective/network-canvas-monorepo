@@ -8,6 +8,7 @@ import type {
   FamilyPedigreeNominationPromptInput,
   EdgeColorReference,
   FilterOperator,
+  FinishOutcome,
   Item,
   LocaleTag,
   LocalizedString,
@@ -392,6 +393,9 @@ export type StageEntry = {
   nodeForm?: { fields: NetworkComposerFormFieldEntry[] };
   networkComposerEdges?: NetworkComposerEdgeEntry[];
   convexHullVariable?: string;
+  // FinishSession (its `title` is the shared `title` above)
+  content?: TextInput;
+  outcome?: FinishOutcome;
 };
 
 export type NodeEntry = {

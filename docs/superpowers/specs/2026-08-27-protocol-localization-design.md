@@ -149,6 +149,22 @@ where the repository records one.
       interview data, exports, templates and fixtures contain `en` where they
       would have had `und`.
 
+17. **The end of the interview is a Finish Screen stage with supplied text.**
+    (8 October 2026, #2131.) The completion screen was interface-owned copy that
+    no protocol could translate. It is now a protocol stage of type
+    `FinishSession`, with a localized `title` and `content`, so it follows the
+    same rules as the rest of the protocol's text. Network Canvas supplies its
+    English text, and a translation in each of `en`, `de`, `es`, `fr`, `hu`,
+    `it`, `nl`, `pt-BR`, `zh-Hans` and `zh-Hant`. The text is written into the
+    protocol, as ordinary translations, by the schema 8 to 9 migration (English
+    only, under the default language `en`), when Architect creates a protocol,
+    and when a researcher adds a language on the Languages page; nothing reads
+    it at interview time. Adding a language writes the supplied text in the new
+    language only while the stage's `title` and `content` in the default
+    language are still the supplied text; the stage name (`label`) is filled in
+    only if it is also still the supplied name. A researcher who has changed the
+    text keeps control of it.
+
 ## 1. Summary
 
 Protocol schema 9 introduces a required `localization` declaration and a
@@ -452,6 +468,7 @@ a localized `label` beside a stable `name`, or adds a localized field:
 | Shared presentation   | Introduction panel `title` and `text`; panel `title`                                                        |
 | Information           | Stage `title`, text-item `content`, and asset-item `description`; asset `content` remains an asset id       |
 | Anonymisation         | Explanation `title` and `body`                                                                              |
+| Finish Screen         | Stage `title` and `content` (markdown); the stage's `outcome` is a fixed value and is not localized         |
 | Family Pedigree       | Intro text-item `content` and asset-item `description`, `censusPrompt`, and nomination prompt `text`        |
 | Network Composer      | Form-field `label` and `hint`; Visual Analog Scale override `parameters.minLabel` and `parameters.maxLabel` |
 | Name Generator Roster | Card-property and sort-property `label`                                                                     |
@@ -1166,6 +1183,11 @@ making one the default, changing a language, and removing one.
 
 Adding a language writes only the declaration. It deliberately does not clone
 default strings, so the protocol remains valid and warnings appear immediately.
+The one exception is the Finish Screen stage (revision 17): adding a language
+also writes the finish text Network Canvas supplies in that language, when it
+has any, provided the stage's heading and text in the default language are still
+the supplied text (and the stage name only if it too is still the supplied
+name).
 `und` cannot be added or chosen.
 
 Removing a language is an atomic destructive edit. Architect shows how many
@@ -1300,13 +1322,18 @@ researcher changes it in Architect if it is wrong. It therefore:
    allows names in any script;
 9. preserves option values, ids, references, stage count and order, codebook
    keys, and collected answer shapes; and
-10. records two migration notes: what the new version allows in attribute
-    names, and that the text is now recorded as English and can be changed on
-    Architect's Languages page.
+10. appends one Finish Screen stage (id `finish`, or `finish-2` and so on if
+    taken) with the supplied English text under `en` and outcome `completed`,
+    because every schema 9 protocol must end with a finish stage (revision 17);
+    and
+11. records migration notes, including what the new version allows in attribute
+    names, that the text is now recorded as English and can be changed on
+    Architect's Languages page, and that the screen that ends the interview is
+    now a Finish Screen stage.
 
 This obeys the migration invariants already documented in the migration
-chain: stages are not added, removed, or reordered, and collected values do
-not change shape.
+chain, with the single exception of the appended finish stage: no existing stage
+is removed or reordered, and collected values do not change shape.
 
 The migration finds participant-facing strings by walking the schema-9 Zod
 metadata, so it shares one inventory with validation and the warning analyser.
@@ -1382,6 +1409,11 @@ session's stored `locale`.
   built-in column keeps its name. This is the one general allocator for every
   reserved CSV column. At authoring time `findExportColumnConflicts` refuses a
   new variable name that would collide.
+
+How the interview ended (the finish stage's `outcome`) is exported beside the
+language: `networkCanvasFinishOutcome` in the CSV ego file, after
+`networkCanvasInterviewLocale`, and `nc:finishOutcome` in GraphML. It is a fixed
+value (`completed`, `ineligible` or `terminated`), never translated.
 
 Other export column names and entity attribute names continue to use stable
 codebook `name`, never translated labels, so choosing another interview

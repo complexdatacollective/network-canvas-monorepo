@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import ProtocolSchemaV9 from '../schema.ts';
 import { stageSchema } from '../stages/index.ts';
@@ -59,7 +60,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(result.success).toBe(false);
       if (!result.success) {
         const issue = result.error.issues.find((i) =>
@@ -70,7 +71,9 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
     });
 
     it('accepts a form field referencing a renderable variable', () => {
-      const result = ProtocolSchemaV9.safeParse(createBaseProtocol());
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(createBaseProtocol()),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -114,7 +117,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(result.success).toBe(false);
       if (!result.success) {
         const issue = result.error.issues.find((i) =>
@@ -142,7 +145,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(result.success).toBe(false);
       if (!result.success) {
         const issue = result.error.issues.find((i) =>
@@ -168,7 +171,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(result.success).toBe(false);
       if (!result.success) {
         const issue = result.error.issues.find((i) =>
@@ -194,7 +197,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(result.success).toBe(true);
     });
   });
@@ -222,7 +225,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(result.success).toBe(false);
       if (!result.success) {
         const issue = result.error.issues.find((i) =>
@@ -256,7 +259,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(result.success).toBe(true);
     });
   });
@@ -301,7 +304,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
         },
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(result.success).toBe(false);
       if (!result.success) {
         const issue = result.error.issues.find((i) =>
@@ -357,7 +360,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(result.success).toBe(true);
     });
   });
@@ -385,7 +388,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(result.success).toBe(false);
       if (!result.success) {
         const issue = result.error.issues.find((i) =>
@@ -434,7 +437,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(result.success).toBe(true);
     });
   });
@@ -464,7 +467,13 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
 
     it('rejects a negative before value', () => {
       const result = ProtocolSchemaV9.safeParse(
-        buildProtocolWithParams({ anchor: '2020-01-01', before: -1, after: 5 }),
+        withFinishStage(
+          buildProtocolWithParams({
+            anchor: '2020-01-01',
+            before: -1,
+            after: 5,
+          }),
+        ),
       );
       expect(result.success).toBe(false);
     });
@@ -473,14 +482,26 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       // earliest = anchor - before, latest = anchor + after, so before > after
       // is a valid range (e.g. the default before=180/after=0).
       const result = ProtocolSchemaV9.safeParse(
-        buildProtocolWithParams({ anchor: '2020-01-01', before: 10, after: 5 }),
+        withFinishStage(
+          buildProtocolWithParams({
+            anchor: '2020-01-01',
+            before: 10,
+            after: 5,
+          }),
+        ),
       );
       expect(result.success).toBe(true);
     });
 
     it('rejects an invalid anchor date', () => {
       const result = ProtocolSchemaV9.safeParse(
-        buildProtocolWithParams({ anchor: 'not-a-date', before: 1, after: 5 }),
+        withFinishStage(
+          buildProtocolWithParams({
+            anchor: 'not-a-date',
+            before: 1,
+            after: 5,
+          }),
+        ),
       );
       expect(result.success).toBe(false);
     });
@@ -489,21 +510,39 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       // Date.parse normalizes 2020-02-31 to a real March date, so the anchor
       // check must validate calendar bounds rather than rely on Date.parse.
       const result = ProtocolSchemaV9.safeParse(
-        buildProtocolWithParams({ anchor: '2020-02-31', before: 1, after: 5 }),
+        withFinishStage(
+          buildProtocolWithParams({
+            anchor: '2020-02-31',
+            before: 1,
+            after: 5,
+          }),
+        ),
       );
       expect(result.success).toBe(false);
     });
 
     it('accepts a valid leap-day anchor (2020-02-29)', () => {
       const result = ProtocolSchemaV9.safeParse(
-        buildProtocolWithParams({ anchor: '2020-02-29', before: 1, after: 5 }),
+        withFinishStage(
+          buildProtocolWithParams({
+            anchor: '2020-02-29',
+            before: 1,
+            after: 5,
+          }),
+        ),
       );
       expect(result.success).toBe(true);
     });
 
     it('accepts valid before/after/anchor', () => {
       const result = ProtocolSchemaV9.safeParse(
-        buildProtocolWithParams({ anchor: '2020-01-01', before: 1, after: 5 }),
+        withFinishStage(
+          buildProtocolWithParams({
+            anchor: '2020-01-01',
+            before: 1,
+            after: 5,
+          }),
+        ),
       );
       expect(result.success).toBe(true);
     });
@@ -511,27 +550,37 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
     it('accepts RelativeDatePicker anchors throughout the native date range', () => {
       expect(
         ProtocolSchemaV9.safeParse(
-          buildProtocolWithParams({
-            anchor: '0001-01-01',
-            before: 1,
-            after: 5,
-          }),
+          withFinishStage(
+            buildProtocolWithParams({
+              anchor: '0001-01-01',
+              before: 1,
+              after: 5,
+            }),
+          ),
         ).success,
       ).toBe(true);
       expect(
         ProtocolSchemaV9.safeParse(
-          buildProtocolWithParams({
-            anchor: '0099-12-31',
-            before: 1,
-            after: 5,
-          }),
+          withFinishStage(
+            buildProtocolWithParams({
+              anchor: '0099-12-31',
+              before: 1,
+              after: 5,
+            }),
+          ),
         ).success,
       ).toBe(true);
     });
 
     it('rejects a RelativeDatePicker anchor before the native date range', () => {
       const belowFloor = ProtocolSchemaV9.safeParse(
-        buildProtocolWithParams({ anchor: '0000-12-31', before: 1, after: 5 }),
+        withFinishStage(
+          buildProtocolWithParams({
+            anchor: '0000-12-31',
+            before: 1,
+            after: 5,
+          }),
+        ),
       );
       expect(belowFloor.success).toBe(false);
       if (!belowFloor.success) {
@@ -544,11 +593,13 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
 
       expect(
         ProtocolSchemaV9.safeParse(
-          buildProtocolWithParams({
-            anchor: '0000-01-01',
-            before: 1,
-            after: 5,
-          }),
+          withFinishStage(
+            buildProtocolWithParams({
+              anchor: '0000-01-01',
+              before: 1,
+              after: 5,
+            }),
+          ),
         ).success,
       ).toBe(false);
     });
@@ -582,7 +633,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
         },
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(
@@ -622,7 +673,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
         },
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(result.success).toBe(false);
     });
   });
@@ -718,7 +769,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
         stages: [nameGeneratorWithPanels([panelReadingAFileWithAnEdgeRule])],
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
 
       expect(result.success).toBe(false);
       if (result.success) return;
@@ -774,7 +825,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
 
       expect(result.error?.issues ?? []).toEqual([]);
       expect(result.success).toBe(true);

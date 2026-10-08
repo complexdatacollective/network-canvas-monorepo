@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
+import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { analyzeProtocolLocalization } from '../../../localization/analyzeProtocolLocalization.ts';
 import { resolveLocalizedString } from '../../../localization/resolveLocalizedString.ts';
 import {
@@ -90,7 +91,7 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(['codebook', 'edge', 'family', 'label'], 'plain', true),
 
   // Every stage's label.
-  ...Array.from({ length: 20 }, (_, index) =>
+  ...Array.from({ length: 21 }, (_, index) =>
     site(stage(index, 'label'), 'plain'),
   ),
 
@@ -182,6 +183,11 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(18, 'nominationPrompts', 0, 'text'), 'markdown'),
 
   site(stage(19, 'diseases', 0, 'label'), 'plain'),
+
+  // The finish stage's title and content are markdown, so a researcher can
+  // emphasise a word in either.
+  site(stage(20, 'title'), 'markdown'),
+  site(stage(20, 'content'), 'markdown'),
 ];
 
 const pathKey = (path: readonly PropertyKey[]) =>
@@ -224,7 +230,7 @@ const issuePaths = (
   });
 
 const failurePaths = (protocol: unknown): string[] => {
-  const result = ProtocolSchemaV9.safeParse(protocol);
+  const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
   return result.success ? [] : issuePaths(result.error.issues);
 };
 
@@ -232,7 +238,9 @@ const siteName = ({ path }: ExpectedSite) => path.join('.');
 
 describe('localized string coverage', () => {
   it('accepts a protocol with copy in every localized field family', () => {
-    const result = ProtocolSchemaV9.safeParse(completeProtocol());
+    const result = ProtocolSchemaV9.safeParse(
+      withFinishStage(completeProtocol()),
+    );
     expect(result.error?.issues).toBeUndefined();
   });
 
@@ -316,7 +324,9 @@ describe('Network Composer scale end labels', () => {
   it('keeps parameter keys that carry no copy', () => {
     const protocol = completeProtocol();
     setAt(protocol, stage(7, 'nodeForm', 'fields', 0, 'parameters', 'step'), 5);
-    expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
+    expect(ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success).toBe(
+      true,
+    );
   });
 
   // The typed branch is what makes the end labels visible: behind an opaque
@@ -343,7 +353,9 @@ describe('Network Composer scale end labels', () => {
     setAt(protocol, stage(7, 'nodeForm', 'fields', 1, 'parameters'), {
       minLabel: 'not copy',
     });
-    expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
+    expect(ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success).toBe(
+      true,
+    );
     expect(
       collectLocalizedStrings(protocol).some(
         ({ path }) =>
@@ -365,13 +377,15 @@ describe('analyzeProtocolLocalization', () => {
     protocol: ReturnType<typeof completeProtocol>,
     path: Path,
   ) =>
-    analyzeProtocolLocalization(ProtocolSchemaV9.parse(protocol)).filter(
-      (warning) => pathKey(warning.path) === pathKey(path),
-    );
+    analyzeProtocolLocalization(
+      ProtocolSchemaV9.parse(withFinishStage(protocol)),
+    ).filter((warning) => pathKey(warning.path) === pathKey(path));
 
   it('accepts and warns about a missing translation in a declared language', () => {
     const protocol = bilingual();
-    expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
+    expect(ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success).toBe(
+      true,
+    );
     expect(warningsAt(protocol, stage(0, 'label'))).toEqual([
       {
         code: 'missing-translation',
@@ -386,7 +400,9 @@ describe('analyzeProtocolLocalization', () => {
   it('warns about a missing default-language translation', () => {
     const protocol = bilingual();
     setAt(protocol, stage(0, 'label'), { fr: 'Langue' });
-    expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
+    expect(ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success).toBe(
+      true,
+    );
     expect(warningsAt(protocol, stage(0, 'label'))).toEqual([
       {
         code: 'missing-translation',

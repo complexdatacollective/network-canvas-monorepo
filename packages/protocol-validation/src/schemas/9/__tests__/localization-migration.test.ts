@@ -228,6 +228,10 @@ describe('v8 to v9 localization migration', () => {
     const hits = collectLocalizedStrings(migrated);
     expect(hits.length).toBeGreaterThan(0);
     for (const { path: at, value } of hits) {
+      // The finish stage is added by the migration, with supplied text.
+      if (getAt(migrated, [...at.slice(0, 2), 'type']) === 'FinishSession') {
+        continue;
+      }
       const source = getAt(document, at);
       const expectedText =
         typeof source === 'string' ? source : nameBehindLabel(document, at);
@@ -730,7 +734,11 @@ describe('committed schema 8 protocols', () => {
         JSON.stringify(result.error?.issues, null, 2),
       ).toBe(true);
       expect(migrated.localization).toEqual(ENGLISH_ONLY);
-      expect(stageOutline(migrated)).toEqual(stageOutline(schema8));
+      // Every stage is kept, in order, and the finish stage follows them.
+      expect(stageOutline(migrated)).toEqual([
+        ...stageOutline(schema8),
+        { id: 'finish', type: 'FinishSession' },
+      ]);
       expect(Object.keys(migrated.codebook.node ?? {})).toEqual(
         Object.keys(getAt(schema8, ['codebook', 'node']) ?? {}),
       );

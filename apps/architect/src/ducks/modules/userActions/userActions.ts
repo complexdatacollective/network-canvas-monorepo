@@ -1,8 +1,10 @@
 import { type Dispatch } from '@reduxjs/toolkit';
+import { v4 as uuid } from 'uuid';
 import { navigate } from 'wouter/use-browser-location';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import {
+  createDefaultFinishSessionStage,
   type CurrentProtocol,
   type ExtractedAsset,
   extractProtocolFromZip,
@@ -577,7 +579,9 @@ export const createNetcanvas = createAppAsyncThunk(
       description,
       schemaVersion: APP_SCHEMA_VERSION,
       localization,
-      stages: [],
+      // A new protocol starts with the screen that ends the interview, with
+      // the closing text Network Canvas supplies in each of its languages.
+      stages: [createDefaultFinishSessionStage({ id: uuid(), localization })],
       codebook: {
         node: {},
         edge: {},

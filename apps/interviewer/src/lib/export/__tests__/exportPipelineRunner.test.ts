@@ -55,6 +55,7 @@ function makeSession(id: string): InterviewExportInput {
     participantIdentifier: `case-${id}`,
     startTime: new Date(0),
     finishTime: null,
+    finishOutcome: null,
     network: {
       nodes: [],
       edges: [],

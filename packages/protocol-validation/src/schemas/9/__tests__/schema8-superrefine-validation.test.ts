@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import {
   createBaseProtocol,
   localized,
@@ -29,7 +30,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
 
   describe('Stage Subject Validation', () => {
     it('validates protocol with valid stage subjects', () => {
-      const result = ProtocolSchemaV9.safeParse(baseValidProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(baseValidProtocol),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -47,7 +50,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(invalidProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(invalidProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         // The new validator emits errors in validator order; use find() to locate the subject error
@@ -84,7 +89,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(invalidProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(invalidProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         const subjectError = result.error.issues.find((issue) =>
@@ -121,7 +128,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(egoFormProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(egoFormProtocol),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -153,7 +162,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocolWithoutEgo);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(protocolWithoutEgo),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         // The form field validation should fail because ego variables don't exist
@@ -189,7 +200,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(result.success).toBe(true);
     });
 
@@ -212,7 +223,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(invalidProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(invalidProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues).toHaveLength(1);
@@ -258,7 +271,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(egoFormProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(egoFormProtocol),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -286,7 +301,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(invalidEgoFormProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(invalidEgoFormProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         const formFieldError = result.error.issues.find((issue) =>
@@ -336,7 +353,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(edgeFormProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(edgeFormProtocol),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -363,7 +382,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(invalidProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(invalidProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         const formFieldError = result.error.issues.find((issue) =>
@@ -387,7 +408,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocolWithDuplicateStageIds);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(protocolWithDuplicateStageIds),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues).toHaveLength(1);
@@ -412,7 +435,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocolWithDuplicatePromptIds);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(protocolWithDuplicatePromptIds),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         const duplicateError = result.error.issues.find((issue) =>
@@ -448,7 +473,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(ordinalBinProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(ordinalBinProtocol),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -476,7 +503,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(invalidProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(invalidProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         const variableError = result.error.issues.find((issue) =>
@@ -521,35 +550,39 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(categoricalBinProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(categoricalBinProtocol),
+      );
       expect(result.success).toBe(true);
     });
 
     it('rejects a non-text CategoricalBin otherVariable at the reference path', () => {
-      const result = ProtocolSchemaV9.safeParse({
-        ...baseValidProtocol,
-        stages: [
-          {
-            id: 'categoricalBin1',
-            type: 'CategoricalBin',
-            label: localized('Categorical Bin'),
-            subject: {
-              entity: 'node',
-              type: 'person',
-            },
-            prompts: [
-              {
-                id: 'prompt1',
-                text: localized('Sort by category'),
-                variable: 'category',
-                otherVariable: 'category',
-                otherOptionLabel: localized('Other'),
-                otherVariablePrompt: localized('Please specify'),
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage({
+          ...baseValidProtocol,
+          stages: [
+            {
+              id: 'categoricalBin1',
+              type: 'CategoricalBin',
+              label: localized('Categorical Bin'),
+              subject: {
+                entity: 'node',
+                type: 'person',
               },
-            ],
-          },
-        ],
-      });
+              prompts: [
+                {
+                  id: 'prompt1',
+                  text: localized('Sort by category'),
+                  variable: 'category',
+                  otherVariable: 'category',
+                  otherOptionLabel: localized('Other'),
+                  otherVariablePrompt: localized('Please specify'),
+                },
+              ],
+            },
+          ],
+        }),
+      );
 
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -592,7 +625,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(invalidProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(invalidProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         const otherVariableError = result.error.issues.find((issue) =>
@@ -642,7 +677,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(dyadCensusProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(dyadCensusProtocol),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -675,7 +712,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(invalidProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(invalidProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         const createEdgeError = result.error.issues.find((issue) =>
@@ -725,7 +764,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(tieStrengthCensusProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(tieStrengthCensusProtocol),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -760,7 +801,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(invalidProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(invalidProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         const edgeVariableError = result.error.issues.find((issue) =>
@@ -810,7 +853,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(invalidProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(invalidProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         const typeError = result.error.issues.find((issue) =>
@@ -859,7 +904,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(sociogramProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(sociogramProtocol),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -891,7 +938,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(invalidProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(invalidProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         const layoutError = result.error.issues.find((issue) =>
@@ -950,7 +999,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(nameGeneratorProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(nameGeneratorProtocol),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -989,7 +1040,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(invalidProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(invalidProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         const attributeError = result.error.issues.find((issue) =>
@@ -1057,7 +1110,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocolWithFilters);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(protocolWithFilters),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -1084,7 +1139,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(invalidProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(invalidProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         const entityError = result.error.issues.find((issue) =>
@@ -1128,7 +1185,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(invalidProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(invalidProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         const attributeError = result.error.issues.find((issue) =>
@@ -1182,7 +1241,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(invalidProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(invalidProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         const duplicateError = result.error.issues.find((issue) =>
@@ -1220,7 +1281,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocolWithEgoFilter);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(protocolWithEgoFilter),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -1253,7 +1316,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocolWithoutEgo);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(protocolWithoutEgo),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         const egoError = result.error.issues.find((issue) =>
@@ -1299,7 +1364,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocolWithEdgeFilter);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(protocolWithEdgeFilter),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -1330,7 +1397,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocolWithNestedFilters);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(protocolWithNestedFilters),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -1358,7 +1427,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(invalidProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(invalidProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         const operatorError = result.error.issues.find((issue) =>
@@ -1403,7 +1474,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(invalidProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(invalidProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         const operatorError = result.error.issues.find((issue) =>
@@ -1448,7 +1521,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(validProtocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(validProtocol));
       expect(result.success).toBe(true);
     });
 
@@ -1476,7 +1549,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(validProtocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(validProtocol));
       expect(result.success).toBe(true);
     });
 
@@ -1504,7 +1577,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(invalidProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(invalidProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         const valueTypeError = result.error.issues.find((issue) =>
@@ -1549,7 +1624,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(invalidProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(invalidProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         const valueTypeError = result.error.issues.find((issue) =>
@@ -1594,7 +1671,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(invalidProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(invalidProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         const valueTypeError = result.error.issues.find((issue) =>
@@ -1651,7 +1730,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
 
     it('accepts an operand that is one of the ordinal attribute’s options', () => {
       const result = ProtocolSchemaV9.safeParse(
-        ruleAgainst('strength', 'EXACTLY', 2),
+        withFinishStage(ruleAgainst('strength', 'EXACTLY', 2)),
       );
 
       expect(result.success).toBe(true);
@@ -1664,7 +1743,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       // no longer among them. Loading it has to succeed so the builder can
       // show the researcher the rule to fix — issue #1548.
       const result = ProtocolSchemaV9.safeParse(
-        ruleAgainst('category', 'INCLUDES', 'retired'),
+        withFinishStage(ruleAgainst('category', 'INCLUDES', 'retired')),
       );
 
       expect(result.success).toBe(true);
@@ -1674,7 +1753,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       // Verbatim shape of the rule CI refused: a number beside INCLUDES on an
       // attribute whose options are strings.
       const result = ProtocolSchemaV9.safeParse(
-        ruleAgainst('category', 'INCLUDES', 7),
+        withFinishStage(ruleAgainst('category', 'INCLUDES', 7)),
       );
 
       expect(result.success).toBe(true);
@@ -1682,7 +1761,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
 
     it('accepts a list of the categorical attribute’s own options', () => {
       const result = ProtocolSchemaV9.safeParse(
-        ruleAgainst('category', 'INCLUDES', ['friend', 'family']),
+        withFinishStage(
+          ruleAgainst('category', 'INCLUDES', ['friend', 'family']),
+        ),
       );
 
       expect(result.success).toBe(true);
@@ -1690,7 +1771,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
 
     it('accepts a list holding an option the attribute no longer offers', () => {
       const result = ProtocolSchemaV9.safeParse(
-        ruleAgainst('category', 'INCLUDES', ['friend', 'retired']),
+        withFinishStage(
+          ruleAgainst('category', 'INCLUDES', ['friend', 'retired']),
+        ),
       );
 
       expect(result.success).toBe(true);
@@ -1700,7 +1783,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       // Shape only: the options are whole numbers, and saying so is the
       // editor's job rather than the loader's.
       const result = ProtocolSchemaV9.safeParse(
-        ruleAgainst('strength', 'EXACTLY', 0.5),
+        withFinishStage(ruleAgainst('strength', 'EXACTLY', 0.5)),
       );
 
       expect(result.success).toBe(true);
@@ -1708,7 +1791,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
 
     it('keeps a fractional operand valid against a number attribute', () => {
       const result = ProtocolSchemaV9.safeParse(
-        ruleAgainst('age', 'EXACTLY', 2.5),
+        withFinishStage(ruleAgainst('age', 'EXACTLY', 2.5)),
       );
 
       expect(result.success).toBe(true);
@@ -1751,7 +1834,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(invalidProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(invalidProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         const duplicateNestedError = result.error.issues.find((issue) =>
@@ -1796,7 +1881,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         },
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocolWithCrossRef);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(protocolWithCrossRef),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -1824,7 +1911,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         },
       };
 
-      const result = ProtocolSchemaV9.safeParse(invalidProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(invalidProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         const crossRefError = result.error.issues.find((issue) =>
@@ -1869,7 +1958,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         },
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocolWithCrossRef);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(protocolWithCrossRef),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -1897,7 +1988,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         },
       };
 
-      const result = ProtocolSchemaV9.safeParse(invalidProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(invalidProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         const crossRefError = result.error.issues.find((issue) =>
@@ -1942,7 +2035,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         },
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocolWithCrossRef);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(protocolWithCrossRef),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -1970,7 +2065,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         },
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocolWithCrossRef);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(protocolWithCrossRef),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -1998,7 +2095,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         },
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocolWithCrossRef);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(protocolWithCrossRef),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -2026,7 +2125,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         },
       };
 
-      const result = ProtocolSchemaV9.safeParse(invalidProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(invalidProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         const crossRefError = result.error.issues.find((issue) =>
@@ -2071,7 +2172,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         },
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocolWithCrossRef);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(protocolWithCrossRef),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -2099,7 +2202,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         },
       };
 
-      const result = ProtocolSchemaV9.safeParse(invalidProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(invalidProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         const crossRefError = result.error.issues.find((issue) =>
@@ -2141,7 +2246,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         },
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocolWithEgoCrossRef);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(protocolWithEgoCrossRef),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -2169,7 +2276,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         },
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocolWithEdgeCrossRef);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(protocolWithEdgeCrossRef),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -2194,7 +2303,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         },
       };
 
-      const result = ProtocolSchemaV9.safeParse(invalidProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(invalidProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         const crossRefError = result.error.issues.find((issue) =>
@@ -2222,7 +2333,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         stages: [],
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocolWithNoStages);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(protocolWithNoStages),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -2235,7 +2348,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         stages: [],
       };
 
-      const result = ProtocolSchemaV9.safeParse(minimalProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(minimalProtocol),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -2259,7 +2374,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocolWithoutForm);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(protocolWithoutForm),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -2283,7 +2400,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocolWithoutPrompts);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(protocolWithoutPrompts),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -2338,7 +2457,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(complexProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(complexProtocol),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -2376,7 +2497,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         ],
       };
 
-      const result = ProtocolSchemaV9.safeParse(multiErrorProtocol);
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(multiErrorProtocol),
+      );
       expect(result.success).toBe(false);
       if (!result.success) {
         // Should have multiple errors
@@ -2468,31 +2591,31 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
 
     it('validates Geospatial stage with showTransit and allowSearch omitted', () => {
       const protocol = createGeospatialProtocol();
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(result.success).toBe(true);
     });
 
     it('validates Geospatial stage with showTransit set to true', () => {
       const protocol = createGeospatialProtocol({ showTransit: true });
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(result.success).toBe(true);
     });
 
     it('validates Geospatial stage with showTransit set to false', () => {
       const protocol = createGeospatialProtocol({ showTransit: false });
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(result.success).toBe(true);
     });
 
     it('validates Geospatial stage with allowSearch set to true', () => {
       const protocol = createGeospatialProtocol({ allowSearch: true });
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(result.success).toBe(true);
     });
 
     it('validates Geospatial stage with allowSearch set to false', () => {
       const protocol = createGeospatialProtocol({ allowSearch: false });
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(result.success).toBe(true);
     });
 
@@ -2501,7 +2624,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         showTransit: true,
         allowSearch: true,
       });
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(result.success).toBe(true);
     });
 
@@ -2512,7 +2635,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       'cat-color-seq-10',
     ])('accepts Geospatial stage color reference %s', (color) => {
       const protocol = createGeospatialProtocol({ color });
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(result.success).toBe(true);
     });
 
@@ -2520,7 +2643,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       'rejects Geospatial stage color %j',
       (color) => {
         const protocol = createGeospatialProtocol({ color });
-        const result = ProtocolSchemaV9.safeParse(protocol);
+        const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
         expect(result.success).toBe(false);
       },
     );
@@ -2533,7 +2656,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       // what makes the failure actionable is the branch messages underneath,
       // which spell out every colour the field will accept.
       const result = ProtocolSchemaV9.safeParse(
-        createGeospatialProtocol({ color: '' }),
+        withFinishStage(createGeospatialProtocol({ color: '' })),
       );
       expect(result.success).toBe(false);
       const issue = (result.success ? [] : result.error.issues).find(
@@ -2556,13 +2679,13 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
 
     it('rejects Geospatial stage with invalid showTransit type', () => {
       const protocol = createGeospatialProtocol({ showTransit: 'yes' });
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(result.success).toBe(false);
     });
 
     it('rejects Geospatial stage with invalid allowSearch type', () => {
       const protocol = createGeospatialProtocol({ allowSearch: 1 });
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(result.success).toBe(false);
     });
   });
@@ -2592,7 +2715,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         },
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(result.success).toBe(true);
     });
 
@@ -2625,7 +2748,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         },
       };
 
-      const result = ProtocolSchemaV9.safeParse(protocol);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(result.success).toBe(false);
       if (!result.success) {
         const refError = result.error.issues.find((issue) =>
@@ -2689,11 +2812,13 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
 
     it('rejects an intro asset item absent from the manifest', () => {
       const result = ProtocolSchemaV9.safeParse(
-        protocolWithIntroItem({
-          id: 'i1',
-          type: 'asset',
-          content: 'missing-asset',
-        }),
+        withFinishStage(
+          protocolWithIntroItem({
+            id: 'i1',
+            type: 'asset',
+            content: 'missing-asset',
+          }),
+        ),
       );
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -2716,16 +2841,18 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
 
     it('rejects an intro asset item of a non-displayable type', () => {
       const result = ProtocolSchemaV9.safeParse(
-        protocolWithIntroItem(
-          { id: 'i1', type: 'asset', content: 'net-1' },
-          {
-            'net-1': {
-              id: 'net-1',
-              type: 'network',
-              name: 'Roster',
-              source: 'roster.csv',
+        withFinishStage(
+          protocolWithIntroItem(
+            { id: 'i1', type: 'asset', content: 'net-1' },
+            {
+              'net-1': {
+                id: 'net-1',
+                type: 'network',
+                name: 'Roster',
+                source: 'roster.csv',
+              },
             },
-          },
+          ),
         ),
       );
       expect(result.success).toBe(false);
@@ -2741,11 +2868,13 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
 
     it('does not raise an introScreen asset issue for a text item', () => {
       const result = ProtocolSchemaV9.safeParse(
-        protocolWithIntroItem({
-          id: 'i1',
-          type: 'text',
-          content: localized('Welcome'),
-        }),
+        withFinishStage(
+          protocolWithIntroItem({
+            id: 'i1',
+            type: 'text',
+            content: localized('Welcome'),
+          }),
+        ),
       );
       const introAssetIssue =
         !result.success &&
@@ -2859,7 +2988,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
 
     it('accepts locked variables carrying their canonical option sets', () => {
       const result = ProtocolSchemaV9.safeParse(
-        protocolWithLockedVariables({}),
+        withFinishStage(protocolWithLockedVariables({})),
       );
       expect(result.success).toBe(true);
       const lockedIssue =
@@ -2871,26 +3000,30 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
     });
 
     it('accepts locked variables whose option labels are reworded or translated', () => {
-      const result = ProtocolSchemaV9.safeParse({
-        ...protocolWithLockedVariables({
-          biologicalSexOptions: BIOLOGICAL_SEX_OPTIONS.map(({ value }) => ({
-            value,
-            label: { en: `Sex: ${value}`, fr: `Sexe : ${value}` },
-          })),
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage({
+          ...protocolWithLockedVariables({
+            biologicalSexOptions: BIOLOGICAL_SEX_OPTIONS.map(({ value }) => ({
+              value,
+              label: { en: `Sex: ${value}`, fr: `Sexe : ${value}` },
+            })),
+          }),
+          localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
         }),
-        localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
-      });
+      );
       expect(result.success).toBe(true);
     });
 
     it('rejects a biological-sex variable whose options were edited', () => {
       const result = ProtocolSchemaV9.safeParse(
-        protocolWithLockedVariables({
-          biologicalSexOptions: [
-            { value: 'female', label: localized('Female') },
-            { value: 'male', label: localized('Male') },
-          ],
-        }),
+        withFinishStage(
+          protocolWithLockedVariables({
+            biologicalSexOptions: [
+              { value: 'female', label: localized('Female') },
+              { value: 'male', label: localized('Male') },
+            ],
+          }),
+        ),
       );
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -2911,12 +3044,14 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
 
     it('rejects a relationship-type variable whose options were edited', () => {
       const result = ProtocolSchemaV9.safeParse(
-        protocolWithLockedVariables({
-          relationshipTypeOptions: [
-            { value: 'biological', label: localized('Biological') },
-            { value: 'made-up', label: localized('Made Up') },
-          ],
-        }),
+        withFinishStage(
+          protocolWithLockedVariables({
+            relationshipTypeOptions: [
+              { value: 'biological', label: localized('Biological') },
+              { value: 'made-up', label: localized('Made Up') },
+            ],
+          }),
+        ),
       );
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -2938,13 +3073,15 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
 
     it('rejects a gamete-role variable whose options were edited', () => {
       const result = ProtocolSchemaV9.safeParse(
-        protocolWithLockedVariables({
-          gameteRoleOptions: [
-            { value: 'egg', label: localized('Egg') },
-            { value: 'sperm', label: localized('Sperm') },
-            { value: 'extra', label: localized('Extra') },
-          ],
-        }),
+        withFinishStage(
+          protocolWithLockedVariables({
+            gameteRoleOptions: [
+              { value: 'egg', label: localized('Egg') },
+              { value: 'sperm', label: localized('Sperm') },
+              { value: 'extra', label: localized('Extra') },
+            ],
+          }),
+        ),
       );
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -2969,13 +3106,15 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       // categorical ones (getLockedOptions), and ordinal carries the identical
       // options schema. The locked-set backstop must fire for ordinal too.
       const result = ProtocolSchemaV9.safeParse(
-        protocolWithLockedVariables({
-          biologicalSexType: 'ordinal',
-          biologicalSexOptions: [
-            { value: 'yes', label: localized('Yes') },
-            { value: 'no', label: localized('No') },
-          ],
-        }),
+        withFinishStage(
+          protocolWithLockedVariables({
+            biologicalSexType: 'ordinal',
+            biologicalSexOptions: [
+              { value: 'yes', label: localized('Yes') },
+              { value: 'no', label: localized('No') },
+            ],
+          }),
+        ),
       );
       expect(result.success).toBe(false);
       if (!result.success) {

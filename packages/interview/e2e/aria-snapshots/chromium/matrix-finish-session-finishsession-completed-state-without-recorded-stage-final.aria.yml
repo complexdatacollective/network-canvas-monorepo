@@ -1,0 +1,10 @@
+- main:
+  - heading "All done" [level=1]:
+    - text: ""
+    - emphasis: done
+  - paragraph:
+    - text: Thank you for
+    - strong: taking part
+    - text: .
+  - paragraph: You may now close this window.
+  - status: "Success: This interview is finished, and its answers can no longer be changed."

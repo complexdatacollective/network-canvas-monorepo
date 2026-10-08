@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import ProtocolSchemaV9 from '../schema.ts';
 import { ComponentTypes } from '../variables/types.ts';
@@ -48,38 +49,44 @@ const composerProtocol = (stage: Record<string, unknown>) => ({
 
 describe('NetworkComposer cross-reference validation', () => {
   it('accepts a stage whose references all exist (control)', () => {
-    const result = ProtocolSchemaV9.safeParse(composerProtocol(baseStage));
+    const result = ProtocolSchemaV9.safeParse(
+      withFinishStage(composerProtocol(baseStage)),
+    );
     expect(result.success).toBe(true);
   });
 
   it('rejects a quickAdd referencing a missing node variable', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocol({ ...baseStage, quickAdd: 'missing' }),
+      withFinishStage(composerProtocol({ ...baseStage, quickAdd: 'missing' })),
     );
     expect(result.success).toBe(false);
   });
 
   it('rejects a layoutVariable referencing a missing node variable', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocol({ ...baseStage, layoutVariable: 'missing' }),
+      withFinishStage(
+        composerProtocol({ ...baseStage, layoutVariable: 'missing' }),
+      ),
     );
     expect(result.success).toBe(false);
   });
 
   it('rejects a node form field referencing a missing node variable', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocol({
-        ...baseStage,
-        nodeForm: {
-          fields: [
-            {
-              variable: 'missing',
-              component: ComponentTypes.Number,
-              label: localized('x'),
-            },
-          ],
-        },
-      }),
+      withFinishStage(
+        composerProtocol({
+          ...baseStage,
+          nodeForm: {
+            fields: [
+              {
+                variable: 'missing',
+                component: ComponentTypes.Number,
+                label: localized('x'),
+              },
+            ],
+          },
+        }),
+      ),
     );
     expect(result.success).toBe(false);
   });
@@ -88,24 +95,26 @@ describe('NetworkComposer cross-reference validation', () => {
     // `age` exists on the person node but NOT on the `knows` edge. If the edge
     // form resolved against the node subject this would wrongly pass.
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocol({
-        ...baseStage,
-        edges: [
-          {
-            id: 'edge-1',
-            subject: { entity: 'edge', type: 'knows' },
-            form: {
-              fields: [
-                {
-                  variable: 'age',
-                  component: ComponentTypes.Number,
-                  label: localized('x'),
-                },
-              ],
+      withFinishStage(
+        composerProtocol({
+          ...baseStage,
+          edges: [
+            {
+              id: 'edge-1',
+              subject: { entity: 'edge', type: 'knows' },
+              form: {
+                fields: [
+                  {
+                    variable: 'age',
+                    component: ComponentTypes.Number,
+                    label: localized('x'),
+                  },
+                ],
+              },
             },
-          },
-        ],
-      }),
+          ],
+        }),
+      ),
     );
     expect(result.success).toBe(false);
   });
@@ -169,19 +178,21 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
 
   it('rejects a nodeForm field overlay that desyncs a sameAs-joined datetime group, anchored at the field', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWithDatetimes({
-        ...baseStage,
-        nodeForm: {
-          fields: [
-            {
-              variable: 'event_a',
-              label: localized('event_a'),
-              component: ComponentTypes.DatePicker,
-              parameters: { type: 'year' },
-            },
-          ],
-        },
-      }),
+      withFinishStage(
+        composerProtocolWithDatetimes({
+          ...baseStage,
+          nodeForm: {
+            fields: [
+              {
+                variable: 'event_a',
+                label: localized('event_a'),
+                component: ComponentTypes.DatePicker,
+                parameters: { type: 'year' },
+              },
+            ],
+          },
+        }),
+      ),
     );
     expect(result.success).toBe(false);
     if (result.success) return;
@@ -200,25 +211,27 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
 
   it('rejects an edge form field overlay that desyncs a sameAs-joined datetime group, anchored at the field', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWithDatetimes({
-        ...baseStage,
-        edges: [
-          {
-            id: 'edge-1',
-            subject: { entity: 'edge', type: 'knows' },
-            form: {
-              fields: [
-                {
-                  variable: 'edge_event_a',
-                  label: localized('edge_event_a'),
-                  component: ComponentTypes.DatePicker,
-                  parameters: { type: 'month' },
-                },
-              ],
+      withFinishStage(
+        composerProtocolWithDatetimes({
+          ...baseStage,
+          edges: [
+            {
+              id: 'edge-1',
+              subject: { entity: 'edge', type: 'knows' },
+              form: {
+                fields: [
+                  {
+                    variable: 'edge_event_a',
+                    label: localized('edge_event_a'),
+                    component: ComponentTypes.DatePicker,
+                    parameters: { type: 'month' },
+                  },
+                ],
+              },
             },
-          },
-        ],
-      }),
+          ],
+        }),
+      ),
     );
     expect(result.success).toBe(false);
     if (result.success) return;
@@ -239,25 +252,27 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
 
   it('accepts a resolution-consistent overlay across both sameAs-joined fields', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWithDatetimes({
-        ...baseStage,
-        nodeForm: {
-          fields: [
-            {
-              variable: 'event_a',
-              label: localized('event_a'),
-              component: ComponentTypes.DatePicker,
-              parameters: { type: 'year' },
-            },
-            {
-              variable: 'event_b',
-              label: localized('event_b'),
-              component: ComponentTypes.DatePicker,
-              parameters: { type: 'year' },
-            },
-          ],
-        },
-      }),
+      withFinishStage(
+        composerProtocolWithDatetimes({
+          ...baseStage,
+          nodeForm: {
+            fields: [
+              {
+                variable: 'event_a',
+                label: localized('event_a'),
+                component: ComponentTypes.DatePicker,
+                parameters: { type: 'year' },
+              },
+              {
+                variable: 'event_b',
+                label: localized('event_b'),
+                component: ComponentTypes.DatePicker,
+                parameters: { type: 'year' },
+              },
+            ],
+          },
+        }),
+      ),
     );
     expect(
       result.success,
@@ -270,18 +285,20 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
     // event_a's field overlay ALSO renders at full resolution (no `type`
     // set), so nothing has desynced.
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWithDatetimes({
-        ...baseStage,
-        nodeForm: {
-          fields: [
-            {
-              variable: 'event_a',
-              label: localized('event_a'),
-              component: ComponentTypes.DatePicker,
-            },
-          ],
-        },
-      }),
+      withFinishStage(
+        composerProtocolWithDatetimes({
+          ...baseStage,
+          nodeForm: {
+            fields: [
+              {
+                variable: 'event_a',
+                label: localized('event_a'),
+                component: ComponentTypes.DatePicker,
+              },
+            ],
+          },
+        }),
+      ),
     );
     expect(result.success).toBe(true);
   });
@@ -338,18 +355,20 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
   // codebook's, falsely rejecting this protocol.
   it('accepts a nodeForm field that omits parameters, inheriting the codebook resolution', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWithCoarseDatetimes({
-        ...baseStage,
-        nodeForm: {
-          fields: [
-            {
-              variable: 'event_a',
-              label: localized('event_a'),
-              component: ComponentTypes.DatePicker,
-            },
-          ],
-        },
-      }),
+      withFinishStage(
+        composerProtocolWithCoarseDatetimes({
+          ...baseStage,
+          nodeForm: {
+            fields: [
+              {
+                variable: 'event_a',
+                label: localized('event_a'),
+                component: ComponentTypes.DatePicker,
+              },
+            ],
+          },
+        }),
+      ),
     );
     expect(
       result.success,
@@ -359,19 +378,21 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
 
   it('rejects a nodeForm field declaring a resolution that differs from the coarse codebook baseline', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWithCoarseDatetimes({
-        ...baseStage,
-        nodeForm: {
-          fields: [
-            {
-              variable: 'event_a',
-              label: localized('event_a'),
-              component: ComponentTypes.DatePicker,
-              parameters: { type: 'month' },
-            },
-          ],
-        },
-      }),
+      withFinishStage(
+        composerProtocolWithCoarseDatetimes({
+          ...baseStage,
+          nodeForm: {
+            fields: [
+              {
+                variable: 'event_a',
+                label: localized('event_a'),
+                component: ComponentTypes.DatePicker,
+                parameters: { type: 'month' },
+              },
+            ],
+          },
+        }),
+      ),
     );
     expect(result.success).toBe(false);
     if (result.success) return;
@@ -394,19 +415,21 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
   // resolution and desyncs the year-resolution group.
   it('rejects a nodeForm field whose own parameters drop the codebook resolution', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWithCoarseDatetimes({
-        ...baseStage,
-        nodeForm: {
-          fields: [
-            {
-              variable: 'event_a',
-              label: localized('event_a'),
-              component: ComponentTypes.DatePicker,
-              parameters: { min: '2020-01-01' },
-            },
-          ],
-        },
-      }),
+      withFinishStage(
+        composerProtocolWithCoarseDatetimes({
+          ...baseStage,
+          nodeForm: {
+            fields: [
+              {
+                variable: 'event_a',
+                label: localized('event_a'),
+                component: ComponentTypes.DatePicker,
+                parameters: { min: '2020-01-01' },
+              },
+            ],
+          },
+        }),
+      ),
     );
     expect(result.success).toBe(false);
     if (result.success) return;
@@ -425,19 +448,21 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
 
   it('rejects a nodeForm field overriding a coarse codebook baseline to full resolution via RelativeDatePicker', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWithCoarseDatetimes({
-        ...baseStage,
-        nodeForm: {
-          fields: [
-            {
-              variable: 'event_a',
-              label: localized('event_a'),
-              component: ComponentTypes.RelativeDatePicker,
-              parameters: { anchor: '2020-01-01' },
-            },
-          ],
-        },
-      }),
+      withFinishStage(
+        composerProtocolWithCoarseDatetimes({
+          ...baseStage,
+          nodeForm: {
+            fields: [
+              {
+                variable: 'event_a',
+                label: localized('event_a'),
+                component: ComponentTypes.RelativeDatePicker,
+                parameters: { anchor: '2020-01-01' },
+              },
+            ],
+          },
+        }),
+      ),
     );
     expect(result.success).toBe(false);
     if (result.success) return;
@@ -456,19 +481,21 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
 
   it('accepts a nodeForm field overriding one member to match a coarse codebook baseline', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWithCoarseDatetimes({
-        ...baseStage,
-        nodeForm: {
-          fields: [
-            {
-              variable: 'event_a',
-              label: localized('event_a'),
-              component: ComponentTypes.DatePicker,
-              parameters: { type: 'year' },
-            },
-          ],
-        },
-      }),
+      withFinishStage(
+        composerProtocolWithCoarseDatetimes({
+          ...baseStage,
+          nodeForm: {
+            fields: [
+              {
+                variable: 'event_a',
+                label: localized('event_a'),
+                component: ComponentTypes.DatePicker,
+                parameters: { type: 'year' },
+              },
+            ],
+          },
+        }),
+      ),
     );
     expect(
       result.success,
@@ -522,25 +549,27 @@ describe('NetworkComposer stage-effective overlay contradictions (tenth-wave Fin
   // never actually hold equal values.
   it('rejects fields pinning a sameAs-joined pair to disjoint fixed windows, anchored at the first field', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWith(sameAsDatetimePair, {
-        ...baseStage,
-        nodeForm: {
-          fields: [
-            {
-              variable: 'event_a',
-              label: localized('event_a'),
-              component: ComponentTypes.DatePicker,
-              parameters: { min: '2020-01-01', max: '2020-01-01' },
-            },
-            {
-              variable: 'event_b',
-              label: localized('event_b'),
-              component: ComponentTypes.DatePicker,
-              parameters: { min: '2020-06-01', max: '2020-06-01' },
-            },
-          ],
-        },
-      }),
+      withFinishStage(
+        composerProtocolWith(sameAsDatetimePair, {
+          ...baseStage,
+          nodeForm: {
+            fields: [
+              {
+                variable: 'event_a',
+                label: localized('event_a'),
+                component: ComponentTypes.DatePicker,
+                parameters: { min: '2020-01-01', max: '2020-01-01' },
+              },
+              {
+                variable: 'event_b',
+                label: localized('event_b'),
+                component: ComponentTypes.DatePicker,
+                parameters: { min: '2020-06-01', max: '2020-06-01' },
+              },
+            ],
+          },
+        }),
+      ),
     );
     expect(result.success).toBe(false);
     if (result.success) return;
@@ -581,25 +610,27 @@ describe('NetworkComposer stage-effective overlay contradictions (tenth-wave Fin
       },
     };
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWith(contradictoryCodebookPair, {
-        ...baseStage,
-        nodeForm: {
-          fields: [
-            {
-              variable: 'event_a',
-              label: localized('event_a'),
-              component: ComponentTypes.DatePicker,
-              parameters: { min: '2020-01-01', max: '2020-01-01' },
-            },
-            {
-              variable: 'event_b',
-              label: localized('event_b'),
-              component: ComponentTypes.DatePicker,
-              parameters: { min: '2020-06-01', max: '2020-06-01' },
-            },
-          ],
-        },
-      }),
+      withFinishStage(
+        composerProtocolWith(contradictoryCodebookPair, {
+          ...baseStage,
+          nodeForm: {
+            fields: [
+              {
+                variable: 'event_a',
+                label: localized('event_a'),
+                component: ComponentTypes.DatePicker,
+                parameters: { min: '2020-01-01', max: '2020-01-01' },
+              },
+              {
+                variable: 'event_b',
+                label: localized('event_b'),
+                component: ComponentTypes.DatePicker,
+                parameters: { min: '2020-06-01', max: '2020-06-01' },
+              },
+            ],
+          },
+        }),
+      ),
     );
     expect(result.success).toBe(false);
     if (result.success) return;
@@ -658,15 +689,17 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
 
   it('rejects a DatePicker field for a number variable, anchored at the component', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWithPersonVariables(
-        {},
-        nodeFormOnly([
-          {
-            variable: 'age',
-            label: localized('age'),
-            component: ComponentTypes.DatePicker,
-          },
-        ]),
+      withFinishStage(
+        composerProtocolWithPersonVariables(
+          {},
+          nodeFormOnly([
+            {
+              variable: 'age',
+              label: localized('age'),
+              component: ComponentTypes.DatePicker,
+            },
+          ]),
+        ),
       ),
     );
     expect(result.success).toBe(false);
@@ -687,15 +720,17 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
 
   it('rejects a Number field for a categorical variable', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWithPersonVariables(
-        {},
-        nodeFormOnly([
-          {
-            variable: 'category',
-            label: localized('category'),
-            component: ComponentTypes.Number,
-          },
-        ]),
+      withFinishStage(
+        composerProtocolWithPersonVariables(
+          {},
+          nodeFormOnly([
+            {
+              variable: 'category',
+              label: localized('category'),
+              component: ComponentTypes.Number,
+            },
+          ]),
+        ),
       ),
     );
     expect(result.success).toBe(false);
@@ -709,15 +744,17 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
 
   it('rejects a field for a layout variable as non-renderable', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWithPersonVariables(
-        {},
-        nodeFormOnly([
-          {
-            variable: 'layoutPosition',
-            label: localized('layoutPosition'),
-            component: ComponentTypes.Text,
-          },
-        ]),
+      withFinishStage(
+        composerProtocolWithPersonVariables(
+          {},
+          nodeFormOnly([
+            {
+              variable: 'layoutPosition',
+              label: localized('layoutPosition'),
+              component: ComponentTypes.Text,
+            },
+          ]),
+        ),
       ),
     );
     expect(result.success).toBe(false);
@@ -731,27 +768,29 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
 
   it('rejects an illegal pairing in an edge form too', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWithPersonVariables(
-        {},
-        {
-          ...baseStage,
-          nodeForm: { fields: [] },
-          edges: [
-            {
-              id: 'edge-1',
-              subject: { entity: 'edge', type: 'knows' },
-              form: {
-                fields: [
-                  {
-                    variable: 'duration',
-                    label: localized('duration'),
-                    component: ComponentTypes.RadioGroup,
-                  },
-                ],
+      withFinishStage(
+        composerProtocolWithPersonVariables(
+          {},
+          {
+            ...baseStage,
+            nodeForm: { fields: [] },
+            edges: [
+              {
+                id: 'edge-1',
+                subject: { entity: 'edge', type: 'knows' },
+                form: {
+                  fields: [
+                    {
+                      variable: 'duration',
+                      label: localized('duration'),
+                      component: ComponentTypes.RadioGroup,
+                    },
+                  ],
+                },
               },
-            },
-          ],
-        },
+            ],
+          },
+        ),
       ),
     );
     expect(result.success).toBe(false);
@@ -776,17 +815,19 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
     ['datetime', ComponentTypes.RelativeDatePicker],
   ])('accepts a %s variable rendered as %s', (_type, component) => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWithPersonVariables(
-        {
-          event_a: {
-            name: 'EventA',
-            label: 'EventA',
-            type: 'datetime',
+      withFinishStage(
+        composerProtocolWithPersonVariables(
+          {
+            event_a: {
+              name: 'EventA',
+              label: 'EventA',
+              type: 'datetime',
+            },
           },
-        },
-        nodeFormOnly([
-          { variable: 'event_a', label: localized('event_a'), component },
-        ]),
+          nodeFormOnly([
+            { variable: 'event_a', label: localized('event_a'), component },
+          ]),
+        ),
       ),
     );
     expect(
@@ -807,9 +848,11 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
     'accepts the codebook variable %s rendered as %s',
     (variable, component) => {
       const result = ProtocolSchemaV9.safeParse(
-        composerProtocolWithPersonVariables(
-          {},
-          nodeFormOnly([{ variable, label: localized(variable), component }]),
+        withFinishStage(
+          composerProtocolWithPersonVariables(
+            {},
+            nodeFormOnly([{ variable, label: localized(variable), component }]),
+          ),
         ),
       );
       expect(
@@ -824,17 +867,19 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
     ['boolean', ComponentTypes.Toggle],
   ])('accepts a %s variable rendered as %s', (_type, component) => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWithPersonVariables(
-        {
-          is_close: {
-            name: 'IsClose',
-            label: 'IsClose',
-            type: 'boolean',
+      withFinishStage(
+        composerProtocolWithPersonVariables(
+          {
+            is_close: {
+              name: 'IsClose',
+              label: 'IsClose',
+              type: 'boolean',
+            },
           },
-        },
-        nodeFormOnly([
-          { variable: 'is_close', label: localized('is_close'), component },
-        ]),
+          nodeFormOnly([
+            { variable: 'is_close', label: localized('is_close'), component },
+          ]),
+        ),
       ),
     );
     expect(
@@ -852,22 +897,24 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
   // be caught here, where the field's own component is known.
   it('rejects a componentless boolean with empty options rendered as Boolean, anchored at the field', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWithPersonVariables(
-        {
-          is_close: {
-            name: 'IsClose',
-            label: 'IsClose',
-            type: 'boolean',
-            options: [],
-          },
-        },
-        nodeFormOnly([
+      withFinishStage(
+        composerProtocolWithPersonVariables(
           {
-            variable: 'is_close',
-            label: localized('is_close'),
-            component: ComponentTypes.Boolean,
+            is_close: {
+              name: 'IsClose',
+              label: 'IsClose',
+              type: 'boolean',
+              options: [],
+            },
           },
-        ]),
+          nodeFormOnly([
+            {
+              variable: 'is_close',
+              label: localized('is_close'),
+              component: ComponentTypes.Boolean,
+            },
+          ]),
+        ),
       ),
     );
     expect(result.success).toBe(false);
@@ -887,22 +934,24 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
 
   it('accepts a componentless boolean with empty options rendered as Toggle', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWithPersonVariables(
-        {
-          is_close: {
-            name: 'IsClose',
-            label: 'IsClose',
-            type: 'boolean',
-            options: [],
-          },
-        },
-        nodeFormOnly([
+      withFinishStage(
+        composerProtocolWithPersonVariables(
           {
-            variable: 'is_close',
-            label: localized('is_close'),
-            component: ComponentTypes.Toggle,
+            is_close: {
+              name: 'IsClose',
+              label: 'IsClose',
+              type: 'boolean',
+              options: [],
+            },
           },
-        ]),
+          nodeFormOnly([
+            {
+              variable: 'is_close',
+              label: localized('is_close'),
+              component: ComponentTypes.Toggle,
+            },
+          ]),
+        ),
       ),
     );
     expect(
@@ -913,21 +962,23 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
 
   it('accepts a scalar variable rendered as a VisualAnalogScale', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWithPersonVariables(
-        {
-          warmth: {
-            name: 'Warmth',
-            label: 'Warmth',
-            type: 'scalar',
-          },
-        },
-        nodeFormOnly([
+      withFinishStage(
+        composerProtocolWithPersonVariables(
           {
-            variable: 'warmth',
-            label: localized('warmth'),
-            component: ComponentTypes.VisualAnalogScale,
+            warmth: {
+              name: 'Warmth',
+              label: 'Warmth',
+              type: 'scalar',
+            },
           },
-        ]),
+          nodeFormOnly([
+            {
+              variable: 'warmth',
+              label: localized('warmth'),
+              component: ComponentTypes.VisualAnalogScale,
+            },
+          ]),
+        ),
       ),
     );
     expect(
@@ -940,15 +991,17 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
   // component check must skip such a field rather than crash on it.
   it('leaves a field naming a variable absent from the codebook to the reference pass', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWithPersonVariables(
-        {},
-        nodeFormOnly([
-          {
-            variable: 'not_in_codebook',
-            label: localized('not_in_codebook'),
-            component: ComponentTypes.DatePicker,
-          },
-        ]),
+      withFinishStage(
+        composerProtocolWithPersonVariables(
+          {},
+          nodeFormOnly([
+            {
+              variable: 'not_in_codebook',
+              label: localized('not_in_codebook'),
+              component: ComponentTypes.DatePicker,
+            },
+          ]),
+        ),
       ),
     );
     expect(result.success).toBe(false);
@@ -1018,24 +1071,26 @@ describe('NetworkComposer cross-stage overlay resolution (twentieth-wave Finding
   // sameAs is satisfiable and neither stage may be rejected.
   it('accepts sameAs-joined variables rendered at matching resolutions by two different composer stages', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWithStages([
-        composerStage('nc1', [
-          {
-            variable: 'event_a',
-            label: localized('event_a'),
-            component: ComponentTypes.DatePicker,
-            parameters: { type: 'year' },
-          },
+      withFinishStage(
+        composerProtocolWithStages([
+          composerStage('nc1', [
+            {
+              variable: 'event_a',
+              label: localized('event_a'),
+              component: ComponentTypes.DatePicker,
+              parameters: { type: 'year' },
+            },
+          ]),
+          composerStage('nc2', [
+            {
+              variable: 'event_b',
+              label: localized('event_b'),
+              component: ComponentTypes.DatePicker,
+              parameters: { type: 'year' },
+            },
+          ]),
         ]),
-        composerStage('nc2', [
-          {
-            variable: 'event_b',
-            label: localized('event_b'),
-            component: ComponentTypes.DatePicker,
-            parameters: { type: 'year' },
-          },
-        ]),
-      ]),
+      ),
     );
     expect(
       result.success,
@@ -1047,22 +1102,24 @@ describe('NetworkComposer cross-stage overlay resolution (twentieth-wave Finding
   // renderings are known together and a genuine mismatch is still reported.
   it('still rejects differing resolutions rendered by one composer form', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWithStages([
-        composerStage('nc1', [
-          {
-            variable: 'event_a',
-            label: localized('event_a'),
-            component: ComponentTypes.DatePicker,
-            parameters: { type: 'year' },
-          },
-          {
-            variable: 'event_b',
-            label: localized('event_b'),
-            component: ComponentTypes.DatePicker,
-            parameters: { type: 'month' },
-          },
+      withFinishStage(
+        composerProtocolWithStages([
+          composerStage('nc1', [
+            {
+              variable: 'event_a',
+              label: localized('event_a'),
+              component: ComponentTypes.DatePicker,
+              parameters: { type: 'year' },
+            },
+            {
+              variable: 'event_b',
+              label: localized('event_b'),
+              component: ComponentTypes.DatePicker,
+              parameters: { type: 'month' },
+            },
+          ]),
         ]),
-      ]),
+      ),
     );
     expect(result.success).toBe(false);
     if (result.success) return;
@@ -1076,23 +1133,25 @@ describe('NetworkComposer cross-stage overlay resolution (twentieth-wave Finding
   // default IS its effective rendering everywhere and the pair stays checked.
   it('still rejects an override against a partner no composer field overrides', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWithStages([
-        composerStage('nc1', [
-          {
-            variable: 'event_a',
-            label: localized('event_a'),
-            component: ComponentTypes.DatePicker,
-            parameters: { type: 'year' },
-          },
+      withFinishStage(
+        composerProtocolWithStages([
+          composerStage('nc1', [
+            {
+              variable: 'event_a',
+              label: localized('event_a'),
+              component: ComponentTypes.DatePicker,
+              parameters: { type: 'year' },
+            },
+          ]),
+          composerStage('nc2', [
+            {
+              variable: 'age',
+              label: localized('age'),
+              component: ComponentTypes.Number,
+            },
+          ]),
         ]),
-        composerStage('nc2', [
-          {
-            variable: 'age',
-            label: localized('age'),
-            component: ComponentTypes.Number,
-          },
-        ]),
-      ]),
+      ),
     );
     expect(result.success).toBe(false);
     if (result.success) return;
@@ -1179,7 +1238,7 @@ describe('NetworkComposer overlay baseline tracks the visible subset', () => {
         },
       ],
     };
-    const result = ProtocolSchemaV9.safeParse(protocol);
+    const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
     expect(result.success).toBe(false);
     if (result.success) return;
     // The record-level check owns the codebook's own contradiction...
@@ -1264,11 +1323,13 @@ describe('NetworkComposer overlay contradictions among non-overridden variables 
 
   it('rejects an override whose floor breaks a comparator between two non-overridden variables, anchored at the causing field', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWith(propagationTrio, {
-        ...baseStage,
-        nodeForm: { fields: [floorField] },
-        edges: [],
-      }),
+      withFinishStage(
+        composerProtocolWith(propagationTrio, {
+          ...baseStage,
+          nodeForm: { fields: [floorField] },
+          edges: [],
+        }),
+      ),
     );
     expect(result.success).toBe(false);
     if (result.success) return;
@@ -1294,20 +1355,22 @@ describe('NetworkComposer overlay contradictions among non-overridden variables 
 
   it('anchors at the first reference-connected field, skipping unrelated fields', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWith(propagationTrio, {
-        ...baseStage,
-        nodeForm: {
-          fields: [
-            {
-              variable: 'age',
-              label: localized('age'),
-              component: ComponentTypes.Number,
-            },
-            floorField,
-          ],
-        },
-        edges: [],
-      }),
+      withFinishStage(
+        composerProtocolWith(propagationTrio, {
+          ...baseStage,
+          nodeForm: {
+            fields: [
+              {
+                variable: 'age',
+                label: localized('age'),
+                component: ComponentTypes.Number,
+              },
+              floorField,
+            ],
+          },
+          edges: [],
+        }),
+      ),
     );
     expect(result.success).toBe(false);
     if (result.success) return;
@@ -1326,19 +1389,21 @@ describe('NetworkComposer overlay contradictions among non-overridden variables 
 
   it('accepts the same codebook when the field carries no floor override', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWith(propagationTrio, {
-        ...baseStage,
-        nodeForm: {
-          fields: [
-            {
-              variable: 'event_a',
-              label: localized('event_a'),
-              component: ComponentTypes.DatePicker,
-            },
-          ],
-        },
-        edges: [],
-      }),
+      withFinishStage(
+        composerProtocolWith(propagationTrio, {
+          ...baseStage,
+          nodeForm: {
+            fields: [
+              {
+                variable: 'event_a',
+                label: localized('event_a'),
+                component: ComponentTypes.DatePicker,
+              },
+            ],
+          },
+          edges: [],
+        }),
+      ),
     );
     expect(
       result.success,
@@ -1352,20 +1417,22 @@ describe('NetworkComposer overlay contradictions among non-overridden variables 
   // field here either.
   it('does not re-report a baseline-present contradiction between non-overridden variables at the stage', () => {
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWith(
-        {
-          ...propagationTrio,
-          event_b: {
-            ...propagationTrio.event_b,
-            component: ComponentTypes.DatePicker,
-            parameters: { min: '2020-01-01' },
+      withFinishStage(
+        composerProtocolWith(
+          {
+            ...propagationTrio,
+            event_b: {
+              ...propagationTrio.event_b,
+              component: ComponentTypes.DatePicker,
+              parameters: { min: '2020-01-01' },
+            },
           },
-        },
-        {
-          ...baseStage,
-          nodeForm: { fields: [floorField] },
-          edges: [],
-        },
+          {
+            ...baseStage,
+            nodeForm: { fields: [floorField] },
+            edges: [],
+          },
+        ),
       ),
     );
     expect(result.success).toBe(false);
@@ -1393,37 +1460,39 @@ describe('NetworkComposer overlay contradictions among non-overridden variables 
   it('accepts a latent stage-effective-only pair this form never renders', () => {
     const trueOnly = [{ label: localized('Yes'), value: true }];
     const result = ProtocolSchemaV9.safeParse(
-      composerProtocolWith(
-        {
-          flag_a: {
-            name: 'FlagA',
-            label: 'FlagA',
-            type: 'boolean',
-            component: ComponentTypes.Boolean,
-            options: trueOnly,
-            validation: { differentFrom: 'flag_b' },
+      withFinishStage(
+        composerProtocolWith(
+          {
+            flag_a: {
+              name: 'FlagA',
+              label: 'FlagA',
+              type: 'boolean',
+              component: ComponentTypes.Boolean,
+              options: trueOnly,
+              validation: { differentFrom: 'flag_b' },
+            },
+            flag_b: {
+              name: 'FlagB',
+              label: 'FlagB',
+              type: 'boolean',
+              component: ComponentTypes.Boolean,
+              options: trueOnly,
+            },
           },
-          flag_b: {
-            name: 'FlagB',
-            label: 'FlagB',
-            type: 'boolean',
-            component: ComponentTypes.Boolean,
-            options: trueOnly,
+          {
+            ...baseStage,
+            nodeForm: {
+              fields: [
+                {
+                  variable: 'age',
+                  label: localized('age'),
+                  component: ComponentTypes.Number,
+                },
+              ],
+            },
+            edges: [],
           },
-        },
-        {
-          ...baseStage,
-          nodeForm: {
-            fields: [
-              {
-                variable: 'age',
-                label: localized('age'),
-                component: ComponentTypes.Number,
-              },
-            ],
-          },
-          edges: [],
-        },
+        ),
       ),
     );
     expect(

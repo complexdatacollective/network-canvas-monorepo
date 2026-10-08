@@ -7,12 +7,22 @@ import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { getLocaleMetadata } from '@codaco/protocol-validation';
 
-import { ContractProvider } from '../../contract/context';
-import type { FinishHandler, InterviewPayload } from '../../contract/types';
-import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
-import { store as createStore } from '../../store/store';
-import { SyncFlushProvider } from '../../store/SyncFlushContext';
+import { ContractProvider } from '../../../contract/context';
+import type { FinishHandler, InterviewPayload } from '../../../contract/types';
+import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
+import { ProtocolLocalizationProvider } from '../../../localization/ProtocolLocalizationProvider';
+import { store as createStore } from '../../../store/store';
+import { SyncFlushProvider } from '../../../store/SyncFlushContext';
 import FinishSession from '../FinishSession';
+
+const finishStage = {
+  id: 'finish',
+  type: 'FinishSession',
+  label: { en: 'Finish' },
+  title: { en: 'All *done*' },
+  content: { en: 'Thank you for **taking part**.' },
+  outcome: 'ineligible',
+} as const;
 
 const payload = {
   session: {
@@ -35,7 +45,7 @@ const payload = {
     localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: { ego: { variables: {} }, node: {}, edge: {} },
     assets: [],
-    stages: [],
+    stages: [finishStage],
   },
 } satisfies InterviewPayload;
 
@@ -65,18 +75,34 @@ function makeView(flush: () => Promise<void>, onFinish: FinishHandler) {
   return (locale: string) => (
     <AnimationProvider disableAnimations reducedMotion="always">
       <InterviewI18nProvider requestedLocale={locale}>
-        <Provider store={store}>
-          <ContractProvider
-            onFinish={onFinish}
-            onRequestAsset={() => Promise.resolve('')}
-          >
-            <SyncFlushProvider flush={flush}>
-              <DialogProvider>
-                <FinishSession />
-              </DialogProvider>
-            </SyncFlushProvider>
-          </ContractProvider>
-        </Provider>
+        <ProtocolLocalizationProvider
+          localization={payload.protocol.localization}
+          localeOptions={payload.session.localeOptions}
+          requestedLocales={['en']}
+          localePreference={null}
+          recordedLocale={null}
+          onLocalePreferenceChange={() => undefined}
+          onLocaleRecorded={() => undefined}
+        >
+          <Provider store={store}>
+            <ContractProvider
+              onFinish={onFinish}
+              onRequestAsset={() => Promise.resolve('')}
+            >
+              <SyncFlushProvider flush={flush}>
+                <DialogProvider>
+                  <FinishSession
+                    stage={finishStage}
+                    getNavigationHelpers={() => ({
+                      moveForward: () => undefined,
+                      moveBackward: () => undefined,
+                    })}
+                  />
+                </DialogProvider>
+              </SyncFlushProvider>
+            </ContractProvider>
+          </Provider>
+        </ProtocolLocalizationProvider>
       </InterviewI18nProvider>
     </AnimationProvider>
   );
@@ -96,7 +122,7 @@ describe('FinishSession localized recoverable failures', () => {
           throw new Error(diagnostic);
         }
       });
-      const finish = vi.fn<FinishHandler>(async (_id, signal) => {
+      const finish = vi.fn<FinishHandler>(async (_id, _finish, signal) => {
         order.push('finish');
         abortStatesAtFinish.push(signal.aborted);
         if (failure === 'finish' && !rejected) {
@@ -152,6 +178,7 @@ describe('FinishSession localized recoverable failures', () => {
       );
       expect(finish).toHaveBeenLastCalledWith(
         'finish-locale-session',
+        { stageId: 'finish', outcome: 'ineligible' },
         expect.any(AbortSignal),
       );
       expect(abortStatesAtFinish).toEqual(
@@ -163,7 +190,7 @@ describe('FinishSession localized recoverable failures', () => {
   it('still passes the cancellation signal to a pending host finish', async () => {
     const flush = vi.fn(() => Promise.resolve());
     const finish = vi.fn<FinishHandler>(
-      (_id, signal) =>
+      (_id, _finish, signal) =>
         new Promise((resolve) => {
           signal.addEventListener('abort', () => resolve(), { once: true });
         }),
@@ -178,7 +205,7 @@ describe('FinishSession localized recoverable failures', () => {
       }),
     );
     await waitFor(() => expect(finish).toHaveBeenCalledTimes(1));
-    const signal = finish.mock.lastCall?.[1];
+    const signal = finish.mock.lastCall?.[2];
     expect(signal).toBeInstanceOf(AbortSignal);
     expect(signal?.aborted).toBe(false);
     expect(flush).toHaveBeenCalledTimes(1);

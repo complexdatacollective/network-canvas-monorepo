@@ -1070,6 +1070,20 @@
           }
         }
       ]
+    },
+    {
+      "id": "finish",
+      "type": "FinishSession",
+      "label": {
+        "en-US": "Finish Interview"
+      },
+      "title": {
+        "en-US": "Finish Interview"
+      },
+      "content": {
+        "en-US": "You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
+      },
+      "outcome": "completed"
     }
   ]
 }

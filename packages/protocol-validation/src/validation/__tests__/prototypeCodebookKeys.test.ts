@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { withFinishStage } from '../../__tests__/finishStage.ts';
 import { ValidationError } from '../../migration/errors.ts';
 import { migrateProtocol } from '../../migration/migrate-protocol.ts';
 import { createBaseProtocol, localized } from '../../utils/test-utils.ts';
@@ -62,7 +63,9 @@ const cases = [
 
 describe('a __proto__ codebook id', () => {
   it('leaves the base protocol valid', async () => {
-    const result = await validateProtocol(createBaseProtocol());
+    const result = await validateProtocol(
+      withFinishStage(createBaseProtocol()),
+    );
     expect(result.error?.issues).toBeUndefined();
   });
 
@@ -70,7 +73,7 @@ describe('a __proto__ codebook id', () => {
     const protocol = createBaseProtocol();
     add(protocol);
 
-    const result = await validateProtocol(protocol);
+    const result = await validateProtocol(withFinishStage(protocol));
 
     expect(result.error?.issues).toEqual([
       { code: 'custom', path, message: 'An id cannot be __proto__' },
@@ -83,7 +86,7 @@ describe('a __proto__ codebook id', () => {
       `"node":{"__proto__":${JSON.stringify(nodeType)},`,
     );
 
-    const result = await validateProtocol(JSON.parse(text));
+    const result = await validateProtocol(withFinishStage(JSON.parse(text)));
 
     expect(result.error?.message).toBe(
       'codebook.node.__proto__: An id cannot be __proto__',

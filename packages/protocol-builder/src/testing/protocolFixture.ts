@@ -63,6 +63,7 @@ const FIXTURE_STAGE_TYPES = {
   'network-composer-1': 'NetworkComposer',
   'geospatial-1': 'Geospatial',
   'language-chooser-1': 'LanguageChooser',
+  'finish': 'FinishSession',
 } as const satisfies Readonly<Record<string, StageType>>;
 
 type FixtureStageTypes = typeof FIXTURE_STAGE_TYPES;
