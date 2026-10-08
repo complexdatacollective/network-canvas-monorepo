@@ -18,7 +18,6 @@ import type {
   FormSubmitHandler,
   ValidationContext,
 } from '@codaco/fresco-ui/form/store/types';
-import type { PresentationalText } from '@codaco/fresco-ui/PresentationalText';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
@@ -136,7 +135,7 @@ const CHILD_KINDS = ['biological', 'adoptive', 'social'] as const;
 
 export type GenderIdentityOption = {
   value: string | number;
-  label: PresentationalText;
+  label: string;
 };
 
 type PersonFormProps = {

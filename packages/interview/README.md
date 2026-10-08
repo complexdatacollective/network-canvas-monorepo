@@ -321,9 +321,12 @@ network. Research values and identifiers are always passed through unchanged.
 
 Changing `requestedLocales` takes effect immediately and preserves the mounted
 interview, pending form input, navigation and answers. The package sets `lang`
-(the interface language) and `dir` on its own region, lays the stage out in the
-direction of the protocol language shown, and leaves the host document's
-language to the host.
+and `dir` on its own region to the interview language and its direction, for
+everything it renders: the stage, the navigation, and its dialogs and toasts.
+No text inside marks a language of its own, apart from the Language Chooser's
+language names, each written in itself. Built-in interface text follows the
+interface language described above, so it can be in a different language from
+the region's. The package leaves the host document's language to the host.
 
 ##### Session language fields
 

@@ -128,8 +128,10 @@ test.describe('a Spanish browser', () => {
     await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
     await chooseLanguage(page, 'en', 'es');
     await interviewNav.startNewSession('Caso Á-17');
+    // The interview carries the protocol's language (it declares only en-US);
+    // the built-in controls alone follow the browser.
     const interview = page.locator('main[data-theme-interview]');
-    await expect(interview).toHaveAttribute('lang', 'es');
+    await expect(interview).toHaveAttribute('lang', 'en-US');
     await expect(interview).toHaveAttribute('dir', 'ltr');
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
     await expect(
@@ -177,7 +179,7 @@ test.describe('a Spanish browser', () => {
       .getByRole('button', { name: /Reanudar la última entrevista/ })
       .click();
     await interviewNav.waitForStage();
-    await expect(interview).toHaveAttribute('lang', 'es');
+    await expect(interview).toHaveAttribute('lang', 'en-US');
     await expect(interview).toHaveAttribute('dir', 'ltr');
     await expect(page.locator('html')).toHaveAttribute('lang', 'es');
     await expect(
@@ -289,7 +291,7 @@ test.describe('the language chooser stage', () => {
     await interviewNav.startNewSession('Idioma-17');
 
     const interview = page.locator('main[data-theme-interview]');
-    await expect(interview).toHaveAttribute('lang', 'en');
+    await expect(interview).toHaveAttribute('lang', 'en-US');
     await expect(
       page.getByRole('heading', { name: 'Choose a language', exact: true }),
     ).toBeVisible();
@@ -434,9 +436,10 @@ test.describe('installed app catalog availability', () => {
       page.getByRole('button', { name: 'Settings', exact: true }),
     ).toBeVisible();
     await interviewNav.startNewSession('GB-offline-17');
+    // The interview carries the protocol's language, not the browser's.
     await expect(page.locator('main[data-theme-interview]')).toHaveAttribute(
       'lang',
-      'en-GB',
+      'en-US',
     );
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
     await interviewNav.exitInterview();

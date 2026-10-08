@@ -9,10 +9,6 @@ import { default as Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import {
-  presentationalTextProps,
-  presentationalTextValue,
-} from '@codaco/fresco-ui/PresentationalText';
-import {
   ALLOWED_MARKDOWN_SECTION_TAGS,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
@@ -27,7 +23,7 @@ import {
 } from '../../contract/context';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { LocalizedMarkdown } from '../../localization/LocalizedMarkdown';
-import { usePresentationalText } from '../../localization/ProtocolLocalizationProvider';
+import { useLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { getInterviewId } from '../../selectors/session';
 import { useSyncFlush } from '../../store/SyncFlushContext';
 import type { StageProps } from '../../types';
@@ -50,7 +46,7 @@ function FinishSessionText({
   stage: FinishSessionText;
   headingRef?: Ref<HTMLHeadingElement>;
 }) {
-  const title = usePresentationalText(stage.title);
+  const { text: title } = useLocalizedString(stage.title);
   return (
     <>
       <RenderMarkdown
@@ -61,11 +57,10 @@ function FinishSessionText({
             tabIndex={headingRef ? -1 : undefined}
             level="h1"
             className="text-center"
-            {...presentationalTextProps(title)}
           />
         }
       >
-        {presentationalTextValue(title)}
+        {title}
       </RenderMarkdown>
       <LocalizedMarkdown
         value={stage.content}

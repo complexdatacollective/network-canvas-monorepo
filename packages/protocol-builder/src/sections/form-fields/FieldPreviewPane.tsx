@@ -1,7 +1,8 @@
+import { DirectionProvider } from '@base-ui/react/direction-provider';
 import { type ReactNode, useId, useMemo } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl, useAppLocale } from '@codaco/app-i18n/react';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Form from '@codaco/fresco-ui/form/Form';
@@ -199,21 +200,6 @@ const NO_REQUESTED_LOCALES: readonly string[] = [];
 const passPreviewValidation = () => ({ success: true as const });
 
 /**
- * The participant's own language and writing direction, around the field.
- *
- * A separate component because it reads the researcher-facing locale the
- * interview provider resolved, which is only available below it.
- */
-function PreviewLocaleRegion({ children }: Readonly<{ children: ReactNode }>) {
-  const { locale, direction } = useAppLocale();
-  return (
-    <div lang={locale} dir={direction}>
-      {children}
-    </div>
-  );
-}
-
-/**
  * The protocol's languages, as the interview resolves the field's copy in
  * them: the language being edited, falling back as a participant's would.
  */
@@ -230,6 +216,7 @@ function PreviewProtocolLanguage({
     () => localization.locales.map((declared) => getLocaleMetadata(declared)),
     [localization],
   );
+  const { direction } = getLocaleMetadata(locale);
   return (
     <ProtocolLocalizationProvider
       localization={localization}
@@ -240,7 +227,15 @@ function PreviewProtocolLanguage({
       onLocalePreferenceChange={ignoreLocaleChange}
       onLocaleRecorded={ignoreLocaleChange}
     >
-      {children}
+      {/* The field's language boundary, as the interview Shell's region is:
+          everything inside, the participant's popups included, takes the
+          language being previewed and lays out in its direction, and no text
+          inside marks a language of its own. */}
+      <DirectionProvider direction={direction}>
+        <div lang={locale} dir={direction}>
+          {children}
+        </div>
+      </DirectionProvider>
     </ProtocolLocalizationProvider>
   );
 }
@@ -539,20 +534,18 @@ export default function FieldPreviewPane({
             >
               <InterviewI18nProvider requestedLocale={intl.locale}>
                 <PreviewProtocolLanguage {...languages}>
-                  <PreviewLocaleRegion>
-                    {/* Re-parents the participant's own popups — a scale's
+                  {/* Re-parents the participant's own popups — a scale's
                         value bubble, a date picker — into the region that
-                        carries their language and writing direction. */}
-                    <PortalContainerProvider>
-                      <ProtocolField
-                        field={field}
-                        name="preview-value"
-                        {...(validationContext === undefined
-                          ? {}
-                          : { validationContext })}
-                      />
-                    </PortalContainerProvider>
-                  </PreviewLocaleRegion>
+                        carries the previewed language and direction. */}
+                  <PortalContainerProvider>
+                    <ProtocolField
+                      field={field}
+                      name="preview-value"
+                      {...(validationContext === undefined
+                        ? {}
+                        : { validationContext })}
+                    />
+                  </PortalContainerProvider>
                 </PreviewProtocolLanguage>
               </InterviewI18nProvider>
               <div className="flex justify-end">

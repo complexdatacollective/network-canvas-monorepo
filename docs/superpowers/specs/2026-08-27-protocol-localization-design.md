@@ -148,8 +148,18 @@ where the repository records one.
     - **No `und` anywhere.** Stored protocols, Fresco's database default,
       interview data, exports, templates and fixtures contain `en` where they
       would have had `und`.
+17. **One language boundary, at the Shell.** The proposal gave every rendered
+    protocol text its own `lang` and `dir`, describing the translation it
+    resolved to, while the Shell root carried the interface language. The
+    product owner ruled on 8 October 2026 that the interview is a single
+    language environment. The Shell root carries the interview language and
+    its direction for everything the Shell renders, stage, navigation, dialogs
+    and toasts alike, and no text inside marks a language of its own, even
+    when it falls back to another of the protocol's languages (§8.3, §8.8).
+    Built-in interface text inside the Shell is to come from the protocol in
+    the interview language, so that the boundary holds for it too.
 
-17. **The end of the interview is a Finish Screen stage with supplied text.**
+18. **The end of the interview is a Finish Screen stage with supplied text.**
     (8 October 2026, #2131.) The completion screen was interface-owned copy that
     no protocol could translate. It is now a protocol stage of type
     `FinishSession`, with a localized `title` and `content`, so it follows the
@@ -804,12 +814,6 @@ function useResolveLocalizedString(): (
 ) => ResolvedLocalizedString;
 
 function useLocalizedString(value: LocalizedString): ResolvedLocalizedString;
-
-function useResolvePresentationalText(): (
-  value: LocalizedString,
-) => PresentationalText;
-
-function usePresentationalText(value: LocalizedString): PresentationalText;
 ```
 
 The provider takes the protocol's declaration, the host-supplied
@@ -830,11 +834,14 @@ passed explicitly.
 
 The resolver hooks return the formatted message: `IntlMessageFormat` formats
 each message in the locale it is written in, with `ignoreTag`, and caches the
-result per locale and message. `LocalizedText` and `LocalizedMarkdown` render a
-resolved string with its `lang` and `dir`.
+result per locale and message. `LocalizedText` and `LocalizedMarkdown` render
+the resolved text with no language attributes of their own: the Shell root
+carries the interview language for everything inside it (§8.8, revision 17).
+Interview components hand fresco-ui plain strings.
 
-Fresco UI remains protocol-agnostic but must be able to retain resolved locale
-metadata. It adds a small presentation value, exported from
+Fresco UI remains protocol-agnostic. For text written in a language other than
+the page's, such as a language's name written in itself, it accepts a small
+presentation value, exported from
 `@codaco/fresco-ui/PresentationalText` with the helpers `isPresentationalText`,
 `presentationalTextValue`, and `presentationalTextProps`, accepted alongside its
 existing plain-string APIs:
@@ -849,16 +856,10 @@ type PresentationalText =
     }>;
 ```
 
-Interview adapters convert `ResolvedLocalizedString` to this shape for field
-labels, hints, option labels, scalar endpoints, Network Composer endpoints,
-and roster details. Fresco UI components unwrap
-`text` wherever a primitive string is operationally required, while the nearest
-visible text element or native option receives `lang` and `dir`.
-Markdown-capable labels retain their current rendering behavior inside that
-attributed wrapper. Existing application-owned strings remain valid without
-locale metadata. A ReactNode escape hatch alone is insufficient because
-select/filter/ARIA code paths also need a stable primitive value and explicit
-locale attributes.
+Fresco UI components unwrap `text` wherever a primitive string is
+operationally required, while the nearest visible text element or native
+option receives `lang` and `dir`. `LocaleSelect` and the Language Chooser's
+options use it; protocol text inside the interview does not (revision 17).
 
 The protocol schema's type change is intentionally used as a compiler-driven
 inventory: every participant renderer that expects a plain string must be
@@ -1001,8 +1002,10 @@ language:
   script, as in §6.2.
 - The result is never stored. Each Shell owns its formatter, so one interview's
   language cannot leak into another on the same page.
-- Protocol text carries the `lang` of the translation it is written in; the
-  Shell root carries the interface `lang` and `dir`.
+- The Shell root carries the interview language and direction, not the
+  interface language (§8.8). Built-in text that the interface has no catalog
+  for is therefore shown in English inside a region marked with the interview
+  language, until that text comes from the protocol (revision 17).
 
 ### 8.4 Interviewer (Vite SPA)
 
@@ -1134,14 +1137,18 @@ Studio's own message catalogs are separate work.
 
 ### 8.8 Language and direction in the DOM
 
-- Every rendered protocol-authored string is associated with the actual
-  locale returned by the resolver.
-- The nearest practical text container receives `lang` and `dir`; when a
-  string falls back, those attributes describe the fallback language, not the
-  selected protocol locale.
-- The stage container takes the direction of the translation shown. The Shell
-  root keeps the interface language and direction, because built-in text is in
-  the interface language and protocol text carries its own `lang`.
+- The Shell root is the interview's one language boundary. It carries the
+  interview language and that language's direction, and provides the
+  direction to the components inside it. Everything the Shell renders sits
+  inside it: the stage, the navigation, and the dialogs and toasts, which
+  portal into the same region (revision 17).
+- No protocol text inside the Shell marks a language of its own, even when it
+  falls back to another of the protocol's languages, and no wrapper is added to
+  carry one: a wrapper would separate typography siblings whose spacing depends
+  on their order.
+- The one exception is a language's name written in that language: the
+  Language Chooser marks each option with the language it names, so that
+  "Deutsch" is read as German whatever the interview language is.
 - The host owns the document-level `<html lang>`. The Interview package does
   not rewrite it because surrounding host chrome may remain in another
   language.
@@ -1516,9 +1523,9 @@ language does not change analysis schema.
   Pedigree snapshot title.
 - Network Composer Visual Analog Scale override endpoints resolve through the
   typed component branch rather than the former string-only runtime checks.
-- Fresco UI form labels, hints, option labels, and endpoint labels receive the
-  resolved `PresentationalText`; string extraction cannot discard source
-  `lang`/`dir` on the visible leaf or native option.
+- Protocol text inside the Shell, including fresco-ui form labels, hints,
+  option labels and endpoint labels, carries no `lang` or `dir` of its own;
+  the Shell root carries the interview language and direction (revision 17).
 - Name Generator Roster renders two distinct detail rows when stable
   properties resolve to the same translated label, retaining each value and
   each label's actual source locale.

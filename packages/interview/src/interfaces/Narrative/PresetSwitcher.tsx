@@ -14,11 +14,6 @@ import {
   AccordionTrigger,
 } from '@codaco/fresco-ui/Accordion';
 import { RadioItem } from '@codaco/fresco-ui/form/fields/RadioGroup';
-import {
-  type PresentationalText,
-  presentationalTextProps,
-  presentationalTextValue,
-} from '@codaco/fresco-ui/PresentationalText';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import {
   SegmentedToolbar,
@@ -37,7 +32,7 @@ import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { LocalizedText } from '../../localization/LocalizedText';
-import { useResolvePresentationalText } from '../../localization/ProtocolLocalizationProvider';
+import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { useContentFormat } from '../../localization/useContentFormat';
 import { getNetworkNodes, getSubjectType } from '../../selectors/session';
 import { getCodebook } from '../../store/modules/protocol';
@@ -48,7 +43,7 @@ type NarrativeStage = Extract<Stage, { type: 'Narrative' }>;
 type Preset = NarrativeStage['presets'][number];
 
 type GroupLegendEntry = {
-  label: PresentationalText;
+  label: string;
   colorIndex: number;
 };
 
@@ -64,11 +59,11 @@ type GroupLegendEntry = {
 export function buildGroupLegend(
   categoricalOptions: VariableOption[],
   groupValues: VariableOptionValue[],
-  toPresentationalText: (label: LocalizedString) => PresentationalText,
+  resolveText: (label: LocalizedString) => string,
   collator: Intl.Collator,
 ): GroupLegendEntry[] {
   const known = categoricalOptions.map((option, index) => ({
-    label: toPresentationalText(option.label),
+    label: resolveText(option.label),
     colorIndex: index + 1,
   }));
 
@@ -125,7 +120,7 @@ export default function PresetSwitcher({
   dragConstraints,
 }: PresetSwitcherProps) {
   const intl = useAppIntl();
-  const toPresentationalText = useResolvePresentationalText();
+  const resolve = useResolveLocalizedString();
   const { collator } = useContentFormat();
   const currentPreset = presets[activePreset];
 
@@ -179,10 +174,10 @@ export default function PresetSwitcher({
       buildGroupLegend(
         categoricalOptions ?? [],
         groupValues,
-        toPresentationalText,
+        (label) => resolve(label).text,
         collator,
       ),
-    [categoricalOptions, groupValues, toPresentationalText, collator],
+    [categoricalOptions, groupValues, resolve, collator],
   );
 
   const hasHighlights = highlights.length > 0;
@@ -300,7 +295,7 @@ export default function PresetSwitcher({
                           key={index}
                           id={radioId}
                           value={String(index)}
-                          label={toPresentationalText(highlight.label)}
+                          label={resolve(highlight.label).text}
                         />
                       );
                     })}
@@ -354,11 +349,7 @@ export default function PresetSwitcher({
                             backgroundColor: `var(--cat-${entry.colorIndex})`,
                           }}
                         />
-                        <div {...presentationalTextProps(entry.label)}>
-                          <RenderMarkdown>
-                            {presentationalTextValue(entry.label)}
-                          </RenderMarkdown>
-                        </div>
+                        <RenderMarkdown>{entry.label}</RenderMarkdown>
                       </div>
                     ))}
                   </div>

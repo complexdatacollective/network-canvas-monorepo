@@ -10,11 +10,6 @@ import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
 import { CollectionFilterInput } from '@codaco/fresco-ui/collection/components/CollectionFilterInput';
 import { ListLayout } from '@codaco/fresco-ui/collection/layout/ListLayout';
 import type { ItemProps, Key } from '@codaco/fresco-ui/collection/types';
-import {
-  type PresentationalText,
-  presentationalTextProps,
-  presentationalTextValue,
-} from '@codaco/fresco-ui/PresentationalText';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import InterfacePicture from '@codaco/interface-images/InterfacePicture';
@@ -24,7 +19,7 @@ import manifest, {
 
 import { useCurrentStep } from '../contexts/CurrentStepContext';
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
-import { useResolvePresentationalText } from '../localization/ProtocolLocalizationProvider';
+import { useResolveLocalizedString } from '../localization/ProtocolLocalizationProvider';
 import {
   getSkipMap,
   getStageAvailabilityMap,
@@ -53,10 +48,8 @@ type StageItem = {
   id: string;
   index: number;
   type: string;
-  /** The stage's name as the participant reads it, for filtering. */
+  /** The stage's name as the participant reads it. */
   label: string;
-  /** The same name with the language it is written in. */
-  title: PresentationalText;
   position: string;
   isCurrent: boolean;
   isUnavailable: boolean;
@@ -79,7 +72,7 @@ const FILTER_MIN_QUERY_LENGTH = 2;
 // than being re-sorted by match quality.
 const FILTER_FUSE_OPTIONS = { includeScore: false };
 // Horizontal cards sit in a spaced row; the timeline segments bridge the gap
-// (half of `gap-6` = `-left-3` / `-right-3`) so the line stays continuous.
+// (half of `gap-6` = `-start-3` / `-end-3`) so the line stays continuous.
 const HORIZONTAL_GAP = 6;
 
 // Timeline (line + numbered nodes) reveals as a directional "wipe"; the stage
@@ -200,7 +193,7 @@ export default function StagesMenu({
   onClosed,
 }: StagesMenuProps) {
   const intl = useAppIntl();
-  const toPresentationalText = useResolvePresentationalText();
+  const resolve = useResolveLocalizedString();
   const stages = useSelector(getStages);
   const { displayedStep: currentStageIndex } = useCurrentStep();
   const availabilityMap = useSelector(getStageAvailabilityMap);
@@ -224,30 +217,24 @@ export default function StagesMenu({
     () =>
       stages.flatMap((stage, index) => {
         if (stage.type === 'FinishSession') return [];
-        const authored = toPresentationalText(stage.label);
-        const title = presentationalTextValue(authored).trim()
+        const authored = resolve(stage.label).text;
+        const label = authored.trim()
           ? authored
           : intl.formatMessage(messages.untitledStage);
-        return {
-          id: stage.id,
-          index,
-          type: stage.type,
-          label: presentationalTextValue(title),
-          title,
-          position: intl.formatNumber(index + 1, { useGrouping: false }),
-          isCurrent: index === currentStageIndex,
-          isUnavailable: skipMap[index] === true,
-          availability: availabilityMap[index] ?? { kind: 'available' },
-        };
+        return [
+          {
+            id: stage.id,
+            index,
+            type: stage.type,
+            label,
+            position: intl.formatNumber(index + 1, { useGrouping: false }),
+            isCurrent: index === currentStageIndex,
+            isUnavailable: skipMap[index] === true,
+            availability: availabilityMap[index] ?? { kind: 'available' },
+          },
+        ];
       }),
-    [
-      stages,
-      currentStageIndex,
-      availabilityMap,
-      skipMap,
-      intl,
-      toPresentationalText,
-    ],
+    [stages, currentStageIndex, availabilityMap, skipMap, intl, resolve],
   );
 
   const currentId = items.find((item) => item.isCurrent)?.id;
@@ -391,10 +378,7 @@ export default function StagesMenu({
           isHorizontal ? 'items-center text-center' : 'min-w-0 flex-1',
         )}
       >
-        <span
-          className={isHorizontal ? 'line-clamp-2' : undefined}
-          {...presentationalTextProps(item.title)}
-        >
+        <span className={isHorizontal ? 'line-clamp-2' : undefined}>
           {item.label}
         </span>
         {availabilityStatus && (
@@ -426,7 +410,7 @@ export default function StagesMenu({
         {item.isUnavailable && (
           <span
             aria-hidden
-            className="bg-cerulean-blue elevation-low absolute top-1 right-1 flex size-6 items-center justify-center rounded-full text-white"
+            className="bg-cerulean-blue elevation-low absolute inset-e-1 top-1 flex size-6 items-center justify-center rounded-full text-white"
           >
             <AvailabilityIcon className="size-3.5" />
           </span>
@@ -455,8 +439,8 @@ export default function StagesMenu({
             // horizontal scroll — a scroll container's own end padding is
             // dropped from the scrollable area, flushing the last card to the
             // edge.
-            isFirst && 'ml-6',
-            isLast && 'mr-6',
+            isFirst && 'ms-6',
+            isLast && 'me-6',
           )}
         >
           <span className="relative flex h-8 w-full items-center justify-center">
@@ -467,13 +451,13 @@ export default function StagesMenu({
               initial={animate}
               animate={animate}
               className={cx(
-                'bg-neon-coral pointer-events-none absolute top-1/2 h-1 origin-left -translate-y-1/2',
+                'bg-neon-coral pointer-events-none absolute top-1/2 h-1 origin-left -translate-y-1/2 rtl:origin-right',
                 isOnly
                   ? 'hidden'
                   : isFirst
-                    ? '-right-3 left-1/2'
+                    ? 'inset-s-1/2 -inset-e-3'
                     : isLast
-                      ? 'right-1/2 -left-3'
+                      ? '-inset-s-3 inset-e-1/2'
                       : '-inset-x-3',
               )}
             />
@@ -497,7 +481,7 @@ export default function StagesMenu({
         initial={animate}
         animate={animate}
         className={cx(
-          'group focusable hover:elevation-medium relative flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-[color,background-color,box-shadow] duration-200',
+          'group focusable hover:elevation-medium relative flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-start transition-[color,background-color,box-shadow] duration-200',
           'data-selected:bg-primary data-selected:text-primary-contrast',
           'hover:bg-accent data-focused:bg-accent',
         )}
@@ -509,7 +493,7 @@ export default function StagesMenu({
           initial={animate}
           animate={animate}
           className={cx(
-            'bg-neon-coral pointer-events-none absolute left-8 w-1 origin-top -translate-x-1/2',
+            'bg-neon-coral pointer-events-none absolute inset-s-8 w-1 origin-top -translate-x-1/2 rtl:translate-x-1/2',
             isOnly
               ? 'hidden'
               : isFirst

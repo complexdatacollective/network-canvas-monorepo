@@ -4,7 +4,6 @@ import { isNil } from 'es-toolkit';
 import { get } from 'es-toolkit/compat';
 import { useSelector } from 'react-redux';
 
-import type { PresentationalText } from '@codaco/fresco-ui/PresentationalText';
 import type { Stage } from '@codaco/protocol-validation';
 import { entityAttributesProperty, type NcNode } from '@codaco/shared-consts';
 
@@ -15,7 +14,7 @@ import useSortedNodeList, {
 import { useStageSelector } from '../../hooks/useStageSelector';
 import {
   useContentLocale,
-  useResolvePresentationalText,
+  useResolveLocalizedString,
 } from '../../localization/ProtocolLocalizationProvider';
 import {
   getAllVariableUUIDsByEntity,
@@ -73,7 +72,7 @@ export function useCategoricalBins() {
     binSortOrder,
   } = prompt;
 
-  const toPresentationalText = useResolvePresentationalText();
+  const resolve = useResolveLocalizedString();
   const locale = useContentLocale();
   const codebookVariables = useSelector(getAllVariableUUIDsByEntity);
   const getVariableDefinition = useStageSelector(makeGetCodebookVariableById);
@@ -100,7 +99,7 @@ export function useCategoricalBins() {
   );
 
   type Bin = {
-    label: PresentationalText;
+    label: string;
     nodes: NcNode[];
     value: string | number | boolean | null;
     isOther: boolean;
@@ -122,7 +121,7 @@ export function useCategoricalBins() {
     );
 
     return {
-      label: toPresentationalText(option.label),
+      label: resolve(option.label).text,
       nodes: sortedNodes,
       value: option.value,
       isOther: false,
@@ -145,7 +144,7 @@ export function useCategoricalBins() {
     );
 
     bins.push({
-      label: toPresentationalText(otherOptionLabel),
+      label: resolve(otherOptionLabel).text,
       nodes: sortedOtherNodes,
       value: null,
       isOther: true,

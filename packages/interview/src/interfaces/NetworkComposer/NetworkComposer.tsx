@@ -11,11 +11,6 @@ import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import Node from '@codaco/fresco-ui/Node';
 import type { ActivationSource } from '@codaco/fresco-ui/Node';
-import {
-  type PresentationalText,
-  presentationalTextProps,
-  presentationalTextValue,
-} from '@codaco/fresco-ui/PresentationalText';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import type { ComposerForm } from '@codaco/protocol-validation';
 import {
@@ -34,10 +29,7 @@ import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { useVariableLabels } from '../../forms/buildVariableLabels';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../hooks/useStageSelector';
-import {
-  useResolveLocalizedString,
-  useResolvePresentationalText,
-} from '../../localization/ProtocolLocalizationProvider';
+import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
@@ -88,7 +80,7 @@ const hasGroupValue = (raw: unknown, value: string): boolean => {
 type DrawerEditor = {
   kind: 'node' | 'edge';
   entityId: string;
-  title: PresentationalText;
+  title: string;
   form: ComposerForm | undefined;
   subject: Subject;
   attributes: NcNode[typeof entityAttributesProperty];
@@ -101,7 +93,6 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const { currentStep } = useCurrentStep();
   const shouldReduceMotion = useReducedMotion();
   const resolve = useResolveLocalizedString();
-  const toPresentationalText = useResolvePresentationalText();
 
   const layoutVariable = stage.layoutVariable;
 
@@ -127,9 +118,6 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
 
   const codebook = useSelector(getCodebook);
   const nodeTypeDefinition = codebook?.node?.[stage.subject.type];
-  const nodeTypeLabel = nodeTypeDefinition
-    ? toPresentationalText(nodeTypeDefinition.label)
-    : stage.subject.type;
   const nodeLabel = nodeTypeDefinition
     ? resolve(nodeTypeDefinition.label).text
     : stage.subject.type;
@@ -239,7 +227,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
           id: hullVariableId,
           options: hullOptions.map((option) => ({
             value: String(option.value),
-            label: toPresentationalText(option.label),
+            label: resolve(option.label).text,
           })),
         }
       : null;
@@ -469,7 +457,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     const edgeCbEntry = codebook?.edge?.[edgeType];
     return {
       edgeType,
-      label: edgeCbEntry ? toPresentationalText(edgeCbEntry.label) : edgeType,
+      label: edgeCbEntry ? resolve(edgeCbEntry.label).text : edgeType,
       color: edgeCbEntry?.color,
     };
   });
@@ -488,7 +476,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
       ? { variable: currentTool.variable, value: currentTool.value }
       : null;
   // The active group's variable can only be the stage's single hull variable.
-  const activeGroupLabel: PresentationalText =
+  const activeGroupLabel: string =
     activeGroup !== null
       ? (groupVariable?.options.find(
           (option) => option.value === activeGroup.value,
@@ -604,7 +592,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
       const title =
         typeof rawName === 'string' && rawName.trim() !== ''
           ? rawName
-          : nodeTypeLabel;
+          : nodeLabel;
       return {
         kind: 'node',
         entityId: selectedNode[entityPrimaryKeyProperty],
@@ -620,7 +608,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         kind: 'edge',
         entityId: selectedEdge[entityPrimaryKeyProperty],
         title: edgeTypeDefinition
-          ? toPresentationalText(edgeTypeDefinition.label)
+          ? resolve(edgeTypeDefinition.label).text
           : selectedEdge.type,
         form: selectedEdgeFormEntry?.form,
         subject: { entity: 'edge', type: selectedEdge.type },
@@ -725,9 +713,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
                           : undefined
                       }
                     >
-                      <span {...presentationalTextProps(option.label)}>
-                        {presentationalTextValue(option.label)}
-                      </span>
+                      {option.label}
                     </Toggle>
                   ))}
                 </ToggleGroup>

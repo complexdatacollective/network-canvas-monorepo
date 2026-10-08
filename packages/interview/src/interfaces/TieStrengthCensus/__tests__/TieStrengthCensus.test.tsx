@@ -343,24 +343,21 @@ describe('TieStrengthCensus option labels', () => {
     { label: { en: 'Strong' }, value: 2 },
   ]);
 
-  const languageOf = (optionName: string) => {
-    const tagged = within(screen.getByRole('option', { name: optionName }))
+  // The interview sets one language for everything it renders, so an option
+  // names none of its own, nor does any wrapper between it and the stage.
+  const marksOwnLanguage = (optionName: string) =>
+    within(screen.getByRole('option', { name: optionName }))
       .getByText(optionName)
-      .closest('[lang]');
-    return {
-      lang: tagged?.getAttribute('lang'),
-      dir: tagged?.getAttribute('dir'),
-    };
-  };
+      .closest('[lang], [dir]') !== null;
 
-  it('renders each option in the interview locale, tagging fallback text with its own language', async () => {
+  it('renders each option in the interview locale or the default, with no language of its own', async () => {
     const { advancePastIntro } = renderInterface([], arabicCodebook, false, {
       localization: bilingual,
       locale: 'ar',
     });
     await advancePastIntro();
 
-    expect(languageOf('ضعيفة')).toEqual({ lang: 'ar', dir: 'rtl' });
-    expect(languageOf('Strong')).toEqual({ lang: 'en', dir: 'ltr' });
+    expect(marksOwnLanguage('ضعيفة')).toBe(false);
+    expect(marksOwnLanguage('Strong')).toBe(false);
   });
 });

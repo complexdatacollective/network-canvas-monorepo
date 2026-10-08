@@ -5,11 +5,6 @@ import { useSelector } from 'react-redux';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
-import {
-  type PresentationalText,
-  presentationalTextProps,
-  presentationalTextValue,
-} from '@codaco/fresco-ui/PresentationalText';
 import { ALLOWED_MARKDOWN_SECTION_TAGS } from '@codaco/fresco-ui/RenderMarkdown';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -21,7 +16,7 @@ import { useContractFlags } from '../contract/context';
 import { useAssetUrl } from '../hooks/useAssetUrl';
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import { LocalizedMarkdown } from '../localization/LocalizedMarkdown';
-import { useResolvePresentationalText } from '../localization/ProtocolLocalizationProvider';
+import { useResolveLocalizedString } from '../localization/ProtocolLocalizationProvider';
 import { getAssetManifest } from '../store/modules/protocol';
 
 const mediaMessages = defineMessages({
@@ -126,11 +121,11 @@ function ItemFallback() {
  */
 function useDescription(
   description: LocalizedString | undefined,
-): PresentationalText | undefined {
-  const toPresentationalText = useResolvePresentationalText();
+): string | undefined {
+  const resolve = useResolveLocalizedString();
   if (description === undefined) return undefined;
-  const text = toPresentationalText(description);
-  return presentationalTextValue(text).trim() === '' ? undefined : text;
+  const { text } = resolve(description);
+  return text.trim() === '' ? undefined : text;
 }
 
 type MediaLoadState = 'loading' | 'loaded' | 'error';
@@ -151,7 +146,7 @@ function VideoPlayer({
    * and an audio player reads as its own name. The file's name is the
    * researcher's filing label and never names the player.
    */
-  description: PresentationalText | undefined;
+  description: string | undefined;
   source: string | undefined;
   isE2E: boolean;
   size: string | undefined;
@@ -185,14 +180,7 @@ function VideoPlayer({
       <video
         loop
         controls
-        aria-label={
-          description === undefined
-            ? intl.formatMessage(mediaMessages.videoLabel)
-            : presentationalTextValue(description)
-        }
-        // The description's language without its direction: `dir` would also
-        // mirror the player's own controls.
-        lang={presentationalTextProps(description).lang}
+        aria-label={description ?? intl.formatMessage(mediaMessages.videoLabel)}
         autoPlay={!isE2E}
         muted={!isE2E}
         playsInline
@@ -265,12 +253,7 @@ function AssetItem({
       return (
         <img
           src={url}
-          alt={
-            description === undefined
-              ? ''
-              : presentationalTextValue(description)
-          }
-          {...presentationalTextProps(description)}
+          alt={description ?? ''}
           className={cx('size-full object-contain', getSizeClass(itemSize))}
         />
       );
@@ -280,11 +263,8 @@ function AssetItem({
           controls
           autoPlay
           aria-label={
-            description === undefined
-              ? intl.formatMessage(mediaMessages.audioLabel)
-              : presentationalTextValue(description)
+            description ?? intl.formatMessage(mediaMessages.audioLabel)
           }
-          lang={presentationalTextProps(description).lang}
         >
           <source
             src={url}

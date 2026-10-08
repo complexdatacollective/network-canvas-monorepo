@@ -32,19 +32,17 @@ const PRESETS: React.ComponentProps<typeof PresetSwitcher>['presets'] = [
   },
 ];
 
-const languageOf = (element: Element | null) => {
-  const marked = element?.closest('[lang]');
-  return marked
-    ? { lang: marked.getAttribute('lang'), dir: marked.getAttribute('dir') }
-    : null;
-};
+// The interview sets one language for everything it renders, so a label names
+// none of its own, nor does any wrapper between it and the switcher.
+const marksOwnLanguage = (text: string) =>
+  screen.getByText(text).closest('[lang], [dir]') !== null;
 
 afterEach(() => {
   cleanup();
 });
 
 describe('PresetSwitcher highlight legend', () => {
-  it("names each highlight with the preset's own label, marking text shown in another language", () => {
+  it("names each highlight with the preset's own label, in the interview language or the default", () => {
     render(
       <PresetSwitcher
         presets={PRESETS}
@@ -75,14 +73,8 @@ describe('PresetSwitcher highlight legend', () => {
     expect(
       screen.getByRole('radio', { name: 'صديق مقرب' }),
     ).toBeInTheDocument();
-    expect(languageOf(screen.getByText('صديق مقرب'))).toEqual({
-      lang: 'ar',
-      dir: 'rtl',
-    });
+    expect(marksOwnLanguage('صديق مقرب')).toBe(false);
     expect(screen.getByRole('radio', { name: 'Trusted' })).toBeInTheDocument();
-    expect(languageOf(screen.getByText('Trusted'))).toEqual({
-      lang: 'en',
-      dir: 'ltr',
-    });
+    expect(marksOwnLanguage('Trusted')).toBe(false);
   });
 });

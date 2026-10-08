@@ -191,9 +191,11 @@ test('authors an Information stage in Spanish and changes built-in preview langu
   const nextStep = preview.getByTestId('next-button');
   await expect(nextStep).toHaveAccessibleName('Siguiente paso');
   await expect(nextStep).toBeVisible();
+  // The interview's region carries the protocol's language (`en` here); only
+  // its built-in text, such as the button's name above, follows the browser.
   await expect(nextStep.locator('xpath=ancestor::*[@lang][1]')).toHaveAttribute(
     'lang',
-    'es',
+    'en',
   );
 
   // The interview's built-in text follows the browser's languages (`es-MX`

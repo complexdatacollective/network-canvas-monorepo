@@ -13,7 +13,6 @@ import {
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { ContentLocaleProvider } from '@codaco/fresco-ui/form/ContentLocale';
-import type { PresentationalText } from '@codaco/fresco-ui/PresentationalText';
 import {
   type LocaleMetadata,
   type LocaleTag,
@@ -30,7 +29,6 @@ import {
   createLocalizedMessageFormatter,
   type LocalizedMessageFormatter,
 } from './messageFormatter';
-import { toPresentationalText } from './presentationalText';
 
 type ProtocolLocalizationState = Readonly<{
   locale: LocaleTag;
@@ -249,28 +247,5 @@ export function useLocalizedString(
   value: LocalizedString,
 ): ResolvedLocalizedString {
   const resolve = useResolveLocalizedString();
-  return useMemo(() => resolve(value), [resolve, value]);
-}
-
-/**
- * Resolves protocol-authored strings to the shape fresco-ui components take,
- * for lists (options, labels) where one hook call per string is impractical.
- */
-export function useResolvePresentationalText(): (
-  value: LocalizedString,
-) => PresentationalText {
-  const resolve = useResolveLocalizedString();
-  const { options } = useProtocolLocalizationState();
-  return useCallback(
-    (value: LocalizedString) => toPresentationalText(resolve(value), options),
-    [resolve, options],
-  );
-}
-
-/** One protocol-authored string in the shape fresco-ui components take. */
-export function usePresentationalText(
-  value: LocalizedString,
-): PresentationalText {
-  const resolve = useResolvePresentationalText();
   return useMemo(() => resolve(value), [resolve, value]);
 }
