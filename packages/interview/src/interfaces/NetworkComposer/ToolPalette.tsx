@@ -27,13 +27,18 @@ import {
   ToolbarSeparator,
 } from '@codaco/fresco-ui/SegmentedToolbar';
 
+import PassphraseNotice from '../Anonymisation/PassphraseNotice';
 import { interfaceMessages } from '../messages';
 import AddNodeInput from './AddNodeInput';
 import GroupPicker, {
   type ActiveGroup,
   type GroupVariable,
 } from './GroupPicker';
-import { type ComposerStoreApi, useComposerStore } from './useComposerStore';
+import {
+  type ComposerStoreApi,
+  type ComposerTool,
+  useComposerStore,
+} from './useComposerStore';
 import { type UndoStoreApi, useUndoStore } from './useUndoStore';
 
 type EdgeEntry = {
@@ -50,7 +55,12 @@ type ToolPaletteProps = {
   nodeLabel: string;
   /** Codebook variable the quick-add name is written to. */
   quickAddTargetVariable: string;
-  onAddNode: (name: string) => Promise<void>;
+  onAddNode: (name: string) => Promise<boolean>;
+  /**
+   * The name would be stored encrypted and the interview's key is not in
+   * force, so the add-node field opens on an explanation instead.
+   */
+  addNodeLocked: boolean;
   /** Validation props derived from quickAddTargetVariable's codebook definition. */
   quickAddValidationProps?: Partial<ValidationPropsCatalogue>;
   quickAddValidationContext?: ValidationContext;
@@ -100,6 +110,7 @@ export default function ToolPalette({
   nodeLabel,
   quickAddTargetVariable,
   onAddNode,
+  addNodeLocked,
   quickAddValidationProps,
   quickAddValidationContext,
   groupVariable,
@@ -117,6 +128,16 @@ export default function ToolPalette({
   const [groupsOpen, setGroupsOpen] = useState(false);
 
   const { setActiveTool } = composerStore.getState();
+
+  // While a name is being checked and added, its field stays open, as a form
+  // does while it is submitted, so a refusal is shown, and the name kept,
+  // where it was entered.
+  const [addingName, setAddingName] = useState(false);
+  const chooseTool = (tool: ComposerTool) => {
+    if (!addingName) setActiveTool(tool);
+  };
+
+  const addNodeOpen = activeTool.kind === 'addNode';
 
   const activeEdgeType =
     activeTool.kind === 'edge' ? activeTool.edgeType : undefined;
@@ -154,16 +175,17 @@ export default function ToolPalette({
           aria-label={intl.formatMessage(interfaceMessages.select)}
           icon={<SelectIcon />}
           pressed={activeTool.kind === 'select'}
-          onPressedChange={() => setActiveTool({ kind: 'select' })}
+          onPressedChange={() => chooseTool({ kind: 'select' })}
         />
 
         {/* Adding a node opens a name field next to this button. Closing the
             popover returns to select mode. */}
         <ToolbarPopover
-          open={activeTool.kind === 'addNode'}
-          onOpenChange={(open) =>
-            setActiveTool(open ? { kind: 'addNode' } : { kind: 'select' })
-          }
+          open={addNodeOpen}
+          onOpenChange={(open) => {
+            if (addingName) return;
+            setActiveTool(open ? { kind: 'addNode' } : { kind: 'select' });
+          }}
           trigger={
             <ToolbarIconButton
               aria-label={intl.formatMessage(interfaceMessages.addNode)}
@@ -172,13 +194,18 @@ export default function ToolPalette({
             />
           }
         >
-          <AddNodeInput
-            entityLabel={nodeLabel}
-            targetVariable={quickAddTargetVariable}
-            onCreate={onAddNode}
-            validationContext={quickAddValidationContext}
-            {...quickAddValidationProps}
-          />
+          {addNodeLocked ? (
+            <PassphraseNotice status="locked" className="w-72" />
+          ) : (
+            <AddNodeInput
+              entityLabel={nodeLabel}
+              targetVariable={quickAddTargetVariable}
+              onCreate={onAddNode}
+              onAddingChange={setAddingName}
+              validationContext={quickAddValidationContext}
+              {...quickAddValidationProps}
+            />
+          )}
         </ToolbarPopover>
 
         {/* One edge button opens a menu instead of crowding the toolbar with
@@ -197,7 +224,7 @@ export default function ToolPalette({
             <DropdownMenuRadioGroup
               value={activeEdgeType}
               onValueChange={(edgeType) =>
-                setActiveTool({ kind: 'edge', edgeType })
+                chooseTool({ kind: 'edge', edgeType })
               }
             >
               {edges.map(({ edgeType, label }) => (
@@ -231,6 +258,7 @@ export default function ToolPalette({
               variable={groupVariable}
               active={activeGroup}
               onSelect={(variable, value) => {
+                if (addingName) return;
                 onSelectGroup(variable, value);
                 setGroupsOpen(false);
               }}

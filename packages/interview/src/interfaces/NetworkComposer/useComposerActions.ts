@@ -1,9 +1,11 @@
+import { invariant } from 'es-toolkit';
 import { v4 as uuid } from 'uuid';
 
 import {
   type VariableValue,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  entitySecureAttributesMeta,
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
@@ -14,6 +16,9 @@ import {
   addNode,
   deleteEdge,
   deleteNode,
+  type NodeAttributeSnapshot,
+  restoreNode,
+  restoreNodeAttributes,
   updateEdge,
   updateNode,
 } from '../../store/modules/session';
@@ -26,6 +31,8 @@ type UseComposerActionsArgs = {
   subjectType: string;
   quickAdd: string;
   layoutVariable: string;
+  /** Whether the quick-add variable is marked encrypted in the codebook. */
+  useEncryption: boolean;
   currentStep: number;
   undoStore: UndoStoreApi;
   dispatch: AppDispatch;
@@ -65,14 +72,68 @@ type ComposerActions = {
   ) => Promise<void>;
 };
 
+// Node undo and redo put stored state back verbatim instead of replaying a
+// write: an encrypted value can only be read with the IV it was stored with,
+// and only on the node it was encrypted for, so a value travels with its
+// secure-attribute metadata and a node comes back under its own id.
+function snapshotAttributes(
+  node: NcNode | undefined,
+  keys: readonly string[],
+): NodeAttributeSnapshot {
+  const attributes = node?.[entityAttributesProperty] ?? {};
+  const secureAttributes = node?.[entitySecureAttributesMeta] ?? {};
+
+  return Object.fromEntries(
+    keys.map((key): [string, NodeAttributeSnapshot[string]] => {
+      const value = Object.hasOwn(attributes, key) ? attributes[key] : null;
+      if (value === null || value === undefined) return [key, null];
+      const secure = Object.hasOwn(secureAttributes, key)
+        ? secureAttributes[key]
+        : undefined;
+      return [key, secure ? { value, secure } : { value }];
+    }),
+  );
+}
+
 export function useComposerActions({
   subjectType,
   quickAdd,
   layoutVariable,
+  useEncryption,
   currentStep,
   undoStore,
   dispatch,
 }: UseComposerActionsArgs): ComposerActions {
+  function readNode(id: string): NcNode | undefined {
+    return dispatch((_, getState) =>
+      getState().session.network.nodes.find(
+        (n) => n[entityPrimaryKeyProperty] === id,
+      ),
+    );
+  }
+
+  function readIncidentEdges(ids: ReadonlySet<string>): NcEdge[] {
+    return dispatch((_, getState) =>
+      getState().session.network.edges.filter(
+        (e) => ids.has(e.from) || ids.has(e.to),
+      ),
+    );
+  }
+
+  async function restoreEdges(edges: NcEdge[]): Promise<void> {
+    for (const edge of edges) {
+      await dispatch(
+        addEdge({
+          from: edge.from,
+          to: edge.to,
+          type: edge.type,
+          attributeData: edge[entityAttributesProperty],
+          currentStep,
+        }),
+      ).unwrap();
+    }
+  }
+
   async function createNodeAt(
     name: string,
     position: Position,
@@ -87,27 +148,21 @@ export function useComposerActions({
           [layoutVariable]: position,
         },
         modelData: { [entityPrimaryKeyProperty]: id },
+        useEncryption,
         currentStep,
       }),
     ).unwrap();
 
+    const created = readNode(id);
+    invariant(created, 'The created node is missing from the network');
+
     void undoStore.getState().push({
-      label: `Add node ${name}`,
+      label: `Add node`,
       undo: () => {
         dispatch(deleteNode(id));
       },
-      redo: async () => {
-        await dispatch(
-          addNode({
-            type: subjectType,
-            attributeData: {
-              [quickAdd]: name,
-              [layoutVariable]: position,
-            },
-            modelData: { [entityPrimaryKeyProperty]: id },
-            currentStep,
-          }),
-        ).unwrap();
+      redo: () => {
+        dispatch(restoreNode(created));
       },
     });
 
@@ -140,68 +195,23 @@ export function useComposerActions({
   }
 
   function deleteNodeById(id: string): void {
-    // Capture node and incident edges BEFORE dispatching delete
-    // (the reducer cascades edge removal)
-    // We read from the store at call time via dispatch's getState-equivalent:
-    // However dispatch doesn't expose getState. We capture from the action result.
-    // Use a closure over a pre-captured snapshot — call sites must pass in the
-    // network state if needed. Instead, we capture via a selector pattern:
-    // Since we cannot call getState directly from this hook, we store snapshots
-    // inline. The store IS accessible via dispatch's async thunk, but for plain
-    // sync capture we use a thunk-style approach.
-
-    let capturedNode: NcNode | undefined;
-    let capturedEdges: NcEdge[] = [];
-
-    // Dispatch a sync thunk that captures state before deletion
-    dispatch((_, getState) => {
-      const { session: sessionState } = getState() as {
-        session: { network: { nodes: NcNode[]; edges: NcEdge[] } };
-      };
-      capturedNode = sessionState.network.nodes.find(
-        (n) => n[entityPrimaryKeyProperty] === id,
-      );
-      capturedEdges = sessionState.network.edges.filter(
-        (e) => e.from === id || e.to === id,
-      );
-    });
+    // Capture the node and its incident edges before deleting: the reducer
+    // cascades edge removal.
+    const nodeSnapshot = readNode(id);
+    const edgeSnapshots = readIncidentEdges(new Set([id]));
 
     dispatch(deleteNode(id));
 
-    if (!capturedNode) return;
-
-    const nodeSnapshot = capturedNode;
-    const edgeSnapshots = capturedEdges;
+    if (!nodeSnapshot) return;
 
     void undoStore.getState().push({
       label: `Delete node`,
       undo: async () => {
-        await dispatch(
-          addNode({
-            type: nodeSnapshot.type,
-            attributeData: nodeSnapshot[entityAttributesProperty],
-            modelData: {
-              [entityPrimaryKeyProperty]:
-                nodeSnapshot[entityPrimaryKeyProperty],
-            },
-            currentStep,
-          }),
-        ).unwrap();
-
-        for (const edge of edgeSnapshots) {
-          await dispatch(
-            addEdge({
-              from: edge.from,
-              to: edge.to,
-              type: edge.type,
-              attributeData: edge[entityAttributesProperty],
-              currentStep,
-            }),
-          ).unwrap();
-        }
+        dispatch(restoreNode(nodeSnapshot));
+        await restoreEdges(edgeSnapshots);
       },
       redo: () => {
-        dispatch(deleteNode(nodeSnapshot[entityPrimaryKeyProperty]));
+        dispatch(deleteNode(id));
       },
     });
   }
@@ -209,34 +219,10 @@ export function useComposerActions({
   function deleteNodesById(ids: string[]): void {
     if (ids.length === 0) return;
 
-    // Capture ALL nodes and their incident edges BEFORE any deletion.
-    const capturedNodes: NcNode[] = [];
-    const capturedEdges: NcEdge[] = [];
-
-    dispatch((_, getState) => {
-      const { session: sessionState } = getState() as {
-        session: { network: { nodes: NcNode[]; edges: NcEdge[] } };
-      };
-      const idSet = new Set(ids);
-
-      for (const node of sessionState.network.nodes) {
-        if (idSet.has(node[entityPrimaryKeyProperty])) {
-          capturedNodes.push(node);
-        }
-      }
-
-      // Collect incident edges, deduplicating edges that connect two deleted nodes.
-      const seenEdgeIds = new Set<string>();
-      for (const edge of sessionState.network.edges) {
-        if (
-          (idSet.has(edge.from) || idSet.has(edge.to)) &&
-          !seenEdgeIds.has(edge[entityPrimaryKeyProperty])
-        ) {
-          seenEdgeIds.add(edge[entityPrimaryKeyProperty]);
-          capturedEdges.push(edge);
-        }
-      }
-    });
+    // Capture every node and its incident edges before any deletion; an edge
+    // joining two deleted nodes is captured once.
+    const capturedNodes = ids.flatMap((id) => readNode(id) ?? []);
+    const capturedEdges = readIncidentEdges(new Set(ids));
 
     // Delete all nodes (the reducer cascades incident edge removal).
     for (const id of ids) {
@@ -247,28 +233,9 @@ export function useComposerActions({
       label: `Delete ${ids.length} nodes`,
       undo: async () => {
         for (const node of capturedNodes) {
-          await dispatch(
-            addNode({
-              type: node.type,
-              attributeData: node[entityAttributesProperty],
-              modelData: {
-                [entityPrimaryKeyProperty]: node[entityPrimaryKeyProperty],
-              },
-              currentStep,
-            }),
-          ).unwrap();
+          dispatch(restoreNode(node));
         }
-        for (const edge of capturedEdges) {
-          await dispatch(
-            addEdge({
-              from: edge.from,
-              to: edge.to,
-              type: edge.type,
-              attributeData: edge[entityAttributesProperty],
-              currentStep,
-            }),
-          ).unwrap();
-        }
+        await restoreEdges(capturedEdges);
       },
       redo: () => {
         for (const node of capturedNodes) {
@@ -322,64 +289,25 @@ export function useComposerActions({
     attributePatch: AttributePatch,
     coalesceKey?: string,
   ): Promise<void> {
-    let priorAttributes: NcNode[typeof entityAttributesProperty] = {};
-
-    dispatch((_, getState) => {
-      const { session: sessionState } = getState() as {
-        session: { network: { nodes: NcNode[] } };
-      };
-      const node = sessionState.network.nodes.find(
-        (n) => n[entityPrimaryKeyProperty] === id,
-      );
-      if (node) {
-        priorAttributes = node[entityAttributesProperty];
-      }
-    });
+    const editedKeys = [
+      ...new Set([...Object.keys(attributePatch.set), ...attributePatch.unset]),
+    ];
+    const before = snapshotAttributes(readNode(id), editedKeys);
 
     await dispatch(
       updateNode({ nodeId: id, attributePatch, currentStep }),
     ).unwrap();
 
-    const editedKeys = [
-      ...new Set([...Object.keys(attributePatch.set), ...attributePatch.unset]),
-    ];
-    const inverseSet: Record<string, VariableValue> = {};
-    const inverseUnset: string[] = [];
-
-    for (const key of editedKeys) {
-      const priorValue = priorAttributes[key];
-      if (
-        Object.hasOwn(priorAttributes, key) &&
-        priorValue !== null &&
-        priorValue !== undefined
-      ) {
-        inverseSet[key] = priorValue;
-      } else {
-        inverseUnset.push(key);
-      }
-    }
-
-    const inversePatch: AttributePatch = {
-      set: inverseSet,
-      unset: inverseUnset,
-    };
+    const after = snapshotAttributes(readNode(id), editedKeys);
 
     void undoStore.getState().push({
       label: `Update node attributes`,
       coalesceKey,
-      undo: async () => {
-        await dispatch(
-          updateNode({
-            nodeId: id,
-            attributePatch: inversePatch,
-            currentStep,
-          }),
-        ).unwrap();
+      undo: () => {
+        dispatch(restoreNodeAttributes({ nodeId: id, snapshot: before }));
       },
-      redo: async () => {
-        await dispatch(
-          updateNode({ nodeId: id, attributePatch, currentStep }),
-        ).unwrap();
+      redo: () => {
+        dispatch(restoreNodeAttributes({ nodeId: id, snapshot: after }));
       },
     });
   }

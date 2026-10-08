@@ -12,7 +12,6 @@ const PROTOCOL_ROUTES = [
   '/protocol/localization',
   '/protocol/summary',
   '/protocol/stage/new?type=Information',
-  '/protocol/experiments',
 ];
 
 async function settle(page: import('@playwright/test').Page) {

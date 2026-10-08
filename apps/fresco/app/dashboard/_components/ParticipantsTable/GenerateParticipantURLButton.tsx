@@ -14,7 +14,6 @@ import {
 } from '@codaco/fresco-ui/Popover';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import type { Protocol } from '~/lib/db/generated/client';
 
 import type { ProtocolWithInterviews } from '../ProtocolsTable/ProtocolsTableClient';
 
@@ -70,7 +69,7 @@ export const GenerateParticipationURLButton = memo(
 
     const [open, setOpen] = useState(false);
     const [selectedProtocol, setSelectedProtocol] =
-      useState<Partial<Protocol> | null>();
+      useState<ProtocolWithInterviews | null>();
 
     const { promise } = useToast();
 
@@ -118,7 +117,7 @@ export const GenerateParticipationURLButton = memo(
             onChange={(value) => {
               const protocol = protocols.find(
                 (candidate) => candidate.id === value,
-              ) as Protocol;
+              );
 
               setSelectedProtocol(protocol);
               handleCopy(

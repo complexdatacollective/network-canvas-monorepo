@@ -92,6 +92,41 @@ const KNOWS_SOMEBODY: RuleDraft = {
   options: { type: 'knows', operator: 'EXISTS' },
 };
 
+const PERSON_TYPE = sectionId({ kind: 'codebookNode', typeId: 'person' });
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** A person's name protected by the participant's passphrase. */
+const encryptingNames = (host: InMemoryHost) => {
+  const { document } = host.store.read(PERSON_TYPE);
+  const variables = isRecord(document.variables) ? document.variables : {};
+  const name = isRecord(variables.name) ? variables.name : {};
+  host.store.applyAsCollaborator(PERSON_TYPE, {
+    ...document,
+    variables: { ...variables, name: { ...name, encrypted: true } },
+  });
+};
+
+/** Anyone the participant has not named. */
+const NAME_UNANSWERED: RuleDraft = {
+  id: 'rule-unnamed',
+  type: 'node',
+  options: { type: 'person', attribute: 'name', operator: 'NOT_EXISTS' },
+};
+
+/** Anyone named Ada, which an encrypted name cannot be checked for. */
+const NAMED_ADA: RuleDraft = {
+  id: 'rule-ada',
+  type: 'node',
+  options: {
+    type: 'person',
+    attribute: 'name',
+    operator: 'EXACTLY',
+    value: 'Ada',
+  },
+};
+
 const meta = {
   title: 'Protocol Builder/Fields/Rule builder',
   component: FieldStoryHost,
@@ -304,5 +339,114 @@ export const AFilterCannotAskAboutTheEgo: Story = {
         name: 'Ego - match one of the ego attributes.',
       }),
     ).toBeNull();
+  },
+};
+
+/**
+ * Rules on an attribute the participant's passphrase protects.
+ *
+ * Rules are checked without the passphrase, so one comparing the answers would
+ * only ever compare encrypted text, and the schema refuses it. Whether the
+ * attribute was answered survives encryption, so a rule asking only that is
+ * allowed. The stored comparison is marked on its own row; the presence rule
+ * beside it is not.
+ */
+export const RulesOnAnEncryptedAttribute: Story = {
+  args: {
+    seedEdit: (host) => {
+      encryptingNames(host);
+      holdingSkipLogic([NAME_UNANSWERED, NAMED_ADA], 'OR')(host);
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await expect(
+      await canvas.findAllByRole('button', { name: /^Edit rule:/ }),
+    ).toHaveLength(2);
+    const marked = canvasElement.querySelectorAll(
+      '[data-rule-problem="encryptedAttribute"]',
+    );
+    await expect(marked).toHaveLength(1);
+    await expect(marked[0]?.parentElement).toHaveTextContent('Ada');
+    await expect(marked[0]?.parentElement).not.toHaveTextContent(
+      'does not exist',
+    );
+  },
+};
+
+/**
+ * Writing a rule on an encrypted attribute: the attribute is offered, with only
+ * the two operators that ask whether it was answered, and a hint saying why.
+ */
+export const WritingARuleOnAnEncryptedAttribute: Story = {
+  args: { seedEdit: encryptingNames },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Add new skip logic rule' }),
+    );
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Construct a Rule',
+    });
+    await userEvent.click(
+      within(dialog).getByRole('radio', {
+        name: 'Node - match a node type or one of its attributes.',
+      }),
+    );
+    await userEvent.click(
+      await within(dialog).findByRole('radio', { name: 'person' }),
+    );
+    await userEvent.click(
+      await within(dialog).findByRole('option', { name: /Attribute/ }),
+    );
+    await userEvent.click(
+      await within(dialog).findByRole('button', { name: 'Select attribute' }),
+    );
+    // The attribute window opens over the rule dialog, so it is found by its
+    // own marker: the dialog underneath is still in the accessibility tree.
+    const attributes = await waitFor(() => {
+      const opened = document.body.querySelector<HTMLElement>(
+        '[data-variable-spotlight]',
+      );
+      if (opened === null) throw new Error('The attribute window is closed.');
+      return opened;
+    });
+    await userEvent.click(
+      within(attributes).getByRole('option', { name: 'name' }),
+    );
+
+    const operator = await within(dialog).findByRole<HTMLSelectElement>(
+      'combobox',
+      { name: /Operator/ },
+    );
+    await expect(
+      Array.from(operator.options).flatMap((option) =>
+        option.value === '' ? [] : [option.value],
+      ),
+    ).toEqual(['EXISTS', 'NOT_EXISTS']);
+    await expect(
+      within(dialog).getByText(
+        'This attribute is encrypted. Rules are checked without the participant’s passphrase, so a rule can only check whether it is answered.',
+      ),
+    ).toBeInTheDocument();
+
+    await userEvent.selectOptions(operator, 'EXISTS');
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Finish and Close' }),
+    );
+    await waitFor(async () => {
+      await expect(
+        screen.queryByRole('dialog', { name: 'Construct a Rule' }),
+      ).toBeNull();
+    });
+
+    await expect(
+      await canvas.findByRole('button', { name: /^Edit rule:/ }),
+    ).toBeInTheDocument();
+    await expect(canvasElement.querySelector('[data-rule-problem]')).toBeNull();
   },
 };

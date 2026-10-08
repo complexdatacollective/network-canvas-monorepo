@@ -3,7 +3,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
-import type { NcNetwork } from '@codaco/shared-consts';
+import type { NcEncryptionHeader, NcNetwork } from '@codaco/shared-consts';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -20,6 +20,7 @@ import {
   markSessionUnfinished,
   markSessionsExported,
   querySessions,
+  reencryptSession,
   SessionProtocolChangedError,
   updateSession,
 } from '../sessions';
@@ -38,6 +39,60 @@ const initialNetwork: NcNetwork = {
       [entityPrimaryKeyProperty]: 'n1',
       type: 'person',
       [entityAttributesProperty]: { name: 'Ada' },
+    },
+  ],
+  edges: [],
+};
+
+// Deterministic stand-ins for salts, IVs and ciphertexts. The repo never
+// decrypts these values, so only their shape matters.
+const bytes = (length: number, offset: number) =>
+  Array.from({ length }, (_, index) => (index * 37 + offset) % 256);
+
+const encryptionHeader: NcEncryptionHeader = {
+  version: 1,
+  method: 'AES-256-GCM',
+  kdf: {
+    algorithm: 'PBKDF2',
+    hash: 'SHA-256',
+    iterations: 600_000,
+    salt: bytes(16, 1),
+  },
+  check: { iv: bytes(12, 2), data: bytes(48, 3) },
+};
+
+// The header is the only record of the participant's salt and check value:
+// dropping it makes the interview ask for a new passphrase, and every answer
+// encrypted under the old one becomes unreadable. A schema 8 interview that
+// later gains a passphrase holds both value shapes, so this one does too.
+const networkWithEncryptionHeader: NcNetwork = {
+  encryption: encryptionHeader,
+  ego: { [entityPrimaryKeyProperty]: 'ego', [entityAttributesProperty]: {} },
+  nodes: [
+    {
+      [entityPrimaryKeyProperty]: 'n1',
+      type: 'person',
+      [entityAttributesProperty]: { name: bytes(48, 4) },
+      _secureAttributes: { name: { iv: bytes(12, 5) } },
+    },
+    {
+      [entityPrimaryKeyProperty]: 'n2',
+      type: 'person',
+      [entityAttributesProperty]: { name: bytes(48, 6) },
+      _secureAttributes: { name: { iv: bytes(12, 7), salt: bytes(16, 8) } },
+    },
+  ],
+  edges: [],
+};
+
+const schema8EncryptedNetwork: NcNetwork = {
+  ego: { [entityPrimaryKeyProperty]: 'ego', [entityAttributesProperty]: {} },
+  nodes: [
+    {
+      [entityPrimaryKeyProperty]: 'n1',
+      type: 'person',
+      [entityAttributesProperty]: { name: bytes(48, 9) },
+      _secureAttributes: { name: { iv: bytes(12, 10), salt: bytes(16, 11) } },
     },
   ],
   edges: [],
@@ -201,6 +256,61 @@ describe('sessions repo — encryption at boundary', () => {
     expect(result.statusCounts.all).toBe(1);
     expect(result.rows[0]?.caseId).toBe('case-1');
   });
+});
+
+describe('sessions repo — participant passphrase encryption', () => {
+  beforeEach(async () => {
+    await db.sessions.clear();
+    setSessionDek(null);
+  });
+  afterEach(async () => {
+    await db.sessions.clear();
+    setSessionDek(null);
+  });
+
+  it.each([
+    {
+      label: 'the encryption header and IV-only values',
+      network: networkWithEncryptionHeader,
+    },
+    {
+      label: 'schema 8 values without a header',
+      network: schema8EncryptedNetwork,
+    },
+  ])(
+    'keeps $label through syncs, resumes, re-encryption and export reads',
+    async ({ network }) => {
+      // No vault yet, so rows are written in plaintext.
+      const created = await createSession({
+        protocolHash: 'h1',
+        protocolName: 'Study',
+        caseId: 'case-1',
+        initialNetwork,
+      });
+      // What the interview route's sync handler writes.
+      await updateSession(
+        created.id,
+        { network, currentStep: 1 },
+        { protocolHash: 'h1' },
+      );
+      expect((await getSession(created.id))?.network).toStrictEqual(network);
+
+      // Securing the device re-encrypts every stored session under its key.
+      setSessionDek(await makeDek());
+      await reencryptSession(created.id);
+      expect((await db.sessions.get(created.id))?._enc).toBeDefined();
+      expect((await getSession(created.id))?.network).toStrictEqual(network);
+
+      await updateSession(
+        created.id,
+        { network, currentStep: 2 },
+        { protocolHash: 'h1' },
+      );
+      expect((await getSession(created.id))?.network).toStrictEqual(network);
+      const [exported] = await getSessionsByIds([created.id]);
+      expect(exported?.network).toStrictEqual(network);
+    },
+  );
 });
 
 // Formats a Date as its LOCAL calendar day, matching the 'YYYY-MM-DD' strings

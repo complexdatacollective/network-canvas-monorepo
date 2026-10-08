@@ -14,6 +14,7 @@ import {
   escapeMarkdownText,
   escapeMessageText,
   type FinishOutcome,
+  type Experiments,
   type LocalizedString,
   messageText,
   type Stage,
@@ -382,7 +383,7 @@ export class SyntheticInterview {
   private nodeTypeCounter = 0;
   private edgeTypeCounter = 0;
   private ordinalPromptCounter = 0;
-  private experiments: { encryptedVariables?: boolean } | null = null;
+  private experiments: Experiments | undefined;
   private localization: LocalizationInput = DEFAULT_LOCALIZATION;
 
   constructor(seed = DEFAULT_SYNTHETIC_SEED) {
@@ -2105,7 +2106,9 @@ export class SyntheticInterview {
         importedAt: now,
         isPreview: false,
         isPending: false,
-        experiments: this.experiments,
+        ...(this.experiments === undefined
+          ? {}
+          : { experiments: this.experiments }),
       },
     };
   }
@@ -3049,7 +3052,7 @@ export class SyntheticInterview {
   /**
    * Set protocol-level experiments, emitted by getInterviewPayload().
    */
-  setExperiments(experiments: { encryptedVariables?: boolean }): void {
+  setExperiments(experiments: Experiments): void {
     this.experiments = experiments;
   }
 

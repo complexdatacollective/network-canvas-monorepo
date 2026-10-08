@@ -108,4 +108,19 @@ describe('formValuesToAttributePatch', () => {
     }
     expect(Object.getPrototypeOf(values)).toBe(Object.prototype);
   });
+
+  it('leaves a field it was told to keep as stored until it is given a new answer', () => {
+    const keepWhenUnanswered = ['missing', 'blank', 'emptied', 'replaced'];
+
+    const result = formValuesToAttributePatch(
+      { blank: '   ', emptied: undefined, replaced: 'Alicia', cleared: '' },
+      ['missing', 'blank', 'emptied', 'replaced', 'cleared', 'gone'],
+      { keepWhenUnanswered },
+    );
+
+    expect(result).toEqual({
+      success: true,
+      patch: { set: { replaced: 'Alicia', cleared: '' }, unset: ['gone'] },
+    });
+  });
 });

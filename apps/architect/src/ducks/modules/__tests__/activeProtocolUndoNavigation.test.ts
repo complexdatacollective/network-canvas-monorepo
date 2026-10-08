@@ -163,22 +163,18 @@ describe('undoWithNavigation', () => {
     expect(outcome).toEqual({ applied: true, navigatedTo: '/protocol' });
   });
 
-  it('applies an experiments-page change without moving the researcher', () => {
-    setPath('/protocol/experiments');
+  // A recorded page that is not a revealing one is applied in place however
+  // far from it the researcher now is.
+  it('applies a change recorded on a page that reveals nothing without moving the researcher', () => {
+    setPath('/protocol/summary');
     const store = seeded();
-    store.dispatch(
-      actionCreators.updateProtocol({
-        experiments: { encryptedVariables: true },
-      }),
-    );
+    store.dispatch(actionCreators.updateProtocolName({ name: 'Renamed' }));
 
     setPath('/protocol');
     const outcome = store.dispatch(undoWithNavigation());
 
     expect(navigate).not.toHaveBeenCalled();
-    expect(
-      store.getState().activeProtocol.present?.experiments,
-    ).toBeUndefined();
+    expect(store.getState().activeProtocol.present?.name).toBe('Orig');
     expect(outcome).toEqual({ applied: true, navigatedTo: null });
   });
 

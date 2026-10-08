@@ -88,8 +88,6 @@ type Seed = {
  */
 function scaffold(options: PedigreeOptions = {}) {
   const synth = new SyntheticInterview();
-  if (options.encryptedNames || options.encryptedFormField)
-    synth.setExperiments({ encryptedVariables: true });
   if (options.before) {
     synth.addInformationStage({
       title: BEFORE_TITLE,
@@ -1616,7 +1614,7 @@ function encryptedNames(): ScenarioDefinition {
   const SecureNodeSchema = z.object({
     [entitySecureAttributesMeta]: z.record(
       z.string(),
-      z.object({ iv: z.array(z.number()), salt: z.array(z.number()) }),
+      z.strictObject({ iv: z.array(z.number()) }),
     ),
   });
 
@@ -1680,9 +1678,9 @@ function encryptedNames(): ScenarioDefinition {
 
 /**
  * The study encrypts one of its own questions, but not names. Until the
- * participant enters their passphrase nobody can be added or changed: the
+ * participant chooses their passphrase nobody can be added or changed: the
  * add menu does not open, and a notice under the family says why and asks
- * for it. Once it is entered, an answer to that question is stored
+ * for it. Once it is chosen, an answer to that question is stored
  * encrypted while the name is stored as typed, and the answer opens
  * decrypted in the question again.
  */
@@ -1710,11 +1708,16 @@ function encryptedFormField(): ScenarioDefinition {
       await expect(page.getByTestId('pedigree-menu-sibling')).toHaveCount(0);
 
       await notice.getByRole('button', { name: 'Enter passphrase' }).click();
+      // No passphrase has been chosen in this interview yet, so this one
+      // becomes it.
       const overlay = page.getByRole('dialog', {
-        name: 'Enter your Passphrase',
+        name: 'Choose a passphrase',
       });
       await overlay
-        .getByRole('textbox', { name: 'Passphrase' })
+        .getByRole('textbox', { name: 'Passphrase', exact: true })
+        .fill('correct-horse-battery');
+      await overlay
+        .getByRole('textbox', { name: 'Confirm Passphrase' })
         .fill('correct-horse-battery');
       await overlay.getByRole('button', { name: 'Submit passphrase' }).click();
       await expect(notice).toHaveCount(0);

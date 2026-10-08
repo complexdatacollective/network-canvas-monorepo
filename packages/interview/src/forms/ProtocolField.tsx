@@ -1,5 +1,7 @@
 'use client';
 
+import type { ReactNode } from 'react';
+
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import type {
   FieldValue,
@@ -74,6 +76,8 @@ const isLocalizedString = (value: unknown): value is LocalizedString =>
 type ProtocolFieldProps = {
   field: ProtocolFieldDefinition;
   name?: string;
+  /** Shown in place of the field's authored hint. */
+  hint?: ReactNode;
   initialValue?: FieldValue;
   autoFocus?: boolean;
   validationContext?: ValidationContext;
@@ -90,6 +94,7 @@ type ProtocolFieldProps = {
 export default function ProtocolField({
   field,
   name = field.variable,
+  hint,
   initialValue,
   autoFocus,
   validationContext,
@@ -105,7 +110,7 @@ export default function ProtocolField({
     name: string;
     nameMode: 'opaque';
     label: string;
-    hint?: string;
+    hint?: ReactNode | string;
     showValidationHints?: boolean;
     options?: (Omit<ProtocolFieldOption, 'label'> & {
       label: string;
@@ -126,7 +131,9 @@ export default function ProtocolField({
     name,
     nameMode: 'opaque',
     label: resolve(field.label).text,
-    ...(field.hint !== undefined && { hint: resolve(field.hint).text }),
+    ...(hint !== undefined
+      ? { hint }
+      : field.hint !== undefined && { hint: resolve(field.hint).text }),
     ...(field.showValidationHints !== undefined && {
       showValidationHints: field.showValidationHints,
     }),

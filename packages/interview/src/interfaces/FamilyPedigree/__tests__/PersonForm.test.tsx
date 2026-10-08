@@ -131,7 +131,7 @@ function renderPersonForm(
     <>
       <PersonForm
         formId={FORM_ID}
-        mode={{ kind: 'edit', person: edited, missing: [] }}
+        mode={{ kind: 'edit', person: edited, missing: [], unavailable: [] }}
         family={family}
         config={{ ...config, genderIdentity: undefined }}
         framing="gendered"

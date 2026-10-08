@@ -3,89 +3,76 @@ import type {
   NcNode,
   EntityAttributesProperty,
   EntitySecureAttributesMeta,
+  VariableValue,
 } from '@codaco/shared-consts';
 
 import { writeOwnProperty } from '../../utils/ownProperty';
+import { encryptValue } from './encryptionFormat';
 
-export class UnauthorizedError extends Error {
-  constructor(message?: string) {
-    super('Unauthorized');
-    this.name = 'UnauthorizedError';
-    this.message = message ?? 'Unauthorised';
+/**
+ * An encrypted write was refused because the interview's encryption key is
+ * not in force: no passphrase has been entered since it was opened.
+ */
+const PASSPHRASE_REQUIRED = 'PassphraseRequiredError';
+
+export class PassphraseRequiredError extends Error {
+  constructor() {
+    super('A valid passphrase is required to save encrypted data');
+    this.name = PASSPHRASE_REQUIRED;
   }
 }
 
 /**
- * Creates a key from a passphrase and a random salt. The salt is used to
- * ensure the same passphrase results in a unique key each time.
- *
- * To derive a key from a passphrase, use the PBKDF2 algorithm to make the
- * encryption more secure by adding a random salt. This ensures the same
- * passphrase results in a unique key each time.
+ * Recognises a PassphraseRequiredError after Redux Toolkit has serialised it
+ * into a rejected thunk action, where only its name survives.
  */
-async function generateKey(passphrase: string, salt: Uint8Array<ArrayBuffer>) {
-  const encoder = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(passphrase),
-    'PBKDF2',
-    false,
-    ['deriveKey'],
-  );
+export const isPassphraseRequiredError = (
+  error: { name?: string } | undefined,
+) => error?.name === PASSPHRASE_REQUIRED;
 
-  return await crypto.subtle.deriveKey(
-    {
-      name: 'PBKDF2',
-      salt,
-      iterations: 100000,
-      hash: 'SHA-256',
-    },
-    keyMaterial,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt'],
+/**
+ * An encrypted write was refused because no passphrase can ever put the
+ * interview's key in force: its encryption header is outside the runtime's
+ * bounds.
+ */
+const ENCRYPTION_UNAVAILABLE = 'EncryptionUnavailableError';
+
+export class EncryptionUnavailableError extends Error {
+  constructor() {
+    super('No passphrase can open this interview to save encrypted data');
+    this.name = ENCRYPTION_UNAVAILABLE;
+  }
+}
+
+/** As `isPassphraseRequiredError`, for an EncryptionUnavailableError. */
+export const isEncryptionUnavailableError = (
+  error: { name?: string } | undefined,
+) => error?.name === ENCRYPTION_UNAVAILABLE;
+
+/**
+ * Whether storing these attribute values encrypts any of them, by the rule
+ * `generateSecureAttributes` applies: a string value of a variable the
+ * codebook marks encrypted.
+ */
+export function writesEncryptedValue(
+  attributes: Readonly<Record<string, VariableValue | undefined>>,
+  codebookVariables: Record<string, Variable>,
+): boolean {
+  return Object.entries(attributes).some(
+    ([key, value]) =>
+      !!codebookVariables[key]?.encrypted && typeof value === 'string',
   );
 }
 
-type EncryptedData = {
-  secureAttributes: {
-    iv: number[];
-    salt: number[];
-  };
-  data: number[];
-};
-
-export async function decryptData(
-  encrypted: EncryptedData,
-  passphrase: string,
-): Promise<string> {
-  const {
-    data,
-    secureAttributes: { iv, salt },
-  } = encrypted;
-
-  const key = await generateKey(passphrase, new Uint8Array(salt));
-
-  const decryptedData = await crypto.subtle.decrypt(
-    {
-      name: 'AES-GCM',
-      iv: new Uint8Array(iv),
-    },
-    key,
-    new Uint8Array(data),
-  );
-
-  const decoder = new TextDecoder();
-
-  // TODO: We need to look up the variable type and re-cast it here.
-
-  return decoder.decode(decryptedData);
-}
-
+/**
+ * Encrypts the string values of encrypted variables for the node `nodeId`,
+ * which each ciphertext is bound to. Other values pass through unchanged.
+ */
 export async function generateSecureAttributes(
   attributes: NcNode[EntityAttributesProperty],
   codebookVariables: Record<string, Variable>,
-  passphrase: string,
+  key: CryptoKey,
+  nodeId: string,
 ): Promise<{
   secureAttributes: NcNode[EntitySecureAttributesMeta];
   encryptedAttributes: NcNode[EntityAttributesProperty];
@@ -95,36 +82,18 @@ export async function generateSecureAttributes(
     ...attributes,
   };
 
-  for (const [key, value] of Object.entries(attributes)) {
-    // If this attribute is not encrypted, we can skip it
-    if (!codebookVariables[key]?.encrypted) {
-      continue;
-    }
+  for (const [variableId, value] of Object.entries(attributes)) {
+    if (!codebookVariables[variableId]?.encrypted) continue;
 
-    // TODO: expand this for other variable types
+    // Only text variables can be encrypted, so a string is the only value
+    // there is to encrypt.
     if (typeof value === 'string') {
-      const encoder = new TextEncoder();
-      // Create a new salt and IV for each encryption
-      const salt = crypto.getRandomValues(new Uint8Array(16));
-      const iv = crypto.getRandomValues(new Uint8Array(12));
-
-      const encryptionKey = await generateKey(passphrase, salt);
-      const encryptedData = await crypto.subtle.encrypt(
-        { name: 'AES-GCM', iv: iv },
-        encryptionKey,
-        encoder.encode(value),
-      );
-
-      writeOwnProperty(secureAttributes, key, {
-        iv: Array.from(iv),
-        salt: Array.from(salt),
+      const { iv, data } = await encryptValue(key, value, {
+        nodeId,
+        variableId,
       });
-
-      writeOwnProperty(
-        encryptedAttributes,
-        key,
-        Array.from(new Uint8Array(encryptedData)),
-      );
+      writeOwnProperty(secureAttributes, variableId, { iv });
+      writeOwnProperty(encryptedAttributes, variableId, data);
     }
   }
 

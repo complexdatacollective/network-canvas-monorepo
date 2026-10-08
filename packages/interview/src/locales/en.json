@@ -151,10 +151,6 @@
     "defaultMessage": "{relationship} ({kind})",
     "description": "Screen reader announcement after connecting two people as parent and child. relationship is the chosen menu option (for example “Julie” is a parent of “Rob”); kind is the kind of parent chosen (for example Adoptive parent)."
   },
-  "interview.familyPedigree.detailsPassphraseInvalidNotice": {
-    "defaultMessage": "Your passphrase did not unlock the answers saved about your family. Enter it again to add or change people.",
-    "description": "Notice shown under the family tree when the passphrase entered could not unlock the protected answers saved earlier about a family member (names are not protected in this study). Until the right one is entered, the family cannot be changed."
-  },
   "interview.familyPedigree.detailsPassphraseNeededNotice": {
     "defaultMessage": "Enter your passphrase to add or change people in your family.",
     "description": "Notice shown under the family tree when the study protects some of the answers about each family member (but not their names) with a passphrase that has not been entered yet. Until it is, the family cannot be changed."
@@ -378,10 +374,6 @@
   "interview.familyPedigree.partnershipCurrentLabel": {
     "defaultMessage": "Are they still together?",
     "description": "Yes/no question: whether a partnership is current, rather than separated or ended."
-  },
-  "interview.familyPedigree.passphraseInvalidNotice": {
-    "defaultMessage": "Your passphrase did not unlock the names in your family. Enter it again to see them and to add or change people.",
-    "description": "Notice shown under the family tree when the passphrase entered could not unlock the names saved earlier. Until the right one is entered, people are shown by how they are related to the participant, and the family cannot be changed."
   },
   "interview.familyPedigree.passphraseNeededNotice": {
     "defaultMessage": "Enter your passphrase to see the names in your family and to add or change people.",
@@ -839,6 +831,14 @@
     "defaultMessage": "Outside Selectable Areas",
     "description": "Button used to indicate that the participant’s location lies outside the selectable map areas. The stored selection identifier is never translated."
   },
+  "interview.interfaces.passphraseAccepted": {
+    "defaultMessage": "Passphrase accepted! Click \"Next\" to continue.",
+    "description": "Success message after the participant enters, on the anonymisation screen, the passphrase they chose earlier in the interview. Next refers to the interview navigation arrow."
+  },
+  "interview.interfaces.passphraseAlreadyEntered": {
+    "defaultMessage": "You have already entered your passphrase. Click \"Next\" to continue.",
+    "description": "Shown on the anonymisation screen when the participant returns to it after their passphrase was already set or entered. Next refers to the interview navigation arrow."
+  },
   "interview.interfaces.passphraseSet": {
     "defaultMessage": "Passphrase set successfully! Click \"Next\" to continue.",
     "description": "Success message after the participant sets the anonymisation passphrase. Next refers to the interview navigation arrow."
@@ -1223,9 +1223,29 @@
     "defaultMessage": "Add a person",
     "description": "Accessible action that adds a person to the current interview task."
   },
+  "interview.runtime.answerUnavailable": {
+    "defaultMessage": "Answer unavailable",
+    "description": "Shown in place of a protected answer, such as a name, that was saved earlier but can no longer be shown."
+  },
+  "interview.runtime.answerUnavailableKept": {
+    "defaultMessage": "This answer was saved earlier but cannot be shown here. It will be kept as it is unless you enter a new one.",
+    "description": "Explains, under a question whose earlier protected answer can no longer be shown, that the earlier answer is kept unless the participant replaces it."
+  },
   "interview.runtime.canvas": {
     "defaultMessage": "Placement area",
     "description": "Announced name of the area where items can be positioned."
+  },
+  "interview.runtime.checkingPassphrase": {
+    "defaultMessage": "Checking your passphrase…",
+    "description": "Status shown and announced while an entered passphrase is being checked, which can take a few seconds."
+  },
+  "interview.runtime.choosePassphrase": {
+    "defaultMessage": "Choose a passphrase",
+    "description": "Title of the dialog in which the participant chooses the passphrase that will protect some of their answers, when none has been chosen yet in this interview."
+  },
+  "interview.runtime.choosePassphraseHelp": {
+    "defaultMessage": "Some answers on this screen are protected by a passphrase. Choose one, and keep it safe: you will need it to see or change these answers later, and it cannot be recovered if it is forgotten.",
+    "description": "Instructions in the dialog for choosing the interview passphrase, explaining that it cannot be recovered."
   },
   "interview.runtime.collapseDrawer": {
     "defaultMessage": "Collapse drawer",
@@ -1243,14 +1263,6 @@
     "defaultMessage": "Copy Debug Info",
     "description": "Button that copies interview error details for the study organizer."
   },
-  "interview.runtime.decryptFailed": {
-    "defaultMessage": "There was an error decrypting the data with the passphrase entered. Please try again.",
-    "description": "Error after the entered passphrase could not decrypt the data."
-  },
-  "interview.runtime.decryptRetry": {
-    "defaultMessage": "There was a problem decrypting the data. Please re-enter your passphrase.",
-    "description": "Message asking for another passphrase after decryption fails."
-  },
   "interview.runtime.deleteBin": {
     "defaultMessage": "Delete bin",
     "description": "Announced name of the drop target that deletes an item."
@@ -1262,6 +1274,10 @@
   "interview.runtime.dropToRemove": {
     "defaultMessage": "Drop here to remove",
     "description": "Hint shown on the tray when dropping an item removes its position."
+  },
+  "interview.runtime.enterChosenPassphrase": {
+    "defaultMessage": "You chose a passphrase earlier in this interview. Enter it to continue.",
+    "description": "Shown on the passphrase screen when the participant already chose a passphrase earlier in this interview and needs to enter it again."
   },
   "interview.runtime.enterPassphrase": {
     "defaultMessage": "Enter your Passphrase",
@@ -1340,8 +1356,12 @@
     "description": "Label of the secret phrase input used to decrypt interview data."
   },
   "interview.runtime.passphraseHelp": {
-    "defaultMessage": "Enter your passphrase in order to unlock the data on this screen. If you cannot remember your passphrase, please contact the person who recruited you to this study.",
-    "description": "Instructions for unlocking encrypted data and finding help if the passphrase is forgotten."
+    "defaultMessage": "Enter the passphrase you chose earlier in this interview to see and change the answers on this screen. A passphrase cannot be recovered if it is forgotten.",
+    "description": "Instructions in the dialog for entering the passphrase chosen earlier in this interview. It must not suggest that anyone can recover or reset a forgotten passphrase, because no one can."
+  },
+  "interview.runtime.passphraseIncorrect": {
+    "defaultMessage": "This passphrase does not match the one used earlier in this interview. Check it and try again.",
+    "description": "Inline error under the passphrase input when the entered passphrase cannot unlock the information already saved in the interview."
   },
   "interview.runtime.passphraseNeeded": {
     "defaultMessage": "Your passphrase is needed to show data on this screen. Click here to enter it.",
@@ -1350,6 +1370,30 @@
   "interview.runtime.passphrasePlaceholder": {
     "defaultMessage": "Enter your passphrase...",
     "description": "Placeholder for the interview decryption passphrase input."
+  },
+  "interview.runtime.protectedAnswersLocked": {
+    "defaultMessage": "Some answers here are protected by your passphrase. Enter your passphrase to see and change them.",
+    "description": "Shown in place of questions whose answers are protected by the interview passphrase, and as a brief notice when such an answer is asked for, until that passphrase is entered."
+  },
+  "interview.runtime.protectedAnswersNotChecked": {
+    "defaultMessage": "This answer is checked against answers protected by your passphrase. Enter your passphrase, then try again.",
+    "description": "Error under a question whose answer must be compared with answers protected by the interview passphrase, shown until that passphrase is entered."
+  },
+  "interview.runtime.protectedAnswersNotSaved": {
+    "defaultMessage": "Your answers have not been saved. Enter your passphrase, then try again.",
+    "description": "Error when answers protected by the interview passphrase could not be saved because no working passphrase has been entered."
+  },
+  "interview.runtime.protectedAnswersUnavailable": {
+    "defaultMessage": "Answers protected by a passphrase cannot be shown or saved in this interview. Please let the person who recruited you to this study know.",
+    "description": "Shown in place of questions whose answers are protected by a passphrase, and on the passphrase screen, when the information this interview needs to check a passphrase is damaged, so no passphrase can be entered."
+  },
+  "interview.runtime.replaceUnavailableAnswer": {
+    "defaultMessage": "Enter a new answer",
+    "description": "Button beside an earlier answer that can no longer be shown, which lets the participant type a new answer to replace it."
+  },
+  "interview.runtime.replacingUnavailableAnswer": {
+    "defaultMessage": "Your new answer will replace the earlier one, which cannot be shown. Leave this empty to keep the earlier answer.",
+    "description": "Hint under a question the participant chose to answer again because its earlier protected answer can no longer be shown."
   },
   "interview.runtime.secondNode": {
     "defaultMessage": "second item",

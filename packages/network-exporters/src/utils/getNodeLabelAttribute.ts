@@ -1,47 +1,41 @@
 import type { NodeDefinition } from '@codaco/protocol-validation';
-import type {
-  NcNode,
-  VariableValue,
-  EntityAttributesProperty,
-} from '@codaco/shared-consts';
+import type { NcNode } from '@codaco/shared-consts';
 
-import { getOwn } from './general';
+import { isEncryptedAttribute } from './encryptedAttribute';
+import { getEntityAttributes, getOwn } from './general';
+
+type NodeVariable = NonNullable<NodeDefinition['variables']>[string];
 
 const isValidLabelCandidate = (
-  value: VariableValue | undefined,
-  variableDefinition?: NonNullable<NodeDefinition['variables']>[string],
+  node: NcNode,
+  attribute: string,
+  variableDefinition?: NodeVariable,
 ) => {
+  const value = getOwn(getEntityAttributes(node), attribute);
   if (value === undefined || value === '') {
     return false;
   }
 
-  const type = typeof value;
-
-  if (!variableDefinition) {
-    if (type === 'string' || type === 'number') {
-      return true;
-    }
-  } else {
-    if (
-      variableDefinition.type === 'text' ||
-      variableDefinition.type === 'number' ||
-      variableDefinition.type === 'datetime' ||
-      variableDefinition.type === 'location'
-    ) {
-      if (variableDefinition.encrypted) {
-        return true;
-      }
-
-      return type === 'string' || type === 'number';
-    }
+  if (
+    variableDefinition &&
+    variableDefinition.type !== 'text' &&
+    variableDefinition.type !== 'number' &&
+    variableDefinition.type !== 'datetime' &&
+    variableDefinition.type !== 'location'
+  ) {
+    return false;
   }
 
-  return false;
+  if (isEncryptedAttribute(node, attribute, variableDefinition)) {
+    return true;
+  }
+
+  return typeof value === 'string' || typeof value === 'number';
 };
 
 export const getNodeLabelAttribute = (
   codebookVariables: NodeDefinition['variables'],
-  nodeAttributes: NcNode[EntityAttributesProperty],
+  node: NcNode,
 ): string | null => {
   const variableCalledName = Object.entries(codebookVariables ?? {}).find(
     ([, variable]) => variable.name.toLowerCase() === 'name',
@@ -49,10 +43,7 @@ export const getNodeLabelAttribute = (
 
   if (
     variableCalledName &&
-    isValidLabelCandidate(
-      getOwn(nodeAttributes, variableCalledName[0]),
-      variableCalledName[1],
-    )
+    isValidLabelCandidate(node, variableCalledName[0], variableCalledName[1])
   ) {
     return variableCalledName[0];
   }
@@ -62,7 +53,8 @@ export const getNodeLabelAttribute = (
     (attribute) =>
       test.test(attribute) &&
       isValidLabelCandidate(
-        getOwn(nodeAttributes, attribute),
+        node,
+        attribute,
         getOwn(codebookVariables, attribute),
       ),
   );
@@ -71,10 +63,9 @@ export const getNodeLabelAttribute = (
     return match;
   }
 
-  const nodeVariableCalledName = Object.keys(nodeAttributes).find(
+  const nodeVariableCalledName = Object.keys(getEntityAttributes(node)).find(
     (attribute) =>
-      test.test(attribute) &&
-      isValidLabelCandidate(getOwn(nodeAttributes, attribute)),
+      test.test(attribute) && isValidLabelCandidate(node, attribute),
   );
 
   if (nodeVariableCalledName) {
@@ -85,13 +76,8 @@ export const getNodeLabelAttribute = (
     ([_key, variable]) => variable.type === 'text',
   );
 
-  for (const [variableKey] of textVariables) {
-    if (
-      isValidLabelCandidate(
-        getOwn(nodeAttributes, variableKey),
-        getOwn(codebookVariables, variableKey),
-      )
-    ) {
+  for (const [variableKey, variable] of textVariables) {
+    if (isValidLabelCandidate(node, variableKey, variable)) {
       return variableKey;
     }
   }

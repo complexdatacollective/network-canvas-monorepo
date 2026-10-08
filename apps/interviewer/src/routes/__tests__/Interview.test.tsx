@@ -124,6 +124,7 @@ type CapturedShellProps = {
     meta: { progress: number; totalSteps: number },
   ) => void;
   reviewMode: boolean;
+  flags?: { isDevelopment?: boolean };
 };
 
 const { shellMock, shellInterfaceLocale } = vi.hoisted(() => ({
@@ -464,6 +465,28 @@ describe('InterviewRoute enter gate', () => {
 
     expect(setAuthorizedInterviewIdMock).not.toHaveBeenCalledWith('s1');
   });
+});
+
+describe('InterviewRoute development tools', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it.each([
+    { build: 'development', DEV: true },
+    { build: 'production', DEV: false },
+  ])(
+    'connects Redux DevTools and the logger only in a development build ($build)',
+    async ({ DEV }) => {
+      vi.stubEnv('DEV', DEV);
+      getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
+
+      render(<InterviewRoute sessionId="s1" />);
+      await screen.findByTestId('shell-mounted');
+
+      expect(lastShellProps().flags).toEqual({ isDevelopment: DEV });
+    },
+  );
 });
 
 describe('InterviewRoute exit gate', () => {

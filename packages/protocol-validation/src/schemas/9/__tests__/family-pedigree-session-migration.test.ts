@@ -529,12 +529,17 @@ describe('migrationV8toV9 session step', () => {
       ).toMatchObject({ from: 'mother-1', to: 'earlier-ego' });
     });
 
-    it('does not write a label into an encrypted name attribute', () => {
+    const withNameMarkedEncrypted = (experiments: Fields) => {
       const source = template();
       const codebook = source.codebook as {
         node: { person: { variables: { name: Fields } } };
       };
       codebook.node.person.variables.name.encrypted = true;
+      return { ...source, experiments };
+    };
+
+    it('does not write a label into an encrypted name attribute', () => {
+      const source = withNameMarkedEncrypted({ encryptedVariables: true });
       const { network } = migrated(
         migrateProtocolWithSessions(source, 9, {
           name: 'CEGRM',
@@ -542,6 +547,20 @@ describe('migrationV8toV9 session step', () => {
       );
       expect(
         network.nodes.every((node) => !Object.hasOwn(node.attributes, 'name')),
+      ).toBe(true);
+    });
+
+    // Schema 8 encrypted nothing without the experiment, so the migration
+    // unmarks the name and it is written like any other.
+    it('writes the label into a name only marked encrypted without the experiment', () => {
+      const source = withNameMarkedEncrypted({});
+      const { network } = migrated(
+        migrateProtocolWithSessions(source, 9, {
+          name: 'CEGRM',
+        }).migrateSession(uncommittedSession()),
+      );
+      expect(
+        network.nodes.some((node) => typeof node.attributes.name === 'string'),
       ).toBe(true);
     });
   });

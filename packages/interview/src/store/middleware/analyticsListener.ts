@@ -5,16 +5,20 @@ import {
   type TypedStartListening,
 } from '@reduxjs/toolkit';
 
+import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
+
 import type { Tracker } from '../../analytics/tracker';
 import {
   addEdge,
   addNode,
+  addNodesAndEdges,
   addNodeToPrompt,
   deleteEdge,
   deleteNode,
   removeNodeFromPrompt,
+  restoreNode,
 } from '../modules/session';
-import { setPassphrase, setPassphraseInvalid } from '../modules/ui';
+import { encryptionUnlocked, passphraseRejected } from '../modules/ui';
 import type { AppDispatch, RootState } from '../store';
 
 type AnalyticsListenerArgs = {
@@ -46,6 +50,38 @@ export function createAnalyticsListenerMiddleware({
       tracker.track('node_added', {
         node_id: newNode._uid,
         node_type: action.payload?.type,
+      });
+    },
+  });
+
+  // A family pedigree is committed as one change; it reports each person and
+  // relationship as the single adds do.
+  startAppListening({
+    actionCreator: addNodesAndEdges.fulfilled,
+    effect: (action) => {
+      for (const node of action.payload.nodes) {
+        tracker.track('node_added', {
+          node_id: node.nodeId,
+          node_type: node.type,
+        });
+      }
+      for (const edge of action.payload.edges) {
+        tracker.track('edge_created', {
+          edge_id: edge.edgeId,
+          edge_type: edge.type,
+        });
+      }
+    },
+  });
+
+  // Undo and redo put a removed node back as it was. It is reported as added
+  // again, as its removal was reported.
+  startAppListening({
+    actionCreator: restoreNode,
+    effect: (action) => {
+      tracker.track('node_added', {
+        node_id: action.payload[entityPrimaryKeyProperty],
+        node_type: action.payload.type,
       });
     },
   });
@@ -96,20 +132,19 @@ export function createAnalyticsListenerMiddleware({
     },
   });
 
-  // Anonymisation. The passphrase value itself is never sent.
+  // Anonymisation. Neither the passphrase nor anything derived from it is
+  // sent.
   startAppListening({
-    actionCreator: setPassphrase,
+    actionCreator: encryptionUnlocked,
     effect: () => {
       tracker.track('passphrase_set');
     },
   });
 
   startAppListening({
-    actionCreator: setPassphraseInvalid,
-    effect: (action) => {
-      if (action.payload) {
-        tracker.track('passphrase_validation_failed');
-      }
+    actionCreator: passphraseRejected,
+    effect: () => {
+      tracker.track('passphrase_validation_failed');
     },
   });
 

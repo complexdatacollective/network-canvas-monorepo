@@ -1581,16 +1581,23 @@ describe('e2e-matrix builder extensions', () => {
     ]);
   });
 
-  it('emits Anonymisation validation and protocol experiments', () => {
+  it('emits Anonymisation validation', () => {
     const synth = new SyntheticInterview();
     synth.addStage('Anonymisation', {
       validation: { minLength: 4, maxLength: 12 },
     });
-    synth.setExperiments({ encryptedVariables: true });
     const stage = synth.getProtocol().stages[0] as Record<string, unknown>;
     expect(stage.validation).toEqual({ minLength: 4, maxLength: 12 });
-    const payload = synth.getInterviewPayload();
-    expect(payload.protocol.experiments).toEqual({ encryptedVariables: true });
+  });
+
+  it('emits protocol experiments only once they are set', () => {
+    const synth = new SyntheticInterview();
+    expect(synth.getInterviewPayload().protocol).not.toHaveProperty(
+      'experiments',
+    );
+
+    synth.setExperiments({});
+    expect(synth.getInterviewPayload().protocol.experiments).toStrictEqual({});
   });
 
   it('passes additionalAttributes through NameGenerator-family prompts', () => {

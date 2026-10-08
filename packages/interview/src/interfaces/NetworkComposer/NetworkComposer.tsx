@@ -3,7 +3,7 @@
 import { Toggle } from '@base-ui/react/toggle';
 import { ToggleGroup } from '@base-ui/react/toggle-group';
 import { AnimatePresence, useReducedMotion } from 'motion/react';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -27,8 +27,11 @@ import { useAutoLayout } from '../../canvas/useAutoLayout';
 import { createCanvasStore } from '../../canvas/useCanvasStore';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { useVariableLabels } from '../../forms/buildVariableLabels';
+import { useValidationNetwork } from '../../forms/useValidationNetwork';
+import { rejectedWriteMessage } from '../../forms/writeSubmissionResult';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../hooks/useStageSelector';
+import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
@@ -45,7 +48,11 @@ import {
 import { getCodebook } from '../../store/modules/protocol';
 import { updateNode, updateStageMetadata } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
+import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
+import type { PassphraseNoticeStatus } from '../Anonymisation/PassphraseNotice';
+import { usePassphrase } from '../Anonymisation/usePassphrase';
+import { useProtectedFormValues } from '../Anonymisation/useProtectedFormValues';
 import { interfaceMessages } from '../messages';
 import ComposerCanvas, { type NodeTapModifiers } from './ComposerCanvas';
 import ComposerDrawer from './ComposerDrawer';
@@ -84,7 +91,11 @@ type DrawerEditor = {
   form: ComposerForm | undefined;
   subject: Subject;
   attributes: NcNode[typeof entityAttributesProperty];
+  unavailable?: readonly string[];
+  passphraseStatus?: PassphraseNoticeStatus;
 };
+
+const NO_ATTRIBUTES: DrawerEditor['attributes'] = {};
 
 const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const intl = useAppIntl();
@@ -155,15 +166,39 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     stage.nodeForm?.fields ?? [],
   );
   const baseValidationContext = useStageSelector(getValidationContext);
+  // A new person, so the rules read only the others' stored answers.
+  const { context: quickAddValidationNetwork } = useValidationNetwork(
+    baseValidationContext,
+    baseValidationContext.stageSubject,
+    [stage.quickAdd],
+    undefined,
+  );
   const quickAddValidationContext: ValidationContext | undefined =
     baseValidationContext.stageSubject
       ? {
           codebook: baseValidationContext.codebook,
-          network: baseValidationContext.network,
+          ...quickAddValidationNetwork,
           stageSubject: baseValidationContext.stageSubject,
           variableLabels: nodeFormVariableLabels,
         }
       : undefined;
+
+  // Names added here, and values edited in the drawer, are stored encrypted
+  // when their variables are marked encrypted, which needs the interview's
+  // key to be in force.
+  const quickAddEncrypted = !!stageVariables[stage.quickAdd]?.encrypted;
+  const writesEncrypted =
+    quickAddEncrypted ||
+    (stage.nodeForm?.fields ?? []).some(
+      (field) => !!stageVariables[field.variable]?.encrypted,
+    );
+  const { unlocked, requirePassphrase } = usePassphrase();
+  const addNodeLocked = quickAddEncrypted && !unlocked;
+  const { showToast } = useInterviewToast();
+
+  useEffect(() => {
+    if (writesEncrypted) requirePassphrase();
+  }, [writesEncrypted, requirePassphrase]);
 
   const canvasStoreRef = useRef(createCanvasStore());
   const canvasStore = canvasStoreRef.current;
@@ -178,6 +213,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     subjectType: stage.subject.type,
     quickAdd: stage.quickAdd,
     layoutVariable: stage.layoutVariable,
+    useEncryption: quickAddEncrypted,
     currentStep,
     undoStore,
     dispatch,
@@ -284,9 +320,19 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
       const occupied = nodes
         .map((n) => n[entityAttributesProperty]?.[layoutVariable])
         .filter(isPosition);
-      await actions.createNodeAt(name, nextGridPosition(occupied));
+      try {
+        await actions.createNodeAt(name, nextGridPosition(occupied));
+        return true;
+      } catch (error) {
+        showToast({
+          description: intl.formatMessage(rejectedWriteMessage(error)),
+          variant: 'destructive',
+          anchor: 'forward',
+        });
+        return false;
+      }
     },
-    [nodes, layoutVariable, actions],
+    [nodes, layoutVariable, actions, showToast, intl],
   );
 
   const handleBackgroundTap = useCallback(() => {
@@ -426,14 +472,14 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         const {
           selectedNodeIds: nodeIds,
           selectedEdgeId: edgeId,
-          clearSelection,
+          deselectDeleted,
         } = composerStore.getState();
         if (nodeIds.size > 0) {
           actions.deleteNodesById([...nodeIds]);
-          clearSelection();
+          deselectDeleted();
         } else if (edgeId !== null) {
           actions.deleteEdgeById(edgeId);
-          clearSelection();
+          deselectDeleted();
         }
       }
     },
@@ -571,6 +617,22 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         ) ?? null)
       : null;
 
+  // The drawer shows and edits plaintext, and its title is the quick-add
+  // name, so both are read through the passphrase.
+  const drawerFields = useMemo(
+    () => [...(stage.nodeForm?.fields ?? []), { variable: stage.quickAdd }],
+    [stage.nodeForm, stage.quickAdd],
+  );
+  const selectedNodeValues = useProtectedFormValues(
+    selectedNode,
+    drawerFields,
+    stageVariables,
+  );
+  const selectedNodePassphraseStatus: PassphraseNoticeStatus | undefined =
+    selectedNodeValues.status === 'ready'
+      ? undefined
+      : selectedNodeValues.status;
+
   const selectedEdge =
     selectedEdgeId !== null
       ? (edges.find((e) => e[entityPrimaryKeyProperty] === selectedEdgeId) ??
@@ -588,9 +650,13 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   // no form to edit (it then shows an empty state).
   const currentEditor: DrawerEditor | null = (() => {
     if (selectedNode !== null) {
-      const rawName = selectedNode[entityAttributesProperty]?.[stage.quickAdd];
-      const title =
-        typeof rawName === 'string' && rawName.trim() !== ''
+      const ready =
+        selectedNodeValues.status === 'ready' ? selectedNodeValues : undefined;
+      const attributes = ready?.values ?? NO_ATTRIBUTES;
+      const rawName = attributes[stage.quickAdd];
+      const title = ready?.unavailable.includes(stage.quickAdd)
+        ? intl.formatMessage(runtimeMessages.answerUnavailable)
+        : typeof rawName === 'string' && rawName.trim() !== ''
           ? rawName
           : nodeLabel;
       return {
@@ -599,7 +665,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         title,
         form: stage.nodeForm,
         subject: stage.subject,
-        attributes: selectedNode[entityAttributesProperty],
+        attributes,
+        unavailable: ready?.unavailable,
+        passphraseStatus: selectedNodePassphraseStatus,
       };
     }
     if (selectedEdge !== null) {
@@ -646,6 +714,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         nodeLabel={nodeLabel}
         quickAddTargetVariable={stage.quickAdd}
         onAddNode={handleAddNode}
+        addNodeLocked={addNodeLocked}
         quickAddValidationProps={quickAddValidationProps}
         quickAddValidationContext={quickAddValidationContext}
         groupVariable={groupVariable}
@@ -750,21 +819,22 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
             form={editor.form}
             subject={editor.subject}
             attributes={editor.attributes}
-            onSave={(id, data) => {
-              if (editor.kind === 'node') {
-                void actions.updateNodeAttributes(id, data, `node-attr:${id}`);
-              } else {
-                void actions.updateEdgeAttributes(id, data, `edge-attr:${id}`);
-              }
-            }}
+            unavailable={editor.unavailable}
+            passphraseStatus={editor.passphraseStatus}
+            onSave={(id, data) =>
+              editor.kind === 'node'
+                ? actions.updateNodeAttributes(id, data, `node-attr:${id}`)
+                : actions.updateEdgeAttributes(id, data, `edge-attr:${id}`)
+            }
             onDelete={(id) => {
               if (editor.kind === 'node') {
                 actions.deleteNodeById(id);
               } else {
                 actions.deleteEdgeById(id);
               }
-              composerStore.getState().clearSelection();
+              composerStore.getState().deselectDeleted();
             }}
+            guardDraft={composerStore.getState().guardDraft}
           />
         )}
       </ComposerDrawer>

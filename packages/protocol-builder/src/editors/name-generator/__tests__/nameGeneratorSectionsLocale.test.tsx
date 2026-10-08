@@ -7,6 +7,10 @@ import AlterLimitsSection from '../../../sections/alter-limits/AlterLimitsSectio
 import NameGeneratorPromptsSection from '../../../sections/name-generator-prompts/NameGeneratorPromptsSection.tsx';
 import NodePanelsSection from '../../../sections/panels/NodePanelsSection.tsx';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import {
+  alreadyProtecting,
+  personRule,
+} from '../../anonymisation/__tests__/anonymisationFixtures.tsx';
 
 /**
  * The name-generator sections read in Spanish.
@@ -131,6 +135,42 @@ describe('the name-generator sections, read in Spanish', () => {
     expect(
       screen.getByText(
         'Muestra a las personas nombradas hasta ahora, limitado por 1 regla.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * A panel's filter is validated inside the panel's own dialog rather than
+   * at a stage path, so it states its verdict through its own hook — which
+   * has to be handed the reader's formatter, as the stage-level one is.
+   */
+  it('refuses a panel’s unusable filter rule in Spanish', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([
+        {
+          id: 'panel-1',
+          title: { 'en-US': 'People you named earlier' },
+          dataSource: 'existing',
+          filter: {
+            join: 'AND',
+            rules: [personRule('rule-1', 'relationship_to_ego')],
+          },
+        },
+      ]),
+      locale: 'es',
+      sections: <NodePanelsSection />,
+      adapter: alreadyProtecting('relationship_to_ego'),
+    });
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Editar panel' }),
+    );
+    const dialog = within(await screen.findByRole('dialog'));
+    await harness.user.click(dialog.getByRole('button', { name: 'Guardar' }));
+
+    expect(
+      await dialog.findByText(
+        'La regla 1 no se puede usar tal como está. Ábrela para corregirla o elimínala.',
       ),
     ).toBeInTheDocument();
   });

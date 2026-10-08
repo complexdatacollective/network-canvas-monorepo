@@ -633,6 +633,9 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         initialTextScale={initialTextScale}
         onTextScaleChange={handleTextScaleChange}
         navigationClassnames={NAVIGATION_SAFE_AREA_CLASSNAMES}
+        // Redux DevTools and the action logger connect only in a development
+        // build.
+        flags={{ isDevelopment: import.meta.env.DEV }}
       />
     </div>
   );

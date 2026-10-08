@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { Provider } from 'react-redux';
 
+import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import type { NodeDefinition } from '@codaco/protocol-validation';
 import {
   type EntityAttributesProperty,
@@ -56,9 +57,6 @@ const mockProtocol = {
       ],
     },
   ],
-  experiments: {
-    encryptedVariables: false,
-  },
   assets: [],
 };
 
@@ -81,9 +79,6 @@ const createMockStore = () => {
     codebook: mockProtocol.codebook,
     stages: mockProtocol.stages,
     assets: [],
-    experiments: {
-      encryptedVariables: false,
-    },
   };
 
   const mockSessionState = {
@@ -92,8 +87,7 @@ const createMockStore = () => {
   };
 
   const mockUiState = {
-    passphrase: null as string | null,
-    passphraseInvalid: false,
+    encryptionKeyId: null,
     showPassphrasePrompter: false,
   };
 
@@ -155,7 +149,7 @@ type Story = StoryObj<typeof meta>;
 
 function QuickNodeFormWrapper(
   props: Omit<React.ComponentProps<typeof QuickNodeForm>, 'addNode'> & {
-    addNode?: (attributes: NcNode[EntityAttributesProperty]) => Promise<void>;
+    addNode?: (attributes: NcNode[EntityAttributesProperty]) => unknown;
   },
 ) {
   const [addedNodes, setAddedNodes] = useState<
@@ -165,9 +159,10 @@ function QuickNodeFormWrapper(
 
   const handleAddNode = async (
     attributes: NcNode[EntityAttributesProperty],
-  ) => {
+  ): Promise<FormSubmissionResult> => {
     setAddedNodes((prev) => [...prev, attributes]);
     await props.addNode?.(attributes);
+    return { success: true };
   };
 
   const handleShowForm = () => {

@@ -46,6 +46,15 @@ export const testCodebook: Readonly<Codebook> = Object.freeze({
         // against: an attribute the codebook still describes and no rule can
         // be built on.
         home: { name: 'Home', label: 'Home', type: 'layout' },
+        // Encrypted: answered in the interview with ciphertext only the
+        // participant's passphrase opens, so a rule over interview answers
+        // cannot read it.
+        secret: {
+          name: 'Secret',
+          label: 'Secret',
+          type: 'text',
+          encrypted: true,
+        },
       },
     },
     place: {
@@ -168,6 +177,13 @@ const baseSections: Record<string, SectionDoc> = {
           { label: { en: 'Weak' }, value: 1 },
           { label: { en: 'Strong' }, value: 2 },
         ],
+      },
+      // Encrypted, so only a panel over an imported file may name it.
+      secret: {
+        name: 'Secret',
+        label: 'Secret',
+        type: 'text',
+        encrypted: true,
       },
     },
   },

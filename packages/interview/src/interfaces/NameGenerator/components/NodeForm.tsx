@@ -1,22 +1,30 @@
 'use client';
 import { Plus } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
-import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import Form from '@codaco/fresco-ui/form/Form';
-import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import type {
+  FormSubmissionResult,
+  FormSubmitHandler,
+} from '@codaco/fresco-ui/form/store/types';
 import Icon, { type InterviewerIconName } from '@codaco/fresco-ui/Icon';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { Form as TForm } from '@codaco/protocol-validation';
 import {
   type EntityAttributesProperty,
   type EntityPrimaryKey,
-  entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
 } from '@codaco/shared-consts';
@@ -28,18 +36,21 @@ import {
   actionPlusBadgeVariants,
   actionPlusIconClass,
 } from '../../../components/actionButtonVariants';
+import PassphraseEntry from '../../../components/PassphraseEntry';
 import { useCurrentStep } from '../../../contexts/CurrentStepContext';
-import { formValuesToAttributePatch } from '../../../forms/formValuesToAttributePatch';
 import useProtocolForm from '../../../forms/useProtocolForm';
+import { writeSubmissionResult } from '../../../forms/writeSubmissionResult';
 import { useCelebrate } from '../../../hooks/useCelebrate';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import { runtimeMessages } from '../../../i18n/runtimeMessages';
 import { LocalizedText } from '../../../localization/LocalizedText';
 import { getNodeIconName } from '../../../selectors/name-generator';
+import { getCodebookVariablesForSubjectType } from '../../../selectors/protocol';
 import { getPromptAdditionalAttributes } from '../../../selectors/session';
 import type { AttributePatch } from '../../../store/entityAttributePatch';
 import { updateNode as updateNodeAction } from '../../../store/modules/session';
 import { useAppDispatch } from '../../../store/store';
+import { useProtectedFormValues } from '../../Anonymisation/useProtectedFormValues';
 import { interfaceMessages } from '../../messages';
 
 type NodeFormProps = {
@@ -49,8 +60,26 @@ type NodeFormProps = {
   onClose: () => void;
   addNode: (
     attributes: NcNode[EntityAttributesProperty],
-  ) => void | Promise<void>;
+  ) => Promise<FormSubmissionResult>;
 };
+
+/**
+ * Tells the dialog whether the form inside it is submitting. The form's store
+ * lives inside the dialog, so that each opening starts afresh, which leaves
+ * the dialog's own controls outside it.
+ */
+function SubmittingObserver({
+  onChange,
+}: {
+  onChange: (submitting: boolean) => void;
+}) {
+  const isSubmitting = useFormStore((state) => state.isSubmitting);
+  useLayoutEffect(() => {
+    onChange(isSubmitting);
+    return () => onChange(false);
+  }, [isSubmitting, onChange]);
+  return null;
+}
 
 const NodeForm = (props: NodeFormProps) => {
   const intl = useAppIntl();
@@ -58,8 +87,13 @@ const NodeForm = (props: NodeFormProps) => {
 
   const newNodeAttributes = useStageSelector(getPromptAdditionalAttributes);
   const icon = useStageSelector(getNodeIconName);
+  const variables = useStageSelector(getCodebookVariablesForSubjectType);
 
   const [show, setShow] = useState(false);
+  // Leaving would be read as not saving while the save still lands, and a
+  // second submission would add the person twice, so neither is offered until
+  // the submission settles.
+  const [submitting, setSubmitting] = useState(false);
 
   const dispatch = useAppDispatch();
   const { currentStep } = useCurrentStep();
@@ -121,30 +155,31 @@ const NodeForm = (props: NodeFormProps) => {
     },
   };
 
-  const initialValues = selectedNode?.[entityAttributesProperty]
-    ? Object.entries(selectedNode[entityAttributesProperty]).reduce<
-        Record<string, FieldValue>
-      >((values, [name, value]) => {
-        if (value !== null) {
-          values[name] = value;
-        }
-        return values;
-      }, {})
-    : undefined;
+  // An edited person's encrypted answers are decrypted before the form opens,
+  // and the form does not open at all until the passphrase has been entered.
+  const editing = useProtectedFormValues(selectedNode, form.fields, variables);
+  const editingLocked = selectedNode !== null && editing.status === 'locked';
+  useEffect(() => {
+    if (!editingLocked) return;
+    setShow(false);
+    onClose();
+  }, [editingLocked, onClose]);
 
-  const { fieldComponents, coerceValues } = useProtocolForm({
-    fields: form.fields,
-    autoFocus: true,
-    initialValues,
-    currentEntityId: selectedNode?.[entityPrimaryKeyProperty],
-  });
+  const edited =
+    selectedNode && editing.status === 'ready' ? editing : undefined;
+
+  const { fieldComponents, toAttributePatch, passphraseNeeded } =
+    useProtocolForm({
+      fields: form.fields,
+      autoFocus: true,
+      initialValues: edited?.values,
+      currentEntityId: selectedNode?.[entityPrimaryKeyProperty],
+      unavailableVariables: edited?.unavailable,
+    });
 
   const handleSubmit: FormSubmitHandler = useCallback(
     async (values) => {
-      const patchResult = formValuesToAttributePatch(
-        coerceValues(values),
-        form.fields.map((field) => field.variable),
-      );
+      const patchResult = toAttributePatch(values);
 
       if (!patchResult.success) {
         return {
@@ -155,15 +190,15 @@ const NodeForm = (props: NodeFormProps) => {
 
       const isNewNode = !selectedNode;
 
-      if (isNewNode) {
-        await addNode({ ...newNodeAttributes, ...patchResult.patch.set });
-      } else {
-        const selectedUID = selectedNode[entityPrimaryKeyProperty];
-        await updateNode({
-          nodeId: selectedUID,
-          attributePatch: patchResult.patch,
-        });
-      }
+      const saved = isNewNode
+        ? await addNode({ ...newNodeAttributes, ...patchResult.patch.set })
+        : writeSubmissionResult(
+            await updateNode({
+              nodeId: selectedNode[entityPrimaryKeyProperty],
+              attributePatch: patchResult.patch,
+            }),
+          );
+      if (!saved.success) return saved;
 
       setShow(false);
       onClose();
@@ -175,8 +210,7 @@ const NodeForm = (props: NodeFormProps) => {
       return { success: true };
     },
     [
-      coerceValues,
-      form.fields,
+      toAttributePatch,
       selectedNode,
       addNode,
       newNodeAttributes,
@@ -226,9 +260,10 @@ const NodeForm = (props: NodeFormProps) => {
         </motion.div>
       </AnimatePresence>
       <Dialog
-        open={show}
+        open={show && editing.status === 'ready'}
         title={<LocalizedText value={form.title} render={<span />} />}
         closeDialog={handleClose}
+        dismissible={!submitting}
         footer={
           <Button
             key="submit"
@@ -236,6 +271,7 @@ const NodeForm = (props: NodeFormProps) => {
             form="node-form"
             aria-label={intl.formatMessage(interfaceMessages.finished)}
             color="primary"
+            disabled={submitting}
           >
             {intl.formatMessage(interfaceMessages.finished)}
           </Button>
@@ -246,6 +282,8 @@ const NodeForm = (props: NodeFormProps) => {
           onSubmit={handleSubmit}
           className="phone-landscape:min-w-sm desktop:min-w-md w-full"
         >
+          <SubmittingObserver onChange={setSubmitting} />
+          <PassphraseEntry needed={passphraseNeeded} />
           {fieldComponents}
         </Form>
       </Dialog>
