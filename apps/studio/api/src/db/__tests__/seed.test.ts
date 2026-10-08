@@ -638,7 +638,7 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
     );
 
     it.effect(
-      'parks each in-progress session at a stage and each completed one past the last',
+      'parks each in-progress session at a stage and each completed one at its finish stage',
       () =>
         Effect.gen(function* () {
           expect(
@@ -647,7 +647,7 @@ describe.skipIf(!testDb)('the seeded dataset', () => {
           ).toBe(0);
           expect(
             yield* count(`select count(*)::int as n from interview_sessions
-         where status = 'completed' and current_stage_id is not null`),
+         where status = 'completed' and current_stage_id is null`),
           ).toBe(0);
           expect(
             yield* count(`select count(*)::int as n from interview_sessions

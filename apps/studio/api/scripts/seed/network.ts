@@ -299,9 +299,9 @@ export const seedSessionsAndNetworks = Effect.fnUntraced(function* (
           startedAt,
           faker.number.int({ min: 8, max: 95 }),
         );
-        // Completed sessions sit past the last stage, with no stage id; an
-        // abandoned one at the stage it dropped out of; a paused one at the
-        // stage chosen above.
+        // Completed sessions sit at the finish stage they ended at, as a
+        // participant's finished interview does; an abandoned one at the stage
+        // it dropped out of; a paused one at the stage chosen above.
         const stageIndex =
           inProgressStageIndex ?? Math.max(0, generated.currentStep);
         const stageId = version.stages[stageIndex]?.id ?? null;

@@ -21,3 +21,6 @@ second finish stage.
 Publishing refuses a protocol whose finish stage has no heading or text in its
 default language, naming what is missing. A protocol in a language Network
 Canvas has no closing text for starts that way.
+
+Development seed data now leaves a completed interview at the finish stage it
+ended at, as Interviewer and Fresco record it, rather than past the last stage.
