@@ -56,6 +56,49 @@ describe('SubmitButton', () => {
     expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
   });
 
+  it('stays disabled while submitting even when a caller passes disabled={false}', async () => {
+    let finishSubmit: () => void = () => undefined;
+    const submitted = new Promise<void>((resolve) => {
+      finishSubmit = resolve;
+    });
+
+    render(
+      <FormStoreProvider>
+        <FormWithoutProvider
+          onSubmit={async () => {
+            await submitted;
+            return { success: true as const };
+          }}
+        >
+          <SubmitButton disabled={false}>Save</SubmitButton>
+        </FormWithoutProvider>
+      </FormStoreProvider>,
+    );
+
+    const button = screen.getByRole('button', { name: 'Save' });
+    expect(button).toBeEnabled();
+
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Save' })).toHaveAttribute(
+        'aria-busy',
+        'true',
+      );
+    });
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+
+    finishSubmit();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Save' })).toHaveAttribute(
+        'aria-busy',
+        'false',
+      );
+    });
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+  });
+
   it('renames itself only when a caller opts in with submittingText', async () => {
     render(
       <FormStoreProvider>
