@@ -57,9 +57,14 @@ describe('AppUpdateProvider', () => {
 
     // jsdom makes Location.reload non-configurable, so observe its underlying
     // jsdomError event. This fails if the callback attempts a real navigation.
+    // Vitest exposes the environment's JSDOM instance as the `jsdom` global,
+    // and `virtualConsole` is that instance's public accessor for the console
+    // the window reports to.
     const virtualConsole = (
-      window as unknown as { _virtualConsole?: JsdomVirtualConsole }
-    )._virtualConsole;
+      globalThis as unknown as {
+        jsdom?: { virtualConsole?: JsdomVirtualConsole };
+      }
+    ).jsdom?.virtualConsole;
     expect(virtualConsole).toBeDefined();
     if (!virtualConsole) throw new Error('jsdom virtual console unavailable');
     const navigationError = vi.fn();
