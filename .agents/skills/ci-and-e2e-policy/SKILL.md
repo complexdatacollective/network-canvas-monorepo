@@ -158,11 +158,13 @@ Each PR run upserts one sticky **E2E status** comment (the informational
 suite jobs, where Reason is the policy's per-suite selection explanation
 (the witness changed path, lane membership, or reuse). Only FAILED jobs
 publish their Playwright report, to GitHub Pages at
-`https://complexdatacollective.github.io/network-canvas-monorepo/<job-name>/<branch-slug>/`;
-each branch keeps only its latest run's report, and a later green run removes
-the stale one. Every report run also sweeps directories whose slug matches no
-live branch, so reports for merged or deleted branches disappear on the next
-publish from any branch.
+`https://complexdatacollective.github.io/network-canvas-monorepo/<job-name>/<branch-slug>-pr<number>/`;
+each pull request keeps only its latest run's report (the number is in the key
+because one branch can back pull requests into several bases), and a later
+green run removes the stale one, along with any report the same branch
+published under the older number-less key. Every report run also sweeps
+directories that match no live branch and no open pull request, so reports for
+merged or deleted branches disappear on the next publish from any branch.
 
 Generated release branches use equivalence reuse: a suite is skipped when the
 newest equivalent native pull-request verdict across the generated release
