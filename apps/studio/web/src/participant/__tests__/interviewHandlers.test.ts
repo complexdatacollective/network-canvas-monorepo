@@ -5,6 +5,7 @@ import type { SessionSnapshot } from '@codaco/interview/contract';
 import { RateLimited } from '@codaco/studio-contract/schema/errors';
 import {
   LinkUnavailable,
+  SessionEnded,
   SessionOutOfDate,
   SessionTakenOver,
 } from '@codaco/studio-contract/schema/participant';
@@ -588,7 +589,7 @@ describe('the participant page’s save numbers', () => {
 describe('the participant finish handler', () => {
   const signal = new AbortController().signal;
 
-  it('finishes at the last revision it saved, then shows the finished notice', async () => {
+  it('finishes at the last revision it saved, and leaves the interview mounted', async () => {
     const harness = installParticipantHarness({
       'participant.sync': (payload) =>
         Effect.succeed({ revision: payload.revision, applied: true }),
@@ -603,7 +604,7 @@ describe('the participant finish handler', () => {
       tag: 'participant.finish',
       payload: { holderEpoch: 3, revision: '8', ...FINISH },
     });
-    expect(onNotice).toHaveBeenCalledWith('finished');
+    expect(onNotice).not.toHaveBeenCalled();
   });
 
   it('sends the finish stage the interview ended at and its outcome', async () => {
@@ -668,7 +669,7 @@ describe('the participant finish handler', () => {
       ],
       ['participant.finish', { holderEpoch: 3, revision: '9', ...FINISH }],
     ]);
-    expect(onNotice).toHaveBeenCalledWith('finished');
+    expect(onNotice).not.toHaveBeenCalled();
   });
 
   it('stops when the participant cancels while the finish is on the wire', async () => {
@@ -716,18 +717,38 @@ describe('the participant finish handler', () => {
     expect(onNotice).not.toHaveBeenCalled();
   });
 
-  it('shows the finished notice when the interview was already finished', async () => {
-    installParticipantHarness({
-      'participant.finish': () =>
-        Effect.fail(new LinkUnavailable({ state: 'finished' })),
+  it.each([
+    ['the link', new LinkUnavailable({ state: 'finished' })],
+    ['the session', new SessionEnded({ state: 'completed' })],
+  ])(
+    'finishes without a notice when %s says the interview was already finished',
+    async (_, refusal) => {
+      installParticipantHarness({
+        'participant.finish': () => Effect.fail(refusal),
+      });
+      const { onFinish, onNotice } = handlersFor();
+
+      await expect(
+        onFinish('session-1', FINISH, signal),
+      ).resolves.toBeUndefined();
+
+      expect(onNotice).not.toHaveBeenCalled();
+    },
+  );
+
+  it('saves nothing more once the interview has finished', async () => {
+    const harness = installParticipantHarness({
+      'participant.sync': (payload) =>
+        Effect.succeed({ revision: payload.revision, applied: true }),
+      'participant.finish': () => Effect.succeed({ state: 'completed' }),
     });
-    const { onFinish, onNotice } = handlersFor();
+    const { onSync, onFinish, flushStep } = handlersFor();
 
-    await expect(
-      onFinish('session-1', FINISH, signal),
-    ).resolves.toBeUndefined();
+    await onFinish('session-1', FINISH, signal);
+    await onSync('session-1', session('Ada'), SYNC);
+    flushStep();
 
-    expect(onNotice).toHaveBeenCalledWith('finished');
+    expect(harness.calls.map(({ tag }) => tag)).toEqual(['participant.finish']);
   });
 
   it('shows the refusal and rejects, so the runtime does not count a finish', async () => {

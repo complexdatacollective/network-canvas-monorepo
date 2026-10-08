@@ -185,8 +185,14 @@ export function createParticipantHandlers({
 
   // The finish dialog cannot be cancelled while this runs, but tearing it down
   // (the interview unmounting) aborts `signal`: the request in flight is
-  // abandoned, and nothing after it runs, so an abandoned finish never shows
-  // the finished notice or finishes again after a resend.
+  // abandoned, and nothing after it runs, so an abandoned finish never counts
+  // as finished or finishes again after a resend.
+  //
+  // A finish resolves without a notice: the Shell then shows the interview's
+  // completed state in place, with the finish stage's own closing text. That
+  // includes a finish the server already holds (an earlier attempt whose
+  // answer was lost), since the interview is finished either way. Only a
+  // refusal replaces the interview with a notice.
   const onFinish: FinishHandler = async (_id, sessionFinish, signal) => {
     try {
       // The runtime flushes only answers it holds unsaved, so a stage save
@@ -206,12 +212,16 @@ export function createParticipantHandlers({
       }
     } catch (error) {
       const kind = noticeOf(error);
+      if (kind === 'finished') {
+        stopped = true;
+        return;
+      }
       if (kind === undefined) throw error;
       stop(kind);
-      if (kind === 'finished') return;
       throw error;
     }
-    stop('finished');
+    // Nothing more is saved: the session is finished.
+    stopped = true;
   };
 
   const saveStep = (): void => {

@@ -39,3 +39,10 @@ answered as already finished and changes nothing.
 The upgrade adds the migration `0005_session_finish`. An interview completed
 before it keeps no finish stage or outcome, since none was recorded; every
 interview completed after it must record both.
+
+Finishing an interview now leaves the participant on the interview's own
+closing screen: the finish stage's heading and text, with the notice that the
+interview is finished. Before, Studio replaced the interview with its generic
+"You've finished this interview" page the moment the finish was recorded, so
+the protocol's closing text was never shown. The generic page is still shown
+when a participant opens an interview that was already finished.
