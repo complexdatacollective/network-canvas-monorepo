@@ -15,11 +15,13 @@ and a timestamp: never a name, an email address or protocol content. Researchers
 are identified in PostHog by their account id with no person properties.
 Interview events use the participant id that session's usability events already
 use and create no person profile, and a study created with participant analytics
-off sends no interview events at all. Every event carries the installation id and is
-grouped by installation and team.
+off sends no interview events at all. Every event carries the installation id, and the team id
+as an ordinary property where it has a team, and is grouped by installation and
+team.
 
 An action queues its event in its own transaction on the new
 `analytics-delivery` queue, and the worker sends it within seconds. An action
 that rolls back sends nothing, and an event PostHog does not accept is retried
-with backoff for about half a day rather than lost. With telemetry off, nothing
+with backoff for about half a day rather than lost. Each queued event is sent
+with a uuid derived from its job, so PostHog counts a retried delivery once. With telemetry off, nothing
 is queued, and a worker with telemetry off sends nothing it finds queued.

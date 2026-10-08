@@ -12,6 +12,7 @@ import {
   Analytics,
   participantDistinctId,
   RecordedAnalytics,
+  stableEventUuid,
 } from '../../../platform/analytics.ts';
 import { InstallationIdentity } from '../../../platform/installation-identity.ts';
 import { STUDIO_VERSION } from '../../../version.ts';
@@ -87,11 +88,13 @@ describe.skipIf(!db)('the analytics delivery handler', () => {
         yield* reset;
         yield* enqueueJob('analytics-delivery', { usage: STUDY_CREATED });
 
+        const [queued] = yield* readJobs('analytics-delivery');
         const step = yield* drain;
         assert.strictEqual(step._tag, 'settled');
 
         assert.deepStrictEqual(yield* captured, [
           {
+            uuid: stableEventUuid(`${queued?.id}:study_created`),
             event: 'study_created',
             distinctId: STUDY_CREATED.accountId,
             timestamp: '2026-10-08T09:30:00.000Z',
@@ -145,6 +148,37 @@ describe.skipIf(!db)('the analytics delivery handler', () => {
                 personProperties: [],
               },
             ],
+          );
+        }).pipe(Effect.provide(layerJobs)),
+    );
+
+    it.effect(
+      'sends a retried job’s event and identify under the same uuids every attempt',
+      () =>
+        Effect.gen(function* () {
+          yield* reset;
+          const job = {
+            id: randomUUID(),
+            queue: 'analytics-delivery' as const,
+            payload: { usage: SIGNED_IN },
+            attempt: 1,
+            finalAttempt: false,
+          };
+          yield* analyticsDelivery(job);
+          yield* analyticsDelivery({ ...job, attempt: 2 });
+          yield* analyticsDelivery({ ...job, id: randomUUID() });
+
+          const uuids = (yield* captured).map(({ event, uuid }) => ({
+            event,
+            uuid,
+          }));
+          assert.lengthOf(uuids, 6);
+          assert.deepStrictEqual(uuids.slice(0, 2), uuids.slice(2, 4));
+          assert.notStrictEqual(uuids[0]?.uuid, uuids[1]?.uuid);
+          assert.notStrictEqual(uuids[1]?.uuid, uuids[5]?.uuid);
+          assert.strictEqual(
+            uuids[1]?.uuid,
+            stableEventUuid(`${job.id}:researcher_signed_in`),
           );
         }).pipe(Effect.provide(layerJobs)),
     );

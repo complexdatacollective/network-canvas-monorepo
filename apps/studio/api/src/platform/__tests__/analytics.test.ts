@@ -10,6 +10,7 @@ import {
   Analytics,
   AnalyticsUndelivered,
   POSTHOG_INGESTION_HOST,
+  stableEventUuid,
 } from '../analytics.ts';
 import { InstallationIdentity } from '../installation-identity.ts';
 import { knownInstallation } from './support/installation.ts';
@@ -139,6 +140,7 @@ describe('Analytics', () => {
         yield* Effect.gen(function* () {
           const analytics = yield* Analytics;
           yield* analytics.identify({
+            uuid: '0b6a8e8e-1f3c-5d2a-9b7e-4c1d2e3f4a5b',
             distinctId: 'account-1',
             timestamp: '2026-10-08T09:00:00.000Z',
             groups: { team: 'team-1' },
@@ -154,11 +156,13 @@ describe('Analytics', () => {
               api_key: POSTHOG_API_KEY,
               batch: [
                 {
+                  uuid: '0b6a8e8e-1f3c-5d2a-9b7e-4c1d2e3f4a5b',
                   event: '$identify',
                   timestamp: '2026-10-08T09:00:00.000Z',
                   properties: {
                     distinct_id: 'account-1',
                     installation_id: INSTALLATION_ID,
+                    team_id: 'team-1',
                     $groups: { installation: INSTALLATION_ID, team: 'team-1' },
                     $geoip_disable: true,
                   },
@@ -218,4 +222,47 @@ describe('Analytics', () => {
         expect(error.reason).toBe('installation_unknown');
       }),
   );
+
+  it.effect(
+    'names an event’s team as a plain property, which a personless event still carries',
+    () =>
+      Effect.gen(function* () {
+        const sent: Sent[] = [];
+        yield* Effect.gen(function* () {
+          const analytics = yield* Analytics;
+          yield* analytics.deliver([
+            {
+              event: 'interview_started',
+              distinctId: 'participant:session',
+              timestamp: '2026-10-08T09:00:00.000Z',
+              properties: { $process_person_profile: false },
+              groups: { team: 'team-1' },
+            },
+          ]);
+        }).pipe(
+          Effect.provide(analyticsUnder(true)),
+          Effect.provideService(FetchHttpClient.Fetch, recordingFetch(sent)),
+        );
+        expect(sent[0]?.body).toMatchObject({
+          batch: [
+            {
+              properties: {
+                team_id: 'team-1',
+                $process_person_profile: false,
+              },
+            },
+          ],
+        });
+      }),
+  );
+
+  it('derives the same well-formed event uuid from the same seed, and another from another', () => {
+    const first = stableEventUuid('job-1:study_created');
+    expect(first).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+    expect(stableEventUuid('job-1:study_created')).toBe(first);
+    expect(stableEventUuid('job-2:study_created')).not.toBe(first);
+    expect(stableEventUuid('job-1:$identify')).not.toBe(first);
+  });
 });

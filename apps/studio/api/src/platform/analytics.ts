@@ -20,6 +20,7 @@ export type AnalyticsGroups = {
 };
 
 export type AnalyticsCapture = {
+  readonly uuid?: string | undefined;
   readonly event: string;
   readonly distinctId: string;
   readonly properties: Readonly<Record<string, unknown>>;
@@ -28,6 +29,7 @@ export type AnalyticsCapture = {
 };
 
 export type AnalyticsIdentity = {
+  readonly uuid?: string | undefined;
   readonly distinctId: string;
   readonly timestamp: string;
   readonly groups?: AnalyticsGroups | undefined;
@@ -56,7 +58,22 @@ export const participantDistinctId = (
 ) =>
   `participant:${createHash('sha256').update(`${installationId}:${sessionId}`).digest('hex').slice(0, 32)}`;
 
+export const stableEventUuid = (seed: string): string => {
+  const hex = createHash('sha256').update(seed).digest('hex');
+  const variant = ((Number.parseInt(hex[16] ?? '0', 16) & 0x3) | 0x8).toString(
+    16,
+  );
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    `5${hex.slice(13, 16)}`,
+    `${variant}${hex.slice(17, 20)}`,
+    hex.slice(20, 32),
+  ].join('-');
+};
+
 const identifyCapture = (identity: AnalyticsIdentity): AnalyticsCapture => ({
+  uuid: identity.uuid,
   event: IDENTIFY_EVENT,
   distinctId: identity.distinctId,
   timestamp: identity.timestamp,
@@ -65,12 +82,16 @@ const identifyCapture = (identity: AnalyticsIdentity): AnalyticsCapture => ({
 });
 
 const wireEvent = (captured: AnalyticsCapture, installationId: string) => ({
+  ...(captured.uuid === undefined ? {} : { uuid: captured.uuid }),
   event: captured.event,
   timestamp: captured.timestamp,
   properties: {
     ...captured.properties,
     distinct_id: captured.distinctId,
     [POSTHOG_APP_PROPS.INSTALLATION_ID]: installationId,
+    ...(captured.groups?.team === undefined
+      ? {}
+      : { team_id: captured.groups.team }),
     $groups: {
       [INSTALLATION_GROUP]: installationId,
       ...(captured.groups?.team === undefined
