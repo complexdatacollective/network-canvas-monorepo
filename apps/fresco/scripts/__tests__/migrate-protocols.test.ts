@@ -1394,11 +1394,12 @@ describe('languages in the deploy migration', () => {
     expect(written).toHaveProperty('data.stages', stages);
     // The row already ends at its finish stage, and keeps it as its only one,
     // in its own languages.
-    const finishStages = (stages as { type: string }[]).filter(
+    const writtenStages = stages as { type: string }[];
+    const finishStages = writtenStages.filter(
       (stage) => stage.type === 'FinishSession',
     );
     expect(finishStages).toHaveLength(1);
-    expect(stages.at(-1)).toBe(finishStages[0]);
+    expect(writtenStages.at(-1)).toBe(finishStages[0]);
   });
 
   it('gives a row at the compatible version without a finish stage one in its own languages', async () => {
