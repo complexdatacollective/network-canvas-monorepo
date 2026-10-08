@@ -33,6 +33,9 @@ vi.mock('nuqs', async (importOriginal) => ({
   ...(await importOriginal<typeof Nuqs>()),
   useQueryState: () => [0, vi.fn()],
 }));
+// The layout also exports its page metadata, which reads the request on the
+// server; none of that runs when the layout renders.
+vi.mock('~/i18n/server', () => ({ getServerIntl: vi.fn() }));
 vi.mock('~/app/(interview)/_components/EndSessionRecording', () => ({
   default: () => null,
 }));
@@ -150,9 +153,13 @@ describe('Fresco hands the interview the request’s languages, never its own', 
       'data-requested-locales',
       'fr-CA en',
     );
+    // Participant chrome outside the interview follows the Fresco language;
+    // the wrapper declares none of its own.
     expect(
-      screen.getByRole('button', { name: 'Continue' }).closest('[lang]'),
-    ).toHaveAttribute('lang', 'en');
+      screen
+        .getByRole('button', { name: 'Continuar' })
+        .closest('[data-theme-interview]'),
+    ).not.toHaveAttribute('lang');
     expect(shell).toHaveBeenLastCalledWith(
       expect.objectContaining({
         requestedLocales: serializedRequest,

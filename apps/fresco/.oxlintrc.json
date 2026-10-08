@@ -34,15 +34,11 @@
   },
   "overrides": [
     {
-      "files": [
-        "app/dashboard/**",
-        "app/(blobs)/**",
-        "app/error.tsx",
-        "app/global-error.tsx",
-        "app/not-found.tsx",
-        "components/**",
-        "i18n/**"
-      ],
+      // Every component the app renders. The app is localised end to end, so
+      // user-visible text is a message descriptor, never a literal. JSX is the
+      // only place this rule can see: text built in a plain .ts module (a
+      // `metadata` object, a thrown message shown to the user) is not covered.
+      "files": ["**/*.tsx"],
       "rules": {
         "formatjs/no-literal-string-in-jsx": [
           "error",
@@ -51,7 +47,7 @@
               "include": [
                 [
                   "*",
-                  "{label,placeholder,title,itemLabel,description,alt,required,submittingText,fallback,errorTitle}"
+                  "{label,placeholder,title,description,hint,message,heading,header,caption,text,fallback,required,alt,noResults,showMore,announcedName,unsavedWorkCaveat,*Label,*Text,*Title,*Message,*Description,*Placeholder,*Heading,*Caption,*Hint}"
                 ]
               ]
             }
@@ -60,7 +56,20 @@
       }
     },
     {
-      "files": ["**/*.test.*", "**/*.stories.*", "**/__tests__/**"],
+      // Deleted by the finish-stage rework, which replaces it with a localised
+      // completion screen. Remove this entry together with the file.
+      "files": ["app/(interview)/interview/_components/InterviewCompleted.tsx"],
+      "rules": { "formatjs/no-literal-string-in-jsx": "off" }
+    },
+    {
+      "files": [
+        "**/*.test.*",
+        "**/*.stories.*",
+        "**/__tests__/**",
+        ".storybook/**",
+        "release-test/**",
+        "scripts/**"
+      ],
       "rules": { "formatjs/no-literal-string-in-jsx": "off" }
     },
     {
