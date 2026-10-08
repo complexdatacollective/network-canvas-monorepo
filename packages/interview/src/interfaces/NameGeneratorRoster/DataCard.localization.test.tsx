@@ -44,27 +44,6 @@ describe('roster built-in value localization', () => {
     render(<Example />);
     expect(screen.getByText('Yes and No')).toBeInTheDocument();
   });
-
-  it('marks a detail label shown in another language with that language and direction', () => {
-    render(
-      <DataCard
-        label="Researcher label"
-        details={[
-          {
-            id: 'age',
-            label: { text: 'العمر', lang: 'ar', dir: 'rtl' },
-            value: 34,
-          },
-          { id: 'city', label: 'City', value: 'Lyon' },
-        ]}
-      />,
-    );
-
-    const translated = screen.getByText('العمر');
-    expect(translated).toHaveAttribute('lang', 'ar');
-    expect(translated).toHaveAttribute('dir', 'rtl');
-    expect(screen.getByText('City')).not.toHaveAttribute('lang');
-  });
 });
 
 describe('roster values follow the language the protocol is read in', () => {

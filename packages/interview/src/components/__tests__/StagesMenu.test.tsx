@@ -128,7 +128,7 @@ describe('StagesMenu route status', () => {
 });
 
 describe('StagesMenu screen names', () => {
-  it('marks a name shown in a fallback language with that language and direction', () => {
+  it('shows each name in the interview language, falling back to the default, with no language of its own', () => {
     renderMenu({
       localization: { defaultLocale: 'en', locales: ['en', 'ar'] },
       locale: 'ar',
@@ -148,12 +148,9 @@ describe('StagesMenu screen names', () => {
       ],
     });
 
-    const translated = screen.getByText('مرحبا');
-    expect(translated).toHaveAttribute('lang', 'ar');
-    expect(translated).toHaveAttribute('dir', 'rtl');
-
-    const fallback = screen.getByText('Thank you');
-    expect(fallback).toHaveAttribute('lang', 'en');
-    expect(fallback).toHaveAttribute('dir', 'ltr');
+    // The interview sets one language for everything it renders, so neither
+    // name, nor anything between it and the menu, names a language.
+    expect(screen.getByText('مرحبا').closest('[lang], [dir]')).toBeNull();
+    expect(screen.getByText('Thank you').closest('[lang], [dir]')).toBeNull();
   });
 });

@@ -10,11 +10,6 @@ import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
 import { CollectionFilterInput } from '@codaco/fresco-ui/collection/components/CollectionFilterInput';
 import { ListLayout } from '@codaco/fresco-ui/collection/layout/ListLayout';
 import type { ItemProps, Key } from '@codaco/fresco-ui/collection/types';
-import {
-  type PresentationalText,
-  presentationalTextProps,
-  presentationalTextValue,
-} from '@codaco/fresco-ui/PresentationalText';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import InterfacePicture from '@codaco/interface-images/InterfacePicture';
@@ -24,7 +19,7 @@ import manifest, {
 
 import { useCurrentStep } from '../contexts/CurrentStepContext';
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
-import { useResolvePresentationalText } from '../localization/ProtocolLocalizationProvider';
+import { useResolveLocalizedString } from '../localization/ProtocolLocalizationProvider';
 import {
   getSkipMap,
   getStageAvailabilityMap,
@@ -53,10 +48,8 @@ type StageItem = {
   id: string;
   index: number;
   type: string;
-  /** The stage's name as the participant reads it, for filtering. */
+  /** The stage's name as the participant reads it. */
   label: string;
-  /** The same name with the language it is written in. */
-  title: PresentationalText;
   position: string;
   isCurrent: boolean;
   isUnavailable: boolean;
@@ -200,7 +193,7 @@ export default function StagesMenu({
   onClosed,
 }: StagesMenuProps) {
   const intl = useAppIntl();
-  const toPresentationalText = useResolvePresentationalText();
+  const resolve = useResolveLocalizedString();
   const stages = useSelector(getProtocolStages);
   const { displayedStep: currentStageIndex } = useCurrentStep();
   const availabilityMap = useSelector(getStageAvailabilityMap);
@@ -221,30 +214,22 @@ export default function StagesMenu({
   const items = useMemo<StageItem[]>(
     () =>
       stages.map((stage, index) => {
-        const authored = toPresentationalText(stage.label);
-        const title = presentationalTextValue(authored).trim()
+        const authored = resolve(stage.label).text;
+        const label = authored.trim()
           ? authored
           : intl.formatMessage(messages.untitledStage);
         return {
           id: stage.id,
           index,
           type: stage.type,
-          label: presentationalTextValue(title),
-          title,
+          label,
           position: intl.formatNumber(index + 1, { useGrouping: false }),
           isCurrent: index === currentStageIndex,
           isUnavailable: skipMap[index] === true,
           availability: availabilityMap[index] ?? { kind: 'available' },
         };
       }),
-    [
-      stages,
-      currentStageIndex,
-      availabilityMap,
-      skipMap,
-      intl,
-      toPresentationalText,
-    ],
+    [stages, currentStageIndex, availabilityMap, skipMap, intl, resolve],
   );
 
   const currentId = items[currentStageIndex]?.id;
@@ -388,10 +373,7 @@ export default function StagesMenu({
           isHorizontal ? 'items-center text-center' : 'min-w-0 flex-1',
         )}
       >
-        <span
-          className={isHorizontal ? 'line-clamp-2' : undefined}
-          {...presentationalTextProps(item.title)}
-        >
+        <span className={isHorizontal ? 'line-clamp-2' : undefined}>
           {item.label}
         </span>
         {availabilityStatus && (

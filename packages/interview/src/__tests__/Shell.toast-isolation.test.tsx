@@ -331,7 +331,9 @@ describe('Shell toast ownership', () => {
     expect(notification).toHaveTextContent(
       'Debes crear al menos 1 elemento antes de continuar.',
     );
-    expect(notification.closest('[lang]')).toHaveAttribute('lang', 'es');
+    // The built-in text follows the browser's Spanish; the region keeps the
+    // English-only protocol's language.
+    expect(notification.closest('[lang]')).toHaveAttribute('lang', 'en');
     expect(
       within(first).getAllByRole('region', {
         name: 'Notificaciones de la entrevista',
@@ -502,7 +504,7 @@ describe('Shell stage portal ownership', () => {
     expect(first).toContainElement(firstBin);
     expect(first).not.toContainElement(secondBin);
     expect(second).toContainElement(secondBin);
-    expect(secondBin.closest('[lang]')).toHaveAttribute('lang', 'es');
+    expect(secondBin.closest('[lang]')).toHaveAttribute('lang', 'en');
     expect(secondBin.closest('[dir]')).toHaveAttribute('dir', 'ltr');
 
     const beforeFirst = structuredClone(firstStore.getState().session);
@@ -511,7 +513,7 @@ describe('Shell stage portal ownership', () => {
     secondSync.mockClear();
     secondView.rerender(secondContent('en-GB'));
     expect(within(second).getByLabelText('Delete bin')).toBe(secondBin);
-    expect(secondBin.closest('[lang]')).toHaveAttribute('lang', 'en-GB');
+    expect(secondBin.closest('[lang]')).toHaveAttribute('lang', 'en');
     expect(secondBin.closest('[dir]')).toHaveAttribute('dir', 'ltr');
     expect(firstBin.closest('[lang]')).toHaveAttribute('lang', 'en');
     expect(document.documentElement).toHaveAttribute('lang', 'ar');

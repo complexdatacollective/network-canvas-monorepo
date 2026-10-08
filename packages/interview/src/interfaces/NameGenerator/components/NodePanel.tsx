@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import type { DragMetadata, DropCallback } from '@codaco/fresco-ui/dnd/types';
-import { presentationalTextValue } from '@codaco/fresco-ui/PresentationalText';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { Panel as PanelType } from '@codaco/protocol-validation';
@@ -16,7 +15,7 @@ import NodeList from '../../../components/NodeList';
 import Panel from '../../../components/Panel';
 import useExternalData from '../../../hooks/useExternalData';
 import { useStageSelector } from '../../../hooks/useStageSelector';
-import { usePresentationalText } from '../../../localization/ProtocolLocalizationProvider';
+import { useLocalizedString } from '../../../localization/ProtocolLocalizationProvider';
 import { getPanelNodes } from '../../../selectors/name-generator';
 import { getStageSubject } from '../../../selectors/session';
 import { interfaceMessages } from '../../messages';
@@ -49,7 +48,7 @@ function NodePanel(props: NodePanelProps) {
   } = props;
 
   const stageSubject = useStageSelector(getStageSubject);
-  const title = usePresentationalText(panelConfig.title);
+  const { text: title } = useLocalizedString(panelConfig.title);
 
   const { externalData, status } = useExternalData(
     panelConfig.dataSource,
@@ -151,7 +150,7 @@ function NodePanel(props: NodePanelProps) {
           acceptsFilter={acceptsFilter}
           nodeSize="sm"
           animationKey={animationKey}
-          announcedName={presentationalTextValue(title)}
+          announcedName={title}
           disabledKeys={disabledKeys}
           renderItem={isExternalData ? renderItem : undefined}
         />

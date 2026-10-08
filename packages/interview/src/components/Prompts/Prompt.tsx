@@ -3,16 +3,12 @@
 import { motion } from 'motion/react';
 import { Fragment } from 'react';
 
-import {
-  presentationalTextProps,
-  presentationalTextValue,
-} from '@codaco/fresco-ui/PresentationalText';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { LocalizedString } from '@codaco/protocol-validation';
 
-import { usePresentationalText } from '../../localization/ProtocolLocalizationProvider';
+import { useLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 
 const variants = {
   enter: (backwards: boolean) => ({
@@ -41,14 +37,12 @@ type PromptProps = {
  */
 const Prompt = ({ id, text, backwards = false, small }: PromptProps) => {
   const promptClasses = cx('font-heading pb-[0.1em] text-center text-2xl');
-  const resolvedText = usePresentationalText(text);
-  const markdown = presentationalTextValue(resolvedText);
+  const { text: markdown } = useLocalizedString(text);
 
   return (
     <motion.div
       data-testid="prompt"
       title={markdown}
-      {...presentationalTextProps(resolvedText)}
       key={id}
       custom={backwards}
       variants={variants}

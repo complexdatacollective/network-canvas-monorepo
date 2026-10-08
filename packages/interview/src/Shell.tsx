@@ -16,7 +16,6 @@ import {
 } from 'react';
 import { Provider, useSelector } from 'react-redux';
 
-import { useAppLocale } from '@codaco/app-i18n/react';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { DndStoreProvider } from '@codaco/fresco-ui/dnd/dnd';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
@@ -125,8 +124,7 @@ function Interview({
   initialStageOverrideIndex?: number;
   reviewMode?: boolean;
 }) {
-  const { locale, direction } = useAppLocale();
-  const { metadata: contentLocale } = useProtocolLocale();
+  const { metadata: interviewLocale } = useProtocolLocale();
   const {
     stage,
     displayedStep,
@@ -187,11 +185,14 @@ function Interview({
     '--interview-text-scale': textScale,
   };
 
+  // The interview's language boundary. Everything the Shell renders (stage,
+  // navigation, dialogs and toasts alike) takes the interview language and
+  // lays out in its direction from here; no text inside marks its own.
   return (
     <ThemedRegion
       theme="interview"
-      lang={locale}
-      dir={direction}
+      lang={interviewLocale.locale}
+      dir={interviewLocale.direction}
       render={
         <main
           style={textScaleStyle}
@@ -214,45 +215,41 @@ function Interview({
         />
       }
     >
-      <DialogProvider>
-        <DndStoreProvider>
-          <StageMetadataProvider value={registerBeforeNext}>
-            <InterviewToastProvider
-              toastManager={toastManager}
-              forwardButtonRef={forwardButtonRef}
-              backButtonRef={backButtonRef}
-              orientation={navigationOrientation}
-            >
-              <AnimatePresence mode="wait" onExitComplete={handleExitComplete}>
-                {showStage && stage && (
-                  <motion.div
-                    key={displayedStep}
-                    data-stage-step={displayedStep}
-                    // pt insets the stage below the device's top safe area
-                    // (status bar/notch) so stage content never slides under
-                    // it in an installed PWA; env() is 0 everywhere else. The
-                    // navigation owns its own inset (via navigationClassnames)
-                    // so its background can still meet the screen edge.
-                    className="flex min-h-0 min-w-0 flex-1 pt-[env(safe-area-inset-top)]"
-                    initial="initial"
-                    animate="animate"
-                    exit="exit"
-                    variants={variants}
-                    transition={{ duration: 0.5 }}
-                  >
-                    {/*
-                     * The stage lays out in the direction of the protocol
-                     * translation shown; the language stays the interface's,
-                     * because protocol text carries its own `lang` and
-                     * built-in text here is in the interface language.
-                     */}
-                    <div
-                      className="relative flex size-full flex-col items-center justify-center"
-                      id="stage"
-                      key={stage.id}
-                      dir={contentLocale.direction}
+      <DirectionProvider direction={interviewLocale.direction}>
+        <DialogProvider>
+          <DndStoreProvider>
+            <StageMetadataProvider value={registerBeforeNext}>
+              <InterviewToastProvider
+                toastManager={toastManager}
+                forwardButtonRef={forwardButtonRef}
+                backButtonRef={backButtonRef}
+                orientation={navigationOrientation}
+              >
+                <AnimatePresence
+                  mode="wait"
+                  onExitComplete={handleExitComplete}
+                >
+                  {showStage && stage && (
+                    <motion.div
+                      key={displayedStep}
+                      data-stage-step={displayedStep}
+                      // pt insets the stage below the device's top safe area
+                      // (status bar/notch) so stage content never slides under
+                      // it in an installed PWA; env() is 0 everywhere else. The
+                      // navigation owns its own inset (via navigationClassnames)
+                      // so its background can still meet the screen edge.
+                      className="flex min-h-0 min-w-0 flex-1 pt-[env(safe-area-inset-top)]"
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      variants={variants}
+                      transition={{ duration: 0.5 }}
                     >
-                      <DirectionProvider direction={contentLocale.direction}>
+                      <div
+                        className="relative flex size-full flex-col items-center justify-center"
+                        id="stage"
+                        key={stage.id}
+                      >
                         {canRenderStage && (
                           <GeospatialOfflineIndicator
                             active={stage.type === 'Geospatial'}
@@ -267,47 +264,47 @@ function Interview({
                             />
                           )}
                         </StageErrorBoundary>
-                      </DirectionProvider>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </InterviewToastProvider>
-          </StageMetadataProvider>
-          {!hideNavigation && (
-            <Navigation
-              moveBackward={moveBackward}
-              moveForward={moveForward}
-              goToStage={goToStage}
-              allowStageNavigation={allowStageNavigation}
-              disableMoveForward={disableMoveForward}
-              disableMoveBackward={disableMoveBackward}
-              pulseNext={pulseNext}
-              progress={progress}
-              orientation={navigationOrientation}
-              className={navigationClassnames?.[navigationOrientation]}
-              forwardButtonRef={forwardButtonRef}
-              backButtonRef={backButtonRef}
-              onExit={onExit}
-              reviewMode={reviewMode}
-              allowUserScaling={allowUserScaling}
-              textScale={textScale}
-              onTextScaleChange={handleTextScaleChange}
-            />
-          )}
-          {/*
-           * A stable manager belongs to this Shell alone. The
-           * viewport's portal lands inside ThemedRegion (themed
-           * surface + portal-container context) regardless of what the
-           * host sets up. Hosts may still mount their own app-level
-           * Toast.Provider for non-interview toasts; the two are
-           * independent channels, as are other Shells on the same page.
-           */}
-          <Toast.Provider toastManager={toastManager}>
-            <InterviewToastViewport />
-          </Toast.Provider>
-        </DndStoreProvider>
-      </DialogProvider>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </InterviewToastProvider>
+            </StageMetadataProvider>
+            {!hideNavigation && (
+              <Navigation
+                moveBackward={moveBackward}
+                moveForward={moveForward}
+                goToStage={goToStage}
+                allowStageNavigation={allowStageNavigation}
+                disableMoveForward={disableMoveForward}
+                disableMoveBackward={disableMoveBackward}
+                pulseNext={pulseNext}
+                progress={progress}
+                orientation={navigationOrientation}
+                className={navigationClassnames?.[navigationOrientation]}
+                forwardButtonRef={forwardButtonRef}
+                backButtonRef={backButtonRef}
+                onExit={onExit}
+                reviewMode={reviewMode}
+                allowUserScaling={allowUserScaling}
+                textScale={textScale}
+                onTextScaleChange={handleTextScaleChange}
+              />
+            )}
+            {/*
+             * A stable manager belongs to this Shell alone. The
+             * viewport's portal lands inside ThemedRegion (themed
+             * surface + portal-container context) regardless of what the
+             * host sets up. Hosts may still mount their own app-level
+             * Toast.Provider for non-interview toasts; the two are
+             * independent channels, as are other Shells on the same page.
+             */}
+            <Toast.Provider toastManager={toastManager}>
+              <InterviewToastViewport />
+            </Toast.Provider>
+          </DndStoreProvider>
+        </DialogProvider>
+      </DirectionProvider>
     </ThemedRegion>
   );
 }

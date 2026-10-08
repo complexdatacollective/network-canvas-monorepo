@@ -12,7 +12,6 @@ import type { FieldProps } from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import UINode from '@codaco/fresco-ui/Node';
-import { presentationalTextValue } from '@codaco/fresco-ui/PresentationalText';
 import type {
   LocalizedString,
   ResolvedLocalizedString,
@@ -32,10 +31,7 @@ import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { buildVariableLabels } from '../../forms/buildVariableLabels';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
-import {
-  useResolveLocalizedString,
-  useResolvePresentationalText,
-} from '../../localization/ProtocolLocalizationProvider';
+import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
@@ -229,7 +225,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
   // other Field (codebook + network + this stage's subject); the dialog below
   // scopes it to the specific dropped node via currentEntityId.
   const baseValidationContext = useStageSelector(getValidationContext);
-  const toPresentationalText = useResolvePresentationalText();
+  const resolve = useResolveLocalizedString();
 
   const handleDropNode = async (node: NcNode, binIndex: number) => {
     const nodeId = node[entityPrimaryKeyProperty];
@@ -258,7 +254,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
     // proves otherVariablePrompt exists whenever otherVariable is set.
     if (bin.isOther && prompt.otherVariable !== undefined) {
       const { otherVariable, otherVariablePrompt } = prompt;
-      const otherPromptLabel = toPresentationalText(otherVariablePrompt);
+      const otherPromptLabel = resolve(otherVariablePrompt).text;
 
       // Derive the other variable's validation props directly from its
       // codebook definition — the other-input renders its own Field/component
@@ -300,7 +296,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
               variableLabels: buildVariableLabels([
                 {
                   variable: otherVariable,
-                  label: presentationalTextValue(otherPromptLabel),
+                  label: otherPromptLabel,
                 },
               ]),
             }
