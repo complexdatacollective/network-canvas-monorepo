@@ -213,55 +213,85 @@
 
     /* Sequences */
     --node-1: oklch(var(--neon-coral));
-    --node-1-contrast: oklch(var(--white));
+    --node-1-contrast: oklch(var(--neon-coral-contrast));
     --node-2: oklch(var(--sea-serpent));
-    --node-2-contrast: oklch(var(--white));
+    --node-2-contrast: oklch(var(--sea-serpent-contrast));
     --node-3: oklch(var(--purple-pizazz));
-    --node-3-contrast: oklch(var(--white));
+    --node-3-contrast: oklch(var(--purple-pizazz-contrast));
     --node-4: oklch(var(--neon-carrot));
-    --node-4-contrast: oklch(var(--white));
+    --node-4-contrast: oklch(var(--neon-carrot-contrast));
     --node-5: oklch(var(--kiwi));
-    --node-5-contrast: oklch(var(--white));
+    --node-5-contrast: oklch(var(--kiwi-contrast));
     --node-6: oklch(var(--cerulean-blue));
-    --node-6-contrast: oklch(var(--white));
+    --node-6-contrast: oklch(var(--cerulean-blue-contrast));
     --node-7: oklch(var(--paradise-pink));
-    --node-7-contrast: oklch(var(--white));
+    --node-7-contrast: oklch(var(--paradise-pink-contrast));
     --node-8: oklch(var(--mustard));
-    --node-8-contrast: oklch(var(--white));
+    --node-8-contrast: oklch(var(--mustard-contrast));
 
     --edge-1: oklch(var(--mustard));
+    --edge-1-contrast: oklch(var(--mustard-contrast));
     --edge-2: oklch(var(--purple-pizazz));
+    --edge-2-contrast: oklch(var(--purple-pizazz-contrast));
     --edge-3: oklch(var(--neon-coral));
+    --edge-3-contrast: oklch(var(--neon-coral-contrast));
     --edge-4: oklch(var(--kiwi));
+    --edge-4-contrast: oklch(var(--kiwi-contrast));
     --edge-5: oklch(var(--paradise-pink));
+    --edge-5-contrast: oklch(var(--paradise-pink-contrast));
     --edge-6: oklch(var(--tomato));
+    --edge-6-contrast: oklch(var(--tomato-contrast));
     --edge-7: oklch(var(--sea-serpent));
+    --edge-7-contrast: oklch(var(--sea-serpent-contrast));
     --edge-8: oklch(var(--slate-blue));
+    --edge-8-contrast: oklch(var(--slate-blue-contrast));
     --edge-9: oklch(var(--sea-green));
+    --edge-9-contrast: oklch(var(--sea-green-contrast));
     --edge-10: oklch(var(--cerulean-blue));
+    --edge-10-contrast: oklch(var(--cerulean-blue-contrast));
 
     --ord-1: oklch(var(--sea-green));
+    --ord-1-contrast: oklch(var(--sea-green-contrast));
     --ord-2: oklch(var(--sea-serpent));
+    --ord-2-contrast: oklch(var(--sea-serpent-contrast));
     --ord-3: oklch(var(--tomato));
+    --ord-3-contrast: oklch(var(--tomato-contrast));
     --ord-4: oklch(var(--neon-carrot));
+    --ord-4-contrast: oklch(var(--neon-carrot-contrast));
     --ord-5: oklch(var(--kiwi));
+    --ord-5-contrast: oklch(var(--kiwi-contrast));
     --ord-6: oklch(var(--cerulean-blue));
+    --ord-6-contrast: oklch(var(--cerulean-blue-contrast));
     --ord-7: oklch(var(--paradise-pink));
+    --ord-7-contrast: oklch(var(--paradise-pink-contrast));
     --ord-8: oklch(var(--mustard));
+    --ord-8-contrast: oklch(var(--mustard-contrast));
     --ord-9: oklch(var(--purple-pizazz));
+    --ord-9-contrast: oklch(var(--purple-pizazz-contrast));
     --ord-10: oklch(var(--slate-blue));
+    --ord-10-contrast: oklch(var(--slate-blue-contrast));
 
     /* used by categorical and convex hulls */
     --cat-1: oklch(var(--sea-serpent));
+    --cat-1-contrast: oklch(var(--sea-serpent-contrast));
     --cat-2: oklch(var(--purple-pizazz));
+    --cat-2-contrast: oklch(var(--purple-pizazz-contrast));
     --cat-3: oklch(var(--mustard));
+    --cat-3-contrast: oklch(var(--mustard-contrast));
     --cat-4: oklch(var(--paradise-pink));
+    --cat-4-contrast: oklch(var(--paradise-pink-contrast));
     --cat-5: oklch(var(--kiwi));
+    --cat-5-contrast: oklch(var(--kiwi-contrast));
     --cat-6: oklch(var(--cerulean-blue));
+    --cat-6-contrast: oklch(var(--cerulean-blue-contrast));
     --cat-7: oklch(var(--neon-carrot));
+    --cat-7-contrast: oklch(var(--neon-carrot-contrast));
     --cat-8: oklch(var(--barbie-pink));
+    --cat-8-contrast: oklch(var(--barbie-pink-contrast));
     --cat-9: oklch(var(--tomato));
+    --cat-9-contrast: oklch(var(--tomato-contrast));
     --cat-10: oklch(var(--slate-blue));
+    --cat-10-contrast: oklch(var(--slate-blue-contrast));
   }
 
   /*
