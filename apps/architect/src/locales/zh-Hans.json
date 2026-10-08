@@ -686,6 +686,7 @@
   "architect.protocolSummary.stage.familyPedigree.participantMarker": "参与者标记",
   "architect.protocolSummary.stage.familyPedigree.relationshipEdgeType": "家庭关系的关系类型",
   "architect.protocolSummary.stage.familyPedigree.relationshipKind": "关系种类",
+  "architect.protocolSummary.stage.familyPedigree.relationshipToParticipant": "与参与者的关系",
   "architect.protocolSummary.stage.familyPedigree.relativesNotRecorded": "未记录亲属",
   "architect.protocolSummary.stage.familyPedigree.scopeFirstDegree": "父母、兄弟姐妹和子女",
   "architect.protocolSummary.stage.familyPedigree.scopeGrandparents": "三代",

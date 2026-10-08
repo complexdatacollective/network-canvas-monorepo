@@ -97,6 +97,12 @@ const messages = defineMessages({
     description:
       'Label for the boolean attribute that marks which family member is the participant, in the printable protocol summary.',
   },
+  relationshipToParticipant: {
+    id: 'architect.protocolSummary.stage.familyPedigree.relationshipToParticipant',
+    defaultMessage: 'Relationship to the participant',
+    description:
+      'Label for the categorical attribute in which the interview records each family member’s relationship to the participant (parent, sibling, cousin and so on), in the printable protocol summary.',
+  },
   relationshipEdgeType: {
     id: 'architect.protocolSummary.stage.familyPedigree.relationshipEdgeType',
     defaultMessage: 'Relationship edge type',
@@ -273,6 +279,7 @@ type NodeConfiguration = {
   };
   sexAssignedAtBirthAttribute?: string;
   egoAttribute?: string;
+  relationshipToParticipantAttribute?: string;
 };
 
 type EdgeConfiguration = {
@@ -426,6 +433,11 @@ const FamilyPedigree = ({
       intl.formatMessage(messages.participantMarker),
       'participant-marker',
       nodeConfiguration?.egoAttribute,
+    ),
+    ...variableRow(
+      intl.formatMessage(messages.relationshipToParticipant),
+      'relationship-to-participant',
+      nodeConfiguration?.relationshipToParticipantAttribute,
     ),
     ...(edgeConfiguration?.type
       ? ([

@@ -686,6 +686,7 @@
   "architect.protocolSummary.stage.familyPedigree.participantMarker": "Markering van de deelnemer",
   "architect.protocolSummary.stage.familyPedigree.relationshipEdgeType": "Relatietype van de familierelaties",
   "architect.protocolSummary.stage.familyPedigree.relationshipKind": "Soort relatie",
+  "architect.protocolSummary.stage.familyPedigree.relationshipToParticipant": "Relatie tot de deelnemer",
   "architect.protocolSummary.stage.familyPedigree.relativesNotRecorded": "Niet-vastgelegde familieleden",
   "architect.protocolSummary.stage.familyPedigree.scopeFirstDegree": "Ouders, broers en zussen, en kinderen",
   "architect.protocolSummary.stage.familyPedigree.scopeGrandparents": "Drie generaties",

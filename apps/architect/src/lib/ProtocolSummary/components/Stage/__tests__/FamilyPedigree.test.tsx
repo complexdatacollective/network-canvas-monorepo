@@ -76,6 +76,31 @@ describe('Protocol Summary family pedigree', () => {
     ).toBeInTheDocument();
   });
 
+  it('lists the attribute that records each person’s relationship to the participant', () => {
+    render(
+      <SummaryContext.Provider
+        value={{ protocol, protocolName: protocol.name, index: [] }}
+      >
+        <FamilyPedigree
+          personType="person"
+          prompt={null}
+          nodeConfiguration={{
+            nameAttribute: 'name',
+            relationshipToParticipantAttribute: 'gender',
+          }}
+          edgeConfiguration={null}
+          completeness={null}
+          framing={null}
+          nominationPrompts={null}
+        />
+      </SummaryContext.Provider>,
+    );
+
+    expect(
+      screen.getByText('Relationship to the participant'),
+    ).toBeInTheDocument();
+  });
+
   it('says relatives follow sex assigned at birth when gender identity is not asked', () => {
     render(
       <SummaryContext.Provider

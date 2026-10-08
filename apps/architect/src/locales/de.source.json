@@ -686,6 +686,7 @@
   "architect.protocolSummary.stage.familyPedigree.participantMarker": "Participant marker",
   "architect.protocolSummary.stage.familyPedigree.relationshipEdgeType": "Relationship edge type",
   "architect.protocolSummary.stage.familyPedigree.relationshipKind": "Relationship kind",
+  "architect.protocolSummary.stage.familyPedigree.relationshipToParticipant": "Relationship to the participant",
   "architect.protocolSummary.stage.familyPedigree.relativesNotRecorded": "Relatives not recorded",
   "architect.protocolSummary.stage.familyPedigree.scopeFirstDegree": "Parents, siblings and children",
   "architect.protocolSummary.stage.familyPedigree.scopeGrandparents": "Three generations",

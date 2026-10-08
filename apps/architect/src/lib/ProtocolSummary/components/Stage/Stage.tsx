@@ -204,6 +204,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
         };
         sexAssignedAtBirthAttribute?: string;
         egoAttribute?: string;
+        relationshipToParticipantAttribute?: string;
       }
     | undefined;
   const edgeConfiguration = configuration.edgeConfiguration as

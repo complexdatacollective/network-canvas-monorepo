@@ -2747,6 +2747,10 @@
     "defaultMessage": "Relationship kind",
     "description": "Label for the attribute recording whether a relationship is a partnership or a kind of parenthood, in the printable protocol summary."
   },
+  "architect.protocolSummary.stage.familyPedigree.relationshipToParticipant": {
+    "defaultMessage": "Relationship to the participant",
+    "description": "Label for the categorical attribute in which the interview records each family member’s relationship to the participant (parent, sibling, cousin and so on), in the printable protocol summary."
+  },
   "architect.protocolSummary.stage.familyPedigree.relativesNotRecorded": {
     "defaultMessage": "Relatives not recorded",
     "description": "Label for the attribute recording that a family member has no siblings or children, or that the participant does not know, in the printable protocol summary."
