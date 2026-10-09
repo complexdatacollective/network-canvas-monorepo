@@ -472,6 +472,7 @@
         "type": "person"
       },
       "dataSource": "roster_data",
+      "panelTitle": { "en-US": "Available to add" },
       "cardOptions": {
         "additionalProperties": [
           {

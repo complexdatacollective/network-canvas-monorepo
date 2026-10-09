@@ -67,6 +67,9 @@ describe('creating a roster name generator', () => {
       type: 'NameGeneratorRoster',
       subject: { entity: 'node', type: 'person' },
       dataSource: 'roster_data',
+      // The heading over the people it offers, which the researcher was never
+      // asked for: Network Canvas supplies it in the protocol's language.
+      panelTitle: { 'en-US': 'Available to add' },
     });
     expect(request?.stageDocument.prompts).toEqual([
       {

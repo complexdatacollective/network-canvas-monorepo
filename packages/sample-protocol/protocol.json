@@ -851,6 +851,7 @@
         "type": "83c596f7-2244-425c-b2ed-4186dbf4c815"
       },
       "dataSource": "86b7feeb-b71a-4c15-8eb4-25a75491d512",
+      "panelTitle": { "en-US": "Available to add" },
       "cardOptions": {
         "additionalProperties": [
           {
@@ -899,6 +900,7 @@
         "type": "a634a5e3-cce6-46a3-ae18-4c0cf5dbbb32"
       },
       "dataSource": "d94b5dae-4ed5-42bf-9d1c-b6585fbe078d",
+      "panelTitle": { "en-US": "Available to add" },
       "cardOptions": {
         "additionalProperties": [
           {

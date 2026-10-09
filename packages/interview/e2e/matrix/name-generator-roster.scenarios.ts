@@ -60,6 +60,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         'interviewScript',
         'subject',
         'dataSource',
+        'panelTitle',
         'cardOptions',
         'cardOptions.additionalProperties',
         'prompts',

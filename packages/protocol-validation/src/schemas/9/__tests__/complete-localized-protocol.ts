@@ -267,6 +267,7 @@ export const completeProtocol = () => ({
       label: localized('Roster'),
       subject: { entity: 'node', type: 'person' },
       dataSource: 'roster',
+      panelTitle: localized('Available to add'),
       cardOptions: {
         additionalProperties: [
           { label: localized('Card detail'), variable: 'name' },

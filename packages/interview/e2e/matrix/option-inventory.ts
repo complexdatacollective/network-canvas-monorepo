@@ -380,6 +380,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   NameGeneratorRoster: [
     'label',
+    'panelTitle',
     'interviewScript',
     'skipLogic',
     'subject',

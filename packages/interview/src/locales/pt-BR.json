@@ -128,7 +128,6 @@
   "interview.interfaces.automaticLayout": "Disposição automática",
   "interview.interfaces.availableItems": "Lista de itens disponíveis para adicionar",
   "interview.interfaces.availableRosterNodes": "Nós disponíveis na lista",
-  "interview.interfaces.availableToAdd": "Disponíveis para adicionar",
   "interview.interfaces.binSummary": "{otherCount, plural, =0 {<label>{name}</label>} one {<label>{name}</label> <count>e mais #</count>} other {<label>{name}</label> <count>e mais #</count>}}",
   "interview.interfaces.categoryContents": "Categoria {label}, itens: {count, plural, one {#} other {#}}",
   "interview.interfaces.categoryContentsExpanded": "Categoria {label}, itens: {count, plural, one {#} other {#}}, expandida",

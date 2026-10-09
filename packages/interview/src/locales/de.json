@@ -128,7 +128,6 @@
   "interview.interfaces.automaticLayout": "Automatisches Layout",
   "interview.interfaces.availableItems": "Liste der Einträge, die hinzugefügt werden können",
   "interview.interfaces.availableRosterNodes": "Verfügbare Knoten der Namensliste",
-  "interview.interfaces.availableToAdd": "Zum Hinzufügen verfügbar",
   "interview.interfaces.binSummary": "{otherCount, plural, =0 {<label>{name}</label>} one {<label>{name}</label> <count>und # weiteres</count>} other {<label>{name}</label> <count>und # weitere</count>}}",
   "interview.interfaces.categoryContents": "Kategorie {label}, {count, plural, one {# Eintrag} other {# Einträge}}",
   "interview.interfaces.categoryContentsExpanded": "Kategorie {label}, {count, plural, one {# Eintrag} other {# Einträge}}, aufgeklappt",

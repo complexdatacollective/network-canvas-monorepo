@@ -15,7 +15,8 @@ import { contentHash } from '@codaco/studio-sync/apply';
 import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
 
 import { blockedHolders } from './codebook/writes.ts';
-import { getInterfaceTemplate } from './interfaces/templates.ts';
+import { newStageFields } from './interfaces/templates.ts';
+import { useProtocolLocalization } from './localization/ProtocolLocalization.tsx';
 import { useStagedResources } from './resources/client.tsx';
 import {
   createStageIdentity,
@@ -230,9 +231,19 @@ function CreatingStage({
   // Settled once, so a create edits one stage under one id from its first
   // keystroke even though the host mints the id it finally lands under.
   const identity = useMemo(() => createStageIdentity(stageType), [stageType]);
+  // The form opens on these once and keeps them, and the wording a new stage
+  // starts with is written in the protocol's languages, so it waits for the
+  // settings that declare them, as an existing stage waits for its section.
+  const localization = useProtocolLocalization();
   const committedFields = useMemo(
-    () => Object.freeze({ ...getInterfaceTemplate(stageType), ...extraFields }),
-    [extraFields, stageType],
+    () =>
+      localization === undefined
+        ? undefined
+        : Object.freeze({
+            ...newStageFields(stageType, localization),
+            ...extraFields,
+          }),
+    [extraFields, localization, stageType],
   );
   const creation = useMemo(() => ({ position }), [position]);
 

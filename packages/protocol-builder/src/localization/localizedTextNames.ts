@@ -438,6 +438,7 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
   NameGeneratorQuickAdd: [NAME_GENERATOR_PROMPT, ...PANEL_RULES],
   NameGeneratorRoster: [
     NAME_GENERATOR_PROMPT,
+    rule('panelTitle', [1, words(nodePanelsMessages.panelTitleLabel)]),
     rule(
       'cardOptions.additionalProperties.#.label',
       [1, words(cardDisplayMessages.title)],

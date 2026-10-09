@@ -5131,6 +5131,18 @@
     "defaultMessage": "The chosen data file could not be read, so there is nothing to choose from. The settings this stage already holds are kept.",
     "description": "Shown in place of a roster section’s description when the chosen data file could not be read, so its attributes are not known. Says both why the section offers nothing and that what the stage holds is not lost, because the section is showing empty controls over settings that are still there. The reason the file could not be read is shown by the roster-source section, in the host’s own words."
   },
+  "protocolBuilder.rosterPanel.description": {
+    "defaultMessage": "Name the list of people participants choose from. It starts with wording Network Canvas supplies, which you can change.",
+    "description": "Description of the roster-panel section. The panel title starts with supplied wording in each of the protocol’s languages that Network Canvas has it in."
+  },
+  "protocolBuilder.rosterPanel.panelTitleHint": {
+    "defaultMessage": "Shown above the list of people participants can add to their network.",
+    "description": "Guidance under the box holding the roster panel’s title."
+  },
+  "protocolBuilder.rosterPanel.title": {
+    "defaultMessage": "Roster panel",
+    "description": "Heading of the section naming the panel that lists the people a participant can add from a roster. A roster is a list of people imported from a data file."
+  },
   "protocolBuilder.ruleCodebook.operatorNoLongerOffered": {
     "defaultMessage": "{operator} (no longer offered)",
     "description": "Label for an operator a stored rule already uses which this editor no longer offers, shown so the researcher can read their own rule. The protocol schema still accepts it, so it can be chosen again. operator is the operator phrase, e.g. \"is greater than\"."

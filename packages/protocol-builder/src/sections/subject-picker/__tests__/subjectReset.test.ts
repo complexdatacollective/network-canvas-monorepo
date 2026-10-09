@@ -20,6 +20,7 @@ describe('what a subject change invalidates', () => {
       'label',
       'interviewScript',
       'introductionPanel',
+      'panelTitle',
       'subject',
     ]);
   });

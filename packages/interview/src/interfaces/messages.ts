@@ -162,12 +162,6 @@ export const interfaceMessages = defineMessages({
     description:
       'Accessible name of the divider between the source panel and the list of added people; dragging or keyboard controls resize the two areas.',
   },
-  availableToAdd: {
-    id: 'interview.interfaces.availableToAdd',
-    defaultMessage: 'Available to add',
-    description:
-      'Heading above the external roster entries that the participant can add to their network.',
-  },
   availableItems: {
     id: 'interview.interfaces.availableItems',
     defaultMessage: 'List of available items to add',

@@ -703,6 +703,7 @@ export class SyntheticInterview {
     // NameGeneratorRoster
     if (type === 'NameGeneratorRoster') {
       entry.dataSource = opts?.dataSource ?? 'externalData';
+      entry.panelTitle = opts?.panelTitle ?? 'Available to add';
       if (opts?.cardOptions) {
         entry.cardOptions = {
           additionalProperties: opts.cardOptions.additionalProperties,
@@ -2791,6 +2792,9 @@ export class SyntheticInterview {
     // NameGeneratorRoster
     if (stage.dataSource) {
       config.dataSource = stage.dataSource;
+    }
+    if (stage.panelTitle !== undefined) {
+      config.panelTitle = this.localized(stage.panelTitle);
     }
     if (stage.cardOptions) {
       const properties = stage.cardOptions.additionalProperties;

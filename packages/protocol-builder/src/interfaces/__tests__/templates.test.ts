@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { stageSchema } from '@codaco/protocol-validation';
 
 import { STAGE_TYPES } from '../../stage-types.ts';
-import { getInterfaceTemplate } from '../templates.ts';
+import { getInterfaceTemplate, newStageFields } from '../templates.ts';
 
 describe('getInterfaceTemplate', () => {
   it('answers with a template object for every stage type', () => {
@@ -145,15 +145,19 @@ const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
   TieStrengthCensus: ['introductionPanel', 'prompts', 'subject'],
 };
 
+/** An English protocol, which every supplied wording is written in. */
+const ENGLISH = { defaultLocale: 'en', locales: ['en'] };
+
 /**
- * A new stage of `type`, exactly as a stage editor mounts one, plus a name.
+ * A new stage of `type` in an English protocol, exactly as a stage editor
+ * mounts one, plus a name.
  *
- * `CreatingStage` mounts its form on `{ ...getInterfaceTemplate(type) }` and
+ * `CreatingStage` mounts its form on `newStageFields(type, localization)` and
  * submits it through `stageDocument`, which stamps the identity — so this is
  * that composition with nothing in between.
  */
 const newStage = (type: (typeof STAGE_TYPES)[number]) => ({
-  ...getInterfaceTemplate(type),
+  ...newStageFields(type, ENGLISH),
   type,
   id: 'stage-1',
   label: { en: 'A new stage' },
@@ -176,13 +180,42 @@ const refusedProperties = (
 
 describe('a new stage given nothing but a name', () => {
   /**
-   * A new stage holds its interface's template under its own type, and
-   * nothing else: the template is the only thing a create seeds the form
-   * with, so what a researcher's new stage holds is what this map says.
+   * A new stage holds its interface's template under its own type, and,
+   * where Network Canvas supplies the wording of a setting, that wording:
+   * nothing else seeds the form, so what a researcher's new stage holds is
+   * what the template map says, plus a roster's panel title.
    */
   it.each(STAGE_TYPES)('is the %s template under its stage type', (type) => {
     const { id: _id, label: _label, ...seeded } = newStage(type);
-    expect(seeded).toEqual({ ...getInterfaceTemplate(type), type });
+    expect(seeded).toEqual({
+      ...getInterfaceTemplate(type),
+      ...(type === 'NameGeneratorRoster'
+        ? { panelTitle: { en: 'Available to add' } }
+        : {}),
+      type,
+    });
+  });
+
+  /**
+   * The wording is supplied in the protocol's languages, so a protocol in
+   * none of the languages Network Canvas ships in leaves it to the
+   * researcher, like any other required text.
+   */
+  it('leaves a roster’s panel title to the researcher in a language with no supplied wording', () => {
+    expect(
+      newStageFields('NameGeneratorRoster', {
+        defaultLocale: 'hu',
+        locales: ['hu'],
+      }),
+    ).toEqual(getInterfaceTemplate('NameGeneratorRoster'));
+    expect(
+      newStageFields('NameGeneratorRoster', {
+        defaultLocale: 'en-GB',
+        locales: ['en-GB', 'hu', 'fr'],
+      }),
+    ).toMatchObject({
+      panelTitle: { 'en-GB': 'Available to add', 'fr': 'Éléments disponibles' },
+    });
   });
 
   it.each(STAGE_TYPES)('still needs the listed properties on %s', (type) => {
