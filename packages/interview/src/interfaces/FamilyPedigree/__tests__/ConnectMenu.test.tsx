@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import ConnectMenu from '../components/ConnectMenu';
 import { readFamily } from '../model';
-import { config, person } from './fixtures';
+import { config, link, person } from './fixtures';
 
 const PARENT_KIND_LABELS = {
   biological: 'Genetic parent',
@@ -57,6 +57,69 @@ describe('ConnectMenu', () => {
     expect(onConnect).toHaveBeenCalledWith(
       expect.objectContaining({ kind: 'parent', parentKind: 'donor' }),
       '“Julie” is a parent of “Rob” (Egg or sperm donor)',
+    );
+  });
+
+  it('says why someone cannot be connected as the parent of their own ancestor', async () => {
+    const family = readFamily(
+      [
+        person('ego', { isEgo: true }),
+        person('shannon', { name: 'Shannon' }),
+        person('grandpa', { name: 'Grandpa' }),
+      ],
+      [
+        link('shannon', 'ego', 'biological'),
+        link('grandpa', 'shannon', 'biological'),
+      ],
+      config,
+    );
+    const anchor = document.createElement('button');
+    document.body.append(anchor);
+    render(
+      <TestProtocolLocalization>
+        <ConnectMenu
+          pair={{ firstId: 'ego', secondId: 'grandpa' }}
+          family={family}
+          displayName={(id) => (id === 'ego' ? 'You' : 'Grandpa')}
+          parentKindLabels={PARENT_KIND_LABELS}
+          anchor={anchor}
+          onConnect={() => undefined}
+          onClose={() => undefined}
+        />
+      </TestProtocolLocalization>,
+    );
+    const item = await screen.findByTestId('pedigree-connect-parent-ego');
+    expect(item).toHaveAttribute('aria-disabled', 'true');
+    expect(item).toHaveAccessibleDescription(
+      /“Grandpa”.*one of your ancestors/,
+    );
+  });
+
+  it('says why two people already connected cannot be partners', async () => {
+    const family = readFamily(
+      [person('ego', { isEgo: true }), person('shannon', { name: 'Shannon' })],
+      [link('shannon', 'ego', 'biological')],
+      config,
+    );
+    const anchor = document.createElement('button');
+    document.body.append(anchor);
+    render(
+      <TestProtocolLocalization>
+        <ConnectMenu
+          pair={{ firstId: 'ego', secondId: 'shannon' }}
+          family={family}
+          displayName={(id) => (id === 'ego' ? 'You' : 'Shannon')}
+          parentKindLabels={PARENT_KIND_LABELS}
+          anchor={anchor}
+          onConnect={() => undefined}
+          onClose={() => undefined}
+        />
+      </TestProtocolLocalization>,
+    );
+    const partners = await screen.findByTestId('pedigree-connect-partners');
+    expect(partners).toHaveAttribute('aria-disabled', 'true');
+    expect(partners).toHaveAccessibleDescription(
+      /You and “Shannon” are already connected/,
     );
   });
 });

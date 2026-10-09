@@ -1419,6 +1419,71 @@ export const AParentIsAssumedToBeTheirCoParentsPartner: Story = {
   },
 };
 
+/**
+ * Maya already has her two biological parents, so a third parent cannot be
+ * biological, and the kind of parent starts unanswered. Until it is chosen,
+ * the new parent drawn is called her parent, by no kind: not her stepmother,
+ * which the participant has not said.
+ */
+export const AParentOfNoKindYetIsCalledAParent: Story = {
+  args: { requirement: 'none' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      family={{
+        people: [
+          {
+            id: 'ego',
+            name: 'Maya',
+            gender: 'woman',
+            sex: 'female',
+            ego: true,
+          },
+          { id: 'olga', name: 'Olga', gender: 'woman', sex: 'female' },
+          { id: 'piotr', name: 'Piotr', gender: 'man', sex: 'male' },
+        ],
+        links: [
+          { from: 'olga', to: 'piotr', kind: 'partner' },
+          { from: 'olga', to: 'ego', kind: 'biological', carrier: true },
+          { from: 'piotr', to: 'ego', kind: 'biological' },
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+
+    await userEvent.hover(await canvas.findByRole('button', { name: /^You/ }));
+    await userEvent.click(await canvas.findByTestId('pedigree-menu-parent'));
+    await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
+    await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
+    const kind = await body.findByRole('radiogroup', {
+      name: /^What kind of parent are they\?/,
+    });
+    await waitFor(() => {
+      for (const option of within(kind).getAllByRole('radio')) {
+        expect(option).not.toBeChecked();
+      }
+    });
+    const drawn = () =>
+      canvas
+        .getAllByTestId('pedigree-person')
+        .map((person) => (person.textContent ?? '').replace(/\u00ad/g, ''));
+    await waitFor(() => expect(drawn()).toHaveLength(4));
+    await expect(drawn().some((label) => /step/i.test(label))).toBe(false);
+    await expect(drawn().some((label) => /^Parent\b/.test(label))).toBe(true);
+
+    // Chosen, the kind names them.
+    await userEvent.click(
+      within(kind).getByRole('radio', { name: 'Step or social parent' }),
+    );
+    await waitFor(() =>
+      expect(drawn().some((label) => /^Step.?mother/.test(label))).toBe(true),
+    );
+  },
+};
+
 /** Drags the canvas 600 pixels to the right with the mouse. */
 function dragFamilyRight(viewport: HTMLElement) {
   const box = viewport.getBoundingClientRect();
@@ -1647,8 +1712,9 @@ export const ParticipantChangesFraming: Story = {
 
 /**
  * A family under way: separated parents, a brother, and a daughter whose other
- * parent was added as someone not shown yet — so that partner has no details
- * and carries a warning.
+ * parent was added as someone not shown yet — so that parent, recorded as her
+ * parent and not as the participant's partner, has no details and carries a
+ * warning.
  */
 export const FamilyInProgress: Story = {
   args: { requirement: 'firstDegree', enforcement: 'required' },
@@ -1668,7 +1734,7 @@ export const FamilyInProgress: Story = {
           { id: 'rob', name: 'Rob', gender: 'man', sex: 'male' },
           { id: 'joshua', name: 'Joshua', gender: 'man', sex: 'male' },
           { id: 'mia', name: 'Mia', gender: 'woman', sex: 'female' },
-          { id: 'partner' },
+          { id: 'miaParent' },
         ],
         links: [
           { from: 'julie', to: 'rob', kind: 'partner', current: false },
@@ -1676,9 +1742,8 @@ export const FamilyInProgress: Story = {
           { from: 'rob', to: 'ego', kind: 'biological' },
           { from: 'julie', to: 'joshua', kind: 'biological', carrier: true },
           { from: 'rob', to: 'joshua', kind: 'biological' },
-          { from: 'ego', to: 'partner', kind: 'partner' },
           { from: 'ego', to: 'mia', kind: 'biological', carrier: true },
-          { from: 'partner', to: 'mia', kind: 'biological' },
+          { from: 'miaParent', to: 'mia', kind: 'biological' },
         ],
       }}
     />
@@ -1687,7 +1752,7 @@ export const FamilyInProgress: Story = {
     await expectPeople(6)(context);
     await expect(
       within(context.canvasElement).getByRole('button', {
-        name: /^Partner, some details missing/,
+        name: /^Mia's biological father, some details missing/,
       }),
     ).toBeVisible();
   },
@@ -1747,6 +1812,85 @@ export const EachChildNeedsTheirOtherBiologicalParent: Story = {
       { timeout: 5000 },
     );
     await expect(canvas.getByTestId('pedigree-canvas')).toBeInTheDocument();
+  },
+};
+
+/**
+ * The list of what is still needed asks for the participant's brothers and
+ * sisters. Choosing it asks whether they have any; answering "Yes — I’ll add
+ * them" goes on to adding a sibling. That answer is kept: opened again, the
+ * participant's panel still shows it.
+ */
+export const SayingYouHaveSiblingsGoesOnToAddingOne: Story = {
+  args: { requirement: 'firstDegree', enforcement: 'required' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      family={{
+        people: [
+          {
+            id: 'ego',
+            name: 'Sarietha',
+            gender: 'woman',
+            sex: 'female',
+            ego: true,
+            notRecorded: ['noChildren'],
+          },
+          { id: 'julie', name: 'Julie', gender: 'woman', sex: 'female' },
+          { id: 'rob', name: 'Rob', gender: 'man', sex: 'male' },
+        ],
+        links: [
+          { from: 'julie', to: 'rob', kind: 'partner' },
+          { from: 'julie', to: 'ego', kind: 'biological', carrier: true },
+          { from: 'rob', to: 'ego', kind: 'biological' },
+        ],
+      }}
+    />
+  ),
+  play: async (context) => {
+    await expectPeople(3)(context);
+    const { canvasElement } = context;
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+
+    await userEvent.click(canvas.getByTestId('next-button'));
+    const item = await body.findByRole(
+      'button',
+      {
+        name: 'Add your biological brothers and sisters, or say you have none',
+      },
+      { timeout: 5000 },
+    );
+    await userEvent.click(item);
+    const siblings = await body.findByRole('radiogroup', {
+      name: /^Do you have any biological brothers or sisters/,
+    });
+    await userEvent.click(
+      within(siblings).getByRole('radio', {
+        name: 'Yes — I’ll add them to the family tree',
+      }),
+    );
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
+
+    // On to adding a sibling.
+    await waitFor(() =>
+      expect(
+        body.getByRole('heading', { name: 'Add your sibling' }),
+      ).toBeVisible(),
+    );
+    await userEvent.click(body.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
+
+    // The answer is kept.
+    await userEvent.click(await canvas.findByRole('button', { name: /^You/ }));
+    const asked = await body.findByRole('radiogroup', {
+      name: /^Do you have any biological brothers or sisters/,
+    });
+    await expect(
+      within(asked).getByRole('radio', {
+        name: 'Yes — I’ll add them to the family tree',
+      }),
+    ).toBeChecked();
   },
 };
 

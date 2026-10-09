@@ -55,6 +55,37 @@ function relativesFor(
   }
 }
 
+const NO_KIND_TERMS = {
+  parent: 'parent',
+  child: 'child',
+  sibling: 'sibling',
+} as const;
+
+/**
+ * The label of a parent, child or sibling being added whose kind is not yet
+ * chosen: the word for the relation, naming no kind, as the participant's
+ * own ("Parent"), or else as the relative of the person they are added to
+ * ("Mother's parent").
+ */
+export function labelOfNoKind(
+  relation: keyof typeof NO_KIND_TERMS,
+  anchor: Person,
+  anchorLabel: string,
+  intl: IntlShape,
+): string {
+  const term = NO_KIND_TERMS[relation];
+  return formatPersonLabel(
+    anchor.isEgo
+      ? { type: 'term', term }
+      : {
+          type: 'relativeOf',
+          owner: { type: 'name', name: anchorLabel },
+          term,
+        },
+    intl,
+  );
+}
+
 /** A soft hyphen: where a long kinship word may break inside a symbol. */
 const SOFT_HYPHEN = /\u00AD/g;
 

@@ -105,7 +105,12 @@ import PersonForm, {
 } from './components/PersonForm';
 import PersonNode from './components/PersonNode';
 import { decryptDetails, useDecryptedNames } from './encryptedNames';
-import { generateLabels, labelEveryone, labelWrites } from './generatedLabels';
+import {
+  generateLabels,
+  labelEveryone,
+  labelOfNoKind,
+  labelWrites,
+} from './generatedLabels';
 import { messages } from './messages';
 import {
   areConnected,
@@ -151,6 +156,10 @@ type PanelState = {
   /** Changes for every opening, so the form starts fresh. */
   key: string;
   mode: PersonFormMode;
+  /** Opened from the list of what is still needed to add the person's
+   * siblings or children: answering that they have some goes on to adding
+   * one. */
+  then?: 'sibling' | 'child';
 } | null;
 
 /** The attributes recording a link. */
@@ -432,6 +441,17 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   }, [family.egoId, family.people.length]);
 
   const [panel, setPanel] = useState<PanelState>(null);
+  // "Yes — I'll add them" to whether someone has siblings or children is not
+  // recorded in the network, so it is kept here for the visit, by person, and
+  // their panel opens on it again.
+  const [saidYes, setSaidYes] = useState<
+    ReadonlyMap<string, Partial<Record<'siblings' | 'children', boolean>>>
+  >(new Map());
+  // A relative to add once the saved answers are in the family.
+  const [addNext, setAddNext] = useState<{
+    relation: Relation;
+    personId: string;
+  } | null>(null);
   // The person whose details are open, or who is being added.
   const selectedId = !panel?.open
     ? null
@@ -539,10 +559,32 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // Everyone the participant has not named is shown by the label that will
   // be saved as their name when they leave, worked out afresh from the family
   // as it stands, so the canvas and the stages after it always agree.
-  const labels = useMemo(
-    () => labelEveryone(shown, framing, intl),
-    [shown, framing, intl],
-  );
+  // The person being added is not called by a kind of parent, child or
+  // sibling the participant has not chosen.
+  const labels = useMemo(() => {
+    const everyone = labelEveryone(shown, framing, intl);
+    const [draftId] = draft?.ids ?? [];
+    const drafted = draftId === undefined ? undefined : shown.byId.get(draftId);
+    const anchor = draft && shown.byId.get(draft.anchorId);
+    if (
+      draft?.kindUnanswered &&
+      draft.request.relation !== 'partner' &&
+      drafted?.name === undefined &&
+      draftId !== undefined &&
+      anchor
+    ) {
+      everyone.set(
+        draftId,
+        labelOfNoKind(
+          draft.request.relation,
+          anchor,
+          everyone.get(anchor.id) ?? '',
+          intl,
+        ),
+      );
+    }
+    return everyone;
+  }, [shown, framing, intl, draft]);
   const displayName = useCallback(
     (personId: string) =>
       labels.get(personId) ?? intl.formatMessage(messages.familyMember),
@@ -737,6 +779,14 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const openAdd = (relation: Relation) => {
     if (menuPerson) openAddPanel(relation, menuPerson);
   };
+
+  // The relative to add next, once the family holds the answers just saved.
+  useEffect(() => {
+    if (!addNext) return;
+    setAddNext(null);
+    const person = family.byId.get(addNext.personId);
+    if (person) openAddPanel(addNext.relation, person);
+  });
 
   // How far the family is from what the researcher requires (or recommends)
   // before the participant continues.
@@ -977,11 +1027,18 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (item.kind === 'parents') {
       openAddPanel('parent', person);
     } else {
-      void openEdit(person.id);
+      void openEdit(
+        person.id,
+        item.kind === 'siblings'
+          ? 'sibling'
+          : item.kind === 'children'
+            ? 'child'
+            : undefined,
+      );
     }
   };
 
-  const openEdit = async (personId: string) => {
+  const openEdit = async (personId: string, then?: 'sibling' | 'child') => {
     if (detailsLocked) {
       askForPassphrase();
       return;
@@ -1028,6 +1085,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         missing: missingDetailsFor(person, requiredFormVariables, config),
         unavailable,
       },
+      ...(then ? { then } : {}),
     });
   };
 
@@ -1306,7 +1364,30 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       // A parent re-described as biological gives the person siblings, and
       // the parent a child.
       await withdrawContradictedAnswers();
+      const answers = result.relativesAnswers ?? {};
+      if (Object.keys(answers).length > 0) {
+        setSaidYes((current) =>
+          new Map(current).set(mode.person.id, {
+            ...current.get(mode.person.id),
+            ...Object.fromEntries(
+              Object.entries(answers).map(([group, answer]) => [
+                group,
+                answer === 'yes',
+              ]),
+            ),
+          }),
+        );
+      }
       setAnnouncement(intl.formatMessage(messages.savedAnnouncement));
+      // Said to have the siblings or children the list asked for, the
+      // participant goes on to adding one.
+      const then = panel.then;
+      if (
+        then &&
+        answers[then === 'sibling' ? 'siblings' : 'children'] === 'yes'
+      ) {
+        setAddNext({ relation: then, personId: mode.person.id });
+      }
       return;
     }
 
@@ -1935,6 +2016,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                       panel.mode.person.id,
                     ),
                     required: completeness?.enforcement === 'required',
+                    answeredYes: saidYes.get(panel.mode.person.id),
                   }
                 : undefined
             }
