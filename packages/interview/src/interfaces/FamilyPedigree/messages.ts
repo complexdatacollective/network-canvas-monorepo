@@ -9,10 +9,21 @@ export const messages = defineMessages({
   },
   personAccessibleName: {
     id: 'interview.familyPedigree.personAccessibleName',
-    defaultMessage:
-      '{isYou, select, true {You} other {{name}}}{adopted, select, true {, adopted} other {}}{missing, select, true {, some details missing} other {}}',
+    defaultMessage: '{isYou, select, true {You} other {{name}}}',
     description:
-      'Accessible name of a family member’s symbol in the family tree. {name} is the person’s name, exactly as the participant typed it, or, when it is not known, how they are related to the participant. The second part is read out when the person was adopted, which the tree shows by drawing brackets around their symbol. The third part is read out when required details about the person have not been given yet.',
+      'Accessible name of a family member’s symbol in the family tree. {name} is the person’s name, exactly as the participant typed it, or, when it is not known, how they are related to the participant.',
+  },
+  personAdoptedDescription: {
+    id: 'interview.familyPedigree.personAdoptedDescription',
+    defaultMessage: 'Adopted.',
+    description:
+      'Read out after the name of a family member’s symbol in the family tree when the person was adopted, which the tree shows by drawing brackets around their symbol.',
+  },
+  personMissingDetailsDescription: {
+    id: 'interview.familyPedigree.personMissingDetailsDescription',
+    defaultMessage: 'Some details are missing.',
+    description:
+      'Read out after the name of a family member’s symbol in the family tree when required details about the person have not been given yet, which the tree shows with a warning icon.',
   },
   actionsLabel: {
     id: 'interview.familyPedigree.actionsLabel',
@@ -70,6 +81,13 @@ export const messages = defineMessages({
     defaultMessage: 'What clicking a person does',
     description:
       'Accessible name of the pair of buttons in the toolbar that choose what selecting a person does.',
+  },
+  framingChosenAnnouncement: {
+    id: 'interview.familyPedigree.framingChosenAnnouncement',
+    defaultMessage:
+      '{framing, select, gamete {Family members are now described with words like egg parent, sperm parent and sibling.} other {Family members are now described with words like mother, father, sister and brother.}}',
+    description:
+      'Screen-reader announcement after the participant chooses the words used to describe family members, which changes the labels of everyone they have not named. {framing} is "gamete" for the words that do not depend on gender, otherwise the words that follow gender.',
   },
   connectHintLinking: {
     id: 'interview.familyPedigree.connectHintLinking',

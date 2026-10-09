@@ -2,9 +2,9 @@
   - status:
     - heading "Add the members of your family." [level=2]
   - region "Your family":
-    - button "Julie, some details missing"
-    - button "Rob, some details missing"
-    - button "You, some details missing"
+    - button "Julie"
+    - button "Rob"
+    - button "You"
   - toolbar "Family tree tools":
     - group "What clicking a person does":
       - button "Add and edit" [pressed]

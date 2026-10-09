@@ -23,6 +23,7 @@ import {
   useEnclosingHeadingLevel,
 } from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import {
+  limitsNominationBySex,
   type LocalizedString,
   type MessageArguments,
   PEDIGREE_WORDING_ARGUMENTS,
@@ -46,7 +47,10 @@ import {
   type WordingGroup,
 } from './participantWordingSettings.ts';
 import { familyPedigreeMessages as messages } from './pedigreeMessages.ts';
-import { NODE_CONFIGURATION_PATHS } from './pedigreeSlots.ts';
+import {
+  NODE_CONFIGURATION_PATHS,
+  NOMINATION_PROMPTS_PATH,
+} from './pedigreeSlots.ts';
 
 const fieldName = (key: string) => `wording.${key}`;
 
@@ -65,7 +69,8 @@ const NO_GROUPS: readonly string[] = Object.freeze([]);
  * settings are still the stage's — the form holds the whole document, and a
  * field that was never mounted leaves its value as the stage holds it — and
  * a setting the stage gains while its group is closed (choosing the framing,
- * asking gender identity) is written with Network Canvas's wording when the
+ * asking gender identity, limiting a question about the family to one sex at
+ * birth) is written with Network Canvas's wording when the
  * stage is saved (see `stageDocument`). An open group's fields start as the
  * stage holds them, or as Network Canvas supplies them, so the section waits
  * for the protocol's languages.
@@ -81,9 +86,11 @@ export default function ParticipantWordingSection() {
   const supplied = useSuppliedStageWording('FamilyPedigree');
   const framing = useStageValue('framing');
   const genderIdentity = useStageValue(NODE_CONFIGURATION_PATHS.genderIdentity);
+  const nominationPrompts = useStageValue(NOMINATION_PROMPTS_PATH);
   const shown: Readonly<Record<WordingGate, boolean>> = {
     choosesFraming: framing === 'participantPreference',
     asksGenderIdentity: genderIdentity !== undefined,
+    limitsNominationBySex: limitsNominationBySex({ nominationPrompts }),
   };
 
   const validations = useMemo(

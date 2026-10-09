@@ -208,6 +208,23 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
     [...fixtureStage('FamilyPedigree'), 'wording', 'framingControlLabel'],
     en('Wording'),
   ],
+  // The note under the family tree shows only while a question about the
+  // family is limited to one sex at birth, so the fixture limits its question.
+  [
+    [
+      ...fixtureStage('FamilyPedigree'),
+      'nominationPrompts',
+      0,
+      'onlyForSexAssignedAtBirth',
+    ],
+    'female',
+  ],
+  [
+    [...fixtureStage('FamilyPedigree'), 'wording', 'nominationLimitHint'],
+    en(
+      '{sex, select, female {People assigned male at birth can’t be selected.} other {People assigned female at birth can’t be selected.}}',
+    ),
+  ],
   [
     [...fixtureStage('FamilyPedigree'), 'completeness'],
     {

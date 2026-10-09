@@ -13,6 +13,14 @@ import { pedigreeWordsIn } from './pedigreeWords';
 const intl = resolveInterviewIntl();
 const words = pedigreeWordsIn();
 
+const SEX_LABELS = {
+  female: 'Female',
+  male: 'Male',
+  intersex: 'Intersex',
+  unknown: 'Don’t know',
+  preferNotToSay: 'Prefer not to say',
+};
+
 const PARENT_KIND_LABELS = {
   biological: 'Genetic parent',
   adoptive: 'Adoptive parent',
@@ -40,6 +48,7 @@ describe('ConnectMenu', () => {
             family={family}
             displayName={(id) => (id === 'julie' ? 'Julie' : 'Rob')}
             parentKindLabels={PARENT_KIND_LABELS}
+            sexLabels={SEX_LABELS}
             anchor={anchor}
             onConnect={onConnect}
             onClose={() => undefined}
@@ -141,6 +150,7 @@ describe('ConnectMenu', () => {
             family={family}
             displayName={(id) => (id === 'ego' ? 'You' : 'Grandpa')}
             parentKindLabels={PARENT_KIND_LABELS}
+            sexLabels={SEX_LABELS}
             anchor={anchor}
             onConnect={() => undefined}
             onClose={() => undefined}
@@ -179,6 +189,7 @@ describe('ConnectMenu', () => {
               id === 'ego' ? 'You' : id === 'mum' ? 'Mum' : 'Amy'
             }
             parentKindLabels={PARENT_KIND_LABELS}
+            sexLabels={SEX_LABELS}
             anchor={anchor}
             onConnect={() => undefined}
             onClose={() => undefined}
@@ -189,22 +200,127 @@ describe('ConnectMenu', () => {
     await userEvent.click(
       await screen.findByTestId('pedigree-connect-parent-amy'),
     );
-    for (const id of [
-      'biological-carrier',
-      'adoptive-carrier',
-      'social-carrier',
-      'donor-carrier',
-      'surrogate',
-    ]) {
+    // Each reason names the choice it disables.
+    for (const [id, label] of [
+      ['biological-carrier', 'Genetic parent (carried the pregnancy)'],
+      ['adoptive-carrier', 'Adoptive parent (carried the pregnancy)'],
+      ['social-carrier', 'Step or social parent (carried the pregnancy)'],
+      ['donor-carrier', 'Egg or sperm donor (carried the pregnancy)'],
+      ['surrogate', 'Surrogate'],
+    ] as const) {
       const item = await screen.findByTestId(`pedigree-connect-kind-${id}`);
       expect(item).toHaveAttribute('aria-disabled', 'true');
       expect(item).toHaveAccessibleDescription(
-        '“Mum” is recorded as having carried you, and only one person carries a pregnancy.',
+        `“${label}” is unavailable because “Mum” is recorded as having carried you, and only one person carries a pregnancy. To choose it, first change how “Mum” is connected to you.`,
       );
     }
     expect(
       screen.getByTestId('pedigree-connect-kind-adoptive-carrier'),
     ).toHaveTextContent('Adoptive parent (carried the pregnancy)');
+    expect(
+      screen.getByTestId('pedigree-connect-kind-adoptive'),
+    ).not.toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('shows the reason under every choice it makes unavailable', async () => {
+    const family = readFamily(
+      [
+        person('ego', { isEgo: true }),
+        person('huda', { name: 'Huda', sex: ['female'] }),
+        person('zainab', { name: 'Zainab', sex: ['female'] }),
+      ],
+      [link('huda', 'ego', 'biological', { carrier: true })],
+      config,
+    );
+    const anchor = document.createElement('button');
+    document.body.append(anchor);
+    render(
+      <TestProtocolLocalization>
+        <PedigreeWordsProvider value={words}>
+          <ConnectMenu
+            pair={{ firstId: 'zainab', secondId: 'ego' }}
+            family={family}
+            displayName={(id) =>
+              id === 'ego' ? 'You' : id === 'huda' ? 'Huda' : 'Zainab'
+            }
+            parentKindLabels={PARENT_KIND_LABELS}
+            sexLabels={SEX_LABELS}
+            anchor={anchor}
+            onConnect={() => undefined}
+            onClose={() => undefined}
+          />
+        </PedigreeWordsProvider>
+      </TestProtocolLocalization>,
+    );
+    await userEvent.click(
+      await screen.findByTestId('pedigree-connect-parent-zainab'),
+    );
+    // Each unavailable choice shows its own reason, naming it.
+    for (const [id, label] of [
+      ['adoptive-carrier', 'Adoptive parent (carried the pregnancy)'],
+      ['social-carrier', 'Step or social parent (carried the pregnancy)'],
+      ['surrogate', 'Surrogate'],
+    ] as const) {
+      const reason = `“${label}” is unavailable because “Huda” is recorded as having carried you, and only one person carries a pregnancy. To choose it, first change how “Huda” is connected to you.`;
+      const item = await screen.findByTestId(`pedigree-connect-kind-${id}`);
+      expect(item).toHaveTextContent(reason);
+      expect(item).toHaveAccessibleDescription(reason);
+    }
+  });
+
+  it('offers the genetic kinds unavailable, saying why, once two genetic parents are recorded', async () => {
+    const family = readFamily(
+      [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('debra', { name: 'Debra', sex: ['female'] }),
+        person('steve', { name: 'Steve', sex: ['male'] }),
+        person('doris', { name: 'Doris', sex: ['female'] }),
+      ],
+      [
+        link('debra', 'ego', 'biological', { carrier: true }),
+        link('steve', 'ego', 'biological'),
+        link('debra', 'steve', 'partner'),
+        link('doris', 'steve', 'biological'),
+      ],
+      config,
+    );
+    const names: Record<string, string> = {
+      ego: 'You',
+      debra: 'Debra',
+      steve: 'Steve',
+      doris: 'Doris',
+    };
+    const anchor = document.createElement('button');
+    document.body.append(anchor);
+    render(
+      <TestProtocolLocalization>
+        <PedigreeWordsProvider value={words}>
+          <ConnectMenu
+            pair={{ firstId: 'doris', secondId: 'ego' }}
+            family={family}
+            displayName={(id) => names[id] ?? id}
+            parentKindLabels={PARENT_KIND_LABELS}
+            sexLabels={SEX_LABELS}
+            anchor={anchor}
+            onConnect={() => undefined}
+            onClose={() => undefined}
+          />
+        </PedigreeWordsProvider>
+      </TestProtocolLocalization>,
+    );
+    await userEvent.click(
+      await screen.findByTestId('pedigree-connect-parent-doris'),
+    );
+    for (const [id, label] of [
+      ['biological', 'Genetic parent'],
+      ['donor', 'Egg or sperm donor'],
+    ] as const) {
+      const reason = `“${label}” is unavailable because you already have two genetic parents recorded, “Debra” and “Steve”. To choose it, first change how one of them is connected to you.`;
+      const item = await screen.findByTestId(`pedigree-connect-kind-${id}`);
+      expect(item).toHaveAttribute('aria-disabled', 'true');
+      expect(item).toHaveTextContent(reason);
+      expect(item).toHaveAccessibleDescription(reason);
+    }
     expect(
       screen.getByTestId('pedigree-connect-kind-adoptive'),
     ).not.toHaveAttribute('aria-disabled', 'true');

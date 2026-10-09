@@ -2,14 +2,14 @@
   - status:
     - heading "Add the members of your family." [level=2]
   - region "Your family":
+    - button "Pam"
     - button "Dan"
     - button "Julie"
     - button "Rob"
-    - button "Pam"
     - button "Cal"
-    - button "Bea"
-    - button "You"
     - button "Lee"
+    - button "You"
+    - button "Bea"
   - toolbar "Family tree tools":
     - group "What clicking a person does":
       - button "Add and edit" [pressed]

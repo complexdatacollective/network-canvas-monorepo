@@ -5,7 +5,10 @@ import { type CSSProperties, forwardRef, type ReactNode } from 'react';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 
 import PedigreeLayout from '../../FamilyPedigree/pedigree-layout/components/PedigreeLayout';
-import type { PedigreeLink } from '../../FamilyPedigree/pedigree-layout/types';
+import type {
+  PedigreeLink,
+  PedigreeSymbolShape,
+} from '../../FamilyPedigree/pedigree-layout/types';
 import { NotationKey, type NotationWords } from '../components/NotationKey';
 
 type PedigreeSnapshotDocumentProps = {
@@ -15,6 +18,8 @@ type PedigreeSnapshotDocumentProps = {
   nodeIds: readonly string[];
   links: readonly PedigreeLink[];
   nodeNames: ReadonlyMap<string, string>;
+  /** The shape each person's symbol is drawn with, as on the canvas. */
+  nodeShapes: ReadonlyMap<string, PedigreeSymbolShape>;
   edgeColor: string;
   nodeWidth: number;
   nodeHeight: number;
@@ -53,6 +58,7 @@ export const PedigreeSnapshotDocument = forwardRef<
     nodeIds,
     links,
     nodeNames,
+    nodeShapes,
     edgeColor,
     nodeWidth,
     nodeHeight,
@@ -110,6 +116,7 @@ export const PedigreeSnapshotDocument = forwardRef<
           nodeIds={nodeIds}
           links={links}
           nodeNames={nodeNames}
+          nodeShapes={nodeShapes}
           edgeColor={edgeColor}
           nodeWidth={nodeWidth}
           nodeHeight={nodeHeight}

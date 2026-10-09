@@ -310,6 +310,9 @@ describe('Protocol Summary family pedigree', () => {
           framing={null}
           wording={{
             alsoParentOfLabel: { en: 'Are they also the parent of…' },
+            siblingOtherBiologicalParentLabel: {
+              en: 'Which of them is the sibling’s other biological parent?',
+            },
           }}
           nominationPrompts={null}
         />
@@ -320,5 +323,17 @@ describe('Protocol Summary family pedigree', () => {
     expect(
       screen.getByText('Are they also the parent of…'),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText('Sibling’s other biological parent question'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Which of them is the sibling’s other biological parent?',
+      ),
+    ).toBeInTheDocument();
+    // A word the stage does not hold has no row.
+    expect(
+      screen.queryByText('Note on a question limited to one sex at birth'),
+    ).toBeNull();
   });
 });

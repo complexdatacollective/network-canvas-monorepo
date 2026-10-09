@@ -4,17 +4,12 @@ import { type ReactNode, useMemo } from 'react';
 
 import Spinner from '@codaco/fresco-ui/Spinner';
 
-import { alignPedigree } from '../alignPedigree';
 import {
   computeLayoutMetrics,
   type LayoutDimensions,
 } from '../layoutDimensions';
-import {
-  buildConnectorData,
-  pedigreeLayoutToPositions,
-  toPedigreeInput,
-} from '../pedigreeAdapter';
-import type { PedigreeLink } from '../types';
+import { drawPedigree } from '../pedigreeAdapter';
+import type { PedigreeLink, PedigreeSymbolShape } from '../types';
 import { PedigreeEdgeSvg } from './EdgeRenderer';
 
 type PedigreeLayoutProps = {
@@ -26,6 +21,14 @@ type PedigreeLayoutProps = {
    * separated partnership's break mark clear of a labelled side.
    */
   nodeNames?: ReadonlyMap<string, string>;
+  /**
+   * The shape each person's symbol is drawn with, by node id, so that
+   * connectors meet the symbols' edges (a line into a square ends on its flat
+   * top). Required: every pedigree passes the shapes it draws
+   * (`symbolShapesOf`); a person missing from it is routed for the deepest
+   * of the shapes.
+   */
+  nodeShapes: ReadonlyMap<string, PedigreeSymbolShape>;
   nodeWidth: number;
   nodeHeight: number;
   /** See `LayoutDimensions`. */
@@ -42,6 +45,7 @@ export default function PedigreeLayout({
   nodeIds,
   links,
   nodeNames,
+  nodeShapes,
   nodeWidth,
   nodeHeight,
   rowGapRatio,
@@ -67,26 +71,14 @@ export default function PedigreeLayout({
     if (dimensions.nodeWidth === 0 || dimensions.nodeHeight === 0) return null;
     if (nodeIds.length === 0) return null;
 
-    const { input, indexToId, idToIndex } = toPedigreeInput(nodeIds, links);
-
-    const layout = alignPedigree(input);
-    const positions = pedigreeLayoutToPositions(layout, indexToId, dimensions);
-    const names = nodeNames
-      ? indexToId.map((id) => nodeNames.get(id) ?? '')
-      : undefined;
-
-    const connectorData = buildConnectorData(
-      layout,
+    return drawPedigree({
+      nodeIds,
       links,
       dimensions,
-      input.parents,
-      idToIndex,
-      names,
-      indexToId,
-    );
-
-    return { positions, connectorData };
-  }, [nodeIds, links, nodeNames, dimensions]);
+      nodeNames,
+      nodeShapes,
+    });
+  }, [nodeIds, links, nodeNames, nodeShapes, dimensions]);
 
   if (nodeWidth === 0 || nodeHeight === 0) {
     return (
@@ -104,24 +96,28 @@ export default function PedigreeLayout({
   // produces a bounding box ~1.2× the node size. Add inset so nodes and edges
   // are shifted inward, preventing diamond tips from being clipped.
   const diamondInset = Math.ceil(nodeWidth * 0.1);
-  // Routed partnership lines can run above the top row, and a partnership
-  // across rows can drop beside the outermost people; make room for both.
-  const routedSegments = connectorData.connectors.groupLines.flatMap((line) => [
-    line.segment,
-    ...(line.endpointSegments ?? []),
-  ]);
-  const routedXs = routedSegments.flatMap((segment) => [
-    segment.x1,
-    segment.x2,
-  ]);
-  const routedConnectorInset = -Math.min(
-    0,
-    ...routedSegments.flatMap((segment) => [segment.y1, segment.y2]),
-  );
+  // Routed partnership lines can run above the top row, a partnership
+  // across rows can drop beside the outermost people, and a donor's or an
+  // adoptive parent's line can detour round the outermost people or run
+  // below the bottom row; make room for every line drawn.
+  const { connectors } = connectorData;
+  const connectorPoints = [
+    ...connectors.groupLines.flatMap((line) =>
+      [line.segment, ...(line.endpointSegments ?? [])].flatMap((segment) => [
+        { x: segment.x1, y: segment.y1 },
+        { x: segment.x2, y: segment.y2 },
+      ]),
+    ),
+    ...connectors.auxiliaryLines.flatMap((line) => line.points),
+    ...connectors.duplicateArcs.flatMap((arc) => arc.path.points),
+  ];
+  const routedXs = connectorPoints.map((point) => point.x);
+  const routedYs = connectorPoints.map((point) => point.y);
+  const routedConnectorInset = -Math.min(0, ...routedYs);
   const routedConnectorInsetX = -Math.min(0, ...routedXs);
 
   let totalWidth = Math.max(0, ...routedXs);
-  let totalHeight = 0;
+  let totalHeight = Math.max(0, ...routedYs);
   for (const pos of positions.values()) {
     const rightEdge = pos.x + metrics.containerWidth;
     const bottomEdge = pos.y + metrics.containerHeight;

@@ -3,15 +3,15 @@
     - heading "Add the members of your family." [level=2]
   - region "Your family":
     - button "Isaac owns Grandfather term - matrix check - matrix check"
-    - button "Isaac owns Relative term - matrix check - matrix check, some details missing"
+    - button "Isaac owns Relative term - matrix check - matrix check"
     - button "Great-grandfather term - matrix check parenting Miriam - matrix check"
-    - button "Relative term - matrix check parenting Miriam - matrix check, some details missing"
+    - button "Relative term - matrix check parenting Miriam - matrix check"
     - button "Great-grandfather term - matrix check parenting Isaac - matrix check"
-    - button "Relative term - matrix check parenting Isaac - matrix check, some details missing"
+    - button "Relative term - matrix check parenting Isaac - matrix check"
     - button "Miriam"
     - button "Isaac"
     - button "Ruth"
-    - button "Relative term - matrix check parenting you - matrix check, some details missing"
+    - button "Relative term - matrix check parenting you - matrix check"
     - button "You"
   - toolbar "Family tree tools":
     - group "What clicking a person does":

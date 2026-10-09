@@ -10,7 +10,10 @@ import { familyPedigreeMessages as messages } from './pedigreeMessages.ts';
  * A setting the stage holds only while its configuration is on. The schema
  * requires it then, so the editor shows it then and no other time.
  */
-export type WordingGate = 'choosesFraming' | 'asksGenderIdentity';
+export type WordingGate =
+  | 'choosesFraming'
+  | 'asksGenderIdentity'
+  | 'limitsNominationBySex';
 
 type WordingSetting = Readonly<{
   /** The setting's key under the stage's `wording`. */
@@ -85,6 +88,13 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
         label: messages.wordingMissingDetailsList,
         arguments: PEDIGREE_WORDING_ARGUMENTS.missingDetailsList,
       },
+      {
+        key: 'nominationLimitHint',
+        label: messages.wordingNominationLimitHint,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.nominationLimitHint,
+        gate: 'limitsNominationBySex',
+        hint: messages.wordingLimitsNominationBySexHint,
+      },
     ],
   },
   {
@@ -121,6 +131,11 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
         arguments: PEDIGREE_WORDING_ARGUMENTS.disconnectWouldCutOff,
       },
       {
+        key: 'disconnectStandIn',
+        label: messages.wordingDisconnectStandIn,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.disconnectStandIn,
+      },
+      {
         key: 'changeWouldCutOff',
         label: messages.wordingChangeWouldCutOff,
         arguments: PEDIGREE_WORDING_ARGUMENTS.changeWouldCutOff,
@@ -129,11 +144,6 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
         key: 'unavailableAncestor',
         label: messages.wordingUnavailableAncestor,
         arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableAncestor,
-      },
-      {
-        key: 'unavailableCarrierChoice',
-        label: messages.wordingUnavailableCarrierChoice,
-        arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableCarrierChoice,
       },
       {
         key: 'removeConfirmTitle',
@@ -185,6 +195,11 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
       { key: 'otherParentLabel', label: messages.wordingOtherParentLabel },
       { key: 'otherParentNone', label: messages.wordingOtherParentNone },
       { key: 'otherParentUnknown', label: messages.wordingOtherParentUnknown },
+      {
+        key: 'otherParentBiologicalLabel',
+        label: messages.wordingOtherParentBiologicalLabel,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.otherParentBiologicalLabel,
+      },
       { key: 'parentPartnerLabel', label: messages.wordingParentPartnerLabel },
       {
         key: 'parentLinkKindLabel',
@@ -215,10 +230,24 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
         label: messages.wordingSharedDonorsLabel,
         arguments: PEDIGREE_WORDING_ARGUMENTS.sharedDonorsLabel,
       },
+      {
+        key: 'sharedSurrogateLabel',
+        label: messages.wordingSharedSurrogateLabel,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.sharedSurrogateLabel,
+      },
+      {
+        key: 'sharedParentsNotSibling',
+        label: messages.wordingSharedParentsNotSibling,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.sharedParentsNotSibling,
+      },
       { key: 'siblingKindLabel', label: messages.wordingSiblingKindLabel },
       {
         key: 'siblingBiologicalParentLabel',
         label: messages.wordingSiblingBiologicalParentLabel,
+      },
+      {
+        key: 'siblingOtherBiologicalParentLabel',
+        label: messages.wordingSiblingOtherBiologicalParentLabel,
       },
       {
         key: 'siblingTwinLabel',
@@ -256,6 +285,11 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
       { key: 'childKindDonor', label: messages.wordingChildKindDonor },
       { key: 'childKindSurrogate', label: messages.wordingChildKindSurrogate },
       { key: 'alsoParentOfLabel', label: messages.wordingAlsoParentOfLabel },
+      {
+        key: 'standInPlaceTaken',
+        label: messages.wordingStandInPlaceTaken,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.standInPlaceTaken,
+      },
       {
         key: 'sexAssignedAtBirthLabel',
         label: messages.wordingSexAssignedAtBirthLabel,
@@ -314,6 +348,11 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
         key: 'unavailableCarried',
         label: messages.wordingUnavailableCarried,
         arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableCarried,
+      },
+      {
+        key: 'unavailableSameSexAsCoParent',
+        label: messages.wordingUnavailableSameSexAsCoParent,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableSameSexAsCoParent,
       },
     ],
   },

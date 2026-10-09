@@ -1,23 +1,20 @@
 - main:
   - status:
     - heading "Add the members of your family." [level=2]
-  - text: Hal added to your family.
   - region "Interview notifications"
-  - dialog "Add a parent of Relative":
-    - heading "Add a parent of Relative" [level=2]
+  - dialog "About you":
+    - heading "About you" [level=2]
     - button "Close"
     - alert:
       - text: "Error:"
-      - paragraph: "Change would strand 2 people: Relative and Relative - matrix check"
-    - text: Name (optional) A first name or nickname is fine. If you don’t know it, leave this blank and they will be shown by how they are related to you.
-    - textbox "Name (optional)": Al
+      - paragraph: "Change would strand 1 person: Sam - matrix check"
     - text: Gender identity Required
     - radiogroup "Gender identity":
       - radio "Woman"
       - text: Woman
-      - radio "Man" [checked]
+      - radio "Man"
       - text: Man
-      - radio "Non-binary"
+      - radio "Non-binary" [checked]
       - text: Non-binary
       - radio "A different identity"
       - text: A different identity
@@ -29,29 +26,17 @@
     - radiogroup "Sex assigned at birth":
       - radio "Female"
       - text: Female
-      - radio "Male" [checked]
+      - radio "Male"
       - text: Male
-      - radio "Intersex"
+      - radio "Intersex" [checked]
       - text: Intersex
       - radio "Don’t know"
       - text: Don’t know
       - radio "Prefer not to say"
       - text: Prefer not to say
-    - text: What kind of parent are they? Required Some answers are unavailable because this person is recorded as “Male” at birth, so they cannot have carried a pregnancy. To choose one, first change their sex at birth.
-    - radiogroup "What kind of parent are they?":
-      - radio "Biological parent" [checked]
-      - text: Biological parent
-      - radio "Adoptive parent"
-      - text: Adoptive parent
-      - radio "Step or social parent"
-      - text: Step or social parent
-      - radio "Egg or sperm donor"
-      - text: Egg or sperm donor
-      - radio "Surrogate" [disabled]
-      - text: Surrogate
-    - text: Are they also the parent of…
-    - group "Are they also the parent of…":
-      - checkbox "You"
-      - text: You
+    - text: Which of your siblings, if any, are your twins? Include triplets and other multiple births.
+    - group "Which of your siblings, if any, are your twins?":
+      - checkbox "Sam"
+      - text: Sam
     - button "Cancel"
     - button "Save"

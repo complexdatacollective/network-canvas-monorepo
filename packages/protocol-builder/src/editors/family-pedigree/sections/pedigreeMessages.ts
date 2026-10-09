@@ -1211,7 +1211,7 @@ export const familyPedigreeMessages = defineMessages({
     id: 'protocolBuilder.pedigree.wording.placeholderParentsNote',
     defaultMessage: 'Note about added parents',
     description:
-      'Label of the note explaining the placeholder parents added for a set of siblings.',
+      'Label of the note explaining the placeholder parents added for a set of siblings, and which of them a new sibling shares.',
   },
   wordingGeneratedLabelOf: {
     id: 'protocolBuilder.pedigree.wording.generatedLabelOf',
@@ -1248,6 +1248,12 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Label of the notice listing what details are still missing for a family member.',
   },
+  wordingNominationLimitHint: {
+    id: 'protocolBuilder.pedigree.wording.nominationLimitHint',
+    defaultMessage: 'Note on a question limited to one sex at birth',
+    description:
+      'Label of the note shown under the family tree while a question about the family applies only to people of one sex assigned at birth, saying who cannot be selected for it.',
+  },
   wordingConnectQuestion: {
     id: 'protocolBuilder.pedigree.wording.connectQuestion',
     defaultMessage: 'Connect question',
@@ -1281,6 +1287,12 @@ export const familyPedigreeMessages = defineMessages({
     defaultMessage: 'Connection that would leave someone out',
     description:
       'Label of the warning that removing a connection would leave people outside the family tree.',
+  },
+  wordingDisconnectStandIn: {
+    id: 'protocolBuilder.pedigree.wording.disconnectStandIn',
+    defaultMessage: 'Stand-in parent connection notice',
+    description:
+      'Label of the notice that a connection cannot be removed because an unnamed parent stands in for a parent of the child who has not been added yet.',
   },
   wordingRemoveConfirmTitle: {
     id: 'protocolBuilder.pedigree.wording.removeConfirmTitle',
@@ -1358,6 +1370,12 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Label of the option for an other parent who is not yet shown on the family tree.',
   },
+  wordingOtherParentBiologicalLabel: {
+    id: 'protocolBuilder.pedigree.wording.otherParentBiologicalLabel',
+    defaultMessage: 'Other parent is biological question',
+    description:
+      'Label of the yes or no question asking whether the other parent of a new step-child or adopted child is the child’s biological parent.',
+  },
   wordingParentPartnerLabel: {
     id: 'protocolBuilder.pedigree.wording.parentPartnerLabel',
     defaultMessage: 'Parent partner question',
@@ -1432,6 +1450,12 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Label of the question asking whether a person is also the parent of another person.',
   },
+  wordingStandInPlaceTaken: {
+    id: 'protocolBuilder.pedigree.wording.standInPlaceTaken',
+    defaultMessage: 'Also parent of hint: takes an unnamed parent’s place',
+    description:
+      'Label of the hint under the also-parent-of question when a new biological parent or donor takes the place of an unnamed parent, naming the siblings who share that parent and so become this person’s children too.',
+  },
   wordingSexAssignedAtBirthLabel: {
     id: 'protocolBuilder.pedigree.wording.sexAssignedAtBirthLabel',
     defaultMessage: 'Sex assigned at birth question',
@@ -1472,13 +1496,31 @@ export const familyPedigreeMessages = defineMessages({
     id: 'protocolBuilder.pedigree.wording.sharedDonorsLabel',
     defaultMessage: 'Shared donors question',
     description:
-      'Label of the question asking which donors a new sibling shares, for someone with only egg or sperm donors as parents.',
+      'Label of the question asking which donors a new sibling shares, for someone with only egg or sperm donors as parents, and whether they share the surrogate who carried them where one is recorded.',
+  },
+  wordingSharedSurrogateLabel: {
+    id: 'protocolBuilder.pedigree.wording.sharedSurrogateLabel',
+    defaultMessage: 'Shared surrogate question',
+    description:
+      'Label of the question asking whether the surrogate who carried a person with no parents recorded yet also carried a new sibling.',
+  },
+  wordingSharedParentsNotSibling: {
+    id: 'protocolBuilder.pedigree.wording.sharedParentsNotSibling',
+    defaultMessage: 'Shared parents that do not make a sibling',
+    description:
+      'Label of the error shown when the only parents chosen for a new sibling are a step or social parent, or the surrogate who carried the person, which does not make someone a sibling.',
   },
   wordingSiblingBiologicalParentLabel: {
     id: 'protocolBuilder.pedigree.wording.siblingBiologicalParentLabel',
     defaultMessage: 'Sibling’s biological parent question',
     description:
       'Label of the question asking which of the parents a new sibling shares is their biological parent, when only one of them could be.',
+  },
+  wordingSiblingOtherBiologicalParentLabel: {
+    id: 'protocolBuilder.pedigree.wording.siblingOtherBiologicalParentLabel',
+    defaultMessage: 'Sibling’s other biological parent question',
+    description:
+      'Label of the question asking which of the parents a new biological sibling shares is their other biological parent, when the first answer still leaves more than one.',
   },
   wordingSiblingTwinLabel: {
     id: 'protocolBuilder.pedigree.wording.siblingTwinLabel',
@@ -1553,12 +1595,6 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Label of the reason shown under the choice to make someone a parent of one of their own ancestors.',
   },
-  wordingUnavailableCarrierChoice: {
-    id: 'protocolBuilder.pedigree.wording.unavailableCarrierChoice',
-    defaultMessage: 'Unavailable choice: someone else carried',
-    description:
-      'Label of the reason shown under the choices for a parent who carried the pregnancy, when someone else already did.',
-  },
   wordingUnavailableCarrierRecorded: {
     id: 'protocolBuilder.pedigree.wording.unavailableCarrierRecorded',
     defaultMessage: 'Unavailable answers hint: someone else carried',
@@ -1575,7 +1611,14 @@ export const familyPedigreeMessages = defineMessages({
     id: 'protocolBuilder.pedigree.wording.unavailableCarried',
     defaultMessage: 'Unavailable answers hint: carried a child',
     description:
-      'Label of the hint explaining that a sex at birth is unavailable because the person is recorded as having carried a child’s pregnancy.',
+      'Label of the hint explaining that a sex at birth is unavailable because the person is recorded as having carried the pregnancy of one or more children.',
+  },
+  wordingUnavailableSameSexAsCoParent: {
+    id: 'protocolBuilder.pedigree.wording.unavailableSameSexAsCoParent',
+    defaultMessage:
+      'Unavailable answers hint: other genetic parent has that sex at birth',
+    description:
+      'Label of the hint explaining that a sex at birth is unavailable for a genetic parent because the other genetic parent of their children is recorded with that sex at birth.',
   },
   wordingUnavailableGeneticParentsFull: {
     id: 'protocolBuilder.pedigree.wording.unavailableGeneticParentsFull',
@@ -1645,6 +1688,13 @@ export const familyPedigreeMessages = defineMessages({
       'Shown only when participants choose the words used for family members.',
     description:
       'Hint on the wording settings that are shown only when participants choose the words used for family members.',
+  },
+  wordingLimitsNominationBySexHint: {
+    id: 'protocolBuilder.pedigree.wording.limitsNominationBySexHint',
+    defaultMessage:
+      'Shown only when a question about the family applies only to people of one sex assigned at birth.',
+    description:
+      'Hint on the wording setting that is shown only while a nomination prompt is limited to people of one sex assigned at birth.',
   },
   wordingGenderIdentityHint: {
     id: 'protocolBuilder.pedigree.wording.genderIdentityHint',

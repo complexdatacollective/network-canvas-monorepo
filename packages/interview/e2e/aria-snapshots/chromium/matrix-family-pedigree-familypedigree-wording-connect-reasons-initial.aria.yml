@@ -3,7 +3,7 @@
     - heading "Add the members of your family." [level=2]
   - region "Your family":
     - button "Joan"
-    - button "Maternal grandparent, some details missing"
+    - button "Maternal grandparent"
     - button "Pat"
     - button "Rachel"
     - button "Tom"

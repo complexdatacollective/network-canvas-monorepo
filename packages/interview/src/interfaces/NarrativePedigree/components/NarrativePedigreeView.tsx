@@ -43,7 +43,6 @@ import {
   getEdgeColorForType,
   getNetworkEdges,
   getNetworkNodes,
-  resolveNodeShape,
 } from '../../../selectors/session';
 import { getCodebook, getStages } from '../../../store/modules/protocol';
 import type { StageProps } from '../../../types';
@@ -71,7 +70,9 @@ import {
   focusNeighbourInDirection,
   PedigreeViewport,
   usePedigreeZoomButtons,
+  zoomForKey,
 } from '../../pedigree-common/PedigreeCanvas';
+import { symbolShapesOf } from '../../pedigree-common/symbolShapes';
 import { PedigreeSnapshotDocument } from '../export/PedigreeSnapshotDocument';
 import { exportSnapshot } from '../export/snapshot';
 import { computeStatuses } from '../genetics/computeStatuses';
@@ -389,11 +390,13 @@ export default function NarrativePedigreeView({
   const nodeColor = personDefinition?.color ?? 'node-color-seq-1';
   const shapeDefinition = personDefinition?.shape;
 
-  const shapeFor = (personId: string): NodeShape => {
-    const person = family?.byId.get(personId);
-    if (!shapeDefinition || !person) return 'circle';
-    return resolveNodeShape(shapeDefinition, person.attributes);
-  };
+  // Each symbol is drawn, and the lines meeting it laid out, with one shape.
+  const nodeShapes = useMemo(
+    () => symbolShapesOf(family?.people ?? [], shapeDefinition),
+    [family, shapeDefinition],
+  );
+  const shapeFor = (personId: string): NodeShape =>
+    nodeShapes.get(personId) ?? 'circle';
   const isAdopted = (personId: string) =>
     (family?.links ?? []).some(
       (link) => link.kind === 'adoptive' && link.target === personId,
@@ -730,6 +733,7 @@ export default function NarrativePedigreeView({
           nodeIds={nodeIds}
           links={layoutLinks}
           nodeNames={nodeNames}
+          nodeShapes={nodeShapes}
           edgeColor={edgeColor}
           nodeWidth={nodeWidth}
           nodeHeight={nodeHeight}
@@ -811,6 +815,7 @@ export default function NarrativePedigreeView({
               nodeIds={nodeIds}
               links={layoutLinks}
               nodeNames={nodeNames}
+              nodeShapes={nodeShapes}
               edgeColor={edgeColor}
               nodeWidth={nodeWidth}
               nodeHeight={nodeHeight}
@@ -822,6 +827,7 @@ export default function NarrativePedigreeView({
           <div
             ref={toolbarRef}
             className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex flex-col items-center gap-2 px-4"
+            onKeyDown={(event) => zoomForKey(event, panZoom)}
           >
             {focalId !== null && (
               <Tooltip>

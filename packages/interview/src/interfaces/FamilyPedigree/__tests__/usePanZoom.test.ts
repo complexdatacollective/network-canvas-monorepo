@@ -1,6 +1,11 @@
 import { describe, expect, test } from 'vitest';
 
-import { clampPanToKeep, viewKeepingInArea } from '../usePanZoom';
+import {
+  clampPanToKeep,
+  shiftIntoArea,
+  viewCentredOn,
+  viewKeepingInArea,
+} from '../usePanZoom';
 
 const viewport = { width: 1000, height: 800 };
 
@@ -69,6 +74,50 @@ describe('clampPanToKeep', () => {
   });
 });
 
+describe('clampPanToKeep, across generations', () => {
+  // Zoomed in on a phone held sideways: a parent and, a row further down
+  // than the clear band is tall, their child.
+  const generations = [
+    { left: 160, top: 160, right: 256, bottom: 256 },
+    { left: 160, top: 390, right: 256, bottom: 486 },
+  ];
+  const band = { width: 844, height: 390 };
+  const insets = { top: 100, right: 0, bottom: 100, left: 0 };
+  const scale = 2.5;
+  const start = clampPanToKeep(
+    { x: 0, y: 0, scale },
+    generations,
+    band,
+    insets,
+  );
+  const childInView = (y: number) =>
+    y + 390 * scale < band.height - insets.bottom &&
+    y + 486 * scale > insets.top;
+
+  test('a drag clamped step by step falls back into the gap and never reaches the next row', () => {
+    let { y } = start;
+    for (let step = 0; step < 100; step++) {
+      y = clampPanToKeep(
+        { x: start.x, y: y - 11, scale },
+        generations,
+        band,
+        insets,
+      ).y;
+    }
+    expect(childInView(y)).toBe(false);
+  });
+
+  test('the whole movement of the same drag, clamped once, reaches it', () => {
+    const { y } = clampPanToKeep(
+      { x: start.x, y: start.y - 1100, scale },
+      generations,
+      band,
+      insets,
+    );
+    expect(childInView(y)).toBe(true);
+  });
+});
+
 describe('viewKeepingInArea', () => {
   const area = { left: 0, top: 100, right: 1000, bottom: 700 };
   const box = (top: number) => ({
@@ -117,5 +166,88 @@ describe('viewKeepingInArea', () => {
       pivot: { x: 0, y: 0 },
     });
     expect(view.scale).toBe(0.5);
+  });
+});
+
+describe('shiftIntoArea', () => {
+  // A short canvas on a phone held sideways: the clear band between the
+  // prompt and the toolbar.
+  const area = { left: 32, top: 100, right: 812, bottom: 290 };
+  const at = (top: number, bottom: number) => ({
+    left: 400,
+    top,
+    right: 460,
+    bottom,
+  });
+
+  test('moves just far enough to bring everything in, when nothing is kept', () => {
+    // A menu reaching above the band.
+    expect(shiftIntoArea({ targets: [at(60, 180)], area })).toEqual({
+      x: 0,
+      y: 40,
+    });
+  });
+
+  test('never pushes someone kept out of the area', () => {
+    // The participant's menu reaches above the band, and the child just
+    // added, with room for their own menu, sits at its bottom.
+    const shift = shiftIntoArea({
+      targets: [at(60, 180)],
+      keep: [[at(200, 280)]],
+      area,
+    });
+    expect(shift.y).toBe(10);
+    expect(280 + shift.y).toBeLessThanOrEqual(area.bottom);
+  });
+
+  test('ignores what is kept when the area cannot hold it', () => {
+    expect(
+      shiftIntoArea({ targets: [at(60, 180)], keep: [[at(0, 400)]], area }).y,
+    ).toBe(40);
+  });
+
+  test('keeps the first of the alternatives the area can hold', () => {
+    // With room for their menu the child does not fit; alone, they do.
+    const shift = shiftIntoArea({
+      targets: [at(60, 180)],
+      keep: [[at(150, 360)], [at(230, 280)]],
+      area,
+    });
+    expect(shift.y).toBe(10);
+  });
+});
+
+describe('viewCentredOn', () => {
+  const area = { left: 32, top: 120, right: 288, bottom: 900 };
+
+  test('centres the middle of everyone given, at the same zoom when they fit', () => {
+    const view = viewCentredOn({
+      view: { x: 0, y: 0, scale: 1 },
+      boxes: [
+        { left: 100, top: 100, right: 190, bottom: 190 },
+        { left: 200, top: 300, right: 290, bottom: 390 },
+      ],
+      area,
+    });
+    expect(view.scale).toBe(1);
+    expect(view.x + 195).toBeCloseTo(160);
+    expect(view.y + 245).toBeCloseTo(510);
+  });
+
+  test('zooms out so that the person a panel adds to stays beside the one added', () => {
+    const boxes = [
+      { left: 0, top: 0, right: 90, bottom: 90 },
+      { left: 430, top: 200, right: 520, bottom: 290 },
+    ];
+    const view = viewCentredOn({ view: { x: 0, y: 0, scale: 1 }, boxes, area });
+    expect(view.scale).toBeLessThan(1);
+    for (const box of boxes) {
+      expect(view.x + box.left * view.scale).toBeGreaterThanOrEqual(
+        area.left - 0.001,
+      );
+      expect(view.x + box.right * view.scale).toBeLessThanOrEqual(
+        area.right + 0.001,
+      );
+    }
   });
 });

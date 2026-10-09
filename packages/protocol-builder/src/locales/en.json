@@ -2527,6 +2527,14 @@
     "defaultMessage": "When it is about this person",
     "description": "Heading over the version of a message used when it is about the person whose details are open, shown without their name."
   },
+  "protocolBuilder.localizedMessage.caseAnchorIsParticipant": {
+    "defaultMessage": "When the person they are added to is the participant",
+    "description": "Heading over the version of a message used when the person a new family member is added to is the participant themself."
+  },
+  "protocolBuilder.localizedMessage.caseAnchorIsSomeoneElse": {
+    "defaultMessage": "When the person they are added to is someone else",
+    "description": "Heading over the version of a message used when the person a new family member is added to is not the participant."
+  },
   "protocolBuilder.localizedMessage.caseCarrierIsParticipant": {
     "defaultMessage": "When the person who carried the pregnancy is the participant",
     "description": "Heading over the version of a message used when the person recorded as having carried a child is the participant themself."
@@ -2541,7 +2549,7 @@
   },
   "protocolBuilder.localizedMessage.caseCoParentIsParticipant": {
     "defaultMessage": "When the other parent is the participant",
-    "description": "Heading over the version of a message used when the other genetic parent of a child is the participant themself."
+    "description": "Heading over the version of a message used when the child’s other parent (their other genetic parent, or the other parent of a step-child or adopted child) is the participant themself."
   },
   "protocolBuilder.localizedMessage.caseEggParent": {
     "defaultMessage": "When the parent is the egg parent",
@@ -2567,6 +2575,10 @@
     "defaultMessage": "When it names the other question",
     "description": "Heading over the version of a validation message used when it names the question whose answer it is compared with."
   },
+  "protocolBuilder.localizedMessage.caseNoSurrogateRecorded": {
+    "defaultMessage": "When no surrogate is recorded",
+    "description": "Heading over the version of a question used when no surrogate is recorded as having carried the person it is about."
+  },
   "protocolBuilder.localizedMessage.caseNobodyElseRemoved": {
     "defaultMessage": "When nobody else would be removed",
     "description": "Heading over the version of a message used when removing a person would remove nobody else."
@@ -2574,6 +2586,18 @@
   "protocolBuilder.localizedMessage.caseOnePerson": {
     "defaultMessage": "When asking about one person",
     "description": "Heading over the version of a question used when it asks about a single person."
+  },
+  "protocolBuilder.localizedMessage.caseOnlyForFemaleAtBirth": {
+    "defaultMessage": "When the question is only for people assigned female at birth",
+    "description": "Heading over the version of a note used while a question about the family applies only to people assigned female at birth."
+  },
+  "protocolBuilder.localizedMessage.caseOnlyForMaleAtBirth": {
+    "defaultMessage": "When the question is only for people assigned male at birth",
+    "description": "Heading over the version of a note used while a question about the family applies only to people assigned male at birth."
+  },
+  "protocolBuilder.localizedMessage.caseOtherParentIsSomeoneElse": {
+    "defaultMessage": "When the other parent is someone else",
+    "description": "Heading over the version of a message used when the other parent of a step-child or adopted child is not the participant."
   },
   "protocolBuilder.localizedMessage.caseOthersRemoved": {
     "defaultMessage": "When other people would be removed too",
@@ -2671,13 +2695,41 @@
     "defaultMessage": "When asking about several people",
     "description": "Heading over the version of a question used when it asks about several people at once."
   },
+  "protocolBuilder.localizedMessage.caseSharesBothParents": {
+    "defaultMessage": "When the siblings share both parents",
+    "description": "Heading over the version of a message used when a new sibling shares both of their biological parents."
+  },
+  "protocolBuilder.localizedMessage.caseSharesEggParent": {
+    "defaultMessage": "When the sibling shares only the egg parent",
+    "description": "Heading over the version of a message used when a new sibling shares only the parent who gave the egg (the biological mother, in mother and father wording)."
+  },
+  "protocolBuilder.localizedMessage.caseSharesSpermParent": {
+    "defaultMessage": "When the sibling shares only the sperm parent",
+    "description": "Heading over the version of a message used when a new sibling shares only the parent who gave the sperm (the biological father, in mother and father wording)."
+  },
   "protocolBuilder.localizedMessage.caseSpermParent": {
     "defaultMessage": "When the parent is the sperm parent",
     "description": "Heading over the version of a message used when it is about the parent who gave the sperm."
   },
+  "protocolBuilder.localizedMessage.caseSurrogateRecorded": {
+    "defaultMessage": "When a surrogate is recorded as having carried them",
+    "description": "Heading over the version of a question used when the person it is about is recorded as having been carried by a surrogate."
+  },
   "protocolBuilder.localizedMessage.caseTwinIsParticipant": {
     "defaultMessage": "When the twin is the participant",
     "description": "Heading over the version of a message used when the twin it is about is the participant themself."
+  },
+  "protocolBuilder.localizedMessage.placeholderAnchor": {
+    "defaultMessage": "Name of the person they are added to",
+    "description": "Name of the placeholder, inserted into a message, that shows the name of the person a new family member is added to."
+  },
+  "protocolBuilder.localizedMessage.placeholderAnswer": {
+    "defaultMessage": "Unavailable answer",
+    "description": "Name of the placeholder, inserted into a message, that shows the answer it makes unavailable."
+  },
+  "protocolBuilder.localizedMessage.placeholderAnswers": {
+    "defaultMessage": "Unavailable answers",
+    "description": "Name of the placeholder, inserted into a message, that lists the answers it makes unavailable, already joined into one phrase."
   },
   "protocolBuilder.localizedMessage.placeholderCarrier": {
     "defaultMessage": "Name of the person who carried the pregnancy",
@@ -2687,9 +2739,17 @@
     "defaultMessage": "Child’s name",
     "description": "Name of the placeholder, inserted into a message, that shows a child’s name."
   },
+  "protocolBuilder.localizedMessage.placeholderChildren": {
+    "defaultMessage": "Children’s names",
+    "description": "Name of the placeholder, inserted into a message, that shows the names of several children, already joined into one phrase."
+  },
+  "protocolBuilder.localizedMessage.placeholderChosen": {
+    "defaultMessage": "Parents chosen",
+    "description": "Name of the placeholder, inserted into a message, that names the parents chosen for a new sibling, already joined into one phrase."
+  },
   "protocolBuilder.localizedMessage.placeholderCoParent": {
     "defaultMessage": "Other parent’s name",
-    "description": "Name of the placeholder, inserted into a message, that shows the name of the child’s other genetic parent."
+    "description": "Name of the placeholder, inserted into a message, that shows the name of the child’s other parent: their other genetic parent, or the other parent of a step-child or adopted child."
   },
   "protocolBuilder.localizedMessage.placeholderCondition": {
     "defaultMessage": "Condition name",
@@ -2746,6 +2806,10 @@
   "protocolBuilder.localizedMessage.placeholderSex": {
     "defaultMessage": "Sex assigned at birth",
     "description": "Name of the placeholder, inserted into a message, that shows the sex a person is recorded as having at birth."
+  },
+  "protocolBuilder.localizedMessage.placeholderStandIn": {
+    "defaultMessage": "Stand-in parent’s label",
+    "description": "Name of the placeholder, inserted into a message, that shows the label of an unnamed parent who stands in for a parent not yet added, such as “Parent of Sam”."
   },
   "protocolBuilder.localizedMessage.placeholderTerm": {
     "defaultMessage": "Relationship word",
@@ -5339,6 +5403,10 @@
     "defaultMessage": "Disconnect hint",
     "description": "Label of the hint shown while the participant chooses a connection to remove."
   },
+  "protocolBuilder.pedigree.wording.disconnectStandIn": {
+    "defaultMessage": "Stand-in parent connection notice",
+    "description": "Label of the notice that a connection cannot be removed because an unnamed parent stands in for a parent of the child who has not been added yet."
+  },
   "protocolBuilder.pedigree.wording.disconnectTool": {
     "defaultMessage": "Disconnect tool button",
     "description": "Label of the button that removes a connection between two people on the family tree."
@@ -5379,9 +5447,21 @@
     "defaultMessage": "Label for a relative",
     "description": "Label of a family member, named by how they relate to the participant."
   },
+  "protocolBuilder.pedigree.wording.limitsNominationBySexHint": {
+    "defaultMessage": "Shown only when a question about the family applies only to people of one sex assigned at birth.",
+    "description": "Hint on the wording setting that is shown only while a nomination prompt is limited to people of one sex assigned at birth."
+  },
   "protocolBuilder.pedigree.wording.missingDetailsList": {
     "defaultMessage": "Missing details notice",
     "description": "Label of the notice listing what details are still missing for a family member."
+  },
+  "protocolBuilder.pedigree.wording.nominationLimitHint": {
+    "defaultMessage": "Note on a question limited to one sex at birth",
+    "description": "Label of the note shown under the family tree while a question about the family applies only to people of one sex assigned at birth, saying who cannot be selected for it."
+  },
+  "protocolBuilder.pedigree.wording.otherParentBiologicalLabel": {
+    "defaultMessage": "Other parent is biological question",
+    "description": "Label of the yes or no question asking whether the other parent of a new step-child or adopted child is the child’s biological parent."
   },
   "protocolBuilder.pedigree.wording.otherParentLabel": {
     "defaultMessage": "Other parent question",
@@ -5421,7 +5501,7 @@
   },
   "protocolBuilder.pedigree.wording.placeholderParentsNote": {
     "defaultMessage": "Note about added parents",
-    "description": "Label of the note explaining the placeholder parents added for a set of siblings."
+    "description": "Label of the note explaining the placeholder parents added for a set of siblings, and which of them a new sibling shares."
   },
   "protocolBuilder.pedigree.wording.pointerTool": {
     "defaultMessage": "Pointer tool button",
@@ -5449,7 +5529,7 @@
   },
   "protocolBuilder.pedigree.wording.sharedDonorsLabel": {
     "defaultMessage": "Shared donors question",
-    "description": "Label of the question asking which donors a new sibling shares, for someone with only egg or sperm donors as parents."
+    "description": "Label of the question asking which donors a new sibling shares, for someone with only egg or sperm donors as parents, and whether they share the surrogate who carried them where one is recorded."
   },
   "protocolBuilder.pedigree.wording.sharedParentCountBoth": {
     "defaultMessage": "Both shared parents option",
@@ -5463,6 +5543,14 @@
     "defaultMessage": "One shared parent option",
     "description": "Label of the option that only one of the shared parents is shared. The parent’s kind is filled in."
   },
+  "protocolBuilder.pedigree.wording.sharedParentsNotSibling": {
+    "defaultMessage": "Shared parents that do not make a sibling",
+    "description": "Label of the error shown when the only parents chosen for a new sibling are a step or social parent, or the surrogate who carried the person, which does not make someone a sibling."
+  },
+  "protocolBuilder.pedigree.wording.sharedSurrogateLabel": {
+    "defaultMessage": "Shared surrogate question",
+    "description": "Label of the question asking whether the surrogate who carried a person with no parents recorded yet also carried a new sibling."
+  },
   "protocolBuilder.pedigree.wording.siblingBiologicalParentLabel": {
     "defaultMessage": "Sibling’s biological parent question",
     "description": "Label of the question asking which of the parents a new sibling shares is their biological parent, when only one of them could be."
@@ -5470,6 +5558,10 @@
   "protocolBuilder.pedigree.wording.siblingKindLabel": {
     "defaultMessage": "Shared parents of siblings question",
     "description": "Label of the question asking which parents a person shares with their siblings."
+  },
+  "protocolBuilder.pedigree.wording.siblingOtherBiologicalParentLabel": {
+    "defaultMessage": "Sibling’s other biological parent question",
+    "description": "Label of the question asking which of the parents a new biological sibling shares is their other biological parent, when the first answer still leaves more than one."
   },
   "protocolBuilder.pedigree.wording.siblingTwinFraternal": {
     "defaultMessage": "Fraternal twin option",
@@ -5494,6 +5586,10 @@
   "protocolBuilder.pedigree.wording.siblingTwinUnknown": {
     "defaultMessage": "Twin, not known if identical, option",
     "description": "Label of the option that a new sibling is a twin, without knowing whether they are identical."
+  },
+  "protocolBuilder.pedigree.wording.standInPlaceTaken": {
+    "defaultMessage": "Also parent of hint: takes an unnamed parent’s place",
+    "description": "Label of the hint under the also-parent-of question when a new biological parent or donor takes the place of an unnamed parent, naming the siblings who share that parent and so become this person’s children too."
   },
   "protocolBuilder.pedigree.wording.stillTogetherLabel": {
     "defaultMessage": "Still together question",
@@ -5529,11 +5625,7 @@
   },
   "protocolBuilder.pedigree.wording.unavailableCarried": {
     "defaultMessage": "Unavailable answers hint: carried a child",
-    "description": "Label of the hint explaining that a sex at birth is unavailable because the person is recorded as having carried a child’s pregnancy."
-  },
-  "protocolBuilder.pedigree.wording.unavailableCarrierChoice": {
-    "defaultMessage": "Unavailable choice: someone else carried",
-    "description": "Label of the reason shown under the choices for a parent who carried the pregnancy, when someone else already did."
+    "description": "Label of the hint explaining that a sex at birth is unavailable because the person is recorded as having carried the pregnancy of one or more children."
   },
   "protocolBuilder.pedigree.wording.unavailableCarrierRecorded": {
     "defaultMessage": "Unavailable answers hint: someone else carried",
@@ -5550,6 +5642,10 @@
   "protocolBuilder.pedigree.wording.unavailableIdenticalTwinNew": {
     "defaultMessage": "Unavailable answers hint: new twin’s parents differ",
     "description": "Label of the hint explaining that a new sibling cannot be an identical twin because they would not have all the same biological parents and donors."
+  },
+  "protocolBuilder.pedigree.wording.unavailableSameSexAsCoParent": {
+    "defaultMessage": "Unavailable answers hint: other genetic parent has that sex at birth",
+    "description": "Label of the hint explaining that a sex at birth is unavailable for a genetic parent because the other genetic parent of their children is recorded with that sex at birth."
   },
   "protocolBuilder.pedigree.wording.unavailableSameSexGeneticParent": {
     "defaultMessage": "Unavailable answers hint: same sex at birth as the other genetic parent",

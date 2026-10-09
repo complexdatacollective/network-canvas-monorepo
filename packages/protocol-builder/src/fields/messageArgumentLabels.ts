@@ -83,6 +83,18 @@ const messages = defineMessages({
     description:
       'Heading over the version of a message used when the child it is about is not the participant.',
   },
+  caseAnchorIsParticipant: {
+    id: 'protocolBuilder.localizedMessage.caseAnchorIsParticipant',
+    defaultMessage: 'When the person they are added to is the participant',
+    description:
+      'Heading over the version of a message used when the person a new family member is added to is the participant themself.',
+  },
+  caseAnchorIsSomeoneElse: {
+    id: 'protocolBuilder.localizedMessage.caseAnchorIsSomeoneElse',
+    defaultMessage: 'When the person they are added to is someone else',
+    description:
+      'Heading over the version of a message used when the person a new family member is added to is not the participant.',
+  },
   casePersonIsParticipant: {
     id: 'protocolBuilder.localizedMessage.casePersonIsParticipant',
     defaultMessage: 'When the person is the participant',
@@ -124,7 +136,13 @@ const messages = defineMessages({
     id: 'protocolBuilder.localizedMessage.caseCoParentIsParticipant',
     defaultMessage: 'When the other parent is the participant',
     description:
-      'Heading over the version of a message used when the other genetic parent of a child is the participant themself.',
+      'Heading over the version of a message used when the child’s other parent (their other genetic parent, or the other parent of a step-child or adopted child) is the participant themself.',
+  },
+  caseOtherParentIsSomeoneElse: {
+    id: 'protocolBuilder.localizedMessage.caseOtherParentIsSomeoneElse',
+    defaultMessage: 'When the other parent is someone else',
+    description:
+      'Heading over the version of a message used when the other parent of a step-child or adopted child is not the participant.',
   },
   caseParticipantIsOneOfTwoParents: {
     id: 'protocolBuilder.localizedMessage.caseParticipantIsOneOfTwoParents',
@@ -234,6 +252,50 @@ const messages = defineMessages({
     description:
       'Heading over the version of a message used when it is about the parent who gave the sperm.',
   },
+  caseSharesEggParent: {
+    id: 'protocolBuilder.localizedMessage.caseSharesEggParent',
+    defaultMessage: 'When the sibling shares only the egg parent',
+    description:
+      'Heading over the version of a message used when a new sibling shares only the parent who gave the egg (the biological mother, in mother and father wording).',
+  },
+  caseSharesSpermParent: {
+    id: 'protocolBuilder.localizedMessage.caseSharesSpermParent',
+    defaultMessage: 'When the sibling shares only the sperm parent',
+    description:
+      'Heading over the version of a message used when a new sibling shares only the parent who gave the sperm (the biological father, in mother and father wording).',
+  },
+  caseSharesBothParents: {
+    id: 'protocolBuilder.localizedMessage.caseSharesBothParents',
+    defaultMessage: 'When the siblings share both parents',
+    description:
+      'Heading over the version of a message used when a new sibling shares both of their biological parents.',
+  },
+  caseSurrogateRecorded: {
+    id: 'protocolBuilder.localizedMessage.caseSurrogateRecorded',
+    defaultMessage: 'When a surrogate is recorded as having carried them',
+    description:
+      'Heading over the version of a question used when the person it is about is recorded as having been carried by a surrogate.',
+  },
+  caseNoSurrogateRecorded: {
+    id: 'protocolBuilder.localizedMessage.caseNoSurrogateRecorded',
+    defaultMessage: 'When no surrogate is recorded',
+    description:
+      'Heading over the version of a question used when no surrogate is recorded as having carried the person it is about.',
+  },
+  caseOnlyForFemaleAtBirth: {
+    id: 'protocolBuilder.localizedMessage.caseOnlyForFemaleAtBirth',
+    defaultMessage:
+      'When the question is only for people assigned female at birth',
+    description:
+      'Heading over the version of a note used while a question about the family applies only to people assigned female at birth.',
+  },
+  caseOnlyForMaleAtBirth: {
+    id: 'protocolBuilder.localizedMessage.caseOnlyForMaleAtBirth',
+    defaultMessage:
+      'When the question is only for people assigned male at birth',
+    description:
+      'Heading over the version of a note used while a question about the family applies only to people assigned male at birth.',
+  },
   caseRelationEdit: {
     id: 'protocolBuilder.localizedMessage.caseRelationEdit',
     defaultMessage: 'When editing the person',
@@ -336,6 +398,30 @@ const messages = defineMessages({
     description:
       'Name of the placeholder, inserted into a message, that shows a child’s name.',
   },
+  placeholderChildren: {
+    id: 'protocolBuilder.localizedMessage.placeholderChildren',
+    defaultMessage: 'Children’s names',
+    description:
+      'Name of the placeholder, inserted into a message, that shows the names of several children, already joined into one phrase.',
+  },
+  placeholderAnchor: {
+    id: 'protocolBuilder.localizedMessage.placeholderAnchor',
+    defaultMessage: 'Name of the person they are added to',
+    description:
+      'Name of the placeholder, inserted into a message, that shows the name of the person a new family member is added to.',
+  },
+  placeholderStandIn: {
+    id: 'protocolBuilder.localizedMessage.placeholderStandIn',
+    defaultMessage: 'Stand-in parent’s label',
+    description:
+      'Name of the placeholder, inserted into a message, that shows the label of an unnamed parent who stands in for a parent not yet added, such as “Parent of Sam”.',
+  },
+  placeholderChosen: {
+    id: 'protocolBuilder.localizedMessage.placeholderChosen',
+    defaultMessage: 'Parents chosen',
+    description:
+      'Name of the placeholder, inserted into a message, that names the parents chosen for a new sibling, already joined into one phrase.',
+  },
   placeholderPartner: {
     id: 'protocolBuilder.localizedMessage.placeholderPartner',
     defaultMessage: 'Partner’s name',
@@ -358,7 +444,7 @@ const messages = defineMessages({
     id: 'protocolBuilder.localizedMessage.placeholderCoParent',
     defaultMessage: 'Other parent’s name',
     description:
-      'Name of the placeholder, inserted into a message, that shows the name of the child’s other genetic parent.',
+      'Name of the placeholder, inserted into a message, that shows the name of the child’s other parent: their other genetic parent, or the other parent of a step-child or adopted child.',
   },
   placeholderOwner: {
     id: 'protocolBuilder.localizedMessage.placeholderOwner',
@@ -389,6 +475,18 @@ const messages = defineMessages({
     defaultMessage: 'Sex assigned at birth',
     description:
       'Name of the placeholder, inserted into a message, that shows the sex a person is recorded as having at birth.',
+  },
+  placeholderAnswers: {
+    id: 'protocolBuilder.localizedMessage.placeholderAnswers',
+    defaultMessage: 'Unavailable answers',
+    description:
+      'Name of the placeholder, inserted into a message, that lists the answers it makes unavailable, already joined into one phrase.',
+  },
+  placeholderAnswer: {
+    id: 'protocolBuilder.localizedMessage.placeholderAnswer',
+    defaultMessage: 'Unavailable answer',
+    description:
+      'Name of the placeholder, inserted into a message, that shows the answer it makes unavailable.',
   },
   placeholderTitle: {
     id: 'protocolBuilder.localizedMessage.placeholderTitle',
@@ -510,6 +608,27 @@ export function useMessageArgumentLabels(): MessageArgumentLabels {
           egg: text(messages.caseEggParent),
           other: text(messages.caseSpermParent),
         },
+        shared: {
+          eggParent: text(messages.caseSharesEggParent),
+          spermParent: text(messages.caseSharesSpermParent),
+          other: text(messages.caseSharesBothParents),
+        },
+        anchorIsYou: {
+          true: text(messages.caseAnchorIsParticipant),
+          other: text(messages.caseAnchorIsSomeoneElse),
+        },
+        otherIsYou: {
+          true: text(messages.caseCoParentIsParticipant),
+          other: text(messages.caseOtherParentIsSomeoneElse),
+        },
+        hasSurrogate: {
+          true: text(messages.caseSurrogateRecorded),
+          other: text(messages.caseNoSurrogateRecorded),
+        },
+        sex: {
+          female: text(messages.caseOnlyForFemaleAtBirth),
+          other: text(messages.caseOnlyForMaleAtBirth),
+        },
         relation: {
           edit: text(messages.caseRelationEdit),
           parent: text(messages.caseRelationParent),
@@ -552,15 +671,22 @@ export function useMessageArgumentLabels(): MessageArgumentLabels {
         names: text(messages.placeholderNames),
         parent: text(messages.placeholderParent),
         child: text(messages.placeholderChild),
+        children: text(messages.placeholderChildren),
+        anchor: text(messages.placeholderAnchor),
+        standIn: text(messages.placeholderStandIn),
+        chosen: text(messages.placeholderChosen),
         partner: text(messages.placeholderPartner),
         twin: text(messages.placeholderTwin),
         carrier: text(messages.placeholderCarrier),
         coParent: text(messages.placeholderCoParent),
+        other: text(messages.placeholderCoParent),
         owner: text(messages.placeholderOwner),
         term: text(messages.placeholderTerm),
         details: text(messages.placeholderDetails),
         parentKind: text(messages.placeholderParentKind),
         sex: text(messages.placeholderSex),
+        answers: text(messages.placeholderAnswers),
+        answer: text(messages.placeholderAnswer),
         title: text(messages.placeholderTitle),
         condition: text(messages.placeholderCondition),
         label: text(messages.placeholderLabel),

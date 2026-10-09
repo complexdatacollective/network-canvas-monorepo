@@ -33,18 +33,18 @@
       - text: Don’t know
       - radio "Prefer not to say"
       - text: Prefer not to say
-    - text: Kind of new parent - matrix check Required You have Julie and Rob as genetic parents - matrix check Julie carried you on record - matrix check
+    - text: Kind of new parent - matrix check Required You have Julie and Rob as genetic parents, so none of Biological parent and Egg or sperm donor - matrix check Julie carried you on record, so not Surrogate - matrix check
     - radiogroup "Kind of new parent - matrix check":
       - radio "Biological parent" [disabled]
-      - text: Biological parent
+      - text: Biological parent You have Julie and Rob as genetic parents, so none of Biological parent and Egg or sperm donor - matrix check
       - radio "Adoptive parent"
       - text: Adoptive parent
       - radio "Step or social parent" [checked]
       - text: Step or social parent
       - radio "Egg or sperm donor" [disabled]
-      - text: Egg or sperm donor
+      - text: Egg or sperm donor You have Julie and Rob as genetic parents, so none of Biological parent and Egg or sperm donor - matrix check
       - radio "Surrogate" [disabled]
-      - text: Surrogate
+      - text: Surrogate Julie carried you on record, so not Surrogate - matrix check
     - text: Partner of a parent - matrix check
     - radiogroup "Partner of a parent - matrix check":
       - radio "Julie"

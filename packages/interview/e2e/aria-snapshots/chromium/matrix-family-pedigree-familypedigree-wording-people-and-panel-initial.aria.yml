@@ -3,7 +3,7 @@
     - heading "Add the members of your family." [level=2]
   - region "Your family":
     - button "Mother term - matrix check"
-    - button "Relative term - matrix check, some details missing"
+    - button "Relative term - matrix check"
     - button "You": Me myself - matrix check
     - button "Sister term - matrix check"
   - toolbar "Family tree tools":

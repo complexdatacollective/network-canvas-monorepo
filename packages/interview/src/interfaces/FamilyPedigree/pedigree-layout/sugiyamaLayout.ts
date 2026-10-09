@@ -169,13 +169,17 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
               explicitPartnerPairs.has(partnerGroupKey([parent, candidate])),
           );
 
-        // When either co-parent has an explicit partnership to another parent
-        // of this child, do not invent a partnership between this pair. This is
-        // common in multi-parent families: two social parents may each be an
-        // ex-partner of the same biological parent without being partners of
-        // one another.
+        // A pair inferred here is seated side by side, never drawn as
+        // partners (the connectors draw a partnership line only for a
+        // recorded partnership). When both co-parents have an explicit
+        // partnership to another parent of this child, do not pair them: two
+        // social parents may each be an ex-partner of the same biological
+        // parent, who sits between them. When only one has, the other still
+        // sits beside them — a stand-in beside the mother whose partner also
+        // raises the child — so the child's line of descent can drop from
+        // midway between the two.
         if (
-          hasExplicitPartnerAmongOtherParents(pa) ||
+          hasExplicitPartnerAmongOtherParents(pa) &&
           hasExplicitPartnerAmongOtherParents(pb)
         ) {
           continue;
@@ -594,6 +598,81 @@ function seatAroundAnchor(
 }
 
 /**
+ * How well a set of partnerships drawn side by side keeps couples together:
+ * first those with children, then as many as can be, then those with more
+ * children, then current ones, then the earliest recorded.
+ */
+function seatingScore(edges: Partnership[]): number[] {
+  return [
+    edges.reduce((sum, e) => sum + Math.min(e.sharedChildren, 1), 0),
+    edges.length,
+    edges.reduce((sum, e) => sum + e.sharedChildren, 0),
+    edges.reduce((sum, e) => sum + e.childrenInCommon, 0),
+    edges.filter((e) => e.isActive).length,
+    -edges.reduce((sum, e) => sum + e.order, 0),
+  ];
+}
+
+/** Whether one seating score is strictly better than another. */
+function betterScore(x: number[], y: number[]): boolean {
+  for (let i = 0; i < x.length; i++) {
+    if (x[i] !== y[i]) return x[i]! > y[i]!;
+  }
+  return false;
+}
+
+/** The partnerships a row seats side by side. */
+function seatedSideBySide(
+  order: number[],
+  partnerships: Partnership[],
+): Partnership[] {
+  const col = new Map(order.map((node, i) => [node, i]));
+  return partnerships.filter(
+    ({ members: [a, b] }) => Math.abs(col.get(a)! - col.get(b)!) === 1,
+  );
+}
+
+/**
+ * A row seated around the person with the most partners, as
+ * `seatAroundAnchor` seats them, with everyone else then seated on the end of
+ * the row nearer a partner already in it. This is how the row was seated
+ * before the others' partnerships were recorded, so it keeps those partners'
+ * seats.
+ */
+function seatAroundMainAnchor(
+  nodes: number[],
+  partnerships: Partnership[],
+): number[] {
+  const partnersOf = (node: number) =>
+    partnerships
+      .filter(({ members }) => members.includes(node))
+      .map(({ members: [a, b] }) => (a === node ? b : a));
+  const anchor = nodes.toSorted(
+    (a, b) => partnersOf(b).length - partnersOf(a).length || a - b,
+  )[0]!;
+  const row = seatAroundAnchor(anchor, partnersOf(anchor), partnerships);
+  let remaining = nodes.filter((n) => !row.includes(n));
+  while (remaining.length > 0) {
+    const next = remaining.find((n) =>
+      partnersOf(n).some((p) => row.includes(p)),
+    );
+    if (next === undefined) {
+      row.push(...remaining);
+      break;
+    }
+    const cols = partnersOf(next)
+      .map((p) => row.indexOf(p))
+      .filter((c) => c >= 0);
+    const toLeft = Math.min(...cols);
+    const toRight = row.length - 1 - Math.max(...cols);
+    if (toLeft <= toRight) row.unshift(next);
+    else row.push(next);
+    remaining = remaining.filter((n) => n !== next);
+  }
+  return row;
+}
+
+/**
  * A row for partners whose partnerships do not form a single chain: a loop,
  * or several people with more than two partners. The longest chain of
  * partnerships is kept side by side (preferring partnerships with children,
@@ -609,29 +688,14 @@ function seatPartnershipTangle(
     partnersOf.get(p.members[0])!.push(p);
     partnersOf.get(p.members[1])!.push(p);
   }
-  const score = (edges: Partnership[]) => [
-    edges.reduce((sum, e) => sum + Math.min(e.sharedChildren, 1), 0),
-    edges.length,
-    edges.reduce((sum, e) => sum + e.sharedChildren, 0),
-    edges.reduce((sum, e) => sum + e.childrenInCommon, 0),
-    edges.filter((e) => e.isActive).length,
-    -edges.reduce((sum, e) => sum + e.order, 0),
-  ];
-  const better = (x: number[], y: number[]) => {
-    for (let i = 0; i < x.length; i++) {
-      if (x[i] !== y[i]) return x[i]! > y[i]!;
-    }
-    return false;
-  };
-
   let best: number[] = [Math.min(...nodes)];
-  let bestScore = score([]);
+  let bestScore = seatingScore([]);
   // Partner groups are small; every simple path is tried, within a budget.
   let budget = 20_000;
   const extend = (path: number[], edges: Partnership[]) => {
     if (budget-- <= 0) return;
-    const pathScore = score(edges);
-    if (better(pathScore, bestScore)) {
+    const pathScore = seatingScore(edges);
+    if (betterScore(pathScore, bestScore)) {
       best = path;
       bestScore = pathScore;
     }
@@ -985,9 +1049,21 @@ function buildConstraintBlocks(
         blockNodes,
         partnerships.map((p) => p.members),
       );
-      ordered = chain
-        ? orientPartners(chain, partnerships)
-        : seatPartnershipTangle(blockNodes, partnerships);
+      if (chain) {
+        ordered = orientPartners(chain, partnerships);
+      } else {
+        // Seated around the person with the most partners when that keeps
+        // as many couples side by side as the longest chain does (whichever
+        // were recorded first), so a partnership recorded between two others
+        // does not reseat that person's partners.
+        const tangle = seatPartnershipTangle(blockNodes, partnerships);
+        const aroundAnchor = seatAroundMainAnchor(blockNodes, partnerships);
+        const keptTogether = (order: number[]) =>
+          seatingScore(seatedSideBySide(order, partnerships)).slice(0, -1);
+        ordered = betterScore(keptTogether(tangle), keptTogether(aroundAnchor))
+          ? tangle
+          : aroundAnchor;
+      }
     } else {
       ordered = blockNodes;
     }
@@ -997,81 +1073,239 @@ function buildConstraintBlocks(
 
   // 2b. Seat each child's extra parents — donors, surrogates, and social or
   //     further primary parents outside its family's couple — beside the
-  //     parents they contribute alongside. Such a parent is not part of any
-  //     partnership or sibship, so without this it would fall through to a
+  //     parents they contribute alongside. Such a parent who is not part of
+  //     any partnership or sibship would otherwise fall through to a
   //     singleton and drift away, drawing a very long line. Attach it to the
   //     OUTER edge of the block holding the child's family-unit parents so the
   //     couple stays contiguous and the line stays short. A single parent with
   //     no block of their own yet starts one here.
+  //
+  //     A donor or surrogate always sits beside the child's parents, even
+  //     when partnered or in a sibship: their block joins the parents' block,
+  //     with the donor on its boundary beside the parents and their partners
+  //     on the inner side. A donor shared by two families joins the first.
+  const blockHolding = (nodes: number[]) => {
+    const set = new Set(nodes);
+    let block = blocks.find((b) => b.nodes.some((node) => set.has(node)));
+    if (!block) {
+      block = { nodes, barycenter: 0 };
+      for (const node of nodes) assigned.add(node);
+      blocks.push(block);
+    }
+    return block;
+  };
+  const partnered = (a: number, b: number) =>
+    (spousesOf.get(a) ?? []).includes(b);
+  /** How much a seat on one side of the child's parents costs the drawing,
+   * in seats: how much longer the lines grow, and a crossing. A line from a
+   * seat beyond the partners on that side passes over them; seated beside
+   * the couple it pushes the child's other extra parents already on that
+   * side, and anyone else of the block there, a seat further out, which
+   * lengthens their lines. From the side away from where the child sits in
+   * their sibship it crosses their siblings' lines up to the family. And
+   * the lines that end on the child from one side of their line of descent
+   * share that side of their edge: more than it holds apart, and one of
+   * them must end on the far side, crossing that line. A line joining the
+   * sibship's bar from beside a partner whose own line drops to one of the
+   * children crosses that line. */
+  const CROSSING_IN_SEATS = 2;
+  /** The lines one side of a child's edge holds a fifth of a symbol apart,
+   * whatever the symbol's shape (a square holds two; a circle and a
+   * diamond, three). */
+  const LINES_A_SIDE_HOLDS = 2;
+  const seatCost = (
+    passed: number,
+    beyond: number,
+    crossings: number,
+    linesOnSide: number,
+  ) =>
+    passed +
+    beyond +
+    (crossings + (linesOnSide > LINES_A_SIDE_HOLDS ? 1 : 0)) *
+      CROSSING_IN_SEATS;
+  const seatedDonors = new Set<number>();
   for (const [child, extras] of graph.extraParents) {
     const familyUnit = graph.familyOf.get(child)!;
+    // The side of the sibship the child sits on (siblings are seated in the
+    // order recorded): -1 left, 1 right, 0 the middle (an only child). A
+    // parent of every child in the sibship joins its bar instead, from
+    // either side.
+    const siblings = familyUnit.children
+      .filter((c) => graph.layers[c] === graph.layers[child])
+      .toSorted((a, b) => a - b);
+    const parentOfAll = (aux: number) =>
+      siblings.every((c) => graph.extraParents.get(c)?.includes(aux));
+    const sideOfChild = (aux: number) =>
+      parentOfAll(aux)
+        ? 0
+        : Math.sign(siblings.indexOf(child) - (siblings.length - 1) / 2);
+    const tieOf = (parent: number, to = child) =>
+      graph.parentEdgeTypes.get(`${parent}-${to}`) ?? 'biological';
     for (const aux of extras) {
-      if (!nodeSet.has(aux) || assigned.has(aux)) continue;
-      // Skip parents that are themselves partnered or in a sibship here;
-      // those are already placed by steps 1–2.
-      if (inRealSibship.has(aux) || spousesOf.has(aux)) continue;
-
+      if (!nodeSet.has(aux)) continue;
       const coupleOnLayer = familyUnit.parentGroup.members.filter((m) =>
         nodeSet.has(m),
       );
       if (coupleOnLayer.length === 0) continue; // couple not on this layer
-
       const coupleSet = new Set(coupleOnLayer);
-      let targetBlock = blocks.find((b) =>
-        b.nodes.some((node) => coupleSet.has(node)),
+      const isDonor = isAuxiliaryEdge(
+        graph.parentEdgeTypes.get(`${aux}-${child}`) ?? 'biological',
       );
-      if (!targetBlock) {
-        targetBlock = { nodes: coupleOnLayer, barycenter: 0 };
-        for (const node of coupleOnLayer) assigned.add(node);
-        blocks.push(targetBlock);
-      }
+      const others = new Set(extras.filter((x) => x !== aux));
+      const childSide = sideOfChild(aux);
+      // The lines that would end on the child's edge on one side of their
+      // line of descent, with this one seated there: only for a child sitting
+      // under the middle of the couple, whose sides are the couple's. Those
+      // of the child's other extra parents seated on that side, this one, and
+      // each partner on that side whose tie to the child differs from the
+      // couple's other ties (a social parent beside a birth parent), drawn by
+      // a line of their own.
+      const hasOwnLine = (partner: number, to: number) => {
+        const ties = coupleOnLayer.map((m) => tieOf(m, to));
+        if (new Set(ties).size < 2) return false;
+        const descentTie = ties.includes('biological') ? 'biological' : ties[0];
+        return tieOf(partner, to) !== descentTie;
+      };
+      const joinsBar = siblings.length > 1 && parentOfAll(aux);
+      const linesOnSide = (
+        sideNodes: number[],
+        sidePartners: number[],
+      ): number =>
+        childSide === 0 && !joinsBar
+          ? 1 +
+            sideNodes.filter((node) => others.has(node)).length +
+            sidePartners.filter((m) => hasOwnLine(m, child)).length
+          : 0;
+      const crossesOwnLine = (sidePartners: number[]) =>
+        joinsBar &&
+        sidePartners.some((m) => siblings.some((c) => hasOwnLine(m, c)));
+      const partnersBySide = (blockNodes: number[]) => {
+        const seated = coupleOnLayer.toSorted(
+          (a, b) => blockNodes.indexOf(a) - blockNodes.indexOf(b),
+        );
+        return {
+          left: seated.slice(0, Math.floor(seated.length / 2)),
+          right: seated.slice(Math.ceil(seated.length / 2)),
+        };
+      };
+      // Whether to seat on the right: the cheaper side, and on a tie the
+      // side the child sits on, or for a child in the middle the side
+      // holding fewer of the child's other extra parents, so two such
+      // lines reach the child from either side rather than converging on
+      // one side of their line of descent.
+      const chooseRight = (
+        left: number,
+        right: number,
+        othersLeft: number,
+        othersRight: number,
+      ) =>
+        left === right
+          ? childSide !== 0
+            ? childSide > 0
+            : othersRight <= othersLeft
+          : right < left;
 
-      // Seat the parent immediately adjacent to the couple, on the couple's
-      // OUTER side (the side nearer the block boundary). When the couple is its
-      // own block this lands on the block edge; when the couple is embedded in a
-      // sibship block it lands beside the couple rather than at the far end, so
-      // the line stays short either way. On a tie it takes the side holding
-      // fewer of this child's other extra parents, so two such lines reach the
-      // family from opposite sides instead of one running under the other.
-      const couplePositions = targetBlock.nodes
+      if (assigned.has(aux) || inRealSibship.has(aux) || spousesOf.has(aux)) {
+        // Placed already by steps 1–2, or for another child. Only a donor
+        // or surrogate seated by steps 1–2 is moved beside the parents.
+        if (!isDonor || seatedDonors.has(aux)) continue;
+        seatedDonors.add(aux);
+        const donorBlock = blocks.find((b) => b.nodes.includes(aux));
+        const coupleBlock = blockHolding(coupleOnLayer);
+        if (!donorBlock || donorBlock === coupleBlock) continue;
+        // The donor's block joins the parents' block at the end nearer the
+        // couple, so its line passes everyone between that end and them (on
+        // a tie, the side holding fewer of the child's lines, else the
+        // left). The side of the sibship the child sits on is not weighed:
+        // the sibship may yet be drawn the other way round.
+        const couplePositions = coupleBlock.nodes
+          .map((node, i) => (coupleSet.has(node) ? i : -1))
+          .filter((i) => i >= 0);
+        const leftNodes = coupleBlock.nodes.slice(
+          0,
+          Math.min(...couplePositions),
+        );
+        const rightNodes = coupleBlock.nodes.slice(
+          Math.max(...couplePositions) + 1,
+        );
+        const partnersOf = partnersBySide(coupleBlock.nodes);
+        const left = seatCost(
+          leftNodes.length,
+          0,
+          crossesOwnLine(partnersOf.left) ? 1 : 0,
+          linesOnSide(leftNodes, partnersOf.left),
+        );
+        const right = seatCost(
+          rightNodes.length,
+          0,
+          crossesOwnLine(partnersOf.right) ? 1 : 0,
+          linesOnSide(rightNodes, partnersOf.right),
+        );
+        const seatRight =
+          right < left ||
+          (right === left &&
+            rightNodes.filter((node) => others.has(node)).length <
+              leftNodes.filter((node) => others.has(node)).length);
+        coupleBlock.nodes = seatRight
+          ? [
+              ...coupleBlock.nodes,
+              ...movePartnerAnchorToBoundary(donorBlock.nodes, aux, 'left'),
+            ]
+          : [
+              ...movePartnerAnchorToBoundary(donorBlock.nodes, aux, 'right'),
+              ...coupleBlock.nodes,
+            ];
+        blocks.splice(blocks.indexOf(donorBlock), 1);
+        continue;
+      }
+      if (isDonor) seatedDonors.add(aux);
+
+      const targetBlock = blockHolding(coupleOnLayer);
+
+      // Seat the parent immediately adjacent to the couple, on the side
+      // whose seat costs the drawing least (see `seatCost`). When the couple
+      // is its own block this lands on the block edge; when the couple is
+      // embedded in a sibship block it lands beside the couple rather than
+      // at the far end, so the line stays short either way. Never seat it
+      // between two partners: when the couple sits inside a chain of
+      // partnerships, go out past the end of the chain.
+      const nodes = targetBlock.nodes;
+      const couplePositions = nodes
         .map((node, i) => (coupleSet.has(node) ? i : -1))
         .filter((i) => i >= 0);
       const leftPos = Math.min(...couplePositions);
       const rightPos = Math.max(...couplePositions);
-      const distToLeftEdge = leftPos;
-      const distToRightEdge = targetBlock.nodes.length - 1 - rightPos;
-      // Never seat it between two partners: when the couple sits inside a
-      // chain of partnerships, go out past the end of the chain.
-      const nodes = targetBlock.nodes;
-      const partnered = (a: number, b: number) =>
-        (spousesOf.get(a) ?? []).includes(b);
-      const others = new Set(extras.filter((x) => x !== aux));
-      const othersLeft = nodes
-        .slice(0, leftPos)
-        .filter((node) => others.has(node)).length;
-      const othersRight = nodes
-        .slice(rightPos + 1)
-        .filter((node) => others.has(node)).length;
-      const seatRight =
-        distToRightEdge === distToLeftEdge
-          ? othersRight <= othersLeft
-          : distToRightEdge < distToLeftEdge;
-      if (seatRight) {
-        let end = rightPos;
-        while (
-          end + 1 < nodes.length &&
-          partnered(nodes[end]!, nodes[end + 1]!)
-        ) {
-          end++;
-        }
-        nodes.splice(end + 1, 0, aux);
-      } else {
-        let start = leftPos;
-        while (start > 0 && partnered(nodes[start - 1]!, nodes[start]!)) {
-          start--;
-        }
-        nodes.splice(start, 0, aux);
+      let start = leftPos;
+      while (start > 0 && partnered(nodes[start - 1]!, nodes[start]!)) {
+        start--;
       }
+      let end = rightPos;
+      while (
+        end + 1 < nodes.length &&
+        partnered(nodes[end]!, nodes[end + 1]!)
+      ) {
+        end++;
+      }
+      const leftBeyond = nodes.slice(0, start);
+      const rightBeyond = nodes.slice(end + 1);
+      const partnersOf = partnersBySide(nodes);
+      const seatRight = chooseRight(
+        seatCost(
+          leftPos - start,
+          leftBeyond.length,
+          (childSide > 0 ? 1 : 0) + (crossesOwnLine(partnersOf.left) ? 1 : 0),
+          linesOnSide(leftBeyond, partnersOf.left),
+        ),
+        seatCost(
+          end - rightPos,
+          rightBeyond.length,
+          (childSide < 0 ? 1 : 0) + (crossesOwnLine(partnersOf.right) ? 1 : 0),
+          linesOnSide(rightBeyond, partnersOf.right),
+        ),
+        leftBeyond.filter((node) => others.has(node)).length,
+        rightBeyond.filter((node) => others.has(node)).length,
+      );
+      nodes.splice(seatRight ? end + 1 : start, 0, aux);
       assigned.add(aux);
     }
   }
@@ -1147,6 +1381,20 @@ function collectLayerEdges(
     for (const child of childrenOnLower) {
       edges.push([descentX, pos.get(child)!, true]);
       coveredChildren.add(child);
+      // A partner whose tie to the child differs from the couple's other
+      // ties (a social parent beside a birth parent) is joined to the child
+      // by a line of their own, which can cross other lines too.
+      const ties = parentsOnUpper.map(
+        (p) => graph.parentEdgeTypes.get(`${p}-${child}`) ?? 'biological',
+      );
+      if (new Set(ties).size > 1) {
+        const descentTie = ties.includes('biological') ? 'biological' : ties[0];
+        parentsOnUpper.forEach((p, k) => {
+          if (ties[k] !== descentTie) {
+            edges.push([pos.get(p)!, pos.get(child)!, false]);
+          }
+        });
+      }
     }
 
     const childPositions = childrenOnLower.map((c) => pos.get(c)!);
@@ -1198,6 +1446,14 @@ function collectLayerEdges(
   return { edges, linesUnderPeople };
 }
 
+/**
+ * What two crossed lines of descent cost, against 1 for any crossing with an
+ * extra parent's line. Crossed lines of descent put each child under the
+ * other family's parents, where the drawing reads as the wrong parentage, so
+ * any number of extra parents' crossings short of this is preferred.
+ */
+const DESCENT_CROSSING_WEIGHT = 4;
+
 function countCrossings(
   layerOrdering: number[][],
   graph: PedigreeGraph,
@@ -1222,7 +1478,7 @@ function countCrossings(
         const [u1, v1, descent1] = edges[i]!;
         const [u2, v2, descent2] = edges[j]!;
         if ((u1 < u2 && v1 > v2) || (u1 > u2 && v1 < v2)) {
-          crossings += descent1 && descent2 ? 2 : 1;
+          crossings += descent1 && descent2 ? DESCENT_CROSSING_WEIGHT : 1;
         }
       }
     }
@@ -1249,12 +1505,20 @@ function barycentricSweep(
       const currentLayer = result[k]!;
       const blocks = buildConstraintBlocks(currentLayer, graph);
 
-      // Compute barycenters
+      // Compute barycenters. A child of a family unit is placed by its
+      // family's descent point (its parent group's midpoint), the point its
+      // line of descent comes from; anyone else by all their parents.
       for (const block of blocks) {
         let totalBarycenter = 0;
         let countWithParents = 0;
         for (const node of block.nodes) {
-          const parents = getParentsOf(node, graph);
+          const familyParents = (
+            graph.familyOf.get(node)?.parentGroup.members ?? []
+          ).filter((p) => fixedPos.has(p));
+          const parents =
+            familyParents.length > 0
+              ? familyParents
+              : getParentsOf(node, graph);
           const parentPositions = parents
             .filter((p) => fixedPos.has(p))
             .map((p) => fixedPos.get(p)!);
@@ -1509,6 +1773,9 @@ function encodePedigreeLayout(
     if (layerN === 0) continue;
 
     const ideal: number[] = pos[layer]!.slice(0, layerN);
+    // Whether a column's ideal comes from people on the row above (directly,
+    // or through a partner placed that way).
+    const anchored: boolean[] = ideal.map(() => false);
 
     // Center each family unit's children as a group under the parent midpoint
     for (const fu of graph.familyUnits) {
@@ -1543,6 +1810,7 @@ function encodePedigreeLayout(
       const shift = parentCenter - childCenter;
       for (const col of childCols) {
         ideal[col] = ideal[col]! + shift;
+        anchored[col] = true;
       }
     }
 
@@ -1572,6 +1840,7 @@ function encodePedigreeLayout(
         );
         ideal[col] =
           parentPositions.reduce((a, b) => a + b, 0) / parentPositions.length;
+        anchored[col] = true;
       }
     }
 
@@ -1596,29 +1865,33 @@ function encodePedigreeLayout(
         } else {
           ideal[col] = ideal[spouseCol]! - 1;
         }
+        anchored[col] = anchored[spouseCol]!;
         break;
       }
     }
 
-    // Pull each two-person couple whose members already sit at consecutive
-    // columns to be adjacent around their shared midpoint. Centering each
-    // partner under its own parents (above) otherwise leaves a couple where BOTH
-    // partners have parents — e.g. a consanguineous cousin union — spread apart
-    // when those parents are far from each other. The midpoint is preserved so
-    // the couple still sits over the descent to their children.
-    for (const pg of graph.partnerGroups) {
-      if (pg.members.length !== 2) continue;
-      const cols = pg.members
-        .map((m) => {
-          const loc = nodeLocation.get(m);
-          return loc?.layer === layer ? loc.col : -1;
-        })
-        .filter((c) => c >= 0)
-        .toSorted((a, b) => a - b);
-      if (cols.length !== 2 || cols[1]! - cols[0]! !== 1) continue;
-      const mid = (ideal[cols[0]!]! + ideal[cols[1]!]!) / 2;
-      ideal[cols[0]!] = mid - 0.5;
-      ideal[cols[1]!] = mid + 0.5;
+    // Everyone else on the row (founders with no parents shown, and their
+    // partners) sits right beside the nearest people placed by the row
+    // above, rather than at their starting column, which leaves an empty
+    // column wherever the people beside them were moved. A couple each of
+    // whom has parents shown is not pulled together: each partner sits under
+    // their own parents, with a longer partnership line between them.
+    if (anchored.some(Boolean)) {
+      for (let start = 0; start < layerN; start++) {
+        if (anchored[start]) continue;
+        let end = start;
+        while (end + 1 < layerN && !anchored[end + 1]) end++;
+        if (start > 0) {
+          for (let col = start; col <= end; col++) {
+            ideal[col] = ideal[start - 1]! + (col - start + 1);
+          }
+        } else {
+          for (let col = end; col >= start; col--) {
+            ideal[col] = ideal[end + 1]! - (end + 1 - col);
+          }
+        }
+        start = end;
+      }
     }
 
     // Resolve overlaps: left-to-right sweep enforcing min gap of 1
@@ -1820,6 +2093,50 @@ function encodePedigreeLayout(
       }
     }
   }
+  // Someone tied to no one on the rows above or below (a partner who is no
+  // one's parent, and has no parents shown) is free to move: they sit right
+  // beside their partner, or else their nearer neighbour, rather than where
+  // centring the people around them left them, with an empty column between.
+  for (let layer = 0; layer < maxLayer; layer++) {
+    const layerN = n[layer]!;
+    const row = nid[layer]!;
+    const tiedAcrossRows = (node: number) =>
+      graph.parents[node]!.some(
+        (p) => nodeLocation.get(p.parentIndex)?.layer === layer - 1,
+      ) ||
+      getChildrenOf(node, graph).some(
+        (c) => nodeLocation.get(c)?.layer === layer + 1,
+      );
+    const partners = (a: number, b: number | undefined) =>
+      b !== undefined &&
+      graph.partnerGroups.some(
+        (pg) => pg.members.includes(a) && pg.members.includes(b),
+      );
+    for (let pass = 0; pass < layerN; pass++) {
+      let moved = false;
+      for (let col = 0; col < layerN; col++) {
+        const node = row[col]!;
+        if (tiedAcrossRows(node)) continue;
+        const left = col > 0 ? pos[layer]![col - 1]! : -Infinity;
+        const right = col + 1 < layerN ? pos[layer]![col + 1]! : Infinity;
+        const at = pos[layer]![col]!;
+        let target = at;
+        if (partners(node, row[col + 1]) && right - at > 1) target = right - 1;
+        else if (partners(node, row[col - 1]) && at - left > 1)
+          target = left + 1;
+        else if (at - left > 1 && right - at > 1)
+          target = at - left <= right - at ? left + 1 : right - 1;
+        if (!Number.isFinite(target)) continue;
+        target = Math.max(left + 1, Math.min(right - 1, target));
+        if (Math.abs(target - at) > 1e-9) {
+          pos[layer]![col] = target;
+          moved = true;
+        }
+      }
+      if (!moved) break;
+    }
+  }
+
   // Enforce minimum gap of 1 on every layer after all centering passes
   for (let layer = 0; layer < maxLayer; layer++) {
     const layerN = n[layer]!;

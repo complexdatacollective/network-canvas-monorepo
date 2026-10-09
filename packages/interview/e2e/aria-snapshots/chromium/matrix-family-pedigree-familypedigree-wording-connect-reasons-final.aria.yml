@@ -3,7 +3,7 @@
     - heading "Add the members of your family." [level=2]
   - region "Your family":
     - button "Joan"
-    - button "Maternal grandparent, some details missing"
+    - button "Maternal grandparent"
     - button "Pat"
     - button "Rachel" [disabled]
     - button "Tom"
@@ -19,14 +19,17 @@
     - button "Show the whole family"
   - menu:
     - group "Pat parents you - matrix check":
+      - menuitem "Biological parent" [disabled]
+      - menuitem "Biological parent who carried - matrix check" [disabled]
       - menuitem "Adoptive parent"
       - menuitem "Adoptive parent who carried - matrix check" [disabled]
       - menuitem "Step or social parent"
       - menuitem "Step or social parent who carried - matrix check" [disabled]
+      - menuitem "Egg or sperm donor" [disabled]
+      - menuitem "Egg or sperm donor who carried - matrix check" [disabled]
       - menuitem "Surrogate" [disabled]
       - separator
       - menuitem "Back"
-  - text: Now select the person to connect to “Pat”.
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

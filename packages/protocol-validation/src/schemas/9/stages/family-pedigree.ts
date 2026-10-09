@@ -21,6 +21,7 @@ import {
 import {
   asksGenderIdentity,
   choosesFraming,
+  limitsNominationBySex,
 } from '../stage-wording/family-pedigree.ts';
 import { categoricalOptionValueSchema } from '../variables/variable.ts';
 import { baseStageSchema } from './base.ts';
@@ -406,12 +407,11 @@ const TWIN_PAIR_ARGUMENTS = {
   twin: TEXT,
 } as const satisfies MessageArguments;
 
-/** What a message about who carried a child may use: whether the person who
- * carried, or the child, is the participant. */
-const CARRIER_ARGUMENTS = {
-  who: { kind: 'select', cases: ['carrierIsYou', 'childIsYou'] },
-  carrier: TEXT,
-  child: TEXT,
+/** What a message naming the answers it makes unavailable may use: the
+ * answers, already joined into a list, and how many there are. */
+const UNAVAILABLE_ANSWERS_ARGUMENTS = {
+  answers: TEXT,
+  count: PLURAL,
 } as const satisfies MessageArguments;
 
 /**
@@ -428,6 +428,11 @@ export const PEDIGREE_WORDING_ARGUMENTS = {
     ...PEDIGREE_PERSON_ARGUMENTS,
   },
   changeWouldCutOff: { count: PLURAL, names: TEXT },
+  disconnectStandIn: {
+    childIsYou: SELECT_TRUE,
+    child: TEXT,
+    standIn: TEXT,
+  },
   connectParent: {
     parentIsYou: SELECT_TRUE,
     parent: TEXT,
@@ -449,6 +454,10 @@ export const PEDIGREE_WORDING_ARGUMENTS = {
     owner: TEXT,
   },
   missingDetailsList: { details: TEXT },
+  nominationLimitHint: {
+    sex: { kind: 'select', cases: ['female'] },
+  },
+  otherParentBiologicalLabel: { otherIsYou: SELECT_TRUE, other: TEXT },
   panelTitle: {
     relation: {
       kind: 'select',
@@ -468,6 +477,7 @@ export const PEDIGREE_WORDING_ARGUMENTS = {
     parent: TEXT,
   },
   placeholderParentsNote: {
+    shared: { kind: 'select', cases: ['eggParent', 'spermParent'] },
     framing: { kind: 'select', cases: ['gamete'] },
   },
   relativeTerm: {
@@ -479,13 +489,24 @@ export const PEDIGREE_WORDING_ARGUMENTS = {
     names: TEXT,
   },
   removeConfirmTitle: { name: TEXT },
-  sharedDonorsLabel: PEDIGREE_PERSON_ARGUMENTS,
+  sharedDonorsLabel: {
+    ...PEDIGREE_PERSON_ARGUMENTS,
+    hasSurrogate: SELECT_TRUE,
+  },
   sharedParentCountLabel: PEDIGREE_PERSON_ARGUMENTS,
   sharedParentEggOnly: {
     parent: { kind: 'select', cases: ['egg'] },
     framing: { kind: 'select', cases: ['gamete'] },
   },
+  sharedParentsNotSibling: { ...PEDIGREE_PERSON_ARGUMENTS, chosen: TEXT },
+  sharedSurrogateLabel: PEDIGREE_PERSON_ARGUMENTS,
   siblingTwinLabel: PEDIGREE_PERSON_ARGUMENTS,
+  standInPlaceTaken: {
+    anchorIsYou: SELECT_TRUE,
+    anchor: TEXT,
+    count: PLURAL,
+    names: TEXT,
+  },
   stillTogetherLabel: {
     named: SELECT_TRUE,
     personIsYou: SELECT_TRUE,
@@ -499,28 +520,48 @@ export const PEDIGREE_WORDING_ARGUMENTS = {
     parent: TEXT,
     child: TEXT,
   },
-  unavailableBothSameSex: { ...TWO_PEOPLE_ARGUMENTS, sex: TEXT },
+  unavailableBothSameSex: {
+    ...UNAVAILABLE_ANSWERS_ARGUMENTS,
+    ...TWO_PEOPLE_ARGUMENTS,
+    sex: TEXT,
+  },
   unavailableCannotCarry: {
+    ...UNAVAILABLE_ANSWERS_ARGUMENTS,
     who: { kind: 'select', cases: ['you', 'this'] },
     name: TEXT,
     sex: TEXT,
   },
   unavailableCarried: {
     who: { kind: 'select', cases: ['personIsYou', 'childIsYou'] },
-    child: TEXT,
+    children: TEXT,
     sex: TEXT,
   },
-  unavailableCarrierChoice: CARRIER_ARGUMENTS,
-  unavailableCarrierRecorded: CARRIER_ARGUMENTS,
+  unavailableCarrierRecorded: {
+    ...UNAVAILABLE_ANSWERS_ARGUMENTS,
+    who: { kind: 'select', cases: ['carrierIsYou', 'childIsYou'] },
+    carrier: TEXT,
+    child: TEXT,
+  },
   unavailableGeneticParentsFull: {
+    ...UNAVAILABLE_ANSWERS_ARGUMENTS,
     who: { kind: 'select', cases: ['childIsYou', 'includesYou'] },
     child: TEXT,
     first: TEXT,
     second: TEXT,
   },
-  unavailableIdenticalTwin: TWIN_PAIR_ARGUMENTS,
-  unavailableIdenticalTwinNew: PEDIGREE_PERSON_ARGUMENTS,
+  unavailableIdenticalTwin: { ...TWIN_PAIR_ARGUMENTS, answer: TEXT },
+  unavailableIdenticalTwinNew: { ...PEDIGREE_PERSON_ARGUMENTS, answer: TEXT },
+  unavailableSameSexAsCoParent: {
+    who: {
+      kind: 'select',
+      cases: ['personIsYou', 'childIsYou', 'coParentIsYou'],
+    },
+    coParent: TEXT,
+    children: TEXT,
+    sex: TEXT,
+  },
   unavailableSameSexGeneticParent: {
+    ...UNAVAILABLE_ANSWERS_ARGUMENTS,
     who: { kind: 'select', cases: ['coParentIsYou', 'childIsYou'] },
     coParent: TEXT,
     child: TEXT,
@@ -543,9 +584,10 @@ const argumentWording = (key: WordingWithArguments) =>
  * the message's id in the interface's catalog, so the translations keep the
  * names their messages were written with.
  *
- * The framing words and the gender identity question are shown only in some
- * configurations: they are optional here, and required by the stage while
- * their configuration is on (see `CONFIGURED_WORDING`).
+ * The framing words, the gender identity question and the note on a question
+ * limited to one sex at birth are shown only in some configurations: they are
+ * optional here, and required by the stage while their configuration is on
+ * (see `CONFIGURED_WORDING`).
  */
 export const FamilyPedigreeWordingSchema = z.strictObject({
   alsoParentOfLabel: plainWording(),
@@ -571,6 +613,7 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
   disconnectConfirmDescription: plainWording(),
   disconnectConfirmTitle: argumentWording('disconnectConfirmTitle'),
   disconnectHint: plainWording(),
+  disconnectStandIn: argumentWording('disconnectStandIn'),
   disconnectWouldCutOff: argumentWording('disconnectWouldCutOff'),
   dontKnow: plainWording(),
   framingChoiceDescription: plainWording().optional(),
@@ -578,6 +621,8 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
   genderIdentityLabel: plainWording().optional(),
   generatedLabelOf: argumentWording('generatedLabelOf'),
   missingDetailsList: argumentWording('missingDetailsList'),
+  nominationLimitHint: argumentWording('nominationLimitHint').optional(),
+  otherParentBiologicalLabel: argumentWording('otherParentBiologicalLabel'),
   otherParentLabel: plainWording(),
   otherParentNone: plainWording(),
   otherParentUnknown: plainWording(),
@@ -596,14 +641,18 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
   sharedParentCountBoth: plainWording(),
   sharedParentCountLabel: argumentWording('sharedParentCountLabel'),
   sharedParentEggOnly: argumentWording('sharedParentEggOnly'),
+  sharedParentsNotSibling: argumentWording('sharedParentsNotSibling'),
+  sharedSurrogateLabel: argumentWording('sharedSurrogateLabel'),
   siblingBiologicalParentLabel: plainWording(),
   siblingKindLabel: plainWording(),
+  siblingOtherBiologicalParentLabel: plainWording(),
   siblingTwinFraternal: plainWording(),
   siblingTwinHint: plainWording(),
   siblingTwinIdentical: plainWording(),
   siblingTwinLabel: argumentWording('siblingTwinLabel'),
   siblingTwinNo: plainWording(),
   siblingTwinUnknown: plainWording(),
+  standInPlaceTaken: argumentWording('standInPlaceTaken'),
   stillTogetherLabel: argumentWording('stillTogetherLabel'),
   twinsHint: plainWording(),
   twinsLabel: argumentWording('twinsLabel'),
@@ -612,13 +661,13 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
   unavailableBothSameSex: argumentWording('unavailableBothSameSex'),
   unavailableCannotCarry: argumentWording('unavailableCannotCarry'),
   unavailableCarried: argumentWording('unavailableCarried'),
-  unavailableCarrierChoice: argumentWording('unavailableCarrierChoice'),
   unavailableCarrierRecorded: argumentWording('unavailableCarrierRecorded'),
   unavailableGeneticParentsFull: argumentWording(
     'unavailableGeneticParentsFull',
   ),
   unavailableIdenticalTwin: argumentWording('unavailableIdenticalTwin'),
   unavailableIdenticalTwinNew: argumentWording('unavailableIdenticalTwinNew'),
+  unavailableSameSexAsCoParent: argumentWording('unavailableSameSexAsCoParent'),
   unavailableSameSexGeneticParent: argumentWording(
     'unavailableSameSexGeneticParent',
   ),
@@ -661,6 +710,12 @@ const CONFIGURED_WORDING = [
     key: 'genderIdentityLabel',
     applies: asksGenderIdentity,
     requiredWhen: 'the stage asks about gender identity',
+  },
+  {
+    key: 'nominationLimitHint',
+    applies: limitsNominationBySex,
+    requiredWhen:
+      'a question about the family applies only to people of one sex assigned at birth',
   },
 ] as const;
 

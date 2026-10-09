@@ -316,5 +316,28 @@ describe('kindepth', () => {
         0, 1, 1, 2, 2, 1, 1,
       ]);
     });
+
+    it('aligns a group that shares a parent pair with another group (confirm-r1-67)', () => {
+      // grace → you. you, nadia and ethan's stand-in father are ethan's
+      // parents; you and nadia adopt lily. Both groups hold you and nadia,
+      // and the stand-in, a partner of no one, must still join their row.
+      const social = (parentIndex: number): ParentConnection => ({
+        parentIndex,
+        edgeType: 'social',
+      });
+      const adoptive = (parentIndex: number): ParentConnection => ({
+        parentIndex,
+        edgeType: 'adoptive',
+      });
+      const parents: ParentConnection[][] = [
+        [],
+        [bio(0)],
+        [],
+        [],
+        [social(1), bio(2), bio(3)],
+        [adoptive(1), adoptive(2)],
+      ];
+      expect(kindepth(parents, true)).toEqual([0, 1, 1, 1, 2, 2]);
+    });
   });
 });

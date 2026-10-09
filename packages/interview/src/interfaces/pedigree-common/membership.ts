@@ -213,16 +213,23 @@ export function peopleCutOffByChange(
     after,
     () => `\u0000stand-in-${next++}`,
     sexAttribute,
+    family,
   );
   // New stand-ins are connected only to the people they stand in for, so
-  // they reconnect nobody.
+  // they reconnect nobody; but the genetic parent recorded in a stand-in's
+  // place takes it for everyone the stand-in stood in for, which keeps them
+  // connected.
   const kept = participantsFamily(
     familyAfterChange(
-      after,
-      {
-        removedLinkIds: standIns.removedLinkIds,
-        removedPersonIds: standIns.removedPersonIds,
-      },
+      familyAfterChange(
+        after,
+        {
+          removedLinkIds: standIns.removedLinkIds,
+          removedPersonIds: standIns.removedPersonIds,
+        },
+        sexAttribute,
+      ),
+      { links: standIns.links },
       sexAttribute,
     ),
   );

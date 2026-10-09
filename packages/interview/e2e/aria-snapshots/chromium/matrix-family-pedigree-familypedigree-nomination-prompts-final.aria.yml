@@ -5,6 +5,7 @@
     - button "Julie" [pressed]
     - button "Rob" [disabled]
     - button "You"
+  - paragraph: People assigned male at birth can’t be selected for this question.
   - toolbar "Family tree tools":
     - button "Zoom out"
     - button "Zoom in"

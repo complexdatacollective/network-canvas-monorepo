@@ -10,13 +10,15 @@ import { getInterfaceTemplate, newStageFields } from '../templates.ts';
 
 /**
  * The words a Family Pedigree holds only while a configuration asks for them:
- * the wording question and its control, and the gender identity question.
+ * the wording question and its control, the gender identity question, and the
+ * note on a question about the family limited to one sex at birth.
  */
 const CONFIGURATION_WORDS = [
   'framingChoiceDescription',
   'framingChoiceTitle',
   'framingControlLabel',
   'genderIdentityLabel',
+  'nominationLimitHint',
 ];
 
 describe('getInterfaceTemplate', () => {

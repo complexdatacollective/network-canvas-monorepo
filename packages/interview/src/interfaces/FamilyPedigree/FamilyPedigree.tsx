@@ -61,7 +61,6 @@ import {
   getNetworkNodes,
   getNodeColorSelector,
   getStageMetadata,
-  resolveNodeShape,
 } from '../../selectors/session';
 import { getCodebook, getStages } from '../../store/modules/protocol';
 import {
@@ -93,7 +92,9 @@ import {
   focusNeighbourInDirection,
   PedigreeViewport,
   usePedigreeZoomButtons,
+  zoomForKey,
 } from '../pedigree-common/PedigreeCanvas';
+import { symbolShapesOf } from '../pedigree-common/symbolShapes';
 import {
   answersContradictedBy,
   type CompletenessItem,
@@ -157,9 +158,14 @@ import {
 } from './model';
 import { ownedOptionLabels } from './options';
 import PedigreeLayout from './pedigree-layout/components/PedigreeLayout';
+import { FAMILY_PEDIGREE_GAPS } from './pedigree-layout/layoutDimensions';
 import type { PedigreeLink } from './pedigree-layout/types';
 import { pedigreeLinksOf } from './pedigreeLinks';
-import { PedigreeWordsProvider, usePedigreeWordsOf } from './pedigreeWords';
+import {
+  configuredWord,
+  PedigreeWordsProvider,
+  usePedigreeWordsOf,
+} from './pedigreeWords';
 import { relationshipWrites } from './relationshipToParticipant';
 import { reproductiveRolesOf } from './reproductiveRoles';
 import {
@@ -202,6 +208,28 @@ type PanelState = {
   then?: 'sibling' | 'child';
 } | null;
 
+/**
+ * The least zoom at which every name drawn in the given symbols is at least
+ * as large on screen as `text-xs`, the size below which a name stops being
+ * legible.
+ */
+const legibleScale = (symbols: Iterable<HTMLElement>) => {
+  const rootSize =
+    Number.parseFloat(getComputedStyle(document.documentElement).fontSize) ||
+    16;
+  let smallest = Number.POSITIVE_INFINITY;
+  for (const symbol of symbols) {
+    for (const text of symbol.querySelectorAll('span')) {
+      if (!text.textContent?.trim()) continue;
+      smallest = Math.min(
+        smallest,
+        Number.parseFloat(getComputedStyle(text).fontSize),
+      );
+    }
+  }
+  return Number.isFinite(smallest) ? (rootSize * 0.75) / smallest : 0;
+};
+
 /** The buttons of the add menu shown around a person's symbol, if any. */
 const menuItemsOf = (symbol: HTMLElement) => [
   ...(symbol
@@ -209,15 +237,15 @@ const menuItemsOf = (symbol: HTMLElement) => [
     ?.querySelectorAll<HTMLElement>('[data-add-menu-item]') ?? []),
 ];
 
-/** The attributes recording a link. */
+/** The attributes recording a link. Whether a parent carried the
+ * pregnancy is left unrecorded while not known, told apart from "No". */
 const linkAttributesFor = (config: PedigreeConfig, link: PlannedLink) => ({
   [config.kindAttribute]: [link.kind],
   ...(link.kind === 'partner'
     ? { [config.currentPartnerAttribute]: link.isCurrentPartner ?? true }
-    : {
-        [config.gestationalCarrierAttribute]:
-          link.isGestationalCarrier ?? false,
-      }),
+    : link.isGestationalCarrier === undefined
+      ? {}
+      : { [config.gestationalCarrierAttribute]: link.isGestationalCarrier }),
 });
 
 /** The attributes recording twins: their zygosity, as the relationship
@@ -280,6 +308,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // birth was changed elsewhere in the interview) can still be deselected.
   const canSelect = (person: Person) =>
     canNominate(person) || isNominated(person);
+  // A prompt limited to one sex says so beneath the family, and the people
+  // it leaves out stay reachable, shown unavailable and described by it.
+  const nominationLimitId = useId();
+  const nominationLimit = nomination?.onlyForSexAssignedAtBirth;
+  const nominationLimitHint =
+    nominationLimit === undefined
+      ? undefined
+      : text(configuredWord(wording.nominationLimitHint), {
+          sex: nominationLimit,
+        });
 
   // The stage's own record: the framing the participant chose, when the
   // stage leaves it to them.
@@ -390,8 +428,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const framingUnanswered =
     stage.framing === 'participantPreference' &&
     pedigreeMetadata?.framing === undefined;
-  const [framingOpen, setFramingOpen] = useState(false);
+  const [framingOpen, setFramingOpenState] = useState(false);
   const wordingForced = framingUnanswered && framingOpen;
+  // The question opens by itself a moment after the stage loads (below), but
+  // only if nothing has opened it, or answered it, before then: once it has
+  // been opened it never opens again uninvited.
+  const askFramingOnLoad = useRef(framingUnanswered);
+  const setFramingOpen = useCallback((open: boolean) => {
+    askFramingOnLoad.current = false;
+    setFramingOpenState(open);
+  }, []);
   useEffect(() => {
     if (encryptDetails) requirePassphrase();
   }, [encryptDetails, requirePassphrase]);
@@ -671,17 +717,30 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // Some of the family always stays in the clear part of the canvas.
   const panZoom = usePanZoom({ viewportRef, contentRef, clearInsets });
   // The whole family, clear of the prompt above and the toolbar below, with
-  // room around it for anyone's add menu.
+  // room around it for anyone's add menu while one can be shown (not on a
+  // nomination prompt). Each prompt opens on it only as far out as names
+  // stay legible: when the whole family would be drawn smaller, it opens on
+  // the participant at the least legible zoom instead, and the participant
+  // shows the rest by panning, zooming or showing the whole family.
+  const nominating = nomination !== undefined;
   const showWholeFamily = useCallback(
-    ({ animated = true }: { animated?: boolean } = {}) => {
+    ({
+      animated = true,
+      legible = false,
+    }: { animated?: boolean; legible?: boolean } = {}) => {
       const layout = contentRef.current?.firstElementChild;
       if (!(layout instanceof HTMLElement)) return;
+      const ego = family.egoId ? nodeRefs.current.get(family.egoId) : undefined;
       panZoom.fitToView(layout, clearInsets(), {
         animated,
-        reach: addMenuReach(menuReachRef.current),
+        reach: nominating ? undefined : addMenuReach(menuReachRef.current),
+        least:
+          legible && ego
+            ? { scale: legibleScale(nodeRefs.current.values()), around: ego }
+            : undefined,
       });
     },
-    [panZoom, clearInsets],
+    [panZoom, clearInsets, nominating, family.egoId],
   );
   const zoomButtons = usePedigreeZoomButtons({
     panZoom,
@@ -730,22 +789,25 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const participantFraming = framingSetting === 'participantPreference';
   // Opened a moment after the stage loads, once the toolbar is in, so the
   // participant sees the rest of the interface first.
-  const askFramingOnLoad = useRef(
-    participantFraming && chosenFraming === undefined,
-  );
   useEffect(() => {
     if (!askFramingOnLoad.current) return;
-    const timer = setTimeout(() => setFramingOpen(true), FRAMING_OPEN_DELAY);
+    const timer = setTimeout(() => {
+      if (askFramingOnLoad.current) setFramingOpen(true);
+    }, FRAMING_OPEN_DELAY);
     return () => clearTimeout(timer);
-  }, []);
+  }, [setFramingOpen]);
   const reduceMotion = useReducedMotion();
   const framing = pedigreeFraming(framingSetting, chosenFraming);
-  const chooseFraming = useCallback(
-    (chosen: FramingId) => {
-      writePedigreeMetadata({ framing: chosen });
-    },
-    [writePedigreeMetadata],
-  );
+  // A choice renames everyone shown by a label, so it is announced.
+  const chooseFraming = (chosen: FramingId) => {
+    askFramingOnLoad.current = false;
+    writePedigreeMetadata({ framing: chosen });
+    setAnnouncement(
+      intl.formatMessage(messages.framingChosenAnnouncement, {
+        framing: chosen,
+      }),
+    );
+  };
   // Everyone the participant has not named is shown by the label that will
   // be saved as their name when they leave, worked out afresh from the family
   // as it stands, so the canvas and the stages after it always agree.
@@ -844,6 +906,12 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     () => new Map(shown.people.map((person) => [person.id, person.name ?? ''])),
     [shown.people],
   );
+  // The shape each person's symbol is drawn with, so that lines meet the
+  // symbols' edges.
+  const nodeShapes = useMemo(
+    () => symbolShapesOf(shown.people, shapeDefinition),
+    [shown.people, shapeDefinition],
+  );
 
   const { nodeWidth, nodeHeight, measurementContainer } = useNodeMeasurement({
     component: <Node size="sm" />,
@@ -859,9 +927,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (!nodeRefs.current.has(family.egoId)) return;
     const first = fittedForPrompt.current === null;
     fittedForPrompt.current = prompt.id;
-    showWholeFamily({ animated: !first });
+    showWholeFamily({ animated: !first, legible: true });
   });
-  const nominating = nomination !== undefined;
 
   // Adding someone can move everyone else in the layout. The person in
   // question (the one selected, focused, or else the participant) stays where
@@ -882,8 +949,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   });
 
   // The person selected moves to the middle of the part of the screen the
-  // side panel leaves uncovered. Someone being added, and the panel itself,
-  // are drawn a moment after the panel opens, so this waits for both.
+  // side panel leaves uncovered, clear of the prompt and the toolbar, with
+  // the person the panel was opened from beside them, the family zooming
+  // out if the two do not both fit. Someone being added, and the panel
+  // itself, are drawn a moment after the panel opens, so this waits for
+  // both.
+  const panelAnchorId = !panel?.open
+    ? null
+    : panel.mode.kind === 'add'
+      ? panel.mode.anchor.id
+      : panel.mode.person.id;
   useEffect(() => {
     if (!selectedId) return;
     let frame = 0;
@@ -896,18 +971,25 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         return;
       }
       if (!element) return;
+      const anchor = panelAnchorId
+        ? nodeRefs.current.get(panelAnchorId)
+        : undefined;
       // A panel as wide as the screen leaves nothing beside it, so the
       // person is centred on the whole canvas.
       const visibleRight = window.innerWidth - (drawer?.offsetWidth ?? 0);
       const canvasLeft = viewportRef.current?.getBoundingClientRect().left ?? 0;
-      panZoom.centreOn(element, {
-        visibleRight:
-          visibleRight - canvasLeft > 160 ? visibleRight : undefined,
-      });
+      panZoom.centreOn(
+        anchor && anchor !== element ? [element, anchor] : element,
+        {
+          visibleRight:
+            visibleRight - canvasLeft > 160 ? visibleRight : undefined,
+          insets: clearInsets(),
+        },
+      );
     };
     frame = requestAnimationFrame(centre);
     return () => cancelAnimationFrame(frame);
-  }, [selectedId, panZoom]);
+  }, [selectedId, panelAnchorId, panZoom, clearInsets]);
 
   // Closing the panel puts the view back as it was when the panel opened:
   // the same zoom, with the person it was opened from where they were on
@@ -921,8 +1003,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     anchorAt: Point;
     subjectId: string;
   } | null>(null);
+  // The one just added, placed in view as the panel closed, and the person
+  // the panel was opened from, to whom focus (and the add menu) returns:
+  // bringing that person's menu into view keeps the one added in view too.
+  const placedOnClose = useRef<{
+    anchorId: string;
+    subjectId: string;
+  } | null>(null);
   const rememberView = (anchorId: string, subjectId: string) => {
     if (panel?.open) return;
+    placedOnClose.current = null;
     const anchor = nodeRefs.current.get(anchorId);
     viewBeforePanel.current = anchor
       ? {
@@ -986,6 +1076,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     const reach = addMenuReach(menuReachRef.current);
     const around = Math.max(reach.content, reach.screen / scale);
     const added = boxOf(subject);
+    placedOnClose.current = {
+      anchorId: before.anchorId,
+      subjectId: before.subjectId,
+    };
     panZoom.goTo(
       viewKeepingInArea({
         view: { x, y, scale },
@@ -1010,14 +1104,39 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // Only when the menu opens, or moves to someone else.
   const menuFromFocus = menuPersonId !== null && menuPersonId === focusedId;
   const revealedMenuId = useRef<string | null>(null);
+  // Brings someone, and their add menu when it shows, into the clear part of
+  // the canvas, without taking the one just added out of it again.
+  const reveal = useCallback(
+    (personId: string, element: HTMLElement) => {
+      const placed = placedOnClose.current;
+      const keep =
+        placed?.anchorId === personId
+          ? nodeRefs.current.get(placed.subjectId)
+          : undefined;
+      if (placed?.anchorId !== personId) placedOnClose.current = null;
+      const reach = addMenuReach(menuReachRef.current);
+      const scale = panZoom.scale.get();
+      panZoom.bringIntoView(
+        [element, ...menuItemsOf(element)],
+        clearInsets(),
+        keep
+          ? {
+              elements: [keep],
+              around: Math.max(reach.content * scale, reach.screen),
+            }
+          : undefined,
+      );
+    },
+    [panZoom, clearInsets],
+  );
   useEffect(() => {
     const id = menuFromFocus ? menuPersonId : null;
     if (id === revealedMenuId.current) return;
     revealedMenuId.current = id;
     const element = id ? nodeRefs.current.get(id) : undefined;
-    if (!element) return;
-    panZoom.bringIntoView([element, ...menuItemsOf(element)], clearInsets());
-  }, [menuFromFocus, menuPersonId, panZoom, clearInsets]);
+    if (!id || !element) return;
+    reveal(id, element);
+  }, [menuFromFocus, menuPersonId, reveal]);
 
   // Anything that could write what the study encrypts waits for the
   // passphrase, and asks for it instead, saying why. When no passphrase can
@@ -1400,10 +1519,28 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   // Keyboard focus shows the menu; focus from a click (or returned there by
   // the panel after a click) does not, so for a mouse user the menu follows
-  // the pointer alone.
+  // the pointer alone. Browsers differ in whether focus a script moves (the
+  // panel returning it) is :focus-visible, so the input last used decides
+  // that, alike in every browser.
+  const lastInput = useRef<'pointer' | 'keyboard' | null>(null);
+  useEffect(() => {
+    const pointer = () => {
+      lastInput.current = 'pointer';
+    };
+    const keyboard = () => {
+      lastInput.current = 'keyboard';
+    };
+    document.addEventListener('pointerdown', pointer, true);
+    document.addEventListener('keydown', keyboard, true);
+    return () => {
+      document.removeEventListener('pointerdown', pointer, true);
+      document.removeEventListener('keydown', keyboard, true);
+    };
+  }, []);
   const handleFocusPerson = (personId: string, event: React.FocusEvent) => {
     setLastFocusedId(personId);
     if (
+      lastInput.current !== 'pointer' &&
       event.target instanceof Element &&
       event.target.matches(':focus-visible')
     ) {
@@ -1411,7 +1548,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       // The canvas does not scroll; keyboard focus pans to the person, clear
       // of the prompt and the toolbar.
       const element = nodeRefs.current.get(personId);
-      if (element) panZoom.bringIntoView(element, clearInsets());
+      if (element) reveal(personId, element);
     }
   };
 
@@ -1419,20 +1556,52 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // moment, so the pointer can cross the gap between the person and a button.
   const hoverLeaveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(hoverLeaveTimer.current), []);
+  const cancelHoverLeave = () => {
+    clearTimeout(hoverLeaveTimer.current);
+    hoverLeaveTimer.current = undefined;
+  };
   const handlePersonPointerEnter = (
     personId: string,
     event: React.PointerEvent,
   ) => {
     if (event.pointerType !== 'mouse') return;
-    clearTimeout(hoverLeaveTimer.current);
+    cancelHoverLeave();
     setHoveredId(personId);
   };
   const handlePersonPointerLeave = (event: React.PointerEvent) => {
     if (event.pointerType !== 'mouse') return;
-    clearTimeout(hoverLeaveTimer.current);
+    cancelHoverLeave();
     // The connector line lets go of a person at once; the add menu waits.
     if (tool !== 'pointer') setHoveredId(null);
-    else hoverLeaveTimer.current = setTimeout(() => setHoveredId(null), 300);
+    else {
+      hoverLeaveTimer.current = setTimeout(() => {
+        hoverLeaveTimer.current = undefined;
+        setHoveredId(null);
+      }, 300);
+    }
+  };
+  // Browsers differ in telling a person the pointer has left them: none does
+  // when the element under the pointer goes (the menu button that opened the
+  // panel), and Firefox does not when the page moves under a still pointer.
+  // So where the pointer moves decides it alike in every browser: over a
+  // person, it is over them; anywhere else on the stage (the panel
+  // included), it has left whoever it was over, as leaving them does.
+  const handleStagePointerMove = (event: React.PointerEvent) => {
+    // A drag (the canvas panned, a button held) is not hovering.
+    if (event.pointerType !== 'mouse' || event.buttons !== 0) return;
+    const over =
+      event.target instanceof Element
+        ? event.target
+            .closest('[data-testid="pedigree-person"]')
+            ?.getAttribute('data-person-id')
+        : undefined;
+    if (over) {
+      if (over !== hoveredId || hoverLeaveTimer.current !== undefined) {
+        handlePersonPointerEnter(over, event);
+      }
+    } else if (hoveredId !== null && hoverLeaveTimer.current === undefined) {
+      handlePersonPointerLeave(event);
+    }
   };
 
   // A touch screen has no hover, so a tap leaves the person's menu showing
@@ -1455,7 +1624,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (nomination) {
       setLastFocusedId(personId);
       const person = family.byId.get(personId);
-      if (!person || !canSelect(person)) return;
+      if (!person) return;
+      if (!canSelect(person)) {
+        if (nominationLimitHint) setAnnouncement(nominationLimitHint);
+        return;
+      }
       void dispatch(
         updateNode({
           nodeId: personId,
@@ -1480,8 +1653,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   // Roving focus: the family is a single tab stop, and the arrow keys move
   // between people by where they sit in the tree.
-  // Someone a nomination prompt cannot apply to cannot be focused, so is
-  // never the tab stop.
+  // Someone a nomination prompt cannot apply to is reached with the arrow
+  // keys, to hear why, but is never the tab stop.
   const tabStopId = [
     lastFocusedId,
     family.egoId,
@@ -1503,6 +1676,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // bubble here through React) are ignored.
   const handleStagePointerDown = (event: React.PointerEvent) => {
     const { target, currentTarget } = event;
+    // For a mouse, the menu follows the pointer alone: a press anywhere lets
+    // go of the menu keyboard focus (or a first visit) showed, so it does not
+    // come back each time the pointer leaves a person.
+    if (event.pointerType === 'mouse') setFocusedId(null);
     if (
       target instanceof Element &&
       currentTarget.contains(target) &&
@@ -1615,11 +1792,27 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // parent fills gives way, a stand-in's sex at birth follows the other
   // genetic parent's, and identical twins whose genetic parents now differ
   // are not known to be identical. Resolves to the write the session
-  // refused, if one was.
+  // refused, if one was. `family` is the family as this render read it,
+  // before the change: the genetic ties the change recorded tell who took a
+  // stand-in's place.
   const keepStandInRule = async () =>
     applyStandIns(
-      planStandIns(latestFamily(), uuid, config.sexAssignedAtBirthAttribute),
+      planStandIns(
+        latestFamily(),
+        uuid,
+        config.sexAssignedAtBirthAttribute,
+        family,
+      ),
     );
+
+  // Whether keeping the stand-in rule changes anything.
+  const changesAnything = (changes: StandInChanges) =>
+    changes.people.length > 0 ||
+    changes.links.length > 0 ||
+    changes.updatedPeople.length > 0 ||
+    changes.changedTwins.length > 0 ||
+    changes.removedLinkIds.length > 0 ||
+    changes.removedPersonIds.length > 0;
 
   // Writes what keeping the stand-in rule changes, stopping at the first
   // write the session refuses, which it resolves to. Stand-ins are taken
@@ -1692,22 +1885,22 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     });
   };
 
-  // The stand-ins a family read on opening the stage is missing (one saved
-  // before this version, or changed by another stage) are added once, so the
-  // participant sees them and the saved family matches one made here. Only
-  // stand-ins are added: nobody is removed or changed until the participant
-  // changes the family.
+  // A family read on opening the stage that does not keep the stand-in rule
+  // (one saved before this version, or changed by another stage) is brought
+  // into line once, as after any change, so the participant sees it as it
+  // will be saved and the saved family matches one made here: stand-ins are
+  // added, give way, and take the sex at birth that follows, in one piece.
   const standInsChecked = useRef(false);
   const addMissingStandIns = useEffectEvent(async () => {
-    const missing = planStandIns(
+    // No change led here: the family is read as it was left.
+    const changes = planStandIns(
       latestFamily(),
       uuid,
       config.sexAssignedAtBirthAttribute,
+      undefined,
     );
-    if (missing.people.length === 0 && missing.links.length === 0) return;
-    reportRefusedStandIn(
-      await applyStandIns({ people: missing.people, links: missing.links }),
-    );
+    if (!changesAnything(changes)) return;
+    reportRefusedStandIn(await applyStandIns(changes));
   });
   useEffect(() => {
     if (!family.egoId || standInsChecked.current) return;
@@ -1782,6 +1975,20 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         }),
       );
       if (writeFailureMessage(updated)) return writeSubmissionResult(updated);
+      // A sex at birth the participant chose for a stand-in, rather than the
+      // one that followed from the other genetic parent, is something they
+      // told about them: they are someone in their own right from then on,
+      // so the stand-in rule neither changes it nor has them give way.
+      if (
+        sexAssignedAtBirth !== mode.person.sexAssignedAtBirth &&
+        isStandIn(family, mode.person.id)
+      ) {
+        writeSharedRecord({
+          standIns: storedSharedRecord().standIns.filter(
+            (id) => id !== mode.person.id,
+          ),
+        });
+      }
       // A name typed for someone whose label was saved is theirs now, even
       // when it is the same words.
       if (
@@ -1809,12 +2016,19 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   ? {
                       [config.currentPartnerAttribute]: update.isCurrentPartner,
                     }
-                  : {
-                      [config.gestationalCarrierAttribute]:
-                        update.isGestationalCarrier,
-                    }),
+                  : update.isGestationalCarrier === undefined
+                    ? {}
+                    : {
+                        [config.gestationalCarrierAttribute]:
+                          update.isGestationalCarrier,
+                      }),
               },
-              unset: [],
+              // Not known any more: nothing recorded.
+              unset:
+                update.kind !== 'partner' &&
+                update.isGestationalCarrier === undefined
+                  ? [config.gestationalCarrierAttribute]
+                  : [],
             },
           }),
         );
@@ -2062,16 +2276,31 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       const cutOff = peopleCutOff(family, {
         linkIds: linksBetween(linkingId, personId),
       });
+      // A stand-in's connection is not replaced by connecting anyone else:
+      // they give way to the parent they stand in for, once added.
+      const standInId = [linkingId, personId].find((id) =>
+        isStandIn(family, id),
+      );
+      const childId = standInId === linkingId ? personId : linkingId;
       if (cutOff.length > 0) {
         refuse(
-          text(wording.disconnectWouldCutOff, {
-            count: cutOff.length,
-            names: listOfNames(cutOff),
-          }),
+          standInId === undefined
+            ? text(wording.disconnectWouldCutOff, {
+                count: cutOff.length,
+                names: listOfNames(cutOff),
+              })
+            : text(wording.disconnectStandIn, {
+                childIsYou: family.byId.get(childId)?.isEgo ? 'true' : 'false',
+                child: displayName(childId),
+                standIn: displayName(standInId),
+              }),
         );
         return;
       }
     }
+    // The menu, or the confirmation, asks its own question now, so the
+    // instruction to select someone is taken back.
+    setAnnouncement('');
     setChosenPair({ firstId: linkingId, secondId: personId });
     if (tool === 'disconnect') void handleDisconnect(linkingId, personId);
   };
@@ -2084,7 +2313,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   const handleConnect = async (connection: Connection) => {
     endConnecting();
-    const link = planConnection(connection);
+    const link = planConnection(
+      connection,
+      family,
+      config.sexAssignedAtBirthAttribute,
+    );
     // A connection that makes a stand-in give way where they were someone's
     // only connection to the participant is refused, as a disconnection
     // that would leave them out is.
@@ -2166,9 +2399,13 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       }),
       confirmLabel: intl.formatMessage(commonMessages.delete),
       intent: 'destructive',
-      // The dialog was opened from the person removed, who is gone.
-      finalFocus: () =>
-        survivorId ? (nodeRefs.current.get(survivorId) ?? null) : null,
+      // The dialog was opened from the person removed: once they are gone,
+      // focus goes on to someone who stays; when nothing was removed, back
+      // to them.
+      finalFocus: () => {
+        const returnTo = removed ? survivorId : personId;
+        return returnTo ? (nodeRefs.current.get(returnTo) ?? null) : null;
+      },
       onConfirm: () => {
         if (survivorId) setLastFocusedId(survivorId);
         for (const linkId of linkIds) dispatch(deleteEdge(linkId));
@@ -2195,7 +2432,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   // Escape in the add menu returns focus to its person; Escape on the person
   // hides the menu.
-  // (+ and − zoom about the middle of the canvas, in `PedigreeViewport`.)
+  // (+ and − zoom, in `PedigreeViewport` and the toolbar's area.)
   const handleCanvasKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === 'Escape' && linkingId) {
       event.preventDefault();
@@ -2274,6 +2511,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       <div
         className="relative flex h-full w-full flex-col"
         onPointerDown={handleStagePointerDown}
+        onPointerMove={handleStagePointerMove}
       >
         <div
           ref={promptRef}
@@ -2325,12 +2563,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               edgeColor={edgeColor}
               links={links}
               nodeNames={nodeNames}
+              nodeShapes={nodeShapes}
               nodeWidth={nodeWidth}
               nodeHeight={nodeHeight}
-              // Room around each person for the add menu that appears beside,
-              // above and below them.
-              rowGapRatio={1.4}
-              columnGapRatio={1.4}
+              rowGapRatio={FAMILY_PEDIGREE_GAPS.rowGapRatio}
+              columnGapRatio={FAMILY_PEDIGREE_GAPS.columnGapRatio}
               renderNode={(personId) => {
                 const person = shown.byId.get(personId);
                 if (!person) return null;
@@ -2343,19 +2580,20 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     }
                     accessibleName={displayName(personId)}
                     color={nodeColor}
-                    shape={
-                      shapeDefinition
-                        ? resolveNodeShape(shapeDefinition, person.attributes)
-                        : 'circle'
-                    }
+                    shape={nodeShapes.get(personId) ?? 'circle'}
                     selected={
                       nomination ? isNominated(person) : personId === selectedId
                     }
+                    // Someone a nomination prompt leaves out stays reachable,
+                    // shown unavailable and described by the prompt's limit.
                     disabled={
                       wordingForced ||
-                      (nomination
-                        ? !canSelect(person)
-                        : pairUnavailable(personId))
+                      (!nomination && pairUnavailable(personId))
+                    }
+                    unavailableReasonId={
+                      nomination && !canSelect(person) && nominationLimitHint
+                        ? nominationLimitId
+                        : undefined
                     }
                     linking={
                       tool !== 'pointer' &&
@@ -2407,6 +2645,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           <div
             ref={toolbarAreaRef}
             className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex flex-col items-center gap-2 px-4"
+            onKeyDown={(event) => zoomForKey(event, panZoom)}
           >
             {detailsLocked && (
               <Alert
@@ -2427,6 +2666,15 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   )}
                 </div>
               </Alert>
+            )}
+            {nominationLimitHint && (
+              <p
+                id={nominationLimitId}
+                className="text-sm opacity-80"
+                data-testid="pedigree-nomination-limit"
+              >
+                {nominationLimitHint}
+              </p>
             )}
             {/* Once a pair is picked, the menu or the confirmation asks its
               own question, so the hint asks for no one else. */}
@@ -2540,6 +2788,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           family={family}
           displayName={displayName}
           parentKindLabels={optionLabels.parentKind}
+          sexLabels={optionLabels.sexAssignedAtBirth}
           anchor={
             chosenPair
               ? (nodeRefs.current.get(chosenPair.secondId) ?? null)

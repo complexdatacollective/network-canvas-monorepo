@@ -75,58 +75,75 @@ function renderGroupLine(
   );
 }
 
+const SLASH_HEIGHT = 12;
+const SLASH_WIDTH = 4;
+const SLASH_GAP = 4;
+const BREAK_HALF_WIDTH = SLASH_WIDTH + SLASH_GAP / 2;
+
+/**
+ * Where the break in a former partnership line goes: its centre and half
+ * width. It starts on the side the line prefers (or at its middle) and keeps
+ * clear of every line that meets or crosses the partnership line there: the
+ * lines of descent leaving it and the auxiliary lines crossing it. When the
+ * preferred place is not clear, it goes in the middle of the widest stretch
+ * between those lines and the partners' symbols.
+ */
+export function formerPartnerBreak(conn: ParentGroupConnector): {
+  centre: number;
+  halfWidth: number;
+} {
+  const { x1, x2 } = conn.segment;
+  const midX = (x1 + x2) / 2;
+  const nhw = conn.nodeHalfWidth ?? 0;
+  // An end that stops at an adoption bracket is already clear of the symbol.
+  const leftNodeEdge = conn.endsAtBracket?.[0] ? x1 : x1 + nhw;
+  const rightNodeEdge = conn.endsAtBracket?.[1] ? x2 : x2 - nhw;
+
+  // Start with the preferred side if specified, otherwise center.
+  let centre =
+    conn.slashSide === 'left'
+      ? leftNodeEdge + (midX - leftNodeEdge) / 2
+      : conn.slashSide === 'right'
+        ? midX + (rightNodeEdge - midX) / 2
+        : midX;
+
+  const blocked = [
+    ...(conn.descentXPositions ?? []),
+    ...(conn.auxiliaryXPositions ?? []),
+  ].filter((x) => x > leftNodeEdge && x < rightNodeEdge);
+  const clearance = BREAK_HALF_WIDTH + EDGE_WIDTH;
+  if (blocked.some((x) => Math.abs(x - centre) < clearance)) {
+    // The middle of the widest stretch between the lines and the symbols.
+    const stops = [leftNodeEdge, ...blocked, rightNodeEdge].toSorted(
+      (a, b) => a - b,
+    );
+    let widest = { from: leftNodeEdge, to: rightNodeEdge, width: -1 };
+    for (let k = 0; k + 1 < stops.length; k++) {
+      const width = stops[k + 1]! - stops[k]!;
+      if (width > widest.width) {
+        widest = { from: stops[k]!, to: stops[k + 1]!, width };
+      }
+    }
+    centre = (widest.from + widest.to) / 2;
+  }
+
+  return {
+    centre: Math.max(
+      leftNodeEdge + BREAK_HALF_WIDTH,
+      Math.min(centre, rightNodeEdge - BREAK_HALF_WIDTH),
+    ),
+    halfWidth: BREAK_HALF_WIDTH,
+  };
+}
+
 function renderInactiveGroupLine(
   conn: ParentGroupConnector,
   idx: number,
   color: string,
 ) {
   const { x1, y1, x2, y2 } = conn.segment;
-  const midX = (x1 + x2) / 2;
   const midY = (y1 + y2) / 2;
-
-  const SLASH_HEIGHT = 12;
-  const SLASH_WIDTH = 4;
-  const SLASH_GAP = 4;
-  const BREAK_HALF_WIDTH = SLASH_WIDTH + SLASH_GAP / 2;
-
-  const nhw = conn.nodeHalfWidth ?? 0;
-  const leftNodeEdge = x1 + nhw;
-  const rightNodeEdge = x2 - nhw;
-
-  // Start with the preferred side if specified, otherwise center.
-  let breakCenterX: number;
-  if (conn.slashSide === 'left') {
-    breakCenterX = leftNodeEdge + (midX - leftNodeEdge) / 2;
-  } else if (conn.slashSide === 'right') {
-    breakCenterX = midX + (rightNodeEdge - midX) / 2;
-  } else {
-    breakCenterX = midX;
-  }
-
-  if (conn.descentXPositions?.length) {
-    const CLEARANCE = BREAK_HALF_WIDTH + EDGE_WIDTH;
-    const tooClose = conn.descentXPositions.some(
-      (dx) => Math.abs(dx - breakCenterX) < CLEARANCE,
-    );
-    if (tooClose) {
-      const minDescent = Math.min(...conn.descentXPositions);
-      const maxDescent = Math.max(...conn.descentXPositions);
-
-      // Place break equidistant between the descent line and the closest node edge
-      const leftGap = minDescent - leftNodeEdge;
-      const rightGap = rightNodeEdge - maxDescent;
-      if (leftGap > rightGap) {
-        breakCenterX = leftNodeEdge + leftGap / 2;
-      } else {
-        breakCenterX = maxDescent + rightGap / 2;
-      }
-    }
-  }
-
-  const safeCenter = Math.max(
-    x1 + nhw + BREAK_HALF_WIDTH,
-    Math.min(breakCenterX, x2 - nhw - BREAK_HALF_WIDTH),
-  );
+  const { centre: safeCenter } = formerPartnerBreak(conn);
 
   return (
     <g key={`group-bar-inactive-${idx}`}>
@@ -189,21 +206,69 @@ function getAuxiliaryStyle(edgeType: AuxiliaryConnector['edgeType']) {
   }
 }
 
+/** The radius of the hop an auxiliary line makes over a line it crosses. */
+const HOP_RADIUS = EDGE_WIDTH * 1.6;
+
+/**
+ * An auxiliary line's course as an SVG path, hopping over each line it
+ * crosses with a half circle (bulging up from a level piece, and to one side
+ * of an upright one) so the crossing does not read as a junction.
+ */
+export function auxiliaryPath(conn: AuxiliaryConnector): string {
+  const { points, hops = [] } = conn;
+  const [first] = points;
+  if (!first) return '';
+  let d = `M${first.x},${first.y}`;
+  for (let k = 1; k < points.length; k++) {
+    const a = points[k - 1]!;
+    const b = points[k]!;
+    const length = Math.hypot(b.x - a.x, b.y - a.y);
+    if (length === 0) continue;
+    const ux = (b.x - a.x) / length;
+    const uy = (b.y - a.y) / length;
+    // The hops on this piece, in order along it, each with room of its own.
+    const along = hops
+      .filter((hop) => Math.abs((hop.x - a.x) * uy - (hop.y - a.y) * ux) < 0.5)
+      .map((hop) => (hop.x - a.x) * ux + (hop.y - a.y) * uy)
+      .filter((at) => at > HOP_RADIUS && at < length - HOP_RADIUS)
+      .toSorted((p, q) => p - q);
+    const sweep = ux > 1e-9 || (Math.abs(ux) <= 1e-9 && uy > 0) ? 1 : 0;
+    let reached = 0;
+    for (const at of along) {
+      if (at - HOP_RADIUS < reached) continue;
+      const before = at - HOP_RADIUS;
+      const after = at + HOP_RADIUS;
+      d += ` L${a.x + ux * before},${a.y + uy * before}`;
+      d += ` A${HOP_RADIUS},${HOP_RADIUS} 0 0 ${sweep} ${a.x + ux * after},${a.y + uy * after}`;
+      reached = after;
+    }
+    d += ` L${b.x},${b.y}`;
+  }
+  return d;
+}
+
 function renderAuxiliary(conn: AuxiliaryConnector, idx: number, color: string) {
   const style = getAuxiliaryStyle(conn.edgeType);
-  // One polyline, so a dashed line's pattern flows round its corners.
+  const stroke = {
+    fill: 'none',
+    stroke: color,
+    strokeWidth: style.strokeWidth,
+    ...('strokeDasharray' in style
+      ? { strokeDasharray: style.strokeDasharray }
+      : {}),
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+  } as const;
+  // One stroke, so a dashed line's pattern flows round its corners (and its
+  // hops, when it crosses another line).
+  if (conn.hops?.length) {
+    return <path key={`aux-${idx}`} d={auxiliaryPath(conn)} {...stroke} />;
+  }
   return (
     <polyline
       key={`aux-${idx}`}
       points={conn.points.map((p) => `${p.x},${p.y}`).join(' ')}
-      fill="none"
-      stroke={color}
-      strokeWidth={style.strokeWidth}
-      {...('strokeDasharray' in style
-        ? { strokeDasharray: style.strokeDasharray }
-        : {})}
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      {...stroke}
     />
   );
 }
@@ -813,7 +878,7 @@ export function PedigreeEdgeSvg({
             textAnchor="middle"
             dominantBaseline="central"
             fill={twinColor}
-            fontSize={14}
+            fontSize={ti.labelSize ?? 14}
             {...(dimmed ? { 'data-edge-dimmed': 'true' } : {})}
           >
             {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- Nonlinguistic pedigree uncertainty glyph; its meaning is translated in the notation key. */}

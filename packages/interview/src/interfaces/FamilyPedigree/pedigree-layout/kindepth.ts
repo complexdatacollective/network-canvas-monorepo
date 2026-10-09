@@ -163,8 +163,19 @@ export function kindepth(
 
     const abad = chaseup([bad], parents);
 
+    // Another group that holds both good and bad, or only members of this
+    // group (a couple who also have children with a third parent), is
+    // aligned by the same move, so it neither makes bad more than a
+    // marry-in nor ties bad to good's side. Kinship2 never meets this: there,
+    // no two groups share a parent pair.
+    const movesWithThisGroup = (g: number[]) =>
+      (g.includes(good) && g.includes(bad)) ||
+      g.every((m) => members.includes(m));
+
     // Simple case: solitary marry-in
-    const badAppearances = groups.filter((g) => g.includes(bad)).length;
+    const badAppearances = groups.filter(
+      (g, i) => g.includes(bad) && (i === who || !movesWithThisGroup(g)),
+    ).length;
     if (abad.length === 1 && badAppearances === 1) {
       depth[bad] = depth[good]!;
       // A marry-in may still have children of their own outside this group.
@@ -173,7 +184,9 @@ export function kindepth(
       let agood = chaseup([good], parents);
 
       // Chase group members and their ancestors, excluding the given group
-      const otherGroups = groups.filter((_, i) => i !== who);
+      const otherGroups = groups.filter(
+        (g, i) => i !== who && !movesWithThisGroup(g),
+      );
 
       for (;;) {
         // Find group co-members of anyone in agood
