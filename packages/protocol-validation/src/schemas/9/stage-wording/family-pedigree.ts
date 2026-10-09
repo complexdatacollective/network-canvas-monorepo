@@ -12,7 +12,7 @@ import {
   SIBLINGS_NONE,
   SIBLINGS_QUESTION,
 } from '../family-pedigree-wording.ts';
-import type { LocalizedString } from '../localized-string.ts';
+import type { FamilyPedigreeWording } from '../stages/family-pedigree.ts';
 import type {
   SuppliedStageSetting,
   SuppliedWording,
@@ -924,7 +924,7 @@ export const FAMILY_PEDIGREE_SUPPLIED_TEXT: readonly SuppliedStageSetting[] = [
  */
 export const familyPedigreeWordingIn = (
   locales: readonly LocaleTag[] = ['en'],
-): Readonly<Record<string, LocalizedString>> =>
+): FamilyPedigreeWording =>
   Object.fromEntries(
     FAMILY_PEDIGREE_SUPPLIED_TEXT.flatMap(({ path, message }) => {
       const [group, key] = path;
@@ -935,4 +935,4 @@ export const familyPedigreeWordingIn = (
       });
       return [[key, Object.fromEntries(held)] as const];
     }),
-  );
+  ) as FamilyPedigreeWording;

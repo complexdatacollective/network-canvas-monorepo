@@ -1,7 +1,4 @@
-import {
-  type FamilyPedigreeWording,
-  familyPedigreeWordingIn,
-} from '@codaco/protocol-validation';
+import { familyPedigreeWordingIn } from '@codaco/protocol-validation';
 
 import { createLocalizedMessageFormatter } from '../../../localization/messageFormatter';
 import type { PedigreeWords } from '../pedigreeWords';
@@ -13,7 +10,7 @@ import type { PedigreeWords } from '../pedigreeWords';
 export const pedigreeWordsIn = (locale = 'en'): PedigreeWords => {
   const format = createLocalizedMessageFormatter();
   return {
-    wording: familyPedigreeWordingIn([locale]) as FamilyPedigreeWording,
+    wording: familyPedigreeWordingIn([locale]),
     text: (value, values) => format(locale, value[locale] ?? '', values),
   };
 };
