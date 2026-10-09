@@ -1250,6 +1250,43 @@
         "es": "Se ha producido un error al enviar el formulario.",
         "hu": "Hiba történt az űrlap elküldésekor."
       }
+    },
+    "validation": {
+      "required": {
+        "en-US": "You must answer this question before continuing.",
+        "es": "Debes responder a esta pregunta antes de continuar.",
+        "hu": "A folytatás előtt válaszolnia kell erre a kérdésre."
+      },
+      "minValue": {
+        "en-US": "Enter a value greater than or equal to {min}.",
+        "es": "Introduce un valor mayor o igual que {min}.",
+        "hu": "Az érték legalább {min} legyen."
+      },
+      "maxValue": {
+        "en-US": "Enter a value less than or equal to {max}.",
+        "es": "Introduce un valor menor o igual que {max}.",
+        "hu": "Az érték legfeljebb {max} legyen."
+      },
+      "minDate": {
+        "en-US": "Must be on or after {min}.",
+        "es": "Debe ser igual o posterior a {min}.",
+        "hu": "Legkorábban {min} lehet."
+      },
+      "minSelected": {
+        "en-US": "{count, plural, one {Select at least # value.} other {Select at least # values.}}",
+        "es": "{count, plural, one {Selecciona al menos # valor.} other {Selecciona al menos # valores.}}",
+        "hu": "{count, plural, one {Válasszon legalább # értéket.} other {Válasszon legalább # értéket.}}"
+      },
+      "maxSelected": {
+        "en-US": "{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}",
+        "es": "{count, plural, one {Selecciona como máximo # valor.} other {Selecciona como máximo # valores.}}",
+        "hu": "{count, plural, one {Legfeljebb # értéket válasszon.} other {Legfeljebb # értéket válasszon.}}"
+      },
+      "unique": {
+        "en-US": "Must be unique.",
+        "es": "Debe ser una respuesta única.",
+        "hu": "Egyedinek kell lennie."
+      }
     }
   }
 }

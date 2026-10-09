@@ -673,6 +673,23 @@
       "submitFailed": {
         "en-US": "An error occurred while submitting the form."
       }
+    },
+    "validation": {
+      "required": {
+        "en-US": "You must answer this question before continuing."
+      },
+      "minValue": {
+        "en-US": "Enter a value greater than or equal to {min}."
+      },
+      "maxValue": {
+        "en-US": "Enter a value less than or equal to {max}."
+      },
+      "minSelected": {
+        "en-US": "{count, plural, one {Select at least # value.} other {Select at least # values.}}"
+      },
+      "unique": {
+        "en-US": "Must be unique."
+      }
     }
   }
 }

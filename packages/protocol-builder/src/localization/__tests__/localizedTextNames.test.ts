@@ -193,6 +193,30 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
       recommendedNote: en('You can continue without these.'),
     },
   ],
+  // Every rule's message, which the fixture's own rules do not all need.
+  [
+    ['interfaceText', 'validation'],
+    Object.fromEntries(
+      [
+        'required',
+        'minLength',
+        'maxLength',
+        'minValue',
+        'maxValue',
+        'minDate',
+        'maxDate',
+        'minSelected',
+        'maxSelected',
+        'unique',
+        'differentFrom',
+        'sameAs',
+        'greaterThan',
+        'lessThan',
+        'greaterThanOrEqual',
+        'lessThanOrEqual',
+      ].map((rule) => [rule, en(`The ${rule} message.`)]),
+    ),
+  ],
   [
     [...fixtureStage('NetworkComposer'), 'nodeForm'],
     { fields: [composerScaleField('warmth', 'How warm are they?')] },

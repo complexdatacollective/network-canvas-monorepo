@@ -3466,6 +3466,52 @@
         "en-US": "An error occurred while submitting the form.",
         "es": "Se ha producido un error al enviar el formulario."
       }
+    },
+    "validation": {
+      "required": {
+        "en-US": "You must answer this question before continuing.",
+        "es": "Debes responder a esta pregunta antes de continuar."
+      },
+      "minValue": {
+        "en-US": "Enter a value greater than or equal to {min}.",
+        "es": "Introduce un valor mayor o igual que {min}."
+      },
+      "maxValue": {
+        "en-US": "Enter a value less than or equal to {max}.",
+        "es": "Introduce un valor menor o igual que {max}."
+      },
+      "minDate": {
+        "en-US": "Must be on or after {min}.",
+        "es": "Debe ser igual o posterior a {min}."
+      },
+      "maxDate": {
+        "en-US": "Must be on or before {max}.",
+        "es": "Debe ser igual o anterior a {max}."
+      },
+      "minSelected": {
+        "en-US": "{count, plural, one {Select at least # value.} other {Select at least # values.}}",
+        "es": "{count, plural, one {Selecciona al menos # valor.} other {Selecciona al menos # valores.}}"
+      },
+      "maxSelected": {
+        "en-US": "{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}",
+        "es": "{count, plural, one {Selecciona como máximo # valor.} other {Selecciona como máximo # valores.}}"
+      },
+      "unique": {
+        "en-US": "Must be unique.",
+        "es": "Debe ser una respuesta única."
+      },
+      "differentFrom": {
+        "en-US": "{hasLabel, select, true {Your answer must be different from your answer to ''{label}''.} other {Your answer must be different from your earlier answer.}}",
+        "es": "{hasLabel, select, true {Tu respuesta debe ser distinta de tu respuesta a «{label}».} other {Tu respuesta debe ser distinta de la anterior.}}"
+      },
+      "sameAs": {
+        "en-US": "{hasLabel, select, true {Your answer must be the same as your answer to ''{label}''.} other {Your answer must be the same as your earlier answer.}}",
+        "es": "{hasLabel, select, true {Tu respuesta debe ser igual a tu respuesta a «{label}».} other {Tu respuesta debe ser igual a la anterior.}}"
+      },
+      "greaterThan": {
+        "en-US": "{hasLabel, select, true {Your answer must be greater than your answer to ''{label}''.} other {Your answer must be greater than your earlier answer.}}",
+        "es": "{hasLabel, select, true {Tu respuesta debe ser mayor que tu respuesta a «{label}».} other {Tu respuesta debe ser mayor que la anterior.}}"
+      }
     }
   }
 }

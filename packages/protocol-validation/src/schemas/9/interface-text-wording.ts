@@ -410,3 +410,284 @@ export const FORMS_INTERFACE_TEXT = {
     },
   },
 } as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
+
+export const VALIDATION_INTERFACE_TEXT = {
+  required: {
+    id: 'frescoUi.validation.required',
+    message: {
+      'en': 'You must answer this question before continuing.',
+      'de': 'Sie müssen diese Frage beantworten, bevor Sie fortfahren können.',
+      'es': 'Debes responder a esta pregunta antes de continuar.',
+      'fr': 'Vous devez répondre à cette question avant de continuer.',
+      'it': 'Devi rispondere a questa domanda prima di continuare.',
+      'nl': 'Je moet deze vraag beantwoorden voordat je verdergaat.',
+      'pt-BR': 'Você precisa responder a esta pergunta antes de continuar.',
+      'zh-Hans': '您必须先回答此问题才能继续。',
+      'zh-Hant': '請先回答此問題再繼續。',
+    },
+  },
+  minLength: {
+    id: 'frescoUi.validation.minLengthError',
+    arguments: { min: { kind: 'plural' } },
+    message: {
+      'en': '{min, plural, one {Enter at least # character.} other {Enter at least # characters.}}',
+      'de': '{min, plural, one {Geben Sie mindestens # Zeichen ein.} other {Geben Sie mindestens # Zeichen ein.}}',
+      'es': '{min, plural, one {Introduce al menos # carácter.} other {Introduce al menos # caracteres.}}',
+      'fr': '{min, plural, one {Saisissez au moins # caractère.} other {Saisissez au moins # caractères.}}',
+      'it': '{min, plural, one {Inserisci almeno # carattere.} many {Inserisci almeno # di caratteri.} other {Inserisci almeno # caratteri.}}',
+      'nl': '{min, plural, one {Voer minimaal # teken in.} other {Voer minimaal # tekens in.}}',
+      'pt-BR':
+        '{min, plural, one {Mínimo de caracteres: #} other {Mínimo de caracteres: #}}',
+      'zh-Hans': '{min, plural, other {至少输入 # 个字符。}}',
+      'zh-Hant': '{min, plural, other {請至少輸入 # 個字元。}}',
+    },
+  },
+  maxLength: {
+    id: 'frescoUi.validation.maxLengthError',
+    arguments: { max: { kind: 'plural' } },
+    message: {
+      'en': '{max, plural, one {Enter at most # character.} other {Enter at most # characters.}}',
+      'de': '{max, plural, one {Geben Sie höchstens # Zeichen ein.} other {Geben Sie höchstens # Zeichen ein.}}',
+      'es': '{max, plural, one {Introduce como máximo # carácter.} other {Introduce como máximo # caracteres.}}',
+      'fr': '{max, plural, one {Saisissez # caractère au maximum.} other {Saisissez # caractères au maximum.}}',
+      'it': '{max, plural, one {Inserisci al massimo # carattere.} many {Inserisci al massimo # di caratteri.} other {Inserisci al massimo # caratteri.}}',
+      'nl': '{max, plural, one {Voer maximaal # teken in.} other {Voer maximaal # tekens in.}}',
+      'pt-BR':
+        '{max, plural, one {Máximo de caracteres: #} other {Máximo de caracteres: #}}',
+      'zh-Hans': '{max, plural, other {最多输入 # 个字符。}}',
+      'zh-Hant': '{max, plural, other {最多可輸入 # 個字元。}}',
+    },
+  },
+  minValue: {
+    id: 'frescoUi.validation.minValueError',
+    arguments: { min: { kind: 'text' } },
+    message: {
+      'en': 'Enter a value greater than or equal to {min}.',
+      'de': 'Geben Sie einen Wert größer oder gleich {min} ein.',
+      'es': 'Introduce un valor mayor o igual que {min}.',
+      'fr': 'Saisissez une valeur supérieure ou égale à {min}.',
+      'it': 'Inserisci un valore maggiore o uguale a {min}.',
+      'nl': 'Voer een waarde in die groter is dan of gelijk is aan {min}.',
+      'pt-BR': 'Digite um valor maior ou igual a {min}.',
+      'zh-Hans': '请输入大于或等于 {min} 的值。',
+      'zh-Hant': '請輸入大於或等於 {min} 的值。',
+    },
+  },
+  maxValue: {
+    id: 'frescoUi.validation.maxValueError',
+    arguments: { max: { kind: 'text' } },
+    message: {
+      'en': 'Enter a value less than or equal to {max}.',
+      'de': 'Geben Sie einen Wert kleiner oder gleich {max} ein.',
+      'es': 'Introduce un valor menor o igual que {max}.',
+      'fr': 'Saisissez une valeur inférieure ou égale à {max}.',
+      'it': 'Inserisci un valore minore o uguale a {max}.',
+      'nl': 'Voer een waarde in die kleiner is dan of gelijk is aan {max}.',
+      'pt-BR': 'Digite um valor menor ou igual a {max}.',
+      'zh-Hans': '请输入小于或等于 {max} 的值。',
+      'zh-Hant': '請輸入小於或等於 {max} 的值。',
+    },
+  },
+  minDate: {
+    id: 'frescoUi.validation.minDate',
+    arguments: { min: { kind: 'text' } },
+    message: {
+      'en': 'Must be on or after {min}.',
+      'de': 'Darf nicht früher als {min} sein.',
+      'es': 'Debe ser igual o posterior a {min}.',
+      'fr': 'Au plus tôt : {min}.',
+      'it': 'Non deve essere precedente a {min}.',
+      'nl': 'Moet {min} of later zijn.',
+      'pt-BR': 'Precisa ser igual ou posterior a {min}.',
+      'zh-Hans': '必须在 {min} 或之后。',
+      'zh-Hant': '必須在 {min} 或之後。',
+    },
+  },
+  maxDate: {
+    id: 'frescoUi.validation.maxDate',
+    arguments: { max: { kind: 'text' } },
+    message: {
+      'en': 'Must be on or before {max}.',
+      'de': 'Darf nicht später als {max} sein.',
+      'es': 'Debe ser igual o anterior a {max}.',
+      'fr': 'Au plus tard : {max}.',
+      'it': 'Deve essere uguale o precedente a {max}.',
+      'nl': 'Moet {max} of eerder zijn.',
+      'pt-BR': 'Precisa ser igual ou anterior a {max}.',
+      'zh-Hans': '必须在 {max} 或之前。',
+      'zh-Hant': '必須在 {max} 或之前。',
+    },
+  },
+  minSelected: {
+    id: 'frescoUi.validation.minSelectedError',
+    arguments: { count: { kind: 'plural' } },
+    message: {
+      'en': '{count, plural, one {Select at least # value.} other {Select at least # values.}}',
+      'de': '{count, plural, one {Wählen Sie mindestens # Wert aus.} other {Wählen Sie mindestens # Werte aus.}}',
+      'es': '{count, plural, one {Selecciona al menos # valor.} other {Selecciona al menos # valores.}}',
+      'fr': '{count, plural, one {Sélectionnez au moins # valeur.} other {Sélectionnez au moins # valeurs.}}',
+      'it': '{count, plural, one {Seleziona almeno # valore.} many {Seleziona almeno # di valori.} other {Seleziona almeno # valori.}}',
+      'nl': '{count, plural, one {Selecteer minimaal # waarde.} other {Selecteer minimaal # waarden.}}',
+      'pt-BR':
+        '{count, plural, one {Mínimo de valores selecionados: #} other {Mínimo de valores selecionados: #}}',
+      'zh-Hans': '{count, plural, other {至少选择 # 个值。}}',
+      'zh-Hant': '{count, plural, other {請至少選取 # 項。}}',
+    },
+  },
+  maxSelected: {
+    id: 'frescoUi.validation.maxSelectedError',
+    arguments: { count: { kind: 'plural' } },
+    message: {
+      'en': '{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}',
+      'de': '{count, plural, one {Wählen Sie höchstens # Wert aus.} other {Wählen Sie höchstens # Werte aus.}}',
+      'es': '{count, plural, one {Selecciona como máximo # valor.} other {Selecciona como máximo # valores.}}',
+      'fr': '{count, plural, one {Sélectionnez # valeur au maximum.} other {Sélectionnez # valeurs au maximum.}}',
+      'it': '{count, plural, one {Seleziona al massimo # valore.} many {Seleziona al massimo # di valori.} other {Seleziona al massimo # valori.}}',
+      'nl': '{count, plural, one {Selecteer maximaal # waarde.} other {Selecteer maximaal # waarden.}}',
+      'pt-BR':
+        '{count, plural, one {Máximo de valores selecionados: #} other {Máximo de valores selecionados: #}}',
+      'zh-Hans': '{count, plural, other {最多选择 # 个值。}}',
+      'zh-Hant': '{count, plural, other {最多可選取 # 項。}}',
+    },
+  },
+  unique: {
+    id: 'frescoUi.validation.uniqueError',
+    message: {
+      'en': 'Must be unique.',
+      'de': 'Muss eindeutig sein.',
+      'es': 'Debe ser una respuesta única.',
+      'fr': 'Doit être unique.',
+      'it': 'Deve essere univoco.',
+      'nl': 'Moet uniek zijn.',
+      'pt-BR': 'Precisa ser único.',
+      'zh-Hans': '必须唯一。',
+      'zh-Hant': '必須是唯一值。',
+    },
+  },
+  differentFrom: {
+    id: 'frescoUi.validation.differentFromError',
+    arguments: {
+      hasLabel: { kind: 'select', cases: ['true'] },
+      label: { kind: 'text' },
+    },
+    message: {
+      'en': "{hasLabel, select, true {Your answer must be different from your answer to ''{label}''.} other {Your answer must be different from your earlier answer.}}",
+      'de': '{hasLabel, select, true {Ihre Antwort muss sich von Ihrer Antwort auf „{label}“ unterscheiden.} other {Ihre Antwort muss sich von Ihrer vorherigen Antwort unterscheiden.}}',
+      'es': '{hasLabel, select, true {Tu respuesta debe ser distinta de tu respuesta a «{label}».} other {Tu respuesta debe ser distinta de la anterior.}}',
+      'fr': '{hasLabel, select, true {Votre réponse doit être différente de votre réponse à « {label} ».} other {Votre réponse doit être différente de votre réponse précédente.}}',
+      'it': '{hasLabel, select, true {La tua risposta deve essere diversa dalla risposta a «{label}».} other {La tua risposta deve essere diversa dalla risposta precedente.}}',
+      'nl': '{hasLabel, select, true {Je antwoord moet verschillen van je antwoord op “{label}”.} other {Je antwoord moet verschillen van je eerdere antwoord.}}',
+      'pt-BR':
+        '{hasLabel, select, true {Sua resposta precisa ser diferente da sua resposta a “{label}”.} other {Sua resposta precisa ser diferente da sua resposta anterior.}}',
+      'zh-Hans':
+        '{hasLabel, select, true {您的回答必须与“{label}”的回答不同。} other {您的回答必须与之前的回答不同。}}',
+      'zh-Hant':
+        '{hasLabel, select, true {您的答案必須與「{label}」的答案不同。} other {您的答案必須與先前的答案不同。}}',
+    },
+  },
+  sameAs: {
+    id: 'frescoUi.validation.sameAsError',
+    arguments: {
+      hasLabel: { kind: 'select', cases: ['true'] },
+      label: { kind: 'text' },
+    },
+    message: {
+      'en': "{hasLabel, select, true {Your answer must be the same as your answer to ''{label}''.} other {Your answer must be the same as your earlier answer.}}",
+      'de': '{hasLabel, select, true {Ihre Antwort muss mit Ihrer Antwort auf „{label}“ übereinstimmen.} other {Ihre Antwort muss mit Ihrer vorherigen Antwort übereinstimmen.}}',
+      'es': '{hasLabel, select, true {Tu respuesta debe ser igual a tu respuesta a «{label}».} other {Tu respuesta debe ser igual a la anterior.}}',
+      'fr': '{hasLabel, select, true {Votre réponse doit être identique à votre réponse à « {label} ».} other {Votre réponse doit être identique à votre réponse précédente.}}',
+      'it': '{hasLabel, select, true {La tua risposta deve essere uguale alla risposta a «{label}».} other {La tua risposta deve essere uguale alla risposta precedente.}}',
+      'nl': '{hasLabel, select, true {Je antwoord moet hetzelfde zijn als je antwoord op “{label}”.} other {Je antwoord moet hetzelfde zijn als je eerdere antwoord.}}',
+      'pt-BR':
+        '{hasLabel, select, true {Sua resposta precisa ser igual à sua resposta a “{label}”.} other {Sua resposta precisa ser igual à sua resposta anterior.}}',
+      'zh-Hans':
+        '{hasLabel, select, true {您的回答必须与“{label}”的回答相同。} other {您的回答必须与之前的回答相同。}}',
+      'zh-Hant':
+        '{hasLabel, select, true {您的答案必須與「{label}」的答案相同。} other {您的答案必須與先前的答案相同。}}',
+    },
+  },
+  greaterThan: {
+    id: 'frescoUi.validation.greaterThanError',
+    arguments: {
+      hasLabel: { kind: 'select', cases: ['true'] },
+      label: { kind: 'text' },
+    },
+    message: {
+      'en': "{hasLabel, select, true {Your answer must be greater than your answer to ''{label}''.} other {Your answer must be greater than your earlier answer.}}",
+      'de': '{hasLabel, select, true {Ihre Antwort muss größer sein als Ihre Antwort auf „{label}“.} other {Ihre Antwort muss größer sein als Ihre vorherige Antwort.}}',
+      'es': '{hasLabel, select, true {Tu respuesta debe ser mayor que tu respuesta a «{label}».} other {Tu respuesta debe ser mayor que la anterior.}}',
+      'fr': '{hasLabel, select, true {Votre réponse doit être supérieure à votre réponse à « {label} ».} other {Votre réponse doit être supérieure à votre réponse précédente.}}',
+      'it': '{hasLabel, select, true {La tua risposta deve essere maggiore della risposta a «{label}».} other {La tua risposta deve essere maggiore della risposta precedente.}}',
+      'nl': '{hasLabel, select, true {Je antwoord moet groter zijn dan je antwoord op “{label}”.} other {Je antwoord moet groter zijn dan je eerdere antwoord.}}',
+      'pt-BR':
+        '{hasLabel, select, true {Sua resposta precisa ser maior que a sua resposta a “{label}”.} other {Sua resposta precisa ser maior que a sua resposta anterior.}}',
+      'zh-Hans':
+        '{hasLabel, select, true {您的回答必须大于“{label}”的回答。} other {您的回答必须大于之前的回答。}}',
+      'zh-Hant':
+        '{hasLabel, select, true {您的答案必須大於「{label}」的答案。} other {您的答案必須大於先前的答案。}}',
+    },
+  },
+  lessThan: {
+    id: 'frescoUi.validation.lessThanError',
+    arguments: {
+      hasLabel: { kind: 'select', cases: ['true'] },
+      label: { kind: 'text' },
+    },
+    message: {
+      'en': "{hasLabel, select, true {Your answer must be less than your answer to ''{label}''.} other {Your answer must be less than your earlier answer.}}",
+      'de': '{hasLabel, select, true {Ihre Antwort muss kleiner sein als Ihre Antwort auf „{label}“.} other {Ihre Antwort muss kleiner sein als Ihre vorherige Antwort.}}',
+      'es': '{hasLabel, select, true {Tu respuesta debe ser menor que tu respuesta a «{label}».} other {Tu respuesta debe ser menor que la anterior.}}',
+      'fr': '{hasLabel, select, true {Votre réponse doit être inférieure à votre réponse à « {label} ».} other {Votre réponse doit être inférieure à votre réponse précédente.}}',
+      'it': '{hasLabel, select, true {La tua risposta deve essere minore della risposta a «{label}».} other {La tua risposta deve essere minore della risposta precedente.}}',
+      'nl': '{hasLabel, select, true {Je antwoord moet kleiner zijn dan je antwoord op “{label}”.} other {Je antwoord moet kleiner zijn dan je eerdere antwoord.}}',
+      'pt-BR':
+        '{hasLabel, select, true {Sua resposta precisa ser menor que a sua resposta a “{label}”.} other {Sua resposta precisa ser menor que a sua resposta anterior.}}',
+      'zh-Hans':
+        '{hasLabel, select, true {您的回答必须小于“{label}”的回答。} other {您的回答必须小于之前的回答。}}',
+      'zh-Hant':
+        '{hasLabel, select, true {您的答案必須小於「{label}」的答案。} other {您的答案必須小於先前的答案。}}',
+    },
+  },
+  greaterThanOrEqual: {
+    id: 'frescoUi.validation.greaterThanOrEqualError',
+    arguments: {
+      hasLabel: { kind: 'select', cases: ['true'] },
+      label: { kind: 'text' },
+    },
+    message: {
+      'en': "{hasLabel, select, true {Your answer must be the same as or greater than your answer to ''{label}''.} other {Your answer must be the same as or greater than your earlier answer.}}",
+      'de': '{hasLabel, select, true {Ihre Antwort muss mindestens so groß sein wie Ihre Antwort auf „{label}“.} other {Ihre Antwort muss mindestens so groß sein wie Ihre vorherige Antwort.}}',
+      'es': '{hasLabel, select, true {Tu respuesta debe ser igual o mayor que tu respuesta a «{label}».} other {Tu respuesta debe ser igual o mayor que la anterior.}}',
+      'fr': '{hasLabel, select, true {Votre réponse doit être supérieure ou égale à votre réponse à « {label} ».} other {Votre réponse doit être supérieure ou égale à votre réponse précédente.}}',
+      'it': '{hasLabel, select, true {La tua risposta deve essere maggiore o uguale alla risposta a «{label}».} other {La tua risposta deve essere maggiore o uguale alla risposta precedente.}}',
+      'nl': '{hasLabel, select, true {Je antwoord mag niet kleiner zijn dan je antwoord op “{label}”.} other {Je antwoord mag niet kleiner zijn dan je eerdere antwoord.}}',
+      'pt-BR':
+        '{hasLabel, select, true {Sua resposta precisa ser igual ou maior que a sua resposta a “{label}”.} other {Sua resposta precisa ser igual ou maior que a sua resposta anterior.}}',
+      'zh-Hans':
+        '{hasLabel, select, true {您的回答必须等于或大于“{label}”的回答。} other {您的回答必须等于或大于之前的回答。}}',
+      'zh-Hant':
+        '{hasLabel, select, true {您的答案必須等於或大於「{label}」的答案。} other {您的答案必須等於或大於先前的答案。}}',
+    },
+  },
+  lessThanOrEqual: {
+    id: 'frescoUi.validation.lessThanOrEqualError',
+    arguments: {
+      hasLabel: { kind: 'select', cases: ['true'] },
+      label: { kind: 'text' },
+    },
+    message: {
+      'en': "{hasLabel, select, true {Your answer must be the same as or less than your answer to ''{label}''.} other {Your answer must be the same as or less than your earlier answer.}}",
+      'de': '{hasLabel, select, true {Ihre Antwort darf höchstens so groß sein wie Ihre Antwort auf „{label}“.} other {Ihre Antwort darf höchstens so groß sein wie Ihre vorherige Antwort.}}',
+      'es': '{hasLabel, select, true {Tu respuesta debe ser igual o menor que tu respuesta a «{label}».} other {Tu respuesta debe ser igual o menor que la anterior.}}',
+      'fr': '{hasLabel, select, true {Votre réponse doit être inférieure ou égale à votre réponse à « {label} ».} other {Votre réponse doit être inférieure ou égale à votre réponse précédente.}}',
+      'it': '{hasLabel, select, true {La tua risposta deve essere minore o uguale alla risposta a «{label}».} other {La tua risposta deve essere minore o uguale alla risposta precedente.}}',
+      'nl': '{hasLabel, select, true {Je antwoord mag niet groter zijn dan je antwoord op “{label}”.} other {Je antwoord mag niet groter zijn dan je eerdere antwoord.}}',
+      'pt-BR':
+        '{hasLabel, select, true {Sua resposta precisa ser igual ou menor que a sua resposta a “{label}”.} other {Sua resposta precisa ser igual ou menor que a sua resposta anterior.}}',
+      'zh-Hans':
+        '{hasLabel, select, true {您的回答必须等于或小于“{label}”的回答。} other {您的回答必须等于或小于之前的回答。}}',
+      'zh-Hant':
+        '{hasLabel, select, true {您的答案必須等於或小於「{label}」的答案。} other {您的答案必須等於或小於先前的答案。}}',
+    },
+  },
+} as const satisfies Readonly<Record<string, InterfaceTextEntry>>;

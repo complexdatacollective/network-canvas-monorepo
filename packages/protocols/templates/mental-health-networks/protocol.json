@@ -789,6 +789,17 @@
       "submitFailed": {
         "en-US": "An error occurred while submitting the form."
       }
+    },
+    "validation": {
+      "required": {
+        "en-US": "You must answer this question before continuing."
+      },
+      "maxSelected": {
+        "en-US": "{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}"
+      },
+      "unique": {
+        "en-US": "Must be unique."
+      }
     }
   }
 }

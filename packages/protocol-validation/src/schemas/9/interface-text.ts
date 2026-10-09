@@ -9,6 +9,7 @@ import {
   type InterfaceTextEntry,
   INTERVIEW_INTERFACE_TEXT,
   PASSPHRASE_INTERFACE_TEXT,
+  VALIDATION_INTERFACE_TEXT,
 } from './interface-text-wording.ts';
 import {
   type LocalizedString,
@@ -30,7 +31,8 @@ import {
  * setting instead.
  *
  * A protocol holds only the text it can show: the `interview` group always,
- * and each other group only while the protocol uses what it is for (see
+ * each other group only while the protocol uses what it is for, and of the
+ * validation group only the messages of the rules it uses (see
  * `INTERFACE_TEXT_GROUPS`). Architect writes and removes the groups as the
  * protocol changes, with the wording Network Canvas supplies, and the
  * researcher may change and translate them like any other text.
@@ -99,10 +101,73 @@ const usesForms = (protocol: ProtocolDocument) =>
       holdsAForm(stage),
   );
 
+/**
+ * Every record the protocol holds anywhere in its codebook and stages: where
+ * an input control and its parameters may be declared, since a Network
+ * Composer's field can set its own.
+ */
+const recordsWithin = (
+  value: unknown,
+): readonly Readonly<Record<string, unknown>>[] => {
+  if (Array.isArray(value)) return value.flatMap(recordsWithin);
+  if (!isRecord(value)) return [];
+  return [value, ...Object.values(value).flatMap(recordsWithin)];
+};
+
+/** The validation rules whose message is held under another name. */
+const VALIDATION_RULE_MESSAGES: Readonly<Record<string, string>> = {
+  greaterThanVariable: 'greaterThan',
+  lessThanVariable: 'lessThan',
+  greaterThanOrEqualToVariable: 'greaterThanOrEqual',
+  lessThanOrEqualToVariable: 'lessThanOrEqual',
+};
+
+/** The bounds a date control sets on its answer: each one's message. */
+const dateBoundMessages = (
+  control: Readonly<Record<string, unknown>>,
+): readonly string[] => {
+  // A relative date picker always bounds its answer on both sides, from its
+  // anchor and the days before and after it.
+  if (control.component === 'RelativeDatePicker') return ['minDate', 'maxDate'];
+  if (control.component !== 'DatePicker') return [];
+  const parameters = isRecord(control.parameters) ? control.parameters : {};
+  return [
+    ...(typeof parameters.min === 'string' ? ['minDate'] : []),
+    ...(typeof parameters.max === 'string' ? ['maxDate'] : []),
+  ];
+};
+
+/**
+ * The validation messages a protocol can show: one for each rule its
+ * attributes use, and one for each bound its date controls set.
+ */
+const validationMessagesUsed = (
+  protocol: ProtocolDocument,
+): ReadonlySet<string> => {
+  const used = new Set<string>();
+  for (const variable of codebookVariables(protocol.codebook)) {
+    if (!isRecord(variable.validation)) continue;
+    for (const [rule, value] of Object.entries(variable.validation)) {
+      if (value === undefined || value === false) continue;
+      const message = VALIDATION_RULE_MESSAGES[rule] ?? rule;
+      if (message in VALIDATION_INTERFACE_TEXT) used.add(message);
+    }
+  }
+  for (const control of recordsWithin([protocol.codebook, protocol.stages])) {
+    for (const message of dateBoundMessages(control)) used.add(message);
+  }
+  return used;
+};
+
 type InterfaceTextGroup = Readonly<{
   entries: Readonly<Record<string, InterfaceTextEntry>>;
   /** Whether a protocol shows the group's text; it is held only then. */
   usedBy: (protocol: ProtocolDocument) => boolean;
+  /**
+   * Which of the group's entries a protocol shows, when it shows only some;
+   * the rest are not held. Absent, a used group holds every entry.
+   */
+  entriesUsedBy?: (protocol: ProtocolDocument) => ReadonlySet<string>;
 }>;
 
 /** Every group of interface text, and when a protocol holds it. */
@@ -110,6 +175,11 @@ const INTERFACE_TEXT_GROUPS = {
   interview: { entries: INTERVIEW_INTERFACE_TEXT, usedBy: () => true },
   passphrase: { entries: PASSPHRASE_INTERFACE_TEXT, usedBy: usesPassphrase },
   forms: { entries: FORMS_INTERFACE_TEXT, usedBy: usesForms },
+  validation: {
+    entries: VALIDATION_INTERFACE_TEXT,
+    usedBy: (protocol) => validationMessagesUsed(protocol).size > 0,
+    entriesUsedBy: validationMessagesUsed,
+  },
 } as const satisfies Readonly<Record<string, InterfaceTextGroup>>;
 
 type GroupName = keyof typeof INTERFACE_TEXT_GROUPS;
@@ -128,15 +198,34 @@ const groupSchema = (entries: Readonly<Record<string, InterfaceTextEntry>>) =>
     ),
   );
 
+/** A group whose entries are each held only while the protocol shows it. */
+const partialGroupSchema = (
+  entries: Readonly<Record<string, InterfaceTextEntry>>,
+) =>
+  z.strictObject(
+    Object.fromEntries(
+      Object.entries(entries).map(([key, entry]) => [
+        key,
+        entrySchema(entry).optional(),
+      ]),
+    ),
+  );
+
 export const InterfaceTextSchema = z.strictObject({
   interview: groupSchema(INTERVIEW_INTERFACE_TEXT).optional(),
   passphrase: groupSchema(PASSPHRASE_INTERFACE_TEXT).optional(),
   forms: groupSchema(FORMS_INTERFACE_TEXT).optional(),
+  validation: partialGroupSchema(VALIDATION_INTERFACE_TEXT).optional(),
 });
 
-/** The interface text a protocol holds, by group and name. */
+/**
+ * The interface text a protocol holds, by group and name. An entry of a group
+ * held only in part (`validation`) may be absent.
+ */
 export type InterfaceText = Readonly<
-  Partial<Record<GroupName, Readonly<Record<string, LocalizedString>>>>
+  Partial<
+    Record<GroupName, Readonly<Record<string, LocalizedString | undefined>>>
+  >
 >;
 
 /**
@@ -194,20 +283,24 @@ const heldText = (protocol: ProtocolDocument): InterfaceText =>
 /**
  * The interface text `protocol` should hold: each group it uses, keeping
  * every entry it already has and gaining Network Canvas's wording for any it
- * lacks, and no group it does not use.
+ * lacks, and no group or entry it does not use.
  */
 export const interfaceTextFor = (protocol: ProtocolDocument): InterfaceText => {
   const held = heldText(protocol);
   const next: Partial<Record<GroupName, Record<string, LocalizedString>>> = {};
   for (const group of GROUP_NAMES) {
-    const { entries, usedBy } = INTERFACE_TEXT_GROUPS[group];
+    const { entries, usedBy, entriesUsedBy }: InterfaceTextGroup =
+      INTERFACE_TEXT_GROUPS[group];
     if (!usedBy(protocol)) continue;
+    const shown = entriesUsedBy?.(protocol);
     const current = held[group] ?? {};
     next[group] = Object.fromEntries(
-      Object.entries(entries).map(([key, entry]) => [
-        key,
-        current[key] ?? suppliedValue(entry, protocol.localization),
-      ]),
+      Object.entries(entries)
+        .filter(([key]) => shown === undefined || shown.has(key))
+        .map(([key, entry]) => [
+          key,
+          current[key] ?? suppliedValue(entry, protocol.localization),
+        ]),
     );
   }
   return next;

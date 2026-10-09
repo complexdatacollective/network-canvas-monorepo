@@ -4,6 +4,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { messages as validationMessages } from '@codaco/fresco-ui/form/validation/functions';
 import { getLocaleMetadata } from '@codaco/protocol-validation';
 
 import { interviewCatalogSource } from '../../i18n/catalog';
@@ -99,5 +100,35 @@ describe('InterfaceTextOverlay', () => {
       screen.getAllByRole('button').map((button) => button.textContent),
     ).toEqual(['Anterior', catalogWording[1]]);
     expect(catalogWording[0]).not.toBe('Anterior');
+  });
+
+  // A comparison rule's message chooses its sentence by whether the other
+  // question has a label, which the form gives as a yes-or-no.
+  it('chooses the protocol’s sentence by a yes-or-no the message is given', () => {
+    function Comparison({ label }: { label?: string }) {
+      const intl = useAppIntl();
+      return (
+        <p>
+          {intl.formatMessage(validationMessages.greaterThanError, {
+            hasLabel: label !== undefined,
+            label: label ?? '',
+          })}
+        </p>
+      );
+    }
+    const greaterThan = {
+      en: "{hasLabel, select, true {More than ''{label}''.} other {More than before.}}",
+      es: "{hasLabel, select, true {Más que ''{label}''.} other {Más que antes.}}",
+    };
+
+    render(
+      <Interview interfaceText={{ validation: { greaterThan } }}>
+        <Comparison label="Edad" />
+        <Comparison />
+      </Interview>,
+    );
+
+    expect(screen.getByText("Más que 'Edad'.")).toBeDefined();
+    expect(screen.getByText('Más que antes.')).toBeDefined();
   });
 });

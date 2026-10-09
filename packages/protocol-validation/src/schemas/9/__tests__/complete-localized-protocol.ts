@@ -48,6 +48,61 @@ export const completeProtocol = () => ({
           label: 'Your name',
           type: 'text',
           component: 'Text',
+          validation: { required: true, minLength: 2, maxLength: 40 },
+        },
+        // Every validation rule and date bound, so the protocol holds every
+        // validation message.
+        egoNameAgain: {
+          name: 'EgoNameAgain',
+          label: 'Your name again',
+          type: 'text',
+          component: 'Text',
+          validation: { sameAs: 'egoName' },
+        },
+        egoNickname: {
+          name: 'EgoNickname',
+          label: 'Your nickname',
+          type: 'text',
+          component: 'Text',
+          validation: { differentFrom: 'egoName' },
+        },
+        egoAge: {
+          name: 'EgoAge',
+          label: 'Your age',
+          type: 'number',
+          component: 'Number',
+          validation: { minValue: 0, maxValue: 120 },
+        },
+        egoFirstAge: {
+          name: 'EgoFirstAge',
+          label: 'Age at first',
+          type: 'number',
+          component: 'Number',
+          validation: { lessThanVariable: 'egoAge' },
+        },
+        egoLastAge: {
+          name: 'EgoLastAge',
+          label: 'Age at last',
+          type: 'number',
+          component: 'Number',
+          validation: {
+            greaterThanVariable: 'egoFirstAge',
+            lessThanOrEqualToVariable: 'egoAge',
+          },
+        },
+        egoMovedAge: {
+          name: 'EgoMovedAge',
+          label: 'Age when moved',
+          type: 'number',
+          component: 'Number',
+          validation: { greaterThanOrEqualToVariable: 'egoFirstAge' },
+        },
+        egoBorn: {
+          name: 'EgoBorn',
+          label: 'Born',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { min: '1900-01-01', max: '2020-12-31' },
         },
       },
     },
@@ -63,6 +118,7 @@ export const completeProtocol = () => ({
             label: 'Name',
             type: 'text',
             component: 'Text',
+            validation: { unique: true },
           },
           nickname: {
             name: 'Nickname',
@@ -80,6 +136,7 @@ export const completeProtocol = () => ({
             label: 'Category',
             type: 'categorical',
             options: options(['Friend', 'friend'], ['Family', 'family']),
+            validation: { minSelected: 1, maxSelected: 2 },
           },
           other: {
             name: 'Other',

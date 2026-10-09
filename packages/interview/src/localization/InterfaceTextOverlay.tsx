@@ -29,12 +29,20 @@ const heldTextById = (
   return held;
 };
 
-/** `values` when every one is plain text or a number, as protocol text takes. */
+/**
+ * `values` when every one is plain text, a number or a yes-or-no, as protocol
+ * text takes them. A yes-or-no is given as `true` or `false`, the case a
+ * message's `select` matches it by, as the catalog's would.
+ */
 const plainValues = (
   values: Readonly<Record<string, unknown>> | undefined,
 ): LocalizedMessageValues | undefined => {
   const plain: Record<string, string | number> = {};
   for (const [name, value] of Object.entries(values ?? {})) {
+    if (typeof value === 'boolean') {
+      plain[name] = String(value);
+      continue;
+    }
     if (typeof value !== 'string' && typeof value !== 'number') {
       return undefined;
     }

@@ -68,6 +68,103 @@ describe('the interface text a protocol holds', () => {
     expect(Object.keys(text)).toEqual(['interview', 'forms']);
   });
 
+  it('holds the validation messages of only the rules the protocol uses', () => {
+    const text = interfaceTextFor(
+      protocolWith({
+        codebook: {
+          node: {
+            person: {
+              variables: {
+                name: {
+                  type: 'text',
+                  validation: { required: true, maxLength: 20 },
+                },
+                age: {
+                  type: 'number',
+                  validation: { greaterThanVariable: 'other', unique: false },
+                },
+              },
+            },
+          },
+        },
+      }),
+    );
+    expect(Object.keys(text.validation ?? {}).sort()).toEqual([
+      'greaterThan',
+      'maxLength',
+      'required',
+    ]);
+    expect(text.validation?.required).toEqual({
+      en: 'You must answer this question before continuing.',
+      fr: 'Vous devez répondre à cette question avant de continuer.',
+    });
+    expect(interfaceTextFor(protocolWith()).validation).toBeUndefined();
+  });
+
+  it('holds the date messages for the bounds a date control sets', () => {
+    const withControl = (control: Record<string, unknown>) =>
+      Object.keys(
+        interfaceTextFor(
+          protocolWith({
+            codebook: {
+              ego: { variables: { born: { type: 'datetime', ...control } } },
+            },
+          }),
+        ).validation ?? {},
+      ).sort();
+    expect(
+      withControl({
+        component: 'DatePicker',
+        parameters: { min: '1900-01-01' },
+      }),
+    ).toEqual(['minDate']);
+    expect(withControl({ component: 'DatePicker' })).toEqual([]);
+    expect(withControl({ component: 'RelativeDatePicker' })).toEqual([
+      'maxDate',
+      'minDate',
+    ]);
+    // A Network Composer field can choose its own control.
+    expect(
+      Object.keys(
+        interfaceTextFor(
+          protocolWith({
+            stages: [
+              {
+                type: 'NetworkComposer',
+                form: {
+                  fields: [
+                    {
+                      variable: 'met',
+                      component: 'DatePicker',
+                      parameters: { max: '2026-01-01' },
+                    },
+                  ],
+                },
+              },
+            ],
+          }),
+        ).validation ?? {},
+      ),
+    ).toEqual(['maxDate']);
+  });
+
+  it('drops the message of a rule the protocol no longer uses', () => {
+    const codebook = (validation: Record<string, unknown>) => ({
+      ego: { variables: { name: { type: 'text', validation } } },
+    });
+    const before = withInterfaceText(
+      protocolWith({ codebook: codebook({ required: true, minLength: 2 }) }),
+    );
+    const after = withInterfaceText({
+      ...before,
+      codebook: codebook({ required: true }),
+    });
+    expect(Object.keys(interfaceTextFor(after).validation ?? {})).toEqual([
+      'required',
+    ]);
+    expect(after.interfaceText).toEqual(interfaceTextFor(after));
+  });
+
   it('keeps the researcher’s words', () => {
     const reworded = protocolWith({
       interfaceText: {
