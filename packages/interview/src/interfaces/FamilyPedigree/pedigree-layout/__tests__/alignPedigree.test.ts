@@ -4,7 +4,12 @@ import { alignPedigree } from '../alignPedigree';
 import { computeConnectors } from '../connectors';
 import { toPedigreeInput } from '../pedigreeAdapter';
 import { buildPedigreeGraph, countCrossings } from '../sugiyamaLayout';
-import type { ParentConnection, PedigreeInput, ScalingParams } from '../types';
+import type {
+  ParentConnection,
+  PedigreeInput,
+  PedigreeLink,
+  ScalingParams,
+} from '../types';
 import {
   blendedFamily,
   crossFamily,
@@ -2771,5 +2776,216 @@ describe('a parent with no partnership sits on their child’s parent row', () =
       );
     expect(rowOf(3)).toBe(rowOf(2));
     expect(rowOf(4)).toBe(rowOf(2) + 1);
+  });
+});
+
+describe('seating puts people beside those their lines join', () => {
+  type Tie = [
+    string,
+    PedigreeLink['kind'],
+    string,
+    { former?: boolean; carrier?: boolean }?,
+  ];
+  /** Each person's row and seat, laid out as the interface lays them out. */
+  const seat = (people: string[], ties: Tie[]) => {
+    const { input } = toPedigreeInput(
+      people,
+      ties.map(([source, kind, target, extra]) => ({
+        source,
+        target,
+        kind,
+        ...(kind === 'partner'
+          ? { isActive: !extra?.former }
+          : { isGestationalCarrier: !!extra?.carrier }),
+      })),
+    );
+    const result = alignPedigree(input);
+    const at = (person: string) => {
+      const index = people.indexOf(person);
+      for (let layer = 0; layer < result.n.length; layer++) {
+        const col = result.nid[layer]!.slice(0, result.n[layer]).indexOf(index);
+        if (col >= 0) return { layer, col, x: result.pos[layer]![col]! };
+      }
+      throw new Error(`${person} is not seated`);
+    };
+    const row = (person: string) => {
+      const { layer } = at(person);
+      return result.pos[layer]!.slice(0, result.n[layer]);
+    };
+    return { at, row };
+  };
+  const neighbours = (
+    at: ReturnType<typeof seat>['at'],
+    a: string,
+    b: string,
+  ) => at(a).layer === at(b).layer && Math.abs(at(a).col - at(b).col) === 1;
+
+  it('seats a partnered donor in a sibship beside the parents (confirm-r1-10)', () => {
+    const { at } = seat(
+      ['ego', 'p1', 'p2', 'sam', 'leo', 'theo', 'priya', 'rachel'],
+      [
+        ['p1', 'biological', 'ego', { carrier: true }],
+        ['p2', 'biological', 'ego'],
+        ['p1', 'biological', 'sam', { carrier: true }],
+        ['p2', 'biological', 'sam'],
+        ['sam', 'partner', 'leo'],
+        ['sam', 'donor', 'theo'],
+        ['priya', 'biological', 'theo', { carrier: true }],
+        ['rachel', 'social', 'theo'],
+        ['priya', 'partner', 'rachel'],
+      ],
+    );
+    expect(
+      neighbours(at, 'sam', 'priya') || neighbours(at, 'sam', 'rachel'),
+    ).toBe(true);
+    // Sam's partner still sits beside him.
+    expect(neighbours(at, 'sam', 'leo')).toBe(true);
+  });
+
+  const donorSister: Tie[] = [
+    ['m', 'biological', 'ego', { carrier: true }],
+    ['f', 'biological', 'ego'],
+    ['m', 'biological', 'naomi', { carrier: true }],
+    ['f', 'biological', 'naomi'],
+    ['naomi', 'partner', 'chris'],
+    ['naomi', 'biological', 'ava', { carrier: true }],
+    ['chris', 'biological', 'ava'],
+    ['naomi', 'donor', 'lily'],
+    ['daniel', 'biological', 'lily'],
+    ['daniel', 'partner', 'omar'],
+    ['omar', 'social', 'lily'],
+  ];
+  const donorSisterPeople = [
+    'ego',
+    'm',
+    'f',
+    'naomi',
+    'chris',
+    'ava',
+    'lily',
+    'daniel',
+    'omar',
+  ];
+
+  it('leaves no empty column beside founders who have no parents shown (confirm-r1-18)', () => {
+    const { at, row } = seat(donorSisterPeople, donorSister);
+    const xs = row('naomi');
+    for (let k = 1; k < xs.length; k++) {
+      expect(xs[k]! - xs[k - 1]!).toBeLessThanOrEqual(1 + 1e-9);
+    }
+    // Naomi, the donor, sits beside Lily's parents.
+    expect(
+      neighbours(at, 'naomi', 'daniel') || neighbours(at, 'naomi', 'omar'),
+    ).toBe(true);
+  });
+
+  it('centres each partner of a couple under their own parents (confirm-r1-29)', () => {
+    const { at } = seat(
+      ['ego', 'mum', 'dad', 'pat', 'paula', 'margaret', 'standIn', 'stan'],
+      [
+        ['mum', 'biological', 'ego', { carrier: true }],
+        ['dad', 'biological', 'ego'],
+        ['mum', 'partner', 'dad'],
+        ['pat', 'biological', 'dad'],
+        ['paula', 'biological', 'dad', { carrier: true }],
+        ['pat', 'partner', 'paula', { former: true }],
+        ['margaret', 'biological', 'mum', { carrier: true }],
+        ['standIn', 'biological', 'mum'],
+        ['margaret', 'partner', 'stan'],
+      ],
+    );
+    const mid = (a: string, b: string) => (at(a).x + at(b).x) / 2;
+    expect(Math.abs(at('mum').x - mid('margaret', 'standIn'))).toBeLessThan(
+      0.5 + 1e-9,
+    );
+    expect(Math.abs(at('dad').x - mid('pat', 'paula'))).toBeLessThan(
+      0.5 + 1e-9,
+    );
+  });
+
+  it('seats an adopted child’s birth parents on the child’s side of the sibship (confirm-r1-79)', () => {
+    const { at } = seat(
+      ['ego', 'wendy', 'alan', 'sam', 'joy', 'samFather'],
+      [
+        ['wendy', 'biological', 'ego', { carrier: true }],
+        ['alan', 'biological', 'ego'],
+        ['wendy', 'partner', 'alan'],
+        ['wendy', 'adoptive', 'sam'],
+        ['alan', 'adoptive', 'sam'],
+        ['joy', 'biological', 'sam', { carrier: true }],
+        ['samFather', 'biological', 'sam'],
+      ],
+    );
+    const samSide = Math.sign(at('sam').col - at('ego').col);
+    const couple = [at('wendy').col, at('alan').col];
+    for (const birthParent of ['joy', 'samFather']) {
+      const side =
+        samSide > 0
+          ? at(birthParent).col > Math.max(...couple)
+          : at(birthParent).col < Math.min(...couple);
+      expect(side, birthParent).toBe(true);
+    }
+  });
+
+  it('keeps a couple’s sides when their child is added and a former partner recorded (confirm-r1-64)', () => {
+    const people = ['ego', 'paul', 'kate', 'mother', 'nora'];
+    const base: Tie[] = [
+      ['paul', 'biological', 'ego'],
+      ['paul', 'partner', 'kate'],
+      ['kate', 'adoptive', 'ego'],
+      ['mother', 'biological', 'ego', { carrier: true }],
+    ];
+    const withNora: Tie[] = [
+      ...base,
+      ['kate', 'biological', 'nora', { carrier: true }],
+      ['paul', 'biological', 'nora'],
+    ];
+    const withFormer: Tie[] = [
+      ...withNora,
+      ['paul', 'partner', 'mother', { former: true }],
+    ];
+    const sides = [base, withNora, withFormer].map((ties) => {
+      const { at } = seat(people, ties);
+      return Math.sign(at('kate').col - at('paul').col);
+    });
+    expect(sides).toEqual([sides[0], sides[0], sides[0]]);
+  });
+
+  it('keeps a person’s partners’ sides when one partner gains a partner (confirm-r1-64)', () => {
+    const people = [
+      'ego',
+      'sandra',
+      'victor',
+      'omar',
+      'yasmin',
+      'paul',
+      'liam',
+      'erin',
+    ];
+    const base: Tie[] = [
+      ['sandra', 'biological', 'ego', { carrier: true }],
+      ['victor', 'biological', 'ego'],
+      ['sandra', 'partner', 'victor', { former: true }],
+      ['sandra', 'partner', 'omar'],
+      ['sandra', 'biological', 'yasmin', { carrier: true }],
+      ['omar', 'biological', 'yasmin'],
+      ['sandra', 'biological', 'liam', { carrier: true }],
+      ['paul', 'biological', 'liam'],
+      ['sandra', 'partner', 'paul', { former: true }],
+    ];
+    const withErin: Tie[] = [...base, ['victor', 'partner', 'erin']];
+    const seatsOf = (ties: Tie[]) => {
+      const { at } = seat(people, ties);
+      return ['victor', 'omar', 'paul'].map(
+        (partner) => at(partner).col - at('sandra').col,
+      );
+    };
+    const before = seatsOf(base);
+    const after = seatsOf(withErin);
+    expect(after.map(Math.sign)).toEqual(before.map(Math.sign));
+    // Whoever sat beside Sandra still does.
+    before.forEach((offset, k) => {
+      if (Math.abs(offset) === 1) expect(after[k]).toBe(offset);
+    });
   });
 });
