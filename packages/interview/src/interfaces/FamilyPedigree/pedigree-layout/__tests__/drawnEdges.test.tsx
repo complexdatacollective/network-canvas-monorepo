@@ -14,6 +14,7 @@ import {
   toPedigreeInput,
 } from '../pedigreeAdapter';
 import type { PedigreeLink } from '../types';
+import { drawnMarks, strokePoints } from './drawnMarks';
 
 const DIMENSIONS: LayoutDimensions = {
   nodeWidth: 108,
@@ -26,21 +27,10 @@ type Point = { x: number; y: number };
 
 /** Every drawn stroke, as its points. */
 function strokes(container: HTMLElement): Point[][] {
-  const lines = Array.from(container.querySelectorAll('line')).map((line) => [
-    { x: Number(line.getAttribute('x1')), y: Number(line.getAttribute('y1')) },
-    { x: Number(line.getAttribute('x2')), y: Number(line.getAttribute('y2')) },
-  ]);
-  const polylines = Array.from(container.querySelectorAll('polyline')).map(
-    (polyline) =>
-      (polyline.getAttribute('points') ?? '')
-        .trim()
-        .split(/\s+/)
-        .map((pair) => {
-          const [x, y] = pair.split(',').map(Number);
-          return { x: x!, y: y! };
-        }),
-  );
-  return [...lines, ...polylines];
+  return drawnMarks(container).flatMap((mark) => {
+    const points = strokePoints(mark);
+    return points ? [points] : [];
+  });
 }
 
 const covers = (stroke: Point[], p: Point) =>

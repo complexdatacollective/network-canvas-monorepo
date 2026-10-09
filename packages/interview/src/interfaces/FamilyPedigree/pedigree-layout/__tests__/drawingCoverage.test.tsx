@@ -27,6 +27,7 @@ import type {
   PedigreeLink,
   Point,
 } from '../types';
+import { coordinates, drawnMarks, markPlaces } from './drawnMarks';
 
 const DIMENSIONS: LayoutDimensions = {
   nodeWidth: 108,
@@ -465,14 +466,6 @@ describe('the drawing draws no partnership that was not recorded', () => {
 });
 
 /** The numbers in an SVG points list or path. */
-const coordinates = (text: string): Point[] => {
-  const numbers = (text.match(/-?\d+(\.\d+)?(e-?\d+)?/g) ?? []).map(Number);
-  const points: Point[] = [];
-  for (let k = 0; k + 1 < numbers.length; k += 2) {
-    points.push({ x: numbers[k]!, y: numbers[k + 1]! });
-  }
-  return points;
-};
 
 describe('a former partnership’s break', () => {
   for (const [name, { people, links }] of Object.entries(families)) {
@@ -573,22 +566,12 @@ describe('every line lies inside the drawing', () => {
         svg.querySelector('g[transform]')?.getAttribute('transform') ?? '0,0',
       ).map((p) => [p.x, p.y])[0] ?? [0, 0];
       const outside: string[] = [];
-      for (const element of Array.from(
-        svg.querySelectorAll('polyline, path'),
-      )) {
-        // A path's arcs carry radii and flags; only its M and L points are
-        // places on the line.
-        const text =
-          element.tagName === 'path'
-            ? (element.getAttribute('d') ?? '').replace(
-                /A[^A-Z]*?(?=[ML]|$)/g,
-                '',
-              )
-            : (element.getAttribute('points') ?? '');
-        for (const p of coordinates(text)) {
+      // Every mark, whatever its kind, and every place it covers.
+      for (const mark of drawnMarks(container)) {
+        for (const p of markPlaces(mark)) {
           const [x, y] = [p.x + dx!, p.y + dy!];
           if (x < 0 || x > width || y < 0 || y > height) {
-            outside.push(`${x},${y}`);
+            outside.push(`${mark.tagName} ${x},${y}`);
           }
         }
       }
