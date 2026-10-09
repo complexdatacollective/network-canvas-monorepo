@@ -11,6 +11,7 @@ import {
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
   PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+  PEDIGREE_TWIN_KINDS,
 } from './family-pedigree-values.ts';
 import {
   type InterfaceOwnedOption,
@@ -55,21 +56,31 @@ const variablesOf = (
 
 /**
  * Schema 8 locked the sex at birth and relationship kind attributes to its own
- * labels, and schema 9 keeps the same values under new labels. The values a
- * participant already recorded are untouched; only the labels change. An
- * attribute whose values do not match is left as it is, for validation to
- * report.
+ * labels, and schema 9 keeps the same values under new labels, adding the
+ * values in `addedInSchema9` (the twin kinds, for the relationship kind). The
+ * values a participant already recorded are untouched; only the labels change,
+ * and the added values join them. An attribute whose values do not match
+ * schema 8's set is left as it is, for validation to report.
  */
 const adoptCanonicalOptions = (
   variable: unknown,
   canonical: readonly InterfaceOwnedOption[],
+  addedInSchema9: readonly string[] = [],
 ) => {
   if (!isRecord(variable) || !Array.isArray(variable.options)) return;
   if (variable.type !== 'categorical') return;
   const options = variable.options.filter(isRecord).map(({ value }) => ({
     value,
   }));
-  if (!optionsMatchInterfaceOwnedSet(options, canonical)) return;
+  const schema8Set = canonical.filter(
+    (option) => !addedInSchema9.includes(option.value),
+  );
+  if (
+    !optionsMatchInterfaceOwnedSet(options, canonical) &&
+    !optionsMatchInterfaceOwnedSet(options, schema8Set)
+  ) {
+    return;
+  }
   variable.options = canonical.map((option) => ({ ...option }));
 };
 
@@ -317,6 +328,7 @@ const convertFamilyPedigreeStage = (
       String(edge.relationshipTypeVariable)
     ],
     PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+    PEDIGREE_TWIN_KINDS,
   );
 
   return withoutUndefined({

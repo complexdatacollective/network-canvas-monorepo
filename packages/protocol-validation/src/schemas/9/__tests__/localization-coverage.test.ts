@@ -9,6 +9,7 @@ import {
   collectLocalizedStringsFromSchema,
 } from '../../../utils/collectLocalizedStrings.ts';
 import { localized } from '../../../utils/test-utils.ts';
+import { PEDIGREE_RELATIONSHIP_KINDS } from '../family-pedigree-values.ts';
 import {
   type LocalizedStringFormat,
   localizedString,
@@ -113,7 +114,7 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
     true,
   ),
   site(['codebook', 'edge', 'family', 'label'], 'plain', true),
-  ...Array.from({ length: 6 }, (_, index) =>
+  ...Array.from({ length: PEDIGREE_RELATIONSHIP_KINDS.length }, (_, index) =>
     site(
       [
         'codebook',

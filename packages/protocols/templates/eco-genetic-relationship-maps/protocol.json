@@ -482,6 +482,24 @@
                 "label": {
                   "en-US": "Surrogate"
                 }
+              },
+              {
+                "value": "identicalTwin",
+                "label": {
+                  "en-US": "Identical twin"
+                }
+              },
+              {
+                "value": "fraternalTwin",
+                "label": {
+                  "en-US": "Fraternal twin"
+                }
+              },
+              {
+                "value": "unknownZygosityTwin",
+                "label": {
+                  "en-US": "Twin, not known if identical"
+                }
               }
             ],
             "label": "relationshipKind"

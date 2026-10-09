@@ -24,7 +24,13 @@ import {
 export function participantsFamily(family: Family): Family {
   const { egoId } = family;
   if (egoId === undefined) {
-    return { people: [], byId: new Map(), links: [], egoId: undefined };
+    return {
+      people: [],
+      byId: new Map(),
+      links: [],
+      twins: [],
+      egoId: undefined,
+    };
   }
 
   const neighbours = new Map<string, string[]>();
@@ -62,6 +68,9 @@ export function participantsFamily(family: Family): Family {
     byId: new Map(people.map((person) => [person.id, person])),
     links: family.links.filter(
       (link) => members.has(link.source) && members.has(link.target),
+    ),
+    twins: family.twins.filter(
+      (twin) => members.has(twin.source) && members.has(twin.target),
     ),
     egoId,
   };
