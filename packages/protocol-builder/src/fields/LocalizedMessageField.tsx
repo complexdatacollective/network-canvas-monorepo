@@ -188,11 +188,15 @@ function useMessageVersions(
   const intl = useAppIntl();
   const { caseLabels, placeholderLabels } = useMessageArgumentLabels();
 
+  const placeholderName = (argument: string) => {
+    const label = placeholderLabels[argument]?.trim();
+    return label === undefined || label === '' ? argument : label;
+  };
   const tokens: RichTextEditorToken[] = Object.entries(declaration).flatMap(
     ([argument, { kind }]) =>
       kind === 'select'
         ? []
-        : [{ id: argument, label: placeholderLabels[argument] ?? argument }],
+        : [{ id: argument, label: placeholderName(argument) }],
   );
   const selects = Object.entries(declaration).flatMap(([argument, { kind }]) =>
     kind === 'select' ? [argument] : [],
@@ -214,7 +218,7 @@ function useMessageVersions(
       .slice(0, EXAMPLE_COUNT)
       .map((count) => intl.formatNumber(count));
     return intl.formatMessage(messages.pluralVersion, {
-      placeholder: placeholderLabels[plural] ?? plural,
+      placeholder: placeholderName(plural),
       numbers: intl.formatList(
         counts.length > EXAMPLE_COUNT ? [...shown, '…'] : shown,
         { type: 'unit', style: 'short' },
@@ -233,12 +237,15 @@ function useMessageVersions(
       .join('\u0000');
     const group = groups.get(key) ?? {
       key,
+      // A case without a label (or a blank one) adds nothing, so a group
+      // with none has no label for the versions to point at.
       label: selects
         .map(
           (argument) =>
-            caseLabels[argument]?.[variant.when[argument] ?? ''] ?? '',
+            caseLabels[argument]?.[variant.when[argument] ?? '']?.trim() ?? '',
         )
-        .join(' '),
+        .filter((label) => label !== '')
+        .join(' · '),
       versions: [],
     };
     group.versions.push({ index, label: pluralLabel(variant), variant });

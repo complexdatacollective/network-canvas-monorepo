@@ -2519,6 +2519,246 @@
     "defaultMessage": "Not translated into {language} yet. Participants using {language} will see the {fallback} text, unless their browser also lists a language that has it.",
     "description": "Shown under a text field when the text has no translation in the language being edited, nor in a closely related language. Participants are shown it in another language their web browser lists, when the text has a translation in one, and otherwise in fallback: the protocol’s default language, or failing that another of its languages. language is the language being edited. Both are language names, written in the app’s own language or, in some apps, in their own language."
   },
+  "protocolBuilder.localizedMessage.caseAboutParticipant": {
+    "defaultMessage": "When it is about the participant",
+    "description": "Heading over the version of a message used when it is about the participant themself."
+  },
+  "protocolBuilder.localizedMessage.caseAboutThisPerson": {
+    "defaultMessage": "When it is about this person",
+    "description": "Heading over the version of a message used when it is about the person whose details are open, shown without their name."
+  },
+  "protocolBuilder.localizedMessage.caseCarrierIsParticipant": {
+    "defaultMessage": "When the person who carried the pregnancy is the participant",
+    "description": "Heading over the version of a message used when the person recorded as having carried a child is the participant themself."
+  },
+  "protocolBuilder.localizedMessage.caseChildIsParticipant": {
+    "defaultMessage": "When the child is the participant",
+    "description": "Heading over the version of a message used when the child it is about is the participant themself."
+  },
+  "protocolBuilder.localizedMessage.caseChildIsSomeoneElse": {
+    "defaultMessage": "When the child is someone else",
+    "description": "Heading over the version of a message used when the child it is about is not the participant."
+  },
+  "protocolBuilder.localizedMessage.caseCoParentIsParticipant": {
+    "defaultMessage": "When the other parent is the participant",
+    "description": "Heading over the version of a message used when the other genetic parent of a child is the participant themself."
+  },
+  "protocolBuilder.localizedMessage.caseEggParent": {
+    "defaultMessage": "When the parent is the egg parent",
+    "description": "Heading over the version of a message used when it is about the parent who gave the egg."
+  },
+  "protocolBuilder.localizedMessage.caseFirstIsParticipant": {
+    "defaultMessage": "When the first person is the participant",
+    "description": "Heading over the version of a message used when the first of the two people it is about is the participant themself."
+  },
+  "protocolBuilder.localizedMessage.caseFirstIsSomeoneElse": {
+    "defaultMessage": "When the first person is someone else",
+    "description": "Heading over the version of a message used when the first of the two people it is about is not the participant."
+  },
+  "protocolBuilder.localizedMessage.caseGameteWording": {
+    "defaultMessage": "When using egg and sperm parent wording",
+    "description": "Heading over the version of a message used when the family tree names parents by the egg or sperm they gave."
+  },
+  "protocolBuilder.localizedMessage.caseMotherFatherWording": {
+    "defaultMessage": "When using mother and father wording",
+    "description": "Heading over the version of a message used when the family tree names biological parents as mother and father."
+  },
+  "protocolBuilder.localizedMessage.caseNamesOtherQuestion": {
+    "defaultMessage": "When it names the other question",
+    "description": "Heading over the version of a validation message used when it names the question whose answer it is compared with."
+  },
+  "protocolBuilder.localizedMessage.caseNobodyElseRemoved": {
+    "defaultMessage": "When nobody else would be removed",
+    "description": "Heading over the version of a message used when removing a person would remove nobody else."
+  },
+  "protocolBuilder.localizedMessage.caseOnePerson": {
+    "defaultMessage": "When asking about one person",
+    "description": "Heading over the version of a question used when it asks about a single person."
+  },
+  "protocolBuilder.localizedMessage.caseOthersRemoved": {
+    "defaultMessage": "When other people would be removed too",
+    "description": "Heading over the version of a message used when removing a person would also remove others who are connected only through them."
+  },
+  "protocolBuilder.localizedMessage.caseOtherwise": {
+    "defaultMessage": "In any other case",
+    "description": "Heading over the version of a message used when none of the other versions apply."
+  },
+  "protocolBuilder.localizedMessage.caseParentIsParticipant": {
+    "defaultMessage": "When the parent is the participant",
+    "description": "Heading over the version of a message used when the parent it is about is the participant themself."
+  },
+  "protocolBuilder.localizedMessage.caseParentIsSomeoneElse": {
+    "defaultMessage": "When the parent is someone else",
+    "description": "Heading over the version of a message used when the parent it is about is not the participant."
+  },
+  "protocolBuilder.localizedMessage.caseParticipantIsOneOfTwoParents": {
+    "defaultMessage": "When the participant is one of the two parents",
+    "description": "Heading over the version of a message used when the participant is one of the two genetic parents recorded for a child."
+  },
+  "protocolBuilder.localizedMessage.casePartnerIsParticipant": {
+    "defaultMessage": "When the partner is the participant",
+    "description": "Heading over the version of a message used when the partner it is about is the participant themself."
+  },
+  "protocolBuilder.localizedMessage.casePartnerIsSomeoneElse": {
+    "defaultMessage": "When the partner is someone else",
+    "description": "Heading over the version of a message used when the partner it is about is not the participant."
+  },
+  "protocolBuilder.localizedMessage.casePartnershipCurrent": {
+    "defaultMessage": "When the partnership is current",
+    "description": "Heading over the version of a message used when the two people are still partners."
+  },
+  "protocolBuilder.localizedMessage.casePartnershipEnded": {
+    "defaultMessage": "When the partnership has ended",
+    "description": "Heading over the version of a message used when the two people are no longer partners."
+  },
+  "protocolBuilder.localizedMessage.casePersonIsParticipant": {
+    "defaultMessage": "When the person is the participant",
+    "description": "Heading over the version of a message used when the person it is about is the participant themself."
+  },
+  "protocolBuilder.localizedMessage.casePersonIsSomeoneElse": {
+    "defaultMessage": "When the person is someone else",
+    "description": "Heading over the version of a message used when the person it is about is not the participant."
+  },
+  "protocolBuilder.localizedMessage.casePersonNamed": {
+    "defaultMessage": "When the person has a name",
+    "description": "Heading over the version of a question used when the person it is about has been given a name."
+  },
+  "protocolBuilder.localizedMessage.casePersonUnnamed": {
+    "defaultMessage": "When the person has no name",
+    "description": "Heading over the version of a question used when the person it is about has not been given a name."
+  },
+  "protocolBuilder.localizedMessage.caseRefersToPreviousAnswer": {
+    "defaultMessage": "When it refers to the previous answer",
+    "description": "Heading over the version of a validation message used when it is compared with the previous answer."
+  },
+  "protocolBuilder.localizedMessage.caseRelationChild": {
+    "defaultMessage": "When the relation is a child",
+    "description": "Heading over the version of a message used when the person is, or is being added as, a child of someone."
+  },
+  "protocolBuilder.localizedMessage.caseRelationEdit": {
+    "defaultMessage": "When editing the person",
+    "description": "Heading over the version of a message used when the person’s own details are open for editing."
+  },
+  "protocolBuilder.localizedMessage.caseRelationFormerPartner": {
+    "defaultMessage": "When the relation is a former partner",
+    "description": "Heading over the version of a message used when the person is a former partner of someone."
+  },
+  "protocolBuilder.localizedMessage.caseRelationOwner": {
+    "defaultMessage": "When the person belongs to a named person",
+    "description": "Heading over the version of a message used when the person is described by whose relative they are."
+  },
+  "protocolBuilder.localizedMessage.caseRelationParent": {
+    "defaultMessage": "When the relation is a parent",
+    "description": "Heading over the version of a message used when the person is, or is being added as, a parent of someone."
+  },
+  "protocolBuilder.localizedMessage.caseRelationPartner": {
+    "defaultMessage": "When the relation is a partner",
+    "description": "Heading over the version of a message used when the person is, or is being added as, a partner of someone."
+  },
+  "protocolBuilder.localizedMessage.caseRelationSibling": {
+    "defaultMessage": "When the relation is a sibling",
+    "description": "Heading over the version of a message used when the person is, or is being added as, a sibling of someone."
+  },
+  "protocolBuilder.localizedMessage.caseRelativeCase": {
+    "defaultMessage": "Relative: {term}",
+    "description": "Heading over the version of a message used for one kind of relative. term is the word Network Canvas supplies for that relative, such as “Mother” or “Maternal grandmother”."
+  },
+  "protocolBuilder.localizedMessage.caseRelativeOther": {
+    "defaultMessage": "Any other relative",
+    "description": "Heading over the version of a message used for a relative none of the other versions name."
+  },
+  "protocolBuilder.localizedMessage.caseSeveralPeople": {
+    "defaultMessage": "When asking about several people",
+    "description": "Heading over the version of a question used when it asks about several people at once."
+  },
+  "protocolBuilder.localizedMessage.caseSpermParent": {
+    "defaultMessage": "When the parent is the sperm parent",
+    "description": "Heading over the version of a message used when it is about the parent who gave the sperm."
+  },
+  "protocolBuilder.localizedMessage.caseTwinIsParticipant": {
+    "defaultMessage": "When the twin is the participant",
+    "description": "Heading over the version of a message used when the twin it is about is the participant themself."
+  },
+  "protocolBuilder.localizedMessage.placeholderCarrier": {
+    "defaultMessage": "Name of the person who carried the pregnancy",
+    "description": "Name of the placeholder, inserted into a message, that shows the name of the person recorded as having carried the pregnancy."
+  },
+  "protocolBuilder.localizedMessage.placeholderChild": {
+    "defaultMessage": "Child’s name",
+    "description": "Name of the placeholder, inserted into a message, that shows a child’s name."
+  },
+  "protocolBuilder.localizedMessage.placeholderCoParent": {
+    "defaultMessage": "Other parent’s name",
+    "description": "Name of the placeholder, inserted into a message, that shows the name of the child’s other genetic parent."
+  },
+  "protocolBuilder.localizedMessage.placeholderCondition": {
+    "defaultMessage": "Condition name",
+    "description": "Name of the placeholder, inserted into a heading, that shows the name of the condition being shown."
+  },
+  "protocolBuilder.localizedMessage.placeholderCount": {
+    "defaultMessage": "Number",
+    "description": "Name of the placeholder, inserted into a message, that shows a number, such as how many people or answers it is about."
+  },
+  "protocolBuilder.localizedMessage.placeholderDetails": {
+    "defaultMessage": "Missing details",
+    "description": "Name of the placeholder, inserted into a message, that lists the details still to be filled in."
+  },
+  "protocolBuilder.localizedMessage.placeholderFirst": {
+    "defaultMessage": "First person’s name",
+    "description": "Name of the placeholder, inserted into a message about two people, that shows the first person’s name."
+  },
+  "protocolBuilder.localizedMessage.placeholderLabel": {
+    "defaultMessage": "Question label",
+    "description": "Name of the placeholder, inserted into a validation message, that shows the label of the question whose answer it is compared with."
+  },
+  "protocolBuilder.localizedMessage.placeholderMax": {
+    "defaultMessage": "Maximum",
+    "description": "Name of the placeholder, inserted into a validation message, that shows the largest length, number, date or count allowed."
+  },
+  "protocolBuilder.localizedMessage.placeholderMin": {
+    "defaultMessage": "Minimum",
+    "description": "Name of the placeholder, inserted into a validation message, that shows the smallest length, number, date or count allowed."
+  },
+  "protocolBuilder.localizedMessage.placeholderNames": {
+    "defaultMessage": "Names of the people",
+    "description": "Name of the placeholder, inserted into a message, that shows the names of several people."
+  },
+  "protocolBuilder.localizedMessage.placeholderOwner": {
+    "defaultMessage": "Name of the person they belong to",
+    "description": "Name of the placeholder, inserted into a message, that shows the name of the person a relative belongs to, as in “Sam’s aunt”."
+  },
+  "protocolBuilder.localizedMessage.placeholderParent": {
+    "defaultMessage": "Parent’s name",
+    "description": "Name of the placeholder, inserted into a message, that shows a parent’s name."
+  },
+  "protocolBuilder.localizedMessage.placeholderParentKind": {
+    "defaultMessage": "Kind of parent",
+    "description": "Name of the placeholder, inserted into a message, that shows the kind of parent, such as “Biological mother”."
+  },
+  "protocolBuilder.localizedMessage.placeholderPartner": {
+    "defaultMessage": "Partner’s name",
+    "description": "Name of the placeholder, inserted into a message, that shows a partner’s name."
+  },
+  "protocolBuilder.localizedMessage.placeholderSecond": {
+    "defaultMessage": "Second person’s name",
+    "description": "Name of the placeholder, inserted into a message about two people, that shows the second person’s name."
+  },
+  "protocolBuilder.localizedMessage.placeholderSex": {
+    "defaultMessage": "Sex assigned at birth",
+    "description": "Name of the placeholder, inserted into a message, that shows the sex a person is recorded as having at birth."
+  },
+  "protocolBuilder.localizedMessage.placeholderTerm": {
+    "defaultMessage": "Relationship word",
+    "description": "Name of the placeholder, inserted into a message, that shows the word for a relative, such as “Aunt”."
+  },
+  "protocolBuilder.localizedMessage.placeholderTitle": {
+    "defaultMessage": "Stage title",
+    "description": "Name of the placeholder, inserted into a heading, that shows the title of the stage."
+  },
+  "protocolBuilder.localizedMessage.placeholderTwin": {
+    "defaultMessage": "Twin’s name",
+    "description": "Name of the placeholder, inserted into a message, that shows a twin’s name."
+  },
   "protocolBuilder.localizedMessage.pluralVersion": {
     "defaultMessage": "When “{placeholder}” is {numbers}",
     "description": "Label of the box holding the version of a text shown for some numbers. placeholder is the name of the number the text can show, such as “Parents missing”; numbers lists examples of the numbers that version is for, in the language being edited, such as “1” or “0, 2, 3, …”."
