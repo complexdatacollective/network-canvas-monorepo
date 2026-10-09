@@ -148,16 +148,46 @@ export function computeConnectors(
   // their own grandchild, say) are routed above the higher partner's row,
   // down a lane clear of everyone on the rows it crosses, and into the lower
   // partner from above their row.
+  //
+  // A routed line runs in the strip between a row's sibling bars and the tops
+  // of its symbols, which only vertical lines cross, so it never runs along
+  // or at the height of a sibling bar or a line of descent. It rises from
+  // each partner beside their centre, where their own line up to their
+  // parents runs, on a stem of its own for each of their routed partnerships.
   if (partnerPairs) {
+    // The lanes, as fractions of the strip above a row's symbols measured up
+    // from their tops, keep clear of the twin marks at its middle.
+    const LANES = [0.3, 0.72, 0.18, 0.84, 0.4, 0.6];
     const routedCountByLayer = new Map<number, number>();
+    const stemCountBySide = new Map<string, number>();
+    // Shorter lines take the lower lanes, so lines nest rather than cross.
+    const routedPairs = [...partnerPairs]
+      .filter((pairKey) => !renderedPartnerPairs.has(pairKey))
+      .map((pairKey) => {
+        const [first, second] = pairKey.split(',').map(Number);
+        const firstLocation =
+          first === undefined ? undefined : nodeLocation.get(first);
+        const secondLocation =
+          second === undefined ? undefined : nodeLocation.get(second);
+        return { pairKey, first, second, firstLocation, secondLocation };
+      })
+      .toSorted((a, b) => {
+        const span = (pair: typeof a) =>
+          pair.firstLocation && pair.secondLocation
+            ? Math.abs(pair.firstLocation.x - pair.secondLocation.x) +
+              Math.abs(pair.firstLocation.layer - pair.secondLocation.layer)
+            : 0;
+        return span(a) - span(b);
+      });
 
-    for (const pairKey of partnerPairs) {
-      if (renderedPartnerPairs.has(pairKey)) continue;
-
-      const [first, second] = pairKey.split(',').map(Number);
+    for (const {
+      pairKey,
+      first,
+      second,
+      firstLocation,
+      secondLocation,
+    } of routedPairs) {
       if (first === undefined || second === undefined) continue;
-      const firstLocation = nodeLocation.get(first);
-      const secondLocation = nodeLocation.get(second);
       if (!firstLocation || !secondLocation) continue;
 
       const [leftIndex, left, rightIndex, right] =
@@ -167,14 +197,34 @@ export function computeConnectors(
       const routeAbove = (layer: number) => {
         const routeIndex = routedCountByLayer.get(layer) ?? 0;
         routedCountByLayer.set(layer, routeIndex + 1);
-        return layer - legh * (1 + routeIndex * 0.5);
+        const lane =
+          LANES[routeIndex % LANES.length]! +
+          0.03 * Math.floor(routeIndex / LANES.length);
+        return layer - legh * lane;
       };
-      const [upper, lower] =
-        left.layer <= right.layer ? [left, right] : [right, left];
+      // A partner's stem toward the other partner, offset from their centre
+      // by an amount of its own.
+      const stemX = (
+        personIndex: number,
+        location: { x: number },
+        towardX: number,
+      ) => {
+        const side = towardX < location.x ? -1 : 1;
+        const key = `${personIndex},${side}`;
+        const stem = stemCountBySide.get(key) ?? 0;
+        stemCountBySide.set(key, stem + 1);
+        return location.x + side * boxw * Math.min(0.15 + 0.1 * stem, 0.45);
+      };
+      const [upperIndex, upper, lowerIndex, lower] =
+        left.layer <= right.layer
+          ? [leftIndex, left, rightIndex, right]
+          : [rightIndex, right, leftIndex, left];
       const routeY = routeAbove(upper.layer);
+      const upperX = stemX(upperIndex, upper, lower.x);
+      const lowerX = stemX(lowerIndex, lower, upper.x);
       // The vertical x nearest the lower partner that no one on the rows
       // from the upper partner's down to the lower partner's sits across.
-      let laneX = lower.x;
+      let laneX = lowerX;
       if (upper.layer !== lower.layer) {
         const blocked = [...nodeLocation.values()]
           .filter((loc) => loc.layer >= upper.layer && loc.layer < lower.layer)
@@ -184,36 +234,36 @@ export function computeConnectors(
           blocked.every((bx) => Math.abs(bx - x) >= clearance);
         for (let step = 0; !isClear(laneX); step++) {
           const offset = Math.ceil((step + 1) / 2) * 0.25;
-          laneX = lower.x + (step % 2 === 0 ? offset : -offset);
+          laneX = lowerX + (step % 2 === 0 ? offset : -offset);
         }
       }
-      const lowerRouteY = laneX === lower.x ? routeY : routeAbove(lower.layer);
+      const lowerRouteY = laneX === lowerX ? routeY : routeAbove(lower.layer);
       const endpointSegments: LineSegment[] = [
-        { type: 'line', x1: upper.x, y1: upper.y, x2: upper.x, y2: routeY },
+        { type: 'line', x1: upperX, y1: upper.y, x2: upperX, y2: routeY },
       ];
-      if (laneX !== lower.x) {
+      if (laneX !== lowerX) {
         endpointSegments.push(
           { type: 'line', x1: laneX, y1: routeY, x2: laneX, y2: lowerRouteY },
           {
             type: 'line',
             x1: laneX,
             y1: lowerRouteY,
-            x2: lower.x,
+            x2: lowerX,
             y2: lowerRouteY,
           },
         );
       }
       endpointSegments.push({
         type: 'line',
-        x1: lower.x,
+        x1: lowerX,
         y1: lower.y,
-        x2: lower.x,
+        x2: lowerX,
         y2: lowerRouteY,
       });
       const [segmentLeftX, segmentRightX] =
         upper.layer === lower.layer
-          ? [left.x, right.x]
-          : [Math.min(upper.x, laneX), Math.max(upper.x, laneX)];
+          ? [Math.min(upperX, lowerX), Math.max(upperX, lowerX)]
+          : [Math.min(upperX, laneX), Math.max(upperX, laneX)];
 
       const ancestorsLeft = ancestor(leftIndex, parents);
       const ancestorsRight = new Set(ancestor(rightIndex, parents));

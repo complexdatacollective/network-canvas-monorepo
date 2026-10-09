@@ -356,3 +356,100 @@ describe('a child carried by a surrogate with no other parent', () => {
     ).toEqual([['sue']]);
   });
 });
+
+/** Partnership lines routed above a row, for partners who are not side by side. */
+const routedPartnerships = (connectors: PedigreeConnectors) =>
+  connectors.groupLines.filter((line) => line.endpointSegments);
+
+describe('partnership lines routed above a row', () => {
+  // Two sisters partnered with two brothers: the participant's parents sit
+  // together, so their siblings' partnership has to be routed.
+  const doubleCousins = () =>
+    draw(
+      [
+        'ego',
+        'helen',
+        'rob',
+        'june',
+        'alan',
+        'claire',
+        'edna',
+        'frank',
+        'pete',
+      ],
+      [
+        ['june', 'partner', 'alan'],
+        ['edna', 'partner', 'frank'],
+        ['june', 'biological', 'helen'],
+        ['alan', 'biological', 'helen'],
+        ['june', 'biological', 'claire'],
+        ['alan', 'biological', 'claire'],
+        ['edna', 'biological', 'rob'],
+        ['frank', 'biological', 'rob'],
+        ['edna', 'biological', 'pete'],
+        ['frank', 'biological', 'pete'],
+        ['helen', 'partner', 'rob'],
+        ['helen', 'biological', 'ego', { carrier: true }],
+        ['rob', 'biological', 'ego'],
+        ['claire', 'partner', 'pete'],
+      ],
+    );
+
+  it('runs clear of the sibling bars and the lines of descent', () => {
+    const { connectors, centre } = doubleCousins();
+    const routed = routedPartnerships(connectors);
+    expect(routed.map((line) => line.partnerIds?.toSorted())).toEqual([
+      ['claire', 'pete'],
+    ]);
+    const lane = routed[0]!.segment;
+    const rowTop = centre('claire').y - DIMENSIONS.nodeHeight / 2;
+    for (const line of connectors.parentChildLines) {
+      for (const segment of [line.siblingBar, ...line.parentLink]) {
+        if (segment.y1 !== segment.y2) continue;
+        expect(Math.abs(segment.y1 - lane.y1)).toBeGreaterThan(4);
+        expect(collinearOverlap(lane, segment)).toBe(0);
+      }
+    }
+    // It sits between the row's sibling bars and the tops of the row's
+    // symbols, where no sibling bar or line of descent runs.
+    const barY = descentsInto(connectors, 'claire')[0]!.siblingBar.y1;
+    expect(lane.y1).toBeGreaterThan(barY);
+    expect(lane.y1).toBeLessThan(rowTop);
+  });
+
+  it('rises from each partner beside, not along, their own line up to their parents', () => {
+    const { connectors } = doubleCousins();
+    const routed = routedPartnerships(connectors)[0]!;
+    for (const person of ['claire', 'pete']) {
+      const { segment: upline } = uplineOf(connectors, person);
+      for (const stem of routed.endpointSegments!) {
+        expect(collinearOverlap(upline, stem)).toBe(0);
+      }
+    }
+  });
+
+  it('gives each of a person’s routed partnerships a stem of its own', () => {
+    const { connectors, centre } = draw(
+      ['ego', 'ann', 'bea', 'cat', 'dee'],
+      [
+        ['ego', 'partner', 'ann', { former: true }],
+        ['ego', 'partner', 'bea', { former: true }],
+        ['ego', 'partner', 'cat', { former: true }],
+        ['ego', 'partner', 'dee'],
+      ],
+    );
+    const routed = routedPartnerships(connectors);
+    expect(routed).toHaveLength(2);
+    const ego = centre('ego');
+    const egoStems = routed.flatMap((line) =>
+      line.endpointSegments!.filter(
+        (stem) =>
+          Math.abs(stem.x1 - ego.x) < DIMENSIONS.nodeWidth / 2 &&
+          Math.max(stem.y1, stem.y2) >= ego.y - 1,
+      ),
+    );
+    expect(egoStems).toHaveLength(2);
+    expect(egoStems[0]!.x1).not.toBeCloseTo(egoStems[1]!.x1, 0);
+    expect(collinearOverlap(egoStems[0]!, egoStems[1]!)).toBe(0);
+  });
+});
