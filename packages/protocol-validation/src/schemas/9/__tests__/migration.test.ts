@@ -1014,3 +1014,68 @@ describe('Migrating the text of a Categorical Bin "other" bin from schema 8 to 9
     );
   });
 });
+
+// The base protocol with a Tie-Strength Census whose prompt has the decline
+// label given, as schema 8 stored it.
+const migratedDeclineLabel = (negativeLabel: string) => {
+  const base = createBaseProtocol();
+  const document = asSchema8Protocol({
+    ...base,
+    stages: [
+      ...base.stages,
+      {
+        id: 'tie-strength',
+        type: 'TieStrengthCensus' as const,
+        label: localized('Rate them'),
+        subject: { entity: 'node' as const, type: 'person' },
+        introductionPanel: {
+          title: localized('Rate them'),
+          text: localized('Rate each pair.'),
+        },
+        prompts: [
+          {
+            id: 'tie-strength-prompt',
+            text: localized('How close are these people?'),
+            createEdge: 'knows',
+            edgeVariable: 'closeness',
+            negativeLabel: localized('Placeholder'),
+          },
+        ],
+      },
+    ],
+  });
+  const stage = document.stages.find(({ id }) => id === 'tie-strength');
+  if (!stage || !('prompts' in stage)) throw new Error('No census');
+  const [prompt] = stage.prompts as Record<string, unknown>[];
+  if (!prompt) throw new Error('No census prompt');
+  prompt.negativeLabel = negativeLabel;
+  const migrated = migrateProtocol(document, 9).stages.find(
+    ({ id }) => id === 'tie-strength',
+  );
+  return migrated && 'prompts' in migrated ? migrated.prompts[0] : undefined;
+};
+
+describe('Migrating a Tie-Strength Census decline label from schema 8 to 9', () => {
+  it.each(BLANK_TEXT)(
+    'gives a label of %s the 7 to 8 default, "No relationship"',
+    (_, blank) => {
+      expect(migratedDeclineLabel(blank)).toMatchObject({
+        negativeLabel: localized('No relationship'),
+      });
+    },
+  );
+
+  it('keeps a label that says something', () => {
+    expect(migratedDeclineLabel('Not close')).toMatchObject({
+      negativeLabel: localized('Not close'),
+    });
+  });
+
+  it('says so in the migration notes', () => {
+    const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
+
+    expect(note?.notes).toContain(
+      'On a Tie-Strength Census stage, the label of the option for declining',
+    );
+  });
+});

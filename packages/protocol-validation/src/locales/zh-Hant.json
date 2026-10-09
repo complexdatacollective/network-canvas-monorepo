@@ -91,6 +91,7 @@
   "protocolValidation.migrationNotes.schema9.finishStage": "結束訪談的畫面現在是協定末尾的一個「完成畫面」階段，因此您可以變更其標題和文字，並像協定的其他內容一樣進行翻譯。其初始內容就是訪談一直以來在此處顯示的文字。",
   "protocolValidation.migrationNotes.schema9.introductionPanelText": "介紹面板的文字現在是選填的，因此面板可以只顯示標題。只含空格的文字會被移除，因此面板會像以前一樣只顯示標題。介紹面板的標題必須包含文字，因此只含空格的標題現在會改用階段的名稱。",
   "protocolValidation.migrationNotes.schema9.otherBinText": "在「類別分箱」階段中，用於未列出回答的分箱標籤，以及請參與者描述其回答的問題，現在都必須包含文字。若其中任一項只含空格，現在會改用另一項的文字；否則標籤使用「Other」，問題使用「Please specify」。",
+  "protocolValidation.migrationNotes.schema9.tieStrengthDeclineLabel": "在「關係強度普查」階段中，用於拒絕評價某段關係的選項標籤現在必須包含文字。若它只含空格，現在會顯示為「No relationship」。",
   "protocolValidation.migrationNotes.schema9.rosterPanelTitle": "「名冊資料名字產生器」階段現在有一個面板標題，顯示在參與者從中選擇人員的清單上方，因此您可以變更它，並像協定的其他內容一樣進行翻譯。其初始內容就是訪談一直以來在此處顯示的標題：「Available to add」。",
   "protocolValidation.rule.additionalAttributes": "固定屬性",
   "protocolValidation.rule.component": "輸入控制項",

@@ -775,6 +775,45 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       }
     });
 
+    it('rejects a TieStrengthCensus decline label that shows nothing', () => {
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage({
+          ...baseValidProtocol,
+          stages: [
+            {
+              id: 'tieStrength1',
+              type: 'TieStrengthCensus',
+              label: localized('Tie Strength Census'),
+              subject: { entity: 'node', type: 'person' },
+              prompts: [
+                {
+                  id: 'prompt1',
+                  text: localized('How close are these people?'),
+                  createEdge: 'knows',
+                  edgeVariable: 'closeness',
+                  negativeLabel: localized('   '),
+                },
+              ],
+              introductionPanel: {
+                title: localized('Tie Strength Census'),
+                text: localized('Rate each pair.'),
+              },
+            },
+          ],
+        }),
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error?.issues.map(({ path }) => path)).toContainEqual([
+        'stages',
+        0,
+        'prompts',
+        0,
+        'negativeLabel',
+        'en',
+      ]);
+    });
+
     it('validates edgeVariable for TieStrengthCensus stages', () => {
       const tieStrengthCensusProtocol = {
         ...baseValidProtocol,
