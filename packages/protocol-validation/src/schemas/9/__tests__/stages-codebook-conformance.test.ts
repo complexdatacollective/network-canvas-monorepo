@@ -473,6 +473,7 @@ describe('NameGeneratorRoster dataSource and matchProperties non-empty', () => {
     type: 'NameGeneratorRoster' as const,
     subject: { entity: 'node' as const, type: 'person' },
     dataSource: 'roster-asset',
+    panelTitle: localized('Available to add'),
     prompts: [{ id: 'p1', text: localized('Pick someone') }],
   };
 

@@ -1756,6 +1756,7 @@ const rosterDateStages = [
   {
     id: 'stage-roster-dates',
     type: 'NameGeneratorRoster',
+    panelTitle: { en: 'Available to add' },
     label: { en: 'People' },
     subject: { entity: 'node', type: 'rosterPerson' },
     prompts: [{ id: 'p1', text: { en: 'Pick people' } }],
@@ -1836,6 +1837,7 @@ const rosterPinStages = [
   {
     id: 'stage-roster-pins',
     type: 'NameGeneratorRoster',
+    panelTitle: { en: 'Available to add' },
     label: { en: 'People' },
     subject: { entity: 'node', type: 'rosterPinned' },
     prompts: [{ id: 'p1', text: { en: 'Pick people' } }],

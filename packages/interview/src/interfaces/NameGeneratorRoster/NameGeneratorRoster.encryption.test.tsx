@@ -105,6 +105,7 @@ afterEach(() => {
 const stage: StageProps<'NameGeneratorRoster'>['stage'] = {
   id: 'roster-stage',
   type: 'NameGeneratorRoster',
+  panelTitle: { en: 'Available to add' },
   label: { en: 'Roster' },
   subject: { entity: 'node', type: NODE_TYPE },
   dataSource: 'roster-data',

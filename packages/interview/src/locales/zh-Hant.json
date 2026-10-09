@@ -128,7 +128,6 @@
   "interview.interfaces.automaticLayout": "自動版面配置",
   "interview.interfaces.availableItems": "可新增的項目清單",
   "interview.interfaces.availableRosterNodes": "可新增的名冊節點",
-  "interview.interfaces.availableToAdd": "可新增的項目",
   "interview.interfaces.binSummary": "{otherCount, plural, =0 {<label>{name}</label>} other {<label>{name}</label> <count>及其他 # 項</count>}}",
   "interview.interfaces.categoryContents": "類別 {label}，共 {count, plural, other {# 個項目}}",
   "interview.interfaces.categoryContentsExpanded": "類別 {label}，共 {count, plural, other {# 個項目}}，已展開",

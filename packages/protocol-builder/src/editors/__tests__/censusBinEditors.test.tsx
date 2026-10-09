@@ -549,6 +549,7 @@ const CASES: readonly EditorCase[] = [
       'Node setup',
       'Roster source',
       'Prompt collection',
+      'Roster panel',
       'Card display',
       'Roster sorting',
       'Roster search',
@@ -569,6 +570,7 @@ const CASES: readonly EditorCase[] = [
       'cardOptions',
       'dataSource',
       'label',
+      'panelTitle',
       'prompts',
       'searchOptions',
       'sortOptions',
@@ -578,6 +580,7 @@ const CASES: readonly EditorCase[] = [
       ...WITHOUT_FILTER,
       label: { 'en-US': 'Full roster name generator' },
       dataSource: 'roster_data',
+      panelTitle: { 'en-US': 'People you could add' },
       cardOptions: {
         additionalProperties: [{ label: { 'en-US': 'Age' }, variable: 'age' }],
       },

@@ -2851,6 +2851,10 @@
     "defaultMessage": "Type",
     "description": "Visible text in lib / ProtocolSummary / components / Stage / QuickAdd."
   },
+  "architect.protocolSummary.stage.rosterPanel.rosterPanel": {
+    "defaultMessage": "Roster panel",
+    "description": "The title text in lib / ProtocolSummary / components / Stage / RosterPanel: the panel listing the people a roster name generator offers."
+  },
   "architect.protocolSummary.stage.scaffoldingStep.scaffoldingStepInstructions": {
     "defaultMessage": "Scaffolding Step Instructions",
     "description": "Visible text in lib / ProtocolSummary / components / Stage / ScaffoldingStep."

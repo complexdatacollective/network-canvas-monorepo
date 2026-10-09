@@ -9,7 +9,8 @@ import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
  * variables that type does not have. The list is the one Architect has always
  * used, so a protocol edited in either tool loses and keeps the same things:
  * the stage's identity and name, the notes for the interviewer, and the task
- * introduction, which is prose about the task rather than about the type.
+ * introduction and a roster's panel title, which are prose about the task
+ * rather than about the type.
  */
 export const SUBJECT_INDEPENDENT_FIELDS: readonly string[] = Object.freeze([
   'id',
@@ -17,6 +18,7 @@ export const SUBJECT_INDEPENDENT_FIELDS: readonly string[] = Object.freeze([
   'label',
   'interviewScript',
   'introductionPanel',
+  'panelTitle',
   'subject',
 ]);
 

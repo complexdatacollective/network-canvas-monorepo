@@ -8,7 +8,7 @@ import {
 } from '../common/index.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { SortOrderSchema } from '../filters/index.ts';
-import { localizedString } from '../localized-string.ts';
+import { localizedString, nonBlankText } from '../localized-string.ts';
 import { baseStageSchema } from './base.ts';
 import { nameGeneratorBehavioursSchema } from './name-generator.ts';
 
@@ -38,6 +38,9 @@ export const nameGeneratorRosterStage = baseStageSchema.extend({
   type: z.literal('NameGeneratorRoster'),
   subject: NodeStageSubjectSchema,
   dataSource: assetReference(),
+  // The heading above the people the participant can add. The roster IS the
+  // panel, so it is named for what it heads rather than as the stage's title.
+  panelTitle: localizedString(nonBlankText(), 'plain'),
   cardOptions: z
     .strictObject({
       additionalProperties: z

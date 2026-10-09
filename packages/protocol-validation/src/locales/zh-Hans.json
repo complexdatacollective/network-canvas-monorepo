@@ -88,6 +88,7 @@
   "protocolValidation.migrationNotes.schema9.familyPedigreeRemoved": "由于重新设计的界面不再按原来的方式使用以下两项家族谱系设置，它们有所变化。要求记录参与者子女的另一位生物学父母，现在是从父母、兄弟姐妹和子女起的每一项完整性设置的一部分，并且不再要求记录这位父母的家庭。记录每位父母提供了哪种配子的属性被移除，因为界面现在根据出生时指定的性别推算配子；该属性及已记录的回答仍保留在编码簿中，但不再填写。",
   "protocolValidation.migrationNotes.schema9.familyPedigreeSharedAttributes": "如果家族谱系中有两个回答使用同一个属性，该谱系就无法转换：两个提名提示、一个提名提示和一个附加人员字段，或者姓名和另一个回答。现在每个回答都需要自己的属性。请在创建该协议的 Architect 版本中为每个回答指定各自的属性，然后再升级。",
   "protocolValidation.migrationNotes.schema9.finishStage": "结束访谈的屏幕现在是协议末尾的一个“完成屏幕”阶段，因此您可以更改其标题和文本，并像协议的其他内容一样进行翻译。其初始内容就是访谈一直以来在此处显示的文字。",
+  "protocolValidation.migrationNotes.schema9.rosterPanelTitle": "“名册数据姓名生成器”阶段现在有一个面板标题，显示在参与者从中选择人员的列表上方，因此您可以更改它，并像协议的其他内容一样进行翻译。其初始内容就是访谈一直以来在此处显示的标题：“Available to add”。",
   "protocolValidation.rule.additionalAttributes": "固定属性",
   "protocolValidation.rule.component": "输入控件",
   "protocolValidation.rule.differentFrom": "不同于另一属性",

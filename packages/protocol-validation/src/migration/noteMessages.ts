@@ -471,6 +471,13 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Finish Screen" is the name Architect gives the stage type that ends an interview, where the participant reads closing text and presses Finish; use the same name Architect uses for it.',
   },
+  schema9RosterPanelTitle: {
+    id: 'protocolValidation.migrationNotes.schema9.rosterPanelTitle',
+    defaultMessage:
+      'A Name Generator Roster stage now has a panel title, shown above the list of people participants choose from, so you can change it and translate it like the rest of your protocol. It starts with the heading the interview has always shown there, "Available to add".',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Name Generator Roster" is the name Architect gives the interface; use the same name Architect uses for it. "Available to add" is the English text written into the protocol: keep it in English, in quotation marks.',
+  },
 });
 
 // Each descriptor is a whole bullet. Markdown separators are structural:
@@ -572,6 +579,7 @@ const migrationNoteSets = {
       migrationNoteMessages.schema9FamilyPedigreeOwnFields,
       migrationNoteMessages.schema9FamilyPedigreeSharedAttributes,
       migrationNoteMessages.schema9FinishStage,
+      migrationNoteMessages.schema9RosterPanelTitle,
     ],
   },
 };

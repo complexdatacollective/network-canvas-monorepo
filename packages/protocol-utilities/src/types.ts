@@ -321,6 +321,7 @@ export type StageEntry = {
   quickAdd?: string;
   // NameGeneratorRoster
   dataSource?: string;
+  panelTitle?: TextInput;
   cardOptions?: {
     additionalProperties?: { label: TextInput; variable: string }[];
   };
@@ -519,6 +520,7 @@ export type AddStageInput = {
   quickAdd?: string;
   // NameGeneratorRoster
   dataSource?: string;
+  panelTitle?: TextInput;
   cardOptions?: {
     additionalProperties?: { label: TextInput; variable: string }[];
   };

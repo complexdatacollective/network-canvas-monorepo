@@ -4,6 +4,9 @@
   "label": {
     "en": "Select From Roster"
   },
+  "panelTitle": {
+    "en": "Available to add"
+  },
   "prompts": [
     {
       "id": "id-2",

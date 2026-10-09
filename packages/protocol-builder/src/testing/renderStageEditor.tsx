@@ -34,7 +34,7 @@ import {
   saveStageMessages,
 } from '../editors/saveStageAction.tsx';
 import StageEditorShell from '../form/StageEditorShell.tsx';
-import { getInterfaceTemplate } from '../interfaces/templates.ts';
+import { newStageFields } from '../interfaces/templates.ts';
 import { protocolBuilderCatalogLoaders } from '../locales/catalogs.ts';
 import type { ProtocolLocalization } from '../localization/localizedText.ts';
 import { protocolContextFromSections } from '../protocol-context.ts';
@@ -67,6 +67,7 @@ import { readMessage } from './i18n.ts';
 import {
   fixtureAssetContentFor,
   fixtureAssetManifest,
+  fixtureLocalization,
   fixtureProtocolSections,
   type FixtureStageId,
   loadFixtureStage,
@@ -190,8 +191,12 @@ export type SeededStage = Readonly<{
   type: StageType;
   /** Everything but `id` and `type`, which the section owns. */
   fields: SectionDoc;
-  /** Set only for a stage the protocol does not hold yet. */
-  creation?: StageCreation;
+  /**
+   * Set only for a stage the protocol does not hold yet, with the fields the
+   * call gave: all the harness hands the editor, which seeds the rest itself
+   * as it does for a host.
+   */
+  creation?: StageCreation & Readonly<{ fields: SectionDoc }>;
 }>;
 
 /** A save the protocol took, and the stage document it now holds. */
@@ -700,7 +705,7 @@ export function renderStageEditor<T extends StageType = StageType>(
       : {
           stageType: seeded.type,
           position: seeded.creation.position,
-          fields: seeded.fields,
+          fields: seeded.creation.fields,
         };
 
   const view = render(
@@ -1238,13 +1243,15 @@ function seedFrom<T extends StageType>(
     return {
       id: 'stage-under-test',
       type,
-      // What a host opens a create session with: the interface's own authored
-      // defaults, not a blank document and not a schema default.
+      // What the editor opens a create session with: the interface's own
+      // authored defaults and the wording supplied in the protocol's
+      // languages, not a blank document and not a schema default. The editor
+      // seeds these itself; they are written here only to compare a save to.
       fields: {
-        ...getInterfaceTemplate(type),
+        ...newStageFields(type, options.localization ?? fixtureLocalization()),
         ...fields,
       },
-      creation: { position },
+      creation: { position, fields: { ...fields } },
     };
   }
   if (options.stage !== undefined) {

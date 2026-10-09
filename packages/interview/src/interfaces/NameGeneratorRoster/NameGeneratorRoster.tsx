@@ -44,6 +44,7 @@ import useNodeLimits from '../../hooks/useNodeLimits';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
 import {
+  useLocalizedString,
   useContentLocale,
   useResolveLocalizedString,
 } from '../../localization/ProtocolLocalizationProvider';
@@ -104,6 +105,7 @@ const keyExtractor = (item: UseItemElement) => item.id;
 const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
   const intl = useAppIntl();
   const { stage } = props;
+  const { text: panelTitle } = useLocalizedString(stage.panelTitle);
 
   const { isLastPrompt } = usePrompts();
 
@@ -453,11 +455,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
         className="min-h-0 w-full flex-1 basis-full"
         aria-label={intl.formatMessage(interfaceMessages.resizePanels)}
       >
-        <Panel
-          title={intl.formatMessage(interfaceMessages.availableToAdd)}
-          panelNumber={0}
-          noCollapse
-        >
+        <Panel title={panelTitle} panelNumber={0} noCollapse>
           {/*
             `idle` is the state of the first frame, before the effect that
             reads the roster has run. Treating it as loading is what keeps the

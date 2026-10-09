@@ -510,6 +510,7 @@ describe('shared form stage-effective validation contradictions', () => {
         label: localized('Roster'),
         subject: { entity: 'node', type: 'person' },
         dataSource: 'roster',
+        panelTitle: localized('Available to add'),
         prompts: [{ id: 'prompt', text: localized('Who do you know?') }],
       },
       assetManifest: {
