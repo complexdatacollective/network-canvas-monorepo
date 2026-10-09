@@ -318,7 +318,10 @@ describe('the stand-in rule', () => {
     expect(result.removedPersonIds).toEqual([]);
   });
 
-  test('a stand-in another person still needs is kept for them', () => {
+  test('a stand-in gives way as one person: their full sibling takes the new parent too', () => {
+    // The participant and their sister share their mother and an unknown
+    // father. Recording the participant's father records the father they
+    // share, so the sisters stay full sisters.
     const result = changes(
       family(
         [
@@ -337,8 +340,99 @@ describe('the stand-in rule', () => {
         ],
       ),
     );
+    expect(result.removedLinkIds.toSorted()).toEqual([
+      'standIn-ego-biological',
+      'standIn-sib-biological',
+    ]);
+    expect(result.removedPersonIds).toEqual(['standIn']);
+    expect(result.links).toEqual([
+      { source: 'dad', target: 'sib', kind: 'biological' },
+    ]);
+    expect(result.people).toEqual([]);
+  });
+
+  test('a stand-in gives way as one person: a half sibling who shares only them is not cut off', () => {
+    // Jess shares only the participant's unknown father, and has an unknown
+    // mother of her own. Mark, recorded as the participant's father, is the
+    // father she shares.
+    const result = changes(
+      family(
+        [
+          person('ego', { isEgo: true }),
+          person('jess', { name: 'Jess' }),
+          person('mum', { sex: ['female'] }),
+          person('standIn', { sex: ['male'] }),
+          person('stand-in-1', { sex: ['female'] }),
+          person('mark', { name: 'Mark', sex: ['male'] }),
+        ],
+        [
+          link('mum', 'ego', 'biological'),
+          link('standIn', 'ego', 'biological'),
+          link('standIn', 'jess', 'biological'),
+          link('stand-in-1', 'jess', 'biological'),
+          link('mark', 'ego', 'biological'),
+        ],
+      ),
+    );
+    expect(result.removedPersonIds).toEqual(['standIn']);
+    expect(result.links).toEqual([
+      { source: 'mark', target: 'jess', kind: 'biological' },
+    ]);
+    expect(result.people).toEqual([]);
+  });
+
+  test('a stand-in is kept for someone the new parent could not be a genetic parent of', () => {
+    // The sibling's other genetic parent is recorded as male, as the new
+    // father is, so the stand-in stays theirs.
+    const result = changes(
+      family(
+        [
+          person('ego', { isEgo: true }),
+          person('sib'),
+          person('mum', { sex: ['female'] }),
+          person('otherDad', { name: 'Al', sex: ['male'] }),
+          person('standIn'),
+          person('dad', { name: 'Rob', sex: ['male'] }),
+        ],
+        [
+          link('mum', 'ego', 'biological'),
+          link('standIn', 'ego', 'biological'),
+          link('otherDad', 'sib', 'biological'),
+          link('standIn', 'sib', 'biological'),
+          link('dad', 'ego', 'biological'),
+        ],
+      ),
+    );
     expect(result.removedLinkIds).toEqual(['standIn-ego-biological']);
     expect(result.removedPersonIds).toEqual([]);
+    expect(result.links).toEqual([]);
+  });
+
+  test('the participant’s own unnamed parent outlasts the stand-in when another unnamed parent is added', () => {
+    // Gender identity is not asked, so the participant's "Parent 1" has
+    // nothing recorded but a sex at birth of "Don't know", as a stand-in may.
+    const f = family(
+      [
+        person('ego', { isEgo: true, sex: ['female'] }),
+        person('parent1', { sex: ['unknown'] }),
+        person('standIn'),
+      ],
+      [
+        link('parent1', 'ego', 'biological'),
+        link('standIn', 'ego', 'biological'),
+      ],
+    );
+    const result = planAddRelative({
+      family: f,
+      anchorId: 'ego',
+      newPersonId: 'added',
+      details: { sex: ['unknown'] },
+      request: parentRequest('biological'),
+      createId: ids(),
+      sexAttribute: config.sexAssignedAtBirthAttribute,
+    });
+    expect(result.removedPersonIds).toEqual(['standIn']);
+    expect(result.removedLinkIds).toEqual(['standIn-ego-biological']);
   });
 
   test('a stand-in’s sex at birth follows the gamete the other genetic parent gave', () => {

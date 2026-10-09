@@ -1773,6 +1773,20 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         }),
       );
       if (writeFailureMessage(updated)) return writeSubmissionResult(updated);
+      // A sex at birth the participant chose for a stand-in, rather than the
+      // one that followed from the other genetic parent, is something they
+      // told about them: they are someone in their own right from then on,
+      // so the stand-in rule neither changes it nor has them give way.
+      if (
+        sexAssignedAtBirth !== mode.person.sexAssignedAtBirth &&
+        isStandIn(family, mode.person.id)
+      ) {
+        writeSharedRecord({
+          standIns: storedSharedRecord().standIns.filter(
+            (id) => id !== mode.person.id,
+          ),
+        });
+      }
       // A name typed for someone whose label was saved is theirs now, even
       // when it is the same words.
       if (
@@ -2083,12 +2097,24 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       const cutOff = peopleCutOff(family, {
         linkIds: linksBetween(linkingId, personId),
       });
+      // A stand-in's connection is not replaced by connecting anyone else:
+      // they give way to the parent they stand in for, once added.
+      const standInId = [linkingId, personId].find((id) =>
+        isStandIn(family, id),
+      );
+      const childId = standInId === linkingId ? personId : linkingId;
       if (cutOff.length > 0) {
         refuse(
-          intl.formatMessage(messages.disconnectWouldCutOff, {
-            count: cutOff.length,
-            names: listOfNames(cutOff),
-          }),
+          standInId === undefined
+            ? intl.formatMessage(messages.disconnectWouldCutOff, {
+                count: cutOff.length,
+                names: listOfNames(cutOff),
+              })
+            : intl.formatMessage(messages.disconnectStandIn, {
+                childIsYou: family.byId.get(childId)?.isEgo ? 'true' : 'false',
+                child: displayName(childId),
+                standIn: displayName(standInId),
+              }),
         );
         return;
       }

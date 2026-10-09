@@ -436,7 +436,7 @@ describe('peopleCutOffByChange', () => {
       ['standIn', 'halfMum'],
     );
 
-  it('names everyone a stand-in giving way to a new parent would leave out', () => {
+  it('names nobody when the new parent takes the stand-in’s place for everyone they stood in for', () => {
     const f = halfBrother();
     const plan = planAddRelative({
       family: f,
@@ -454,7 +454,17 @@ describe('peopleCutOffByChange', () => {
       createId: () => 'unused',
       sexAttribute: SEX,
     });
-    expect(plan.removedLinkIds).toEqual(['standIn-half-biological']);
+    // The stand-in was the father the half brother shares with the
+    // participant, so the new father is the participant's too.
+    expect(plan.removedLinkIds?.toSorted()).toEqual([
+      'standIn-ego-biological',
+      'standIn-half-biological',
+    ]);
+    expect(plan.links).toContainEqual({
+      source: 'newDad',
+      target: 'ego',
+      kind: 'biological',
+    });
     expect(
       peopleCutOffByChange(
         f,
@@ -465,8 +475,8 @@ describe('peopleCutOffByChange', () => {
           removedPersonIds: plan.removedPersonIds,
         },
         SEX,
-      ).toSorted(),
-    ).toEqual(['half', 'halfMum']);
+      ),
+    ).toEqual([]);
   });
 
   it('names nobody when the new parent is the participant’s too', () => {
@@ -501,7 +511,7 @@ describe('peopleCutOffByChange', () => {
     ).toEqual([]);
   });
 
-  it('names everyone a parent re-described as genetic would leave out, through the stand-in giving way', () => {
+  it('names nobody when a parent re-described as genetic takes the stand-in’s place for everyone', () => {
     // The half brother's adoptive father, connected to the participant only
     // through him, re-described as his biological father.
     const f = marked(
@@ -529,7 +539,7 @@ describe('peopleCutOffByChange', () => {
           linkKinds: new Map([['halfDad-half-adoptive', 'biological']]),
         },
         SEX,
-      ).toSorted(),
-    ).toEqual(['half', 'halfDad', 'halfMum']);
+      ),
+    ).toEqual([]);
   });
 });

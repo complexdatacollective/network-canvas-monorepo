@@ -1396,7 +1396,9 @@ export type StandInChanges = {
   /** New stand-ins, with the sex at birth of the gamete they gave when that
    * follows. */
   people: PlannedPerson[];
-  /** Their links: each a biological parent of the people they stand in for. */
+  /** Their links: each a biological parent of the people they stand in for.
+   * First come the links a stand-in giving way passes on to the genetic
+   * parent recorded in their place (`standInsGiveWayWhole`). */
   links: PlannedLink[];
   /** Stand-ins whose sex at birth changes, to that of the gamete the other
    * genetic parent did not give, or is unset when no single sex follows. */
@@ -1430,7 +1432,9 @@ export type StandInChanges = {
  * - A stand-in gives way to a genetic parent recorded in their place: their
  *   link to anyone with more genetic parents than the rule allows
  *   (`geneticParentsPossible`) is removed, and a stand-in left standing in
- *   for nobody is removed.
+ *   for nobody is removed. A stand-in stands for one person, so gives way
+ *   as one: the genetic parent recorded in their place for one person takes
+ *   it for everyone else they stood in for (`standInsGiveWayWhole`).
  * - A stand-in's sex at birth follows the gamete their children's other
  *   genetic parent gave, when every such child agrees on it, and is unset
  *   when they do not, or the other genetic parent's sex at birth is not
@@ -1519,6 +1523,7 @@ export function planStandIns(
       removedLinkIds.add(link.id);
     }
   }
+  const movedLinks = standInsGiveWayWhole(family, standIns, removedLinkIds);
   // A stand-in left standing in for nobody is removed, unless something
   // outside the pedigree refers to them: then only their family links go.
   const removedPersonIds = [...standIns].filter(
@@ -1540,9 +1545,12 @@ export function planStandIns(
   const groups = new Map<string, { parentId: string; childIds: string[] }>();
   for (const person of family.people) {
     if (removedPersonIds.includes(person.id)) continue;
-    const parents = parentLinksOf(family, person.id).filter(
-      (link) => !removedLinkIds.has(link.id),
-    );
+    const parents = [
+      ...parentLinksOf(family, person.id).filter(
+        (link) => !removedLinkIds.has(link.id),
+      ),
+      ...movedLinks.filter((link) => link.target === person.id),
+    ];
     const genetic = parents.filter((link) => isGeneticKind(link.kind));
     const [only] = genetic;
     if (genetic.length !== 1 || only === undefined) continue;
@@ -1567,7 +1575,7 @@ export function planStandIns(
     groups.set(key, group);
   }
   const people: PlannedPerson[] = [];
-  const links: PlannedLink[] = [];
+  const links: PlannedLink[] = [...movedLinks];
   for (const { parentId, childIds } of groups.values()) {
     const id = createId();
     const sex = otherGameteSex(sexOf(parentId));
@@ -1608,6 +1616,120 @@ export function planStandIns(
     removedPersonIds,
     changedTwins,
   };
+}
+
+/**
+ * A stand-in stands for one missing genetic parent, the one shared by
+ * everyone they are linked to: a participant's answer that a sibling shares
+ * that parent is what links the sibling to them. So when a stand-in gives way
+ * to a genetic parent recorded in their place for one person
+ * (`removedLinkIds` holds the links that gave way), that parent takes their
+ * place for everyone else they stood in for too, and nobody is cut off from
+ * the participant, or turned from a full sibling into a half sibling, by the
+ * change. Returns the links passed on, each of the kind the new parent is to
+ * the person they took the place for, and adds the stand-in's links they
+ * replace to `removedLinkIds`.
+ *
+ * Who took the stand-in's place is the genetic parent recorded after them
+ * (the one added, connected or re-described since the stand-in was given),
+ * or else the one of the stand-in's sex at birth, when only one is. A
+ * stand-in who gave way to different people, or to nobody known, passes on
+ * nothing; nor is anything passed on to someone the new parent is already
+ * related to, could not be a genetic parent of beside their others, or
+ * descends from.
+ */
+function standInsGiveWayWhole(
+  family: Family,
+  standIns: ReadonlySet<string>,
+  removedLinkIds: Set<string>,
+): PlannedLink[] {
+  const order = new Map(family.links.map((link, index) => [link.id, index]));
+  const sexOf = (personId: string) =>
+    family.byId.get(personId)?.sexAssignedAtBirth;
+  const geneticLinksOf = (personId: string) =>
+    parentLinksOf(family, personId).filter(
+      (link) => isGeneticKind(link.kind) && !removedLinkIds.has(link.id),
+    );
+
+  // Who took each stand-in's place, wherever they gave way.
+  const replacements = new Map<string, (FamilyLink | undefined)[]>();
+  for (const link of family.links) {
+    if (!standIns.has(link.source) || !removedLinkIds.has(link.id)) continue;
+    const firm = geneticLinksOf(link.target).filter(
+      (other) => !standIns.has(other.source),
+    );
+    const after = firm.filter(
+      (other) => (order.get(other.id) ?? 0) > (order.get(link.id) ?? 0),
+    );
+    const sex = sexOf(link.source);
+    const sameSex =
+      sex === undefined
+        ? []
+        : firm.filter((other) => sexOf(other.source) === sex);
+    const [replacement] =
+      after.length === 1 ? after : sameSex.length === 1 ? sameSex : [];
+    replacements.set(link.source, [
+      ...(replacements.get(link.source) ?? []),
+      replacement,
+    ]);
+  }
+
+  const moved: PlannedLink[] = [];
+  for (const [standInId, found] of replacements) {
+    const [first] = found;
+    if (
+      first === undefined ||
+      found.some((each) => each?.source !== first.source)
+    ) {
+      continue;
+    }
+    const parentId = first.source;
+    for (const link of family.links) {
+      if (link.source !== standInId || removedLinkIds.has(link.id)) continue;
+      const childId = link.target;
+      const others = geneticLinksOf(childId)
+        .filter((other) => other.id !== link.id)
+        .map((other) => sexOf(other.source));
+      if (
+        childId === parentId ||
+        areLinked(family, parentId, childId) ||
+        isAncestor(family, childId, parentId) ||
+        !geneticParentsPossible([...others, sexOf(parentId)])
+      ) {
+        continue;
+      }
+      removedLinkIds.add(link.id);
+      moved.push({ source: parentId, target: childId, kind: first.kind });
+    }
+  }
+  return moved;
+}
+
+/**
+ * Everyone else a new genetic parent of `childId`, of this kind and sex at
+ * birth, becomes the parent of by taking the place of a stand-in they share
+ * with the child (`standInsGiveWayWhole`): the people whose parent the
+ * stand-in stood in for too.
+ */
+export function standInPlaceTakenFor(
+  family: Family,
+  childId: string,
+  kind: 'biological' | 'donor',
+  sex: string | undefined,
+  sexAttribute: string,
+): string[] {
+  const newParentId = '\u0000new-parent';
+  const planned = familyWithPlan(
+    family,
+    [{ id: newParentId, details: sex ? { [sexAttribute]: [sex] } : {} }],
+    [{ source: newParentId, target: childId, kind }],
+    sexAttribute,
+  );
+  return planStandIns(planned, () => '\u0000unused', sexAttribute)
+    .links.filter(
+      (link) => link.source === newParentId && link.target !== childId,
+    )
+    .map((link) => link.target);
 }
 
 /**

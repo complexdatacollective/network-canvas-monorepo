@@ -817,6 +817,57 @@ describe('stand-ins and shared parents in the forms', () => {
     expect(within(partner).getByRole('radio', { name: 'mum' })).toBeChecked();
   });
 
+  // A stand-in gives way as one person: the genetic parent recorded in
+  // their place takes it for everyone they stood in for.
+  it('shows a half sibling who shares the stand-in a new parent replaces as their child too, and says why', async () => {
+    const { onSubmit, user } = renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('mum', { name: 'Julie', sex: ['female'] }),
+        person('standIn', { sex: ['male'] }),
+        person('jess', { name: 'Jess', sex: ['female'] }),
+        person('jessMum', { name: 'Ann', sex: ['female'] }),
+      ],
+      edges: [
+        link('mum', 'ego', 'biological', { carrier: true }),
+        link('standIn', 'ego', 'biological'),
+        link('standIn', 'jess', 'biological'),
+        link('jessMum', 'jess', 'biological', { carrier: true }),
+      ],
+      adding: 'parent',
+    });
+    await user.click(screen.getByRole('radio', { name: 'Male' }));
+    const alsoParentOf = screen.getByRole('group', {
+      name: /^Are they also the parent of/,
+    });
+    const jess = within(alsoParentOf).getByRole('checkbox', { name: 'jess' });
+    await waitFor(() => expect(jess).toBeChecked());
+    expect(jess).toHaveAttribute('aria-disabled', 'true');
+    expect(
+      screen.getByText(/“jess” has the same unnamed parent as you/),
+    ).toBeVisible();
+
+    // Another kind of parent takes nobody's place, and lets them go.
+    await user.click(screen.getByRole('radio', { name: 'Adoptive parent' }));
+    await waitFor(() => expect(jess).not.toBeChecked());
+    expect(jess).not.toHaveAttribute('aria-disabled', 'true');
+
+    await user.click(screen.getByRole('radio', { name: 'Biological parent' }));
+    await waitFor(() => expect(jess).toBeChecked());
+    await user.click(
+      within(
+        screen.getByRole('radiogroup', {
+          name: /^Are they the partner of another parent\?/,
+        }),
+      ).getByRole('radio', { name: 'No' }),
+    );
+    await save(user);
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0].request).toMatchObject({
+      alsoParentOf: ['jess'],
+    });
+  });
+
   // Ruling 20.
   it('offers the participant’s donors among the parents a sibling may share', () => {
     renderPersonForm('ego', {

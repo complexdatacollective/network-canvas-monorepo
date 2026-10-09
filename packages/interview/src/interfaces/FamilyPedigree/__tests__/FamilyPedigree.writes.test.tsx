@@ -85,18 +85,22 @@ type InterviewOptions = {
   twinOnly?: boolean;
   /** How the mother is the participant's parent. */
   mumKind?: 'biological' | 'adoptive';
+  /** Whether the stage asks about gender identity. */
+  askGenderIdentity?: boolean;
 };
 
 function interview({
   twin = false,
   twinOnly = false,
   mumKind = 'biological',
+  askGenderIdentity = true,
 }: InterviewOptions = {}) {
   const si = new SyntheticInterview(1);
   const people = si.addNodeType({ name: 'Person' });
   const stage = si.addStage('FamilyPedigree', {
     subject: { entity: 'node', type: people.id },
     prompt: 'Add the members of your family.',
+    askGenderIdentity,
   });
   si.addManualNode(stage.id, stage.personType, 'ego', {
     [stage.ego]: true,
@@ -456,5 +460,65 @@ describe('FamilyPedigree stages that draw the same family', () => {
     // Nobody is added in his place: he holds it.
     expect(additions).not.toHaveBeenCalled();
     expect(screen.getAllByTestId('pedigree-person')).toHaveLength(3);
+  });
+});
+
+// Rule: a stand-in is an unnamed parent the interface made, standing in for
+// one not yet recorded; anything the participant tells about them, a sex at
+// birth included, makes them someone in their own right.
+describe('FamilyPedigree stand-ins the participant describes or disconnects', () => {
+  /** The stand-in given beside the participant's mother on opening. */
+  const standIn = async () => {
+    await waitFor(() =>
+      expect(screen.getAllByTestId('pedigree-person')).toHaveLength(3),
+    );
+    const node = [...document.querySelectorAll('[data-person-id]')].find(
+      (each) => !['ego', 'mum'].includes(each.getAttribute('data-person-id')!),
+    );
+    if (!(node instanceof HTMLElement)) throw new Error('No stand-in drawn');
+    const [button] = within(node).getAllByRole('button');
+    if (!button) throw new Error('No stand-in button');
+    return button;
+  };
+
+  it('keeps the sex at birth the participant chose for a stand-in', async () => {
+    // Without the gender identity question, nothing else is recorded about
+    // them.
+    await renderStage({ askGenderIdentity: false });
+    const user = userEvent.setup();
+    await user.click(await standIn());
+    let panel = await screen.findByTestId('pedigree-person-panel');
+    const sex = () =>
+      within(screen.getByTestId('pedigree-person-panel')).getByRole(
+        'radiogroup',
+        { name: /^Sex assigned at birth/ },
+      );
+    await user.click(within(sex()).getByRole('radio', { name: /Intersex/ }));
+    await user.click(within(panel).getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('pedigree-person-panel'),
+      ).not.toBeInTheDocument(),
+    );
+
+    await user.click(await standIn());
+    panel = await screen.findByTestId('pedigree-person-panel');
+    expect(
+      within(sex()).getByRole('radio', { name: /Intersex/ }),
+    ).toBeChecked();
+  });
+
+  it('says a stand-in is replaced by adding the parent they stand in for, when disconnecting them would leave them out', async () => {
+    await renderStage();
+    const user = userEvent.setup();
+    const placeholder = await standIn();
+    await user.click(screen.getByRole('button', { name: 'Disconnect' }));
+    await user.click(placeholder);
+    await user.click(personButton('ego'));
+
+    expect(
+      (await screen.findAllByText(/stands in for a parent of yours/)).length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText(/Connect them to someone else/)).toBeNull();
   });
 });

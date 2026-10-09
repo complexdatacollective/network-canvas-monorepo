@@ -86,6 +86,7 @@ import {
   possibleCarriers,
   primaryParentsOf,
   siblingsOf,
+  standInPlaceTakenFor,
   twinCandidatesOf,
   twinSetOf,
   twinsOf,
@@ -1448,13 +1449,42 @@ function ParentFields({
             : undefined,
         ]),
   ]);
-  const siblingsHint = joinReasons(
-    siblings
+  // A genetic parent recorded in the place of a stand-in the anchor shares
+  // with siblings takes it for them too (`standInPlaceTakenFor`): they are
+  // shown chosen, and cannot be unticked, saying why.
+  const takenOver =
+    (parentKind === 'biological' || parentKind === 'donor') &&
+    canBeGeneticParentOf(anchor.id)
+      ? standInPlaceTakenFor(
+          family,
+          anchor.id,
+          parentKind,
+          sexAssignedAtBirth,
+          config.sexAssignedAtBirthAttribute,
+        ).filter((id) => siblings.includes(id))
+      : [];
+  const siblingsHint = joinReasons([
+    ...siblings
       .filter((id) => !siblingPossible(id))
       .map((id) =>
         isGeneticKind(parentKind) ? geneticReason(id) : carrierReason(id),
       ),
-  );
+    takenOver.length > 0
+      ? intl.formatMessage(messages.standInPlaceTaken, {
+          anchorIsYou: anchor.isEgo ? 'true' : 'false',
+          anchor: displayName(anchor.id),
+          count: takenOver.length,
+          names: intl.formatList(
+            takenOver.map((id) =>
+              intl.formatMessage(messages.listedName, {
+                name: displayName(id),
+              }),
+            ),
+            { type: 'conjunction' },
+          ),
+        })
+      : undefined,
+  ]);
 
   // Answers made impossible by a later one — the new parent's sex at birth,
   // or their kind — are taken back, so the question is asked again.
@@ -1558,10 +1588,37 @@ function ParentFields({
   const siblingsDefault = useDefaultUntilAnswered(
     ROLE.alsoParentOf,
     values[ROLE.alsoParentOf],
-    existingParents.every(belongsWith)
-      ? siblings.filter((id) => fullSiblings.has(id) && siblingPossible(id))
-      : [],
+    siblings.filter(
+      (id) =>
+        takenOver.includes(id) ||
+        (existingParents.every(belongsWith) &&
+          fullSiblings.has(id) &&
+          siblingPossible(id)),
+    ),
   );
+  // Once the participant has answered, the siblings the new parent takes a
+  // stand-in's place for are still kept chosen, and let go again when they
+  // no longer are (another kind or sex chosen).
+  const getFormValues = useFormStore((store) => store.getFormValues);
+  const takenOverAdded = useRef<string[]>([]);
+  const keepTakenOverChosen = useEffectEvent(() => {
+    const chosen = asStringArray(getFormValues()[ROLE.alsoParentOf]);
+    const released = takenOverAdded.current.filter(
+      (id) => !takenOver.includes(id),
+    );
+    const added = takenOver.filter((id) => !chosen.includes(id));
+    takenOverAdded.current = [
+      ...takenOverAdded.current.filter((id) => takenOver.includes(id)),
+      ...added,
+    ];
+    if (released.length === 0 && added.length === 0) return;
+    setFieldValue(ROLE.alsoParentOf, [
+      ...chosen.filter((id) => !released.includes(id)),
+      ...added,
+    ]);
+  });
+  const takenOverKey = takenOver.join('\u0000');
+  useEffect(() => keepTakenOverChosen(), [takenOverKey]);
 
   return (
     <>
@@ -1607,7 +1664,7 @@ function ParentFields({
           options={siblings.map((id) => ({
             value: id,
             label: displayName(id),
-            disabled: !siblingPossible(id),
+            disabled: !siblingPossible(id) || takenOver.includes(id),
           }))}
           hint={siblingsHint}
           initialValue={siblingsDefault.initial}

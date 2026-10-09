@@ -1354,13 +1354,10 @@ export const ANewParentIsAskedAboutCarryingSiblings: Story = {
       }),
     ).toBeNull();
 
-    // Sam, Jun's full brother, is chosen already, and asked about; not
-    // chosen, he is not.
+    // Sam, Jun's full brother, shares the unnamed mother Mei takes the
+    // place of, so is chosen and cannot be unchosen; he is asked about.
     await waitFor(() => expect(sam).toBeChecked());
-    await waitFor(() => expect(carriedSam()).not.toBeNull());
-    await userEvent.click(sam);
-    await waitFor(() => expect(carriedSam()).toBeNull());
-    await userEvent.click(sam);
+    await expect(sam).toHaveAttribute('aria-disabled', 'true');
     await waitFor(() => expect(carriedSam()).not.toBeNull());
     const yes = () =>
       within(carriedSam() as HTMLElement).getByRole('radio', { name: 'Yes' });
@@ -1368,16 +1365,16 @@ export const ANewParentIsAskedAboutCarryingSiblings: Story = {
 
     // Recorded as male at birth, she could not have been pregnant, nor a
     // genetic parent beside the father, so her kind of parent and Sam are
-    // taken back with the answer. Female again, a biological parent of Sam
-    // again, she is asked again.
+    // taken back with the answer. Female again, a biological parent in the
+    // unnamed mother's place again, she is asked again.
     await userEvent.click(body.getByRole('radio', { name: 'Male' }));
     await waitFor(() => expect(carriedSam()).toBeNull());
+    await waitFor(() => expect(sam).not.toBeChecked());
     await userEvent.click(body.getByRole('radio', { name: 'Female' }));
     await userEvent.click(
       body.getByRole('radio', { name: 'Biological parent' }),
     );
-    await waitFor(() => expect(sam).not.toBeChecked());
-    await userEvent.click(sam);
+    await waitFor(() => expect(sam).toBeChecked());
     await waitFor(() => expect(carriedSam()).not.toBeNull());
     await expect(yes()).not.toBeChecked();
     await userEvent.click(yes());

@@ -32,8 +32,12 @@ the other (`planStandIns` in `model.ts`). The stand-in's sex at birth is the
 one the gamete rule gives the other gamete, and follows the recorded genetic
 parent's when that changes, so a stand-in never contradicts the rule above:
 it gives way to a genetic parent the participant records in its place, and
-never rules out a sex at birth for the genetic parent beside it. Adoptive and
-social parents are never stood in for.
+never rules out a sex at birth for the genetic parent beside it. A stand-in
+stands for one person, the parent everyone it is linked to shares, so the
+genetic parent recorded in its place for one of them takes it for all of them
+(`standInsGiveWayWhole`). A sex at birth the participant chooses for a
+stand-in is theirs, and makes the stand-in a person in their own right.
+Adoptive and social parents are never stood in for.
 
 ## Who carried the pregnancy
 

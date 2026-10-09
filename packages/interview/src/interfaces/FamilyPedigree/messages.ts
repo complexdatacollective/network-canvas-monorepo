@@ -305,6 +305,13 @@ export const messages = defineMessages({
     description:
       'Question in the side panel for adding a parent: which of the selected person’s siblings share this parent. Options are the siblings’ names.',
   },
+  standInPlaceTaken: {
+    id: 'interview.familyPedigree.standInPlaceTaken',
+    defaultMessage:
+      '{anchorIsYou, select, true {{count, plural, one {{names} has the same unnamed parent as you, so this person becomes their parent too.} other {{names} have the same unnamed parent as you, so this person becomes their parent too.}}} other {{count, plural, one {{names} has the same unnamed parent as “{anchor}”, so this person becomes their parent too.} other {{names} have the same unnamed parent as “{anchor}”, so this person becomes their parent too.}}}}',
+    description:
+      'Hint under the question “Are they also the parent of…” when adding a biological parent or egg or sperm donor. The person the parent is added to shares an unnamed placeholder parent with some of their siblings; the new parent takes that placeholder’s place, so becomes those siblings’ parent too, and they are shown chosen and cannot be unchosen. names is a list of those siblings’ names, each quoted and already joined in the participant’s language; count is how many it names; anchor is the name of the person the parent is added to, or how they are related to the participant.',
+  },
   showWholeFamily: {
     id: 'interview.familyPedigree.showWholeFamily',
     defaultMessage: 'Show the whole family',
@@ -758,6 +765,13 @@ export const messages = defineMessages({
       '{count, plural, one {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.} other {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.}}',
     description:
       'Shown under the toolbar, and read out, when the participant selects two people to disconnect whose connection is the only link between the participant and other people in the family tree, so it cannot be removed. names is a list of those people’s names, or, when they have none, how they are related to the participant, each quoted and already joined in the participant’s language (for example “Aunt” and “Cousin”); count is how many people it names.',
+  },
+  disconnectStandIn: {
+    id: 'interview.familyPedigree.disconnectStandIn',
+    defaultMessage:
+      '{childIsYou, select, true {“{standIn}” stands in for a parent of yours who has not been added yet, so this connection cannot be removed. Add that parent to you instead, and they will take this place.} other {“{standIn}” stands in for a parent of “{child}” who has not been added yet, so this connection cannot be removed. Add that parent to “{child}” instead, and they will take this place.}}',
+    description:
+      'Shown under the toolbar, and read out, when the participant selects an unnamed placeholder parent and their child to disconnect, and removing the connection would leave someone outside the family tree. The placeholder holds the place of a parent not yet recorded, and is replaced by adding that parent (from the child’s Parent menu), not by connecting anyone else. standIn is how the placeholder is described (for example “Biological father”); child is the child’s name or how they are related to the participant.',
   },
   changeWouldCutOff: {
     id: 'interview.familyPedigree.changeWouldCutOff',
