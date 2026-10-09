@@ -93,6 +93,7 @@
   "protocolValidation.migrationNotes.schema9.otherBinText": "On a Categorical Bin stage, the label of the bin for answers not listed and the question that asks participants to describe their answer must now contain some text. Where either contained only spaces, it now uses the other's text, or \"Other\" for the label and \"Please specify\" for the question.",
   "protocolValidation.migrationNotes.schema9.pedigreeWording": "A Family Pedigree stage's own wording is now part of the stage, so you can change it and translate it like the rest of your protocol: the question asking each person's name and its hint, and, where the family must be complete, the list of what is still needed. It starts with the wording the interview has always shown.",
   "protocolValidation.migrationNotes.schema9.rosterPanelTitle": "A Name Generator Roster stage now has a panel title, shown above the list of people participants choose from, so you can change it and translate it like the rest of your protocol. It starts with the heading the interview has always shown there, \"Available to add\".",
+  "protocolValidation.migrationNotes.schema9.tieStrengthDeclineLabel": "On a Tie-Strength Census stage, the label of the option for declining to rate a relationship must now contain some text. Where it contained only spaces, it now reads \"No relationship\".",
   "protocolValidation.rule.additionalAttributes": "Fixed attributes",
   "protocolValidation.rule.component": "Input control",
   "protocolValidation.rule.differentFrom": "Different from another attribute",

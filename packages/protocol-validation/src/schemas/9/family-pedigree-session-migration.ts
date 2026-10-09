@@ -310,8 +310,25 @@ const PARENT_KINDS = new Set([
 /** Biological parents and gamete donors gave the child an egg or a sperm. */
 const GENETIC_KINDS = new Set(['biological', 'donor']);
 
-const familyEdges = (network: SessionNetwork, bindings: PedigreeBindings) =>
-  network.edges.filter((edge) => edge.type === bindings.edgeType);
+/**
+ * The edges of the pedigree's type that join two of its people, the only
+ * ones the redesigned stage reads (`readFamily`). Another interface may draw
+ * edges of the same type to nodes of another type; they are not family, and
+ * the migration leaves them as recorded.
+ */
+const familyEdges = (network: SessionNetwork, bindings: PedigreeBindings) => {
+  const people = new Set(
+    network.nodes
+      .filter((node) => node.type === bindings.personType)
+      .map((node) => node._uid),
+  );
+  return network.edges.filter(
+    (edge) =>
+      edge.type === bindings.edgeType &&
+      people.has(edge.from) &&
+      people.has(edge.to),
+  );
+};
 
 /**
  * Gives every parent relationship exactly what the redesigned interface

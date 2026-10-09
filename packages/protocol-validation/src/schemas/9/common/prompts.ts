@@ -155,7 +155,7 @@ export const tieStrengthCensusPromptSchema = promptSchema.extend({
     requireType: ['ordinal'],
     usage: 'unvalidatedAttribute',
   }),
-  negativeLabel: localizedString(z.string().min(1), 'markdown'),
+  negativeLabel: localizedString(nonBlankText(), 'markdown'),
 });
 
 export const ordinalBinPromptSchema = promptSchema.extend({

@@ -415,6 +415,13 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance: otherBinText. Categorical Bin is the name of an interface (stage type) where participants sort people into bins; one bin can collect answers that are not listed, and then asks the participant to describe their answer. "Other" and "Please specify" are literal English defaults written into protocol data: keep them in English.',
   },
+  schema9TieStrengthDeclineLabel: {
+    id: 'protocolValidation.migrationNotes.schema9.tieStrengthDeclineLabel',
+    defaultMessage:
+      'On a Tie-Strength Census stage, the label of the option for declining to rate a relationship must now contain some text. Where it contained only spaces, it now reads "No relationship".',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance: tieStrengthDeclineLabel. Tie-Strength Census is the name of an interface (stage type) where participants rate the strength of the relationship between pairs of people; one option lets them decline to rate it. "No relationship" is a literal English default written into protocol data: keep it in English.',
+  },
   schema9EncryptedAttributeRules: {
     id: 'protocolValidation.migrationNotes.schema9.encryptedAttributeRules',
     defaultMessage:
@@ -599,6 +606,7 @@ const migrationNoteSets = {
       migrationNoteMessages.schema9DuplicateOptionValues,
       migrationNoteMessages.schema9IntroductionPanelText,
       migrationNoteMessages.schema9OtherBinText,
+      migrationNoteMessages.schema9TieStrengthDeclineLabel,
       migrationNoteMessages.schema9EncryptedAttributeRules,
       migrationNoteMessages.schema9FamilyPedigree,
       migrationNoteMessages.schema9FamilyPedigreeLabels,

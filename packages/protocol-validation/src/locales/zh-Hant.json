@@ -93,6 +93,7 @@
   "protocolValidation.migrationNotes.schema9.otherBinText": "在「類別分箱」階段中，用於未列出回答的分箱標籤，以及請參與者描述其回答的問題，現在都必須包含文字。若其中任一項只含空格，現在會改用另一項的文字；否則標籤使用「Other」，問題使用「Please specify」。",
   "protocolValidation.migrationNotes.schema9.pedigreeWording": "「家族譜系」階段本身的文字現在屬於該階段，因此您可以變更它，並像協定的其他內容一樣翻譯它：詢問每個人姓名的問題及其提示，以及在家庭必須完整時列出仍缺少內容的清單。它一開始就是訪談一直顯示的文字。",
   "protocolValidation.migrationNotes.schema9.rosterPanelTitle": "「名冊資料名字產生器」階段現在有一個面板標題，顯示在參與者從中選擇人員的清單上方，因此您可以變更它，並像協定的其他內容一樣進行翻譯。其初始內容就是訪談一直以來在此處顯示的標題：「Available to add」。",
+  "protocolValidation.migrationNotes.schema9.tieStrengthDeclineLabel": "在「關係強度普查」階段中，用於拒絕評價某段關係的選項標籤現在必須包含文字。若它只含空格，現在會顯示為「No relationship」。",
   "protocolValidation.rule.additionalAttributes": "固定屬性",
   "protocolValidation.rule.component": "輸入控制項",
   "protocolValidation.rule.differentFrom": "與另一個屬性不同",

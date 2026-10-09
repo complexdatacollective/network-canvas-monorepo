@@ -386,6 +386,29 @@ describe('migrationV8toV9 session step', () => {
       expect(edges.find((edge) => edge._uid === 'edge-knows')).toEqual(knows);
     });
 
+    it('leaves an edge of its type to someone outside the pedigree as it was', () => {
+      // Another interface joined the participant to a place by an edge of the
+      // pedigree's type; the redesigned stage does not read it as family.
+      const session = committedSession(9);
+      session.network.nodes.push({
+        _uid: 'place-1',
+        type: 'place',
+        attributes: {},
+      });
+      const visited = {
+        _uid: 'edge-visited',
+        type: 'family_relationship',
+        from: 'place-1',
+        to: 'ego-1',
+        attributes: { relationshipType: ['biological'], isActive: true },
+      };
+      session.network.edges.push(structuredClone(visited));
+      const { edges } = migrated(migrateSession(session)).network;
+      expect(edges.find((edge) => edge._uid === 'edge-visited')).toEqual(
+        visited,
+      );
+    });
+
     it('rewrites them when the pedigree left no record', () => {
       const session = { ...committedSession(9), stageMetadata: {} };
       expect(migrated(migrateSession(session)).network.edges).toEqual(
