@@ -2,69 +2,23 @@ import type {
   LocaleTag,
   LocalizationDeclaration,
 } from '../../localization/localeTag.ts';
-import {
-  CHILDREN_ITEM,
-  CHILDREN_NONE,
-  CHILDREN_QUESTION,
-  DETAILS_ITEM,
-  NAME_HINT,
-  NAME_PROMPT,
-  PARENTS_ITEM,
-  RECOMMENDED_NOTE,
-  SIBLINGS_ITEM,
-  SIBLINGS_NONE,
-  SIBLINGS_QUESTION,
-} from './family-pedigree-wording.ts';
 import type { LocalizedString } from './localized-string.ts';
+import { FAMILY_PEDIGREE_SUPPLIED_TEXT } from './stage-wording/family-pedigree.ts';
+import { FINISH_SESSION_SUPPLIED_TEXT } from './stage-wording/finish-session.ts';
+import { GEOSPATIAL_SUPPLIED_TEXT } from './stage-wording/geospatial.ts';
+import { NAME_GENERATOR_QUICK_ADD_SUPPLIED_TEXT } from './stage-wording/name-generator-quick-add.ts';
+import { NAME_GENERATOR_ROSTER_SUPPLIED_TEXT } from './stage-wording/name-generator-roster.ts';
+import { NAME_GENERATOR_SUPPLIED_TEXT } from './stage-wording/name-generator.ts';
+import { NARRATIVE_PEDIGREE_SUPPLIED_TEXT } from './stage-wording/narrative-pedigree.ts';
+import { NARRATIVE_SUPPLIED_TEXT } from './stage-wording/narrative.ts';
+import { NETWORK_COMPOSER_SUPPLIED_TEXT } from './stage-wording/network-composer.ts';
+import { SOCIOGRAM_SUPPLIED_TEXT } from './stage-wording/sociogram.ts';
+import type { SuppliedStageSetting } from './supplied-stage-setting.ts';
 import {
   type LanguageChange,
   suppliedTextAfterLanguageChange,
   suppliedTextFor,
 } from './supplied-text.ts';
-
-/**
- * The heading above the people a Name Generator Roster offers, in each
- * language Network Canvas's apps ship in.
- */
-const ROSTER_PANEL_TITLE = {
-  'en': 'Available to add',
-  'de': 'Zum Hinzufügen verfügbar',
-  'es': 'Disponibles para añadir',
-  'fr': 'Éléments disponibles',
-  'it': 'Disponibili da aggiungere',
-  'nl': 'Beschikbaar om toe te voegen',
-  'pt-BR': 'Disponíveis para adicionar',
-  'zh-Hans': '可添加',
-  'zh-Hant': '可新增的項目',
-} as const satisfies Readonly<Record<LocaleTag, string>>;
-
-/** One stage setting whose wording Network Canvas supplies. */
-type SuppliedStageSetting = Readonly<{
-  /** Where the stage holds the setting. */
-  path: readonly string[];
-  /** The supplied wording, by language, as ICU messages the stage can hold. */
-  message: Readonly<Record<LocaleTag, string>>;
-  /**
-   * An optional object the setting belongs to: it is written only into a
-   * stage that has it, and arrives with it (the Family Pedigree's
-   * completeness texts arrive with `completeness`).
-   */
-  within?: readonly string[];
-  /**
-   * A setting the researcher may remove. It is written with the object that
-   * holds it, never into one that already exists without it.
-   */
-  optional?: true;
-}>;
-
-const pedigreeCompleteness = (
-  path: readonly string[],
-  message: Readonly<Record<LocaleTag, string>>,
-): SuppliedStageSetting => ({
-  path: ['completeness', ...path],
-  message,
-  within: ['completeness'],
-});
 
 /**
  * The stage settings whose wording Network Canvas supplies, by stage type.
@@ -76,33 +30,16 @@ const pedigreeCompleteness = (
 const SUPPLIED_STAGE_TEXT: Readonly<
   Record<string, readonly SuppliedStageSetting[]>
 > = {
-  NameGeneratorRoster: [{ path: ['panelTitle'], message: ROSTER_PANEL_TITLE }],
-  FamilyPedigree: [
-    {
-      path: ['nodeConfiguration', 'nameField', 'prompt'],
-      message: NAME_PROMPT,
-    },
-    {
-      path: ['nodeConfiguration', 'nameField', 'hint'],
-      message: NAME_HINT,
-      optional: true,
-    },
-    pedigreeCompleteness(['itemText', 'parents', 'listItem'], PARENTS_ITEM),
-    pedigreeCompleteness(['itemText', 'siblings', 'listItem'], SIBLINGS_ITEM),
-    pedigreeCompleteness(['itemText', 'siblings', 'noneButton'], SIBLINGS_NONE),
-    pedigreeCompleteness(
-      ['itemText', 'siblings', 'question'],
-      SIBLINGS_QUESTION,
-    ),
-    pedigreeCompleteness(['itemText', 'children', 'listItem'], CHILDREN_ITEM),
-    pedigreeCompleteness(['itemText', 'children', 'noneButton'], CHILDREN_NONE),
-    pedigreeCompleteness(
-      ['itemText', 'children', 'question'],
-      CHILDREN_QUESTION,
-    ),
-    pedigreeCompleteness(['itemText', 'details', 'listItem'], DETAILS_ITEM),
-    pedigreeCompleteness(['recommendedNote'], RECOMMENDED_NOTE),
-  ],
+  FamilyPedigree: FAMILY_PEDIGREE_SUPPLIED_TEXT,
+  FinishSession: FINISH_SESSION_SUPPLIED_TEXT,
+  Geospatial: GEOSPATIAL_SUPPLIED_TEXT,
+  NameGenerator: NAME_GENERATOR_SUPPLIED_TEXT,
+  NameGeneratorQuickAdd: NAME_GENERATOR_QUICK_ADD_SUPPLIED_TEXT,
+  NameGeneratorRoster: NAME_GENERATOR_ROSTER_SUPPLIED_TEXT,
+  Narrative: NARRATIVE_SUPPLIED_TEXT,
+  NarrativePedigree: NARRATIVE_PEDIGREE_SUPPLIED_TEXT,
+  NetworkComposer: NETWORK_COMPOSER_SUPPLIED_TEXT,
+  Sociogram: SOCIOGRAM_SUPPLIED_TEXT,
 };
 
 const settingsOf = (stageType: string): readonly SuppliedStageSetting[] =>
@@ -211,6 +148,11 @@ export const missingSuppliedStageText = (
     if (
       setting.within !== undefined &&
       valueAt(stage, setting.within) === undefined
+    )
+      return false;
+    if (
+      setting.when !== undefined &&
+      !setting.when(stage as Readonly<Record<string, unknown>>)
     )
       return false;
     return !(
