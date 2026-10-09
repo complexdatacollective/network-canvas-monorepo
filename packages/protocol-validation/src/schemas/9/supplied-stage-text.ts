@@ -161,3 +161,21 @@ export const missingSuppliedStageText = (
     );
   });
 };
+
+/**
+ * The paths of the settings `stage` must hold but does not: each one shown
+ * only under a configuration (its `when`) that is on. The interview shows
+ * such a setting in place of its built-in wording, so a stage without it
+ * would show nothing where the participant expects words.
+ */
+export const missingRequiredStageSettings = (
+  stage: Readonly<{ type: string }>,
+): readonly (readonly string[])[] =>
+  settingsOf(stage.type)
+    .filter(
+      (setting) =>
+        setting.when !== undefined &&
+        setting.when(stage) &&
+        valueAt(stage, setting.path) === undefined,
+    )
+    .map((setting) => setting.path);
