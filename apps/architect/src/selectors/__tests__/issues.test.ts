@@ -39,6 +39,8 @@ const protocol = {
     {
       id: 's2',
       type: 'NameGeneratorRoster',
+      externalDataError: { en: 'External data could not be loaded.' },
+      allAddedNotice: { en: 'There is nothing left to add from this list.' },
       label: 'Roster',
       subject: { entity: 'node', type: 'person' },
       dataSource: 'asset1',

@@ -154,6 +154,12 @@ function makeUnsatisfiableProtocol() {
       {
         id: 's1',
         type: 'NameGenerator',
+        minNodesNotice: {
+          en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+        },
+        maxNodesNotice: {
+          en: 'You have completed this task. Click the next arrow to continue.',
+        },
         label: { en: 'NG' },
         subject: { entity: 'node', type: 'node-1' },
         prompts: [{ id: 'p1', text: { en: 'Add people' } }],
@@ -251,6 +257,12 @@ function makeConsentRouteProtocol(): CurrentProtocol {
       {
         id: 'people',
         type: 'NameGenerator',
+        minNodesNotice: {
+          en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+        },
+        maxNodesNotice: {
+          en: 'You have completed this task. Click the next arrow to continue.',
+        },
         label: { en: 'People' },
         subject: { entity: 'node', type: 'person' },
         prompts: [{ id: 'people-prompt', text: { en: 'Name people' } }],
@@ -495,6 +507,12 @@ describe('PreviewHost', () => {
         {
           id: 's1',
           type: 'NameGenerator',
+          minNodesNotice: {
+            en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+          },
+          maxNodesNotice: {
+            en: 'You have completed this task. Click the next arrow to continue.',
+          },
           label: { en: 'NG' },
           subject: { entity: 'node', type: 'node-1' },
           prompts: [{ id: 'p1', text: { en: 'Add people' } }],
