@@ -19,6 +19,7 @@ import {
 import {
   addFamilyMemberVariables,
   RELATIVES_NOT_RECORDED_VARIABLE,
+  RESEARCHER_TRACKER_TEXT,
 } from '../family-pedigree/__tests__/pedigreeFixtures.ts';
 import { schemaKeysFor } from './schemaKeys.ts';
 
@@ -453,6 +454,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
         scope: 'thirdDegree',
         enforcement: 'recommended',
         relativesNotRecordedAttribute: 'relativesNotRecorded',
+        ...RESEARCHER_TRACKER_TEXT,
       },
       framing: 'participantPreference',
       nominationPrompts: [

@@ -5,6 +5,7 @@ import {
   collectLocalizedStrings,
   type CurrentProtocol,
   CurrentProtocolSchema,
+  PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
 } from '@codaco/protocol-validation';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 
@@ -156,6 +157,40 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
           hint: en('Their main work.'),
         },
       ],
+    },
+  ],
+  [
+    ['codebook', 'node', 'family_member', 'variables', 'relativesNotRecorded'],
+    {
+      name: 'relativesNotRecorded',
+      label: 'relativesNotRecorded',
+      type: 'categorical',
+      options: PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS.map(
+        ({ value, label }) => ({ value, label: en(label) }),
+      ),
+    },
+  ],
+  [
+    [...fixtureStage('FamilyPedigree'), 'completeness'],
+    {
+      scope: 'firstDegree',
+      enforcement: 'recommended',
+      relativesNotRecordedAttribute: 'relativesNotRecorded',
+      itemText: {
+        parents: { listItem: en('Add parents') },
+        siblings: {
+          listItem: en('Add brothers and sisters'),
+          noneButton: en('None'),
+          question: en('Any brothers or sisters?'),
+        },
+        children: {
+          listItem: en('Add children'),
+          noneButton: en('None'),
+          question: en('Any children?'),
+        },
+        details: { listItem: en('Some details are missing') },
+      },
+      recommendedNote: en('You can continue without these.'),
     },
   ],
   [
@@ -372,6 +407,39 @@ describe('nameLocalizedText', () => {
   it('names a stage label', () => {
     expect(name([...stageAt('Anonymisation'), 'label'])).toEqual([
       { key: '["label"]', label: 'Stage name' },
+    ]);
+  });
+
+  it('names the words of a pedigree’s list by the group they sit in', () => {
+    expect(
+      name([
+        ...stageAt('FamilyPedigree'),
+        'completeness',
+        'itemText',
+        'siblings',
+        'noneButton',
+      ]),
+    ).toEqual([
+      { key: '[]', label: 'Completeness' },
+      { key: '["completeness"]', label: 'What the list says' },
+      {
+        key: '["completeness","itemText","siblings","noneButton"]',
+        label: 'No brothers or sisters',
+      },
+    ]);
+    expect(
+      name([
+        ...stageAt('FamilyPedigree'),
+        'nodeConfiguration',
+        'nameField',
+        'hint',
+      ]),
+    ).toEqual([
+      { key: '[]', label: 'Person attributes' },
+      {
+        key: '["nodeConfiguration","nameField","hint"]',
+        label: 'Name question guidance',
+      },
     ]);
   });
 

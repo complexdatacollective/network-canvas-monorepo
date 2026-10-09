@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   SUBJECT_INDEPENDENT_FIELDS,
+  SUBJECT_INDEPENDENT_PARTS,
+  subjectDependentPaths,
   subjectDependentResets,
 } from '../subjectReset.ts';
 
@@ -68,5 +70,42 @@ describe('what a subject change invalidates', () => {
     const resets = subjectDependentResets(['panels', 'quickAdd'], {});
 
     expect(resets.map((reset) => reset.key)).toEqual(['panels', 'quickAdd']);
+  });
+
+  it('keeps prose inside a key that describes the subject', () => {
+    expect(SUBJECT_INDEPENDENT_PARTS).toEqual({
+      nodeConfiguration: ['nameField'],
+    });
+    const nameField = { prompt: { en: 'Name' } };
+
+    expect(
+      subjectDependentResets(['nodeConfiguration'], {}, () => ({
+        nameAttribute: 'name',
+        nameField,
+      })),
+    ).toEqual([{ key: 'nodeConfiguration', value: { nameField } }]);
+  });
+
+  it('removes a key whose prose it keeps is absent', () => {
+    expect(
+      subjectDependentResets(['nodeConfiguration'], {}, () => ({
+        nameAttribute: 'name',
+      })),
+    ).toEqual([{ key: 'nodeConfiguration', value: undefined }]);
+  });
+
+  it('counts as lost only the parts of a key it does not keep', () => {
+    expect(
+      subjectDependentPaths('nodeConfiguration', {
+        nameAttribute: 'name',
+        nameField: { prompt: { en: 'Name' } },
+      }),
+    ).toEqual(['nodeConfiguration.nameAttribute']);
+    expect(
+      subjectDependentPaths('nodeConfiguration', {
+        nameField: { prompt: { en: 'Name' } },
+      }),
+    ).toEqual([]);
+    expect(subjectDependentPaths('prompts', [])).toEqual(['prompts']);
   });
 });

@@ -203,14 +203,15 @@ describe('the Family Pedigree wording Network Canvas supplies', () => {
   });
 
   it('writes the wording with its arguments, in each language it is supplied in', () => {
-    const [parents] = missingSuppliedStageText(
-      {
-        type: 'FamilyPedigree',
-        completeness: {},
-        nodeConfiguration: { nameField: { prompt: {} } },
-      },
-      { defaultLocale: 'en', locales: ['en', 'zh-Hans'] },
-    );
+    const stage = {
+      type: 'FamilyPedigree',
+      completeness: {},
+      nodeConfiguration: { nameField: { prompt: {} } },
+    };
+    const [parents] = missingSuppliedStageText(stage, {
+      defaultLocale: 'en',
+      locales: ['en', 'zh-Hans'],
+    });
     expect(parents?.value['zh-Hans']).toContain('{missing, plural,');
     expect(parents?.value.en).toContain('{name}');
   });

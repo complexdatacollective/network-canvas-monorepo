@@ -97,6 +97,7 @@ const familySections = (): Record<string, SectionDoc> => ({
     prompt: { en: 'Build your family' },
     nodeConfiguration: {
       nameAttribute: 'name',
+      nameField: { prompt: { en: 'Name' } },
       genderIdentity: { attribute: 'genderIdentity', terms: [] },
       sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
       egoAttribute: 'isEgo',
@@ -384,6 +385,7 @@ describe('variable role helpers', () => {
           prompt: 'Build your family',
           nodeConfiguration: {
             nameAttribute: 'name',
+            nameField: { prompt: { en: 'Name' } },
             sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
             egoAttribute: 'isEgo',
           },

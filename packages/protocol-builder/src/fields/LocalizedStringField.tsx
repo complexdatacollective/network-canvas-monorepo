@@ -15,6 +15,7 @@ import {
   missingLocales,
   resolveTranslation,
   translationText,
+  withMessage,
   withTranslation,
 } from '../localization/localizedText.ts';
 import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
@@ -27,6 +28,10 @@ export type TranslationControl = Readonly<{
   value: string;
   /** Write the translation; blank text removes it. */
   onChange: (text: string | undefined) => void;
+  /** The translation as the protocol stores it: an ICU message, or empty. */
+  message: string;
+  /** Write the translation as a message, as given; undefined removes it. */
+  onMessageChange: (message: string | undefined) => void;
   /** True until the protocol's languages are known, when nothing may be written. */
   readOnly: boolean;
 }>;
@@ -77,6 +82,8 @@ export function LocalizedStringField({
     return children({
       value: resolveTranslation(value, undefined, undefined).text,
       onChange: () => undefined,
+      message: '',
+      onMessageChange: () => undefined,
       readOnly: true,
     });
   }
@@ -103,6 +110,9 @@ export function LocalizedStringField({
           value: translationText(value, locale),
           onChange: (text) =>
             onChange?.(withTranslation(value, locale, text ?? '')),
+          message: value?.[locale] ?? '',
+          onMessageChange: (message) =>
+            onChange?.(withMessage(value, locale, message)),
           readOnly: false,
         })}
       </div>

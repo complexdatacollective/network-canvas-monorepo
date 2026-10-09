@@ -84,6 +84,25 @@ export function withTranslation(
   return Object.keys(next).length === 0 ? undefined : next;
 }
 
+/**
+ * `value` with one translation replaced by a message as written, arguments
+ * and all, or removed when `message` is undefined. For a localized message
+ * (see `LocalizedMessageField`), whose arguments plain text would escape.
+ */
+export function withMessage(
+  value: unknown,
+  locale: LocaleTag,
+  message: string | undefined,
+): LocalizedString | undefined {
+  const others = Object.entries(asLocalizedString(value) ?? {}).filter(
+    ([key]) => key !== locale,
+  );
+  const next = Object.fromEntries(
+    message === undefined ? others : [...others, [locale, message]],
+  );
+  return Object.keys(next).length === 0 ? undefined : next;
+}
+
 /** Text written by this editor rather than typed, in the default language. */
 export function localizedFromText(
   localization: ProtocolLocalization,

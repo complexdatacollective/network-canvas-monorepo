@@ -153,6 +153,12 @@ export {
   type LocalizedString,
   type LocalizedStringFormat,
 } from './schemas/9/localized-string.ts';
+// What the Family Pedigree's localized messages may use, for an editor of
+// them.
+export {
+  PEDIGREE_PARENTS_ARGUMENTS,
+  PEDIGREE_PERSON_ARGUMENTS,
+} from './schemas/9/stages/family-pedigree.ts';
 // The Family Pedigree option labels Network Canvas supplies, written into a
 // protocol by Architect.
 export {

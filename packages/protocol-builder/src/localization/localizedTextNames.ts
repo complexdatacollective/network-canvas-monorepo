@@ -323,6 +323,19 @@ const PEDIGREE_PERSON_FORM: Step = [
   1,
   words(familyPedigreeMessages.personFormTitle),
 ];
+const PEDIGREE_PEOPLE: Step = [
+  0,
+  words(familyPedigreeMessages.nodeConfigurationTitle),
+];
+const PEDIGREE_COMPLETENESS: Step = [
+  0,
+  words(familyPedigreeMessages.completenessTitle),
+];
+/** The wording of the list, which `completeness` holds beside its settings. */
+const PEDIGREE_TRACKER_TEXT: Step = [
+  1,
+  words(familyPedigreeMessages.trackerTextTitle),
+];
 const PEDIGREE_PERSON_FIELD: Step = [
   3,
   attributeOr(messages.fieldPosition, stageSubject),
@@ -414,6 +427,45 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
       [1, words(familyPedigreeMessages.nominationTitle)],
       [2, numbered(messages.promptPosition)],
       [3, words(censusMessages.promptTextLabel)],
+    ),
+    rule('nodeConfiguration.nameField.prompt', PEDIGREE_PEOPLE, [
+      3,
+      words(familyPedigreeMessages.namePromptLabel),
+    ]),
+    rule('nodeConfiguration.nameField.hint', PEDIGREE_PEOPLE, [
+      3,
+      words(familyPedigreeMessages.nameHintTextLabel),
+    ]),
+    ...(
+      [
+        ['parents.listItem', familyPedigreeMessages.trackerParentsLabel],
+        ['siblings.listItem', familyPedigreeMessages.trackerSiblingsLabel],
+        ['siblings.noneButton', familyPedigreeMessages.trackerNoSiblingsLabel],
+        [
+          'siblings.question',
+          familyPedigreeMessages.trackerSiblingsQuestionLabel,
+        ],
+        ['children.listItem', familyPedigreeMessages.trackerChildrenLabel],
+        ['children.noneButton', familyPedigreeMessages.trackerNoChildrenLabel],
+        [
+          'children.question',
+          familyPedigreeMessages.trackerChildrenQuestionLabel,
+        ],
+        ['details.listItem', familyPedigreeMessages.trackerDetailsLabel],
+      ] as const
+    ).map(([path, label]) =>
+      rule(
+        `completeness.itemText.${path}`,
+        PEDIGREE_COMPLETENESS,
+        PEDIGREE_TRACKER_TEXT,
+        [4, words(label)],
+      ),
+    ),
+    rule(
+      'completeness.recommendedNote',
+      PEDIGREE_COMPLETENESS,
+      PEDIGREE_TRACKER_TEXT,
+      [2, words(familyPedigreeMessages.trackerRecommendedNoteLabel)],
     ),
   ],
   Geospatial: [promptText(geospatialMessages.promptTextLabel)],

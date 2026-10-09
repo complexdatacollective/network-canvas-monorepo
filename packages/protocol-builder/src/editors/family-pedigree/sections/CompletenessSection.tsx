@@ -26,6 +26,7 @@ import {
   RELATIVES_NOT_RECORDED_PATH,
   usePedigreeDraftBindings,
 } from './pedigreeSlots.ts';
+import TrackerTextSection from './TrackerTextSection.tsx';
 
 /**
  * Switching the requirement off removes the whole `completeness` object: the
@@ -193,6 +194,7 @@ export default function CompletenessSection() {
             draftConflicting={validatedPersonVariables}
             draftSlotMap={draftWriterMap}
           />
+          <TrackerTextSection />
         </>
       )}
     </BuilderSection>

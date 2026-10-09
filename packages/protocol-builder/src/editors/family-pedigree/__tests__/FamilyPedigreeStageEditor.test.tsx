@@ -1,4 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react';
+import { get } from 'es-toolkit/compat';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -8,6 +9,7 @@ import {
   PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
   suppliedOptionLabel,
+  suppliedStageText,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
@@ -35,6 +37,7 @@ import {
   addFamilyMemberVariable,
   addFamilyMemberVariables,
   FAMILY_MEMBER_SECTION,
+  FIXTURE_NAME_FIELD,
   RELATIVES_NOT_RECORDED_VARIABLE,
   familyPedigreeStageWith,
   familyPedigreeStageWithout,
@@ -254,6 +257,9 @@ describe('the family pedigree stage editor', () => {
       prompt: { 'en-US': PROMPT_TEXT },
       nodeConfiguration: {
         nameAttribute: 'fm_name',
+        // The name question a new stage starts with, in the protocol's
+        // language.
+        nameField: FIXTURE_NAME_FIELD,
         genderIdentity: {
           attribute: FRESH_GENDER_ID,
           // The attribute's options are the interface's defaults, so binding
@@ -639,6 +645,7 @@ describe('asking about gender identity', () => {
       stage: familyPedigreeStageWith({
         nodeConfiguration: {
           nameAttribute: 'fm_name',
+          nameField: FIXTURE_NAME_FIELD,
           sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
           egoAttribute: 'is_ego',
         },
@@ -655,6 +662,7 @@ describe('asking about gender identity', () => {
     const request = await harness.submit();
     expect(nodeConfigurationOf(request?.stageDocument)).toEqual({
       nameAttribute: 'fm_name',
+      nameField: FIXTURE_NAME_FIELD,
       sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
       egoAttribute: 'is_ego',
     });
@@ -710,6 +718,7 @@ describe('asking about gender identity', () => {
 
     expect(nodeConfigurationOf(request?.stageDocument)).toEqual({
       nameAttribute: 'fm_name',
+      nameField: FIXTURE_NAME_FIELD,
       sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
       egoAttribute: 'is_ego',
     });
@@ -968,6 +977,63 @@ describe('the gender identity options, which this stage manages', () => {
   });
 });
 
+describe('the name question', () => {
+  it('is saved as the stage holds it', async () => {
+    const harness = openFixture();
+    await harness.opened();
+
+    expect(
+      await screen.findByRole('textbox', { name: 'Name question' }),
+    ).toHaveValue('Name (optional)');
+    const request = await harness.submit();
+    expect(nodeConfigurationOf(request?.stageDocument).nameField).toEqual(
+      FIXTURE_NAME_FIELD,
+    );
+  });
+
+  it('stays as the researcher wrote it when the person type changes', async () => {
+    const harness = openNewStage();
+    await harness.user.click(
+      await screen.findByRole('radio', { name: 'family member' }),
+    );
+    const question = await screen.findByRole('textbox', {
+      name: 'Name question',
+    });
+    await harness.user.clear(question);
+    await harness.user.type(question, 'What do you call them?');
+    await harness.user.tab();
+
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+
+    // Nothing that describes the person type is lost, so nothing is asked.
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(
+      await screen.findByRole('textbox', { name: 'Name question' }),
+    ).toHaveValue('What do you call them?');
+  });
+
+  it('does not put back guidance the researcher removed', async () => {
+    const harness = renderStageEditor({
+      stage: familyPedigreeStageWith({
+        nodeConfiguration: {
+          ...nodeConfigurationOf(loadFixtureStage('family-pedigree-1').fields),
+          nameField: { prompt: { 'en-US': 'Name' } },
+        },
+      }),
+      editor: familyPedigreeEditor,
+    });
+    await harness.opened();
+
+    expect(
+      await screen.findByRole('textbox', { name: 'Name question guidance' }),
+    ).toHaveValue('');
+    const request = await harness.submit();
+    expect(nodeConfigurationOf(request?.stageDocument).nameField).toEqual({
+      prompt: { 'en-US': 'Name' },
+    });
+  });
+});
+
 describe('the completeness requirement', () => {
   const switchOn = async (harness: StageEditorHarness) => {
     await harness.user.click(
@@ -1015,6 +1081,38 @@ describe('the completeness requirement', () => {
     expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
       true,
     );
+  });
+
+  it('starts the words of its list as Network Canvas supplies them', async () => {
+    const harness = openFixture();
+    await harness.opened();
+    addFamilyMemberVariables(harness, {
+      relativesNotRecorded: RELATIVES_NOT_RECORDED_VARIABLE,
+    });
+
+    await switchOn(harness);
+    await bindSlot(harness, 'Relatives not recorded', 'relativesNotRecorded');
+    expect(
+      await screen.findByRole('group', { name: 'Missing parents' }),
+    ).toBeVisible();
+
+    const request = await harness.submit();
+    const supplied = Object.fromEntries(
+      suppliedStageText('FamilyPedigree', {
+        defaultLocale: 'en-US',
+        locales: ['en-US'],
+      }).map(({ path, value }) => [path.join('.'), value]),
+    );
+    const document = request?.stageDocument;
+    for (const path of [
+      'completeness.itemText.parents.listItem',
+      'completeness.itemText.siblings.question',
+      'completeness.itemText.children.noneButton',
+      'completeness.itemText.details.listItem',
+      'completeness.recommendedNote',
+    ]) {
+      expect(get(document, path), path).toEqual(supplied[path]);
+    }
   });
 
   it('saves the scope and enforcement the researcher chooses', async () => {
