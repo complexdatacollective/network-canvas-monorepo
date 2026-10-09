@@ -455,7 +455,8 @@ const PlainTextCell = ({
   });
 
   // A cell taken away mid-edit, as when the table is closed by going back,
-  // still saves what was typed in it, and says so if it cannot.
+  // still saves what was typed in it. One taken away while the table stays
+  // (its column hidden) also says so if it cannot.
   useEffect(
     () => () => {
       const pending = draftRef.current;
@@ -656,7 +657,8 @@ const RichTextCell = ({
   });
 
   // A cell taken away mid-edit, by leaving the page, still saves what was
-  // typed in it, and says so if it cannot.
+  // typed in it. One taken away while the table stays (its column hidden)
+  // also says so if it cannot.
   useEffect(
     () => () => {
       if (leaveTimer.current !== null) window.clearTimeout(leaveTimer.current);
