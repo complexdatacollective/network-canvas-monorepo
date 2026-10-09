@@ -79,7 +79,6 @@ import {
   isGeneticKind,
   isStandIn,
   mayHaveCarried,
-  openGeneticParentSlots,
   otherParentChoices,
   sexesRuledOut,
   planAdditionUnder,
@@ -1254,24 +1253,17 @@ function readRequest(
 function readSiblingRequest(
   values: Record<string, FieldValue | undefined>,
 ): Extract<AddRelativeRequest, { relation: 'sibling' }> {
-  const shared = asStringArray(values[ROLE.sharedParents]);
   const placeholders = asString(values[ROLE.sharedParentCount]);
   // The model records the carrier only while the answers still make them
   // one of the sibling's parents who could have carried the pregnancy.
   const carrier = asString(values[ROLE.carrier]);
   return {
     relation: 'sibling',
-    sharedParentIds: shared.filter((id) => id !== UNKNOWN),
-    sharesUnshown:
+    sharedParentIds: asStringArray(values[ROLE.sharedParents]),
+    sharesOnly:
       placeholders === 'eggParent' || placeholders === 'spermParent'
         ? placeholders
-        : // With no parents to choose from, and no choice of which
-          // unnamed parent to share, the sibling shares both.
-          placeholders === 'both' || shared.length === 0
-          ? 'both'
-          : shared.includes(UNKNOWN)
-            ? 'other'
-            : 'none',
+        : undefined,
     parentKind:
       (asString(values[ROLE.siblingKind]) as
         | (typeof SIBLING_KINDS)[number]
@@ -1903,20 +1895,6 @@ function SiblingFields({
     name: displayName(anchor.id),
   };
 
-  const open = openGeneticParentSlots(family, anchor.id);
-  // A parent not yet shown stands in for a genetic parent not yet recorded,
-  // beside the one biological parent recorded before the stand-in rule. An
-  // adoptive or social parent is never stood in for (ruling 24).
-  const [onlyParent] = parents;
-  const offersUnshown =
-    parents.length === 1 &&
-    open.length > 0 &&
-    family.links.some(
-      (link) =>
-        link.source === onlyParent &&
-        link.target === anchor.id &&
-        link.kind === 'biological',
-    );
   // The sibling as the biological child of the parents they share, as the
   // answers stand. The plan makes them the biological child of every shared
   // parent who could have given a gamete beside the others, and leaves any
@@ -1972,18 +1950,6 @@ function SiblingFields({
   useEffect(() => {
     if (carrierImpossible) setFieldValue(ROLE.carrier, undefined);
   }, [carrierImpossible, setFieldValue]);
-  // An unnamed parent added for both of them is the anchor's second parent,
-  // offered in the words the question about shared parents used, or one of
-  // the two given to someone with no parents, shown by how they are related.
-  const carrierLabel = (id: string) =>
-    family.byId.has(id) ||
-    !offersUnshown ||
-    !siblingPlan.links.some(
-      (link) => link.source === id && link.target === anchor.id,
-    )
-      ? displayName(id)
-      : intl.formatMessage(messages.sharedParentUnshown, args);
-
   // A biological sibling of parents only one of whom could be their genetic
   // parent — two mothers, say — is asked which (ruling 26): each shared
   // parent who would be their biological parent if named, while the plan
@@ -2066,25 +2032,21 @@ function SiblingFields({
   }, [identicalImpossible, setFieldValue]);
 
   // Someone with no parents is given an egg parent and a sperm parent,
-  // unnamed; the sibling may share both or one of them. Someone whose egg or
-  // sperm came from a donor already has that genetic parent, so is given
-  // only the one still to give, which the sibling shares. Someone with one
-  // parent can share their second, not yet shown, which is added for both;
-  // it is offered, and chosen to start with, only while that second parent
-  // is a genetic parent not yet recorded.
+  // unnamed; the sibling may share both or one of them. Someone with only
+  // donors (two, since one donor alone is given a stand-in beside them) is
+  // given unnamed adoptive parents, whom the sibling shares, and may share
+  // the donors too. Anyone else chooses among the parents recorded, stand-ins
+  // included, and the donors: a genetic parent is never missing beside a
+  // recorded one (the stand-in rule, `planStandIns`).
   const sharedField =
-    parents.length === 0 && open.length < 2 ? (
-      // Someone with only donors shares unnamed parents with the sibling,
-      // and may share the donors too.
-      donors.length > 0 ? (
-        <Field
-          component={CheckboxGroupField}
-          name={ROLE.sharedParents}
-          label={intl.formatMessage(messages.sharedDonorsLabel, args)}
-          options={donors.map((id) => ({ value: id, label: displayName(id) }))}
-          initialValue={[]}
-        />
-      ) : null
+    parents.length === 0 && donors.length > 0 ? (
+      <Field
+        component={CheckboxGroupField}
+        name={ROLE.sharedParents}
+        label={intl.formatMessage(messages.sharedDonorsLabel, args)}
+        options={donors.map((id) => ({ value: id, label: displayName(id) }))}
+        initialValue={[]}
+      />
     ) : parents.length === 0 ? (
       <Field
         component={RadioGroupField}
@@ -2119,18 +2081,10 @@ function SiblingFields({
         label={intl.formatMessage(messages.sharedParentCountLabel, args)}
         options={[
           ...parents.map((id) => ({ value: id, label: displayName(id) })),
-          ...(offersUnshown
-            ? [
-                {
-                  value: UNKNOWN,
-                  label: intl.formatMessage(messages.sharedParentUnshown, args),
-                },
-              ]
-            : []),
           ...donors.map((id) => ({ value: id, label: displayName(id) })),
         ]}
         required
-        initialValue={offersUnshown ? [...parents, UNKNOWN] : parents}
+        initialValue={parents}
       />
     );
 
@@ -2169,7 +2123,7 @@ function SiblingFields({
           name={ROLE.carrier}
           label={intl.formatMessage(messages.carrierLabel)}
           options={[
-            ...carriers.map((id) => ({ value: id, label: carrierLabel(id) })),
+            ...carriers.map((id) => ({ value: id, label: displayName(id) })),
             {
               value: NONE,
               label: intl.formatMessage(messages.carrierUnknown),

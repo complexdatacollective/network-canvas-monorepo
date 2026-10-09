@@ -226,7 +226,6 @@ describe('who may have carried a sibling', () => {
     const planned = plan(f, 'ego', {
       relation: 'sibling',
       sharedParentIds: ['amy', 'rob'],
-      sharesUnshown: 'none',
       parentKind: 'adoptive',
       carrier: null,
     });

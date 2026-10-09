@@ -49,7 +49,6 @@ describe('a sibling who shares a donor', () => {
     const result = plan(twoMothersAndADonor(), {
       relation: 'sibling',
       sharedParentIds: ['amy', 'beth', 'donor'],
-      sharesUnshown: 'none',
       parentKind: 'biological',
       carrier: null,
     });
@@ -64,7 +63,6 @@ describe('a sibling who shares a donor', () => {
     const result = plan(twoMothersAndADonor(), {
       relation: 'sibling',
       sharedParentIds: ['donor'],
-      sharesUnshown: 'none',
       parentKind: 'biological',
       carrier: null,
     });
@@ -91,7 +89,6 @@ describe('a biological sibling of two mothers', () => {
     const result = plan(f, {
       relation: 'sibling',
       sharedParentIds: ['ann', 'bea'],
-      sharesUnshown: 'none',
       parentKind: 'biological',
       biologicalParentId: 'bea',
       carrier: null,

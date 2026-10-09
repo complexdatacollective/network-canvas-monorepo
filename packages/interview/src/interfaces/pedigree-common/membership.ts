@@ -1,8 +1,18 @@
+import {
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
+  type PedigreeRelationshipKind,
+} from '@codaco/protocol-validation';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
 import {
   type Family,
+  familyWithPlan,
+  isFamilyLinkKind,
   type PedigreeConfig,
+  type PlannedLink,
+  type PlannedPerson,
+  type PlannedTwin,
+  planStandIns,
   readFamily,
 } from '../FamilyPedigree/model';
 
@@ -114,6 +124,115 @@ export function peopleCutOff(
   return family.people
     .map((person) => person.id)
     .filter((id) => id !== personId && !remaining.byId.has(id));
+}
+
+/** A change to the family, as planned before it is written. */
+export type FamilyChange = {
+  people?: readonly PlannedPerson[];
+  links?: readonly PlannedLink[];
+  twins?: readonly PlannedTwin[];
+  /** Links recorded again as another kind, by id. A twin link is never a
+   * parent or partner link, so is not recorded as one. */
+  linkKinds?: ReadonlyMap<string, PedigreeRelationshipKind>;
+  /** People whose sex at birth changes, by id. */
+  sexes?: ReadonlyMap<string, string | undefined>;
+  /** Links and twin links removed, by id. */
+  removedLinkIds?: readonly string[];
+  removedPersonIds?: readonly string[];
+};
+
+/** The family as a change leaves it, before the stand-in rule is kept. */
+function familyAfterChange(
+  family: Family,
+  change: FamilyChange,
+  sexAttribute: string,
+): Family {
+  const planned = familyWithPlan(
+    family,
+    change.people ?? [],
+    change.links ?? [],
+    sexAttribute,
+  );
+  const removedPeople = new Set(change.removedPersonIds ?? []);
+  const removedLinks = new Set(change.removedLinkIds ?? []);
+  const touchesRemoved = (link: { source: string; target: string }) =>
+    removedPeople.has(link.source) || removedPeople.has(link.target);
+  const people = planned.people
+    .filter((person) => !removedPeople.has(person.id))
+    .map((person) =>
+      change.sexes?.has(person.id)
+        ? {
+            ...person,
+            sexAssignedAtBirth: PEDIGREE_SEX_ASSIGNED_AT_BIRTH.find(
+              (sex) => sex === change.sexes?.get(person.id),
+            ),
+          }
+        : person,
+    );
+  return {
+    people,
+    byId: new Map(people.map((person) => [person.id, person])),
+    links: planned.links
+      .filter((link) => !removedLinks.has(link.id) && !touchesRemoved(link))
+      .map((link) => {
+        const kind = change.linkKinds?.get(link.id);
+        return kind === undefined || !isFamilyLinkKind(kind)
+          ? link
+          : { ...link, kind };
+      }),
+    twins: [
+      ...planned.twins,
+      ...(change.twins ?? []).map((twin, index) => ({
+        ...twin,
+        id: `\u0000planned-twin-${index}`,
+      })),
+    ].filter((twin) => !removedLinks.has(twin.id) && !touchesRemoved(twin)),
+    egoId: planned.egoId,
+  };
+}
+
+/**
+ * Who a change would leave outside the participant's family: everyone in it
+ * (`family` is the participant's family) whom the change, with the stand-in
+ * rule kept after it (`planStandIns`: a stand-in gives way to a genetic
+ * parent recorded in their place), leaves connected to the participant no
+ * longer — other than the people it removes, and stand-ins left standing in
+ * for nobody. Every path that removes a relationship asks this first, and
+ * applies the same handling as removing a connection does: the change is
+ * refused, naming them, so nobody drops out of the pedigree while staying in
+ * the interview.
+ */
+export function peopleCutOffByChange(
+  family: Family,
+  change: FamilyChange,
+  sexAttribute: string,
+): string[] {
+  const after = familyAfterChange(family, change, sexAttribute);
+  let next = 0;
+  const standIns = planStandIns(
+    after,
+    () => `\u0000stand-in-${next++}`,
+    sexAttribute,
+  );
+  // New stand-ins are connected only to the people they stand in for, so
+  // they reconnect nobody.
+  const kept = participantsFamily(
+    familyAfterChange(
+      after,
+      {
+        removedLinkIds: standIns.removedLinkIds,
+        removedPersonIds: standIns.removedPersonIds,
+      },
+      sexAttribute,
+    ),
+  );
+  const removed = new Set([
+    ...(change.removedPersonIds ?? []),
+    ...standIns.removedPersonIds,
+  ]);
+  return family.people
+    .map((person) => person.id)
+    .filter((id) => !removed.has(id) && !kept.byId.has(id));
 }
 
 /**

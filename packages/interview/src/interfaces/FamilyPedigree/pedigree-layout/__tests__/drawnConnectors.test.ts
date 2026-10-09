@@ -949,3 +949,67 @@ describe('lines of descent', () => {
     );
   });
 });
+
+// Rule (Codex 4229159689): every recorded parent tie is drawn. The places a
+// line may end on a child are never used up, however many ties they have.
+describe('a child with many parent ties beside their birth parents', () => {
+  const ties = [
+    'adopt1',
+    'adopt2',
+    'adopt3',
+    'adopt4',
+    'social1',
+    'social2',
+    'social3',
+    'surrogate',
+  ];
+  const kindOf = (id: string) =>
+    id.startsWith('adopt')
+      ? ('adoptive' as const)
+      : id.startsWith('social')
+        ? ('social' as const)
+        : ('surrogate' as const);
+
+  it('draws a line for every tie, each ending on the child at a place of its own', () => {
+    const { connectors, centre } = draw(
+      ['ego', 'mum', 'dad', ...ties],
+      [
+        ['mum', 'partner', 'dad'],
+        ['mum', 'biological', 'ego'],
+        ['dad', 'biological', 'ego'],
+        ...ties.map((id): Link => [
+          id,
+          kindOf(id),
+          'ego',
+          { carrier: id === 'surrogate' },
+        ]),
+      ],
+    );
+    const ego = centre('ego');
+    // The couple the child is drawn under joins them by their line of
+    // descent; every other tie by a line of its own.
+    const descent = descentsInto(connectors, 'ego').flatMap(
+      (line) => line.parentIds ?? [],
+    );
+    const auxiliary = ['mum', 'dad', ...ties].filter(
+      (id) => !descent.includes(id),
+    );
+    // More lines end on the child than its usual places for them.
+    expect(auxiliary.length).toBeGreaterThan(6);
+    const ends = auxiliary.map((id) => {
+      const lines = auxiliaryLinesFrom(connectors, id);
+      expect(lines, `a line from ${id}`).toHaveLength(1);
+      const segments = auxiliarySegments(lines[0]!);
+      expect(segments.length, `${id}'s line has length`).toBeGreaterThan(0);
+      const last = segments[segments.length - 1]!;
+      // It reaches the child's symbol.
+      expect(Math.abs(last.x2 - ego.x)).toBeLessThan(DIMENSIONS.nodeWidth / 2);
+      expect(Math.abs(last.y2 - ego.y)).toBeLessThan(DIMENSIONS.nodeHeight / 2);
+      return last.x2;
+    });
+    const sorted = ends.toSorted((a, b) => a - b);
+    for (let k = 0; k + 1 < sorted.length; k++) {
+      expect(sorted[k + 1]! - sorted[k]!).toBeGreaterThan(0.5);
+    }
+  });
+});

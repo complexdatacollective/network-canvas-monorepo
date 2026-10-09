@@ -17,6 +17,7 @@ import { SyntheticInterview } from '@codaco/protocol-utilities';
 
 import * as session from '../../../store/modules/session';
 import StoryInterviewShell from '../../../storybook-support/StoryInterviewShell';
+import { nameFingerprint } from '../model';
 
 vi.mock('../../../hooks/useMediaQuery', () => ({ default: () => false }));
 
@@ -79,12 +80,16 @@ const REFUSED = 'An error occurred while submitting the form.';
 type InterviewOptions = {
   /** Sam, the mother's son, recorded as the participant's twin. */
   twin?: boolean;
+  /** Sam recorded as the participant's twin and nothing else: no parent
+   * between them, as a family drawn by another stage may record them. */
+  twinOnly?: boolean;
   /** How the mother is the participant's parent. */
   mumKind?: 'biological' | 'adoptive';
 };
 
 function interview({
   twin = false,
+  twinOnly = false,
   mumKind = 'biological',
 }: InterviewOptions = {}) {
   const si = new SyntheticInterview(1);
@@ -116,6 +121,15 @@ function interview({
     si.addManualEdge(stage.edgeType, 'mum-sam', 'mum', 'sam', {
       [stage.kind]: ['biological'],
       [stage.gestationalCarrier]: true,
+    });
+    si.addManualEdge(stage.edgeType, 'ego-sam', 'ego', 'sam', {
+      [stage.kind]: ['fraternalTwin'],
+    });
+  }
+  if (twinOnly) {
+    si.addManualNode(stage.id, stage.personType, 'sam', {
+      [stage.ego]: false,
+      [stage.sexAssignedAtBirth]: ['male'],
     });
     si.addManualEdge(stage.edgeType, 'ego-sam', 'ego', 'sam', {
       [stage.kind]: ['fraternalTwin'],
@@ -292,6 +306,32 @@ describe('FamilyPedigree twins and the disconnect tool', () => {
   });
 });
 
+// Rule (Codex 4229159680): every path that removes a relationship applies the
+// same cut-off handling as the disconnect tool, which refuses.
+describe('FamilyPedigree removing a twin link', () => {
+  it('refuses to untick a twin connected to the participant only as their twin, and says why', async () => {
+    await renderStage({ twinOnly: true });
+    const user = userEvent.setup();
+    await user.click(personButton('ego'));
+    const panel = await screen.findByTestId('pedigree-person-panel');
+    const twins = within(panel).getByRole('group', {
+      name: /Which of your siblings, if any, are your twins/,
+    });
+    await user.click(within(twins).getByRole('checkbox', { name: 'Sibling' }));
+    await user.click(within(panel).getByRole('button', { name: 'Save' }));
+
+    expect(
+      await within(panel).findByText(/outside your family tree/),
+    ).toBeVisible();
+    expect(screen.getByTestId('pedigree-person-panel')).toBe(panel);
+    // Still twins, so Sam is still drawn.
+    expect(document.querySelector('[data-person-id="sam"]')).not.toBeNull();
+    expect(
+      within(twins).getByRole('checkbox', { name: 'Sibling' }),
+    ).not.toBeChecked();
+  });
+});
+
 describe('FamilyPedigree opening on a family missing a stand-in', () => {
   /** Every change that adds people, let through. */
   const watchAdditions = () => vi.spyOn(session, 'addNodesAndEdges');
@@ -332,5 +372,89 @@ describe('FamilyPedigree opening on a family missing a stand-in', () => {
     await openAndCloseMother(userEvent.setup());
     expect(additions).not.toHaveBeenCalled();
     expect(screen.getAllByTestId('pedigree-person')).toHaveLength(2);
+  });
+});
+
+// Rule: who is a stand-in, and who holds a generated label, belongs to the
+// family, not to the stage that found it out (Codex 4229159663).
+describe('FamilyPedigree stages that draw the same family', () => {
+  /** Two Family Pedigree stages over the same people and relationships. The
+   * first gave the participant's father as a stand-in beside their mother,
+   * and saved "Father" as his name on leaving, unnamed; the interview is on
+   * the second. */
+  function twoStages() {
+    const si = new SyntheticInterview(2);
+    const people = si.addNodeType({ name: 'Person' });
+    const first = si.addStage('FamilyPedigree', {
+      subject: { entity: 'node', type: people.id },
+      prompt: 'Add the members of your family.',
+    });
+    si.addStage('FamilyPedigree', {
+      subject: { entity: 'node', type: people.id },
+      prompt: 'Look over your family again.',
+    });
+    si.addManualNode(first.id, first.personType, 'ego', {
+      [first.ego]: true,
+      [first.sexAssignedAtBirth]: ['female'],
+    });
+    si.addManualNode(first.id, first.personType, 'mum', {
+      [first.ego]: false,
+      [first.sexAssignedAtBirth]: ['female'],
+      [first.name]: 'Julie',
+    });
+    si.addManualNode(first.id, first.personType, 'dad', {
+      [first.ego]: false,
+      [first.sexAssignedAtBirth]: ['male'],
+      [first.name]: 'Father',
+    });
+    for (const parent of ['mum', 'dad']) {
+      si.addManualEdge(first.edgeType, `${parent}-ego`, parent, 'ego', {
+        [first.kind]: ['biological'],
+        [first.gestationalCarrier]: parent === 'mum',
+      });
+    }
+    si.addInformationStage({ title: 'After the pedigree', text: 'Done.' });
+    const payload = si.getInterviewPayload({
+      currentStep: 1,
+      stageMetadata: {
+        0: {
+          standIns: ['dad'],
+          generatedLabels: { dad: nameFingerprint('Father') },
+        },
+      },
+    });
+    // The second stage records the family in the first one's slots.
+    const [firstStage, secondStage] = payload.protocol.stages as {
+      nodeConfiguration?: unknown;
+      edgeConfiguration?: unknown;
+    }[];
+    if (!firstStage || !secondStage) throw new Error('No stages');
+    secondStage.nodeConfiguration = firstStage.nodeConfiguration;
+    secondStage.edgeConfiguration = firstStage.edgeConfiguration;
+    return SuperJSON.stringify(payload);
+  }
+
+  it('treats a stand-in another stage gave, and the label it saved, as theirs', async () => {
+    const additions = vi.spyOn(session, 'addNodesAndEdges');
+    render(<StoryInterviewShell rawPayload={twoStages()} />, {
+      wrapper: WithoutMotion,
+    });
+    await screen.findByText('Look over your family again.');
+    await screen.findAllByTestId('pedigree-person');
+    const user = userEvent.setup();
+
+    await user.click(personButton('dad'));
+    const panel = await screen.findByTestId('pedigree-person-panel');
+    // Unnamed: the label saved as his name is not a name.
+    expect(within(panel).getByRole('textbox', { name: /Name/ })).toHaveValue(
+      '',
+    );
+    // A stand-in is never removed, since the rule would put one back.
+    expect(
+      within(panel).queryByRole('button', { name: 'Remove from family' }),
+    ).toBeNull();
+    // Nobody is added in his place: he holds it.
+    expect(additions).not.toHaveBeenCalled();
+    expect(screen.getAllByTestId('pedigree-person')).toHaveLength(3);
   });
 });

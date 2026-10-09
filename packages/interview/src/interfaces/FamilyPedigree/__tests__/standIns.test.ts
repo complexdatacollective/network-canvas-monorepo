@@ -492,7 +492,6 @@ describe('a sibling who does not share a parent', () => {
     const result = plan(f, 'ego', {
       relation: 'sibling',
       sharedParentIds: ['mum'],
-      sharesUnshown: 'none',
       parentKind: 'biological',
       carrier: null,
     });
@@ -501,50 +500,6 @@ describe('a sibling who does not share a parent', () => {
       { source: 'stand-in-1', target: 'added', kind: 'biological' },
     ]);
     expect(result.removedLinkIds ?? []).toEqual([]);
-  });
-
-  test('who does not share the participant’s one recorded parent’s partner is given their own stand-in', () => {
-    // The participant's family was recorded before the stand-in rule, with
-    // one parent.
-    const f = family(
-      [person('ego', { isEgo: true }), person('mum', { sex: ['female'] })],
-      [link('mum', 'ego', 'biological')],
-    );
-    const result = plan(f, 'ego', {
-      relation: 'sibling',
-      sharedParentIds: ['mum'],
-      sharesUnshown: 'none',
-      parentKind: 'biological',
-      carrier: null,
-    });
-    const after = family(
-      [
-        person('ego', { isEgo: true }),
-        person('mum', { sex: ['female'] }),
-        person('added'),
-        ...result.people
-          .filter((planned) => planned.id !== 'added')
-          .map((planned) => person(planned.id, planned.details)),
-      ],
-      [
-        link('mum', 'ego', 'biological'),
-        ...result.links.map((planned) =>
-          link(planned.source, planned.target, planned.kind),
-        ),
-      ],
-    );
-    // Each has a stand-in of their own: half siblings.
-    expect(fullSiblingsOf(after, 'ego')).toEqual([]);
-    expect(
-      result.links.filter(
-        (planned) => planned.target === 'added' && planned.source !== 'mum',
-      ),
-    ).toHaveLength(1);
-    expect(
-      result.links.filter(
-        (planned) => planned.target === 'ego' && planned.source !== 'mum',
-      ),
-    ).toHaveLength(1);
   });
 });
 
@@ -558,7 +513,6 @@ describe('an adopted person with one adoptive parent', () => {
     const result = plan(f, 'ego', {
       relation: 'sibling',
       sharedParentIds: ['amy'],
-      sharesUnshown: 'other',
       parentKind: 'adoptive',
       carrier: null,
     });
@@ -583,7 +537,6 @@ describe('someone recorded with two donors and no other parents', () => {
     const result = plan(f, 'ego', {
       relation: 'sibling',
       sharedParentIds: [],
-      sharesUnshown: 'both',
       parentKind: 'biological',
       carrier: null,
     });

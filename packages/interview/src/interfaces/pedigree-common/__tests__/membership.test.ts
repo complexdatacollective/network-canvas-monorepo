@@ -20,10 +20,11 @@ import {
   labelEveryone,
   labelWrites,
 } from '../../FamilyPedigree/generatedLabels';
-import { readFamily } from '../../FamilyPedigree/model';
+import { planAddRelative, readFamily } from '../../FamilyPedigree/model';
 import {
   participantsFamily,
   peopleCutOff,
+  peopleCutOffByChange,
   planRemovePerson,
   readParticipantsFamily,
 } from '../membership';
@@ -364,5 +365,171 @@ describe('labels after the Family Pedigree', () => {
       intl,
     );
     expect(unlocked.get('dad')).toBe('David');
+  });
+});
+
+// Rule (Codex 4229159680): every path that removes a relationship applies the
+// same cut-off handling as the disconnect tool, which refuses when someone
+// would be left outside the participant's family.
+describe('peopleCutOffByChange', () => {
+  const SEX = config.sexAssignedAtBirthAttribute;
+  const marked = (
+    nodes: Parameters<typeof readFamily>[0],
+    edges: Parameters<typeof readFamily>[1],
+    standIns: string[] = [],
+  ) =>
+    participantsFamily(
+      readFamily(nodes, edges, config, {}, new Map(), new Set(standIns)),
+    );
+
+  it('names a twin reached only through the twin link the person form unticks', () => {
+    const f = marked(
+      [ego, mum, dad, person('twin', { sex: ['male'] })],
+      [...familyLinks, link('ego', 'twin', 'fraternalTwin')],
+    );
+    expect(
+      peopleCutOffByChange(
+        f,
+        { removedLinkIds: ['ego-twin-fraternalTwin'] },
+        SEX,
+      ),
+    ).toEqual(['twin']);
+  });
+
+  it('names nobody when twins share their parents', () => {
+    const f = marked(
+      [ego, mum, dad, person('twin', { sex: ['male'] })],
+      [
+        ...familyLinks,
+        link('mum', 'twin', 'biological'),
+        link('dad', 'twin', 'biological'),
+        link('ego', 'twin', 'fraternalTwin'),
+      ],
+    );
+    expect(
+      peopleCutOffByChange(
+        f,
+        { removedLinkIds: ['ego-twin-fraternalTwin'] },
+        SEX,
+      ),
+    ).toEqual([]);
+  });
+
+  // A half brother shares the participant's unknown father, a stand-in, and
+  // has a stand-in mother of his own. Recording a father for him alone makes
+  // the shared stand-in give way, his only connection to the participant.
+  const halfBrother = () =>
+    marked(
+      [
+        ego,
+        mum,
+        person('standIn', { sex: ['male'] }),
+        person('half', { sex: ['male'] }),
+        person('halfMum', { sex: ['female'] }),
+      ],
+      [
+        link('mum', 'ego', 'biological'),
+        link('standIn', 'ego', 'biological'),
+        link('standIn', 'half', 'biological'),
+        link('halfMum', 'half', 'biological'),
+      ],
+      ['standIn', 'halfMum'],
+    );
+
+  it('names everyone a stand-in giving way to a new parent would leave out', () => {
+    const f = halfBrother();
+    const plan = planAddRelative({
+      family: f,
+      anchorId: 'half',
+      newPersonId: 'newDad',
+      details: { [SEX]: ['male'] },
+      request: {
+        relation: 'parent',
+        parentKind: 'biological',
+        carriedPregnancy: false,
+        partnerId: null,
+        partnershipCurrent: true,
+        alsoParentOf: [],
+      },
+      createId: () => 'unused',
+      sexAttribute: SEX,
+    });
+    expect(plan.removedLinkIds).toEqual(['standIn-half-biological']);
+    expect(
+      peopleCutOffByChange(
+        f,
+        {
+          people: plan.people,
+          links: plan.links,
+          removedLinkIds: plan.removedLinkIds,
+          removedPersonIds: plan.removedPersonIds,
+        },
+        SEX,
+      ).toSorted(),
+    ).toEqual(['half', 'halfMum']);
+  });
+
+  it('names nobody when the new parent is the participant’s too', () => {
+    const f = halfBrother();
+    const plan = planAddRelative({
+      family: f,
+      anchorId: 'half',
+      newPersonId: 'newDad',
+      details: { [SEX]: ['male'] },
+      request: {
+        relation: 'parent',
+        parentKind: 'biological',
+        carriedPregnancy: false,
+        partnerId: null,
+        partnershipCurrent: true,
+        alsoParentOf: ['ego'],
+      },
+      createId: () => 'unused',
+      sexAttribute: SEX,
+    });
+    expect(
+      peopleCutOffByChange(
+        f,
+        {
+          people: plan.people,
+          links: plan.links,
+          removedLinkIds: plan.removedLinkIds,
+          removedPersonIds: plan.removedPersonIds,
+        },
+        SEX,
+      ),
+    ).toEqual([]);
+  });
+
+  it('names everyone a parent re-described as genetic would leave out, through the stand-in giving way', () => {
+    // The half brother's adoptive father, connected to the participant only
+    // through him, re-described as his biological father.
+    const f = marked(
+      [
+        ego,
+        mum,
+        person('standIn', { sex: ['male'] }),
+        person('half', { sex: ['male'] }),
+        person('halfMum', { sex: ['female'] }),
+        person('halfDad', { name: 'Al', sex: ['male'] }),
+      ],
+      [
+        link('mum', 'ego', 'biological'),
+        link('standIn', 'ego', 'biological'),
+        link('standIn', 'half', 'biological'),
+        link('halfMum', 'half', 'biological'),
+        link('halfDad', 'half', 'adoptive'),
+      ],
+      ['standIn', 'halfMum'],
+    );
+    expect(
+      peopleCutOffByChange(
+        f,
+        {
+          linkKinds: new Map([['halfDad-half-adoptive', 'biological']]),
+        },
+        SEX,
+      ).toSorted(),
+    ).toEqual(['half', 'halfDad', 'halfMum']);
   });
 });

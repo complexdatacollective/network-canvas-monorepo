@@ -107,32 +107,65 @@ export function symbolOf(
   };
 }
 
+/** The middles of the gaps between `stops`, widest first, leaving out gaps
+ * too narrow to tell two lines apart in. */
+const gapMiddles = (stops: number[]) => {
+  const sorted = [...new Set(stops)].toSorted((a, b) => a - b);
+  const gaps: { at: number; width: number }[] = [];
+  for (let k = 0; k + 1 < sorted.length; k++) {
+    const width = sorted[k + 1]! - sorted[k]!;
+    if (width > 4 * ON) gaps.push({ at: sorted[k]! + width / 2, width });
+  }
+  return gaps.toSorted((a, b) => b.width - a.width).map((gap) => gap.at);
+};
+
+/** Offsets from the middle of a child's top edge, as fractions of its width,
+ * at which other lines end first, nearest the centre first. */
+const ATTACHMENT_OFFSETS = [0.2, -0.2, 0.32, -0.32, 0.12, -0.12];
+/** How far from the middle a line may end, as a fraction of the width. */
+const ATTACHMENT_REACH = 0.4;
+
 /**
  * The places on a child's top edge where lines other than their own line of
- * descent may end, nearest the centre first.
+ * descent may end, nearest the centre first, leaving out those `taken`.
+ * Never none, however many lines end on the child (every recorded parent tie
+ * is drawn): once the usual places are taken, the middles of the gaps between
+ * the lines already there, widest first; and once those are too narrow, the
+ * usual places again.
  */
-export function attachmentsFor(x: number, boxWidth: number): number[] {
-  return [0.2, -0.2, 0.32, -0.32, 0.12, -0.12].map(
-    (offset) => x + offset * boxWidth,
-  );
+export function attachmentsFor(
+  x: number,
+  boxWidth: number,
+  taken: readonly number[] = [],
+): number[] {
+  const isTaken = (at: number) =>
+    taken.some((used) => Math.abs(used - at) < 1e-9);
+  const usual = ATTACHMENT_OFFSETS.map((offset) => x + offset * boxWidth);
+  const free = usual.filter((at) => !isTaken(at));
+  if (free.length > 0) return free;
+  const reach = ATTACHMENT_REACH * boxWidth;
+  const between = gapMiddles([
+    x - reach,
+    x + reach,
+    ...taken.filter((at) => Math.abs(at - x) <= reach),
+  ]).filter((at) => !isTaken(at));
+  return between.length > 0 ? between : usual;
 }
 
 /**
  * The places along a sibling bar where a line may join it: the middles of
- * the gaps between the lines already meeting it, widest gap first.
+ * the gaps between the lines already meeting it, widest gap first. Never
+ * none: once every gap is too narrow, the middle of the bar.
  */
 export function joinsFor(bar: LineSegment, taken: number[]): number[] {
   const from = Math.min(bar.x1, bar.x2);
   const to = Math.max(bar.x1, bar.x2);
-  const stops = [...new Set([from, to, ...taken])]
-    .filter((x) => x >= from - ON && x <= to + ON)
-    .toSorted((a, b) => a - b);
-  const gaps: { at: number; width: number }[] = [];
-  for (let k = 0; k + 1 < stops.length; k++) {
-    const width = stops[k + 1]! - stops[k]!;
-    if (width > 4 * ON) gaps.push({ at: stops[k]! + width / 2, width });
-  }
-  return gaps.toSorted((a, b) => b.width - a.width).map((gap) => gap.at);
+  const joins = gapMiddles([
+    from,
+    to,
+    ...taken.filter((x) => x >= from - ON && x <= to + ON),
+  ]);
+  return joins.length > 0 ? joins : [(from + to) / 2];
 }
 
 const pieces = (points: Point[]): LineSegment[] =>

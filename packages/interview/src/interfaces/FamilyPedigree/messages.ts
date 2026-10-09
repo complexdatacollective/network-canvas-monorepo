@@ -552,9 +552,9 @@ export const messages = defineMessages({
   itemParents: {
     id: 'interview.familyPedigree.itemParents',
     defaultMessage:
-      '{isYou, select, true {{missing, plural, one {Add your other biological parent} other {Add your biological parents}}} other {{missing, plural, one {Add another biological parent for “{name}”} other {Add biological parents for “{name}”}}}}',
+      '{isYou, select, true {Add your biological parents} other {Add biological parents for “{name}”}}',
     description:
-      'Item in the list of family members still needed. missing is how many biological parents the person still needs (1 or 2). name is the person’s name or how they are related to the participant. Biological parents include an egg or sperm donor.',
+      'Item in the list of family members still needed: the person has no biological parents recorded yet. name is the person’s name or how they are related to the participant. Biological parents include an egg or sperm donor.',
   },
   itemSiblings: {
     id: 'interview.familyPedigree.itemSiblings',
@@ -759,6 +759,13 @@ export const messages = defineMessages({
     description:
       'Shown under the toolbar, and read out, when the participant selects two people to disconnect whose connection is the only link between the participant and other people in the family tree, so it cannot be removed. names is a list of those people’s names, or, when they have none, how they are related to the participant, each quoted and already joined in the participant’s language (for example “Aunt” and “Cousin”); count is how many people it names.',
   },
+  changeWouldCutOff: {
+    id: 'interview.familyPedigree.changeWouldCutOff',
+    defaultMessage:
+      '{count, plural, one {This would leave {names} outside your family tree, because it removes their only connection to you. Connect them to someone else in your family first.} other {This would leave {names} outside your family tree, because it removes their only connection to you. Connect them to someone else in your family first.}}',
+    description:
+      'Shown when the participant saves a change, or makes a connection, that would remove the only link between the participant and other people in the family tree: unticking a twin who is connected to the participant only as their twin, or recording a parent in the place of an unnamed stand-in parent through whom other people were connected. The change is not made. names is a list of those people’s names, or, when they have none, how they are related to the participant, each quoted and already joined in the participant’s language (for example “Aunt” and “Cousin”); count is how many people it names.',
+  },
   disconnectConfirmTitle: {
     id: 'interview.familyPedigree.disconnectConfirmTitle',
     defaultMessage:
@@ -930,13 +937,6 @@ export const messages = defineMessages({
       '{framing, select, gamete {Only the sperm parent} other {Only the biological father}}',
     description:
       'Option: the new sibling shares only the parent who provided the sperm (a half-sibling). Gendered or gamete wording depends on the study.',
-  },
-  sharedParentUnshown: {
-    id: 'interview.familyPedigree.sharedParentUnshown',
-    defaultMessage:
-      '{isYou, select, true {Your other parent, not shown yet} other {The other parent of “{name}”, not shown yet}}',
-    description:
-      'Option when choosing which parents a new sibling shares, for someone with one parent recorded: their second parent, who is added unnamed for both of them. Also an option when asked who carried the new sibling’s pregnancy.',
   },
   passphraseNeededNotice: {
     id: 'interview.familyPedigree.passphraseNeededNotice',

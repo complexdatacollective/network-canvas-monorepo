@@ -16,7 +16,10 @@ import { useSelector, useStore } from 'react-redux';
 import { v4 as uuid } from 'uuid';
 
 import { commonMessages } from '@codaco/app-i18n/common';
-import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import {
+  createMessageError,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
 import { Button } from '@codaco/fresco-ui/Button';
@@ -54,6 +57,7 @@ import { useStageSelector } from '../../hooks/useStageSelector';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import {
+  getActiveSession,
   getEdgeColorForType,
   getNetworkEdges,
   getNetworkNodes,
@@ -61,7 +65,7 @@ import {
   getStageMetadata,
   resolveNodeShape,
 } from '../../selectors/session';
-import { getCodebook } from '../../store/modules/protocol';
+import { getCodebook, getStages } from '../../store/modules/protocol';
 import {
   addEdge,
   addNode,
@@ -82,7 +86,9 @@ import { useReportUnreadable } from '../Anonymisation/useReportUnreadable';
 import { pedigreeFraming } from '../pedigree-common/framing';
 import {
   participantsFamily,
+  type FamilyChange,
   peopleCutOff,
+  peopleCutOffByChange,
   planRemovePerson,
 } from '../pedigree-common/membership';
 import {
@@ -156,6 +162,12 @@ import type { PedigreeLink } from './pedigree-layout/types';
 import { pedigreeLinksOf } from './pedigreeLinks';
 import { relationshipWrites } from './relationshipToParticipant';
 import { reproductiveRolesOf } from './reproductiveRoles';
+import {
+  readSharedFamilyRecord,
+  type SharedFamilyRecord,
+  sharedRecordWrites,
+  stepsSharingFamily,
+} from './sharedRecord';
 import type { Point } from './spatialNavigation';
 import {
   type Box,
@@ -267,24 +279,35 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     canNominate(person) || isNominated(person);
 
   // The stage's own record: the framing the participant chose, when the
-  // stage leaves it to them, and who holds a label saved as their name
-  // because they were left unnamed.
+  // stage leaves it to them.
   const stageMetadata = useStageSelector(getStageMetadata);
   const pedigreeMetadata = isFamilyPedigreeStageMetadata(stageMetadata)
     ? stageMetadata
     : undefined;
-  const generatedLabels = useMemo(
-    () => pedigreeMetadata?.generatedLabels ?? {},
-    [pedigreeMetadata],
+  // The family's record, which every stage drawing the same family keeps
+  // (`stepsSharingFamily`): who holds a label saved as their name because
+  // they were left unnamed, and the stand-ins a stage generated — only they
+  // are ever treated as stand-ins (`isStandIn`). A stand-in or a label
+  // another stage gave is one here too.
+  const stages = useSelector(getStages);
+  const sharingSteps = useMemo(
+    () => stepsSharingFamily(stages, currentStep),
+    [stages, currentStep],
   );
-  // The stand-ins the stage generated: only they are ever treated as
-  // stand-ins (`isStandIn`).
+  const allStageMetadata = useSelector(
+    (state: RootState) => getActiveSession(state)?.stageMetadata,
+  );
+  const sharedRecord = useMemo(
+    () => readSharedFamilyRecord(allStageMetadata, sharingSteps),
+    [allStageMetadata, sharingSteps],
+  );
+  const generatedLabels = sharedRecord.generatedLabels;
   const standInIds = useMemo(
-    () => new Set(pedigreeMetadata?.standIns),
-    [pedigreeMetadata],
+    () => new Set(sharedRecord.standIns),
+    [sharedRecord],
   );
-  // The stage's record as stored now, which a handler may have changed since
-  // this render, so that each write keeps what the others wrote.
+  // The records as stored now, which a handler may have changed since this
+  // render, so that each write keeps what the others wrote.
   const storedPedigreeMetadata = () => {
     const stored = getStageMetadata(store.getState(), currentStep);
     return isFamilyPedigreeStageMetadata(stored) ? stored : undefined;
@@ -298,6 +321,21 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         metadata: { ...storedPedigreeMetadata(), ...patch },
       }),
     );
+  const storedSharedRecord = () =>
+    readSharedFamilyRecord(
+      getActiveSession(store.getState())?.stageMetadata,
+      sharingSteps,
+    );
+  // Written to every stage drawing the family, so they all keep one record.
+  const writeSharedRecord = (patch: Partial<SharedFamilyRecord>) => {
+    for (const { step, metadata } of sharedRecordWrites(
+      getActiveSession(store.getState())?.stageMetadata,
+      sharingSteps,
+      patch,
+    )) {
+      dispatch(updateStageMetadata({ currentStep: step, metadata }));
+    }
+  };
 
   const nodes = useStageSelector(getNetworkNodes);
   const edges = useStageSelector(getNetworkEdges);
@@ -1054,7 +1092,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // it, and lets them through.
   // (Pressing Next closes the list, as a press outside it, before this runs;
   // so a recommendation remembers what it has shown instead.)
-  const shownBeforeNext = useRef<ShownRecommendations>(new Map());
+  const shownBeforeNext = useRef<ShownRecommendations>(new Set());
   const completeEnoughToLeave = (direction: Direction) => {
     if (direction !== 'forwards' || !progress || !completeness) return true;
     // A family no passphrase can unlock can never be completed.
@@ -1174,12 +1212,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         : undefined;
       if (written !== undefined) record[personId] = nameFingerprint(written);
     }
-    if (
-      Object.keys(record).length > 0 ||
-      pedigreeMetadata?.generatedLabels !== undefined
-    ) {
-      writePedigreeMetadata({ generatedLabels: record });
-    }
+    writeSharedRecord({ generatedLabels: record });
     if (refused) {
       showToast({
         description: intl.formatMessage(refused),
@@ -1523,9 +1556,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   };
 
   // The family as stored now, with the stand-ins recorded now (`marked`, or
-  // else the stage's record).
+  // else the family's record, `storedSharedRecord`).
   const latestFamily = (
-    marked: ReadonlySet<string> = new Set(storedPedigreeMetadata()?.standIns),
+    marked: ReadonlySet<string> = new Set(storedSharedRecord().standIns),
   ) => {
     const state = store.getState();
     return participantsFamily(
@@ -1544,17 +1577,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // anyone no longer a stand-in: someone removed, or named, described or
   // related further, who is someone in their own right from then on.
   const recordStandIns = (added: readonly string[] = []) => {
-    const stored = storedPedigreeMetadata()?.standIns ?? [];
-    const marked = new Set([...stored, ...added]);
+    const marked = new Set([...storedSharedRecord().standIns, ...added]);
     const latest = latestFamily(marked);
-    const kept = [...marked].filter((id) => isStandIn(latest, id));
-    if (
-      kept.length === stored.length &&
-      kept.every((id, index) => stored[index] === id)
-    ) {
-      return;
-    }
-    writePedigreeMetadata({ standIns: kept });
+    writeSharedRecord({
+      standIns: [...marked].filter((id) => isStandIn(latest, id)),
+    });
   };
 
   // The stand-in rule (`planStandIns`), kept after every change to the
@@ -1677,6 +1704,23 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         : result.unset.includes(sexAttribute)
           ? undefined
           : mode.person.sexAssignedAtBirth;
+      // Nothing is saved that would leave someone outside the family: a twin
+      // link unticked, or a stand-in giving way to a parent re-described as
+      // genetic, that is their only connection to the participant.
+      const editCutOff = cutOffNotice({
+        linkKinds: new Map(
+          (result.linkUpdates ?? []).map((update) => [
+            update.linkId,
+            update.kind,
+          ]),
+        ),
+        sexes: new Map([[mode.person.id, sexAssignedAtBirth]]),
+        twins: result.twinChanges?.added,
+        removedLinkIds: result.twinChanges?.removedLinkIds,
+      });
+      if (editCutOff) {
+        return { success: false, formErrors: [editCutOff] };
+      }
       const set = { ...result.set };
       for (const attribute of nominationsWithdrawnBy(
         stage.nominationPrompts ?? [],
@@ -1705,9 +1749,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         typedName.trim() !== '' &&
         Object.hasOwn(generatedLabels, mode.person.id)
       ) {
-        writePedigreeMetadata({
+        writeSharedRecord({
           generatedLabels: Object.fromEntries(
-            Object.entries(generatedLabels).filter(
+            Object.entries(storedSharedRecord().generatedLabels).filter(
               ([personId]) => personId !== mode.person.id,
             ),
           ),
@@ -1820,6 +1864,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       result.request,
     );
     const newPersonId = plan.people[0]?.id ?? '';
+    // Nor is an addition that makes a stand-in give way where they were
+    // someone's only connection to the participant.
+    const addCutOff = cutOffNotice({
+      people: plan.people,
+      links: plan.links,
+      twins: plan.twins,
+      removedLinkIds: plan.removedLinkIds,
+      removedPersonIds: plan.removedPersonIds,
+    });
+    if (addCutOff) return { success: false, formErrors: [addCutOff] };
     // Everyone the addition draws, and how they are related, is saved as one
     // change, or not at all, so nothing observing the session sees part of
     // it.
@@ -1902,6 +1956,23 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       ),
       { type: 'conjunction' },
     );
+
+  // Why a change made in the panel is refused, as a form error, when it
+  // would leave someone outside the participant's family
+  // (`peopleCutOffByChange`); undefined when it leaves nobody out.
+  const cutOffNotice = (change: FamilyChange) => {
+    const cutOff = peopleCutOffByChange(
+      family,
+      change,
+      config.sexAssignedAtBirthAttribute,
+    );
+    return cutOff.length === 0
+      ? undefined
+      : createMessageError(messages.changeWouldCutOff, {
+          count: cutOff.length,
+          names: listOfNames(cutOff),
+        });
+  };
 
   // The links between two people, in either direction.
   const linksBetween = (a: string, b: string) =>
@@ -2000,7 +2071,25 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   const handleConnect = async (connection: Connection) => {
     endConnecting();
-    await addLink(planConnection(connection));
+    const link = planConnection(connection);
+    // A connection that makes a stand-in give way where they were someone's
+    // only connection to the participant is refused, as a disconnection
+    // that would leave them out is.
+    const cutOff = peopleCutOffByChange(
+      family,
+      { links: [link] },
+      config.sexAssignedAtBirthAttribute,
+    );
+    if (cutOff.length > 0) {
+      refuse(
+        intl.formatMessage(messages.changeWouldCutOff, {
+          count: cutOff.length,
+          names: listOfNames(cutOff),
+        }),
+      );
+      return;
+    }
+    await addLink(link);
     reportRefusedStandIn(await keepStandInRule());
     await withdrawContradictedAnswers();
     setJustConnected(connection);

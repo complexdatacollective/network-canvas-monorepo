@@ -1837,10 +1837,9 @@ export const EachChildNeedsTheirOtherBiologicalParent: Story = {
         ),
       { timeout: 5000 },
     );
+    // Mia is never asked for a biological parent: the stand-in is one.
     await expect(
-      body.queryByRole('button', {
-        name: 'Add another biological parent for “Mia”',
-      }),
+      body.queryByRole('button', { name: /biological parents? for “Mia”/ }),
     ).toBeNull();
     await expect(canvas.getByTestId('pedigree-canvas')).toBeInTheDocument();
   },

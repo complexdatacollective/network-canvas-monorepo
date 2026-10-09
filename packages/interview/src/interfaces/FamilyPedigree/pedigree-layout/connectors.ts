@@ -1012,9 +1012,7 @@ export function computeConnectors(
         const childX = layout.pos[conn.childLevel]![col]!;
         const key = `${conn.childLevel},${col}`;
         const used = usedAttachments.get(key) ?? [];
-        const attachments = attachmentsFor(childX, boxw).filter(
-          (x) => !used.some((u) => Math.abs(u - x) < 1e-9),
-        );
+        const attachments = attachmentsFor(childX, boxw, used);
         const attached = draw(
           {
             kind: 'child',

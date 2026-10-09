@@ -347,20 +347,58 @@ describe('adding a sibling', () => {
   const sharedParents = () =>
     screen.getByRole('group', { name: /^Which parents do they share/ });
 
-  it('offers the second parent not shown yet, chosen, to someone with one parent', () => {
+  // The stand-in rule (`planStandIns`) gives anyone with one genetic parent
+  // a stand-in for the other, so the form offers the stand-in among the
+  // parents recorded, and never a parent "not shown yet".
+  it('offers the stand-in for a parent not yet recorded among the parents, all chosen', async () => {
+    const { onSubmit, user } = renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('mum', { sex: ['female'] }),
+        person('standIn', { sex: ['male'] }),
+      ],
+      edges: [
+        link('mum', 'ego', 'biological'),
+        link('standIn', 'ego', 'biological'),
+      ],
+      adding: 'sibling',
+    });
+    const boxes = within(sharedParents()).getAllByRole('checkbox');
+    expect(boxes).toHaveLength(2);
+    for (const name of ['mum', 'standIn']) {
+      expect(
+        within(sharedParents()).getByRole('checkbox', { name }),
+      ).toBeChecked();
+    }
+    expect(screen.queryByText(/not shown yet/)).toBeNull();
+    await user.click(screen.getByRole('radio', { name: 'Female' }));
+    await save(user);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0].request).toEqual(
+      expect.objectContaining({
+        sharedParentIds: ['mum', 'standIn'],
+        sharesOnly: undefined,
+      }),
+    );
+  });
+
+  it('never offers a parent not shown yet, even beside one parent and no stand-in', () => {
+    // A family read before its stand-ins are written: the stage adds them on
+    // opening, and the form offers only the parents recorded meanwhile.
     renderPersonForm('ego', {
       nodes: [
         person('ego', { isEgo: true, sex: ['male'] }),
         person('mum', { sex: ['female'] }),
       ],
-      edges: [link('mum', 'ego', 'biological')],
+      edges: [link('mum', 'ego', 'biological', { carrier: true })],
       adding: 'sibling',
     });
+    expect(within(sharedParents()).getAllByRole('checkbox')).toHaveLength(1);
     expect(
-      within(sharedParents()).getByRole('checkbox', {
-        name: 'Your other parent, not shown yet',
-      }),
+      within(sharedParents()).getByRole('checkbox', { name: 'mum' }),
     ).toBeChecked();
+    expect(screen.queryByText(/not shown yet/)).toBeNull();
   });
 
   it('offers no parent not shown yet to someone whose genetic parents are all recorded', async () => {
@@ -393,7 +431,6 @@ describe('adding a sibling', () => {
     await waitFor(() => expect(onSubmit).toHaveBeenCalled());
     expect(onSubmit.mock.calls[0]?.[0].request).toMatchObject({
       sharedParentIds: ['mum'],
-      sharesUnshown: 'none',
     });
   });
 });

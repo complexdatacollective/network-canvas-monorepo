@@ -48,7 +48,6 @@ const siblingRequest = (
 ): AddRelativeRequest => ({
   relation: 'sibling',
   sharedParentIds: ['mum', 'dad'],
-  sharesUnshown: 'none',
   parentKind: 'biological',
   carrier: null,
   twin,
