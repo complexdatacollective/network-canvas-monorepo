@@ -126,6 +126,9 @@ export type ParentGroupConnector = {
   nodeHalfWidth?: number;
   slashSide?: 'left' | 'right';
   partnerIds?: [string, string];
+  /** Whether each end stops at the partner's adoption bracket rather than
+   * at their centre. */
+  endsAtBracket?: [boolean, boolean];
 };
 
 export type ParentChildConnector = {
@@ -146,6 +149,9 @@ export type AuxiliaryConnector = {
    * top edge (continuing to their centre, under their symbol) or on the
    * sibling bar it joins. */
   points: Point[];
+  /** Where the line crosses another line, in order along it: it is drawn
+   * hopping over the other line there. */
+  hops?: Point[];
   endpointIds?: [string | undefined, string | undefined];
 };
 

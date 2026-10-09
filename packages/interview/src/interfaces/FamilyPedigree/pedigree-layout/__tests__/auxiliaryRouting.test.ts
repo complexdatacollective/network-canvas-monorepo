@@ -318,3 +318,388 @@ describe('where auxiliary lines meet a symbol', () => {
     }
   });
 });
+
+type Drawn = { segment: LineSegment; line: string };
+
+/** Every drawn segment longer than a pixel, with which line it belongs to:
+ * `aux:<index>` for the auxiliary lines, or the kind of connector. */
+function drawnSegments(connectors: PedigreeConnectors): Drawn[] {
+  const out: Drawn[] = [];
+  connectors.groupLines.forEach((line, k) => {
+    for (const segment of [
+      line.segment,
+      ...(line.endpointSegments ?? []),
+      ...(line.doubleSegment ? [line.doubleSegment] : []),
+    ]) {
+      out.push({ segment, line: `group:${k}` });
+    }
+  });
+  connectors.parentChildLines.forEach((line, k) => {
+    for (const segment of [
+      ...line.parentLink,
+      ...(line.siblingBar ? [line.siblingBar] : []),
+      ...line.uplines,
+    ]) {
+      out.push({ segment, line: `descent:${k}` });
+    }
+  });
+  connectors.twinIndicators.forEach((twin, k) => {
+    if (twin.segment) out.push({ segment: twin.segment, line: `twin:${k}` });
+  });
+  connectors.auxiliaryLines.forEach((line, k) => {
+    line.points.slice(1).forEach((point, n) => {
+      const from = line.points[n]!;
+      out.push({
+        segment: {
+          type: 'line',
+          x1: from.x,
+          y1: from.y,
+          x2: point.x,
+          y2: point.y,
+        },
+        line: `aux:${k}`,
+      });
+    });
+  });
+  return out.filter(
+    ({ segment: s }) => Math.hypot(s.x2 - s.x1, s.y2 - s.y1) > 1,
+  );
+}
+
+/** Where two segments cross at a point inside both. */
+function crossingPoint(a: LineSegment, b: LineSegment): P | undefined {
+  const rx = a.x2 - a.x1;
+  const ry = a.y2 - a.y1;
+  const sx = b.x2 - b.x1;
+  const sy = b.y2 - b.y1;
+  const denominator = rx * sy - ry * sx;
+  if (Math.abs(denominator) < 1e-9) return undefined;
+  const t = ((b.x1 - a.x1) * sy - (b.y1 - a.y1) * sx) / denominator;
+  const u = ((b.x1 - a.x1) * ry - (b.y1 - a.y1) * rx) / denominator;
+  if (t <= 1e-3 || t >= 1 - 1e-3 || u <= 1e-3 || u >= 1 - 1e-3) {
+    return undefined;
+  }
+  return { x: a.x1 + t * rx, y: a.y1 + t * ry };
+}
+
+const pointToSegment = (p: P, s: LineSegment) => {
+  const dx = s.x2 - s.x1;
+  const dy = s.y2 - s.y1;
+  const len2 = dx * dx + dy * dy;
+  const t =
+    len2 === 0
+      ? 0
+      : Math.max(
+          0,
+          Math.min(1, ((p.x - s.x1) * dx + (p.y - s.y1) * dy) / len2),
+        );
+  return Math.hypot(p.x - (s.x1 + t * dx), p.y - (s.y1 + t * dy));
+};
+
+/** How far two segments run side by side, nearly parallel and closer than
+ * `margin` but not on one line, outside the given boxes. */
+function sideBySide(
+  a: LineSegment,
+  b: LineSegment,
+  margin: number,
+  boxes: Box[],
+) {
+  const la = Math.hypot(a.x2 - a.x1, a.y2 - a.y1);
+  const lb = Math.hypot(b.x2 - b.x1, b.y2 - b.y1);
+  const [ux, uy] = [(a.x2 - a.x1) / la, (a.y2 - a.y1) / la];
+  const [vx, vy] = [(b.x2 - b.x1) / lb, (b.y2 - b.y1) / lb];
+  if (Math.abs(ux * vy - uy * vx) > 0.1) return 0;
+  // Sample along a, measuring the distance to b where b lies alongside.
+  let run = 0;
+  const steps = Math.ceil(la);
+  for (let k = 0; k < steps; k++) {
+    const p = { x: a.x1 + ux * (k + 0.5), y: a.y1 + uy * (k + 0.5) };
+    if (boxes.some((box) => inside(p, box))) continue;
+    const along = (p.x - b.x1) * vx + (p.y - b.y1) * vy;
+    if (along < 0 || along > lb) continue;
+    const d = pointToSegment(p, b);
+    if (d > 1 && d < margin) run += la / steps;
+  }
+  return run;
+}
+
+describe('auxiliary lines keep clear of every other line', () => {
+  const W = DIMENSIONS.nodeWidth;
+  const H = DIMENSIONS.nodeHeight;
+  const auxOf = (connectors: PedigreeConnectors, from: string, to?: string) =>
+    connectors.auxiliaryLines.filter(
+      (line) =>
+        line.endpointIds?.[0] === from &&
+        (to === undefined || line.endpointIds?.[1] === to),
+    );
+  const crossCount = (a: P[], b: P[]) => {
+    let count = 0;
+    for (let i = 1; i < a.length; i++) {
+      for (let j = 1; j < b.length; j++) {
+        const s = {
+          type: 'line',
+          x1: a[i - 1]!.x,
+          y1: a[i - 1]!.y,
+          x2: a[i]!.x,
+          y2: a[i]!.y,
+        } as const;
+        const t = {
+          type: 'line',
+          x1: b[j - 1]!.x,
+          y1: b[j - 1]!.y,
+          x2: b[j]!.x,
+          y2: b[j]!.y,
+        } as const;
+        if (crossingPoint(s, t)) count++;
+      }
+    }
+    return count;
+  };
+
+  const adoptedBirthParents = () =>
+    draw(
+      ['ego', 'chloe', 'tyler', 'helen', 'mark', 'sam', 'amber'],
+      [
+        parent('chloe', 'biological', 'ego', true),
+        parent('tyler', 'biological', 'ego'),
+        partners('chloe', 'tyler', false),
+        parent('helen', 'adoptive', 'ego'),
+        parent('mark', 'adoptive', 'ego'),
+        partners('helen', 'mark'),
+        partners('chloe', 'sam'),
+        partners('tyler', 'amber'),
+      ],
+    );
+
+  it('routes two birth parents’ lines to an adopted child without crossing', () => {
+    const { connectors } = adoptedBirthParents();
+    const [chloe] = auxOf(connectors, 'chloe');
+    const [tyler] = auxOf(connectors, 'tyler');
+    expect(chloe && tyler).toBeTruthy();
+    expect(crossCount(chloe!.points, tyler!.points)).toBe(0);
+  });
+
+  // The unnamed stand-ins fill each missing genetic parent, as the
+  // interface records them.
+  const adoptedByGrandparents = () =>
+    draw(
+      ['ego', 'carmen', 'egoFather', 'rosa', 'luis', 'diego'],
+      [
+        parent('carmen', 'biological', 'ego', true),
+        parent('egoFather', 'biological', 'ego'),
+        parent('rosa', 'biological', 'carmen', true),
+        parent('luis', 'biological', 'carmen'),
+        partners('rosa', 'luis'),
+        parent('rosa', 'biological', 'diego', true),
+        parent('luis', 'biological', 'diego'),
+        parent('rosa', 'adoptive', 'ego'),
+        parent('luis', 'adoptive', 'ego'),
+      ],
+    );
+
+  it('keeps grandparents’ adoptive lines apart from each other and from other lines', () => {
+    const people = ['ego', 'carmen', 'egoFather', 'rosa', 'luis', 'diego'];
+    const { connectors, boxOf } = adoptedByGrandparents();
+    const boxes = people.map(boxOf);
+    const segments = drawnSegments(connectors);
+    const faults: string[] = [];
+    for (const a of segments.filter((s) => s.line.startsWith('aux'))) {
+      for (const b of segments) {
+        if (b.line === a.line) continue;
+        const run = sideBySide(a.segment, b.segment, 0.25 * W, boxes);
+        if (run > 0.25 * W)
+          faults.push(`${a.line} beside ${b.line} for ${run}`);
+      }
+    }
+    expect(faults).toEqual([]);
+  });
+
+  it('keeps a corner of an auxiliary line clear of other lines', () => {
+    const people = ['ego', 'carmen', 'egoFather', 'rosa', 'luis', 'diego'];
+    const { connectors, boxOf } = adoptedByGrandparents();
+    const boxes = people.map(boxOf);
+    const segments = drawnSegments(connectors);
+    const faults: string[] = [];
+    connectors.auxiliaryLines.forEach((line, k) => {
+      for (const corner of line.points.slice(1, -1)) {
+        if (boxes.some((box) => inside(corner, box))) continue;
+        for (const b of segments) {
+          if (b.line === `aux:${k}`) continue;
+          const d = pointToSegment(corner, b.segment);
+          if (d < 0.2 * W) faults.push(`aux:${k} corner ${d}px from ${b.line}`);
+        }
+      }
+    });
+    expect(faults).toEqual([]);
+  });
+
+  it('keeps lines clear of the symbols they do not join', () => {
+    const people = [
+      'ego',
+      'karen',
+      'mike',
+      'shannon',
+      'egoFather',
+      'lauren',
+      'denise',
+      'jack',
+    ];
+    const { connectors, boxOf } = draw(people, [
+      parent('egoFather', 'biological', 'ego'),
+      parent('karen', 'adoptive', 'ego'),
+      parent('mike', 'adoptive', 'ego'),
+      partners('karen', 'mike', false),
+      parent('shannon', 'biological', 'ego', true),
+      partners('mike', 'lauren'),
+      parent('lauren', 'social', 'ego'),
+      partners('karen', 'denise'),
+      parent('denise', 'social', 'ego'),
+      parent('mike', 'biological', 'jack'),
+      parent('lauren', 'biological', 'jack', true),
+    ]);
+    const faults: string[] = [];
+    for (const line of connectors.auxiliaryLines) {
+      const [from, to] = line.endpointIds ?? [];
+      for (const id of people) {
+        if (id === from || id === to) continue;
+        const box = boxOf(id);
+        const near = {
+          left: box.left - 0.2 * W,
+          right: box.right + 0.2 * W,
+          top: box.top - 0.2 * H,
+          bottom: box.bottom + 0.2 * H,
+        };
+        const close = line.points.slice(1).some((point, n) => {
+          const a = line.points[n]!;
+          const steps = Math.ceil(Math.hypot(point.x - a.x, point.y - a.y));
+          for (let k = 0; k <= steps; k++) {
+            const p = {
+              x: a.x + ((point.x - a.x) * k) / steps,
+              y: a.y + ((point.y - a.y) * k) / steps,
+            };
+            if (inside(p, near)) return true;
+          }
+          return false;
+        });
+        if (close) faults.push(`${from}→${to} passes close to ${id}`);
+      }
+    }
+    expect(faults).toEqual([]);
+  });
+
+  it('never crosses one parent’s own lines over each other', () => {
+    const { connectors } = draw(
+      ['ego', 'emma', 'liam', 'claire', 'donor', 'julie', 'kate', 'liamFather'],
+      [
+        parent('liamFather', 'biological', 'liam'),
+        parent('emma', 'biological', 'ego', true),
+        parent('liam', 'biological', 'ego'),
+        partners('emma', 'liam'),
+        parent('claire', 'biological', 'emma', true),
+        parent('donor', 'donor', 'emma'),
+        parent('julie', 'biological', 'liam', true),
+        parent('kate', 'social', 'liam'),
+        partners('julie', 'kate'),
+        parent('donor', 'donor', 'liam'),
+      ],
+    );
+    const lines = auxOf(connectors, 'donor');
+    expect(lines).toHaveLength(2);
+    expect(crossCount(lines[0]!.points, lines[1]!.points)).toBe(0);
+  });
+
+  it('keeps lines off an adopted person’s brackets, partnership lines included', () => {
+    const people = ['ego', 'rosa', 'luis', 'marco', 'pat'];
+    const { connectors, boxOf } = draw(people, [
+      parent('rosa', 'biological', 'ego', true),
+      parent('luis', 'biological', 'ego'),
+      partners('rosa', 'luis'),
+      parent('rosa', 'biological', 'marco', true),
+      parent('luis', 'biological', 'marco'),
+      parent('marco', 'adoptive', 'ego'),
+      partners('ego', 'pat'),
+    ]);
+    const box = boxOf('ego');
+    // PersonNode draws each bracket 4-16px (at a 96px symbol) outside the
+    // symbol, 8px above and below it, with a 5px stroke.
+    const scale = W / 96;
+    const brackets = [-1, 1].map((side) => {
+      const edge = side < 0 ? box.left : box.right;
+      const [inner, outer] = [
+        edge + side * 4 * scale,
+        edge + side * 16 * scale,
+      ];
+      return {
+        left: Math.min(inner, outer) - 2.5,
+        right: Math.max(inner, outer) + 2.5,
+        top: box.top - 8 * scale - 2.5,
+        bottom: box.bottom + 8 * scale + 2.5,
+      };
+    });
+    const faults = drawnSegments(connectors).flatMap(({ segment: s, line }) => {
+      const steps = Math.ceil(Math.hypot(s.x2 - s.x1, s.y2 - s.y1));
+      for (let k = 0; k <= steps; k++) {
+        const p = {
+          x: s.x1 + ((s.x2 - s.x1) * k) / steps,
+          y: s.y1 + ((s.y2 - s.y1) * k) / steps,
+        };
+        if (brackets.some((bracket) => inside(p, bracket))) {
+          return [`${line} runs into a bracket at ${p.x},${p.y}`];
+        }
+      }
+      return [];
+    });
+    expect(faults).toEqual([]);
+  });
+
+  it('marks every crossing an auxiliary line makes with a hop', () => {
+    for (const [people, { connectors, boxOf }] of [
+      [
+        ['ego', 'chloe', 'tyler', 'helen', 'mark', 'sam', 'amber'],
+        adoptedBirthParents(),
+      ],
+      [
+        ['ego', 'carmen', 'egoFather', 'rosa', 'luis', 'diego'],
+        adoptedByGrandparents(),
+      ],
+      [
+        ['ego', 'beth', 'jo', 'tom'],
+        draw(
+          ['ego', 'beth', 'jo', 'tom'],
+          [
+            parent('beth', 'biological', 'ego', true),
+            parent('jo', 'social', 'ego'),
+            partners('beth', 'jo'),
+            parent('tom', 'donor', 'ego'),
+          ],
+          { ego: 'square' },
+        ),
+      ],
+    ] as const) {
+      const boxes = people.map(boxOf);
+      const segments = drawnSegments(connectors);
+      const missing: string[] = [];
+      segments.forEach((a, i) => {
+        segments.forEach((b, j) => {
+          if (j <= i || a.line === b.line) return;
+          if (!a.line.startsWith('aux') && !b.line.startsWith('aux')) return;
+          const at = crossingPoint(a.segment, b.segment);
+          // A crossing under a symbol is not seen.
+          if (!at || boxes.some((box) => inside(at, box))) return;
+          const hopsOn = [a.line, b.line]
+            .filter((line) => line.startsWith('aux'))
+            .flatMap(
+              (line) =>
+                connectors.auxiliaryLines[Number(line.slice(4))]!.hops ?? [],
+            );
+          if (
+            !hopsOn.some((hop) => Math.hypot(hop.x - at.x, hop.y - at.y) < 1)
+          ) {
+            missing.push(`${a.line} × ${b.line} at ${at.x},${at.y}`);
+          }
+        });
+      });
+      expect(missing).toEqual([]);
+    }
+  });
+});

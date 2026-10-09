@@ -1,8 +1,13 @@
 import {
-  attachmentSlots,
+  BRACKET_REACH,
+  childAttachments,
+  crossing,
+  type DrawnLine,
+  courseCost,
   joinsFor,
   type RouteEnd,
   routeLine,
+  routeOptions,
   type RoutingScene,
   segmentsOf,
   symbolOf,
@@ -89,6 +94,9 @@ export function computeConnectors(
     number,
     { layer: number; x: number; y: number }
   >();
+  /** An adopted person is drawn within brackets. */
+  const isBracketed = (personIndex: number) =>
+    (parents[personIndex] ?? []).some((p) => p.edgeType === 'adoptive');
 
   for (let layer = 0; layer < maxlev; layer++) {
     for (let col = 0; col < (layout.n[layer] ?? 0); col++) {
@@ -113,8 +121,15 @@ export function computeConnectors(
 
         const isActive = !isFormerPartnership(pairKey);
 
-        const x1 = layout.pos[i]![j]!;
-        const x2 = layout.pos[i]![j + 1]!;
+        // The line stops at an adopted partner's bracket rather than
+        // running through it.
+        const endsAtBracket: [boolean, boolean] = [
+          isBracketed(leftId),
+          isBracketed(rightId),
+        ];
+        const toBracket = boxw * (0.5 + BRACKET_REACH);
+        const x1 = layout.pos[i]![j]! + (endsAtBracket[0] ? toBracket : 0);
+        const x2 = layout.pos[i]![j + 1]! - (endsAtBracket[1] ? toBracket : 0);
         const segment: LineSegment = {
           type: 'line',
           x1,
@@ -136,6 +151,7 @@ export function computeConnectors(
           double: isDouble,
           isActive,
           ...(partnerIds ? { partnerIds } : {}),
+          ...(endsAtBracket.some(Boolean) ? { endsAtBracket } : {}),
         };
 
         // For inactive lines, determine which side to place the slash:
@@ -925,16 +941,13 @@ export function computeConnectors(
   for (let i = 0; i < maxlev; i++) {
     for (let j = 0; j < (layout.n[i] ?? 0); j++) {
       const personIndex = layout.nid[i]![j]!;
-      const bracketed = (parents[personIndex] ?? []).some(
-        (p) => p.edgeType === 'adoptive',
-      );
       const { symbol, brackets } = symbolOf(
         personIndex,
         layout.pos[i]![j]!,
         i,
         boxw,
         boxh,
-        bracketed,
+        isBracketed(personIndex),
         shapes?.[personIndex],
       );
       scene.symbols.push(symbol);
@@ -951,8 +964,9 @@ export function computeConnectors(
     }
   }
   for (const line of parentChildLines) {
+    // A line of descent reads as joining whatever crosses it, as an upline.
     for (const segment of line.parentLink) {
-      scene.lines.push({ segment, kind: 'other' });
+      scene.lines.push({ segment, kind: 'upline' });
     }
     if (line.siblingBar) {
       scene.lines.push({ segment: line.siblingBar, kind: 'bar' });
@@ -1009,14 +1023,6 @@ export function computeConnectors(
       ]);
     }
   });
-  const slotOf = new Map<string, { index: number; count: number }>();
-  for (const [key, ends] of endsOnChild) {
-    ends
-      .toSorted((a, b) => a.x - b.x || a.plan - b.plan)
-      .forEach((end, index) => {
-        slotOf.set(`${end.plan}|${key}`, { index, count: ends.length });
-      });
-  }
   // Whether a child's own line up to their parents leaves from the middle
   // of their top edge.
   const hasUpline = (layer: number, x: number) =>
@@ -1025,20 +1031,81 @@ export function computeConnectors(
         Math.abs(upline.x1 - x) < 1e-9 &&
         Math.abs(upline.y1 - (layer + boxh / 2)) < 1e-9,
     );
+  // The places each line may end on its child: with the lines kept to the
+  // side of the child their parent is on, and (where that differs) spread
+  // over the whole edge, which is tried once everything is routed.
+  const attachmentsOf = new Map<string, number[]>();
+  const wholeEdgeAttachmentsOf = new Map<string, number[]>();
+  for (const [key, ends] of endsOnChild) {
+    const [layer, col] = key.split(',').map(Number) as [number, number];
+    const childX = layout.pos[layer]![col]!;
+    const ordered = ends.toSorted((a, b) => a.x - b.x || a.plan - b.plan);
+    const placesFor = (bySide: boolean) =>
+      childAttachments(
+        childX,
+        boxw,
+        shapes?.[layout.nid[layer]![col]!],
+        ordered.map((end) => end.x),
+        hasUpline(layer, childX),
+        bySide,
+      );
+    const [bySide, wholeEdge] = [placesFor(true), placesFor(false)];
+    const differs = bySide.some(
+      (places, index) => places.join() !== wholeEdge[index]!.join(),
+    );
+    ordered.forEach((end, index) => {
+      attachmentsOf.set(`${end.plan}|${key}`, bySide[index]!);
+      if (differs) {
+        wholeEdgeAttachmentsOf.set(`${end.plan}|${key}`, wholeEdge[index]!);
+      }
+    });
+  }
+
+  // Each line as routed, so that it can be routed again against the lines
+  // routed after it.
+  const routed: {
+    from: (typeof plans)[number]['from'];
+    end: RouteEnd;
+    owner: string;
+    line: AuxiliaryConnector;
+    drawn: DrawnLine[];
+    endX: number;
+    /** The joins on the sibling bar it meets, if it meets one. */
+    stems?: number[];
+    /** For a line ending on a child: "plan|level,column". */
+    slot?: string;
+  }[] = [];
+  const drawnOf = (points: Point[], owner: string): DrawnLine[] =>
+    segmentsOf(points).map((segment) => ({ segment, kind: 'other', owner }));
 
   plans.forEach(({ conn, from, owner, bar, joinsBar }, planIndex) => {
     const parentNodeId = id ? id[conn.parentIndex] : undefined;
 
-    const draw = (end: RouteEnd, childNodeId: string | undefined) => {
+    const draw = (
+      end: RouteEnd,
+      childNodeId: string | undefined,
+      stems?: number[],
+      slot?: string,
+    ) => {
       const { points, endX } = routeLine(from, end, owner, scene);
-      for (const segment of segmentsOf(points)) {
-        scene.lines.push({ segment, kind: 'other', owner });
-      }
-      auxiliaryLines.push({
+      const drawn = drawnOf(points, owner);
+      scene.lines.push(...drawn);
+      const line: AuxiliaryConnector = {
         type: 'auxiliary',
         edgeType: conn.edgeType,
         points,
         ...(id ? { endpointIds: [parentNodeId, childNodeId] } : {}),
+      };
+      auxiliaryLines.push(line);
+      routed.push({
+        from,
+        end,
+        owner,
+        line,
+        drawn,
+        endX,
+        ...(stems ? { stems } : {}),
+        ...(slot ? { slot } : {}),
       });
       return endX;
     };
@@ -1054,6 +1121,8 @@ export function computeConnectors(
           joins: joinsFor(bar, stems),
         },
         undefined,
+        stems,
+        undefined,
       );
       stems.push(joined);
       return;
@@ -1064,7 +1133,6 @@ export function computeConnectors(
       const childPersonIndex = layout.nid[conn.childLevel]![col]!;
       const childX = layout.pos[conn.childLevel]![col]!;
       const key = `${conn.childLevel},${col}`;
-      const slot = slotOf.get(`${planIndex}|${key}`) ?? { index: 0, count: 1 };
       const shape = shapes?.[childPersonIndex];
       draw(
         {
@@ -1072,19 +1140,237 @@ export function computeConnectors(
           person: childPersonIndex,
           x: childX,
           layer: conn.childLevel,
-          attachments: attachmentSlots(
-            childX,
-            boxw,
-            shape,
-            slot.index,
-            slot.count,
-            hasUpline(conn.childLevel, childX),
-          ),
+          attachments: attachmentsOf.get(`${planIndex}|${key}`) ?? [childX],
           ...(shape ? { shape } : {}),
         },
         id ? id[childPersonIndex] : undefined,
+        undefined,
+        `${planIndex}|${key}`,
       );
     }
+  });
+
+  type Routed = (typeof routed)[number];
+  const courseOf = (entry: Routed) => ({
+    points: entry.line.points,
+    endX: entry.endX,
+  });
+  const adopt = (entry: Routed, course: { points: Point[]; endX: number }) => {
+    entry.line.points = course.points;
+    entry.drawn = drawnOf(course.points, entry.owner);
+    if (entry.stems) {
+      const at = entry.stems.indexOf(entry.endX);
+      if (at >= 0) entry.stems[at] = course.endX;
+    }
+    entry.endX = course.endX;
+  };
+  const withoutLines = (...entries: Routed[]) => {
+    scene.lines = scene.lines.filter(
+      (line) => !entries.some((entry) => entry.drawn.includes(line)),
+    );
+  };
+  // Each line again, against every other line, those routed after it
+  // included, until none can be bettered.
+  const rerouteEach = (entries: Routed[], passes: number) => {
+    for (let pass = 0; pass < passes; pass++) {
+      let bettered = false;
+      for (const entry of entries) {
+        withoutLines(entry);
+        const next = routeLine(
+          entry.from,
+          entry.end,
+          entry.owner,
+          scene,
+          courseOf(entry),
+        );
+        if (next.points !== entry.line.points) {
+          bettered = true;
+          adopt(entry, next);
+        }
+        scene.lines.push(...entry.drawn);
+      }
+      if (!bettered) break;
+    }
+  };
+  // Two lines that still cross or crowd each other are routed together:
+  // of the best few courses for each, the two that are best together. (Two
+  // lines down one gap may each be clear only on the other's lane.)
+  const PAIR_OPTIONS = 8;
+  const costAmong = (entry: Routed, points: Point[], extra: DrawnLine[]) =>
+    courseCost(
+      entry.from,
+      entry.end,
+      entry.owner,
+      { ...scene, lines: [...scene.lines, ...extra] },
+      points,
+    );
+  // Two lines far apart cannot get in each other's way.
+  const reachOfLine = 0.3 * Math.max(boxw, boxh);
+  const areaOf = (points: Point[]) => {
+    const xs = points.map((p) => p.x);
+    const ys = points.map((p) => p.y);
+    return {
+      left: Math.min(...xs) - reachOfLine,
+      right: Math.max(...xs) + reachOfLine,
+      top: Math.min(...ys) - reachOfLine,
+      bottom: Math.max(...ys) + reachOfLine,
+    };
+  };
+  const mayMeet = (a: Routed, b: Routed) => {
+    const [p, q] = [areaOf(a.line.points), areaOf(b.line.points)];
+    return (
+      p.right >= q.left &&
+      p.left <= q.right &&
+      p.bottom >= q.top &&
+      p.top <= q.bottom
+    );
+  };
+  const routeInPairs = (entries: Routed[]) => {
+    let bettered = false;
+    for (let i = 0; i < entries.length; i++) {
+      for (let j = i + 1; j < entries.length; j++) {
+        const [a, b] = [entries[i]!, entries[j]!];
+        if (!mayMeet(a, b)) continue;
+        withoutLines(a, b);
+        const together = (first: Point[], second: Point[]) =>
+          costAmong(a, first, drawnOf(second, b.owner)) +
+          costAmong(b, second, drawnOf(first, a.owner));
+        const apart =
+          costAmong(a, a.line.points, []) + costAmong(b, b.line.points, []);
+        let best = {
+          first: courseOf(a),
+          second: courseOf(b),
+          cost: together(a.line.points, b.line.points),
+        };
+        if (best.cost > apart + 1e-9) {
+          const options = (entry: Routed) =>
+            routeOptions(
+              entry.from,
+              entry.end,
+              entry.owner,
+              scene,
+              PAIR_OPTIONS,
+            );
+          const seconds = options(b);
+          for (const first of options(a)) {
+            for (const second of seconds) {
+              const cost = together(first.points, second.points);
+              if (cost < best.cost - 1e-9) best = { first, second, cost };
+            }
+          }
+          if (best.first.points !== a.line.points) {
+            adopt(a, best.first);
+            bettered = true;
+          }
+          if (best.second.points !== b.line.points) {
+            adopt(b, best.second);
+            bettered = true;
+          }
+        }
+        scene.lines.push(...a.drawn, ...b.drawn);
+      }
+    }
+    return bettered;
+  };
+  const optimise = (entries: Routed[]) => {
+    rerouteEach(entries, 3);
+    if (routeInPairs(entries)) rerouteEach(entries, 1);
+  };
+  optimise(routed);
+
+  // A side of a child kept for the lines from that side may be reached only
+  // the long way round, when their parents sit rows above (the child's line
+  // up is no barrier there): the lines into such a child are routed again
+  // over the whole edge, and kept so when that is better.
+  const totalCost = (entries: Routed[]) => {
+    withoutLines(...entries);
+    const total = entries.reduce(
+      (sum, entry) =>
+        sum +
+        costAmong(
+          entry,
+          entry.line.points,
+          entries.filter((other) => other !== entry).flatMap((o) => o.drawn),
+        ),
+      0,
+    );
+    for (const entry of entries) scene.lines.push(...entry.drawn);
+    return total;
+  };
+  const children = new Set(
+    routed.flatMap((entry) =>
+      entry.slot && wholeEdgeAttachmentsOf.has(entry.slot)
+        ? [entry.slot.split('|')[1]!]
+        : [],
+    ),
+  );
+  let rerouted = false;
+  for (const child of children) {
+    const entries = routed.filter(
+      (entry) => entry.slot?.split('|')[1] === child,
+    );
+    const before = entries.map((entry) => ({
+      end: entry.end,
+      course: courseOf(entry),
+    }));
+    const kept = totalCost(entries);
+    withoutLines(...entries);
+    for (const entry of entries) {
+      if (entry.end.kind === 'child') {
+        entry.end = {
+          ...entry.end,
+          attachments: wholeEdgeAttachmentsOf.get(entry.slot!)!,
+        };
+      }
+      adopt(entry, routeLine(entry.from, entry.end, entry.owner, scene));
+      scene.lines.push(...entry.drawn);
+    }
+    optimise(entries);
+    if (totalCost(entries) < kept - 1e-9) {
+      rerouted = true;
+    } else {
+      withoutLines(...entries);
+      entries.forEach((entry, index) => {
+        entry.end = before[index]!.end;
+        adopt(entry, before[index]!.course);
+        scene.lines.push(...entry.drawn);
+      });
+    }
+  }
+  if (rerouted) optimise(routed);
+
+  // Where an auxiliary line crosses another line it hops over it, so the
+  // crossing does not read as a junction. Of two auxiliary lines, the later
+  // hops.
+  const hiddenBySymbol = (p: Point) =>
+    scene.symbols.some(
+      (symbol) =>
+        p.x > symbol.left &&
+        p.x < symbol.right &&
+        p.y > symbol.top &&
+        p.y < symbol.bottom,
+    );
+  const fixedSegments = scene.lines
+    .filter((line) => line.owner === undefined)
+    .map((line) => line.segment);
+  auxiliaryLines.forEach((line, index) => {
+    const crossed = [
+      ...fixedSegments,
+      ...auxiliaryLines
+        .slice(0, index)
+        .flatMap((other) => segmentsOf(other.points)),
+    ];
+    const hops = segmentsOf(line.points).flatMap((segment) =>
+      crossed
+        .flatMap((other) => crossing(segment, other) ?? [])
+        .filter((at) => !hiddenBySymbol(at))
+        .toSorted(
+          (a, b) =>
+            Math.hypot(a.x - segment.x1, a.y - segment.y1) -
+            Math.hypot(b.x - segment.x1, b.y - segment.y1),
+        ),
+    );
+    if (hops.length > 0) line.hops = hops;
   });
 
   // --- Duplicate subject arcs ---

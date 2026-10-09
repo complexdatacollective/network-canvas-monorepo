@@ -1,7 +1,11 @@
 import { render } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
 
-import { edgeKey, PedigreeEdgeSvg } from '../components/EdgeRenderer';
+import {
+  auxiliaryPath,
+  edgeKey,
+  PedigreeEdgeSvg,
+} from '../components/EdgeRenderer';
 import { dimColor } from '../dimColor';
 import type { ConnectorRenderData } from '../pedigreeAdapter';
 import type {
@@ -1035,5 +1039,68 @@ describe('PedigreeLayout — highlightedEdgeKeys prop forwarded', () => {
         />,
       ),
     ).not.toThrow();
+  });
+});
+
+describe('auxiliary lines that cross another line', () => {
+  test('hop over each crossing with a half circle, and are drawn whole elsewhere', () => {
+    const hopped = auxiliaryPath({
+      type: 'auxiliary',
+      edgeType: 'donor',
+      points: [
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+        { x: 100, y: 100 },
+      ],
+      hops: [
+        { x: 50, y: 0 },
+        { x: 100, y: 60 },
+      ],
+    });
+    // Level piece: up to the hop, over it, on to the corner.
+    expect(hopped).toMatch(/^M0,0 L42,0 A8,8 0 0 1 58,0 L100,0 /);
+    // Upright piece: down to the hop, round it, on to the end.
+    expect(hopped).toMatch(/L100,52 A8,8 0 0 1 100,68 L100,100$/);
+
+    const { container } = render(
+      <PedigreeEdgeSvg
+        connectorData={{
+          connectors: {
+            groupLines: [],
+            parentChildLines: [],
+            auxiliaryLines: [
+              {
+                type: 'auxiliary',
+                edgeType: 'social',
+                points: [
+                  { x: 0, y: 0 },
+                  { x: 100, y: 0 },
+                ],
+                hops: [{ x: 50, y: 0 }],
+              },
+              {
+                type: 'auxiliary',
+                edgeType: 'donor',
+                points: [
+                  { x: 0, y: 20 },
+                  { x: 100, y: 20 },
+                ],
+              },
+            ],
+            twinIndicators: [],
+            duplicateArcs: [],
+          },
+        }}
+        color="var(--edge-1)"
+        width={200}
+        height={200}
+      />,
+    );
+    const path = container.querySelector('path');
+    expect(path?.getAttribute('d')).toContain('A8,8');
+    expect(path?.getAttribute('stroke-dasharray')).toBe('8 8');
+    expect(container.querySelector('polyline')?.getAttribute('points')).toBe(
+      '0,20 100,20',
+    );
   });
 });
