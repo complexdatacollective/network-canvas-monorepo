@@ -18,6 +18,7 @@ import {
 } from '../../testing/renderStageEditor.tsx';
 import {
   addFamilyMemberVariables,
+  EVERY_PEDIGREE_WORD,
   RELATIVES_NOT_RECORDED_VARIABLE,
   RESEARCHER_TRACKER_TEXT,
 } from '../family-pedigree/__tests__/pedigreeFixtures.ts';
@@ -457,6 +458,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
         ...RESEARCHER_TRACKER_TEXT,
       },
       framing: 'participantPreference',
+      wording: EVERY_PEDIGREE_WORD,
       nominationPrompts: [
         {
           id: 'nomination-1',

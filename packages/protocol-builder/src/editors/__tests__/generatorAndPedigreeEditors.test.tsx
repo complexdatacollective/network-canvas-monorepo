@@ -61,6 +61,10 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
       'Wording',
       'Additional person fields',
       'Completeness',
+      'Participant wording',
+      'Drawing the family',
+      'Connecting people',
+      'Adding a family member',
       'Nomination prompts',
       'Skip logic',
       'Interviewer guidance',
@@ -73,6 +77,7 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
       'nominationPrompts',
       'prompt',
       'subject',
+      'wording',
     ],
   },
 ];

@@ -34,11 +34,12 @@ import {
   shimMarkdownEditorMeasurement,
 } from './editorFixtures.ts';
 import {
-  addFamilyMemberVariable,
-  addFamilyMemberVariables,
+  EVERY_PEDIGREE_WORD,
   FAMILY_MEMBER_SECTION,
   FIXTURE_NAME_FIELD,
   RELATIVES_NOT_RECORDED_VARIABLE,
+  addFamilyMemberVariable,
+  addFamilyMemberVariables,
   familyPedigreeStageWith,
   familyPedigreeStageWithout,
 } from './pedigreeFixtures.ts';
@@ -259,6 +260,13 @@ describe('the family pedigree stage editor', () => {
       label: { 'en-US': expect.any(String) },
       subject: { entity: 'node', type: 'family_member' },
       prompt: { 'en-US': PROMPT_TEXT },
+      // Every word the interface shows, except the wording question, which a
+      // stage shows only once participants choose their own.
+      wording: Object.fromEntries(
+        Object.entries(EVERY_PEDIGREE_WORD).filter(
+          ([key]) => !key.startsWith('framing'),
+        ),
+      ),
       nodeConfiguration: {
         nameAttribute: 'fm_name',
         // The name question a new stage starts with, in the protocol's

@@ -14,6 +14,7 @@ import {
 } from '../family-pedigree/__tests__/editorFixtures.ts';
 import {
   addFamilyMemberVariables,
+  EVERY_PEDIGREE_WORD,
   FIXTURE_NAME_FIELD,
   RELATIVES_NOT_RECORDED_VARIABLE,
   RESEARCHER_TRACKER_TEXT,
@@ -91,6 +92,7 @@ const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
     ...RESEARCHER_TRACKER_TEXT,
   },
   framing: 'participantPreference',
+  wording: EVERY_PEDIGREE_WORD,
   nominationPrompts: [
     {
       id: 'nomination-1',
