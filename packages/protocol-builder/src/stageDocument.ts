@@ -3,6 +3,8 @@ import { v4 as uuid } from 'uuid';
 import {
   inapplicableStageSettings,
   isExclusiveVariantContainer,
+  type LocalizationDeclaration,
+  missingSuppliedStageText,
   type StageType,
 } from '@codaco/protocol-validation';
 import {
@@ -64,9 +66,27 @@ export function stageDraftFromDocument(document: SectionDoc): Readonly<{
   });
 }
 
+/**
+ * The stage an editor saves: its identity over what the form holds, holding
+ * exactly the settings Network Canvas supplies wording for that apply to it.
+ *
+ * Both halves of that rule are kept here, so every save path and every
+ * reading of the draft as a stage agrees on it. A setting shown only under a
+ * configuration that is now off is dropped, with any object it alone filled.
+ * A setting that applies and that the stage lacks — a new stage's, or one
+ * whose configuration was turned on while no field for it was mounted — is
+ * written with Network Canvas's wording in the protocol's languages (see
+ * `missingSuppliedStageText`, which leaves out a setting the researcher
+ * removed from an optional object). So a wording field never has to be on
+ * screen for its setting to be saved.
+ *
+ * `localization` is undefined while the protocol's languages are not known
+ * yet; nothing is written then, and a save waits for them.
+ */
 export function stageDocument(
   identity: StageIdentity,
   fields: StageFormDraft,
+  localization: LocalizationDeclaration | undefined,
 ): SectionDoc {
   assertNoIdentityFields(fields);
   const document: SectionDoc = {
@@ -74,16 +94,61 @@ export function stageDocument(
     type: identity.type,
     ...structuredClone(fields),
   };
-  // A setting shown only under a configuration that is now off is dropped,
-  // with any object it alone filled; turning the configuration back on seeds
-  // it again.
   for (const path of inapplicableStageSettings({
     ...document,
     type: identity.type,
   })) {
     removeAt(document, path);
   }
-  return document;
+  return localization === undefined
+    ? document
+    : withMissingSuppliedStageText(document, identity.type, localization);
+}
+
+/**
+ * The form's draft as `stageDocument` saves it, without the identity: what an
+ * editor holds once the stage is saved, so the draft it goes on editing is
+ * the stage the protocol stored.
+ */
+export function savedStageFields(
+  identity: StageIdentity,
+  fields: StageFormDraft,
+  localization: LocalizationDeclaration | undefined,
+): StageFormDraft {
+  const {
+    id: _id,
+    type: _type,
+    ...saved
+  } = stageDocument(identity, fields, localization);
+  return saved;
+}
+
+/**
+ * `stage` with every supplied setting it should hold but lacks written in
+ * (see `missingSuppliedStageText`). Copies each container it writes into, so
+ * `stage` itself is left as it was.
+ */
+export function withMissingSuppliedStageText<
+  T extends Readonly<Record<string, unknown>>,
+>(stage: T, type: StageType, localization: LocalizationDeclaration): T {
+  const next: Record<string, unknown> = { ...stage };
+  for (const { path, value } of missingSuppliedStageText(
+    { ...next, type },
+    localization,
+  )) {
+    let container = next;
+    for (const key of path.slice(0, -1)) {
+      const child = container[key];
+      const copy: Record<string, unknown> = isDictionary(child)
+        ? { ...child }
+        : {};
+      container[key] = copy;
+      container = copy;
+    }
+    const last = path.at(-1);
+    if (last !== undefined) container[last] = { ...value };
+  }
+  return next as T;
 }
 
 function removeAt(

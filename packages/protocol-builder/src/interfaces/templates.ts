@@ -1,9 +1,10 @@
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
-import {
-  type LocalizationDeclaration,
-  type StageType,
-  missingSuppliedStageText,
+import type {
+  LocalizationDeclaration,
+  StageType,
 } from '@codaco/protocol-validation';
+
+import { withMissingSuppliedStageText } from '../stageDocument.ts';
 
 /**
  * What a NEW stage of each interface type starts life holding.
@@ -95,24 +96,9 @@ export const getInterfaceTemplate = (
 export const newStageFields = (
   interfaceType: StageType,
   localization: LocalizationDeclaration,
-): Record<string, FieldValue> => {
-  const next = getInterfaceTemplate(interfaceType);
-  for (const { path, value } of missingSuppliedStageText(
-    { ...next, type: interfaceType },
+): Record<string, FieldValue> =>
+  withMissingSuppliedStageText(
+    getInterfaceTemplate(interfaceType),
+    interfaceType,
     localization,
-  )) {
-    let container: Record<string, FieldValue> = next;
-    for (const key of path.slice(0, -1)) {
-      const child = container[key];
-      const copy: Record<string, FieldValue> =
-        typeof child === 'object' && child !== null && !Array.isArray(child)
-          ? { ...(child as Record<string, FieldValue>) }
-          : {};
-      container[key] = copy;
-      container = copy;
-    }
-    const last = path.at(-1);
-    if (last !== undefined) container[last] = { ...value };
-  }
-  return next;
-};
+  );
