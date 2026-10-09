@@ -387,7 +387,7 @@ export const messages = defineMessages({
     id: 'interview.familyPedigree.otherParentLabel',
     defaultMessage: 'Who is the child’s other parent?',
     description:
-      'Question in the side panel for adding a child. Options are the selected person’s partners, someone not in the family tree yet, or no other parent.',
+      'Question in the side panel for adding a child. Options are the selected person’s current and former partners, anyone they already have a child with (the child’s other biological or adoptive parent), someone not in the family tree yet, or no other parent.',
   },
   otherParentUnknown: {
     id: 'interview.familyPedigree.otherParentUnknown',

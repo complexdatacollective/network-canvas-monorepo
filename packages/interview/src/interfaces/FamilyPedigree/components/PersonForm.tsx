@@ -54,6 +54,7 @@ import { getCodebookVariablesForSubjectType } from '../../../selectors/protocol'
 import { readOwnProperty, writeOwnProperty } from '../../../utils/ownProperty';
 import { interfaceMessages } from '../../messages';
 import { RELATIVES_NOT_RECORDED } from '../completeness';
+import { parentTermFrom } from '../kinship';
 import { messages } from '../messages';
 import {
   type AddRelativeRequest,
@@ -67,6 +68,8 @@ import {
   type TwinZygosity,
   carrierOf,
   carriesAs,
+  familyWithLinkKinds,
+  type FamilyLinkKind,
   couldCarryPregnancy,
   firmGeneticParentSexes,
   firmGeneticParentsOf,
@@ -82,6 +85,7 @@ import {
   otherParentChoices,
   sexesRuledOut,
   planAdditionUnder,
+  planStandIns,
   planTwinChanges,
   possibleCarriers,
   primaryParentsOf,
@@ -448,12 +452,25 @@ export default function PersonForm({
           : undefined,
       linkUpdates:
         mode.kind === 'edit'
-          ? readLinkUpdates(existingLinksOf(family, mode.person.id), values)
+          ? readLinkUpdates(
+              existingLinksOf(family, mode.person.id),
+              values,
+              standInsGivingWay(
+                family,
+                draftFamily(family, mode.person.id, values),
+                mode.person.id,
+                config.sexAssignedAtBirthAttribute,
+              ),
+            )
           : undefined,
       relativesAnswers: mode.kind === 'edit' ? relativesAnswers : undefined,
       twinChanges:
         mode.kind === 'edit'
-          ? readTwinChanges(family, mode.person.id, values)
+          ? readTwinChanges(
+              draftFamily(family, mode.person.id, values),
+              mode.person.id,
+              values,
+            )
           : undefined,
     });
   };
@@ -598,6 +615,7 @@ export default function PersonForm({
             displayName={displayName}
             parentKindLabels={optionLabels.parentKind}
             reasonContext={reasonContext}
+            sexAttribute={config.sexAssignedAtBirthAttribute}
           />
         )}
         {formFields.length > 0 && (
@@ -733,9 +751,56 @@ const linkField = (
   question: 'current' | 'kind' | 'carrier',
 ) => `pedigreeLink:${link.id}:${question}`;
 
+/**
+ * The family as the panel's unsaved answers about the person's parents
+ * leave it: each parent the kind of parent chosen. Twins and stand-ins are
+ * worked out from it until the answers are saved, so the panel never offers
+ * an answer the save would contradict.
+ */
+function draftFamily(
+  family: Family,
+  personId: string,
+  values: Record<string, FieldValue | undefined>,
+): Family {
+  const kinds = new Map<string, FamilyLinkKind>();
+  for (const link of existingLinksOf(family, personId).parents) {
+    const kind = PARENT_KINDS.find(
+      (each) => each === values[linkField(link, 'kind')],
+    );
+    if (kind !== undefined && kind !== link.kind) kinds.set(link.id, kind);
+  }
+  return familyWithLinkKinds(family, kinds);
+}
+
+/** The person's stand-in parents whose place, as the answers stand, a
+ * genetic parent fills (`planStandIns`): they give way when the answers are
+ * saved, so are not asked about. */
+function standInsGivingWay(
+  family: Family,
+  draft: Family,
+  personId: string,
+  sexAttribute: string,
+): Set<string> {
+  const { removedLinkIds } = planStandIns(
+    draft,
+    () => '\u0000unused',
+    sexAttribute,
+  );
+  return new Set(
+    existingLinksOf(family, personId)
+      .parents.filter(
+        (link) =>
+          isStandIn(family, link.source) && removedLinkIds.includes(link.id),
+      )
+      .map((link) => link.id),
+  );
+}
+
 function readLinkUpdates(
   links: ReturnType<typeof existingLinksOf>,
   values: Record<string, FieldValue>,
+  /** Links not asked about: a stand-in's, giving way. */
+  skipped: ReadonlySet<string> = new Set(),
 ): LinkUpdate[] {
   const updates: LinkUpdate[] = [];
   for (const link of links.partnerships) {
@@ -750,6 +815,7 @@ function readLinkUpdates(
     }
   }
   for (const link of links.parents) {
+    if (skipped.has(link.id)) continue;
     const kind =
       (asString(values[linkField(link, 'kind')]) as
         | PedigreeParentKind
@@ -775,15 +841,19 @@ function readLinkUpdates(
 
 const twinZygosityField = (twinId: string) => `pedigreeTwin:${twinId}`;
 
-/** The answers about the person's twins, as the changes to make. */
+/** The answers about the person's twins, as the changes to make, in
+ * `family` as the panel's answers leave it (`draftFamily`): an answer about
+ * someone who is no longer the person's sibling there is dropped. */
 function readTwinChanges(
   family: Family,
   personId: string,
   values: Record<string, FieldValue>,
 ) {
-  if (twinCandidatesOf(family, personId).length === 0) return undefined;
+  const candidates = twinCandidatesOf(family, personId);
+  if (candidates.length === 0) return undefined;
   const answers = new Map<string, TwinZygosity>();
   for (const twinId of asStringArray(values[ROLE.twins])) {
+    if (!candidates.includes(twinId)) continue;
     answers.set(
       twinId,
       asZygosity(values[twinZygosityField(twinId)]) ?? 'unknown',
@@ -901,24 +971,35 @@ function ExistingRelationshipFields({
   displayName,
   parentKindLabels,
   reasonContext,
+  sexAttribute,
 }: {
   person: Person;
   family: Family;
   displayName: (personId: string) => string;
   parentKindLabels: Readonly<Record<PedigreeParentKind, string>>;
   reasonContext: ReasonContext;
+  sexAttribute: string;
 }) {
   const intl = useAppIntl();
-  const { partnerships, parents } = existingLinksOf(family, person.id);
+  const { partnerships, parents: allParents } = existingLinksOf(
+    family,
+    person.id,
+  );
   // Who carried the pregnancy, as the answers stand: one parent at most, so
   // while one does, the others are not asked and cannot be a surrogate.
   const linkValues = useFormValue(
-    parents.flatMap((link) => [
+    allParents.flatMap((link) => [
       linkField(link, 'kind'),
       linkField(link, 'carrier'),
     ]),
     'opaque',
   );
+  // The family as the answers leave it. A stand-in whose place a parent
+  // re-described as genetic fills gives way when the answers are saved, so
+  // is not asked about meanwhile.
+  const draft = draftFamily(family, person.id, linkValues);
+  const givingWay = standInsGivingWay(family, draft, person.id, sexAttribute);
+  const parents = allParents.filter((link) => !givingWay.has(link.id));
   const canCarry = (link: FamilyLink) =>
     couldCarryPregnancy(family.byId.get(link.source)?.sexAssignedAtBirth);
   const kindOf = (link: FamilyLink) =>
@@ -951,7 +1032,7 @@ function ExistingRelationshipFields({
   if (
     partnerships.length === 0 &&
     parents.length === 0 &&
-    twinCandidatesOf(family, person.id).length === 0
+    twinCandidatesOf(draft, person.id).length === 0
   ) {
     return null;
   }
@@ -1031,7 +1112,7 @@ function ExistingRelationshipFields({
           />
         );
       })}
-      <TwinFields person={person} family={family} displayName={displayName} />
+      <TwinFields person={person} family={draft} displayName={displayName} />
     </section>
   );
 }
@@ -2001,6 +2082,29 @@ function SiblingFields({
     isYou: anchor.isEgo ? 'true' : 'false',
     name: displayName(anchor.id),
   };
+  // An unnamed parent of someone other than the participant is called by
+  // how they are related to them ("Priya’s father"), not to the participant,
+  // whose relationship to them says nothing about which parent they are. A
+  // name is shown as typed.
+  const parentLabel = (id: string) => {
+    const parent = family.byId.get(id);
+    if (
+      anchor.isEgo ||
+      !parent ||
+      parent.isEgo ||
+      parent.name !== undefined ||
+      parent.hasUnreadableName
+    ) {
+      return displayName(id);
+    }
+    const term = parentTermFrom(family, anchor.id, id, framing);
+    return term === undefined
+      ? displayName(id)
+      : intl.formatMessage(messages.relativeOf, {
+          owner: displayName(anchor.id),
+          term,
+        });
+  };
 
   // The sibling as the biological child of the parents they share, as the
   // answers stand. The plan makes them the biological child of every shared
@@ -2161,7 +2265,7 @@ function SiblingFields({
         component={CheckboxGroupField}
         name={ROLE.sharedParents}
         label={intl.formatMessage(messages.sharedDonorsLabel, args)}
-        options={donors.map((id) => ({ value: id, label: displayName(id) }))}
+        options={donors.map((id) => ({ value: id, label: parentLabel(id) }))}
         initialValue={[]}
       />
     ) : parents.length === 0 ? (
@@ -2200,8 +2304,8 @@ function SiblingFields({
         name={ROLE.sharedParents}
         label={intl.formatMessage(messages.sharedParentCountLabel, args)}
         options={[
-          ...parents.map((id) => ({ value: id, label: displayName(id) })),
-          ...donors.map((id) => ({ value: id, label: displayName(id) })),
+          ...parents.map((id) => ({ value: id, label: parentLabel(id) })),
+          ...donors.map((id) => ({ value: id, label: parentLabel(id) })),
         ]}
         required
         initialValue={parents}
@@ -2231,7 +2335,7 @@ function SiblingFields({
           label={intl.formatMessage(messages.siblingBiologicalParentLabel)}
           options={first.candidates.map((id) => ({
             value: id,
-            label: displayName(id),
+            label: parentLabel(id),
           }))}
           required
         />
@@ -2243,7 +2347,7 @@ function SiblingFields({
           label={intl.formatMessage(messages.siblingOtherBiologicalParentLabel)}
           options={second.candidates.map((id) => ({
             value: id,
-            label: displayName(id),
+            label: parentLabel(id),
           }))}
           required
         />
@@ -2254,7 +2358,7 @@ function SiblingFields({
           name={ROLE.carrier}
           label={intl.formatMessage(messages.carrierLabel)}
           options={[
-            ...carriers.map((id) => ({ value: id, label: displayName(id) })),
+            ...carriers.map((id) => ({ value: id, label: parentLabel(id) })),
             {
               value: NONE,
               label: intl.formatMessage(messages.carrierUnknown),

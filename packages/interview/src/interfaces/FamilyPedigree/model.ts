@@ -448,23 +448,27 @@ const primaryOrGeneticParentsOf = (family: Family, personId: string) =>
 /**
  * The other parents of the person's children who are not their partners:
  * someone they had a child with, recorded as the child's parent alone, as an
- * unnamed parent added for a child is. Every child counts, whatever kind of
- * parent the person is to them: the parent of a child they were the donor or
- * surrogate for is someone they may have another child with.
+ * unnamed parent added for a child is. A child counts only where the two of
+ * them hold the same tie to it — both its biological parents, or both its
+ * adoptive parents — so a step-parent is never offered their step-child's
+ * birth parents, nor an adoptive parent the birth parents of the child they
+ * adopted. The parent of a child the person was the donor or surrogate for
+ * is someone they may have another child with too.
  */
 function coParentsOf(family: Family, personId: string): string[] {
   const partners = new Set(partnersOf(family, personId));
-  const children = new Set(
-    family.links
-      .filter((link) => link.source === personId && link.kind !== 'partner')
-      .map((link) => link.target),
-  );
   const coParents = new Set<string>();
-  for (const childId of children) {
-    for (const parentId of primaryParentsOf(family, childId)) {
-      if (parentId !== personId && !partners.has(parentId)) {
-        coParents.add(parentId);
-      }
+  for (const own of family.links) {
+    if (own.source !== personId || own.kind === 'partner') continue;
+    const reproductive = own.kind === 'donor' || own.kind === 'surrogate';
+    for (const other of parentLinksOf(family, own.target)) {
+      if (other.source === personId || partners.has(other.source)) continue;
+      const sameTie =
+        (own.kind === 'biological' || own.kind === 'adoptive') &&
+        other.kind === own.kind;
+      const raisesDonated =
+        reproductive && PRIMARY_PARENT_KINDS.has(other.kind);
+      if (sameTie || raisesDonated) coParents.add(other.source);
     }
   }
   return [...coParents];
@@ -501,7 +505,10 @@ export function otherParentChoices(
 }
 
 /** Everyone who shares at least one primary or genetic parent with the
- * person: a donor's other children are their siblings too. */
+ * person: a donor's other children are their siblings too. Never their own
+ * ancestors or descendants, who may share a parent with them where a
+ * relative adopted within the family (a grandparent who adopted their
+ * grandchild is the parent of both the child and the child's mother). */
 export function siblingsOf(family: Family, personId: string): string[] {
   const parents = primaryOrGeneticParentsOf(family, personId);
   if (parents.size === 0) return [];
@@ -511,7 +518,9 @@ export function siblingsOf(family: Family, personId: string): string[] {
         person.id !== personId &&
         [...primaryOrGeneticParentsOf(family, person.id)].some((parent) =>
           parents.has(parent),
-        ),
+        ) &&
+        !isAncestor(family, person.id, personId) &&
+        !isAncestor(family, personId, person.id),
     )
     .map((person) => person.id);
 }
@@ -1126,8 +1135,13 @@ function zygosityThrough(ab: TwinZygosity, bc: TwinZygosity): TwinZygosity {
  */
 export function twinCandidatesOf(family: Family, personId: string): string[] {
   const own = twinSetOf(family, personId);
+  // Never their own ancestor or descendant, who may share a parent with
+  // them where a relative adopted within the family.
   const isSibling = (id: string) =>
-    id !== personId && siblingTie(family, personId, id) !== undefined;
+    id !== personId &&
+    siblingTie(family, personId, id) !== undefined &&
+    !isAncestor(family, id, personId) &&
+    !isAncestor(family, personId, id);
   const candidates = family.people
     .map((person) => person.id)
     .filter(
@@ -1748,6 +1762,28 @@ export function standInPlaceTakenFor(
       (link) => link.source === newParentId && link.target !== childId,
     )
     .map((link) => link.target);
+}
+
+/**
+ * The family with some of its parent links recorded as other kinds of
+ * parent, as the person panel's unsaved answers stand: what twins, stand-ins
+ * and the panel's other questions are worked out from until the answers are
+ * saved.
+ */
+export function familyWithLinkKinds(
+  family: Family,
+  kinds: ReadonlyMap<string, FamilyLinkKind>,
+): Family {
+  if (kinds.size === 0) return family;
+  return {
+    ...family,
+    links: family.links.map((link) => {
+      const kind = kinds.get(link.id);
+      return kind === undefined || link.kind === 'partner' || kind === 'partner'
+        ? link
+        : { ...link, kind };
+    }),
+  };
 }
 
 /**

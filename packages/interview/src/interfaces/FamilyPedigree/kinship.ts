@@ -244,6 +244,34 @@ export function stepsFrom(family: Family, personId: string): Step[] {
 type GameteOf = (parentId: string, childId: string) => Gamete | undefined;
 
 /**
+ * The kinship word for `parentId` from `childId`, one of their parents, in
+ * the framing's words ("father", "egg donor"): what an unnamed parent is
+ * called from the person a form is about, rather than from the participant.
+ * Undefined when they are not recorded as the child's parent.
+ */
+export function parentTermFrom(
+  family: Family,
+  childId: string,
+  parentId: string,
+  framing: FramingId,
+): KinTerm | undefined {
+  const link = family.links.find(
+    (each) =>
+      each.kind !== 'partner' &&
+      each.source === parentId &&
+      each.target === childId,
+  );
+  if (!link || link.kind === 'partner') return undefined;
+  return stepTerm(
+    family,
+    childId,
+    { type: 'parent', kind: link.kind, to: parentId },
+    framing,
+    gameteLookup(inferGametes(family)),
+  );
+}
+
+/**
  * The term for a single step from `fromId`, which is also a close relative's
  * term. A biological parent or donor is named by the gamete they gave
  * `fromId`, as the shared rule derives it from sex assigned at birth

@@ -16,6 +16,7 @@ import {
   readFamily,
   sexesRuledOut,
   siblingsOf,
+  twinCandidatesOf,
 } from '../model';
 import { relationshipsToParticipant } from '../relationshipToParticipant';
 import { config, configWithoutGenderIdentity, link, person } from './fixtures';
@@ -1620,5 +1621,87 @@ describe('sexesRuledOut', () => {
       },
       { sex: 'male', rule: 'carried', childId: 'ego' },
     ]);
+  });
+});
+
+// Rule: candidate lists come from genuine relationships. A shared child makes
+// two people co-parents only where they hold the same tie to it, and nobody's
+// own ancestor or descendant is their sibling.
+describe('who could be the other parent of a new child', () => {
+  const stepFamily = () =>
+    readFamily(
+      [
+        person('ego', { isEgo: true, sex: ['female'] }),
+        person('gary', { name: 'Gary', sex: ['male'] }),
+        person('lorna', { name: 'Lorna', sex: ['female'] }),
+        person('standIn', { sex: ['male'] }),
+      ],
+      [
+        link('gary', 'ego', 'social'),
+        link('lorna', 'ego', 'biological', { carrier: true }),
+        link('gary', 'lorna', 'partner'),
+        link('standIn', 'ego', 'biological'),
+      ],
+      config,
+      {},
+      new Map(),
+      new Set(['standIn']),
+    );
+
+  test('never a step-child’s other parents for their step-parent', () => {
+    expect(otherParentChoices(stepFamily(), 'gary').choices).toEqual(['lorna']);
+  });
+
+  test('never the birth parents of a child the person adopted', () => {
+    const family = readFamily(
+      [
+        person('ego', { isEgo: true }),
+        person('ann', { name: 'Ann', sex: ['female'] }),
+        person('bea', { name: 'Bea', sex: ['female'] }),
+        person('birthMum', { name: 'Cat', sex: ['female'] }),
+      ],
+      [
+        link('ann', 'ego', 'adoptive'),
+        link('bea', 'ego', 'adoptive'),
+        link('birthMum', 'ego', 'biological', { carrier: true }),
+      ],
+      config,
+    );
+    expect(otherParentChoices(family, 'ann').choices).toEqual(['bea']);
+  });
+
+  test('the other biological parent of a child they had, a stand-in included', () => {
+    expect(otherParentChoices(stepFamily(), 'lorna').choices).toEqual([
+      'gary',
+      'standIn',
+    ]);
+  });
+});
+
+describe('who is someone’s sibling', () => {
+  // Patricia, the participant's grandmother, adopted the participant, so is
+  // the parent of both the participant and their mother Kayla.
+  const kinshipAdoption = () =>
+    readFamily(
+      [
+        person('ego', { isEgo: true, sex: ['female'] }),
+        person('kayla', { name: 'Kayla', sex: ['female'] }),
+        person('patricia', { name: 'Patricia', sex: ['female'] }),
+      ],
+      [
+        link('kayla', 'ego', 'biological', { carrier: true }),
+        link('patricia', 'kayla', 'biological', { carrier: true }),
+        link('patricia', 'ego', 'adoptive'),
+      ],
+      config,
+    );
+
+  test('never their own parent, though they share a parent', () => {
+    expect(siblingsOf(kinshipAdoption(), 'ego')).toEqual([]);
+    expect(siblingsOf(kinshipAdoption(), 'kayla')).toEqual([]);
+  });
+
+  test('never offers their own parent as a twin', () => {
+    expect(twinCandidatesOf(kinshipAdoption(), 'ego')).toEqual([]);
   });
 });

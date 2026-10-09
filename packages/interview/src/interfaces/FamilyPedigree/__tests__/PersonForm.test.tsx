@@ -1270,3 +1270,109 @@ describe('twins', () => {
     expect(question).toHaveAccessibleDescription(/you and “sam” do not/);
   });
 });
+
+// Rule: the panel's questions are worked out from the family its unsaved
+// answers would save, and candidates are named from the person the form is
+// about.
+describe('questions worked out from the answers as they stand', () => {
+  it('drops a twin who would no longer be a sibling once a parent is re-described', async () => {
+    // Noah and Cody share their mother Shannon. Made Noah's surrogate, she
+    // is no longer a parent they share.
+    const { onSubmit, user } = renderPersonForm('noah', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('shannon', { name: 'Shannon', sex: ['female'] }),
+        person('rick', { name: 'Rick', sex: ['male'] }),
+        person('cody', { name: 'Cody', sex: ['male'] }),
+        person('noah', { name: 'Noah', sex: ['male'] }),
+      ],
+      edges: [
+        link('shannon', 'ego', 'biological', { carrier: true }),
+        link('rick', 'ego', 'biological'),
+        link('shannon', 'cody', 'biological', { carrier: true }),
+        link('rick', 'cody', 'biological'),
+        link('shannon', 'noah', 'biological', { carrier: true }),
+      ],
+    });
+    const twins = () =>
+      screen.queryByRole('group', {
+        name: /^Which of “noah”’s siblings, if any, are their twins\?/,
+      });
+    await user.click(
+      within(twins() as HTMLElement).getByRole('checkbox', { name: 'cody' }),
+    );
+    await user.click(
+      within(
+        screen.getByRole('radiogroup', { name: /^shannon is their…/ }),
+      ).getByRole('radio', { name: 'Surrogate' }),
+    );
+    await waitFor(() => expect(twins()).toBeNull());
+    await save(user);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0].twinChanges).toBeUndefined();
+  });
+
+  it('does not ask about a stand-in whose place a parent re-described as genetic fills', async () => {
+    const { onSubmit, user } = renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('donor', { sex: ['female'] }),
+        person('standIn', { sex: ['male'] }),
+        person('julian', { name: 'Julian', sex: ['male'] }),
+      ],
+      edges: [
+        link('donor', 'ego', 'donor'),
+        link('standIn', 'ego', 'biological'),
+        link('julian', 'ego', 'social'),
+      ],
+    });
+    const standInRow = () =>
+      screen.queryByRole('radiogroup', { name: /^standIn is your…/ });
+    expect(standInRow()).not.toBeNull();
+    await user.click(
+      within(
+        screen.getByRole('radiogroup', { name: /^julian is your…/ }),
+      ).getByRole('radio', { name: 'Biological parent' }),
+    );
+    await waitFor(() => expect(standInRow()).toBeNull());
+    await save(user);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0].linkUpdates).toEqual([
+      expect.objectContaining({
+        linkId: 'julian-ego-social',
+        kind: 'biological',
+      }),
+    ]);
+  });
+
+  it('names an unnamed parent of someone else by how they are related to them', () => {
+    renderPersonForm('priya', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('priya', { name: 'Priya', sex: ['female'] }),
+        person('lakshmi', { name: 'Lakshmi', sex: ['female'] }),
+        person('standIn', { sex: ['male'] }),
+      ],
+      edges: [
+        link('ego', 'priya', 'partner'),
+        link('lakshmi', 'priya', 'biological', { carrier: true }),
+        link('standIn', 'priya', 'biological'),
+      ],
+      adding: 'sibling',
+    });
+    const shared = screen.getByRole('group', {
+      name: /^Which parents do they share/,
+    });
+    expect(
+      within(shared).getByRole('checkbox', {
+        name: /^priya’s bio\u00ADlogical father$/,
+      }),
+    ).toBeChecked();
+    // A name is shown as typed.
+    expect(
+      within(shared).getByRole('checkbox', { name: 'lakshmi' }),
+    ).toBeChecked();
+  });
+});
