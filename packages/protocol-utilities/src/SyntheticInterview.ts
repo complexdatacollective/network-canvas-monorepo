@@ -22,6 +22,7 @@ import {
   type StageType,
   type StructuralCodebook,
   type VariableType,
+  withInterfaceText,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -1848,7 +1849,9 @@ export class SyntheticInterview {
       stages.push(this.defaultFinishStage());
     }
 
-    return {
+    // With the interview's shared words a protocol shows, as Architect writes
+    // them.
+    return withInterfaceText({
       id: `protocol-${this.seed}`,
       schemaVersion: CURRENT_SCHEMA_VERSION,
       localization: {
@@ -1860,7 +1863,7 @@ export class SyntheticInterview {
       // at runtime, but TypeScript can't verify this statically.
       stages: stages as Stage[],
       assets: this.assets as unknown[],
-    };
+    });
   }
 
   getNetwork(): NcNetwork {
