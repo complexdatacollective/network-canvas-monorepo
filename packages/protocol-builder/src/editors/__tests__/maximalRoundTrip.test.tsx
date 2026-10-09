@@ -126,6 +126,12 @@ const fixtureMaximal = (
   ...missingFromTheFixture,
 });
 
+/** The fixture's map options, as a plain object to add a key to. */
+const mapOptionsOfFixture = (): Record<string, unknown> => {
+  const options = loadFixtureStage('geospatial-1').fields.mapOptions;
+  return typeof options === 'object' && options !== null ? { ...options } : {};
+};
+
 /** What every stage may carry, and no fixture stage does. */
 const EVERY_STAGE = {
   interviewScript: 'Read this to the participant before you begin.',
@@ -279,6 +285,15 @@ const MAXIMAL_STAGES: MaximalStage[] = [
         },
       ],
       behaviours: { minNodes: 1, maxNodes: 8 },
+      minNodesNotice: {
+        'en-US':
+          '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+      },
+      maxNodesNotice: {
+        'en-US':
+          'You have completed this task. Click the next arrow to continue.',
+      },
+      externalDataError: { 'en-US': 'External data could not be loaded.' },
     },
     settle: () => screen.findByRole('textbox', { name: 'Form title' }),
   },
@@ -300,6 +315,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     type: 'NameGeneratorQuickAdd',
     fields: fixtureMaximal('name-generator-quick-add-1', {
       ...EVERY_STAGE,
+      behaviours: { minNodes: 1, maxNodes: 6 },
       panels: [
         {
           id: 'quick-add-panel-1',
@@ -307,8 +323,23 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
           dataSource: 'existing',
           filter: nodeFilter,
         },
+        // A panel reading a data file is what shows its error words.
+        {
+          id: 'quick-add-panel-2',
+          title: { 'en-US': 'From the roster' },
+          dataSource: 'roster_data',
+        },
       ],
-      behaviours: { minNodes: 1, maxNodes: 6 },
+      quickAddHint: { 'en-US': 'Press Enter when you are finished.' },
+      minNodesNotice: {
+        'en-US':
+          '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+      },
+      maxNodesNotice: {
+        'en-US':
+          'You have completed this task. Click the next arrow to continue.',
+      },
+      externalDataError: { 'en-US': 'External data could not be loaded.' },
     }),
   },
   {
@@ -429,6 +460,17 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     fields: fixtureMaximal('geospatial-1', {
       ...EVERY_STAGE,
       filter: nodeFilter,
+      // Searching is offered, so the search's own words are the stage's.
+      mapOptions: {
+        ...mapOptionsOfFixture(),
+        allowSearch: true,
+      },
+      offlineNotice: { 'en-US': 'You are offline. The map will not load.' },
+      mapUnavailable: { 'en-US': 'The map cannot be drawn on this device.' },
+      outsideAreasLabel: { 'en-US': 'Outside selectable areas' },
+      searchLabel: { 'en-US': 'Search places' },
+      searchNoMatch: { 'en-US': 'No place matches.' },
+      searchFailed: { 'en-US': 'The search failed.' },
     }),
   },
   {

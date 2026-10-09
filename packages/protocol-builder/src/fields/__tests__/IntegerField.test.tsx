@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import AlterLimitsSection from '../../sections/alter-limits/AlterLimitsSection.tsx';
+import { nameGeneratorWording } from '../../sections/name-generator-wording/nameGeneratorWording.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 
 /** Copy in the fixture protocol's only language, as schema 9 holds it. */
@@ -14,6 +15,8 @@ const en = (text: string) => ({ 'en-US': text });
  * control is a whole number held in a stage document, and what it does to the
  * document is half of what it is for.
  */
+const Wording = nameGeneratorWording('NameGenerator');
+
 const unlimitedStage = {
   stage: {
     type: 'NameGenerator' as const,
@@ -27,7 +30,14 @@ const unlimitedStage = {
       prompts: [{ id: 'prompt-a', text: en('Who do you know?') }],
     },
   },
-  sections: <AlterLimitsSection />,
+  // The messages section is what seeds a maximum's notice once the researcher
+  // sets a maximum, so the stage stays saveable through the limit alone.
+  sections: (
+    <>
+      <AlterLimitsSection />
+      <Wording />
+    </>
+  ),
 };
 
 const NOT_A_WHOLE_NUMBER = 'This has to be a whole number of people.';
@@ -158,9 +168,15 @@ describe('a control that counts people', () => {
         fields: {
           ...unlimitedStage.stage.fields,
           behaviours: { maxNodes: 25 },
+          maxNodesNotice: en('You have named enough people.'),
         },
       },
-      sections: <AlterLimitsSection />,
+      sections: (
+        <>
+          <AlterLimitsSection />
+          <Wording />
+        </>
+      ),
     });
     const max = await screen.findByRole('spinbutton', {
       name: /Maximum number of alters/,

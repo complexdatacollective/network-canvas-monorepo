@@ -517,6 +517,7 @@ const CASES: readonly EditorCase[] = [
       'Prompt collection',
       'Side panels',
       'Nomination limits',
+      'Messages',
       'Skip logic',
       'Interviewer guidance',
     ],
@@ -528,11 +529,20 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para quien realiza la entrevista',
     ],
-    ownedKeys: ['label', 'prompts', 'quickAdd', 'subject'],
+    ownedKeys: ['label', 'prompts', 'quickAdd', 'quickAddHint', 'subject'],
     wholeStage: {
       ...WITHOUT_FILTER,
       label: { 'en-US': 'Full quick-add name generator' },
       quickAdd: 'name',
+      quickAddHint: { 'en-US': 'Press Enter when you are finished.' },
+      minNodesNotice: {
+        'en-US':
+          '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+      },
+      maxNodesNotice: {
+        'en-US':
+          'You have completed this task. Click the next arrow to continue.',
+      },
       panels: [PANEL],
       behaviours: { minNodes: 1, maxNodes: 8 },
       prompts: [NAME_GENERATOR_PROMPT],
@@ -554,6 +564,7 @@ const CASES: readonly EditorCase[] = [
       'Roster sorting',
       'Roster search',
       'Nomination limits',
+      'Messages',
       'Skip logic',
       'Interviewer guidance',
     ],
@@ -566,12 +577,18 @@ const CASES: readonly EditorCase[] = [
       'Guía para quien realiza la entrevista',
     ],
     ownedKeys: [
+      'allAddedNotice',
       'behaviours',
       'cardOptions',
       'dataSource',
+      'externalDataError',
       'label',
+      'maxNodesNotice',
+      'minNodesNotice',
       'panelTitle',
       'prompts',
+      'searchLabel',
+      'searchNoMatch',
       'searchOptions',
       'sortOptions',
       'subject',
@@ -589,6 +606,20 @@ const CASES: readonly EditorCase[] = [
         sortableProperties: [{ label: { 'en-US': 'Age' }, variable: 'age' }],
       },
       searchOptions: { fuzziness: 0.5, matchProperties: ['name', 'age'] },
+      searchLabel: { 'en-US': 'Search' },
+      searchNoMatch: { 'en-US': 'Nothing matched your search term.' },
+      externalDataError: { 'en-US': 'External data could not be loaded.' },
+      allAddedNotice: {
+        'en-US': 'There is nothing left to add from this list.',
+      },
+      minNodesNotice: {
+        'en-US':
+          '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+      },
+      maxNodesNotice: {
+        'en-US':
+          'You have completed this task. Click the next arrow to continue.',
+      },
       behaviours: { minNodes: 1, maxNodes: 8 },
       prompts: [NAME_GENERATOR_PROMPT],
     },

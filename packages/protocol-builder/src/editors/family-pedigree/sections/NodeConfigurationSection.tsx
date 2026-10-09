@@ -10,6 +10,10 @@ import { REQUIRED } from '../../../form/requiredField.ts';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { asLocalizedString } from '../../../localization/localizedText.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
+import {
+  startingWording,
+  useSuppliedStageWording,
+} from '../../../sections/supplied-wording/suppliedStageWording.ts';
 import GenderIdentitySection from './GenderIdentitySection.tsx';
 import { familyPedigreeMessages as messages } from './pedigreeMessages.ts';
 import {
@@ -17,7 +21,6 @@ import {
   NODE_CONFIGURATION_PATHS,
   usePedigreeDraftBindings,
 } from './pedigreeSlots.ts';
-import { startingWording, useSuppliedPedigreeText } from './pedigreeWording.ts';
 import PersonSymbolsControl from './PersonSymbolsControl.tsx';
 import RelationshipToParticipantSection from './RelationshipToParticipantSection.tsx';
 
@@ -53,7 +56,7 @@ export default function NodeConfigurationSection() {
   } = usePedigreeDraftBindings();
   const waiting = personSubject === null;
   const { committedFields } = useStageEditorForm();
-  const supplied = useSuppliedPedigreeText();
+  const supplied = useSuppliedStageWording('FamilyPedigree');
   const hasNameQuestion =
     get(committedFields, NAME_FIELD_PATHS.prompt) !== undefined;
 

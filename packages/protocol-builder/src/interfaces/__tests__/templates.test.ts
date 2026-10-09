@@ -184,15 +184,39 @@ describe('a new stage given nothing but a name', () => {
    * where Network Canvas supplies the wording of a setting, that wording:
    * nothing else seeds the form, so what a researcher's new stage holds is
    * what the template map says, plus a roster's panel title, a family
-   * pedigree's name question and a finish screen's finishing words. A pedigree's list wording arrives with its
-   * completeness requirement, which a new stage does not have.
+   * pedigree's name question and a finish screen's finishing words. A
+   * pedigree's list wording arrives with its completeness requirement, which a
+   * new stage does not have. The messages a stage shows a participant are
+   * supplied too, where the stage's configuration needs them: a quick-add
+   * line always, a roster's messages for its data file, and a map's messages
+   * always.
    */
   it.each(STAGE_TYPES)('is the %s template under its stage type', (type) => {
     const { id: _id, label: _label, ...seeded } = newStage(type);
     expect(seeded).toEqual({
       ...getInterfaceTemplate(type),
       ...(type === 'NameGeneratorRoster'
-        ? { panelTitle: { en: 'Available to add' } }
+        ? {
+            panelTitle: { en: 'Available to add' },
+            externalDataError: { en: 'External data could not be loaded.' },
+            allAddedNotice: {
+              en: 'There is nothing left to add from this list.',
+            },
+          }
+        : {}),
+      ...(type === 'NameGeneratorQuickAdd'
+        ? { quickAddHint: { en: 'Press Enter when you are finished.' } }
+        : {}),
+      ...(type === 'Geospatial'
+        ? {
+            offlineNotice: {
+              en: 'You are offline — the map will not load until you reconnect.',
+            },
+            mapUnavailable: {
+              en: 'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
+            },
+            outsideAreasLabel: { en: 'Outside Selectable Areas' },
+          }
         : {}),
       ...(type === 'FinishSession'
         ? {

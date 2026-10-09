@@ -21,6 +21,12 @@ const rosterWith = (fields: SectionDoc) => ({
     label: { 'en-US': 'Name Generator Roster' },
     subject: { entity: 'node', type: 'person' },
     panelTitle: { 'en-US': 'Available to add' },
+    externalDataError: { 'en-US': 'External data could not be loaded.' },
+    allAddedNotice: {
+      'en-US': 'There is nothing left to add from this list.',
+    },
+    searchLabel: { 'en-US': 'Search' },
+    searchNoMatch: { 'en-US': 'Nothing matched your search term.' },
     prompts: [
       { id: 'prompt-1', text: { 'en-US': 'Select people from the roster' } },
     ],
@@ -291,10 +297,22 @@ describe("what a roster's cards show", () => {
     await screen.findByText(
       'The people in it carry these attributes: age and name.',
     );
-    // The stage's name, the type it lists, what it asks, how it behaves
-    // and its panel's title belong to sections this mount does not include.
+    // The stage's name, the type it lists, what it asks, how it behaves,
+    // its panel's title and its messages belong to sections this mount does
+    // not include.
     await harness.roundTrip({
-      unowned: ['subject', 'prompts', 'behaviours', 'panelTitle'],
+      unowned: [
+        'subject',
+        'prompts',
+        'behaviours',
+        'panelTitle',
+        'minNodesNotice',
+        'maxNodesNotice',
+        'externalDataError',
+        'allAddedNotice',
+        'searchLabel',
+        'searchNoMatch',
+      ],
     });
   });
 

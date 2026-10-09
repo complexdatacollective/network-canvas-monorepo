@@ -545,7 +545,16 @@ describe('what a round trip refuses', () => {
     // Named by its own path, not as "mapOptions changed": which of the map's
     // eight settings went is the whole of what a reader needs.
     await expect(
-      harness.roundTrip({ unowned: ['subject', 'mapOptions', 'prompts'] }),
+      harness.roundTrip({
+        unowned: [
+          'subject',
+          'mapOptions',
+          'prompts',
+          'mapUnavailable',
+          'offlineNotice',
+          'outsideAreasLabel',
+        ],
+      }),
     ).rejects.toThrow(/Dropped: mapOptions\.showTransit\./);
   });
 
@@ -562,7 +571,14 @@ describe('what a round trip refuses', () => {
     });
 
     const request = await harness.roundTrip({
-      unowned: ['subject', 'mapOptions', 'prompts'],
+      unowned: [
+        'subject',
+        'mapOptions',
+        'prompts',
+        'mapUnavailable',
+        'offlineNotice',
+        'outsideAreasLabel',
+      ],
     });
 
     expect(request.stageDocument.mapOptions).toMatchObject({

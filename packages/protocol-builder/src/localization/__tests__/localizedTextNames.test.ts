@@ -127,6 +127,29 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
   ],
   [[...fixtureStage('NameGenerator'), 'panels'], [panel]],
   [[...fixtureStage('NameGeneratorQuickAdd'), 'panels'], [panel]],
+  // The messages a name generator shows around its limits and its panels,
+  // and a map's search messages, which the fixture leaves unset.
+  ...(['NameGenerator', 'NameGeneratorQuickAdd'] as const).flatMap(
+    (type) =>
+      [
+        [
+          [...fixtureStage(type), 'minNodesNotice'],
+          en('You must name more people.'),
+        ],
+        [
+          [...fixtureStage(type), 'maxNodesNotice'],
+          en('You have named enough people.'),
+        ],
+        [
+          [...fixtureStage(type), 'externalDataError'],
+          en('The list could not be loaded.'),
+        ],
+      ] as const,
+  ),
+  [[...fixtureStage('Geospatial'), 'mapOptions', 'allowSearch'], true],
+  [[...fixtureStage('Geospatial'), 'searchLabel'], en('Search places')],
+  [[...fixtureStage('Geospatial'), 'searchNoMatch'], en('No place matches.')],
+  [[...fixtureStage('Geospatial'), 'searchFailed'], en('The search failed.')],
   [
     [...fixtureStage('CategoricalBin'), 'prompts', 0, 'otherVariable'],
     'contactOther',

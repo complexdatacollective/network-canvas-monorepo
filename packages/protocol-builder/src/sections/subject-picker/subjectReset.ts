@@ -10,7 +10,10 @@ import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
  * used, so a protocol edited in either tool loses and keeps the same things:
  * the stage's identity and name, the notes for the interviewer, and the task
  * introduction and a roster's panel title, which are prose about the task
- * rather than about the type.
+ * rather than about the type. The messages a stage shows participants
+ * (`minNodesNotice`, `searchLabel` and the rest) are prose the same way, and
+ * Network Canvas seeds them on every new stage: a seeded message is not
+ * configuration, so choosing a type must not ask to discard it.
  */
 export const SUBJECT_INDEPENDENT_FIELDS: readonly string[] = Object.freeze([
   'id',
@@ -20,6 +23,17 @@ export const SUBJECT_INDEPENDENT_FIELDS: readonly string[] = Object.freeze([
   'introductionPanel',
   'panelTitle',
   'subject',
+  'allAddedNotice',
+  'externalDataError',
+  'maxNodesNotice',
+  'minNodesNotice',
+  'quickAddHint',
+  'searchFailed',
+  'searchLabel',
+  'searchNoMatch',
+  'offlineNotice',
+  'mapUnavailable',
+  'outsideAreasLabel',
 ]);
 
 /**

@@ -60,6 +60,8 @@ const nameGeneratorWith = (configured: SectionDoc[]) => ({
       fields: [{ variable: 'name', prompt: en("What is this person's name?") }],
     },
     prompts: [{ id: 'prompt-1', text: en('Who are the people you know?') }],
+    // A panel reading a data file needs the words for a file that did not load.
+    externalDataError: en('External data could not be loaded.'),
     panels: configured,
   },
 });
@@ -179,10 +181,11 @@ describe('the side panels a name generator shows', () => {
     expect(
       await screen.findByText('People you named earlier'),
     ).toBeInTheDocument();
-    // The stage's name, the type it nominates, its add-a-person form and what
-    // it asks belong to sections this mount does not include.
+    // The stage's name, the type it nominates, its add-a-person form, what it
+    // asks and the words for a file that did not load belong to sections this
+    // mount does not include.
     await harness.roundTrip({
-      unowned: ['subject', 'form', 'prompts'],
+      unowned: ['subject', 'form', 'prompts', 'externalDataError'],
     });
   });
 

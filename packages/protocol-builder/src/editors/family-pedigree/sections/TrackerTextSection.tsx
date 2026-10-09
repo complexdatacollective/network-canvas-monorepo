@@ -17,9 +17,12 @@ import { LocalizedInputField } from '../../../fields/LocalizedStringField.tsx';
 import { REQUIRED } from '../../../form/requiredField.ts';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
+import {
+  startingWording,
+  useSuppliedStageWording,
+} from '../../../sections/supplied-wording/suppliedStageWording.ts';
 import { familyPedigreeMessages as messages } from './pedigreeMessages.ts';
 import { TRACKER_TEXT_PATHS } from './pedigreeSlots.ts';
-import { startingWording, useSuppliedPedigreeText } from './pedigreeWording.ts';
 
 type MessageSetting = Readonly<{
   path: string;
@@ -91,7 +94,7 @@ const MESSAGE_SETTINGS: readonly MessageSetting[] = [
 export default function TrackerTextSection() {
   const intl = useAppIntl();
   const { committedFields } = useStageEditorForm();
-  const supplied = useSuppliedPedigreeText();
+  const supplied = useSuppliedStageWording('FamilyPedigree');
 
   const validations = useMemo(
     () =>
