@@ -72,28 +72,40 @@ export function toPedigreeInput(
     }
   }
 
-  // Remap biological edges to 'donor' for children with adoptive parents.
-  // This makes biological edges auxiliary so the child is positioned under
-  // adoptive parents instead, matching standard pedigree conventions.
+  // A birth parent of an adopted child who is outside the adoptive family is
+  // drawn as a donor: their edge becomes auxiliary, so the child is placed
+  // under the adoptive parents, as standard pedigree nomenclature has it. A
+  // birth parent who is the partner of one of the child's adoptive parents (a
+  // step-parent adoption) raises the child in that family, so their edge stays
+  // biological and the child descends from them within the couple.
+  const partnersOf = new Map<number, Set<number>>();
+  for (const { partnerIndex1: a, partnerIndex2: b } of partnerConnections) {
+    partnersOf.set(a, new Set([...(partnersOf.get(a) ?? []), b]));
+    partnersOf.set(b, new Set([...(partnersOf.get(b) ?? []), a]));
+  }
   for (let i = 0; i < n; i++) {
-    const hasAdoptiveParent = parents[i]!.some(
+    const adoptiveParents = parents[i]!.filter(
       (p) => p.edgeType === 'adoptive',
-    );
-    if (!hasAdoptiveParent) continue;
+    ).map((p) => p.parentIndex);
+    if (adoptiveParents.length === 0) continue;
     for (const p of parents[i]!) {
-      if (p.edgeType === 'biological') {
-        p.edgeType = 'donor';
-      }
+      if (p.edgeType !== 'biological') continue;
+      const raisesChild = adoptiveParents.some(
+        (adoptive) => partnersOf.get(p.parentIndex)?.has(adoptive) ?? false,
+      );
+      if (!raisesChild) p.edgeType = 'donor';
     }
   }
 
   // A child with no primary (biological/social/adoptive) parent — e.g. a
   // donor-conceived child carried by a gestational carrier ("single parent, two
-  // donors") — descends from the carrier. Promote the carrier's edge to a
-  // primary type so it anchors the line of descent (the carrier's line of
-  // descent is solid in standard pedigree nomenclature), with the gamete donors
-  // remaining auxiliary. Without this the child has only auxiliary parents,
-  // forms no family unit, and renders no line of descent at all.
+  // donors") — descends from the carrier. Promote the carrier's edge to
+  // 'biological', the primary type for the parent who gave birth, so it
+  // anchors the line of descent and is drawn solid, as the carrier's line of
+  // descent is in standard pedigree nomenclature (never 'social', which is
+  // drawn dashed). The gamete donors remain auxiliary. Without this the child
+  // has only auxiliary parents, forms no family unit, and renders no line of
+  // descent at all.
   for (let i = 0; i < n; i++) {
     const hasPrimaryParent = parents[i]!.some(
       (p) =>
@@ -103,7 +115,7 @@ export function toPedigreeInput(
     );
     if (hasPrimaryParent) continue;
     const carrier = parents[i]!.find((p) => p.isGestationalCarrier);
-    if (carrier) carrier.edgeType = 'social';
+    if (carrier) carrier.edgeType = 'biological';
   }
 
   return {
@@ -239,7 +251,7 @@ export function buildConnectorData(
     for (const ul of pc.uplines) {
       transformSegment(ul, sx, sy, xOffset);
     }
-    transformSegment(pc.siblingBar, sx, sy, xOffset);
+    if (pc.siblingBar) transformSegment(pc.siblingBar, sx, sy, xOffset);
     for (const pl of pc.parentLink) {
       transformSegment(pl, sx, sy, xOffset);
     }
@@ -256,8 +268,9 @@ export function buildConnectorData(
   }
 
   for (const aux of connectors.auxiliaryLines) {
-    for (const seg of [aux.segment]) {
-      transformSegment(seg, sx, sy, xOffset);
+    for (const pt of aux.points) {
+      pt.x = pt.x * sx + xOffset;
+      pt.y = pt.y * sy;
     }
   }
 
@@ -289,7 +302,7 @@ export function buildConnectorData(
     }
     for (const pc of connectors.parentChildLines) {
       for (const ul of pc.uplines) shiftSegment(ul, -rawMinX, 0);
-      shiftSegment(pc.siblingBar, -rawMinX, 0);
+      if (pc.siblingBar) shiftSegment(pc.siblingBar, -rawMinX, 0);
       for (const pl of pc.parentLink) shiftSegment(pl, -rawMinX, 0);
     }
     for (const ti of connectors.twinIndicators) {
@@ -297,7 +310,7 @@ export function buildConnectorData(
       if (ti.label) ti.label.x += -rawMinX;
     }
     for (const aux of connectors.auxiliaryLines) {
-      for (const seg of [aux.segment]) shiftSegment(seg, -rawMinX, 0);
+      for (const pt of aux.points) pt.x += -rawMinX;
     }
     for (const da of connectors.duplicateArcs) {
       for (const pt of da.path.points) pt.x += -rawMinX;
@@ -324,7 +337,7 @@ export function buildConnectorData(
     }
     for (const pc of connectors.parentChildLines) {
       for (const ul of pc.uplines) shiftSegment(ul, 0, -rawMinY);
-      shiftSegment(pc.siblingBar, 0, -rawMinY);
+      if (pc.siblingBar) shiftSegment(pc.siblingBar, 0, -rawMinY);
       for (const pl of pc.parentLink) shiftSegment(pl, 0, -rawMinY);
     }
     for (const ti of connectors.twinIndicators) {
@@ -332,7 +345,7 @@ export function buildConnectorData(
       if (ti.label) ti.label.y += -rawMinY;
     }
     for (const aux of connectors.auxiliaryLines) {
-      for (const seg of [aux.segment]) shiftSegment(seg, 0, -rawMinY);
+      for (const pt of aux.points) pt.y += -rawMinY;
     }
     for (const da of connectors.duplicateArcs) {
       for (const pt of da.path.points) pt.y += -rawMinY;

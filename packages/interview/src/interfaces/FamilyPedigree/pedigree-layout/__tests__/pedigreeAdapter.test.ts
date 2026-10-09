@@ -113,8 +113,57 @@ describe('toPedigreeInput', () => {
       (p) => p.parentIndex === idToIndex.get('eggDonor')!,
     );
 
-    expect(carrierConn?.edgeType).toBe('social');
+    // The promoted edge is a primary one the renderer draws solid, never
+    // 'social', which it dashes.
+    expect(carrierConn?.edgeType).toBe('biological');
     expect(eggConn?.edgeType).toBe('donor');
+  });
+
+  test('keeps a birth parent who is the adoptive parent’s partner as a biological parent', () => {
+    // A step-parent adoption: Karen gave birth to the child and raises them
+    // with Steve, her partner, who adopted the child.
+    const edges = makeEdges([
+      {
+        from: 'karen',
+        to: 'child',
+        relationshipType: 'biological',
+        isGestationalCarrier: true,
+      },
+      { from: 'steve', to: 'child', relationshipType: 'adoptive' },
+      { from: 'karen', to: 'steve', relationshipType: 'partner' },
+    ]);
+    const { input, idToIndex } = toPedigreeInput(
+      ['karen', 'steve', 'child'],
+      edges,
+    );
+    const typeFrom = (parent: string) =>
+      input.parents[idToIndex.get('child')!]!.find(
+        (p) => p.parentIndex === idToIndex.get(parent),
+      )?.edgeType;
+    expect(typeFrom('karen')).toBe('biological');
+    expect(typeFrom('steve')).toBe('adoptive');
+  });
+
+  test('draws a birth parent outside the adoptive family as a donor', () => {
+    const edges = makeEdges([
+      { from: 'ann', to: 'child', relationshipType: 'adoptive' },
+      { from: 'bob', to: 'child', relationshipType: 'adoptive' },
+      { from: 'ann', to: 'bob', relationshipType: 'partner' },
+      {
+        from: 'cara',
+        to: 'child',
+        relationshipType: 'biological',
+        isGestationalCarrier: true,
+      },
+    ]);
+    const { input, idToIndex } = toPedigreeInput(
+      ['ann', 'bob', 'cara', 'child'],
+      edges,
+    );
+    const cara = input.parents[idToIndex.get('child')!]!.find(
+      (p) => p.parentIndex === idToIndex.get('cara'),
+    );
+    expect(cara?.edgeType).toBe('donor');
   });
 
   test('leaves the surrogate auxiliary when the child also has a primary parent', () => {
