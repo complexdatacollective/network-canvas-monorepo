@@ -60,49 +60,73 @@ function partnerGroupKey(members: number[]): string {
   return [...members].toSorted((a, b) => a - b).join(',');
 }
 
+/**
+ * Each person's parents as the layout places them. A child raised by their
+ * own sibling (kinship adoption, or a sibling who raises them without
+ * adopting) stays in their birth family: the sibling, and any partner of the
+ * sibling who raises them too, are drawn beside the birth sibship with a line
+ * of their own, as extra parents, rather than as the parents the child
+ * descends from. Their links are left out here. Everyone else's parents are
+ * as given.
+ */
+function placementParents(ped: PedigreeInput): ParentConnection[][] {
+  const partnersOf = new Map<number, number[]>();
+  for (const { partnerIndex1: a, partnerIndex2: b } of ped.partners ?? []) {
+    partnersOf.set(a, [...(partnersOf.get(a) ?? []), b]);
+    partnersOf.set(b, [...(partnersOf.get(b) ?? []), a]);
+  }
+  const isRaising = (p: ParentConnection) =>
+    p.edgeType === 'adoptive' || p.edgeType === 'social';
+  return ped.parents.map((conns) => {
+    const birthParents = new Set(
+      conns
+        .filter((p) => p.edgeType === 'biological')
+        .map((p) => p.parentIndex),
+    );
+    const siblings = new Set(
+      conns
+        .filter(
+          (p) =>
+            isRaising(p) &&
+            ped.parents[p.parentIndex]!.some(
+              (q) =>
+                isPrimaryEdge(q.edgeType) && birthParents.has(q.parentIndex),
+            ),
+        )
+        .map((p) => p.parentIndex),
+    );
+    if (siblings.size === 0) return conns;
+    const raisedWithSibling = (parent: number) =>
+      siblings.has(parent) ||
+      (partnersOf.get(parent) ?? []).some((partner) => siblings.has(partner));
+    return conns.filter(
+      (p) => !(isRaising(p) && raisedWithSibling(p.parentIndex)),
+    );
+  });
+}
+
 function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
   const n = ped.id.length;
+  const placed = placementParents(ped);
 
   // 1. Assign layers (1-based). A child's generation comes from its primary
   // parents, and from all of its parents only when it has none, as in step
   // 3b: a donor may be a generation younger than the parents who raise the
-  // child, or one of them may be the child's birth parent. A donor or
-  // surrogate with no parents shown is still lined up with the child's
-  // primary parents, so a donor shared by two families brings both onto the
-  // donor's row.
-  const generationParents = ped.parents.map((pConns) => {
+  // child, or one of them may be the child's birth parent. Every donor and
+  // surrogate is lined up with the child's primary parents, whether or not
+  // their own parents are shown, so a donor shared by two families brings
+  // both onto the donor's row.
+  const generationParents = placed.map((pConns) => {
     const primary = pConns.filter((p) => isPrimaryEdge(p.edgeType));
     return primary.length > 0 ? primary : pConns;
   });
-  const alignedAuxiliaryParents = ped.parents.map((pConns, i) =>
+  const alignedAuxiliaryParents = placed.map((pConns, i) =>
     generationParents[i] === pConns
       ? []
-      : pConns.filter(
-          (p) =>
-            isAuxiliaryEdge(p.edgeType) &&
-            ped.parents[p.parentIndex]!.length === 0,
-        ),
+      : pConns.filter((p) => isAuxiliaryEdge(p.edgeType)),
   );
   const depth = kindepth(generationParents, true, alignedAuxiliaryParents);
   const layers = depth.map((d) => d + 1);
-
-  // 2. Force auxiliary parents to same layer as social parents
-  for (let i = 0; i < n; i++) {
-    const pConns = ped.parents[i]!;
-    if (pConns.length === 0) continue;
-    const socialLevel = Math.max(
-      ...pConns
-        .filter((p) => isPrimaryEdge(p.edgeType))
-        .map((p) => layers[p.parentIndex]!),
-      -1,
-    );
-    if (socialLevel < 0) continue;
-    for (const p of pConns) {
-      if (isAuxiliaryEdge(p.edgeType)) {
-        layers[p.parentIndex] = socialLevel;
-      }
-    }
-  }
 
   // 3. Build partner groups from all sources, deduplicating by sorted key
   const groupMap = new Map<string, PartnerGroup>();
@@ -142,7 +166,7 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
 
   // From implicit co-parent detection
   for (let i = 0; i < n; i++) {
-    const pConns = ped.parents[i]!;
+    const pConns = placed[i]!;
     if (pConns.length === 0) continue;
     const primaryParents = pConns
       .filter((p) => isPrimaryEdge(p.edgeType))
@@ -208,20 +232,22 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
 
   const partnerGroups = [...groupMap.values()];
 
-  // 3b. Settle layers. Each child sits below its primary parents (below all
-  // of its parents when it has none); partners share a layer; and a donor or
-  // surrogate sits no higher than the parents they contribute alongside.
-  // Descent always holds. Some families cannot have every alignment as well
-  // (someone partnered with their own grandchild), so each alignment is kept
-  // only if it leaves the constraints satisfiable — in order, partnerships
-  // first — and one that would need a person above their own descendant is
-  // dropped: its people then sit on different layers.
+  // 3b. Settle layers. Each child sits below its primary parents and below
+  // its donors and surrogates, never on their row; partners share a layer;
+  // and a donor or surrogate shares the layer of the parents they contribute
+  // alongside. Descent always holds. Some families cannot have every
+  // alignment as well (someone partnered with their own grandchild, a
+  // daughter who carried her mother's baby), so each alignment is kept only
+  // if it leaves the constraints satisfiable — in order, partnerships first —
+  // and one that would need a person above their own descendant is dropped:
+  // its people then sit on different layers, and the child goes down a row
+  // below them all.
   const { constrain, settle } = layerConstraints(n);
   for (let i = 0; i < n; i++) {
-    const pConns = ped.parents[i]!;
-    const primary = pConns.filter((p) => isPrimaryEdge(p.edgeType));
-    for (const p of primary.length > 0 ? primary : pConns) {
-      constrain([[p.parentIndex, i]], 1);
+    for (const p of placed[i]!) {
+      if (isPrimaryEdge(p.edgeType) || isAuxiliaryEdge(p.edgeType)) {
+        constrain([[p.parentIndex, i]], 1);
+      }
     }
   }
   for (const group of partnerGroups) {
@@ -237,10 +263,16 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
     }
   }
   for (let i = 0; i < n; i++) {
-    const pConns = ped.parents[i]!;
+    const pConns = placed[i]!;
     for (const aux of pConns.filter((p) => isAuxiliaryEdge(p.edgeType))) {
       for (const p of pConns.filter((q) => isPrimaryEdge(q.edgeType))) {
-        constrain([[p.parentIndex, aux.parentIndex]], 0);
+        constrain(
+          [
+            [p.parentIndex, aux.parentIndex],
+            [aux.parentIndex, p.parentIndex],
+          ],
+          0,
+        );
       }
     }
   }
@@ -256,9 +288,7 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
     edgeType === 'social' ? 1 : 2;
   const familyGroupOf = new Map<number, PartnerGroup>();
   for (let i = 0; i < n; i++) {
-    const primaryEdges = ped.parents[i]!.filter((p) =>
-      isPrimaryEdge(p.edgeType),
-    );
+    const primaryEdges = placed[i]!.filter((p) => isPrimaryEdge(p.edgeType));
     let bestWeight = 0;
     for (const group of partnerGroups) {
       let weight = 0;
@@ -293,7 +323,7 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
   // primary parent and aren't already covered by a partner-group family unit.
   const singleParentChildren = new Map<number, number[]>();
   for (let i = 0; i < n; i++) {
-    const pConns = ped.parents[i]!;
+    const pConns = placed[i]!;
     if (pConns.length === 0) continue;
     const primaryParents = pConns
       .filter((p) => isPrimaryEdge(p.edgeType))
