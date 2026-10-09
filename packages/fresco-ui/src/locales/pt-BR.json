@@ -92,6 +92,7 @@
   "frescoUi.dialogProvider.areYouSure": "Tem certeza?",
   "frescoUi.dialogProvider.continueEditing": "Continuar editando",
   "frescoUi.dialogProvider.exitAndLoseProgress": "Sair e perder o progresso",
+  "frescoUi.dialogProvider.pleaseWait": "Aguarde...",
   "frescoUi.dialogProvider.submit": "Enviar",
   "frescoUi.dragAndDrop.cancelled": "Arrasto cancelado",
   "frescoUi.dragAndDrop.dropTarget": "Destino {position, number} de {total, number}",

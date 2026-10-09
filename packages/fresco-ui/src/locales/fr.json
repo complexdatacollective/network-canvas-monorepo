@@ -92,6 +92,7 @@
   "frescoUi.dialogProvider.areYouSure": "Voulez-vous vraiment continuer ?",
   "frescoUi.dialogProvider.continueEditing": "Continuer à modifier",
   "frescoUi.dialogProvider.exitAndLoseProgress": "Quitter et perdre la progression",
+  "frescoUi.dialogProvider.pleaseWait": "Veuillez patienter…",
   "frescoUi.dialogProvider.submit": "Valider",
   "frescoUi.dragAndDrop.cancelled": "Déplacement annulé",
   "frescoUi.dragAndDrop.dropTarget": "Zone de dépôt {position, number} sur {total, number}",

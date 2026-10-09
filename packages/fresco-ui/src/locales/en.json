@@ -371,6 +371,10 @@
     "defaultMessage": "Exit and lose progress",
     "description": "Default confirm action of the dialog asking whether to abandon a wizard mid-way."
   },
+  "frescoUi.dialogProvider.pleaseWait": {
+    "defaultMessage": "Please wait...",
+    "description": "Announced to screen readers, never shown, while a confirm button’s action is still running; the button shows a spinner."
+  },
   "frescoUi.dialogProvider.submit": {
     "defaultMessage": "Submit",
     "description": "Default submit action of a form dialog."

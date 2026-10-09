@@ -92,6 +92,7 @@
   "frescoUi.dialogProvider.areYouSure": "Weet je het zeker?",
   "frescoUi.dialogProvider.continueEditing": "Verder bewerken",
   "frescoUi.dialogProvider.exitAndLoseProgress": "Afsluiten en voortgang verliezen",
+  "frescoUi.dialogProvider.pleaseWait": "Even geduld…",
   "frescoUi.dialogProvider.submit": "Versturen",
   "frescoUi.dragAndDrop.cancelled": "Slepen geannuleerd",
   "frescoUi.dragAndDrop.dropTarget": "Neerzetdoel {position, number} van {total, number}",

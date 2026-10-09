@@ -92,6 +92,7 @@
   "frescoUi.dialogProvider.areYouSure": "您確定嗎？",
   "frescoUi.dialogProvider.continueEditing": "繼續編輯",
   "frescoUi.dialogProvider.exitAndLoseProgress": "離開並捨棄進度",
+  "frescoUi.dialogProvider.pleaseWait": "請稍候…",
   "frescoUi.dialogProvider.submit": "送出",
   "frescoUi.dragAndDrop.cancelled": "已取消拖曳",
   "frescoUi.dragAndDrop.dropTarget": "第 {position, number} 個放置目標，共 {total, number} 個",

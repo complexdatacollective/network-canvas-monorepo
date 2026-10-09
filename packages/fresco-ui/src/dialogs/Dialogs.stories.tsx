@@ -618,7 +618,16 @@ export const AsyncConfirmWithAbort: StoryObj<Meta<AsyncConfirmArgs>> = {
     await userEvent.click(
       within(dialog).getByRole('button', { name: 'Process' }),
     );
-    await within(dialog).findByRole('button', { name: 'Please wait...' });
+    // The button keeps its words and shows a spinner; screen readers hear
+    // that the action is running.
+    await waitFor(() =>
+      expect(
+        within(dialog).getByRole('button', { name: 'Process' }),
+      ).toHaveAttribute('aria-busy', 'true'),
+    );
+    await expect(within(dialog).getByRole('status')).toHaveTextContent(
+      'Please wait...',
+    );
 
     const cancel = within(dialog).getByRole('button', { name: 'Cancel' });
     await expect(cancel).toBeEnabled();

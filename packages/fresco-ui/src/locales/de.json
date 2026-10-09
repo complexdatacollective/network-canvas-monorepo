@@ -92,6 +92,7 @@
   "frescoUi.dialogProvider.areYouSure": "Sind Sie sicher?",
   "frescoUi.dialogProvider.continueEditing": "Weiter bearbeiten",
   "frescoUi.dialogProvider.exitAndLoseProgress": "Verlassen und Fortschritt verlieren",
+  "frescoUi.dialogProvider.pleaseWait": "Bitte warten…",
   "frescoUi.dialogProvider.submit": "Absenden",
   "frescoUi.dragAndDrop.cancelled": "Ziehen abgebrochen",
   "frescoUi.dragAndDrop.dropTarget": "Ablageziel {position, number} von {total, number}",
