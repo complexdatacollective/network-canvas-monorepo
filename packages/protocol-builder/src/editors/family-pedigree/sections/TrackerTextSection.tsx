@@ -93,22 +93,6 @@ export default function TrackerTextSection() {
   const { committedFields } = useStageEditorForm();
   const supplied = useSuppliedPedigreeText();
 
-  const caseLabels = useMemo(
-    () => ({
-      isYou: {
-        true: intl.formatMessage(messages.trackerAboutParticipant),
-        other: intl.formatMessage(messages.trackerAboutSomeoneElse),
-      },
-    }),
-    [intl],
-  );
-  const placeholderLabels = useMemo(
-    () => ({
-      name: intl.formatMessage(messages.trackerPlaceholderName),
-      missing: intl.formatMessage(messages.trackerPlaceholderMissing),
-    }),
-    [intl],
-  );
   const validations = useMemo(
     () =>
       new Map<MessageArguments, CustomFieldValidation>(
@@ -137,8 +121,6 @@ export default function TrackerTextSection() {
               label={intl.formatMessage(setting.label)}
               hint={intl.formatMessage(setting.hint)}
               arguments={setting.arguments}
-              caseLabels={caseLabels}
-              placeholderLabels={placeholderLabels}
               initialValue={startingWording(
                 committedFields,
                 setting.path,

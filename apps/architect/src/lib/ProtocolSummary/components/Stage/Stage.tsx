@@ -12,7 +12,6 @@ import type {
   Item,
   LocalizedString,
   Panel,
-  PedigreeCompletenessScope,
 } from '@codaco/protocol-validation';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
@@ -28,7 +27,11 @@ import {
 import Anonymisation from './Anonymisation';
 import Behaviours from './Behaviours';
 import DataSource from './DataSource';
-import FamilyPedigree from './FamilyPedigree';
+import FamilyPedigree, {
+  type FamilyPedigreeCompleteness,
+  type FamilyPedigreeEdgeConfiguration,
+  type FamilyPedigreeNodeConfiguration,
+} from './FamilyPedigree';
 import FamilyTreeVariables from './FamilyTreeVariables';
 import Filter from './Filter';
 import FinishScreen from './FinishScreen';
@@ -203,31 +206,13 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
       ? ((configuration.prompt as LocalizedString | undefined) ?? null)
       : null;
   const nodeConfiguration = configuration.nodeConfiguration as
-    | {
-        nameAttribute?: string;
-        genderIdentity?: {
-          attribute?: string;
-          terms?: { value: string | number; words: string }[];
-        };
-        sexAssignedAtBirthAttribute?: string;
-        egoAttribute?: string;
-        relationshipToParticipantAttribute?: string;
-      }
+    | FamilyPedigreeNodeConfiguration
     | undefined;
   const edgeConfiguration = configuration.edgeConfiguration as
-    | {
-        type?: string;
-        kindAttribute?: string;
-        gestationalCarrierAttribute?: string;
-        currentPartnerAttribute?: string;
-      }
+    | FamilyPedigreeEdgeConfiguration
     | undefined;
   const completeness = configuration.completeness as
-    | {
-        scope?: PedigreeCompletenessScope;
-        enforcement?: 'required' | 'recommended';
-        relativesNotRecordedAttribute?: string;
-      }
+    | FamilyPedigreeCompleteness
     | undefined;
   const framing = configuration.framing as FramingSetting | undefined;
   const nominationPrompts = configuration.nominationPrompts as

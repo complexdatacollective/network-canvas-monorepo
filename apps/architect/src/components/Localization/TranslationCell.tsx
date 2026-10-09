@@ -12,6 +12,10 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
+import {
+  LocalizedMessageVersions,
+  LocalizedMessageVersionsSummary,
+} from '@codaco/protocol-builder/fields/LocalizedMessageField';
 import RichTextField from '@codaco/protocol-builder/fields/RichTextField';
 import {
   localeDirection,
@@ -24,6 +28,7 @@ import type {
   LocaleTag,
   LocalizedString,
   LocalizedStringFormat,
+  MessageArguments,
 } from '@codaco/protocol-validation';
 import { cx } from '~/utils/cva';
 
@@ -102,7 +107,11 @@ export type TranslationCellProps = {
   labelledBy: string;
   rowIndex: number;
   colIndex: number;
+  /** What the text may use, when it is a localized message. */
+  messageArguments?: MessageArguments;
   onCommit: (text: string) => CommitResult;
+  /** Saves a localized message's translation as written. */
+  onCommitMessage: (message: string | undefined) => CommitResult;
   /** Moves focus to the cell `delta` rows away; false where there is none. */
   onMove: (delta: number) => boolean;
 };
@@ -231,12 +240,14 @@ const Fallback = ({
   format,
   locale,
   localization,
+  messageArguments,
 }: {
   id: string;
   value: LocalizedString | undefined;
   format: LocalizedStringFormat;
   locale: LocaleTag;
   localization: ProtocolLocalization;
+  messageArguments?: MessageArguments;
 }) => {
   const intl = useAppIntl();
   const languageName = useLanguageName();
@@ -272,7 +283,13 @@ const Fallback = ({
       )}
     >
       <div lang={shown.lang} className="w-full text-current/60">
-        {format === 'markdown' ? (
+        {messageArguments !== undefined ? (
+          <LocalizedMessageVersionsSummary
+            message={shown.text}
+            declaration={messageArguments}
+            locale={shown.lang}
+          />
+        ) : format === 'markdown' ? (
           <CellMarkdown>{shown.text}</CellMarkdown>
         ) : (
           shown.text
@@ -752,12 +769,218 @@ const RichTextCell = ({
   );
 };
 
+/**
+ * A localized message: its versions, read-only until the cell has focus,
+ * then edited in the cell as the stage editor edits them, one line per
+ * version. Leaving the cell saves; Escape puts back what was saved; Enter
+ * moves to the cell below.
+ */
+const MessageCell = ({
+  value,
+  locale,
+  localization,
+  labelledBy,
+  rowIndex,
+  colIndex,
+  messageArguments,
+  onCommitMessage,
+  onMove,
+}: TranslationCellProps & { messageArguments: MessageArguments }) => {
+  const contentId = useId();
+  const editorId = useId();
+  const noteId = useId();
+  const feedback = useCommitFeedback(locale);
+  const cellRef = useRef<HTMLTableCellElement>(null);
+  const leaveTimer = useRef<number | null>(null);
+  // Boxed, because a draft of `undefined` (every version emptied) is a
+  // change too.
+  const draftRef = useRef<{ message: string | undefined } | null>(null);
+  const onCommitRef = useRef(onCommitMessage);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<{ message: string | undefined } | null>(
+    null,
+  );
+  const [revision, setRevision] = useState(0);
+  const stored = value[locale] ?? '';
+  const message = draft === null ? stored : (draft.message ?? '');
+  const empty = message === '';
+  const refusing = empty && isOnlyTranslation(value, locale, localization);
+
+  const changeDraft = (next: { message: string | undefined } | null) => {
+    draftRef.current = next;
+    setDraft(next);
+  };
+
+  const commit = () => {
+    const pending = draftRef.current;
+    if (pending === null) return;
+    changeDraft(null);
+    feedback(onCommitMessage(pending.message));
+  };
+
+  const holdFocus = () => cellRef.current?.focus({ preventScroll: true });
+
+  useEffect(() => {
+    onCommitRef.current = onCommitMessage;
+  });
+
+  useEffect(
+    () => () => {
+      if (leaveTimer.current !== null) window.clearTimeout(leaveTimer.current);
+      const pending = draftRef.current;
+      if (pending !== null) onCommitRef.current(pending.message);
+    },
+    [],
+  );
+
+  const handleFocus = (event: FocusEvent<HTMLTableCellElement>) => {
+    if (leaveTimer.current !== null) {
+      window.clearTimeout(leaveTimer.current);
+      leaveTimer.current = null;
+    }
+    if (!editing) {
+      holdFocus();
+      setEditing(true);
+    } else if (event.target === cellRef.current) {
+      focusEditorIn(cellRef.current);
+    }
+  };
+
+  const handleBlur = (event: FocusEvent<HTMLTableCellElement>) => {
+    if (!editing) return;
+    const next = event.relatedTarget;
+    if (next instanceof Node && cellRef.current?.contains(next)) return;
+    leaveTimer.current = window.setTimeout(() => {
+      leaveTimer.current = null;
+      if (!document.hasFocus()) return;
+      if (cellRef.current?.contains(document.activeElement)) return;
+      setEditing(false);
+      commit();
+    }, 0);
+  };
+
+  const handleKeyDownCapture = (event: KeyboardEvent<HTMLTableCellElement>) => {
+    const editable = event.target;
+    if (
+      !(editable instanceof HTMLElement) ||
+      !editable.matches(EDITABLE_SELECTOR)
+    ) {
+      return;
+    }
+    if (event.key === 'Escape') {
+      if (draftRef.current === null) return;
+      event.preventDefault();
+      event.stopPropagation();
+      holdFocus();
+      changeDraft(null);
+      setRevision((current) => current + 1);
+      return;
+    }
+    if (event.key === 'Enter' && !event.shiftKey && !event.altKey) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!onMove(1)) {
+        holdFocus();
+        commit();
+        setRevision((current) => current + 1);
+      }
+    }
+  };
+
+  const fallbackDescribed = empty && !refusing;
+
+  return (
+    <td
+      ref={cellRef}
+      tabIndex={-1}
+      lang={locale}
+      dir={localeDirection(locale)}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      onKeyDownCapture={editing ? handleKeyDownCapture : undefined}
+      className={cx(CELL_CLASSES, refusing && REFUSING_CELL_CLASSES)}
+    >
+      {editing ? (
+        <div className={cx(CELL_TEXT_CLASSES, 'min-w-64')}>
+          {fallbackDescribed && (
+            <div className="sr-only">
+              <Fallback
+                id={contentId}
+                value={value}
+                format="plain"
+                locale={locale}
+                localization={localization}
+                messageArguments={messageArguments}
+              />
+            </div>
+          )}
+          <LocalizedMessageVersions
+            key={revision}
+            id={editorId}
+            name={editorId}
+            message={message}
+            onMessageChange={(next) => changeDraft({ message: next })}
+            declaration={messageArguments}
+            locale={locale}
+            ariaLabelledBy={labelledBy}
+            ariaDescribedBy={
+              refusing ? noteId : fallbackDescribed ? contentId : ''
+            }
+            autoFocus
+          />
+          {refusing && <OnlyTranslationNote id={noteId} locale={locale} />}
+          {draft !== null && <UnsavedMark />}
+        </div>
+      ) : (
+        <>
+          <div className="grid">
+            {empty ? (
+              <Fallback
+                id={contentId}
+                value={value}
+                format="plain"
+                locale={locale}
+                localization={localization}
+                messageArguments={messageArguments}
+              />
+            ) : (
+              <div
+                id={contentId}
+                className={cx(CELL_TEXT_CLASSES, 'col-start-1 row-start-1')}
+              >
+                <LocalizedMessageVersionsSummary
+                  message={stored}
+                  declaration={messageArguments}
+                  locale={locale}
+                />
+              </div>
+            )}
+          </div>
+          {/* Focus, by any means, turns the cell into its editor. */}
+          <button
+            type="button"
+            aria-labelledby={labelledBy}
+            aria-describedby={contentId}
+            data-row={rowIndex}
+            data-col={colIndex}
+            className="absolute inset-0 cursor-text scroll-ms-(--translation-table-names) scroll-mt-(--translation-table-sticky-top) outline-none"
+          />
+        </>
+      )}
+    </td>
+  );
+};
+
 /** One translation of one text: a cell of the translation table. */
-const TranslationCell = (props: TranslationCellProps) =>
-  props.format === 'markdown' ? (
+const TranslationCell = (props: TranslationCellProps) => {
+  if (props.messageArguments !== undefined) {
+    return <MessageCell {...props} messageArguments={props.messageArguments} />;
+  }
+  return props.format === 'markdown' ? (
     <RichTextCell {...props} />
   ) : (
     <PlainTextCell {...props} />
   );
+};
 
 export default TranslationCell;

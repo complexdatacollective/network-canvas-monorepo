@@ -2715,6 +2715,14 @@
     "defaultMessage": "Name",
     "description": "Label for the text attribute that holds each family member’s name, in the printable protocol summary."
   },
+  "architect.protocolSummary.stage.familyPedigree.nameQuestion": {
+    "defaultMessage": "Name question",
+    "description": "Label for the question asking each family member’s name, as participants read it, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.nameQuestionHint": {
+    "defaultMessage": "Name question guidance",
+    "description": "Label for the guidance shown beneath the question asking each family member’s name, in the printable protocol summary."
+  },
   "architect.protocolSummary.stage.familyPedigree.nominationLimit": {
     "defaultMessage": "Who can be selected",
     "description": "Label, in the printable protocol summary, for the limit a nomination prompt places on who can be selected by sex assigned at birth."
@@ -2778,6 +2786,42 @@
   "architect.protocolSummary.stage.familyPedigree.title": {
     "defaultMessage": "Family Pedigree",
     "description": "Heading of the printable protocol summary section describing how a Family Pedigree stage records each family member and each relationship."
+  },
+  "architect.protocolSummary.stage.familyPedigree.trackerChildren": {
+    "defaultMessage": "List item: children",
+    "description": "Label, in the printable protocol summary, for the words of the entry in the Family Pedigree’s list of what is still needed that asks for a person’s children."
+  },
+  "architect.protocolSummary.stage.familyPedigree.trackerChildrenQuestion": {
+    "defaultMessage": "Question about children",
+    "description": "Label, in the printable protocol summary, for the side panel’s question asking about a person’s children."
+  },
+  "architect.protocolSummary.stage.familyPedigree.trackerDetails": {
+    "defaultMessage": "List item: missing details",
+    "description": "Label, in the printable protocol summary, for the words of the entry in the Family Pedigree’s list of what is still needed that asks for details still missing about a person."
+  },
+  "architect.protocolSummary.stage.familyPedigree.trackerNoChildren": {
+    "defaultMessage": "Button: no children",
+    "description": "Label, in the printable protocol summary, for the words of the button that answers that a person has no children."
+  },
+  "architect.protocolSummary.stage.familyPedigree.trackerNoSiblings": {
+    "defaultMessage": "Button: no brothers or sisters",
+    "description": "Label, in the printable protocol summary, for the words of the button that answers that a person has no brothers or sisters."
+  },
+  "architect.protocolSummary.stage.familyPedigree.trackerParents": {
+    "defaultMessage": "List item: missing parents",
+    "description": "Label, in the printable protocol summary, for the words of the entry in the Family Pedigree’s list of what is still needed that asks for a person’s missing parents."
+  },
+  "architect.protocolSummary.stage.familyPedigree.trackerRecommendedNote": {
+    "defaultMessage": "Note under the list",
+    "description": "Label, in the printable protocol summary, for the note shown under the Family Pedigree’s list of what is still needed when participants may continue without completing it."
+  },
+  "architect.protocolSummary.stage.familyPedigree.trackerSiblings": {
+    "defaultMessage": "List item: brothers and sisters",
+    "description": "Label, in the printable protocol summary, for the words of the entry in the Family Pedigree’s list of what is still needed that asks for a person’s brothers and sisters."
+  },
+  "architect.protocolSummary.stage.familyPedigree.trackerSiblingsQuestion": {
+    "defaultMessage": "Question about brothers and sisters",
+    "description": "Label, in the printable protocol summary, for the side panel’s question asking about a person’s brothers and sisters."
   },
   "architect.protocolSummary.stage.form.form": {
     "defaultMessage": "Form",

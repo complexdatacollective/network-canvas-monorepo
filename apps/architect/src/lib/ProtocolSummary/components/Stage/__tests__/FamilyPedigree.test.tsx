@@ -214,4 +214,78 @@ describe('Protocol Summary family pedigree', () => {
     ).toBeInTheDocument();
     expect(screen.getAllByText('Attribute')).toHaveLength(2);
   });
+
+  it('shows the wording participants read, a version for each case a text distinguishes', () => {
+    const recommended = {
+      scope: 'parents',
+      enforcement: 'recommended',
+      itemText: {
+        parents: {
+          listItem: {
+            en: '{isYou, select, true {{missing, plural, one {Add your other parent} other {Add your parents}}} other {Parents of {name}}}',
+          },
+        },
+        siblings: {
+          listItem: { en: 'Brothers and sisters' },
+          noneButton: { en: 'None' },
+          question: { en: 'Any brothers or sisters?' },
+        },
+        children: {
+          listItem: { en: 'Children' },
+          noneButton: { en: 'None' },
+          question: { en: 'Any children?' },
+        },
+        details: { listItem: { en: 'About {name}' } },
+      },
+      recommendedNote: { en: 'You may skip these.' },
+    } as const;
+    const { rerender } = render(
+      <SummaryContext.Provider
+        value={{ protocol, protocolName: protocol.name, index: [] }}
+      >
+        <FamilyPedigree
+          personType="person"
+          prompt={null}
+          nodeConfiguration={{
+            nameField: {
+              prompt: { en: 'What is their name?' },
+              hint: { en: 'A nickname is fine.' },
+            },
+          }}
+          edgeConfiguration={null}
+          completeness={recommended}
+          framing={null}
+          nominationPrompts={null}
+        />
+      </SummaryContext.Provider>,
+    );
+
+    expect(screen.getByText('What is their name?')).toBeInTheDocument();
+    expect(screen.getByText('A nickname is fine.')).toBeInTheDocument();
+    // The message reads as its versions, its placeholders named, never as
+    // the syntax it is stored in.
+    expect(screen.getByText('Add your other parent')).toBeInTheDocument();
+    expect(screen.getByText('Parents of [Name]')).toBeInTheDocument();
+    expect(screen.getByText('About [Name]')).toBeInTheDocument();
+    expect(screen.queryByText(/isYou/)).toBeNull();
+    expect(screen.getByText('You may skip these.')).toBeInTheDocument();
+
+    rerender(
+      <SummaryContext.Provider
+        value={{ protocol, protocolName: protocol.name, index: [] }}
+      >
+        <FamilyPedigree
+          personType="person"
+          prompt={null}
+          nodeConfiguration={null}
+          edgeConfiguration={null}
+          completeness={{ ...recommended, enforcement: 'required' }}
+          framing={null}
+          nominationPrompts={null}
+        />
+      </SummaryContext.Provider>,
+    );
+    // Participants never read the note when the list must be completed.
+    expect(screen.queryByText('You may skip these.')).toBeNull();
+  });
 });

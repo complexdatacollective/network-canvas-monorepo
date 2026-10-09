@@ -717,30 +717,6 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Description of the list-wording group. The wording starts with supplied text in each of the protocol’s languages that Network Canvas has it in.',
   },
-  trackerAboutParticipant: {
-    id: 'protocolBuilder.pedigree.trackerAboutParticipant',
-    defaultMessage: 'About the participant',
-    description:
-      'Heading over the version of a list item or question used when it is about the participant themself.',
-  },
-  trackerAboutSomeoneElse: {
-    id: 'protocolBuilder.pedigree.trackerAboutSomeoneElse',
-    defaultMessage: 'About someone else',
-    description:
-      'Heading over the version of a list item or question used when it is about another member of the participant’s family.',
-  },
-  trackerPlaceholderName: {
-    id: 'protocolBuilder.pedigree.trackerPlaceholderName',
-    defaultMessage: 'Name',
-    description:
-      'Name of the placeholder, inserted into a list item or question, that shows the family member’s name.',
-  },
-  trackerPlaceholderMissing: {
-    id: 'protocolBuilder.pedigree.trackerPlaceholderMissing',
-    defaultMessage: 'Parents missing',
-    description:
-      'Name of the placeholder, inserted into the list item asking for parents, that shows how many of the person’s parents are still to be added.',
-  },
   trackerParentsLabel: {
     id: 'protocolBuilder.pedigree.trackerParentsLabel',
     defaultMessage: 'Missing parents',

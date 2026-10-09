@@ -23,6 +23,7 @@ import { asLocalizedString } from '../localization/localizedText.ts';
 import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
 import type { RichTextContent as JSONContent } from '../markdown/markdownAdapter.ts';
 import { LocalizedStringField } from './LocalizedStringField.tsx';
+import { useMessageArgumentLabels } from './messageArgumentLabels.ts';
 
 const messages = defineMessages({
   pluralVersion: {
@@ -166,40 +167,31 @@ export function localizedMessageValidation(
   };
 }
 
-type MessageVersionsProps = Readonly<{
-  id: string;
-  name: string;
-  message: string;
-  onMessageChange: (message: string | undefined) => void;
-  readOnly: boolean;
-  disabled: boolean | undefined;
-  declaration: MessageArguments;
-  caseLabels: LocalizedMessageFieldProps['caseLabels'];
-  placeholderLabels: LocalizedMessageFieldProps['placeholderLabels'];
-  locale: LocaleTag;
-  ariaLabelledBy: string | undefined;
-  ariaDescribedBy: string;
-  ariaInvalid: boolean | undefined;
+type VersionGroup = Readonly<{
+  key: string;
+  /** What the group's select cases mean, or empty without a select. */
+  label: string;
+  versions: readonly Readonly<{
+    index: number;
+    /** The plural version's label, or undefined without a plural. */
+    label: string | undefined;
+    variant: MessageVariant;
+  }>[];
 }>;
 
-/** One translation's versions, grouped by case, one editor each. */
-function MessageVersions({
-  id,
-  name,
-  message,
-  onMessageChange,
-  readOnly,
-  disabled,
-  declaration,
-  caseLabels,
-  placeholderLabels,
-  locale,
-  ariaLabelledBy,
-  ariaDescribedBy,
-  ariaInvalid,
-}: MessageVersionsProps) {
+/**
+ * A message's versions in `locale`, grouped by their select cases in
+ * declared order, each group holding one version per plural category, with
+ * the words the researcher reads for each, and the placeholders the text can
+ * show.
+ */
+function useMessageVersions(
+  message: string,
+  declaration: MessageArguments,
+  locale: LocaleTag,
+) {
   const intl = useAppIntl();
-  const baseId = useId();
+  const { caseLabels, placeholderLabels } = useMessageArgumentLabels();
 
   const tokens: RichTextEditorToken[] = Object.entries(declaration).flatMap(
     ([argument, { kind }]) =>
@@ -214,8 +206,152 @@ function MessageVersions({
     ([, { kind }]) => kind === 'plural',
   )?.[0];
   const examples = plural === undefined ? undefined : numberExamples(locale);
+  const pluralLabel = (variant: MessageVariant) =>
+    plural === undefined
+      ? undefined
+      : intl.formatMessage(messages.pluralVersion, {
+          placeholder: placeholderLabels[plural] ?? plural,
+          numbers: intl.formatList(
+            examples?.get(variant.when[plural] ?? '') ?? [],
+            { type: 'unit', style: 'short' },
+          ),
+        });
 
   const variants = messageVariants(message, declaration, locale);
+  const groups = new Map<
+    string,
+    { key: string; label: string; versions: VersionGroup['versions'][number][] }
+  >();
+  variants.forEach((variant, index) => {
+    const key = selects
+      .map((argument) => variant.when[argument])
+      .join('\u0000');
+    const group = groups.get(key) ?? {
+      key,
+      label: selects
+        .map(
+          (argument) =>
+            caseLabels[argument]?.[variant.when[argument] ?? ''] ?? '',
+        )
+        .join(' '),
+      versions: [],
+    };
+    group.versions.push({ index, label: pluralLabel(variant), variant });
+    groups.set(key, group);
+  });
+
+  return {
+    variants,
+    groups: [...groups.values()] as readonly VersionGroup[],
+    tokens,
+  };
+}
+
+/** A version's parts as text, each placeholder as its name in brackets. */
+const versionText = (
+  parts: readonly MessagePart[],
+  tokens: readonly RichTextEditorToken[],
+) =>
+  parts
+    .map((part) =>
+      typeof part === 'string'
+        ? part
+        : `[${tokens.find((token) => token.id === part.argument)?.label ?? part.argument}]`,
+    )
+    .join('');
+
+/**
+ * A message's versions in `locale`, read-only, each placeholder named in
+ * brackets: what a summary or an unfocused table cell shows. A message whose
+ * versions all read the same shows as its one phrase, and a case whose
+ * versions all read the same, whatever the number, shows once.
+ */
+export function LocalizedMessageVersionsSummary({
+  message,
+  declaration,
+  locale,
+}: Readonly<{
+  message: string;
+  declaration: MessageArguments;
+  locale: LocaleTag;
+}>) {
+  const { variants, groups, tokens } = useMessageVersions(
+    message,
+    declaration,
+    locale,
+  );
+  const texts = variants.map((variant) => versionText(variant.parts, tokens));
+  if (texts.every((text) => text === texts[0])) return <>{texts[0] ?? ''}</>;
+
+  return (
+    <dl className="flex flex-col gap-1">
+      {groups.flatMap((group) => {
+        const first = group.versions[0];
+        const same =
+          first !== undefined &&
+          group.versions.every(
+            ({ index }) => texts[index] === texts[first.index],
+          );
+        const shown = same
+          ? [{ index: first.index, label: undefined }]
+          : group.versions;
+        return shown.map(({ index, label }) => (
+          <div key={index}>
+            <dt className="text-sm text-current/70">
+              {[group.label, label].filter(Boolean).join(' · ')}
+            </dt>
+            <dd>{texts[index]}</dd>
+          </div>
+        ));
+      })}
+    </dl>
+  );
+}
+
+export type LocalizedMessageVersionsProps = Readonly<{
+  id: string;
+  name: string;
+  /** One translation, as the protocol stores it, or empty. */
+  message: string;
+  /** Writes the translation; undefined when every version was emptied. */
+  onMessageChange: (message: string | undefined) => void;
+  readOnly?: boolean;
+  disabled?: boolean;
+  declaration: MessageArguments;
+  locale: LocaleTag;
+  ariaLabelledBy: string | undefined;
+  ariaDescribedBy: string;
+  ariaInvalid?: boolean;
+  /** Focuses the first version as it mounts. */
+  autoFocus?: boolean;
+}>;
+
+/**
+ * One translation of a localized message, edited a version at a time: a
+ * heading per select case, then a labelled line of text per plural category,
+ * each holding the message's placeholders as chips.
+ */
+export function LocalizedMessageVersions({
+  id,
+  name,
+  message,
+  onMessageChange,
+  readOnly = false,
+  disabled,
+  declaration,
+  locale,
+  ariaLabelledBy,
+  ariaDescribedBy,
+  ariaInvalid,
+  autoFocus = false,
+}: LocalizedMessageVersionsProps) {
+  const baseId = useId();
+  const { variants, groups, tokens } = useMessageVersions(
+    message,
+    declaration,
+    locale,
+  );
+
   const write = (index: number, parts: readonly MessagePart[]) => {
     const next = variants.map((variant, at) =>
       at === index ? { ...variant, parts } : variant,
@@ -227,37 +363,6 @@ function MessageVersions({
     );
   };
 
-  // The versions in order, grouped by their select cases: a heading per
-  // group when there is a select, then one editor per plural category.
-  const groups = new Map<string, { label: string; indexes: number[] }>();
-  variants.forEach((variant, index) => {
-    const key = selects
-      .map((argument) => variant.when[argument])
-      .join('\u0000');
-    const group = groups.get(key) ?? {
-      label: selects
-        .map(
-          (argument) =>
-            caseLabels[argument]?.[variant.when[argument] ?? ''] ?? '',
-        )
-        .join(' '),
-      indexes: [],
-    };
-    group.indexes.push(index);
-    groups.set(key, group);
-  });
-
-  const versionLabel = (variant: MessageVariant) =>
-    plural === undefined
-      ? undefined
-      : intl.formatMessage(messages.pluralVersion, {
-          placeholder: placeholderLabels[plural] ?? plural,
-          numbers: intl.formatList(
-            examples?.get(variant.when[plural] ?? '') ?? [],
-            { type: 'unit', style: 'short' },
-          ),
-        });
-
   return (
     <div
       id={id}
@@ -268,19 +373,16 @@ function MessageVersions({
       aria-invalid={ariaInvalid}
       className="flex flex-col gap-4"
     >
-      {[...groups.entries()].map(([key, group], groupIndex) => {
+      {groups.map((group, groupIndex) => {
         const groupId = `${baseId}-group-${groupIndex}`;
         return (
-          <div key={key} className="flex flex-col gap-2">
+          <div key={group.key} className="flex flex-col gap-2">
             {group.label !== '' && (
               <p id={groupId} className="text-sm font-semibold">
                 {group.label}
               </p>
             )}
-            {group.indexes.map((index) => {
-              const variant = variants[index];
-              if (variant === undefined) return null;
-              const label = versionLabel(variant);
+            {group.versions.map(({ index, label, variant }) => {
               const labelId = `${baseId}-version-${index}`;
               const labelledBy = [
                 group.label === '' ? ariaLabelledBy : groupId,
@@ -308,8 +410,12 @@ function MessageVersions({
                       history: false,
                     }}
                     tokens={tokens}
+                    // Every keystroke, so that a host can mark the text
+                    // changed, and judge it, as it is written.
+                    changeMode="input"
                     readOnly={readOnly}
                     disabled={disabled}
+                    autoFocus={autoFocus && index === 0}
                     value={documentOf(variant.parts)}
                     onChange={(document) => write(index, partsOf(document))}
                   />
@@ -329,16 +435,6 @@ export type LocalizedMessageFieldProps = CreateFormFieldProps<
   {
     /** What the setting's messages may use (see `localizedMessage`). */
     'arguments': MessageArguments;
-    /**
-     * What each case of each select argument means, said to the researcher:
-     * one label per declared case and one for `other`.
-     */
-    'caseLabels': Readonly<Record<string, Readonly<Record<string, string>>>>;
-    /**
-     * The name of each placeholder the text can show: a text argument, and
-     * a plural argument's number.
-     */
-    'placeholderLabels': Readonly<Record<string, string>>;
     'id': string;
     'name': string;
     'aria-describedby': string;
@@ -348,16 +444,15 @@ export type LocalizedMessageFieldProps = CreateFormFieldProps<
 /**
  * Participant-facing text that changes with what it is about: a localized
  * message (see `localizedMessage`), edited one version at a time in the
- * editing language.
+ * editing language (see `LocalizedMessageVersions`).
  *
- * There is a version for each case of each select argument — "when it is the
- * participant" and "when it is someone else" — and, within each, one for each
+ * There is a version for each case of each select argument — "about the
+ * participant" and "about someone else" — and, within each, one for each
  * plural category of the editing language, labelled with examples of the
- * numbers it is for. Each version is a line of text holding the setting's
- * placeholders as chips, which the toolbar inserts. The versions are written
- * back as one message; versions that all read the same become one phrase.
- * Emptying every version removes the translation, and emptying only some is
- * refused (see `localizedMessageValidation`).
+ * numbers it is for. The versions are written back as one message; versions
+ * that all read the same become one phrase. Emptying every version removes
+ * the translation, and emptying only some is refused (see
+ * `localizedMessageValidation`).
  */
 export default function LocalizedMessageField({
   id,
@@ -367,8 +462,6 @@ export default function LocalizedMessageField({
   disabled,
   readOnly,
   arguments: declaration,
-  caseLabels,
-  placeholderLabels,
   'aria-labelledby': ariaLabelledBy,
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
@@ -378,7 +471,7 @@ export default function LocalizedMessageField({
   return (
     <LocalizedStringField value={value} onChange={onChange}>
       {(translation) => (
-        <MessageVersions
+        <LocalizedMessageVersions
           id={id}
           name={name}
           message={translation.message}
@@ -386,8 +479,6 @@ export default function LocalizedMessageField({
           readOnly={readOnly === true || translation.readOnly}
           disabled={disabled}
           declaration={declaration}
-          caseLabels={caseLabels}
-          placeholderLabels={placeholderLabels}
           locale={locale ?? localization?.defaultLocale ?? 'en'}
           ariaLabelledBy={ariaLabelledBy}
           ariaDescribedBy={ariaDescribedBy}

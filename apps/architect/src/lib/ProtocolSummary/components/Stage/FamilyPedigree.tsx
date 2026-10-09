@@ -10,15 +10,25 @@ import { UnorderedList } from '@codaco/fresco-ui/typography/UnorderedList';
 import type {
   FramingSetting,
   LocalizedString,
+  MessageArguments,
   PedigreeCompletenessScope,
   PedigreeGenderWords,
+} from '@codaco/protocol-validation';
+import {
+  PEDIGREE_PARENTS_ARGUMENTS,
+  PEDIGREE_PERSON_ARGUMENTS,
 } from '@codaco/protocol-validation';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
 import EntityBadge from '../EntityBadge';
 import MiniTable from '../MiniTable';
 import SummaryContext from '../SummaryContext';
-import { SummaryMarkdown, useDefaultLanguageText } from '../SummaryText';
+import {
+  SummaryMarkdown,
+  SummaryMessage,
+  SummaryText,
+  useDefaultLanguageText,
+} from '../SummaryText';
 import Variable from '../Variable';
 import SectionFrame from './SectionFrame';
 
@@ -34,6 +44,72 @@ const messages = defineMessages({
     defaultMessage: 'Name',
     description:
       'Label for the text attribute that holds each family member’s name, in the printable protocol summary.',
+  },
+  nameQuestion: {
+    id: 'architect.protocolSummary.stage.familyPedigree.nameQuestion',
+    defaultMessage: 'Name question',
+    description:
+      'Label for the question asking each family member’s name, as participants read it, in the printable protocol summary.',
+  },
+  nameQuestionHint: {
+    id: 'architect.protocolSummary.stage.familyPedigree.nameQuestionHint',
+    defaultMessage: 'Name question guidance',
+    description:
+      'Label for the guidance shown beneath the question asking each family member’s name, in the printable protocol summary.',
+  },
+  trackerParents: {
+    id: 'architect.protocolSummary.stage.familyPedigree.trackerParents',
+    defaultMessage: 'List item: missing parents',
+    description:
+      'Label, in the printable protocol summary, for the words of the entry in the Family Pedigree’s list of what is still needed that asks for a person’s missing parents.',
+  },
+  trackerSiblings: {
+    id: 'architect.protocolSummary.stage.familyPedigree.trackerSiblings',
+    defaultMessage: 'List item: brothers and sisters',
+    description:
+      'Label, in the printable protocol summary, for the words of the entry in the Family Pedigree’s list of what is still needed that asks for a person’s brothers and sisters.',
+  },
+  trackerNoSiblings: {
+    id: 'architect.protocolSummary.stage.familyPedigree.trackerNoSiblings',
+    defaultMessage: 'Button: no brothers or sisters',
+    description:
+      'Label, in the printable protocol summary, for the words of the button that answers that a person has no brothers or sisters.',
+  },
+  trackerSiblingsQuestion: {
+    id: 'architect.protocolSummary.stage.familyPedigree.trackerSiblingsQuestion',
+    defaultMessage: 'Question about brothers and sisters',
+    description:
+      'Label, in the printable protocol summary, for the side panel’s question asking about a person’s brothers and sisters.',
+  },
+  trackerChildren: {
+    id: 'architect.protocolSummary.stage.familyPedigree.trackerChildren',
+    defaultMessage: 'List item: children',
+    description:
+      'Label, in the printable protocol summary, for the words of the entry in the Family Pedigree’s list of what is still needed that asks for a person’s children.',
+  },
+  trackerNoChildren: {
+    id: 'architect.protocolSummary.stage.familyPedigree.trackerNoChildren',
+    defaultMessage: 'Button: no children',
+    description:
+      'Label, in the printable protocol summary, for the words of the button that answers that a person has no children.',
+  },
+  trackerChildrenQuestion: {
+    id: 'architect.protocolSummary.stage.familyPedigree.trackerChildrenQuestion',
+    defaultMessage: 'Question about children',
+    description:
+      'Label, in the printable protocol summary, for the side panel’s question asking about a person’s children.',
+  },
+  trackerDetails: {
+    id: 'architect.protocolSummary.stage.familyPedigree.trackerDetails',
+    defaultMessage: 'List item: missing details',
+    description:
+      'Label, in the printable protocol summary, for the words of the entry in the Family Pedigree’s list of what is still needed that asks for details still missing about a person.',
+  },
+  trackerRecommendedNote: {
+    id: 'architect.protocolSummary.stage.familyPedigree.trackerRecommendedNote',
+    defaultMessage: 'Note under the list',
+    description:
+      'Label, in the printable protocol summary, for the note shown under the Family Pedigree’s list of what is still needed when participants may continue without completing it.',
   },
   genderIdentity: {
     id: 'architect.protocolSummary.stage.familyPedigree.genderIdentity',
@@ -270,8 +346,9 @@ const GENDER_WORDS_MESSAGES: Record<PedigreeGenderWords, MessageDescriptor> = {
 const isGenderWords = (value: string): value is PedigreeGenderWords =>
   Object.hasOwn(GENDER_WORDS_MESSAGES, value);
 
-type NodeConfiguration = {
+export type FamilyPedigreeNodeConfiguration = {
   nameAttribute?: string;
+  nameField?: { prompt?: LocalizedString; hint?: LocalizedString };
   /** Absent when the stage does not ask about gender identity. */
   genderIdentity?: {
     attribute?: string;
@@ -282,17 +359,30 @@ type NodeConfiguration = {
   relationshipToParticipantAttribute?: string;
 };
 
-type EdgeConfiguration = {
+export type FamilyPedigreeEdgeConfiguration = {
   type?: string;
   kindAttribute?: string;
   gestationalCarrierAttribute?: string;
   currentPartnerAttribute?: string;
 };
 
-type Completeness = {
+export type FamilyPedigreeCompleteness = {
   scope?: PedigreeCompletenessScope;
   enforcement?: 'required' | 'recommended';
   relativesNotRecordedAttribute?: string;
+  itemText?: {
+    parents?: { listItem?: LocalizedString };
+    siblings?: PersonItemText;
+    children?: PersonItemText;
+    details?: { listItem?: LocalizedString };
+  };
+  recommendedNote?: LocalizedString;
+};
+
+type PersonItemText = {
+  listItem?: LocalizedString;
+  noneButton?: LocalizedString;
+  question?: LocalizedString;
 };
 
 type NominationPrompt = {
@@ -306,9 +396,9 @@ type FamilyPedigreeProps = {
   /** The node type of the people, whose attribute holds gender identity. */
   personType: string | null;
   prompt: LocalizedString | null;
-  nodeConfiguration: NodeConfiguration | null;
-  edgeConfiguration: EdgeConfiguration | null;
-  completeness: Completeness | null;
+  nodeConfiguration: FamilyPedigreeNodeConfiguration | null;
+  edgeConfiguration: FamilyPedigreeEdgeConfiguration | null;
+  completeness: FamilyPedigreeCompleteness | null;
   /** Absent when the stage stores no wording, which means everyday words. */
   framing: FramingSetting | null;
   nominationPrompts: NominationPrompt[] | null;
@@ -321,6 +411,30 @@ const variableRow = (
   variableId: string | undefined,
 ): [string, ReactNode][] =>
   variableId ? [[label, <Variable key={key} id={variableId} />]] : [];
+
+/** One row of participant-facing wording, or none while it is unset. */
+const textRow = (
+  label: string,
+  key: string,
+  value: LocalizedString | undefined,
+  messageArguments?: MessageArguments,
+): [string, ReactNode][] => {
+  if (value === undefined) return [];
+  return [
+    [
+      label,
+      messageArguments === undefined ? (
+        <SummaryText key={key} value={value} />
+      ) : (
+        <SummaryMessage
+          key={key}
+          value={value}
+          messageArguments={messageArguments}
+        />
+      ),
+    ],
+  ];
+};
 
 /**
  * What a Family Pedigree stage shows the participant, and the attributes it
@@ -353,6 +467,7 @@ const FamilyPedigree = ({
   // Every option of the gender identity attribute with the words it takes, so
   // an option the stage does not list reads as the neutral words it gets.
   const genderIdentity = nodeConfiguration?.genderIdentity;
+  const itemText = completeness?.itemText;
   const genderVariable =
     personType === null || !genderIdentity?.attribute
       ? undefined
@@ -392,6 +507,16 @@ const FamilyPedigree = ({
       intl.formatMessage(messages.name),
       'name',
       nodeConfiguration?.nameAttribute,
+    ),
+    ...textRow(
+      intl.formatMessage(messages.nameQuestion),
+      'name-question',
+      nodeConfiguration?.nameField?.prompt,
+    ),
+    ...textRow(
+      intl.formatMessage(messages.nameQuestionHint),
+      'name-question-hint',
+      nodeConfiguration?.nameField?.hint,
     ),
     ...(nodeConfiguration !== null && genderIdentity === undefined
       ? ([
@@ -494,6 +619,62 @@ const FamilyPedigree = ({
       'relatives-not-recorded',
       completeness?.relativesNotRecordedAttribute,
     ),
+    ...textRow(
+      intl.formatMessage(messages.trackerParents),
+      'tracker-parents',
+      itemText?.parents?.listItem,
+      PEDIGREE_PARENTS_ARGUMENTS,
+    ),
+    ...textRow(
+      intl.formatMessage(messages.trackerSiblings),
+      'tracker-siblings',
+      itemText?.siblings?.listItem,
+      PEDIGREE_PERSON_ARGUMENTS,
+    ),
+    ...textRow(
+      intl.formatMessage(messages.trackerNoSiblings),
+      'tracker-no-siblings',
+      itemText?.siblings?.noneButton,
+      PEDIGREE_PERSON_ARGUMENTS,
+    ),
+    ...textRow(
+      intl.formatMessage(messages.trackerSiblingsQuestion),
+      'tracker-siblings-question',
+      itemText?.siblings?.question,
+      PEDIGREE_PERSON_ARGUMENTS,
+    ),
+    ...textRow(
+      intl.formatMessage(messages.trackerChildren),
+      'tracker-children',
+      itemText?.children?.listItem,
+      PEDIGREE_PERSON_ARGUMENTS,
+    ),
+    ...textRow(
+      intl.formatMessage(messages.trackerNoChildren),
+      'tracker-no-children',
+      itemText?.children?.noneButton,
+      PEDIGREE_PERSON_ARGUMENTS,
+    ),
+    ...textRow(
+      intl.formatMessage(messages.trackerChildrenQuestion),
+      'tracker-children-question',
+      itemText?.children?.question,
+      PEDIGREE_PERSON_ARGUMENTS,
+    ),
+    ...textRow(
+      intl.formatMessage(messages.trackerDetails),
+      'tracker-details',
+      itemText?.details?.listItem,
+      PEDIGREE_PERSON_ARGUMENTS,
+    ),
+    // Shown to participants only when they may continue regardless.
+    ...(completeness?.enforcement === 'recommended'
+      ? textRow(
+          intl.formatMessage(messages.trackerRecommendedNote),
+          'tracker-recommended-note',
+          completeness.recommendedNote,
+        )
+      : []),
     // Always said, because a stage that stores no wording uses the everyday
     // words: the summary states what participants will read, not only what
     // the researcher chose.

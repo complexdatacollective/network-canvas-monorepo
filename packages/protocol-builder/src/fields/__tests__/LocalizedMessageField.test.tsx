@@ -34,10 +34,6 @@ function ItemField({ initialValue }: { initialValue?: LocalizedString }) {
       label="List item"
       component={LocalizedMessageField}
       arguments={ARGUMENTS}
-      caseLabels={{
-        isYou: { true: 'About the participant', other: 'About someone else' },
-      }}
-      placeholderLabels={{ name: 'Name', missing: 'Parents missing' }}
       initialValue={initialValue}
       custom={localizedMessageValidation(ARGUMENTS, intl)}
     />

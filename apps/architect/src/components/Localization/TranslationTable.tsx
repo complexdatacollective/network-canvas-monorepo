@@ -36,6 +36,7 @@ import { Table } from '@codaco/fresco-ui/Table';
 import {
   localeDirection,
   translationText,
+  withMessage,
   withTranslation,
 } from '@codaco/protocol-builder/localization/localizedText';
 import {
@@ -579,6 +580,28 @@ const TranslationTable = ({
         : 'saved';
     };
 
+  /** `commit` for a localized message: the translation as written. */
+  const commitMessage =
+    (path: TranslationRow['path'], locale: LocaleTag) =>
+    (message: string | undefined): CommitResult => {
+      const before = store.getState();
+      const current = findRow(getTranslationGroups(before), path)?.value;
+      const declared = getProtocol(before)?.localization.locales;
+      if (current === undefined || declared === undefined) return 'failed';
+      const next = withMessage(current, locale, message);
+      if (
+        next === undefined ||
+        !declared.some((declaredLocale) => Object.hasOwn(next, declaredLocale))
+      ) {
+        return 'only-translation';
+      }
+      if (isEqual(next, current)) return 'unchanged';
+      dispatch(setProtocolLocalizedString({ path, value: next }));
+      return getProtocol(store.getState()) === getProtocol(before)
+        ? 'failed'
+        : 'saved';
+    };
+
   const move =
     (rowIndex: number, colIndex: number) =>
     (delta: number): boolean => {
@@ -878,7 +901,9 @@ const TranslationTable = ({
                         labelledBy={`${groupId} ${rowId} ${columnId(locale)}`}
                         rowIndex={currentRow}
                         colIndex={colIndex}
+                        messageArguments={row.row.arguments}
                         onCommit={commit(row.row.path, locale)}
+                        onCommitMessage={commitMessage(row.row.path, locale)}
                         onMove={move(currentRow, colIndex)}
                       />
                     ))}

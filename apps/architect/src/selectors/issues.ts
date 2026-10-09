@@ -9,6 +9,7 @@ import {
   type LocaleTag,
   type LocalizedString,
   type LocalizedStringFormat,
+  type MessageArguments,
   type ProtocolLocalizationWarning,
 } from '@codaco/protocol-validation';
 import {
@@ -279,6 +280,8 @@ export type TranslationRow = {
   format: LocalizedStringFormat;
   /** Every translation the string has. */
   value: LocalizedString;
+  /** What a localized message may use (see `localizedMessage`), when it is one. */
+  arguments?: MessageArguments;
 };
 
 export type TranslationGroup = {
@@ -316,6 +319,7 @@ export const getTranslationGroups = createSelector(
         field,
         format: hit.format,
         value: hit.value,
+        ...(hit.arguments === undefined ? {} : { arguments: hit.arguments }),
       });
     }
     return [...groups]

@@ -24,6 +24,7 @@
     "./editors/finish-session/finishSessionMessages": "./src/editors/finish-session/sections/finishSessionMessages.ts",
     "./editors/narrative-pedigree/narrativePedigreeMessages": "./src/editors/narrative-pedigree/sections/narrativePedigreeMessages.ts",
     "./fields/AssetPickerField": "./src/fields/AssetPickerField.tsx",
+    "./fields/LocalizedMessageField": "./src/fields/LocalizedMessageField.tsx",
     "./fields/LocalizedStringField": "./src/fields/LocalizedStringField.tsx",
     "./fields/OptionLabelField": "./src/fields/OptionLabelField.tsx",
     "./fields/RichTextField": "./src/fields/RichTextField.tsx",
