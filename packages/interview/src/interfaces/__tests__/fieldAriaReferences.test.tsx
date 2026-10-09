@@ -135,6 +135,7 @@ describe('AddNodeInput ARIA references', () => {
     const { container } = render(
       <AddNodeInput
         entityLabel="Person"
+        placeholder="Type a name, then press Enter"
         targetVariable="name"
         onCreate={async () => true}
       />,
@@ -147,6 +148,7 @@ describe('AddNodeInput ARIA references', () => {
     const { container } = render(
       <AddNodeInput
         entityLabel="Person"
+        placeholder="Type a name, then press Enter"
         targetVariable="name"
         onCreate={async () => true}
         required
@@ -160,6 +162,7 @@ describe('AddNodeInput ARIA references', () => {
     render(
       <AddNodeInput
         entityLabel="Person"
+        placeholder="Type a name, then press Enter"
         targetVariable="name"
         onCreate={async () => true}
       />,

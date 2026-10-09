@@ -22,6 +22,7 @@ import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
+import { narrativePedigreeWords } from '../__tests__/narrativePedigreeWords';
 import NarrativePedigreeView from './NarrativePedigreeView';
 
 const NODE_TYPE = 'person';
@@ -135,6 +136,7 @@ const narrativeStage: NarrativeStage = {
   label: { en: 'Disease Pedigree' },
   sourceStageId: SOURCE_STAGE_ID,
   showAtRiskStatuses: false,
+  ...narrativePedigreeWords(),
   diseases: [
     {
       id: 'breast-cancer',
