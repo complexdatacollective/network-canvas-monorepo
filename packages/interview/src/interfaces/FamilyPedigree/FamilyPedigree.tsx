@@ -1613,6 +1613,18 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     const name = displayName(personId);
     const { cutOffIds, linkIds } = planRemovePerson(family, personId);
     const removedIds = [personId, ...cutOffIds];
+    // Focus goes on to someone who stays: a relative of the person removed,
+    // or else the participant.
+    const survivorId =
+      family.links
+        .flatMap((link) =>
+          link.source === personId
+            ? [link.target]
+            : link.target === personId
+              ? [link.source]
+              : [],
+        )
+        .find((id) => !removedIds.includes(id)) ?? family.egoId;
     // Close the panel first: its focus trap would otherwise hold focus away
     // from the confirmation.
     closePanel();
@@ -1627,7 +1639,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             }),
       confirmLabel: intl.formatMessage(messages.remove),
       intent: 'destructive',
+      // The dialog was opened from the person removed, who is gone.
+      finalFocus: () =>
+        survivorId ? (nodeRefs.current.get(survivorId) ?? null) : null,
       onConfirm: () => {
+        if (survivorId) setLastFocusedId(survivorId);
         for (const linkId of linkIds) dispatch(deleteEdge(linkId));
         for (const id of removedIds) dispatch(deleteNode(id));
         if (focusedId !== null && removedIds.includes(focusedId)) {
@@ -1959,7 +1975,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 <FramingControl
                   value={chosenFraming}
                   onChange={chooseFraming}
-                  open={framingOpen}
+                  // A person's panel, being modal, comes first: the question
+                  // waits for it to close rather than compete for focus.
+                  open={framingOpen && !panel?.open}
                   onOpenChange={setFramingOpen}
                 />
               )}

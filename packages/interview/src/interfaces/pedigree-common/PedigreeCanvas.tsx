@@ -167,6 +167,23 @@ export function usePedigreeZoomButtons({
 }
 
 /**
+ * Where an element's centre sits in the page's layout: from layout offsets,
+ * which the canvas's zoom and any animation under way do not change, so
+ * positions compare alike at every zoom.
+ */
+const layoutCentreOf = (element: HTMLElement): Point => {
+  let x = element.offsetWidth / 2;
+  let y = element.offsetHeight / 2;
+  let current: Element | null = element;
+  while (current instanceof HTMLElement) {
+    x += current.offsetLeft;
+    y += current.offsetTop;
+    current = current.offsetParent;
+  }
+  return { x, y };
+};
+
+/**
  * Moves keyboard focus from one person to the nearest in the arrow key's
  * direction, by where they sit in the tree. People whose button is disabled
  * are passed over. Other keys are left alone.
@@ -179,10 +196,7 @@ export function focusNeighbourInDirection(
   const direction = ARROW_DIRECTIONS[event.key];
   if (!direction) return;
   event.preventDefault();
-  const centreOf = (element: HTMLElement): Point => {
-    const rect = element.getBoundingClientRect();
-    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-  };
+  const centreOf = layoutCentreOf;
   const current = people.get(fromId);
   if (!current) return;
   const candidates = new Map<string, Point>();

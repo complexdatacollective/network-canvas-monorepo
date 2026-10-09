@@ -15,8 +15,11 @@ function CanvasStory({
   family,
   frame,
   nominationPrompts,
+  framing,
 }: {
   family: Family;
+  /** Who chooses the words unnamed relatives are described by. */
+  framing?: 'participantPreference';
   /** A screen of this size in place of the whole story viewport. */
   frame?: { width: number; height: number };
   /** Prompts after the family's own, asking who in it something applies
@@ -24,8 +27,11 @@ function CanvasStory({
   nominationPrompts?: { text: string }[];
 }) {
   const rawPayload = useMemo(
-    () => SuperJSON.stringify(buildInterview({ family, nominationPrompts })),
-    [family, nominationPrompts],
+    () =>
+      SuperJSON.stringify(
+        buildInterview({ family, nominationPrompts, framing }),
+      ),
+    [family, nominationPrompts, framing],
   );
   return (
     <div
@@ -677,5 +683,166 @@ export const TheHintStopsAskingOnceAPairIsPicked: Story = {
     await userEvent.click(personSymbol(canvasElement, 'lisa'));
     await page.findByRole('dialog');
     await expect(hint()?.textContent ?? '').not.toContain('Now select');
+  },
+};
+
+const FRAMING_TITLE = 'How should we describe your family?';
+
+const focused = (canvasElement: HTMLElement) =>
+  canvasElement.ownerDocument.activeElement;
+
+const personPanel = (canvasElement: HTMLElement) =>
+  canvasElement.ownerDocument.querySelector<HTMLElement>(
+    '[data-testid="pedigree-person-panel"]',
+  );
+
+/**
+ * The question of wording, which opens a moment after the stage loads, waits
+ * while a person's panel is open, so the two never compete for focus: the
+ * panel's fields can be reached from the keyboard, and the question opens
+ * once the panel closes.
+ */
+export const TheWordingQuestionWaitsForAnOpenPanel: Story = {
+  render: () => (
+    <CanvasStory family={threePeople} framing="participantPreference" />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await canvas.findByRole('button', { name: /^You/ });
+    await tabIntoFamily(canvasElement);
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(personPanel(canvasElement)).not.toBeNull());
+    // Past the moment the question would open.
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await expect(body.queryByText(FRAMING_TITLE)).toBeNull();
+    for (let press = 0; press < 3; press++) await userEvent.tab();
+    await expect(
+      personPanel(canvasElement)?.contains(focused(canvasElement)),
+    ).toBe(true);
+
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(personPanel(canvasElement)).toBeNull());
+    await body.findByText(FRAMING_TITLE, {}, { timeout: 5000 });
+  },
+};
+
+/**
+ * Choosing the wording returns focus to its toolbar button, even after focus
+ * has been away in the family while the question waited for an answer.
+ */
+export const ChoosingTheWordingReturnsFocusToItsButton: Story = {
+  render: () => (
+    <CanvasStory family={threePeople} framing="participantPreference" />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await body.findByText(FRAMING_TITLE, {}, { timeout: 5000 });
+    const trigger = canvas.getByRole('button', { name: 'Wording' });
+    // Out to the family, and back into the question.
+    await tabIntoFamily(canvasElement);
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    const [first] = body.getAllByRole('option');
+    first?.focus();
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(body.queryByText(FRAMING_TITLE)).toBeNull());
+    await waitFor(() => expect(focused(canvasElement)).toBe(trigger));
+  },
+};
+
+/**
+ * Removing someone from the keyboard leaves focus on a person still in the
+ * family, not on nothing.
+ */
+export const RemovingSomeoneKeepsFocusInTheFamily: Story = {
+  render: () => <CanvasStory family={lindaAndKim} />,
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body);
+    await within(canvasElement).findByRole('button', { name: /^You/ });
+    await tabIntoFamily(canvasElement);
+    personSymbol(canvasElement, 'kim').focus();
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(personPanel(canvasElement)).not.toBeNull());
+    within(personPanel(canvasElement) as HTMLElement)
+      .getByRole('button', { name: 'Remove from family' })
+      .focus();
+    await userEvent.keyboard('{Enter}');
+    const dialog = await body.findByRole('dialog', { name: /^Remove/ });
+    within(dialog).getByRole('button', { name: 'Remove from family' }).focus();
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() =>
+      expect(canvasElement.querySelector('[data-person-id="kim"]')).toBeNull(),
+    );
+    await waitFor(() =>
+      expect(
+        focused(canvasElement)?.closest('[data-testid="pedigree-person"]'),
+      ).not.toBeNull(),
+    );
+  },
+};
+
+/**
+ * The arrow keys move to the person drawn next in that direction, the same
+ * at every zoom: up from Dana, the participant's partner, is Ana, the
+ * participant's mother, one row up — not her parents two rows up.
+ */
+export const ArrowKeysMoveAlikeAtEveryZoom: Story = {
+  render: () => (
+    <CanvasStory
+      family={{
+        people: [
+          { id: 'ego', name: 'Zoe', gender: 'woman', sex: 'female', ego: true },
+          { id: 'ana', name: 'Ana', gender: 'woman', sex: 'female' },
+          { id: 'ben', name: 'Ben', gender: 'man', sex: 'male' },
+          { id: 'carl', name: 'Carl', gender: 'man', sex: 'male' },
+          { id: 'dana', name: 'Dana', gender: 'woman', sex: 'female' },
+          { id: 'eli', name: 'Eli', gender: 'man', sex: 'male' },
+          { id: 'flo', name: 'Flo', gender: 'woman', sex: 'female' },
+          { id: 'gus', name: 'Gus', gender: 'man', sex: 'male' },
+        ],
+        links: [
+          { from: 'ana', to: 'ben', kind: 'partner' },
+          { from: 'ana', to: 'ego', kind: 'biological', carrier: true },
+          { from: 'ben', to: 'ego', kind: 'biological' },
+          { from: 'ana', to: 'carl', kind: 'biological', carrier: true },
+          { from: 'ben', to: 'carl', kind: 'biological' },
+          { from: 'ego', to: 'dana', kind: 'partner' },
+          { from: 'ego', to: 'eli', kind: 'biological', carrier: true },
+          { from: 'dana', to: 'eli', kind: 'biological' },
+          { from: 'flo', to: 'ana', kind: 'biological', carrier: true },
+          { from: 'gus', to: 'ana', kind: 'biological' },
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: /^You/ });
+    await tabIntoFamily(canvasElement);
+    const zoomIn = canvas.getByRole('button', { name: 'Zoom in' });
+    const zoomOut = canvas.getByRole('button', { name: 'Zoom out' });
+    const upFromDana = async () => {
+      personSymbol(canvasElement, 'dana').focus();
+      await userEvent.keyboard('{ArrowUp}');
+      return focused(canvasElement)?.closest<HTMLElement>(
+        '[data-testid="pedigree-person"]',
+      )?.dataset.personId;
+    };
+    const reached: (string | undefined)[] = [await upFromDana()];
+    for (let step = 0; step < 3 && !isDisabled(zoomIn); step++) {
+      fireEvent.click(zoomIn);
+      await settled(canvasElement);
+      reached.push(await upFromDana());
+    }
+    for (let step = 0; step < 6 && !isDisabled(zoomOut); step++) {
+      fireEvent.click(zoomOut);
+      await settled(canvasElement);
+      reached.push(await upFromDana());
+    }
+    await expect(
+      reached.every((id) => id === 'ana'),
+      reached.join(),
+    ).toBe(true);
   },
 };
