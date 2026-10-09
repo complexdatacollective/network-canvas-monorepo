@@ -2743,3 +2743,33 @@ describe('a child adopted by a relative', () => {
     ).toEqual([['steve', 'kid']]);
   });
 });
+
+describe('a parent with no partnership sits on their child’s parent row', () => {
+  it('keeps a stand-in father on the mother’s row after the couple adopt (confirm-r1-67)', () => {
+    // grace → you. you and nadia are partners; ethan is nadia's birth child,
+    // raised by you, with an unnamed stand-in father; you and nadia adopt
+    // lily.
+    const ped: PedigreeInput = {
+      id: ['grace', 'you', 'nadia', 'standIn', 'ethan', 'lily'],
+      parents: [
+        [],
+        [sp(0)],
+        [],
+        [],
+        [{ parentIndex: 1, edgeType: 'social' }, sp(2), sp(3)],
+        [
+          { parentIndex: 1, edgeType: 'adoptive' },
+          { parentIndex: 2, edgeType: 'adoptive' },
+        ],
+      ],
+      partners: [{ partnerIndex1: 1, partnerIndex2: 2, isActive: true }],
+    };
+    const result = alignPedigree(ped);
+    const rowOf = (person: number) =>
+      result.nid.findIndex((row, level) =>
+        row.slice(0, result.n[level]).includes(person),
+      );
+    expect(rowOf(3)).toBe(rowOf(2));
+    expect(rowOf(4)).toBe(rowOf(2) + 1);
+  });
+});
