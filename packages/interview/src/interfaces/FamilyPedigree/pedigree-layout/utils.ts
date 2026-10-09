@@ -60,7 +60,7 @@ export function tableCounts(arr: number[]): Map<number, number> {
   return counts;
 }
 
-import type { ParentConnection } from './types';
+import type { ParentConnection, PedigreeEdgeType } from './types';
 
 // Chase all ancestors of a person
 export function ancestor(me: number, parents: ParentConnection[][]): number[] {
@@ -93,6 +93,32 @@ export function ancestor(me: number, parents: ParentConnection[][]): number[] {
     if (result[i]) indices.push(i);
   }
   return indices;
+}
+
+/** A parent link that passes on genes: a biological parent, or a donor —
+ * which includes an adopted child's birth parent, whose biological link the
+ * adapter turns into a donor link. Social, adoptive and surrogate links do
+ * not. */
+function isGeneticEdge(edgeType: PedigreeEdgeType): boolean {
+  return edgeType === 'biological' || edgeType === 'donor';
+}
+
+/**
+ * Whether two people are blood relatives — they share a genetic ancestor —
+ * so their partnership is drawn with the double consanguinity line. Only
+ * genetic parent links are followed: step-siblings who share a social parent,
+ * or adoptive siblings, are not consanguineous.
+ */
+export function areConsanguineous(
+  a: number,
+  b: number,
+  parents: ParentConnection[][],
+): boolean {
+  const genetic = parents.map((conns) =>
+    conns.filter((p) => isGeneticEdge(p.edgeType)),
+  );
+  const ancestorsOfB = new Set(ancestor(b, genetic));
+  return ancestor(a, genetic).some((x) => ancestorsOfB.has(x));
 }
 
 // Chase up ancestors — returns all ancestors reachable from x (including x)

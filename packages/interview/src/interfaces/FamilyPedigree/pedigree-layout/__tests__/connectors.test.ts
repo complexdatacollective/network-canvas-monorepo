@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
+import { alignPedigree } from '../alignPedigree';
 import { computeConnectors } from '../connectors';
-import type { ParentConnection, PedigreeLayout, ScalingParams } from '../types';
+import type {
+  ParentConnection,
+  PedigreeInput,
+  PedigreeLayout,
+  ScalingParams,
+} from '../types';
 
 describe('computeConnectors', () => {
   const scaling: ScalingParams = {
@@ -880,5 +886,169 @@ describe('computeConnectors', () => {
       expect(connectors.parentChildLines[0]!.parentIds).toBeUndefined();
       expect(connectors.parentChildLines[0]!.uplineChildIds).toBeUndefined();
     });
+  });
+});
+
+describe('consanguinity follows genetic parents only', () => {
+  const scaling: ScalingParams = {
+    boxWidth: 0.5,
+    boxHeight: 0.5,
+    legHeight: 0.25,
+    hScale: 1,
+    vScale: 1,
+  };
+  const bio = (parentIndex: number): ParentConnection => ({
+    parentIndex,
+    edgeType: 'biological',
+  });
+  const social = (parentIndex: number): ParentConnection => ({
+    parentIndex,
+    edgeType: 'social',
+  });
+  const donor = (parentIndex: number): ParentConnection => ({
+    parentIndex,
+    edgeType: 'donor',
+  });
+  const adoptive = (parentIndex: number): ParentConnection => ({
+    parentIndex,
+    edgeType: 'adoptive',
+  });
+
+  // The partnership line between two people, drawn from the layout.
+  const partnershipBetween = (ped: PedigreeInput, a: number, b: number) => {
+    const layout = alignPedigree(ped);
+    const pairs = new Set(
+      (ped.partners ?? []).map(({ partnerIndex1: x, partnerIndex2: y }) =>
+        [x, y].toSorted((m, n) => m - n).join(','),
+      ),
+    );
+    const { groupLines } = computeConnectors(
+      layout,
+      scaling,
+      ped.parents,
+      pairs,
+      undefined,
+      undefined,
+      undefined,
+      ped.id,
+      pairs,
+    );
+    const line = groupLines.find(
+      (g) =>
+        g.partnerIds?.includes(ped.id[a]!) && g.partnerIds.includes(ped.id[b]!),
+    );
+    expect(line, `${ped.id[a]} – ${ped.id[b]}`).toBeDefined();
+    return line!;
+  };
+
+  it('draws step-siblings who share only a social parent with a single line', () => {
+    // karen → you; steve, karen's partner, is your social parent and jake's
+    // biological one. You and jake are partners.
+    const ped: PedigreeInput = {
+      id: ['you', 'karen', 'steve', 'jake'],
+      parents: [[bio(1), social(2)], [], [], [bio(2)]],
+      partners: [
+        { partnerIndex1: 1, partnerIndex2: 2, isActive: true },
+        { partnerIndex1: 0, partnerIndex2: 3, isActive: true },
+      ],
+    };
+    const line = partnershipBetween(ped, 0, 3);
+    expect(line.double).toBe(false);
+    expect(line.doubleSegment).toBeUndefined();
+  });
+
+  it('draws adoptive siblings with a single line', () => {
+    // mum + dad adopted you and biologically had sam; you and sam are partners.
+    const ped: PedigreeInput = {
+      id: ['you', 'mum', 'dad', 'sam'],
+      parents: [[adoptive(1), adoptive(2)], [], [], [bio(1), bio(2)]],
+      partners: [
+        { partnerIndex1: 1, partnerIndex2: 2, isActive: true },
+        { partnerIndex1: 0, partnerIndex2: 3, isActive: true },
+      ],
+    };
+    const line = partnershipBetween(ped, 0, 3);
+    expect(line.double).toBe(false);
+  });
+
+  it('still draws first cousins through an adopted cousin’s birth parent with a double line', () => {
+    // gm + gd → aunt, mum. mum → you. aunt is the birth parent of cousin, whom
+    // x and y adopted (the adapter turns aunt's edge into a donor edge). You
+    // and cousin are partners.
+    const ped: PedigreeInput = {
+      id: ['gm', 'gd', 'aunt', 'mum', 'you', 'x', 'y', 'cousin'],
+      parents: [
+        [],
+        [],
+        [bio(0), bio(1)],
+        [bio(0), bio(1)],
+        [bio(3)],
+        [],
+        [],
+        [donor(2), adoptive(5), adoptive(6)],
+      ],
+      partners: [
+        { partnerIndex1: 0, partnerIndex2: 1, isActive: true },
+        { partnerIndex1: 5, partnerIndex2: 6, isActive: true },
+        { partnerIndex1: 4, partnerIndex2: 7, isActive: true },
+      ],
+    };
+    const line = partnershipBetween(ped, 4, 7);
+    expect(line.double).toBe(true);
+    expect(line.doubleSegment).toBeDefined();
+  });
+
+  it('draws a routed partnership between step-siblings with a single line', () => {
+    // As the step-siblings above, but the two sit apart, so their
+    // partnership is routed above the row rather than read from the layout.
+    const layout: PedigreeLayout = {
+      n: [2, 3],
+      nid: [
+        [1, 2, 0],
+        [0, 4, 3],
+      ],
+      pos: [
+        [0.5, 1.5, 0],
+        [0, 1, 2],
+      ],
+      fam: [
+        [0, 0, 0],
+        [1, 0, 1],
+      ],
+      group: [
+        [1, 0, 0],
+        [0, 0, 0],
+      ],
+      twins: null,
+      groupMember: [
+        [false, false, false],
+        [false, false, false],
+      ],
+    };
+    const parents: ParentConnection[][] = [
+      [bio(1), social(2)],
+      [],
+      [],
+      [bio(2)],
+      [],
+    ];
+    const ids = ['you', 'karen', 'steve', 'jake', 'friend'];
+    const { groupLines } = computeConnectors(
+      layout,
+      scaling,
+      parents,
+      new Set(['0,3', '1,2']),
+      undefined,
+      undefined,
+      undefined,
+      ids,
+      new Set(['0,3', '1,2']),
+    );
+    const routed = groupLines.find(
+      (g) => g.partnerIds?.includes('you') && g.partnerIds.includes('jake'),
+    );
+    expect(routed).toBeDefined();
+    expect(routed!.double).toBe(false);
+    expect(routed!.doubleSegment).toBeUndefined();
   });
 });

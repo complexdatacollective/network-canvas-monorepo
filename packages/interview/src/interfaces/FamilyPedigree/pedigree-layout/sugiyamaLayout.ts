@@ -5,7 +5,7 @@ import type {
   PedigreeLayout,
   PedigreeEdgeType,
 } from './types';
-import { ancestor, layerConstraints } from './utils';
+import { areConsanguineous, layerConstraints } from './utils';
 
 type PartnerGroup = {
   members: number[];
@@ -35,6 +35,12 @@ type PedigreeGraph = {
   familyUnits: FamilyUnit[];
   siblingGroups: SiblingGroup[];
   auxiliaryParents: Map<number, number[]>;
+  /** The family unit each child descends from. */
+  familyOf: Map<number, FamilyUnit>;
+  /** Each child's parents outside its family unit's parent group: its donors
+   * and surrogates, and any social or further primary parent. Their lines run
+   * on their own from the parent to the child's family. */
+  extraParents: Map<number, number[]>;
   parentEdgeTypes: Map<string, PedigreeEdgeType>;
 };
 
@@ -57,8 +63,27 @@ function partnerGroupKey(members: number[]): string {
 function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
   const n = ped.id.length;
 
-  // 1. Assign layers (1-based)
-  const depth = kindepth(ped.parents, true);
+  // 1. Assign layers (1-based). A child's generation comes from its primary
+  // parents, and from all of its parents only when it has none, as in step
+  // 3b: a donor may be a generation younger than the parents who raise the
+  // child, or one of them may be the child's birth parent. A donor or
+  // surrogate with no parents shown is still lined up with the child's
+  // primary parents, so a donor shared by two families brings both onto the
+  // donor's row.
+  const generationParents = ped.parents.map((pConns) => {
+    const primary = pConns.filter((p) => isPrimaryEdge(p.edgeType));
+    return primary.length > 0 ? primary : pConns;
+  });
+  const alignedAuxiliaryParents = ped.parents.map((pConns, i) =>
+    generationParents[i] === pConns
+      ? []
+      : pConns.filter(
+          (p) =>
+            isAuxiliaryEdge(p.edgeType) &&
+            ped.parents[p.parentIndex]!.length === 0,
+        ),
+  );
+  const depth = kindepth(generationParents, true, alignedAuxiliaryParents);
   const layers = depth.map((d) => d + 1);
 
   // 2. Force auxiliary parents to same layer as social parents
@@ -313,6 +338,25 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
     }
   }
 
+  // 6b. Each family-unit child's parents outside its family's parent group.
+  const familyOf = new Map<number, FamilyUnit>();
+  for (const fu of familyUnits) {
+    for (const child of fu.children) familyOf.set(child, fu);
+  }
+  const extraParents = new Map<number, number[]>();
+  for (let child = 0; child < n; child++) {
+    const fu = familyOf.get(child);
+    if (!fu) continue;
+    const extras = [
+      ...new Set(
+        ped.parents[child]!.map((p) => p.parentIndex).filter(
+          (p) => !fu.parentGroup.members.includes(p),
+        ),
+      ),
+    ];
+    if (extras.length > 0) extraParents.set(child, extras);
+  }
+
   // 7. Store edge types
   const parentEdgeTypes = new Map<string, PedigreeEdgeType>();
   for (let i = 0; i < n; i++) {
@@ -329,6 +373,8 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
     familyUnits,
     siblingGroups,
     auxiliaryParents,
+    familyOf,
+    extraParents,
     parentEdgeTypes,
   };
 }
@@ -390,6 +436,223 @@ function partnershipChain(
     chain.push(next);
   }
   return chain;
+}
+
+type Partnership = {
+  members: [number, number];
+  isActive: boolean;
+  /** When it was recorded, relative to the others. */
+  order: number;
+  /** How many children descend from the two as a couple. */
+  sharedChildren: number;
+  /** How many children have both as parents of any kind. */
+  childrenInCommon: number;
+};
+
+/** The two-person partnerships joining `nodes` to one another. */
+function partnershipsAmong(
+  nodes: number[],
+  graph: PedigreeGraph,
+): Partnership[] {
+  const nodeSet = new Set(nodes);
+  const result: Partnership[] = [];
+  graph.partnerGroups.forEach((pg, order) => {
+    const [a, b] = pg.members;
+    if (pg.members.length !== 2 || a === undefined || b === undefined) return;
+    if (!nodeSet.has(a) || !nodeSet.has(b)) return;
+    const childrenInCommon = graph.parents.filter(
+      (conns) =>
+        conns.some((p) => p.parentIndex === a) &&
+        conns.some((p) => p.parentIndex === b),
+    ).length;
+    const sharedChildren = [...graph.familyOf.values()].filter(
+      (fu) => fu.parentGroup === pg,
+    ).length;
+    result.push({
+      members: [a, b],
+      isActive: pg.isActive,
+      order,
+      sharedChildren,
+      childrenInCommon,
+    });
+  });
+  return result;
+}
+
+/**
+ * Turns a row of partners to face a fixed way, so that recording another
+ * partnership never mirrors the partners already seated: the earliest
+ * recorded current partnership sitting side by side (the earliest of any
+ * when none is current) keeps its lower-indexed partner on the left, as a
+ * lone couple does.
+ */
+function orientPartners(
+  order: number[],
+  partnerships: Partnership[],
+): number[] {
+  const col = new Map(order.map((node, i) => [node, i]));
+  const adjacent = partnerships
+    .filter(({ members: [a, b] }) => Math.abs(col.get(a)! - col.get(b)!) === 1)
+    .toSorted(
+      (x, y) => Number(y.isActive) - Number(x.isActive) || x.order - y.order,
+    );
+  const reference = adjacent[0];
+  if (!reference) return order;
+  const [a, b] = reference.members;
+  const lower = Math.min(a, b);
+  const higher = Math.max(a, b);
+  return col.get(lower)! < col.get(higher)! ? order : order.toReversed();
+}
+
+/**
+ * The partners of one person, seated around them. Only two can sit beside
+ * them; partners who share the most children with them take those seats
+ * first. Former partners go on one side and current partners on the other,
+ * each side in the order the partnerships were recorded: former partners
+ * from the earliest, outermost, to the latest, beside the person; current
+ * partners from the earliest, beside the person, outwards.
+ */
+function seatAroundAnchor(
+  anchor: number,
+  partners: number[],
+  partnerships: Partnership[],
+): number[] {
+  const withAnchor = new Map(
+    partners.map((p) => [
+      p,
+      partnerships.find(
+        ({ members }) => members.includes(anchor) && members.includes(p),
+      )!,
+    ]),
+  );
+  const rel = (p: number) => withAnchor.get(p)!;
+  // Nearest the person in time: the latest former partner, the earliest
+  // current one.
+  const recency = (p: number) =>
+    rel(p).isActive ? -rel(p).order : rel(p).order;
+  const byPriority = (x: number, y: number) =>
+    rel(y).sharedChildren - rel(x).sharedChildren ||
+    rel(y).childrenInCommon - rel(x).childrenInCommon ||
+    Number(rel(y).isActive) - Number(rel(x).isActive) ||
+    recency(y) - recency(x);
+
+  const [first, ...rest] = partners.toSorted(byPriority);
+  if (first === undefined) return [anchor];
+  // The second seat beside the anchor: the next partner with the most
+  // children, and on a tie one whose partnership is the other kind, so each
+  // side keeps its own.
+  const second = rest.toSorted(
+    (x, y) =>
+      rel(y).sharedChildren - rel(x).sharedChildren ||
+      rel(y).childrenInCommon - rel(x).childrenInCommon ||
+      Number(rel(y).isActive !== rel(first).isActive) -
+        Number(rel(x).isActive !== rel(first).isActive) ||
+      recency(y) - recency(x),
+  )[0];
+  if (second === undefined)
+    return orientPartners([anchor, first], partnerships);
+
+  let left = first;
+  let right = second;
+  if (rel(first).isActive !== rel(second).isActive) {
+    left = rel(first).isActive ? second : first;
+    right = left === first ? second : first;
+  } else if (rel(second).order < rel(first).order) {
+    left = second;
+    right = first;
+  }
+  const others = partners.filter((p) => p !== first && p !== second);
+  const formers = others
+    .filter((p) => !rel(p).isActive)
+    .toSorted((x, y) => rel(x).order - rel(y).order);
+  const currents = others
+    .filter((p) => rel(p).isActive)
+    .toSorted((x, y) => rel(x).order - rel(y).order);
+  return orientPartners(
+    [...formers, left, anchor, right, ...currents],
+    partnerships,
+  );
+}
+
+/**
+ * A row for partners whose partnerships do not form a single chain: a loop,
+ * or several people with more than two partners. The longest chain of
+ * partnerships is kept side by side (preferring partnerships with children,
+ * then current ones), and everyone else sits on the end of the row nearer
+ * their partners in it.
+ */
+function seatPartnershipTangle(
+  nodes: number[],
+  partnerships: Partnership[],
+): number[] {
+  const partnersOf = new Map<number, Partnership[]>(nodes.map((n) => [n, []]));
+  for (const p of partnerships) {
+    partnersOf.get(p.members[0])!.push(p);
+    partnersOf.get(p.members[1])!.push(p);
+  }
+  const score = (edges: Partnership[]) => [
+    edges.reduce((sum, e) => sum + Math.min(e.sharedChildren, 1), 0),
+    edges.length,
+    edges.reduce((sum, e) => sum + e.sharedChildren, 0),
+    edges.reduce((sum, e) => sum + e.childrenInCommon, 0),
+    edges.filter((e) => e.isActive).length,
+    -edges.reduce((sum, e) => sum + e.order, 0),
+  ];
+  const better = (x: number[], y: number[]) => {
+    for (let i = 0; i < x.length; i++) {
+      if (x[i] !== y[i]) return x[i]! > y[i]!;
+    }
+    return false;
+  };
+
+  let best: number[] = [Math.min(...nodes)];
+  let bestScore = score([]);
+  // Partner groups are small; every simple path is tried, within a budget.
+  let budget = 20_000;
+  const extend = (path: number[], edges: Partnership[]) => {
+    if (budget-- <= 0) return;
+    const pathScore = score(edges);
+    if (better(pathScore, bestScore)) {
+      best = path;
+      bestScore = pathScore;
+    }
+    const last = path.at(-1)!;
+    for (const e of partnersOf.get(last)!) {
+      const next = e.members[0] === last ? e.members[1] : e.members[0];
+      if (path.includes(next)) continue;
+      extend([...path, next], [...edges, e]);
+    }
+  };
+  for (const start of nodes.toSorted((a, b) => a - b)) extend([start], []);
+
+  const left: number[] = [];
+  const right: number[] = [];
+  const distanceToEnd = (node: number) => {
+    const cols = partnersOf
+      .get(node)!
+      .map((e) => (e.members[0] === node ? e.members[1] : e.members[0]))
+      .map((p) => best.indexOf(p))
+      .filter((c) => c >= 0);
+    if (cols.length === 0)
+      return { side: 'right' as const, distance: Infinity };
+    const toLeft = Math.min(...cols);
+    const toRight = best.length - 1 - Math.max(...cols);
+    return toLeft <= toRight
+      ? { side: 'left' as const, distance: toLeft }
+      : { side: 'right' as const, distance: toRight };
+  };
+  const leftovers = nodes
+    .filter((n) => !best.includes(n))
+    .map((n) => ({ n, ...distanceToEnd(n) }))
+    .toSorted((x, y) => x.distance - y.distance || x.n - y.n);
+  for (const { n, side } of leftovers) {
+    if (side === 'left') left.push(n);
+    else right.push(n);
+  }
+  return orientPartners(
+    [...left.toReversed(), ...best, ...right],
+    partnerships,
+  );
 }
 
 function buildConstraintBlocks(
@@ -523,8 +786,13 @@ function buildConstraintBlocks(
       assigned.add(sib);
       for (const sp of spouses) assigned.add(sp);
       if (spouses.length >= 2) {
-        const half = Math.floor(spouses.length / 2);
-        ordered.push(...spouses.slice(0, half), sib, ...spouses.slice(half));
+        ordered.push(
+          ...seatAroundAnchor(
+            sib,
+            spouses,
+            partnershipsAmong([sib, ...spouses], graph),
+          ),
+        );
       } else if (idx === 0) {
         ordered.push(...spouses, sib);
       } else {
@@ -650,56 +918,59 @@ function buildConstraintBlocks(
 
   for (const [, members] of groupUnion) {
     const blockNodes = [...members].toSorted((a, b) => a - b);
-    // Order anchor (shared node) between its partners
+    // Seat the block by its partnerships, never by index: an anchor (a person
+    // with several partners) between its partners, a chain of partnerships in
+    // chain order (a participant between a former and a current partner, the
+    // current partner beside their own former partner), and anything else by
+    // its longest chain. Each is turned to face the way its couples already
+    // did.
     const anchors = blockNodes.filter(
       (n) => (nodeToPartnerGroups.get(n)?.length ?? 0) > 1,
     );
-    // Two or more anchors form a chain (a participant between a former and a
-    // current partner, the current partner beside their own former partner).
-    // Index order would split a couple, so follow the chain instead.
-    const chain =
-      anchors.length > 1
-        ? partnershipChain(
-            blockNodes,
-            [...graph.partnerGroups.entries()]
-              .filter(([gi]) => eligible.has(gi))
-              .map(([, pg]) => pg.members),
-          )
-        : null;
-    if (chain) {
-      for (const n of chain) assigned.add(n);
-      blocks.push({ nodes: chain, barycenter: 0 });
-    } else if (anchors.length === 1) {
+    const partnerships = partnershipsAmong(blockNodes, graph).filter(
+      ({ members: [a, b] }) =>
+        (nodeToPartnerGroups.get(a) ?? []).some((gi) =>
+          graph.partnerGroups[gi]!.members.includes(b),
+        ),
+    );
+    let ordered: number[];
+    if (anchors.length === 1) {
       const anchor = anchors[0]!;
-      const others = blockNodes.filter((n) => n !== anchor);
-      const half = Math.floor(others.length / 2);
-      const ordered = [...others.slice(0, half), anchor, ...others.slice(half)];
-      for (const n of ordered) assigned.add(n);
-      blocks.push({ nodes: ordered, barycenter: 0 });
+      ordered = seatAroundAnchor(
+        anchor,
+        blockNodes.filter((n) => n !== anchor),
+        partnerships,
+      );
+    } else if (anchors.length > 1) {
+      const chain = partnershipChain(
+        blockNodes,
+        partnerships.map((p) => p.members),
+      );
+      ordered = chain
+        ? orientPartners(chain, partnerships)
+        : seatPartnershipTangle(blockNodes, partnerships);
     } else {
-      for (const n of blockNodes) assigned.add(n);
-      blocks.push({ nodes: blockNodes, barycenter: 0 });
+      ordered = blockNodes;
     }
+    for (const n of ordered) assigned.add(n);
+    blocks.push({ nodes: ordered, barycenter: 0 });
   }
 
-  // 2b. Seat auxiliary parents (donor/surrogate) beside the couple they
-  //     contribute to. An auxiliary parent is not part of any partnership or
-  //     sibship, so without this it would fall through to a singleton and drift
-  //     away from its couple — drawing a very long donor/surrogate line. Attach
-  //     it to the OUTER edge of the block holding the child's family-unit
-  //     parents so the couple stays contiguous and the connector stays short.
-  for (const [child, auxParents] of graph.auxiliaryParents) {
-    for (const aux of auxParents) {
+  // 2b. Seat each child's extra parents — donors, surrogates, and social or
+  //     further primary parents outside its family's couple — beside the
+  //     parents they contribute alongside. Such a parent is not part of any
+  //     partnership or sibship, so without this it would fall through to a
+  //     singleton and drift away, drawing a very long line. Attach it to the
+  //     OUTER edge of the block holding the child's family-unit parents so the
+  //     couple stays contiguous and the line stays short. A single parent with
+  //     no block of their own yet starts one here.
+  for (const [child, extras] of graph.extraParents) {
+    const familyUnit = graph.familyOf.get(child)!;
+    for (const aux of extras) {
       if (!nodeSet.has(aux) || assigned.has(aux)) continue;
-      // Skip aux parents that are themselves partnered or in a sibship here;
+      // Skip parents that are themselves partnered or in a sibship here;
       // those are already placed by steps 1–2.
       if (inRealSibship.has(aux) || spousesOf.has(aux)) continue;
-
-      // Find the family unit for this child, then the block holding its parents.
-      const familyUnit = graph.familyUnits.find((fu) =>
-        fu.children.includes(child),
-      );
-      if (!familyUnit) continue;
 
       const coupleOnLayer = familyUnit.parentGroup.members.filter((m) =>
         nodeSet.has(m),
@@ -707,16 +978,22 @@ function buildConstraintBlocks(
       if (coupleOnLayer.length === 0) continue; // couple not on this layer
 
       const coupleSet = new Set(coupleOnLayer);
-      const targetBlock = blocks.find((b) =>
+      let targetBlock = blocks.find((b) =>
         b.nodes.some((node) => coupleSet.has(node)),
       );
-      if (!targetBlock) continue;
+      if (!targetBlock) {
+        targetBlock = { nodes: coupleOnLayer, barycenter: 0 };
+        for (const node of coupleOnLayer) assigned.add(node);
+        blocks.push(targetBlock);
+      }
 
-      // Seat the aux parent immediately adjacent to the couple, on the couple's
+      // Seat the parent immediately adjacent to the couple, on the couple's
       // OUTER side (the side nearer the block boundary). When the couple is its
       // own block this lands on the block edge; when the couple is embedded in a
       // sibship block it lands beside the couple rather than at the far end, so
-      // the donor/surrogate connector stays short either way.
+      // the line stays short either way. On a tie it takes the side holding
+      // fewer of this child's other extra parents, so two such lines reach the
+      // family from opposite sides instead of one running under the other.
       const couplePositions = targetBlock.nodes
         .map((node, i) => (coupleSet.has(node) ? i : -1))
         .filter((i) => i >= 0);
@@ -729,7 +1006,18 @@ function buildConstraintBlocks(
       const nodes = targetBlock.nodes;
       const partnered = (a: number, b: number) =>
         (spousesOf.get(a) ?? []).includes(b);
-      if (distToRightEdge <= distToLeftEdge) {
+      const others = new Set(extras.filter((x) => x !== aux));
+      const othersLeft = nodes
+        .slice(0, leftPos)
+        .filter((node) => others.has(node)).length;
+      const othersRight = nodes
+        .slice(rightPos + 1)
+        .filter((node) => others.has(node)).length;
+      const seatRight =
+        distToRightEdge === distToLeftEdge
+          ? othersRight <= othersLeft
+          : distToRightEdge < distToLeftEdge;
+      if (seatRight) {
         let end = rightPos;
         while (
           end + 1 < nodes.length &&
@@ -775,19 +1063,35 @@ function positionMap(layerOrdering: number[][]): Map<number, number> {
  * In pedigree layout, a family unit's children connect to a single descent
  * point at the midpoint of the partner group, not to individual parents.
  * This function collects edges using that model: one edge per
- * (descent-point, child) for family-unit children, plus direct edges for
- * auxiliary parents and children not covered by any family unit.
+ * (descent-point, child) for family-unit children; for each of their extra
+ * parents (donors, surrogates, social or further primary parents), one edge
+ * to the near end of the sibship when they parent all of it, or one per child
+ * otherwise; and direct edges for children not covered by any family unit.
+ *
+ * Each edge says whether it is a line of descent (a family's, or a primary
+ * parent's direct line) or an extra parent's line: two lines of descent that
+ * cross also pull a child out from under its parents, so that crossing
+ * weighs more.
+ *
+ * It also counts the people an extra parent's line runs beneath: everyone on
+ * the upper layer between that parent and the nearest of the family's
+ * parents. Such a line reads as coming from whoever it passes under.
  */
+/** An edge between two layers: upper position, lower position, and whether
+ * it is a line of descent. */
+type LayerEdge = [upper: number, lower: number, descent: boolean];
+
 function collectLayerEdges(
   upperLayer: number[],
   lowerLayer: number[],
   graph: PedigreeGraph,
   pos: Map<number, number>,
-): [number, number][] {
+): { edges: LayerEdge[]; linesUnderPeople: number } {
   const upperSet = new Set(upperLayer);
   const lowerSet = new Set(lowerLayer);
-  const edges: [number, number][] = [];
+  const edges: LayerEdge[] = [];
   const coveredChildren = new Set<number>();
+  let linesUnderPeople = 0;
 
   for (const fu of graph.familyUnits) {
     const parentsOnUpper = fu.parentGroup.members.filter((m) =>
@@ -797,38 +1101,62 @@ function collectLayerEdges(
     if (parentsOnUpper.length === 0 || childrenOnLower.length === 0) continue;
 
     // Descent point is the midpoint of the parent group positions
+    const parentPositions = parentsOnUpper.map((p) => pos.get(p)!);
     const descentX =
-      parentsOnUpper.reduce((sum, p) => sum + pos.get(p)!, 0) /
-      parentsOnUpper.length;
+      parentPositions.reduce((sum, p) => sum + p, 0) / parentPositions.length;
 
     for (const child of childrenOnLower) {
-      edges.push([descentX, pos.get(child)!]);
+      edges.push([descentX, pos.get(child)!, true]);
       coveredChildren.add(child);
+    }
+
+    const childPositions = childrenOnLower.map((c) => pos.get(c)!);
+    const extraChildren = new Map<number, number[]>();
+    for (const child of childrenOnLower) {
+      for (const extra of graph.extraParents.get(child) ?? []) {
+        if (!upperSet.has(extra)) continue;
+        extraChildren.set(extra, [...(extraChildren.get(extra) ?? []), child]);
+      }
+    }
+    for (const [extra, children] of extraChildren) {
+      const at = pos.get(extra)!;
+      if (children.length === childrenOnLower.length && children.length > 1) {
+        edges.push([
+          at,
+          at < descentX
+            ? Math.min(...childPositions)
+            : Math.max(...childPositions),
+          false,
+        ]);
+      } else {
+        for (const child of children) edges.push([at, pos.get(child)!, false]);
+      }
+      const nearest = parentPositions.reduce((best, p) =>
+        Math.abs(p - at) < Math.abs(best - at) ? p : best,
+      );
+      linesUnderPeople += Math.max(0, Math.abs(nearest - at) - 1);
     }
   }
 
-  // Auxiliary parent edges (donor/surrogate) are direct connections
+  // A child no family unit covers: its donors and surrogates, then each of
+  // its parents, directly.
   for (const child of lowerLayer) {
+    if (coveredChildren.has(child)) continue;
     const auxParents = graph.auxiliaryParents.get(child) ?? [];
     for (const auxParent of auxParents) {
       if (upperSet.has(auxParent)) {
-        edges.push([pos.get(auxParent)!, pos.get(child)!]);
+        edges.push([pos.get(auxParent)!, pos.get(child)!, false]);
       }
     }
-  }
-
-  // Uncovered children: direct edges to each parent
-  for (const child of lowerLayer) {
-    if (coveredChildren.has(child)) continue;
     const parents = getParentsOf(child, graph);
     for (const parent of parents) {
       if (upperSet.has(parent)) {
-        edges.push([pos.get(parent)!, pos.get(child)!]);
+        edges.push([pos.get(parent)!, pos.get(child)!, true]);
       }
     }
   }
 
-  return edges;
+  return { edges, linesUnderPeople };
 }
 
 function countCrossings(
@@ -842,14 +1170,20 @@ function countCrossings(
     const upperLayer = layerOrdering[k]!;
     const lowerLayer = layerOrdering[k + 1]!;
 
-    const edges = collectLayerEdges(upperLayer, lowerLayer, graph, pos);
+    const { edges, linesUnderPeople } = collectLayerEdges(
+      upperLayer,
+      lowerLayer,
+      graph,
+      pos,
+    );
+    crossings += linesUnderPeople;
 
     for (let i = 0; i < edges.length; i++) {
       for (let j = i + 1; j < edges.length; j++) {
-        const [u1, v1] = edges[i]!;
-        const [u2, v2] = edges[j]!;
+        const [u1, v1, descent1] = edges[i]!;
+        const [u2, v2, descent2] = edges[j]!;
         if ((u1 < u2 && v1 > v2) || (u1 > u2 && v1 < v2)) {
-          crossings++;
+          crossings += descent1 && descent2 ? 2 : 1;
         }
       }
     }
@@ -1394,14 +1728,31 @@ function encodePedigreeLayout(
 
       if (Math.abs(shift) < 0.01) continue;
 
+      // The children's extra parents seated right beside the group (donors,
+      // surrogates, a birth parent, a social parent) move with it rather
+      // than being pushed aside and left behind, drawing a long line.
+      const extraCols = new Set<number>();
+      for (const child of childrenBelow) {
+        for (const extra of graph.extraParents.get(child) ?? []) {
+          const col = layerNodes.indexOf(extra);
+          if (col >= 0 && !cg.parentCols.includes(col)) extraCols.add(col);
+        }
+      }
+      let minCol = Math.min(...cg.parentCols);
+      let maxCol = Math.max(...cg.parentCols);
+      while (extraCols.has(minCol - 1)) minCol--;
+      while (extraCols.has(maxCol + 1)) maxCol++;
+      const movingCols = [
+        ...cg.parentCols,
+        ...[...extraCols].filter((col) => col >= minCol && col <= maxCol),
+      ];
+
       const newPositions = [...pos[layer]!];
-      for (const col of cg.parentCols) {
+      for (const col of movingCols) {
         newPositions[col] = newPositions[col]! + shift;
       }
 
       // Push neighbours aside to maintain minimum gap of 1
-      const minCol = Math.min(...cg.parentCols);
-      const maxCol = Math.max(...cg.parentCols);
 
       // Push left neighbours leftward
       for (let col = minCol - 1; col >= 0; col--) {
@@ -1557,13 +1908,7 @@ function encodePedigreeLayout(
         continue;
       }
 
-      // Check consanguinity: do they share common ancestors?
-      const ancestorsA = ancestor(nodeA, ped.parents);
-      const ancestorsB = ancestor(nodeB, ped.parents);
-      const ancestorSetB = new Set(ancestorsB);
-      const isConsanguineous = ancestorsA.some((a) => ancestorSetB.has(a));
-
-      layerGroup.push(isConsanguineous ? 2 : 1);
+      layerGroup.push(areConsanguineous(nodeA, nodeB, ped.parents) ? 2 : 1);
     }
     group.push(layerGroup);
   }
