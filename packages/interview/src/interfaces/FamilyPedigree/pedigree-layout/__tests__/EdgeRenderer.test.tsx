@@ -220,7 +220,52 @@ describe('PedigreeEdgeSvg — sibling branch off contributing lineage is dimmed'
 // re-theme to --dim-blend).
 const DIM_BLEND_BLACK = dimColor('black');
 
-/** Find the rendered sibling-bar sub-segment <line>s by their shared y. */
+/**
+ * The rendered stroke (a <line>, or a <polyline> the bar's pieces are joined
+ * into) that draws the sibling bar at the point (x, y).
+ */
+function barStrokeAt(
+  container: HTMLElement,
+  x: number,
+  y: number,
+): SVGElement | undefined {
+  const runsThrough = (points: { x: number; y: number }[]) =>
+    points
+      .slice(1)
+      .some(
+        (to, k) =>
+          points[k]!.y === y &&
+          to.y === y &&
+          Math.min(points[k]!.x, to.x) <= x &&
+          Math.max(points[k]!.x, to.x) >= x,
+      );
+  for (const line of Array.from(container.querySelectorAll('line'))) {
+    const points = [
+      {
+        x: Number(line.getAttribute('x1')),
+        y: Number(line.getAttribute('y1')),
+      },
+      {
+        x: Number(line.getAttribute('x2')),
+        y: Number(line.getAttribute('y2')),
+      },
+    ];
+    if (runsThrough(points)) return line;
+  }
+  for (const polyline of Array.from(container.querySelectorAll('polyline'))) {
+    const points = (polyline.getAttribute('points') ?? '')
+      .trim()
+      .split(/\s+/)
+      .map((pair) => {
+        const [px, py] = pair.split(',').map(Number);
+        return { x: px!, y: py! };
+      });
+    if (runsThrough(points)) return polyline;
+  }
+  return undefined;
+}
+
+/** Find the rendered horizontal <line>s (couple-bar pieces) at a shared y. */
 function siblingBarLines(container: HTMLElement, y: number): SVGLineElement[] {
   return Array.from(container.querySelectorAll('line')).filter(
     (line) =>
@@ -229,8 +274,8 @@ function siblingBarLines(container: HTMLElement, y: number): SVGLineElement[] {
   );
 }
 
-/** True when the <line> (or an ancestor) carries data-edge-dimmed="true". */
-function isLineDimmed(line: SVGLineElement): boolean {
+/** True when the stroke (or an ancestor) carries data-edge-dimmed="true". */
+function isLineDimmed(line: SVGElement): boolean {
   return line.closest('[data-edge-dimmed="true"]') !== null;
 }
 
@@ -267,28 +312,18 @@ describe('PedigreeEdgeSvg — sibling bar per-segment dimming', () => {
       />,
     );
 
-    const barLines = siblingBarLines(container, 100);
     // The bar is split at x=20 (child1 upline), x=100 (descent), x=180 (child2
-    // upline) → three sub-segments: [0,20], [20,100], [100,180], [180,200].
-    expect(barLines.length).toBeGreaterThanOrEqual(3);
-
-    // Sub-segment covering the path between descent (100) and contributing
-    // child upline (20): bright.
-    const brightStretch = barLines.find(
-      (line) =>
-        Number(line.getAttribute('x1')) === 20 &&
-        Number(line.getAttribute('x2')) === 100,
-    );
+    // upline). The stretch between the descent (100) and the contributing
+    // child's upline (20) is bright.
+    const brightStretch = barStrokeAt(container, 60, 100);
     expect(brightStretch).toBeDefined();
     expect(isLineDimmed(brightStretch!)).toBe(false);
 
-    // Sub-segment toward the non-contributing sibling (between 100 and 180): dim.
-    const dimStretch = barLines.find(
-      (line) =>
-        Number(line.getAttribute('x1')) === 100 &&
-        Number(line.getAttribute('x2')) === 180,
-    );
+    // The stretch toward the non-contributing sibling (between 100 and 180) is
+    // dim, drawn apart from the bright one.
+    const dimStretch = barStrokeAt(container, 140, 100);
     expect(dimStretch).toBeDefined();
+    expect(dimStretch).not.toBe(brightStretch);
     expect(isLineDimmed(dimStretch!)).toBe(true);
     expect(dimStretch!.getAttribute('stroke')).toBe(DIM_BLEND_BLACK);
   });
@@ -308,12 +343,7 @@ describe('PedigreeEdgeSvg — sibling bar per-segment dimming', () => {
       />,
     );
 
-    const barLines = siblingBarLines(container, 100);
-    const outerStub = barLines.find(
-      (line) =>
-        Number(line.getAttribute('x1')) === 180 &&
-        Number(line.getAttribute('x2')) === 200,
-    );
+    const outerStub = barStrokeAt(container, 190, 100);
     expect(outerStub).toBeDefined();
     expect(isLineDimmed(outerStub!)).toBe(true);
   });
@@ -331,13 +361,10 @@ describe('PedigreeEdgeSvg — sibling bar per-segment dimming', () => {
     expect(container.querySelectorAll('[data-edge-dimmed="true"]').length).toBe(
       0,
     );
-    // The whole bar [0, 200] renders as one segment.
-    const wholeBar = siblingBarLines(container, 100).find(
-      (line) =>
-        Number(line.getAttribute('x1')) === 0 &&
-        Number(line.getAttribute('x2')) === 200,
-    );
+    // The whole bar [0, 200] is drawn by one stroke.
+    const wholeBar = barStrokeAt(container, 0, 100);
     expect(wholeBar).toBeDefined();
+    expect(barStrokeAt(container, 200, 100)).toBe(wholeBar);
     expect(wholeBar!.getAttribute('stroke')).toBe('black');
   });
 
@@ -363,13 +390,8 @@ describe('PedigreeEdgeSvg — sibling bar per-segment dimming', () => {
       />,
     );
 
-    const barLines = siblingBarLines(container, 100);
     // The stretch toward the incidentally-highlighted sibling (100 → 180) is dim.
-    const towardSibling = barLines.find(
-      (line) =>
-        Number(line.getAttribute('x1')) === 100 &&
-        Number(line.getAttribute('x2')) === 180,
-    );
+    const towardSibling = barStrokeAt(container, 140, 100);
     expect(towardSibling).toBeDefined();
     expect(isLineDimmed(towardSibling!)).toBe(true);
   });

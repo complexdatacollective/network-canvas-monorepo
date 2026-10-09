@@ -264,4 +264,57 @@ describe('kindepth', () => {
       }
     });
   });
+
+  describe('a parent shared by two parent groups', () => {
+    const bio = (parentIndex: number): ParentConnection => ({
+      parentIndex,
+      edgeType: 'biological',
+    });
+
+    it('aligns the second group after the shared parent moves for the first', () => {
+      // grandmother → hannah; hannah + shared → you; shared + amy + jo → zoe.
+      // Moving shared down to hannah's row leaves zoe's group unaligned until
+      // amy and jo follow.
+      const parents: ParentConnection[][] = [
+        [],
+        [bio(0)],
+        [],
+        [bio(1), bio(2)],
+        [bio(2), bio(5), bio(6)],
+        [],
+        [],
+      ];
+      expect(kindepth(parents, true)).toEqual([0, 1, 1, 2, 2, 1, 1]);
+    });
+
+    it('aligns parents passed as also aligned without letting them set depth', () => {
+      // As above, but shared is only a donor: it joins each group's row and
+      // sets neither child's depth.
+      const donor = (parentIndex: number): ParentConnection => ({
+        parentIndex,
+        edgeType: 'donor',
+      });
+      const parents: ParentConnection[][] = [
+        [],
+        [bio(0)],
+        [],
+        [bio(1)],
+        [bio(5), bio(6)],
+        [],
+        [],
+      ];
+      const alsoAligned: ParentConnection[][] = [
+        [],
+        [],
+        [],
+        [donor(2)],
+        [donor(2)],
+        [],
+        [],
+      ];
+      expect(kindepth(parents, true, alsoAligned)).toEqual([
+        0, 1, 1, 2, 2, 1, 1,
+      ]);
+    });
+  });
 });

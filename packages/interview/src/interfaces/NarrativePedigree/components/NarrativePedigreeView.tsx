@@ -51,6 +51,7 @@ import { EDGE_WIDTH } from '../../FamilyPedigree/pedigree-layout/components/Edge
 import PedigreeLayout from '../../FamilyPedigree/pedigree-layout/components/PedigreeLayout';
 import { dimColor } from '../../FamilyPedigree/pedigree-layout/dimColor';
 import type { PedigreeLink } from '../../FamilyPedigree/pedigree-layout/types';
+import { pedigreeLinksOf } from '../../FamilyPedigree/pedigreeLinks';
 import { usePanZoom } from '../../FamilyPedigree/usePanZoom';
 import { pedigreeFraming } from '../../pedigree-common/framing';
 import { readParticipantsFamily } from '../../pedigree-common/membership';
@@ -312,14 +313,7 @@ export default function NarrativePedigreeView({
   // The family as the layout reads it, as the Family Pedigree draws it:
   // donors and surrogates on their own lines, separated partnerships broken.
   const layoutLinks = useMemo<PedigreeLink[]>(
-    () =>
-      (family?.links ?? []).map((link) => ({
-        source: link.source,
-        target: link.target,
-        kind: link.kind,
-        isActive: link.isCurrentPartner,
-        isGestationalCarrier: link.isGestationalCarrier,
-      })),
+    () => (family ? pedigreeLinksOf(family) : []),
     [family],
   );
   const nodeIds = useMemo(

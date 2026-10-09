@@ -61,6 +61,9 @@ describe('schema 8 interface-owned values', () => {
       'social',
       'donor',
       'surrogate',
+      'identicalTwin',
+      'fraternalTwin',
+      'unknownZygosityTwin',
     ]);
     expect(PEDIGREE_RELATIONSHIP_KIND_OPTIONS).toEqual([
       { value: 'partner', label: 'Partner' },
@@ -69,6 +72,12 @@ describe('schema 8 interface-owned values', () => {
       { value: 'social', label: 'Step or social parent' },
       { value: 'donor', label: 'Egg or sperm donor' },
       { value: 'surrogate', label: 'Surrogate' },
+      { value: 'identicalTwin', label: 'Identical twin' },
+      { value: 'fraternalTwin', label: 'Fraternal twin' },
+      {
+        value: 'unknownZygosityTwin',
+        label: 'Twin, not known if identical',
+      },
     ]);
   });
 });

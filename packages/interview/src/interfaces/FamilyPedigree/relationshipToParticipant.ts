@@ -1,5 +1,5 @@
 import type {
-  PedigreeRelationshipKind,
+  PedigreeParentKind,
   PedigreeRelationshipToParticipant,
 } from '@codaco/protocol-validation';
 import {
@@ -16,10 +16,11 @@ import type { Family, PedigreeConfig } from './model';
  * Which relationship a person is given when they are related to the
  * participant in more than one way, first first: the closest biological tie,
  * then the closest legal one, then partners, then relatives further out
- * (biological before step and in-law ties), and `otherRelative` last. So a
- * biological parent who is also a parent's partner is a `parent`, a donor
- * who is also a parent's sibling is a `donor`, and a cousin who is also a
- * sibling's partner is a `cousin`.
+ * (biological before adoptive, then step and in-law ties), and
+ * `otherRelative` last. So a biological parent who is also a parent's partner
+ * is a `parent`, a donor who is also a parent's sibling is a `donor`, a
+ * cousin who is also a sibling's partner is a `cousin`, and a grandparent who
+ * is also a grandparent's partner is a `grandparent`.
  */
 const RELATIONSHIP_PRECEDENCE: readonly PedigreeRelationshipToParticipant[] = [
   'parent',
@@ -41,11 +42,13 @@ const RELATIONSHIP_PRECEDENCE: readonly PedigreeRelationshipToParticipant[] = [
   'greatGrandchild',
   'grandparentsSibling',
   'cousin',
+  'adoptiveGrandchild',
   'surrogate',
   'surrogacyChild',
   'stepParent',
   'stepChild',
   'stepSibling',
+  'stepGrandparent',
   'parentInLaw',
   'childInLaw',
   'siblingInLaw',
@@ -67,52 +70,35 @@ const RELATIONSHIP_OF_TERM: Partial<
   stepparent: 'stepParent',
   stepchild: 'stepChild',
   stepsibling: 'stepSibling',
+  stepGrandparent: 'stepGrandparent',
   parentInLaw: 'parentInLaw',
   siblingInLaw: 'siblingInLaw',
   childInLaw: 'childInLaw',
 };
 
 /** The relationship a path of more than one step names, if any, read from
- * its neutral kinship word. */
+ * its neutral kinship word. A grandchild reached through an adoption on the
+ * way is an `adoptiveGrandchild`; one also reached along a path of genetic
+ * ties alone is a `grandchild`, as the precedence decides. */
 function relationshipOfPath(
   family: Family,
   path: readonly Step[],
 ): PedigreeRelationshipToParticipant | undefined {
   const term = kinTermFor(family, path, 'gamete');
-  return term === undefined ? undefined : RELATIONSHIP_OF_TERM[term];
+  if (term === undefined) return undefined;
+  if (
+    term === 'grandchild' &&
+    path.some((step) => step.type === 'child' && step.kind === 'adoptive')
+  ) {
+    return 'adoptiveGrandchild';
+  }
+  return RELATIONSHIP_OF_TERM[term];
 }
 
 /** The longest path any relationship but `otherRelative` needs. */
 const MAX_PATH = 3;
 
-const biologicalParentsOf = (family: Family, personId: string) =>
-  new Set(
-    family.links
-      .filter((link) => link.target === personId && link.kind === 'biological')
-      .map((link) => link.source),
-  );
-
-/**
- * Two people who share a biological or adoptive parent (as `stepsFrom` finds
- * siblings): full siblings when they have the same biological parents, half
- * siblings when they share some, and adoptive siblings when they share none,
- * so are related through adoption alone.
- */
-function siblingRelationship(
-  family: Family,
-  a: string,
-  b: string,
-): PedigreeRelationshipToParticipant {
-  const aParents = biologicalParentsOf(family, a);
-  const bParents = biologicalParentsOf(family, b);
-  const shared = [...aParents].filter((parent) => bParents.has(parent));
-  if (shared.length === 0) return 'adoptiveSibling';
-  return shared.length === aParents.size && shared.length === bParents.size
-    ? 'sibling'
-    : 'halfSibling';
-}
-
-type ParentKind = Exclude<PedigreeRelationshipKind, 'partner'>;
+type ParentKind = PedigreeParentKind;
 
 const PARENT_RELATIONSHIP: Record<
   ParentKind,
@@ -137,18 +123,16 @@ const CHILD_RELATIONSHIP: Record<
 };
 
 /** The relationship one step from the participant names. */
-function oneStepRelationship(
-  family: Family,
-  egoId: string,
-  step: Step,
-): PedigreeRelationshipToParticipant {
+function oneStepRelationship(step: Step): PedigreeRelationshipToParticipant {
   switch (step.type) {
     case 'parent':
       return PARENT_RELATIONSHIP[step.kind];
     case 'child':
       return CHILD_RELATIONSHIP[step.kind];
     case 'sibling':
-      return siblingRelationship(family, egoId, step.to);
+      // Full, half and adoptive siblings as `siblingTie` tells them apart.
+      if (step.adoptive) return 'adoptiveSibling';
+      return step.half ? 'halfSibling' : 'sibling';
     case 'partner':
       return step.current ? 'partner' : 'formerPartner';
   }
@@ -200,7 +184,7 @@ export function relationshipsToParticipant(
       const next = [...path, step];
       const relationship =
         next.length === 1
-          ? oneStepRelationship(family, egoId, step)
+          ? oneStepRelationship(step)
           : relationshipOfPath(family, next);
       if (relationship) note(step.to, relationship);
       if (next.length < MAX_PATH) {

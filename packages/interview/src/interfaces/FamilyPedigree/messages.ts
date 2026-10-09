@@ -16,16 +16,16 @@ export const messages = defineMessages({
   relativeTerm: {
     id: 'interview.familyPedigree.relativeTerm',
     defaultMessage:
-      "{term, select, mother {Mother} father {Father} parent {Parent} eggParent {Egg parent} spermParent {Sperm parent} biologicalMother {Bio\u00ADlogical mother} biologicalFather {Bio\u00ADlogical father} adoptiveMother {Adoptive mother} adoptiveFather {Adoptive father} adoptiveParent {Adoptive parent} stepmother {Step\u00ADmother} stepfather {Step\u00ADfather} stepparent {Step-parent} eggDonor {Egg donor} spermDonor {Sperm donor} donor {Donor} surrogate {Surro\u00ADgate} daughter {Daughter} son {Son} child {Child} stepdaughter {Step\u00ADdaughter} stepson {Stepson} stepchild {Stepchild} donorConceivedChild {Donor-conceived child} surrogacyChild {Surro\u00ADgacy child} sister {Sister} brother {Brother} sibling {Sibling} halfSister {Half-sister} halfBrother {Half-brother} halfSibling {Half-sibling} stepsister {Step\u00ADsister} stepbrother {Step\u00ADbrother} stepsibling {Step-sibling} partner {Partner} formerPartner {Former partner} grandmother {Grand\u00ADmother} grandfather {Grand\u00ADfather} grandparent {Grand\u00ADparent} maternalGrandmother {Maternal grand\u00ADmother} maternalGrandfather {Maternal grand\u00ADfather} maternalGrandparent {Maternal grand\u00ADparent} paternalGrandmother {Paternal grand\u00ADmother} paternalGrandfather {Paternal grand\u00ADfather} paternalGrandparent {Paternal grand\u00ADparent} greatGrandmother {Great-grand\u00ADmother} greatGrandfather {Great-grand\u00ADfather} greatGrandparent {Great-grand\u00ADparent} granddaughter {Grand\u00ADdaughter} grandson {Grandson} grandchild {Grand\u00ADchild} greatGranddaughter {Great-grand\u00ADdaughter} greatGrandson {Great-grandson} greatGrandchild {Great-grand\u00ADchild} aunt {Aunt} uncle {Uncle} maternalAunt {Maternal aunt} maternalUncle {Maternal uncle} paternalAunt {Paternal aunt} paternalUncle {Paternal uncle} parentsSibling {Parent's sibling} greatAunt {Great-aunt} greatUncle {Great-uncle} grandparentsSibling {Grand\u00ADparent's sibling} niece {Niece} nephew {Nephew} siblingsChild {Sibling's child} cousin {Cousin} motherInLaw {Mother-in-law} fatherInLaw {Father-in-law} parentInLaw {Parent-in-law} sisterInLaw {Sister-in-law} brotherInLaw {Brother-in-law} siblingInLaw {Sibling-in-law} daughterInLaw {Daugh\u00ADter-in-law} sonInLaw {Son-in-law} childInLaw {Child-in-law} other {Relative}}",
+      '{term, select, mother {Mother} father {Father} parent {Parent} eggParent {Egg parent} spermParent {Sperm parent} biologicalMother {Bio\u00ADlogical mother} biologicalFather {Bio\u00ADlogical father} adoptiveMother {Adoptive mother} adoptiveFather {Adoptive father} adoptiveParent {Adoptive parent} stepmother {Step\u00ADmother} stepfather {Step\u00ADfather} stepparent {Step-parent} eggDonor {Egg donor} spermDonor {Sperm donor} donor {Donor} surrogate {Surro\u00ADgate} daughter {Daughter} son {Son} child {Child} stepdaughter {Step\u00ADdaughter} stepson {Stepson} stepchild {Stepchild} donorConceivedChild {Donor-conceived child} surrogacyChild {Surro\u00ADgacy child} sister {Sister} brother {Brother} sibling {Sibling} halfSister {Half-sister} halfBrother {Half-brother} halfSibling {Half-sibling} adoptiveSister {Adoptive sister} adoptiveBrother {Adoptive brother} adoptiveSibling {Adoptive sibling} stepsister {Step\u00ADsister} stepbrother {Step\u00ADbrother} stepsibling {Step-sibling} partner {Partner} formerPartner {Former partner} grandmother {Grand\u00ADmother} grandfather {Grand\u00ADfather} grandparent {Grand\u00ADparent} maternalGrandmother {Maternal grand\u00ADmother} maternalGrandfather {Maternal grand\u00ADfather} maternalGrandparent {Maternal grand\u00ADparent} paternalGrandmother {Paternal grand\u00ADmother} paternalGrandfather {Paternal grand\u00ADfather} paternalGrandparent {Paternal grand\u00ADparent} greatGrandmother {Great-grand\u00ADmother} greatGrandfather {Great-grand\u00ADfather} greatGrandparent {Great-grand\u00ADparent} stepGrandmother {Step-grand\u00ADmother} stepGrandfather {Step-grand\u00ADfather} stepGrandparent {Step-grand\u00ADparent} granddaughter {Grand\u00ADdaughter} grandson {Grandson} grandchild {Grand\u00ADchild} greatGranddaughter {Great-grand\u00ADdaughter} greatGrandson {Great-grandson} greatGrandchild {Great-grand\u00ADchild} aunt {Aunt} uncle {Uncle} maternalAunt {Maternal aunt} maternalUncle {Maternal uncle} paternalAunt {Paternal aunt} paternalUncle {Paternal uncle} parentsSibling {Parent’s sibling} greatAunt {Great-aunt} greatUncle {Great-uncle} grandparentsSibling {Grand\u00ADparent’s sibling} niece {Niece} nephew {Nephew} siblingsChild {Sibling’s child} cousin {Cousin} motherInLaw {Mother-in-law} fatherInLaw {Father-in-law} parentInLaw {Parent-in-law} sisterInLaw {Sister-in-law} brotherInLaw {Brother-in-law} siblingInLaw {Sibling-in-law} daughterInLaw {Daugh\u00ADter-in-law} sonInLaw {Son-in-law} childInLaw {Child-in-law} other {Relative}}',
     description:
       'Label for a family member whose name is not known: their kinship to the participant (for example, the participant’s maternal grandmother). Depending on the study, either gendered words (mother, aunt) or words that do not assume gender (egg parent, parent’s sibling) are used. Also saved as the name of a family member the participant did not name, when they leave this part of the interview, so they can be recognised later. Labels sit inside a small symbol, so each long word carries a soft hyphen (U+00AD, invisible unless the word breaks there) at a syllable break, as between “Grand” and “mother” in Grandmother, or “Step” and “daughter” in Stepdaughter: the word breaks there, with a hyphen, only when it does not fit on one line, and otherwise reads whole. Place your own soft hyphens at sensible syllable breaks in any word longer than about nine letters in your language, rather than copying these positions; a word without one may break between any two letters. Soft hyphens are removed from the label saved as a name.',
   },
   relativeOf: {
     id: 'interview.familyPedigree.relativeOf',
     defaultMessage:
-      "{owner}'s {term, select, mother {mother} father {father} parent {parent} eggParent {egg parent} spermParent {sperm parent} biologicalMother {bio\u00ADlogical mother} biologicalFather {bio\u00ADlogical father} adoptiveMother {adoptive mother} adoptiveFather {adoptive father} adoptiveParent {adoptive parent} stepmother {step\u00ADmother} stepfather {step\u00ADfather} stepparent {step-parent} eggDonor {egg donor} spermDonor {sperm donor} donor {donor} surrogate {surro\u00ADgate} daughter {daughter} son {son} child {child} stepdaughter {step\u00ADdaughter} stepson {stepson} stepchild {stepchild} donorConceivedChild {donor-conceived child} surrogacyChild {surro\u00ADgacy child} sister {sister} brother {brother} sibling {sibling} halfSister {half-sister} halfBrother {half-brother} halfSibling {half-sibling} stepsister {step\u00ADsister} stepbrother {step\u00ADbrother} stepsibling {step-sibling} partner {partner} formerPartner {former partner} other {relative}}",
+      '{owner}’s {term, select, mother {mother} father {father} parent {parent} eggParent {egg parent} spermParent {sperm parent} biologicalMother {bio\u00ADlogical mother} biologicalFather {bio\u00ADlogical father} adoptiveMother {adoptive mother} adoptiveFather {adoptive father} adoptiveParent {adoptive parent} stepmother {step\u00ADmother} stepfather {step\u00ADfather} stepparent {step-parent} eggDonor {egg donor} spermDonor {sperm donor} donor {donor} surrogate {surro\u00ADgate} daughter {daughter} son {son} child {child} stepdaughter {step\u00ADdaughter} stepson {stepson} stepchild {stepchild} donorConceivedChild {donor-conceived child} surrogacyChild {surro\u00ADgacy child} sister {sister} brother {brother} sibling {sibling} halfSister {half-sister} halfBrother {half-brother} halfSibling {half-sibling} adoptiveSister {adoptive sister} adoptiveBrother {adoptive brother} adoptiveSibling {adoptive sibling} stepsister {step\u00ADsister} stepbrother {step\u00ADbrother} stepsibling {step-sibling} partner {partner} formerPartner {former partner} grandmother {grand\u00ADmother} grandfather {grand\u00ADfather} grandparent {grand\u00ADparent} maternalGrandmother {maternal grand\u00ADmother} maternalGrandfather {maternal grand\u00ADfather} maternalGrandparent {maternal grand\u00ADparent} paternalGrandmother {paternal grand\u00ADmother} paternalGrandfather {paternal grand\u00ADfather} paternalGrandparent {paternal grand\u00ADparent} greatGrandmother {great-grand\u00ADmother} greatGrandfather {great-grand\u00ADfather} greatGrandparent {great-grand\u00ADparent} stepGrandmother {step-grand\u00ADmother} stepGrandfather {step-grand\u00ADfather} stepGrandparent {step-grand\u00ADparent} granddaughter {grand\u00ADdaughter} grandson {grandson} grandchild {grand\u00ADchild} greatGranddaughter {great-grand\u00ADdaughter} greatGrandson {great-grandson} greatGrandchild {great-grand\u00ADchild} aunt {aunt} uncle {uncle} maternalAunt {maternal aunt} maternalUncle {maternal uncle} paternalAunt {paternal aunt} paternalUncle {paternal uncle} parentsSibling {parent’s sibling} greatAunt {great-aunt} greatUncle {great-uncle} grandparentsSibling {grand\u00ADparent’s sibling} niece {niece} nephew {nephew} siblingsChild {sibling’s child} cousin {cousin} motherInLaw {mother-in-law} fatherInLaw {father-in-law} parentInLaw {parent-in-law} sisterInLaw {sister-in-law} brotherInLaw {brother-in-law} siblingInLaw {sibling-in-law} daughterInLaw {daugh\u00ADter-in-law} sonInLaw {son-in-law} childInLaw {child-in-law} other {relative}}',
     description:
-      'Label for a family member whose name is not known and who has no everyday kinship word, described through a relative of theirs: owner is that relative’s label (for example “Cousin”), and term is how this person is related to them. Translate the possessive grammar as a whole; owner stays verbatim. Also saved as the name of a family member the participant did not name. As in the kinship words label, each long word carries a soft hyphen (U+00AD) at a syllable break where it may break inside the small symbol; place your own at sensible syllable breaks in long words in your language. Soft hyphens are removed from the label saved as a name.',
+      'Label for a family member whose name is not known and who has no everyday kinship word for their relationship to the participant, described through one relative of theirs: owner is that relative’s name or kinship word (for example “Isaac” or “Cousin”), and term is how this person is related to that relative, which can be any of the kinship words (for example “Isaac’s grandfather” or “Cousin’s son”). Translate the possessive grammar as a whole; owner stays verbatim. Also saved as the name of a family member the participant did not name. As in the kinship words label, each long word carries a soft hyphen (U+00AD) at a syllable break where it may break inside the small symbol; place your own at sensible syllable breaks in long words in your language. Soft hyphens are removed from the label saved as a name.',
   },
   numberedRelative: {
     id: 'interview.familyPedigree.numberedRelative',
@@ -39,6 +39,13 @@ export const messages = defineMessages({
       '{isYou, select, true {{term} (your partner)} other {{term} (partner of {name})}}',
     description:
       'Label for a family member the participant did not name, when their kinship word alone is shared with someone else. Shown inside their symbol in the family tree, and saved as their name so later parts of the interview show the same label. term is the already translated kinship word, such as “Sister” or “Family member”; name is the name of their partner, or that partner’s own kinship word, such as “Tom” or “Uncle”. The first form is used when their partner is the participant.',
+  },
+  generatedLabelFormerPartnerOf: {
+    id: 'interview.familyPedigree.generatedLabelFormerPartnerOf',
+    defaultMessage:
+      '{isYou, select, true {{term} (your former partner)} other {{term} (former partner of {name})}}',
+    description:
+      'Label for a family member the participant did not name, when their kinship word alone is shared with someone else and they are told apart by a partnership that has ended. Shown inside their symbol in the family tree, and saved as their name so later parts of the interview show the same label. term is the already translated kinship word, such as “Sister” or “Family member”; name is the name of their former partner, or that person’s own kinship word, such as “Tom” or “Uncle”. The first form is used when their former partner is the participant.',
   },
   generatedLabelParentOf: {
     id: 'interview.familyPedigree.generatedLabelParentOf',
@@ -70,9 +77,9 @@ export const messages = defineMessages({
   personAccessibleName: {
     id: 'interview.familyPedigree.personAccessibleName',
     defaultMessage:
-      '{isYou, select, true {You} other {{name}}}{missing, select, true {, some details missing} other {}}',
+      '{isYou, select, true {You} other {{name}}}{adopted, select, true {, adopted} other {}}{missing, select, true {, some details missing} other {}}',
     description:
-      'Accessible name of a family member’s symbol in the family tree. {name} is the person’s name or, when it is not known, how they are related to the participant. The second part is read out when required details about the person have not been given yet.',
+      'Accessible name of a family member’s symbol in the family tree. {name} is the person’s name, exactly as the participant typed it, or, when it is not known, how they are related to the participant. The second part is read out when the person was adopted, which the tree shows by drawing brackets around their symbol. The third part is read out when required details about the person have not been given yet.',
   },
   missingDetails: {
     id: 'interview.familyPedigree.missingDetails',
@@ -189,7 +196,7 @@ export const messages = defineMessages({
     defaultMessage:
       '{parentIsYou, select, true {Did you carry the pregnancy?} other {Did {parent} carry the pregnancy?}}',
     description:
-      'Yes/no question in the details panel: whether this biological parent was pregnant with the family member. {parent} is the parent’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
+      'Yes/no question in the details panel: whether this parent, of any kind but a surrogate (biological, adoptive, step or social, or a donor), was pregnant with the family member. {parent} is the parent’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
   },
   moreAboutThisPerson: {
     id: 'interview.familyPedigree.moreAboutThisPerson',
@@ -255,18 +262,30 @@ export const messages = defineMessages({
     description:
       'Option: a child who is neither genetically related nor adopted, such as a step-child.',
   },
+  childKindDonor: {
+    id: 'interview.familyPedigree.childKind.donor',
+    defaultMessage: 'A child conceived with an egg or sperm they donated',
+    description:
+      'Option: a child conceived with an egg or sperm the person donated, who is raised by someone else.',
+  },
+  childKindSurrogate: {
+    id: 'interview.familyPedigree.childKind.surrogate',
+    defaultMessage: 'A child they carried as a surrogate',
+    description:
+      'Option: a child the person carried as a surrogate for someone else.',
+  },
   carriedPregnancyLabel: {
     id: 'interview.familyPedigree.carriedPregnancyLabel',
     defaultMessage: 'Did this parent carry the pregnancy?',
     description:
-      'Yes/no question in the side panel for adding a biological parent: whether they were pregnant with the child.',
+      'Yes/no question in the side panel for adding a parent of any kind but a surrogate (biological, adoptive, step or social, or a donor): whether they were pregnant with the child.',
   },
   carriedSiblingsPregnancyLabel: {
     id: 'interview.familyPedigree.carriedSiblingsPregnancyLabel',
     defaultMessage:
       '{count, plural, =1 {{isYou, select, true {Was this parent pregnant with you?} other {Was this parent pregnant with “{name}”?}}} other {Was this parent pregnant with each of the # people chosen above who have nobody recorded as having carried them?}}',
     description:
-      'Yes/no question in the side panel for adding a biological parent. It is asked when the person the parent is added for already has someone recorded as having carried their pregnancy, about the people chosen in “Are they also the parent of…” who have nobody recorded yet. count is how many such people there are; name is the one person’s name, or how they are related to the participant when unnamed; isYou is true when that person is the participant. It may be left unanswered.',
+      'Yes/no question in the side panel for adding a parent of any kind but a surrogate. It is asked when the person the parent is added for already has someone recorded as having carried their pregnancy, about the people chosen in “Are they also the parent of…” who have nobody recorded yet. count is how many such people there are; name is the one person’s name, or how they are related to the participant when unnamed; isYou is true when that person is the participant. It may be left unanswered.',
   },
   parentPartnerLabel: {
     id: 'interview.familyPedigree.parentPartnerLabel',
@@ -374,17 +393,103 @@ export const messages = defineMessages({
     defaultMessage: 'No other parent',
     description: 'Option: the child has only the one parent.',
   },
+  siblingBiologicalParentLabel: {
+    id: 'interview.familyPedigree.siblingBiologicalParentLabel',
+    defaultMessage: 'Which of them is the sibling’s biological parent?',
+    description:
+      'Question in the side panel for adding a biological sibling, asked when the sibling shares two parents of whom only one could be their biological parent (for example two mothers, both recorded as female at birth). Options are those parents, by name or by how they are related to the participant.',
+  },
+  sharedDonorsLabel: {
+    id: 'interview.familyPedigree.sharedDonorsLabel',
+    defaultMessage:
+      '{isYou, select, true {Do they share any of your donors?} other {Do they share any of “{name}”’s donors?}}',
+    description:
+      'Question in the side panel for adding a sibling to someone recorded with only egg or sperm donors as parents. Options are those donors, by name or by how they are related to the participant; any number, or none, may be chosen. name is the person the sibling is added to.',
+  },
   carrierLabel: {
     id: 'interview.familyPedigree.carrierLabel',
     defaultMessage: 'Who carried the pregnancy?',
     description:
-      'Question in the side panel for adding a biological child or a biological sibling. Options are the new person’s parents, by name or by how they are related to the participant, or someone else / not known.',
+      'Question in the side panel for adding a child or a sibling. Options are the new person’s parents of any kind (biological, adoptive, step or social, or a donor), by name or by how they are related to the participant, or someone else / not known.',
   },
   carrierUnknown: {
     id: 'interview.familyPedigree.carrierUnknown',
     defaultMessage: 'Someone else, or I don’t know',
     description:
       'Option: none of the parents offered carried the pregnancy, or the participant does not know.',
+  },
+  siblingTwinLabel: {
+    id: 'interview.familyPedigree.siblingTwinLabel',
+    defaultMessage:
+      '{isYou, select, true {Are they your twin?} other {Are they “{name}”’s twin?}}',
+    description:
+      'Question in the side panel for adding a sibling: whether the new sibling and the person they are added to were born of the same pregnancy. name is the person the sibling is added to. Options are "No", and whether they are identical, fraternal, or the participant does not know which.',
+  },
+  siblingTwinHint: {
+    id: 'interview.familyPedigree.siblingTwinHint',
+    defaultMessage: 'Answer yes for triplets and other multiple births too.',
+    description:
+      'Hint under the question asking whether a new sibling is a twin of the person they are added to.',
+  },
+  siblingTwinNo: {
+    id: 'interview.familyPedigree.siblingTwinNo',
+    defaultMessage: 'No',
+    description:
+      'Option: the new sibling is not a twin of the person they are added to.',
+  },
+  siblingTwinIdentical: {
+    id: 'interview.familyPedigree.siblingTwinIdentical',
+    defaultMessage: 'Yes, identical twins',
+    description:
+      'Option: the new sibling is an identical twin of the person they are added to.',
+  },
+  siblingTwinFraternal: {
+    id: 'interview.familyPedigree.siblingTwinFraternal',
+    defaultMessage: 'Yes, fraternal (non-identical) twins',
+    description:
+      'Option: the new sibling is a fraternal (non-identical) twin of the person they are added to.',
+  },
+  siblingTwinUnknown: {
+    id: 'interview.familyPedigree.siblingTwinUnknown',
+    defaultMessage: 'Yes, but I don’t know if they are identical',
+    description:
+      'Option: the new sibling is a twin of the person they are added to, and the participant does not know whether they are identical or fraternal twins.',
+  },
+  twinsLabel: {
+    id: 'interview.familyPedigree.twinsLabel',
+    defaultMessage:
+      '{isYou, select, true {Which of your siblings, if any, are your twins?} other {Which of “{name}”’s siblings, if any, are their twins?}}',
+    description:
+      'Question in the panel showing a family member’s details. Options are the person’s siblings, by name or by how they are related to the participant; any number, or none, may be chosen. Triplets and other multiple births are twins here too.',
+  },
+  twinsHint: {
+    id: 'interview.familyPedigree.twinsHint',
+    defaultMessage: 'Include triplets and other multiple births.',
+    description:
+      'Hint under the question in a family member’s panel asking which of their siblings are their twins.',
+  },
+  twinZygosityLabel: {
+    id: 'interview.familyPedigree.twinZygosityLabel',
+    defaultMessage:
+      '{who, select, personIsYou {Are you and “{twin}” identical twins?} twinIsYou {Are “{name}” and you identical twins?} other {Are “{name}” and “{twin}” identical twins?}}',
+    description:
+      'Question in the panel showing a family member’s details, asked for each sibling chosen as their twin. name is the person the panel describes, twin is the sibling. Options are "Identical", "Fraternal (non-identical)" and "I don’t know".',
+  },
+  zygosityIdentical: {
+    id: 'interview.familyPedigree.zygosityIdentical',
+    defaultMessage: 'Yes, identical',
+    description: 'Option: the two twins are identical twins.',
+  },
+  zygosityFraternal: {
+    id: 'interview.familyPedigree.zygosityFraternal',
+    defaultMessage: 'No, fraternal (non-identical)',
+    description: 'Option: the two twins are fraternal (non-identical) twins.',
+  },
+  zygosityUnknown: {
+    id: 'interview.familyPedigree.zygosityUnknown',
+    defaultMessage: 'I don’t know',
+    description:
+      'Option: the participant does not know whether the two twins are identical or fraternal.',
   },
   add: {
     id: 'interview.familyPedigree.add',
@@ -447,9 +552,9 @@ export const messages = defineMessages({
   itemParents: {
     id: 'interview.familyPedigree.itemParents',
     defaultMessage:
-      '{isYou, select, true {{missing, plural, one {Add your other biological parent} other {Add your biological parents}}} other {{missing, plural, one {Add another biological parent for “{name}”} other {Add biological parents for “{name}”}}}}',
+      '{isYou, select, true {Add your biological parents} other {Add biological parents for “{name}”}}',
     description:
-      'Item in the list of family members still needed. missing is how many biological parents the person still needs (1 or 2). name is the person’s name or how they are related to the participant. Biological parents include an egg or sperm donor.',
+      'Item in the list of family members still needed: the person has no biological parents recorded yet. name is the person’s name or how they are related to the participant. Biological parents include an egg or sperm donor.',
   },
   itemSiblings: {
     id: 'interview.familyPedigree.itemSiblings',
@@ -601,11 +706,18 @@ export const messages = defineMessages({
     description:
       'Option in the menu for connecting two people: they were a couple but are no longer together.',
   },
-  parentKindBiologicalCarrier: {
-    id: 'interview.familyPedigree.parentKind.biologicalCarrier',
+  parentKindCarrier: {
+    id: 'interview.familyPedigree.parentKind.carrier',
     defaultMessage: '{parentKind} (carried the pregnancy)',
     description:
-      'Option in the menu for connecting a parent and child: a genetic parent who was also pregnant with the child. parentKind is the protocol’s wording for a biological parent (for example Biological parent); keep the qualifier separate from it, since the wording is the researcher’s.',
+      'Option in the menu for connecting a parent and child: a parent of this kind who was also pregnant with the child, such as a biological parent who gave birth, an adoptive or step parent who gave birth, or a donor who carried the pregnancy. parentKind is the protocol’s wording for the kind of parent (for example Biological parent, Adoptive parent); keep the qualifier separate from it, since the wording is the researcher’s.',
+  },
+  unavailableCarrierChoice: {
+    id: 'interview.familyPedigree.unavailableCarrierChoice',
+    defaultMessage:
+      '{who, select, carrierIsYou {You are recorded as having carried “{child}”, and only one person carries a pregnancy.} childIsYou {“{carrier}” is recorded as having carried you, and only one person carries a pregnancy.} other {“{carrier}” is recorded as having carried “{child}”, and only one person carries a pregnancy.}}',
+    description:
+      'Reason shown under the unavailable choices in the menu that connects a parent and child that would record the parent as having carried the pregnancy: someone else is already recorded as having carried the child. {carrier} and {child} are names, or how the people are related to the participant when unnamed.',
   },
   disconnectTool: {
     id: 'interview.familyPedigree.disconnectTool',
@@ -647,6 +759,13 @@ export const messages = defineMessages({
     description:
       'Shown under the toolbar, and read out, when the participant selects two people to disconnect whose connection is the only link between the participant and other people in the family tree, so it cannot be removed. names is a list of those people’s names, or, when they have none, how they are related to the participant, each quoted and already joined in the participant’s language (for example “Aunt” and “Cousin”); count is how many people it names.',
   },
+  changeWouldCutOff: {
+    id: 'interview.familyPedigree.changeWouldCutOff',
+    defaultMessage:
+      '{count, plural, one {This would leave {names} outside your family tree, because it removes their only connection to you. Connect them to someone else in your family first.} other {This would leave {names} outside your family tree, because it removes their only connection to you. Connect them to someone else in your family first.}}',
+    description:
+      'Shown when the participant saves a change, or makes a connection, that would remove the only link between the participant and other people in the family tree: unticking a twin who is connected to the participant only as their twin, or recording a parent in the place of an unnamed stand-in parent through whom other people were connected. The change is not made. names is a list of those people’s names, or, when they have none, how they are related to the participant, each quoted and already joined in the participant’s language (for example “Aunt” and “Cousin”); count is how many people it names.',
+  },
   disconnectConfirmTitle: {
     id: 'interview.familyPedigree.disconnectConfirmTitle',
     defaultMessage:
@@ -674,12 +793,75 @@ export const messages = defineMessages({
     description:
       'Screen reader announcement after the connection between two people is removed. first and second are their names or how they are related to the participant.',
   },
-  sexRuledOutHint: {
-    id: 'interview.familyPedigree.sexRuledOutHint',
+  unavailableSameSexGeneticParent: {
+    id: 'interview.familyPedigree.unavailableSameSexGeneticParent',
     defaultMessage:
-      '{isYou, select, true {Some answers are unavailable because they do not fit how you are connected to your children. To choose one, change or remove that connection first.} other {Some answers are unavailable because they do not fit how this person is connected to their children. To choose one, change or remove that connection first.}}',
+      '{who, select, coParentIsYou {Some answers are unavailable because you are recorded as “{sex}” at birth and are a genetic parent of “{child}”, who cannot have two genetic parents of the same sex at birth. To choose one, first change your sex at birth or how you are connected to “{child}”.} childIsYou {Some answers are unavailable because “{coParent}”, your genetic parent, is recorded as “{sex}” at birth, and you cannot have two genetic parents of the same sex at birth. To choose one, first change the sex at birth of “{coParent}” or how they are connected to you.} other {Some answers are unavailable because “{coParent}”, a genetic parent of “{child}”, is recorded as “{sex}” at birth, and “{child}” cannot have two genetic parents of the same sex at birth. To choose one, first change the sex at birth of “{coParent}” or how they are connected to “{child}”.}}',
     description:
-      'Hint under the sex assigned at birth question when some answers contradict the person’s recorded children: for example, a child cannot have two biological parents who were both assigned male at birth.',
+      'Hint under a question whose answers are partly unavailable: someone already recorded as a genetic parent (biological parent or egg or sperm donor) of a child has the sex at birth that would make another genetic parent impossible. {coParent} is that parent, {child} the child, {sex} the answer to the sex at birth question, e.g. “Male”.',
+  },
+  unavailableGeneticParentsFull: {
+    id: 'interview.familyPedigree.unavailableGeneticParentsFull',
+    defaultMessage:
+      '{who, select, childIsYou {Some answers are unavailable because you already have two genetic parents recorded, “{first}” and “{second}”. To choose one, first change how one of them is connected to you.} includesYou {Some answers are unavailable because “{child}” already has two genetic parents recorded, you and “{second}”. To choose one, first change how one of you is connected to “{child}”.} other {Some answers are unavailable because “{child}” already has two genetic parents recorded, “{first}” and “{second}”. To choose one, first change how one of them is connected to “{child}”.}}',
+    description:
+      'Hint under a question whose answers are partly unavailable: the child already has two genetic parents (biological parents or egg or sperm donors), so nobody else can be one. {first} and {second} are those parents.',
+  },
+  unavailableCarrierRecorded: {
+    id: 'interview.familyPedigree.unavailableCarrierRecorded',
+    defaultMessage:
+      '{who, select, carrierIsYou {Some answers are unavailable because you are recorded as having carried “{child}”, and only one person carries a pregnancy. To choose one, first change how you are connected to “{child}”.} childIsYou {Some answers are unavailable because “{carrier}” is recorded as having carried you, and only one person carries a pregnancy. To choose one, first change how “{carrier}” is connected to you.} other {Some answers are unavailable because “{carrier}” is recorded as having carried “{child}”, and only one person carries a pregnancy. To choose one, first change how “{carrier}” is connected to “{child}”.}}',
+    description:
+      'Hint under a question whose answers are partly unavailable: someone is already recorded as having carried the child’s pregnancy (a surrogate, or a parent of another kind who did), so nobody else can have.',
+  },
+  unavailableIdenticalTwinNew: {
+    id: 'interview.familyPedigree.unavailableIdenticalTwinNew',
+    defaultMessage:
+      '{isYou, select, true {Some answers are unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of yours. To choose one, choose all of your biological parents and donors above.} other {Some answers are unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of “{name}”’s. To choose one, choose all of their biological parents and donors above.}}',
+    description:
+      'Hint under the question asking whether a new sibling is a twin, when they cannot be an identical twin: the parents chosen for them above do not include all of the biological parents and egg or sperm donors of the person they are added to (name).',
+  },
+  unavailableIdenticalTwin: {
+    id: 'interview.familyPedigree.unavailableIdenticalTwin',
+    defaultMessage:
+      '{who, select, personIsYou {Some answers are unavailable because identical twins have the same biological parents and donors, and you and “{twin}” do not. To choose one, first record the same biological parents and donors for both of you.} twinIsYou {Some answers are unavailable because identical twins have the same biological parents and donors, and “{name}” and you do not. To choose one, first record the same biological parents and donors for both of you.} other {Some answers are unavailable because identical twins have the same biological parents and donors, and “{name}” and “{twin}” do not. To choose one, first record the same biological parents and donors for both of them.}}',
+    description:
+      'Hint under the question asking whether two twins are identical, when they cannot be: the biological parents and egg or sperm donors recorded for them differ. name is the person the panel describes, twin is the sibling.',
+  },
+  unavailableCannotCarry: {
+    id: 'interview.familyPedigree.unavailableCannotCarry',
+    defaultMessage:
+      '{who, select, you {Some answers are unavailable because you are recorded as “{sex}” at birth, so you cannot have carried a pregnancy. To choose one, first change your sex at birth.} this {Some answers are unavailable because this person is recorded as “{sex}” at birth, so they cannot have carried a pregnancy. To choose one, first change their sex at birth.} other {Some answers are unavailable because “{name}” is recorded as “{sex}” at birth, so they cannot have carried a pregnancy. To choose one, first change their sex at birth.}}',
+    description:
+      'Hint under a question whose answers are partly unavailable: the person is recorded as male at birth, so cannot be recorded as having carried a pregnancy. “this” is the person the panel describes; {name} is anyone else.',
+  },
+  unavailableCarried: {
+    id: 'interview.familyPedigree.unavailableCarried',
+    defaultMessage:
+      '{who, select, personIsYou {Some answers are unavailable because you are recorded as having carried “{child}”, which nobody recorded as “{sex}” at birth can have. To choose one, first change how you are connected to “{child}”.} childIsYou {Some answers are unavailable because this person is recorded as having carried you, which nobody recorded as “{sex}” at birth can have. To choose one, first change how they are connected to you.} other {Some answers are unavailable because this person is recorded as having carried “{child}”, which nobody recorded as “{sex}” at birth can have. To choose one, first change how they are connected to “{child}”.}}',
+    description:
+      'Hint under the sex at birth question when an answer is unavailable because the person is recorded as having carried a child’s pregnancy. {sex} is the unavailable answer, e.g. “Male”.',
+  },
+  unavailableBothSameSex: {
+    id: 'interview.familyPedigree.unavailableBothSameSex',
+    defaultMessage:
+      '{firstIsYou, select, true {Some answers are unavailable because you and “{second}” are both recorded as “{sex}” at birth, so you cannot both be the child’s genetic parents. To choose one, first change one of your sexes at birth.} other {Some answers are unavailable because “{first}” and “{second}” are both recorded as “{sex}” at birth, so they cannot both be the child’s genetic parents. To choose one, first change the sex at birth of one of them.}}',
+    description:
+      'Hint under the question of which of two parents is a new child’s biological parent, when “both” is unavailable because the two are recorded with the same sex at birth.',
+  },
+  unavailableAlreadyConnected: {
+    id: 'interview.familyPedigree.unavailableAlreadyConnected',
+    defaultMessage:
+      '{firstIsYou, select, true {You and “{second}” are already connected. Two people can be connected only once; to connect them another way, first disconnect them.} other {“{first}” and “{second}” are already connected. Two people can be connected only once; to connect them another way, first disconnect them.}}',
+    description:
+      'Reason shown under an unavailable choice in the menu that connects two people: they already have a connection.',
+  },
+  unavailableAncestor: {
+    id: 'interview.familyPedigree.unavailableAncestor',
+    defaultMessage:
+      '{who, select, parentIsYou {You cannot be a parent of “{child}”, who is already one of your ancestors.} childIsYou {“{parent}” cannot be your parent, because you are already one of their ancestors.} other {“{parent}” cannot be a parent of “{child}”, who is already one of their ancestors.}}',
+    description:
+      'Reason shown under an unavailable choice in the menu that connects two people: the would-be child is already the would-be parent’s parent, grandparent or an earlier ancestor.',
   },
   biologicalParentLabel: {
     id: 'interview.familyPedigree.biologicalParentLabel',
@@ -756,13 +938,6 @@ export const messages = defineMessages({
     description:
       'Option: the new sibling shares only the parent who provided the sperm (a half-sibling). Gendered or gamete wording depends on the study.',
   },
-  sharedParentUnshown: {
-    id: 'interview.familyPedigree.sharedParentUnshown',
-    defaultMessage:
-      '{isYou, select, true {Your other parent, not shown yet} other {The other parent of “{name}”, not shown yet}}',
-    description:
-      'Option when choosing which parents a new sibling shares, for someone with one parent recorded: their second parent, who is added unnamed for both of them. Also an option when asked who carried the new sibling’s pregnancy.',
-  },
   passphraseNeededNotice: {
     id: 'interview.familyPedigree.passphraseNeededNotice',
     defaultMessage:
@@ -776,5 +951,12 @@ export const messages = defineMessages({
       'Enter your passphrase to add or change people in your family.',
     description:
       'Notice shown under the family tree when the study protects some of the answers about each family member (but not their names) with a passphrase that has not been entered yet. Until it is, the family cannot be changed.',
+  },
+  reproductiveRoleDescription: {
+    id: 'interview.familyPedigree.reproductiveRoleDescription',
+    defaultMessage:
+      '{role, select, donor {egg or sperm donor} traditionalSurrogate {egg donor who carried the pregnancy} other {surrogate}}',
+    description:
+      'Read out with a family member’s symbol in the family tree, for each part they played in someone else’s conception or birth (the tree draws no mark for these). "donor" is someone who donated an egg or sperm; "traditionalSurrogate" is an egg donor who also carried the pregnancy; "other" is a surrogate who carried the pregnancy without a genetic tie to the child. When someone has more than one role, the phrases are joined into a list, so write each as it would appear inside a sentence (lower case in English).',
   },
 });
