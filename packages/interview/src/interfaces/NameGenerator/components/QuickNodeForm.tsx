@@ -12,6 +12,7 @@ import {
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Form from '@codaco/fresco-ui/form/Form';
+import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type {
   FormSubmissionResult,
@@ -23,7 +24,6 @@ import type { EntityAttributesProperty, NcNode } from '@codaco/shared-consts';
 import { formValuesToAttributePatch } from '../../../forms/formValuesToAttributePatch';
 import { useValidationNetwork } from '../../../forms/useValidationNetwork';
 import { useStageSelector } from '../../../hooks/useStageSelector';
-import { runtimeMessages } from '../../../i18n/runtimeMessages';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
@@ -171,7 +171,7 @@ const QuickNodeForm = ({
       if (!patchResult.success) {
         return {
           success: false,
-          formErrors: [createMessageError(runtimeMessages.submissionFailed)],
+          formErrors: [createMessageError(formMessages.submitFailed)],
         };
       }
 

@@ -96,6 +96,6 @@ describe('resolveRosterNodeLabel', () => {
       sequentialNumber: 3,
     });
 
-    expect(result).toBe('Unnamed Person 3');
+    expect(result).toBe('Person 3');
   });
 });

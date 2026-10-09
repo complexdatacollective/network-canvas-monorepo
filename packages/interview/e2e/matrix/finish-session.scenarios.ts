@@ -219,11 +219,6 @@ export const finishSessionScenarios: InterfaceScenarios = {
         await expect(
           dialog.getByText('Are you sure you want to finish the interview?'),
         ).toBeVisible();
-        await expect(
-          dialog.getByText(
-            'Finish this interview only when you are satisfied with your responses.',
-          ),
-        ).toBeVisible();
 
         const primary = dialog.getByTestId('dialog-primary');
         const cancel = dialog.getByTestId('dialog-cancel');

@@ -24,25 +24,26 @@ function renderWithToastProvider(ui: ReactNode) {
 }
 
 describe('StageErrorBoundary', () => {
-  it('shows a generic message when a stage crashes while online', () => {
+  it('shows the same description when a stage crashes while online', () => {
     online = true;
     renderWithToastProvider(
       <StageErrorBoundary>
         <Boom />
       </StageErrorBoundary>,
     );
-    expect(screen.getByText('A problem occurred!')).toBeTruthy();
-    expect(screen.queryByTestId('offline-error-message')).toBeNull();
+    expect(screen.getByText(/this task could not be displayed/i)).toBeTruthy();
+    expect(screen.getByText(/check your connection/i)).toBeTruthy();
   });
 
-  it('shows an offline-aware message when a stage crashes while offline', () => {
+  it('shows the same description when a stage crashes while offline', () => {
     online = false;
     renderWithToastProvider(
       <StageErrorBoundary>
         <Boom />
       </StageErrorBoundary>,
     );
-    expect(screen.getByTestId('offline-error-message')).toBeTruthy();
+    expect(screen.getByText(/this task could not be displayed/i)).toBeTruthy();
+    expect(screen.getByText(/check your connection/i)).toBeTruthy();
     expect(screen.queryByText('A problem occurred!')).toBeNull();
   });
 
@@ -71,7 +72,7 @@ describe('StageErrorBoundary', () => {
       </StageErrorBoundary>,
     );
 
-    expect(screen.getByText('A problem occurred!')).toBeTruthy();
+    expect(screen.getByText(/this task could not be displayed/i)).toBeTruthy();
 
     const copyButton = screen.getByRole('button', {
       name: /copy debug info/i,

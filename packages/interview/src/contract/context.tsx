@@ -9,9 +9,6 @@ import {
   useRef,
 } from 'react';
 
-import { AppMessage } from '@codaco/app-i18n/react';
-
-import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import type {
   AssetRequestHandler,
   FinishHandler,
@@ -73,9 +70,7 @@ export function ContractProvider({
         isE2E: flags?.isE2E ?? false,
         isDevelopment: flags?.isDevelopment ?? false,
       },
-      finishConfirmationDescription: finishConfirmationDescription ?? (
-        <AppMessage message={messages.finishConfirmationDescription} />
-      ),
+      finishConfirmationDescription,
     }),
     [
       stableOnFinish,

@@ -3,12 +3,14 @@
 import { useId } from 'react';
 import { useSelector } from 'react-redux';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import type { DialogProps } from '@codaco/fresco-ui/dialogs/Dialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import PasswordField from '@codaco/fresco-ui/form/fields/PasswordField';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
+import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import ResetFormWhenClosed from '@codaco/fresco-ui/form/ResetFormWhenClosed';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
@@ -69,7 +71,7 @@ const PassphraseDialog = ({
     if (typeof passphrase !== 'string') {
       return {
         success: false,
-        formErrors: [createMessageError(messages.submissionFailed)],
+        formErrors: [createMessageError(formMessages.submitFailed)],
       };
     }
 
@@ -91,25 +93,19 @@ const PassphraseDialog = ({
   return (
     <Overlay
       show={show}
-      title={intl.formatMessage(
-        choosing ? messages.choosePassphrase : messages.enterPassphrase,
-      )}
+      title={intl.formatMessage(messages.passphrase)}
       onClose={onClose}
       dismissible={!checking}
       finalFocus={finalFocus}
       footer={
         <SubmitButton form={formId}>
-          <AppMessage message={messages.submitPassphrase} />
+          <AppMessage message={commonMessages.continue} />
         </SubmitButton>
       }
     >
       <div className="flex flex-col">
         <p>
-          <AppMessage
-            message={
-              choosing ? messages.choosePassphraseHelp : messages.passphraseHelp
-            }
-          />
+          <AppMessage message={messages.choosePassphraseHelp} />
         </p>
         <FormWithoutProvider
           id={formId}
@@ -122,7 +118,6 @@ const PassphraseDialog = ({
             component={PasswordField}
             name="passphrase"
             label={intl.formatMessage(messages.passphrase)}
-            placeholder={intl.formatMessage(messages.passphrasePlaceholder)}
             required
             autoFocus
             suppressPasswordManager

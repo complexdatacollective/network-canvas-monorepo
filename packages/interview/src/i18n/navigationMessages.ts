@@ -31,11 +31,6 @@ export const navigationMessages = defineMessages({
     defaultMessage: 'Exit this review?',
     description: 'Confirmation title before leaving an interview review.',
   },
-  exitInterviewTitle: {
-    id: 'interview.navigation.exitInterviewTitle',
-    defaultMessage: 'Exit this interview?',
-    description: 'Confirmation title before leaving an unfinished interview.',
-  },
   exitReviewDescription: {
     id: 'interview.navigation.exitReviewDescription',
     defaultMessage: 'Changes made during this review will not be saved.',

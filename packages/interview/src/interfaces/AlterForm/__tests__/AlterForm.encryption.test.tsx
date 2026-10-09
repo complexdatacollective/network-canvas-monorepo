@@ -513,7 +513,7 @@ describe('AlterForm comparing an answer with a protected one', () => {
 
     expect(
       await screen.findByText(
-        'This answer is checked against answers protected by your passphrase. Enter your passphrase, then try again.',
+        'Your answers have not been saved. Enter your passphrase, then try again.',
       ),
     ).toBeInTheDocument();
     expect(

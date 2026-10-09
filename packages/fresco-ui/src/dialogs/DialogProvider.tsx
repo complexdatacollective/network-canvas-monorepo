@@ -64,11 +64,6 @@ const messages = defineMessages({
     defaultMessage: 'Are you sure?',
     description: 'Default title of a confirmation dialog.',
   },
-  cannotBeUndone: {
-    id: 'frescoUi.dialogProvider.cannotBeUndone',
-    defaultMessage: 'This action cannot be undone.',
-    description: 'Default description of a confirmation dialog.',
-  },
   submit: {
     id: 'frescoUi.dialogProvider.submit',
     defaultMessage: 'Submit',
@@ -725,9 +720,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
         id: dialogId,
         type: 'choice',
         title: options.title ?? <AppMessage message={messages.areYouSure} />,
-        description: options.description ?? (
-          <AppMessage message={messages.cannotBeUndone} />
-        ),
+        description: options.description,
         intent: options.intent ?? 'destructive',
         size: options.size,
         finalFocus: options.finalFocus,

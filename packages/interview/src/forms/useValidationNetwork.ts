@@ -161,7 +161,7 @@ export function useValidationNetwork(
         resolveNetwork: () =>
           Promise.reject(
             new Error(
-              createMessageError(runtimeMessages.protectedAnswersNotChecked),
+              createMessageError(runtimeMessages.protectedAnswersNotSaved),
             ),
           ),
       };

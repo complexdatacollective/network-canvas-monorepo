@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import PasswordField from '@codaco/fresco-ui/form/fields/PasswordField';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
+import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import FormStoreProvider, {
   FormStoreContext,
@@ -121,7 +122,7 @@ function AnonymisationInner(props: AnonymisationProps) {
       if (typeof candidate !== 'string') {
         return {
           success: false,
-          formErrors: [createMessageError(runtimeMessages.submissionFailed)],
+          formErrors: [createMessageError(formMessages.submitFailed)],
         };
       }
 
@@ -244,16 +245,13 @@ function AnonymisationInner(props: AnonymisationProps) {
                       {!choosing && (
                         <Paragraph>
                           <AppMessage
-                            message={runtimeMessages.enterChosenPassphrase}
+                            message={runtimeMessages.choosePassphraseHelp}
                           />
                         </Paragraph>
                       )}
                       <Field
                         component={PasswordField}
                         name="passphrase"
-                        placeholder={intl.formatMessage(
-                          runtimeMessages.passphrasePlaceholder,
-                        )}
                         label={intl.formatMessage(runtimeMessages.passphrase)}
                         required
                         autoFocus

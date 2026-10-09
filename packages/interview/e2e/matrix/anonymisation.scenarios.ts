@@ -523,9 +523,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
         // A passphrase was chosen in this interview, so the prompter asks for
         // it rather than for a new one: one field, no confirmation.
         await anon.openPrompter();
-        await expect(
-          anon.prompterDialog('Enter your passphrase'),
-        ).toBeVisible();
+        await expect(anon.prompterDialog()).toBeVisible();
         await expect(anon.confirmField()).toHaveCount(0);
 
         // encryptedVariable.wrongPassphrase.rejected: a passphrase that does
@@ -543,9 +541,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
           'aria-invalid',
           'true',
         );
-        await expect(
-          anon.prompterDialog('Enter your passphrase'),
-        ).toBeVisible();
+        await expect(anon.prompterDialog()).toBeVisible();
         // The open dialog hides the rest of the page from the accessibility
         // tree, so the list behind it is looked up hidden.
         await expect(
@@ -555,9 +551,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
 
         // The original passphrase is accepted, and unlocks the answer.
         await anon.submitPrompterPassphrase('first-phrase');
-        await expect(anon.prompterDialog('Enter your passphrase')).toHaveCount(
-          0,
-        );
+        await expect(anon.prompterDialog()).toHaveCount(0);
         await expect(page.getByRole('option', { name: 'Alice' })).toBeVisible();
         await expect(anon.prompterButton()).toHaveCount(0);
         await expect.poll(() => stage.quickAdd.isDisabled()).toBe(false);
@@ -630,7 +624,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
         // encryptedVariable.missingPassphrase.horizontalPrompter: the prompter
         // is in the bottom bar, wholly on screen and inside it.
         const prompter = navigation.getByRole('button', {
-          name: 'Enter your passphrase',
+          name: 'Passphrase',
           exact: true,
         });
         await expect(prompter).toContainText('🔑');
@@ -653,14 +647,10 @@ export const anonymisationScenarios: InterfaceScenarios = {
         // A passphrase was chosen in this interview, so the prompter asks for
         // it once, and entering it unlocks the answer.
         await anon.openPrompter();
-        await expect(
-          anon.prompterDialog('Enter your passphrase'),
-        ).toBeVisible();
+        await expect(anon.prompterDialog()).toBeVisible();
         await expect(anon.confirmField()).toHaveCount(0);
         await anon.submitPrompterPassphrase('first-phrase');
-        await expect(anon.prompterDialog('Enter your passphrase')).toHaveCount(
-          0,
-        );
+        await expect(anon.prompterDialog()).toHaveCount(0);
         await expect(page.getByRole('option', { name: 'Alice' })).toBeVisible();
         await expect(anon.prompterButton()).toHaveCount(0);
         await expect.poll(() => stage.quickAdd.isDisabled()).toBe(false);

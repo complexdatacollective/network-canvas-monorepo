@@ -74,7 +74,7 @@ describe('registered form failure language', () => {
       expect(await submitRegisteredForm(store)).toBe(false);
     });
     expect(
-      screen.getByText('Se produjo un error al enviar el formulario.'),
+      screen.getByText('Se ha producido un error al enviar el formulario.'),
     ).toBeVisible();
     const errors = store.getState().errors;
     view.rerender(

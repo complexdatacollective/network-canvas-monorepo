@@ -91,6 +91,10 @@
     "defaultMessage": "Added item at position {position, number} of {count, number}.",
     "description": "Screen-reader announcement after a new list item is added."
   },
+  "frescoUi.arrayField.cannotBeUndone": {
+    "defaultMessage": "This action cannot be undone.",
+    "description": "Body of the confirmation raised before one row of a list is deleted, for a list that has not named its rows."
+  },
   "frescoUi.arrayField.confirmDeleteAction": {
     "defaultMessage": "Delete {itemLabel}",
     "description": "Confirm button of the confirmation raised before one row of a list is deleted, for a list that has named its rows. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
@@ -374,10 +378,6 @@
   "frescoUi.dialogProvider.areYouSure": {
     "defaultMessage": "Are you sure?",
     "description": "Default title of a confirmation dialog."
-  },
-  "frescoUi.dialogProvider.cannotBeUndone": {
-    "defaultMessage": "This action cannot be undone.",
-    "description": "Default description of a confirmation dialog."
   },
   "frescoUi.dialogProvider.continueEditing": {
     "defaultMessage": "Continue editing",

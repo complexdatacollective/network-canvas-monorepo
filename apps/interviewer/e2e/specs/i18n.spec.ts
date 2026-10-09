@@ -293,7 +293,7 @@ test.describe('the language chooser stage', () => {
     const interview = page.locator('main[data-theme-interview]');
     await expect(interview).toHaveAttribute('lang', 'en-US');
     await expect(
-      page.getByRole('heading', { name: 'Choose a language', exact: true }),
+      page.getByRole('listbox', { name: 'Choose a language', exact: true }),
     ).toBeVisible();
     await expect(page.getByRole('option')).toHaveCount(2);
     const spanish = page.getByRole('option', { name: 'español', exact: true });
