@@ -351,7 +351,10 @@ export const MinNodesValidation: Story = {
       ).toBeInTheDocument();
     });
 
-    await expect(screen.getByText('3')).toBeInTheDocument();
+    // The notice is the stage's plain text, so the count sits inside it.
+    await expect(screen.getByText(/must create at least/i)).toHaveTextContent(
+      /\b3\b/,
+    );
   },
 };
 
