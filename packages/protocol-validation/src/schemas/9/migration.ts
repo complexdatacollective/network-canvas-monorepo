@@ -251,6 +251,27 @@ const addFieldCaptions = (
 };
 
 /**
+ * A schema 8 introduction panel whose title was empty or only spaces (schema
+ * 7's migration filled only an empty one) is titled as that migration titled
+ * an empty one: with the stage's label, or "Introduction" when the label is
+ * blank too. Schema 9 requires a title a participant can read; the panel's
+ * text may still be blank.
+ */
+const titleBlankIntroductionPanels = (protocol: unknown) => {
+  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
+  for (const stage of protocol.stages) {
+    if (!isRecord(stage) || !isRecord(stage.introductionPanel)) continue;
+    const panel = stage.introductionPanel;
+    if (typeof panel.title === 'string' && isBlankText(panel.title)) {
+      panel.title =
+        typeof stage.label === 'string' && !isBlankText(stage.label)
+          ? stage.label
+          : 'Introduction';
+    }
+  }
+};
+
+/**
  * A schema 8 Network Composer field with no caption, or an empty or blank one,
  * was captioned with its attribute's name, so the field keeps that name as its
  * caption, which schema 9 requires. The caption is markdown, so the name is
@@ -469,6 +490,7 @@ const migrationV8toV9 = createMigration({
   notes: `- Attribute names can now use letters from any language, as well as spaces and punctuation. Existing attribute names are not changed.
 - Text that participants see is now recorded as English, because older protocols do not record which language they use. After upgrading, confirm the protocol's default language: if your protocol is written in another language, change it on the Languages page in Architect.
 - A form field whose question was empty or contained only spaces now uses the name of its attribute as the question, because every question must contain some text.
+- An introduction panel whose title was empty or contained only spaces now uses the name of its stage as its title, or "Introduction" if the stage has no name, because every title must contain some text.
 - Encrypted attributes are no longer experimental: the Anonymisation interface is always available, and an attribute marked as encrypted is always encrypted. If this protocol marked attributes as encrypted without turning on the experimental "Encrypted Attributes" feature, those attributes are no longer marked, so they keep being collected without encryption.
 - If an Anonymisation stage required a minimum passphrase length longer than its maximum, no participant could choose a passphrase, so both lengths are removed and the default minimum length applies.
 - Skip logic and filters can no longer compare the answers to an encrypted attribute. Rules are checked without the participant's passphrase, so under schema 8 a rule like this only ever compared the encrypted text, never the answer. These rules are removed. Rules that only check whether an encrypted attribute is answered still work, so they are kept. Skip logic left with no rules is removed, so its stage now always appears: a stage that was shown only when a removed rule matched may never have appeared under schema 8. A filter left with no rules is removed, so it no longer limits what its stage or panel shows. Where other rules remain, they may now match differently: if all rules had to match, they now match at least as often as before; if any one rule could match, at most as often. Check the stages that used the removed rules. Rules in a panel that lists people from an external data file are kept, because that data is not encrypted.
@@ -489,6 +511,9 @@ const migrationV8toV9 = createMigration({
     if (!encryptionWasOn(experiments)) removeEncryptedMarks(migrated.codebook);
     removeContradictoryPassphraseRules(migrated);
     removeEncryptedAttributeComparisons(migrated);
+    // Before the Family Pedigree conversion, which makes a pedigree's
+    // introduction panel a stage of its own.
+    titleBlankIntroductionPanels(migrated);
     // Before the codebook labels and the localization pass, so the attribute
     // and stage the conversion adds are labelled and localized with the rest.
     migrateFamilyPedigreeStages(migrated);

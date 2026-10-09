@@ -74,6 +74,7 @@
   "protocolValidation.migrationNotes.schema8.validationHints": "為表單欄位新增選用的「showValidationHints」屬性，可自動顯示根據驗證規則產生的提示。",
   "protocolValidation.migrationNotes.schema9.attributeNames": "屬性名稱現在可以使用任何語言的文字，也可以包含空格與標點符號。既有的屬性名稱不會變更。",
   "protocolValidation.migrationNotes.schema9.blankFieldQuestions": "若表單欄位的問題為空白或只含空格，現在會改以其屬性的名稱作為問題，因為每個問題都必須包含文字。",
+  "protocolValidation.migrationNotes.schema9.blankIntroductionTitles": "若介紹面板的標題為空白或只含空格，現在會改以其階段的名稱作為標題；若階段沒有名稱，則使用 \"Introduction\"，因為每個標題都必須包含文字。",
   "protocolValidation.migrationNotes.schema9.contradictoryPassphraseRules": "若某個匿名化階段要求的通關密語長度下限大於其長度上限，參與者便無法選擇任何通關密語，因此這兩個長度都會移除，並改用預設的長度下限。",
   "protocolValidation.migrationNotes.schema9.defaultLanguage": "參與者看到的文字現在記錄為英文，因為舊版協定不會記錄其所用的語言。升級後，請確認協定的預設語言：如果您的協定是以其他語言撰寫，請在 Architect 的「語言」頁面中變更。",
   "protocolValidation.migrationNotes.schema9.encryptedAttributeRules": "略過邏輯與篩選條件不能再比較加密屬性的答案。判斷規則是否符合時無法使用參與者的通關密語，因此在架構 8 中，這類規則實際比較的只是加密後的文字，而不是答案本身。這類規則會被移除。只檢查加密屬性是否已作答的規則仍然有效，因此會保留。不再含有任何規則的略過邏輯會被移除，其階段現在一律會顯示：原本只在已移除規則符合時才顯示的階段，在架構 8 中可能從未顯示過。不再含有任何規則的篩選條件也會被移除，它不再限制其階段或面板顯示的內容。若同一個略過邏輯或篩選條件中仍有其他規則，該略過邏輯或篩選條件整體是否符合的結果現在可能有所不同：若設定為「必須符合所有規則」，現在整體符合的情況只會增加或維持不變；若設定為「符合任一規則即可」，現在整體符合的情況只會減少或維持不變。請重新檢視曾含有已移除規則的階段。若面板列出的是外部資料檔案中的人員，面板中的規則會保留，因為這些資料並未加密。",

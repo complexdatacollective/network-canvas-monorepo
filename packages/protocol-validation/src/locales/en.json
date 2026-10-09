@@ -299,6 +299,10 @@
     "defaultMessage": "A form field whose question was empty or contained only spaces now uses the name of its attribute as the question, because every question must contain some text.",
     "description": "One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. A form field is one question in a form; its attribute is the piece of information the question collects."
   },
+  "protocolValidation.migrationNotes.schema9.blankIntroductionTitles": {
+    "defaultMessage": "An introduction panel whose title was empty or contained only spaces now uses the name of its stage as its title, or \"Introduction\" if the stage has no name, because every title must contain some text.",
+    "description": "One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. An introduction panel is the screen shown before a stage begins. \"Introduction\" is the literal English title written into the protocol; keep it in English and in double quotes."
+  },
   "protocolValidation.migrationNotes.schema9.contradictoryPassphraseRules": {
     "defaultMessage": "If an Anonymisation stage required a minimum passphrase length longer than its maximum, no participant could choose a passphrase, so both lengths are removed and the default minimum length applies.",
     "description": "One complete Markdown bullet in schema 9 migration approval guidance: contradictoryPassphraseRules. Anonymisation is the name of the interface (stage type) that asks a participant to choose a passphrase protecting some of their answers; the lengths are the shortest and longest passphrase the researcher allowed. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."

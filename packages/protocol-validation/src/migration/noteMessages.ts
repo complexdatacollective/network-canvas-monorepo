@@ -373,6 +373,13 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Languages" must match the name of the Architect page where languages are managed.',
   },
+  schema9BlankIntroductionTitles: {
+    id: 'protocolValidation.migrationNotes.schema9.blankIntroductionTitles',
+    defaultMessage:
+      'An introduction panel whose title was empty or contained only spaces now uses the name of its stage as its title, or "Introduction" if the stage has no name, because every title must contain some text.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. An introduction panel is the screen shown before a stage begins. "Introduction" is the literal English title written into the protocol; keep it in English and in double quotes.',
+  },
   schema9BlankFieldQuestions: {
     id: 'protocolValidation.migrationNotes.schema9.blankFieldQuestions',
     defaultMessage:
@@ -566,6 +573,7 @@ const migrationNoteSets = {
       migrationNoteMessages.schema9AttributeNames,
       migrationNoteMessages.schema9DefaultLanguage,
       migrationNoteMessages.schema9BlankFieldQuestions,
+      migrationNoteMessages.schema9BlankIntroductionTitles,
       migrationNoteMessages.schema9EncryptedAttributes,
       migrationNoteMessages.schema9ContradictoryPassphraseRules,
       migrationNoteMessages.schema9EncryptedAttributeRules,
