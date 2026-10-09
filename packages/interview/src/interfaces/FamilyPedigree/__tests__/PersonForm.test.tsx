@@ -848,6 +848,11 @@ describe('a second carrier', () => {
     expect(question).toHaveAccessibleDescription(
       /“mum” is recorded as having carried you/,
     );
+    // Only "Yes" would record a second carrier: "No" stays, and is the
+    // answer.
+    const no = within(question).getByRole('radio', { name: 'No' });
+    expect(no).toBeEnabled();
+    expect(no).toBeChecked();
   });
 
   it('shows a new parent’s carrying question unavailable, naming who carried them', async () => {
@@ -864,10 +869,117 @@ describe('a second carrier', () => {
     const question = await screen.findByRole('radiogroup', {
       name: /^Did this parent carry the pregnancy\?/,
     });
-    expect(within(question).getByRole('radio', { name: 'Yes' })).toBeDisabled();
+    const yes = within(question).getByRole('radio', { name: 'Yes' });
+    expect(yes).toBeDisabled();
     expect(question).toHaveAccessibleDescription(
       /“mum” is recorded as having carried you/,
     );
+    expect(yes).toHaveAccessibleDescription(
+      /^“Yes” is unavailable because “mum” is recorded as having carried you/,
+    );
+    const no = within(question).getByRole('radio', { name: 'No' });
+    expect(no).toBeEnabled();
+    expect(no).toBeChecked();
+  });
+});
+
+// Rule: each unavailable answer gets its own clear reason, said once,
+// naming the answers it disables, from the point of view of the panel's own
+// person.
+describe('reasons an answer is unavailable', () => {
+  it('says once that an answer is unavailable for the two children the participant carried', () => {
+    renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['female'] }),
+        person('ava', { name: 'Ava' }),
+        person('ben', { name: 'Ben' }),
+      ],
+      edges: [
+        link('ego', 'ava', 'biological', { carrier: true }),
+        link('ego', 'ben', 'biological', { carrier: true }),
+      ],
+    });
+    const sex = screen.getByRole('radiogroup', {
+      name: /^Sex assigned at birth/,
+    });
+    expect(sex).toHaveAccessibleDescription(
+      /“Male” is unavailable because you are recorded as having carried “ava” and “ben”, and nobody recorded as “Male” at birth can carry a pregnancy\./,
+    );
+    const hint = sex.getAttribute('aria-describedby') ?? '';
+    const text = hint
+      .split(' ')
+      .map((id) => document.getElementById(id)?.textContent ?? '')
+      .join(' ');
+    expect(text.match(/is unavailable/g)).toHaveLength(1);
+    expect(
+      within(sex).getByRole('radio', { name: 'Male' }),
+    ).toHaveAccessibleDescription(/^“Male” is unavailable because/);
+  });
+
+  it('explains a sex at birth ruled out on a parent’s own panel from their point of view', () => {
+    renderPersonForm('robert', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['female'] }),
+        person('linda', { name: 'Linda', sex: ['female'] }),
+        person('robert', { name: 'Robert', sex: ['male'] }),
+        person('sam', { name: 'Sam', sex: ['male'] }),
+      ],
+      edges: [
+        link('linda', 'ego', 'biological', { carrier: true }),
+        link('robert', 'ego', 'biological'),
+        link('linda', 'sam', 'biological', { carrier: true }),
+        link('robert', 'sam', 'biological'),
+      ],
+    });
+    const sex = screen.getByRole('radiogroup', {
+      name: /^Sex assigned at birth/,
+    });
+    expect(sex).toHaveAccessibleDescription(
+      /“Female” is unavailable because this person and “linda” are both your genetic parents, and “linda” is recorded as “Female” at birth\./,
+    );
+    expect(sex).toHaveAccessibleDescription(
+      /“Female” is unavailable because this person and “linda” are both genetic parents of “sam”/,
+    );
+    expect(sex).not.toHaveAccessibleDescription(/your genetic parent, is/);
+  });
+
+  it('ties each unavailable kind of parent to its own reason', async () => {
+    const { user } = renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['female'] }),
+        person('claire', { name: 'Claire', sex: ['female'] }),
+        person('robin', { name: 'Robin', sex: ['male'] }),
+      ],
+      edges: [
+        link('claire', 'ego', 'biological', { carrier: true }),
+        link('robin', 'ego', 'biological'),
+      ],
+      adding: 'parent',
+    });
+    await user.click(screen.getByRole('radio', { name: 'Female' }));
+    const kind = screen.getByRole('radiogroup', {
+      name: /^What kind of parent are they\?/,
+    });
+    await waitFor(() =>
+      expect(
+        within(kind).getByRole('radio', { name: 'Biological parent' }),
+      ).toBeDisabled(),
+    );
+    for (const name of ['Biological parent', 'Egg or sperm donor']) {
+      expect(
+        within(kind).getByRole('radio', { name }),
+      ).toHaveAccessibleDescription(
+        /^“Biological parent” and “Egg or sperm donor” are unavailable because you already have two genetic parents recorded, “claire” and “robin”\./,
+      );
+    }
+    expect(
+      within(kind).getByRole('radio', { name: 'Surrogate' }),
+    ).toHaveAccessibleDescription(
+      /^“Surrogate” is unavailable because “claire” is recorded as having carried you/,
+    );
+    expect(
+      within(kind).getByRole('radio', { name: 'Adoptive parent' }),
+    ).not.toHaveAttribute('aria-describedby');
   });
 });
 
