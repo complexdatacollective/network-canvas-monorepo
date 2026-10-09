@@ -23,6 +23,7 @@ import type {
 } from '@codaco/fresco-ui/collection/sorting/types';
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import { type DndStore, useDndStore } from '@codaco/fresco-ui/dnd/dnd';
+import Icon from '@codaco/fresco-ui/Icon';
 import Node from '@codaco/fresco-ui/Node';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -74,14 +75,13 @@ import DropOverlay from './DropOverlay';
 import { convertNamesToUUIDs, type NameGeneratorRosterProps } from './helpers';
 import useItems, { type UseItemElement } from './useItems';
 
-const ErrorMessage = (_props: { error: Error }) => (
-  <div className="flex flex-1 flex-col items-center justify-center">
-    <Heading level="h2">
+const ErrorMessage = ({ text }: { text: string }) => (
+  <div className="flex flex-1 flex-col items-center justify-center gap-2">
+    <Icon name="warning" />
+    <Heading level="h2" className="sr-only">
       <AppMessage message={interfaceMessages.errorHeading} />
     </Heading>
-    <Paragraph>
-      <AppMessage message={interfaceMessages.externalDataUnavailable} />
-    </Paragraph>
+    <Paragraph>{text}</Paragraph>
   </div>
 );
 
@@ -106,6 +106,18 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
   const intl = useAppIntl();
   const { stage } = props;
   const { text: panelTitle } = useLocalizedString(stage.panelTitle);
+  const { text: externalDataError } = useLocalizedString(
+    stage.externalDataError,
+  );
+  const { text: allAddedNotice } = useLocalizedString(stage.allAddedNotice);
+  const resolveString = useResolveLocalizedString();
+  // The search wording is set only while the roster has a search.
+  const searchLabel = stage.searchLabel
+    ? resolveString(stage.searchLabel).text
+    : undefined;
+  const searchNoMatch = stage.searchNoMatch
+    ? resolveString(stage.searchNoMatch).text
+    : undefined;
 
   const { isLastPrompt } = usePrompts();
 
@@ -255,6 +267,8 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     stageNodeCount,
     minNodes,
     maxNodes,
+    minNodesNotice: stage.minNodesNotice,
+    maxNodesNotice: stage.maxNodesNotice,
     isLastPrompt,
     writesEncrypted: useEncryption,
   });
@@ -361,26 +375,11 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     // Reachable only once the roster has actually arrived: the panel below
     // renders the collection at all only in the `ready` state, so an empty
     // `items` here means the list really is empty rather than not yet read.
-    if (items.length === 0) {
-      return (
-        <>
-          <AppMessage message={interfaceMessages.emptyRoster} />
-        </>
-      );
+    if (items.length === 0 || filteredItems.length === 0) {
+      return <>{allAddedNotice}</>;
     }
-    if (filteredItems.length === 0) {
-      return (
-        <>
-          <AppMessage message={interfaceMessages.rosterAlreadyAdded} />
-        </>
-      );
-    }
-    return (
-      <>
-        <AppMessage message={runtimeMessages.noSearchMatch} />
-      </>
-    );
-  }, [items.length, filteredItems.length]);
+    return <>{searchNoMatch}</>;
+  }, [items.length, filteredItems.length, allAddedNotice, searchNoMatch]);
 
   // --- DnD setup for source panel ---
   const sourceCollectionId = `source-nodes-${useId()}`;
@@ -467,7 +466,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
               <Loading message={intl.formatMessage(commonMessages.loading)} />
             </div>
           ) : itemsStatus.state === 'error' ? (
-            <ErrorMessage error={itemsStatus.error} />
+            <ErrorMessage text={externalDataError} />
           ) : (
             <div className="relative flex min-h-0 flex-1 flex-col [&_.card]:cursor-grab">
               <Collection
@@ -496,11 +495,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
                     <div>
                       {searchOptions && (
                         <div className="flex flex-wrap gap-2 p-2">
-                          <CollectionFilterInput
-                            placeholder={intl.formatMessage(
-                              interfaceMessages.searchTerm,
-                            )}
-                          />
+                          <CollectionFilterInput placeholder={searchLabel} />
                         </div>
                       )}
                       {sortableProperties && sortableProperties.length > 0 && (

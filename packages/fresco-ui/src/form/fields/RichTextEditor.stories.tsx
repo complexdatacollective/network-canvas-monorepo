@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { JSONContent } from '@tiptap/react';
 import { action } from 'storybook/actions';
-import { expect, waitFor, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { z } from 'zod/mini';
 
 import Field from '../Field/Field';
@@ -499,5 +499,70 @@ export const SingleLinePrompt: Story = {
     const { editable } = await measureEditor(canvasElement);
 
     await expect(editable).toBeGreaterThanOrEqual(120);
+  },
+};
+
+const tokenLine: JSONContent = {
+  type: 'doc',
+  content: [
+    {
+      type: 'paragraph',
+      content: [
+        { type: 'text', text: 'Add parents for ' },
+        { type: 'token', attrs: { id: 'name' } },
+      ],
+    },
+  ],
+};
+
+/**
+ * `tokens` lets the text hold placeholders that are filled in later, such as
+ * a person's name. Each shows as a chip, the caret steps over it, Backspace
+ * removes it whole, and the toolbar has a button to insert each one.
+ *
+ * ```tsx
+ * <RichTextEditorField
+ *   compact
+ *   toolbarOptions={{ bold: false, italic: false, history: false }}
+ *   tokens={[{ id: 'name', label: 'Name' }]}
+ *   value={value}
+ *   onChange={setValue}
+ * />
+ * ```
+ *
+ * The value holds a token as `{ type: 'token', attrs: { id } }` in the
+ * paragraph's content.
+ */
+export const WithTokens: Story = {
+  render: (args) => (
+    <div className="flex w-[480px] flex-col gap-4">
+      <div data-testid="editor">
+        <RichTextEditorField
+          {...args}
+          compact
+          toolbarOptions={{ bold: false, italic: false, history: false }}
+          tokens={[
+            { id: 'name', label: 'Name' },
+            { id: '#', label: 'Number' },
+          ]}
+          changeMode="input"
+          value={tokenLine}
+          onChange={action('onChange')}
+        />
+      </div>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole('textbox');
+    await expect(editor.querySelectorAll('[data-token]')).toHaveLength(1);
+
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Insert “Number”' }),
+    );
+
+    await waitFor(() =>
+      expect(editor.querySelector('[data-token="#"]')).not.toBeNull(),
+    );
   },
 };

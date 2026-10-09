@@ -14,6 +14,12 @@ import { asEntityAttributeReference } from '@codaco/protocol-validation';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import PresetSwitcher from '../PresetSwitcher';
 
+const HEADINGS = {
+  attributes: 'Attributes',
+  links: 'Links',
+  groups: undefined,
+};
+
 const layoutVariable = asEntityAttributeReference('layout');
 
 const PRESETS: React.ComponentProps<typeof PresetSwitcher>['presets'] = [
@@ -26,6 +32,7 @@ function renderSwitcher(activePreset: number) {
   return render(
     <PresetSwitcher
       presets={PRESETS}
+      headings={HEADINGS}
       activePreset={activePreset}
       highlightIndex={0}
       showHighlighting={false}
@@ -88,6 +95,7 @@ describe('PresetSwitcher keeps keyboard focus at the ends of the list', () => {
     rerender(
       <PresetSwitcher
         presets={PRESETS}
+        headings={HEADINGS}
         activePreset={PRESETS.length - 1}
         highlightIndex={0}
         showHighlighting={false}

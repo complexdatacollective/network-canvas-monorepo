@@ -12,7 +12,6 @@ import type {
   Item,
   LocalizedString,
   Panel,
-  PedigreeCompletenessScope,
 } from '@codaco/protocol-validation';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
@@ -27,8 +26,13 @@ import {
 } from '../SummaryText';
 import Anonymisation from './Anonymisation';
 import Behaviours from './Behaviours';
+import CanvasWording from './CanvasWording';
 import DataSource from './DataSource';
-import FamilyPedigree from './FamilyPedigree';
+import FamilyPedigree, {
+  type FamilyPedigreeCompleteness,
+  type FamilyPedigreeEdgeConfiguration,
+  type FamilyPedigreeNodeConfiguration,
+} from './FamilyPedigree';
 import FamilyTreeVariables from './FamilyTreeVariables';
 import Filter from './Filter';
 import FinishScreen from './FinishScreen';
@@ -48,6 +52,7 @@ import RosterPanel from './RosterPanel';
 import ScaffoldingStep from './ScaffoldingStep';
 import SectionFrame from './SectionFrame';
 import SkipLogic from './SkipLogic';
+import StageWording from './StageWording';
 const messages = defineMessages({
   networkFiltering: {
     id: 'architect.protocolSummary.stage.stage.networkFiltering',
@@ -162,6 +167,14 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
   // FinishSession
   const content = configuration.content as LocalizedString | undefined;
   const outcome = configuration.outcome as FinishOutcome | undefined;
+  const finishing = {
+    finishLabel: configuration.finishLabel as LocalizedString | undefined,
+    finishConfirmation: configuration.finishConfirmation as
+      | LocalizedString
+      | undefined,
+    finishedNotice: configuration.finishedNotice as LocalizedString | undefined,
+    finishFailed: configuration.finishFailed as LocalizedString | undefined,
+  };
   // Legacy FamilyTreeCensus fields (kept for backward compatibility with old protocols)
   const edgeType = configuration.edgeType as
     | {
@@ -203,33 +216,22 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
       ? ((configuration.prompt as LocalizedString | undefined) ?? null)
       : null;
   const nodeConfiguration = configuration.nodeConfiguration as
-    | {
-        nameAttribute?: string;
-        genderIdentity?: {
-          attribute?: string;
-          terms?: { value: string | number; words: string }[];
-        };
-        sexAssignedAtBirthAttribute?: string;
-        egoAttribute?: string;
-        relationshipToParticipantAttribute?: string;
-      }
+    | FamilyPedigreeNodeConfiguration
     | undefined;
   const edgeConfiguration = configuration.edgeConfiguration as
-    | {
-        type?: string;
-        kindAttribute?: string;
-        gestationalCarrierAttribute?: string;
-        currentPartnerAttribute?: string;
-      }
+    | FamilyPedigreeEdgeConfiguration
     | undefined;
   const completeness = configuration.completeness as
-    | {
-        scope?: PedigreeCompletenessScope;
-        enforcement?: 'required' | 'recommended';
-        relativesNotRecordedAttribute?: string;
-      }
+    | FamilyPedigreeCompleteness
     | undefined;
   const framing = configuration.framing as FramingSetting | undefined;
+  // The words the participant sees, which the summary prints beside the rest.
+  const pedigreeWording =
+    type === 'FamilyPedigree'
+      ? ((configuration.wording as
+          | Record<string, LocalizedString | undefined>
+          | undefined) ?? null)
+      : null;
   const nominationPrompts = configuration.nominationPrompts as
     | FamilyPedigreeNominationPrompt[]
     | undefined;
@@ -393,6 +395,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
       <Prompts prompts={prompts ?? null} />
       <Form form={form ?? null} />
       <Behaviours behaviours={behaviours ?? null} />
+      <StageWording type={type} configuration={configuration} />
       <Presets presets={presets ?? null} />
       <PageHeading heading={title ?? null} />
       <Items items={items ?? null} />
@@ -410,6 +413,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
         edgeConfiguration={edgeConfiguration ?? null}
         completeness={completeness ?? null}
         framing={framing ?? null}
+        wording={pedigreeWording}
         nominationPrompts={nominationPrompts ?? null}
       />
       {narrativePedigree && <NarrativePedigree {...narrativePedigree} />}
@@ -422,8 +426,13 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
         />
       )}
       {type === 'FinishSession' && (
-        <FinishScreen content={content ?? null} outcome={outcome ?? null} />
+        <FinishScreen
+          content={content ?? null}
+          outcome={outcome ?? null}
+          finishing={finishing}
+        />
       )}
+      <CanvasWording type={type} configuration={configuration} />
       <InterviewScript interviewScript={interviewScript ?? null} />
     </div>
   );

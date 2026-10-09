@@ -167,14 +167,11 @@ function VideoPlayer({
       {state === 'loading' && !isE2E && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
           <Spinner size="lg" />
-          <Paragraph intent="smallText">
-            <AppMessage message={messages.loadingVideo} />
-          </Paragraph>
         </div>
       )}
       {state === 'error' && (
         <Paragraph intent="smallText" className="text-center">
-          <AppMessage message={messages.videoUnavailable} />
+          <AppMessage message={messages.itemUnavailable} />
         </Paragraph>
       )}
       <video

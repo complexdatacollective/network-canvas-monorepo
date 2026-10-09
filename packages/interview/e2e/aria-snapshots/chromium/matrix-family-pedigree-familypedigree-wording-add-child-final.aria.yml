@@ -1,0 +1,73 @@
+- main:
+  - status:
+    - heading "Add the members of your family." [level=2]
+  - region "Interview notifications"
+  - dialog "Add your child":
+    - heading "Add your child" [level=2]
+    - button "Close"
+    - text: Name (optional) A first name or nickname is fine. If you don’t know it, leave this blank and they will be shown by how they are related to you.
+    - textbox "Name (optional)"
+    - text: Gender identity Required
+    - radiogroup "Gender identity":
+      - radio "Woman"
+      - text: Woman
+      - radio "Man"
+      - text: Man
+      - radio "Non-binary"
+      - text: Non-binary
+      - radio "A different identity"
+      - text: A different identity
+      - radio "Don’t know"
+      - text: Don’t know
+      - radio "Prefer not to say"
+      - text: Prefer not to say
+    - text: Sex assigned at birth Required
+    - radiogroup "Sex assigned at birth":
+      - radio "Female"
+      - text: Female
+      - radio "Male"
+      - text: Male
+      - radio "Intersex"
+      - text: Intersex
+      - radio "Don’t know"
+      - text: Don’t know
+      - radio "Prefer not to say"
+      - text: Prefer not to say
+    - text: The other parent is - matrix check Required
+    - radiogroup "The other parent is - matrix check":
+      - radio "Pam" [checked]
+      - text: Pam
+      - radio "Not in the tree yet - matrix check"
+      - text: Not in the tree yet - matrix check
+      - radio "Nobody else - matrix check"
+      - text: Nobody else - matrix check
+    - text: Kind of child - matrix check Required
+    - radiogroup "Kind of child - matrix check":
+      - radio "Biological kind - matrix check" [checked]
+      - text: Biological kind - matrix check
+      - radio "Adopted kind - matrix check"
+      - text: Adopted kind - matrix check
+      - radio "Social kind - matrix check"
+      - text: Social kind - matrix check
+      - radio "Donor kind - matrix check"
+      - text: Donor kind - matrix check
+      - radio "Surrogacy kind - matrix check"
+      - text: Surrogacy kind - matrix check
+    - text: Which one is genetic - matrix check Required Genetic parents only - matrix check You and Pam both Female - matrix check
+    - radiogroup "Which one is genetic - matrix check":
+      - radio "You and Pam both - matrix check" [disabled]
+      - text: You and Pam both - matrix check
+      - radio "You"
+      - text: You
+      - radio "Pam"
+      - text: Pam
+    - text: Carrier of the pregnancy - matrix check
+    - radiogroup "Carrier of the pregnancy - matrix check":
+      - radio "You"
+      - text: You
+      - radio "Pam"
+      - text: Pam
+      - radio "Another or unknown carrier - matrix check"
+      - text: Another or unknown carrier - matrix check
+    - button "Cancel"
+    - button "Save"

@@ -25,7 +25,7 @@ The prompt you write appears above the canvas while the participant draws their 
 
 ### The canvas
 
-The participant can drag the canvas to pan it, and zoom with the mouse wheel, by pinching, with the + and − keys, or with the zoom buttons in the toolbar. A **Show the whole family** button fits the whole tree on screen. The arrow keys move between the people on the canvas.
+The participant can drag the canvas to pan it, and zoom with the mouse wheel, by pinching, with the + and − keys, or with the zoom buttons in the toolbar. An icon button fits the whole tree on screen. The arrow keys move between the people on the canvas.
 
 Each person is labelled inside their symbol. The participant is labelled "You", and anyone else is labelled with their name. A family member the participant has not named is labelled by how they are related to the participant, using the stage's [wording](#wording): "Maternal grandmother", "Sperm parent" or "Cousin’s son". A relative reached through both parents, such as a donor to both, is labelled without a side of the family. A step or social parent is labelled with the plain parent word ("Mother", "Father" or "Parent"), and is labelled a step-parent ("Stepmother") only when they are, or were, the partner of one of the child's biological or adoptive parents and did not carry the child; their child is labelled the same way ("Daughter" or "Stepdaughter"). Where several unnamed people would share a label, each is told apart by a relative, as in "Sister (partner of Tom)", or else numbered in the order they were added. Someone with no everyday kinship word is described through a single relative, the nearest on the way from the participant who is known by a name or a plain kinship word, as in "Isaac’s grandfather" or "Cousin’s grandson", rather than through a relative who is told apart or described in turn. These are the labels saved as their names when the participant leaves the stage (see [Name](#name)), so later stages show each person as the canvas did. A person who is recorded as adopted is drawn between brackets.
 
@@ -57,7 +57,7 @@ A person other than the participant can be removed from the panel with **Remove 
 
 ### Connecting people already on the canvas
 
-The toolbar has three tools. **Add and edit** is the default and does everything described above. With **Connect**, the participant selects one person and then another, and a menu asks how they are related: partners, former partners, or one as the parent of the other and, if so, which kind of parent. With **Disconnect**, they select two people who are connected and confirm; both people stay on the canvas and only the connection between them is removed. A connection that is the only link between the participant and someone cannot be removed, because that person would leave the family: the participant is told who, and can connect them another way first. A pair of people can have at most one connection.
+The toolbar has three tools, each named by a tooltip. **Add and edit** is the default and does everything described above. With **Connect**, the participant selects one person and then another, and a menu asks how they are related: partners, former partners, or one as the parent of the other and, if so, which kind of parent. With **Disconnect**, they select two people who are connected and confirm; both people stay on the canvas and only the connection between them is removed. A connection that is the only link between the participant and someone cannot be removed, because that person would leave the family: the participant is told who, and can connect them another way first. A pair of people can have at most one connection.
 
 ### Nomination prompts
 
@@ -88,6 +88,8 @@ Choose the attributes of the person type that the interface records about every 
 The interface labels a person by their name when they have one, and a person who has been named is never labelled with a kinship word. A typed name is shown exactly as it was typed, on the canvas, in panel titles, hints and announcements, and in what a screen reader reads out, and nothing is ever added to it: two relatives given the same name are both shown by that name. The participant is always labelled "You", and is not asked their own name.
 
 A participant may not know a relative's name, so they can always leave it blank. When they leave the stage, the interface saves a label as the name of everyone they left unnamed, including any unnamed parents it added, so that later stages can show who is who. The label is the person's kinship word in the participant's language and the stage's [wording](#wording), such as "Maternal grandmother". Labels are distinct from each other and from every typed name: where two people would share a word, each is told apart by a relative, as in "Sister (partner of Tom)", or else numbered, as in "Sister 2". If the participant comes back to the stage, those people are unnamed again: their labels follow the family as it changes, and are saved afresh when the participant leaves. A name given to one of them on a later stage, such as a form, is theirs and is kept. The participant is never given a label, and any name their own person already holds from elsewhere in the interview is left as it is.
+
+The side panel asks for the name with a question and a hint beneath it. Network Canvas supplies both: "Name (optional)", and a hint saying that a first name or nickname is fine and that a person left unnamed is shown by how they are related to the participant. Change them under **Name question** and **Name question guidance**. The hint can be removed; the question cannot.
 
 The name attribute's validation rules apply to the names the participant types, and you can set them in the **Validation** section under the name control. If the attribute is unique, a typed name cannot repeat another typed name of a person of the stage's type. If it is required, every person still ends up with a name, because the interface fills in anyone left unnamed, so a blank name is allowed and is not a missing detail. Saved labels are not checked against the other rules, such as a maximum length.
 
@@ -241,6 +243,12 @@ Choose **When the family is incomplete**:
 
 A checklist in the toolbar shows what is still needed and takes the participant to where each item is resolved. Whether or not you set a completeness requirement, a warning appears next to any person whose required details are missing.
 
+#### What the list says
+
+Under **What the list says** you can change the words participants read in the checklist: the item asking for a person's missing parents, the items asking for their brothers and sisters and for their children, the buttons that answer that they have none, the side panel's questions about them, the item for missing details, and the note shown under the checklist when completeness is only recommended. Network Canvas supplies all of them, and Architect fills them in when you switch completeness on.
+
+Most of these texts read differently when they are about the participant ("Add your biological parents") and when they are about someone else ("Add biological parents for “Tom”"), so each has a version for each. The item asking for parents also has a version for each number of missing parents that your language words differently, such as one parent and two. A version can show the person's name, or the number of parents missing, as a placeholder: click the placeholder's button above the text to insert it. When every version reads the same, Architect saves the text once.
+
 ### Nomination prompts
 
 Optionally ask questions about the whole family once it is drawn, such as "Who in your family has had heart disease?". Each prompt has:
@@ -252,6 +260,21 @@ Optionally ask questions about the whole family once it is drawn, such as "Who i
 Participants answer the prompts in the order you list them, after they have drawn their family.
 
 The attribute each prompt records is what a [Narrative Pedigree](/en/design-protocols/interface-documentation/narrative-pedigree) stage reads to draw who has a condition and to infer how it is inherited. Pair the two stages when you want to show how a condition runs through the family.
+
+### Participant wording
+
+The **Participant wording** section holds the words participants read on this stage, apart from the prompt, the name question and the checklist. It has three groups of settings, which you open one at a time, in the order participants meet them:
+
+- **Drawing the family** holds the tooltips of the three tools and the hints that appear while the participant connects or disconnects people, the note about people the interface adds for them to fill in later, the kinship words and labels for people who have no name, the note that lists missing details, and the words "You", "Save" and "Don't know".
+- **Connecting people** holds the questions and confirmations that appear when the participant connects, disconnects or removes people, and the messages that say why a change isn't available.
+- **Adding a family member** holds the side panel: its title, the question about each kind of relationship, the answers offered, and the messages that say why an answer isn't available.
+
+Network Canvas fills in starting wording for every setting, in every language it has wording for, and you can change and translate it like any other text (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)). There are up to 78 of them. Many are written once for each way a sentence can read, for example when it is about the participant and when it is about someone else, and take placeholders such as a person's name. A setting is in the section only while the part of the stage it belongs to is switched on:
+
+- the question that asks which words to use, and the tooltip of the control that changes the choice, only while the stage's [wording](#wording) is **Let the participant choose**,
+- the label of the gender identity question, only while the stage asks about gender identity.
+
+Architect adds these settings when you switch the part on, and removes them when you switch it off.
 
 ## Best Practices
 

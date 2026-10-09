@@ -7,9 +7,10 @@ import {
 } from '@reduxjs/toolkit';
 import { navigate } from 'wouter/use-browser-location';
 
-import type {
-  CurrentProtocol,
-  LocalizedString,
+import {
+  type CurrentProtocol,
+  type LocalizedString,
+  withInterfaceText,
 } from '@codaco/protocol-validation';
 import type { AppDispatch, RootState } from '~/ducks/store';
 import {
@@ -214,8 +215,21 @@ export const actionCreators = {
   clearActiveProtocol: activeProtocolSlice.actions.clearActiveProtocol,
 };
 
-// Export the reducer as default
-export default activeProtocolSlice.reducer;
+/**
+ * The slice's reducer, with the protocol holding the interview's shared words
+ * it shows after every change (see `withInterfaceText`): a protocol that comes
+ * to encrypt an attribute or show a form gains that text, and one that no
+ * longer does loses it.
+ */
+const activeProtocolReducer = (
+  state: ActiveProtocolState | undefined,
+  action: UnknownAction,
+): ActiveProtocolState => {
+  const next = activeProtocolSlice.reducer(state, action);
+  return next === null || next === state ? next : withInterfaceText(next);
+};
+
+export default activeProtocolReducer;
 
 const currentPath = () =>
   typeof window !== 'undefined' && window.location

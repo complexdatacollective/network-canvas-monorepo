@@ -22,6 +22,25 @@ const finishStage = {
   label: { en: 'Finish' },
   title: { en: 'All *done*' },
   content: { en: 'Thank you for **taking part**.' },
+  // The screen's own words are the protocol's, so they follow the protocol's
+  // language: here, the wording Network Canvas supplies in each of them.
+  finishLabel: { 'en': 'Finish', 'en-GB': 'Finish', 'es': 'Finalizar' },
+  finishConfirmation: {
+    'en': 'Are you sure you want to finish the interview?',
+    'en-GB': 'Are you sure you want to finish the interview?',
+    'es': '¿Seguro que quieres finalizar la entrevista?',
+  },
+  finishedNotice: {
+    'en': 'This interview is finished.',
+    'en-GB': 'This interview is finished.',
+    'es': 'Esta entrevista ha finalizado.',
+  },
+  finishFailed: {
+    'en': 'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
+    'en-GB':
+      'The interview could not be finished. Please try again. If the problem continues, contact the study organiser.',
+    'es': 'No se pudo finalizar la entrevista. Inténtalo de nuevo. Si el problema continúa, ponte en contacto con la persona que organiza el estudio.',
+  },
   outcome: 'ineligible',
 } as const;
 
@@ -34,7 +53,9 @@ const payload = {
     lastUpdated: '2026-09-06T00:00:00.000Z',
     localePreference: null,
     locale: null,
-    localeOptions: [getLocaleMetadata('en')],
+    localeOptions: ['en', 'en-GB', 'es'].map((locale) =>
+      getLocaleMetadata(locale),
+    ),
     network: { ego: { _uid: 'ego', attributes: {} }, nodes: [], edges: [] },
   },
   protocol: {
@@ -43,7 +64,7 @@ const payload = {
     importedAt: '2026-09-06T00:00:00.000Z',
     name: 'Literal protocol name',
     schemaVersion: 9,
-    localization: { defaultLocale: 'en', locales: ['en'] },
+    localization: { defaultLocale: 'en', locales: ['en', 'en-GB', 'es'] },
     codebook: { ego: { variables: {} }, node: {}, edge: {} },
     assets: [],
     stages: [finishStage],
@@ -83,7 +104,7 @@ function makeView(
         <ProtocolLocalizationProvider
           localization={payload.protocol.localization}
           localeOptions={payload.session.localeOptions}
-          requestedLocales={['en']}
+          requestedLocales={[locale]}
           localePreference={null}
           recordedLocale={null}
           onLocalePreferenceChange={() => undefined}

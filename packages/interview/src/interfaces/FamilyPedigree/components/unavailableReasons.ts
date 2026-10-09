@@ -1,16 +1,16 @@
-import type { IntlShape } from '@codaco/app-i18n/messages';
 import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
 import type { PedigreeSexAssignedAtBirth } from '@codaco/protocol-validation';
 
-import { messages } from '../messages';
 import type { Family, GeneticParentBlock, SexRuledOut } from '../model';
+import type { PedigreeWords } from '../pedigreeWords';
 
 /**
- * What the sentences explaining an unavailable answer need: the people's
- * names as shown, and the codebook's labels for sex at birth, as text.
+ * What the sentences explaining an unavailable answer need: the stage's
+ * words for them, the people's names as shown, and the codebook's labels for
+ * sex at birth, as text.
  */
 export type ReasonContext = {
-  intl: IntlShape;
+  words: PedigreeWords;
   family: Family;
   displayName: (personId: string) => string;
   sexLabels: Readonly<Record<PedigreeSexAssignedAtBirth, string>>;
@@ -30,10 +30,10 @@ export function geneticParentReason(
   context: ReasonContext,
   block: GeneticParentBlock,
 ): string {
-  const { intl, displayName } = context;
+  const { words, displayName } = context;
   const child = displayName(block.childId);
   if (block.rule === 'sameSexGeneticParent') {
-    return intl.formatMessage(messages.unavailableSameSexGeneticParent, {
+    return words.text(words.wording.unavailableSameSexGeneticParent, {
       who: isYou(context, block.coParentId)
         ? 'coParentIsYou'
         : isYou(context, block.childId)
@@ -50,7 +50,7 @@ export function geneticParentReason(
       ? block.parentIds
       : [you, ...block.parentIds.filter((id) => id !== you)]
   ).map(displayName);
-  return intl.formatMessage(messages.unavailableGeneticParentsFull, {
+  return words.text(words.wording.unavailableGeneticParentsFull, {
     who: isYou(context, block.childId)
       ? 'childIsYou'
       : you !== undefined
@@ -68,7 +68,7 @@ export function carrierRecordedReason(
   childId: string,
   carrierId: string,
 ): string {
-  return context.intl.formatMessage(messages.unavailableCarrierRecorded, {
+  return context.words.text(context.words.wording.unavailableCarrierRecorded, {
     who: isYou(context, carrierId)
       ? 'carrierIsYou'
       : isYou(context, childId)
@@ -86,7 +86,7 @@ export function cannotCarryReason(
   personId: string | undefined,
   sex: string,
 ): string {
-  return context.intl.formatMessage(messages.unavailableCannotCarry, {
+  return context.words.text(context.words.wording.unavailableCannotCarry, {
     who:
       personId === undefined
         ? 'this'
@@ -112,7 +112,7 @@ export function sexRuledOutReason(
       sex: reason.sex === 'female' ? 'female' : 'male',
     });
   }
-  return context.intl.formatMessage(messages.unavailableCarried, {
+  return context.words.text(context.words.wording.unavailableCarried, {
     who: isYou(context, personId)
       ? 'personIsYou'
       : isYou(context, reason.childId)
@@ -133,7 +133,7 @@ export function bothSameSexReason(
   const [first, second] = isYou(context, secondId)
     ? [secondId, firstId]
     : [firstId, secondId];
-  return context.intl.formatMessage(messages.unavailableBothSameSex, {
+  return context.words.text(context.words.wording.unavailableBothSameSex, {
     firstIsYou: isYou(context, first) ? 'true' : 'false',
     first: context.displayName(first),
     second: context.displayName(second),

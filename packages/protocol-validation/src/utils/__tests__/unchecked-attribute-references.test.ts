@@ -71,6 +71,10 @@ const rosterStage = (matchProperty: string) =>
     {
       id: 's1',
       type: 'NameGeneratorRoster',
+      externalDataError: localized('External data could not be loaded.'),
+      allAddedNotice: localized('There is nothing left to add from this list.'),
+      searchLabel: localized('Search'),
+      searchNoMatch: localized('Nothing matched your search term.'),
       label: localized('Roster'),
       subject,
       dataSource: 'roster_data',

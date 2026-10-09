@@ -13,7 +13,7 @@
     - text: ""
   - listbox "Container for the value 'Very close'":
     - option "Alice"
-  - button "Collapse drawer" [expanded]: 2 unplaced
+  - button "2 unplaced Collapse drawer" [expanded]
   - button "Bob"
   - button "Carol"
   - navigation:

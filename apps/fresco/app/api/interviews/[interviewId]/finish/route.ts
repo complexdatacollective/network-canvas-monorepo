@@ -88,6 +88,7 @@ export async function POST(
             stages: true,
             codebook: true,
             localization: true,
+            interfaceText: true,
             experiments: true,
           },
         },

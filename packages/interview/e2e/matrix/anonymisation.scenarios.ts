@@ -155,7 +155,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
         await anon.fillPassphrase('my secret phrase');
         await anon.submit();
 
-        await expect(anon.successAlert('chosen')).toBeVisible();
+        await expect(anon.successAlert()).toBeVisible();
         await expect.poll(() => interview.nextButtonHasPulse()).toBe(true);
 
         await interview.next();
@@ -242,7 +242,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
         // stage keeps the final aria snapshot off the animated background.
         await anon.fillPassphrase('matching-passphrase');
         await anon.submit();
-        await expect(anon.successAlert('chosen')).toBeVisible();
+        await expect(anon.successAlert()).toBeVisible();
         expect(await interview.nextButtonHasPulse()).toBe(true);
         await interview.next();
         await expect(
@@ -316,7 +316,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
         // of 4 is accepted, though it is shorter than the default of 8.
         await anon.fillPassphrase('abcd');
         await anon.submit();
-        await expect(anon.successAlert('chosen')).toBeVisible();
+        await expect(anon.successAlert()).toBeVisible();
 
         await interview.next();
         await expect(
@@ -364,7 +364,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
 
         await anon.fillPassphrase('remember-me-1234');
         await anon.submit();
-        await expect(anon.successAlert('chosen')).toBeVisible();
+        await expect(anon.successAlert()).toBeVisible();
 
         await interview.next(); // Anonymisation -> Complete
         await expect(
@@ -372,10 +372,9 @@ export const anonymisationScenarios: InterfaceScenarios = {
         ).toBeVisible();
 
         // passphrase.persistOnRevisit: navigating back re-enters the stage in
-        // its success state (the key stays in force; the form is NOT re-shown),
-        // saying the passphrase was entered already rather than set just now.
+        // its success state (the key stays in force; the form is NOT re-shown).
         await page.getByTestId('previous-button').click();
-        await expect(anon.successAlert('earlier')).toBeVisible();
+        await expect(anon.successAlert()).toBeVisible();
         await expect(anon.passphraseField()).toHaveCount(0);
 
         // End on the background-free closing Information stage.
@@ -424,7 +423,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
 
         await anon.fillPassphrase('correct-horse-battery');
         await anon.submit();
-        await expect(anon.successAlert('chosen')).toBeVisible();
+        await expect(anon.successAlert()).toBeVisible();
         await interview.next(); // Anonymisation -> NameGeneratorQuickAdd
 
         await stage.quickAdd.addNode('Alice');
@@ -488,7 +487,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
         // pre-seeded node has no real secure attributes to decrypt).
         await anon.fillPassphrase('first-phrase');
         await anon.submit();
-        await expect(anon.successAlert('chosen')).toBeVisible();
+        await expect(anon.successAlert()).toBeVisible();
         await interview.next(); // -> NameGeneratorQuickAdd (step 2)
 
         await stage.quickAdd.addNode('Alice');
@@ -523,9 +522,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
         // A passphrase was chosen in this interview, so the prompter asks for
         // it rather than for a new one: one field, no confirmation.
         await anon.openPrompter();
-        await expect(
-          anon.prompterDialog('Enter your passphrase'),
-        ).toBeVisible();
+        await expect(anon.prompterDialog()).toBeVisible();
         await expect(anon.confirmField()).toHaveCount(0);
 
         // encryptedVariable.wrongPassphrase.rejected: a passphrase that does
@@ -543,9 +540,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
           'aria-invalid',
           'true',
         );
-        await expect(
-          anon.prompterDialog('Enter your passphrase'),
-        ).toBeVisible();
+        await expect(anon.prompterDialog()).toBeVisible();
         // The open dialog hides the rest of the page from the accessibility
         // tree, so the list behind it is looked up hidden.
         await expect(
@@ -555,9 +550,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
 
         // The original passphrase is accepted, and unlocks the answer.
         await anon.submitPrompterPassphrase('first-phrase');
-        await expect(anon.prompterDialog('Enter your passphrase')).toHaveCount(
-          0,
-        );
+        await expect(anon.prompterDialog()).toHaveCount(0);
         await expect(page.getByRole('option', { name: 'Alice' })).toBeVisible();
         await expect(anon.prompterButton()).toHaveCount(0);
         await expect.poll(() => stage.quickAdd.isDisabled()).toBe(false);
@@ -630,7 +623,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
         // encryptedVariable.missingPassphrase.horizontalPrompter: the prompter
         // is in the bottom bar, wholly on screen and inside it.
         const prompter = navigation.getByRole('button', {
-          name: 'Enter your passphrase',
+          name: 'Passphrase',
           exact: true,
         });
         await expect(prompter).toContainText('🔑');
@@ -653,14 +646,10 @@ export const anonymisationScenarios: InterfaceScenarios = {
         // A passphrase was chosen in this interview, so the prompter asks for
         // it once, and entering it unlocks the answer.
         await anon.openPrompter();
-        await expect(
-          anon.prompterDialog('Enter your passphrase'),
-        ).toBeVisible();
+        await expect(anon.prompterDialog()).toBeVisible();
         await expect(anon.confirmField()).toHaveCount(0);
         await anon.submitPrompterPassphrase('first-phrase');
-        await expect(anon.prompterDialog('Enter your passphrase')).toHaveCount(
-          0,
-        );
+        await expect(anon.prompterDialog()).toHaveCount(0);
         await expect(page.getByRole('option', { name: 'Alice' })).toBeVisible();
         await expect(anon.prompterButton()).toHaveCount(0);
         await expect.poll(() => stage.quickAdd.isDisabled()).toBe(false);
@@ -705,7 +694,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
         await expect(anon.chosenEarlierNotice()).toHaveCount(0);
         await anon.fillPassphrase('first-phrase');
         await anon.submit();
-        await expect(anon.successAlert('chosen')).toBeVisible();
+        await expect(anon.successAlert()).toBeVisible();
         const header = EncryptionHeaderSchema.parse(
           (await protocol.getNetworkState(interview.interviewId))?.encryption,
         );
@@ -774,10 +763,9 @@ export const anonymisationScenarios: InterfaceScenarios = {
           (await protocol.getNetworkState(interview.interviewId))?.encryption,
         ).toEqual(header);
 
-        // The key is in force: on a revisit the stage says the passphrase was
-        // entered already.
+        // The key is in force: on a revisit the stage shows its success state.
         await page.getByTestId('previous-button').click();
-        await expect(anon.successAlert('earlier')).toBeVisible();
+        await expect(anon.successAlert()).toBeVisible();
         await interview.next();
         await expect(
           page.getByRole('heading', { name: 'Complete' }),
@@ -865,7 +853,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
         await expect(anon.chosenEarlierNotice()).toHaveCount(0);
         await anon.fillPassphrase('fresh-phrase');
         await anon.submit();
-        await expect(anon.successAlert('chosen')).toBeVisible();
+        await expect(anon.successAlert()).toBeVisible();
         const header = EncryptionHeaderSchema.parse(
           (await protocol.getNetworkState(interview.interviewId))?.encryption,
         );
@@ -888,7 +876,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
         // was stored.
         expect(after?.nodes[0]).toEqual(storedAlice);
         await page.getByTestId('previous-button').click();
-        await expect(anon.successAlert('earlier')).toBeVisible();
+        await expect(anon.successAlert()).toBeVisible();
         await page.getByTestId('previous-button').click();
         await expect(
           page.getByRole('option', { name: 'Answer unavailable' }),

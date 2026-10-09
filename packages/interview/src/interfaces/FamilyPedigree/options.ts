@@ -1,13 +1,13 @@
-import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import type {
   Codebook,
+  FamilyPedigreeWording,
   LocalizedString,
   PedigreeParentKind,
   PedigreeSexAssignedAtBirth,
 } from '@codaco/protocol-validation';
 
-import { messages } from './messages';
 import type { MissingDetail, PedigreeConfig } from './model';
+import { configuredWord } from './pedigreeWords';
 
 /**
  * The participant-facing labels of the interface-owned value sets, by value:
@@ -76,19 +76,34 @@ export const ownedOptionLabels = (
   };
 };
 
-export const CHILD_KIND_LABELS: Record<PedigreeParentKind, MessageDescriptor> =
-  {
-    biological: messages.childKindBiological,
-    adoptive: messages.childKindAdoptive,
-    social: messages.childKindSocial,
-    donor: messages.childKindDonor,
-    surrogate: messages.childKindSurrogate,
-  };
-
-export const BUILT_IN_DETAIL_LABELS: Record<
-  Exclude<MissingDetail, { variable: string }>,
-  MessageDescriptor
-> = {
-  genderIdentity: messages.genderIdentityLabel,
-  sexAssignedAtBirth: messages.sexAssignedAtBirthLabel,
+/** The words of the option for each kind of child the stage asks about,
+ * by the kind of parent the person is to them. */
+export const childKindWording = (
+  wording: FamilyPedigreeWording,
+  kind: PedigreeParentKind,
+): LocalizedString => {
+  switch (kind) {
+    case 'biological':
+      return wording.childKindBiological;
+    case 'adoptive':
+      return wording.childKindAdoptive;
+    case 'social':
+      return wording.childKindSocial;
+    case 'donor':
+      return wording.childKindDonor;
+    case 'surrogate':
+      return wording.childKindSurrogate;
+  }
 };
+
+/**
+ * The question a built-in detail is missing: gender identity is asked only
+ * when the stage asks about it, so its words are held only then.
+ */
+export const builtInDetailWording = (
+  wording: FamilyPedigreeWording,
+  detail: Exclude<MissingDetail, { variable: string }>,
+): LocalizedString =>
+  detail === 'genderIdentity'
+    ? configuredWord(wording.genderIdentityLabel)
+    : wording.sexAssignedAtBirthLabel;

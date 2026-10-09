@@ -1,12 +1,11 @@
 'use client';
-import type { ReactNode, Ref } from 'react';
+import type { Ref } from 'react';
 
-import { AppMessage } from '@codaco/app-i18n/react';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { NcNode } from '@codaco/shared-consts';
 
+import { useContentFormat } from '../../../localization/useContentFormat';
 import { useNodeLabel } from '../../Anonymisation/useNodeLabel';
-import { interfaceMessages } from '../../messages';
 
 type BinSummaryProps = {
   nodes: NcNode[];
@@ -18,28 +17,23 @@ type BinSummaryProps = {
   ref?: Ref<HTMLParagraphElement>;
 };
 
-const renderSummaryName = (chunks: ReactNode[]) => (
-  <span className="line-clamp-2">{chunks}</span>
-);
-const renderSummaryCount = (chunks: ReactNode[]) => <span>{chunks}</span>;
-
 const BinSummary = ({ nodes, ref }: BinSummaryProps) => {
+  // Shown beside a participant's name, so in the protocol's digits.
+  const contentFormat = useContentFormat();
   const firstNode = nodes[0];
   const label = useNodeLabel(firstNode);
-  const otherCount = nodes.length - 1;
+  const otherCount = Math.max(0, nodes.length - 1);
 
   return (
     <Paragraph ref={ref} margin="none" className="catbin-summary-text">
-      <AppMessage
-        message={interfaceMessages.binSummary}
-        values={{
-          name: label ?? '',
-          otherCount: Math.max(0, otherCount),
-          // The separate spans keep a long authored name from hiding the count.
-          label: renderSummaryName,
-          count: renderSummaryCount,
-        }}
-      />
+      {/* The separate spans keep a long authored name from hiding the count. */}
+      <span className="line-clamp-2">{label ?? ''}</span>
+      {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- A space, so the name and the count read as two words. */}{' '}
+      {otherCount > 0 && (
+        <span className="rounded-full bg-current/15 px-1.5">
+          {contentFormat.formatSigned(otherCount)}
+        </span>
+      )}
     </Paragraph>
   );
 };

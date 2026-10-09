@@ -7,6 +7,7 @@ import {
   migrateProtocolWithSessions,
   type SessionMigrator,
   validateProtocol,
+  withInterfaceText,
 } from '@codaco/protocol-validation';
 import { Prisma } from '~/lib/db/generated/client';
 
@@ -111,6 +112,7 @@ type ProtocolRow = {
   stages: unknown;
   codebook: unknown;
   localization: unknown;
+  interfaceText: unknown;
   experiments: unknown;
   assets: ProtocolAssetRow[];
 };
@@ -130,6 +132,7 @@ function isConformant(row: ProtocolRow): boolean {
     stages: row.stages,
     codebook: row.codebook,
     localization: row.localization,
+    interfaceText: row.interfaceText ?? undefined,
     experiments: row.experiments ?? {},
     // The whole-protocol schema cross-references stage asset ids (roster,
     // geospatial) against the manifest, so it must be reconstructed here or
@@ -394,6 +397,7 @@ async function migrateOneProtocol(
       stages: migrated.stages as Prisma.InputJsonValue,
       codebook: migrated.codebook,
       localization: migrated.localization,
+      interfaceText: migrated.interfaceText ?? Prisma.JsonNull,
       experiments: migrated.experiments ?? Prisma.JsonNull,
       hash: newHash,
     },
@@ -475,11 +479,22 @@ async function normalizeNonConformantProtocol(
     assetManifest: buildAssetManifest(row.assets),
   };
 
-  const { protocol: migrated, migrateSession } = migrateProtocolWithSessions(
+  const { protocol: normalized, migrateSession } = migrateProtocolWithSessions(
     asSourceVersion,
     TARGET_SCHEMA_VERSION,
     { name: cleanName },
   );
+
+  // The interview's shared wording the row holds is kept. Normalizing starts
+  // from a version without it, so the migration supplies Network Canvas's;
+  // the researcher's entries take its place.
+  const storedText = CurrentProtocolSchema.shape.interfaceText.safeParse(
+    row.interfaceText ?? undefined,
+  );
+  const migrated =
+    storedText.success && storedText.data !== undefined
+      ? withInterfaceText({ ...normalized, interfaceText: storedText.data })
+      : normalized;
 
   // Held to what an import of the same protocol is held to, not only to the
   // schema: the schema lets a protocol still being written leave its finish
@@ -493,8 +508,8 @@ async function normalizeNonConformantProtocol(
     );
   }
 
-  // The hash is derived from stages + codebook only, so re-normalizing gives
-  // the same hash the import flow would now compute for this protocol.
+  // Hashed as an import hashes it, so re-normalizing gives the same hash the
+  // import flow would now compute for this protocol.
   const newHash = hashProtocol(migrated);
 
   await writeMigratedProtocol(
@@ -505,6 +520,7 @@ async function normalizeNonConformantProtocol(
       stages: migrated.stages as Prisma.InputJsonValue,
       codebook: migrated.codebook,
       localization: migrated.localization,
+      interfaceText: migrated.interfaceText ?? Prisma.JsonNull,
       experiments: migrated.experiments ?? Prisma.JsonNull,
       hash: newHash,
     },
@@ -570,6 +586,7 @@ export async function migrateProtocolsToCompatibleVersion(
       stages: true,
       codebook: true,
       localization: true,
+      interfaceText: true,
       experiments: true,
       assets: {
         select: { assetId: true, name: true, type: true, value: true },

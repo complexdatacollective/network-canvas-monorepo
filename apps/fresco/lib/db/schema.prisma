@@ -75,6 +75,10 @@ model Protocol {
   // languages carries, so rows stored before this column existed, and rows an
   // older server inserts during a rolling deploy, read as that.
   localization    Json        @default("{\"defaultLocale\":\"en\",\"locales\":[\"en\"]}")
+  // The interview's shared wording (`interfaceText`): its buttons, passphrase,
+  // form and answer-check messages, in the protocol's languages. NULL for a
+  // protocol that holds none, which shows the interview's own wording.
+  interfaceText   Json?
   assets          Asset[]
   interviews      Interview[]
   // The protocol's `experiments`. A schema 8 row's also tell the deploy-time

@@ -286,6 +286,7 @@ export async function createInterview(
         stages: true,
         codebook: true,
         localization: true,
+        interfaceText: true,
         experiments: true,
       },
     });

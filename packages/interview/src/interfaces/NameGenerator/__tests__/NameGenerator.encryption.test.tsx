@@ -84,6 +84,7 @@ const quickAddStages: Stages = [
   {
     id: 'quick-add',
     type: 'NameGeneratorQuickAdd',
+    quickAddHint: { en: 'Press Enter when you are finished.' },
     label: { en: 'Quick add' },
     subject: { entity: 'node', type: NODE_TYPE },
     quickAdd: asEntityAttributeReference('name'),
@@ -178,6 +179,9 @@ const twoPeopleStages: Stages = [
   {
     id: 'stage-1',
     type: 'NameGenerator',
+    minNodesNotice: {
+      en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+    },
     label: { en: 'Name generator' },
     subject: { entity: 'node', type: NODE_TYPE },
     behaviours: { minNodes: 2 },
@@ -210,6 +214,10 @@ const panelEncryptsStages: Stages = [
   {
     id: 'stage-1',
     type: 'NameGenerator',
+    minNodesNotice: {
+      en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+    },
+    externalDataError: { en: 'External data could not be loaded.' },
     label: { en: 'Name generator' },
     subject: { entity: 'node', type: NODE_TYPE },
     behaviours: { minNodes: 2 },
@@ -340,7 +348,7 @@ describe('NameGenerator asking for encrypted answers', () => {
       await screen.findByRole('textbox', { name: 'Name' }),
       'Bob',
     );
-    await user.click(screen.getByRole('button', { name: 'Finished' }));
+    await user.click(screen.getByRole('button', { name: 'Done' }));
 
     await waitFor(() =>
       expect(store.getState().session.network.nodes).toHaveLength(1),

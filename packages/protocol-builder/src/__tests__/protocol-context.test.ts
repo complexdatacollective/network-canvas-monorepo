@@ -232,6 +232,9 @@ describe('protocolContextFromSections', () => {
         fields: [{ variable: 'name', prompt: text('Name') }],
       },
       prompts: [{ id: 'p1', text: text('Who?') }],
+      // A panel reading a data file needs the words for a file that did not
+      // load, so the only thing this stage gets wrong is the rule.
+      externalDataError: text('The file could not be loaded.'),
       panels: [
         {
           id: 'panel-1',

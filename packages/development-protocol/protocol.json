@@ -141,6 +141,10 @@
     },
     {
       "id": "quick-add-ng-encryption",
+      "quickAddHint": {
+        "en-US": "Press Enter when you are finished.",
+        "es": "Pulsa Intro cuando hayas terminado."
+      },
       "label": {
         "en-US": "Quick Add NG with Encryption",
         "es": "GN de adición rápida con cifrado"
@@ -246,6 +250,10 @@
     },
     {
       "id": "namegen1",
+      "externalDataError": {
+        "en-US": "External data could not be loaded.",
+        "es": "No se pudieron cargar los datos externos."
+      },
       "interviewScript": "This is an example of interview script on a name generator.",
       "type": "NameGenerator",
       "label": {
@@ -367,6 +375,10 @@
     },
     {
       "id": "namegen1a",
+      "externalDataError": {
+        "en-US": "External data could not be loaded.",
+        "es": "No se pudieron cargar los datos externos."
+      },
       "type": "NameGenerator",
       "label": {
         "en-US": "NG CSV File",
@@ -427,6 +439,18 @@
     },
     {
       "id": "namegen2",
+      "minNodesNotice": {
+        "en-US": "{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}",
+        "es": "{count, plural, one {Debes crear al menos # elemento antes de continuar.} other {Debes crear al menos # elementos antes de continuar.}}"
+      },
+      "maxNodesNotice": {
+        "en-US": "You have completed this task. Click the next arrow to continue.",
+        "es": "Has completado esta tarea. Pulsa la flecha de avance para continuar."
+      },
+      "quickAddHint": {
+        "en-US": "Press Enter when you are finished.",
+        "es": "Pulsa Intro cuando hayas terminado."
+      },
       "type": "NameGeneratorQuickAdd",
       "label": {
         "en-US": "NG Quick add",
@@ -652,6 +676,22 @@
     },
     {
       "id": "namegenroster2a",
+      "minNodesNotice": {
+        "en-US": "{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}",
+        "es": "{count, plural, one {Debes crear al menos # elemento antes de continuar.} other {Debes crear al menos # elementos antes de continuar.}}"
+      },
+      "maxNodesNotice": {
+        "en-US": "You have completed this task. Click the next arrow to continue.",
+        "es": "Has completado esta tarea. Pulsa la flecha de avance para continuar."
+      },
+      "externalDataError": {
+        "en-US": "External data could not be loaded.",
+        "es": "No se pudieron cargar los datos externos."
+      },
+      "allAddedNotice": {
+        "en-US": "There is nothing left to add from this list.",
+        "es": "No queda nada que añadir de esta lista."
+      },
       "type": "NameGeneratorRoster",
       "label": {
         "en-US": "NG HIV Services",
@@ -682,6 +722,14 @@
     },
     {
       "id": "namegenroster2",
+      "externalDataError": {
+        "en-US": "External data could not be loaded.",
+        "es": "No se pudieron cargar los datos externos."
+      },
+      "allAddedNotice": {
+        "en-US": "There is nothing left to add from this list.",
+        "es": "No queda nada que añadir de esta lista."
+      },
       "type": "NameGeneratorRoster",
       "label": {
         "en-US": "NG Classmates",
@@ -848,6 +896,16 @@
     },
     {
       "id": "sociogram",
+      "tooltips": {
+        "pauseLayout": {
+          "en-US": "Pause automatic layout",
+          "es": "Pausar la disposición automática"
+        },
+        "resumeLayout": {
+          "en-US": "Resume automatic layout",
+          "es": "Reanudar la disposición automática"
+        }
+      },
       "type": "Sociogram",
       "label": {
         "en-US": "Sociogram",
@@ -986,6 +1044,22 @@
     },
     {
       "id": "namegenroster1",
+      "externalDataError": {
+        "en-US": "External data could not be loaded.",
+        "es": "No se pudieron cargar los datos externos."
+      },
+      "allAddedNotice": {
+        "en-US": "There is nothing left to add from this list.",
+        "es": "No queda nada que añadir de esta lista."
+      },
+      "searchLabel": {
+        "en-US": "Search",
+        "es": "Buscar"
+      },
+      "searchNoMatch": {
+        "en-US": "Nothing matched your search term.",
+        "es": "No hay resultados que coincidan con tu búsqueda."
+      },
       "type": "NameGeneratorRoster",
       "label": {
         "en-US": "NG Classmates",
@@ -1053,6 +1127,22 @@
     },
     {
       "id": "namegenroster3",
+      "externalDataError": {
+        "en-US": "External data could not be loaded.",
+        "es": "No se pudieron cargar los datos externos."
+      },
+      "allAddedNotice": {
+        "en-US": "There is nothing left to add from this list.",
+        "es": "No queda nada que añadir de esta lista."
+      },
+      "searchLabel": {
+        "en-US": "Search",
+        "es": "Buscar"
+      },
+      "searchNoMatch": {
+        "en-US": "Nothing matched your search term.",
+        "es": "No hay resultados que coincidan con tu búsqueda."
+      },
       "type": "NameGeneratorRoster",
       "label": {
         "en-US": "Roster Autocomplete HIV",
@@ -1362,6 +1452,40 @@
     },
     {
       "id": "narrative1",
+      "attributesHeading": {
+        "en-US": "Attributes",
+        "es": "Atributos"
+      },
+      "linksHeading": {
+        "en-US": "Links",
+        "es": "Conexiones"
+      },
+      "groupsHeading": {
+        "en-US": "Groups",
+        "es": "Grupos"
+      },
+      "tooltips": {
+        "enableDrawing": {
+          "en-US": "Enable drawing",
+          "es": "Activar el dibujo"
+        },
+        "disableDrawing": {
+          "en-US": "Disable drawing",
+          "es": "Desactivar el dibujo"
+        },
+        "freezeAnnotations": {
+          "en-US": "Freeze annotations",
+          "es": "Bloquear las anotaciones"
+        },
+        "unfreezeAnnotations": {
+          "en-US": "Unfreeze annotations",
+          "es": "Desbloquear las anotaciones"
+        },
+        "resetAnnotations": {
+          "en-US": "Reset annotations",
+          "es": "Restablecer las anotaciones"
+        }
+      },
       "type": "Narrative",
       "label": {
         "en-US": "Narrative",
@@ -1554,6 +1678,24 @@
     },
     {
       "id": "network-composer-dev",
+      "addNamePlaceholder": {
+        "en-US": "Type a name, then press Enter",
+        "es": "Escribe un nombre y pulsa Intro"
+      },
+      "overtakenEditNotice": {
+        "en-US": "Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost.",
+        "es": "Deshacer o rehacer cambió una respuesta mientras la editabas, así que tu cambio no se ha guardado. Para conservarlo, vuelve a cambiar esa respuesta. Si continúas, se perderá tu cambio."
+      },
+      "tooltips": {
+        "addPerson": {
+          "en-US": "Add node",
+          "es": "Añadir un elemento"
+        },
+        "automaticLayout": {
+          "en-US": "Automatic layout",
+          "es": "Disposición automática"
+        }
+      },
       "type": "NetworkComposer",
       "label": {
         "en-US": "Network Composer",
@@ -1571,6 +1713,18 @@
     },
     {
       "id": "geospatial-dev",
+      "offlineNotice": {
+        "en-US": "You are offline — the map will not load until you reconnect.",
+        "es": "No tienes conexión. El mapa no se cargará hasta que vuelvas a conectarte."
+      },
+      "mapUnavailable": {
+        "en-US": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.",
+        "es": "Esto puede ocurrir si tu navegador o dispositivo no admite las funciones que necesita el mapa (por ejemplo, WebGL). Prueba con otro navegador o dispositivo, o contacta con la persona que organiza el estudio. Es posible que puedas continuar la entrevista pulsando la flecha de avance."
+      },
+      "outsideAreasLabel": {
+        "en-US": "Outside Selectable Areas",
+        "es": "Fuera de las áreas seleccionables"
+      },
       "type": "Geospatial",
       "label": {
         "en-US": "Geospatial",
@@ -1602,6 +1756,304 @@
     },
     {
       "id": "family-pedigree-dev",
+      "wording": {
+        "alsoParentOfLabel": {
+          "en-US": "Are they also the parent of…",
+          "es": "¿También es progenitor de…?"
+        },
+        "biologicalParentBoth": {
+          "en-US": "{firstIsYou, select, true {Both you and “{second}”} other {Both “{first}” and “{second}”}}",
+          "es": "{firstIsYou, select, true {Tanto tú como «{second}»} other {Tanto «{first}» como «{second}»}}"
+        },
+        "biologicalParentHint": {
+          "en-US": "A parent who is not a biological parent is added as a step or social parent.",
+          "es": "Un progenitor que no sea biológico se añade como padrastro, madrastra o progenitor social."
+        },
+        "biologicalParentLabel": {
+          "en-US": "Who is the child’s biological parent?",
+          "es": "¿Quién es el progenitor biológico del hijo/a?"
+        },
+        "carriedSiblingsPregnancyLabel": {
+          "en-US": "{single, select, true {{isYou, select, true {Was this parent pregnant with you?} other {Was this parent pregnant with “{name}”?}}} other {Was this parent pregnant with each of the {count} people chosen above who have nobody recorded as having carried them?}}",
+          "es": "{single, select, true {{isYou, select, true {¿Fue este progenitor quien te gestó?} other {¿Fue este progenitor quien gestó a «{name}»?}}} other {¿Fue este progenitor quien gestó a cada una de las {count} personas elegidas arriba que aún no tienen a nadie registrado como gestante?}}"
+        },
+        "carrierLabel": {
+          "en-US": "Who carried the pregnancy?",
+          "es": "¿Quién llevó el embarazo?"
+        },
+        "carrierUnknown": {
+          "en-US": "Someone else, or I don’t know",
+          "es": "Otra persona, o no lo sé"
+        },
+        "childKindAdoptive": {
+          "en-US": "An adopted child",
+          "es": "Un hijo/a adoptivo/a"
+        },
+        "childKindBiological": {
+          "en-US": "A biological child",
+          "es": "Un hijo/a biológico/a"
+        },
+        "childKindSocial": {
+          "en-US": "A step-child or other child they raise",
+          "es": "Un hijastro/a u otro hijo/a que crían"
+        },
+        "childKindLabel": {
+          "en-US": "Is this child…",
+          "es": "Este hijo/a es…"
+        },
+        "connectHint": {
+          "en-US": "Select a person, then select another to connect them.",
+          "es": "Selecciona una persona y luego otra para conectarlas."
+        },
+        "connectParent": {
+          "en-US": "{parentIsYou, select, true {You are a parent of “{child}”} other {{childIsYou, select, true {“{parent}” is your parent} other {“{parent}” is a parent of “{child}”}}}}",
+          "es": "{parentIsYou, select, true {Eres progenitor de «{child}»} other {{childIsYou, select, true {«{parent}» es tu progenitor} other {«{parent}» es progenitor de «{child}»}}}}"
+        },
+        "connectPartners": {
+          "en-US": "{current, select, true {{firstIsYou, select, true {You and “{second}” are partners} other {“{first}” and “{second}” are partners}}} other {{firstIsYou, select, true {You and “{second}” were partners} other {“{first}” and “{second}” were partners}}}}",
+          "es": "{current, select, true {{firstIsYou, select, true {«{second}» es tu pareja} other {«{first}» y «{second}» son pareja}}} other {{firstIsYou, select, true {«{second}» fue tu pareja} other {«{first}» y «{second}» fueron pareja}}}}"
+        },
+        "connectQuestion": {
+          "en-US": "{firstIsYou, select, true {How are you and “{second}” related?} other {How are “{first}” and “{second}” related?}}",
+          "es": "{firstIsYou, select, true {¿Qué relación tienes con «{second}»?} other {¿Qué relación hay entre «{first}» y «{second}»?}}"
+        },
+        "disconnectConfirmDescription": {
+          "en-US": "Both people stay in your family tree. Only the connection between them is removed.",
+          "es": "Ambas personas siguen en tu árbol familiar. Solo se quita la conexión entre ellas."
+        },
+        "disconnectConfirmTitle": {
+          "en-US": "{firstIsYou, select, true {Remove the connection between you and “{second}”?} other {Remove the connection between “{first}” and “{second}”?}}",
+          "es": "{firstIsYou, select, true {¿Quitar la conexión entre tú y «{second}»?} other {¿Quitar la conexión entre «{first}» y «{second}»?}}"
+        },
+        "disconnectHint": {
+          "en-US": "Select a person, then select someone they are connected to, to remove that connection.",
+          "es": "Selecciona una persona y luego alguien con quien esté conectada para quitar esa conexión."
+        },
+        "disconnectWouldCutOff": {
+          "en-US": "{count, plural, one {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.} other {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.}}",
+          "es": "{count, plural, one {Si quitas esta conexión, {names} quedaría fuera de tu árbol familiar. Primero conecta a esa persona con otra persona de tu familia.} other {Si quitas esta conexión, {names} quedarían fuera de tu árbol familiar. Primero conecta a esas personas con otra persona de tu familia.}}"
+        },
+        "dontKnow": {
+          "en-US": "Don’t know",
+          "es": "No lo sé"
+        },
+        "panelTitle": {
+          "en-US": "{relation, select, edit {{isYou, select, true {About you} other {About {name}}}} parent {{isYou, select, true {Add your parent} other {Add a parent of {name}}}} sibling {{isYou, select, true {Add your sibling} other {Add a sibling of {name}}}} partner {{isYou, select, true {Add your partner} other {Add a partner of {name}}}} other {{isYou, select, true {Add your child} other {Add a child of {name}}}}}",
+          "es": "{relation, select, edit {{isYou, select, true {Sobre ti} other {Sobre {name}}}} parent {{isYou, select, true {Añadir tu progenitor} other {Añadir un progenitor de {name}}}} sibling {{isYou, select, true {Añadir tu hermano/a} other {Añadir un hermano/a de {name}}}} partner {{isYou, select, true {Añadir tu pareja} other {Añadir una pareja de {name}}}} other {{isYou, select, true {Añadir tu hijo/a} other {Añadir un hijo/a de {name}}}}}"
+        },
+        "genderIdentityLabel": {
+          "en-US": "Gender identity",
+          "es": "Identidad de género"
+        },
+        "generatedLabelOf": {
+          "en-US": "{relation, select, partner {{isYou, select, true {{term} (your partner)} other {{term} (partner of {name})}}} formerPartner {{isYou, select, true {{term} (your former partner)} other {{term} (former partner of {name})}}} parent {{isYou, select, true {{term} (your parent)} other {{term} (parent of {name})}}} sibling {{isYou, select, true {{term} (your sibling)} other {{term} (sibling of {name})}}} owner {{owner}’s {term}} other {{isYou, select, true {{term} (your child)} other {{term} (child of {name})}}}}",
+          "es": "{relation, select, partner {{isYou, select, true {{term} (tu pareja)} other {{term} (pareja de {name})}}} formerPartner {{isYou, select, true {{term} (tu expareja)} other {{term} (expareja de {name})}}} parent {{isYou, select, true {{term} (tu progenitor)} other {{term} (progenitor de {name})}}} sibling {{isYou, select, true {{term} (tu hermano/a)} other {{term} (hermano/a de {name})}}} owner {{term} de {owner}} other {{isYou, select, true {{term} (tu hijo/a)} other {{term} (hijo/a de {name})}}}}"
+        },
+        "missingDetailsList": {
+          "en-US": "Some details are missing: {details}.",
+          "es": "Faltan algunos datos: {details}."
+        },
+        "otherParentLabel": {
+          "en-US": "Who is the child’s other parent?",
+          "es": "¿Quién es el otro progenitor del hijo/a?"
+        },
+        "otherParentNone": {
+          "en-US": "No other parent",
+          "es": "Ningún otro progenitor"
+        },
+        "otherParentUnknown": {
+          "en-US": "Someone not shown yet",
+          "es": "Alguien que aún no aparece"
+        },
+        "parentCarriedLabel": {
+          "en-US": "{named, select, true {{parentIsYou, select, true {Did you carry the pregnancy?} other {Did {parent} carry the pregnancy?}}} other {Did this parent carry the pregnancy?}}",
+          "es": "{named, select, true {{parentIsYou, select, true {¿Llevaste tú el embarazo?} other {¿Llevó {parent} el embarazo?}}} other {¿Fue este progenitor quien llevó el embarazo?}}"
+        },
+        "parentKindLabel": {
+          "en-US": "What kind of parent are they?",
+          "es": "¿Qué tipo de progenitor es?"
+        },
+        "parentLinkKindLabel": {
+          "en-US": "{parentIsYou, select, true {You are their…} other {{personIsYou, select, true {{parent} is your…} other {{parent} is their…}}}}",
+          "es": "{parentIsYou, select, true {Para esta persona, eres…} other {{personIsYou, select, true {Para ti, {parent} es…} other {Para esta persona, {parent} es…}}}}"
+        },
+        "parentPartnerLabel": {
+          "en-US": "Are they the partner of another parent?",
+          "es": "¿Es pareja de otro progenitor?"
+        },
+        "placeholderParentsNote": {
+          "en-US": "{framing, select, gamete {An egg parent and a sperm parent will be added for you to fill in later, so the family tree can show these siblings together.} other {A biological mother and a biological father will be added for you to fill in later, so the family tree can show these siblings together.}}",
+          "es": "{framing, select, gamete {Se añadirán un progenitor de óvulo y un progenitor de esperma para que los completes más tarde, de modo que el árbol familiar pueda mostrar juntos a estos hermanos.} other {Se añadirán una madre biológica y un padre biológico para que los completes más tarde, de modo que el árbol familiar pueda mostrar juntos a estos hermanos.}}"
+        },
+        "relativeTerm": {
+          "en-US": "{term, select, mother {Mother} father {Father} parent {Parent} eggParent {Egg parent} spermParent {Sperm parent} biologicalMother {Bio­logical mother} biologicalFather {Bio­logical father} adoptiveMother {Adoptive mother} adoptiveFather {Adoptive father} adoptiveParent {Adoptive parent} stepmother {Step­mother} stepfather {Step­father} stepparent {Step-parent} eggDonor {Egg donor} spermDonor {Sperm donor} donor {Donor} surrogate {Surro­gate} daughter {Daughter} son {Son} child {Child} stepdaughter {Step­daughter} stepson {Stepson} stepchild {Stepchild} donorConceivedChild {Donor-conceived child} surrogacyChild {Surro­gacy child} sister {Sister} brother {Brother} sibling {Sibling} halfSister {Half-sister} halfBrother {Half-brother} halfSibling {Half-sibling} adoptiveSister {Adoptive sister} adoptiveBrother {Adoptive brother} adoptiveSibling {Adoptive sibling} stepsister {Step­sister} stepbrother {Step­brother} stepsibling {Step-sibling} partner {Partner} formerPartner {Former partner} grandmother {Grand­mother} grandfather {Grand­father} grandparent {Grand­parent} maternalGrandmother {Maternal grand­mother} maternalGrandfather {Maternal grand­father} maternalGrandparent {Maternal grand­parent} paternalGrandmother {Paternal grand­mother} paternalGrandfather {Paternal grand­father} paternalGrandparent {Paternal grand­parent} greatGrandmother {Great-grand­mother} greatGrandfather {Great-grand­father} greatGrandparent {Great-grand­parent} stepGrandmother {Step-grand­mother} stepGrandfather {Step-grand­father} stepGrandparent {Step-grand­parent} granddaughter {Grand­daughter} grandson {Grandson} grandchild {Grand­child} greatGranddaughter {Great-grand­daughter} greatGrandson {Great-grandson} greatGrandchild {Great-grand­child} aunt {Aunt} uncle {Uncle} maternalAunt {Maternal aunt} maternalUncle {Maternal uncle} paternalAunt {Paternal aunt} paternalUncle {Paternal uncle} parentsSibling {Parent’s sibling} greatAunt {Great-aunt} greatUncle {Great-uncle} grandparentsSibling {Grand­parent’s sibling} niece {Niece} nephew {Nephew} siblingsChild {Sibling’s child} cousin {Cousin} motherInLaw {Mother-in-law} fatherInLaw {Father-in-law} parentInLaw {Parent-in-law} sisterInLaw {Sister-in-law} brotherInLaw {Brother-in-law} siblingInLaw {Sibling-in-law} daughterInLaw {Daugh­ter-in-law} sonInLaw {Son-in-law} childInLaw {Child-in-law} other {Relative}}",
+          "es": "{term, select, mother {Madre} father {Padre} parent {Progeni­tor} eggParent {Progeni­tor de óvulo} spermParent {Progeni­tor de esperma} biologicalMother {Madre bio­lógica} biologicalFather {Padre bio­lógico} adoptiveMother {Madre adoptiva} adoptiveFather {Padre adoptivo} adoptiveParent {Progeni­tor adoptivo} stepmother {Madrastra} stepfather {Padrastro} stepparent {Padrastro/madrastra} eggDonor {Donante de óvulos} spermDonor {Donante de esperma} donor {Donante} surrogate {Gestante subrogada} daughter {Hija} son {Hijo} child {Hijo/a} stepdaughter {Hijastra} stepson {Hijastro} stepchild {Hijastro/a} donorConceivedChild {Hijo/a por donación} surrogacyChild {Hijo/a por gestación subrogada} sister {Hermana} brother {Hermano} sibling {Hermano/a} halfSister {Media hermana} halfBrother {Medio hermano} halfSibling {Medio/a hermano/a} adoptiveSister {Hermana adoptiva} adoptiveBrother {Hermano adoptivo} adoptiveSibling {Hermano/a adoptivo/a} stepsister {Herma­nastra} stepbrother {Herma­nastro} stepsibling {Herma­nastro/a} partner {Pareja} formerPartner {Expareja} grandmother {Abuela} grandfather {Abuelo} grandparent {Abuelo/a} maternalGrandmother {Abuela materna} maternalGrandfather {Abuelo materno} maternalGrandparent {Abuelo/a materno/a} paternalGrandmother {Abuela paterna} paternalGrandfather {Abuelo paterno} paternalGrandparent {Abuelo/a paterno/a} greatGrandmother {Bisabuela} greatGrandfather {Bisabuelo} greatGrandparent {Bisabuelo/a} stepGrandmother {Abue­lastra} stepGrandfather {Abue­lastro} stepGrandparent {Abue­lastro/a} granddaughter {Nieta} grandson {Nieto} grandchild {Nieto/a} greatGranddaughter {Bisnieta} greatGrandson {Bisnieto} greatGrandchild {Bisnieto/a} aunt {Tía} uncle {Tío} maternalAunt {Tía materna} maternalUncle {Tío materno} paternalAunt {Tía paterna} paternalUncle {Tío paterno} parentsSibling {Tío/a} greatAunt {Tía abuela} greatUncle {Tío abuelo} grandparentsSibling {Tío/a abuelo/a} niece {Sobrina} nephew {Sobrino} siblingsChild {Sobrino/a} cousin {Primo/a} motherInLaw {Suegra} fatherInLaw {Suegro} parentInLaw {Suegro/a} sisterInLaw {Cuñada} brotherInLaw {Cuñado} siblingInLaw {Cuñado/a} daughterInLaw {Nuera} sonInLaw {Yerno} childInLaw {Yerno/nuera} other {Pariente}}"
+        },
+        "removeConfirmDescription": {
+          "en-US": "{hasOthers, select, true {They will be removed from your family tree, along with their connections to other people. {count, plural, one {{names} is connected to you only through them, so will be removed too.} other {{names} are connected to you only through them, so will be removed too.}}} other {They will be removed from your family tree, along with their connections to other people.}}",
+          "es": "{hasOthers, select, true {Se quitará de tu árbol familiar, junto con sus conexiones con otras personas. {count, plural, one {La única conexión entre {names} y tú pasa por esta persona, así que también se quitará.} other {La única conexión entre {names} y tú pasa por esta persona, así que también se quitarán.}}} other {Se quitará de tu árbol familiar, junto con sus conexiones con otras personas.}}"
+        },
+        "removeConfirmTitle": {
+          "en-US": "Remove {name}?",
+          "es": "¿Quitar a {name}?"
+        },
+        "sexAssignedAtBirthLabel": {
+          "en-US": "Sex assigned at birth",
+          "es": "Sexo asignado al nacer"
+        },
+        "sharedParentCountBoth": {
+          "en-US": "Both parents",
+          "es": "Ambos progenitores"
+        },
+        "sharedParentCountLabel": {
+          "en-US": "{isYou, select, true {Which parents do they share with you?} other {Which parents do they share with “{name}”?}}",
+          "es": "{isYou, select, true {¿Qué progenitores comparte contigo?} other {¿Qué progenitores comparte con «{name}»?}}"
+        },
+        "sharedParentEggOnly": {
+          "en-US": "{parent, select, egg {{framing, select, gamete {Only the egg parent} other {Only the biological mother}}} other {{framing, select, gamete {Only the sperm parent} other {Only the biological father}}}}",
+          "es": "{parent, select, egg {{framing, select, gamete {Solo el progenitor de óvulo} other {Solo la madre biológica}}} other {{framing, select, gamete {Solo el progenitor de esperma} other {Solo el padre biológico}}}}"
+        },
+        "siblingKindLabel": {
+          "en-US": "To the parents they share, are they…",
+          "es": "Para los progenitores que comparten, es…"
+        },
+        "stillTogetherLabel": {
+          "en-US": "{named, select, true {{personIsYou, select, true {Are you still together with {partner}?} other {{partnerIsYou, select, true {Are you still together?} other {Are they still together with {partner}?}}}}} other {Are they still together?}}",
+          "es": "{named, select, true {{personIsYou, select, true {¿Sigues siendo pareja de {partner}?} other {{partnerIsYou, select, true {¿Sigue siendo tu pareja?} other {¿Esta persona sigue siendo pareja de {partner}?}}}}} other {¿Siguen siendo pareja?}}"
+        },
+        "you": {
+          "en-US": "You",
+          "es": "Tú"
+        },
+        "save": {
+          "en-US": "Save",
+          "es": "Guardar"
+        },
+        "connectTool": {
+          "en-US": "Connect",
+          "es": "Conectar"
+        },
+        "disconnectTool": {
+          "en-US": "Disconnect",
+          "es": "Desconectar"
+        },
+        "pointerTool": {
+          "en-US": "Add and edit",
+          "es": "Añadir y editar"
+        },
+        "changeWouldCutOff": {
+          "en-US": "{count, plural, one {This would leave {names} outside your family tree, because it removes their only connection to you. Connect them to someone else in your family first.} other {This would leave {names} outside your family tree, because it removes their only connection to you. Connect them to someone else in your family first.}}",
+          "es": "{count, plural, one {Esto dejaría a {names} fuera de tu árbol familiar, porque elimina su única conexión contigo. Primero conecta a esa persona con otra persona de tu familia.} other {Esto dejaría a {names} fuera de tu árbol familiar, porque elimina su única conexión contigo. Primero conecta a esas personas con otra persona de tu familia.}}"
+        },
+        "childKindDonor": {
+          "en-US": "A child conceived with an egg or sperm they donated",
+          "es": "Un hijo o hija concebido con un óvulo o esperma que donaron"
+        },
+        "childKindSurrogate": {
+          "en-US": "A child they carried as a surrogate",
+          "es": "Un hijo o hija que gestaron como gestante subrogada"
+        },
+        "parentKindCarrier": {
+          "en-US": "{parentKind} (carried the pregnancy)",
+          "es": "{parentKind} (llevó el embarazo)"
+        },
+        "sharedDonorsLabel": {
+          "en-US": "{isYou, select, true {Do they share any of your donors?} other {Do they share any of “{name}”’s donors?}}",
+          "es": "{isYou, select, true {¿Comparte alguno de tus donantes?} other {¿Comparte alguno de los donantes de «{name}»?}}"
+        },
+        "siblingBiologicalParentLabel": {
+          "en-US": "Which of them is the sibling’s biological parent?",
+          "es": "¿Cuál de ellos es el progenitor biológico de este hermano o hermana?"
+        },
+        "siblingTwinFraternal": {
+          "en-US": "Yes, fraternal (non-identical) twins",
+          "es": "Sí, mellizos (no idénticos)"
+        },
+        "siblingTwinHint": {
+          "en-US": "Answer yes for triplets and other multiple births too.",
+          "es": "Responde que sí también en el caso de trillizos y otros partos múltiples."
+        },
+        "siblingTwinIdentical": {
+          "en-US": "Yes, identical twins",
+          "es": "Sí, gemelos idénticos"
+        },
+        "siblingTwinLabel": {
+          "en-US": "{isYou, select, true {Are they your twin?} other {Are they “{name}”’s twin?}}",
+          "es": "{isYou, select, true {¿Es tu gemelo o gemela?} other {¿Es gemelo o gemela de «{name}»?}}"
+        },
+        "siblingTwinNo": {
+          "en-US": "No",
+          "es": "No"
+        },
+        "siblingTwinUnknown": {
+          "en-US": "Yes, but I don’t know if they are identical",
+          "es": "Sí, pero no sé si son idénticos"
+        },
+        "twinsHint": {
+          "en-US": "Include triplets and other multiple births.",
+          "es": "Incluye también trillizos y otros partos múltiples."
+        },
+        "twinsLabel": {
+          "en-US": "{isYou, select, true {Which of your siblings, if any, are your twins?} other {Which of “{name}”’s siblings, if any, are their twins?}}",
+          "es": "{isYou, select, true {¿Cuáles de tus hermanos, si alguno, son tus gemelos o mellizos?} other {¿Cuáles de los hermanos de «{name}», si alguno, son sus gemelos o mellizos?}}"
+        },
+        "twinZygosityLabel": {
+          "en-US": "{who, select, personIsYou {Are you and “{twin}” identical twins?} twinIsYou {Are “{name}” and you identical twins?} other {Are “{name}” and “{twin}” identical twins?}}",
+          "es": "{who, select, personIsYou {¿Tú y «{twin}» son gemelos idénticos?} twinIsYou {¿«{name}» y tú son gemelos idénticos?} other {¿«{name}» y «{twin}» son gemelos idénticos?}}"
+        },
+        "unavailableAncestor": {
+          "en-US": "{who, select, parentIsYou {You cannot be a parent of “{child}”, who is already one of your ancestors.} childIsYou {“{parent}” cannot be your parent, because you are already one of their ancestors.} other {“{parent}” cannot be a parent of “{child}”, who is already one of their ancestors.}}",
+          "es": "{who, select, parentIsYou {No puedes ser progenitor/a de «{child}», que ya es uno de tus antepasados.} childIsYou {«{parent}» no puede ser tu progenitor/a, porque ya eres uno de sus antepasados.} other {«{parent}» no puede ser progenitor/a de «{child}», que ya es uno de sus antepasados.}}"
+        },
+        "unavailableBothSameSex": {
+          "en-US": "{firstIsYou, select, true {Some answers are unavailable because you and “{second}” are both recorded as “{sex}” at birth, so you cannot both be the child’s genetic parents. To choose one, first change one of your sexes at birth.} other {Some answers are unavailable because “{first}” and “{second}” are both recorded as “{sex}” at birth, so they cannot both be the child’s genetic parents. To choose one, first change the sex at birth of one of them.}}",
+          "es": "{firstIsYou, select, true {Algunas respuestas no están disponibles porque tú y «{second}» constáis como «{sex}» al nacer, así que no podéis ser ambos los progenitores genéticos del hijo/a. Para elegir una, primero cambia el sexo al nacer de uno de vosotros.} other {Algunas respuestas no están disponibles porque «{first}» y «{second}» constan como «{sex}» al nacer, así que no pueden ser ambos los progenitores genéticos del hijo/a. Para elegir una, primero cambia el sexo al nacer de uno de ellos.}}"
+        },
+        "unavailableCannotCarry": {
+          "en-US": "{who, select, you {Some answers are unavailable because you are recorded as “{sex}” at birth, so you cannot have carried a pregnancy. To choose one, first change your sex at birth.} this {Some answers are unavailable because this person is recorded as “{sex}” at birth, so they cannot have carried a pregnancy. To choose one, first change their sex at birth.} other {Some answers are unavailable because “{name}” is recorded as “{sex}” at birth, so they cannot have carried a pregnancy. To choose one, first change their sex at birth.}}",
+          "es": "{who, select, you {Algunas respuestas no están disponibles porque constas como «{sex}» al nacer, así que no puedes haber llevado un embarazo. Para elegir una, primero cambia tu sexo al nacer.} this {Algunas respuestas no están disponibles porque esta persona consta como «{sex}» al nacer, así que no puede haber llevado un embarazo. Para elegir una, primero cambia su sexo al nacer.} other {Algunas respuestas no están disponibles porque «{name}» consta como «{sex}» al nacer, así que no puede haber llevado un embarazo. Para elegir una, primero cambia su sexo al nacer.}}"
+        },
+        "unavailableCarried": {
+          "en-US": "{who, select, personIsYou {Some answers are unavailable because you are recorded as having carried “{child}”, which nobody recorded as “{sex}” at birth can have. To choose one, first change how you are connected to “{child}”.} childIsYou {Some answers are unavailable because this person is recorded as having carried you, which nobody recorded as “{sex}” at birth can have. To choose one, first change how they are connected to you.} other {Some answers are unavailable because this person is recorded as having carried “{child}”, which nobody recorded as “{sex}” at birth can have. To choose one, first change how they are connected to “{child}”.}}",
+          "es": "{who, select, personIsYou {Algunas respuestas no están disponibles porque consta que llevaste el embarazo de «{child}», algo que nadie registrado como «{sex}» al nacer puede haber hecho. Para elegir una, primero cambia tu conexión con «{child}».} childIsYou {Algunas respuestas no están disponibles porque consta que esta persona llevó tu embarazo, algo que nadie registrado como «{sex}» al nacer puede haber hecho. Para elegir una, primero cambia su conexión contigo.} other {Algunas respuestas no están disponibles porque consta que esta persona llevó el embarazo de «{child}», algo que nadie registrado como «{sex}» al nacer puede haber hecho. Para elegir una, primero cambia su conexión con «{child}».}}"
+        },
+        "unavailableCarrierChoice": {
+          "en-US": "{who, select, carrierIsYou {You are recorded as having carried “{child}”, and only one person carries a pregnancy.} childIsYou {“{carrier}” is recorded as having carried you, and only one person carries a pregnancy.} other {“{carrier}” is recorded as having carried “{child}”, and only one person carries a pregnancy.}}",
+          "es": "{who, select, carrierIsYou {Consta que llevaste el embarazo de «{child}», y solo una persona lleva cada embarazo.} childIsYou {Consta que «{carrier}» llevó tu embarazo, y solo una persona lleva cada embarazo.} other {Consta que «{carrier}» llevó el embarazo de «{child}», y solo una persona lleva cada embarazo.}}"
+        },
+        "unavailableCarrierRecorded": {
+          "en-US": "{who, select, carrierIsYou {Some answers are unavailable because you are recorded as having carried “{child}”, and only one person carries a pregnancy. To choose one, first change how you are connected to “{child}”.} childIsYou {Some answers are unavailable because “{carrier}” is recorded as having carried you, and only one person carries a pregnancy. To choose one, first change how “{carrier}” is connected to you.} other {Some answers are unavailable because “{carrier}” is recorded as having carried “{child}”, and only one person carries a pregnancy. To choose one, first change how “{carrier}” is connected to “{child}”.}}",
+          "es": "{who, select, carrierIsYou {Algunas respuestas no están disponibles porque consta que llevaste el embarazo de «{child}», y solo una persona lleva cada embarazo. Para elegir una, primero cambia tu conexión con «{child}».} childIsYou {Algunas respuestas no están disponibles porque consta que «{carrier}» llevó tu embarazo, y solo una persona lleva cada embarazo. Para elegir una, primero cambia la conexión de «{carrier}» contigo.} other {Algunas respuestas no están disponibles porque consta que «{carrier}» llevó el embarazo de «{child}», y solo una persona lleva cada embarazo. Para elegir una, primero cambia la conexión de «{carrier}» con «{child}».}}"
+        },
+        "unavailableGeneticParentsFull": {
+          "en-US": "{who, select, childIsYou {Some answers are unavailable because you already have two genetic parents recorded, “{first}” and “{second}”. To choose one, first change how one of them is connected to you.} includesYou {Some answers are unavailable because “{child}” already has two genetic parents recorded, you and “{second}”. To choose one, first change how one of you is connected to “{child}”.} other {Some answers are unavailable because “{child}” already has two genetic parents recorded, “{first}” and “{second}”. To choose one, first change how one of them is connected to “{child}”.}}",
+          "es": "{who, select, childIsYou {Algunas respuestas no están disponibles porque ya tienes dos progenitores genéticos registrados, «{first}» y «{second}». Para elegir una, primero cambia la conexión de uno de ellos contigo.} includesYou {Algunas respuestas no están disponibles porque «{child}» ya tiene dos progenitores genéticos registrados, tú y «{second}». Para elegir una, primero cambia la conexión de uno de vosotros con «{child}».} other {Algunas respuestas no están disponibles porque «{child}» ya tiene dos progenitores genéticos registrados, «{first}» y «{second}». Para elegir una, primero cambia la conexión de uno de ellos con «{child}».}}"
+        },
+        "unavailableIdenticalTwin": {
+          "en-US": "{who, select, personIsYou {Some answers are unavailable because identical twins have the same biological parents and donors, and you and “{twin}” do not. To choose one, first record the same biological parents and donors for both of you.} twinIsYou {Some answers are unavailable because identical twins have the same biological parents and donors, and “{name}” and you do not. To choose one, first record the same biological parents and donors for both of you.} other {Some answers are unavailable because identical twins have the same biological parents and donors, and “{name}” and “{twin}” do not. To choose one, first record the same biological parents and donors for both of them.}}",
+          "es": "{who, select, personIsYou {Algunas respuestas no están disponibles porque los gemelos idénticos tienen los mismos progenitores biológicos y donantes, y tú y «{twin}» no los tienen. Para elegir una, primero registra los mismos progenitores biológicos y donantes para ambos.} twinIsYou {Algunas respuestas no están disponibles porque los gemelos idénticos tienen los mismos progenitores biológicos y donantes, y «{name}» y tú no los tienen. Para elegir una, primero registra los mismos progenitores biológicos y donantes para ambos.} other {Algunas respuestas no están disponibles porque los gemelos idénticos tienen los mismos progenitores biológicos y donantes, y «{name}» y «{twin}» no los tienen. Para elegir una, primero registra los mismos progenitores biológicos y donantes para ambos.}}"
+        },
+        "unavailableIdenticalTwinNew": {
+          "en-US": "{isYou, select, true {Some answers are unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of yours. To choose one, choose all of your biological parents and donors above.} other {Some answers are unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of “{name}”’s. To choose one, choose all of their biological parents and donors above.}}",
+          "es": "{isYou, select, true {Algunas respuestas no están disponibles porque los gemelos idénticos tienen los mismos progenitores biológicos y donantes, y este hermano o hermana no tendría todos los tuyos. Para elegir una, elige arriba a todos tus progenitores biológicos y donantes.} other {Algunas respuestas no están disponibles porque los gemelos idénticos tienen los mismos progenitores biológicos y donantes, y este hermano o hermana no tendría todos los de «{name}». Para elegir una, elige arriba a todos sus progenitores biológicos y donantes.}}"
+        },
+        "unavailableSameSexGeneticParent": {
+          "en-US": "{who, select, coParentIsYou {Some answers are unavailable because you are recorded as “{sex}” at birth and are a genetic parent of “{child}”, who cannot have two genetic parents of the same sex at birth. To choose one, first change your sex at birth or how you are connected to “{child}”.} childIsYou {Some answers are unavailable because “{coParent}”, your genetic parent, is recorded as “{sex}” at birth, and you cannot have two genetic parents of the same sex at birth. To choose one, first change the sex at birth of “{coParent}” or how they are connected to you.} other {Some answers are unavailable because “{coParent}”, a genetic parent of “{child}”, is recorded as “{sex}” at birth, and “{child}” cannot have two genetic parents of the same sex at birth. To choose one, first change the sex at birth of “{coParent}” or how they are connected to “{child}”.}}",
+          "es": "{who, select, coParentIsYou {Algunas respuestas no están disponibles porque constas como «{sex}» al nacer y eres progenitor/a genético/a de «{child}», que no puede tener dos progenitores genéticos del mismo sexo al nacer. Para elegir una, primero cambia tu sexo al nacer o tu conexión con «{child}».} childIsYou {Algunas respuestas no están disponibles porque «{coParent}», tu progenitor/a genético/a, consta como «{sex}» al nacer, y no puedes tener dos progenitores genéticos del mismo sexo al nacer. Para elegir una, primero cambia el sexo al nacer de «{coParent}» o su conexión contigo.} other {Algunas respuestas no están disponibles porque «{coParent}», progenitor/a genético/a de «{child}», consta como «{sex}» al nacer, y «{child}» no puede tener dos progenitores genéticos del mismo sexo al nacer. Para elegir una, primero cambia el sexo al nacer de «{coParent}» o su conexión con «{child}».}}"
+        },
+        "zygosityFraternal": {
+          "en-US": "No, fraternal (non-identical)",
+          "es": "No, mellizos (no idénticos)"
+        },
+        "zygosityIdentical": {
+          "en-US": "Yes, identical",
+          "es": "Sí, idénticos"
+        },
+        "zygosityUnknown": {
+          "en-US": "I don’t know",
+          "es": "No lo sé"
+        }
+      },
       "type": "FamilyPedigree",
       "label": {
         "en-US": "Family Pedigree",
@@ -1617,6 +2069,16 @@
       },
       "nodeConfiguration": {
         "nameAttribute": "fm_name",
+        "nameField": {
+          "prompt": {
+            "en-US": "Name (optional)",
+            "es": "Nombre (opcional)"
+          },
+          "hint": {
+            "en-US": "A first name or nickname is fine. If you don’t know it, leave this blank and they will be shown by how they are related to you.",
+            "es": "Basta con un nombre o un apodo. Si no lo sabes, deja este campo vacío y se mostrará según su parentesco contigo."
+          }
+        },
         "genderIdentity": {
           "attribute": "genderIdentity",
           "terms": [
@@ -1668,6 +2130,56 @@
     },
     {
       "id": "narrative-pedigree-dev",
+      "keyHeading": {
+        "en-US": "Key",
+        "es": "Leyenda"
+      },
+      "tooltips": {
+        "clearFocus": {
+          "en-US": "Clear focus",
+          "es": "Quitar el foco"
+        },
+        "saveSnapshot": {
+          "en-US": "Save snapshot",
+          "es": "Guardar imagen"
+        }
+      },
+      "conditionText": {
+        "heading": {
+          "en-US": "Conditions",
+          "es": "Afecciones"
+        },
+        "instruction": {
+          "en-US": "Select a condition to see who it affects.",
+          "es": "Selecciona una afección para ver a quién afecta."
+        },
+        "notation": {
+          "affected": {
+            "en-US": "Has this condition",
+            "es": "Tiene esta afección"
+          },
+          "obligateAffected": {
+            "en-US": "Will develop this condition",
+            "es": "Desarrollará esta afección"
+          },
+          "obligateCarrier": {
+            "en-US": "Carries this condition",
+            "es": "Es portador/a de esta afección"
+          },
+          "unknown": {
+            "en-US": "Not known",
+            "es": "No se sabe"
+          }
+        },
+        "snapshotCondition": {
+          "en-US": "{title}: {condition}",
+          "es": "{title}: {condition}"
+        },
+        "snapshotInheritance": {
+          "en-US": "{title}: {condition} — inheritance for {name}",
+          "es": "{title}: {condition} — herencia de {name}"
+        }
+      },
       "type": "NarrativePedigree",
       "label": {
         "en-US": "Narrative Pedigree",
@@ -1689,6 +2201,22 @@
     },
     {
       "id": "finish",
+      "finishLabel": {
+        "en-US": "Finish",
+        "es": "Finalizar"
+      },
+      "finishConfirmation": {
+        "en-US": "Are you sure you want to finish the interview?",
+        "es": "¿Seguro que quieres finalizar la entrevista?"
+      },
+      "finishedNotice": {
+        "en-US": "This interview is finished, and its answers can no longer be changed.",
+        "es": "Esta entrevista ha finalizado y ya no se pueden cambiar sus respuestas."
+      },
+      "finishFailed": {
+        "en-US": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer.",
+        "es": "No se pudo finalizar la entrevista. Inténtalo de nuevo. Si el problema continúa, ponte en contacto con la persona que organiza el estudio."
+      },
       "type": "FinishSession",
       "label": {
         "en-US": "Finish Interview",
@@ -3350,5 +3878,171 @@
   "localization": {
     "defaultLocale": "en-US",
     "locales": ["en-US", "es"]
+  },
+  "interfaceText": {
+    "interview": {
+      "exitInterview": {
+        "en-US": "Exit interview",
+        "es": "Salir de la entrevista"
+      },
+      "exitInterviewDescription": {
+        "en-US": "Your answers so far will be saved and you can continue later.",
+        "es": "Tus respuestas hasta ahora se guardarán y podrás continuar más adelante."
+      },
+      "stageError": {
+        "en-US": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button.",
+        "es": "Se produjo un error en el programa de la entrevista y no se pudo mostrar esta tarea. Algunas tareas, como los mapas, necesitan conexión a internet, así que comprueba tu conexión y después prueba a actualizar la página. Si el problema persiste, ponte en contacto con la persona que organiza el estudio y envíale la información de diagnóstico, que puedes copiar con el botón de abajo. Es posible que puedas continuar la entrevista pulsando la flecha de avance."
+      },
+      "itemUnavailable": {
+        "en-US": "This item could not be displayed.",
+        "es": "No se pudo mostrar este elemento."
+      },
+      "back": {
+        "en-US": "Back",
+        "es": "Volver"
+      },
+      "continue": {
+        "en-US": "Continue",
+        "es": "Continuar"
+      },
+      "cancel": {
+        "en-US": "Cancel",
+        "es": "Cancelar"
+      },
+      "done": {
+        "en-US": "Done",
+        "es": "Listo"
+      },
+      "delete": {
+        "en-US": "Delete",
+        "es": "Eliminar"
+      },
+      "genericError": {
+        "en-US": "Something went wrong.",
+        "es": "Se ha producido un error."
+      }
+    },
+    "passphrase": {
+      "passphrase": {
+        "en-US": "Passphrase",
+        "es": "Frase de contraseña"
+      },
+      "choosePassphraseHelp": {
+        "en-US": "Some answers on this screen are protected by a passphrase. Keep it safe: you will need it to see or change these answers later, and it cannot be recovered if it is forgotten.",
+        "es": "Algunas respuestas de esta pantalla están protegidas por una frase de contraseña. Guárdala en un lugar seguro: la necesitarás para ver o cambiar estas respuestas más adelante, y no se puede recuperar si la olvidas."
+      },
+      "passphraseIncorrect": {
+        "en-US": "This passphrase does not match the one used earlier in this interview. Check it and try again.",
+        "es": "Esta frase de contraseña no coincide con la que se usó antes en esta entrevista. Compruébala e inténtalo de nuevo."
+      },
+      "protectedAnswersLocked": {
+        "en-US": "Some answers here are protected by your passphrase. Enter your passphrase to see and change them.",
+        "es": "Algunas respuestas de aquí están protegidas por tu frase de contraseña. Introduce tu frase de contraseña para verlas y cambiarlas."
+      },
+      "protectedAnswersNotSaved": {
+        "en-US": "Your answers have not been saved. Enter your passphrase, then try again.",
+        "es": "Tus respuestas no se han guardado. Introduce tu frase de contraseña y vuelve a intentarlo."
+      },
+      "protectedAnswersUnavailable": {
+        "en-US": "Answers protected by a passphrase cannot be shown or saved in this interview. Please let the person who recruited you to this study know.",
+        "es": "Las respuestas protegidas por una frase de contraseña no se pueden mostrar ni guardar en esta entrevista. Avisa a la persona que te invitó a participar en este estudio."
+      },
+      "answerUnavailable": {
+        "en-US": "Answer unavailable",
+        "es": "Respuesta no disponible"
+      },
+      "answerUnavailableKept": {
+        "en-US": "This answer was saved earlier but cannot be shown here. Entering a new answer will replace it, so leave the field empty to keep the earlier answer.",
+        "es": "Esta respuesta se guardó antes, pero no se puede mostrar aquí. Si introduces una nueva respuesta, sustituirá a esta; deja el campo vacío para conservar la respuesta anterior."
+      },
+      "confirmPassphrase": {
+        "en-US": "Confirm Passphrase",
+        "es": "Confirmar frase de contraseña"
+      },
+      "passphraseAccepted": {
+        "en-US": "Passphrase accepted! Click \"Next\" to continue.",
+        "es": "¡Frase de contraseña aceptada! Pulsa la flecha de avance para continuar."
+      }
+    },
+    "forms": {
+      "discardChanges": {
+        "en-US": "Discard changes",
+        "es": "Descartar cambios"
+      },
+      "discardChangesTitle": {
+        "en-US": "Discard changes?",
+        "es": "¿Descartar los cambios?"
+      },
+      "discardChangesDescription": {
+        "en-US": "This form contains invalid data, so it cannot be saved. If you continue it will be reset, and your changes will be lost. Do you want to discard your changes?",
+        "es": "Este formulario contiene datos que no son válidos y no se puede guardar. Si continúas, se restablecerá y se perderán los cambios. ¿Quieres descartar los cambios?"
+      },
+      "yes": {
+        "en-US": "Yes",
+        "es": "Sí"
+      },
+      "no": {
+        "en-US": "No",
+        "es": "No"
+      },
+      "submitFailed": {
+        "en-US": "An error occurred while submitting the form.",
+        "es": "Se ha producido un error al enviar el formulario."
+      }
+    },
+    "validation": {
+      "required": {
+        "en-US": "You must answer this question before continuing.",
+        "es": "Debes responder a esta pregunta antes de continuar."
+      },
+      "minLength": {
+        "en-US": "{min, plural, one {Enter at least # character.} other {Enter at least # characters.}}",
+        "es": "{min, plural, one {Introduce al menos # carácter.} other {Introduce al menos # caracteres.}}"
+      },
+      "maxLength": {
+        "en-US": "{max, plural, one {Enter at most # character.} other {Enter at most # characters.}}",
+        "es": "{max, plural, one {Introduce como máximo # carácter.} other {Introduce como máximo # caracteres.}}"
+      },
+      "minValue": {
+        "en-US": "Enter a value greater than or equal to {min}.",
+        "es": "Introduce un valor mayor o igual que {min}."
+      },
+      "maxValue": {
+        "en-US": "Enter a value less than or equal to {max}.",
+        "es": "Introduce un valor menor o igual que {max}."
+      },
+      "minDate": {
+        "en-US": "Must be on or after {min}.",
+        "es": "Debe ser igual o posterior a {min}."
+      },
+      "maxDate": {
+        "en-US": "Must be on or before {max}.",
+        "es": "Debe ser igual o anterior a {max}."
+      },
+      "minSelected": {
+        "en-US": "{count, plural, one {Select at least # value.} other {Select at least # values.}}",
+        "es": "{count, plural, one {Selecciona al menos # valor.} other {Selecciona al menos # valores.}}"
+      },
+      "maxSelected": {
+        "en-US": "{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}",
+        "es": "{count, plural, one {Selecciona como máximo # valor.} other {Selecciona como máximo # valores.}}"
+      },
+      "unique": {
+        "en-US": "Must be unique.",
+        "es": "Debe ser una respuesta única."
+      },
+      "differentFrom": {
+        "en-US": "{hasLabel, select, true {Your answer must be different from your answer to ''{label}''.} other {Your answer must be different from your earlier answer.}}",
+        "es": "{hasLabel, select, true {Tu respuesta debe ser distinta de tu respuesta a «{label}».} other {Tu respuesta debe ser distinta de la anterior.}}"
+      },
+      "sameAs": {
+        "en-US": "{hasLabel, select, true {Your answer must be the same as your answer to ''{label}''.} other {Your answer must be the same as your earlier answer.}}",
+        "es": "{hasLabel, select, true {Tu respuesta debe ser igual a tu respuesta a «{label}».} other {Tu respuesta debe ser igual a la anterior.}}"
+      },
+      "greaterThan": {
+        "en-US": "{hasLabel, select, true {Your answer must be greater than your answer to ''{label}''.} other {Your answer must be greater than your earlier answer.}}",
+        "es": "{hasLabel, select, true {Tu respuesta debe ser mayor que tu respuesta a «{label}».} other {Tu respuesta debe ser mayor que la anterior.}}"
+      }
+    }
   }
 }

@@ -246,7 +246,7 @@ export const WithValidation: Story = {
     await expect(
       await body.findByRole('dialog', { name: 'Discard changes?' }),
     ).toBeInTheDocument();
-    await userEvent.click(body.getByRole('button', { name: 'Keep changes' }));
+    await userEvent.click(body.getByRole('button', { name: 'Cancel' }));
 
     await expect(
       await canvas.findByRole('textbox', { name: /Notes \(required/ }),
@@ -327,7 +327,7 @@ const openLockedSlide = async (canvasElement: HTMLElement) => {
   await expect(canvas.queryByRole('textbox')).not.toBeInTheDocument();
   await expect(canvas.queryByRole('spinbutton')).not.toBeInTheDocument();
   await expect(
-    await canvas.findByRole('button', { name: 'Enter your passphrase' }),
+    await canvas.findByRole('button', { name: 'Passphrase' }),
   ).toBeInTheDocument();
 };
 
@@ -415,9 +415,11 @@ export const ProtectedAnswerUnavailable: Story = {
     });
     await expect(replacement).toHaveValue('');
     await expect(replacement).toHaveFocus();
-    await expect(
-      canvas.getByText(/Leave this empty to keep the earlier answer/),
-    ).toBeInTheDocument();
+    // The same sentence covers the read-only and the replacing state; here it
+    // describes the field that now takes the new answer.
+    await expect(replacement).toHaveAccessibleDescription(
+      /leave the field empty to keep the earlier answer/,
+    );
   },
 };
 
@@ -459,7 +461,7 @@ export const ProtectedAnswersRefused: Story = {
       canvas.getByRole('spinbutton', { name: /How old are they/ }),
     ).toHaveValue(34);
     await expect(
-      canvas.queryByRole('button', { name: 'Enter your passphrase' }),
+      canvas.queryByRole('button', { name: 'Passphrase' }),
     ).not.toBeInTheDocument();
   },
 };
@@ -538,7 +540,7 @@ export const DiscardingAnswerComparedWithProtected: Story = {
       'Your answers have not been saved. Enter your passphrase, then try again.',
     );
     await expect(dialog).not.toHaveTextContent(/invalid data/);
-    await userEvent.click(body.getByRole('button', { name: 'Keep changes' }));
+    await userEvent.click(body.getByRole('button', { name: 'Cancel' }));
 
     await expect(
       await canvas.findByRole('textbox', {

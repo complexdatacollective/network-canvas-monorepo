@@ -43,6 +43,10 @@ If you set a maximum shorter than 8 and no minimum, the default minimum is lower
 
 Length rules apply when a participant first chooses their passphrase, which is also when they confirm it by entering it a second time. When they come back to the interview later, they only need to enter the same passphrase again.
 
+### Passphrase wording
+
+The words around the passphrase are part of your protocol's [interview text](/en/design-protocols/translating-your-protocol#interview-text), not of this stage, because any later stage that shows an encrypted answer asks for the passphrase too. They include the labels of the passphrase and confirmation fields, the explanation of what the passphrase protects, the message shown when a passphrase doesn't match the one chosen earlier, the message shown when it is accepted, and the notices shown in place of answers that are locked or can't be shown. Network Canvas supplies them in each language it has wording for. Your protocol holds them only while it encrypts an attribute or has an Anonymisation stage, and you can reword and translate them in the translation table.
+
 ### How answers are protected
 
 Protection happens on the participant's own device, using the [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API). Answers are encrypted before they are stored, so the interview data never holds them in readable form.

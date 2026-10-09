@@ -6,6 +6,13 @@ const stage = {
   id: 's1',
   label: { en: 'Compose' },
   type: 'NetworkComposer',
+  addNamePlaceholder: { en: 'Type a name' },
+  overtakenEditNotice: { en: 'Your last change was undone.' },
+  tooltips: {
+    addPerson: { en: 'Add a person' },
+    automaticLayout: { en: 'Arrange automatically' },
+    drawConnection: { en: 'Draw a connection' },
+  },
   subject: { entity: 'node', type: 'person' },
   quickAdd: 'name',
   layoutVariable: 'layoutPosition',

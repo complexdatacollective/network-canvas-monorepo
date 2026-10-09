@@ -5,7 +5,7 @@
   - status:
     - heading "Where does this person currently live?" [level=4]
   - button "Nikita Crist"
-  - button "Outside Selectable Areas"
+  - button "Somewhere else entirely - matrix check"
   - region "Map"
   - button "Toggle attribution"
   - link "Mapbox homepage":

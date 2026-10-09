@@ -1,8 +1,8 @@
 'use client';
 
-import { ChevronDown } from 'lucide-react';
+import { ArrowDownToLine, ChevronDown } from 'lucide-react';
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
@@ -15,6 +15,7 @@ import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import DrawerNode from '../interfaces/Sociogram/DrawerNode';
+import { useContentFormat } from '../localization/useContentFormat';
 
 type NodeDrawerProps = {
   nodes: NcNode[];
@@ -51,6 +52,10 @@ export default function NodeDrawer({
   dropTarget,
 }: NodeDrawerProps) {
   const intl = useAppIntl();
+  // The count is shown among the protocol's text, so in its digits.
+  const contentFormat = useContentFormat();
+  const unplacedId = useId();
+  const toggleLabelId = useId();
   const [internalExpanded, setInternalExpanded] = useState(nodes.length > 0);
   const isExpanded = expanded ?? internalExpanded;
   const setIsExpanded = onExpandedChange ?? setInternalExpanded;
@@ -147,21 +152,30 @@ export default function NodeDrawer({
             data-zone-id={!isExpandedEffective ? dropZoneId : undefined}
             data-drop-target-valid={willAccept || undefined}
             data-drop-target-over={isOver || undefined}
-            aria-label={intl.formatMessage(
-              isExpandedEffective
-                ? messages.collapseDrawer
-                : messages.expandDrawer,
-            )}
+            aria-labelledby={`${unplacedId} ${toggleLabelId}`}
             aria-expanded={isExpandedEffective}
           >
             <MotionChevron
               className="size-[1em]"
+              aria-hidden
               animate={{ rotate: isExpandedEffective ? 0 : 180 }}
             />
-            <AppMessage
-              message={messages.unplacedCount}
-              values={{ count: nodes.length }}
-            />
+            <span aria-hidden="true" className="font-semibold tabular-nums">
+              {contentFormat.formatNumber(nodes.length)}
+            </span>
+            <span id={unplacedId} className="sr-only">
+              <AppMessage
+                message={messages.unplacedCount}
+                values={{ count: nodes.length }}
+              />
+            </span>
+            <span id={toggleLabelId} className="sr-only">
+              {intl.formatMessage(
+                isExpandedEffective
+                  ? messages.collapseDrawer
+                  : messages.expandDrawer,
+              )}
+            </span>
           </motion.button>
         </motion.div>
 
@@ -206,7 +220,10 @@ export default function NodeDrawer({
               // Matches the height of a drawer node so the empty drawer
               // expands to a full row.
               <div className="flex min-h-24 w-full items-center justify-center px-8 text-sm opacity-70">
-                <AppMessage message={messages.dropToRemove} />
+                <ArrowDownToLine aria-hidden className="size-6" />
+                <span className="sr-only">
+                  <AppMessage message={messages.dropToRemove} />
+                </span>
               </div>
             ) : (
               <AnimatePresence>

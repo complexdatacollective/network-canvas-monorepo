@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { analyzeProtocolLocalization } from '../../../localization/analyzeProtocolLocalization.ts';
+import type { MessageArguments } from '../../../localization/messageArguments.ts';
 import { resolveLocalizedString } from '../../../localization/resolveLocalizedString.ts';
 import {
   collectLocalizedStrings,
@@ -15,6 +16,12 @@ import {
   localizedString,
 } from '../localized-string.ts';
 import ProtocolSchemaV9 from '../schema.ts';
+import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
+import {
+  PEDIGREE_PERSON_ARGUMENTS,
+  PEDIGREE_WORDING_ARGUMENTS,
+} from '../stages/family-pedigree.ts';
+import { NODE_COUNT_ARGUMENTS } from '../stages/name-generator.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
 
 type Path = readonly (string | number)[];
@@ -28,6 +35,8 @@ type ExpectedSite = Readonly<{
   // stage's text, which a new protocol in a language Network Canvas supplies
   // none for starts without (`findFinishStageTextProblems`).
   allowsNoTranslation: boolean;
+  // What a localized message may use; absent for literal text.
+  arguments?: MessageArguments;
 }>;
 
 const site = (
@@ -36,6 +45,30 @@ const site = (
   allowsEmpty = false,
   allowsNoTranslation = false,
 ): ExpectedSite => ({ path, format, allowsEmpty, allowsNoTranslation });
+
+const messageSite = (
+  path: Path,
+  declaration: MessageArguments,
+): ExpectedSite => ({
+  ...site(path, 'plain'),
+  arguments: declaration,
+});
+
+/**
+ * A message that uses each argument a declaration holds, as its kind says:
+ * the text shows it, a select chooses by its first case, and a plural by
+ * number.
+ */
+const messageUsing = (declaration: MessageArguments): string =>
+  Object.entries(declaration)
+    .map(([name, argument]) => {
+      if (argument.kind === 'text') return `{${name}}`;
+      if (argument.kind === 'plural')
+        return `{${name}, plural, one {# x} other {# y}}`;
+      const [first = 'other'] = argument.cases;
+      return `{${name}, select, ${first} {x} other {y}}`;
+    })
+    .join(' ');
 
 const FINISH_STAGE_INDEX = 20;
 
@@ -86,6 +119,21 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
       'markdown',
     ),
   ),
+  ...Array.from({ length: 4 }, (_, index) =>
+    site(
+      [
+        'codebook',
+        'node',
+        'relative',
+        'variables',
+        'relativesNotRecorded',
+        'options',
+        index,
+        'label',
+      ],
+      'markdown',
+    ),
+  ),
   site(['codebook', 'edge', 'knows', 'label'], 'plain'),
   site([...knowsVariable('tieStrength'), 'options', 0, 'label'], 'markdown'),
   site([...knowsVariable('tieStrength'), 'options', 1, 'label'], 'markdown'),
@@ -122,17 +170,30 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
 
   site(stage(3, 'form', 'title'), 'plain'),
   site(stage(3, 'form', 'fields', 0, 'prompt'), 'markdown'),
+  messageSite(stage(3, 'minNodesNotice'), NODE_COUNT_ARGUMENTS),
+  site(stage(3, 'maxNodesNotice'), 'plain'),
+  site(stage(3, 'externalDataError'), 'plain'),
   site(stage(3, 'panels', 0, 'title'), 'plain'),
+  site(stage(3, 'panels', 1, 'title'), 'plain'),
   site(stage(3, 'prompts', 0, 'text'), 'markdown'),
 
+  site(stage(4, 'quickAddHint'), 'plain'),
   site(stage(4, 'prompts', 0, 'text'), 'markdown'),
 
   site(stage(5, 'panelTitle'), 'plain'),
+  messageSite(stage(5, 'minNodesNotice'), NODE_COUNT_ARGUMENTS),
+  site(stage(5, 'maxNodesNotice'), 'plain'),
+  site(stage(5, 'externalDataError'), 'plain'),
+  site(stage(5, 'allAddedNotice'), 'plain'),
+  site(stage(5, 'searchLabel'), 'plain'),
+  site(stage(5, 'searchNoMatch'), 'plain'),
   site(stage(5, 'cardOptions', 'additionalProperties', 0, 'label'), 'plain'),
   site(stage(5, 'sortOptions', 'sortableProperties', 0, 'label'), 'plain'),
   site(stage(5, 'prompts', 0, 'text'), 'markdown'),
 
   site(stage(6, 'prompts', 0, 'text'), 'markdown'),
+  site(stage(6, 'tooltips', 'pauseLayout'), 'plain'),
+  site(stage(6, 'tooltips', 'resumeLayout'), 'plain'),
 
   // The composer's own scale end labels are separate sites from the codebook
   // scalar's, and override them.
@@ -150,6 +211,13 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   ),
   site(stage(7, 'nodeForm', 'fields', 1, 'label'), 'markdown'),
   site(stage(7, 'edges', 0, 'form', 'fields', 0, 'label'), 'markdown'),
+  // The Network Composer's own words, which Network Canvas supplies.
+  site(stage(7, 'addNamePlaceholder'), 'plain'),
+  site(stage(7, 'overtakenEditNotice'), 'plain'),
+  site(stage(7, 'tooltips', 'addPerson'), 'plain'),
+  site(stage(7, 'tooltips', 'automaticLayout'), 'plain'),
+  site(stage(7, 'tooltips', 'drawConnection'), 'plain'),
+  site(stage(7, 'groupsHeading'), 'plain'),
 
   site(stage(8, 'introductionPanel', 'title'), 'plain'),
   site(stage(8, 'introductionPanel', 'text'), 'markdown'),
@@ -176,6 +244,16 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
 
   site(stage(14, 'presets', 0, 'label'), 'plain'),
   site(stage(14, 'presets', 0, 'highlight', 0, 'label'), 'plain'),
+  site(stage(14, 'attributesHeading'), 'plain'),
+  site(stage(14, 'linksHeading'), 'plain'),
+  site(stage(14, 'groupsHeading'), 'plain'),
+  site(stage(14, 'tooltips', 'enableDrawing'), 'plain'),
+  site(stage(14, 'tooltips', 'disableDrawing'), 'plain'),
+  site(stage(14, 'tooltips', 'freezeAnnotations'), 'plain'),
+  site(stage(14, 'tooltips', 'unfreezeAnnotations'), 'plain'),
+  site(stage(14, 'tooltips', 'resetAnnotations'), 'plain'),
+  site(stage(14, 'tooltips', 'pauseLayout'), 'plain'),
+  site(stage(14, 'tooltips', 'resumeLayout'), 'plain'),
 
   site(stage(15, 'explanationText', 'title'), 'plain'),
   site(stage(15, 'explanationText', 'body'), 'markdown'),
@@ -183,18 +261,81 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(16, 'prompts', 0, 'text'), 'markdown'),
 
   site(stage(17, 'prompts', 0, 'text'), 'markdown'),
+  site(stage(17, 'offlineNotice'), 'plain'),
+  site(stage(17, 'mapUnavailable'), 'plain'),
+  site(stage(17, 'outsideAreasLabel'), 'plain'),
+  site(stage(17, 'searchLabel'), 'plain'),
+  site(stage(17, 'searchNoMatch'), 'plain'),
+  site(stage(17, 'searchFailed'), 'plain'),
 
   site(stage(18, 'prompt'), 'markdown'),
+  // The Family Pedigree's own wording, which Network Canvas supplies.
+  site(stage(18, 'nodeConfiguration', 'nameField', 'prompt'), 'plain'),
+  site(stage(18, 'nodeConfiguration', 'nameField', 'hint'), 'plain'),
+  ...(
+    [
+      ['parents', 'listItem'],
+      ['siblings', 'listItem'],
+      ['siblings', 'noneButton'],
+      ['siblings', 'question'],
+      ['children', 'listItem'],
+      ['children', 'noneButton'],
+      ['children', 'question'],
+      ['details', 'listItem'],
+    ] as const
+  ).map((path) =>
+    messageSite(
+      stage(18, 'completeness', 'itemText', ...path),
+      PEDIGREE_PERSON_ARGUMENTS,
+    ),
+  ),
+  site(stage(18, 'completeness', 'recommendedNote'), 'plain'),
+  // The stage's own words, which Network Canvas supplies: each has the
+  // arguments its message declares (see `PEDIGREE_WORDING_ARGUMENTS`).
+  ...Object.keys(familyPedigreeWordingIn()).map((key) => {
+    const declaration: Readonly<Record<string, MessageArguments | undefined>> =
+      PEDIGREE_WORDING_ARGUMENTS;
+    const argumentsOf = declaration[key];
+    return argumentsOf === undefined
+      ? site(stage(18, 'wording', key), 'plain')
+      : messageSite(stage(18, 'wording', key), argumentsOf);
+  }),
   site(stage(18, 'form', 'fields', 0, 'prompt'), 'markdown'),
   site(stage(18, 'form', 'fields', 0, 'hint'), 'markdown', true),
   site(stage(18, 'nominationPrompts', 0, 'text'), 'markdown'),
 
   site(stage(19, 'diseases', 0, 'label'), 'plain'),
+  // The Narrative Pedigree's own words, which Network Canvas supplies.
+  site(stage(19, 'keyHeading'), 'plain'),
+  site(stage(19, 'tooltips', 'clearFocus'), 'plain'),
+  site(stage(19, 'tooltips', 'saveSnapshot'), 'plain'),
+  site(stage(19, 'conditionText', 'heading'), 'plain'),
+  site(stage(19, 'conditionText', 'instruction'), 'plain'),
+  site(stage(19, 'conditionText', 'notation', 'affected'), 'plain'),
+  site(stage(19, 'conditionText', 'notation', 'obligateAffected'), 'plain'),
+  site(stage(19, 'conditionText', 'notation', 'obligateCarrier'), 'plain'),
+  site(stage(19, 'conditionText', 'notation', 'atRiskAffected'), 'plain'),
+  site(stage(19, 'conditionText', 'notation', 'atRiskCarrier'), 'plain'),
+  site(stage(19, 'conditionText', 'notation', 'unknown'), 'plain'),
+  messageSite(stage(19, 'conditionText', 'snapshotCondition'), {
+    title: { kind: 'text' },
+    condition: { kind: 'text' },
+  }),
+  messageSite(stage(19, 'conditionText', 'snapshotInheritance'), {
+    title: { kind: 'text' },
+    condition: { kind: 'text' },
+    name: { kind: 'text' },
+  }),
 
   // The finish stage's title and content are markdown, so a researcher can
   // emphasise a word in either.
   site(stage(FINISH_STAGE_INDEX, 'title'), 'markdown', false, true),
   site(stage(FINISH_STAGE_INDEX, 'content'), 'markdown', false, true),
+  // The interview's own words on that screen, which Network Canvas supplies.
+  site(stage(FINISH_STAGE_INDEX, 'finishLabel'), 'plain'),
+  site(stage(FINISH_STAGE_INDEX, 'finishConfirmation'), 'plain'),
+  site(stage(FINISH_STAGE_INDEX, 'finishedNotice'), 'plain'),
+  site(stage(FINISH_STAGE_INDEX, 'finishFailed'), 'plain'),
 ];
 
 const pathKey = (path: readonly PropertyKey[]) =>
@@ -253,12 +394,19 @@ describe('localized string coverage', () => {
 
   it('finds exactly the expected localized sites', () => {
     const found = collectLocalizedStrings(completeProtocol())
-      .map(({ path, format }) => ({ path: pathKey(path), format }))
+      .map(({ path, format, arguments: declaration }) => ({
+        path: pathKey(path),
+        format,
+        arguments: declaration,
+      }))
       .toSorted((a, b) => a.path.localeCompare(b.path));
-    const expected = EXPECTED_SITES.map(({ path, format }) => ({
-      path: pathKey(path),
-      format,
-    })).toSorted((a, b) => a.path.localeCompare(b.path));
+    const expected = EXPECTED_SITES.map(
+      ({ path, format, arguments: declaration }) => ({
+        path: pathKey(path),
+        format,
+        arguments: declaration,
+      }),
+    ).toSorted((a, b) => a.path.localeCompare(b.path));
     expect(found).toEqual(expected);
   });
 
@@ -298,13 +446,27 @@ describe('localized string coverage', () => {
   );
 
   it.each(EXPECTED_SITES.map((expected) => [siteName(expected), expected]))(
-    'rejects message placeholders at %s',
+    'rejects message placeholders it does not declare at %s',
     (_name, { path }) => {
-      expect(failurePaths(withValueAt(path, { en: 'Hello {name}' }))).toContain(
-        pathKey([...path, 'en']),
-      );
+      expect(
+        failurePaths(withValueAt(path, { en: 'Hello {undeclared}' })),
+      ).toContain(pathKey([...path, 'en']));
     },
   );
+
+  it.each(
+    EXPECTED_SITES.flatMap((expected) =>
+      expected.arguments === undefined ? [] : [[siteName(expected), expected]],
+    ),
+  )('accepts the arguments it declares at %s', (_name, expected) => {
+    expect(
+      failurePaths(
+        withValueAt(expected.path, {
+          en: messageUsing(expected.arguments ?? {}),
+        }),
+      ),
+    ).toEqual([]);
+  });
 });
 
 describe('attribute labels', () => {

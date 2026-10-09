@@ -1,3 +1,5 @@
+import { withInterfaceText } from '@codaco/protocol-validation';
+
 import type { SectionDoc } from './apply.ts';
 import { parseSectionId } from './taxonomy.ts';
 
@@ -94,5 +96,22 @@ export function assembleProtocolSections(
   if (assets !== undefined && Object.keys(assets).length > 0) {
     protocol.assetManifest = assets;
   }
-  return protocol;
+  // The interface text a protocol holds follows what its stages and codebook
+  // show, but they are committed without the settings that hold it. So the
+  // assembled protocol holds the text for what it shows now: a group the
+  // interview has come to show is filled in, one it no longer shows is
+  // dropped, and the researcher's words are kept. A document without a
+  // language declaration is left for the schema to refuse.
+  const { localization } = settings;
+  return isLocalizationDeclaration(localization)
+    ? withInterfaceText({ ...protocol, localization })
+    : protocol;
+}
+
+function isLocalizationDeclaration(
+  value: unknown,
+): value is { defaultLocale: string; locales: string[] } {
+  if (typeof value !== 'object' || value === null) return false;
+  const { defaultLocale, locales } = value as Record<string, unknown>;
+  return typeof defaultLocale === 'string' && isStringArray(locales);
 }

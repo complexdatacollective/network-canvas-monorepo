@@ -5,7 +5,7 @@ import { get } from 'es-toolkit/compat';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { type DndStore, useDndStore } from '@codaco/fresco-ui/dnd/dnd';
-import type { Panel } from '@codaco/protocol-validation';
+import type { LocalizedString, Panel } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
 import Panels from '../../../components/Panels';
@@ -27,6 +27,8 @@ type NodePanelsProps = {
   disableAddNew: boolean;
   onOpenChange?: (isOpen: boolean) => void;
   animationKey?: string | number;
+  /** The stage's words for a panel whose external data did not load. */
+  externalDataError?: LocalizedString;
 };
 
 function NodePanels(props: NodePanelsProps) {
@@ -37,7 +39,8 @@ function NodePanels(props: NodePanelsProps) {
     }[]
   >([]);
 
-  const { disableAddNew, onOpenChange, animationKey } = props;
+  const { disableAddNew, onOpenChange, animationKey, externalDataError } =
+    props;
   const isDragging = useDndStore((state: DndStore) => state.isDragging);
   const dragItem = useDndStore((state: DndStore) => state.dragItem);
   const meta = dragItem?.metadata as NcNode & { itemType: string };
@@ -165,6 +168,7 @@ function NodePanels(props: NodePanelsProps) {
         onUpdate={handlePanelUpdate(index)}
         id={`PANEL_NODE_LIST_${index}`}
         animationKey={animationKey}
+        externalDataError={externalDataError}
       />
     );
   };

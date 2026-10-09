@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS } from '@codaco/protocol-validation';
+import {
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+  familyPedigreeWordingIn,
+} from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -92,11 +95,13 @@ const familySections = (): Record<string, SectionDoc> => ({
   [sectionId({ kind: 'stage', stageId: FAMILY_STAGE_ID })]: {
     id: FAMILY_STAGE_ID,
     type: 'FamilyPedigree',
+    wording: familyPedigreeWordingIn(),
     label: { en: 'Family Pedigree' },
     subject: FAMILY_SUBJECT,
     prompt: { en: 'Build your family' },
     nodeConfiguration: {
       nameAttribute: 'name',
+      nameField: { prompt: { en: 'Name' } },
       genderIdentity: { attribute: 'genderIdentity', terms: [] },
       sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
       egoAttribute: 'isEgo',
@@ -379,11 +384,13 @@ describe('variable role helpers', () => {
         [sectionId({ kind: 'stage', stageId: FAMILY_STAGE_ID })]: {
           id: FAMILY_STAGE_ID,
           type: 'FamilyPedigree',
+          wording: familyPedigreeWordingIn(),
           label: 'Family Pedigree',
           subject: FAMILY_SUBJECT,
           prompt: 'Build your family',
           nodeConfiguration: {
             nameAttribute: 'name',
+            nameField: { prompt: { en: 'Name' } },
             sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
             egoAttribute: 'isEgo',
           },

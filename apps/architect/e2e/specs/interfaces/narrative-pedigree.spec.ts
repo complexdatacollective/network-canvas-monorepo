@@ -5,6 +5,7 @@ import {
   type CurrentProtocol,
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+  familyPedigreeWordingIn,
 } from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../../fixtures/architect-test.js';
@@ -128,11 +129,13 @@ function protocolWithFamilyPedigreeStage(): CurrentProtocol {
       {
         id: SOURCE_STAGE_ID,
         type: 'FamilyPedigree',
+        wording: familyPedigreeWordingIn(),
         label: { en: 'Family Pedigree' },
         subject: { entity: 'node', type: 'person' },
         prompt: { en: 'Who is in your family?' },
         nodeConfiguration: {
           nameAttribute: asEntityAttributeReference('name'),
+          nameField: { prompt: { en: 'Name (optional)' } },
           sexAssignedAtBirthAttribute:
             asEntityAttributeReference('sexAssignedAtBirth'),
           egoAttribute: asEntityAttributeReference('is_ego'),

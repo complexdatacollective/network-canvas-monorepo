@@ -1,31 +1,41 @@
+'use client';
+
 import { Pause as PauseIcon, Play as PlayIcon } from 'lucide-react';
 
-import { AppMessage } from '@codaco/app-i18n/react';
-import Button from '@codaco/fresco-ui/Button';
-
-import { interfaceMessages } from '../messages';
+import { IconButton } from '@codaco/fresco-ui/Button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@codaco/fresco-ui/Tooltip';
 
 type SimulationPanelProps = {
+  /** The stage's words for the toggle (`stage-wording/sociogram.ts`). */
+  words: Readonly<{ pauseLayout: string; resumeLayout: string }>;
   simulationEnabled: boolean;
   onToggle: () => void;
 };
 
 export default function SimulationPanel({
+  words,
   simulationEnabled,
   onToggle,
 }: SimulationPanelProps) {
+  const label = simulationEnabled ? words.pauseLayout : words.resumeLayout;
+
   return (
-    <Button
-      color="dynamic"
-      onClick={onToggle}
-      className="flex items-center gap-2 px-4 py-2 text-sm"
-      icon={simulationEnabled ? <PauseIcon /> : <PlayIcon />}
-    >
-      {simulationEnabled ? (
-        <AppMessage message={interfaceMessages.pauseAutomaticLayout} />
-      ) : (
-        <AppMessage message={interfaceMessages.resumeAutomaticLayout} />
-      )}
-    </Button>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <IconButton
+            color="dynamic"
+            aria-label={label}
+            icon={simulationEnabled ? <PauseIcon /> : <PlayIcon />}
+            onClick={onToggle}
+          />
+        }
+      />
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 }

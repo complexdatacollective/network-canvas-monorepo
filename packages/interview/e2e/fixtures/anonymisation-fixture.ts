@@ -4,17 +4,7 @@ import { FormFixture } from './stage-fixture.js';
 
 const RELEASE_KEY_DERIVATION_EVENT = 'e2e:release-key-derivation';
 
-const SUCCESS_MESSAGES = {
-  chosen: 'Passphrase set successfully! Click "Next" to continue.',
-  verified: 'Passphrase accepted! Click "Next" to continue.',
-  earlier:
-    'You have already entered your passphrase. Click "Next" to continue.',
-};
-
-type SuccessMode = keyof typeof SUCCESS_MESSAGES;
-
-const escapeRegExp = (text: string) =>
-  text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const SUCCESS_MESSAGE = 'Passphrase accepted! Click "Next" to continue.';
 
 /**
  * Fixture for Anonymisation stages and the passphrase prompter.
@@ -85,28 +75,21 @@ export class AnonymisationFixture {
   }
 
   /**
-   * The success alert shown once the interview's key is in force, worded for
-   * how it came into force: chosen on the stage, the passphrase chosen earlier
-   * entered again on it, or entered before the stage was reached. With no
-   * mode it matches whichever is shown.
+   * The success alert shown once the interview's key is in force. The stage
+   * says the same thing however the key came into force: chosen on the stage,
+   * entered again on it, or entered before the stage was reached.
    */
-  successAlert(mode?: SuccessMode): Locator {
-    return this.page.getByText(
-      mode === undefined
-        ? new RegExp(
-            Object.values(SUCCESS_MESSAGES).map(escapeRegExp).join('|'),
-          )
-        : SUCCESS_MESSAGES[mode],
-    );
+  successAlert(): Locator {
+    return this.page.getByText(SUCCESS_MESSAGE);
   }
 
   /**
-   * The line the stage shows in place of the choosing form when a passphrase
-   * was chosen earlier in this interview and has to be entered again.
+   * The line the stage shows above the entering form when a passphrase was
+   * chosen earlier in this interview and has to be entered again.
    */
   chosenEarlierNotice(): Locator {
     return this.page.getByText(
-      'You chose a passphrase earlier in this interview. Enter it to continue.',
+      'Some answers on this screen are protected by a passphrase. Keep it safe: you will need it to see or change these answers later, and it cannot be recovered if it is forgotten.',
     );
   }
 
@@ -145,23 +128,21 @@ export class AnonymisationFixture {
    */
   prompterButton(): Locator {
     return this.page.getByRole('button', {
-      name: 'Enter your passphrase',
+      name: 'Passphrase',
       exact: true,
     });
   }
 
   /**
-   * The prompter dialog, titled "Choose a passphrase" in an interview without
-   * one and "Enter your passphrase" in one that has one.
+   * The prompter dialog. Its title is "Passphrase" whether the interview has
+   * one yet or not.
    */
-  prompterDialog(
-    name: 'Choose a passphrase' | 'Enter your passphrase',
-  ): Locator {
-    return this.page.getByRole('dialog', { name, exact: true });
+  prompterDialog(): Locator {
+    return this.page.getByRole('dialog', { name: 'Passphrase', exact: true });
   }
 
   prompterSubmitButton(): Locator {
-    return this.page.getByRole('button', { name: 'Submit passphrase' });
+    return this.page.getByRole('button', { name: 'Continue' });
   }
 
   async openPrompter(): Promise<void> {

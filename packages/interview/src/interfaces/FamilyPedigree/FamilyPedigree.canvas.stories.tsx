@@ -203,9 +203,7 @@ async function addMother(canvasElement: HTMLElement, childId: string) {
   await userEvent.click(await canvas.findByTestId('pedigree-menu-parent'));
   await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
   await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
-  await userEvent.click(
-    await body.findByRole('button', { name: 'Add to family' }),
-  );
+  await userEvent.click(await body.findByRole('button', { name: 'Save' }));
   await waitFor(() =>
     expect(
       canvasElement.ownerDocument.querySelector(
@@ -551,13 +549,13 @@ export const ConnectTextEndsWithConnecting: Story = {
     await userEvent.click(pointer);
     await waitFor(() => expect(liveRegionText(canvasElement)).toBe(''));
 
-    // B: a pair refused, as already connected.
+    // B: someone already connected to the first person cannot be picked.
     await userEvent.click(connect);
     await userEvent.click(personSymbol(canvasElement, 'linda'));
-    await userEvent.click(personSymbol(canvasElement, 'ego'));
     await waitFor(() =>
-      expect(liveRegionText(canvasElement)).toContain('already connected'),
+      expect(liveRegionText(canvasElement)).toContain('Linda'),
     );
+    await expect(personSymbol(canvasElement, 'ego')).toBeDisabled();
     await userEvent.click(pointer);
     await waitFor(() => expect(liveRegionText(canvasElement)).toBe(''));
 
@@ -665,10 +663,12 @@ export const TheHintStopsAskingOnceAPairIsPicked: Story = {
 
     await userEvent.click(canvas.getByTestId('pedigree-tool-connect'));
     await userEvent.click(personSymbol(canvasElement, 'lisa'));
-    await expect(hint()).toHaveTextContent('Now select the person');
+    await expect(hint()).toHaveTextContent(
+      'Select a person, then select another',
+    );
     await userEvent.click(personSymbol(canvasElement, 'mark'));
     await page.findByRole('menu');
-    await expect(hint()?.textContent ?? '').not.toContain('Now select');
+    await expect(hint()).toBeNull();
     await userEvent.click(
       await page.findByRole('menuitem', { name: 'Cancel' }),
     );
@@ -680,7 +680,7 @@ export const TheHintStopsAskingOnceAPairIsPicked: Story = {
     await userEvent.click(personSymbol(canvasElement, 'ego'));
     await userEvent.click(personSymbol(canvasElement, 'lisa'));
     await page.findByRole('dialog');
-    await expect(hint()?.textContent ?? '').not.toContain('Now select');
+    await expect(hint()).toBeNull();
   },
 };
 
@@ -726,7 +726,7 @@ export const TheFamilyWaitsForTheWording: Story = {
     await expect(canvas.queryByTestId('pedigree-menu-parent')).toBeNull();
 
     await userEvent.click(
-      body.getByRole('option', { name: /Mother, father, sister, brother/ }),
+      body.getByRole('option', { name: /Mother, Father, Sister, Brother/ }),
     );
     await waitFor(() => expect(body.queryByText(FRAMING_TITLE)).toBeNull());
     await expect(personSymbol(canvasElement, 'mum')).toBeEnabled();
@@ -748,7 +748,7 @@ export const TheWordingOpenedAgainClosesOnFocusLoss: Story = {
     const body = within(canvasElement.ownerDocument.body);
     await body.findByText(FRAMING_TITLE, {}, { timeout: 5000 });
     await userEvent.click(
-      body.getByRole('option', { name: /Mother, father, sister, brother/ }),
+      body.getByRole('option', { name: /Mother, Father, Sister, Brother/ }),
     );
     await waitFor(() => expect(body.queryByText(FRAMING_TITLE)).toBeNull());
 
@@ -801,11 +801,11 @@ export const RemovingSomeoneKeepsFocusInTheFamily: Story = {
     await userEvent.keyboard('{Enter}');
     await waitFor(() => expect(personPanel(canvasElement)).not.toBeNull());
     within(personPanel(canvasElement) as HTMLElement)
-      .getByRole('button', { name: 'Remove from family' })
+      .getByRole('button', { name: 'Delete' })
       .focus();
     await userEvent.keyboard('{Enter}');
     const dialog = await body.findByRole('dialog', { name: /^Remove/ });
-    within(dialog).getByRole('button', { name: 'Remove from family' }).focus();
+    within(dialog).getByRole('button', { name: 'Delete' }).focus();
     await userEvent.keyboard('{Enter}');
     await waitFor(() =>
       expect(canvasElement.querySelector('[data-person-id="kim"]')).toBeNull(),
@@ -886,7 +886,8 @@ export const ArrowKeysMoveAlikeAtEveryZoom: Story = {
 /**
  * Two relatives given the same name are each called by it exactly as typed,
  * wherever they are named: in their symbols and accessible names, their
- * panels' titles, the connect tool's hints and the remove confirmation.
+ * panels' titles, the connect tool's announcements and the remove
+ * confirmation.
  * Nothing is added to a typed name to tell them apart.
  */
 export const NamesakesKeepTheirTypedNames: Story = {
@@ -933,13 +934,17 @@ export const NamesakesKeepTheirTypedNames: Story = {
       await waitFor(() => expect(personPanel(canvasElement)).toBeNull());
     }
 
-    // Connecting them is refused naming each as typed.
+    // Picking one to connect announces them as typed; the other, already
+    // connected to them, cannot be picked.
     await userEvent.click(canvas.getByTestId('pedigree-tool-connect'));
     await userEvent.click(personSymbol(canvasElement, 'dad'));
-    await userEvent.click(personSymbol(canvasElement, 'grandad'));
-    const refusal = canvas.getByTestId('pedigree-connect-hint').textContent;
-    await expect(refusal).toMatch(/already connected/);
-    await expect(refusal).toContain('“José García” and “José García”');
+    await waitFor(() =>
+      expect(liveRegionText(canvasElement)).toContain('José García'),
+    );
+    await expect(liveRegionText(canvasElement)).not.toMatch(
+      /José García \d|José García \(/,
+    );
+    await expect(personSymbol(canvasElement, 'grandad')).toBeDisabled();
     await userEvent.click(canvas.getByTestId('pedigree-tool-pointer'));
 
     // So is removing one of them.
@@ -947,7 +952,7 @@ export const NamesakesKeepTheirTypedNames: Story = {
     await waitFor(() => expect(personPanel(canvasElement)).not.toBeNull());
     await userEvent.click(
       within(personPanel(canvasElement) as HTMLElement).getByRole('button', {
-        name: 'Remove from family',
+        name: 'Delete',
       }),
     );
     const dialog = await page.findByRole('dialog', { name: /^Remove/ });

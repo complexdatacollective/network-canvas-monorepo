@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import type { MessageArguments } from '../../../localization/messageArguments.ts';
 import { duplicateIdRefinement } from '../../../utils/validation-helpers.ts';
 import {
   TitlelessFormSchema,
@@ -12,7 +13,15 @@ import {
   PEDIGREE_COMPLETENESS_SCOPES,
   PEDIGREE_GENDER_WORDS,
 } from '../family-pedigree-values.ts';
-import { localizedString } from '../localized-string.ts';
+import {
+  localizedMessage,
+  localizedString,
+  nonBlankText,
+} from '../localized-string.ts';
+import {
+  asksGenderIdentity,
+  choosesFraming,
+} from '../stage-wording/family-pedigree.ts';
 import { categoricalOptionValueSchema } from '../variables/variable.ts';
 import { baseStageSchema } from './base.ts';
 
@@ -98,6 +107,12 @@ export const NodeConfigurationSchema = z.strictObject({
     subject: 'stageSubject',
     usage: 'validatedAttribute',
     requireType: ['text'],
+  }),
+  // The question asking that name, and the hint beneath it, worded like a
+  // form field's prompt and hint. Network Canvas supplies both.
+  nameField: z.strictObject({
+    prompt: localizedString(nonBlankText(), 'plain'),
+    hint: localizedString(nonBlankText(), 'plain').optional(),
   }),
   // Optional: the gender identity question and the words it decides. See
   // `GenderIdentitySchema`.
@@ -187,6 +202,45 @@ export const EdgeConfigurationSchema = z.strictObject({
 });
 
 /**
+ * What the tracker's wording about one person may use: whether that person
+ * is the participant (`isYou` is `true`), so the text can say "you", and
+ * their name as the participant has it.
+ */
+export const PEDIGREE_PERSON_ARGUMENTS = {
+  isYou: { kind: 'select', cases: ['true'] },
+  name: { kind: 'text' },
+} as const satisfies MessageArguments;
+
+const personMessage = () =>
+  localizedMessage(nonBlankText(), { arguments: PEDIGREE_PERSON_ARGUMENTS });
+
+/**
+ * The tracker's wording, by the kind of thing it says is missing
+ * (`CompletenessItem.kind` in the interview): the entry in its list
+ * (`listItem`), the button recording that a person has no siblings or
+ * children (`noneButton`), and the side panel's question about them
+ * (`question`). Network Canvas supplies all of it.
+ */
+const CompletenessTextSchema = z.strictObject({
+  parents: z.strictObject({
+    listItem: personMessage(),
+  }),
+  siblings: z.strictObject({
+    listItem: personMessage(),
+    noneButton: personMessage(),
+    question: personMessage(),
+  }),
+  children: z.strictObject({
+    listItem: personMessage(),
+    noneButton: personMessage(),
+    question: personMessage(),
+  }),
+  details: z.strictObject({
+    listItem: personMessage(),
+  }),
+});
+
+/**
  * How much of the family the participant must record before continuing.
  * `recommended` lets them continue after being shown what is missing;
  * `required` does not.
@@ -207,6 +261,10 @@ export const CompletenessSchema = z.strictObject({
     },
     ownedOptions: 'pedigreeRelativesNotRecorded',
   }),
+  itemText: CompletenessTextSchema,
+  // Shown under the tracker when the family is only recommended. Kept under
+  // either enforcement, so switching between them loses no wording.
+  recommendedNote: localizedString(nonBlankText(), 'plain'),
 });
 
 /**
@@ -242,6 +300,370 @@ const NominationPromptSchema = z.strictObject({
   onlyForSexAssignedAtBirth: z.enum(['female', 'male']).optional(),
 });
 
+/** Every kinship term the relative label may name. */
+export const PEDIGREE_RELATIVE_TERMS = [
+  'mother',
+  'father',
+  'parent',
+  'eggParent',
+  'spermParent',
+  'biologicalMother',
+  'biologicalFather',
+  'adoptiveMother',
+  'adoptiveFather',
+  'adoptiveParent',
+  'stepmother',
+  'stepfather',
+  'stepparent',
+  'eggDonor',
+  'spermDonor',
+  'donor',
+  'surrogate',
+  'daughter',
+  'son',
+  'child',
+  'stepdaughter',
+  'stepson',
+  'stepchild',
+  'donorConceivedChild',
+  'surrogacyChild',
+  'sister',
+  'brother',
+  'sibling',
+  'halfSister',
+  'halfBrother',
+  'halfSibling',
+  'adoptiveSister',
+  'adoptiveBrother',
+  'adoptiveSibling',
+  'stepsister',
+  'stepbrother',
+  'stepsibling',
+  'partner',
+  'formerPartner',
+  'grandmother',
+  'grandfather',
+  'grandparent',
+  'maternalGrandmother',
+  'maternalGrandfather',
+  'maternalGrandparent',
+  'paternalGrandmother',
+  'paternalGrandfather',
+  'paternalGrandparent',
+  'greatGrandmother',
+  'greatGrandfather',
+  'greatGrandparent',
+  'stepGrandmother',
+  'stepGrandfather',
+  'stepGrandparent',
+  'granddaughter',
+  'grandson',
+  'grandchild',
+  'greatGranddaughter',
+  'greatGrandson',
+  'greatGrandchild',
+  'aunt',
+  'uncle',
+  'maternalAunt',
+  'maternalUncle',
+  'paternalAunt',
+  'paternalUncle',
+  'parentsSibling',
+  'greatAunt',
+  'greatUncle',
+  'grandparentsSibling',
+  'niece',
+  'nephew',
+  'siblingsChild',
+  'cousin',
+  'motherInLaw',
+  'fatherInLaw',
+  'parentInLaw',
+  'sisterInLaw',
+  'brotherInLaw',
+  'siblingInLaw',
+  'daughterInLaw',
+  'sonInLaw',
+  'childInLaw',
+] as const;
+
+const SELECT_TRUE = { kind: 'select', cases: ['true'] } as const;
+const TEXT = { kind: 'text' } as const;
+const PLURAL = { kind: 'plural' } as const;
+
+/** What a message about two people may use: whether the first is the participant. */
+const TWO_PEOPLE_ARGUMENTS = {
+  firstIsYou: SELECT_TRUE,
+  first: TEXT,
+  second: TEXT,
+} as const satisfies MessageArguments;
+
+/** What a message about a family member and one of their twins may use:
+ * whether either is the participant. */
+const TWIN_PAIR_ARGUMENTS = {
+  who: { kind: 'select', cases: ['personIsYou', 'twinIsYou'] },
+  name: TEXT,
+  twin: TEXT,
+} as const satisfies MessageArguments;
+
+/** What a message about who carried a child may use: whether the person who
+ * carried, or the child, is the participant. */
+const CARRIER_ARGUMENTS = {
+  who: { kind: 'select', cases: ['carrierIsYou', 'childIsYou'] },
+  carrier: TEXT,
+  child: TEXT,
+} as const satisfies MessageArguments;
+
+/**
+ * What each of the Family Pedigree's wording settings with arguments may use,
+ * by setting. A `select` argument lists the cases the message chooses between
+ * (`other` is always allowed), a `plural` argument is a count, and a `text`
+ * argument is shown as it is.
+ */
+export const PEDIGREE_WORDING_ARGUMENTS = {
+  biologicalParentBoth: TWO_PEOPLE_ARGUMENTS,
+  carriedSiblingsPregnancyLabel: {
+    single: SELECT_TRUE,
+    count: TEXT,
+    ...PEDIGREE_PERSON_ARGUMENTS,
+  },
+  changeWouldCutOff: { count: PLURAL, names: TEXT },
+  connectParent: {
+    parentIsYou: SELECT_TRUE,
+    parent: TEXT,
+    childIsYou: SELECT_TRUE,
+    child: TEXT,
+  },
+  connectPartners: { current: SELECT_TRUE, ...TWO_PEOPLE_ARGUMENTS },
+  connectQuestion: TWO_PEOPLE_ARGUMENTS,
+  disconnectConfirmTitle: TWO_PEOPLE_ARGUMENTS,
+  disconnectWouldCutOff: { count: PLURAL, names: TEXT },
+  generatedLabelOf: {
+    relation: {
+      kind: 'select',
+      cases: ['partner', 'formerPartner', 'parent', 'sibling', 'owner'],
+    },
+    isYou: SELECT_TRUE,
+    term: TEXT,
+    name: TEXT,
+    owner: TEXT,
+  },
+  missingDetailsList: { details: TEXT },
+  panelTitle: {
+    relation: {
+      kind: 'select',
+      cases: ['edit', 'parent', 'sibling', 'partner'],
+    },
+    ...PEDIGREE_PERSON_ARGUMENTS,
+  },
+  parentCarriedLabel: {
+    named: SELECT_TRUE,
+    parentIsYou: SELECT_TRUE,
+    parent: TEXT,
+  },
+  parentKindCarrier: { parentKind: TEXT },
+  parentLinkKindLabel: {
+    parentIsYou: SELECT_TRUE,
+    personIsYou: SELECT_TRUE,
+    parent: TEXT,
+  },
+  placeholderParentsNote: {
+    framing: { kind: 'select', cases: ['gamete'] },
+  },
+  relativeTerm: {
+    term: { kind: 'select', cases: PEDIGREE_RELATIVE_TERMS },
+  },
+  removeConfirmDescription: {
+    hasOthers: SELECT_TRUE,
+    count: PLURAL,
+    names: TEXT,
+  },
+  removeConfirmTitle: { name: TEXT },
+  sharedDonorsLabel: PEDIGREE_PERSON_ARGUMENTS,
+  sharedParentCountLabel: PEDIGREE_PERSON_ARGUMENTS,
+  sharedParentEggOnly: {
+    parent: { kind: 'select', cases: ['egg'] },
+    framing: { kind: 'select', cases: ['gamete'] },
+  },
+  siblingTwinLabel: PEDIGREE_PERSON_ARGUMENTS,
+  stillTogetherLabel: {
+    named: SELECT_TRUE,
+    personIsYou: SELECT_TRUE,
+    partner: TEXT,
+    partnerIsYou: SELECT_TRUE,
+  },
+  twinsLabel: PEDIGREE_PERSON_ARGUMENTS,
+  twinZygosityLabel: TWIN_PAIR_ARGUMENTS,
+  unavailableAncestor: {
+    who: { kind: 'select', cases: ['parentIsYou', 'childIsYou'] },
+    parent: TEXT,
+    child: TEXT,
+  },
+  unavailableBothSameSex: { ...TWO_PEOPLE_ARGUMENTS, sex: TEXT },
+  unavailableCannotCarry: {
+    who: { kind: 'select', cases: ['you', 'this'] },
+    name: TEXT,
+    sex: TEXT,
+  },
+  unavailableCarried: {
+    who: { kind: 'select', cases: ['personIsYou', 'childIsYou'] },
+    child: TEXT,
+    sex: TEXT,
+  },
+  unavailableCarrierChoice: CARRIER_ARGUMENTS,
+  unavailableCarrierRecorded: CARRIER_ARGUMENTS,
+  unavailableGeneticParentsFull: {
+    who: { kind: 'select', cases: ['childIsYou', 'includesYou'] },
+    child: TEXT,
+    first: TEXT,
+    second: TEXT,
+  },
+  unavailableIdenticalTwin: TWIN_PAIR_ARGUMENTS,
+  unavailableIdenticalTwinNew: PEDIGREE_PERSON_ARGUMENTS,
+  unavailableSameSexGeneticParent: {
+    who: { kind: 'select', cases: ['coParentIsYou', 'childIsYou'] },
+    coParent: TEXT,
+    child: TEXT,
+    sex: TEXT,
+  },
+} as const satisfies Readonly<Record<string, MessageArguments>>;
+
+type WordingWithArguments = keyof typeof PEDIGREE_WORDING_ARGUMENTS;
+
+const plainWording = () => localizedString(nonBlankText(), 'plain');
+
+const argumentWording = (key: WordingWithArguments) =>
+  localizedMessage(nonBlankText(), {
+    arguments: PEDIGREE_WORDING_ARGUMENTS[key],
+  });
+
+/**
+ * The words the interface shows a participant on this stage, which Network
+ * Canvas supplies (`stage-wording/family-pedigree.ts`). A key is named for
+ * the message's id in the interface's catalog, so the translations keep the
+ * names their messages were written with.
+ *
+ * The framing words and the gender identity question are shown only in some
+ * configurations: they are optional here, and required by the stage while
+ * their configuration is on (see `CONFIGURED_WORDING`).
+ */
+export const FamilyPedigreeWordingSchema = z.strictObject({
+  alsoParentOfLabel: plainWording(),
+  biologicalParentBoth: argumentWording('biologicalParentBoth'),
+  biologicalParentHint: plainWording(),
+  biologicalParentLabel: plainWording(),
+  carriedSiblingsPregnancyLabel: argumentWording(
+    'carriedSiblingsPregnancyLabel',
+  ),
+  carrierLabel: plainWording(),
+  carrierUnknown: plainWording(),
+  changeWouldCutOff: argumentWording('changeWouldCutOff'),
+  childKindAdoptive: plainWording(),
+  childKindBiological: plainWording(),
+  childKindDonor: plainWording(),
+  childKindLabel: plainWording(),
+  childKindSocial: plainWording(),
+  childKindSurrogate: plainWording(),
+  connectHint: plainWording(),
+  connectParent: argumentWording('connectParent'),
+  connectPartners: argumentWording('connectPartners'),
+  connectQuestion: argumentWording('connectQuestion'),
+  disconnectConfirmDescription: plainWording(),
+  disconnectConfirmTitle: argumentWording('disconnectConfirmTitle'),
+  disconnectHint: plainWording(),
+  disconnectWouldCutOff: argumentWording('disconnectWouldCutOff'),
+  dontKnow: plainWording(),
+  framingChoiceDescription: plainWording().optional(),
+  framingChoiceTitle: plainWording().optional(),
+  genderIdentityLabel: plainWording().optional(),
+  generatedLabelOf: argumentWording('generatedLabelOf'),
+  missingDetailsList: argumentWording('missingDetailsList'),
+  otherParentLabel: plainWording(),
+  otherParentNone: plainWording(),
+  otherParentUnknown: plainWording(),
+  panelTitle: argumentWording('panelTitle'),
+  parentCarriedLabel: argumentWording('parentCarriedLabel'),
+  parentKindCarrier: argumentWording('parentKindCarrier'),
+  parentKindLabel: plainWording(),
+  parentLinkKindLabel: argumentWording('parentLinkKindLabel'),
+  parentPartnerLabel: plainWording(),
+  placeholderParentsNote: argumentWording('placeholderParentsNote'),
+  relativeTerm: argumentWording('relativeTerm'),
+  removeConfirmDescription: argumentWording('removeConfirmDescription'),
+  removeConfirmTitle: argumentWording('removeConfirmTitle'),
+  sexAssignedAtBirthLabel: plainWording(),
+  sharedDonorsLabel: argumentWording('sharedDonorsLabel'),
+  sharedParentCountBoth: plainWording(),
+  sharedParentCountLabel: argumentWording('sharedParentCountLabel'),
+  sharedParentEggOnly: argumentWording('sharedParentEggOnly'),
+  siblingBiologicalParentLabel: plainWording(),
+  siblingKindLabel: plainWording(),
+  siblingTwinFraternal: plainWording(),
+  siblingTwinHint: plainWording(),
+  siblingTwinIdentical: plainWording(),
+  siblingTwinLabel: argumentWording('siblingTwinLabel'),
+  siblingTwinNo: plainWording(),
+  siblingTwinUnknown: plainWording(),
+  stillTogetherLabel: argumentWording('stillTogetherLabel'),
+  twinsHint: plainWording(),
+  twinsLabel: argumentWording('twinsLabel'),
+  twinZygosityLabel: argumentWording('twinZygosityLabel'),
+  unavailableAncestor: argumentWording('unavailableAncestor'),
+  unavailableBothSameSex: argumentWording('unavailableBothSameSex'),
+  unavailableCannotCarry: argumentWording('unavailableCannotCarry'),
+  unavailableCarried: argumentWording('unavailableCarried'),
+  unavailableCarrierChoice: argumentWording('unavailableCarrierChoice'),
+  unavailableCarrierRecorded: argumentWording('unavailableCarrierRecorded'),
+  unavailableGeneticParentsFull: argumentWording(
+    'unavailableGeneticParentsFull',
+  ),
+  unavailableIdenticalTwin: argumentWording('unavailableIdenticalTwin'),
+  unavailableIdenticalTwinNew: argumentWording('unavailableIdenticalTwinNew'),
+  unavailableSameSexGeneticParent: argumentWording(
+    'unavailableSameSexGeneticParent',
+  ),
+  zygosityFraternal: plainWording(),
+  zygosityIdentical: plainWording(),
+  zygosityUnknown: plainWording(),
+  you: plainWording(),
+  save: plainWording(),
+  connectTool: plainWording(),
+  disconnectTool: plainWording(),
+  framingControlLabel: plainWording().optional(),
+  pointerTool: plainWording(),
+});
+
+export type FamilyPedigreeWording = z.infer<typeof FamilyPedigreeWordingSchema>;
+
+/**
+ * The words that are required only while a configuration is on, with that
+ * configuration. The stage refuses to hold one of them missing while the
+ * configuration applies, and a researcher who switches the configuration off
+ * keeps the words.
+ */
+const CONFIGURED_WORDING = [
+  {
+    key: 'framingChoiceTitle',
+    applies: choosesFraming,
+    requiredWhen: 'participants choose the words',
+  },
+  {
+    key: 'framingChoiceDescription',
+    applies: choosesFraming,
+    requiredWhen: 'participants choose the words',
+  },
+  {
+    key: 'framingControlLabel',
+    applies: choosesFraming,
+    requiredWhen: 'participants choose the words',
+  },
+  {
+    key: 'genderIdentityLabel',
+    applies: asksGenderIdentity,
+    requiredWhen: 'the stage asks about gender identity',
+  },
+] as const;
+
 /**
  * The stage a participant draws their family on.
  *
@@ -253,26 +675,40 @@ const NominationPromptSchema = z.strictObject({
  * sex assigned at birth), how they are related to the person they are added
  * to, and then the researcher's `form` fields.
  */
-export const familyPedigreeStage = baseStageSchema.extend({
-  type: z.literal('FamilyPedigree'),
-  subject: NodeStageSubjectSchema,
-  prompt: localizedString(z.string().min(1), 'markdown'),
-  nodeConfiguration: NodeConfigurationSchema,
-  edgeConfiguration: EdgeConfigurationSchema,
-  // Which words describe family members, or `participantPreference` to let
-  // the participant choose. Absent: `gendered`.
-  framing: z.enum(FRAMING_SETTINGS).optional(),
-  // Absent: the participant may continue with any family they have drawn.
-  completeness: CompletenessSchema.optional(),
-  // Researcher-defined person fields, asked after the interface's own.
-  form: TitlelessFormSchema.optional(),
-  // Asked in turn once the family is drawn, each its own prompt.
-  nominationPrompts: z
-    .array(NominationPromptSchema)
-    .min(1)
-    .superRefine(duplicateIdRefinement('Nomination prompts'))
-    .optional(),
-});
+export const familyPedigreeStage = baseStageSchema
+  .extend({
+    type: z.literal('FamilyPedigree'),
+    subject: NodeStageSubjectSchema,
+    prompt: localizedString(z.string().min(1), 'markdown'),
+    nodeConfiguration: NodeConfigurationSchema,
+    edgeConfiguration: EdgeConfigurationSchema,
+    // Which words describe family members, or `participantPreference` to let
+    // the participant choose. Absent: `gendered`.
+    framing: z.enum(FRAMING_SETTINGS).optional(),
+    // Absent: the participant may continue with any family they have drawn.
+    completeness: CompletenessSchema.optional(),
+    // Researcher-defined person fields, asked after the interface's own.
+    form: TitlelessFormSchema.optional(),
+    // Asked in turn once the family is drawn, each its own prompt.
+    nominationPrompts: z
+      .array(NominationPromptSchema)
+      .min(1)
+      .superRefine(duplicateIdRefinement('Nomination prompts'))
+      .optional(),
+    // The words the interface shows, which Network Canvas supplies.
+    wording: FamilyPedigreeWordingSchema,
+  })
+  .superRefine((stage, ctx) => {
+    for (const { key, applies, requiredWhen } of CONFIGURED_WORDING) {
+      if (applies(stage) && stage.wording[key] === undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `The "${key}" wording is required when ${requiredWhen}.`,
+          path: ['wording', key],
+        });
+      }
+    }
+  });
 
 export type FamilyPedigreeStageDefinition = z.infer<typeof familyPedigreeStage>;
 export type FamilyPedigreeNodeConfiguration = z.infer<

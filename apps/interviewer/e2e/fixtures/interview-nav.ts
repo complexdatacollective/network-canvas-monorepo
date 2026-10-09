@@ -62,8 +62,7 @@ export class InterviewNav {
     await this.page.getByTestId('settings-button').click();
     await this.page.getByTestId('exit-button').click();
     const exitDialog = this.page.getByRole('dialog', {
-      name:
-        locale === 'es' ? '¿Salir de esta entrevista?' : 'Exit this interview?',
+      name: locale === 'es' ? 'Salir de la entrevista' : 'Exit interview',
     });
     await expect(exitDialog).toBeVisible();
     await exitDialog

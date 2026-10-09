@@ -1,0 +1,69 @@
+- main:
+  - status:
+    - heading "Add the members of your family." [level=2]
+  - region "Interview notifications"
+  - dialog "Add your sibling":
+    - heading "Add your sibling" [level=2]
+    - button "Close"
+    - text: Name (optional) A first name or nickname is fine. If you don’t know it, leave this blank and they will be shown by how they are related to you.
+    - textbox "Name (optional)"
+    - text: Gender identity Required
+    - radiogroup "Gender identity":
+      - radio "Woman"
+      - text: Woman
+      - radio "Man"
+      - text: Man
+      - radio "Non-binary"
+      - text: Non-binary
+      - radio "A different identity"
+      - text: A different identity
+      - radio "Don’t know"
+      - text: Don’t know
+      - radio "Prefer not to say"
+      - text: Prefer not to say
+    - text: Sex assigned at birth Required
+    - radiogroup "Sex assigned at birth":
+      - radio "Female"
+      - text: Female
+      - radio "Male"
+      - text: Male
+      - radio "Intersex"
+      - text: Intersex
+      - radio "Don’t know"
+      - text: Don’t know
+      - radio "Prefer not to say"
+      - text: Prefer not to say
+    - text: Your donors in common - matrix check
+    - group "Your donors in common - matrix check":
+      - checkbox "Dee"
+      - text: Dee
+      - checkbox "Don"
+      - text: Don
+    - text: To the parents they share, are they… Required
+    - radiogroup "To the parents they share, are they…":
+      - radio "A biological child" [checked]
+      - text: A biological child
+      - radio "An adopted child"
+      - text: An adopted child
+      - radio "A step-child or other child they raise"
+      - text: A step-child or other child they raise
+    - text: Who carried the pregnancy?
+    - radiogroup "Who carried the pregnancy?":
+      - radio "Adoptive parent 1"
+      - text: Adoptive parent 1
+      - radio "Adoptive parent 2"
+      - text: Adoptive parent 2
+      - radio "Someone else, or I don’t know"
+      - text: Someone else, or I don’t know
+    - text: Are they your twin? Answer yes for triplets and other multiple births too. Some answers are unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of yours. To choose one, choose all of your biological parents and donors above.
+    - radiogroup "Are they your twin?":
+      - radio "No" [checked]
+      - text: "No"
+      - radio "Yes, identical twins" [disabled]
+      - text: Yes, identical twins
+      - radio "Yes, fraternal (non-identical) twins"
+      - text: Yes, fraternal (non-identical) twins
+      - radio "Yes, but I don’t know if they are identical"
+      - text: Yes, but I don’t know if they are identical
+    - button "Cancel"
+    - button "Save"

@@ -581,7 +581,7 @@ describe('Shell interview languages', () => {
       await screen.findByRole('button', { name: 'Exit interview' }),
     );
     const dialog = await screen.findByRole('dialog', {
-      name: 'Exit this interview?',
+      name: 'Exit interview',
     });
     view.rerender(
       <Shell
@@ -593,7 +593,7 @@ describe('Shell interview languages', () => {
       />,
     );
     expect(
-      await screen.findByRole('dialog', { name: '¿Salir de esta entrevista?' }),
+      await screen.findByRole('dialog', { name: 'Salir de la entrevista' }),
     ).toBe(dialog);
     expect(
       within(dialog).getByText(

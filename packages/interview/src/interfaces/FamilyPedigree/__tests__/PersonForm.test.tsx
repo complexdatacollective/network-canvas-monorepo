@@ -6,6 +6,7 @@ import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
+import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
@@ -21,7 +22,6 @@ import {
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import * as attributePatch from '../../../forms/formValuesToAttributePatch';
-import { runtimeMessages } from '../../../i18n/runtimeMessages';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
@@ -29,7 +29,9 @@ import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalizati
 import PersonForm, { type PersonFormResult } from '../components/PersonForm';
 import { type MissingDetail, type Relation, readFamily } from '../model';
 import type { OwnedOptionLabels } from '../options';
+import { PedigreeWordsProvider } from '../pedigreeWords';
 import { config, link, person } from './fixtures';
+import { pedigreeWordsIn } from './pedigreeWords';
 
 const OPTION_LABELS: OwnedOptionLabels = {
   sexAssignedAtBirth: {
@@ -85,6 +87,11 @@ type Setup = {
   optionLabels?: OwnedOptionLabels;
   /** What storing the submission comes to. */
   submitted?: Promise<FormSubmissionResult>;
+  /**
+   * The protocol's default language, which its wording is shown in. The
+   * fixture's own text is English, so English is declared too.
+   */
+  protocolLocale?: string;
 };
 
 /** The pedigree's side panel, editing `editing` (or adding a relative of
@@ -101,6 +108,7 @@ function renderPersonForm(
     decryptedNames = new Map(),
     optionLabels = OPTION_LABELS,
     submitted = Promise.resolve({ success: true }),
+    protocolLocale = 'en',
   }: Setup,
 ) {
   const store = configureStore({
@@ -171,12 +179,19 @@ function renderPersonForm(
     .mockImplementation(() => submitted);
 
   const Wrapper = ({ children }: { children: ReactNode }) => (
-    <TestProtocolLocalization>
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-          <FormStoreProvider>{children}</FormStoreProvider>
-        </CurrentStepProvider>
-      </Provider>
+    <TestProtocolLocalization
+      localization={{
+        defaultLocale: protocolLocale,
+        locales: [...new Set([protocolLocale, 'en'])],
+      }}
+    >
+      <PedigreeWordsProvider value={pedigreeWordsIn(protocolLocale)}>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+            <FormStoreProvider>{children}</FormStoreProvider>
+          </CurrentStepProvider>
+        </Provider>
+      </PedigreeWordsProvider>
     </TestProtocolLocalization>
   );
 
@@ -203,6 +218,10 @@ function renderPersonForm(
         generatedLabels={{}}
         decryptedNames={decryptedNames}
         displayName={(id) => id}
+        nameField={{
+          prompt: { en: 'Name (optional)' },
+          hint: { en: 'A first name or nickname is fine.' },
+        }}
         onSubmit={onSubmit}
       />
       <SubmitButton form={FORM_ID}>Save</SubmitButton>
@@ -278,7 +297,7 @@ describe('the person form', () => {
       nodes: [person('sis', { sex: ['female'] })],
       submitted: Promise.resolve({
         success: false,
-        formErrors: [createMessageError(runtimeMessages.submissionFailed)],
+        formErrors: [createMessageError(formMessages.submitFailed)],
       }),
     });
     await user.type(nameField(), 'Ann');
@@ -334,11 +353,7 @@ describe('the person form', () => {
     await user.type(nameField(), 'Julie');
     await save(user);
 
-    expect(
-      await screen.findByText(
-        'This value is used elsewhere. It must be unique.',
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Must be unique.')).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
   });
 });
@@ -631,6 +646,18 @@ describe('the missing details notice', () => {
     await waitFor(() =>
       expect(notice()).toHaveTextContent('Some details are missing: Nickname.'),
     );
+  });
+  // The notice is the protocol's wording, so the details it lists are joined
+  // as that wording's language joins a list, whatever the browser's is.
+  it('joins the details as the protocol’s language does', () => {
+    renderPersonForm('bea', {
+      nodes: [person('bea'), person('ego', { isEgo: true })],
+      missing: ['sexAssignedAtBirth', { variable: NICKNAME }],
+      formFields: [nicknameField],
+      protocolLocale: 'de',
+    });
+    expect(screen.getByText(/ und Nickname\.$/)).toBeInTheDocument();
+    expect(screen.queryByText(/ and Nickname/)).toBeNull();
   });
 });
 

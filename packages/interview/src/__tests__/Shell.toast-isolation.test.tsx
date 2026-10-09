@@ -19,7 +19,6 @@ import {
   vi,
 } from 'vitest';
 
-import { AppMessage } from '@codaco/app-i18n/react';
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import {
   asEntityAttributeReference,
@@ -33,7 +32,6 @@ import {
 import type { InterviewPayload, SyncHandler } from '../contract/types';
 import useStageValidation from '../hooks/useStageValidation';
 import { interviewCatalogSource } from '../i18n/catalog';
-import { runtimeMessages } from '../i18n/runtimeMessages';
 import Shell from '../Shell';
 import {
   InterviewToastProvider,
@@ -156,6 +154,10 @@ function makePayload(id: string): InterviewPayload {
         {
           id: `${id}-names`,
           type: 'NameGeneratorQuickAdd',
+          minNodesNotice: {
+            en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+          },
+          quickAddHint: { en: 'Press Enter when you are finished.' },
           label: { en: `Original_${id}` },
           subject: { entity: 'node', type: 'person' },
           quickAdd: asEntityAttributeReference('name'),
@@ -170,6 +172,10 @@ function makePayload(id: string): InterviewPayload {
           label: { en: 'Finish' },
           title: { en: 'Finish' },
           content: { en: 'The end.' },
+          finishLabel: { en: 'Finish' },
+          finishConfirmation: { en: 'Finish this interview?' },
+          finishedNotice: { en: 'This interview is finished.' },
+          finishFailed: { en: 'The interview could not be finished.' },
           outcome: 'completed',
         },
       ],
@@ -190,9 +196,10 @@ function currentStore() {
   return store;
 }
 
-const taskCompleteDescription = (
-  <AppMessage message={runtimeMessages.taskComplete} />
-);
+// The words a stage's maximum shows, as a stage holds them: a toast needs no
+// catalog message to say them.
+const taskCompleteDescription =
+  'You have completed this task. Click the next arrow to continue.';
 
 function StandaloneToast() {
   const { showToast, closeToast } = useStageValidation({ constraints: [] });
@@ -345,11 +352,12 @@ describe('Shell toast ownership', () => {
 
     firstView.rerender(firstContent('es-MX'));
     expect(within(first).getByRole('dialog')).toBe(notification);
-    expect(notification).toHaveTextContent(
-      'Debes crear al menos 1 elemento antes de continuar.',
-    );
-    // The built-in text follows the browser's Spanish; the region keeps the
+    // The notice is the stage's own text, which the protocol holds in English
+    // only, so it does not follow the browser's Spanish; the region keeps the
     // English-only protocol's language.
+    expect(notification).toHaveTextContent(
+      'You must create at least 1 item before you can continue.',
+    );
     expect(notification.closest('[lang]')).toHaveAttribute('lang', 'en');
     expect(
       within(first).getAllByRole('region', {
@@ -396,6 +404,52 @@ describe('Shell toast ownership', () => {
     await waitFor(() => expect(firstSync).toHaveBeenCalled());
     expect(secondStore.getState().session).toEqual(beforeSecond);
     expect(secondSync).not.toHaveBeenCalled();
+  });
+
+  // The maximum's notice stays up until the participant moves on, so it is
+  // replaced when the interview's language changes under it.
+  it('says the maximum’s notice again in a language the participant changes to', async () => {
+    const payload = makePayload('limit');
+    payload.protocol.localization = {
+      defaultLocale: 'en',
+      locales: ['en', 'es'],
+    };
+    payload.session.localeOptions = [
+      getLocaleMetadata('en'),
+      getLocaleMetadata('es'),
+    ];
+    const [stage] = payload.protocol.stages as Record<string, unknown>[];
+    if (!stage) throw new Error('No name generator');
+    Object.assign(stage, {
+      behaviours: { maxNodes: 1 },
+      minNodesNotice: undefined,
+      maxNodesNotice: { en: 'That is everyone.', es: 'Eso es todo.' },
+    });
+    const content = (requestedLocale: string) => (
+      <Shell
+        {...handlers}
+        payload={payload}
+        onSync={() => Promise.resolve()}
+        requestedLocales={[requestedLocale]}
+        flags={{ isE2E: true }}
+        disableAnalytics
+      />
+    );
+    const view = render(content('en'), { wrapper: WithoutMotion });
+    await screen.findByRole('button', { name: 'Next Step' });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('quick-add-toggle'));
+    await user.click(
+      await screen.findByRole('textbox', { name: 'Person name' }),
+    );
+    await user.paste('Ana');
+    await user.keyboard('{Enter}');
+    expect(await screen.findByText('That is everyone.')).toBeInTheDocument();
+
+    view.rerender(content('es'));
+    expect(await screen.findByText('Eso es todo.')).toBeInTheDocument();
+    expect(screen.queryByText('That is everyone.')).not.toBeInTheDocument();
   });
 
   it('retains provider-optional English and the module-manager fallback for standalone controls', async () => {

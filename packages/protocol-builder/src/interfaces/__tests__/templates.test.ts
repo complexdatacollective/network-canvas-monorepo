@@ -1,9 +1,23 @@
 import { describe, expect, it } from 'vitest';
 
-import { stageSchema } from '@codaco/protocol-validation';
+import {
+  familyPedigreeWordingIn,
+  stageSchema,
+} from '@codaco/protocol-validation';
 
 import { STAGE_TYPES } from '../../stage-types.ts';
 import { getInterfaceTemplate, newStageFields } from '../templates.ts';
+
+/**
+ * The words a Family Pedigree holds only while a configuration asks for them:
+ * the wording question and its control, and the gender identity question.
+ */
+const CONFIGURATION_WORDS = [
+  'framingChoiceDescription',
+  'framingChoiceTitle',
+  'framingControlLabel',
+  'genderIdentityLabel',
+];
 
 describe('getInterfaceTemplate', () => {
   it('answers with a template object for every stage type', () => {
@@ -183,14 +197,118 @@ describe('a new stage given nothing but a name', () => {
    * A new stage holds its interface's template under its own type, and,
    * where Network Canvas supplies the wording of a setting, that wording:
    * nothing else seeds the form, so what a researcher's new stage holds is
-   * what the template map says, plus a roster's panel title.
+   * what the template map says, plus a roster's panel title, a family
+   * pedigree's name question and a finish screen's finishing words. A
+   * pedigree's list wording arrives with its completeness requirement, which a
+   * new stage does not have. The messages a stage shows a participant are
+   * supplied too, where the stage's configuration needs them: a quick-add
+   * line always, a roster's messages for its data file, and a map's messages
+   * always.
    */
   it.each(STAGE_TYPES)('is the %s template under its stage type', (type) => {
     const { id: _id, label: _label, ...seeded } = newStage(type);
     expect(seeded).toEqual({
       ...getInterfaceTemplate(type),
       ...(type === 'NameGeneratorRoster'
-        ? { panelTitle: { en: 'Available to add' } }
+        ? {
+            panelTitle: { en: 'Available to add' },
+            externalDataError: { en: 'External data could not be loaded.' },
+            allAddedNotice: {
+              en: 'There is nothing left to add from this list.',
+            },
+          }
+        : {}),
+      ...(type === 'NameGeneratorQuickAdd'
+        ? { quickAddHint: { en: 'Press Enter when you are finished.' } }
+        : {}),
+      ...(type === 'Geospatial'
+        ? {
+            offlineNotice: {
+              en: 'You are offline — the map will not load until you reconnect.',
+            },
+            mapUnavailable: {
+              en: 'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
+            },
+            outsideAreasLabel: { en: 'Outside Selectable Areas' },
+          }
+        : {}),
+      ...(type === 'FinishSession'
+        ? {
+            finishLabel: { en: 'Finish' },
+            finishConfirmation: {
+              en: 'Are you sure you want to finish the interview?',
+            },
+            finishedNotice: {
+              en: 'This interview is finished, and its answers can no longer be changed.',
+            },
+            finishFailed: {
+              en: 'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
+            },
+          }
+        : {}),
+      ...(type === 'FamilyPedigree'
+        ? {
+            nodeConfiguration: {
+              nameField: {
+                prompt: { en: 'Name (optional)' },
+                hint: { en: expect.stringContaining('first name') },
+              },
+            },
+            // The words a new stage starts with: all but those a configuration
+            // asks for, which a new stage does not yet have.
+            wording: Object.fromEntries(
+              Object.entries(familyPedigreeWordingIn(['en'])).filter(
+                ([key]) => !CONFIGURATION_WORDS.includes(key),
+              ),
+            ),
+          }
+        : {}),
+      ...(type === 'NetworkComposer'
+        ? {
+            addNamePlaceholder: { en: 'Type a name, then press Enter' },
+            overtakenEditNotice: {
+              en: 'Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost.',
+            },
+            tooltips: {
+              addPerson: { en: 'Add node' },
+              automaticLayout: { en: 'Automatic layout' },
+            },
+          }
+        : {}),
+      // The template turns automatic layout on, so its tooltips are asked; no
+      // preset highlights, shows edges or groups, and drawing is off.
+      ...(type === 'Narrative'
+        ? {
+            tooltips: {
+              pauseLayout: { en: 'Pause automatic layout' },
+              resumeLayout: { en: 'Resume automatic layout' },
+            },
+          }
+        : {}),
+      ...(type === 'NarrativePedigree'
+        ? {
+            keyHeading: { en: 'Key' },
+            tooltips: {
+              clearFocus: { en: 'Clear focus' },
+              saveSnapshot: { en: 'Save snapshot' },
+            },
+            conditionText: {
+              heading: { en: 'Conditions' },
+              instruction: {
+                en: 'Select a condition to see who it affects.',
+              },
+              notation: {
+                affected: { en: 'Has this condition' },
+                obligateAffected: { en: 'Will develop this condition' },
+                obligateCarrier: { en: 'Carries this condition' },
+                unknown: { en: 'Not known' },
+              },
+              snapshotCondition: { en: '{title}: {condition}' },
+              snapshotInheritance: {
+                en: '{title}: {condition} — inheritance for {name}',
+              },
+            },
+          }
         : {}),
       type,
     });

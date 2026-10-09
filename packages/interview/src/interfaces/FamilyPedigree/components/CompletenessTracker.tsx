@@ -1,25 +1,36 @@
 'use client';
 
 import { Check } from 'lucide-react';
-import { type Ref, useEffect, useId, useRef, useState } from 'react';
+import { type Ref, useEffect, useRef, useState } from 'react';
 
-import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import {
   defineToolbarChild,
   ToolbarButton,
   ToolbarPopover,
 } from '@codaco/fresco-ui/SegmentedToolbar';
-import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
+import type { FamilyPedigreeStageDefinition } from '@codaco/protocol-validation';
 
+import {
+  useLocalizedString,
+  useResolveLocalizedMessage,
+} from '../../../localization/ProtocolLocalizationProvider';
+import { useContentFormat } from '../../../localization/useContentFormat';
 import type { CompletenessItem, CompletenessProgress } from '../completeness';
 import { messages } from '../messages';
 import type { Family } from '../model';
 
+/** The stage's completeness setting: its enforcement and its wording. */
+type TrackerCompleteness = Pick<
+  NonNullable<FamilyPedigreeStageDefinition['completeness']>,
+  'enforcement' | 'itemText' | 'recommendedNote'
+>;
+
 type CompletenessTrackerProps = {
   progress: CompletenessProgress;
-  enforcement: 'required' | 'recommended';
+  completeness: TrackerCompleteness;
   /** The list is pinned open, by a click on the ring or by pressing Next. */
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -33,17 +44,11 @@ type CompletenessTrackerProps = {
   ref?: Ref<HTMLButtonElement>;
 };
 
-const ITEM_MESSAGES = {
-  parents: messages.itemParents,
-  siblings: messages.itemSiblings,
-  children: messages.itemChildren,
-  details: messages.itemDetails,
-};
-
 /** A ring that fills as the family nears completion, with the percentage in
  * its middle, or a tick once complete. It fills its button to the edge. */
 function ProgressRing({ fraction }: { fraction: number }) {
-  const intl = useAppIntl();
+  // Shown among the protocol's text, so in its digits.
+  const contentFormat = useContentFormat();
   const strokeWidth = 3.5;
   // The stroke's outer edge meets the edge of the 40-unit view box.
   const radius = 20 - strokeWidth / 2;
@@ -85,10 +90,7 @@ function ProgressRing({ fraction }: { fraction: number }) {
           aria-hidden
           className="absolute text-sm font-semibold tabular-nums"
         >
-          {intl.formatNumber(fraction, {
-            style: 'percent',
-            maximumFractionDigits: 0,
-          })}
+          {contentFormat.formatPercent(fraction)}
         </span>
       )}
     </span>
@@ -99,11 +101,12 @@ function ProgressRing({ fraction }: { fraction: number }) {
  * Progress towards the family the researcher requires, as a ring in the
  * stage's toolbar. Hovering or focusing it shows a short list of what is
  * still needed in a popover; clicking it, or pressing Next before the family
- * is complete, pins the list open.
+ * is complete, pins the list open. Once complete, the ring is a tick and
+ * there is no list.
  */
 function CompletenessTracker({
   progress,
-  enforcement,
+  completeness,
   open,
   onOpenChange,
   family,
@@ -113,7 +116,10 @@ function CompletenessTracker({
   ref,
 }: CompletenessTrackerProps) {
   const intl = useAppIntl();
-  const titleId = useId();
+  const resolveMessage = useResolveLocalizedMessage();
+  const { text: recommendedNote } = useLocalizedString(
+    completeness.recommendedNote,
+  );
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -186,6 +192,10 @@ function CompletenessTracker({
   // after the stage opens; the ring starts empty rather than full.
   const fraction = progress.total === 0 ? 0 : progress.done / progress.total;
   const complete = progress.total > 0 && progress.items.length === 0;
+  const progressLabel = intl.formatMessage(messages.trackerProgressLabel, {
+    complete: complete ? 'true' : 'false',
+    percent: fraction,
+  });
 
   // The answered item leaves the list, taking focus with it: focus moves to
   // the list, or to the ring once nothing is left.
@@ -198,8 +208,10 @@ function CompletenessTracker({
   return (
     <ToolbarPopover
       ref={ref}
-      open={expanded}
+      open={expanded && !complete}
       onOpenChange={(next, details) => {
+        // Complete, there is no list to pin open.
+        if (complete) return;
         // A press on the ring while the list shows only from hover or focus
         // pins it, rather than closing it.
         if (next || (details.reason === 'trigger-press' && !open)) {
@@ -215,10 +227,7 @@ function CompletenessTracker({
       trigger={
         <ToolbarButton
           ref={triggerRef}
-          aria-label={intl.formatMessage(messages.trackerProgressLabel, {
-            complete: complete ? 'true' : 'false',
-            percent: fraction,
-          })}
+          aria-label={progressLabel}
           className="aspect-square w-16 p-0!"
           data-testid="pedigree-completeness"
           onPointerEnter={pointerEnter}
@@ -256,35 +265,27 @@ function CompletenessTracker({
       }}
     >
       <div className="flex flex-col gap-3">
-        <Heading id={titleId} level="h4" margin="none">
-          <AppMessage
-            message={
-              complete ? messages.trackerComplete : messages.trackerTitle
-            }
-          />
-        </Heading>
         {!complete && (
           <div
             ref={listRef}
             role="region"
-            aria-labelledby={titleId}
+            aria-label={progressLabel}
             tabIndex={-1}
             className="flex flex-col gap-3 outline-none"
           >
             <ul className="flex flex-col gap-2">
               {progress.items.map((item) => {
-                const args = {
+                const values = {
                   isYou: family.byId.get(item.personId)?.isEgo
                     ? 'true'
                     : 'false',
                   name: displayName(item.personId),
                 };
+                const wording = completeness.itemText[item.kind];
                 const noneAnswer =
-                  onItemAnswer && item.kind === 'siblings'
-                    ? messages.trackerNoSiblings
-                    : onItemAnswer && item.kind === 'children'
-                      ? messages.trackerNoChildren
-                      : null;
+                  onItemAnswer && 'noneButton' in wording
+                    ? wording.noneButton
+                    : null;
                 return (
                   <li
                     key={`${item.kind}:${item.personId}`}
@@ -300,11 +301,11 @@ function CompletenessTracker({
                         className="focusable text-left underline-offset-4 hover:underline"
                         onClick={() => onItemSelect(item)}
                       >
-                        {intl.formatMessage(ITEM_MESSAGES[item.kind], args)}
+                        {resolveMessage(wording.listItem, values).text}
                       </button>
                       {noneAnswer && (
                         <Button size="sm" onClick={() => answer(item)}>
-                          {intl.formatMessage(noneAnswer, args)}
+                          {resolveMessage(noneAnswer, values).text}
                         </Button>
                       )}
                     </div>
@@ -312,10 +313,8 @@ function CompletenessTracker({
                 );
               })}
             </ul>
-            {enforcement === 'recommended' && (
-              <p className="text-sm opacity-80">
-                <AppMessage message={messages.trackerRecommendedNote} />
-              </p>
+            {completeness.enforcement === 'recommended' && (
+              <p className="text-sm opacity-80">{recommendedNote}</p>
             )}
           </div>
         )}

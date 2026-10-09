@@ -9,6 +9,7 @@ import { AppMessage } from '@codaco/app-i18n/react';
 import RichSelectGroupField, {
   type RichSelectOption,
 } from '@codaco/fresco-ui/form/fields/RichSelectGroup';
+import { messages as validationMessages } from '@codaco/fresco-ui/form/validation/functions';
 import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import type {
@@ -54,7 +55,6 @@ import {
   isDyadCensusMetadata,
   matchEntry,
 } from '../DyadCensus/helpers';
-import { interfaceMessages } from '../messages';
 import IntroPanel from '../SlidesForm/IntroPanel';
 import { getTieStrengthHasEdge } from './helpers';
 
@@ -231,9 +231,7 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
         isMet: isIntroduction || hasEdge !== null,
         kind: 'comparison_response_required',
         toast: {
-          description: (
-            <AppMessage message={interfaceMessages.selectResponse} />
-          ),
+          description: <AppMessage message={validationMessages.required} />,
           variant: 'destructive',
           anchor: 'forward',
         },

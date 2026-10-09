@@ -2832,11 +2832,12 @@ describe('the groups a network composer divides its decisions into', () => {
   it('registers none of them as a section of the stage', async () => {
     const harness = renderStageEditor(composerHolding({}));
 
-    await waitFor(() => expect(harness.outline()).toHaveLength(3));
+    await waitFor(() => expect(harness.outline()).toHaveLength(4));
     expect(harness.outline().map((section) => section.title)).toEqual([
       'Node configuration',
       'Editable attributes',
       'Edge configuration',
+      'Words on the canvas',
     ]);
   });
 

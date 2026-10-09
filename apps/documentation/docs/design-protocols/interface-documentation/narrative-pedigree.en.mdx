@@ -42,7 +42,7 @@ Supported inheritance patterns are: autosomal dominant, autosomal recessive, X-l
 
 ## What the participant sees
 
-The family is drawn as the Family Pedigree laid it out, on the same canvas: the participant can drag to pan, zoom with the mouse wheel, by pinching, with the + and − keys, or with the zoom buttons, and use **Show the whole family** to fit everyone on screen. A key beside the family lists the conditions and explains the symbols.
+The family is drawn as the Family Pedigree laid it out, on the same canvas: the participant can drag to pan, zoom with the mouse wheel, by pinching, with the + and − keys, or with the zoom buttons, and use the button that fits the whole family on screen. A key beside the family lists the conditions and explains the symbols. The key has a heading, the conditions have a heading and an instruction, and the **Clear focus** and **Save snapshot** buttons have tooltips; you can change and translate all of these words (see [Words on the pedigree](#words-on-the-pedigree)).
 
 Each person is labelled as they were on the Family Pedigree. The participant is labelled "You", and everyone else by their name. A relative who was not named is labelled by how they are related to the participant, in the same words the Family Pedigree used ("Mother" or "Egg parent", for example). If your study encrypts the name attribute, the participant is asked for their passphrase, and relatives are labelled by how they are related until it is entered. A person recorded as adopted is drawn between brackets.
 
@@ -96,6 +96,15 @@ Selecting a condition from the key switches the pedigree to that condition's vie
 The family can be used entirely from the keyboard. It is a single stop in the tab order; the arrow keys move between people by where they sit in the tree, and Enter or Space focuses on the person who has keyboard focus. Each person's status for the shown conditions is read out by screen readers, as is each change of condition or focus.
 
 **Save snapshot** saves a picture of the whole family on a white background, as it is drawn for the selected condition and focus, with the symbol key once a condition is selected. It is titled with the stage's label, the condition, and the person focused on.
+
+## Words on the pedigree
+
+The **Words on the pedigree** section of the stage editor holds the words participants read on the pedigree. Network Canvas fills in starting wording for each, in every language it has wording for, and you can change and translate it like any other text (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)):
+
+- the heading of the key, and what each symbol in it means. The entries for the possible statuses are there only while **Show possible (at-risk) statuses** is on, and they are removed when you switch it off,
+- the heading over the conditions and the instruction that asks the participant to select one,
+- the tooltips of **Clear focus** and **Save snapshot**,
+- the titles of saved snapshots, one for a snapshot of a condition and one for a snapshot focused on a person. They can show the stage's label, the condition and the person's name.
 
 ## Best practices
 

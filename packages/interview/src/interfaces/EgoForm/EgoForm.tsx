@@ -10,11 +10,13 @@ import {
   useState,
 } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { AppMessage } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import { shouldShowFieldError } from '@codaco/fresco-ui/form/hooks/useField';
+import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import { useFormMeta } from '@codaco/fresco-ui/form/hooks/useFormState';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import FormStoreProvider, {
@@ -40,7 +42,6 @@ import useBeforeNext from '../../hooks/useBeforeNext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useScrolledToBottom } from '../../hooks/useScrolledToBottom';
 import { useStageSelector } from '../../hooks/useStageSelector';
-import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { LocalizedMarkdown } from '../../localization/LocalizedMarkdown';
 import { LocalizedText } from '../../localization/LocalizedText';
 import { getEgoAttributes } from '../../selectors/session';
@@ -146,7 +147,7 @@ const EgoFormInner = (props: EgoFormProps) => {
               value: true,
             },
             cancel: {
-              label: <AppMessage message={interfaceMessages.keepChanges} />,
+              label: <AppMessage message={commonMessages.cancel} />,
               value: false,
             },
           },
@@ -208,7 +209,7 @@ const EgoFormInner = (props: EgoFormProps) => {
       if (!patchResult.success) {
         return {
           success: false,
-          formErrors: [createMessageError(runtimeMessages.submissionFailed)],
+          formErrors: [createMessageError(formMessages.submitFailed)],
         };
       }
 
@@ -334,9 +335,9 @@ const EgoFormInner = (props: EgoFormProps) => {
               >
                 <ChevronDown size="24" />
               </motion.div>
-              <Heading level="label" margin="none">
+              <span className="sr-only">
                 <AppMessage message={interfaceMessages.scrollForQuestions} />
-              </Heading>
+              </span>
               <motion.div
                 aria-hidden="true"
                 animate={{

@@ -66,13 +66,15 @@ describe('getLocalizationCoverage()', () => {
   it('counts the texts translated into each declared language', () => {
     const coverage = getLocalizationCoverage(stateWith(trilingual()));
 
-    // The node type's label, the stage's label and its title. The attribute's
-    // label is not translated, so it is not counted.
-    expect(coverage.total).toBe(3);
+    // The node type's label, the stage's label and its title, and the ten
+    // words the interview itself shows, which Network Canvas supplies in all
+    // three languages. The attribute's label is not translated, so it is not
+    // counted.
+    expect(coverage.total).toBe(13);
     expect(coverage.locales).toEqual([
-      { locale: 'en', isDefault: true, translated: 3, missing: 0 },
-      { locale: 'fr', isDefault: false, translated: 2, missing: 1 },
-      { locale: 'de', isDefault: false, translated: 1, missing: 2 },
+      { locale: 'en', isDefault: true, translated: 13, missing: 0 },
+      { locale: 'fr', isDefault: false, translated: 12, missing: 1 },
+      { locale: 'de', isDefault: false, translated: 11, missing: 2 },
     ]);
   });
 
@@ -91,8 +93,17 @@ describe('getLocalizationCoverage()', () => {
 });
 
 describe('getTranslationGroups()', () => {
-  it('groups every text by the stage or codebook entry that holds it, stages first', () => {
-    expect(getTranslationGroups(stateWith(trilingual()))).toEqual([
+  it('groups every text by the stage or codebook entry that holds it, stages first, and the interview’s own words last', () => {
+    const groups = getTranslationGroups(stateWith(trilingual()));
+    expect(groups.at(-1)).toMatchObject({
+      key: 'interface',
+      place: { kind: 'interface' },
+    });
+    expect(groups.at(-1)?.rows.map(({ field }) => field)).toContainEqual([
+      'interview',
+      'back',
+    ]);
+    expect(groups.slice(0, -1)).toEqual([
       {
         key: 'stage:welcome',
         place: { kind: 'stage', stageId: 'welcome' },

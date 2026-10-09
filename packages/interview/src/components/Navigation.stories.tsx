@@ -202,7 +202,7 @@ const exitAndAssertConfirmation = async (canvasElement: HTMLElement) => {
   );
 
   const dialog = await canvas.findByRole('dialog', {
-    name: /exit this interview/i,
+    name: /exit interview/i,
   });
   const scoped = within(dialog);
 
@@ -485,7 +485,7 @@ const expectBarFits = async (navigation: HTMLElement) => {
   const navRect = await settledRect(navigation);
   const buttons = [
     nav.getByRole('button', { name: /settings/i }),
-    ...nav.queryAllByRole('button', { name: /enter your passphrase/i }),
+    ...nav.queryAllByRole('button', { name: 'Passphrase' }),
     nav.getByRole('button', { name: /previous step/i }),
     nav.getByRole('button', { name: /next step/i }),
   ];
@@ -553,7 +553,7 @@ const expectBarFitsAtEveryTextSize = async (
 };
 
 const PASSPHRASE_NEEDED =
-  'Your passphrase is needed to show data on this screen. Click here to enter it.';
+  'Some answers here are protected by your passphrase. Enter your passphrase to see and change them.';
 
 const enterPassphraseAndAddPerson = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
@@ -562,7 +562,7 @@ const enterPassphraseAndAddPerson = async (canvasElement: HTMLElement) => {
 
   const prompter = await nav.findByRole(
     'button',
-    { name: /enter your passphrase/i },
+    { name: 'Passphrase' },
     { timeout: 10_000 },
   );
   await expect(prompter).toHaveAccessibleDescription(PASSPHRASE_NEEDED);
@@ -601,28 +601,33 @@ const enterPassphraseAndAddPerson = async (canvasElement: HTMLElement) => {
   await userEvent.keyboard('{Enter}');
 
   // No passphrase has been chosen in this interview yet, so the prompter asks
-  // for one to be chosen and confirmed.
+  // for one to be chosen and confirmed. Both passphrase dialogs share a
+  // title; the confirmation field below is what marks this one as choosing.
   const passphraseDialog = await canvas.findByRole('dialog', {
-    name: /choose a passphrase/i,
+    name: 'Passphrase',
   });
-  const passphraseField =
-    within(passphraseDialog).getByLabelText(/^passphrase/i);
+  const passphraseField = within(passphraseDialog).getByLabelText(
+    /^passphrase/i,
+    {
+      selector: 'input',
+    },
+  );
   await waitFor(() => expect(passphraseField).toHaveFocus());
   await userEvent.type(passphraseField, 'correct horse battery');
   await userEvent.type(
-    within(passphraseDialog).getByLabelText(/^confirm passphrase/i),
+    within(passphraseDialog).getByLabelText(/^confirm passphrase/i, {
+      selector: 'input',
+    }),
     'correct horse battery',
   );
   await userEvent.click(
-    within(passphraseDialog).getByRole('button', {
-      name: /submit passphrase/i,
-    }),
+    within(passphraseDialog).getByRole('button', { name: 'Continue' }),
   );
 
   await waitFor(() => expect(passphraseDialog).not.toBeInTheDocument());
   await waitFor(() =>
     expect(
-      nav.queryByRole('button', { name: /enter your passphrase/i }),
+      nav.queryByRole('button', { name: 'Passphrase' }),
     ).not.toBeInTheDocument(),
   );
   await waitFor(() => expect(addPerson).toBeEnabled());
@@ -640,7 +645,7 @@ const enterPassphraseAndAddPerson = async (canvasElement: HTMLElement) => {
     'Alice',
   );
   await userEvent.click(
-    within(personDialog).getByRole('button', { name: /finished/i }),
+    within(personDialog).getByRole('button', { name: /done/i }),
   );
 
   // The name is encrypted on write and decrypted again for its label.

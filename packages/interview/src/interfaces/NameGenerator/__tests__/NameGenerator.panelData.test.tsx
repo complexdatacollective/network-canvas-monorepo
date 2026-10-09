@@ -15,6 +15,7 @@ import {
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import type { StageProps } from '../../../types';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import {
   createEncryptionStore,
   encryptionFor,
@@ -74,6 +75,7 @@ const variables: Record<string, Variable> = {
 const stage: StageProps<'NameGenerator'>['stage'] = {
   id: 'ng1',
   type: 'NameGenerator',
+  externalDataError: { en: 'External data could not be loaded.' },
   label: { en: 'Name Generator' },
   subject: { entity: 'node', type: NODE_TYPE },
   form: {
@@ -109,9 +111,11 @@ function renderStage(store: Awaited<ReturnType<typeof makeStore>>) {
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-          {children}
-        </CurrentStepProvider>
+        <TestProtocolLocalization>
+          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+            {children}
+          </CurrentStepProvider>
+        </TestProtocolLocalization>
       </Provider>
     );
   }

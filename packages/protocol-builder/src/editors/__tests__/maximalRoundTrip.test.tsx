@@ -16,9 +16,12 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
+import { openWordingGroup } from '../family-pedigree/__tests__/editorFixtures.ts';
 import {
   addFamilyMemberVariables,
+  EVERY_PEDIGREE_WORD,
   RELATIVES_NOT_RECORDED_VARIABLE,
+  RESEARCHER_TRACKER_TEXT,
 } from '../family-pedigree/__tests__/pedigreeFixtures.ts';
 import { schemaKeysFor } from './schemaKeys.ts';
 
@@ -94,6 +97,8 @@ type MaximalStage = Readonly<{
   settle?: () => Promise<unknown>;
   /** Puts in place what the stage needs that the fixture protocol lacks. */
   prepare?: (harness: StageEditorHarness) => void;
+  /** Opens what holds fields only while it is open, once the editor is up. */
+  reveal?: (harness: StageEditorHarness) => Promise<void>;
   /**
    * Keys the interface's schema has and its editor has no section for yet.
    * They round-trip untouched, so a researcher cannot see or change them;
@@ -124,6 +129,12 @@ const fixtureMaximal = (
   ...loadFixtureStage(stageId).fields,
   ...missingFromTheFixture,
 });
+
+/** The fixture's map options, as a plain object to add a key to. */
+const mapOptionsOfFixture = (): Record<string, unknown> => {
+  const options = loadFixtureStage('geospatial-1').fields.mapOptions;
+  return typeof options === 'object' && options !== null ? { ...options } : {};
+};
 
 /** What every stage may carry, and no fixture stage does. */
 const EVERY_STAGE = {
@@ -278,6 +289,15 @@ const MAXIMAL_STAGES: MaximalStage[] = [
         },
       ],
       behaviours: { minNodes: 1, maxNodes: 8 },
+      minNodesNotice: {
+        'en-US':
+          '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+      },
+      maxNodesNotice: {
+        'en-US':
+          'You have completed this task. Click the next arrow to continue.',
+      },
+      externalDataError: { 'en-US': 'External data could not be loaded.' },
     },
     settle: () => screen.findByRole('textbox', { name: 'Form title' }),
   },
@@ -299,6 +319,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     type: 'NameGeneratorQuickAdd',
     fields: fixtureMaximal('name-generator-quick-add-1', {
       ...EVERY_STAGE,
+      behaviours: { minNodes: 1, maxNodes: 6 },
       panels: [
         {
           id: 'quick-add-panel-1',
@@ -306,8 +327,23 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
           dataSource: 'existing',
           filter: nodeFilter,
         },
+        // A panel reading a data file is what shows its error words.
+        {
+          id: 'quick-add-panel-2',
+          title: { 'en-US': 'From the roster' },
+          dataSource: 'roster_data',
+        },
       ],
-      behaviours: { minNodes: 1, maxNodes: 6 },
+      quickAddHint: { 'en-US': 'Press Enter when you are finished.' },
+      minNodesNotice: {
+        'en-US':
+          '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+      },
+      maxNodesNotice: {
+        'en-US':
+          'You have completed this task. Click the next arrow to continue.',
+      },
+      externalDataError: { 'en-US': 'External data could not be loaded.' },
     }),
   },
   {
@@ -355,6 +391,12 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
         ],
       },
       convexHullVariable: 'contactType',
+      groupsHeading: { 'en-US': 'Groups' },
+      tooltips: {
+        addPerson: { 'en-US': 'Add node' },
+        automaticLayout: { 'en-US': 'Automatic layout' },
+        drawConnection: { 'en-US': 'Draw edge' },
+      },
       behaviours: { automaticLayout: true },
       edges: [
         {
@@ -428,12 +470,24 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     fields: fixtureMaximal('geospatial-1', {
       ...EVERY_STAGE,
       filter: nodeFilter,
+      // Searching is offered, so the search's own words are the stage's.
+      mapOptions: {
+        ...mapOptionsOfFixture(),
+        allowSearch: true,
+      },
+      offlineNotice: { 'en-US': 'You are offline. The map will not load.' },
+      mapUnavailable: { 'en-US': 'The map cannot be drawn on this device.' },
+      outsideAreasLabel: { 'en-US': 'Outside selectable areas' },
+      searchLabel: { 'en-US': 'Search places' },
+      searchNoMatch: { 'en-US': 'No place matches.' },
+      searchFailed: { 'en-US': 'The search failed.' },
     }),
   },
   {
     interfaceName: 'FamilyPedigree',
     type: 'FamilyPedigree',
     stageId: 'family-pedigree-1',
+    reveal: (harness) => openWordingGroup(harness),
     fields: fixtureMaximal('family-pedigree-1', {
       ...EVERY_STAGE,
       nodeConfiguration: {
@@ -453,8 +507,10 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
         scope: 'thirdDegree',
         enforcement: 'recommended',
         relativesNotRecordedAttribute: 'relativesNotRecorded',
+        ...RESEARCHER_TRACKER_TEXT,
       },
       framing: 'participantPreference',
+      wording: EVERY_PEDIGREE_WORD,
       nominationPrompts: [
         {
           id: 'nomination-1',
@@ -492,6 +548,22 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     fields: fixtureMaximal('narrative-pedigree-1', {
       ...EVERY_STAGE,
       showAtRiskStatuses: true,
+      conditionText: {
+        heading: { 'en-US': 'Conditions' },
+        instruction: { 'en-US': 'Select a condition to see who it affects.' },
+        notation: {
+          affected: { 'en-US': 'Has this condition' },
+          obligateAffected: { 'en-US': 'Will develop this condition' },
+          obligateCarrier: { 'en-US': 'Carries this condition' },
+          atRiskAffected: { 'en-US': 'May develop this condition' },
+          atRiskCarrier: { 'en-US': 'May carry this condition' },
+          unknown: { 'en-US': 'Not known' },
+        },
+        snapshotCondition: { 'en-US': '{title}: {condition}' },
+        snapshotInheritance: {
+          'en-US': '{title}: {condition} — inheritance for {name}',
+        },
+      },
     }),
   },
   {
@@ -558,7 +630,15 @@ describe('a maximal stage of each interface', () => {
 
   it.each(EVERY_MAXIMAL_STAGE)(
     '$interfaceName: is fully editable, and saves every key unchanged',
-    async ({ type, stageId, fields, settle, prepare, unowned = [] }) => {
+    async ({
+      type,
+      stageId,
+      fields,
+      settle,
+      prepare,
+      reveal,
+      unowned = [],
+    }) => {
       // No registry passed: every interface is claimed by the package's own,
       // so the dispatcher finding the editor is part of what the case shows.
       const harness = renderStageEditor({
@@ -574,6 +654,7 @@ describe('a maximal stage of each interface', () => {
       // from what is registered — so a mount that has not filled the outline
       // has not finished registering.
       await waitFor(() => expect(harness.outline().length).toBeGreaterThan(2));
+      await reveal?.(harness);
 
       // Nothing is excused unless the case says so: a maximal stage is the one
       // case where every key the interface offers must be on screen, so an

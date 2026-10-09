@@ -3,17 +3,18 @@
 import { Speech } from 'lucide-react';
 import { type Ref, useRef } from 'react';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import {
   defineToolbarChild,
-  ToolbarButton,
+  ToolbarIconButton,
   ToolbarPopover,
 } from '@codaco/fresco-ui/SegmentedToolbar';
 import type { FramingId } from '@codaco/protocol-validation';
 
-import { messages } from '../messages';
+import { useContentFormat } from '../../../localization/useContentFormat';
+import { formatRelativeTerm } from '../kinship';
+import { configuredWord, usePedigreeWords } from '../pedigreeWords';
 
 type FramingControlProps = {
   /** The framing the participant chose, if they have. */
@@ -39,7 +40,9 @@ function FramingControl({
   onOpenChange,
   ref,
 }: FramingControlProps) {
-  const intl = useAppIntl();
+  const words = usePedigreeWords();
+  const { wording, text } = words;
+  const contentFormat = useContentFormat();
   // The toolbar button, as well as whoever the ref is forwarded to.
   const trigger = useRef<HTMLButtonElement | null>(null);
   const setTrigger = (element: HTMLButtonElement | null) => {
@@ -57,13 +60,11 @@ function FramingControl({
         onOpenChange(next);
       }}
       trigger={
-        <ToolbarButton
-          className="flex-col gap-0.5 px-5 text-xs [&>.lucide]:h-5"
+        <ToolbarIconButton
+          aria-label={text(configuredWord(wording.framingControlLabel))}
           icon={<Speech />}
           data-testid="pedigree-framing"
-        >
-          {intl.formatMessage(messages.framingControlLabel)}
-        </ToolbarButton>
+        />
       }
       contentProps={{
         side: 'top',
@@ -73,21 +74,25 @@ function FramingControl({
       <UnconnectedField
         component={RichSelectGroupField}
         name="pedigreeFraming"
-        label={intl.formatMessage(messages.framingChoiceTitle)}
-        hint={intl.formatMessage(messages.framingChoiceDescription)}
+        label={text(configuredWord(wording.framingChoiceTitle))}
+        hint={text(configuredWord(wording.framingChoiceDescription))}
         options={[
           {
             value: 'gendered',
-            label: intl.formatMessage(messages.framingChoiceGendered),
-            description: intl.formatMessage(
-              messages.framingChoiceGenderedDescription,
+            label: contentFormat.formatList(
+              ['mother', 'father', 'sister', 'brother'].map((term) =>
+                formatRelativeTerm(term, words),
+              ),
+              'unit',
             ),
           },
           {
             value: 'gamete',
-            label: intl.formatMessage(messages.framingChoiceGamete),
-            description: intl.formatMessage(
-              messages.framingChoiceGameteDescription,
+            label: contentFormat.formatList(
+              ['eggParent', 'spermParent', 'sibling'].map((term) =>
+                formatRelativeTerm(term, words),
+              ),
+              'unit',
             ),
           },
         ]}

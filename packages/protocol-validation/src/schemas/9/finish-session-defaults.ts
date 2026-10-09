@@ -7,6 +7,7 @@ import type {
   FinishOutcome,
   FinishSessionStage,
 } from './stages/finish-session.ts';
+import { suppliedStageText } from './supplied-stage-text.ts';
 import {
   type LanguageChange,
   suppliedTextAfterLanguageChange,
@@ -139,9 +140,35 @@ export const defaultFinishSessionFields = (
   return fields;
 };
 
+/** The finish stage's settings whose wording Network Canvas supplies. */
+const FINISH_SESSION_SETTINGS = [
+  'finishLabel',
+  'finishConfirmation',
+  'finishedNotice',
+  'finishFailed',
+] as const;
+
+type FinishSessionSetting = (typeof FINISH_SESSION_SETTINGS)[number];
+
+const suppliedFinishSessionSettings = (
+  localization: LocalizationDeclaration,
+): Record<FinishSessionSetting, LocalizedString> => {
+  const texts = suppliedStageText('FinishSession', localization);
+  const settings: Partial<Record<FinishSessionSetting, LocalizedString>> = {};
+  for (const setting of FINISH_SESSION_SETTINGS) {
+    const value = texts.find(({ path }) => path[0] === setting)?.value;
+    if (value === undefined) {
+      throw new Error(`Network Canvas supplies no wording for ${setting}.`);
+    }
+    settings[setting] = value;
+  }
+  return settings as Record<FinishSessionSetting, LocalizedString>;
+};
+
 /**
  * A finish stage carrying the supplied text in each of the protocol's
- * languages that has it, ending the interview as `completed`.
+ * languages that has it, and the supplied wording of its settings (see
+ * `stage-wording/finish-session.ts`), ending the interview as `completed`.
  */
 export const createDefaultFinishSessionStage = ({
   id,
@@ -155,6 +182,7 @@ export const createDefaultFinishSessionStage = ({
   id,
   type: 'FinishSession',
   ...defaultFinishSessionFields(localization.locales),
+  ...suppliedFinishSessionSettings(localization),
   outcome,
 });
 

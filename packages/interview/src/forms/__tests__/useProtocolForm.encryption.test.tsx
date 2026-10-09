@@ -376,7 +376,7 @@ describe('useProtocolForm validating against encrypted values', () => {
       await expect(
         resolveValidatedNetwork(result.current.fieldComponents),
       ).rejects.toThrow(
-        createMessageError(runtimeMessages.protectedAnswersNotChecked),
+        createMessageError(runtimeMessages.protectedAnswersNotSaved),
       );
       expect(result.current.passphraseNeeded).toBe(true);
       expect(store.getState().ui.showPassphrasePrompter).toBe(true);
@@ -470,7 +470,7 @@ describe('useProtocolForm validating against encrypted values', () => {
       await expect(
         resolveValidatedNetwork(result.current.fieldComponents),
       ).rejects.toThrow(
-        createMessageError(runtimeMessages.protectedAnswersNotChecked),
+        createMessageError(runtimeMessages.protectedAnswersNotSaved),
       );
       expect(store.getState().ui.showPassphrasePrompter).toBe(true);
     },

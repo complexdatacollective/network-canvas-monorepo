@@ -45,6 +45,9 @@ type ShownLoadFailure = Readonly<{
 
 const AppI18nContext = createContext<AppI18nContextValue | null>(null);
 
+/** The formatter an `AppIntlOverlay` puts in place of the one above it. */
+const AppIntlOverlayContext = createContext<IntlShape | null>(null);
+
 /**
  * `<html lang>`/`<html dir>` have to be written in the layout phase, not after
  * paint. A passive effect lands one frame late, so an app booting into a
@@ -178,8 +181,13 @@ export function AppI18nProvider(props: AppI18nProviderProps) {
     [intl, active, locales, setLocale, failure],
   );
 
+  // An overlay above this provider worded the language above it, not this one.
   return (
-    <AppI18nContext.Provider value={value}>{children}</AppI18nContext.Provider>
+    <AppI18nContext.Provider value={value}>
+      <AppIntlOverlayContext.Provider value={null}>
+        {children}
+      </AppIntlOverlayContext.Provider>
+    </AppI18nContext.Provider>
   );
 }
 
@@ -340,8 +348,53 @@ export function useLocaleCatalog(
  * useIntl (which throws without a provider).
  */
 export function useAppIntl(): IntlShape {
+  const overlay = useContext(AppIntlOverlayContext);
   const context = useContext(AppI18nContext);
+  if (overlay !== null) return overlay;
   return context === null ? getDefaultIntl() : context.intl;
+}
+
+/**
+ * The text an overlay shows for a message in place of its catalog's, or
+ * undefined to leave the message to the catalog.
+ */
+export type AppMessageOverride = (
+  message: MessageDescriptor,
+  values: Parameters<IntlShape['formatMessage']>[1],
+) => string | undefined;
+
+/**
+ * Shows other text for some messages beneath it: each message `override`
+ * answers for, in place of its catalog's wording, and every other message as
+ * the formatter above it would. A host uses it for wording that comes from
+ * somewhere other than a package catalog, such as a protocol that words the
+ * interface itself. Everything else about the formatter, the locale included,
+ * is the one above it.
+ */
+export function AppIntlOverlay({
+  override,
+  children,
+}: Readonly<{ override: AppMessageOverride; children: ReactNode }>) {
+  const parent = useAppIntl();
+  const intl = useMemo((): IntlShape => {
+    const formatMessage = ((
+      message: MessageDescriptor,
+      values?: Parameters<IntlShape['formatMessage']>[1],
+      options?: Parameters<IntlShape['formatMessage']>[2],
+    ) =>
+      override(message, values) ??
+      parent.formatMessage(
+        message,
+        values,
+        options,
+      )) as IntlShape['formatMessage'];
+    return { ...parent, formatMessage, $t: formatMessage };
+  }, [parent, override]);
+  return (
+    <AppIntlOverlayContext.Provider value={intl}>
+      {children}
+    </AppIntlOverlayContext.Provider>
+  );
 }
 
 /**

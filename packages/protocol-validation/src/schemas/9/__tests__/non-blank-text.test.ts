@@ -16,6 +16,10 @@ import { narrativePedigreeStage } from '../stages/narrative-pedigree.ts';
 import { networkComposerStage } from '../stages/network-composer.ts';
 import { ComponentTypes } from '../variables/types.ts';
 import { VariableSchema } from '../variables/variable.ts';
+import {
+  narrativePedigreeWords,
+  networkComposerWords,
+} from './canvas-stage-words.ts';
 
 const issuesOf = (
   schema: { safeParse: (value: unknown) => unknown },
@@ -113,6 +117,7 @@ describe('a Network Composer field caption', () => {
       layoutVariable: 'layout',
       background: { concentricCircles: 4 },
       edges: [],
+      ...networkComposerWords(),
       nodeForm: {
         fields: [
           {
@@ -136,6 +141,8 @@ describe('a Network Composer field caption', () => {
 const rosterStage = {
   id: 'roster',
   type: 'NameGeneratorRoster',
+  externalDataError: localized('External data could not be loaded.'),
+  allAddedNotice: localized('There is nothing left to add from this list.'),
   label: localized('Roster'),
   subject: { entity: 'node', type: 'person' },
   dataSource: 'rosterAsset',
@@ -250,6 +257,7 @@ const REQUIRED_TEXT_SITES: readonly {
           inheritancePattern: 'autosomalDominant',
         },
       ],
+      ...narrativePedigreeWords(),
     }),
     path: ['diseases', 0, 'label'],
   },

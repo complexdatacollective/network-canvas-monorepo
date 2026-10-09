@@ -10,6 +10,7 @@ import {
 } from '../../form/documentFromSubmission.ts';
 import { EditedRowContext, type EditedRowScope } from '../../form/editedRow.ts';
 import { StageEditorFormContext } from '../../form/stageEditorContext.ts';
+import { useProtocolLocalization } from '../../localization/ProtocolLocalization.tsx';
 import { stageDocument } from '../../stageDocument.ts';
 import { collectStageResourceReferences } from '../references.ts';
 
@@ -62,6 +63,7 @@ export function useStageResourceUsage(): (resourceId: string) => number {
   const storeApi = form?.storeApi;
   const identity = form?.identity;
   const committedFields = form?.committedFields;
+  const localization = useProtocolLocalization();
 
   return useCallback(
     (resourceId: string): number => {
@@ -77,12 +79,13 @@ export function useStageResourceUsage(): (resourceId: string) => number {
           }),
           editedRow,
         ),
+        localization,
       );
       return collectStageResourceReferences(draft).filter(
         (reference) => reference.resourceId === resourceId,
       ).length;
     },
-    [committedFields, editedRow, identity, storeApi],
+    [committedFields, editedRow, identity, localization, storeApi],
   );
 }
 

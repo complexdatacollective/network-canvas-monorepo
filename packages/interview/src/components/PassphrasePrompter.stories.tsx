@@ -162,7 +162,7 @@ type Story = StoryObj;
 const findKeyButton = (canvasElement: HTMLElement) =>
   within(canvasElement).findByRole(
     'button',
-    { name: 'Enter your passphrase' },
+    { name: 'Passphrase' },
     { timeout: 10_000 },
   );
 
@@ -199,7 +199,7 @@ export const TurnsAwayAWrongPassphrase: Story = {
   play: async ({ canvasElement }) => {
     const field = await openPrompter(canvasElement);
     const dialog = screen.getByRole('dialog', {
-      name: 'Enter your passphrase',
+      name: 'Passphrase',
     });
     // Masked without being a password input, so password managers neither
     // offer to save it nor fill it in.
@@ -215,9 +215,7 @@ export const TurnsAwayAWrongPassphrase: Story = {
     ).not.toBeInTheDocument();
 
     await userEvent.type(field, 'not the passphrase');
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Submit passphrase' }),
-    );
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     await waitFor(() => expect(field).toHaveAttribute('aria-invalid', 'true'), {
       timeout: 10_000,
@@ -248,7 +246,7 @@ export const AcceptsTheMatchingPassphrase: Story = {
     ).toBeInTheDocument();
     await waitFor(() =>
       expect(
-        canvas.queryByRole('button', { name: 'Enter your passphrase' }),
+        canvas.queryByRole('button', { name: 'Passphrase' }),
       ).not.toBeInTheDocument(),
     );
   },
@@ -266,13 +264,13 @@ export const ChoosesAPassphrase: Story = {
   },
   play: async ({ canvasElement }) => {
     const field = await openPrompter(canvasElement);
-    const dialog = within(
-      screen.getByRole('dialog', { name: 'Choose a passphrase' }),
-    );
+    // Both dialogs are titled "Passphrase"; choosing is the one with a
+    // confirmation field.
+    const dialog = within(screen.getByRole('dialog', { name: 'Passphrase' }));
     const confirm = dialog.getByLabelText(/^Confirm Passphrase/, {
       selector: 'input',
     });
-    const submit = dialog.getByRole('button', { name: 'Submit passphrase' });
+    const submit = dialog.getByRole('button', { name: 'Continue' });
     for (const input of [field, confirm]) {
       await expect(input).toHaveAttribute('type', 'text');
       await expect(input).toHaveAttribute('autocomplete', 'off');
@@ -283,7 +281,7 @@ export const ChoosesAPassphrase: Story = {
     await userEvent.click(submit);
     await waitFor(() => expect(field).toHaveAttribute('aria-invalid', 'true'));
     await expect(field).toHaveAccessibleDescription(
-      expect.stringContaining('Too short. Enter at least 8 characters.'),
+      expect.stringContaining('Enter at least 8 characters.'),
     );
 
     await userEvent.clear(field);
@@ -305,7 +303,7 @@ export const ChoosesAPassphrase: Story = {
     await waitFor(() =>
       expect(
         within(canvasElement).queryByRole('button', {
-          name: 'Enter your passphrase',
+          name: 'Passphrase',
         }),
       ).not.toBeInTheDocument(),
     );
@@ -347,7 +345,7 @@ export const AnswerEncryptedForAnotherPerson: Story = {
     ).not.toBeInTheDocument();
     await waitFor(() =>
       expect(
-        canvas.queryByRole('button', { name: 'Enter your passphrase' }),
+        canvas.queryByRole('button', { name: 'Passphrase' }),
       ).not.toBeInTheDocument(),
     );
   },
@@ -371,7 +369,7 @@ export const NotShownForAnswersThatCannotBeRead: Story = {
     await expect(canvas.queryByText('🔒')).not.toBeInTheDocument();
     await settle();
     await expect(
-      canvas.queryByRole('button', { name: 'Enter your passphrase' }),
+      canvas.queryByRole('button', { name: 'Passphrase' }),
     ).not.toBeInTheDocument();
   },
 };

@@ -1,3 +1,4 @@
+import { commonMessages } from '@codaco/app-i18n/common';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { AppMessage } from '@codaco/app-i18n/react';
 
@@ -22,13 +23,17 @@ export function failedCheckReason(
  * lost, saying why they cannot be saved (by default, that they are invalid).
  */
 export default function discardChangesDialog(
-  reason: MessageDescriptor = interfaceMessages.discardChangesDescription,
+  reason:
+    | MessageDescriptor
+    | string = interfaceMessages.discardChangesDescription,
 ) {
   return {
     title: <AppMessage message={interfaceMessages.discardChangesTitle} />,
-    description: <AppMessage message={reason} />,
+    // A string is a stage's own words, already in the interview's language.
+    description:
+      typeof reason === 'string' ? reason : <AppMessage message={reason} />,
     confirmLabel: <AppMessage message={interfaceMessages.discardChanges} />,
-    cancelLabel: <AppMessage message={interfaceMessages.keepChanges} />,
+    cancelLabel: <AppMessage message={commonMessages.cancel} />,
     intent: 'destructive' as const,
   };
 }

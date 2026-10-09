@@ -106,10 +106,14 @@ const makeNode = (id: string): NcNode => ({
   type: 'person',
 });
 
+/** The stage's own words for a list that did not load. */
+const EXTERNAL_DATA_ERROR = { en: 'External data could not be loaded.' };
+
 const renderPanel = (disableDragging = false) =>
   render(
     <TestProtocolLocalization>
       <NodePanel
+        externalDataError={EXTERNAL_DATA_ERROR}
         panelConfig={externalPanelConfig}
         disableDragging={disableDragging}
         accepts={[]}

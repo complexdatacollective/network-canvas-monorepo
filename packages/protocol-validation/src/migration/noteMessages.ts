@@ -506,6 +506,13 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Name Generator Roster" is the name Architect gives the interface; use the same name Architect uses for it. "Available to add" is the English text written into the protocol: keep it in English, in quotation marks.',
   },
+  schema9PedigreeWording: {
+    id: 'protocolValidation.migrationNotes.schema9.pedigreeWording',
+    defaultMessage:
+      "A Family Pedigree stage's own wording is now part of the stage, so you can change it and translate it like the rest of your protocol: the question asking each person's name and its hint, and, where the family must be complete, the list of what is still needed. It starts with the wording the interview has always shown.",
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Family Pedigree" is the name Architect gives the interface; use the same name Architect uses for it.',
+  },
 });
 
 // Each descriptor is a whole bullet. Markdown separators are structural:
@@ -612,6 +619,7 @@ const migrationNoteSets = {
       migrationNoteMessages.schema9FamilyPedigreeSharedAttributes,
       migrationNoteMessages.schema9FinishStage,
       migrationNoteMessages.schema9RosterPanelTitle,
+      migrationNoteMessages.schema9PedigreeWording,
     ],
   },
 };

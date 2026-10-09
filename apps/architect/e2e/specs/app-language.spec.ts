@@ -198,13 +198,15 @@ test('authors an Information stage in Spanish and changes built-in preview langu
     'en',
   );
 
-  // The interview's built-in text follows the browser's languages (`es-MX`
-  // here), never Architect's own. Switching Architect to English mid-preview
-  // re-labels the preview window's Architect document but leaves the already
-  // open confirmation, the interview's own dialog, in Spanish, and rewrites
-  // neither the authored content nor the protocol.
+  // The finish screen's button and notice are the protocol's own text, in its
+  // language (English here). The preview's explanation in the confirmation is
+  // the preview's built-in text, which follows the browser's languages
+  // (`es-MX` here), never Architect's own. Switching Architect to English
+  // mid-preview re-labels the preview window's Architect document but leaves
+  // the already open confirmation, the interview's own dialog, in Spanish, and
+  // rewrites neither the authored content nor the protocol.
   await nextStep.click();
-  await preview.getByRole('button', { name: 'Finalizar', exact: true }).click();
+  await preview.getByRole('button', { name: 'Finish', exact: true }).click();
   const finish = preview.getByRole('dialog');
   const spanishFinishConfirmation =
     'Esto es una vista previa, así que no se guarda nada. Al finalizar se cierra esta prueba del protocolo, y puedes iniciarla de nuevo después.';
@@ -216,12 +218,12 @@ test('authors an Information stage in Spanish and changes built-in preview langu
   await expect(preview.locator('html')).toHaveAttribute('lang', 'en');
   await expect(finish).toHaveAttribute('id', dialogId ?? '');
   await expect(finish).toContainText(spanishFinishConfirmation);
-  await finish.getByRole('button', { name: 'Finalizar', exact: true }).click();
-  // The completed state's built-in notice follows the interview's language
-  // too.
+  await finish.getByRole('button', { name: 'Finish', exact: true }).click();
+  // The completed state's notice is the finish stage's, in the protocol's
+  // language.
   await expect(
     preview.getByText(
-      'Esta entrevista ha finalizado y ya no se pueden cambiar sus respuestas.',
+      'This interview is finished, and its answers can no longer be changed.',
     ),
   ).toBeVisible();
   expect(await readProtocolJson(page)).toEqual(beforeSwitch);

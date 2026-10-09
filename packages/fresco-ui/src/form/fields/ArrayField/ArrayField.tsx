@@ -115,6 +115,12 @@ const messages = defineMessages({
     description:
       'Body of the confirmation raised before one row of a list is deleted, for a list that has named its rows. itemLabel is the list’s own noun for one of its rows, already in the reader’s language.',
   },
+  cannotBeUndone: {
+    id: 'frescoUi.arrayField.cannotBeUndone',
+    defaultMessage: 'This action cannot be undone.',
+    description:
+      'Body of the confirmation raised before one row of a list is deleted, for a list that has not named its rows.',
+  },
   deleteUnavailable: {
     id: 'frescoUi.arrayField.deleteUnavailable',
     defaultMessage:
@@ -1119,7 +1125,9 @@ export default function ArrayField<T extends Record<string, unknown>>({
               message={messages.confirmDeleteDescription}
               itemLabel={itemLabel}
             />
-          ) : undefined,
+          ) : (
+            <AppMessage message={messages.cannotBeUndone} />
+          ),
           confirmLabel: itemLabel ? (
             <DeleteConfirmationMessage
               message={messages.confirmDeleteAction}

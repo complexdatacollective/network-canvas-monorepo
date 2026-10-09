@@ -21,6 +21,10 @@ const testFinishStage = (locales: readonly string[] = ['en']) => ({
   label: textIn(locales, 'Finish'),
   title: textIn(locales, 'Finish'),
   content: textIn(locales, 'The end.'),
+  finishLabel: textIn(locales, 'Finish'),
+  finishConfirmation: textIn(locales, 'Finish the interview?'),
+  finishedNotice: textIn(locales, 'This interview is finished.'),
+  finishFailed: textIn(locales, 'The interview could not be finished.'),
   outcome: 'completed' as const,
 });
 

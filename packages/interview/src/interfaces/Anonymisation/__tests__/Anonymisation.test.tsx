@@ -79,7 +79,7 @@ afterEach(() => {
 type AnonymisationStage = StageProps<'Anonymisation'>['stage'];
 
 const VERIFY_LINE =
-  'You chose a passphrase earlier in this interview. Enter it to continue.';
+  'Some answers on this screen are protected by a passphrase. Keep it safe: you will need it to see or change these answers later, and it cannot be recovered if it is forgotten.';
 
 /**
  * Holds every key derivation until released, so the check of a passphrase
@@ -201,21 +201,13 @@ const passphraseField = () =>
 const confirmField = () =>
   screen.queryByLabelText(/^Confirm Passphrase/, { selector: 'input' });
 const submitButton = () => screen.getByRole('button', { name: 'Submit' });
-const PASSPHRASE_SET = 'Passphrase set successfully! Click "Next" to continue.';
 const PASSPHRASE_ACCEPTED = 'Passphrase accepted! Click "Next" to continue.';
-const ALREADY_ENTERED =
-  'You have already entered your passphrase. Click "Next" to continue.';
 const UNAVAILABLE =
   'Answers protected by a passphrase cannot be shown or saved in this interview. Please let the person who recruited you to this study know.';
 
 const successMessage = (text: string) => screen.findByText(text);
 const anySuccessMessage = () =>
-  screen.queryByText(
-    (content) =>
-      content === PASSPHRASE_SET ||
-      content === PASSPHRASE_ACCEPTED ||
-      content === ALREADY_ENTERED,
-  );
+  screen.queryByText((content) => content === PASSPHRASE_ACCEPTED);
 
 async function enter(
   user: ReturnType<typeof userEvent.setup>,
@@ -250,7 +242,7 @@ describe('Anonymisation in an interview without a passphrase', () => {
 
     await waitFor(() => expect(first).toHaveAttribute('aria-invalid', 'true'));
     expect(first).toHaveAccessibleDescription(
-      expect.stringContaining('Too short. Enter at least 8 characters.'),
+      expect.stringContaining('Enter at least 8 characters.'),
     );
     expect(deriveKey).not.toHaveBeenCalled();
     expect(store.getState().session.network.encryption).toBeUndefined();
@@ -258,7 +250,7 @@ describe('Anonymisation in an interview without a passphrase', () => {
     await enter(user, 'eight888');
     await user.click(submitButton());
 
-    expect(await successMessage(PASSPHRASE_SET)).toBeInTheDocument();
+    expect(await successMessage(PASSPHRASE_ACCEPTED)).toBeInTheDocument();
     expect(store.getState().session.network.encryption).toBeDefined();
     expect(store.getState().ui.encryptionKeyId).not.toBeNull();
     expect(store.getState().ui.FORM_IS_READY).toBe(true);
@@ -287,13 +279,13 @@ describe('Anonymisation in an interview without a passphrase', () => {
     await user.click(submitButton());
     await waitFor(() => expect(first).toHaveAttribute('aria-invalid', 'true'));
     expect(first).toHaveAccessibleDescription(
-      expect.stringContaining('Too short. Enter at least 4 characters.'),
+      expect.stringContaining('Enter at least 4 characters.'),
     );
 
     await enter(user, 'abcd');
     await user.click(submitButton());
 
-    expect(await successMessage(PASSPHRASE_SET)).toBeInTheDocument();
+    expect(await successMessage(PASSPHRASE_ACCEPTED)).toBeInTheDocument();
     expect(store.getState().session.network.encryption).toBeDefined();
   });
 
@@ -306,7 +298,7 @@ describe('Anonymisation in an interview without a passphrase', () => {
 
     await waitFor(() => expect(first).toHaveAttribute('aria-invalid', 'true'));
     expect(first).toHaveAccessibleDescription(
-      expect.stringContaining('Too short. Enter at least 10 characters.'),
+      expect.stringContaining('Enter at least 10 characters.'),
     );
     expect(deriveKey).not.toHaveBeenCalled();
     expect(store.getState().session.network.encryption).toBeUndefined();
@@ -321,7 +313,7 @@ describe('Anonymisation in an interview without a passphrase', () => {
     const first = await passphraseField();
     await waitFor(() => expect(first).toHaveAttribute('aria-invalid', 'true'));
     expect(first).toHaveAccessibleDescription(
-      expect.stringContaining('Too short. Enter at least 8 characters.'),
+      expect.stringContaining('Enter at least 8 characters.'),
     );
     expect(onStepChange).not.toHaveBeenCalled();
 
@@ -462,12 +454,12 @@ describe('Anonymisation in an interview whose passphrase has been chosen', () =>
 });
 
 describe('Anonymisation once the passphrase is in force', () => {
-  it('says it was entered earlier instead of asking for it', async () => {
+  it('says the passphrase is accepted instead of asking for it, on a return visit', async () => {
     const { header } = await encryptionFor('pw');
     const { store, onStepChange, next } = renderStage({ header });
     await act(() => unlockWith(store, 'pw'));
 
-    const success = await successMessage(ALREADY_ENTERED);
+    const success = await successMessage(PASSPHRASE_ACCEPTED);
     expect(success).toBeInTheDocument();
     expect(store.getState().ui.FORM_IS_READY).toBe(true);
     expect(

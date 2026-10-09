@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../__tests__/finishStage.ts';
+import { pedigreeNameField } from '../../schemas/9/__tests__/family-pedigree-text.ts';
 import {
   GENDER_IDENTITY_OPTIONS,
   GENDER_IDENTITY_TERMS,
@@ -10,6 +11,7 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../../schemas/9/family-pedigree-values.ts';
 import ProtocolSchemaV9 from '../../schemas/9/schema.ts';
+import { familyPedigreeWordingIn } from '../../schemas/9/stage-wording/family-pedigree.ts';
 import {
   findExclusiveVariableConflicts,
   findStageManagedOptionBindings,
@@ -20,6 +22,7 @@ type Stage = Record<string, unknown>;
 
 const nodeConfiguration = {
   nameAttribute: 'fmName',
+  nameField: pedigreeNameField(),
   genderIdentity: { attribute: 'genderIdentity', terms: GENDER_IDENTITY_TERMS },
   sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
   egoAttribute: 'isEgo',
@@ -36,6 +39,7 @@ const familyPedigree = (overrides: Stage = {}): Stage => ({
   id: 'fp1',
   label: localized('Family Pedigree'),
   type: 'FamilyPedigree',
+  wording: familyPedigreeWordingIn(),
   subject: { entity: 'node', type: 'family_member' },
   prompt: localized('Build your family'),
   nodeConfiguration,

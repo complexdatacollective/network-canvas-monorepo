@@ -351,10 +351,13 @@ class NameGeneratorFixture {
   }
 
   /**
-   * Submit the node form by clicking the Finished button.
+   * Submit the node form by clicking the Done button.
    */
   async submitForm(): Promise<void> {
-    const submitButton = this.page.getByRole('button', { name: 'Finished' });
+    const submitButton = this.page.getByRole('button', {
+      name: 'Done',
+      exact: true,
+    });
     await submitButton.click();
     await this.page.getByRole('dialog').waitFor({ state: 'hidden' });
   }
@@ -480,19 +483,23 @@ class OrdinalBinFixture {
 
   /**
    * Get the drawer toggle button.
-   * The button has aria-label "Collapse drawer" or "Expand drawer".
+   * Its accessible name is "<count> unplaced" followed by "Collapse drawer" or
+   * "Expand drawer".
    */
   get drawerToggle(): Locator {
     return this.page.getByRole('button', { name: /drawer/i });
   }
 
   /**
-   * Get the number of unplaced nodes from the drawer toggle text.
+   * Get the number of unplaced nodes from the drawer toggle.
    */
   async getUnplacedCount(): Promise<number> {
-    const text = await this.drawerToggle.textContent();
-    const match = /(\d+)\s*unplaced/.exec(text ?? '');
-    return match ? Number.parseInt(match[1] ?? '0', 10) : 0;
+    // The toggle shows the number beside screen-reader-only words, so reading
+    // its text content would join the two; read the visible number alone.
+    const text = await this.drawerToggle
+      .locator('span[aria-hidden="true"]')
+      .textContent();
+    return Number.parseInt(text ?? '0', 10);
   }
 
   /**
@@ -520,7 +527,8 @@ class OrdinalBinFixture {
    * Get a node in the drawer by its label.
    */
   getNodeInDrawer(label: string): Locator {
-    return this.page.getByRole('button', { name: label }).first();
+    // Exact, because the drawer's own toggle is named "<count> unplaced ...".
+    return this.page.getByRole('button', { name: label, exact: true }).first();
   }
 
   /**
@@ -582,19 +590,23 @@ class CategoricalBinFixture {
 
   /**
    * Get the drawer toggle button showing uncategorized count.
-   * The button has aria-label "Collapse drawer" or "Expand drawer".
+   * Its accessible name is "<count> unplaced" followed by "Collapse drawer" or
+   * "Expand drawer".
    */
   get drawerToggle(): Locator {
     return this.page.getByRole('button', { name: /drawer/i });
   }
 
   /**
-   * Get the number of uncategorized nodes from the drawer toggle text.
+   * Get the number of uncategorized nodes from the drawer toggle.
    */
   async getUnplacedCount(): Promise<number> {
-    const text = await this.drawerToggle.textContent();
-    const match = /(\d+)\s*unplaced/.exec(text ?? '');
-    return match ? Number.parseInt(match[1] ?? '0', 10) : 0;
+    // The toggle shows the number beside screen-reader-only words, so reading
+    // its text content would join the two; read the visible number alone.
+    const text = await this.drawerToggle
+      .locator('span[aria-hidden="true"]')
+      .textContent();
+    return Number.parseInt(text ?? '0', 10);
   }
 
   /**
@@ -668,7 +680,8 @@ class CategoricalBinFixture {
    * Get a node in the drawer by its label.
    */
   getNodeInDrawer(label: string): Locator {
-    return this.page.getByRole('button', { name: label }).first();
+    // Exact, because the drawer's own toggle is named "<count> unplaced ...".
+    return this.page.getByRole('button', { name: label, exact: true }).first();
   }
 
   /**

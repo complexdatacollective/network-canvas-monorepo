@@ -3,7 +3,7 @@
 import { AnimatePresence } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import type { SortRule } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
@@ -226,17 +226,10 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
             onLayoutAnimationComplete={() => setIsTransitioning(false)}
           />
         ) : focalPeople ? (
-          <div key="missing" className="flex h-24 items-center justify-center">
-            <AppMessage message={interfaceMessages.noNodes} />
-          </div>
+          <div key="missing" className="h-24" />
         ) : null}
       </AnimatePresence>
-      <Panel
-        title={intl.formatMessage(interfaceMessages.selectAllThenNext)}
-        panelNumber={0}
-        noCollapse
-        className="w-full max-w-7xl"
-      >
+      <Panel panelNumber={0} noCollapse className="w-full max-w-7xl">
         <NodeList
           id="dyad-census-targets"
           items={filteredTargets}
@@ -246,13 +239,6 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
           animationKey={promptIndex}
           aria-label={intl.formatMessage(interfaceMessages.targetNodes)}
           announcedName={intl.formatMessage(interfaceMessages.targetNodes)}
-          emptyState={
-            focalPeople ? (
-              <h3>
-                <AppMessage message={interfaceMessages.noNodes} />
-              </h3>
-            ) : null
-          }
         />
       </Panel>
     </div>

@@ -6,6 +6,7 @@ import { useSelector } from 'react-redux';
 
 import { AppMessage } from '@codaco/app-i18n/react';
 import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
+import { messages as validationMessages } from '@codaco/fresco-ui/form/validation/functions';
 import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import type { DyadCensusMetadataItem } from '@codaco/shared-consts';
@@ -33,7 +34,6 @@ import {
 } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
-import { interfaceMessages } from '../messages';
 import IntroPanel from '../SlidesForm/IntroPanel';
 import {
   getNodePair,
@@ -142,9 +142,7 @@ export default function DyadCensus(props: DyadCensusProps) {
         isMet: isIntroduction || isAnswered,
         kind: 'comparison_response_required',
         toast: {
-          description: (
-            <AppMessage message={interfaceMessages.selectResponse} />
-          ),
+          description: <AppMessage message={validationMessages.required} />,
           variant: 'destructive',
           anchor: 'forward',
         },

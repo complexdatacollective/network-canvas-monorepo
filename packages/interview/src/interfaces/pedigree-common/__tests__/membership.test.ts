@@ -14,6 +14,7 @@ import {
   link,
   person,
 } from '../../FamilyPedigree/__tests__/fixtures';
+import { pedigreeWordsIn } from '../../FamilyPedigree/__tests__/pedigreeWords';
 import { evaluateCompleteness } from '../../FamilyPedigree/completeness';
 import {
   generateLabels,
@@ -30,6 +31,7 @@ import {
 } from '../membership';
 
 const intl = resolveInterviewIntl();
+const words = pedigreeWordsIn();
 
 const ego = person('ego', { isEgo: true, sex: ['female'] });
 const mum = person('mum', { name: 'Rose', sex: ['female'] });
@@ -140,7 +142,7 @@ describe('the Family Pedigree and people who are not family', () => {
 
   it('gives no label to someone who is not family, and writes none as their name', () => {
     const drawn = familyOf(nodes, edges);
-    const labels = generateLabels(drawn, 'gendered', intl);
+    const labels = generateLabels(drawn, 'gendered', intl, words);
     expect(labels.has('colleague')).toBe(false);
     const { toWrite } = labelWrites(drawn, labels, 'name', new Map());
     expect(toWrite.has('colleague')).toBe(false);
@@ -322,6 +324,7 @@ describe('labels after the Family Pedigree', () => {
       readParticipantsFamily([ego, mum, saved], familyLinks, labelConfig),
       'gendered',
       intl,
+      words,
     );
     expect(labels.get('ego')).toBe('You');
     expect(labels.get('mum')).toBe('Rose');
@@ -333,12 +336,14 @@ describe('labels after the Family Pedigree', () => {
       readParticipantsFamily(family, familyLinks, labelConfig),
       'gendered',
       intl,
+      words,
     );
     expect(labels.get('dad')).toBe('Father');
     const gamete = labelEveryone(
       readParticipantsFamily(family, familyLinks, labelConfig),
       'gamete',
       intl,
+      words,
     );
     expect(gamete.get('dad')).toBe('Sperm parent');
   });
@@ -352,6 +357,7 @@ describe('labels after the Family Pedigree', () => {
       readParticipantsFamily(nodes, familyLinks, labelConfig),
       'gendered',
       intl,
+      words,
     );
     expect(locked.get('dad')).toBe('Father');
     const unlocked = labelEveryone(
@@ -363,6 +369,7 @@ describe('labels after the Family Pedigree', () => {
       ),
       'gendered',
       intl,
+      words,
     );
     expect(unlocked.get('dad')).toBe('David');
   });

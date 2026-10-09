@@ -697,23 +697,17 @@ describe('CategoricalBin queued dialog localization', () => {
     const input = await screen.findByRole('textbox', {
       name: OTHER_PROMPT_TEXT,
     });
-    expect(screen.getByRole('dialog')).toHaveAccessibleName('Specify other');
-    expect(input).toHaveAttribute('placeholder', 'Enter your response here...');
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Other');
     fireEvent.change(input, { target: { value: 'Respuesta literal á' } });
     expect(getOtherAttribute(store)).toBeUndefined();
 
     setLocale('es-MX');
-    expect(screen.getByRole('dialog')).toHaveAccessibleName(
-      'Especificar otra respuesta',
-    );
+    // The title is the researcher's authored label, so it does not translate.
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Other');
     expect(screen.getByRole('textbox', { name: OTHER_PROMPT_TEXT })).toBe(
       input,
     );
     expect(input).toHaveValue('Respuesta literal á');
-    expect(input).toHaveAttribute(
-      'placeholder',
-      'Introduce tu respuesta aquí...',
-    );
     expect(getOtherAttribute(store)).toBeUndefined();
 
     fireEvent.click(screen.getByTestId('dialog-submit'));

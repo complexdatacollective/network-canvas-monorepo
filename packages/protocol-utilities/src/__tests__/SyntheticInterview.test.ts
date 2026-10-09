@@ -968,6 +968,12 @@ describe('SyntheticInterview', () => {
       expect(config.prompt).toEqual({ 'en-US': expect.any(String) });
       expect(config.nodeConfiguration).toEqual({
         nameAttribute: stage.name,
+        nameField: {
+          prompt: { 'en-US': 'Name (optional)' },
+          hint: {
+            'en-US': expect.stringContaining('first name') as unknown as string,
+          },
+        },
         genderIdentity: {
           attribute: stage.genderIdentity,
           terms: [...PEDIGREE_DEFAULT_GENDER_IDENTITIES],
@@ -1052,6 +1058,57 @@ describe('SyntheticInterview', () => {
       expect(result.success).toBe(true);
     });
 
+    it("keeps a stage's own wording and supplies the rest", async () => {
+      const si = new SyntheticInterview();
+      si.addStage('FamilyPedigree', {
+        nameField: { prompt: 'What do you call them?' },
+        completeness: {
+          scope: 'firstDegree',
+          enforcement: 'recommended',
+          itemText: {
+            siblings: {
+              listItem:
+                '{isYou, select, true {Your brothers and sisters} other {{name}’s brothers and sisters}}',
+            },
+          },
+          recommendedNote: 'Next again skips these.',
+        },
+      });
+      const protocol = si.getProtocol();
+      const config = protocol.stages[0] as unknown as {
+        nodeConfiguration: { nameField: unknown };
+        completeness: {
+          itemText: Record<string, Record<string, unknown>>;
+          recommendedNote: unknown;
+        };
+      };
+      // A name question without a hint keeps none: the hint is the
+      // researcher's to remove.
+      expect(config.nodeConfiguration.nameField).toEqual({
+        prompt: { 'en-US': 'What do you call them?' },
+      });
+      // A message is written as given, its arguments intact.
+      expect(config.completeness.itemText.siblings!.listItem).toEqual({
+        'en-US':
+          '{isYou, select, true {Your brothers and sisters} other {{name}’s brothers and sisters}}',
+      });
+      expect(config.completeness.itemText.siblings!.noneButton).toEqual({
+        'en-US': expect.any(String) as unknown as string,
+      });
+      expect(Object.keys(config.completeness.itemText).toSorted()).toEqual([
+        'children',
+        'details',
+        'parents',
+        'siblings',
+      ]);
+      expect(config.completeness.recommendedNote).toEqual({
+        'en-US': 'Next again skips these.',
+      });
+      const result = await validateSynthetic(protocol);
+      expect(result.error?.issues ?? []).toEqual([]);
+      expect(result.success).toBe(true);
+    });
+
     it('leaves gender identity out when the stage does not ask about it', async () => {
       const si = new SyntheticInterview();
       const stage = si.addStage('FamilyPedigree', {
@@ -1064,6 +1121,12 @@ describe('SyntheticInterview', () => {
       };
       expect(config.nodeConfiguration).toEqual({
         nameAttribute: stage.name,
+        nameField: {
+          prompt: { 'en-US': 'Name (optional)' },
+          hint: {
+            'en-US': expect.stringContaining('first name') as unknown as string,
+          },
+        },
         sexAssignedAtBirthAttribute: stage.sexAssignedAtBirth,
         egoAttribute: stage.ego,
       });
@@ -3171,6 +3234,19 @@ describe('FinishSession stage', () => {
         en: 'You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now.',
         es: 'Has llegado al final de la entrevista. Si estás conforme con la información que has introducido, puedes finalizar la entrevista ahora.',
       },
+      finishLabel: { en: 'Finish', es: 'Finalizar' },
+      finishConfirmation: {
+        en: 'Are you sure you want to finish the interview?',
+        es: '¿Seguro que quieres finalizar la entrevista?',
+      },
+      finishedNotice: {
+        en: 'This interview is finished, and its answers can no longer be changed.',
+        es: 'Esta entrevista ha finalizado y ya no se pueden cambiar sus respuestas.',
+      },
+      finishFailed: {
+        en: 'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
+        es: 'No se pudo finalizar la entrevista. Inténtalo de nuevo. Si el problema continúa, ponte en contacto con la persona que organiza el estudio.',
+      },
       outcome: 'completed',
     });
   });
@@ -3213,5 +3289,65 @@ describe('FinishSession stage', () => {
     const network = synth.getNetwork();
     expect(network.nodes).toEqual([]);
     expect(network.edges).toEqual([]);
+  });
+});
+
+describe('SyntheticInterview stage wording', () => {
+  it('writes the wording a fixture gives a stage as plain text', () => {
+    const synth = new SyntheticInterview();
+    const person = synth.addNodeType({ name: 'Person' });
+    const nameVariable = person.addVariable({ type: 'text', name: 'fullName' });
+    synth
+      .addStage('NameGeneratorQuickAdd', {
+        subject: { entity: 'node', type: person.id },
+        quickAdd: nameVariable.id,
+        wording: { quickAddHint: 'Type a name, then press {Enter}' },
+      })
+      .addPrompt({ text: 'Who do you know?' });
+
+    const { stages } = expectValid(synth);
+    expect(stages[0]).toMatchObject({
+      quickAddHint: {
+        'en-US': escapeMessageText('Type a name, then press {Enter}'),
+      },
+    });
+  });
+
+  it('writes a Family Pedigree setting into its wording group, named with or without it', () => {
+    const synth = new SyntheticInterview();
+    synth.addStage('FamilyPedigree', {
+      wording: {
+        'panelTitle': 'Your relatives',
+        'wording.biologicalParentLabel': 'Birth parent',
+      },
+    });
+
+    const { stages } = expectValid(synth);
+    expect(stages[0]).not.toHaveProperty('panelTitle');
+    expect(stages[0]).toMatchObject({
+      wording: {
+        panelTitle: { 'en-US': 'Your relatives' },
+        biologicalParentLabel: { 'en-US': 'Birth parent' },
+      },
+    });
+  });
+
+  it('writes a dotted wording name inside its group and keeps the rest', () => {
+    const synth = new SyntheticInterview();
+    synth
+      .addStage('Sociogram', {
+        initialNodes: { count: 2 },
+        behaviours: { automaticLayout: true },
+        wording: { 'tooltips.pauseLayout': 'Hold still {now}' },
+      })
+      .addPrompt();
+
+    const { stages } = expectValid(synth);
+    expect(stages[0]).toMatchObject({
+      tooltips: {
+        pauseLayout: { 'en-US': escapeMessageText('Hold still {now}') },
+        resumeLayout: { 'en-US': expect.any(String) },
+      },
+    });
   });
 });

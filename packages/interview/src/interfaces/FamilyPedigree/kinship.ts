@@ -1,4 +1,3 @@
-import type { IntlShape } from '@codaco/app-i18n/messages';
 import type {
   FramingId,
   PedigreeParentKind,
@@ -6,8 +5,8 @@ import type {
 } from '@codaco/protocol-validation';
 
 import { type Gamete, gameteLookup, inferGametes } from './gametes';
-import { messages } from './messages';
 import { type Family, type Person, siblingTie } from './model';
+import type { PedigreeWords } from './pedigreeWords';
 
 /**
  * Every kinship word an unnamed person can be described by. The interview
@@ -705,6 +704,15 @@ function fillUnconnected(family: Family, labels: Map<string, PersonLabel>) {
 }
 
 /**
+ * A kinship word as participant-facing text, from the one vocabulary that
+ * holds every such word (`relativeTerm`). Used for the add menu, the framing
+ * options and anyone with no other label, which is shown as "Relative".
+ */
+export function formatRelativeTerm(term: string, words: PedigreeWords): string {
+  return words.text(words.wording.relativeTerm, { term });
+}
+
+/**
  * The label as participant-facing text. `ownerText` gives, by person id, the
  * text a relative is known by when it is not their own label, such as the
  * qualified label `generateLabels` gives them.
@@ -718,33 +726,34 @@ function fillUnconnected(family: Family, labels: Map<string, PersonLabel>) {
  */
 export function formatPersonLabel(
   label: PersonLabel,
-  intl: IntlShape,
+  words: PedigreeWords,
   ownerText?: (ownerId: string) => string | undefined,
 ): string {
   switch (label.type) {
     case 'name':
       return label.name;
     case 'you':
-      return intl.formatMessage(messages.you);
+      return words.text(words.wording.you);
     case 'term':
-      return intl.formatMessage(messages.relativeTerm, { term: label.term });
+      return formatRelativeTerm(label.term, words);
     case 'relativeOf': {
       const isPlain = ({ ownerId, owner }: RelativeAnchor) => {
         if (owner.type === 'name') return true;
         if (owner.type !== 'term') return false;
-        const own = formatPersonLabel(owner, intl);
+        const own = formatPersonLabel(owner, words);
         return (ownerText?.(ownerId) ?? own) === own;
       };
       const anchor = label.anchors.find(isPlain) ?? label.anchors[0];
-      if (!anchor) return intl.formatMessage(messages.familyMember);
-      return intl.formatMessage(messages.relativeOf, {
+      if (!anchor) return formatRelativeTerm('other', words);
+      return words.text(words.wording.generatedLabelOf, {
+        relation: 'owner',
         owner:
           ownerText?.(anchor.ownerId) ??
-          formatPersonLabel(anchor.owner, intl, ownerText),
-        term: anchor.term,
+          formatPersonLabel(anchor.owner, words, ownerText),
+        term: formatRelativeTerm(anchor.term, words),
       });
     }
     case 'unconnected':
-      return intl.formatMessage(messages.familyMember);
+      return formatRelativeTerm('other', words);
   }
 }

@@ -15,7 +15,7 @@ import { localizedMaxLength } from '../localizedMaxLength.ts';
 import { LocalizedInputField } from '../LocalizedStringField.tsx';
 
 const LIMIT = 50;
-const TOO_LONG = 'Too long. Enter at most 50 characters.';
+const TOO_LONG = 'Enter at most 50 characters.';
 
 type Saved = { title?: LocalizedString };
 

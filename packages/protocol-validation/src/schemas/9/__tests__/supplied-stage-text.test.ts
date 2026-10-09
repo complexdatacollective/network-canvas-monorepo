@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import ProtocolSchemaV9 from '../schema.ts';
+import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import {
+  inapplicableStageSettings,
+  missingSuppliedStageText,
+  suppliedStageSettingApplies,
   suppliedStageText,
   suppliedStageTextAfterLanguageChange,
 } from '../supplied-stage-text.ts';
@@ -11,13 +15,17 @@ import { asSchema8Protocol } from './schema-8-protocol.ts';
 
 const english = { defaultLocale: 'en', locales: ['en'] };
 
+/** The roster's panel title, of the settings the roster is supplied. */
+const panelTitleOnly = (text: { path: readonly string[] }) =>
+  text.path[0] === 'panelTitle';
+
 describe('the roster panel title Network Canvas supplies', () => {
   it('is written in each protocol language it is supplied in', () => {
     expect(
       suppliedStageText('NameGeneratorRoster', {
         defaultLocale: 'en-GB',
         locales: ['en-GB', 'es', 'hu'],
-      }),
+      }).filter(panelTitleOnly),
     ).toEqual([
       {
         path: ['panelTitle'],
@@ -33,7 +41,7 @@ describe('the roster panel title Network Canvas supplies', () => {
       suppliedStageText('NameGeneratorRoster', {
         defaultLocale: 'hu',
         locales: ['hu', 'fr'],
-      }),
+      }).filter(panelTitleOnly),
     ).toEqual([
       {
         path: ['panelTitle'],
@@ -43,7 +51,9 @@ describe('the roster panel title Network Canvas supplies', () => {
   });
 
   it('is supplied for no other stage', () => {
-    expect(suppliedStageText('NameGenerator', english)).toEqual([]);
+    expect(
+      suppliedStageText('NameGenerator', english).filter(panelTitleOnly),
+    ).toEqual([]);
   });
 
   const roster = (panelTitle: Record<string, string>) => ({
@@ -159,5 +169,197 @@ describe('migrating a roster stage to schema 9', () => {
     expect(rosterOf(migrateProtocol(titled, 9))).toMatchObject({
       panelTitle: { en: 'Services' },
     });
+  });
+});
+
+describe('the Family Pedigree wording Network Canvas supplies', () => {
+  const paths = (stage: Record<string, unknown>) =>
+    missingSuppliedStageText(
+      { type: 'FamilyPedigree', ...stage },
+      { defaultLocale: 'en', locales: ['en', 'de'] },
+    ).map(({ path }) => path.join('.'));
+
+  // The wording a stage holds only while its configuration is on: the framing
+  // question while participants choose the words, and the gender identity
+  // question while the stage asks about gender identity.
+  const CONFIGURED = [
+    'framingChoiceTitle',
+    'framingChoiceDescription',
+    'framingControlLabel',
+    'genderIdentityLabel',
+  ];
+  const alwaysWording = Object.keys(familyPedigreeWordingIn())
+    .filter((key) => !CONFIGURED.includes(key))
+    .map((key) => `wording.${key}`);
+
+  it('gives a new stage its name question and its wording, and no tracker wording until it has a tracker', () => {
+    expect(paths({})).toEqual([
+      'nodeConfiguration.nameField.prompt',
+      'nodeConfiguration.nameField.hint',
+      ...alwaysWording,
+    ]);
+  });
+
+  it('gives a stage with a tracker all of its wording', () => {
+    expect(
+      paths({
+        nodeConfiguration: { nameField: { prompt: { en: 'Name' } } },
+        completeness: { scope: 'parents' },
+      }),
+    ).toEqual([
+      'completeness.itemText.parents.listItem',
+      'completeness.itemText.siblings.listItem',
+      'completeness.itemText.siblings.noneButton',
+      'completeness.itemText.siblings.question',
+      'completeness.itemText.children.listItem',
+      'completeness.itemText.children.noneButton',
+      'completeness.itemText.children.question',
+      'completeness.itemText.details.listItem',
+      'completeness.recommendedNote',
+      ...alwaysWording,
+    ]);
+  });
+
+  it('does not put back a hint the researcher removed', () => {
+    expect(
+      paths({ nodeConfiguration: { nameField: { prompt: { en: 'Name' } } } }),
+    ).toEqual(alwaysWording);
+  });
+
+  it('writes the wording with its arguments, in each language it is supplied in', () => {
+    const stage = {
+      type: 'FamilyPedigree',
+      completeness: {},
+      nodeConfiguration: { nameField: { prompt: {} } },
+    };
+    const [parents] = missingSuppliedStageText(stage, {
+      defaultLocale: 'en',
+      locales: ['en', 'zh-Hans'],
+    });
+    expect(parents?.value['zh-Hans']).toContain('{isYou, select,');
+    expect(parents?.value.en).toContain('{name}');
+  });
+
+  it('follows a language change while the default language still has it', () => {
+    const stage = {
+      type: 'FamilyPedigree',
+      completeness: {
+        recommendedNote: {
+          en: 'You can also continue without these by pressing Next again.',
+        },
+      },
+    };
+    expect(
+      suppliedStageTextAfterLanguageChange(stage, {
+        before: english,
+        after: { defaultLocale: 'en', locales: ['en', 'fr'] },
+      }),
+    ).toEqual([
+      {
+        path: ['completeness', 'recommendedNote'],
+        value: {
+          en: 'You can also continue without these by pressing Next again.',
+          fr: expect.stringContaining('Suivant') as unknown as string,
+        },
+      },
+    ]);
+  });
+});
+
+describe('which supplied settings apply to a stage', () => {
+  it('applies a setting with no condition to every stage of its type', () => {
+    expect(
+      suppliedStageSettingApplies({ type: 'NetworkComposer' }, [
+        'addNamePlaceholder',
+      ]),
+    ).toBe(true);
+  });
+
+  it('applies a Network Composer groups heading only once the stage has groups', () => {
+    expect(
+      suppliedStageSettingApplies({ type: 'NetworkComposer' }, [
+        'groupsHeading',
+      ]),
+    ).toBe(false);
+    expect(
+      suppliedStageSettingApplies(
+        { type: 'NetworkComposer', convexHullVariable: 'contactType' },
+        ['groupsHeading'],
+      ),
+    ).toBe(true);
+  });
+
+  it('applies a layout tooltip only while the stage’s automatic layout is on', () => {
+    const path = ['tooltips', 'pauseLayout'];
+    expect(
+      suppliedStageSettingApplies(
+        { type: 'Sociogram', behaviours: { automaticLayout: true } },
+        path,
+      ),
+    ).toBe(true);
+    expect(
+      suppliedStageSettingApplies(
+        { type: 'Sociogram', behaviours: { automaticLayout: false } },
+        path,
+      ),
+    ).toBe(false);
+  });
+
+  it('applies an at-risk notation only when the Narrative Pedigree shows at-risk statuses', () => {
+    const path = ['conditionText', 'notation', 'atRiskAffected'];
+    expect(
+      suppliedStageSettingApplies(
+        { type: 'NarrativePedigree', showAtRiskStatuses: false },
+        path,
+      ),
+    ).toBe(false);
+    expect(
+      suppliedStageSettingApplies(
+        { type: 'NarrativePedigree', showAtRiskStatuses: true },
+        path,
+      ),
+    ).toBe(true);
+  });
+
+  it('applies nothing to a path the stage type does not supply', () => {
+    expect(
+      suppliedStageSettingApplies({ type: 'Sociogram' }, ['noSuchSetting']),
+    ).toBe(false);
+  });
+});
+
+describe('the settings a stage holds but no longer shows', () => {
+  const tooltips = {
+    pauseLayout: { en: 'Pause' },
+    resumeLayout: { en: 'Resume' },
+  };
+
+  it('are the conditional ones whose configuration is off', () => {
+    expect(
+      inapplicableStageSettings({
+        type: 'Sociogram',
+        behaviours: { automaticLayout: false },
+        tooltips,
+      }),
+    ).toEqual([
+      ['tooltips', 'pauseLayout'],
+      ['tooltips', 'resumeLayout'],
+    ]);
+  });
+
+  it('leave out a setting whose configuration is on, or one the stage lacks', () => {
+    expect(
+      inapplicableStageSettings({
+        type: 'Sociogram',
+        behaviours: { automaticLayout: true },
+        tooltips,
+      }),
+    ).toEqual([]);
+    expect(
+      inapplicableStageSettings({
+        type: 'Sociogram',
+        behaviours: { automaticLayout: false },
+      }),
+    ).toEqual([]);
   });
 });

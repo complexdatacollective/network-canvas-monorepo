@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -116,6 +116,20 @@ const shownCount = () => screen.getByText(/^Showing /);
 const filterMenu = () =>
   screen.getByRole('combobox', { name: 'Texts to show' });
 
+/**
+ * English stops being one of the protocol's languages, so its column goes
+ * while one of its cells still has focus, without that cell ever being left.
+ */
+const dropEnglish = (store: ReturnType<typeof renderTable>['store']) =>
+  act(() => {
+    store.dispatch(
+      setActiveProtocol({
+        ...structuredClone(trilingual),
+        localization: { defaultLocale: 'fr', locales: ['fr', 'es'] },
+      }),
+    );
+  });
+
 describe('TranslationTable', () => {
   afterEach(() => {
     window.history.replaceState(null, '', '/');
@@ -144,7 +158,22 @@ describe('TranslationTable', () => {
       'Page content › Item 1 › Content',
       // The person type's label.
       'Node type label',
+      // The words the interview itself shows, which Network Canvas supplies
+      // in all three languages.
+      'Throughout the interview › Exit button',
+      'Throughout the interview › Exit explanation',
+      'Throughout the interview › Screen error message',
+      'Throughout the interview › Missing item message',
+      'Throughout the interview › Back button',
+      'Throughout the interview › Continue button',
+      'Throughout the interview › Cancel button',
+      'Throughout the interview › Done button',
+      'Throughout the interview › Delete button',
+      'Throughout the interview › General error message',
     ]);
+    expect(
+      screen.getByRole('rowheader', { name: 'Interview text' }),
+    ).toBeInTheDocument();
     // Each group is headed by its stage's name or its type's name, linking to
     // where it is edited.
     expect(
@@ -233,6 +262,20 @@ describe('TranslationTable', () => {
     expect(english).toHaveValue('Thank you');
   });
 
+  it('says a cleared only translation was kept when its cell is taken away mid-edit', async () => {
+    const { store, user } = renderTable();
+
+    await user.clear(cell('2', 'Page heading', 'English'));
+    dropEnglish(store);
+
+    expect(
+      await screen.findByText(
+        'The English translation was kept, because this text exists only in English.',
+      ),
+    ).toBeInTheDocument();
+    expect(stageTitle(store, 1)).toEqual({ en: 'Thank you' });
+  });
+
   it('finds texts by a translation shown, or by the stage or type they belong to', async () => {
     const { user } = renderTable();
     const search = screen.getByRole('searchbox', {
@@ -240,14 +283,14 @@ describe('TranslationTable', () => {
     });
 
     await user.type(search, 'hola');
-    expect(shownCount()).toHaveTextContent('Showing 1 of 7 texts');
+    expect(shownCount()).toHaveTextContent('Showing 1 of 17 texts');
     expect(rowHeaders().map((header) => header.textContent)).toEqual([
       'Page content › Page heading',
     ]);
 
     await user.clear(search);
     await user.type(search, 'thanks');
-    expect(shownCount()).toHaveTextContent('Showing 3 of 7 texts');
+    expect(shownCount()).toHaveTextContent('Showing 3 of 17 texts');
 
     await user.clear(search);
     await user.type(search, 'nothing like this');
@@ -258,11 +301,11 @@ describe('TranslationTable', () => {
     const { user } = renderTable();
 
     expect(filterMenu()).toHaveDisplayValue('All texts');
-    expect(shownCount()).toHaveTextContent('Showing 7 of 7 texts');
+    expect(shownCount()).toHaveTextContent('Showing 17 of 17 texts');
     await user.selectOptions(filterMenu(), 'Missing in any shown language');
 
     // Both stage labels are translated into every language.
-    expect(shownCount()).toHaveTextContent('Showing 5 of 7 texts');
+    expect(shownCount()).toHaveTextContent('Showing 5 of 17 texts');
     expect(rowHeaders().map((header) => header.textContent)).toEqual([
       'Page content › Page heading',
       'Page content › Item 1 › Content',
@@ -285,7 +328,7 @@ describe('TranslationTable', () => {
     expect(window.location.search).toBe('?missing=any');
 
     await user.selectOptions(filterMenu(), 'All texts');
-    expect(shownCount()).toHaveTextContent('Showing 7 of 7 texts');
+    expect(shownCount()).toHaveTextContent('Showing 17 of 17 texts');
     expect(window.location.search).toBe('');
   });
 
@@ -294,7 +337,7 @@ describe('TranslationTable', () => {
 
     await user.selectOptions(filterMenu(), 'Missing Spanish');
 
-    expect(shownCount()).toHaveTextContent('Showing 2 of 7 texts');
+    expect(shownCount()).toHaveTextContent('Showing 2 of 17 texts');
     expect(screen.getByRole('link', { name: 'Thanks' })).toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: 'Welcome' }),
@@ -316,7 +359,7 @@ describe('TranslationTable', () => {
     renderTable();
 
     expect(filterMenu()).toHaveDisplayValue('Missing Spanish');
-    expect(shownCount()).toHaveTextContent('Showing 2 of 7 texts');
+    expect(shownCount()).toHaveTextContent('Showing 2 of 17 texts');
   });
 
   it('opens on every text when a link asks for a language the protocol does not have', () => {
@@ -328,7 +371,7 @@ describe('TranslationTable', () => {
     renderTable();
 
     expect(filterMenu()).toHaveDisplayValue('All texts');
-    expect(shownCount()).toHaveTextContent('Showing 7 of 7 texts');
+    expect(shownCount()).toHaveTextContent('Showing 17 of 17 texts');
   });
 
   it('shows the column of the language whose gaps it lists', async () => {
@@ -489,6 +532,21 @@ describe('TranslationTable', () => {
       expect(formattedCell('2', 'English')).toHaveAccessibleDescription(
         'See you soon',
       );
+    });
+
+    it('says a cleared only translation was kept when its cell is taken away mid-edit', async () => {
+      const { store, user } = renderTable();
+
+      await user.click(formattedCell('2', 'English'));
+      await user.clear(await formattedEditor('2', 'English'));
+      dropEnglish(store);
+
+      expect(
+        await screen.findByText(
+          'The English translation was kept, because this text exists only in English.',
+        ),
+      ).toBeInTheDocument();
+      expect(itemContent(store, 1)).toEqual({ en: 'See you **soon**' });
     });
   });
 });

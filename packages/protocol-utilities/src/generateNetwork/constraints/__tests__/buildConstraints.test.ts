@@ -969,6 +969,10 @@ describe('a date field whose floor is later than today, through feasibility', ()
   const nameGenerator: Stage = {
     id: 'stage-1',
     type: 'NameGenerator',
+    maxNodesNotice: {
+      'en-US':
+        'You have completed this task. Click the next arrow to continue.',
+    },
     label: { 'en-US': 'Name generator' },
     subject: { entity: 'node', type: 'person' },
     form: { title: { 'en-US': 'About this person' }, fields: [] },

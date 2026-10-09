@@ -171,7 +171,7 @@ function submitSettings(
 ): SectionWrite {
   const parsed = SettingsSectionSchema.safeParse(document);
   if (!parsed.success) return refuseParse(parsed.error);
-  // The optional three are named even when the document omits them: the
+  // The optional ones are named even when the document omits them: the
   // section is written whole, so a key the researcher cleared has to reach the
   // merging reducer as `undefined` rather than simply be absent.
   const settings: Partial<CurrentProtocol> = {
@@ -180,6 +180,7 @@ function submitSettings(
     description: parsed.data.description,
     localization: parsed.data.localization,
     experiments: parsed.data.experiments,
+    interfaceText: parsed.data.interfaceText,
     lastModified: parsed.data.lastModified,
   };
   store.dispatch(protocolActionCreators.updateProtocol(settings));

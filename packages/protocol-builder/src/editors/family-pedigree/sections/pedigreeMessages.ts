@@ -153,6 +153,31 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Guidance under the name attribute control. The side panel is where the participant describes each family member. The two labels in quotation marks are examples of what the interview generates for an unnamed person, and are translated like the rest of the sentence; Tom is a person’s name. “You” is how the interview labels the participant in their family tree.',
   },
+  namePromptLabel: {
+    id: 'protocolBuilder.pedigree.namePromptLabel',
+    defaultMessage: 'Name question',
+    description:
+      'Label of the box holding the words above the name box in the side panel, where the participant types a family member’s name.',
+  },
+  namePromptHint: {
+    id: 'protocolBuilder.pedigree.namePromptHint',
+    defaultMessage:
+      'Shown above the box where participants type a family member’s name. It starts with wording Network Canvas supplies, which you can change.',
+    description:
+      'Guidance under the name-question box. The question starts with supplied wording in each of the protocol’s languages that Network Canvas has it in.',
+  },
+  nameHintTextLabel: {
+    id: 'protocolBuilder.pedigree.nameHintTextLabel',
+    defaultMessage: 'Name question guidance',
+    description:
+      'Label of the box holding the guidance shown under the name box in the side panel.',
+  },
+  nameHintTextHint: {
+    id: 'protocolBuilder.pedigree.nameHintTextHint',
+    defaultMessage:
+      'Shown under the name box, for example to say that a nickname will do. Leave it empty to show nothing.',
+    description: 'Guidance under the name-question guidance box.',
+  },
   nameCreateLabel: {
     id: 'protocolBuilder.pedigree.nameCreateLabel',
     defaultMessage: 'Create a new name attribute',
@@ -675,9 +700,131 @@ export const familyPedigreeMessages = defineMessages({
   completenessClearDescription: {
     id: 'protocolBuilder.pedigree.completenessClearDescription',
     defaultMessage:
-      'The relatives, the enforcement and the relatives-not-recorded attribute you chose will be removed from this stage, and participants will be able to continue with any family they have drawn.',
+      'The relatives, the enforcement, the relatives-not-recorded attribute and the wording of the list will be removed from this stage, and participants will be able to continue with any family they have drawn.',
     description:
       'Body of the confirmation shown before the completeness requirement is switched off, saying what is lost.',
+  },
+  trackerTextTitle: {
+    id: 'protocolBuilder.pedigree.trackerTextTitle',
+    defaultMessage: 'What the list says',
+    description:
+      'Heading of the group of boxes holding the words of the list showing participants what is still needed in their family, and of the side panel’s questions about brothers, sisters and children.',
+  },
+  trackerTextDescription: {
+    id: 'protocolBuilder.pedigree.trackerTextDescription',
+    defaultMessage:
+      'The words participants read in the list of what is still needed, and in the side panel’s questions about brothers, sisters and children. They start with wording Network Canvas supplies, which you can change. Each can read differently when it is about the participant and when it is about someone else.',
+    description:
+      'Description of the list-wording group. The wording starts with supplied text in each of the protocol’s languages that Network Canvas has it in.',
+  },
+  trackerParentsLabel: {
+    id: 'protocolBuilder.pedigree.trackerParentsLabel',
+    defaultMessage: 'Missing parents',
+    description:
+      'Label of the box holding the list item that asks for a person’s missing parents.',
+  },
+  trackerParentsHint: {
+    id: 'protocolBuilder.pedigree.trackerParentsHint',
+    defaultMessage:
+      'Asks for the parents of a person who has none recorded. It can show their name.',
+    description: 'Guidance under the missing-parents list item box.',
+  },
+  trackerSiblingsLabel: {
+    id: 'protocolBuilder.pedigree.trackerSiblingsLabel',
+    defaultMessage: 'Brothers and sisters',
+    description:
+      'Label of the box holding the list item that asks for a person’s brothers and sisters.',
+  },
+  trackerSiblingsHint: {
+    id: 'protocolBuilder.pedigree.trackerSiblingsHint',
+    defaultMessage:
+      'Asks for a person’s brothers and sisters, or for an answer that they have none.',
+    description: 'Guidance under the brothers-and-sisters list item box.',
+  },
+  trackerNoSiblingsLabel: {
+    id: 'protocolBuilder.pedigree.trackerNoSiblingsLabel',
+    defaultMessage: 'No brothers or sisters',
+    description:
+      'Label of the box holding the words of the button that answers that a person has no brothers or sisters.',
+  },
+  trackerNoSiblingsHint: {
+    id: 'protocolBuilder.pedigree.trackerNoSiblingsHint',
+    defaultMessage:
+      'The button under that item that answers that the person has none.',
+    description:
+      'Guidance under the no-brothers-or-sisters button box. “That item” is the brothers-and-sisters list item above it.',
+  },
+  trackerSiblingsQuestionLabel: {
+    id: 'protocolBuilder.pedigree.trackerSiblingsQuestionLabel',
+    defaultMessage: 'Question about brothers and sisters',
+    description:
+      'Label of the box holding the question the side panel asks about a person’s brothers and sisters.',
+  },
+  trackerSiblingsQuestionHint: {
+    id: 'protocolBuilder.pedigree.trackerSiblingsQuestionHint',
+    defaultMessage:
+      'Asked in the side panel while a person’s brothers and sisters are still needed.',
+    description: 'Guidance under the brothers-and-sisters question box.',
+  },
+  trackerChildrenLabel: {
+    id: 'protocolBuilder.pedigree.trackerChildrenLabel',
+    defaultMessage: 'Children',
+    description:
+      'Label of the box holding the list item that asks for a person’s children.',
+  },
+  trackerChildrenHint: {
+    id: 'protocolBuilder.pedigree.trackerChildrenHint',
+    defaultMessage:
+      'Asks for a person’s children, or for an answer that they have none.',
+    description: 'Guidance under the children list item box.',
+  },
+  trackerNoChildrenLabel: {
+    id: 'protocolBuilder.pedigree.trackerNoChildrenLabel',
+    defaultMessage: 'No children',
+    description:
+      'Label of the box holding the words of the button that answers that a person has no children.',
+  },
+  trackerNoChildrenHint: {
+    id: 'protocolBuilder.pedigree.trackerNoChildrenHint',
+    defaultMessage:
+      'The button under that item that answers that the person has none.',
+    description:
+      'Guidance under the no-children button box. “That item” is the children list item above it.',
+  },
+  trackerChildrenQuestionLabel: {
+    id: 'protocolBuilder.pedigree.trackerChildrenQuestionLabel',
+    defaultMessage: 'Question about children',
+    description:
+      'Label of the box holding the question the side panel asks about a person’s children.',
+  },
+  trackerChildrenQuestionHint: {
+    id: 'protocolBuilder.pedigree.trackerChildrenQuestionHint',
+    defaultMessage:
+      'Asked in the side panel while a person’s children are still needed.',
+    description: 'Guidance under the children question box.',
+  },
+  trackerDetailsLabel: {
+    id: 'protocolBuilder.pedigree.trackerDetailsLabel',
+    defaultMessage: 'Missing details',
+    description:
+      'Label of the box holding the list item that asks for details still missing about a person, such as their sex assigned at birth.',
+  },
+  trackerDetailsHint: {
+    id: 'protocolBuilder.pedigree.trackerDetailsHint',
+    defaultMessage: 'Asks for details still missing about a person.',
+    description: 'Guidance under the missing-details list item box.',
+  },
+  trackerRecommendedNoteLabel: {
+    id: 'protocolBuilder.pedigree.trackerRecommendedNoteLabel',
+    defaultMessage: 'Note under a recommended list',
+    description:
+      'Label of the box holding the note shown under the list when participants may continue without completing it.',
+  },
+  trackerRecommendedNoteHint: {
+    id: 'protocolBuilder.pedigree.trackerRecommendedNoteHint',
+    defaultMessage:
+      'Shown under the list when participants may continue without completing it.',
+    description: 'Guidance under the recommended-list note box.',
   },
   completenessClearConfirm: {
     id: 'protocolBuilder.pedigree.completenessClearConfirm',
@@ -1011,5 +1158,498 @@ export const familyPedigreeMessages = defineMessages({
       'The interface already records this attribute itself, so these fields cannot collect it as well. Choose another attribute, or remove the field.',
     description:
       'Refusal shown when an additional person field collects an attribute already chosen as one of the Family Pedigree’s own person attributes (name, gender identity, sex assigned at birth, participant marker or relationship to the participant) or as the attribute a nomination prompt sets.',
+  },
+  wordingPointerTool: {
+    id: 'protocolBuilder.pedigree.wording.pointerTool',
+    defaultMessage: 'Pointer tool button',
+    description:
+      'Label of the button that selects and moves people on the family tree.',
+  },
+  wordingConnectTool: {
+    id: 'protocolBuilder.pedigree.wording.connectTool',
+    defaultMessage: 'Connect tool button',
+    description:
+      'Label of the button that connects two people on the family tree.',
+  },
+  wordingDisconnectTool: {
+    id: 'protocolBuilder.pedigree.wording.disconnectTool',
+    defaultMessage: 'Disconnect tool button',
+    description:
+      'Label of the button that removes a connection between two people on the family tree.',
+  },
+  wordingConnectHint: {
+    id: 'protocolBuilder.pedigree.wording.connectHint',
+    defaultMessage: 'Connect hint',
+    description:
+      'Label of the hint shown while the participant chooses the first person to connect.',
+  },
+  wordingDisconnectHint: {
+    id: 'protocolBuilder.pedigree.wording.disconnectHint',
+    defaultMessage: 'Disconnect hint',
+    description:
+      'Label of the hint shown while the participant chooses a connection to remove.',
+  },
+  wordingFramingChoiceTitle: {
+    id: 'protocolBuilder.pedigree.wording.framingChoiceTitle',
+    defaultMessage: 'Wording question',
+    description:
+      'Label of the question asking which words to use for family members. Shown only when participants choose the words.',
+  },
+  wordingFramingChoiceDescription: {
+    id: 'protocolBuilder.pedigree.wording.framingChoiceDescription',
+    defaultMessage: 'Wording question explanation',
+    description:
+      'Label of the explanation under the question asking which words to use for family members.',
+  },
+  wordingFramingControlLabel: {
+    id: 'protocolBuilder.pedigree.wording.framingControlLabel',
+    defaultMessage: 'Wording control label',
+    description:
+      'Label of the control that lets the participant change the words used for family members.',
+  },
+  wordingPlaceholderParentsNote: {
+    id: 'protocolBuilder.pedigree.wording.placeholderParentsNote',
+    defaultMessage: 'Note about added parents',
+    description:
+      'Label of the note explaining the placeholder parents added for a set of siblings.',
+  },
+  wordingGeneratedLabelOf: {
+    id: 'protocolBuilder.pedigree.wording.generatedLabelOf',
+    defaultMessage: 'Label for a relative',
+    description:
+      'Label of a family member, named by how they relate to the participant.',
+  },
+  wordingRelativeTerm: {
+    id: 'protocolBuilder.pedigree.wording.relativeTerm',
+    defaultMessage: 'Relative terms',
+    description:
+      'Label of the words for each kind of relative, shown in place of their relationship.',
+  },
+  wordingYou: {
+    id: 'protocolBuilder.pedigree.wording.you',
+    defaultMessage: 'Participant’s own name',
+    description:
+      'Label of the words shown for the participant when they appear as a family member.',
+  },
+  wordingSave: {
+    id: 'protocolBuilder.pedigree.wording.save',
+    defaultMessage: 'Save button',
+    description: 'Label of the button that saves a family member’s details.',
+  },
+  wordingDontKnow: {
+    id: 'protocolBuilder.pedigree.wording.dontKnow',
+    defaultMessage: 'Don’t know option',
+    description:
+      'Label of the option a participant picks when they do not know an answer.',
+  },
+  wordingMissingDetailsList: {
+    id: 'protocolBuilder.pedigree.wording.missingDetailsList',
+    defaultMessage: 'Missing details notice',
+    description:
+      'Label of the notice listing what details are still missing for a family member.',
+  },
+  wordingConnectQuestion: {
+    id: 'protocolBuilder.pedigree.wording.connectQuestion',
+    defaultMessage: 'Connect question',
+    description: 'Label of the question asking how two people are related.',
+  },
+  wordingConnectParent: {
+    id: 'protocolBuilder.pedigree.wording.connectParent',
+    defaultMessage: 'Parent connection',
+    description: 'Label of the sentence describing a parent connection.',
+  },
+  wordingConnectPartners: {
+    id: 'protocolBuilder.pedigree.wording.connectPartners',
+    defaultMessage: 'Partner connection',
+    description:
+      'Label of the sentence describing a partnership, whether current or past.',
+  },
+  wordingDisconnectConfirmTitle: {
+    id: 'protocolBuilder.pedigree.wording.disconnectConfirmTitle',
+    defaultMessage: 'Remove connection question',
+    description:
+      'Label of the question asking whether to remove a connection between two people.',
+  },
+  wordingDisconnectConfirmDescription: {
+    id: 'protocolBuilder.pedigree.wording.disconnectConfirmDescription',
+    defaultMessage: 'Remove connection explanation',
+    description:
+      'Label of the explanation that both people stay in the family tree when a connection is removed.',
+  },
+  wordingDisconnectWouldCutOff: {
+    id: 'protocolBuilder.pedigree.wording.disconnectWouldCutOff',
+    defaultMessage: 'Connection that would leave someone out',
+    description:
+      'Label of the warning that removing a connection would leave people outside the family tree.',
+  },
+  wordingRemoveConfirmTitle: {
+    id: 'protocolBuilder.pedigree.wording.removeConfirmTitle',
+    defaultMessage: 'Remove person question',
+    description:
+      'Label of the question asking whether to remove a family member.',
+  },
+  wordingRemoveConfirmDescription: {
+    id: 'protocolBuilder.pedigree.wording.removeConfirmDescription',
+    defaultMessage: 'Remove person explanation',
+    description:
+      'Label of the explanation of what removing a family member also removes.',
+  },
+  wordingStillTogetherLabel: {
+    id: 'protocolBuilder.pedigree.wording.stillTogetherLabel',
+    defaultMessage: 'Still together question',
+    description:
+      'Label of the question asking whether a partnership is still ongoing.',
+  },
+  wordingPanelTitle: {
+    id: 'protocolBuilder.pedigree.wording.panelTitle',
+    defaultMessage: 'Panel title',
+    description:
+      'Label of the title of the side panel for a family member being added or edited.',
+  },
+  wordingParentKindLabel: {
+    id: 'protocolBuilder.pedigree.wording.parentKindLabel',
+    defaultMessage: 'Kind of parent question',
+    description:
+      'Label of the question asking what kind of parent a person is.',
+  },
+  wordingBiologicalParentLabel: {
+    id: 'protocolBuilder.pedigree.wording.biologicalParentLabel',
+    defaultMessage: 'Biological parent question',
+    description:
+      'Label of the question asking which parent is the child’s biological parent.',
+  },
+  wordingBiologicalParentHint: {
+    id: 'protocolBuilder.pedigree.wording.biologicalParentHint',
+    defaultMessage: 'Biological parent hint',
+    description:
+      'Label of the hint explaining that a parent who is not biological is added as a step or social parent.',
+  },
+  wordingBiologicalParentBoth: {
+    id: 'protocolBuilder.pedigree.wording.biologicalParentBoth',
+    defaultMessage: 'Both biological parents option',
+    description:
+      'Label of the option that both parents are biological parents. The two names are filled in.',
+  },
+  wordingCarrierLabel: {
+    id: 'protocolBuilder.pedigree.wording.carrierLabel',
+    defaultMessage: 'Carrier question',
+    description: 'Label of the question asking who carried the pregnancy.',
+  },
+  wordingCarrierUnknown: {
+    id: 'protocolBuilder.pedigree.wording.carrierUnknown',
+    defaultMessage: 'Other or unknown carrier option',
+    description:
+      'Label of the option for someone else, or for not knowing who carried the pregnancy.',
+  },
+  wordingOtherParentLabel: {
+    id: 'protocolBuilder.pedigree.wording.otherParentLabel',
+    defaultMessage: 'Other parent question',
+    description:
+      'Label of the question asking who the child’s other parent is.',
+  },
+  wordingOtherParentNone: {
+    id: 'protocolBuilder.pedigree.wording.otherParentNone',
+    defaultMessage: 'No other parent option',
+    description: 'Label of the option that the child has no other parent.',
+  },
+  wordingOtherParentUnknown: {
+    id: 'protocolBuilder.pedigree.wording.otherParentUnknown',
+    defaultMessage: 'Other parent not shown option',
+    description:
+      'Label of the option for an other parent who is not yet shown on the family tree.',
+  },
+  wordingParentPartnerLabel: {
+    id: 'protocolBuilder.pedigree.wording.parentPartnerLabel',
+    defaultMessage: 'Parent partner question',
+    description:
+      'Label of the question asking whether a parent is the partner of another parent.',
+  },
+  wordingParentLinkKindLabel: {
+    id: 'protocolBuilder.pedigree.wording.parentLinkKindLabel',
+    defaultMessage: 'Kind of relationship question',
+    description:
+      'Label of the question asking how a person is related to another person in the family.',
+  },
+  wordingParentCarriedLabel: {
+    id: 'protocolBuilder.pedigree.wording.parentCarriedLabel',
+    defaultMessage: 'Carried the pregnancy question',
+    description:
+      'Label of the question asking whether a parent carried the pregnancy.',
+  },
+  wordingSharedParentCountLabel: {
+    id: 'protocolBuilder.pedigree.wording.sharedParentCountLabel',
+    defaultMessage: 'Shared parents question',
+    description:
+      'Label of the question asking which parents a person shares with the participant or with another person.',
+  },
+  wordingSharedParentCountBoth: {
+    id: 'protocolBuilder.pedigree.wording.sharedParentCountBoth',
+    defaultMessage: 'Both shared parents option',
+    description: 'Label of the option that both parents are shared.',
+  },
+  wordingSharedParentEggOnly: {
+    id: 'protocolBuilder.pedigree.wording.sharedParentEggOnly',
+    defaultMessage: 'One shared parent option',
+    description:
+      'Label of the option that only one of the shared parents is shared. The parent’s kind is filled in.',
+  },
+  wordingSiblingKindLabel: {
+    id: 'protocolBuilder.pedigree.wording.siblingKindLabel',
+    defaultMessage: 'Shared parents of siblings question',
+    description:
+      'Label of the question asking which parents a person shares with their siblings.',
+  },
+  wordingCarriedSiblingsPregnancyLabel: {
+    id: 'protocolBuilder.pedigree.wording.carriedSiblingsPregnancyLabel',
+    defaultMessage: 'Siblings’ pregnancy question',
+    description:
+      'Label of the question asking whether each sibling’s parent carried the pregnancy with them.',
+  },
+  wordingChildKindLabel: {
+    id: 'protocolBuilder.pedigree.wording.childKindLabel',
+    defaultMessage: 'Kind of child question',
+    description: 'Label of the question asking what kind of child a person is.',
+  },
+  wordingChildKindBiological: {
+    id: 'protocolBuilder.pedigree.wording.childKindBiological',
+    defaultMessage: 'Biological child option',
+    description: 'Label of the option for a biological child.',
+  },
+  wordingChildKindAdoptive: {
+    id: 'protocolBuilder.pedigree.wording.childKindAdoptive',
+    defaultMessage: 'Adopted child option',
+    description: 'Label of the option for an adopted child.',
+  },
+  wordingChildKindSocial: {
+    id: 'protocolBuilder.pedigree.wording.childKindSocial',
+    defaultMessage: 'Step or other raised child option',
+    description:
+      'Label of the option for a step-child or another child the participant raises.',
+  },
+  wordingAlsoParentOfLabel: {
+    id: 'protocolBuilder.pedigree.wording.alsoParentOfLabel',
+    defaultMessage: 'Also parent of question',
+    description:
+      'Label of the question asking whether a person is also the parent of another person.',
+  },
+  wordingSexAssignedAtBirthLabel: {
+    id: 'protocolBuilder.pedigree.wording.sexAssignedAtBirthLabel',
+    defaultMessage: 'Sex assigned at birth question',
+    description:
+      'Label of the question asking a family member’s sex assigned at birth.',
+  },
+  wordingGenderIdentityLabel: {
+    id: 'protocolBuilder.pedigree.wording.genderIdentityLabel',
+    defaultMessage: 'Gender identity question',
+    description:
+      'Label of the gender identity question. Shown only when the interface asks about gender identity.',
+  },
+  wordingChangeWouldCutOff: {
+    id: 'protocolBuilder.pedigree.wording.changeWouldCutOff',
+    defaultMessage: 'Change that would leave someone out',
+    description:
+      'Label of the warning that a change, or a new connection, would leave people outside the family tree, so is not made.',
+  },
+  wordingChildKindDonor: {
+    id: 'protocolBuilder.pedigree.wording.childKindDonor',
+    defaultMessage: 'Child from a donation option',
+    description:
+      'Label of the option for a child conceived with an egg or sperm the person donated.',
+  },
+  wordingChildKindSurrogate: {
+    id: 'protocolBuilder.pedigree.wording.childKindSurrogate',
+    defaultMessage: 'Child carried as a surrogate option',
+    description:
+      'Label of the option for a child the person carried as a surrogate.',
+  },
+  wordingParentKindCarrier: {
+    id: 'protocolBuilder.pedigree.wording.parentKindCarrier',
+    defaultMessage: 'Parent who carried the pregnancy',
+    description:
+      'Label of the option for a parent of any kind who carried the pregnancy. The kind of parent is filled in.',
+  },
+  wordingSharedDonorsLabel: {
+    id: 'protocolBuilder.pedigree.wording.sharedDonorsLabel',
+    defaultMessage: 'Shared donors question',
+    description:
+      'Label of the question asking which donors a new sibling shares, for someone with only egg or sperm donors as parents.',
+  },
+  wordingSiblingBiologicalParentLabel: {
+    id: 'protocolBuilder.pedigree.wording.siblingBiologicalParentLabel',
+    defaultMessage: 'Sibling’s biological parent question',
+    description:
+      'Label of the question asking which of the parents a new sibling shares is their biological parent, when only one of them could be.',
+  },
+  wordingSiblingTwinLabel: {
+    id: 'protocolBuilder.pedigree.wording.siblingTwinLabel',
+    defaultMessage: 'Twin question',
+    description:
+      'Label of the question asking whether a new sibling is a twin of the person they are added to.',
+  },
+  wordingSiblingTwinHint: {
+    id: 'protocolBuilder.pedigree.wording.siblingTwinHint',
+    defaultMessage: 'Twin question hint',
+    description:
+      'Label of the hint under the question asking whether a new sibling is a twin.',
+  },
+  wordingSiblingTwinNo: {
+    id: 'protocolBuilder.pedigree.wording.siblingTwinNo',
+    defaultMessage: 'Not a twin option',
+    description: 'Label of the option that a new sibling is not a twin.',
+  },
+  wordingSiblingTwinIdentical: {
+    id: 'protocolBuilder.pedigree.wording.siblingTwinIdentical',
+    defaultMessage: 'Identical twin option',
+    description: 'Label of the option that a new sibling is an identical twin.',
+  },
+  wordingSiblingTwinFraternal: {
+    id: 'protocolBuilder.pedigree.wording.siblingTwinFraternal',
+    defaultMessage: 'Fraternal twin option',
+    description: 'Label of the option that a new sibling is a fraternal twin.',
+  },
+  wordingSiblingTwinUnknown: {
+    id: 'protocolBuilder.pedigree.wording.siblingTwinUnknown',
+    defaultMessage: 'Twin, not known if identical, option',
+    description:
+      'Label of the option that a new sibling is a twin, without knowing whether they are identical.',
+  },
+  wordingTwinsLabel: {
+    id: 'protocolBuilder.pedigree.wording.twinsLabel',
+    defaultMessage: 'Twins question',
+    description:
+      'Label of the question in a family member’s panel asking which of their siblings are their twins.',
+  },
+  wordingTwinsHint: {
+    id: 'protocolBuilder.pedigree.wording.twinsHint',
+    defaultMessage: 'Twins hint',
+    description:
+      'Label of the hint under the question asking which siblings are twins.',
+  },
+  wordingTwinZygosityLabel: {
+    id: 'protocolBuilder.pedigree.wording.twinZygosityLabel',
+    defaultMessage: 'Identical twins question',
+    description:
+      'Label of the question asking whether two twins are identical.',
+  },
+  wordingZygosityIdentical: {
+    id: 'protocolBuilder.pedigree.wording.zygosityIdentical',
+    defaultMessage: 'Identical option',
+    description: 'Label of the option that two twins are identical.',
+  },
+  wordingZygosityFraternal: {
+    id: 'protocolBuilder.pedigree.wording.zygosityFraternal',
+    defaultMessage: 'Fraternal option',
+    description: 'Label of the option that two twins are fraternal.',
+  },
+  wordingZygosityUnknown: {
+    id: 'protocolBuilder.pedigree.wording.zygosityUnknown',
+    defaultMessage: 'Not known if identical option',
+    description:
+      'Label of the option that the participant does not know whether two twins are identical.',
+  },
+  wordingUnavailableAncestor: {
+    id: 'protocolBuilder.pedigree.wording.unavailableAncestor',
+    defaultMessage: 'Unavailable choice: own ancestor',
+    description:
+      'Label of the reason shown under the choice to make someone a parent of one of their own ancestors.',
+  },
+  wordingUnavailableCarrierChoice: {
+    id: 'protocolBuilder.pedigree.wording.unavailableCarrierChoice',
+    defaultMessage: 'Unavailable choice: someone else carried',
+    description:
+      'Label of the reason shown under the choices for a parent who carried the pregnancy, when someone else already did.',
+  },
+  wordingUnavailableCarrierRecorded: {
+    id: 'protocolBuilder.pedigree.wording.unavailableCarrierRecorded',
+    defaultMessage: 'Unavailable answers hint: someone else carried',
+    description:
+      'Label of the hint explaining that answers are unavailable because someone else is recorded as having carried the pregnancy.',
+  },
+  wordingUnavailableCannotCarry: {
+    id: 'protocolBuilder.pedigree.wording.unavailableCannotCarry',
+    defaultMessage: 'Unavailable answers hint: cannot have carried',
+    description:
+      'Label of the hint explaining that answers are unavailable because the person is recorded as male at birth, so cannot have carried a pregnancy.',
+  },
+  wordingUnavailableCarried: {
+    id: 'protocolBuilder.pedigree.wording.unavailableCarried',
+    defaultMessage: 'Unavailable answers hint: carried a child',
+    description:
+      'Label of the hint explaining that a sex at birth is unavailable because the person is recorded as having carried a child’s pregnancy.',
+  },
+  wordingUnavailableGeneticParentsFull: {
+    id: 'protocolBuilder.pedigree.wording.unavailableGeneticParentsFull',
+    defaultMessage: 'Unavailable answers hint: two genetic parents',
+    description:
+      'Label of the hint explaining that answers are unavailable because the child already has two genetic parents recorded.',
+  },
+  wordingUnavailableSameSexGeneticParent: {
+    id: 'protocolBuilder.pedigree.wording.unavailableSameSexGeneticParent',
+    defaultMessage:
+      'Unavailable answers hint: same sex at birth as the other genetic parent',
+    description:
+      'Label of the hint explaining that answers are unavailable because the child’s other genetic parent is recorded with the same sex at birth.',
+  },
+  wordingUnavailableBothSameSex: {
+    id: 'protocolBuilder.pedigree.wording.unavailableBothSameSex',
+    defaultMessage:
+      'Unavailable answers hint: both parents the same sex at birth',
+    description:
+      'Label of the hint explaining that both parents cannot be a new child’s genetic parents because they are recorded with the same sex at birth.',
+  },
+  wordingUnavailableIdenticalTwin: {
+    id: 'protocolBuilder.pedigree.wording.unavailableIdenticalTwin',
+    defaultMessage: 'Unavailable answers hint: twins’ parents differ',
+    description:
+      'Label of the hint explaining that two twins cannot be recorded as identical because their biological parents and donors differ.',
+  },
+  wordingUnavailableIdenticalTwinNew: {
+    id: 'protocolBuilder.pedigree.wording.unavailableIdenticalTwinNew',
+    defaultMessage: 'Unavailable answers hint: new twin’s parents differ',
+    description:
+      'Label of the hint explaining that a new sibling cannot be an identical twin because they would not have all the same biological parents and donors.',
+  },
+  wordingTitle: {
+    id: 'protocolBuilder.pedigree.wording.title',
+    defaultMessage: 'Participant wording',
+    description:
+      'Heading of the section holding the words the participant sees on this stage.',
+  },
+  wordingDescription: {
+    id: 'protocolBuilder.pedigree.wording.description',
+    defaultMessage:
+      'The words the interface shows the participant while they draw their family, in the order they meet them. Each starts with Network Canvas’s wording in each language the protocol has, and you can change it.',
+    description: 'Description of the participant wording section.',
+  },
+  wordingDrawingTitle: {
+    id: 'protocolBuilder.pedigree.wording.drawingTitle',
+    defaultMessage: 'Drawing the family',
+    description:
+      'Heading of the group of words shown while the participant draws their family on the canvas.',
+  },
+  wordingConnectingTitle: {
+    id: 'protocolBuilder.pedigree.wording.connectingTitle',
+    defaultMessage: 'Connecting people',
+    description:
+      'Heading of the group of words shown while the participant connects and removes people.',
+  },
+  wordingAddingTitle: {
+    id: 'protocolBuilder.pedigree.wording.addingTitle',
+    defaultMessage: 'Adding a family member',
+    description:
+      'Heading of the group of words shown in the side panel for a family member the participant adds or edits.',
+  },
+  wordingChoosesFramingHint: {
+    id: 'protocolBuilder.pedigree.wording.choosesFramingHint',
+    defaultMessage:
+      'Shown only when participants choose the words used for family members.',
+    description:
+      'Hint on the wording settings that are shown only when participants choose the words used for family members.',
+  },
+  wordingGenderIdentityHint: {
+    id: 'protocolBuilder.pedigree.wording.genderIdentityHint',
+    defaultMessage: 'Shown only when the interface asks about gender identity.',
+    description:
+      'Hint on the gender identity wording setting, which is shown only when the interface asks about gender identity.',
   },
 });

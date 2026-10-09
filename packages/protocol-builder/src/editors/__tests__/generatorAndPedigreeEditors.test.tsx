@@ -1,4 +1,4 @@
-import { waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { StageEditorRegistry } from '../../stage-editor-contract.ts';
@@ -18,8 +18,13 @@ type SectionListEditorCase = Readonly<{
   editor: Partial<StageEditorRegistry>;
   /** The outline a researcher reads down the side of the stage, in order. */
   sections: readonly string[];
-  /** The top-level stage keys those sections have a field for. */
+  /**
+   * The top-level stage keys those sections have a field for, once the group
+   * named by `openGroup` is open.
+   */
   ownedKeys: readonly string[];
+  /** A group of settings whose fields are on screen only while it is open. */
+  openGroup?: string;
 }>;
 
 /**
@@ -42,6 +47,7 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
       'Prompt collection',
       'Side panels',
       'Nomination limits',
+      'Messages',
       'Skip logic',
       'Interviewer guidance',
     ],
@@ -61,10 +67,12 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
       'Wording',
       'Additional person fields',
       'Completeness',
+      'Participant wording',
       'Nomination prompts',
       'Skip logic',
       'Interviewer guidance',
     ],
+    openGroup: 'Drawing the family',
     ownedKeys: [
       'edgeConfiguration',
       'framing',
@@ -73,6 +81,7 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
       'nominationPrompts',
       'prompt',
       'subject',
+      'wording',
     ],
   },
 ];
@@ -115,9 +124,16 @@ describe('the family editors written as section lists', () => {
    */
   it.each(SECTION_LIST_EDITORS)(
     '$interfaceName saves the stage it opened, losing nothing',
-    async ({ stageId, editor, ownedKeys }) => {
+    async ({ stageId, editor, ownedKeys, openGroup }) => {
       const harness = renderStageEditor({ stageId, registry: editor });
 
+      // A group of settings that mounts its fields only while it is open is
+      // opened, so the key it edits is on screen.
+      if (openGroup !== undefined) {
+        await harness.user.click(
+          await screen.findByRole('button', { name: openGroup }),
+        );
+      }
       await waitFor(() => expect(harness.ownedKeys()).toEqual([...ownedKeys]));
       await harness.roundTrip({ unowned: [] });
     },

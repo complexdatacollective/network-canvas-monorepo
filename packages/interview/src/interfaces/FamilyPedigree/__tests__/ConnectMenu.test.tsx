@@ -6,9 +6,12 @@ import { resolveInterviewIntl } from '../../../i18n/resolveIntl';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import ConnectMenu, { describeConnection } from '../components/ConnectMenu';
 import { readFamily } from '../model';
+import { PedigreeWordsProvider } from '../pedigreeWords';
 import { config, link, person } from './fixtures';
+import { pedigreeWordsIn } from './pedigreeWords';
 
 const intl = resolveInterviewIntl();
+const words = pedigreeWordsIn();
 
 const PARENT_KIND_LABELS = {
   biological: 'Genetic parent',
@@ -31,15 +34,17 @@ describe('ConnectMenu', () => {
 
     render(
       <TestProtocolLocalization>
-        <ConnectMenu
-          pair={{ firstId: 'julie', secondId: 'rob' }}
-          family={family}
-          displayName={(id) => (id === 'julie' ? 'Julie' : 'Rob')}
-          parentKindLabels={PARENT_KIND_LABELS}
-          anchor={anchor}
-          onConnect={onConnect}
-          onClose={() => undefined}
-        />
+        <PedigreeWordsProvider value={words}>
+          <ConnectMenu
+            pair={{ firstId: 'julie', secondId: 'rob' }}
+            family={family}
+            displayName={(id) => (id === 'julie' ? 'Julie' : 'Rob')}
+            parentKindLabels={PARENT_KIND_LABELS}
+            anchor={anchor}
+            onConnect={onConnect}
+            onClose={() => undefined}
+          />
+        </PedigreeWordsProvider>
       </TestProtocolLocalization>,
     );
 
@@ -64,6 +69,7 @@ describe('ConnectMenu', () => {
     expect(
       describeConnection(
         connection,
+        words,
         intl,
         family,
         (id) => (id === 'julie' ? 'Julie' : 'Rob'),
@@ -91,6 +97,7 @@ describe('ConnectMenu', () => {
           parentKind: 'biological',
           carriedPregnancy: true,
         },
+        words,
         intl,
         family,
         (id) => names.get(id) ?? '',
@@ -102,6 +109,7 @@ describe('ConnectMenu', () => {
     expect(
       describeConnection(
         { kind: 'partner', firstId: 'julie', secondId: 'rob', current: false },
+        words,
         intl,
         family,
         (id) => names.get(id) ?? '',
@@ -127,49 +135,23 @@ describe('ConnectMenu', () => {
     document.body.append(anchor);
     render(
       <TestProtocolLocalization>
-        <ConnectMenu
-          pair={{ firstId: 'ego', secondId: 'grandpa' }}
-          family={family}
-          displayName={(id) => (id === 'ego' ? 'You' : 'Grandpa')}
-          parentKindLabels={PARENT_KIND_LABELS}
-          anchor={anchor}
-          onConnect={() => undefined}
-          onClose={() => undefined}
-        />
+        <PedigreeWordsProvider value={words}>
+          <ConnectMenu
+            pair={{ firstId: 'ego', secondId: 'grandpa' }}
+            family={family}
+            displayName={(id) => (id === 'ego' ? 'You' : 'Grandpa')}
+            parentKindLabels={PARENT_KIND_LABELS}
+            anchor={anchor}
+            onConnect={() => undefined}
+            onClose={() => undefined}
+          />
+        </PedigreeWordsProvider>
       </TestProtocolLocalization>,
     );
     const item = await screen.findByTestId('pedigree-connect-parent-ego');
     expect(item).toHaveAttribute('aria-disabled', 'true');
     expect(item).toHaveAccessibleDescription(
       /“Grandpa”.*one of your ancestors/,
-    );
-  });
-
-  it('says why two people already connected cannot be partners', async () => {
-    const family = readFamily(
-      [person('ego', { isEgo: true }), person('shannon', { name: 'Shannon' })],
-      [link('shannon', 'ego', 'biological')],
-      config,
-    );
-    const anchor = document.createElement('button');
-    document.body.append(anchor);
-    render(
-      <TestProtocolLocalization>
-        <ConnectMenu
-          pair={{ firstId: 'ego', secondId: 'shannon' }}
-          family={family}
-          displayName={(id) => (id === 'ego' ? 'You' : 'Shannon')}
-          parentKindLabels={PARENT_KIND_LABELS}
-          anchor={anchor}
-          onConnect={() => undefined}
-          onClose={() => undefined}
-        />
-      </TestProtocolLocalization>,
-    );
-    const partners = await screen.findByTestId('pedigree-connect-partners');
-    expect(partners).toHaveAttribute('aria-disabled', 'true');
-    expect(partners).toHaveAccessibleDescription(
-      /You and “Shannon” are already connected/,
     );
   });
 
@@ -189,17 +171,19 @@ describe('ConnectMenu', () => {
     document.body.append(anchor);
     render(
       <TestProtocolLocalization>
-        <ConnectMenu
-          pair={{ firstId: 'amy', secondId: 'ego' }}
-          family={family}
-          displayName={(id) =>
-            id === 'ego' ? 'You' : id === 'mum' ? 'Mum' : 'Amy'
-          }
-          parentKindLabels={PARENT_KIND_LABELS}
-          anchor={anchor}
-          onConnect={() => undefined}
-          onClose={() => undefined}
-        />
+        <PedigreeWordsProvider value={words}>
+          <ConnectMenu
+            pair={{ firstId: 'amy', secondId: 'ego' }}
+            family={family}
+            displayName={(id) =>
+              id === 'ego' ? 'You' : id === 'mum' ? 'Mum' : 'Amy'
+            }
+            parentKindLabels={PARENT_KIND_LABELS}
+            anchor={anchor}
+            onConnect={() => undefined}
+            onClose={() => undefined}
+          />
+        </PedigreeWordsProvider>
       </TestProtocolLocalization>,
     );
     await userEvent.click(

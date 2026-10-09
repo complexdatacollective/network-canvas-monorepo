@@ -1,5 +1,5 @@
 - main:
-  - heading "You have indicated an area outside of the selectable map. If this is correct, please select the next arrow to proceed." [level=2]
+  - heading "Outside Selectable Areas" [level=2]
   - button "Deselect"
   - button "Zoom in"
   - button "Zoom out"

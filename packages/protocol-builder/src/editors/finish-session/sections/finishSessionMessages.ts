@@ -37,6 +37,49 @@ export const finishSessionMessages = defineMessages({
     description:
       'Label of the field holding the text a participant reads on the screen that ends the interview.',
   },
+  finishingTitle: {
+    id: 'protocolBuilder.finishSession.finishingTitle',
+    defaultMessage: 'Finishing the interview',
+    description:
+      'Heading of the section holding the words a participant sees while finishing the interview: the button, its confirmation question, the notice once it has finished, and the message when finishing fails.',
+  },
+  finishingDescription: {
+    id: 'protocolBuilder.finishSession.finishingDescription',
+    defaultMessage:
+      'These start with wording Network Canvas supplies, which you can change.',
+    description:
+      'Description of the finishing section. Each field starts with supplied wording in each of the protocol’s languages that Network Canvas has it in.',
+  },
+  finishLabelLabel: {
+    id: 'protocolBuilder.finishSession.finishLabelLabel',
+    defaultMessage: 'Finish button',
+    description:
+      'Label of the field holding the words on the button that ends the interview.',
+  },
+  finishConfirmationLabel: {
+    id: 'protocolBuilder.finishSession.finishConfirmationLabel',
+    defaultMessage: 'Confirmation question',
+    description:
+      'Label of the field holding the question a participant is asked before the interview ends.',
+  },
+  finishedNoticeLabel: {
+    id: 'protocolBuilder.finishSession.finishedNoticeLabel',
+    defaultMessage: 'Finished notice',
+    description:
+      'Label of the field holding the notice shown under the closing text once the interview has ended.',
+  },
+  finishedNoticeHint: {
+    id: 'protocolBuilder.finishSession.finishedNoticeHint',
+    defaultMessage:
+      'Shown under the closing text once the interview has finished.',
+    description: 'Guidance under the finished-notice field.',
+  },
+  finishFailedLabel: {
+    id: 'protocolBuilder.finishSession.finishFailedLabel',
+    defaultMessage: 'If finishing fails',
+    description:
+      'Label of the field holding the message a participant sees when the interview could not be ended.',
+  },
   outcomeTitle: {
     id: 'protocolBuilder.finishSession.outcomeTitle',
     defaultMessage: 'Outcome',

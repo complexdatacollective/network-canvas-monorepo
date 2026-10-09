@@ -1667,6 +1667,34 @@
     "defaultMessage": "Closing screen",
     "description": "Heading of the section where a researcher writes what a participant reads on the screen that ends the interview."
   },
+  "protocolBuilder.finishSession.finishConfirmationLabel": {
+    "defaultMessage": "Confirmation question",
+    "description": "Label of the field holding the question a participant is asked before the interview ends."
+  },
+  "protocolBuilder.finishSession.finishFailedLabel": {
+    "defaultMessage": "If finishing fails",
+    "description": "Label of the field holding the message a participant sees when the interview could not be ended."
+  },
+  "protocolBuilder.finishSession.finishLabelLabel": {
+    "defaultMessage": "Finish button",
+    "description": "Label of the field holding the words on the button that ends the interview."
+  },
+  "protocolBuilder.finishSession.finishedNoticeHint": {
+    "defaultMessage": "Shown under the closing text once the interview has finished.",
+    "description": "Guidance under the finished-notice field."
+  },
+  "protocolBuilder.finishSession.finishedNoticeLabel": {
+    "defaultMessage": "Finished notice",
+    "description": "Label of the field holding the notice shown under the closing text once the interview has ended."
+  },
+  "protocolBuilder.finishSession.finishingDescription": {
+    "defaultMessage": "These start with wording Network Canvas supplies, which you can change.",
+    "description": "Description of the finishing section. Each field starts with supplied wording in each of the protocol’s languages that Network Canvas has it in."
+  },
+  "protocolBuilder.finishSession.finishingTitle": {
+    "defaultMessage": "Finishing the interview",
+    "description": "Heading of the section holding the words a participant sees while finishing the interview: the button, its confirmation question, the notice once it has finished, and the message when finishing fails."
+  },
   "protocolBuilder.finishSession.headingLabel": {
     "defaultMessage": "Heading",
     "description": "Label of the field holding the heading at the top of the screen that ends the interview."
@@ -2263,6 +2291,62 @@
     "defaultMessage": "Starting zoom must be between {min, number} and {max, number}.",
     "description": "Refusal shown under the starting-zoom control when it holds a zoom level Mapbox has no such thing as. min and max are the ends of Mapbox’s own zoom scale, 0 and 22. A zoom between two whole numbers is ordinary — a map panned into place hands back a fraction — so only the ends are named."
   },
+  "protocolBuilder.geospatialWording.description": {
+    "defaultMessage": "These start with wording Network Canvas supplies, which you can change. The search messages appear only when the map has a search.",
+    "description": "Description of the messages section of a map. Each message starts with wording Network Canvas supplies in each of the protocol’s languages that it has."
+  },
+  "protocolBuilder.geospatialWording.offlineHint": {
+    "defaultMessage": "Shown while the device is offline, because the map cannot load without a connection.",
+    "description": "Guidance under the field holding the offline message of a map."
+  },
+  "protocolBuilder.geospatialWording.offlineLabel": {
+    "defaultMessage": "Offline",
+    "description": "Label of the field holding the message shown while the device is offline and the map cannot load."
+  },
+  "protocolBuilder.geospatialWording.outsideAreasHint": {
+    "defaultMessage": "The button that marks a place outside the areas the map allows.",
+    "description": "Guidance under the field holding the outside-areas button of a map."
+  },
+  "protocolBuilder.geospatialWording.outsideAreasLabel": {
+    "defaultMessage": "Outside selectable areas",
+    "description": "Label of the field holding the button that lets the participant choose a place outside the areas the map allows."
+  },
+  "protocolBuilder.geospatialWording.searchFailedHint": {
+    "defaultMessage": "Shown when a search could not run. It does not mean the place does not exist.",
+    "description": "Guidance under the field holding the message shown when a map search could not run."
+  },
+  "protocolBuilder.geospatialWording.searchFailedLabel": {
+    "defaultMessage": "Search failed",
+    "description": "Label of the field holding the message shown when a map search could not run."
+  },
+  "protocolBuilder.geospatialWording.searchLabelHint": {
+    "defaultMessage": "The placeholder shown in the map’s search box.",
+    "description": "Guidance under the field holding the search box’s placeholder on a map."
+  },
+  "protocolBuilder.geospatialWording.searchLabelLabel": {
+    "defaultMessage": "Search label",
+    "description": "Label of the field holding the search box’s placeholder on a map, which a screen reader also reads out."
+  },
+  "protocolBuilder.geospatialWording.searchNoMatchHint": {
+    "defaultMessage": "Shown when a search of the map matches nothing.",
+    "description": "Guidance under the field holding the map search’s no-match message."
+  },
+  "protocolBuilder.geospatialWording.searchNoMatchLabel": {
+    "defaultMessage": "No search results",
+    "description": "Label of the field holding the message shown when a map search matches nothing."
+  },
+  "protocolBuilder.geospatialWording.title": {
+    "defaultMessage": "Messages",
+    "description": "Heading of the section holding the words a map shows a participant: when it is offline, when it cannot be drawn, its outside-areas button, and its search. A map is a Geospatial stage."
+  },
+  "protocolBuilder.geospatialWording.unavailableHint": {
+    "defaultMessage": "Shown in place of the map when it cannot be drawn, and says what to try.",
+    "description": "Guidance under the field holding the message shown when a map cannot be drawn."
+  },
+  "protocolBuilder.geospatialWording.unavailableLabel": {
+    "defaultMessage": "Map unavailable",
+    "description": "Label of the field holding the message shown when the map cannot be drawn on the participant’s device."
+  },
   "protocolBuilder.integerField.notAWholeNumber": {
     "defaultMessage": "This has to be a whole number of people.",
     "description": "Refusal shown against a box that counts people when the researcher has typed something that is not a whole number — a decimal on its way to being one, or a stray character. Every control this rule guards counts people, which is why the sentence names them rather than saying \"a whole number\"."
@@ -2435,6 +2519,258 @@
     "defaultMessage": "Not translated into {language} yet. Participants using {language} will see the {fallback} text, unless their browser also lists a language that has it.",
     "description": "Shown under a text field when the text has no translation in the language being edited, nor in a closely related language. Participants are shown it in another language their web browser lists, when the text has a translation in one, and otherwise in fallback: the protocol’s default language, or failing that another of its languages. language is the language being edited. Both are language names, written in the app’s own language or, in some apps, in their own language."
   },
+  "protocolBuilder.localizedMessage.caseAboutParticipant": {
+    "defaultMessage": "When it is about the participant",
+    "description": "Heading over the version of a message used when it is about the participant themself."
+  },
+  "protocolBuilder.localizedMessage.caseAboutThisPerson": {
+    "defaultMessage": "When it is about this person",
+    "description": "Heading over the version of a message used when it is about the person whose details are open, shown without their name."
+  },
+  "protocolBuilder.localizedMessage.caseCarrierIsParticipant": {
+    "defaultMessage": "When the person who carried the pregnancy is the participant",
+    "description": "Heading over the version of a message used when the person recorded as having carried a child is the participant themself."
+  },
+  "protocolBuilder.localizedMessage.caseChildIsParticipant": {
+    "defaultMessage": "When the child is the participant",
+    "description": "Heading over the version of a message used when the child it is about is the participant themself."
+  },
+  "protocolBuilder.localizedMessage.caseChildIsSomeoneElse": {
+    "defaultMessage": "When the child is someone else",
+    "description": "Heading over the version of a message used when the child it is about is not the participant."
+  },
+  "protocolBuilder.localizedMessage.caseCoParentIsParticipant": {
+    "defaultMessage": "When the other parent is the participant",
+    "description": "Heading over the version of a message used when the other genetic parent of a child is the participant themself."
+  },
+  "protocolBuilder.localizedMessage.caseEggParent": {
+    "defaultMessage": "When the parent is the egg parent",
+    "description": "Heading over the version of a message used when it is about the parent who gave the egg."
+  },
+  "protocolBuilder.localizedMessage.caseFirstIsParticipant": {
+    "defaultMessage": "When the first person is the participant",
+    "description": "Heading over the version of a message used when the first of the two people it is about is the participant themself."
+  },
+  "protocolBuilder.localizedMessage.caseFirstIsSomeoneElse": {
+    "defaultMessage": "When the first person is someone else",
+    "description": "Heading over the version of a message used when the first of the two people it is about is not the participant."
+  },
+  "protocolBuilder.localizedMessage.caseGameteWording": {
+    "defaultMessage": "When using egg and sperm parent wording",
+    "description": "Heading over the version of a message used when the family tree names parents by the egg or sperm they gave."
+  },
+  "protocolBuilder.localizedMessage.caseMotherFatherWording": {
+    "defaultMessage": "When using mother and father wording",
+    "description": "Heading over the version of a message used when the family tree names biological parents as mother and father."
+  },
+  "protocolBuilder.localizedMessage.caseNamesOtherQuestion": {
+    "defaultMessage": "When it names the other question",
+    "description": "Heading over the version of a validation message used when it names the question whose answer it is compared with."
+  },
+  "protocolBuilder.localizedMessage.caseNobodyElseRemoved": {
+    "defaultMessage": "When nobody else would be removed",
+    "description": "Heading over the version of a message used when removing a person would remove nobody else."
+  },
+  "protocolBuilder.localizedMessage.caseOnePerson": {
+    "defaultMessage": "When asking about one person",
+    "description": "Heading over the version of a question used when it asks about a single person."
+  },
+  "protocolBuilder.localizedMessage.caseOthersRemoved": {
+    "defaultMessage": "When other people would be removed too",
+    "description": "Heading over the version of a message used when removing a person would also remove others who are connected only through them."
+  },
+  "protocolBuilder.localizedMessage.caseOtherwise": {
+    "defaultMessage": "In any other case",
+    "description": "Heading over the version of a message used when none of the other versions apply."
+  },
+  "protocolBuilder.localizedMessage.caseParentIsParticipant": {
+    "defaultMessage": "When the parent is the participant",
+    "description": "Heading over the version of a message used when the parent it is about is the participant themself."
+  },
+  "protocolBuilder.localizedMessage.caseParentIsSomeoneElse": {
+    "defaultMessage": "When the parent is someone else",
+    "description": "Heading over the version of a message used when the parent it is about is not the participant."
+  },
+  "protocolBuilder.localizedMessage.caseParticipantIsOneOfTwoParents": {
+    "defaultMessage": "When the participant is one of the two parents",
+    "description": "Heading over the version of a message used when the participant is one of the two genetic parents recorded for a child."
+  },
+  "protocolBuilder.localizedMessage.casePartnerIsParticipant": {
+    "defaultMessage": "When the partner is the participant",
+    "description": "Heading over the version of a message used when the partner it is about is the participant themself."
+  },
+  "protocolBuilder.localizedMessage.casePartnerIsSomeoneElse": {
+    "defaultMessage": "When the partner is someone else",
+    "description": "Heading over the version of a message used when the partner it is about is not the participant."
+  },
+  "protocolBuilder.localizedMessage.casePartnershipCurrent": {
+    "defaultMessage": "When the partnership is current",
+    "description": "Heading over the version of a message used when the two people are still partners."
+  },
+  "protocolBuilder.localizedMessage.casePartnershipEnded": {
+    "defaultMessage": "When the partnership has ended",
+    "description": "Heading over the version of a message used when the two people are no longer partners."
+  },
+  "protocolBuilder.localizedMessage.casePersonIsParticipant": {
+    "defaultMessage": "When the person is the participant",
+    "description": "Heading over the version of a message used when the person it is about is the participant themself."
+  },
+  "protocolBuilder.localizedMessage.casePersonIsSomeoneElse": {
+    "defaultMessage": "When the person is someone else",
+    "description": "Heading over the version of a message used when the person it is about is not the participant."
+  },
+  "protocolBuilder.localizedMessage.casePersonNamed": {
+    "defaultMessage": "When the person has a name",
+    "description": "Heading over the version of a question used when the person it is about has been given a name."
+  },
+  "protocolBuilder.localizedMessage.casePersonUnnamed": {
+    "defaultMessage": "When the person has no name",
+    "description": "Heading over the version of a question used when the person it is about has not been given a name."
+  },
+  "protocolBuilder.localizedMessage.caseRefersToPreviousAnswer": {
+    "defaultMessage": "When it refers to the previous answer",
+    "description": "Heading over the version of a validation message used when it is compared with the previous answer."
+  },
+  "protocolBuilder.localizedMessage.caseRelationChild": {
+    "defaultMessage": "When the relation is a child",
+    "description": "Heading over the version of a message used when the person is, or is being added as, a child of someone."
+  },
+  "protocolBuilder.localizedMessage.caseRelationEdit": {
+    "defaultMessage": "When editing the person",
+    "description": "Heading over the version of a message used when the person’s own details are open for editing."
+  },
+  "protocolBuilder.localizedMessage.caseRelationFormerPartner": {
+    "defaultMessage": "When the relation is a former partner",
+    "description": "Heading over the version of a message used when the person is a former partner of someone."
+  },
+  "protocolBuilder.localizedMessage.caseRelationOwner": {
+    "defaultMessage": "When the person belongs to a named person",
+    "description": "Heading over the version of a message used when the person is described by whose relative they are."
+  },
+  "protocolBuilder.localizedMessage.caseRelationParent": {
+    "defaultMessage": "When the relation is a parent",
+    "description": "Heading over the version of a message used when the person is, or is being added as, a parent of someone."
+  },
+  "protocolBuilder.localizedMessage.caseRelationPartner": {
+    "defaultMessage": "When the relation is a partner",
+    "description": "Heading over the version of a message used when the person is, or is being added as, a partner of someone."
+  },
+  "protocolBuilder.localizedMessage.caseRelationSibling": {
+    "defaultMessage": "When the relation is a sibling",
+    "description": "Heading over the version of a message used when the person is, or is being added as, a sibling of someone."
+  },
+  "protocolBuilder.localizedMessage.caseRelativeCase": {
+    "defaultMessage": "Relative: {term}",
+    "description": "Heading over the version of a message used for one kind of relative. term is the word Network Canvas supplies for that relative, such as “Mother” or “Maternal grandmother”."
+  },
+  "protocolBuilder.localizedMessage.caseRelativeOther": {
+    "defaultMessage": "Any other relative",
+    "description": "Heading over the version of a message used for a relative none of the other versions name."
+  },
+  "protocolBuilder.localizedMessage.caseSeveralPeople": {
+    "defaultMessage": "When asking about several people",
+    "description": "Heading over the version of a question used when it asks about several people at once."
+  },
+  "protocolBuilder.localizedMessage.caseSpermParent": {
+    "defaultMessage": "When the parent is the sperm parent",
+    "description": "Heading over the version of a message used when it is about the parent who gave the sperm."
+  },
+  "protocolBuilder.localizedMessage.caseTwinIsParticipant": {
+    "defaultMessage": "When the twin is the participant",
+    "description": "Heading over the version of a message used when the twin it is about is the participant themself."
+  },
+  "protocolBuilder.localizedMessage.placeholderCarrier": {
+    "defaultMessage": "Name of the person who carried the pregnancy",
+    "description": "Name of the placeholder, inserted into a message, that shows the name of the person recorded as having carried the pregnancy."
+  },
+  "protocolBuilder.localizedMessage.placeholderChild": {
+    "defaultMessage": "Child’s name",
+    "description": "Name of the placeholder, inserted into a message, that shows a child’s name."
+  },
+  "protocolBuilder.localizedMessage.placeholderCoParent": {
+    "defaultMessage": "Other parent’s name",
+    "description": "Name of the placeholder, inserted into a message, that shows the name of the child’s other genetic parent."
+  },
+  "protocolBuilder.localizedMessage.placeholderCondition": {
+    "defaultMessage": "Condition name",
+    "description": "Name of the placeholder, inserted into a heading, that shows the name of the condition being shown."
+  },
+  "protocolBuilder.localizedMessage.placeholderCount": {
+    "defaultMessage": "Number",
+    "description": "Name of the placeholder, inserted into a message, that shows a number, such as how many people or answers it is about."
+  },
+  "protocolBuilder.localizedMessage.placeholderDetails": {
+    "defaultMessage": "Missing details",
+    "description": "Name of the placeholder, inserted into a message, that lists the details still to be filled in."
+  },
+  "protocolBuilder.localizedMessage.placeholderFirst": {
+    "defaultMessage": "First person’s name",
+    "description": "Name of the placeholder, inserted into a message about two people, that shows the first person’s name."
+  },
+  "protocolBuilder.localizedMessage.placeholderLabel": {
+    "defaultMessage": "Question label",
+    "description": "Name of the placeholder, inserted into a validation message, that shows the label of the question whose answer it is compared with."
+  },
+  "protocolBuilder.localizedMessage.placeholderMax": {
+    "defaultMessage": "Maximum",
+    "description": "Name of the placeholder, inserted into a validation message, that shows the largest length, number, date or count allowed."
+  },
+  "protocolBuilder.localizedMessage.placeholderMin": {
+    "defaultMessage": "Minimum",
+    "description": "Name of the placeholder, inserted into a validation message, that shows the smallest length, number, date or count allowed."
+  },
+  "protocolBuilder.localizedMessage.placeholderNames": {
+    "defaultMessage": "Names of the people",
+    "description": "Name of the placeholder, inserted into a message, that shows the names of several people."
+  },
+  "protocolBuilder.localizedMessage.placeholderOwner": {
+    "defaultMessage": "Name of the person they belong to",
+    "description": "Name of the placeholder, inserted into a message, that shows the name of the person a relative belongs to, as in “Sam’s aunt”."
+  },
+  "protocolBuilder.localizedMessage.placeholderParent": {
+    "defaultMessage": "Parent’s name",
+    "description": "Name of the placeholder, inserted into a message, that shows a parent’s name."
+  },
+  "protocolBuilder.localizedMessage.placeholderParentKind": {
+    "defaultMessage": "Kind of parent",
+    "description": "Name of the placeholder, inserted into a message, that shows the kind of parent, such as “Biological mother”."
+  },
+  "protocolBuilder.localizedMessage.placeholderPartner": {
+    "defaultMessage": "Partner’s name",
+    "description": "Name of the placeholder, inserted into a message, that shows a partner’s name."
+  },
+  "protocolBuilder.localizedMessage.placeholderSecond": {
+    "defaultMessage": "Second person’s name",
+    "description": "Name of the placeholder, inserted into a message about two people, that shows the second person’s name."
+  },
+  "protocolBuilder.localizedMessage.placeholderSex": {
+    "defaultMessage": "Sex assigned at birth",
+    "description": "Name of the placeholder, inserted into a message, that shows the sex a person is recorded as having at birth."
+  },
+  "protocolBuilder.localizedMessage.placeholderTerm": {
+    "defaultMessage": "Relationship word",
+    "description": "Name of the placeholder, inserted into a message, that shows the word for a relative, such as “Aunt”."
+  },
+  "protocolBuilder.localizedMessage.placeholderTitle": {
+    "defaultMessage": "Stage title",
+    "description": "Name of the placeholder, inserted into a heading, that shows the title of the stage."
+  },
+  "protocolBuilder.localizedMessage.placeholderTwin": {
+    "defaultMessage": "Twin’s name",
+    "description": "Name of the placeholder, inserted into a message, that shows a twin’s name."
+  },
+  "protocolBuilder.localizedMessage.pluralVersion": {
+    "defaultMessage": "When “{placeholder}” is {numbers}",
+    "description": "Label of the box holding the version of a text shown for some numbers. placeholder is the name of the number the text can show, such as “Parents missing”; numbers lists examples of the numbers that version is for, in the language being edited, such as “1” or “0, 2, 3, …”."
+  },
+  "protocolBuilder.localizedMessage.unreadable": {
+    "defaultMessage": "This text uses something it cannot show. Write it again here.",
+    "description": "Refusal shown under a text written in several versions when a translation imported from elsewhere uses a placeholder or a choice this text does not offer."
+  },
+  "protocolBuilder.localizedMessage.versionsBlank": {
+    "defaultMessage": "Write every version of this text, or leave them all empty.",
+    "description": "Refusal shown under a text written in several versions (for the participant, for someone else, and so on) when some versions have words and others are empty, in any of the protocol’s languages."
+  },
   "protocolBuilder.localizedTextNames.diseasePosition": {
     "defaultMessage": "Disease {position, number}",
     "description": "Names one disease mapping of a narrative pedigree stage where its label is listed without a translation. position is the mapping’s place in the stage’s list of diseases, counting from one."
@@ -2442,6 +2778,14 @@
   "protocolBuilder.localizedTextNames.fieldPosition": {
     "defaultMessage": "Field {position, number}",
     "description": "Names one field of a form where a text is listed without its translation, used when the field records no attribute the codebook names. position is the field’s place in the form, counting from one."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextGroup": {
+    "defaultMessage": "{group, select, interview {Throughout the interview} passphrase {Passphrase} forms {Forms} validation {Answer checks} other {{group}}}",
+    "description": "Names a group of the words the interview itself shows, such as its buttons and messages, where they are listed for translation. group is which: those shown throughout the interview, those shown when answers are protected by a passphrase, those shown with forms, or the messages that say an answer breaks one of its rules."
+  },
+  "protocolBuilder.localizedTextNames.interfaceTextName": {
+    "defaultMessage": "{key, select, exitInterview {Exit button} exitInterviewDescription {Exit explanation} stageError {Screen error message} itemUnavailable {Missing item message} back {Back button} continue {Continue button} cancel {Cancel button} done {Done button} delete {Delete button} genericError {General error message} passphrase {Passphrase field} choosePassphraseHelp {Passphrase advice} passphraseIncorrect {Wrong passphrase message} protectedAnswersLocked {Locked answers message} protectedAnswersNotSaved {Unsaved answers message} protectedAnswersUnavailable {Unavailable answers message} answerUnavailable {Unavailable answer label} answerUnavailableKept {Earlier answer message} confirmPassphrase {Confirm passphrase field} passphraseAccepted {Passphrase accepted message} discardChanges {Discard button} discardChangesTitle {Discard question} discardChangesDescription {Discard explanation} yes {Yes answer} no {No answer} submitFailed {Form error message} required {Required answer message} minLength {Too short message} maxLength {Too long message} minValue {Too small message} maxValue {Too large message} minDate {Too early message} maxDate {Too late message} minSelected {Too few chosen message} maxSelected {Too many chosen message} unique {Repeated answer message} differentFrom {Must differ message} sameAs {Must match message} greaterThan {Must be greater message} lessThan {Must be less message} greaterThanOrEqual {Must be at least message} lessThanOrEqual {Must be at most message} other {{key}}}",
+    "description": "Names one of the words the interview itself shows, where it is listed for translation: a button, a field label or a message, by what it is for. key says which."
   },
   "protocolBuilder.localizedTextNames.itemPosition": {
     "defaultMessage": "Item {position, number}",
@@ -2515,6 +2859,150 @@
     "defaultMessage": "Write the question this prompt asks.",
     "description": "Refusal shown when a researcher saves a name-generator prompt with no question in it."
   },
+  "protocolBuilder.nameGeneratorWording.allAddedHint": {
+    "defaultMessage": "Shown in the list of people to add when there is nothing left to add from it.",
+    "description": "Guidance under the field holding the message shown when there is nothing left to add from a roster."
+  },
+  "protocolBuilder.nameGeneratorWording.allAddedLabel": {
+    "defaultMessage": "Everything added",
+    "description": "Label of the field holding the message shown when every person on a roster has already been added."
+  },
+  "protocolBuilder.nameGeneratorWording.description": {
+    "defaultMessage": "These start with wording Network Canvas supplies, which you can change. Each one appears only where its limit, panel or field is part of this stage.",
+    "description": "Description of the messages section of a name generator. Each message starts with wording Network Canvas supplies in each of the protocol’s languages that it has."
+  },
+  "protocolBuilder.nameGeneratorWording.externalErrorHint": {
+    "defaultMessage": "Shown in place of a list of people from a data file when that file could not be loaded.",
+    "description": "Guidance under the field holding the message shown in place of a list of people from a data file that could not be loaded."
+  },
+  "protocolBuilder.nameGeneratorWording.externalErrorLabel": {
+    "defaultMessage": "Data could not be loaded",
+    "description": "Label of the field holding the message shown when a list of people from a data file could not be loaded."
+  },
+  "protocolBuilder.nameGeneratorWording.maxNoticeHint": {
+    "defaultMessage": "Shown once the participant has named the most people this stage allows.",
+    "description": "Guidance under the field holding the message shown when the stage’s maximum number of people has been named."
+  },
+  "protocolBuilder.nameGeneratorWording.maxNoticeLabel": {
+    "defaultMessage": "Maximum reached",
+    "description": "Label of the field holding the message shown once the participant has named the most people this stage allows."
+  },
+  "protocolBuilder.nameGeneratorWording.minNoticeHint": {
+    "defaultMessage": "Shown when the participant tries to continue before naming the fewest people this stage asks for.",
+    "description": "Guidance under the field holding the message shown when the participant has not yet named the stage’s minimum number of people."
+  },
+  "protocolBuilder.nameGeneratorWording.minNoticeLabel": {
+    "defaultMessage": "Minimum not reached",
+    "description": "Label of the field holding the message shown when the participant tries to continue having named fewer people than the stage’s minimum."
+  },
+  "protocolBuilder.nameGeneratorWording.quickAddHintHint": {
+    "defaultMessage": "Shown beside the name field, saying how to finish adding a person.",
+    "description": "Guidance under the field holding the line shown beside the quick-add name field."
+  },
+  "protocolBuilder.nameGeneratorWording.quickAddHintLabel": {
+    "defaultMessage": "Quick-add hint",
+    "description": "Label of the field holding the line shown beside the quick-add name field, telling the participant how to finish."
+  },
+  "protocolBuilder.nameGeneratorWording.searchLabelHint": {
+    "defaultMessage": "The placeholder shown in the search box.",
+    "description": "Guidance under the field holding the search box’s placeholder."
+  },
+  "protocolBuilder.nameGeneratorWording.searchLabelLabel": {
+    "defaultMessage": "Search label",
+    "description": "Label of the field holding the search box’s placeholder, which a screen reader also reads out."
+  },
+  "protocolBuilder.nameGeneratorWording.searchNoMatchHint": {
+    "defaultMessage": "Shown when a search matches nothing.",
+    "description": "Guidance under the field holding the no-match message."
+  },
+  "protocolBuilder.nameGeneratorWording.searchNoMatchLabel": {
+    "defaultMessage": "No search results",
+    "description": "Label of the field holding the message shown when a search matches nothing."
+  },
+  "protocolBuilder.nameGeneratorWording.title": {
+    "defaultMessage": "Messages",
+    "description": "Heading of the section holding the words a name generator shows a participant about its limits, its side panels, its search and its quick-add field. A name generator is a stage that asks the participant to name people."
+  },
+  "protocolBuilder.narrative.attributesHeadingHint": {
+    "defaultMessage": "Shown only when a preset highlights members.",
+    "description": "Hint under the attributes heading setting, saying when the setting is used."
+  },
+  "protocolBuilder.narrative.attributesHeadingLabel": {
+    "defaultMessage": "Attributes heading",
+    "description": "Label of the setting holding the heading of the panel that lists what a preset highlights."
+  },
+  "protocolBuilder.narrative.disableDrawingTooltipLabel": {
+    "defaultMessage": "Disable drawing tooltip",
+    "description": "Label of the setting holding the tooltip of the tool that turns drawing off."
+  },
+  "protocolBuilder.narrative.drawingTooltipHint": {
+    "defaultMessage": "Shown only when drawing is turned on.",
+    "description": "Hint under the drawing tooltip settings, saying when they are used."
+  },
+  "protocolBuilder.narrative.enableDrawingTooltipLabel": {
+    "defaultMessage": "Enable drawing tooltip",
+    "description": "Label of the setting holding the tooltip of the tool that turns drawing on."
+  },
+  "protocolBuilder.narrative.freezeAnnotationsTooltipLabel": {
+    "defaultMessage": "Freeze annotations tooltip",
+    "description": "Label of the setting holding the tooltip of the tool that freezes the drawn annotations in place."
+  },
+  "protocolBuilder.narrative.groupsHeadingHint": {
+    "defaultMessage": "Shown only when a preset groups members.",
+    "description": "Hint under the groups heading setting, saying when the setting is used."
+  },
+  "protocolBuilder.narrative.groupsHeadingLabel": {
+    "defaultMessage": "Groups heading",
+    "description": "Label of the setting holding the heading of the panel that lists the groups a preset shows."
+  },
+  "protocolBuilder.narrative.layoutTooltipHint": {
+    "defaultMessage": "Shown only when automatic layout is turned on.",
+    "description": "Hint under the layout tooltip settings, saying when they are used."
+  },
+  "protocolBuilder.narrative.linksHeadingHint": {
+    "defaultMessage": "Shown only when a preset shows connections.",
+    "description": "Hint under the links heading setting, saying when the setting is used."
+  },
+  "protocolBuilder.narrative.linksHeadingLabel": {
+    "defaultMessage": "Links heading",
+    "description": "Label of the setting holding the heading of the panel that lists the connections a preset shows."
+  },
+  "protocolBuilder.narrative.pauseLayoutTooltipLabel": {
+    "defaultMessage": "Pause layout tooltip",
+    "description": "Label of the setting holding the tooltip of the tool that pauses the automatic layout."
+  },
+  "protocolBuilder.narrative.resetAnnotationsTooltipLabel": {
+    "defaultMessage": "Reset annotations tooltip",
+    "description": "Label of the setting holding the tooltip of the tool that removes every drawn annotation."
+  },
+  "protocolBuilder.narrative.resumeLayoutTooltipLabel": {
+    "defaultMessage": "Resume layout tooltip",
+    "description": "Label of the setting holding the tooltip of the tool that resumes the automatic layout."
+  },
+  "protocolBuilder.narrative.unfreezeAnnotationsTooltipLabel": {
+    "defaultMessage": "Unfreeze annotations tooltip",
+    "description": "Label of the setting holding the tooltip of the tool that lets the drawn annotations move again."
+  },
+  "protocolBuilder.narrative.wordingDescription": {
+    "defaultMessage": "The headings of the highlight, link and group panels, and the labels of the drawing and layout tools. These start with wording Network Canvas supplies, which you can change.",
+    "description": "Description of the words section of a narrative canvas."
+  },
+  "protocolBuilder.narrative.wordingTitle": {
+    "defaultMessage": "Words on the canvas",
+    "description": "Heading of the section holding the words a participant reads on a narrative canvas: the headings of its panels and the labels of its tools. Also names the section in the editor outline and to assistive technology."
+  },
+  "protocolBuilder.narrativePedigree.affectedNotationLabel": {
+    "defaultMessage": "Has this condition",
+    "description": "Label of the setting holding the key entry for a person who has the selected condition."
+  },
+  "protocolBuilder.narrativePedigree.atRiskAffectedNotationLabel": {
+    "defaultMessage": "May develop this condition",
+    "description": "Label of the setting holding the key entry for a person who may develop the selected condition."
+  },
+  "protocolBuilder.narrativePedigree.atRiskCarrierNotationLabel": {
+    "defaultMessage": "May carry this condition",
+    "description": "Label of the setting holding the key entry for a person who may carry the selected condition."
+  },
   "protocolBuilder.narrativePedigree.atRiskFieldHint": {
     "defaultMessage": "Optionally show <strong>possible</strong> (at-risk) statuses alongside the certain ones, inferred from family structure and inheritance patterns.",
     "description": "Guidance under the at-risk switch, saying what turning it on adds to the family tree. The <strong> tag marks the word separating an inferred status from a recorded one."
@@ -2522,6 +3010,10 @@
   "protocolBuilder.narrativePedigree.atRiskFieldLabel": {
     "defaultMessage": "Show possible (at-risk) statuses",
     "description": "Label of the switch turning inferred risk on. The bracketed words name what these are called on the family tree itself."
+  },
+  "protocolBuilder.narrativePedigree.atRiskHint": {
+    "defaultMessage": "Shown only when the pedigree shows at-risk statuses.",
+    "description": "Hint under the at-risk key settings, saying when they are used."
   },
   "protocolBuilder.narrativePedigree.atRiskHowConstrained": {
     "defaultMessage": "Two rules constrain how risk travels through a family. Only <em>biological</em> and <em>donor</em> relationships pass conditions on; social, adoptive, surrogate and partner links do not. And where a person’s biological sex is not known, sex-linked inheritance through that person is left uncertain rather than guessed.",
@@ -2550,6 +3042,18 @@
   "protocolBuilder.narrativePedigree.atRiskWhyOffHeading": {
     "defaultMessage": "Why this is off by default",
     "description": "Heading over the paragraph explaining why inferred risk is not shown unless a researcher asks for it."
+  },
+  "protocolBuilder.narrativePedigree.clearFocusTooltipLabel": {
+    "defaultMessage": "Clear focus tooltip",
+    "description": "Label of the setting holding the tooltip of the tool that clears the selected focal person."
+  },
+  "protocolBuilder.narrativePedigree.conditionHeadingLabel": {
+    "defaultMessage": "Conditions heading",
+    "description": "Label of the setting holding the heading of the panel that lists the conditions."
+  },
+  "protocolBuilder.narrativePedigree.conditionInstructionLabel": {
+    "defaultMessage": "Condition instruction",
+    "description": "Label of the setting holding the sentence asking the participant to choose a condition."
   },
   "protocolBuilder.narrativePedigree.diseaseColorHint": {
     "defaultMessage": "Select a color for this disease.",
@@ -2719,6 +3223,38 @@
     "defaultMessage": "Y-linked",
     "description": "One choice in the inheritance-pattern list: a condition carried on the Y chromosome. Standard clinical genetics terminology; \"Y\" is the chromosome’s letter and is not translated."
   },
+  "protocolBuilder.narrativePedigree.keyHeadingLabel": {
+    "defaultMessage": "Key heading",
+    "description": "Label of the setting holding the heading of the key that explains the symbols on the pedigree."
+  },
+  "protocolBuilder.narrativePedigree.obligateAffectedNotationLabel": {
+    "defaultMessage": "Will develop this condition",
+    "description": "Label of the setting holding the key entry for a person who will develop the selected condition."
+  },
+  "protocolBuilder.narrativePedigree.obligateCarrierNotationLabel": {
+    "defaultMessage": "Carries this condition",
+    "description": "Label of the setting holding the key entry for a person who carries the selected condition."
+  },
+  "protocolBuilder.narrativePedigree.saveSnapshotTooltipLabel": {
+    "defaultMessage": "Save snapshot tooltip",
+    "description": "Label of the setting holding the tooltip of the tool that saves an image of the pedigree."
+  },
+  "protocolBuilder.narrativePedigree.snapshotConditionHint": {
+    "defaultMessage": "The pedigree title and the condition name are filled in where the two placeholders are.",
+    "description": "Hint under the snapshot title setting for one condition, explaining the placeholders."
+  },
+  "protocolBuilder.narrativePedigree.snapshotConditionLabel": {
+    "defaultMessage": "Snapshot title for a condition",
+    "description": "Label of the setting holding the title of a saved image of one condition."
+  },
+  "protocolBuilder.narrativePedigree.snapshotInheritanceHint": {
+    "defaultMessage": "The pedigree title, the condition name and the name of the person are filled in where the three placeholders are.",
+    "description": "Hint under the snapshot title setting for inheritance, explaining the placeholders."
+  },
+  "protocolBuilder.narrativePedigree.snapshotInheritanceLabel": {
+    "defaultMessage": "Snapshot title for inheritance",
+    "description": "Label of the setting holding the title of a saved image of how a condition is inherited."
+  },
   "protocolBuilder.narrativePedigree.sourceAfterThisStage": {
     "defaultMessage": "The Family Pedigree stage this one reads now runs after it, so the family would still be empty. Move it earlier in the interview, or choose a pedigree that runs before this stage.",
     "description": "Shown when the stage this one draws its family from has been moved to run later in the interview, so the participant would not have built the family yet."
@@ -2786,6 +3322,18 @@
   "protocolBuilder.narrativePedigree.sourceUnusableOption": {
     "defaultMessage": "{stageName} — this stage can no longer be used",
     "description": "How the stored choice is labelled inside the source-stage list once it can no longer be used, so the researcher can still see what this stage points at. stageName is the researcher’s own name for that stage and is not translated, or — where the stage has left the interview and there is no name left to read — its identifier."
+  },
+  "protocolBuilder.narrativePedigree.unknownNotationLabel": {
+    "defaultMessage": "Not known",
+    "description": "Label of the setting holding the key entry for a person whose status for the selected condition is not known."
+  },
+  "protocolBuilder.narrativePedigree.wordingDescription": {
+    "defaultMessage": "The key, the condition panel, the tooltips and the snapshot titles. These start with wording Network Canvas supplies, which you can change.",
+    "description": "Description of the words section of a narrative pedigree."
+  },
+  "protocolBuilder.narrativePedigree.wordingTitle": {
+    "defaultMessage": "Words on the pedigree",
+    "description": "Heading of the section holding the words a participant reads on a narrative pedigree: its key, its condition panel, its tooltips and its snapshot titles. Also names the section in the editor outline and to assistive technology."
   },
   "protocolBuilder.networkCanvas.automaticLayoutSectionDescription": {
     "defaultMessage": "When on, nodes are arranged by a force-directed layout. Participants can toggle this during the interview; this sets the starting state.",
@@ -2863,9 +3411,29 @@
     "defaultMessage": "Narrative behaviors",
     "description": "Heading of the section granting or withholding what the participant may do to the canvas. Also names the section in the editor outline and to assistive technology."
   },
+  "protocolBuilder.networkCanvas.composerAddNamePlaceholderLabel": {
+    "defaultMessage": "Name box placeholder",
+    "description": "Label of the setting holding the placeholder shown in the box for adding a member to the network, until a name is typed."
+  },
+  "protocolBuilder.networkCanvas.composerAddNodeTooltipLabel": {
+    "defaultMessage": "Add node tooltip",
+    "description": "Label of the setting holding the tooltip of the tool that adds a member to the network."
+  },
+  "protocolBuilder.networkCanvas.composerAutomaticLayoutTooltipLabel": {
+    "defaultMessage": "Automatic layout tooltip",
+    "description": "Label of the setting holding the tooltip of the automatic layout tool."
+  },
   "protocolBuilder.networkCanvas.composerCreateLayoutLabel": {
     "defaultMessage": "Create a new position attribute",
     "description": "Button that creates an attribute holding a position in the codebook and uses it for this stage."
+  },
+  "protocolBuilder.networkCanvas.composerDrawConnectionTooltipHint": {
+    "defaultMessage": "Shown only when the canvas has connection types.",
+    "description": "Hint under the draw connection tooltip setting, saying when the setting is used."
+  },
+  "protocolBuilder.networkCanvas.composerDrawConnectionTooltipLabel": {
+    "defaultMessage": "Draw connection tooltip",
+    "description": "Label of the setting holding the tooltip of the tool that draws a connection between two members."
   },
   "protocolBuilder.networkCanvas.composerEdgeAddLabel": {
     "defaultMessage": "Add a connection type",
@@ -2923,6 +3491,14 @@
     "defaultMessage": "No connection type chosen",
     "description": "How a row of a network composer’s connection list reads before a kind of connection has been chosen for it."
   },
+  "protocolBuilder.networkCanvas.composerGroupsHeadingHint": {
+    "defaultMessage": "Shown only when the canvas groups members.",
+    "description": "Hint under the groups heading setting, saying when the setting is used."
+  },
+  "protocolBuilder.networkCanvas.composerGroupsHeadingLabel": {
+    "defaultMessage": "Groups heading",
+    "description": "Label of the setting holding the name of the groups tool and of the groups in the key."
+  },
   "protocolBuilder.networkCanvas.composerLayoutEmpty": {
     "defaultMessage": "This type has no position attributes yet. Create one to store where the participant puts each node.",
     "description": "Shown in place of the position-attribute list when the node type this stage builds has no attribute that can hold a position."
@@ -2942,6 +3518,18 @@
   "protocolBuilder.networkCanvas.composerNodeWaitingDescription": {
     "defaultMessage": "Choose what this stage works with before configuring how its nodes behave.",
     "description": "Description of the node section while the stage has no node type yet, so nothing here can be configured. A stage is one step of an interview."
+  },
+  "protocolBuilder.networkCanvas.composerOvertakenEditNoticeLabel": {
+    "defaultMessage": "Warning about an overtaken edit",
+    "description": "Label of the setting holding the warning a participant sees when an undo or redo has changed an answer they were editing, so their edit has not been saved."
+  },
+  "protocolBuilder.networkCanvas.composerWordingDescription": {
+    "defaultMessage": "The name box, the warning shown when an undo or redo changed an answer being edited, and the labels of the canvas tools. These start with wording Network Canvas supplies, which you can change.",
+    "description": "Description of the words section of a composer canvas. A composer is the canvas where the participant builds their network."
+  },
+  "protocolBuilder.networkCanvas.composerWordingTitle": {
+    "defaultMessage": "Words on the canvas",
+    "description": "Heading of the section holding the words a participant reads while building the network on a composer canvas. Also names the section in the editor outline and to assistive technology."
   },
   "protocolBuilder.networkCanvas.connectionTypesSectionDescription": {
     "defaultMessage": "Select the edge types participants can create on the canvas. Each selected type gets its own set of editable attributes below.",
@@ -3916,7 +4504,7 @@
     "description": "Button that confirms switching off the completeness requirement and discarding it."
   },
   "protocolBuilder.pedigree.completenessClearDescription": {
-    "defaultMessage": "The relatives, the enforcement and the relatives-not-recorded attribute you chose will be removed from this stage, and participants will be able to continue with any family they have drawn.",
+    "defaultMessage": "The relatives, the enforcement, the relatives-not-recorded attribute and the wording of the list will be removed from this stage, and participants will be able to continue with any family they have drawn.",
     "description": "Body of the confirmation shown before the completeness requirement is switched off, saying what is lost."
   },
   "protocolBuilder.pedigree.completenessClearTitle": {
@@ -4215,9 +4803,25 @@
     "defaultMessage": "Each person’s name, typed by the participant in the side panel. A name may be left blank: when the participant leaves this stage, anyone unnamed is given a label from their relationship to the participant, such as “Maternal aunt” or “Sister (partner of Tom)”. The participant is not asked their own name and is shown as “You”. The attribute’s validation rules apply to names the participant types.",
     "description": "Guidance under the name attribute control. The side panel is where the participant describes each family member. The two labels in quotation marks are examples of what the interview generates for an unnamed person, and are translated like the rest of the sentence; Tom is a person’s name. “You” is how the interview labels the participant in their family tree."
   },
+  "protocolBuilder.pedigree.nameHintTextHint": {
+    "defaultMessage": "Shown under the name box, for example to say that a nickname will do. Leave it empty to show nothing.",
+    "description": "Guidance under the name-question guidance box."
+  },
+  "protocolBuilder.pedigree.nameHintTextLabel": {
+    "defaultMessage": "Name question guidance",
+    "description": "Label of the box holding the guidance shown under the name box in the side panel."
+  },
   "protocolBuilder.pedigree.nameLabel": {
     "defaultMessage": "Name",
     "description": "Label of the control choosing the text attribute that holds each family member’s name."
+  },
+  "protocolBuilder.pedigree.namePromptHint": {
+    "defaultMessage": "Shown above the box where participants type a family member’s name. It starts with wording Network Canvas supplies, which you can change.",
+    "description": "Guidance under the name-question box. The question starts with supplied wording in each of the protocol’s languages that Network Canvas has it in."
+  },
+  "protocolBuilder.pedigree.namePromptLabel": {
+    "defaultMessage": "Name question",
+    "description": "Label of the box holding the words above the name box in the side panel, where the participant types a family member’s name."
   },
   "protocolBuilder.pedigree.nominationAddLabel": {
     "defaultMessage": "Create new nomination prompt",
@@ -4534,6 +5138,438 @@
   "protocolBuilder.pedigree.symbolsUpdateGenderIdentity": {
     "defaultMessage": "Update symbols",
     "description": "Link-style action in the out-of-date note that draws the symbols again from the gender identity options and kinship words as they are now."
+  },
+  "protocolBuilder.pedigree.trackerAboutParticipant": {
+    "defaultMessage": "About the participant",
+    "description": "Heading over the version of a list item or question used when it is about the participant themself."
+  },
+  "protocolBuilder.pedigree.trackerAboutSomeoneElse": {
+    "defaultMessage": "About someone else",
+    "description": "Heading over the version of a list item or question used when it is about another member of the participant’s family."
+  },
+  "protocolBuilder.pedigree.trackerChildrenHint": {
+    "defaultMessage": "Asks for a person’s children, or for an answer that they have none.",
+    "description": "Guidance under the children list item box."
+  },
+  "protocolBuilder.pedigree.trackerChildrenLabel": {
+    "defaultMessage": "Children",
+    "description": "Label of the box holding the list item that asks for a person’s children."
+  },
+  "protocolBuilder.pedigree.trackerChildrenQuestionHint": {
+    "defaultMessage": "Asked in the side panel while a person’s children are still needed.",
+    "description": "Guidance under the children question box."
+  },
+  "protocolBuilder.pedigree.trackerChildrenQuestionLabel": {
+    "defaultMessage": "Question about children",
+    "description": "Label of the box holding the question the side panel asks about a person’s children."
+  },
+  "protocolBuilder.pedigree.trackerDetailsHint": {
+    "defaultMessage": "Asks for details still missing about a person.",
+    "description": "Guidance under the missing-details list item box."
+  },
+  "protocolBuilder.pedigree.trackerDetailsLabel": {
+    "defaultMessage": "Missing details",
+    "description": "Label of the box holding the list item that asks for details still missing about a person, such as their sex assigned at birth."
+  },
+  "protocolBuilder.pedigree.trackerNoChildrenHint": {
+    "defaultMessage": "The button under that item that answers that the person has none.",
+    "description": "Guidance under the no-children button box. “That item” is the children list item above it."
+  },
+  "protocolBuilder.pedigree.trackerNoChildrenLabel": {
+    "defaultMessage": "No children",
+    "description": "Label of the box holding the words of the button that answers that a person has no children."
+  },
+  "protocolBuilder.pedigree.trackerNoSiblingsHint": {
+    "defaultMessage": "The button under that item that answers that the person has none.",
+    "description": "Guidance under the no-brothers-or-sisters button box. “That item” is the brothers-and-sisters list item above it."
+  },
+  "protocolBuilder.pedigree.trackerNoSiblingsLabel": {
+    "defaultMessage": "No brothers or sisters",
+    "description": "Label of the box holding the words of the button that answers that a person has no brothers or sisters."
+  },
+  "protocolBuilder.pedigree.trackerParentsHint": {
+    "defaultMessage": "Asks for the parents of a person who has none recorded. It can show their name.",
+    "description": "Guidance under the missing-parents list item box."
+  },
+  "protocolBuilder.pedigree.trackerParentsLabel": {
+    "defaultMessage": "Missing parents",
+    "description": "Label of the box holding the list item that asks for a person’s missing parents."
+  },
+  "protocolBuilder.pedigree.trackerPlaceholderMissing": {
+    "defaultMessage": "Parents missing",
+    "description": "Name of the placeholder, inserted into the list item asking for parents, that shows how many of the person’s parents are still to be added."
+  },
+  "protocolBuilder.pedigree.trackerPlaceholderName": {
+    "defaultMessage": "Name",
+    "description": "Name of the placeholder, inserted into a list item or question, that shows the family member’s name."
+  },
+  "protocolBuilder.pedigree.trackerRecommendedNoteHint": {
+    "defaultMessage": "Shown under the list when participants may continue without completing it.",
+    "description": "Guidance under the recommended-list note box."
+  },
+  "protocolBuilder.pedigree.trackerRecommendedNoteLabel": {
+    "defaultMessage": "Note under a recommended list",
+    "description": "Label of the box holding the note shown under the list when participants may continue without completing it."
+  },
+  "protocolBuilder.pedigree.trackerSiblingsHint": {
+    "defaultMessage": "Asks for a person’s brothers and sisters, or for an answer that they have none.",
+    "description": "Guidance under the brothers-and-sisters list item box."
+  },
+  "protocolBuilder.pedigree.trackerSiblingsLabel": {
+    "defaultMessage": "Brothers and sisters",
+    "description": "Label of the box holding the list item that asks for a person’s brothers and sisters."
+  },
+  "protocolBuilder.pedigree.trackerSiblingsQuestionHint": {
+    "defaultMessage": "Asked in the side panel while a person’s brothers and sisters are still needed.",
+    "description": "Guidance under the brothers-and-sisters question box."
+  },
+  "protocolBuilder.pedigree.trackerSiblingsQuestionLabel": {
+    "defaultMessage": "Question about brothers and sisters",
+    "description": "Label of the box holding the question the side panel asks about a person’s brothers and sisters."
+  },
+  "protocolBuilder.pedigree.trackerTextDescription": {
+    "defaultMessage": "The words participants read in the list of what is still needed, and in the side panel’s questions about brothers, sisters and children. They start with wording Network Canvas supplies, which you can change. Each can read differently when it is about the participant and when it is about someone else.",
+    "description": "Description of the list-wording group. The wording starts with supplied text in each of the protocol’s languages that Network Canvas has it in."
+  },
+  "protocolBuilder.pedigree.trackerTextTitle": {
+    "defaultMessage": "What the list says",
+    "description": "Heading of the group of boxes holding the words of the list showing participants what is still needed in their family, and of the side panel’s questions about brothers, sisters and children."
+  },
+  "protocolBuilder.pedigree.wording.addingTitle": {
+    "defaultMessage": "Adding a family member",
+    "description": "Heading of the group of words shown in the side panel for a family member the participant adds or edits."
+  },
+  "protocolBuilder.pedigree.wording.alsoParentOfLabel": {
+    "defaultMessage": "Also parent of question",
+    "description": "Label of the question asking whether a person is also the parent of another person."
+  },
+  "protocolBuilder.pedigree.wording.biologicalParentBoth": {
+    "defaultMessage": "Both biological parents option",
+    "description": "Label of the option that both parents are biological parents. The two names are filled in."
+  },
+  "protocolBuilder.pedigree.wording.biologicalParentHint": {
+    "defaultMessage": "Biological parent hint",
+    "description": "Label of the hint explaining that a parent who is not biological is added as a step or social parent."
+  },
+  "protocolBuilder.pedigree.wording.biologicalParentLabel": {
+    "defaultMessage": "Biological parent question",
+    "description": "Label of the question asking which parent is the child’s biological parent."
+  },
+  "protocolBuilder.pedigree.wording.carriedSiblingsPregnancyLabel": {
+    "defaultMessage": "Siblings’ pregnancy question",
+    "description": "Label of the question asking whether each sibling’s parent carried the pregnancy with them."
+  },
+  "protocolBuilder.pedigree.wording.carrierLabel": {
+    "defaultMessage": "Carrier question",
+    "description": "Label of the question asking who carried the pregnancy."
+  },
+  "protocolBuilder.pedigree.wording.carrierUnknown": {
+    "defaultMessage": "Other or unknown carrier option",
+    "description": "Label of the option for someone else, or for not knowing who carried the pregnancy."
+  },
+  "protocolBuilder.pedigree.wording.changeWouldCutOff": {
+    "defaultMessage": "Change that would leave someone out",
+    "description": "Label of the warning that a change, or a new connection, would leave people outside the family tree, so is not made."
+  },
+  "protocolBuilder.pedigree.wording.childKindAdoptive": {
+    "defaultMessage": "Adopted child option",
+    "description": "Label of the option for an adopted child."
+  },
+  "protocolBuilder.pedigree.wording.childKindBiological": {
+    "defaultMessage": "Biological child option",
+    "description": "Label of the option for a biological child."
+  },
+  "protocolBuilder.pedigree.wording.childKindDonor": {
+    "defaultMessage": "Child from a donation option",
+    "description": "Label of the option for a child conceived with an egg or sperm the person donated."
+  },
+  "protocolBuilder.pedigree.wording.childKindLabel": {
+    "defaultMessage": "Kind of child question",
+    "description": "Label of the question asking what kind of child a person is."
+  },
+  "protocolBuilder.pedigree.wording.childKindSocial": {
+    "defaultMessage": "Step or other raised child option",
+    "description": "Label of the option for a step-child or another child the participant raises."
+  },
+  "protocolBuilder.pedigree.wording.childKindSurrogate": {
+    "defaultMessage": "Child carried as a surrogate option",
+    "description": "Label of the option for a child the person carried as a surrogate."
+  },
+  "protocolBuilder.pedigree.wording.choosesFramingHint": {
+    "defaultMessage": "Shown only when participants choose the words used for family members.",
+    "description": "Hint on the wording settings that are shown only when participants choose the words used for family members."
+  },
+  "protocolBuilder.pedigree.wording.connectHint": {
+    "defaultMessage": "Connect hint",
+    "description": "Label of the hint shown while the participant chooses the first person to connect."
+  },
+  "protocolBuilder.pedigree.wording.connectParent": {
+    "defaultMessage": "Parent connection",
+    "description": "Label of the sentence describing a parent connection."
+  },
+  "protocolBuilder.pedigree.wording.connectPartners": {
+    "defaultMessage": "Partner connection",
+    "description": "Label of the sentence describing a partnership, whether current or past."
+  },
+  "protocolBuilder.pedigree.wording.connectQuestion": {
+    "defaultMessage": "Connect question",
+    "description": "Label of the question asking how two people are related."
+  },
+  "protocolBuilder.pedigree.wording.connectTool": {
+    "defaultMessage": "Connect tool button",
+    "description": "Label of the button that connects two people on the family tree."
+  },
+  "protocolBuilder.pedigree.wording.connectingTitle": {
+    "defaultMessage": "Connecting people",
+    "description": "Heading of the group of words shown while the participant connects and removes people."
+  },
+  "protocolBuilder.pedigree.wording.description": {
+    "defaultMessage": "The words the interface shows the participant while they draw their family, in the order they meet them. Each starts with Network Canvas’s wording in each language the protocol has, and you can change it.",
+    "description": "Description of the participant wording section."
+  },
+  "protocolBuilder.pedigree.wording.disconnectConfirmDescription": {
+    "defaultMessage": "Remove connection explanation",
+    "description": "Label of the explanation that both people stay in the family tree when a connection is removed."
+  },
+  "protocolBuilder.pedigree.wording.disconnectConfirmTitle": {
+    "defaultMessage": "Remove connection question",
+    "description": "Label of the question asking whether to remove a connection between two people."
+  },
+  "protocolBuilder.pedigree.wording.disconnectHint": {
+    "defaultMessage": "Disconnect hint",
+    "description": "Label of the hint shown while the participant chooses a connection to remove."
+  },
+  "protocolBuilder.pedigree.wording.disconnectTool": {
+    "defaultMessage": "Disconnect tool button",
+    "description": "Label of the button that removes a connection between two people on the family tree."
+  },
+  "protocolBuilder.pedigree.wording.disconnectWouldCutOff": {
+    "defaultMessage": "Connection that would leave someone out",
+    "description": "Label of the warning that removing a connection would leave people outside the family tree."
+  },
+  "protocolBuilder.pedigree.wording.dontKnow": {
+    "defaultMessage": "Don’t know option",
+    "description": "Label of the option a participant picks when they do not know an answer."
+  },
+  "protocolBuilder.pedigree.wording.drawingTitle": {
+    "defaultMessage": "Drawing the family",
+    "description": "Heading of the group of words shown while the participant draws their family on the canvas."
+  },
+  "protocolBuilder.pedigree.wording.framingChoiceDescription": {
+    "defaultMessage": "Wording question explanation",
+    "description": "Label of the explanation under the question asking which words to use for family members."
+  },
+  "protocolBuilder.pedigree.wording.framingChoiceTitle": {
+    "defaultMessage": "Wording question",
+    "description": "Label of the question asking which words to use for family members. Shown only when participants choose the words."
+  },
+  "protocolBuilder.pedigree.wording.framingControlLabel": {
+    "defaultMessage": "Wording control label",
+    "description": "Label of the control that lets the participant change the words used for family members."
+  },
+  "protocolBuilder.pedigree.wording.genderIdentityHint": {
+    "defaultMessage": "Shown only when the interface asks about gender identity.",
+    "description": "Hint on the gender identity wording setting, which is shown only when the interface asks about gender identity."
+  },
+  "protocolBuilder.pedigree.wording.genderIdentityLabel": {
+    "defaultMessage": "Gender identity question",
+    "description": "Label of the gender identity question. Shown only when the interface asks about gender identity."
+  },
+  "protocolBuilder.pedigree.wording.generatedLabelOf": {
+    "defaultMessage": "Label for a relative",
+    "description": "Label of a family member, named by how they relate to the participant."
+  },
+  "protocolBuilder.pedigree.wording.missingDetailsList": {
+    "defaultMessage": "Missing details notice",
+    "description": "Label of the notice listing what details are still missing for a family member."
+  },
+  "protocolBuilder.pedigree.wording.otherParentLabel": {
+    "defaultMessage": "Other parent question",
+    "description": "Label of the question asking who the child’s other parent is."
+  },
+  "protocolBuilder.pedigree.wording.otherParentNone": {
+    "defaultMessage": "No other parent option",
+    "description": "Label of the option that the child has no other parent."
+  },
+  "protocolBuilder.pedigree.wording.otherParentUnknown": {
+    "defaultMessage": "Other parent not shown option",
+    "description": "Label of the option for an other parent who is not yet shown on the family tree."
+  },
+  "protocolBuilder.pedigree.wording.panelTitle": {
+    "defaultMessage": "Panel title",
+    "description": "Label of the title of the side panel for a family member being added or edited."
+  },
+  "protocolBuilder.pedigree.wording.parentCarriedLabel": {
+    "defaultMessage": "Carried the pregnancy question",
+    "description": "Label of the question asking whether a parent carried the pregnancy."
+  },
+  "protocolBuilder.pedigree.wording.parentKindCarrier": {
+    "defaultMessage": "Parent who carried the pregnancy",
+    "description": "Label of the option for a parent of any kind who carried the pregnancy. The kind of parent is filled in."
+  },
+  "protocolBuilder.pedigree.wording.parentKindLabel": {
+    "defaultMessage": "Kind of parent question",
+    "description": "Label of the question asking what kind of parent a person is."
+  },
+  "protocolBuilder.pedigree.wording.parentLinkKindLabel": {
+    "defaultMessage": "Kind of relationship question",
+    "description": "Label of the question asking how a person is related to another person in the family."
+  },
+  "protocolBuilder.pedigree.wording.parentPartnerLabel": {
+    "defaultMessage": "Parent partner question",
+    "description": "Label of the question asking whether a parent is the partner of another parent."
+  },
+  "protocolBuilder.pedigree.wording.placeholderParentsNote": {
+    "defaultMessage": "Note about added parents",
+    "description": "Label of the note explaining the placeholder parents added for a set of siblings."
+  },
+  "protocolBuilder.pedigree.wording.pointerTool": {
+    "defaultMessage": "Pointer tool button",
+    "description": "Label of the button that selects and moves people on the family tree."
+  },
+  "protocolBuilder.pedigree.wording.relativeTerm": {
+    "defaultMessage": "Relative terms",
+    "description": "Label of the words for each kind of relative, shown in place of their relationship."
+  },
+  "protocolBuilder.pedigree.wording.removeConfirmDescription": {
+    "defaultMessage": "Remove person explanation",
+    "description": "Label of the explanation of what removing a family member also removes."
+  },
+  "protocolBuilder.pedigree.wording.removeConfirmTitle": {
+    "defaultMessage": "Remove person question",
+    "description": "Label of the question asking whether to remove a family member."
+  },
+  "protocolBuilder.pedigree.wording.save": {
+    "defaultMessage": "Save button",
+    "description": "Label of the button that saves a family member’s details."
+  },
+  "protocolBuilder.pedigree.wording.sexAssignedAtBirthLabel": {
+    "defaultMessage": "Sex assigned at birth question",
+    "description": "Label of the question asking a family member’s sex assigned at birth."
+  },
+  "protocolBuilder.pedigree.wording.sharedDonorsLabel": {
+    "defaultMessage": "Shared donors question",
+    "description": "Label of the question asking which donors a new sibling shares, for someone with only egg or sperm donors as parents."
+  },
+  "protocolBuilder.pedigree.wording.sharedParentCountBoth": {
+    "defaultMessage": "Both shared parents option",
+    "description": "Label of the option that both parents are shared."
+  },
+  "protocolBuilder.pedigree.wording.sharedParentCountLabel": {
+    "defaultMessage": "Shared parents question",
+    "description": "Label of the question asking which parents a person shares with the participant or with another person."
+  },
+  "protocolBuilder.pedigree.wording.sharedParentEggOnly": {
+    "defaultMessage": "One shared parent option",
+    "description": "Label of the option that only one of the shared parents is shared. The parent’s kind is filled in."
+  },
+  "protocolBuilder.pedigree.wording.siblingBiologicalParentLabel": {
+    "defaultMessage": "Sibling’s biological parent question",
+    "description": "Label of the question asking which of the parents a new sibling shares is their biological parent, when only one of them could be."
+  },
+  "protocolBuilder.pedigree.wording.siblingKindLabel": {
+    "defaultMessage": "Shared parents of siblings question",
+    "description": "Label of the question asking which parents a person shares with their siblings."
+  },
+  "protocolBuilder.pedigree.wording.siblingTwinFraternal": {
+    "defaultMessage": "Fraternal twin option",
+    "description": "Label of the option that a new sibling is a fraternal twin."
+  },
+  "protocolBuilder.pedigree.wording.siblingTwinHint": {
+    "defaultMessage": "Twin question hint",
+    "description": "Label of the hint under the question asking whether a new sibling is a twin."
+  },
+  "protocolBuilder.pedigree.wording.siblingTwinIdentical": {
+    "defaultMessage": "Identical twin option",
+    "description": "Label of the option that a new sibling is an identical twin."
+  },
+  "protocolBuilder.pedigree.wording.siblingTwinLabel": {
+    "defaultMessage": "Twin question",
+    "description": "Label of the question asking whether a new sibling is a twin of the person they are added to."
+  },
+  "protocolBuilder.pedigree.wording.siblingTwinNo": {
+    "defaultMessage": "Not a twin option",
+    "description": "Label of the option that a new sibling is not a twin."
+  },
+  "protocolBuilder.pedigree.wording.siblingTwinUnknown": {
+    "defaultMessage": "Twin, not known if identical, option",
+    "description": "Label of the option that a new sibling is a twin, without knowing whether they are identical."
+  },
+  "protocolBuilder.pedigree.wording.stillTogetherLabel": {
+    "defaultMessage": "Still together question",
+    "description": "Label of the question asking whether a partnership is still ongoing."
+  },
+  "protocolBuilder.pedigree.wording.title": {
+    "defaultMessage": "Participant wording",
+    "description": "Heading of the section holding the words the participant sees on this stage."
+  },
+  "protocolBuilder.pedigree.wording.twinZygosityLabel": {
+    "defaultMessage": "Identical twins question",
+    "description": "Label of the question asking whether two twins are identical."
+  },
+  "protocolBuilder.pedigree.wording.twinsHint": {
+    "defaultMessage": "Twins hint",
+    "description": "Label of the hint under the question asking which siblings are twins."
+  },
+  "protocolBuilder.pedigree.wording.twinsLabel": {
+    "defaultMessage": "Twins question",
+    "description": "Label of the question in a family member’s panel asking which of their siblings are their twins."
+  },
+  "protocolBuilder.pedigree.wording.unavailableAncestor": {
+    "defaultMessage": "Unavailable choice: own ancestor",
+    "description": "Label of the reason shown under the choice to make someone a parent of one of their own ancestors."
+  },
+  "protocolBuilder.pedigree.wording.unavailableBothSameSex": {
+    "defaultMessage": "Unavailable answers hint: both parents the same sex at birth",
+    "description": "Label of the hint explaining that both parents cannot be a new child’s genetic parents because they are recorded with the same sex at birth."
+  },
+  "protocolBuilder.pedigree.wording.unavailableCannotCarry": {
+    "defaultMessage": "Unavailable answers hint: cannot have carried",
+    "description": "Label of the hint explaining that answers are unavailable because the person is recorded as male at birth, so cannot have carried a pregnancy."
+  },
+  "protocolBuilder.pedigree.wording.unavailableCarried": {
+    "defaultMessage": "Unavailable answers hint: carried a child",
+    "description": "Label of the hint explaining that a sex at birth is unavailable because the person is recorded as having carried a child’s pregnancy."
+  },
+  "protocolBuilder.pedigree.wording.unavailableCarrierChoice": {
+    "defaultMessage": "Unavailable choice: someone else carried",
+    "description": "Label of the reason shown under the choices for a parent who carried the pregnancy, when someone else already did."
+  },
+  "protocolBuilder.pedigree.wording.unavailableCarrierRecorded": {
+    "defaultMessage": "Unavailable answers hint: someone else carried",
+    "description": "Label of the hint explaining that answers are unavailable because someone else is recorded as having carried the pregnancy."
+  },
+  "protocolBuilder.pedigree.wording.unavailableGeneticParentsFull": {
+    "defaultMessage": "Unavailable answers hint: two genetic parents",
+    "description": "Label of the hint explaining that answers are unavailable because the child already has two genetic parents recorded."
+  },
+  "protocolBuilder.pedigree.wording.unavailableIdenticalTwin": {
+    "defaultMessage": "Unavailable answers hint: twins’ parents differ",
+    "description": "Label of the hint explaining that two twins cannot be recorded as identical because their biological parents and donors differ."
+  },
+  "protocolBuilder.pedigree.wording.unavailableIdenticalTwinNew": {
+    "defaultMessage": "Unavailable answers hint: new twin’s parents differ",
+    "description": "Label of the hint explaining that a new sibling cannot be an identical twin because they would not have all the same biological parents and donors."
+  },
+  "protocolBuilder.pedigree.wording.unavailableSameSexGeneticParent": {
+    "defaultMessage": "Unavailable answers hint: same sex at birth as the other genetic parent",
+    "description": "Label of the hint explaining that answers are unavailable because the child’s other genetic parent is recorded with the same sex at birth."
+  },
+  "protocolBuilder.pedigree.wording.you": {
+    "defaultMessage": "Participant’s own name",
+    "description": "Label of the words shown for the participant when they appear as a family member."
+  },
+  "protocolBuilder.pedigree.wording.zygosityFraternal": {
+    "defaultMessage": "Fraternal option",
+    "description": "Label of the option that two twins are fraternal."
+  },
+  "protocolBuilder.pedigree.wording.zygosityIdentical": {
+    "defaultMessage": "Identical option",
+    "description": "Label of the option that two twins are identical."
+  },
+  "protocolBuilder.pedigree.wording.zygosityUnknown": {
+    "defaultMessage": "Not known if identical option",
+    "description": "Label of the option that the participant does not know whether two twins are identical."
   },
   "protocolBuilder.promptAttribute.lockedOptions": {
     "defaultMessage": "These values are set by the interface that uses this attribute, so they cannot be changed here.",
@@ -6134,6 +7170,26 @@
   "protocolBuilder.slotVariable.variableTypeChangedRefusal": {
     "defaultMessage": "\"{attributeName}\" is no longer the kind of attribute this control can use, because its type was changed somewhere else. Choose another attribute.",
     "description": "Refusal shown under an attribute control when the attribute it holds still exists but has been given a different type, so the interface can no longer write or read it. attributeName is the codebook name of the attribute, which is not translated."
+  },
+  "protocolBuilder.sociogram.layoutTooltipHint": {
+    "defaultMessage": "Shown only when automatic layout is turned on.",
+    "description": "Hint under the layout tooltip settings, saying when they are used."
+  },
+  "protocolBuilder.sociogram.pauseLayoutTooltipLabel": {
+    "defaultMessage": "Pause layout tooltip",
+    "description": "Label of the setting holding the tooltip of the tool that pauses the automatic layout."
+  },
+  "protocolBuilder.sociogram.resumeLayoutTooltipLabel": {
+    "defaultMessage": "Resume layout tooltip",
+    "description": "Label of the setting holding the tooltip of the tool that resumes the automatic layout."
+  },
+  "protocolBuilder.sociogram.wordingDescription": {
+    "defaultMessage": "The labels of the layout tools. These start with wording Network Canvas supplies, which you can change.",
+    "description": "Description of the words section of a sociogram canvas."
+  },
+  "protocolBuilder.sociogram.wordingTitle": {
+    "defaultMessage": "Words on the canvas",
+    "description": "Heading of the section holding the words a participant reads on a sociogram canvas. Also names the section in the editor outline and to assistive technology."
   },
   "protocolBuilder.sortOptions.attributeColumn": {
     "defaultMessage": "Attribute",

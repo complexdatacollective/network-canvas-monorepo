@@ -1,7 +1,10 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  type CurrentProtocol,
+  withInterfaceText,
+} from '@codaco/protocol-validation';
 import { APP_SCHEMA_VERSION } from '~/config';
 import { messageFields } from '~/test/messageText';
 import { admitStoredProtocol } from '~/utils/storedProtocolAdmission';
@@ -21,13 +24,14 @@ import {
   restoreActiveProtocolFromLibrary,
 } from '../restoreActiveProtocol';
 
-const makeProtocol = (name: string): CurrentProtocol => ({
-  name,
-  schemaVersion: 9,
-  localization: { defaultLocale: 'en', locales: ['en'] },
-  stages: [],
-  codebook: {},
-});
+const makeProtocol = (name: string): CurrentProtocol =>
+  withInterfaceText({
+    name,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
+    stages: [],
+    codebook: {},
+  });
 
 const reducer = combineReducers({
   app,

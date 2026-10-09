@@ -1,11 +1,23 @@
+import { get } from 'es-toolkit/compat';
+
 import { useAppIntl } from '@codaco/app-i18n/react';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import { FAMILY_PEDIGREE_SLOTS } from '@codaco/protocol-validation';
 
+import { LocalizedInputField } from '../../../fields/LocalizedStringField.tsx';
 import SlotVariableField from '../../../fields/SlotVariableField.tsx';
+import { REQUIRED } from '../../../form/requiredField.ts';
+import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
+import { asLocalizedString } from '../../../localization/localizedText.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
+import {
+  startingWording,
+  useSuppliedStageWording,
+} from '../../../sections/supplied-wording/suppliedStageWording.ts';
 import GenderIdentitySection from './GenderIdentitySection.tsx';
 import { familyPedigreeMessages as messages } from './pedigreeMessages.ts';
 import {
+  NAME_FIELD_PATHS,
   NODE_CONFIGURATION_PATHS,
   usePedigreeDraftBindings,
 } from './pedigreeSlots.ts';
@@ -43,6 +55,10 @@ export default function NodeConfigurationSection() {
     otherAnswerVariables,
   } = usePedigreeDraftBindings();
   const waiting = personSubject === null;
+  const { committedFields } = useStageEditorForm();
+  const supplied = useSuppliedStageWording('FamilyPedigree');
+  const hasNameQuestion =
+    get(committedFields, NAME_FIELD_PATHS.prompt) !== undefined;
 
   return (
     <BuilderSection
@@ -69,6 +85,37 @@ export default function NodeConfigurationSection() {
             draftSlotMap={draftSlotMap}
             offerValidation
           />
+          {supplied !== undefined && (
+            <>
+              <Field<typeof LocalizedInputField>
+                name={NAME_FIELD_PATHS.prompt}
+                component={LocalizedInputField}
+                label={intl.formatMessage(messages.namePromptLabel)}
+                hint={intl.formatMessage(messages.namePromptHint)}
+                initialValue={startingWording(
+                  committedFields,
+                  NAME_FIELD_PATHS.prompt,
+                  supplied,
+                )}
+                required={REQUIRED}
+              />
+              <Field<typeof LocalizedInputField>
+                name={NAME_FIELD_PATHS.hint}
+                component={LocalizedInputField}
+                label={intl.formatMessage(messages.nameHintTextLabel)}
+                hint={intl.formatMessage(messages.nameHintTextHint)}
+                // A stage holding the question without guidance had it
+                // removed, so the supplied guidance is not put back.
+                initialValue={
+                  hasNameQuestion
+                    ? asLocalizedString(
+                        get(committedFields, NAME_FIELD_PATHS.hint),
+                      )
+                    : supplied.get(NAME_FIELD_PATHS.hint)
+                }
+              />
+            </>
+          )}
           <SlotVariableField
             name={NODE_CONFIGURATION_PATHS.sexAssignedAtBirthAttribute}
             label={messages.sexAssignedAtBirthLabel}

@@ -17,10 +17,13 @@ import {
   type Experiments,
   type LocalizedString,
   messageText,
+  missingSuppliedStageText,
+  suppliedStageText,
   type Stage,
   type StageType,
   type StructuralCodebook,
   type VariableType,
+  withInterfaceText,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -369,6 +372,27 @@ const DEFAULT_LOCALIZATION: LocalizationInput = {
   locales: ['en-US'],
 };
 
+/** Set `value` at `path` inside `config`, copying each group on the way so a
+ * group shared with another stage is never changed. */
+function setAtPath(
+  config: Record<string, unknown>,
+  path: readonly string[],
+  value: unknown,
+): void {
+  let container = config;
+  for (const key of path.slice(0, -1)) {
+    const child = container[key];
+    const copy: Record<string, unknown> =
+      typeof child === 'object' && child !== null
+        ? { ...(child as Record<string, unknown>) }
+        : {};
+    container[key] = copy;
+    container = copy;
+  }
+  const last = path.at(-1);
+  if (last !== undefined) container[last] = value;
+}
+
 export class SyntheticInterview {
   private seed: number;
   private idCounter = 0;
@@ -655,6 +679,7 @@ export class SyntheticInterview {
               }
             : undefined,
       initialEdges: opts?.initialEdges ?? [],
+      ...(opts?.wording && { wording: opts.wording }),
     };
 
     // Handle form fields for NameGenerator (node-based)
@@ -784,6 +809,7 @@ export class SyntheticInterview {
           options: PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
         }),
         egoAttribute: personVariable('isEgo', { type: 'boolean' }),
+        ...(opts?.nameField ? { nameField: opts.nameField } : {}),
         ...(opts?.recordRelationshipToParticipant
           ? {
               relationshipToParticipantAttribute: personVariable(
@@ -1846,7 +1872,9 @@ export class SyntheticInterview {
       stages.push(this.defaultFinishStage());
     }
 
-    return {
+    // With the interview's shared words a protocol shows, as Architect writes
+    // them.
+    return withInterfaceText({
       id: `protocol-${this.seed}`,
       schemaVersion: CURRENT_SCHEMA_VERSION,
       localization: {
@@ -1858,7 +1886,7 @@ export class SyntheticInterview {
       // at runtime, but TypeScript can't verify this statically.
       stages: stages as Stage[],
       assets: this.assets as unknown[],
-    };
+    });
   }
 
   getNetwork(): NcNetwork {
@@ -2544,6 +2572,15 @@ export class SyntheticInterview {
       : text;
   }
 
+  /** A message with arguments (see `localizedMessage`): a string is the
+   * default locale's ICU message as written, so its arguments stay
+   * arguments. */
+  private message(text: TextInput): LocalizedString {
+    return typeof text === 'string'
+      ? { [this.localization.defaultLocale]: text }
+      : text;
+  }
+
   // A scale's end labels are participant copy; every other parameter is
   // configuration and passes through unchanged.
   private localizedParameters(
@@ -2686,7 +2723,28 @@ export class SyntheticInterview {
         };
       }
     }
-    return { id, type: 'FinishSession', ...fields, outcome: 'completed' };
+    return this.withSuppliedText(
+      { id, type: 'FinishSession', ...fields, outcome: 'completed' },
+      'FinishSession',
+    );
+  }
+
+  /**
+   * `config` with the stage's own wording it lacks, as Architect writes it
+   * into a new stage and a new completeness requirement: what Network Canvas
+   * supplies in the protocol's languages.
+   */
+  private withSuppliedText(
+    config: Record<string, unknown>,
+    type: string,
+  ): Record<string, unknown> {
+    for (const { path, value } of missingSuppliedStageText(
+      { ...config, type },
+      this.localization,
+    )) {
+      setAtPath(config, path, value);
+    }
+    return config;
   }
 
   private buildStageConfig(stage: StageEntry): unknown {
@@ -2838,9 +2896,43 @@ export class SyntheticInterview {
       if (stage.prompt !== undefined) {
         config.prompt = this.localized(stage.prompt);
       }
-      config.nodeConfiguration = stage.nodeConfiguration;
+      if (stage.nodeConfiguration) {
+        const { nameField, ...attributes } = stage.nodeConfiguration;
+        config.nodeConfiguration = {
+          ...attributes,
+          ...(nameField && {
+            nameField: {
+              prompt: this.localized(nameField.prompt),
+              ...(nameField.hint !== undefined && {
+                hint: this.localized(nameField.hint),
+              }),
+            },
+          }),
+        };
+      }
       config.edgeConfiguration = stage.edgeConfiguration;
-      if (stage.completeness) config.completeness = stage.completeness;
+      if (stage.completeness) {
+        const { itemText, recommendedNote, ...requirement } =
+          stage.completeness;
+        config.completeness = {
+          ...requirement,
+          ...(itemText && {
+            itemText: Object.fromEntries(
+              Object.entries(itemText).map(([kind, wording]) => [
+                kind,
+                Object.fromEntries(
+                  Object.entries(wording ?? {}).flatMap(([key, text]) =>
+                    text === undefined ? [] : [[key, this.message(text)]],
+                  ),
+                ),
+              ]),
+            ),
+          }),
+          ...(recommendedNote !== undefined && {
+            recommendedNote: this.localized(recommendedNote),
+          }),
+        };
+      }
       if (stage.framing) config.framing = stage.framing;
       if (stage.nominationPrompts) {
         config.nominationPrompts = stage.nominationPrompts.map((prompt) => ({
@@ -2898,7 +2990,26 @@ export class SyntheticInterview {
       }
     }
 
-    return config;
+    // The researcher's own wording, before Network Canvas's fills what is
+    // left. A dotted name (`tooltips.addPerson`) is a setting inside a group,
+    // and a name the stage keeps in its `wording` group (as the Family
+    // Pedigree keeps `wording.panelTitle`) may leave the group out.
+    const supplied = new Set(
+      suppliedStageText(stage.type, this.localization).map(({ path }) =>
+        path.join('.'),
+      ),
+    );
+    for (const [setting, text] of Object.entries(stage.wording ?? {})) {
+      const inWording =
+        !supplied.has(setting) && supplied.has(`wording.${setting}`);
+      setAtPath(
+        config,
+        [...(inWording ? ['wording'] : []), ...setting.split('.')],
+        this.localized(text),
+      );
+    }
+
+    return this.withSuppliedText(config, stage.type);
   }
 
   // --- Node/edge manipulation after creation ---

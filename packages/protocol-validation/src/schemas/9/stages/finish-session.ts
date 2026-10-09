@@ -26,7 +26,7 @@ export type FinishOutcome = z.infer<typeof FinishOutcomeSchema>;
 /**
  * The end of the interview. The participant reads its title and content, and
  * the Finish button ends the interview; the same text is shown again, with a
- * built-in notice, whenever a finished interview is opened.
+ * notice that the interview is finished, whenever it is opened.
  *
  * A finish stage has no skip logic: it is where every route through the
  * interview ends, so it can never be left out of one. The key is declared as
@@ -54,6 +54,14 @@ export const finishSessionStage = baseStageSchema.extend({
   label: localizedString(nonBlankText(), 'plain', { mayBeEmpty: true }),
   title: localizedString(nonBlankText(), 'markdown', { mayBeEmpty: true }),
   content: localizedString(nonBlankText(), 'markdown', { mayBeEmpty: true }),
+  // The interview's own words on this screen, which Network Canvas supplies
+  // (`stage-wording/finish-session.ts`): the Finish button, the question it
+  // asks, the notice once the interview has ended, and what the question says
+  // when the interview could not be ended.
+  finishLabel: localizedString(nonBlankText(), 'plain'),
+  finishConfirmation: localizedString(nonBlankText(), 'plain'),
+  finishedNotice: localizedString(nonBlankText(), 'plain'),
+  finishFailed: localizedString(nonBlankText(), 'plain'),
   outcome: FinishOutcomeSchema,
 });
 

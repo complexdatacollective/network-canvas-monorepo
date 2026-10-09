@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../../__tests__/finishStage.ts';
 import { localized, localizedOptions } from '../../../../utils/test-utils.ts';
+import { narrativePedigreeWords } from '../../__tests__/canvas-stage-words.ts';
+import { pedigreeNameField } from '../../__tests__/family-pedigree-text.ts';
 import { NodeColorSequence } from '../../color-reference.ts';
 import {
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../../family-pedigree-values.ts';
 import ProtocolSchemaV9 from '../../schema.ts';
+import { familyPedigreeWordingIn } from '../../stage-wording/family-pedigree.ts';
 import { narrativePedigreeStage } from '../narrative-pedigree.ts';
 
 // Minimal valid FamilyPedigree stage (source). Its person type is its stage
@@ -16,10 +19,12 @@ const validFamilyPedigreeStage = {
   id: 'fp1',
   label: localized('FamilyPedigree'),
   type: 'FamilyPedigree' as const,
+  wording: familyPedigreeWordingIn(),
   subject: { entity: 'node' as const, type: 'person' },
   prompt: localized('Build your family'),
   nodeConfiguration: {
     nameAttribute: 'personLabel',
+    nameField: pedigreeNameField(),
     sexAssignedAtBirthAttribute: 'personSab',
     egoAttribute: 'egoIsEgo',
   },
@@ -46,6 +51,7 @@ const validNarrativePedigreeStageShape = {
       inheritancePattern: 'autosomalDominant' as const,
     },
   ],
+  ...narrativePedigreeWords(),
 };
 
 // Minimal protocol with a FamilyPedigree source stage and NarrativePedigree

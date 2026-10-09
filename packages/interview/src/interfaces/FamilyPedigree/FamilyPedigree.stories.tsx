@@ -1059,9 +1059,7 @@ export const AddingASiblingAsksWhoCarriedThePregnancy: Story = {
     ).not.toBeChecked();
     await userEvent.click(asked.getByRole('radio', { name: 'Rachel' }));
 
-    await userEvent.click(
-      await body.findByRole('button', { name: 'Add to family' }),
-    );
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
     await waitFor(() => expect(idInSession('Mia')).toBeDefined());
     const mia = idInSession('Mia') ?? '';
@@ -1123,9 +1121,7 @@ export const AParentNotYetShownCanHaveCarriedASibling: Story = {
       'Someone else, or I don’t know',
     );
     await userEvent.click(standIn as HTMLElement);
-    await userEvent.click(
-      await body.findByRole('button', { name: 'Add to family' }),
-    );
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
     await waitFor(() => expect(idInSession('Mia')).toBeDefined());
     const mia = idInSession('Mia') ?? '';
@@ -1223,9 +1219,7 @@ export const ABirthParentIsNotAssumedToBeAnAdoptiveParentsPartner: Story = {
     await expect(partnerAnswer()).toBe('No');
 
     await chooseKind('Biological parent');
-    await userEvent.click(
-      await body.findByRole('button', { name: 'Add to family' }),
-    );
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
     await waitFor(() => expect(idInSession('Mei')).toBeDefined());
     const mei = idInSession('Mei') ?? '';
@@ -1382,9 +1376,7 @@ export const ANewParentIsAskedAboutCarryingSiblings: Story = {
     await expect(yes()).not.toBeChecked();
     await userEvent.click(yes());
 
-    await userEvent.click(
-      await body.findByRole('button', { name: 'Add to family' }),
-    );
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
     await waitFor(() => expect(idInSession('Mei')).toBeDefined());
     const mei = idInSession('Mei') ?? '';
@@ -1691,7 +1683,7 @@ export const TheFramingMustBeChosenBeforeLeaving: Story = {
     await expect(canvas.getByTestId('pedigree-canvas')).toBeInTheDocument();
 
     await userEvent.click(
-      body.getByRole('option', { name: /Mother, father, sister, brother/ }),
+      body.getByRole('option', { name: /Mother, Father, Sister, Brother/ }),
     );
     await waitFor(() => expect(body.queryByText(FRAMING_TITLE)).toBeNull());
     await leaveForPeopleList(canvasElement);
@@ -1715,7 +1707,7 @@ export const ParticipantChangesFraming: Story = {
     // It opens a moment after the stage loads.
     await body.findByText(FRAMING_TITLE, {}, { timeout: 5000 });
     await userEvent.click(
-      body.getByRole('option', { name: /Egg parent, sperm parent, sibling/ }),
+      body.getByRole('option', { name: /Egg parent, Sperm parent, Sibling/ }),
     );
     await waitFor(() => expect(body.queryByText(FRAMING_TITLE)).toBeNull());
     // Unnamed parents are now described by the gamete they gave.
@@ -1726,7 +1718,7 @@ export const ParticipantChangesFraming: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Wording' }));
     await userEvent.click(
       await body.findByRole('option', {
-        name: /Mother, father, sister, brother/,
+        name: /Mother, Father, Sister, Brother/,
       }),
     );
     await expect(
@@ -1777,7 +1769,7 @@ export const FamilyInProgress: Story = {
     await expectPeople(6)(context);
     await expect(
       within(context.canvasElement).getByRole('button', {
-        name: /^Mia’s biological father, some details missing/,
+        name: /^Mia’s Biological father, some details missing/,
       }),
     ).toBeVisible();
   },
@@ -1829,11 +1821,11 @@ export const EachChildNeedsTheirOtherBiologicalParent: Story = {
     // what is still needed.
     await userEvent.click(canvas.getByTestId('next-button'));
     const list = () =>
-      body.queryByRole('region', { name: /^Before you continue/ });
+      body.queryByRole('region', { name: /Show what’s still needed/ });
     await waitFor(
       () =>
         expect(list()?.textContent?.replaceAll('\u00AD', '')).toContain(
-          'Some details are missing for “Mia’s biological father”',
+          'Some details are missing for “Mia’s Biological father”',
         ),
       { timeout: 5000 },
     );
@@ -1847,8 +1839,8 @@ export const EachChildNeedsTheirOtherBiologicalParent: Story = {
 
 /**
  * The list of what is still needed asks for the participant's brothers and
- * sisters. Choosing it asks whether they have any; answering "Yes — I’ll add
- * them" goes on to adding a sibling. That answer is kept: opened again, the
+ * sisters. Choosing it asks whether they have any; answering "Yes" goes
+ * on to adding a sibling. That answer is kept: opened again, the
  * participant's panel still shows it.
  */
 export const SayingYouHaveSiblingsGoesOnToAddingOne: Story = {
@@ -1895,11 +1887,7 @@ export const SayingYouHaveSiblingsGoesOnToAddingOne: Story = {
     const siblings = await body.findByRole('radiogroup', {
       name: /^Do you have any biological brothers or sisters/,
     });
-    await userEvent.click(
-      within(siblings).getByRole('radio', {
-        name: 'Yes — I’ll add them to the family tree',
-      }),
-    );
+    await userEvent.click(within(siblings).getByRole('radio', { name: 'Yes' }));
     await userEvent.click(await body.findByRole('button', { name: 'Save' }));
 
     // On to adding a sibling.
@@ -1917,9 +1905,7 @@ export const SayingYouHaveSiblingsGoesOnToAddingOne: Story = {
       name: /^Do you have any biological brothers or sisters/,
     });
     await expect(
-      within(asked).getByRole('radio', {
-        name: 'Yes — I’ll add them to the family tree',
-      }),
+      within(asked).getByRole('radio', { name: 'Yes' }),
     ).toBeChecked();
   },
 };
@@ -2139,7 +2125,7 @@ export const ConnectingExistingPeople: Story = {
     await userEvent.click(person('dad'));
     await userEvent.click(person('mum'));
     await expect(canvas.getByTestId('pedigree-connect-hint')).toHaveTextContent(
-      'Removing this connection would leave “Tom” outside your family tree. Connect them to someone else in your family first.',
+      'Removing this connection would leave Tom outside your family tree. Connect them to someone else in your family first.',
     );
     await expect(page.queryByRole('dialog')).toBeNull();
     await userEvent.keyboard('{Escape}');
@@ -2147,7 +2133,7 @@ export const ConnectingExistingPeople: Story = {
     await userEvent.click(canvas.getByTestId('pedigree-tool-connect'));
     await userEvent.click(person('dad'));
     await expect(canvas.getByTestId('pedigree-connect-hint')).toHaveTextContent(
-      'Now select the person to connect to “Tom”.',
+      'Select a person, then select another to connect them.',
     );
     await userEvent.click(person('ego'));
     await userEvent.click(
@@ -2162,17 +2148,13 @@ export const ConnectingExistingPeople: Story = {
       ).toBeInTheDocument(),
     );
 
-    // Already connected, so no second link: the menu does not open, and the
-    // already-connected person does not join the linking state.
+    // Already connected, so no second link: the already-connected person is
+    // unavailable, does not join the linking state, and opens no menu.
     await userEvent.click(person('mum'));
-    await userEvent.hover(person('dad'));
+    await expect(person('dad')).toBeDisabled();
     await expect(
       canvasElement.querySelector('[data-person-id="dad"] [data-node-linking]'),
     ).toBeNull();
-    await userEvent.click(person('dad'));
-    await expect(canvas.getByTestId('pedigree-connect-hint')).toHaveTextContent(
-      '“Rachel” and “Tom” are already connected.',
-    );
     await expect(page.queryByRole('menu')).toBeNull();
     await userEvent.keyboard('{Escape}');
 
@@ -2181,14 +2163,14 @@ export const ConnectingExistingPeople: Story = {
     await userEvent.click(canvas.getByTestId('pedigree-tool-disconnect'));
     await userEvent.click(person('dad'));
     await expect(canvas.getByTestId('pedigree-connect-hint')).toHaveTextContent(
-      'Now select the person to disconnect from “Tom”.',
+      'Select a person, then select someone they are connected to, to remove that connection.',
     );
     await userEvent.click(person('mum'));
     const dialog = await page.findByRole('dialog', {
       name: 'Remove the connection between “Tom” and “Rachel”?',
     });
     await userEvent.click(
-      within(dialog).getByRole('button', { name: 'Remove connection' }),
+      within(dialog).getByRole('button', { name: 'Delete' }),
     );
     await waitFor(() =>
       expect(
@@ -2199,12 +2181,10 @@ export const ConnectingExistingPeople: Story = {
     );
     await expect(person('mum')).toBeInTheDocument();
     await expect(person('dad')).toBeInTheDocument();
-    // No longer connected, so there is nothing to remove between them.
+    // No longer connected, so there is no connection to remove: the other
+    // person is unavailable, and no dialog opens.
     await userEvent.click(person('dad'));
-    await userEvent.click(person('mum'));
-    await expect(canvas.getByTestId('pedigree-connect-hint')).toHaveTextContent(
-      '“Tom” and “Rachel” are not connected.',
-    );
+    await expect(person('mum')).toBeDisabled();
     await expect(page.queryByRole('dialog')).toBeNull();
     await userEvent.keyboard('{Escape}');
 
@@ -2310,15 +2290,13 @@ export const RemovingSomeoneRemovesThoseConnectedOnlyThroughThem: Story = {
     const page = within(context.canvasElement.ownerDocument.body);
 
     await userEvent.click(canvas.getByRole('button', { name: /^Rachel/ }));
-    await userEvent.click(
-      await page.findByRole('button', { name: 'Remove from family' }),
-    );
+    await userEvent.click(await page.findByRole('button', { name: 'Delete' }));
     const dialog = await page.findByRole('dialog', { name: 'Remove Rachel?' });
     await expect(dialog).toHaveTextContent(
-      '“Margaret” is connected to you only through them, so will be removed too.',
+      'Margaret is connected to you only through them, so will be removed too.',
     );
     await userEvent.click(
-      within(dialog).getByRole('button', { name: 'Remove from family' }),
+      within(dialog).getByRole('button', { name: 'Delete' }),
     );
 
     // Rachel's place is taken by an unnamed stand-in for Ella's other
@@ -2862,7 +2840,7 @@ export const ARecommendationIsShownAgainWhenItGrows: Story = {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
     const recommendations = () =>
-      body.queryByRole('region', { name: /^Before you continue/ });
+      body.queryByRole('region', { name: /Show what’s still needed/ });
 
     // The first press lists what is recommended, and stays.
     await userEvent.click(canvas.getByTestId('next-button'));
@@ -2875,12 +2853,10 @@ export const ARecommendationIsShownAgainWhenItGrows: Story = {
     // 22 and 25), whose details are still to give: something new on the
     // list.
     await userEvent.click(canvas.getByRole('button', { name: /^Rachel/ }));
-    await userEvent.click(
-      await body.findByRole('button', { name: 'Remove from family' }),
-    );
+    await userEvent.click(await body.findByRole('button', { name: 'Delete' }));
     const dialog = await body.findByRole('dialog', { name: 'Remove Rachel?' });
     await userEvent.click(
-      within(dialog).getByRole('button', { name: 'Remove from family' }),
+      within(dialog).getByRole('button', { name: 'Delete' }),
     );
     await expectPeople(3)(context);
     await waitFor(() => expect(recommendations()).toBeNull());
@@ -2929,7 +2905,7 @@ export const RemovingTheOnlyParentShowsTheRecommendationAgain: Story = {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
     const recommendations = () =>
-      body.queryByRole('region', { name: /^Before you continue/ });
+      body.queryByRole('region', { name: /Show what’s still needed/ });
 
     await userEvent.click(canvas.getByTestId('next-button'));
     await waitFor(() =>
@@ -2937,12 +2913,10 @@ export const RemovingTheOnlyParentShowsTheRecommendationAgain: Story = {
     );
 
     await userEvent.click(canvas.getByRole('button', { name: /^Rachel/ }));
-    await userEvent.click(
-      await body.findByRole('button', { name: 'Remove from family' }),
-    );
+    await userEvent.click(await body.findByRole('button', { name: 'Delete' }));
     const dialog = await body.findByRole('dialog', { name: 'Remove Rachel?' });
     await userEvent.click(
-      within(dialog).getByRole('button', { name: 'Remove from family' }),
+      within(dialog).getByRole('button', { name: 'Delete' }),
     );
     // A stand-in takes Rachel's place, so both parents are still unknown.
     await expectPeople(3)(context);
@@ -3202,12 +3176,9 @@ export const TheParticipantIsNotAskedTheirName: Story = {
     await userEvent.click(await canvas.findByRole('button', { name: 'You' }));
     await waitFor(() => expect(panelOf(canvasElement)).not.toBeNull());
     const panel = within(panelOf(canvasElement) as HTMLElement);
-    // Their panel's sections address them.
+    // Their panel is about them.
     await expect(
-      await panel.findByRole('heading', { name: 'About you', level: 3 }),
-    ).toBeInTheDocument();
-    await expect(
-      panel.getByRole('heading', { name: 'More about you', level: 3 }),
+      await panel.findByRole('heading', { name: 'About you', level: 2 }),
     ).toBeInTheDocument();
     await expect(panel.queryByText('About this person')).toBeNull();
     await expect(panel.queryByText('More about this person')).toBeNull();
@@ -3233,10 +3204,9 @@ export const TheParticipantIsNotAskedTheirName: Story = {
     await userEvent.click(
       await canvas.findByRole('button', { name: /^Sister \(partner of Tom\)/ }),
     );
-    await body.findByRole('heading', { name: 'About this person', level: 3 });
     await body.findByRole('heading', {
-      name: 'More about this person',
-      level: 3,
+      name: /^About Sister \(partner of Tom\)/,
+      level: 2,
     });
     await userEvent.click(await body.findByRole('button', { name: 'Cancel' }));
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
@@ -3298,9 +3268,7 @@ export const LabelsAreGivenAfreshAfterAddingARelative: Story = {
     await userEvent.click(await canvas.findByTestId('pedigree-menu-sibling'));
     await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
     await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
-    await userEvent.click(
-      await body.findByRole('button', { name: 'Add to family' }),
-    );
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
     await waitFor(() =>
       expect(canvas.getAllByTestId('pedigree-person')).toHaveLength(5),
@@ -3391,9 +3359,7 @@ export const RelationshipsAreRecordedOnLeaving: Story = {
     await userEvent.click(await canvas.findByTestId('pedigree-menu-sibling'));
     await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
     await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
-    await userEvent.click(
-      await body.findByRole('button', { name: 'Add to family' }),
-    );
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
     await canvas.findByRole('button', { name: /^Sister/ });
 
@@ -3483,7 +3449,7 @@ export const RequiredNamesMayBeLeftBlankButMustBeUnique: Story = {
     );
     await userEvent.type(await nameField(), 'Julie');
     await save();
-    await body.findByText('This value is used elsewhere. It must be unique.');
+    await body.findByText('Must be unique.');
     await expect(panelOf(canvasElement)).not.toBeNull();
 
     // The label saved for the father is not: he is given another.
@@ -3531,7 +3497,7 @@ export const NameIsOptionalByDefault: Story = {
       await canvas.findByRole('button', { name: /^Father/ }),
     );
     // A relative's first section is about them.
-    await body.findByRole('heading', { name: 'About this person', level: 3 });
+    await body.findByRole('heading', { name: /^About Father/, level: 2 });
     await body.findByText('Name (optional)');
     await userEvent.click(await body.findByRole('button', { name: 'Save' }));
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
@@ -3585,9 +3551,7 @@ export const AddingARelativeIsOneChange: Story = {
     await userEvent.click(await canvas.findByTestId('pedigree-menu-sibling'));
     await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
     await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
-    await userEvent.click(
-      await body.findByRole('button', { name: 'Add to family' }),
-    );
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
     await waitFor(() =>
       expect(canvas.getAllByTestId('pedigree-person')).toHaveLength(4),
@@ -3661,7 +3625,7 @@ export const EncryptedNames: Story = {
     // Without the passphrase, the family waits for it, and says so.
     const notice = await canvas.findByTestId('pedigree-passphrase-notice');
     await expect(notice).toHaveTextContent(
-      'Enter your passphrase to see the names in your family and to add or change people.',
+      'Some answers here are protected by your passphrase. Enter your passphrase to see and change them.',
     );
     await expect(canvas.getByTestId('pedigree-tool-connect')).toHaveAttribute(
       'aria-disabled',
@@ -3684,9 +3648,7 @@ export const EncryptedNames: Story = {
     );
     await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
     await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
-    await userEvent.click(
-      await body.findByRole('button', { name: 'Add to family' }),
-    );
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
 
     // Shown by name, and stored encrypted.
@@ -3770,9 +3732,7 @@ export const NameAttributeNamedProto: Story = {
     );
     await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
     await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
-    await userEvent.click(
-      await body.findByRole('button', { name: 'Add to family' }),
-    );
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
 
     await waitFor(() => expect(protoValues()).toContain('Julie'));
@@ -3856,7 +3816,7 @@ export const EncryptedFormField: Story = {
 
     const notice = await canvas.findByTestId('pedigree-passphrase-notice');
     await expect(notice).toHaveTextContent(
-      'Enter your passphrase to add or change people in your family.',
+      'Some answers here are protected by your passphrase. Enter your passphrase to see and change them.',
     );
     await choosePassphraseInPrompter(PASSPHRASE);
     await waitFor(() =>
@@ -3875,9 +3835,7 @@ export const EncryptedFormField: Story = {
       await body.findByRole('textbox', { name: NICKNAME_PROMPT }),
       'Bee',
     );
-    await userEvent.click(
-      await body.findByRole('button', { name: 'Add to family' }),
-    );
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
 
     await waitFor(() => {
@@ -3907,12 +3865,8 @@ async function openPassphraseFromNotice(canvasElement: HTMLElement) {
   const notice = within(
     await canvas.findByTestId('pedigree-passphrase-notice'),
   );
-  await userEvent.click(
-    notice.getByRole('button', { name: 'Enter your passphrase' }),
-  );
-  return within(
-    await body.findByRole('dialog', { name: 'Enter your passphrase' }),
-  );
+  await userEvent.click(notice.getByRole('button', { name: 'Passphrase' }));
+  return within(await body.findByRole('dialog', { name: 'Passphrase' }));
 }
 
 // The label also carries a visual required marker.
@@ -3928,9 +3882,7 @@ async function enterPassphraseFromNotice(
   const body = within(canvasElement.ownerDocument.body);
   const dialog = await openPassphraseFromNotice(canvasElement);
   await userEvent.type(passphraseField(dialog), passphrase);
-  await userEvent.click(
-    dialog.getByRole('button', { name: 'Submit passphrase' }),
-  );
+  await userEvent.click(dialog.getByRole('button', { name: 'Continue' }));
   await waitFor(() => expect(body.queryByRole('dialog')).toBeNull(), {
     timeout: CHECK_TIMEOUT,
   });
@@ -3990,7 +3942,7 @@ export const WrongPassphrase: Story = {
     const body = within(canvasElement.ownerDocument.body);
     const notice = () => canvas.findByTestId('pedigree-passphrase-notice');
     const lockedNotice =
-      'Enter your passphrase to see the names in your family and to add or change people.';
+      'Some answers here are protected by your passphrase. Enter your passphrase to see and change them.';
 
     await expect(await notice()).toHaveTextContent(lockedNotice);
 
@@ -4002,9 +3954,7 @@ export const WrongPassphrase: Story = {
     ).toBeNull();
     const field = passphraseField(dialog);
     await userEvent.type(field, WRONG_PASSPHRASE);
-    await userEvent.click(
-      dialog.getByRole('button', { name: 'Submit passphrase' }),
-    );
+    await userEvent.click(dialog.getByRole('button', { name: 'Continue' }));
     await waitFor(() => expect(field).toHaveAttribute('aria-invalid', 'true'), {
       timeout: CHECK_TIMEOUT,
     });
@@ -4032,7 +3982,7 @@ export const WrongPassphrase: Story = {
     // Going on waits for the passphrase, and nothing is written: her name
     // keeps its ciphertext, and the father is given no label.
     await userEvent.click(canvas.getByTestId('next-button'));
-    await body.findByRole('dialog', { name: 'Enter your passphrase' });
+    await body.findByRole('dialog', { name: 'Passphrase' });
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(body.queryByRole('dialog')).toBeNull());
     await expect(canvas.getByTestId('pedigree-canvas')).toBeVisible();
@@ -4137,7 +4087,7 @@ export const RecordingAnswersKeepsTheFamily: Story = {
 
     await body.findByText(FRAMING_TITLE, {}, { timeout: 5000 });
     await userEvent.click(
-      body.getByRole('option', { name: /Egg parent, sperm parent, sibling/ }),
+      body.getByRole('option', { name: /Egg parent, Sperm parent, Sibling/ }),
     );
     await waitFor(() => expect(body.queryByText(FRAMING_TITLE)).toBeNull());
 
@@ -4165,9 +4115,7 @@ export const RecordingAnswersKeepsTheFamily: Story = {
         }),
       ).getByRole('radio', { name: 'Yes' }),
     );
-    await userEvent.click(
-      await body.findByRole('button', { name: 'Add to family' }),
-    );
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
     await waitFor(() => expect(parentId()).toBeDefined());
 

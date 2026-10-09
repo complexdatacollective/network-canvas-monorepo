@@ -1,0 +1,53 @@
+- main:
+  - status:
+    - heading "Add the members of your family." [level=2]
+  - region "Interview notifications"
+  - dialog "Add your parent":
+    - heading "Add your parent" [level=2]
+    - button "Close"
+    - text: What do you call them? A nickname will do.
+    - textbox "What do you call them?"
+    - text: Gender identity Required
+    - radiogroup "Gender identity":
+      - radio "Woman"
+      - text: Woman
+      - radio "Man"
+      - text: Man
+      - radio "Non-binary"
+      - text: Non-binary
+      - radio "A different identity"
+      - text: A different identity
+      - radio "Don’t know"
+      - text: Don’t know
+      - radio "Prefer not to say"
+      - text: Prefer not to say
+    - text: Sex assigned at birth Required
+    - radiogroup "Sex assigned at birth":
+      - radio "Female"
+      - text: Female
+      - radio "Male"
+      - text: Male
+      - radio "Intersex"
+      - text: Intersex
+      - radio "Don’t know"
+      - text: Don’t know
+      - radio "Prefer not to say"
+      - text: Prefer not to say
+    - text: What kind of parent are they? Required
+    - radiogroup "What kind of parent are they?":
+      - radio "Biological parent" [checked]
+      - text: Biological parent
+      - radio "Adoptive parent"
+      - text: Adoptive parent
+      - radio "Step or social parent"
+      - text: Step or social parent
+      - radio "Egg or sperm donor"
+      - text: Egg or sperm donor
+      - radio "Surrogate"
+      - text: Surrogate
+    - text: Did this parent carry the pregnancy?
+    - radiogroup "Did this parent carry the pregnancy?":
+      - radio "Yes"
+      - radio "No"
+    - button "Cancel"
+    - button "Save"

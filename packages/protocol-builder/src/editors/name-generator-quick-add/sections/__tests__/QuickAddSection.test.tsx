@@ -60,8 +60,11 @@ describe('what a quick-add name generator records', () => {
     const field = await findPicker();
     await waitFor(() => expect(within(field).getByText('name')).toBeVisible());
     // The stage's name, the type it nominates and what it asks belong to
-    // sections this mount does not include.
-    await harness.roundTrip({ unowned: ['subject', 'prompts'] });
+    // sections this mount does not include, and so does the line beside the
+    // field, which the messages section owns.
+    await harness.roundTrip({
+      unowned: ['subject', 'prompts', 'quickAddHint'],
+    });
   });
 
   /**

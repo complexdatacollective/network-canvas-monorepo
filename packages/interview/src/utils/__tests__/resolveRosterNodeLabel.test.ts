@@ -7,6 +7,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { contentFormatFor } from '../../localization/contentFormat';
 import { resolveRosterNodeLabel } from '../resolveRosterNodeLabel';
 
 const makeNode = (
@@ -96,6 +97,20 @@ describe('resolveRosterNodeLabel', () => {
       sequentialNumber: 3,
     });
 
-    expect(result).toBe('Unnamed Person 3');
+    expect(result).toBe('Person 3');
+  });
+
+  // The number follows the protocol's label, so it is written as the
+  // protocol's language writes numbers.
+  it('numbers a placeholder in the language of the label it follows', () => {
+    expect(
+      resolveRosterNodeLabel({
+        codebookVariables: {},
+        node: makeNode({}),
+        subjectLabel: 'شخص',
+        sequentialNumber: 3,
+        formatNumber: contentFormatFor('ar-EG').formatNumber,
+      }),
+    ).toBe('شخص ٣');
   });
 });

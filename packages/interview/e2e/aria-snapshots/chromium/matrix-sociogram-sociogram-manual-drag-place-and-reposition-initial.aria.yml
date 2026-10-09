@@ -1,7 +1,7 @@
 - main:
   - application "Placement area":
     - button "Ash"
-  - button "Collapse drawer" [expanded]: 1 unplaced
+  - button "1 unplaced Collapse drawer" [expanded]
   - button "Bea"
   - button "Hide instructions" [expanded]
   - status:

@@ -333,7 +333,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         const before = await protocol.getNetworkState(interview.interviewId);
         await page.getByTestId('next-button').click();
         await expect(
-          page.getByText('Please select a response before continuing.'),
+          page.getByText('You must answer this question before continuing.'),
         ).toBeVisible();
         const afterToast = await protocol.getNetworkState(
           interview.interviewId,
@@ -404,7 +404,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         await interview.nextButton.click();
 
         await expect(
-          page.getByText('Please select a response before continuing.'),
+          page.getByText('You must answer this question before continuing.'),
         ).toBeVisible();
         await expect.poll(() => tsc.getPairLabels()).toEqual(pairLabelsBefore);
 

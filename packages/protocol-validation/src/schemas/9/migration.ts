@@ -17,7 +17,8 @@ import {
   resumeUnstartedPedigreeAtIntroduction,
 } from './family-pedigree-session-migration.ts';
 import { TypeLevelOperators } from './filters/filter.ts';
-import { defaultFinishSessionFields } from './finish-session-defaults.ts';
+import { createDefaultFinishSessionStage } from './finish-session-defaults.ts';
+import { withInterfaceText } from './interface-text.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
 import ProtocolSchemaV9 from './schema.ts';
 import { missingSuppliedStageText } from './supplied-stage-text.ts';
@@ -543,12 +544,11 @@ const endsAtFinishStage = (stages: unknown): boolean => {
  * the protocol's languages that has it: English for a schema 8 document, which
  * is recorded as English, and a schema 9 document's own languages otherwise.
  */
-const finishStageFor = (stages: unknown, locales: readonly string[]) => ({
-  id: finishStageId(stages),
-  type: 'FinishSession' as const,
-  ...defaultFinishSessionFields(locales),
-  outcome: 'completed' as const,
-});
+const finishStageFor = (
+  stages: unknown,
+  localization: LocalizationDeclaration,
+) =>
+  createDefaultFinishSessionStage({ id: finishStageId(stages), localization });
 
 type SiteChange =
   | { kind: 'set'; value: unknown }
@@ -693,7 +693,8 @@ const migrationV8toV9 = createMigration({
 - Additional person fields on a Family Pedigree that collected the name or sex assigned at birth are removed, because the redesigned interface asks every person for both itself. The old interface never showed a field for the name. Answers already recorded are kept.
 - A Family Pedigree cannot be converted if two of its answers use the same attribute: two nomination prompts, a nomination prompt and an additional person field, or the name and another answer. Each now needs an attribute of its own. Give each its own attribute in the version of Architect that made the protocol, then upgrade it.
 - The screen that ends the interview is now a Finish Screen stage at the end of your protocol, so you can change its heading and text and translate them like the rest of your protocol. It starts with the text the interview has always shown there.
-- A Name Generator Roster stage now has a panel title, shown above the list of people participants choose from, so you can change it and translate it like the rest of your protocol. It starts with the heading the interview has always shown there, "Available to add".`,
+- A Name Generator Roster stage now has a panel title, shown above the list of people participants choose from, so you can change it and translate it like the rest of your protocol. It starts with the heading the interview has always shown there, "Available to add".
+- A Family Pedigree stage's own wording is now part of the stage, so you can change it and translate it like the rest of your protocol: the question asking each person's name and its hint, and, where the family must be complete, the list of what is still needed. It starts with the wording the interview has always shown.`,
   migrate: ({ experiments, ...doc }) => {
     const migrated = structuredClone(doc);
     const localization = localizationOf(migrated);
@@ -730,20 +731,23 @@ const migrationV8toV9 = createMigration({
       else Reflect.deleteProperty(container, key);
     }
 
-    return {
+    // The interview's own words for what the protocol uses, recorded in
+    // English like the rest of its text, from the protocol as migrated (an
+    // attribute whose encryption was never on is no longer encrypted).
+    return withInterfaceText({
       ...migrated,
       stages: endsAtFinishStage(migrated.stages)
         ? migrated.stages
         : [
             ...(Array.isArray(migrated.stages) ? migrated.stages : []),
-            finishStageFor(migrated.stages, localization.locales),
+            finishStageFor(migrated.stages, localization),
           ],
       ...(experiments !== undefined && {
         experiments: withoutEncryptedVariables(experiments),
       }),
       schemaVersion: 9 as const,
       localization,
-    };
+    });
   },
   // A pedigree's introduction screen becomes a stage of its own, which moves
   // the pedigree and every stage after it one place on; the framework moves

@@ -4,10 +4,12 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx';
+import { suppliedWordingFor } from '../../../testing/suppliedWording.ts';
 import { mountedAs } from '../../__tests__/formEditorHarness.tsx';
 import { narrativeStageEditor } from '../NarrativeStageEditor.ts';
 import { canvasPermissions } from '../sections/permissions/canvasPermissions.tsx';
 import { narrativePresets } from '../sections/presets/narrativePresets.tsx';
+import { narrativeWording } from '../sections/wording/narrativeWording.tsx';
 
 /**
  * The editor as the harness mounts it.
@@ -20,12 +22,14 @@ export const narrativeEditor = mountedAs(narrativeStageEditor.Narrative);
 
 const Presets = narrativePresets();
 const Permissions = canvasPermissions();
+const Wording = narrativeWording();
 
 /** Every section a narrative stage composes that is not one of the shared six. */
 export const narrativeSections = (
   <>
     <Presets />
     <Permissions />
+    <Wording />
   </>
 );
 
@@ -43,19 +47,25 @@ export const presetsOf = (
     : [];
 
 /** A narrative stage holding exactly one preset, so a save can be read whole. */
-export const narrativeHolding = (preset: Record<string, unknown>) => ({
-  stage: {
-    type: 'Narrative' as const,
-    fields: {
-      label: { 'en-US': 'Narrative' },
-      subject: { entity: 'node', type: 'person' },
-      background: { concentricCircles: 4, skewedTowardCenter: true },
-      behaviours: { freeDraw: true, allowRepositioning: true },
-      presets: [preset],
+export const narrativeHolding = (preset: Record<string, unknown>) => {
+  const fields = {
+    label: { 'en-US': 'Narrative' },
+    subject: { entity: 'node', type: 'person' },
+    background: { concentricCircles: 4, skewedTowardCenter: true },
+    behaviours: { freeDraw: true, allowRepositioning: true },
+    presets: [preset],
+  };
+  return {
+    stage: {
+      type: 'Narrative' as const,
+      fields: {
+        ...fields,
+        ...suppliedWordingFor({ type: 'Narrative', ...fields }),
+      },
     },
-  },
-  sections: narrativeSections,
-});
+    sections: narrativeSections,
+  };
+};
 
 /**
  * Opens one preset's dialog and answers with the dialog itself.

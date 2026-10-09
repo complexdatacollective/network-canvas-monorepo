@@ -33,14 +33,19 @@ import { focusFirstError } from '@codaco/fresco-ui/form/utils/focusFirstError';
 import { getValue } from '@codaco/fresco-ui/form/utils/objectPath';
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import { stageSchema } from '@codaco/protocol-validation';
+import {
+  type LocalizationDeclaration,
+  stageSchema,
+} from '@codaco/protocol-validation';
 import { applyCommands, type Command } from '@codaco/studio-sync/apply';
 
+import { useProtocolLocalization } from '../localization/ProtocolLocalization.tsx';
 import type {
   StageEditorActions,
   StageSection,
 } from '../stage-editor-contract.ts';
 import {
+  savedStageFields,
   stageDocument,
   type StageFormDraft,
   type StageIdentity,
@@ -241,6 +246,7 @@ function StageEditorFormBody({
   const writeRefusal =
     access === 'readOnly' ? READ_ONLY_MESSAGE : NOT_READY_MESSAGE;
   const intl = useAppIntl();
+  const localization = useProtocolLocalization();
   const storeApi = useContext(FormStoreContext);
   const formRef = useRef<HTMLFormElement>(null);
   const fieldScope = useFormFieldScope();
@@ -358,12 +364,19 @@ function StageEditorFormBody({
         return { success: false, formErrors: [writeRefusal] };
       }
 
-      const fields = documentFromSubmission({
-        currentFields: working.current,
-        submittedValues: values as Record<string, FieldValue>,
-        mountedPaths: mountedPathsOf(storeApi),
-        dormantFields: dormantFieldsOf(storeApi),
-      });
+      // As the stage will be saved: holding exactly the wording settings that
+      // apply to it (see `stageDocument`), so the schema judges what is
+      // saved, and the draft the form goes on editing is what was stored.
+      const fields = savedStageFields(
+        identity,
+        documentFromSubmission({
+          currentFields: working.current,
+          submittedValues: values as Record<string, FieldValue>,
+          mountedPaths: mountedPathsOf(storeApi),
+          dormantFields: dormantFieldsOf(storeApi),
+        }),
+        localization,
+      );
       working.current = fields;
 
       // The schema's reading of the stage. Anchored problems go to the
@@ -375,7 +388,11 @@ function StageEditorFormBody({
       // section's problems named by that section, then the rules about the
       // stage as a whole. The unattributed ones are deliberately not here;
       // they are what a host's own issue surfacing is for.
-      const { sections: anchored, whole } = stageProblems(identity, fields);
+      const { sections: anchored, whole } = stageProblems(
+        identity,
+        fields,
+        localization,
+      );
       outline.setValidationIssues(anchored);
       if (anchored.length > 0 || whole.length > 0) {
         const said = [...sectionProblems(sections.getSnapshot()), ...whole];
@@ -420,6 +437,7 @@ function StageEditorFormBody({
       clearRefusedWrite,
       discardDraft,
       identity,
+      localization,
       outline,
       readOnly,
       save,
@@ -641,8 +659,11 @@ function sectionProblems(sections: readonly StageSection[]): string[] {
 function stageProblems(
   identity: StageIdentity,
   fields: StageFormDraft,
+  localization: LocalizationDeclaration | undefined,
 ): Readonly<{ sections: SectionValidationIssue[]; whole: string[] }> {
-  const result = stageSchema.safeParse(stageDocument(identity, fields));
+  const result = stageSchema.safeParse(
+    stageDocument(identity, fields, localization),
+  );
   if (result.success) return { sections: [], whole: [] };
   const sections: SectionValidationIssue[] = [];
   const whole: string[] = [];

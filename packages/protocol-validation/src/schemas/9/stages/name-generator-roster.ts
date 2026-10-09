@@ -8,9 +8,23 @@ import {
 } from '../common/index.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { SortOrderSchema } from '../filters/index.ts';
-import { localizedString, nonBlankText } from '../localized-string.ts';
+import {
+  localizedMessage,
+  localizedString,
+  nonBlankText,
+} from '../localized-string.ts';
+import {
+  hasMaximumNodes,
+  hasMinimumNodes,
+  hasRosterSearch,
+  requireWhenShown,
+  type StageRecord,
+} from '../stage-wording/conditions.ts';
 import { baseStageSchema } from './base.ts';
-import { nameGeneratorBehavioursSchema } from './name-generator.ts';
+import {
+  NODE_COUNT_ARGUMENTS,
+  nameGeneratorBehavioursSchema,
+} from './name-generator.ts';
 
 /**
  * A roster column name. The roster is an external data source, so this is NOT
@@ -34,57 +48,101 @@ const rosterColumnReference = () =>
     existence: 'unchecked',
   });
 
-export const nameGeneratorRosterStage = baseStageSchema.extend({
-  type: z.literal('NameGeneratorRoster'),
-  subject: NodeStageSubjectSchema,
-  dataSource: assetReference(),
-  // The heading above the people the participant can add. The roster IS the
-  // panel, so it is named for what it heads rather than as the stage's title.
-  panelTitle: localizedString(nonBlankText(), 'plain'),
-  cardOptions: z
-    .strictObject({
-      additionalProperties: z
-        .array(
-          z.strictObject({
-            label: localizedString(nonBlankText(), 'plain'),
-            variable: rosterColumnReference(),
-          }),
-        )
-        .optional(),
-    })
-    .optional(),
-  sortOptions: z
-    .strictObject({
-      sortOrder: SortOrderSchema.optional(),
-      sortableProperties: z
-        .array(
-          z.strictObject({
-            label: localizedString(nonBlankText(), 'plain'),
-            variable: rosterColumnReference(),
-          }),
-        )
-        .optional(),
-    })
-    .optional(),
-  searchOptions: z
-    .strictObject({
-      fuzziness: z.number(),
-      matchProperties: z.array(rosterColumnReference()).min(1),
-    })
-    .optional(),
-  prompts: z
-    .array(nameGeneratorPromptSchema)
-    .min(1)
-    .superRefine((prompts, ctx) => {
-      // Check for duplicate prompt IDs
-      const duplicatePromptId = findDuplicateId(prompts);
-      if (duplicatePromptId) {
-        ctx.addIssue({
-          code: 'custom' as const,
-          message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
-          path: [],
-        });
-      }
-    }),
-  behaviours: nameGeneratorBehavioursSchema,
-});
+/**
+ * The roster's own words (`stage-wording/name-generator-roster.ts`). The
+ * roster always loads its data, so its loading error and its all-added notice
+ * are always required; its limit notices and search wording are required only
+ * while the limit or the search is on.
+ */
+const rosterWording = {
+  minNodesNotice: localizedMessage(nonBlankText(), {
+    arguments: NODE_COUNT_ARGUMENTS,
+  }).optional(),
+  maxNodesNotice: localizedString(nonBlankText(), 'plain').optional(),
+  externalDataError: localizedString(nonBlankText(), 'plain'),
+  allAddedNotice: localizedString(nonBlankText(), 'plain'),
+  searchLabel: localizedString(nonBlankText(), 'plain').optional(),
+  searchNoMatch: localizedString(nonBlankText(), 'plain').optional(),
+};
+
+const requireRosterWording = (stage: StageRecord, ctx: z.RefinementCtx) =>
+  requireWhenShown(stage, ctx, [
+    {
+      name: 'minNodesNotice',
+      when: hasMinimumNodes,
+      message: 'A stage with a minimum needs a minimum notice.',
+    },
+    {
+      name: 'maxNodesNotice',
+      when: hasMaximumNodes,
+      message: 'A stage with a maximum needs a maximum notice.',
+    },
+    {
+      name: 'searchLabel',
+      when: hasRosterSearch,
+      message: 'A roster with a search needs a search label.',
+    },
+    {
+      name: 'searchNoMatch',
+      when: hasRosterSearch,
+      message: 'A roster with a search needs a no-match notice.',
+    },
+  ]);
+
+export const nameGeneratorRosterStage = baseStageSchema
+  .extend({
+    type: z.literal('NameGeneratorRoster'),
+    subject: NodeStageSubjectSchema,
+    dataSource: assetReference(),
+    // The heading above the people the participant can add. The roster IS the
+    // panel, so it is named for what it heads rather than as the stage's title.
+    panelTitle: localizedString(nonBlankText(), 'plain'),
+    cardOptions: z
+      .strictObject({
+        additionalProperties: z
+          .array(
+            z.strictObject({
+              label: localizedString(nonBlankText(), 'plain'),
+              variable: rosterColumnReference(),
+            }),
+          )
+          .optional(),
+      })
+      .optional(),
+    sortOptions: z
+      .strictObject({
+        sortOrder: SortOrderSchema.optional(),
+        sortableProperties: z
+          .array(
+            z.strictObject({
+              label: localizedString(nonBlankText(), 'plain'),
+              variable: rosterColumnReference(),
+            }),
+          )
+          .optional(),
+      })
+      .optional(),
+    searchOptions: z
+      .strictObject({
+        fuzziness: z.number(),
+        matchProperties: z.array(rosterColumnReference()).min(1),
+      })
+      .optional(),
+    prompts: z
+      .array(nameGeneratorPromptSchema)
+      .min(1)
+      .superRefine((prompts, ctx) => {
+        // Check for duplicate prompt IDs
+        const duplicatePromptId = findDuplicateId(prompts);
+        if (duplicatePromptId) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
+            path: [],
+          });
+        }
+      }),
+    behaviours: nameGeneratorBehavioursSchema,
+    ...rosterWording,
+  })
+  .superRefine(requireRosterWording);
