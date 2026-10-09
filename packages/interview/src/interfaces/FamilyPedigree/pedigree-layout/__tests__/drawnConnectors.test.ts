@@ -281,6 +281,33 @@ function collinearOverlap(a: LineSegment, b: LineSegment): number {
   return Math.max(0, Math.min(len, b2!) - Math.max(0, b1!));
 }
 
+/** How far two segments lie along one line, outside the given boxes (the
+ * symbols that hide them there). */
+function collinearOverlapOutside(
+  a: LineSegment,
+  b: LineSegment,
+  boxes: { left: number; top: number; right: number; bottom: number }[],
+): number {
+  const overlap = collinearOverlap(a, b);
+  if (overlap === 0) return 0;
+  const len = length(a);
+  const [ux, uy] = [(a.x2 - a.x1) / len, (a.y2 - a.y1) / len];
+  const along = (x: number, y: number) => (x - a.x1) * ux + (y - a.y1) * uy;
+  const from = Math.max(0, Math.min(along(b.x1, b.y1), along(b.x2, b.y2)));
+  const steps = Math.max(1, Math.ceil(overlap));
+  let seen = 0;
+  for (let k = 0; k < steps; k++) {
+    const t = from + (overlap * (k + 0.5)) / steps;
+    const p = { x: a.x1 + ux * t, y: a.y1 + uy * t };
+    const hidden = boxes.some(
+      (box) =>
+        p.x > box.left && p.x < box.right && p.y > box.top && p.y < box.bottom,
+    );
+    if (!hidden) seen += overlap / steps;
+  }
+  return seen;
+}
+
 /** Solid segments that lie along a dashed one, hiding it. */
 function solidOverDashed(connectors: PedigreeConnectors) {
   const segments = drawnSegments(connectors);
@@ -581,6 +608,11 @@ function auxiliaryLineFaults(
           })),
         ),
     ];
+    // The parts of a line under its own parent's and child's symbols are
+    // hidden by them.
+    const ownBoxes = [from, to].flatMap((id) =>
+      id !== undefined && people.includes(id) ? [boxOf(id)] : [],
+    );
     for (const segment of segments) {
       for (const id of people) {
         if (id === from || id === to) continue;
@@ -605,7 +637,7 @@ function auxiliaryLineFaults(
         }
       }
       for (const other of others) {
-        if (collinearOverlap(segment, other.segment) > 1) {
+        if (collinearOverlapOutside(segment, other.segment, ownBoxes) > 1) {
           faults.push(`${name} runs along another line`);
         }
         for (const vertex of [

@@ -1310,8 +1310,17 @@ export function computeConnectors(
     /** For a line ending on a child: "plan|level,column". */
     slot?: string;
   }[] = [];
-  const drawnOf = (points: Point[], owner: string): DrawnLine[] =>
-    segmentsOf(points).map((segment) => ({ segment, kind: 'other', owner }));
+  const drawnOf = (
+    points: Point[],
+    owner: string,
+    end: RouteEnd,
+  ): DrawnLine[] =>
+    segmentsOf(points).map((segment) => ({
+      segment,
+      kind: 'other',
+      owner,
+      ...(end.kind === 'child' ? { endsOn: end.person } : {}),
+    }));
 
   plans.forEach(({ conn, from, owner, bar, joinsBar }, planIndex) => {
     const parentNodeId = id ? id[conn.parentIndex] : undefined;
@@ -1323,7 +1332,7 @@ export function computeConnectors(
       slot?: string,
     ) => {
       const { points, endX } = routeLine(from, end, owner, scene);
-      const drawn = drawnOf(points, owner);
+      const drawn = drawnOf(points, owner, end);
       scene.lines.push(...drawn);
       const line: AuxiliaryConnector = {
         type: 'auxiliary',
@@ -1392,7 +1401,7 @@ export function computeConnectors(
   });
   const adopt = (entry: Routed, course: { points: Point[]; endX: number }) => {
     entry.line.points = course.points;
-    entry.drawn = drawnOf(course.points, entry.owner);
+    entry.drawn = drawnOf(course.points, entry.owner, entry.end);
     if (entry.stems) {
       const at = entry.stems.indexOf(entry.endX);
       if (at >= 0) entry.stems[at] = course.endX;
@@ -1468,8 +1477,8 @@ export function computeConnectors(
         if (!mayMeet(a, b)) continue;
         withoutLines(a, b);
         const together = (first: Point[], second: Point[]) =>
-          costAmong(a, first, drawnOf(second, b.owner)) +
-          costAmong(b, second, drawnOf(first, a.owner));
+          costAmong(a, first, drawnOf(second, b.owner, b.end)) +
+          costAmong(b, second, drawnOf(first, a.owner, a.end));
         const apart =
           costAmong(a, a.line.points, []) + costAmong(b, b.line.points, []);
         let best = {

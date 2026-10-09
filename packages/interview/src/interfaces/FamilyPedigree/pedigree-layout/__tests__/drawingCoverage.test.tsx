@@ -130,17 +130,28 @@ function unaccounted(
     const sibship = connectors.parentChildLines.filter((pc) =>
       pc.uplineChildIds?.includes(c),
     );
-    // The line of descent from the parent, or from the parent's couple.
+    // The line of descent from the parent, or from the parent's couple: from
+    // their partnership line (either rail of a double one, or a line routed
+    // above their row), or from midway between them.
     for (const pc of sibship) {
       const [top] = pc.parentLink;
       if (!top || !pc.parentIds?.includes(p)) continue;
       if (close(top.x1, centre(p).x) && close(top.y1, centre(p).y)) return true;
+      const start = { x: top.x1, y: top.y1 };
       if (
         pc.parentIds.some(
           (q) =>
             q !== p &&
-            close(top.x1, (centre(p).x + centre(q).x) / 2) &&
-            close(top.y1, centre(p).y),
+            ((close(start.x, (centre(p).x + centre(q).x) / 2) &&
+              close(start.y, centre(p).y)) ||
+              connectors.groupLines.some(
+                (g) =>
+                  same(g.partnerIds, [p, q]) &&
+                  [
+                    g.segment,
+                    ...(g.doubleSegment ? [g.doubleSegment] : []),
+                  ].some((rail) => onSegment(start, rail)),
+              )),
         )
       ) {
         return true;

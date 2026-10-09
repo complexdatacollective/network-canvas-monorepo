@@ -43,6 +43,8 @@ export type DrawnLine = {
   /** For auxiliary lines: whose line this is, so one parent's lines to
    * several children may share their way down. */
   owner?: string;
+  /** For an auxiliary line that ends on a child: the child. */
+  endsOn?: number;
 };
 
 export type RoutingScene = {
@@ -465,7 +467,10 @@ export function crossing(a: LineSegment, b: LineSegment): Point | undefined {
 
 const COST = {
   symbol: 1000,
-  /** One parent's lines may share their way down, never cross. */
+  /** One parent's lines may share their way down, never cross. Nor may
+   * two lines into one child: the places they end on the child's edge are
+   * in the order of their parents so that they need not, and crossing just
+   * above the child they read as tangled. */
   crossOwn: 100,
   /** A line running beside another, or close by a symbol it does not join,
    * reads as joined to it. */
@@ -605,11 +610,13 @@ function courseCoster(
       const at = crossing(segment, line.segment);
       if (at && !insideAny(symbols, at)) {
         cost +=
-          line.kind === 'bar'
-            ? COST.crossBar
-            : line.kind === 'upline'
-              ? COST.crossUpline
-              : COST.crossOther;
+          endPerson !== undefined && line.endsOn === endPerson
+            ? COST.crossOwn
+            : line.kind === 'bar'
+              ? COST.crossBar
+              : line.kind === 'upline'
+                ? COST.crossUpline
+                : COST.crossOther;
       }
       for (const vertex of [
         { x: line.segment.x1, y: line.segment.y1 },
