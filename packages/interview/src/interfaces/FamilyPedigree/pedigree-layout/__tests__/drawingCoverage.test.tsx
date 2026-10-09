@@ -142,7 +142,8 @@ function unaccounted(
         pc.parentIds.some(
           (q) =>
             q !== p &&
-            ((close(start.x, (centre(p).x + centre(q).x) / 2) &&
+            ((close(centre(p).y, centre(q).y) &&
+              close(start.x, (centre(p).x + centre(q).x) / 2) &&
               close(start.y, centre(p).y)) ||
               connectors.groupLines.some(
                 (g) =>
@@ -370,6 +371,25 @@ const families: Record<string, { people: string[]; links: PedigreeLink[] }> = {
       parent('bob', 'biological', 'sib'),
     ],
   },
+  'a stand-in and a recorded parent, whose partner also raises the child': {
+    people: ['ego', 'mum', 'standIn', 'stepdad'],
+    links: [
+      parent('mum', 'biological', 'ego', true),
+      parent('standIn', 'biological', 'ego'),
+      parent('stepdad', 'social', 'ego'),
+      partners('mum', 'stepdad'),
+    ],
+  },
+  'a stand-in for a half-sibling’s other parent': {
+    people: ['ego', 'mum', 'dad', 'half', 'standIn'],
+    links: [
+      parent('mum', 'biological', 'ego', true),
+      parent('dad', 'biological', 'ego'),
+      partners('mum', 'dad'),
+      parent('mum', 'biological', 'half', true),
+      parent('standIn', 'biological', 'half'),
+    ],
+  },
 };
 
 describe('the drawing accounts for every recorded tie', () => {
@@ -381,6 +401,30 @@ describe('the drawing accounts for every recorded tie', () => {
   }
 
   it('reports a tie that is not drawn', () => {
+    // Co-parents' shared children descend from midway between them: that
+    // one line accounts for both parents' ties, and moving it accounts for
+    // neither.
+    {
+      const { people, links } = families['co-parents who were never partners']!;
+      const { connectors, centre } = draw(people, links);
+      const moved = {
+        ...connectors,
+        parentChildLines: connectors.parentChildLines.map((line) => ({
+          ...line,
+          parentLink: line.parentLink.map((segment) => ({
+            ...segment,
+            x1: segment.x1 + 20,
+            x2: segment.x2 + 20,
+          })),
+        })),
+      };
+      expect(unaccounted(links, moved, centre)).toEqual([
+        'biological tie ann→ego is not drawn',
+        'biological tie bob→ego is not drawn',
+        'biological tie ann→sib is not drawn',
+        'biological tie bob→sib is not drawn',
+      ]);
+    }
     const { people, links } = families['a step parent and a donor']!;
     const { connectors, centre } = draw(people, links);
     const without = {
@@ -403,6 +447,21 @@ describe('the drawing accounts for every recorded tie', () => {
       'jo→ego draws nothing',
     );
   });
+});
+
+describe('the drawing draws no partnership that was not recorded', () => {
+  for (const [name, { people, links }] of Object.entries(families)) {
+    it(name, () => {
+      const { connectors } = draw(people, links);
+      const recorded = links
+        .filter((link) => link.kind === 'partner')
+        .map((link) => [link.source, link.target].toSorted().join(' and '));
+      const drawn = connectors.groupLines.map((line) =>
+        [...(line.partnerIds ?? [])].toSorted().join(' and '),
+      );
+      expect(drawn.filter((pair) => !recorded.includes(pair))).toEqual([]);
+    });
+  }
 });
 
 /** The numbers in an SVG points list or path. */

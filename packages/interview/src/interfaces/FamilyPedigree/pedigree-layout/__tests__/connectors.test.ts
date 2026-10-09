@@ -1254,3 +1254,128 @@ describe('consanguinity follows genetic parents only', () => {
     expect(routed!.doubleSegment).toBeUndefined();
   });
 });
+
+describe('co-parents with no recorded partnership', () => {
+  const scaling: ScalingParams = {
+    boxWidth: 0.5,
+    boxHeight: 0.5,
+    legHeight: 0.25,
+    hScale: 1,
+    vScale: 1,
+  };
+  const ids = ['ann', 'bob', 'c1', 'c2', 'x'];
+  const bothBiological: ParentConnection[] = [
+    { parentIndex: 0, edgeType: 'biological' },
+    { parentIndex: 1, edgeType: 'biological' },
+  ];
+  /** Ann and Bob side by side, their two children below them. */
+  const sideBySide = (grouped: boolean): PedigreeLayout => ({
+    n: [2, 2],
+    nid: [
+      [0, 1],
+      [2, 3],
+    ],
+    pos: [
+      [0, 1],
+      [0, 1],
+    ],
+    fam: [[0, 0], grouped ? [1, 1] : [0, 0]],
+    group: [
+      [grouped ? 1 : 0, 0],
+      [0, 0],
+    ],
+    twins: null,
+    groupMember: [
+      [false, false],
+      [false, false],
+    ],
+  });
+  const parents: ParentConnection[][] = [
+    [],
+    [],
+    bothBiological,
+    bothBiological,
+  ];
+  const draw = (layout: PedigreeLayout, partnerPairs?: Set<string>) =>
+    computeConnectors(
+      layout,
+      scaling,
+      parents,
+      partnerPairs ? new Set(partnerPairs) : undefined,
+      undefined,
+      undefined,
+      undefined,
+      ids,
+      partnerPairs,
+    );
+
+  for (const grouped of [true, false]) {
+    it(`are joined by no line, and their children descend from midway between them (${grouped ? 'paired' : 'not paired'} by the layout)`, () => {
+      const connectors = draw(sideBySide(grouped), new Set());
+      expect(connectors.groupLines).toEqual([]);
+      expect(connectors.auxiliaryLines).toEqual([]);
+      const descents = connectors.parentChildLines.filter(
+        (line) => line.parentLink.length > 0,
+      );
+      expect(descents).toHaveLength(1);
+      const [line] = descents;
+      // From the point midway between them, at the height of their
+      // centres, where a partnership line would run.
+      expect(line!.parentLink[0]).toMatchObject({ x1: 0.5, y1: 0.25 });
+      expect(line!.uplineChildIds).toEqual(['c1', 'c2']);
+      expect(line!.parentIds?.toSorted()).toEqual(['ann', 'bob']);
+    });
+  }
+
+  it('descends from midway between them to an only child', () => {
+    const layout: PedigreeLayout = {
+      n: [2, 1],
+      nid: [[0, 1], [2]],
+      pos: [[0, 1], [0.5]],
+      fam: [[0, 0], [0]],
+      group: [[0, 0], [0]],
+      twins: null,
+      groupMember: [[false, false], [false]],
+    };
+    const connectors = draw(layout, new Set());
+    expect(connectors.groupLines).toEqual([]);
+    expect(connectors.auxiliaryLines).toEqual([]);
+    expect(connectors.parentChildLines).toHaveLength(1);
+    expect(connectors.parentChildLines[0]!.parentLink[0]).toMatchObject({
+      x1: 0.5,
+      y1: 0.25,
+    });
+  });
+
+  it('keeps the partnership line of a recorded partnership', () => {
+    const connectors = draw(sideBySide(true), new Set(['0,1']));
+    expect(connectors.groupLines).toHaveLength(1);
+    expect(connectors.groupLines[0]!.partnerIds).toEqual(['ann', 'bob']);
+  });
+
+  it('never draws a line of descent out of someone sitting between them', () => {
+    // Ann, Xavier and Bob in a row: a drop from midway between Ann and Bob
+    // would come out of Xavier's symbol, and one from beside him would read
+    // as his. Each parent is joined by a line of their own instead.
+    const layout: PedigreeLayout = {
+      n: [3, 1],
+      nid: [[0, 4, 1], [2]],
+      pos: [[0, 1, 2], [1]],
+      fam: [[0, 0, 0], [0]],
+      group: [[0, 0, 0], [0]],
+      twins: null,
+      groupMember: [[false, false, false], [false]],
+    };
+    const connectors = draw(layout, new Set());
+    expect(connectors.groupLines).toEqual([]);
+    expect(
+      connectors.parentChildLines.flatMap((line) => line.parentLink),
+    ).toEqual([]);
+    expect(connectors.auxiliaryLines.map((line) => line.endpointIds)).toEqual(
+      expect.arrayContaining([
+        ['ann', 'c1'],
+        ['bob', 'c1'],
+      ]),
+    );
+  });
+});

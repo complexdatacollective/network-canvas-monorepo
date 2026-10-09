@@ -368,6 +368,36 @@ describe('labelFamily', () => {
     });
   });
 
+  test('co-parents never recorded as partners are not called partners', () => {
+    // The unnamed stand-in for ego's father, and the half-sibling's father,
+    // are each the mother's co-parent with no partnership recorded (ruling
+    // 25): the drawing joins neither to her by a line, and no word calls
+    // them her partner, or a step-parent.
+    const labels = labelsOf(
+      [
+        person('ego', { isEgo: true }),
+        woman('mum'),
+        man('standIn'),
+        man('half'),
+        man('halfFather'),
+      ],
+      [
+        link('mum', 'ego', 'biological', { carrier: true }),
+        link('standIn', 'ego', 'biological'),
+        link('mum', 'half', 'biological', { carrier: true }),
+        link('halfFather', 'half', 'biological'),
+      ],
+    );
+    expect(labels).toMatchObject({
+      mum: 'Mother',
+      standIn: 'Father',
+      half: 'Half-brother',
+    });
+    for (const label of Object.values(labels)) {
+      expect(label).not.toMatch(/partner|step/i);
+    }
+  });
+
   test('donors and carriers', () => {
     const labels = labelsOf(
       [

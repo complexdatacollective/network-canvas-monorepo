@@ -867,14 +867,95 @@ describe('auxiliary and direct parent lines', () => {
   });
 });
 
-describe('the former-partner break', () => {
-  /** The partnership line between two people. */
-  const lineBetween = (connectors: PedigreeConnectors, a: string, b: string) =>
-    connectors.groupLines.find(
-      (line) =>
-        line.partnerIds?.includes(a) && line.partnerIds.includes(b) && a !== b,
-    );
+/** The partnership line between two people. */
+const lineBetween = (connectors: PedigreeConnectors, a: string, b: string) =>
+  connectors.groupLines.find(
+    (line) =>
+      line.partnerIds?.includes(a) && line.partnerIds.includes(b) && a !== b,
+  );
 
+describe('co-parents with no recorded partnership', () => {
+  /** The one line of descent into the child, and where it starts. */
+  const descentInto = (connectors: PedigreeConnectors, childId: string) => {
+    const lines = descentsInto(connectors, childId).filter(
+      (line) => line.parentLink.length > 0,
+    );
+    expect(lines, `lines of descent into ${childId}`).toHaveLength(1);
+    const [top] = lines[0]!.parentLink;
+    return { line: lines[0]!, start: { x: top!.x1, y: top!.y1 } };
+  };
+  const expectFromMidway = (
+    connectors: PedigreeConnectors,
+    centre: (id: string) => { x: number; y: number },
+    childId: string,
+    [a, b]: [string, string],
+  ) => {
+    const { start } = descentInto(connectors, childId);
+    expect(centre(a).y).toBeCloseTo(centre(b).y, 6);
+    expect(start.x).toBeCloseTo((centre(a).x + centre(b).x) / 2, 6);
+    expect(start.y).toBeCloseTo(centre(a).y, 6);
+    // Their ties are drawn by that line alone.
+    expect(auxiliaryLinesFrom(connectors, a)).toEqual([]);
+    expect(auxiliaryLinesFrom(connectors, b)).toEqual([]);
+    expect(
+      connectors.groupLines.filter(
+        (line) => line.partnerIds?.includes(a) && line.partnerIds.includes(b),
+      ),
+    ).toEqual([]);
+  };
+
+  it('are joined by no line when they sit side by side, and their children descend from midway between them', () => {
+    const { connectors, centre } = draw(
+      ['ego', 'ann', 'bob', 'sib'],
+      [
+        ['ann', 'biological', 'ego', { carrier: true }],
+        ['bob', 'biological', 'ego'],
+        ['ann', 'biological', 'sib', { carrier: true }],
+        ['bob', 'biological', 'sib'],
+      ],
+    );
+    expectFromMidway(connectors, centre, 'ego', ['ann', 'bob']);
+    expect(descentInto(connectors, 'sib').line).toBe(
+      descentInto(connectors, 'ego').line,
+    );
+  });
+
+  it('a stand-in and a recorded parent, whose partner also raises the child, are joined by no line', () => {
+    // The stand-in is never assumed to be the mother's partner (ruling 25).
+    // Her partner raises the child and is joined by a line of his own.
+    const { connectors, centre } = draw(
+      ['ego', 'mum', 'standIn', 'stepdad'],
+      [
+        ['mum', 'biological', 'ego', { carrier: true }],
+        ['standIn', 'biological', 'ego'],
+        ['stepdad', 'social', 'ego'],
+        ['mum', 'partner', 'stepdad'],
+      ],
+    );
+    expectFromMidway(connectors, centre, 'ego', ['mum', 'standIn']);
+    expect(lineBetween(connectors, 'mum', 'stepdad')).toBeDefined();
+    const stepdads = auxiliaryLinesFrom(connectors, 'stepdad');
+    expect(stepdads).toHaveLength(1);
+    expect(stepdads[0]!.edgeType).toBe('social');
+  });
+
+  it('a stand-in and a recorded parent of a half-sibling are joined by no line', () => {
+    const { connectors, centre } = draw(
+      ['ego', 'mum', 'dad', 'half', 'standIn'],
+      [
+        ['mum', 'biological', 'ego', { carrier: true }],
+        ['dad', 'biological', 'ego'],
+        ['mum', 'partner', 'dad'],
+        ['mum', 'biological', 'half', { carrier: true }],
+        ['standIn', 'biological', 'half'],
+      ],
+    );
+    expectFromMidway(connectors, centre, 'half', ['mum', 'standIn']);
+    expect(lineBetween(connectors, 'mum', 'dad')).toBeDefined();
+  });
+});
+
+describe('the former-partner break', () => {
   it('is not drawn between co-parents who were never recorded as partners', () => {
     const { connectors } = draw(
       ['ego', 'kevin', 'dana', 'jordan', 'erin'],
@@ -886,10 +967,10 @@ describe('the former-partner break', () => {
       ],
     );
     for (const other of ['dana', 'erin']) {
-      const line = lineBetween(connectors, 'kevin', other);
-      expect(line, `kevin and ${other}`).toBeDefined();
-      expect(line!.isActive).toBe(true);
-      expect(line!.slashSide).toBeUndefined();
+      expect(
+        lineBetween(connectors, 'kevin', other),
+        `kevin and ${other}`,
+      ).toBeUndefined();
     }
   });
 
@@ -1108,10 +1189,44 @@ function overlappingDescents(connectors: PedigreeConnectors) {
 }
 
 describe('each child hangs from their own family’s single line of descent', () => {
-  it('joins a birth child and a stepchild of one couple by one sibling bar (confirm-r1-4)', () => {
+  // A child's birth parents who were never recorded as partners (here, a
+  // birth mother and the unnamed stand-in for the father) are joined by no
+  // line, and the child descends from midway between them, so a half-sibling
+  // whose parents are the mother and her partner hangs from that couple's
+  // own line of descent, not from one shared sibling bar (Josh's round 2
+  // ruling; B2 asked for one bar). The partner who also raises the child is
+  // joined to them by a dashed line of their own.
+  const descentStart = (connectors: PedigreeConnectors, childId: string) => {
+    const lines = descentsInto(connectors, childId).filter(
+      (line) => line.parentLink.length > 0,
+    );
+    expect(lines, `lines of descent into ${childId}`).toHaveLength(1);
+    return {
+      line: lines[0]!,
+      x: lines[0]!.parentLink[0]!.x1,
+      y: lines[0]!.parentLink[0]!.y1,
+    };
+  };
+  const expectDescentBetween = (
+    connectors: PedigreeConnectors,
+    centre: (id: string) => { x: number; y: number },
+    childIds: string[],
+    [a, b]: [string, string],
+  ) => {
+    for (const childId of childIds) {
+      const start = descentStart(connectors, childId);
+      expect(start.x).toBeCloseTo((centre(a).x + centre(b).x) / 2, 6);
+      expect(start.y).toBeCloseTo(centre(a).y, 6);
+      expect(start.line.uplineChildIds?.toSorted()).toEqual(
+        childIds.toSorted(),
+      );
+    }
+  };
+
+  it('hangs a birth child from their birth parents and a stepchild’s half-sibling from the couple (confirm-r1-4)', () => {
     // Karen is ego's birth mother; Steve, her partner, raises ego. Emily is
     // Karen and Steve's own child. Ego's stand-in father is unnamed.
-    const { connectors } = draw(
+    const { connectors, centre } = draw(
       ['ego', 'karen', 'steve', 'emily', 'egoFather'],
       [
         ['karen', 'biological', 'ego', { carrier: true }],
@@ -1122,9 +1237,9 @@ describe('each child hangs from their own family’s single line of descent', ()
         ['steve', 'biological', 'emily'],
       ],
     );
-    const sibship = sibshipOf(connectors, ['ego', 'emily']);
-    expect(sibship.sharesOneBar).toBe(true);
-    expect(sibship.descents).toHaveLength(1);
+    expectDescentBetween(connectors, centre, ['ego'], ['karen', 'egoFather']);
+    expectDescentBetween(connectors, centre, ['emily'], ['karen', 'steve']);
+    expect(lineBetween(connectors, 'karen', 'egoFather')).toBeUndefined();
     // Steve's tie to ego is still drawn, dashed, on a line of its own.
     expect(
       auxiliaryLinesFrom(connectors, 'steve').map((line) => [
@@ -1133,10 +1248,11 @@ describe('each child hangs from their own family’s single line of descent', ()
       ]),
     ).toEqual([['social', 'ego']]);
     expect(uplineOf(connectors, 'ego').connector.edgeType).toBe('biological');
+    expect(overlappingDescents(connectors)).toEqual([]);
   });
 
-  it('joins two co-mothers’ birth children by one sibling bar (confirm-r1-4, co-mothers)', () => {
-    const { connectors } = draw(
+  it('hangs two co-mothers’ birth children each from their own birth parents (confirm-r1-4, co-mothers)', () => {
+    const { connectors, centre } = draw(
       ['ego', 'hannah', 'kate', 'max', 'egoFather', 'maxFather'],
       [
         ['hannah', 'biological', 'ego', { carrier: true }],
@@ -1148,9 +1264,8 @@ describe('each child hangs from their own family’s single line of descent', ()
         ['hannah', 'social', 'max'],
       ],
     );
-    const sibship = sibshipOf(connectors, ['ego', 'max']);
-    expect(sibship.sharesOneBar).toBe(true);
-    expect(sibship.descents).toHaveLength(1);
+    expectDescentBetween(connectors, centre, ['ego'], ['hannah', 'egoFather']);
+    expectDescentBetween(connectors, centre, ['max'], ['kate', 'maxFather']);
     expect(overlappingDescents(connectors)).toEqual([]);
     const social = (from: string) =>
       auxiliaryLinesFrom(connectors, from)
@@ -1160,8 +1275,8 @@ describe('each child hangs from their own family’s single line of descent', ()
     expect(social('hannah')).toEqual(['max']);
   });
 
-  it('joins the participant to their half-siblings once a parent becomes social (confirm-r1-112)', () => {
-    const { connectors } = draw(
+  it('hangs the participant from their birth parents once a parent becomes social, beside their half-siblings (confirm-r1-112)', () => {
+    const { connectors, centre } = draw(
       ['ego', 'beth', 'carl', 'dana', 'evan', 'egoFather'],
       [
         ['beth', 'biological', 'ego', { carrier: true }],
@@ -1174,9 +1289,14 @@ describe('each child hangs from their own family’s single line of descent', ()
         ['carl', 'biological', 'evan'],
       ],
     );
-    const sibship = sibshipOf(connectors, ['ego', 'dana', 'evan']);
-    expect(sibship.sharesOneBar).toBe(true);
-    expect(sibship.descents).toHaveLength(1);
+    expectDescentBetween(connectors, centre, ['ego'], ['beth', 'egoFather']);
+    expectDescentBetween(
+      connectors,
+      centre,
+      ['dana', 'evan'],
+      ['beth', 'carl'],
+    );
+    expect(sibshipOf(connectors, ['dana', 'evan']).sharesOneBar).toBe(true);
     expect(overlappingDescents(connectors)).toEqual([]);
   });
 

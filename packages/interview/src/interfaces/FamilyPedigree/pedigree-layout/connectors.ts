@@ -83,13 +83,18 @@ export function computeConnectors(
   const twinIndicators: TwinIndicator[] = [];
   const duplicateArcs: DuplicateArc[] = [];
   const renderedPartnerPairs = new Set<string>();
-  // Only a recorded former partnership is drawn with the break. Co-parents
-  // the layout pairs up without a recorded partnership are drawn joined by a
-  // plain line: nothing says they were ever partners, let alone separated.
+  // Only a recorded partnership is drawn with a partnership line. Co-parents
+  // the layout seats side by side without one are joined by no line at all:
+  // their children's line of descent drops from midway between them, so
+  // nothing reads as a partnership. (With no recorded partnerships given,
+  // every pair the layout makes is taken to be one.)
+  const isRecordedPartnership = (pairKey: string) =>
+    partnerPairs === undefined || partnerPairs.has(pairKey);
+  // Only a recorded former partnership is drawn with the break.
   const isFormerPartnership = (pairKey: string) =>
     activePartnerPairs !== undefined &&
     !activePartnerPairs.has(pairKey) &&
-    (partnerPairs === undefined || partnerPairs.has(pairKey));
+    isRecordedPartnership(pairKey);
   const nodeLocation = new Map<
     number,
     { layer: number; x: number; y: number }
@@ -98,10 +103,12 @@ export function computeConnectors(
   const isBracketed = (personIndex: number) =>
     (parents[personIndex] ?? []).some((p) => p.edgeType === 'adoptive');
 
+  const placeOf = new Map<number, { layer: number; col: number }>();
   for (let layer = 0; layer < maxlev; layer++) {
     for (let col = 0; col < (layout.n[layer] ?? 0); col++) {
       const personIndex = layout.nid[layer]![col]!;
       if (nodeLocation.has(personIndex)) continue;
+      placeOf.set(personIndex, { layer, col });
       nodeLocation.set(personIndex, {
         layer,
         x: layout.pos[layer]![col]!,
@@ -118,6 +125,7 @@ export function computeConnectors(
         const leftId = layout.nid[i]![j]!;
         const rightId = layout.nid[i]![j + 1]!;
         const pairKey = `${Math.min(leftId, rightId)},${Math.max(leftId, rightId)}`;
+        if (!isRecordedPartnership(pairKey)) continue;
 
         const isActive = !isFormerPartnership(pairKey);
 
@@ -504,16 +512,42 @@ export function computeConnectors(
   // Children whose couple could not sit together have no family in the
   // layout (fam 0). When the couple's recorded partnership is routed above
   // their row, the children are still one family, with one line of descent
-  // from that line. Otherwise (co-parents with no recorded partnership, or a
-  // routed line with no clear point to drop from), those who share every
-  // primary parent, in the same roles, still form a sibship: a sibling bar
-  // with uplines and twin marks, though no line of descent comes down from a
-  // couple; each parent joins the bar with a line of its own. Each such
-  // family or sibship gets a key past every column, so it never meets a
-  // family the layout named.
+  // from that line. When their two parents are co-parents with no recorded
+  // partnership who sit side by side, the children are one family too, with
+  // one line of descent from midway between them. Otherwise (co-parents
+  // with someone sitting between them, or a routed line with no clear point
+  // to drop from), those who share every primary parent, in the same roles,
+  // still form a sibship: a sibling bar with uplines and twin marks, though
+  // no line of descent comes down from a couple; each parent joins the bar
+  // with a line of its own. (A drop from midway between co-parents with
+  // someone between them would come out of, or from beside, that person,
+  // and read as theirs.) Each such family or sibship gets a key past every
+  // column, so it never meets a family the layout named.
   const familyOf = layout.fam.map((row) => [...row]);
   const coupleless = new Set<number>();
   const routedFamilies = new Map<number, { pairKey: string; x: number }>();
+  // The parents' columns, left then right, on the row above the children.
+  const coParentFamilies = new Map<number, [number, number]>();
+  // The columns of a sibship's two parents when they are co-parents with no
+  // recorded partnership sitting side by side on the row above.
+  const coParentsSideBySide = (
+    i: number,
+    primary: ParentConnection[],
+  ): [number, number] | undefined => {
+    const [a, b, ...more] = new Set(primary.map((p) => p.parentIndex));
+    if (a === undefined || b === undefined || more.length > 0) {
+      return undefined;
+    }
+    if (isRecordedPartnership(`${Math.min(a, b)},${Math.max(a, b)}`)) {
+      return undefined;
+    }
+    const [at, bt] = [placeOf.get(a), placeOf.get(b)];
+    if (!at || !bt || at.layer !== i - 1 || bt.layer !== i - 1) {
+      return undefined;
+    }
+    if (Math.abs(at.col - bt.col) !== 1) return undefined;
+    return at.col < bt.col ? [at.col, bt.col] : [bt.col, at.col];
+  };
   let nextFamilyKey = maxcol + 1;
   for (let i = 1; i < maxlev; i++) {
     const sibships = new Map<string, number[]>();
@@ -564,6 +598,18 @@ export function computeConnectors(
       for (const j of columns) familyOf[i]![j] = famId;
     }
     for (const columns of sibships.values()) {
+      const seated = coParentsSideBySide(
+        i,
+        (parents[layout.nid[i]![columns[0]!]!] ?? []).filter((p) =>
+          isPrimaryEdge(p.edgeType),
+        ),
+      );
+      if (seated) {
+        const famId = nextFamilyKey++;
+        coParentFamilies.set(famId, seated);
+        for (const j of columns) familyOf[i]![j] = famId;
+        continue;
+      }
       if (columns.length < 2) continue;
       const famId = nextFamilyKey++;
       coupleless.add(famId);
@@ -645,8 +691,10 @@ export function computeConnectors(
       }
 
       // The family's parents: a couple seated side by side (or a single
-      // parent), or a couple whose partnership is routed above their row.
+      // parent), co-parents seated side by side with no partnership line, or
+      // a couple whose partnership is routed above their row.
       const routed = routedFamilies.get(fam);
+      const coParents = coParentFamilies.get(fam);
       let coupleLeftId: number;
       let coupleRightId: number;
       let leftPos: number;
@@ -658,6 +706,13 @@ export function computeConnectors(
         leftPos = nodeLocation.get(coupleLeftId)!.x;
         rightPos = nodeLocation.get(coupleRightId)!.x;
         groupLine = couple.connector;
+      } else if (coParents) {
+        const [left, right] = coParents;
+        coupleLeftId = layout.nid[i - 1]![left]!;
+        coupleRightId = layout.nid[i - 1]![right]!;
+        leftPos = layout.pos[i - 1]![left]!;
+        rightPos = layout.pos[i - 1]![right]!;
+        groupLine = undefined;
       } else {
         const { left, right } = familyParentColumns(layout, i, fam);
         coupleLeftId = layout.nid[i - 1]![left]!;
@@ -714,7 +769,9 @@ export function computeConnectors(
         return descentX;
       };
       // A couple's line of descent starts on their partnership line (the
-      // lower rail of a double one); one parent's, at the parent.
+      // lower rail of a double one); co-parents' with no partnership line,
+      // midway between them at the height of their centres, where such a
+      // line would run; one parent's, at the parent.
       const startYOf = (from: DescentSource) => {
         if (from !== 'both' || !groupLine) return i - 1 + boxh / 2;
         return groupLine.double && groupLine.doubleSegment
@@ -1081,20 +1138,18 @@ export function computeConnectors(
       childColumns: number[];
     }
   >();
-  const placeOf = new Map<number, { layer: number; col: number }>();
-  for (let i = 0; i < maxlev; i++) {
-    for (let j = 0; j < (layout.n[i] ?? 0); j++) {
-      const person = layout.nid[i]![j]!;
-      if (!placeOf.has(person)) placeOf.set(person, { layer: i, col: j });
-    }
-  }
-  /** Whether two people sit side by side joined by a partnership line. */
+  /** Whether two people sit side by side joined by a partnership line, or
+   * as co-parents with no partnership recorded, whose shared line starts
+   * midway between them all the same. */
   const seatedAsCouple = (a: number, b: number) => {
     const at = placeOf.get(a);
     const bt = placeOf.get(b);
     if (!at || !bt || at.layer !== bt.layer) return false;
     if (Math.abs(at.col - bt.col) !== 1) return false;
-    return (layout.group[at.layer]?.[Math.min(at.col, bt.col)] ?? 0) > 0;
+    return (
+      (layout.group[at.layer]?.[Math.min(at.col, bt.col)] ?? 0) > 0 ||
+      !isRecordedPartnership(`${Math.min(a, b)},${Math.max(a, b)}`)
+    );
   };
 
   for (let i = 0; i < maxlev; i++) {

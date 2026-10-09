@@ -169,13 +169,17 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
               explicitPartnerPairs.has(partnerGroupKey([parent, candidate])),
           );
 
-        // When either co-parent has an explicit partnership to another parent
-        // of this child, do not invent a partnership between this pair. This is
-        // common in multi-parent families: two social parents may each be an
-        // ex-partner of the same biological parent without being partners of
-        // one another.
+        // A pair inferred here is seated side by side, never drawn as
+        // partners (the connectors draw a partnership line only for a
+        // recorded partnership). When both co-parents have an explicit
+        // partnership to another parent of this child, do not pair them: two
+        // social parents may each be an ex-partner of the same biological
+        // parent, who sits between them. When only one has, the other still
+        // sits beside them — a stand-in beside the mother whose partner also
+        // raises the child — so the child's line of descent can drop from
+        // midway between the two.
         if (
-          hasExplicitPartnerAmongOtherParents(pa) ||
+          hasExplicitPartnerAmongOtherParents(pa) &&
           hasExplicitPartnerAmongOtherParents(pb)
         ) {
           continue;

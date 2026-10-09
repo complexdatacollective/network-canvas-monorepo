@@ -1369,8 +1369,56 @@ describe('a person with three partners', () => {
     expect(withoutFamily).toBe(1);
   });
 
-  // Every primary parent of a child without a family has its own line to the
-  // child, whether or not the parents were recorded as partners.
+  /** Where each person sits, as the connectors place them. */
+  const centreOf = (
+    result: ReturnType<typeof alignPedigree>,
+    person: number,
+  ) => {
+    const level = result.nid.findIndex((row, i) =>
+      row.slice(0, result.n[i]).includes(person),
+    );
+    const col = result.nid[level]!.indexOf(person);
+    return {
+      x: result.pos[level]![col]!,
+      y: level + defaultScaling.boxHeight / 2,
+    };
+  };
+  /** The line of descent into a child that draws a parent's tie: one that
+   * starts at the parent, or midway between them and another of the child's
+   * parents seated beside them on their row (co-parents with no recorded
+   * partnership are joined by no line). */
+  const descentDrawing = (
+    conn: ReturnType<typeof computeConnectors>,
+    result: ReturnType<typeof alignPedigree>,
+    input: PedigreeInput,
+    parentIndex: number,
+    child: number,
+  ) => {
+    const p = centreOf(result, parentIndex);
+    const starts = [
+      p,
+      ...input.parents[child]!.filter((q) => q.parentIndex !== parentIndex)
+        .map((q) => centreOf(result, q.parentIndex))
+        .filter((q) => Math.abs(q.y - p.y) < 1e-9)
+        .map((q) => ({ x: (p.x + q.x) / 2, y: p.y })),
+    ];
+    return conn.parentChildLines.find((line) => {
+      const [top] = line.parentLink;
+      return (
+        top !== undefined &&
+        line.uplineChildIds?.includes(input.id[child]) &&
+        starts.some(
+          (start) =>
+            Math.abs(top.x1 - start.x) < 1e-9 &&
+            Math.abs(top.y1 - start.y) < 1e-9,
+        )
+      );
+    });
+  };
+
+  // Every primary parent of a child without a family is joined to the child,
+  // whether or not the parents were recorded as partners: by a line of its
+  // own, or (co-parents seated side by side) by a line of descent.
   const expectDirectLinesForChildrenWithoutFamily = (
     input: PedigreeInput,
     expectedWithoutFamily: number,
@@ -1401,9 +1449,13 @@ describe('a person with three partners', () => {
         if (primary.length === 0) continue;
         withoutFamily++;
         for (const { parentIndex } of primary) {
-          expect(direct).toContain(
-            `${input.id[parentIndex]}→${input.id[child]}`,
-          );
+          const name = `${input.id[parentIndex]}→${input.id[child]}`;
+          expect(
+            direct.has(name) ||
+              descentDrawing(conn, result, input, parentIndex, child) !==
+                undefined,
+            name,
+          ).toBe(true);
         }
       }
     }
@@ -1431,8 +1483,8 @@ describe('a person with three partners', () => {
   });
 
   it('joins each parent to a child whose parents are not a couple', () => {
-    // A biological parent and an unpartnered step-parent: no couple to
-    // descend from.
+    // A biological parent and an unpartnered step-parent: no partnership
+    // line to descend from.
     expectDirectLinesForChildrenWithoutFamily(
       {
         id: ['parent', 'step', 'kid'],
@@ -1483,7 +1535,14 @@ describe('a person with three partners', () => {
         line.edgeType,
       ]),
     );
-    expect(lines.get('p→kid1')).toBe('biological');
+    // A tie drawn by a line of descent (from co-parents seated side by side)
+    // is drawn in the style of that line.
+    const styleOf = (parentIndex: number, child: number) =>
+      lines.get(`${input.id[parentIndex]}→${input.id[child]}`) ??
+      descentDrawing(conn, result, input, parentIndex, child)?.edgeType;
+    expect(styleOf(0, 4)).toBe('biological');
+    expect(styleOf(1, 4)).toBe('social');
+    expect(styleOf(2, 5)).toBe('biological');
     expect(lines.get('p→kid2')).toBe('social');
     expect(lines.get('d→kid1')).toBe('donor');
     expect(lines.get('d→kid2')).toBe('surrogate');
