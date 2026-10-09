@@ -135,6 +135,7 @@ import {
 import { ownedOptionLabels } from './options';
 import PedigreeLayout from './pedigree-layout/components/PedigreeLayout';
 import type { PedigreeLink } from './pedigree-layout/types';
+import { PedigreeWordsProvider, usePedigreeWordsOf } from './pedigreeWords';
 import { relationshipWrites } from './relationshipToParticipant';
 import type { Point } from './spatialNavigation';
 import { usePanZoom, type View } from './usePanZoom';
@@ -191,6 +192,8 @@ const planAddition = (
 
 const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const intl = useAppIntl();
+  const words = usePedigreeWordsOf(stage.wording);
+  const { wording, text } = words;
   const dispatch = useAppDispatch();
   const { currentStep, displayedStep } = useCurrentStep();
   const store = useStore<RootState>();
@@ -549,13 +552,13 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // be saved as their name when they leave, worked out afresh from the family
   // as it stands, so the canvas and the stages after it always agree.
   const labels = useMemo(
-    () => labelEveryone(shown, framing, intl),
-    [shown, framing, intl],
+    () => labelEveryone(shown, framing, intl, words),
+    [shown, framing, intl, words],
   );
   const displayName = useCallback(
     (personId: string) =>
-      labels.get(personId) ?? formatRelativeTerm('other', intl),
-    [labels, intl],
+      labels.get(personId) ?? formatRelativeTerm('other', words),
+    [labels, words],
   );
 
   // Announce an addition once the new person is in the family, so they can be
@@ -870,7 +873,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           readFamily(nodes, edges, config, generatedLabels, decrypted),
         )
       : family;
-    const saved = generateLabels(current, framing, intl);
+    const saved = generateLabels(current, framing, intl, words);
     const { held, toWrite } = labelWrites(
       current,
       saved,
@@ -1458,7 +1461,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       });
       if (cutOff.length > 0) {
         refuse(
-          intl.formatMessage(messages.disconnectWouldCutOff, {
+          text(wording.disconnectWouldCutOff, {
             count: cutOff.length,
             names: listOfNames(cutOff),
           }),
@@ -1485,8 +1488,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const handleDisconnect = async (firstId: string, secondId: string) => {
     const args = pairArgs(firstId, secondId);
     await confirm({
-      title: intl.formatMessage(messages.disconnectConfirmTitle, args),
-      description: intl.formatMessage(messages.disconnectConfirmDescription),
+      title: text(wording.disconnectConfirmTitle, args),
+      description: text(wording.disconnectConfirmDescription),
       confirmLabel: intl.formatMessage(commonMessages.delete),
       intent: 'destructive',
       onConfirm: () => {
@@ -1513,8 +1516,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     // from the confirmation.
     closePanel();
     await confirm({
-      title: intl.formatMessage(messages.removeConfirmTitle, { name }),
-      description: intl.formatMessage(messages.removeConfirmDescription, {
+      title: text(wording.removeConfirmTitle, { name }),
+      description: text(wording.removeConfirmDescription, {
         hasOthers: cutOffIds.length === 0 ? 'false' : 'true',
         count: cutOffIds.length,
         names: listOfNames(cutOffIds),
@@ -1559,7 +1562,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (!panel) return '';
     const { mode } = panel;
     const subject = mode.kind === 'add' ? mode.anchor : mode.person;
-    return intl.formatMessage(messages.panelTitle, {
+    return text(wording.panelTitle, {
       relation: mode.kind === 'edit' ? 'edit' : mode.relation,
       isYou: subject.isEgo ? 'true' : 'false',
       name: displayName(subject.id),
@@ -1610,333 +1613,337 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     // The canvas fills the whole stage, edge to edge, without the padding
     // other stages have; the prompt floats over its top, on a fade so people
     // passing beneath it stay legible.
-    <div
-      className="relative flex h-full w-full flex-col"
-      onPointerDown={handleStagePointerDown}
-    >
+    <PedigreeWordsProvider value={words}>
       <div
-        ref={promptRef}
-        className="from-background via-background/80 pointer-events-none absolute inset-x-0 top-0 z-10 bg-linear-to-b to-transparent px-4 pt-4 pb-10"
+        className="relative flex h-full w-full flex-col"
+        onPointerDown={handleStagePointerDown}
       >
-        <Prompts prompts={prompts} currentPromptId={prompt.id} />
-      </div>
-      {measurementContainer}
-      <div className="relative flex min-h-0 w-full flex-1 flex-col">
-        {/* Drag to pan, wheel or pinch to zoom. */}
-        <PedigreeViewport
-          viewportRef={viewportRef}
-          contentRef={contentRef}
-          panZoom={panZoom}
-          onKeyDown={handleCanvasKeyDown}
-          onBlur={handleCanvasBlur}
-          overlay={
-            connectorFrom &&
-            tool === 'connect' && (
-              <ConnectorPreview
-                container={viewportRef}
-                transform={panZoom}
-                from={connectorFrom}
-                to={connectorTo}
-                color={edgeColor}
-              />
-            )
-          }
-        >
-          <PedigreeLayout
-            nodeIds={nodeIds}
-            edgeColor={edgeColor}
-            links={links}
-            nodeNames={nodeNames}
-            nodeWidth={nodeWidth}
-            nodeHeight={nodeHeight}
-            // Room around each person for the add menu that appears beside,
-            // above and below them.
-            rowGapRatio={1.4}
-            columnGapRatio={1.4}
-            renderNode={(personId) => {
-              const person = shown.byId.get(personId);
-              if (!person) return null;
-              const hasMenu = personId === menuPersonId;
-              return (
-                <PersonNode
-                  person={person}
-                  label={displayName(personId)}
-                  color={nodeColor}
-                  shape={
-                    shapeDefinition
-                      ? resolveNodeShape(shapeDefinition, person.attributes)
-                      : 'circle'
-                  }
-                  selected={
-                    nomination ? isNominated(person) : personId === selectedId
-                  }
-                  disabled={
-                    nomination ? !canSelect(person) : pairUnavailable(personId)
-                  }
-                  linking={
-                    tool !== 'pointer' &&
-                    (personId === linkingId || personId === connectorTargetId)
-                  }
-                  menuOpen={hasMenu}
-                  // The person being added has not been asked yet.
-                  hasMissingDetails={
-                    !nomination &&
-                    family.byId.has(personId) &&
-                    missingDetailsFor(person, requiredFormVariables, config)
-                      .length > 0
-                  }
-                  adopted={shown.links.some(
-                    (link) =>
-                      link.kind === 'adoptive' && link.target === personId,
-                  )}
-
-                  onActivate={() => handleActivate(personId)}
-                  tabIndex={personId === tabStopId ? 0 : -1}
-                  onFocus={(event) => handleFocusPerson(personId, event)}
-                  onKeyDown={(event) => handleNodeKeyDown(personId, event)}
-                  onPointerEnter={(event) =>
-                    handlePersonPointerEnter(personId, event)
-                  }
-                  onPointerLeave={handlePersonPointerLeave}
-                  onPointerDown={(event) => {
-                    lastPointerType.current = event.pointerType;
-                  }}
-                  nodeRef={setNodeRef(personId)}
-                >
-                  {hasMenu && (
-                    <AddRelativeMenu
-                      isYou={person.isEgo}
-                      name={displayName(personId)}
-                      onAdd={openAdd}
-                    />
-                  )}
-                </PersonNode>
-              );
-            }}
-          />
-        </PedigreeViewport>
         <div
-          ref={toolbarAreaRef}
-          className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex flex-col items-center gap-2 px-4"
+          ref={promptRef}
+          className="from-background via-background/80 pointer-events-none absolute inset-x-0 top-0 z-10 bg-linear-to-b to-transparent px-4 pt-4 pb-10"
         >
-          {detailsLocked && (
-            <Alert
-              variant="info"
-              density="compact"
-              appearance="soft"
-              className="pointer-events-auto my-0 w-auto"
-              data-testid="pedigree-passphrase-notice"
-            >
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                <p className="text-sm">
-                  <AppMessage message={passphraseNotice} />
-                </p>
-                {!encryptionUnavailable && (
-                  <Button size="sm" onClick={() => setPassphraseOpen(true)}>
-                    <AppMessage message={runtimeMessages.passphrase} />
-                  </Button>
-                )}
-              </div>
-            </Alert>
-          )}
-          {tool !== 'pointer' && (
-            <p
-              className="text-sm opacity-80"
-              data-testid="pedigree-connect-hint"
-            >
-              {connectNotice ??
-                intl.formatMessage(
-                  tool === 'connect'
-                    ? messages.connectHint
-                    : messages.disconnectHint,
-                )}
-            </p>
-          )}
-          {/* Rises into place when the stage first loads. */}
-          <motion.div
-            // No wider than the stage, so a toolbar that does not fit scrolls.
-            className="max-w-full min-w-0"
-            initial={reduceMotion ? false : { y: '150%', opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            // A heavy spring, damped just short of settling straight, so it
-            // lands with a slight rebound; the fade does not bounce.
-            transition={{
-              y: {
-                type: 'spring',
-                mass: 1.4,
-                stiffness: 170,
-                damping: 20,
-                delay: TOOLBAR_ENTRANCE_DELAY / 1000,
-              },
-              opacity: {
-                duration: 0.25,
-                delay: TOOLBAR_ENTRANCE_DELAY / 1000,
-              },
-            }}
-          >
-            <SegmentedToolbar
-              aria-label={intl.formatMessage(messages.toolsLabel)}
-              size="lg"
-              className="pointer-events-auto"
-            >
-              {/* Answering a nomination prompt, selecting is all there is. */}
-              {!nomination && (
-                <ToolbarToggleGroup
-                  aria-label={intl.formatMessage(messages.toolGroupLabel)}
-                  disabled={detailsLocked}
-                  value={[tool]}
-                  onValueChange={(value) => {
-                    const next = value[0];
-                    if (isTool(next)) chooseTool(next);
-                  }}
-                >
-                  <ToolbarIconButton
-                    value="pointer"
-                    aria-label={intl.formatMessage(messages.pointerTool)}
-                    icon={<MousePointer2 />}
-                    data-testid="pedigree-tool-pointer"
-                  />
-                  <ToolbarIconButton
-                    value="connect"
-                    aria-label={intl.formatMessage(messages.connectTool)}
-                    icon={<Waypoints />}
-                    data-testid="pedigree-tool-connect"
-                  />
-                  <ToolbarIconButton
-                    value="disconnect"
-                    aria-label={intl.formatMessage(messages.disconnectTool)}
-                    icon={<Unlink />}
-                    data-testid="pedigree-tool-disconnect"
-                  />
-                </ToolbarToggleGroup>
-              )}
-              {!nomination && participantFraming && <ToolbarSeparator />}
-              {participantFraming && (
-                <FramingControl
-                  value={chosenFraming}
-                  onChange={chooseFraming}
-                  open={framingOpen}
-                  onOpenChange={setFramingOpen}
-                />
-              )}
-              {(!nomination || participantFraming) && <ToolbarSeparator />}
-              {zoomButtons}
-              {progress && completeness && !nomination && <ToolbarSeparator />}
-              {progress && completeness && !nomination && (
-                <CompletenessTracker
-                  progress={progress}
-                  completeness={completeness}
-                  open={trackerOpen}
-                  onOpenChange={setTrackerOpen}
-                  family={family}
-                  displayName={displayName}
-                  onItemSelect={handleTrackerItem}
-                  onItemAnswer={
-                    config.relativesNotRecordedAttribute
-                      ? (item) => void handleTrackerAnswer(item)
-                      : undefined
-                  }
-                />
-              )}
-            </SegmentedToolbar>
-          </motion.div>
+          <Prompts prompts={prompts} currentPromptId={prompt.id} />
         </div>
-      </div>
-      <ConnectMenu
-        pair={tool === 'connect' ? chosenPair : null}
-        family={family}
-        displayName={displayName}
-        parentKindLabels={optionLabels.parentKind}
-        anchor={
-          chosenPair
-            ? (nodeRefs.current.get(chosenPair.secondId) ?? null)
-            : null
-        }
-        onConnect={(connection, description) =>
-          void handleConnect(connection, description)
-        }
-        onClose={endConnecting}
-      />
-      <div aria-live="polite" className="sr-only">
-        {announcement}
-      </div>
-      {!encryptionUnavailable && (
-        <PassphraseOverlay
-          show={passphraseOpen}
-          choosing={!passphraseChosen}
-          onAccepted={() => setPassphraseOpen(false)}
-          onClose={() => setPassphraseOpen(false)}
-        />
-      )}
-      <PersonDrawer
-        popupRef={drawerRef}
-        open={panel?.open ?? false}
-        formKey={panel?.key ?? 'closed'}
-        onClose={cancelPanel}
-        onClosed={() => setPanel(null)}
-        returnFocus={() =>
-          returnFocusId ? (nodeRefs.current.get(returnFocusId) ?? null) : null
-        }
-        title={panelTitle}
-        footer={
-          <>
-            {editedPerson && !editedPerson.isEgo && (
-              <Button
-                type="button"
-                variant="text"
-                color="destructive"
-                className="mr-auto"
-                onClick={() => void handleRemove(editedPerson.id)}
-              >
-                <AppMessage message={commonMessages.delete} />
-              </Button>
-            )}
-            <Button type="button" variant="text" onClick={cancelPanel}>
-              <AppMessage message={commonMessages.cancel} />
-            </Button>
-            <SubmitButton form={formId}>
-              <AppMessage message={commonMessages.save} />
-            </SubmitButton>
-          </>
-        }
-      >
-        {panel && (
-          <PersonForm
-            key={panel.key}
-            formId={formId}
-            mode={panel.mode}
-            family={family}
-            config={config}
-            framing={framing}
-            genderIdentityOptions={genderIdentityOptions}
-            optionLabels={optionLabels}
-            formFields={formFields}
-            generatedLabels={generatedLabels}
-            decryptedNames={decryptedNames}
-            displayName={displayName}
-            nameField={stage.nodeConfiguration.nameField}
-            askAbout={
-              panel.mode.kind === 'edit' && progress && completeness
-                ? {
-                    ...relativesToAskAbout(
-                      family,
-                      progress,
-                      panel.mode.person.id,
-                    ),
-                    required: completeness.enforcement === 'required',
-                    questions: {
-                      siblings: completeness.itemText.siblings.question,
-                      children: completeness.itemText.children.question,
-                    },
-                  }
-                : undefined
+        {measurementContainer}
+        <div className="relative flex min-h-0 w-full flex-1 flex-col">
+          {/* Drag to pan, wheel or pinch to zoom. */}
+          <PedigreeViewport
+            viewportRef={viewportRef}
+            contentRef={contentRef}
+            panZoom={panZoom}
+            onKeyDown={handleCanvasKeyDown}
+            onBlur={handleCanvasBlur}
+            overlay={
+              connectorFrom &&
+              tool === 'connect' && (
+                <ConnectorPreview
+                  container={viewportRef}
+                  transform={panZoom}
+                  from={connectorFrom}
+                  to={connectorTo}
+                  color={edgeColor}
+                />
+              )
             }
-            onDraftChange={handleDraftChange}
-            onSubmit={handleSubmit}
+          >
+            <PedigreeLayout
+              nodeIds={nodeIds}
+              edgeColor={edgeColor}
+              links={links}
+              nodeNames={nodeNames}
+              nodeWidth={nodeWidth}
+              nodeHeight={nodeHeight}
+              // Room around each person for the add menu that appears beside,
+              // above and below them.
+              rowGapRatio={1.4}
+              columnGapRatio={1.4}
+              renderNode={(personId) => {
+                const person = shown.byId.get(personId);
+                if (!person) return null;
+                const hasMenu = personId === menuPersonId;
+                return (
+                  <PersonNode
+                    person={person}
+                    label={displayName(personId)}
+                    color={nodeColor}
+                    shape={
+                      shapeDefinition
+                        ? resolveNodeShape(shapeDefinition, person.attributes)
+                        : 'circle'
+                    }
+                    selected={
+                      nomination ? isNominated(person) : personId === selectedId
+                    }
+                    disabled={
+                      nomination
+                        ? !canSelect(person)
+                        : pairUnavailable(personId)
+                    }
+                    linking={
+                      tool !== 'pointer' &&
+                      (personId === linkingId || personId === connectorTargetId)
+                    }
+                    menuOpen={hasMenu}
+                    // The person being added has not been asked yet.
+                    hasMissingDetails={
+                      !nomination &&
+                      family.byId.has(personId) &&
+                      missingDetailsFor(person, requiredFormVariables, config)
+                        .length > 0
+                    }
+                    adopted={shown.links.some(
+                      (link) =>
+                        link.kind === 'adoptive' && link.target === personId,
+                    )}
+
+                    onActivate={() => handleActivate(personId)}
+                    tabIndex={personId === tabStopId ? 0 : -1}
+                    onFocus={(event) => handleFocusPerson(personId, event)}
+                    onKeyDown={(event) => handleNodeKeyDown(personId, event)}
+                    onPointerEnter={(event) =>
+                      handlePersonPointerEnter(personId, event)
+                    }
+                    onPointerLeave={handlePersonPointerLeave}
+                    onPointerDown={(event) => {
+                      lastPointerType.current = event.pointerType;
+                    }}
+                    nodeRef={setNodeRef(personId)}
+                  >
+                    {hasMenu && (
+                      <AddRelativeMenu
+                        isYou={person.isEgo}
+                        name={displayName(personId)}
+                        onAdd={openAdd}
+                      />
+                    )}
+                  </PersonNode>
+                );
+              }}
+            />
+          </PedigreeViewport>
+          <div
+            ref={toolbarAreaRef}
+            className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex flex-col items-center gap-2 px-4"
+          >
+            {detailsLocked && (
+              <Alert
+                variant="info"
+                density="compact"
+                appearance="soft"
+                className="pointer-events-auto my-0 w-auto"
+                data-testid="pedigree-passphrase-notice"
+              >
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <p className="text-sm">
+                    <AppMessage message={passphraseNotice} />
+                  </p>
+                  {!encryptionUnavailable && (
+                    <Button size="sm" onClick={() => setPassphraseOpen(true)}>
+                      <AppMessage message={runtimeMessages.passphrase} />
+                    </Button>
+                  )}
+                </div>
+              </Alert>
+            )}
+            {tool !== 'pointer' && (
+              <p
+                className="text-sm opacity-80"
+                data-testid="pedigree-connect-hint"
+              >
+                {connectNotice ??
+                  text(
+                    tool === 'connect'
+                      ? wording.connectHint
+                      : wording.disconnectHint,
+                  )}
+              </p>
+            )}
+            {/* Rises into place when the stage first loads. */}
+            <motion.div
+              // No wider than the stage, so a toolbar that does not fit scrolls.
+              className="max-w-full min-w-0"
+              initial={reduceMotion ? false : { y: '150%', opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              // A heavy spring, damped just short of settling straight, so it
+              // lands with a slight rebound; the fade does not bounce.
+              transition={{
+                y: {
+                  type: 'spring',
+                  mass: 1.4,
+                  stiffness: 170,
+                  damping: 20,
+                  delay: TOOLBAR_ENTRANCE_DELAY / 1000,
+                },
+                opacity: {
+                  duration: 0.25,
+                  delay: TOOLBAR_ENTRANCE_DELAY / 1000,
+                },
+              }}
+            >
+              <SegmentedToolbar
+                aria-label={intl.formatMessage(messages.toolsLabel)}
+                size="lg"
+                className="pointer-events-auto"
+              >
+                {/* Answering a nomination prompt, selecting is all there is. */}
+                {!nomination && (
+                  <ToolbarToggleGroup
+                    aria-label={intl.formatMessage(messages.toolGroupLabel)}
+                    disabled={detailsLocked}
+                    value={[tool]}
+                    onValueChange={(value) => {
+                      const next = value[0];
+                      if (isTool(next)) chooseTool(next);
+                    }}
+                  >
+                    <ToolbarIconButton
+                      value="pointer"
+                      aria-label={text(wording.pointerTool)}
+                      icon={<MousePointer2 />}
+                      data-testid="pedigree-tool-pointer"
+                    />
+                    <ToolbarIconButton
+                      value="connect"
+                      aria-label={text(wording.connectTool)}
+                      icon={<Waypoints />}
+                      data-testid="pedigree-tool-connect"
+                    />
+                    <ToolbarIconButton
+                      value="disconnect"
+                      aria-label={text(wording.disconnectTool)}
+                      icon={<Unlink />}
+                      data-testid="pedigree-tool-disconnect"
+                    />
+                  </ToolbarToggleGroup>
+                )}
+                {!nomination && participantFraming && <ToolbarSeparator />}
+                {participantFraming && (
+                  <FramingControl
+                    value={chosenFraming}
+                    onChange={chooseFraming}
+                    open={framingOpen}
+                    onOpenChange={setFramingOpen}
+                  />
+                )}
+                {(!nomination || participantFraming) && <ToolbarSeparator />}
+                {zoomButtons}
+                {progress && completeness && !nomination && (
+                  <ToolbarSeparator />
+                )}
+                {progress && completeness && !nomination && (
+                  <CompletenessTracker
+                    progress={progress}
+                    completeness={completeness}
+                    open={trackerOpen}
+                    onOpenChange={setTrackerOpen}
+                    family={family}
+                    displayName={displayName}
+                    onItemSelect={handleTrackerItem}
+                    onItemAnswer={
+                      config.relativesNotRecordedAttribute
+                        ? (item) => void handleTrackerAnswer(item)
+                        : undefined
+                    }
+                  />
+                )}
+              </SegmentedToolbar>
+            </motion.div>
+          </div>
+        </div>
+        <ConnectMenu
+          pair={tool === 'connect' ? chosenPair : null}
+          family={family}
+          displayName={displayName}
+          parentKindLabels={optionLabels.parentKind}
+          anchor={
+            chosenPair
+              ? (nodeRefs.current.get(chosenPair.secondId) ?? null)
+              : null
+          }
+          onConnect={(connection, description) =>
+            void handleConnect(connection, description)
+          }
+          onClose={endConnecting}
+        />
+        <div aria-live="polite" className="sr-only">
+          {announcement}
+        </div>
+        {!encryptionUnavailable && (
+          <PassphraseOverlay
+            show={passphraseOpen}
+            choosing={!passphraseChosen}
+            onAccepted={() => setPassphraseOpen(false)}
+            onClose={() => setPassphraseOpen(false)}
           />
         )}
-      </PersonDrawer>
-    </div>
+        <PersonDrawer
+          popupRef={drawerRef}
+          open={panel?.open ?? false}
+          formKey={panel?.key ?? 'closed'}
+          onClose={cancelPanel}
+          onClosed={() => setPanel(null)}
+          returnFocus={() =>
+            returnFocusId ? (nodeRefs.current.get(returnFocusId) ?? null) : null
+          }
+          title={panelTitle}
+          footer={
+            <>
+              {editedPerson && !editedPerson.isEgo && (
+                <Button
+                  type="button"
+                  variant="text"
+                  color="destructive"
+                  className="mr-auto"
+                  onClick={() => void handleRemove(editedPerson.id)}
+                >
+                  <AppMessage message={commonMessages.delete} />
+                </Button>
+              )}
+              <Button type="button" variant="text" onClick={cancelPanel}>
+                <AppMessage message={commonMessages.cancel} />
+              </Button>
+              <SubmitButton form={formId}>{text(wording.save)}</SubmitButton>
+            </>
+          }
+        >
+          {panel && (
+            <PersonForm
+              key={panel.key}
+              formId={formId}
+              mode={panel.mode}
+              family={family}
+              config={config}
+              framing={framing}
+              genderIdentityOptions={genderIdentityOptions}
+              optionLabels={optionLabels}
+              formFields={formFields}
+              generatedLabels={generatedLabels}
+              decryptedNames={decryptedNames}
+              displayName={displayName}
+              nameField={stage.nodeConfiguration.nameField}
+              askAbout={
+                panel.mode.kind === 'edit' && progress && completeness
+                  ? {
+                      ...relativesToAskAbout(
+                        family,
+                        progress,
+                        panel.mode.person.id,
+                      ),
+                      required: completeness.enforcement === 'required',
+                      questions: {
+                        siblings: completeness.itemText.siblings.question,
+                        children: completeness.itemText.children.question,
+                      },
+                    }
+                  : undefined
+              }
+              onDraftChange={handleDraftChange}
+              onSubmit={handleSubmit}
+            />
+          )}
+        </PersonDrawer>
+      </div>
+    </PedigreeWordsProvider>
   );
 };
 

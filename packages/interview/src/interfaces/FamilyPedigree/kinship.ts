@@ -1,12 +1,11 @@
-import type { IntlShape } from '@codaco/app-i18n/messages';
 import type {
   FramingId,
   PedigreeRelationshipKind,
 } from '@codaco/protocol-validation';
 
 import { type Gamete, gameteLookup, inferGametes } from './gametes';
-import { messages } from './messages';
 import type { Family, Person } from './model';
+import type { PedigreeWords } from './pedigreeWords';
 
 /**
  * Every kinship word an unnamed person can be described by. The interview
@@ -573,26 +572,29 @@ function fillUnconnected(family: Family, labels: Map<string, PersonLabel>) {
  * holds every such word (`relativeTerm`). Used for the add menu, the framing
  * options and anyone with no other label, which is shown as "Relative".
  */
-export function formatRelativeTerm(term: string, intl: IntlShape): string {
-  return intl.formatMessage(messages.relativeTerm, { term });
+export function formatRelativeTerm(term: string, words: PedigreeWords): string {
+  return words.text(words.wording.relativeTerm, { term });
 }
 
 /** The label as participant-facing text. */
-export function formatPersonLabel(label: PersonLabel, intl: IntlShape): string {
+export function formatPersonLabel(
+  label: PersonLabel,
+  words: PedigreeWords,
+): string {
   switch (label.type) {
     case 'name':
       return label.name;
     case 'you':
-      return intl.formatMessage(messages.you);
+      return words.text(words.wording.you);
     case 'term':
-      return formatRelativeTerm(label.term, intl);
+      return formatRelativeTerm(label.term, words);
     case 'relativeOf':
-      return intl.formatMessage(messages.generatedLabelOf, {
+      return words.text(words.wording.generatedLabelOf, {
         relation: 'owner',
-        owner: formatPersonLabel(label.owner, intl),
-        term: formatRelativeTerm(label.term, intl),
+        owner: formatPersonLabel(label.owner, words),
+        term: formatRelativeTerm(label.term, words),
       });
     case 'unconnected':
-      return formatRelativeTerm('other', intl);
+      return formatRelativeTerm('other', words);
   }
 }

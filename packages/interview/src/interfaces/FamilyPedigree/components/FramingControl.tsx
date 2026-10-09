@@ -14,7 +14,7 @@ import {
 import type { FramingId } from '@codaco/protocol-validation';
 
 import { formatRelativeTerm } from '../kinship';
-import { messages } from '../messages';
+import { configuredWord, usePedigreeWords } from '../pedigreeWords';
 
 type FramingControlProps = {
   /** The framing the participant chose, if they have. */
@@ -39,6 +39,8 @@ function FramingControl({
   onOpenChange,
   ref,
 }: FramingControlProps) {
+  const words = usePedigreeWords();
+  const { wording, text } = words;
   const intl = useAppIntl();
 
   return (
@@ -51,7 +53,7 @@ function FramingControl({
       }}
       trigger={
         <ToolbarIconButton
-          aria-label={intl.formatMessage(messages.framingControlLabel)}
+          aria-label={text(configuredWord(wording.framingControlLabel))}
           icon={<Speech />}
           data-testid="pedigree-framing"
         />
@@ -64,14 +66,14 @@ function FramingControl({
       <UnconnectedField
         component={RichSelectGroupField}
         name="pedigreeFraming"
-        label={intl.formatMessage(messages.framingChoiceTitle)}
-        hint={intl.formatMessage(messages.framingChoiceDescription)}
+        label={text(configuredWord(wording.framingChoiceTitle))}
+        hint={text(configuredWord(wording.framingChoiceDescription))}
         options={[
           {
             value: 'gendered',
             label: intl.formatList(
               ['mother', 'father', 'sister', 'brother'].map((term) =>
-                formatRelativeTerm(term, intl),
+                formatRelativeTerm(term, words),
               ),
               { type: 'unit' },
             ),
@@ -80,7 +82,7 @@ function FramingControl({
             value: 'gamete',
             label: intl.formatList(
               ['eggParent', 'spermParent', 'sibling'].map((term) =>
-                formatRelativeTerm(term, intl),
+                formatRelativeTerm(term, words),
               ),
               { type: 'unit' },
             ),

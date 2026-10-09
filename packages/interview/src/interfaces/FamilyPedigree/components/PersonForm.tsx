@@ -10,7 +10,7 @@ import {
 } from 'react';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
-import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
@@ -58,7 +58,6 @@ import {
 import { getCodebookVariablesForSubjectType } from '../../../selectors/protocol';
 import { readOwnProperty, writeOwnProperty } from '../../../utils/ownProperty';
 import { RELATIVES_NOT_RECORDED } from '../completeness';
-import { messages } from '../messages';
 import {
   type AddRelativeRequest,
   type Family,
@@ -84,10 +83,11 @@ import {
   siblingsOf,
 } from '../model';
 import {
-  BUILT_IN_DETAIL_LABELS,
-  CHILD_KIND_LABELS,
+  builtInDetailWording,
+  childKindWording,
   type OwnedOptionLabels,
 } from '../options';
+import { configuredWord, usePedigreeWords } from '../pedigreeWords';
 
 export type PersonFormMode =
   | {
@@ -252,6 +252,8 @@ export default function PersonForm({
   onDraftChange,
   onSubmit,
 }: PersonFormProps) {
+  const words = usePedigreeWords();
+  const { wording, text } = words;
   const intl = useAppIntl();
   const resolve = useResolveLocalizedString();
   const person = mode.kind === 'edit' ? mode.person : undefined;
@@ -433,7 +435,7 @@ export default function PersonForm({
     mode.kind === 'edit'
       ? mode.missing.map((detail) =>
           typeof detail === 'string'
-            ? intl.formatMessage(BUILT_IN_DETAIL_LABELS[detail])
+            ? text(builtInDetailWording(wording, detail))
             : fieldPromptText(detail.variable),
         )
       : [];
@@ -443,14 +445,11 @@ export default function PersonForm({
       <div className="flex flex-col gap-8">
         {missingLabels.length > 0 && (
           <Alert variant="warning">
-            <AppMessage
-              message={messages.missingDetailsList}
-              values={{
-                details: intl.formatList(missingLabels, {
-                  type: 'conjunction',
-                }),
-              }}
-            />
+            {text(wording.missingDetailsList, {
+              details: intl.formatList(missingLabels, {
+                type: 'conjunction',
+              }),
+            })}
           </Alert>
         )}
         <section className="flex flex-col">
@@ -474,7 +473,7 @@ export default function PersonForm({
               component={RadioGroupField}
               name={config.genderIdentity.attribute}
               nameMode="opaque"
-              label={intl.formatMessage(messages.genderIdentityLabel)}
+              label={text(configuredWord(wording.genderIdentityLabel))}
               options={genderIdentityOptions}
               required
               initialValue={person?.genderIdentity}
@@ -484,12 +483,12 @@ export default function PersonForm({
             component={RadioGroupField}
             name={config.sexAssignedAtBirthAttribute}
             nameMode="opaque"
-            label={intl.formatMessage(messages.sexAssignedAtBirthLabel)}
+            label={text(wording.sexAssignedAtBirthLabel)}
             options={sexOptions}
             required
             hint={
               ruledOut.size > 0
-                ? intl.formatMessage(messages.sexRuledOutHint, {
+                ? text(wording.sexRuledOutHint, {
                     isYou: isEgo ? 'true' : 'false',
                   })
                 : undefined
@@ -559,6 +558,8 @@ function RelativesQuestions({
   askAbout: RelativesQuestions;
   displayName: (personId: string) => string;
 }) {
+  const words = usePedigreeWords();
+  const { wording, text } = words;
   const intl = useAppIntl();
   const resolveMessage = useResolveLocalizedMessage();
   const values = {
@@ -568,7 +569,7 @@ function RelativesQuestions({
   const options = [
     { value: 'yes', label: intl.formatMessage(booleanFieldMessages.yes) },
     { value: 'no', label: intl.formatMessage(booleanFieldMessages.no) },
-    { value: 'unknown', label: intl.formatMessage(messages.dontKnow) },
+    { value: 'unknown', label: text(wording.dontKnow) },
   ];
   const initial = (
     group: (typeof RELATIVES_NOT_RECORDED)[keyof typeof RELATIVES_NOT_RECORDED],
@@ -672,7 +673,8 @@ function ExistingRelationshipFields({
   displayName: (personId: string) => string;
   parentKindLabels: Readonly<Record<PedigreeParentKind, string>>;
 }) {
-  const intl = useAppIntl();
+  const words = usePedigreeWords();
+  const { wording, text } = words;
   const { partnerships, parents } = existingLinksOf(family, person.id);
   // Who carried the pregnancy, as the answers stand: one parent at most, so
   // while one does, the others are not asked and cannot be a surrogate.
@@ -718,7 +720,7 @@ function ExistingRelationshipFields({
             component={BooleanField}
             name={linkField(link, 'current')}
             nameMode="opaque"
-            label={intl.formatMessage(messages.stillTogetherLabel, {
+            label={text(wording.stillTogetherLabel, {
               named: 'true',
               personIsYou: isYou(person.id),
               partnerIsYou: isYou(partnerId),
@@ -774,7 +776,8 @@ function ParentLinkFields({
   parentIsYou: string;
   parentName: string;
 }) {
-  const intl = useAppIntl();
+  const words = usePedigreeWords();
+  const { wording, text } = words;
   const kindField = linkField(link, 'kind');
   const values = useFormValue([kindField], 'opaque');
   const kind = asString(values[kindField]) ?? link.kind;
@@ -785,7 +788,7 @@ function ParentLinkFields({
         component={RadioGroupField}
         name={kindField}
         nameMode="opaque"
-        label={intl.formatMessage(messages.parentLinkKindLabel, {
+        label={text(wording.parentLinkKindLabel, {
           personIsYou,
           parentIsYou,
           parent: parentName,
@@ -804,7 +807,7 @@ function ParentLinkFields({
           component={BooleanField}
           name={linkField(link, 'carrier')}
           nameMode="opaque"
-          label={intl.formatMessage(messages.parentCarriedLabel, {
+          label={text(wording.parentCarriedLabel, {
             named: 'true',
             parentIsYou,
             parent: parentName,
@@ -1030,12 +1033,13 @@ function RelationshipFields({
 }
 
 function PartnershipCurrentField() {
-  const intl = useAppIntl();
+  const words = usePedigreeWords();
+  const { wording, text } = words;
   return (
     <Field
       component={BooleanField}
       name={ROLE.partnershipCurrent}
-      label={intl.formatMessage(messages.stillTogetherLabel, {
+      label={text(wording.stillTogetherLabel, {
         named: 'false',
       })}
       initialValue={true}
@@ -1056,6 +1060,8 @@ function ParentFields({
   displayName: (personId: string) => string;
   config: PedigreeConfig;
 }) {
+  const words = usePedigreeWords();
+  const { wording, text } = words;
   const intl = useAppIntl();
   const values = useFormValue([
     ROLE.parentKind,
@@ -1143,7 +1149,7 @@ function ParentFields({
       name={ROLE.carriedPregnancy}
       label={
         anchorHasCarrier
-          ? intl.formatMessage(messages.carriedSiblingsPregnancyLabel, {
+          ? text(wording.carriedSiblingsPregnancyLabel, {
               count: siblingsWithoutCarrier.length,
               isYou:
                 onlySibling !== undefined && family.byId.get(onlySibling)?.isEgo
@@ -1151,7 +1157,7 @@ function ParentFields({
                   : 'false',
               name: onlySibling === undefined ? '' : displayName(onlySibling),
             })
-          : intl.formatMessage(messages.parentCarriedLabel, { named: 'false' })
+          : text(wording.parentCarriedLabel, { named: 'false' })
       }
     />
   );
@@ -1195,7 +1201,7 @@ function ParentFields({
       <Field
         component={RadioGroupField}
         name={ROLE.parentKind}
-        label={intl.formatMessage(messages.parentKindLabel)}
+        label={text(wording.parentKindLabel)}
         options={PARENT_KINDS.map((value) => ({
           value,
           label: parentKindLabels[value],
@@ -1209,7 +1215,7 @@ function ParentFields({
         <Field
           component={RadioGroupField}
           name={ROLE.partnerId}
-          label={intl.formatMessage(messages.parentPartnerLabel)}
+          label={text(wording.parentPartnerLabel)}
           options={[
             ...existingParents.map((id) => ({
               value: id,
@@ -1228,7 +1234,7 @@ function ParentFields({
         <Field
           component={CheckboxGroupField}
           name={ROLE.alsoParentOf}
-          label={intl.formatMessage(messages.alsoParentOfLabel)}
+          label={text(wording.alsoParentOfLabel)}
           options={siblings.map((id) => ({
             value: id,
             label: displayName(id),
@@ -1318,7 +1324,8 @@ function ChildFields({
   family: Family;
   displayName: (personId: string) => string;
 }) {
-  const intl = useAppIntl();
+  const words = usePedigreeWords();
+  const { wording, text } = words;
   const values = useFormValue([
     ROLE.childKind,
     ROLE.otherParent,
@@ -1373,24 +1380,24 @@ function ChildFields({
       <Field
         component={RadioGroupField}
         name={ROLE.otherParent}
-        label={intl.formatMessage(messages.otherParentLabel)}
+        label={text(wording.otherParentLabel)}
         options={[
           ...partners.map((id) => ({ value: id, label: displayName(id) })),
           {
             value: UNKNOWN,
-            label: intl.formatMessage(messages.otherParentUnknown),
+            label: text(wording.otherParentUnknown),
           },
-          { value: NONE, label: intl.formatMessage(messages.otherParentNone) },
+          { value: NONE, label: text(wording.otherParentNone) },
         ]}
         initialValue={partners[0] ?? UNKNOWN}
       />
       <Field
         component={RadioGroupField}
         name={ROLE.childKind}
-        label={intl.formatMessage(messages.childKindLabel)}
+        label={text(wording.childKindLabel)}
         options={CHILD_KINDS.map((value) => ({
           value,
-          label: intl.formatMessage(CHILD_KIND_LABELS[value]),
+          label: text(childKindWording(wording, value)),
         }))}
         required
         initialValue="biological"
@@ -1399,12 +1406,12 @@ function ChildFields({
         <Field
           component={RadioGroupField}
           name={ROLE.biologicalParent}
-          label={intl.formatMessage(messages.biologicalParentLabel)}
-          hint={intl.formatMessage(messages.biologicalParentHint)}
+          label={text(wording.biologicalParentLabel)}
+          hint={text(wording.biologicalParentHint)}
           options={[
             {
               value: 'both',
-              label: intl.formatMessage(messages.biologicalParentBoth, {
+              label: text(wording.biologicalParentBoth, {
                 firstIsYou: anchor.isEgo ? 'true' : 'false',
                 first: displayName(anchor.id),
                 second: displayName(otherPartner),
@@ -1423,7 +1430,7 @@ function ChildFields({
           <Field
             component={RadioGroupField}
             name={ROLE.carrier}
-            label={intl.formatMessage(messages.carrierLabel)}
+            label={text(wording.carrierLabel)}
             options={[
               ...(anchorCanCarry
                 ? [{ value: 'anchor', label: displayName(anchor.id) }]
@@ -1434,14 +1441,14 @@ function ChildFields({
                       value: 'otherParent',
                       label:
                         otherParent === UNKNOWN
-                          ? intl.formatMessage(messages.otherParentUnknown)
+                          ? text(wording.otherParentUnknown)
                           : displayName(otherParent),
                     },
                   ]
                 : []),
               {
                 value: NONE,
-                label: intl.formatMessage(messages.carrierUnknown),
+                label: text(wording.carrierUnknown),
               },
             ]}
           />
@@ -1465,7 +1472,8 @@ function SiblingFields({
   config: PedigreeConfig;
   framing: FramingId;
 }) {
-  const intl = useAppIntl();
+  const words = usePedigreeWords();
+  const { wording, text } = words;
   const values = useFormValue([
     ROLE.sharedParents,
     ROLE.sharedParentCount,
@@ -1540,7 +1548,7 @@ function SiblingFields({
   const carrierLabel = (id: string) =>
     family.byId.has(id) || parents.length !== 1
       ? displayName(id)
-      : intl.formatMessage(messages.sharedParentUnshown, args);
+      : text(wording.sharedParentUnshown, args);
 
   // Someone with no parents is given an egg parent and a sperm parent,
   // unnamed; the sibling may share both or one of them. Someone whose egg or
@@ -1553,23 +1561,23 @@ function SiblingFields({
       <Field
         component={RadioGroupField}
         name={ROLE.sharedParentCount}
-        label={intl.formatMessage(messages.sharedParentCountLabel, args)}
-        hint={intl.formatMessage(messages.placeholderParentsNote, { framing })}
+        label={text(wording.sharedParentCountLabel, args)}
+        hint={text(wording.placeholderParentsNote, { framing })}
         options={[
           {
             value: 'both',
-            label: intl.formatMessage(messages.sharedParentCountBoth),
+            label: text(wording.sharedParentCountBoth),
           },
           {
             value: 'eggParent',
-            label: intl.formatMessage(messages.sharedParentEggOnly, {
+            label: text(wording.sharedParentEggOnly, {
               parent: 'egg',
               framing,
             }),
           },
           {
             value: 'spermParent',
-            label: intl.formatMessage(messages.sharedParentEggOnly, {
+            label: text(wording.sharedParentEggOnly, {
               parent: 'sperm',
               framing,
             }),
@@ -1582,14 +1590,14 @@ function SiblingFields({
       <Field
         component={CheckboxGroupField}
         name={ROLE.sharedParents}
-        label={intl.formatMessage(messages.sharedParentCountLabel, args)}
+        label={text(wording.sharedParentCountLabel, args)}
         options={[
           ...parents.map((id) => ({ value: id, label: displayName(id) })),
           ...(parents.length < 2
             ? [
                 {
                   value: UNKNOWN,
-                  label: intl.formatMessage(messages.sharedParentUnshown, args),
+                  label: text(wording.sharedParentUnshown, args),
                 },
               ]
             : []),
@@ -1605,10 +1613,10 @@ function SiblingFields({
       <Field
         component={RadioGroupField}
         name={ROLE.siblingKind}
-        label={intl.formatMessage(messages.siblingKindLabel)}
+        label={text(wording.siblingKindLabel)}
         options={CHILD_KINDS.map((value) => ({
           value,
-          label: intl.formatMessage(CHILD_KIND_LABELS[value]),
+          label: text(childKindWording(wording, value)),
           disabled: value === 'biological' && !biologicalPossible,
         }))}
         required
@@ -1618,12 +1626,12 @@ function SiblingFields({
         <Field
           component={RadioGroupField}
           name={ROLE.carrier}
-          label={intl.formatMessage(messages.carrierLabel)}
+          label={text(wording.carrierLabel)}
           options={[
             ...carriers.map((id) => ({ value: id, label: carrierLabel(id) })),
             {
               value: NONE,
-              label: intl.formatMessage(messages.carrierUnknown),
+              label: text(wording.carrierUnknown),
             },
           ]}
         />

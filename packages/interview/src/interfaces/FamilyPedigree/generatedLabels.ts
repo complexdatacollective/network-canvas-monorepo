@@ -9,7 +9,6 @@ import {
   labelFamily,
   type PersonLabel,
 } from './kinship';
-import { messages } from './messages';
 import {
   partnersOf,
   primaryParentsOf,
@@ -17,6 +16,7 @@ import {
   type Family,
   type Person,
 } from './model';
+import type { PedigreeWords } from './pedigreeWords';
 
 /**
  * How a qualifier relates the person to the relative who tells them apart,
@@ -91,16 +91,17 @@ export function labelEveryone(
   family: Family,
   framing: FramingId,
   intl: IntlShape,
+  words: PedigreeWords,
 ): Map<string, string> {
-  const generated = buildLabels(family, framing, intl);
+  const generated = buildLabels(family, framing, intl, words);
   return new Map(
     family.people.map((person) => [
       person.id,
       person.isEgo
-        ? intl.formatMessage(messages.you)
+        ? words.text(words.wording.you)
         : (person.name ??
           generated.get(person.id) ??
-          formatRelativeTerm('other', intl)),
+          formatRelativeTerm('other', words)),
     ]),
   );
 }
@@ -125,9 +126,10 @@ export function generateLabels(
   family: Family,
   framing: FramingId,
   intl: IntlShape,
+  words: PedigreeWords,
 ): Map<string, string> {
   return new Map(
-    [...buildLabels(family, framing, intl)]
+    [...buildLabels(family, framing, intl, words)]
       .filter(([id]) => family.byId.get(id)?.hasUnreadableName !== true)
       .map(([id, label]) => [id, withoutSoftHyphens(label)]),
   );
@@ -166,6 +168,7 @@ function buildLabels(
   family: Family,
   framing: FramingId,
   intl: IntlShape,
+  words: PedigreeWords,
 ): Map<string, string> {
   const comparable = comparableIn(intl.locale);
   const kinshipLabels = labelFamily(family, framing);
@@ -186,7 +189,7 @@ function buildLabels(
   for (const person of unnamed) {
     const label = kinshipLabels.get(person.id) ?? { type: 'unconnected' };
     baseLabels.set(person.id, label);
-    baseTexts.set(person.id, formatPersonLabel(label, intl));
+    baseTexts.set(person.id, formatPersonLabel(label, words));
   }
 
   const groups = new Map<string, Person[]>();
@@ -232,7 +235,7 @@ function buildLabels(
     const term = baseTexts.get(personId) ?? '';
     const relation = QUALIFIER_RELATION[qualifier];
     if (relative.isEgo) {
-      return intl.formatMessage(messages.generatedLabelOf, {
+      return words.text(words.wording.generatedLabelOf, {
         relation,
         isYou: 'true',
         term,
@@ -243,7 +246,7 @@ function buildLabels(
       relative.name?.trim() ??
       (allowKinWords ? kinWordOf(relativeId) : undefined);
     if (name === undefined) return undefined;
-    return intl.formatMessage(messages.generatedLabelOf, {
+    return words.text(words.wording.generatedLabelOf, {
       relation,
       isYou: 'false',
       term,

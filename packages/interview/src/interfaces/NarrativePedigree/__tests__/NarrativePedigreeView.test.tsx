@@ -1,15 +1,16 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
   asEntityAttributeReference,
   type FramingId,
+  type LocalizationDeclaration,
   type PedigreeRelationshipKind,
   type PedigreeSexAssignedAtBirth,
+  familyPedigreeWordingIn,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -187,6 +188,7 @@ const edges: NcEdge[] = [
 const sourceStage = {
   id: SOURCE_STAGE_ID,
   type: 'FamilyPedigree' as const,
+  wording: familyPedigreeWordingIn(['en', 'es']),
   label: { en: 'Family Pedigree' },
   subject: { entity: 'node' as const, type: NODE_TYPE },
   prompt: { en: 'Build your pedigree.' },
@@ -313,26 +315,32 @@ function makeStore({
   return store;
 }
 
+const ENGLISH_AND_SPANISH: LocalizationDeclaration = {
+  defaultLocale: 'en',
+  locales: ['en', 'es'],
+};
+
 function renderView(options: StoreOptions = {}, locale = 'en') {
   const stage = options.narrativeStage ?? makeNarrativeStage();
   const store = makeStore({ ...options, narrativeStage: stage });
 
-  function Wrapper({ children }: { children: ReactNode }) {
-    return (
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
-          <TestProtocolLocalization>{children}</TestProtocolLocalization>
-        </CurrentStepProvider>
-      </Provider>
-    );
-  }
-
+  // The participant's stated locale reaches the protocol's localization, so
+  // the stage's own words resolve in it, as they do in the Shell.
   const view = (requestedLocale: string) => (
-    <InterviewI18nProvider requestedLocale={requestedLocale}>
-      <NarrativePedigreeView stage={stage} />
-    </InterviewI18nProvider>
+    <Provider store={store}>
+      <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
+        <TestProtocolLocalization
+          localization={ENGLISH_AND_SPANISH}
+          locale={requestedLocale}
+        >
+          <InterviewI18nProvider requestedLocale={requestedLocale}>
+            <NarrativePedigreeView stage={stage} />
+          </InterviewI18nProvider>
+        </TestProtocolLocalization>
+      </CurrentStepProvider>
+    </Provider>
   );
-  const rendered = render(view(locale), { wrapper: Wrapper });
+  const rendered = render(view(locale));
   return {
     ...rendered,
     store,
