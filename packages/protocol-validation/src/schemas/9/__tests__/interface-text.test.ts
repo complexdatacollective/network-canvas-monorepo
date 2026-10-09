@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { FORMS_INTERFACE_TEXT } from '../interface-text-wording.ts';
 import {
   INTERFACE_TEXT_MESSAGES,
   InterfaceTextSchema,
@@ -69,18 +70,25 @@ describe('the interface text a protocol holds', () => {
   });
 
   it('holds the form text for the forms a stage always shows, and the passphrase’s', () => {
-    const groups = (extra: Parameters<typeof protocolWith>[0]) =>
-      Object.keys(interfaceTextFor(protocolWith(extra)));
-    expect(groups({ stages: [{ type: 'NameGeneratorQuickAdd' }] })).toContain(
-      'forms',
-    );
-    expect(groups({ stages: [{ type: 'Anonymisation' }] })).toContain('forms');
+    // The form text a protocol holds: all of it, only the message for a
+    // refused save, or none.
+    const groups = (extra: Parameters<typeof protocolWith>[0]) => {
+      const held = interfaceTextFor(protocolWith(extra)).forms;
+      if (held === undefined) return 'none';
+      return Object.keys(held).length ===
+        Object.keys(FORMS_INTERFACE_TEXT).length
+        ? 'all'
+        : Object.keys(held).join();
+    };
+    expect(groups({ stages: [{ type: 'NameGeneratorQuickAdd' }] })).toBe('all');
+    expect(groups({ stages: [{ type: 'Anonymisation' }] })).toBe('all');
     // A Dyad Census answers each pair with Yes or No.
-    expect(groups({ stages: [{ type: 'DyadCensus' }] })).toContain('forms');
+    expect(groups({ stages: [{ type: 'DyadCensus' }] })).toBe('all');
     // A roster's cards show the answers in the columns it lists, as Yes and
-    // No for a yes-or-no one; one that lists none shows only names.
-    expect(groups({ stages: [{ type: 'NameGeneratorRoster' }] })).not.toContain(
-      'forms',
+    // No for a yes-or-no one; one that lists none shows only names, and
+    // reports a refused save.
+    expect(groups({ stages: [{ type: 'NameGeneratorRoster' }] })).toBe(
+      'submitFailed',
     );
     expect(
       groups({
@@ -91,7 +99,7 @@ describe('the interface text a protocol holds', () => {
           },
         ],
       }),
-    ).not.toContain('forms');
+    ).toBe('submitFailed');
     expect(
       groups({
         stages: [
@@ -105,13 +113,13 @@ describe('the interface text a protocol holds', () => {
           },
         ],
       }),
-    ).toContain('forms');
+    ).toBe('all');
     // A Categorical Bin asks for its "other" answer in a form dialog.
     expect(
       groups({
         stages: [{ type: 'CategoricalBin', prompts: [{ id: 'p' }] }],
       }),
-    ).not.toContain('forms');
+    ).toBe('submitFailed');
     expect(
       groups({
         stages: [
@@ -121,19 +129,23 @@ describe('the interface text a protocol holds', () => {
           },
         ],
       }),
-    ).toContain('forms');
-    expect(groups({ codebook: ENCRYPTED_CODEBOOK })).toContain('forms');
+    ).toBe('all');
+    expect(groups({ codebook: ENCRYPTED_CODEBOOK })).toBe('all');
+    // A Geospatial stage reports a refused save, and shows no form.
+    expect(groups({ stages: [{ type: 'Geospatial' }] })).toBe('submitFailed');
+    // A stage that saves nothing a participant is told about holds none.
+    expect(groups({ stages: [{ type: 'Sociogram' }] })).toBe('none');
     // A Network Composer's name box is not a form that can be submitted, but
     // the form its inspector shows for a selected person is, once it has
-    // fields.
-    expect(groups({ stages: [{ type: 'NetworkComposer' }] })).not.toContain(
-      'forms',
+    // fields. Without one it still reports a refused save.
+    expect(groups({ stages: [{ type: 'NetworkComposer' }] })).toBe(
+      'submitFailed',
     );
     expect(
       groups({
         stages: [{ type: 'NetworkComposer', nodeForm: { fields: [] } }],
       }),
-    ).not.toContain('forms');
+    ).toBe('submitFailed');
     expect(
       groups({
         stages: [
@@ -143,7 +155,7 @@ describe('the interface text a protocol holds', () => {
           },
         ],
       }),
-    ).toContain('forms');
+    ).toBe('all');
   });
 
   it('holds the validation messages of only the rules the protocol uses', () => {
@@ -297,6 +309,12 @@ describe('the interface text a protocol holds', () => {
       }),
     );
     expect(InterfaceTextSchema.safeParse(text).success).toBe(true);
+    // Only the message for a refused save, on a stage that shows no form.
+    const saveOnly = interfaceTextFor(
+      protocolWith({ stages: [{ type: 'Geospatial' }] }),
+    );
+    expect(Object.keys(saveOnly.forms ?? {})).toEqual(['submitFailed']);
+    expect(InterfaceTextSchema.safeParse(saveOnly).success).toBe(true);
     expect(
       InterfaceTextSchema.safeParse({ interview: { back: { en: ' ' } } })
         .success,

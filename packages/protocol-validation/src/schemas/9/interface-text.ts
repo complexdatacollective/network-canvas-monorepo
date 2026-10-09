@@ -145,6 +145,40 @@ const usesForms = (protocol: ProtocolDocument) =>
   );
 
 /**
+ * Stage types that save each answer as it is given, and say so when a save is
+ * refused, in the form text's words when the refusal has no reason of its
+ * own. The others that do (a Family Pedigree, a name generator) already show
+ * every form text.
+ */
+const REPORTS_REFUSED_SAVES_STAGE_TYPES: ReadonlySet<string> = new Set([
+  'CategoricalBin',
+  'Geospatial',
+  'NameGeneratorRoster',
+  'NetworkComposer',
+]);
+
+const FORM_ENTRIES: ReadonlySet<string> = new Set(
+  Object.keys(FORMS_INTERFACE_TEXT),
+);
+
+const SAVE_REFUSAL_ENTRIES: ReadonlySet<string> = new Set(['submitFailed']);
+
+/**
+ * The form text a protocol shows: all of it with a form, and otherwise only
+ * the message for a refused save, on a stage that reports one.
+ */
+const formEntriesUsed = (protocol: ProtocolDocument): ReadonlySet<string> => {
+  if (usesForms(protocol)) return FORM_ENTRIES;
+  return stagesOf(protocol).some(
+    (stage) =>
+      typeof stage.type === 'string' &&
+      REPORTS_REFUSED_SAVES_STAGE_TYPES.has(stage.type),
+  )
+    ? SAVE_REFUSAL_ENTRIES
+    : new Set();
+};
+
+/**
  * Every record the protocol holds anywhere in its codebook and stages: where
  * an input control and its parameters may be declared, since a Network
  * Composer's field can set its own.
@@ -259,7 +293,11 @@ type InterfaceTextGroup = Readonly<{
 const INTERFACE_TEXT_GROUPS = {
   interview: { entries: INTERVIEW_INTERFACE_TEXT, usedBy: () => true },
   passphrase: { entries: PASSPHRASE_INTERFACE_TEXT, usedBy: usesPassphrase },
-  forms: { entries: FORMS_INTERFACE_TEXT, usedBy: usesForms },
+  forms: {
+    entries: FORMS_INTERFACE_TEXT,
+    usedBy: (protocol) => formEntriesUsed(protocol).size > 0,
+    entriesUsedBy: formEntriesUsed,
+  },
   validation: {
     entries: VALIDATION_INTERFACE_TEXT,
     usedBy: (protocol) => validationMessagesUsed(protocol).size > 0,
@@ -299,13 +337,13 @@ const partialGroupSchema = (
 export const InterfaceTextSchema = z.strictObject({
   interview: groupSchema(INTERVIEW_INTERFACE_TEXT).optional(),
   passphrase: groupSchema(PASSPHRASE_INTERFACE_TEXT).optional(),
-  forms: groupSchema(FORMS_INTERFACE_TEXT).optional(),
+  forms: partialGroupSchema(FORMS_INTERFACE_TEXT).optional(),
   validation: partialGroupSchema(VALIDATION_INTERFACE_TEXT).optional(),
 });
 
 /**
  * The interface text a protocol holds, by group and name. An entry of a group
- * held only in part (`validation`) may be absent.
+ * held only in part (`forms`, `validation`) may be absent.
  */
 export type InterfaceText = Readonly<
   Partial<
