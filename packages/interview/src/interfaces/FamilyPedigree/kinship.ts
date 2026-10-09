@@ -142,7 +142,13 @@ export type PersonLabel =
   | { type: 'you' }
   | { type: 'term'; term: KinTerm }
   /** Beyond the kinship words: described through the person before them. */
-  | { type: 'relativeOf'; owner: PersonLabel; term: StepTerm }
+  | {
+      type: 'relativeOf';
+      /** The person before them, and that person's own label. */
+      ownerId: string;
+      owner: PersonLabel;
+      term: StepTerm;
+    }
   /** Not connected to the participant at all. */
   | { type: 'unconnected' };
 
@@ -381,28 +387,50 @@ const isStepOrInLawStep = (step: Step) => {
   }
 };
 
+type Side = 'maternal' | 'paternal';
+
+/**
+ * The side of the family a first step from the participant leads to, which
+ * only the gendered framing names: a parent's, by the words their gender
+ * identity takes, or, for a biological parent whose words are not known, by
+ * the gamete they gave, as `stepTerm` names them a biological mother or
+ * father.
+ */
+function sideOfFirstStep(
+  family: Family,
+  step: Step,
+  framing: FramingId,
+  gameteOf: GameteOf,
+): Side | undefined {
+  if (framing !== 'gendered' || step.type !== 'parent') return undefined;
+  const words = family.byId.get(step.to)?.genderWords;
+  if (words === 'feminine') return 'maternal';
+  if (words === 'masculine') return 'paternal';
+  if (
+    (words === undefined || words === 'unknown') &&
+    step.kind === 'biological' &&
+    family.egoId !== undefined
+  ) {
+    const gamete = gameteOf(step.to, family.egoId);
+    if (gamete === 'egg') return 'maternal';
+    if (gamete === 'sperm') return 'paternal';
+  }
+  return undefined;
+}
+
 /**
  * The kinship word for a relative more than one step away, or undefined when
- * there is no everyday word for them. `path` runs from the participant.
+ * there is no everyday word for them. `path` runs from the participant, and
+ * `side` is the side of the family it is on, when it is one (`labelFamily`).
  */
 export function kinTermFor(
   family: Family,
   path: readonly Step[],
   framing: FramingId,
+  side?: Side,
 ): KinTerm | undefined {
   const target = family.byId.get(path[path.length - 1]!.to);
   const gender = genderOf(target, framing);
-  // Which side of the family, from the first parent on the way. Only the
-  // gendered framing says "maternal" or "paternal".
-  const firstParent = family.byId.get(path[0]!.to);
-  const side =
-    framing === 'gendered' && path[0]!.type === 'parent'
-      ? firstParent?.genderWords === 'feminine'
-        ? 'maternal'
-        : firstParent?.genderWords === 'masculine'
-          ? 'paternal'
-          : undefined
-      : undefined;
   const shape = path.map((step) => step.type).join(',');
   const descends = path
     .filter((step) => step.type === 'parent' || step.type === 'child')
@@ -570,39 +598,64 @@ export function labelFamily(
 
   // Breadth-first from the participant, one step of distance at a time, so
   // that each label is final before anyone further away is described through
-  // it.
+  // it. Each person is described along the first shortest path found to
+  // them, on a side of the family only when every shortest path to them is
+  // on it: someone reached through both parents is on neither side.
   const paths = new Map<string, Step[]>([[family.egoId, []]]);
+  const sides = new Map<string, Set<Side | undefined>>();
   let frontier = [family.egoId];
   while (frontier.length > 0) {
     const next: string[] = [];
-    const layer = new Map<string, PersonLabel>();
     for (const fromId of frontier) {
       const fromPath = paths.get(fromId)!;
       for (const step of stepsFrom(family, fromId)) {
-        if (paths.has(step.to)) continue;
-        const path = [...fromPath, step];
-        paths.set(step.to, path);
-        next.push(step.to);
-        if (labels.has(step.to)) continue;
-        if (path.length === 1) {
-          layer.set(step.to, {
-            type: 'term',
-            term: stepTerm(family, fromId, step, framing, gameteOf),
-          });
-          continue;
+        const reached = paths.get(step.to);
+        if (reached && reached.length <= fromPath.length) continue;
+        if (!reached) {
+          paths.set(step.to, [...fromPath, step]);
+          next.push(step.to);
         }
-        const term = kinTermFor(family, path, framing);
-        layer.set(
-          step.to,
-          term
-            ? { type: 'term', term }
-            : {
-                type: 'relativeOf',
-                owner: labels.get(fromId)!,
-                term: stepTerm(family, fromId, step, framing, gameteOf),
-              },
-        );
+        const along =
+          fromPath.length === 0
+            ? [sideOfFirstStep(family, step, framing, gameteOf)]
+            : (sides.get(fromId) ?? []);
+        const toSides = sides.get(step.to) ?? new Set();
+        for (const side of along) toSides.add(side);
+        sides.set(step.to, toSides);
       }
+    }
+    const layer = new Map<string, PersonLabel>();
+    for (const id of next) {
+      if (labels.has(id)) continue;
+      const path = paths.get(id)!;
+      const step = path[path.length - 1]!;
+      const fromId =
+        path.length === 1 ? family.egoId : path[path.length - 2]!.to;
+      if (path.length === 1) {
+        layer.set(id, {
+          type: 'term',
+          term: stepTerm(family, fromId, step, framing, gameteOf),
+        });
+        continue;
+      }
+      const [side, ...others] = sides.get(id) ?? [];
+      const term = kinTermFor(
+        family,
+        path,
+        framing,
+        others.length === 0 ? side : undefined,
+      );
+      layer.set(
+        id,
+        term
+          ? { type: 'term', term }
+          : {
+              type: 'relativeOf',
+              ownerId: fromId,
+              owner: labels.get(fromId)!,
+              term: stepTerm(family, fromId, step, framing, gameteOf),
+            },
+      );
     }
     for (const [id, label] of layer) labels.set(id, label);
     frontier = next;
@@ -620,8 +673,16 @@ function fillUnconnected(family: Family, labels: Map<string, PersonLabel>) {
   return labels;
 }
 
-/** The label as participant-facing text. */
-export function formatPersonLabel(label: PersonLabel, intl: IntlShape): string {
+/**
+ * The label as participant-facing text. `ownerText` gives, by person id, the
+ * text to describe someone through when it is not their own label, such as
+ * the qualified label `generateLabels` gives them.
+ */
+export function formatPersonLabel(
+  label: PersonLabel,
+  intl: IntlShape,
+  ownerText?: (ownerId: string) => string | undefined,
+): string {
   switch (label.type) {
     case 'name':
       return label.name;
@@ -631,7 +692,9 @@ export function formatPersonLabel(label: PersonLabel, intl: IntlShape): string {
       return intl.formatMessage(messages.relativeTerm, { term: label.term });
     case 'relativeOf':
       return intl.formatMessage(messages.relativeOf, {
-        owner: formatPersonLabel(label.owner, intl),
+        owner:
+          ownerText?.(label.ownerId) ??
+          formatPersonLabel(label.owner, intl, ownerText),
         term: label.term,
       });
     case 'unconnected':

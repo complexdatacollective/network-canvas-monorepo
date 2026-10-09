@@ -535,6 +535,66 @@ describe('siblings', () => {
   );
 });
 
+describe('side of the family', () => {
+  const ego = person('ego', { isEgo: true });
+
+  test('someone reached through both parents is given no side', () => {
+    // A sperm donor to both parents.
+    expect(
+      labelsOf(
+        [
+          ego,
+          woman('emma'),
+          man('liam'),
+          person('donor', { gender: ['unknown'], sex: ['male'] }),
+        ],
+        [
+          link('emma', 'ego', 'biological', { carrier: true }),
+          link('liam', 'ego', 'biological'),
+          link('emma', 'liam', 'partner'),
+          link('donor', 'emma', 'donor'),
+          link('donor', 'liam', 'donor'),
+        ],
+      ).donor,
+    ).toBe('Grandparent');
+    // Parents who are half-siblings share their mother.
+    expect(
+      labelsOf(
+        [ego, woman('mum'), man('dad'), woman('nan')],
+        [
+          link('mum', 'ego', 'biological'),
+          link('dad', 'ego', 'biological'),
+          link('nan', 'mum', 'biological'),
+          link('nan', 'dad', 'biological'),
+        ],
+      ).nan,
+    ).toBe('Grandmother');
+  });
+
+  test('a biological parent with unknown gender words gives the side of the gamete they gave', () => {
+    const nodes = [
+      man('ego', { isEgo: true }),
+      person('dad', { gender: ['unknown'], sex: ['male'] }),
+      person('gp1'),
+      person('gp2'),
+      person('aunt', { gender: ['woman'] }),
+    ];
+    const edges = [
+      link('dad', 'ego', 'biological'),
+      link('gp1', 'dad', 'biological'),
+      link('gp2', 'dad', 'biological'),
+      link('gp1', 'aunt', 'biological'),
+      link('gp2', 'aunt', 'biological'),
+    ];
+    expect(labelsOf(nodes, edges)).toMatchObject({
+      dad: 'Biological father',
+      gp1: 'Paternal grandparent',
+      gp2: 'Paternal grandparent',
+      aunt: 'Paternal aunt',
+    });
+  });
+});
+
 describe('step and in-law relatives', () => {
   // Each parent or child step in a step or in-law tie is one that raises the
   // child (biological, adoptive or social), and each partnership on the way
@@ -808,6 +868,7 @@ describe('soft hyphens', () => {
       formatPersonLabel(
         {
           type: 'relativeOf',
+          ownerId: 'cousin',
           owner: { type: 'term', term: 'cousin' },
           term: 'stepmother',
         },

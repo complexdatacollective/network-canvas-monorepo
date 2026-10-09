@@ -160,7 +160,49 @@ function buildLabels(
   const unnamed = family.people.filter(
     (person) => !person.isEgo && person.name === undefined,
   );
+  const baseLabels = new Map<string, PersonLabel>();
+  for (const person of unnamed) {
+    baseLabels.set(
+      person.id,
+      kinshipLabels.get(person.id) ?? { type: 'unconnected' },
+    );
+  }
 
+  // Someone described through a relative ("Great-grandfather's father") is
+  // described by the label that relative ends up with, qualified or
+  // numbered, so the labels are worked out again until each one's relative
+  // is described as they are. Each round settles everyone one step further
+  // from the participant.
+  let labels = new Map<string, string>();
+  for (let round = 0; round <= unnamed.length; round++) {
+    const settled = labels;
+    const baseTexts = new Map(
+      unnamed.map((person) => [
+        person.id,
+        formatPersonLabel(baseLabels.get(person.id)!, intl, (ownerId) =>
+          settled.get(ownerId),
+        ),
+      ]),
+    );
+    const next = resolveLabels(family, unnamed, baseLabels, baseTexts, intl);
+    const unchanged =
+      next.size === labels.size &&
+      [...next].every(([id, label]) => labels.get(id) === label);
+    labels = next;
+    if (unchanged) break;
+  }
+  return labels;
+}
+
+/** Labels for the unnamed people, distinct from each other and from every
+ * typed name, from their kinship labels and those labels' texts. */
+function resolveLabels(
+  family: Family,
+  unnamed: readonly Person[],
+  baseLabels: ReadonlyMap<string, PersonLabel>,
+  baseTexts: ReadonlyMap<string, string>,
+  intl: IntlShape,
+): Map<string, string> {
   // Every name typed, and any name the participant's own person was given
   // elsewhere in the interview.
   const used = new Set<string>();
@@ -168,14 +210,6 @@ function buildLabels(
     if (person.name !== undefined) used.add(comparable(person.name));
   }
   const typedNames = new Set(used);
-
-  const baseLabels = new Map<string, PersonLabel>();
-  const baseTexts = new Map<string, string>();
-  for (const person of unnamed) {
-    const label = kinshipLabels.get(person.id) ?? { type: 'unconnected' };
-    baseLabels.set(person.id, label);
-    baseTexts.set(person.id, formatPersonLabel(label, intl));
-  }
 
   const groups = new Map<string, Person[]>();
   for (const person of unnamed) {
