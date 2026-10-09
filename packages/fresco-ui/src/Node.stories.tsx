@@ -489,8 +489,14 @@ export const LongLabels: Story = {
       const bounds = node.getBoundingClientRect();
       await expect(Math.abs(bounds.width - bounds.height)).toBeLessThan(1);
 
-      const accessibleLabel = node.getAttribute('aria-label');
-      const visibleLabel = within(node).getByText(accessibleLabel ?? '');
+      // Found by its clamp rather than its text: a label that needed breaking
+      // carries invisible break points in its text.
+      const visibleLabel = node.querySelector<HTMLElement>(
+        'span[class*="line-clamp"]',
+      )!;
+      await expect(visibleLabel.textContent?.replaceAll(SOFT_HYPHEN, '')).toBe(
+        node.getAttribute('aria-label'),
+      );
 
       // Which rung the label fitted to — and whether that rung concedes to
       // hyphenation or emergency breaking — varies by label and environment;
@@ -847,8 +853,10 @@ readable in full without any interaction.
 
 Words are never broken while a smaller size could fit them whole. A word no
 size can hold is hyphenated at a point the reader expects (using the
-hyphenation dictionary for the node's language), and only a word hyphenation
-cannot segment is broken arbitrarily as a last resort.
+hyphenation dictionary for the node's language, and invisible break points
+marked in long names, which browsers will not hyphenate from a dictionary
+because they are capitalised), and only a word with no such point is broken
+arbitrarily as a last resort, into even pieces rather than a stranded letter.
 
 The smallest rung is deliberately a floor: below it a name stops being legible
 at arm's length on a tablet, which is worse than clipping it.
@@ -856,6 +864,125 @@ at arm's length on a tablet, which is worse than clipping it.
       },
     },
   },
+};
+
+const SOFT_HYPHEN = '\u00AD';
+
+/**
+ * The text of each rendered line of an element, read from real layout: the
+ * character boxes are grouped by the line they sit on. Soft hyphens and
+ * spaces are left out, because a hyphen that is drawn at a line end is not
+ * part of the name.
+ */
+function renderedLines(element: HTMLElement): string[] {
+  const text = element.firstChild;
+  if (text?.nodeType !== window.Node.TEXT_NODE) return [];
+  const data = text.textContent ?? '';
+  const range = document.createRange();
+  const lines: string[] = [];
+  let currentTop: number | undefined;
+  for (let index = 0; index < data.length; index += 1) {
+    const character = data.charAt(index);
+    if (character === SOFT_HYPHEN || /\s/.test(character)) continue;
+    range.setStart(text, index);
+    range.setEnd(text, index + 1);
+    // A character that starts a line after a drawn hyphen also reports the
+    // hyphen's box, so its own box is the last one.
+    const boxes = range.getClientRects();
+    const top = Math.round(boxes[boxes.length - 1]?.top ?? 0);
+    if (currentTop === undefined || Math.abs(top - currentTop) > 3) {
+      lines.push('');
+      currentTop = top;
+    }
+    lines[lines.length - 1] += character;
+  }
+  return lines;
+}
+
+const generatedLabel = 'Theo\u2019s bio\u00ADlogical mother';
+const capitalisedNames = [
+  'Subramanian',
+  'Bartholomew',
+  'Fernandez',
+  'Hyphenation',
+  'Wolfeschlegelstein',
+] as const;
+/** One node per label and size; the accessible name carries the size. */
+function WordBreakingNodes({ labels }: { labels: readonly string[] }) {
+  return (
+    <div className="flex flex-wrap gap-8 p-8">
+      {labels.flatMap((label, index) =>
+        (['sm', 'md'] as const).map((size) => (
+          <Node
+            key={`${label}-${size}`}
+            label={label}
+            ariaLabel={`${label.replaceAll(SOFT_HYPHEN, '')} (${size})`}
+            lang="en"
+            size={size}
+            color={
+              `node-color-seq-${(index % 8) + 1}` as (typeof NodeColors)[number]
+            }
+          />
+        )),
+      )}
+    </div>
+  );
+}
+
+const fittedLabelOf = (
+  canvasElement: HTMLElement,
+  name: string,
+  size: 'sm' | 'md',
+) =>
+  within(canvasElement)
+    .getByRole('button', { name: `${name} (${size})` })
+    .querySelector<HTMLElement>('span[class*="line-clamp"]')!;
+
+/**
+ * A soft hyphen in a generated label ("bio\u00ADlogical") is only a place the
+ * word MAY break. A rung that can still hold the word whole must not use it,
+ * so the fitter steps down instead of breaking "biological" at the first line.
+ */
+export const SoftHyphenFitsWhole: Story = {
+  render: () => <WordBreakingNodes labels={[generatedLabel]} />,
+  play: async ({ canvasElement }) => {
+    for (const size of ['sm', 'md'] as const) {
+      await waitFor(() => {
+        const lines = renderedLines(
+          fittedLabelOf(canvasElement, 'Theo\u2019s biological mother', size),
+        );
+        expect(lines.some((line) => line.includes('biological'))).toBe(true);
+      });
+    }
+  },
+  parameters: { layout: 'padded', chromatic: { disableSnapshot: true } },
+};
+
+/**
+ * Browsers decline to hyphenate a capitalised word, which is nearly every
+ * name, so a name that no size can hold whole used to be broken at an
+ * arbitrary character, leaving a lone letter on a line. It now breaks at
+ * syllable points, never within three letters of either end, and the typed
+ * letters are never changed.
+ */
+export const CapitalisedNamesBreakReadably: Story = {
+  render: () => <WordBreakingNodes labels={capitalisedNames} />,
+  play: async ({ canvasElement }) => {
+    for (const name of capitalisedNames) {
+      for (const size of ['sm', 'md'] as const) {
+        await waitFor(() => {
+          const label = fittedLabelOf(canvasElement, name, size);
+          expect(label.textContent?.replaceAll(SOFT_HYPHEN, '')).toBe(name);
+          const lines = renderedLines(label);
+          expect(lines.join('')).toBe(name);
+          for (const line of lines) {
+            expect(line.length).toBeGreaterThanOrEqual(3);
+          }
+        });
+      }
+    }
+  },
+  parameters: { layout: 'padded', chromatic: { disableSnapshot: true } },
 };
 
 /**
