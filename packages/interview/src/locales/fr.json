@@ -261,6 +261,7 @@
   "interview.narrativePedigree.zoomControls": "Commandes de zoom",
   "interview.navigation.currentTextSize": "Taille actuelle du texte : {size, number, ::percent}",
   "interview.navigation.decreaseTextSize": "Réduire la taille du texte",
+  "interview.navigation.exitFailed": "Vos réponses n’ont pas pu être enregistrées, l’entretien n’a donc pas été fermé. Veuillez réessayer. Si le problème persiste, contactez l’équipe responsable de l’étude.",
   "interview.navigation.exitInterview": "Quitter l’entretien",
   "interview.navigation.exitInterviewDescription": "Vos réponses seront enregistrées et vous pourrez reprendre plus tard.",
   "interview.navigation.exitInterviewTitle": "Quitter cet entretien ?",

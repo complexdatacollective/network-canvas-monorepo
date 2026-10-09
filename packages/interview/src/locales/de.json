@@ -261,6 +261,7 @@
   "interview.narrativePedigree.zoomControls": "Zoom-Steuerung",
   "interview.navigation.currentTextSize": "Aktuelle Textgröße: {size, number, ::percent}",
   "interview.navigation.decreaseTextSize": "Text verkleinern",
+  "interview.navigation.exitFailed": "Ihre Antworten konnten nicht gespeichert werden, daher wurde das Interview nicht geschlossen. Bitte versuchen Sie es erneut. Wenn das Problem weiterhin besteht, wenden Sie sich an die Studienleitung.",
   "interview.navigation.exitInterview": "Interview verlassen",
   "interview.navigation.exitInterviewDescription": "Ihre bisherigen Antworten werden gespeichert und Sie können später weitermachen.",
   "interview.navigation.exitInterviewTitle": "Dieses Interview verlassen?",

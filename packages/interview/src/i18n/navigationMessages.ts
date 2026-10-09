@@ -60,6 +60,13 @@ export const navigationMessages = defineMessages({
     description:
       'Action to leave an unfinished interview while preserving answers.',
   },
+  exitFailed: {
+    id: 'interview.navigation.exitFailed',
+    defaultMessage:
+      'Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer.',
+    description:
+      'Recoverable exit-dialog error when pending answers or the interview language could not be saved before leaving; the interview stays open.',
+  },
   settings: {
     id: 'interview.navigation.settings',
     defaultMessage: 'Settings',

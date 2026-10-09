@@ -261,6 +261,7 @@
   "interview.narrativePedigree.zoomControls": "缩放控件",
   "interview.navigation.currentTextSize": "当前文字大小：{size, number, ::percent}",
   "interview.navigation.decreaseTextSize": "减小文字大小",
+  "interview.navigation.exitFailed": "无法保存你的回答，因此访谈尚未关闭。请重试。如果问题仍然存在，请联系研究组织者。",
   "interview.navigation.exitInterview": "退出访谈",
   "interview.navigation.exitInterviewDescription": "您目前的回答将被保存，之后可以继续。",
   "interview.navigation.exitInterviewTitle": "退出此访谈？",

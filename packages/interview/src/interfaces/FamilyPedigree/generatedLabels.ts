@@ -63,9 +63,10 @@ const SOFT_HYPHEN = /\u00AD/g;
 export const withoutSoftHyphens = (text: string) =>
   text.replace(SOFT_HYPHEN, '');
 
-/** Labels are compared as a participant would read them. */
-const comparable = (text: string) =>
-  withoutSoftHyphens(text).trim().toLocaleLowerCase();
+/** Labels are compared as a participant would read them, without case in
+ * the language they are written in rather than the device's. */
+const comparableIn = (locale: string) => (text: string) =>
+  withoutSoftHyphens(text).trim().toLocaleLowerCase(locale);
 
 /**
  * How everyone in the family is shown on the canvas and named in the rest of
@@ -156,6 +157,7 @@ function buildLabels(
   framing: FramingId,
   intl: IntlShape,
 ): Map<string, string> {
+  const comparable = comparableIn(intl.locale);
   const kinshipLabels = labelFamily(family, framing);
   const unnamed = family.people.filter(
     (person) => !person.isEgo && person.name === undefined,

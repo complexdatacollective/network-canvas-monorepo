@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
+import { createAppIntl } from '@codaco/app-i18n/messages';
 import type { FramingId } from '@codaco/protocol-validation';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
@@ -233,6 +234,26 @@ describe('generateLabels', () => {
         ],
       ),
     ).toMatchObject({ sis: 'Sister (parent of Julie)' });
+  });
+
+  test('a typed name is compared without case in the interview’s language, not the device’s', () => {
+    // In Turkish the capital of "i" is "İ", so "SİSTER" is "Sister" in
+    // capitals; in English it lowercases to an "i" with a combining dot.
+    const turkish = createAppIntl({ locale: 'tr' });
+    const labels = generateLabels(
+      readFamily(
+        [...parents, woman('sis'), person('friend', { name: 'SİSTER' })],
+        [
+          ...parentLinks,
+          ...siblingLinks('sis'),
+          link('ego', 'friend', 'partner'),
+        ],
+        config,
+      ),
+      'gendered',
+      turkish,
+    );
+    expect(labels.get('sis')).toBe('Sister (your sibling)');
   });
 
   test('the participant can tell someone apart when no one named can', () => {

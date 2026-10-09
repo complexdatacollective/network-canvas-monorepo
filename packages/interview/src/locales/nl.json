@@ -261,6 +261,7 @@
   "interview.narrativePedigree.zoomControls": "Zoombediening",
   "interview.navigation.currentTextSize": "Huidige tekstgrootte: {size, number, ::percent}",
   "interview.navigation.decreaseTextSize": "Tekst verkleinen",
+  "interview.navigation.exitFailed": "Je antwoorden konden niet worden opgeslagen, daarom is het interview niet gesloten. Probeer het opnieuw. Blijft het probleem zich voordoen, neem dan contact op met de organisator van het onderzoek.",
   "interview.navigation.exitInterview": "Interview verlaten",
   "interview.navigation.exitInterviewDescription": "Je antwoorden tot nu toe worden opgeslagen en je kunt later verdergaan.",
   "interview.navigation.exitInterviewTitle": "Dit interview verlaten?",

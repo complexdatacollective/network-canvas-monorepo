@@ -27,7 +27,8 @@ export function SyncFlushProvider({
 /**
  * Returns a function that writes any pending session state immediately,
  * bypassing the autosave debounce, once the answers still being saved have
- * been stored or refused. It resolves to whether all of them were stored. Await
+ * been stored or refused. It resolves to whether all of them, and the language
+ * the interview is being taken in, were stored. Await
  * it before handing control back to the host (finishing or closing an
  * interview) so no answers are still in the debounce window, and stay when it
  * resolves false, so the participant sees why an answer was not saved.
