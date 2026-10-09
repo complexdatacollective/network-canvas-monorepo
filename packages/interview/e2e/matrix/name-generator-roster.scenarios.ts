@@ -60,7 +60,6 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         'interviewScript',
         'subject',
         'dataSource',
-        'panelTitle',
         'cardOptions',
         'cardOptions.additionalProperties',
         'prompts',
@@ -548,7 +547,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
 
     {
       id: 'roster-search-presence-and-fuzziness',
-      covers: ['searchOptions', 'searchOptions.fuzziness'],
+      covers: ['panelTitle', 'searchOptions', 'searchOptions.fuzziness'],
       build: () => {
         const synth = new SyntheticInterview();
         const personType = synth.addNodeType({ name: 'Person' });
@@ -561,10 +560,12 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
           source: 'roster-small.json',
         });
 
-        // Stage A: search enabled with fuzziness.
+        // Stage A: search enabled with fuzziness, under a heading of the
+        // protocol's own.
         synth
           .addStage('NameGeneratorRoster', {
             label: 'Search enabled',
+            panelTitle: 'People from your class',
             subject: { entity: 'node', type: personType.id },
             dataSource: 'jsonRoster',
             searchOptions: {
@@ -588,6 +589,15 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
       assets: [rosterSmallAsset('jsonRoster')],
       run: async ({ page, interview }) => {
         const roster = new NameGeneratorRosterFixture(page);
+
+        // Stage A's panel is headed by the stage's own title, not the one
+        // Network Canvas supplies.
+        await expect(
+          page.getByRole('heading', { name: 'People from your class' }),
+        ).toBeVisible();
+        await expect(
+          page.getByRole('heading', { name: 'Available to add' }),
+        ).toHaveCount(0);
 
         // Stage A: a name query narrows the roster (some, not all, match).
         await expect(roster.sourceListbox.getByRole('option')).toHaveCount(6);
