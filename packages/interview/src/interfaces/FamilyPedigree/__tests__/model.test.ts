@@ -17,6 +17,7 @@ import {
   sexesRuledOut,
   siblingsOf,
 } from '../model';
+import { relationshipsToParticipant } from '../relationshipToParticipant';
 import { config, configWithoutGenderIdentity, link, person } from './fixtures';
 
 /** Ego with two parents and a full sibling; the parents are partners. */
@@ -617,6 +618,41 @@ describe('planAddRelative', () => {
       { source: 'new-1', target: 'ego', kind: 'biological' },
       { source: 'mum', target: 'added', kind: 'biological' },
     ]);
+  });
+
+  test('the planned sibling is recorded as a half sibling by the genetic-parent rule', () => {
+    // The sibling form's placeholder and the kinship rule must agree: the
+    // second parent added for the anchor alone gives the two different
+    // genetic parents, which the saved relationship reads as half siblings.
+    const family = readFamily(
+      [person('ego', { isEgo: true }), person('mum', { sex: ['female'] })],
+      [link('mum', 'ego', 'biological')],
+      config,
+    );
+    const result = plan(family, 'ego', {
+      relation: 'sibling',
+      sharedParentIds: ['mum'],
+      sharesUnshown: 'none',
+      parentKind: 'biological',
+      carrier: null,
+    });
+    const after = readFamily(
+      [
+        person('ego', { isEgo: true }),
+        person('mum', { sex: ['female'] }),
+        ...result.people.map((planned) => person(planned.id)),
+      ],
+      [
+        link('mum', 'ego', 'biological'),
+        ...result.links.map((planned) =>
+          link(planned.source, planned.target, planned.kind),
+        ),
+      ],
+      config,
+    );
+    expect(siblingsOf(after, 'ego')).toEqual(['added']);
+    expect(fullSiblingsOf(after, 'ego')).toEqual([]);
+    expect(relationshipsToParticipant(after).get('added')).toBe('halfSibling');
   });
 
   test('someone with a parent and a donor is given no other parent for a sibling', () => {
