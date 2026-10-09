@@ -809,9 +809,6 @@
         "twinZygosityLabel": {
           "en-US": "{who, select, personIsYou {Are you and “{twin}” identical twins?} twinIsYou {Are “{name}” and you identical twins?} other {Are “{name}” and “{twin}” identical twins?}}"
         },
-        "unavailableAlreadyConnected": {
-          "en-US": "{firstIsYou, select, true {You and “{second}” are already connected. Two people can be connected only once; to connect them another way, first disconnect them.} other {“{first}” and “{second}” are already connected. Two people can be connected only once; to connect them another way, first disconnect them.}}"
-        },
         "unavailableAncestor": {
           "en-US": "{who, select, parentIsYou {You cannot be a parent of “{child}”, who is already one of your ancestors.} childIsYou {“{parent}” cannot be your parent, because you are already one of their ancestors.} other {“{parent}” cannot be a parent of “{child}”, who is already one of their ancestors.}}"
         },

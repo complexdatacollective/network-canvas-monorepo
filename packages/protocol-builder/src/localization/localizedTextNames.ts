@@ -822,12 +822,6 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
       [2, words(familyPedigreeMessages.wordingChangeWouldCutOff)],
     ),
     rule(
-      'wording.unavailableAlreadyConnected',
-      PEDIGREE_WORDING,
-      PEDIGREE_WORDING_CONNECTING,
-      [2, words(familyPedigreeMessages.wordingUnavailableAlreadyConnected)],
-    ),
-    rule(
       'wording.unavailableAncestor',
       PEDIGREE_WORDING,
       PEDIGREE_WORDING_CONNECTING,

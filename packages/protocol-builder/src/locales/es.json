@@ -1378,7 +1378,6 @@
   "protocolBuilder.pedigree.wording.twinZygosityLabel": "Pregunta sobre si los gemelos son idénticos",
   "protocolBuilder.pedigree.wording.twinsHint": "Pista sobre los gemelos",
   "protocolBuilder.pedigree.wording.twinsLabel": "Pregunta sobre los gemelos",
-  "protocolBuilder.pedigree.wording.unavailableAlreadyConnected": "Opción no disponible: ya conectadas",
   "protocolBuilder.pedigree.wording.unavailableAncestor": "Opción no disponible: antepasado propio",
   "protocolBuilder.pedigree.wording.unavailableBothSameSex": "Pista sobre respuestas no disponibles: ambos progenitores del mismo sexo al nacer",
   "protocolBuilder.pedigree.wording.unavailableCannotCarry": "Pista sobre respuestas no disponibles: no puede haber llevado el embarazo",

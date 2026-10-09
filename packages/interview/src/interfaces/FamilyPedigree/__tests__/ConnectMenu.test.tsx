@@ -155,36 +155,6 @@ describe('ConnectMenu', () => {
     );
   });
 
-  it('says why two people already connected cannot be partners', async () => {
-    const family = readFamily(
-      [person('ego', { isEgo: true }), person('shannon', { name: 'Shannon' })],
-      [link('shannon', 'ego', 'biological')],
-      config,
-    );
-    const anchor = document.createElement('button');
-    document.body.append(anchor);
-    render(
-      <TestProtocolLocalization>
-        <PedigreeWordsProvider value={words}>
-          <ConnectMenu
-            pair={{ firstId: 'ego', secondId: 'shannon' }}
-            family={family}
-            displayName={(id) => (id === 'ego' ? 'You' : 'Shannon')}
-            parentKindLabels={PARENT_KIND_LABELS}
-            anchor={anchor}
-            onConnect={() => undefined}
-            onClose={() => undefined}
-          />
-        </PedigreeWordsProvider>
-      </TestProtocolLocalization>,
-    );
-    const partners = await screen.findByTestId('pedigree-connect-partners');
-    expect(partners).toHaveAttribute('aria-disabled', 'true');
-    expect(partners).toHaveAccessibleDescription(
-      /You and “Shannon” are already connected/,
-    );
-  });
-
   // Ruling 21: a choice that would record a second carrier is unavailable,
   // with a reason naming who carried the child.
   it('says who carried the child under each choice that would record a second carrier', async () => {

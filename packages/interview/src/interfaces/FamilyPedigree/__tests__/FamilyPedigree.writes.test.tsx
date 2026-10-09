@@ -306,6 +306,23 @@ describe('FamilyPedigree twins and the disconnect tool', () => {
   });
 });
 
+describe('FamilyPedigree and the connect tool', () => {
+  // A pair has one link at most, so the connect menu is never asked to say
+  // why two people already connected cannot be connected again.
+  it('never offers someone already connected to the first person chosen', async () => {
+    await renderStage();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Connect' }));
+    await user.click(personButton('ego'));
+
+    await waitFor(() => expect(mother()).toBeDisabled());
+    await user.click(mother());
+    expect(
+      screen.queryByTestId('pedigree-connect-menu'),
+    ).not.toBeInTheDocument();
+  });
+});
+
 // Rule (Codex 4229159680): every path that removes a relationship applies the
 // same cut-off handling as the disconnect tool, which refuses.
 describe('FamilyPedigree removing a twin link', () => {

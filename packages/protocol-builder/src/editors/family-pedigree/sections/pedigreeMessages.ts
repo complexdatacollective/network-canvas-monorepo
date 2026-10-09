@@ -1547,12 +1547,6 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Label of the option that the participant does not know whether two twins are identical.',
   },
-  wordingUnavailableAlreadyConnected: {
-    id: 'protocolBuilder.pedigree.wording.unavailableAlreadyConnected',
-    defaultMessage: 'Unavailable choice: already connected',
-    description:
-      'Label of the reason shown under the choices for connecting two people who are already connected.',
-  },
   wordingUnavailableAncestor: {
     id: 'protocolBuilder.pedigree.wording.unavailableAncestor',
     defaultMessage: 'Unavailable choice: own ancestor',

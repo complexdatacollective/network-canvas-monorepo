@@ -494,7 +494,6 @@ export const PEDIGREE_WORDING_ARGUMENTS = {
   },
   twinsLabel: PEDIGREE_PERSON_ARGUMENTS,
   twinZygosityLabel: TWIN_PAIR_ARGUMENTS,
-  unavailableAlreadyConnected: TWO_PEOPLE_ARGUMENTS,
   unavailableAncestor: {
     who: { kind: 'select', cases: ['parentIsYou', 'childIsYou'] },
     parent: TEXT,
@@ -609,7 +608,6 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
   twinsHint: plainWording(),
   twinsLabel: argumentWording('twinsLabel'),
   twinZygosityLabel: argumentWording('twinZygosityLabel'),
-  unavailableAlreadyConnected: argumentWording('unavailableAlreadyConnected'),
   unavailableAncestor: argumentWording('unavailableAncestor'),
   unavailableBothSameSex: argumentWording('unavailableBothSameSex'),
   unavailableCannotCarry: argumentWording('unavailableCannotCarry'),

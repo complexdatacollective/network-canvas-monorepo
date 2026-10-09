@@ -953,22 +953,6 @@ const TWINS_LABEL = {
     '{isYou, select, true {您的兄弟姊妹中，哪些是您的雙胞胎（如有）？} other {「{name}」的兄弟姊妹中，哪些是其雙胞胎（如有）？}}',
 } as const satisfies SuppliedWording;
 
-/** Why two people already connected cannot be connected again, shown under the choices it makes unavailable. */
-const UNAVAILABLE_ALREADY_CONNECTED = {
-  'en': '{firstIsYou, select, true {You and “{second}” are already connected. Two people can be connected only once; to connect them another way, first disconnect them.} other {“{first}” and “{second}” are already connected. Two people can be connected only once; to connect them another way, first disconnect them.}}',
-  'de': '{firstIsYou, select, true {Sie und „{second}“ sind bereits verbunden. Zwei Personen können nur einmal verbunden werden; um sie anders zu verbinden, trennen Sie sie zuerst.} other {„{first}“ und „{second}“ sind bereits verbunden. Zwei Personen können nur einmal verbunden werden; um sie anders zu verbinden, trennen Sie sie zuerst.}}',
-  'es': '{firstIsYou, select, true {Tú e «{second}» ya estáis conectados. Dos personas solo se pueden conectar una vez; para conectarlas de otra forma, primero desconéctalas.} other {«{first}» y «{second}» ya están conectados. Dos personas solo se pueden conectar una vez; para conectarlas de otra forma, primero desconéctalas.}}',
-  'fr': '{firstIsYou, select, true {Vous et « {second} » êtes déjà reliés. Deux personnes ne peuvent être reliées qu’une seule fois ; pour les relier autrement, déconnectez-les d’abord.} other {« {first} » et « {second} » sont déjà reliés. Deux personnes ne peuvent être reliées qu’une seule fois ; pour les relier autrement, déconnectez-les d’abord.}}',
-  'it': '{firstIsYou, select, true {Tu e «{second}» siete già collegati. Due persone possono essere collegate una sola volta; per collegarle in un altro modo, prima scollegale.} other {«{first}» e «{second}» sono già collegati. Due persone possono essere collegate una sola volta; per collegarle in un altro modo, prima scollegale.}}',
-  'nl': '{firstIsYou, select, true {Jij en “{second}” zijn al verbonden. Twee mensen kunnen maar één keer worden verbonden; koppel ze eerst los om ze op een andere manier te verbinden.} other {“{first}” en “{second}” zijn al verbonden. Twee mensen kunnen maar één keer worden verbonden; koppel ze eerst los om ze op een andere manier te verbinden.}}',
-  'pt-BR':
-    '{firstIsYou, select, true {Você e “{second}” já estão conectados. Duas pessoas só podem ser conectadas uma vez; para conectá-las de outra forma, primeiro desconecte-as.} other {“{first}” e “{second}” já estão conectados. Duas pessoas só podem ser conectadas uma vez; para conectá-las de outra forma, primeiro desconecte-as.}}',
-  'zh-Hans':
-    '{firstIsYou, select, true {您和“{second}”已经连接。两个人只能连接一次；如需以其他方式连接，请先断开连接。} other {“{first}”和“{second}”已经连接。两个人只能连接一次；如需以其他方式连接，请先断开连接。}}',
-  'zh-Hant':
-    '{firstIsYou, select, true {您和「{second}」已經連結。兩個人只能連結一次；如需以其他方式連結，請先中斷連結。} other {「{first}」和「{second}」已經連結。兩個人只能連結一次；如需以其他方式連結，請先中斷連結。}}',
-} as const satisfies SuppliedWording;
-
 /** Why someone cannot be made a parent of one of their own ancestors, shown under the choice it makes unavailable. */
 const UNAVAILABLE_ANCESTOR = {
   'en': '{who, select, parentIsYou {You cannot be a parent of “{child}”, who is already one of your ancestors.} childIsYou {“{parent}” cannot be your parent, because you are already one of their ancestors.} other {“{parent}” cannot be a parent of “{child}”, who is already one of their ancestors.}}',
@@ -1303,10 +1287,6 @@ export const FAMILY_PEDIGREE_SUPPLIED_TEXT: readonly SuppliedStageSetting[] = [
   { path: ['wording', 'twinsHint'], message: TWINS_HINT },
   { path: ['wording', 'twinsLabel'], message: TWINS_LABEL },
   { path: ['wording', 'twinZygosityLabel'], message: TWIN_ZYGOSITY_LABEL },
-  {
-    path: ['wording', 'unavailableAlreadyConnected'],
-    message: UNAVAILABLE_ALREADY_CONNECTED,
-  },
   { path: ['wording', 'unavailableAncestor'], message: UNAVAILABLE_ANCESTOR },
   {
     path: ['wording', 'unavailableBothSameSex'],

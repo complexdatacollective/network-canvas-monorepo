@@ -2001,10 +2001,6 @@
           "en-US": "{who, select, personIsYou {Are you and “{twin}” identical twins?} twinIsYou {Are “{name}” and you identical twins?} other {Are “{name}” and “{twin}” identical twins?}}",
           "es": "{who, select, personIsYou {¿Tú y «{twin}» son gemelos idénticos?} twinIsYou {¿«{name}» y tú son gemelos idénticos?} other {¿«{name}» y «{twin}» son gemelos idénticos?}}"
         },
-        "unavailableAlreadyConnected": {
-          "en-US": "{firstIsYou, select, true {You and “{second}” are already connected. Two people can be connected only once; to connect them another way, first disconnect them.} other {“{first}” and “{second}” are already connected. Two people can be connected only once; to connect them another way, first disconnect them.}}",
-          "es": "{firstIsYou, select, true {Tú e «{second}» ya estáis conectados. Dos personas solo se pueden conectar una vez; para conectarlas de otra forma, primero desconéctalas.} other {«{first}» y «{second}» ya están conectados. Dos personas solo se pueden conectar una vez; para conectarlas de otra forma, primero desconéctalas.}}"
-        },
         "unavailableAncestor": {
           "en-US": "{who, select, parentIsYou {You cannot be a parent of “{child}”, who is already one of your ancestors.} childIsYou {“{parent}” cannot be your parent, because you are already one of their ancestors.} other {“{parent}” cannot be a parent of “{child}”, who is already one of their ancestors.}}",
           "es": "{who, select, parentIsYou {No puedes ser progenitor/a de «{child}», que ya es uno de tus antepasados.} childIsYou {«{parent}» no puede ser tu progenitor/a, porque ya eres uno de sus antepasados.} other {«{parent}» no puede ser progenitor/a de «{child}», que ya es uno de sus antepasados.}}"

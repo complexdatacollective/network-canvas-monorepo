@@ -1378,7 +1378,6 @@
   "protocolBuilder.pedigree.wording.twinZygosityLabel": "Identical twins question",
   "protocolBuilder.pedigree.wording.twinsHint": "Twins hint",
   "protocolBuilder.pedigree.wording.twinsLabel": "Twins question",
-  "protocolBuilder.pedigree.wording.unavailableAlreadyConnected": "Unavailable choice: already connected",
   "protocolBuilder.pedigree.wording.unavailableAncestor": "Unavailable choice: own ancestor",
   "protocolBuilder.pedigree.wording.unavailableBothSameSex": "Unavailable answers hint: both parents the same sex at birth",
   "protocolBuilder.pedigree.wording.unavailableCannotCarry": "Unavailable answers hint: cannot have carried",

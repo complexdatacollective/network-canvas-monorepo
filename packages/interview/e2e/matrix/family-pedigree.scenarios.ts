@@ -422,9 +422,6 @@ const OWN_WORDS = {
   twinZygosityLabel: message(
     '{who, select, personIsYou {You and {twin} identical - matrix check} twinIsYou {{name} and you identical - matrix check} other {{name} and {twin} identical - matrix check}}',
   ),
-  unavailableAlreadyConnected: message(
-    '{firstIsYou, select, true {You and {second} already linked - matrix check} other {{first} and {second} already linked - matrix check}}',
-  ),
   unavailableAncestor: message(
     '{who, select, parentIsYou {You cannot parent {child} - matrix check} childIsYou {{parent} cannot parent you - matrix check} other {{parent} cannot parent {child} - matrix check}}',
   ),

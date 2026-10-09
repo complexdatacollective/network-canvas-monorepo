@@ -5515,10 +5515,6 @@
     "defaultMessage": "Twins question",
     "description": "Label of the question in a family member’s panel asking which of their siblings are their twins."
   },
-  "protocolBuilder.pedigree.wording.unavailableAlreadyConnected": {
-    "defaultMessage": "Unavailable choice: already connected",
-    "description": "Label of the reason shown under the choices for connecting two people who are already connected."
-  },
   "protocolBuilder.pedigree.wording.unavailableAncestor": {
     "defaultMessage": "Unavailable choice: own ancestor",
     "description": "Label of the reason shown under the choice to make someone a parent of one of their own ancestors."

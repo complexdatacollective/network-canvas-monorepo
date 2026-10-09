@@ -521,7 +521,6 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'wording.disconnectConfirmDescription',
     'wording.disconnectWouldCutOff',
     'wording.changeWouldCutOff',
-    'wording.unavailableAlreadyConnected',
     'wording.unavailableAncestor',
     'wording.unavailableCarrierChoice',
     'wording.removeConfirmTitle',

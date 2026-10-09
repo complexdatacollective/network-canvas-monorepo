@@ -1378,7 +1378,6 @@
   "protocolBuilder.pedigree.wording.twinZygosityLabel": "是否同卵双胞胎问题",
   "protocolBuilder.pedigree.wording.twinsHint": "双胞胎提示",
   "protocolBuilder.pedigree.wording.twinsLabel": "双胞胎问题",
-  "protocolBuilder.pedigree.wording.unavailableAlreadyConnected": "不可选选项：已连接",
   "protocolBuilder.pedigree.wording.unavailableAncestor": "不可选选项：自己的祖先",
   "protocolBuilder.pedigree.wording.unavailableBothSameSex": "不可选答案提示：两位父母出生性别相同",
   "protocolBuilder.pedigree.wording.unavailableCannotCarry": "不可选答案提示：不可能怀孕",

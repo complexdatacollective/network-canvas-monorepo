@@ -126,11 +126,6 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
         arguments: PEDIGREE_WORDING_ARGUMENTS.changeWouldCutOff,
       },
       {
-        key: 'unavailableAlreadyConnected',
-        label: messages.wordingUnavailableAlreadyConnected,
-        arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableAlreadyConnected,
-      },
-      {
         key: 'unavailableAncestor',
         label: messages.wordingUnavailableAncestor,
         arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableAncestor,
