@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { alignPedigree } from '../alignPedigree';
 import { computeConnectors } from '../connectors';
+import { buildPedigreeGraph, countCrossings } from '../sugiyamaLayout';
 import type { ParentConnection, PedigreeInput, ScalingParams } from '../types';
 import {
   blendedFamily,
@@ -1956,4 +1957,141 @@ describe('a child sits one row below its primary parents', () => {
     expect(levelOf(result, 1)).toBe(levelOf(result, 3) - 1);
     expect(levelOf(result, 3)).toBe(levelOf(result, 2));
   });
+});
+
+describe('donors, surrogates and social parents sit beside their family', () => {
+  const social = (parentIndex: number): ParentConnection => ({
+    parentIndex,
+    edgeType: 'social',
+  });
+  const donor = (parentIndex: number): ParentConnection => ({
+    parentIndex,
+    edgeType: 'donor',
+  });
+  const surrogate = (parentIndex: number): ParentConnection => ({
+    parentIndex,
+    edgeType: 'surrogate',
+  });
+  const adoptive = (parentIndex: number): ParentConnection => ({
+    parentIndex,
+    edgeType: 'adoptive',
+  });
+  const couple = (a: number, b: number, isActive = true) => ({
+    partnerIndex1: a,
+    partnerIndex2: b,
+    isActive,
+  });
+  const rowOf = (result: ReturnType<typeof alignPedigree>, person: number) => {
+    const level = result.nid.findIndex((row, l) =>
+      row.slice(0, result.n[l]).includes(person),
+    );
+    return result.nid[level]!.slice(0, result.n[level]);
+  };
+  const colOf = (result: ReturnType<typeof alignPedigree>, person: number) =>
+    rowOf(result, person).indexOf(person);
+
+  // mom + dad → you; dad + ex (former) → half; coach is your social parent
+  // and nobody's partner.
+  const withCoach: PedigreeInput = {
+    id: ['you', 'mom', 'dad', 'ex', 'half', 'coach'],
+    parents: [[sp(1), sp(2), social(5)], [], [], [], [sp(2), sp(3)], []],
+    partners: [couple(1, 2), couple(2, 3, false)],
+  };
+
+  it("counts a social parent's line to a child a family covers as a crossing", () => {
+    const graph = buildPedigreeGraph(withCoach);
+    // Coach beyond ex: coach's line to you crosses half's line of descent.
+    const coachOutside = countCrossings([[], [1, 2, 3, 5], [0, 4]], graph);
+    const coachBesideMom = countCrossings([[], [5, 1, 2, 3], [0, 4]], graph);
+    expect(coachOutside).toBeGreaterThan(coachBesideMom);
+  });
+
+  it('seats a social parent where their line crosses no line of descent', () => {
+    const result = alignPedigree(withCoach);
+    const coach = colOf(result, 5);
+    const ex = colOf(result, 3);
+    // Coach beside the participant's parents, not beyond dad's former partner.
+    expect(
+      Math.min(...[1, 2].map((p) => Math.abs(colOf(result, p) - coach))),
+    ).toBe(1);
+    expect(Math.sign(ex - colOf(result, 2))).not.toBe(
+      Math.sign(coach - colOf(result, 2)),
+    );
+  });
+
+  // you ← laura + michael. laura ← susan (biological), frank (social, susan's
+  // partner) and a donor. michael ← peter + mary (adoptive) and his birth
+  // mother kelly.
+  const grandparents = (keep: { susan: boolean; frank: boolean }) => {
+    const id = ['you', 'laura', 'michael', 'peter', 'mary', 'kelly', 'donor'];
+    const parents: ParentConnection[][] = [
+      [sp(1), sp(2)],
+      [donor(6)],
+      [adoptive(3), adoptive(4), donor(5)],
+      [],
+      [],
+      [],
+      [],
+    ];
+    const partners = [couple(1, 2), couple(3, 4)];
+    if (keep.susan) {
+      const susan = id.push('susan') - 1;
+      parents.push([]);
+      parents[1]!.push(sp(susan));
+      if (keep.frank) {
+        const frank = id.push('frank') - 1;
+        parents.push([]);
+        parents[1]!.push(social(frank));
+        partners.push(couple(susan, frank));
+      }
+    }
+    return { id, parents, partners };
+  };
+
+  it.each([
+    ['with susan and frank', { susan: true, frank: true }],
+    ['without frank', { susan: true, frank: false }],
+    ['with only the donor', { susan: false, frank: false }],
+  ])('keeps a birth mother beside the adoptive parents %s', (_, keep) => {
+    const result = alignPedigree(grandparents(keep));
+    const mary = positionOf(result, 4)!;
+    const kelly = positionOf(result, 5)!;
+    const peter = positionOf(result, 3)!;
+    expect(kelly.layer).toBe(mary.layer);
+    expect(
+      Math.min(Math.abs(kelly.pos - mary.pos), Math.abs(kelly.pos - peter.pos)),
+    ).toBeLessThanOrEqual(1.0001);
+  });
+
+  // you, ivy ← peter (a single father), claire (egg donor) and nadia
+  // (surrogate).
+  const singleFather = (withBen: boolean): PedigreeInput => ({
+    id: ['you', 'peter', 'claire', 'nadia', 'ivy', ...(withBen ? ['ben'] : [])],
+    parents: [
+      [sp(1), donor(2), surrogate(3)],
+      [],
+      [],
+      [],
+      [sp(1), donor(2), surrogate(3)],
+      ...(withBen ? [[]] : []),
+    ],
+    partners: withBen ? [couple(2, 5)] : undefined,
+  });
+
+  it.each([
+    ['before claire has a partner', false],
+    ['when claire has a partner', true],
+  ])(
+    'seats a single father’s donor and surrogate on either side of him %s',
+    (_, withBen) => {
+      const result = alignPedigree(singleFather(withBen));
+      const peter = colOf(result, 1);
+      const claire = colOf(result, 2);
+      const nadia = colOf(result, 3);
+      // Each line reaches the sibship from its own side, with nobody under it.
+      expect(Math.sign(claire - peter)).not.toBe(Math.sign(nadia - peter));
+      expect(Math.abs(claire - peter)).toBe(1);
+      expect(Math.abs(nadia - peter)).toBe(1);
+    },
+  );
 });
