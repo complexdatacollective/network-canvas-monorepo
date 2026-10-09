@@ -787,6 +787,170 @@ export const ChoosingTheWordingReturnsFocusToItsButton: Story = {
   },
 };
 
+/** Watches for the given time, failing the moment the check does. */
+async function holdsFor(ms: number, check: () => void) {
+  const until = performance.now() + ms;
+  while (performance.now() < until) {
+    check();
+    await nextFrame();
+  }
+  check();
+}
+
+/**
+ * Answered before it would have opened by itself, the wording question does
+ * not open again uninvited, and takes no focus from what the participant
+ * goes on to do.
+ */
+export const TheWordingQuestionOpensOnceOnly: Story = {
+  render: () => (
+    <CanvasStory family={threePeople} framing="participantPreference" />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    // Selecting someone asks the question at once, and it is answered.
+    await userEvent.click(await canvas.findByRole('button', { name: /^You/ }));
+    await userEvent.click(
+      await body.findByRole('option', {
+        name: /Mother, father, sister, brother/,
+      }),
+    );
+    await waitFor(() => expect(body.queryByText(FRAMING_TITLE)).toBeNull());
+    const trigger = canvas.getByRole('button', { name: 'Wording' });
+    // Well past the moment it would have opened by itself.
+    await holdsFor(1800, () => {
+      expect(body.queryByText(FRAMING_TITLE), 'the question again').toBeNull();
+      expect(focused(canvasElement), 'focus kept').toBe(trigger);
+    });
+  },
+};
+
+/**
+ * While the wording question is held open, Tab still reaches its choices,
+ * even after focus has left it and Escape has been pressed.
+ */
+export const TheHeldWordingQuestionStaysInTheTabOrder: Story = {
+  render: () => (
+    <CanvasStory family={threePeople} framing="participantPreference" />
+  ),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body);
+    await body.findByText(FRAMING_TITLE, {}, { timeout: 5000 });
+    const options = () => body.getAllByRole('option');
+    await waitFor(() => expect(options()).toContain(focused(canvasElement)));
+    // Out of the question and past its button, Escape, and round again.
+    await userEvent.tab({ shift: true });
+    await userEvent.tab({ shift: true });
+    await userEvent.keyboard('{Escape}');
+    await expect(body.getByText(FRAMING_TITLE)).toBeInTheDocument();
+    let reached = false;
+    for (let press = 0; press < 12 && !reached; press++) {
+      await userEvent.tab();
+      reached = options().includes(focused(canvasElement) as HTMLElement);
+    }
+    await expect(reached, 'Tab reached a choice').toBe(true);
+  },
+};
+
+/** A touch at the point given, as a phone's tap. */
+function tapAt(document: Document, x: number, y: number) {
+  const target = document.elementFromPoint(x, y);
+  if (!target) throw new Error('Nothing at the point tapped');
+  const init = {
+    pointerId: 2,
+    pointerType: 'touch',
+    isPrimary: true,
+    clientX: x,
+    clientY: y,
+    bubbles: true,
+  };
+  fireEvent.pointerDown(target, { ...init, buttons: 1 });
+  fireEvent.pointerUp(target, init);
+  fireEvent.click(target, { clientX: x, clientY: y, detail: 1 });
+}
+
+/**
+ * On a phone held sideways the wording question fits the screen, scrolling
+ * rather than running off the top, so its heading can be read. A tap aimed
+ * at the participant, landing on the question as it opens over them,
+ * chooses nothing.
+ */
+export const TheWordingQuestionFitsAPhoneOnItsSide: Story = {
+  parameters: {
+    viewport: {
+      options: {
+        phoneLandscape: {
+          name: 'Phone (landscape)',
+          styles: { width: '844px', height: '390px' },
+          type: 'mobile',
+        },
+      },
+    },
+  },
+  globals: { viewport: { value: 'phoneLandscape', isRotated: false } },
+  render: () => (
+    <CanvasStory family={threePeople} framing="participantPreference" />
+  ),
+  play: async ({ canvasElement }) => {
+    const document = canvasElement.ownerDocument;
+    const body = within(document.body);
+    const you = await within(canvasElement).findByRole('button', {
+      name: /^You/,
+    });
+    const youBox = boxOf(you);
+    await body.findByText(FRAMING_TITLE, {}, { timeout: 5000 });
+    tapAt(
+      document,
+      (youBox.left + youBox.right) / 2,
+      (youBox.top + youBox.bottom) / 2,
+    );
+    await expect(body.getByText(FRAMING_TITLE)).toBeInTheDocument();
+    for (const option of body.getAllByRole('option')) {
+      await expect(option).toHaveAttribute('aria-selected', 'false');
+    }
+    await settled(canvasElement);
+    await waitFor(() =>
+      expect(
+        boxOf(body.getByText(FRAMING_TITLE)).top,
+        'the heading below the top of the screen',
+      ).toBeGreaterThanOrEqual(0),
+    );
+  },
+};
+
+/**
+ * Changing the wording renames everyone shown by a label, and says so.
+ */
+export const ChangingTheWordingIsAnnounced: Story = {
+  render: () => (
+    <CanvasStory family={threePeople} framing="participantPreference" />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await userEvent.click(
+      await body.findByRole(
+        'option',
+        { name: /Mother, father, sister, brother/ },
+        { timeout: 5000 },
+      ),
+    );
+    await waitFor(() =>
+      expect(liveRegionText(canvasElement)).toContain('mother, father'),
+    );
+    await userEvent.click(canvas.getByRole('button', { name: 'Wording' }));
+    await userEvent.click(
+      await body.findByRole('option', {
+        name: /Egg parent, sperm parent, sibling/,
+      }),
+    );
+    await waitFor(() =>
+      expect(liveRegionText(canvasElement)).toContain('egg parent'),
+    );
+  },
+};
+
 /**
  * Removing someone from the keyboard leaves focus on a person still in the
  * family, not on nothing.

@@ -59,6 +59,7 @@
   "interview.familyPedigree.framingChoiceGendered": "Mother, father, sister, brother",
   "interview.familyPedigree.framingChoiceGenderedDescription": "Words that follow each person’s gender, such as grandmother, uncle or niece. Anyone who is neither a woman nor a man is described with words like parent or sibling.",
   "interview.familyPedigree.framingChoiceTitle": "How should we describe your family?",
+  "interview.familyPedigree.framingChosenAnnouncement": "{framing, select, gamete {Family members are now described with words like egg parent, sperm parent and sibling.} other {Family members are now described with words like mother, father, sister and brother.}}",
   "interview.familyPedigree.framingControlLabel": "Wording",
   "interview.familyPedigree.genderIdentityLabel": "Gender identity",
   "interview.familyPedigree.generatedLabelChildOf": "{isYou, select, true {{term} (your child)} other {{term} (child of {name})}}",

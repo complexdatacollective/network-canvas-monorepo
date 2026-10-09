@@ -59,6 +59,7 @@
   "interview.familyPedigree.framingChoiceGendered": "Madre, padre, hermana, hermano",
   "interview.familyPedigree.framingChoiceGenderedDescription": "Palabras que siguen el género de cada persona, como abuela, tío o sobrina. Para quien no es mujer ni hombre se usan palabras como progenitor o hermano/a.",
   "interview.familyPedigree.framingChoiceTitle": "¿Cómo quieres que describamos a tu familia?",
+  "interview.familyPedigree.framingChosenAnnouncement": "{framing, select, gamete {Ahora los miembros de la familia se describen con palabras como progenitor de óvulo, progenitor de esperma y hermano/a.} other {Ahora los miembros de la familia se describen con palabras como madre, padre, hermana y hermano.}}",
   "interview.familyPedigree.framingControlLabel": "Términos",
   "interview.familyPedigree.genderIdentityLabel": "Identidad de género",
   "interview.familyPedigree.generatedLabelChildOf": "{isYou, select, true {{term} (tu hijo/a)} other {{term} (hijo/a de {name})}}",

@@ -387,8 +387,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const framingUnanswered =
     stage.framing === 'participantPreference' &&
     pedigreeMetadata?.framing === undefined;
-  const [framingOpen, setFramingOpen] = useState(false);
+  const [framingOpen, setFramingOpenState] = useState(false);
   const wordingForced = framingUnanswered && framingOpen;
+  // The question opens by itself a moment after the stage loads (below), but
+  // only if nothing has opened it, or answered it, before then: once it has
+  // been opened it never opens again uninvited.
+  const askFramingOnLoad = useRef(framingUnanswered);
+  const setFramingOpen = useCallback((open: boolean) => {
+    askFramingOnLoad.current = false;
+    setFramingOpenState(open);
+  }, []);
   useEffect(() => {
     if (encryptDetails) requirePassphrase();
   }, [encryptDetails, requirePassphrase]);
@@ -727,22 +735,25 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const participantFraming = framingSetting === 'participantPreference';
   // Opened a moment after the stage loads, once the toolbar is in, so the
   // participant sees the rest of the interface first.
-  const askFramingOnLoad = useRef(
-    participantFraming && chosenFraming === undefined,
-  );
   useEffect(() => {
     if (!askFramingOnLoad.current) return;
-    const timer = setTimeout(() => setFramingOpen(true), FRAMING_OPEN_DELAY);
+    const timer = setTimeout(() => {
+      if (askFramingOnLoad.current) setFramingOpen(true);
+    }, FRAMING_OPEN_DELAY);
     return () => clearTimeout(timer);
-  }, []);
+  }, [setFramingOpen]);
   const reduceMotion = useReducedMotion();
   const framing = pedigreeFraming(framingSetting, chosenFraming);
-  const chooseFraming = useCallback(
-    (chosen: FramingId) => {
-      writePedigreeMetadata({ framing: chosen });
-    },
-    [writePedigreeMetadata],
-  );
+  // A choice renames everyone shown by a label, so it is announced.
+  const chooseFraming = (chosen: FramingId) => {
+    askFramingOnLoad.current = false;
+    writePedigreeMetadata({ framing: chosen });
+    setAnnouncement(
+      intl.formatMessage(messages.framingChosenAnnouncement, {
+        framing: chosen,
+      }),
+    );
+  };
   // Everyone the participant has not named is shown by the label that will
   // be saved as their name when they leave, worked out afresh from the family
   // as it stands, so the canvas and the stages after it always agree.

@@ -59,6 +59,7 @@
   "interview.familyPedigree.framingChoiceGendered": "Moeder, vader, zus, broer",
   "interview.familyPedigree.framingChoiceGenderedDescription": "Woorden die het gender van elke persoon volgen, zoals oma, oom of nicht. Wie geen vrouw en geen man is, wordt beschreven met woorden als ouder of broer of zus.",
   "interview.familyPedigree.framingChoiceTitle": "Hoe zullen we je familie beschrijven?",
+  "interview.familyPedigree.framingChosenAnnouncement": "{framing, select, gamete {Familieleden worden nu beschreven met woorden als eicelouder, zaadouder en broer of zus.} other {Familieleden worden nu beschreven met woorden als moeder, vader, zus en broer.}}",
   "interview.familyPedigree.framingControlLabel": "Woordkeuze",
   "interview.familyPedigree.genderIdentityLabel": "Genderidentiteit",
   "interview.familyPedigree.generatedLabelChildOf": "{isYou, select, true {{term} (jouw kind)} other {{term} (kind van {name})}}",

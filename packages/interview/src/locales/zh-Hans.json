@@ -59,6 +59,7 @@
   "interview.familyPedigree.framingChoiceGendered": "母亲、父亲、姐妹、兄弟",
   "interview.familyPedigree.framingChoiceGenderedDescription": "根据每个人的性别选择的称谓，例如外祖母、舅舅或侄女。既不是女性也不是男性的人，会使用家长或兄弟姐妹等称谓。",
   "interview.familyPedigree.framingChoiceTitle": "我们应如何称呼您的家人？",
+  "interview.familyPedigree.framingChosenAnnouncement": "{framing, select, gamete {现在使用卵子方家长、精子方家长和兄弟姐妹等词语来描述家庭成员。} other {现在使用母亲、父亲、姐妹和兄弟等词语来描述家庭成员。}}",
   "interview.familyPedigree.framingControlLabel": "称谓",
   "interview.familyPedigree.genderIdentityLabel": "性别认同",
   "interview.familyPedigree.generatedLabelChildOf": "{isYou, select, true {{term}（您的子女）} other {{term}（{name}的子女）}}",

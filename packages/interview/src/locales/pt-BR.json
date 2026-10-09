@@ -59,6 +59,7 @@
   "interview.familyPedigree.framingChoiceGendered": "Mãe, pai, irmã, irmão",
   "interview.familyPedigree.framingChoiceGenderedDescription": "Palavras que seguem o gênero de cada pessoa, como avó, tio ou sobrinha. Quem não é mulher nem homem é descrito com palavras como pai/mãe ou irmão/irmã.",
   "interview.familyPedigree.framingChoiceTitle": "Como devemos descrever sua família?",
+  "interview.familyPedigree.framingChosenAnnouncement": "{framing, select, gamete {Agora os membros da família são descritos com palavras como genitor do óvulo, genitor do esperma e irmão/irmã.} other {Agora os membros da família são descritos com palavras como mãe, pai, irmã e irmão.}}",
   "interview.familyPedigree.framingControlLabel": "Termos",
   "interview.familyPedigree.genderIdentityLabel": "Identidade de gênero",
   "interview.familyPedigree.generatedLabelChildOf": "{isYou, select, true {{term} (seu filho ou filha)} other {{term} (filho ou filha de {name})}}",

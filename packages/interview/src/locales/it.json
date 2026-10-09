@@ -59,6 +59,7 @@
   "interview.familyPedigree.framingChoiceGendered": "Madre, padre, sorella, fratello",
   "interview.familyPedigree.framingChoiceGenderedDescription": "Parole che seguono il genere di ciascuna persona, come nonna, zio o cugina. Chi non è né donna né uomo viene descritto con parole come genitore o fratello o sorella.",
   "interview.familyPedigree.framingChoiceTitle": "Come dobbiamo descrivere la tua famiglia?",
+  "interview.familyPedigree.framingChosenAnnouncement": "{framing, select, gamete {Ora i familiari sono descritti con parole come genitore dell’ovulo, genitore dello sperma e fratello o sorella.} other {Ora i familiari sono descritti con parole come madre, padre, sorella e fratello.}}",
   "interview.familyPedigree.framingControlLabel": "Termini",
   "interview.familyPedigree.genderIdentityLabel": "Identità di genere",
   "interview.familyPedigree.generatedLabelChildOf": "{isYou, select, true {{term} (tuo figlio o tua figlia)} other {{term} (figlio o figlia di {name})}}",

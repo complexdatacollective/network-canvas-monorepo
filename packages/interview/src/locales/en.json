@@ -239,6 +239,10 @@
     "defaultMessage": "How should we describe your family?",
     "description": "Heading of the popover, opened from the stage’s toolbar, that asks which words to use for family members. Open when the participant first reaches the stage."
   },
+  "interview.familyPedigree.framingChosenAnnouncement": {
+    "defaultMessage": "{framing, select, gamete {Family members are now described with words like egg parent, sperm parent and sibling.} other {Family members are now described with words like mother, father, sister and brother.}}",
+    "description": "Screen-reader announcement after the participant chooses the words used to describe family members, which changes the labels of everyone they have not named. {framing} is \"gamete\" for the words that do not depend on gender, otherwise the words that follow gender."
+  },
   "interview.familyPedigree.framingControlLabel": {
     "defaultMessage": "Wording",
     "description": "Short label of the toolbar button, shown beside its icon, that opens the choice of words used to describe family members (such as “mother” or “egg parent”). Keep it brief."

@@ -356,6 +356,13 @@ export const messages = defineMessages({
     description:
       'Explanation of the option to describe family members without reference to gender.',
   },
+  framingChosenAnnouncement: {
+    id: 'interview.familyPedigree.framingChosenAnnouncement',
+    defaultMessage:
+      '{framing, select, gamete {Family members are now described with words like egg parent, sperm parent and sibling.} other {Family members are now described with words like mother, father, sister and brother.}}',
+    description:
+      'Screen-reader announcement after the participant chooses the words used to describe family members, which changes the labels of everyone they have not named. {framing} is "gamete" for the words that do not depend on gender, otherwise the words that follow gender.',
+  },
   siblingKindLabel: {
     id: 'interview.familyPedigree.siblingKindLabel',
     defaultMessage: 'To the parents they share, are they…',
