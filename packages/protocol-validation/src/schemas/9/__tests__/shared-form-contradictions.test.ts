@@ -11,6 +11,7 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import ProtocolSchemaV9 from '../schema.ts';
+import { networkComposerWords } from './canvas-stage-words.ts';
 import { pedigreeNameField } from './family-pedigree-text.ts';
 import {
   GENDER_IDENTITY_OPTIONS,
@@ -327,6 +328,7 @@ describe('shared form stage-effective validation contradictions', () => {
           quickAdd: 'name',
           layoutVariable: 'layoutPosition',
           background: { concentricCircles: 4 },
+          ...networkComposerWords(),
           nodeForm: {
             fields: [
               {
@@ -366,6 +368,7 @@ describe('shared form stage-effective validation contradictions', () => {
           quickAdd: 'name',
           layoutVariable: 'layoutPosition',
           background: { concentricCircles: 4 },
+          ...networkComposerWords(),
           nodeForm: {
             fields: [
               {

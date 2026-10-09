@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../../__tests__/finishStage.ts';
 import { localized, localizedOptions } from '../../../../utils/test-utils.ts';
+import { narrativePedigreeWords } from '../../__tests__/canvas-stage-words.ts';
 import { pedigreeNameField } from '../../__tests__/family-pedigree-text.ts';
 import { NodeColorSequence } from '../../color-reference.ts';
 import {
@@ -48,6 +49,7 @@ const validNarrativePedigreeStageShape = {
       inheritancePattern: 'autosomalDominant' as const,
     },
   ],
+  ...narrativePedigreeWords(),
 };
 
 // Minimal protocol with a FamilyPedigree source stage and NarrativePedigree
