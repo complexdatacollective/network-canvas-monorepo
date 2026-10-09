@@ -44,6 +44,9 @@ export const KIN_TERMS = [
   'halfSister',
   'halfBrother',
   'halfSibling',
+  'adoptiveSister',
+  'adoptiveBrother',
+  'adoptiveSibling',
   'stepsister',
   'stepbrother',
   'stepsibling',
@@ -130,6 +133,9 @@ type StepTerm =
   | 'halfSister'
   | 'halfBrother'
   | 'halfSibling'
+  | 'adoptiveSister'
+  | 'adoptiveBrother'
+  | 'adoptiveSibling'
   | 'partner'
   | 'formerPartner';
 
@@ -390,6 +396,15 @@ function stepTerm(
           });
       }
     case 'sibling':
+      // Related only through adoption, whether or not all their parents are
+      // the same.
+      if (step.adoptive) {
+        return pick(gender, {
+          woman: 'adoptiveSister',
+          man: 'adoptiveBrother',
+          other: 'adoptiveSibling',
+        });
+      }
       return step.half
         ? pick(gender, {
             woman: 'halfSister',

@@ -517,7 +517,8 @@ describe('siblings', () => {
         link('karen', 'ego', 'adoptive'),
         link('karen', 'ruby', 'adoptive'),
       ],
-      expected: { ruby: ['Sister', 'adoptiveSibling'] },
+      // Related only through adoption: the label says so.
+      expected: { ruby: ['Adoptive sister', 'adoptiveSibling'] },
     },
     {
       family: "an adopted participant and their adoptive parent's birth child",
@@ -526,7 +527,7 @@ describe('siblings', () => {
         link('karen', 'ego', 'adoptive'),
         link('karen', 'jack', 'biological', { carrier: true }),
       ],
-      expected: { jack: ['Brother', 'adoptiveSibling'] },
+      expected: { jack: ['Adoptive brother', 'adoptiveSibling'] },
     },
   ])(
     '$family: the label and the relationship agree',
@@ -534,6 +535,25 @@ describe('siblings', () => {
       expect(tiesOf(nodes, edges)).toMatchObject(expected);
     },
   );
+});
+
+test('a sibling related only through adoption is an adoptive sibling in the words that assume no gender', () => {
+  const nodes = [
+    person('ego', { isEgo: true }),
+    woman('karen'),
+    woman('ruby'),
+    person('sam'),
+  ];
+  const edges = [
+    link('karen', 'ego', 'adoptive'),
+    link('karen', 'ruby', 'adoptive'),
+    link('karen', 'sam', 'adoptive'),
+  ];
+  expect(labelsOf(nodes, edges, 'gamete')).toMatchObject({
+    ruby: 'Adoptive sibling',
+    sam: 'Adoptive sibling',
+  });
+  expect(labelsOf(nodes, edges).sam).toBe('Adoptive sibling');
 });
 
 describe('side of the family', () => {
