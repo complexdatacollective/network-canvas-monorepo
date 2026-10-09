@@ -78,12 +78,12 @@ export const findDuplicateDiseaseLabels = (
 
 // The snapshot's heading is built from the stage's title and the condition's
 // name, and from the focused person's name too for the inheritance heading.
-const SNAPSHOT_CONDITION_ARGUMENTS = {
+export const SNAPSHOT_CONDITION_ARGUMENTS = {
   title: { kind: 'text' },
   condition: { kind: 'text' },
 } as const satisfies MessageArguments;
 
-const SNAPSHOT_INHERITANCE_ARGUMENTS = {
+export const SNAPSHOT_INHERITANCE_ARGUMENTS = {
   ...SNAPSHOT_CONDITION_ARGUMENTS,
   name: { kind: 'text' },
 } as const satisfies MessageArguments;

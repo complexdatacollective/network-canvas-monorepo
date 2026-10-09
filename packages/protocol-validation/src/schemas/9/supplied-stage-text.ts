@@ -179,3 +179,24 @@ export const missingRequiredStageSettings = (
         valueAt(stage, setting.path) === undefined,
     )
     .map((setting) => setting.path);
+
+const samePath = (a: readonly string[], b: readonly string[]): boolean =>
+  a.length === b.length && a.every((segment, index) => segment === b[index]);
+
+/**
+ * Whether the stage's setting at `path` applies to the stage as it is
+ * configured: true for a setting shown whatever the configuration, else what
+ * its `when` says. A stage editor shows a wording field only when this holds,
+ * so the field it shows is the one `missingRequiredStageSettings` requires.
+ * A path that is not a supplied setting of the stage's type does not apply.
+ */
+export const suppliedStageSettingApplies = (
+  stage: Readonly<{ type: string }> & Readonly<Record<string, unknown>>,
+  path: readonly string[],
+): boolean => {
+  const setting = settingsOf(stage.type).find((candidate) =>
+    samePath(candidate.path, path),
+  );
+  if (setting === undefined) return false;
+  return setting.when === undefined || setting.when(stage);
+};
