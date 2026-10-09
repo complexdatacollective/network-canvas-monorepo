@@ -1728,10 +1728,17 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // parent fills gives way, a stand-in's sex at birth follows the other
   // genetic parent's, and identical twins whose genetic parents now differ
   // are not known to be identical. Resolves to the write the session
-  // refused, if one was.
+  // refused, if one was. `family` is the family as this render read it,
+  // before the change: the genetic ties the change recorded tell who took a
+  // stand-in's place.
   const keepStandInRule = async () =>
     applyStandIns(
-      planStandIns(latestFamily(), uuid, config.sexAssignedAtBirthAttribute),
+      planStandIns(
+        latestFamily(),
+        uuid,
+        config.sexAssignedAtBirthAttribute,
+        family,
+      ),
     );
 
   // Whether keeping the stand-in rule changes anything.
@@ -1821,10 +1828,12 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // added, give way, and take the sex at birth that follows, in one piece.
   const standInsChecked = useRef(false);
   const addMissingStandIns = useEffectEvent(async () => {
+    // No change led here: the family is read as it was left.
     const changes = planStandIns(
       latestFamily(),
       uuid,
       config.sexAssignedAtBirthAttribute,
+      undefined,
     );
     if (!changesAnything(changes)) return;
     reportRefusedStandIn(await applyStandIns(changes));

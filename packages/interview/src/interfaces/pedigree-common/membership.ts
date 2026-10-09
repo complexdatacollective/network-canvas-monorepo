@@ -213,6 +213,7 @@ export function peopleCutOffByChange(
     after,
     () => `\u0000stand-in-${next++}`,
     sexAttribute,
+    family,
   );
   // New stand-ins are connected only to the people they stand in for, so
   // they reconnect nobody; but the genetic parent recorded in a stand-in's

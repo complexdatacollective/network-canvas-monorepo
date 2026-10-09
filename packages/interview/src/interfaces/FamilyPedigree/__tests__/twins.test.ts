@@ -131,6 +131,7 @@ describe('identical twins after a change to their parents', () => {
       f,
       () => `stand-in-${++counter}`,
       config.sexAssignedAtBirthAttribute,
+      undefined,
     );
   };
 

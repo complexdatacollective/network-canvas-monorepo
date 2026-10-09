@@ -870,6 +870,7 @@ function standInsGivingWay(
     draft,
     () => '\u0000unused',
     sexAttribute,
+    family,
   );
   return new Set(
     existingLinksOf(family, personId)
