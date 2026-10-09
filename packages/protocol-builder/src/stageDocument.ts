@@ -1,6 +1,7 @@
 import { v4 as uuid } from 'uuid';
 
 import {
+  inapplicableStageSettings,
   isExclusiveVariantContainer,
   type StageType,
 } from '@codaco/protocol-validation';
@@ -68,7 +69,40 @@ export function stageDocument(
   fields: StageFormDraft,
 ): SectionDoc {
   assertNoIdentityFields(fields);
-  return { id: identity.id, type: identity.type, ...structuredClone(fields) };
+  const document: SectionDoc = {
+    id: identity.id,
+    type: identity.type,
+    ...structuredClone(fields),
+  };
+  // A setting shown only under a configuration that is now off is dropped,
+  // with any object it alone filled; turning the configuration back on seeds
+  // it again.
+  for (const path of inapplicableStageSettings({
+    ...document,
+    type: identity.type,
+  })) {
+    removeAt(document, path);
+  }
+  return document;
+}
+
+function removeAt(
+  root: Record<string, unknown>,
+  path: readonly string[],
+): void {
+  const [key, ...rest] = path;
+  if (key === undefined) return;
+  if (rest.length === 0) {
+    delete root[key];
+    return;
+  }
+  const child = root[key];
+  if (typeof child !== 'object' || child === null || Array.isArray(child)) {
+    return;
+  }
+  const container = child as Record<string, unknown>;
+  removeAt(container, rest);
+  if (Object.keys(container).length === 0) delete root[key];
 }
 
 function assertNoIdentityFields(fields: StageFormDraft): void {

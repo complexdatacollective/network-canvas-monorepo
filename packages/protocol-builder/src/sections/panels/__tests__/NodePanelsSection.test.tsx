@@ -167,25 +167,30 @@ const SCHEMA_REFUSAL = 'This stage is not finished, so it was not saved.';
 
 describe('the side panels a name generator shows', () => {
   it('shows the panels a stage arrives with, and saves them unchanged', async () => {
+    // No panel reads a data file, so the stage holds no words for one.
+    const { externalDataError: _unused, ...fields } = nameGeneratorWith([
+      {
+        id: 'panel-1',
+        title: en('People you named earlier'),
+        dataSource: 'existing',
+      },
+    ]).fields;
     const harness = renderStageEditor({
-      stage: nameGeneratorWith([
-        {
-          id: 'panel-1',
-          title: en('People you named earlier'),
-          dataSource: 'existing',
-        },
-      ]),
+      stage: {
+        id: 'name-generator-with-panels',
+        type: 'NameGenerator',
+        fields,
+      },
       sections: panels,
     });
 
     expect(
       await screen.findByText('People you named earlier'),
     ).toBeInTheDocument();
-    // The stage's name, the type it nominates, its add-a-person form, what it
-    // asks and the words for a file that did not load belong to sections this
-    // mount does not include.
+    // The stage's name, the type it nominates, its add-a-person form and what
+    // it asks belong to sections this mount does not include.
     await harness.roundTrip({
-      unowned: ['subject', 'form', 'prompts', 'externalDataError'],
+      unowned: ['subject', 'form', 'prompts'],
     });
   });
 

@@ -4,6 +4,7 @@ import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import ProtocolSchemaV9 from '../schema.ts';
 import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import {
+  inapplicableStageSettings,
   missingSuppliedStageText,
   suppliedStageSettingApplies,
   suppliedStageText,
@@ -324,5 +325,41 @@ describe('which supplied settings apply to a stage', () => {
     expect(
       suppliedStageSettingApplies({ type: 'Sociogram' }, ['noSuchSetting']),
     ).toBe(false);
+  });
+});
+
+describe('the settings a stage holds but no longer shows', () => {
+  const tooltips = {
+    pauseLayout: { en: 'Pause' },
+    resumeLayout: { en: 'Resume' },
+  };
+
+  it('are the conditional ones whose configuration is off', () => {
+    expect(
+      inapplicableStageSettings({
+        type: 'Sociogram',
+        behaviours: { automaticLayout: false },
+        tooltips,
+      }),
+    ).toEqual([
+      ['tooltips', 'pauseLayout'],
+      ['tooltips', 'resumeLayout'],
+    ]);
+  });
+
+  it('leave out a setting whose configuration is on, or one the stage lacks', () => {
+    expect(
+      inapplicableStageSettings({
+        type: 'Sociogram',
+        behaviours: { automaticLayout: true },
+        tooltips,
+      }),
+    ).toEqual([]);
+    expect(
+      inapplicableStageSettings({
+        type: 'Sociogram',
+        behaviours: { automaticLayout: false },
+      }),
+    ).toEqual([]);
   });
 });

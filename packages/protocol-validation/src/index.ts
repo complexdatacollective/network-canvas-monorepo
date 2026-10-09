@@ -188,6 +188,7 @@ export {
 // The stage settings whose wording Network Canvas supplies, written into a
 // stage by Architect when it is made and when a language is added.
 export {
+  inapplicableStageSettings,
   missingSuppliedStageText,
   type SuppliedStageText,
   suppliedStageText,

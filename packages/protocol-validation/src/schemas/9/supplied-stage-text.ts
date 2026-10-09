@@ -180,6 +180,25 @@ export const missingRequiredStageSettings = (
     )
     .map((setting) => setting.path);
 
+/**
+ * The paths of the settings `stage` holds but no longer shows: each one shown
+ * only under a configuration (its `when`) that is off. A stage editor seeds
+ * such a setting when its configuration is turned on, so it drops it when the
+ * configuration is turned off, and a protocol never asks to translate words
+ * its participants cannot see.
+ */
+export const inapplicableStageSettings = (
+  stage: Readonly<{ type: string }> & Readonly<Record<string, unknown>>,
+): readonly (readonly string[])[] =>
+  settingsOf(stage.type)
+    .filter(
+      (setting) =>
+        setting.when !== undefined &&
+        !setting.when(stage) &&
+        valueAt(stage, setting.path) !== undefined,
+    )
+    .map((setting) => setting.path);
+
 const samePath = (a: readonly string[], b: readonly string[]): boolean =>
   a.length === b.length && a.every((segment, index) => segment === b[index]);
 

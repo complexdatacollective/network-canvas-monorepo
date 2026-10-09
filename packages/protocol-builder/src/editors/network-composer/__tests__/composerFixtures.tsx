@@ -95,7 +95,10 @@ export const composerHolding = (fields: SectionDoc) => ({
       tooltips: {
         addPerson: { 'en-US': 'Add node' },
         automaticLayout: { 'en-US': 'Automatic layout' },
-        drawConnection: { 'en-US': 'Draw edge' },
+        // The connection tool's words, which only connection types ask for.
+        ...(Array.isArray(fields.edges) && fields.edges.length > 0
+          ? { drawConnection: { 'en-US': 'Draw edge' } }
+          : {}),
       },
       // A grouped composer holds the heading of its groups, which only grouping asks for.
       ...(fields.convexHullVariable === undefined
