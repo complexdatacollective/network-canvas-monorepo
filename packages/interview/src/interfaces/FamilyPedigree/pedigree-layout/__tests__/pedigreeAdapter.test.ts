@@ -11,6 +11,7 @@ import {
   toPedigreeInput,
 } from '../pedigreeAdapter';
 import type { PedigreeEdgeType, PedigreeLink, PedigreeLayout } from '../types';
+import { areConsanguineous, relativeRaisers } from '../utils';
 
 const TEST_DIMENSIONS: LayoutDimensions = {
   nodeWidth: 100,
@@ -117,6 +118,124 @@ describe('toPedigreeInput', () => {
     // 'social', which it dashes.
     expect(carrierConn?.edgeType).toBe('biological');
     expect(eggConn?.edgeType).toBe('donor');
+  });
+
+  test('a carrier drawn as the parent of a surrogacy child gave them no genes', () => {
+    // The surrogate's own child and the child she carried for donors are
+    // partners. Her line to the surrogacy child is drawn solid, but they
+    // share no genetic ancestor, so their partnership is not consanguineous.
+    const nodes = makeNodes([
+      { id: 'carrier' },
+      { id: 'carriersPartner' },
+      { id: 'ownChild' },
+      { id: 'eggDonor' },
+      { id: 'spermDonor' },
+      { id: 'surrogacyChild' },
+    ]);
+    const edges = makeEdges([
+      { from: 'carrier', to: 'carriersPartner', relationshipType: 'partner' },
+      { from: 'carrier', to: 'ownChild', relationshipType: 'biological' },
+      {
+        from: 'carriersPartner',
+        to: 'ownChild',
+        relationshipType: 'biological',
+      },
+      { from: 'eggDonor', to: 'surrogacyChild', relationshipType: 'donor' },
+      { from: 'spermDonor', to: 'surrogacyChild', relationshipType: 'donor' },
+      {
+        from: 'carrier',
+        to: 'surrogacyChild',
+        relationshipType: 'surrogate',
+        isGestationalCarrier: true,
+      },
+      { from: 'ownChild', to: 'surrogacyChild', relationshipType: 'partner' },
+    ]);
+
+    const { input, idToIndex } = toPedigreeInput(nodes, edges);
+    const index = (id: string) => idToIndex.get(id)!;
+    const carried = input.parents[index('surrogacyChild')]!.find(
+      (p) => p.parentIndex === index('carrier'),
+    );
+    expect(carried?.edgeType).toBe('biological');
+    expect(
+      areConsanguineous(
+        index('ownChild'),
+        index('surrogacyChild'),
+        input.parents,
+      ),
+    ).toBe(false);
+  });
+
+  test('an adopted child’s birth parent, drawn as a donor, still gave them genes', () => {
+    const nodes = makeNodes([
+      { id: 'birthMum' },
+      { id: 'adoptiveMum' },
+      { id: 'adopted' },
+      { id: 'birthSibling' },
+      { id: 'otherParent' },
+    ]);
+    const edges = makeEdges([
+      { from: 'birthMum', to: 'adopted', relationshipType: 'biological' },
+      { from: 'adoptiveMum', to: 'adopted', relationshipType: 'adoptive' },
+      { from: 'birthMum', to: 'birthSibling', relationshipType: 'biological' },
+      {
+        from: 'otherParent',
+        to: 'birthSibling',
+        relationshipType: 'biological',
+      },
+      { from: 'adopted', to: 'birthSibling', relationshipType: 'partner' },
+    ]);
+
+    const { input, idToIndex } = toPedigreeInput(nodes, edges);
+    const index = (id: string) => idToIndex.get(id)!;
+    expect(
+      input.parents[index('adopted')]!.find(
+        (p) => p.parentIndex === index('birthMum'),
+      )?.edgeType,
+    ).toBe('donor');
+    expect(
+      areConsanguineous(index('adopted'), index('birthSibling'), input.parents),
+    ).toBe(true);
+  });
+
+  test('the layout and the adapter find the same relatives raising a child, whichever line a carrier is drawn with', () => {
+    // Kit's birth parent is Bea; Bea's sister Ann and Cal adopt Kit. Cal is
+    // the own child of a carrier who carried a child for donors, and that
+    // child is the partner of Bea's father. The carrier's line to the child
+    // she carried is drawn solid, but it is no genetic tie, so Cal is no
+    // relative of Kit's birth family.
+    const nodes = makeNodes([
+      { id: 'grandad' },
+      { id: 'bea' },
+      { id: 'ann' },
+      { id: 'kit' },
+      { id: 'carrier' },
+      { id: 'cal' },
+      { id: 'eggDonor' },
+      { id: 'spermDonor' },
+      { id: 'carried' },
+    ]);
+    const edges = makeEdges([
+      { from: 'grandad', to: 'bea', relationshipType: 'biological' },
+      { from: 'grandad', to: 'ann', relationshipType: 'biological' },
+      { from: 'bea', to: 'kit', relationshipType: 'biological' },
+      { from: 'ann', to: 'kit', relationshipType: 'adoptive' },
+      { from: 'cal', to: 'kit', relationshipType: 'adoptive' },
+      { from: 'carrier', to: 'cal', relationshipType: 'biological' },
+      { from: 'eggDonor', to: 'carried', relationshipType: 'donor' },
+      { from: 'spermDonor', to: 'carried', relationshipType: 'donor' },
+      {
+        from: 'carrier',
+        to: 'carried',
+        relationshipType: 'surrogate',
+        isGestationalCarrier: true,
+      },
+      { from: 'carried', to: 'grandad', relationshipType: 'partner' },
+    ]);
+    const { input, idToIndex } = toPedigreeInput(nodes, edges);
+    const index = (id: string) => idToIndex.get(id)!;
+    const raisers = relativeRaisers(input.parents, input.partners);
+    expect([...raisers[index('kit')]!]).toEqual([index('ann')]);
   });
 
   test('keeps a birth parent who is the adoptive parent’s partner as a biological parent', () => {

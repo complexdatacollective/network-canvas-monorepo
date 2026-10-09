@@ -60,11 +60,7 @@ export function tableCounts(arr: number[]): Map<number, number> {
   return counts;
 }
 
-import type {
-  ParentConnection,
-  PartnerConnection,
-  PedigreeEdgeType,
-} from './types';
+import type { ParentConnection, PartnerConnection } from './types';
 
 // Chase all ancestors of a person
 export function ancestor(me: number, parents: ParentConnection[][]): number[] {
@@ -99,12 +95,15 @@ export function ancestor(me: number, parents: ParentConnection[][]): number[] {
   return indices;
 }
 
-/** A parent link that passes on genes: a biological parent, or a donor —
- * which includes an adopted child's birth parent, whose biological link the
- * adapter turns into a donor link. Social, adoptive and surrogate links do
- * not. */
-function isGeneticEdge(edgeType: PedigreeEdgeType): boolean {
-  return edgeType === 'biological' || edgeType === 'donor';
+/** A parent link that passes on genes: a biological parent or a donor, as
+ * recorded (`ParentConnection.isGenetic`), whatever line it is drawn with.
+ * Social, adoptive and surrogate links do not, even a carrier's drawn as a
+ * biological parent's. */
+function isGeneticConnection(connection: ParentConnection): boolean {
+  return (
+    connection.isGenetic ??
+    (connection.edgeType === 'biological' || connection.edgeType === 'donor')
+  );
 }
 
 /**
@@ -118,9 +117,7 @@ export function areConsanguineous(
   b: number,
   parents: ParentConnection[][],
 ): boolean {
-  const genetic = parents.map((conns) =>
-    conns.filter((p) => isGeneticEdge(p.edgeType)),
-  );
+  const genetic = parents.map((conns) => conns.filter(isGeneticConnection));
   const ancestorsOfB = new Set(ancestor(b, genetic));
   return ancestor(a, genetic).some((x) => ancestorsOfB.has(x));
 }
@@ -240,7 +237,7 @@ export function relativeRaisers(
   };
   parents.forEach((conns, child) => {
     for (const p of conns) {
-      if (isGeneticEdge(p.edgeType)) tie(p.parentIndex, child);
+      if (isGeneticConnection(p)) tie(p.parentIndex, child);
     }
   });
   const partnersOf: number[][] = Array.from({ length: n }, () => []);

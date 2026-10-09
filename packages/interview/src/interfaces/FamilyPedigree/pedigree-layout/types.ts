@@ -29,8 +29,16 @@ export type PedigreeLink = {
 
 export type ParentConnection = {
   parentIndex: number;
+  /** How the link is drawn, which the adapter may change from the kind
+   * recorded (a carrier anchoring a child's line of descent is drawn as a
+   * biological parent; an adopted child's birth parent, as a donor). */
   edgeType: PedigreeEdgeType;
   isGestationalCarrier?: boolean;
+  /** Whether the parent gave the child a gamete, as recorded, whatever line
+   * the link is drawn with. Genetic decisions (consanguinity, who counts as
+   * a relative) read this, never the drawn type. The adapter always sets it;
+   * when absent, the drawn type is taken to be the recorded one. */
+  isGenetic?: boolean;
 };
 
 export type PartnerConnection = {

@@ -95,6 +95,9 @@ export function toPedigreeInput(
         parentIndex: parentIdx,
         edgeType: relationshipType,
         isGestationalCarrier,
+        // Kept as recorded: the drawn type may change below.
+        isGenetic:
+          relationshipType === 'biological' || relationshipType === 'donor',
       });
     }
   }
@@ -137,7 +140,9 @@ export function toPedigreeInput(
   // descent is in standard pedigree nomenclature (never 'social', which is
   // drawn dashed). The gamete donors remain auxiliary. Without this the child
   // has only auxiliary parents, forms no family unit, and renders no line of
-  // descent at all.
+  // descent at all. The carrier's link stays non-genetic (`isGenetic`), so
+  // the line drawn never makes the child a blood relative of the carrier's
+  // own children.
   for (let i = 0; i < n; i++) {
     const hasPrimaryParent = parents[i]!.some(
       (p) =>
