@@ -15,6 +15,7 @@ import {
   type LanguageChange,
   messageText,
   suppliedOptionLabelsAfterLanguageChange,
+  suppliedStageTextAfterLanguageChange,
 } from '@codaco/protocol-validation';
 import { withTranslation } from '~/utils/localizedText';
 
@@ -133,8 +134,9 @@ const resolveNewLocale = (
  * The protocol after a change to its languages. `rewritten` is the protocol
  * with every translation already moved or removed as the change says; each
  * text Network Canvas supplies that the researcher has not changed in the
- * default language — the labels of the answers a Family Pedigree asks for,
- * and a finish stage's closing text — then becomes what Network Canvas writes
+ * default language — the labels of the answers a Family Pedigree asks for, a
+ * finish stage's closing text, and stage settings such as a roster's panel
+ * title — then becomes what Network Canvas writes
  * for the protocol's languages as they now are.
  */
 const withLanguageChange = (
@@ -172,22 +174,31 @@ const withLanguageChange = (
     }
     original.stages.forEach((stage, index) => {
       const target = draft.stages[index];
-      if (!isFinishSessionStage(stage) || target === undefined) return;
-      Object.assign(
-        target,
-        defaultFinishSessionTextAfterLanguageChange(stage, change),
-      );
+      if (target === undefined) return;
+      if (isFinishSessionStage(stage)) {
+        Object.assign(
+          target,
+          defaultFinishSessionTextAfterLanguageChange(stage, change),
+        );
+      }
+      for (const { path, value } of suppliedStageTextAfterLanguageChange(
+        stage,
+        change,
+      )) {
+        setAtPath(target, path, value);
+      }
     });
   });
 };
 
 /**
- * Declares new languages. Nothing is translated, with two exceptions, each
- * text Network Canvas supplies and the researcher has not changed in the
- * default language: a finish stage's closing text, and the labels of the
- * answers a Family Pedigree asks for. Each gets its supplied text in every new
- * language it is supplied in. Everything else shows as a missing translation
- * until it is written.
+ * Declares new languages. Nothing is translated except text Network Canvas
+ * supplies that the researcher has not changed in the default language (see
+ * `withLanguageChange`): a finish stage's closing text, the labels of the
+ * answers a Family Pedigree asks for, and stage settings such as a roster's
+ * panel title. Each gets its supplied text in every new language it is
+ * supplied in. Everything else shows as a missing translation until it is
+ * written.
  */
 export const addLocales = (
   protocol: CurrentProtocol,

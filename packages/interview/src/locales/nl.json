@@ -156,7 +156,6 @@
   "interview.interfaces.automaticLayout": "Automatische lay-out",
   "interview.interfaces.availableItems": "Lijst met beschikbare items om toe te voegen",
   "interview.interfaces.availableRosterNodes": "Beschikbare knooppunten uit de namenlijst",
-  "interview.interfaces.availableToAdd": "Beschikbaar om toe te voegen",
   "interview.interfaces.binSummary": "{otherCount, plural, =0 {<label>{name}</label>} one {<label>{name}</label> <count>en # andere</count>} other {<label>{name}</label> <count>en # andere</count>}}",
   "interview.interfaces.categoryContents": "Categorie {label}, {count, plural, one {# item} other {# items}}",
   "interview.interfaces.categoryContentsExpanded": "Categorie {label}, {count, plural, one {# item} other {# items}}, uitgeklapt",

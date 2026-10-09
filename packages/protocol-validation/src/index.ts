@@ -156,6 +156,13 @@ export {
 } from './schemas/9/family-pedigree-option-labels.ts';
 // How text Network Canvas supplies follows a change to a protocol's languages.
 export { type LanguageChange } from './schemas/9/supplied-text.ts';
+// The stage settings whose wording Network Canvas supplies, written into a
+// stage by Architect when it is made and when a language is added.
+export {
+  type SuppliedStageText,
+  suppliedStageText,
+  suppliedStageTextAfterLanguageChange,
+} from './schemas/9/supplied-stage-text.ts';
 // The finish stage text Network Canvas supplies, written into a protocol by
 // the v8 → v9 migration and by Architect.
 export {

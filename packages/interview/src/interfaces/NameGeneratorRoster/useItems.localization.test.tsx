@@ -39,6 +39,7 @@ function RosterLabels() {
     stage: {
       id: 'stage',
       type: 'NameGeneratorRoster',
+      panelTitle: { en: 'Available to add' },
       label: { en: 'Authored stage' },
       subject: { entity: 'node', type: 'person' },
       dataSource: 'source',

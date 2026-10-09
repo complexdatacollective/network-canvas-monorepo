@@ -1,4 +1,5 @@
 import { isBlankText } from '../../localization/blankText.ts';
+import type { LocalizationDeclaration } from '../../localization/localeTag.ts';
 import { escapeMarkdownText } from '../../localization/markdownText.ts';
 import { escapeMessageText } from '../../localization/messageSyntax.ts';
 import { createMigration } from '../../migration/index.ts';
@@ -19,6 +20,7 @@ import { TypeLevelOperators } from './filters/filter.ts';
 import { defaultFinishSessionFields } from './finish-session-defaults.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
 import ProtocolSchemaV9 from './schema.ts';
+import { missingSuppliedStageText } from './supplied-stage-text.ts';
 
 // Schema 8 never recorded the language its copy was written in, and a schema 9
 // protocol always has a real one, so migrated copy is recorded as English. The
@@ -415,6 +417,35 @@ const addFormFieldPrompts = (protocol: unknown) => {
   }
 };
 
+/**
+ * Stage settings that schema 9 added and requires, whose wording Network
+ * Canvas supplies (see `supplied-stage-text.ts`), get it on every stage
+ * missing them, in the protocol's languages. A document already written in
+ * schema 9 form keeps any it has.
+ */
+const addSuppliedStageText = (
+  protocol: unknown,
+  localization: LocalizationDeclaration,
+) => {
+  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
+  for (const stage of protocol.stages) {
+    if (!isRecord(stage) || typeof stage.type !== 'string') continue;
+    for (const { path, value } of missingSuppliedStageText(
+      { ...stage, type: stage.type },
+      localization,
+    )) {
+      let container: Record<string, unknown> = stage;
+      for (const key of path.slice(0, -1)) {
+        const next = container[key];
+        if (!isRecord(next)) container[key] = {};
+        container = container[key] as Record<string, unknown>;
+      }
+      const last = path.at(-1);
+      if (last !== undefined) container[last] = value;
+    }
+  }
+};
+
 const migrationV8toV9 = createMigration({
   from: 8,
   to: 9,
@@ -434,7 +465,8 @@ const migrationV8toV9 = createMigration({
 - The converted Family Pedigree does not ask about gender identity. Where it uses gendered words such as mother or sister, they follow each person's sex assigned at birth.
 - Additional person fields on a Family Pedigree that collected the name or sex assigned at birth are removed, because the redesigned interface asks every person for both itself. The old interface never showed a field for the name. Answers already recorded are kept.
 - A Family Pedigree cannot be converted if two of its answers use the same attribute: two nomination prompts, a nomination prompt and an additional person field, or the name and another answer. Each now needs an attribute of its own. Give each its own attribute in the version of Architect that made the protocol, then upgrade it.
-- The screen that ends the interview is now a Finish Screen stage at the end of your protocol, so you can change its heading and text and translate them like the rest of your protocol. It starts with the text the interview has always shown there.`,
+- The screen that ends the interview is now a Finish Screen stage at the end of your protocol, so you can change its heading and text and translate them like the rest of your protocol. It starts with the text the interview has always shown there.
+- A Name Generator Roster stage now has a panel title, shown above the list of people participants choose from, so you can change it and translate it like the rest of your protocol. It starts with the heading the interview has always shown there, "Available to add".`,
   migrate: ({ experiments, ...doc }) => {
     const migrated = structuredClone(doc);
     const localization = localizationOf(migrated);
@@ -451,6 +483,7 @@ const migrationV8toV9 = createMigration({
     addHighlightLabels(migrated);
     addComposerCaptions(migrated);
     addFormFieldPrompts(migrated);
+    addSuppliedStageText(migrated, localization);
 
     // Every site is found before any is rewritten, so the walk reads the
     // document as schema 8 left it.

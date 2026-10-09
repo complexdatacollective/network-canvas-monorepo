@@ -151,6 +151,7 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
 
   site(stage(4, 'prompts', 0, 'text'), 'markdown'),
 
+  site(stage(5, 'panelTitle'), 'plain'),
   site(
     stage(5, 'cardOptions', 'additionalProperties', 0, 'label'),
     'plain',

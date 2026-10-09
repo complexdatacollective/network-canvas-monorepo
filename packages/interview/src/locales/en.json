@@ -627,10 +627,6 @@
     "defaultMessage": "Available Roster Nodes",
     "description": "Accessible name used by drag-and-drop announcements for the external roster entries that can still be added."
   },
-  "interview.interfaces.availableToAdd": {
-    "defaultMessage": "Available to add",
-    "description": "Heading above the external roster entries that the participant can add to their network."
-  },
   "interview.interfaces.binSummary": {
     "defaultMessage": "{otherCount, plural, =0 {<label>{name}</label>} one {<label>{name}</label> <count>and # other</count>} other {<label>{name}</label> <count>and # others</count>}}",
     "description": "Whole categorical-bin summary. name is the first item’s unchanged display name; otherCount excludes that item. label and count tags keep the name and remaining-item count in separate visual spans."

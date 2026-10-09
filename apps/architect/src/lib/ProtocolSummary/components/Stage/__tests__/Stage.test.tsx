@@ -74,4 +74,25 @@ describe('Protocol Summary stage', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('End of the interview')).toBeInTheDocument();
   });
+
+  it('prints the heading a roster stage shows over the people it offers', () => {
+    render(
+      <SummaryContext.Provider
+        value={{ protocol, protocolName: protocol.name, index: [] }}
+      >
+        <Stage
+          id="roster"
+          label={{ en: 'Classmates' }}
+          stageNumber={3}
+          type="NameGeneratorRoster"
+          configuration={{ panelTitle: { en: 'Your classmates' } }}
+        />
+      </SummaryContext.Provider>,
+    );
+
+    expect(
+      screen.getByRole('heading', { name: 'Roster panel' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Your classmates')).toBeInTheDocument();
+  });
 });

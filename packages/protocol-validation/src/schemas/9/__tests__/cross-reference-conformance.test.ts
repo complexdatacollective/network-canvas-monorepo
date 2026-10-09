@@ -120,6 +120,7 @@ describe('Cross-reference conformance', () => {
             label: localized('Roster'),
             subject: { entity: 'node', type: 'person' },
             dataSource,
+            panelTitle: localized('Available to add'),
             prompts: [{ id: 'p1', text: localized('Pick someone') }],
           },
         ],

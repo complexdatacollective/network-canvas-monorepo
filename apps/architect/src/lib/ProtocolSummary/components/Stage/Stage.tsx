@@ -44,6 +44,7 @@ import Panels from './Panels';
 import Presets from './Presets';
 import Prompts, { type PromptType } from './Prompts';
 import QuickAdd from './QuickAdd';
+import RosterPanel from './RosterPanel';
 import ScaffoldingStep from './ScaffoldingStep';
 import SectionFrame from './SectionFrame';
 import SkipLogic from './SkipLogic';
@@ -130,6 +131,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
       }
     | undefined;
   const dataSource = configuration.dataSource as string | undefined;
+  const panelTitle = configuration.panelTitle as LocalizedString | undefined;
   const quickAdd = configuration.quickAdd as string | undefined;
   const panels = configuration.panels as Panel[] | undefined;
   const prompts = configuration.prompts as PromptType[] | undefined;
@@ -385,6 +387,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
       <IntroductionPanel introductionPanel={introductionPanel ?? null} />
       <MapOptions mapOptions={mapOptions ?? null} />
       <DataSource dataSource={dataSource ?? null} />
+      <RosterPanel panelTitle={panelTitle ?? null} />
       <QuickAdd quickAdd={quickAdd ?? null} />
       <Panels panels={panels ?? null} />
       <Prompts prompts={prompts ?? null} />

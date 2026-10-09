@@ -690,3 +690,58 @@ describe('text Network Canvas supplies, when a language is corrected or the defa
     );
   });
 });
+
+describe('a roster stage’s supplied panel title', () => {
+  const withRoster = (panelTitle: Record<string, string>): CurrentProtocol =>
+    ({
+      ...monolingual(),
+      stages: [
+        {
+          id: 'roster',
+          type: 'NameGeneratorRoster',
+          label: { en: 'Services' },
+          subject: { entity: 'node', type: 'person' },
+          dataSource: 'roster',
+          panelTitle,
+          prompts: [{ id: 'p1', text: { en: 'Which services?' } }],
+        },
+      ],
+    }) as unknown as CurrentProtocol;
+  const panelTitleOf = (protocol: CurrentProtocol) =>
+    (protocol.stages[0] as { panelTitle?: unknown }).panelTitle;
+
+  it('is filled into a new language, and follows a corrected one, while it is unchanged', () => {
+    expect(
+      panelTitleOf(
+        protocolOf(addLocales(withRoster({ en: 'Available to add' }), ['fr'])),
+      ),
+    ).toEqual({ en: 'Available to add', fr: 'Éléments disponibles' });
+    expect(
+      panelTitleOf(
+        protocolOf(
+          changeLocale(withRoster({ en: 'Available to add' }), 'en', 'de'),
+        ),
+      ),
+    ).toEqual({ de: 'Zum Hinzufügen verfügbar' });
+  });
+
+  it('is left to the researcher once they have changed it', () => {
+    expect(
+      panelTitleOf(
+        protocolOf(addLocales(withRoster({ en: 'Services' }), ['fr'])),
+      ),
+    ).toEqual({ en: 'Services' });
+  });
+
+  // A panel title is required, so a language Network Canvas has no wording
+  // for keeps the English text rather than being left with none.
+  it('stays in English when the protocol’s only language is corrected to one it is not supplied in', () => {
+    expect(
+      panelTitleOf(
+        protocolOf(
+          changeLocale(withRoster({ en: 'Available to add' }), 'en', 'hu'),
+        ),
+      ),
+    ).toEqual({ hu: 'Available to add' });
+  });
+});
