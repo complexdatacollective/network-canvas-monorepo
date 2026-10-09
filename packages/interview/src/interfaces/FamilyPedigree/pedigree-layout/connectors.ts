@@ -802,12 +802,30 @@ export function computeConnectors(
     string,
     {
       parentIndex: number;
+      /** A partner seated beside the parent who is the child's parent in
+       * the same way: the line then comes down from the couple. */
+      partnerIndex?: number;
       edgeType: PedigreeEdgeType;
       childLevel: number;
       sibship: string;
       childColumns: number[];
     }
   >();
+  const placeOf = new Map<number, { layer: number; col: number }>();
+  for (let i = 0; i < maxlev; i++) {
+    for (let j = 0; j < (layout.n[i] ?? 0); j++) {
+      const person = layout.nid[i]![j]!;
+      if (!placeOf.has(person)) placeOf.set(person, { layer: i, col: j });
+    }
+  }
+  /** Whether two people sit side by side joined by a partnership line. */
+  const seatedAsCouple = (a: number, b: number) => {
+    const at = placeOf.get(a);
+    const bt = placeOf.get(b);
+    if (!at || !bt || at.layer !== bt.layer) return false;
+    if (Math.abs(at.col - bt.col) !== 1) return false;
+    return (layout.group[at.layer]?.[Math.min(at.col, bt.col)] ?? 0) > 0;
+  };
 
   for (let i = 0; i < maxlev; i++) {
     for (let j = 0; j < (layout.n[i] ?? 0); j++) {
@@ -823,22 +841,47 @@ export function computeConnectors(
       const descentParents = descentParentsOf.get(`${i},${j}`);
       const sibship = sibshipOf.get(`${i},${j}`) ?? `${i},none`;
 
-      for (const parentEdge of parentEdges) {
+      // A child with no line of descent (their parents sit more than a row
+      // above them) still descends from a couple of their parents seated
+      // together, tied to them in the same way: one line comes down from
+      // the couple rather than one from each.
+      const own = parentEdges.filter(
+        (p) => !descentParents?.has(p.parentIndex),
+      );
+      const partnerOf = new Map<number, number>();
+      if (!descentParents) {
+        for (const a of own) {
+          for (const b of own) {
+            if (a.parentIndex >= b.parentIndex) continue;
+            if (a.edgeType !== b.edgeType) continue;
+            if (partnerOf.has(a.parentIndex) || partnerOf.has(b.parentIndex)) {
+              continue;
+            }
+            if (!seatedAsCouple(a.parentIndex, b.parentIndex)) continue;
+            partnerOf.set(a.parentIndex, b.parentIndex);
+            partnerOf.set(b.parentIndex, -1);
+          }
+        }
+      }
+
+      for (const parentEdge of own) {
         const parentId = parentEdge.parentIndex;
-        if (descentParents?.has(parentId)) continue;
+        const partnerId = partnerOf.get(parentId);
+        if (partnerId === -1) continue;
 
         // Each line carries the parent's own relationship to the child.
         const { edgeType } = parentEdge;
 
         // One line carries one relationship: a parent who is biological to one
         // child and social to another is grouped once for each.
-        const key = `${parentId},${edgeType},${sibship}`;
+        const key = `${parentId}${partnerId === undefined ? '' : `+${partnerId}`},${edgeType},${sibship}`;
         const existing = socialConnections.get(key);
         if (existing) {
           existing.childColumns.push(j);
         } else {
           socialConnections.set(key, {
             parentIndex: parentId,
+            ...(partnerId === undefined ? {} : { partnerIndex: partnerId }),
             edgeType,
             childLevel: i,
             sibship,
@@ -910,12 +953,17 @@ export function computeConnectors(
   ]) {
     const parentAt = nodeLocation.get(conn.parentIndex);
     if (!parentAt) continue;
+    const partnerAt =
+      'partnerIndex' in conn && conn.partnerIndex !== undefined
+        ? nodeLocation.get(conn.partnerIndex)
+        : undefined;
     const from = {
       person: conn.parentIndex,
-      x: parentAt.x,
+      // A couple's line starts on their partnership line, between them.
+      x: partnerAt ? (parentAt.x + partnerAt.x) / 2 : parentAt.x,
       layer: parentAt.layer,
     };
-    const owner = `${conn.parentIndex},${conn.edgeType}`;
+    const owner = `${conn.parentIndex}${partnerAt ? '+' : ''},${conn.edgeType}`;
     const parentNodeId = id ? id[conn.parentIndex] : undefined;
 
     const bar = sibshipBar.get(conn.sibship);

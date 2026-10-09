@@ -2387,6 +2387,47 @@ describe('a donor or surrogate sits beside the child’s parents, on their row',
     );
   });
 
+  it('a parent moved down to the donor’s row still descends from their parents as a couple', () => {
+    // As above: helen and mark move down to chloe's row, two rows below
+    // helen's parents, gm and gf. One line comes down from the couple to
+    // helen, not one from each of them.
+    const ped: PedigreeInput = {
+      id: ['gm', 'gf', 'you', 'helen', 'peter', 'mark', 'chloe', 'oliver'],
+      parents: [
+        [],
+        [],
+        [sp(0), sp(1)],
+        [sp(0), sp(1)],
+        [],
+        [],
+        [sp(2), sp(4)],
+        [social(3), sp(5), donor(6)],
+      ],
+      partners: [couple(0, 1), couple(2, 4), couple(3, 5)],
+    };
+    const result = alignPedigree(ped);
+    const conn = computeConnectors(
+      result,
+      defaultScaling,
+      ped.parents,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      ped.id,
+    );
+    const toHelen = conn.auxiliaryLines.filter(
+      (line) => line.endpointIds?.[1] === 'helen',
+    );
+    expect(toHelen).toHaveLength(1);
+    const gm = placeOf(result, 0);
+    const gf = placeOf(result, 1);
+    const coupleX =
+      (result.pos[gm.layer]![gm.col]! + result.pos[gf.layer]![gf.col]!) / 2;
+    expect(toHelen[0]!.points[0]!.x).toBeCloseTo(coupleX);
+    expect(toHelen[0]!.edgeType).toBe('biological');
+  });
+
   it('when the donor is the sister of someone a generation down', () => {
     // ruth + alan → you, naomi; daniel + omar raise lily, conceived with
     // naomi's egg and carried by a surrogate.
