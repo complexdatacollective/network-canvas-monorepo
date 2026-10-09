@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
+import type { IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import {
   DropdownMenu,
@@ -44,12 +45,93 @@ type ConnectMenuProps = {
   /** The second person's symbol, which the menu opens beside and returns
    * focus to. */
   anchor: HTMLElement | null;
-  /** Called with the chosen relationship and its wording, to announce. */
-  onConnect: (connection: Connection, description: string) => void;
+  /** Called with the chosen relationship. */
+  onConnect: (connection: Connection) => void;
   onClose: () => void;
 };
 
 type ParentAndChild = { parentId: string; childId: string };
+
+/**
+ * The words the connect menu uses: for a pair as partners, for one as the
+ * other's parent, and for each kind of parent. The participant comes first
+ * in a pair, as "you and …".
+ */
+function connectionWords(
+  intl: IntlShape,
+  family: Family,
+  displayName: (personId: string) => string,
+  parentKindLabels: OwnedOptionLabels['parentKind'],
+) {
+  const isYou = (id: string) => family.byId.get(id)?.isEgo === true;
+  // Every kind is offered by the codebook's label; a biological parent who
+  // carried the pregnancy is its own choice, qualifying that label.
+  const parentChoiceLabel = (choice: ParentChoice) =>
+    choice.parentKind === 'biological' && choice.carriedPregnancy
+      ? intl.formatMessage(messages.parentKindBiologicalCarrier, {
+          parentKind: parentKindLabels.biological,
+        })
+      : parentKindLabels[choice.parentKind];
+  const parentLabel = ({ parentId, childId }: ParentAndChild) =>
+    intl.formatMessage(messages.connectParent, {
+      parentIsYou: isYou(parentId) ? 'true' : 'false',
+      childIsYou: isYou(childId) ? 'true' : 'false',
+      parent: displayName(parentId),
+      child: displayName(childId),
+    });
+  const inOrder = (a: string, b: string) => (isYou(b) ? [b, a] : [a, b]);
+  const pairArgs = (a: string, b: string) => {
+    const [first = a, second = b] = inOrder(a, b);
+    return {
+      firstIsYou: isYou(first) ? 'true' : 'false',
+      first: displayName(first),
+      second: displayName(second),
+    };
+  };
+  const partnersLabel = (a: string, b: string, current: boolean) =>
+    intl.formatMessage(
+      current ? messages.connectPartners : messages.connectFormerPartners,
+      pairArgs(a, b),
+    );
+  return {
+    inOrder,
+    pairArgs,
+    parentChoiceLabel,
+    parentLabel,
+    partnersLabel,
+    /** A connection made, as the menu option chosen for it, announced as
+     * plain text. */
+    describe: (connection: Connection) =>
+      connection.kind === 'partner'
+        ? partnersLabel(
+            connection.firstId,
+            connection.secondId,
+            connection.current,
+          )
+        : intl.formatMessage(messages.connectedParentAnnouncement, {
+            relationship: parentLabel(connection),
+            kind: getMarkdownLabelText(parentChoiceLabel(connection)),
+          }),
+  };
+}
+
+/**
+ * How a connection just made is announced: as the menu option chosen for
+ * it, in the words people have now that it is made, which may differ from
+ * the menu's when it changes how someone unnamed is related to the
+ * participant.
+ */
+export function describeConnection(
+  connection: Connection,
+  intl: IntlShape,
+  family: Family,
+  displayName: (personId: string) => string,
+  parentKindLabels: OwnedOptionLabels['parentKind'],
+) {
+  return connectionWords(intl, family, displayName, parentKindLabels).describe(
+    connection,
+  );
+}
 
 /**
  * Asks how two people the participant has selected are related: as partners,
@@ -68,14 +150,7 @@ export default function ConnectMenu({
   onClose,
 }: ConnectMenuProps) {
   const intl = useAppIntl();
-  // Every kind is offered by the codebook's label; a biological parent who
-  // carried the pregnancy is its own choice, qualifying that label.
-  const parentChoiceLabel = (choice: ParentChoice) =>
-    choice.parentKind === 'biological' && choice.carriedPregnancy
-      ? intl.formatMessage(messages.parentKindBiologicalCarrier, {
-          parentKind: parentKindLabels.biological,
-        })
-      : parentKindLabels[choice.parentKind];
+  const words = connectionWords(intl, family, displayName, parentKindLabels);
   // The parent and child chosen in the first step, for the current pair.
   const [choice, setChoice] = useState<{
     pair: ConnectPair;
@@ -95,14 +170,7 @@ export default function ConnectMenu({
 
   const content = (() => {
     if (!pair) return null;
-    const isYou = (id: string) => family.byId.get(id)?.isEgo === true;
-    const parentLabel = ({ parentId, childId }: ParentAndChild) =>
-      intl.formatMessage(messages.connectParent, {
-        parentIsYou: isYou(parentId) ? 'true' : 'false',
-        childIsYou: isYou(childId) ? 'true' : 'false',
-        parent: displayName(parentId),
-        child: displayName(childId),
-      });
+    const { parentLabel, parentChoiceLabel } = words;
 
     if (parentChoice) {
       const label = parentLabel(parentChoice);
@@ -122,13 +190,7 @@ export default function ConnectMenu({
                 ref={index === 0 ? firstItemRef : undefined}
                 data-testid={`pedigree-connect-kind-${id}`}
                 onClick={() =>
-                  onConnect(
-                    { kind: 'parent', ...parentChoice, ...option },
-                    intl.formatMessage(messages.connectedParentAnnouncement, {
-                      relationship: label,
-                      kind: getMarkdownLabelText(kindLabel),
-                    }),
-                  )
+                  onConnect({ kind: 'parent', ...parentChoice, ...option })
                 }
               >
                 <RenderMarkdown>{kindLabel}</RenderMarkdown>
@@ -147,19 +209,13 @@ export default function ConnectMenu({
     }
 
     // The participant comes first in the wording, as "you and …".
-    const [first, second] = isYou(pair.secondId)
-      ? [pair.secondId, pair.firstId]
-      : [pair.firstId, pair.secondId];
-    const pairArgs = {
-      firstIsYou: isYou(first) ? 'true' : 'false',
-      first: displayName(first),
-      second: displayName(second),
-    };
-    const partners = intl.formatMessage(messages.connectPartners, pairArgs);
-    const formerPartners = intl.formatMessage(
-      messages.connectFormerPartners,
-      pairArgs,
+    const [first = pair.firstId, second = pair.secondId] = words.inOrder(
+      pair.firstId,
+      pair.secondId,
     );
+    const pairArgs = words.pairArgs(first, second);
+    const partners = words.partnersLabel(first, second, true);
+    const formerPartners = words.partnersLabel(first, second, false);
     const canPartner = canConnectPartners(family, first, second);
     const parentOption = (parent: ParentAndChild) => (
       <DropdownMenuItem
@@ -186,15 +242,12 @@ export default function ConnectMenu({
           disabled={!canPartner}
           data-testid="pedigree-connect-partners"
           onClick={() =>
-            onConnect(
-              {
-                kind: 'partner',
-                firstId: first,
-                secondId: second,
-                current: true,
-              },
-              partners,
-            )
+            onConnect({
+              kind: 'partner',
+              firstId: first,
+              secondId: second,
+              current: true,
+            })
           }
         >
           {partners}
@@ -203,15 +256,12 @@ export default function ConnectMenu({
           disabled={!canPartner}
           data-testid="pedigree-connect-former-partners"
           onClick={() =>
-            onConnect(
-              {
-                kind: 'partner',
-                firstId: first,
-                secondId: second,
-                current: false,
-              },
-              formerPartners,
-            )
+            onConnect({
+              kind: 'partner',
+              firstId: first,
+              secondId: second,
+              current: false,
+            })
           }
         >
           {formerPartners}

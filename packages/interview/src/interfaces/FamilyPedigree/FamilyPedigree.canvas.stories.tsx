@@ -14,14 +14,18 @@ import { buildInterview, type Family } from './FamilyPedigree.stories';
 function CanvasStory({
   family,
   frame,
+  nominationPrompts,
 }: {
   family: Family;
   /** A screen of this size in place of the whole story viewport. */
   frame?: { width: number; height: number };
+  /** Prompts after the family's own, asking who in it something applies
+   * to. */
+  nominationPrompts?: { text: string }[];
 }) {
   const rawPayload = useMemo(
-    () => SuperJSON.stringify(buildInterview({ family })),
-    [family],
+    () => SuperJSON.stringify(buildInterview({ family, nominationPrompts })),
+    [family, nominationPrompts],
   );
   return (
     <div
@@ -483,5 +487,195 @@ export const ZoomingKeepsTheFocusedPersonInView: Story = {
         ).toBe(true);
       }
     }
+  },
+};
+
+/** What the stage's live region holds, for screen readers to announce. */
+const liveRegionText = (canvasElement: HTMLElement) => {
+  const stage = within(canvasElement)
+    .getByTestId('pedigree-canvas')
+    .closest('.relative.flex.h-full');
+  const region = stage?.querySelector(':scope > [aria-live="polite"]');
+  if (!region) throw new Error('No live region');
+  // Without the soft hyphens long words are drawn with.
+  return (region.textContent ?? '').replaceAll('\u00ad', '');
+};
+
+const HEART_PROMPT = 'Who in your family has had heart disease?';
+
+/** The participant, their mother Linda and their partner Kim. */
+const lindaAndKim: Family = {
+  people: [
+    { id: 'ego', name: 'Ana', gender: 'woman', sex: 'female', ego: true },
+    { id: 'linda', name: 'Linda', gender: 'woman', sex: 'female' },
+    { id: 'kim', name: 'Kim', gender: 'man', sex: 'male' },
+  ],
+  links: [
+    { from: 'linda', to: 'ego', kind: 'biological', carrier: true },
+    { from: 'ego', to: 'kim', kind: 'partner' },
+  ],
+};
+
+/**
+ * What the connect and disconnect tools last said is taken back as soon as
+ * connecting or disconnecting ends, however it ends, so a screen reader
+ * browsing the page never comes across an instruction that no longer
+ * applies, here or on a later prompt.
+ */
+export const ConnectTextEndsWithConnecting: Story = {
+  render: () => (
+    <CanvasStory
+      family={lindaAndKim}
+      nominationPrompts={[{ text: HEART_PROMPT }]}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
+    await canvas.findByRole('button', { name: /^You/ });
+    const pointer = canvas.getByTestId('pedigree-tool-pointer');
+    const connect = canvas.getByTestId('pedigree-tool-connect');
+
+    // A: a first person picked, then back to adding and editing.
+    await userEvent.click(connect);
+    await userEvent.click(personSymbol(canvasElement, 'linda'));
+    await waitFor(() =>
+      expect(liveRegionText(canvasElement)).toContain('Linda'),
+    );
+    await userEvent.click(pointer);
+    await waitFor(() => expect(liveRegionText(canvasElement)).toBe(''));
+
+    // B: a pair refused, as already connected.
+    await userEvent.click(connect);
+    await userEvent.click(personSymbol(canvasElement, 'linda'));
+    await userEvent.click(personSymbol(canvasElement, 'ego'));
+    await waitFor(() =>
+      expect(liveRegionText(canvasElement)).toContain('already connected'),
+    );
+    await userEvent.click(pointer);
+    await waitFor(() => expect(liveRegionText(canvasElement)).toBe(''));
+
+    // C: the relationship menu cancelled.
+    await userEvent.click(connect);
+    await userEvent.click(personSymbol(canvasElement, 'linda'));
+    await userEvent.click(personSymbol(canvasElement, 'kim'));
+    await userEvent.click(
+      await page.findByRole('menuitem', { name: 'Cancel' }),
+    );
+    await waitFor(() => expect(liveRegionText(canvasElement)).toBe(''));
+
+    // Escape lets go of the first person picked.
+    await userEvent.click(personSymbol(canvasElement, 'linda'));
+    await waitFor(() =>
+      expect(liveRegionText(canvasElement)).toContain('Linda'),
+    );
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(liveRegionText(canvasElement)).toBe(''));
+
+    // Moving on to the next prompt mid-way.
+    await userEvent.click(personSymbol(canvasElement, 'linda'));
+    await waitFor(() =>
+      expect(liveRegionText(canvasElement)).toContain('Linda'),
+    );
+    await userEvent.click(canvas.getByTestId('next-button'));
+    await canvas.findByText(HEART_PROMPT);
+    await waitFor(() => expect(liveRegionText(canvasElement)).toBe(''));
+  },
+};
+
+/**
+ * A connection that changes how someone unnamed is related to the
+ * participant is announced in their new words, as the canvas shows them.
+ */
+export const AConnectionIsAnnouncedInItsNewWords: Story = {
+  render: () => (
+    <CanvasStory
+      family={{
+        people: [
+          { id: 'ego', name: 'Ana', gender: 'woman', sex: 'female', ego: true },
+          { id: 'ravi', name: 'Ravi', gender: 'man', sex: 'male' },
+          { id: 'grandad', gender: 'man', sex: 'male' },
+          { id: 'partner', gender: 'woman', sex: 'female' },
+        ],
+        links: [
+          { from: 'ravi', to: 'ego', kind: 'biological' },
+          { from: 'grandad', to: 'ravi', kind: 'biological' },
+          { from: 'grandad', to: 'partner', kind: 'partner' },
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
+    await canvas.findByRole('button', {
+      name: /^Paternal grandfather.s partner/,
+    });
+    await userEvent.click(canvas.getByTestId('pedigree-tool-connect'));
+    await userEvent.click(personSymbol(canvasElement, 'partner'));
+    await userEvent.click(personSymbol(canvasElement, 'ravi'));
+    await userEvent.click(
+      await page.findByTestId('pedigree-connect-parent-partner'),
+    );
+    await userEvent.click(
+      await page.findByTestId('pedigree-connect-kind-biological-carrier'),
+    );
+    await canvas.findByRole('button', { name: /^Paternal grandmother/ });
+    await waitFor(() =>
+      expect(liveRegionText(canvasElement)).toContain('Paternal grandmother'),
+    );
+    await expect(liveRegionText(canvasElement)).not.toContain('partner');
+  },
+};
+
+/**
+ * Once the second person is picked, the hint stops asking for one: the menu,
+ * or the confirmation, asks its own question.
+ */
+export const TheHintStopsAskingOnceAPairIsPicked: Story = {
+  render: () => (
+    <CanvasStory
+      family={{
+        people: [
+          { id: 'ego', name: 'Ana', gender: 'woman', sex: 'female', ego: true },
+          { id: 'lisa', name: 'Lisa', gender: 'woman', sex: 'female' },
+          { id: 'mark', name: 'Mark', gender: 'man', sex: 'male' },
+          { id: 'tomasz', name: 'Tomasz', gender: 'man', sex: 'male' },
+        ],
+        // Lisa and Mark are not partners; Lisa is also Tomasz's mother, so
+        // her connection to the participant can be removed.
+        links: [
+          { from: 'lisa', to: 'ego', kind: 'biological', carrier: true },
+          { from: 'mark', to: 'ego', kind: 'biological' },
+          { from: 'lisa', to: 'tomasz', kind: 'biological', carrier: true },
+          { from: 'mark', to: 'tomasz', kind: 'biological' },
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
+    await canvas.findByRole('button', { name: /^You/ });
+    const hint = () => canvas.queryByTestId('pedigree-connect-hint');
+
+    await userEvent.click(canvas.getByTestId('pedigree-tool-connect'));
+    await userEvent.click(personSymbol(canvasElement, 'lisa'));
+    await expect(hint()).toHaveTextContent('Now select the person');
+    await userEvent.click(personSymbol(canvasElement, 'mark'));
+    await page.findByRole('menu');
+    await expect(hint()?.textContent ?? '').not.toContain('Now select');
+    await userEvent.click(
+      await page.findByRole('menuitem', { name: 'Cancel' }),
+    );
+    await waitFor(() =>
+      expect(hint()).toHaveTextContent('Select a person, then select another'),
+    );
+
+    await userEvent.click(canvas.getByTestId('pedigree-tool-disconnect'));
+    await userEvent.click(personSymbol(canvasElement, 'ego'));
+    await userEvent.click(personSymbol(canvasElement, 'lisa'));
+    await page.findByRole('dialog');
+    await expect(hint()?.textContent ?? '').not.toContain('Now select');
   },
 };

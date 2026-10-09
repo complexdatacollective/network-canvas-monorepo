@@ -2,10 +2,13 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { resolveInterviewIntl } from '../../../i18n/resolveIntl';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
-import ConnectMenu from '../components/ConnectMenu';
+import ConnectMenu, { describeConnection } from '../components/ConnectMenu';
 import { readFamily } from '../model';
 import { config, person } from './fixtures';
+
+const intl = resolveInterviewIntl();
 
 const PARENT_KIND_LABELS = {
   biological: 'Genetic parent',
@@ -56,7 +59,54 @@ describe('ConnectMenu', () => {
     await userEvent.click(donor);
     expect(onConnect).toHaveBeenCalledWith(
       expect.objectContaining({ kind: 'parent', parentKind: 'donor' }),
-      '“Julie” is a parent of “Rob” (Egg or sperm donor)',
     );
+    const [connection] = onConnect.mock.calls[0] ?? [];
+    expect(
+      describeConnection(
+        connection,
+        intl,
+        family,
+        (id) => (id === 'julie' ? 'Julie' : 'Rob'),
+        PARENT_KIND_LABELS,
+      ),
+    ).toBe('“Julie” is a parent of “Rob” (Egg or sperm donor)');
+  });
+
+  it('announces a connection in the names people have once it is made', () => {
+    const family = readFamily(
+      [person('julie', { name: 'Julie' }), person('rob', { name: 'Rob' })],
+      [],
+      config,
+    );
+    const names = new Map([
+      ['julie', 'Paternal grandmother'],
+      ['rob', 'Father'],
+    ]);
+    expect(
+      describeConnection(
+        {
+          kind: 'parent',
+          parentId: 'julie',
+          childId: 'rob',
+          parentKind: 'biological',
+          carriedPregnancy: true,
+        },
+        intl,
+        family,
+        (id) => names.get(id) ?? '',
+        PARENT_KIND_LABELS,
+      ),
+    ).toBe(
+      '“Paternal grandmother” is a parent of “Father” (Genetic parent (carried the pregnancy))',
+    );
+    expect(
+      describeConnection(
+        { kind: 'partner', firstId: 'julie', secondId: 'rob', current: false },
+        intl,
+        family,
+        (id) => names.get(id) ?? '',
+        PARENT_KIND_LABELS,
+      ),
+    ).toBe('“Paternal grandmother” and “Father” were partners');
   });
 });

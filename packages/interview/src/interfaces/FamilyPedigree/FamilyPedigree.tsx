@@ -97,7 +97,10 @@ import AddRelativeMenu, {
   addMenuReach,
 } from './components/AddRelativeMenu';
 import CompletenessTracker from './components/CompletenessTracker';
-import ConnectMenu, { type ConnectPair } from './components/ConnectMenu';
+import ConnectMenu, {
+  type ConnectPair,
+  describeConnection,
+} from './components/ConnectMenu';
 import ConnectorPreview from './components/ConnectorPreview';
 import FramingControl from './components/FramingControl';
 import PersonDrawer from './components/PersonDrawer';
@@ -513,7 +516,14 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       ? null
       : (hoveredId ?? focusedId);
   const menuPerson = menuPersonId ? family.byId.get(menuPersonId) : undefined;
-  const [announcement, setAnnouncement] = useState('');
+  // What the live region says, kept to the prompt it was said on, so moving
+  // to another prompt leaves nothing behind for a screen reader to find.
+  const [spoken, setSpoken] = useState({ text: '', promptId: prompt.id });
+  const setAnnouncement = useCallback(
+    (text: string) => setSpoken({ text, promptId: prompt.id }),
+    [prompt.id],
+  );
+  const announcement = spoken.promptId === prompt.id ? spoken.text : '';
 
   const nodeRefs = useRef(new Map<string, HTMLButtonElement>());
   const setNodeRef = useCallback(
@@ -581,7 +591,29 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       }),
     );
     setJustAddedId(null);
-  }, [justAddedId, family.byId, displayName, intl]);
+  }, [justAddedId, family.byId, displayName, intl, setAnnouncement]);
+
+  // Announce a connection once it is in the family, in the words people have
+  // now, which it may have changed for someone unnamed.
+  const [justConnected, setJustConnected] = useState<Connection | null>(null);
+  useEffect(() => {
+    if (!justConnected) return;
+    const [a, b] =
+      justConnected.kind === 'partner'
+        ? [justConnected.firstId, justConnected.secondId]
+        : [justConnected.parentId, justConnected.childId];
+    if (!areConnected(family, a, b)) return;
+    setAnnouncement(
+      describeConnection(
+        justConnected,
+        intl,
+        family,
+        displayName,
+        optionLabels.parentKind,
+      ),
+    );
+    setJustConnected(null);
+  }, [justConnected, family, displayName, intl, optionLabels, setAnnouncement]);
 
   const links: PedigreeLink[] = useMemo(
     () =>
@@ -1231,6 +1263,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       setHoveredId(null);
       setLinkingId(null);
       setConnectNotice(null);
+      if (linkingId) setAnnouncement('');
     }
   };
 
@@ -1420,6 +1453,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     setJustAddedId(newPersonId);
   };
 
+  // Ending connecting or disconnecting, however it ends, takes back what it
+  // last said.
   const chooseTool = (next: Tool) => {
     setTool(next);
     setLinkingId(null);
@@ -1427,6 +1462,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     setChosenPair(null);
     setHoveredId(null);
     setFocusedId(null);
+    setAnnouncement('');
   };
 
   // Two people in a sentence, the participant first, as "you and …".
@@ -1487,6 +1523,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (linkingId === personId) {
       // Selecting the first person again lets them go.
       setLinkingId(null);
+      setAnnouncement('');
       return;
     }
     // A pair has one link at most; when the second person cannot be chosen,
@@ -1535,17 +1572,19 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const endConnecting = () => {
     setChosenPair(null);
     setLinkingId(null);
+    setAnnouncement('');
   };
 
-  const handleConnect = async (connection: Connection, description: string) => {
+  const handleConnect = async (connection: Connection) => {
     endConnecting();
     await addLink(planConnection(connection));
     await withdrawContradictedAnswers();
-    setAnnouncement(description);
+    setJustConnected(connection);
   };
 
   const handleDisconnect = async (firstId: string, secondId: string) => {
     const args = pairArgs(firstId, secondId);
+    let removed = false;
     await confirm({
       title: intl.formatMessage(messages.disconnectConfirmTitle, args),
       description: intl.formatMessage(messages.disconnectConfirmDescription),
@@ -1555,12 +1594,15 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         for (const linkId of linksBetween(firstId, secondId)) {
           dispatch(deleteEdge(linkId));
         }
-        setAnnouncement(
-          intl.formatMessage(messages.disconnectedAnnouncement, args),
-        );
+        removed = true;
       },
     });
     endConnecting();
+    if (removed) {
+      setAnnouncement(
+        intl.formatMessage(messages.disconnectedAnnouncement, args),
+      );
+    }
   };
 
   // Removing someone who is the only link between the participant and other
@@ -1610,6 +1652,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (event.key === 'Escape' && linkingId) {
       event.preventDefault();
       setLinkingId(null);
+      setConnectNotice(null);
+      setAnnouncement('');
       return;
     }
     if (event.key !== 'Escape' || !focusedId) return;
@@ -1819,7 +1863,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               </div>
             </Alert>
           )}
-          {tool !== 'pointer' && (
+          {/* Once a pair is picked, the menu or the confirmation asks its
+              own question, so the hint asks for no one else. */}
+          {tool !== 'pointer' && !chosenPair && (
             <p
               className="text-sm opacity-80"
               data-testid="pedigree-connect-hint"
@@ -1950,9 +1996,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             ? (nodeRefs.current.get(chosenPair.secondId) ?? null)
             : null
         }
-        onConnect={(connection, description) =>
-          void handleConnect(connection, description)
-        }
+        onConnect={(connection) => void handleConnect(connection)}
         onClose={endConnecting}
       />
       <div aria-live="polite" className="sr-only">
