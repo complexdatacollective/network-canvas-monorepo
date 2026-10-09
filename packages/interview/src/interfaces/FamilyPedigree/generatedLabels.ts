@@ -1,9 +1,14 @@
-import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
+import type { IntlShape } from '@codaco/app-i18n/messages';
 import type { FramingId } from '@codaco/protocol-validation';
 import type { VariableValue } from '@codaco/shared-consts';
 
 import { readOwnProperty } from '../../utils/ownProperty';
-import { formatPersonLabel, labelFamily, type PersonLabel } from './kinship';
+import {
+  formatPersonLabel,
+  formatRelativeTerm,
+  labelFamily,
+  type PersonLabel,
+} from './kinship';
 import { messages } from './messages';
 import {
   partnersOf,
@@ -26,11 +31,16 @@ const QUALIFIERS: readonly Qualifier[] = [
   'siblingOf',
 ];
 
-const QUALIFIER_MESSAGES: Record<Qualifier, MessageDescriptor> = {
-  partnerOf: messages.generatedLabelPartnerOf,
-  parentOf: messages.generatedLabelParentOf,
-  childOf: messages.generatedLabelChildOf,
-  siblingOf: messages.generatedLabelSiblingOf,
+/** How the qualifying relative is related to the person, as `generatedLabelOf`
+ * names it. */
+const QUALIFIER_RELATION: Record<
+  Qualifier,
+  'partner' | 'parent' | 'child' | 'sibling'
+> = {
+  partnerOf: 'partner',
+  parentOf: 'parent',
+  childOf: 'child',
+  siblingOf: 'sibling',
 };
 
 /** The people a qualifier can name for a person. */
@@ -90,7 +100,7 @@ export function labelEveryone(
         ? intl.formatMessage(messages.you)
         : (person.name ??
           generated.get(person.id) ??
-          intl.formatMessage(messages.familyMember)),
+          formatRelativeTerm('other', intl)),
     ]),
   );
 }
@@ -220,15 +230,25 @@ function buildLabels(
     const relative = family.byId.get(relativeId);
     if (!relative) return undefined;
     const term = baseTexts.get(personId) ?? '';
-    const message = QUALIFIER_MESSAGES[qualifier];
+    const relation = QUALIFIER_RELATION[qualifier];
     if (relative.isEgo) {
-      return intl.formatMessage(message, { isYou: 'true', term, name: '' });
+      return intl.formatMessage(messages.generatedLabelOf, {
+        relation,
+        isYou: 'true',
+        term,
+        name: '',
+      });
     }
     const name =
       relative.name?.trim() ??
       (allowKinWords ? kinWordOf(relativeId) : undefined);
     if (name === undefined) return undefined;
-    return intl.formatMessage(message, { isYou: 'false', term, name });
+    return intl.formatMessage(messages.generatedLabelOf, {
+      relation,
+      isYou: 'false',
+      term,
+      name,
+    });
   };
 
   /** Each member qualified through the same kind of relative, or undefined
@@ -291,10 +311,7 @@ function buildLabels(
     for (const member of members) {
       let label: string;
       do {
-        label = intl.formatMessage(messages.numberedRelative, {
-          label: baseTexts.get(member.id) ?? '',
-          number: number++,
-        });
+        label = `${baseTexts.get(member.id) ?? ''} ${intl.formatNumber(number++)}`;
       } while (used.has(comparable(label)));
       labels.set(member.id, label);
       used.add(comparable(label));

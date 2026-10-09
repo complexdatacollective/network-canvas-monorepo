@@ -20,65 +20,12 @@ export const messages = defineMessages({
     description:
       'Label for a family member whose name is not known: their kinship to the participant (for example, the participant’s maternal grandmother). Depending on the study, either gendered words (mother, aunt) or words that do not assume gender (egg parent, parent’s sibling) are used. Also saved as the name of a family member the participant did not name, when they leave this part of the interview, so they can be recognised later. Labels sit inside a small symbol, so each long word carries a soft hyphen (U+00AD, invisible unless the word breaks there) at a syllable break, as between “Grand” and “mother” in Grandmother, or “Step” and “daughter” in Stepdaughter: the word breaks there, with a hyphen, only when it does not fit on one line, and otherwise reads whole. Place your own soft hyphens at sensible syllable breaks in any word longer than about nine letters in your language, rather than copying these positions; a word without one may break between any two letters. Soft hyphens are removed from the label saved as a name.',
   },
-  relativeOf: {
-    id: 'interview.familyPedigree.relativeOf',
-    defaultMessage:
-      "{owner}'s {term, select, mother {mother} father {father} parent {parent} eggParent {egg parent} spermParent {sperm parent} biologicalMother {bio\u00ADlogical mother} biologicalFather {bio\u00ADlogical father} adoptiveMother {adoptive mother} adoptiveFather {adoptive father} adoptiveParent {adoptive parent} stepmother {step\u00ADmother} stepfather {step\u00ADfather} stepparent {step-parent} eggDonor {egg donor} spermDonor {sperm donor} donor {donor} surrogate {surro\u00ADgate} daughter {daughter} son {son} child {child} stepdaughter {step\u00ADdaughter} stepson {stepson} stepchild {stepchild} donorConceivedChild {donor-conceived child} surrogacyChild {surro\u00ADgacy child} sister {sister} brother {brother} sibling {sibling} halfSister {half-sister} halfBrother {half-brother} halfSibling {half-sibling} stepsister {step\u00ADsister} stepbrother {step\u00ADbrother} stepsibling {step-sibling} partner {partner} formerPartner {former partner} other {relative}}",
-    description:
-      'Label for a family member whose name is not known and who has no everyday kinship word, described through a relative of theirs: owner is that relative’s label (for example “Cousin”), and term is how this person is related to them. Translate the possessive grammar as a whole; owner stays verbatim. Also saved as the name of a family member the participant did not name. As in the kinship words label, each long word carries a soft hyphen (U+00AD) at a syllable break where it may break inside the small symbol; place your own at sensible syllable breaks in long words in your language. Soft hyphens are removed from the label saved as a name.',
-  },
-  numberedRelative: {
-    id: 'interview.familyPedigree.numberedRelative',
-    defaultMessage: '{label} {number, number}',
-    description:
-      'Tells apart several family members who would otherwise share a label (for example two unnamed children). label is the already translated label; number is their position in the order they were added. Shown in the family tree, and saved as the name of an unnamed family member when nothing else tells them apart.',
-  },
-  generatedLabelPartnerOf: {
-    id: 'interview.familyPedigree.generatedLabelPartnerOf',
-    defaultMessage:
-      '{isYou, select, true {{term} (your partner)} other {{term} (partner of {name})}}',
-    description:
-      'Label for a family member the participant did not name, when their kinship word alone is shared with someone else. Shown inside their symbol in the family tree, and saved as their name so later parts of the interview show the same label. term is the already translated kinship word, such as “Sister” or “Family member”; name is the name of their partner, or that partner’s own kinship word, such as “Tom” or “Uncle”. The first form is used when their partner is the participant.',
-  },
-  generatedLabelParentOf: {
-    id: 'interview.familyPedigree.generatedLabelParentOf',
-    defaultMessage:
-      '{isYou, select, true {{term} (your parent)} other {{term} (parent of {name})}}',
-    description:
-      'Label for a family member the participant did not name, when their kinship word alone is shared with someone else. Shown inside their symbol in the family tree, and saved as their name so later parts of the interview show the same label. term is the already translated kinship word, such as “Grandmother”; name is the name of their child, or that child’s own kinship word, such as “Julie” or “Mother”. The first form is used when their child is the participant.',
-  },
-  generatedLabelChildOf: {
-    id: 'interview.familyPedigree.generatedLabelChildOf',
-    defaultMessage:
-      '{isYou, select, true {{term} (your child)} other {{term} (child of {name})}}',
-    description:
-      'Label for a family member the participant did not name, when their kinship word alone is shared with someone else. Shown inside their symbol in the family tree, and saved as their name so later parts of the interview show the same label. term is the already translated kinship word, such as “Half-sister”; name is the name of their parent, or that parent’s own kinship word, such as “Ana” or “Stepmother”. The first form is used when their parent is the participant.',
-  },
-  generatedLabelSiblingOf: {
-    id: 'interview.familyPedigree.generatedLabelSiblingOf',
-    defaultMessage:
-      '{isYou, select, true {{term} (your sibling)} other {{term} (sibling of {name})}}',
-    description:
-      'Label for a family member the participant did not name, when their kinship word alone is shared with someone else. Shown inside their symbol in the family tree, and saved as their name so later parts of the interview show the same label. term is the already translated kinship word, such as “Cousin”; name is the name of their brother or sister, or that sibling’s own kinship word, such as “Sam” or “Niece”. The first form is used when their sibling is the participant.',
-  },
-  familyMember: {
-    id: 'interview.familyPedigree.familyMember',
-    defaultMessage: 'Family member',
-    description:
-      'Label for a family member whose name is not known and who is not connected to the participant in the family tree. Also saved as their name when they leave this part of the interview, so they can be recognised later.',
-  },
   personAccessibleName: {
     id: 'interview.familyPedigree.personAccessibleName',
     defaultMessage:
       '{isYou, select, true {You} other {{name}}}{missing, select, true {, some details missing} other {}}',
     description:
       'Accessible name of a family member’s symbol in the family tree. {name} is the person’s name or, when it is not known, how they are related to the participant. The second part is read out when required details about the person have not been given yet.',
-  },
-  missingDetails: {
-    id: 'interview.familyPedigree.missingDetails',
-    defaultMessage: 'Some details are missing',
-    description:
-      'Tooltip on the warning icon next to a family member whose required details have not been given yet.',
   },
   missingDetailsList: {
     id: 'interview.familyPedigree.missingDetailsList',
@@ -93,89 +40,12 @@ export const messages = defineMessages({
     description:
       'Accessible name of the group of buttons that appears around a selected family member, used to add their parent, sibling, partner or child.',
   },
-  addParent: {
-    id: 'interview.familyPedigree.addParent',
-    defaultMessage: 'Parent',
-    description:
-      'Short button label next to a selected family member: adds a parent of that person.',
-  },
-  addSibling: {
-    id: 'interview.familyPedigree.addSibling',
-    defaultMessage: 'Sibling',
-    description:
-      'Short button label next to a selected family member: adds a brother, sister or sibling of that person.',
-  },
-  addPartner: {
-    id: 'interview.familyPedigree.addPartner',
-    defaultMessage: 'Partner',
-    description:
-      'Short button label next to a selected family member: adds a partner (spouse or romantic partner, current or former) of that person.',
-  },
-  addChild: {
-    id: 'interview.familyPedigree.addChild',
-    defaultMessage: 'Child',
-    description:
-      'Short button label next to a selected family member: adds a child of that person.',
-  },
-  addParentTitle: {
-    id: 'interview.familyPedigree.addParentTitle',
-    defaultMessage:
-      '{isYou, select, true {Add your parent} other {Add a parent of {name}}}',
-    description:
-      'Title of the side panel used to add a parent of a family member. {name} is that family member’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
-  },
-  addSiblingTitle: {
-    id: 'interview.familyPedigree.addSiblingTitle',
-    defaultMessage:
-      '{isYou, select, true {Add your sibling} other {Add a sibling of {name}}}',
-    description:
-      'Title of the side panel used to add a sibling of a family member. {name} is that family member’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
-  },
-  addPartnerTitle: {
-    id: 'interview.familyPedigree.addPartnerTitle',
-    defaultMessage:
-      '{isYou, select, true {Add your partner} other {Add a partner of {name}}}',
-    description:
-      'Title of the side panel used to add a partner of a family member. {name} is that family member’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
-  },
-  addChildTitle: {
-    id: 'interview.familyPedigree.addChildTitle',
-    defaultMessage:
-      '{isYou, select, true {Add your child} other {Add a child of {name}}}',
-    description:
-      'Title of the side panel used to add a child of a family member. {name} is that family member’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
-  },
-  editTitle: {
-    id: 'interview.familyPedigree.editTitle',
-    defaultMessage: '{isYou, select, true {About you} other {About {name}}}',
-    description:
-      'Title of the side panel showing the details about a family member. {name} is that family member’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
-  },
-  aboutThisPerson: {
-    id: 'interview.familyPedigree.aboutThisPerson',
-    defaultMessage:
-      '{isYou, select, true {About you} other {About this person}}',
-    description:
-      'Heading above the questions about the person themselves (their name, gender identity and sex assigned at birth) in the side panel for adding or editing a family member. On the participant’s own panel, where their name is not asked, it addresses them.',
-  },
-  relationshipSection: {
-    id: 'interview.familyPedigree.relationshipSection',
-    defaultMessage: 'How you are related',
-    description:
-      'Heading above the questions about how a new family member is related to the selected person.',
-  },
-  relationshipsSection: {
-    id: 'interview.familyPedigree.relationshipsSection',
-    defaultMessage: 'Relationships',
-    description:
-      'Heading above the questions about a family member’s existing partnerships and parents, in the panel showing their details.',
-  },
   stillTogetherLabel: {
     id: 'interview.familyPedigree.stillTogetherLabel',
     defaultMessage:
-      '{personIsYou, select, true {Are you still together with {partner}?} other {{partnerIsYou, select, true {Are you still together?} other {Are they still together with {partner}?}}}}',
+      '{named, select, true {{personIsYou, select, true {Are you still together with {partner}?} other {{partnerIsYou, select, true {Are you still together?} other {Are they still together with {partner}?}}}}} other {Are they still together?}}',
     description:
-      'Yes/no question in the details panel about one of the family member’s partnerships: whether it is current, rather than separated or ended. {partner} is the partner’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
+      'Yes/no question: whether a partnership is current, rather than separated or ended. named is true for a partner already in the family, and false for a partner being added, who has no name yet. {partner} is the partner’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Relative” when they are not connected to the participant.',
   },
   parentLinkKindLabel: {
     id: 'interview.familyPedigree.parentLinkKindLabel',
@@ -187,16 +57,9 @@ export const messages = defineMessages({
   parentCarriedLabel: {
     id: 'interview.familyPedigree.parentCarriedLabel',
     defaultMessage:
-      '{parentIsYou, select, true {Did you carry the pregnancy?} other {Did {parent} carry the pregnancy?}}',
+      '{named, select, true {{parentIsYou, select, true {Did you carry the pregnancy?} other {Did {parent} carry the pregnancy?}}} other {Did this parent carry the pregnancy?}}',
     description:
-      'Yes/no question in the details panel: whether this biological parent was pregnant with the family member. {parent} is the parent’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
-  },
-  moreAboutThisPerson: {
-    id: 'interview.familyPedigree.moreAboutThisPerson',
-    defaultMessage:
-      '{isYou, select, true {More about you} other {More about this person}}',
-    description:
-      'Heading above the study’s own additional questions about a family member, in the side panel for adding or editing them. On the participant’s own panel it addresses them.',
+      'Yes/no question about whether a biological parent was pregnant with the family member. named is true for a parent already in the family, and false for a parent being added, who has no name yet. parent is the parent’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Relative” when they are not connected to the participant.',
   },
   genderIdentityLabel: {
     id: 'interview.familyPedigree.genderIdentityLabel',
@@ -243,12 +106,6 @@ export const messages = defineMessages({
     description:
       'Option: a child who is neither genetically related nor adopted, such as a step-child.',
   },
-  carriedPregnancyLabel: {
-    id: 'interview.familyPedigree.carriedPregnancyLabel',
-    defaultMessage: 'Did this parent carry the pregnancy?',
-    description:
-      'Yes/no question in the side panel for adding a biological parent: whether they were pregnant with the child.',
-  },
   carriedSiblingsPregnancyLabel: {
     id: 'interview.familyPedigree.carriedSiblingsPregnancyLabel',
     defaultMessage:
@@ -262,12 +119,6 @@ export const messages = defineMessages({
     description:
       'Question in the side panel for adding a parent: whether the new parent is (or was) the partner of a parent already in the family tree. Options are those parents’ names, or “No”.',
   },
-  partnershipCurrentLabel: {
-    id: 'interview.familyPedigree.partnershipCurrentLabel',
-    defaultMessage: 'Are they still together?',
-    description:
-      'Yes/no question: whether a partnership is current, rather than separated or ended.',
-  },
   alsoParentOfLabel: {
     id: 'interview.familyPedigree.alsoParentOfLabel',
     defaultMessage: 'Are they also the parent of…',
@@ -278,13 +129,13 @@ export const messages = defineMessages({
     id: 'interview.familyPedigree.showWholeFamily',
     defaultMessage: 'Show the whole family',
     description:
-      'Toolbar button that zooms and moves the family tree so everyone in it fits on screen.',
+      'Accessible name of the toolbar icon button that zooms and moves the family tree so everyone in it fits on screen. Shown as an icon, without a tooltip.',
   },
   framingControlLabel: {
     id: 'interview.familyPedigree.framingControlLabel',
     defaultMessage: 'Wording',
     description:
-      'Short label of the toolbar button, shown beside its icon, that opens the choice of words used to describe family members (such as “mother” or “egg parent”). Keep it brief.',
+      'Accessible name and tooltip of the toolbar icon button, shown as a speech bubble, that opens the choice of words used to describe family members (such as “mother” or “egg parent”). Keep it brief.',
   },
   framingChoiceTitle: {
     id: 'interview.familyPedigree.framingChoiceTitle',
@@ -299,44 +150,11 @@ export const messages = defineMessages({
     description:
       'Explanation under the heading of the popover asking which words to use for family members.',
   },
-  framingChoiceGendered: {
-    id: 'interview.familyPedigree.framingChoiceGendered',
-    defaultMessage: 'Mother, father, sister, brother',
-    description:
-      'Option in the popover asking which words to use for family members: the usual words, chosen by each person’s gender.',
-  },
-  framingChoiceGenderedDescription: {
-    id: 'interview.familyPedigree.framingChoiceGenderedDescription',
-    defaultMessage:
-      'Words that follow each person’s gender, such as grandmother, uncle or niece. Anyone who is neither a woman nor a man is described with words like parent or sibling.',
-    description:
-      'Explanation of the option to describe family members by their gender.',
-  },
-  framingChoiceGamete: {
-    id: 'interview.familyPedigree.framingChoiceGamete',
-    defaultMessage: 'Egg parent, sperm parent, sibling',
-    description:
-      'Option in the popover asking which words to use for family members: words that do not depend on anyone’s gender.',
-  },
-  framingChoiceGameteDescription: {
-    id: 'interview.familyPedigree.framingChoiceGameteDescription',
-    defaultMessage:
-      'Words that do not depend on anyone’s gender. Biological parents are described by whether they gave the egg or the sperm, and everyone else with words like grandparent or parent’s sibling.',
-    description:
-      'Explanation of the option to describe family members without reference to gender.',
-  },
   siblingKindLabel: {
     id: 'interview.familyPedigree.siblingKindLabel',
     defaultMessage: 'To the parents they share, are they…',
     description:
       'Question in the side panel for adding a sibling: how the new sibling is related to the parents chosen above. Followed by the options "A biological child", "An adopted child", "A step-child or other child they raise".',
-  },
-  siblingKindHint: {
-    id: 'interview.familyPedigree.siblingKindHint',
-    defaultMessage:
-      '{isYou, select, true {This can differ from how you are related to them, for example if only one of you was adopted.} other {This can differ from how “{name}” is related to them, for example if only one of the two siblings was adopted.}}',
-    description:
-      'Hint under the question about how a new sibling is related to the parents they share. name is the person the sibling is being added to.',
   },
   placeholderParentsNote: {
     id: 'interview.familyPedigree.placeholderParentsNote',
@@ -374,18 +192,6 @@ export const messages = defineMessages({
     description:
       'Option: none of the parents offered carried the pregnancy, or the participant does not know.',
   },
-  add: {
-    id: 'interview.familyPedigree.add',
-    defaultMessage: 'Add to family',
-    description:
-      'Button at the bottom of the side panel that adds the new family member.',
-  },
-  remove: {
-    id: 'interview.familyPedigree.remove',
-    defaultMessage: 'Remove from family',
-    description:
-      'Button in the side panel that removes a family member from the family tree.',
-  },
   removeConfirmTitle: {
     id: 'interview.familyPedigree.removeConfirmTitle',
     defaultMessage: 'Remove {name}?',
@@ -395,16 +201,9 @@ export const messages = defineMessages({
   removeConfirmDescription: {
     id: 'interview.familyPedigree.removeConfirmDescription',
     defaultMessage:
-      'They will be removed from your family tree, along with their connections to other people.',
+      '{hasOthers, select, true {They will be removed from your family tree, along with their connections to other people. {count, plural, one {{names} is connected to you only through them, so will be removed too.} other {{names} are connected to you only through them, so will be removed too.}}} other {They will be removed from your family tree, along with their connections to other people.}}',
     description:
-      'Explanation in the confirmation shown before removing a family member.',
-  },
-  removeConfirmDescriptionWithOthers: {
-    id: 'interview.familyPedigree.removeConfirmDescriptionWithOthers',
-    defaultMessage:
-      'They will be removed from your family tree, along with their connections to other people. {count, plural, one {{names} is connected to you only through them, so will be removed too.} other {{names} are connected to you only through them, so will be removed too.}}',
-    description:
-      'Explanation in the confirmation shown before removing a family member who is the only link between the participant and other people in the family tree. Those people would no longer be connected to the participant, so they are removed as well. names is a list of their names, or, when they have none, how they are related to the participant, each quoted and already joined in the participant’s language (for example “Grandmother” and “Grandfather”); count is how many people it names.',
+      'Explanation in the confirmation shown before removing a family member. hasOthers is true when people who are connected to the participant only through them would be removed too. names is a list of those people’s names, or, when they have none, how they are related to the participant, already joined in the participant’s language; count is how many people it names.',
   },
   trackerProgressLabel: {
     id: 'interview.familyPedigree.trackerProgressLabel',
@@ -412,30 +211,6 @@ export const messages = defineMessages({
       '{complete, select, true {Your family tree has everything needed} other {Family tree {percent, number, percent} complete}}. Show what’s still needed.',
     description:
       'Accessible name of the round progress indicator in the corner of the family tree, which opens the list of family members still needed. percent is a fraction between 0 and 1.',
-  },
-  trackerTitle: {
-    id: 'interview.familyPedigree.trackerTitle',
-    defaultMessage: 'Before you continue, please complete the following:',
-    description:
-      'Heading of the list of family members the participant still needs to add before moving on.',
-  },
-  trackerComplete: {
-    id: 'interview.familyPedigree.trackerComplete',
-    defaultMessage: 'Your family tree has everything needed. You can continue.',
-    description:
-      'Shown in the list of family members still needed once nothing more is needed.',
-  },
-  familySection: {
-    id: 'interview.familyPedigree.familySection',
-    defaultMessage: 'Their family',
-    description:
-      'Heading of the questions in a family member’s details about whether they have siblings or children.',
-  },
-  hasRelativesYes: {
-    id: 'interview.familyPedigree.hasRelativesYes',
-    defaultMessage: 'Yes — I’ll add them to the family tree',
-    description:
-      'Answer to whether a family member has siblings or children: yes, and the participant will add them.',
   },
   addedAnnouncement: {
     id: 'interview.familyPedigree.addedAnnouncement',
@@ -478,13 +253,13 @@ export const messages = defineMessages({
     id: 'interview.familyPedigree.pointerTool',
     defaultMessage: 'Add and edit',
     description:
-      'Short label of a toolbar button, shown beside its icon, so keep it brief. While it is on, selecting a person opens their details and shows buttons to add their relatives.',
+      'Accessible name and tooltip of a toolbar icon button, shown as the pointer icon. While it is on, selecting a person opens their details, and buttons to add their relatives are shown around them.',
   },
   connectTool: {
     id: 'interview.familyPedigree.connectTool',
     defaultMessage: 'Connect',
     description:
-      'Short label of a toolbar button, shown beside its icon, so keep it brief. While it is on, selecting one person and then another connects them, for relatives added separately.',
+      'Accessible name and tooltip of a toolbar icon button, shown as the Waypoints icon. While it is on, selecting one person and then another connects them, for relatives added separately.',
   },
   connectHint: {
     id: 'interview.familyPedigree.connectHint',
@@ -497,7 +272,7 @@ export const messages = defineMessages({
     defaultMessage:
       '{isYou, select, true {Now select the person to connect to you.} other {Now select the person to connect to “{name}”.}}',
     description:
-      'Instruction shown under the toolbar once the first of two people to connect has been selected. name is that person’s name or how they are related to the participant.',
+      'Read out to screen reader users, not shown, once the first of two people to connect has been selected. name is that person’s name or how they are related to the participant.',
   },
   connectQuestion: {
     id: 'interview.familyPedigree.connectQuestion',
@@ -509,9 +284,9 @@ export const messages = defineMessages({
   connectPartners: {
     id: 'interview.familyPedigree.connectPartners',
     defaultMessage:
-      '{firstIsYou, select, true {You and “{second}” are partners} other {“{first}” and “{second}” are partners}}',
+      '{current, select, true {{firstIsYou, select, true {You and “{second}” are partners} other {“{first}” and “{second}” are partners}}} other {{firstIsYou, select, true {You and “{second}” were partners} other {“{first}” and “{second}” were partners}}}}',
     description:
-      'Option in the menu for connecting two people: they are, or were, a couple.',
+      'Option in the menu for connecting two people: they are a couple (current is true), or they were a couple but are no longer together.',
   },
   connectParent: {
     id: 'interview.familyPedigree.connectParent',
@@ -526,20 +301,6 @@ export const messages = defineMessages({
     description:
       'Screen reader announcement after connecting two people as parent and child. relationship is the chosen menu option (for example “Julie” is a parent of “Rob”); kind is the kind of parent chosen (for example Adoptive parent).',
   },
-  connectAlreadyConnected: {
-    id: 'interview.familyPedigree.connectAlreadyConnected',
-    defaultMessage:
-      '{firstIsYou, select, true {You and “{second}” are already connected.} other {“{first}” and “{second}” are already connected.}}',
-    description:
-      'Shown under the toolbar, and read out, when the participant selects two people to connect who are already connected. first and second are their names or how they are related to the participant.',
-  },
-  connectFormerPartners: {
-    id: 'interview.familyPedigree.connectFormerPartners',
-    defaultMessage:
-      '{firstIsYou, select, true {You and “{second}” were partners} other {“{first}” and “{second}” were partners}}',
-    description:
-      'Option in the menu for connecting two people: they were a couple but are no longer together.',
-  },
   parentKindBiologicalCarrier: {
     id: 'interview.familyPedigree.parentKind.biologicalCarrier',
     defaultMessage: '{parentKind} (carried the pregnancy)',
@@ -550,7 +311,7 @@ export const messages = defineMessages({
     id: 'interview.familyPedigree.disconnectTool',
     defaultMessage: 'Disconnect',
     description:
-      'Short label of a toolbar button, shown beside its icon, so keep it brief. While it is on, selecting one person and then someone they are connected to removes the connection between them, leaving both people in the family tree.',
+      'Accessible name and tooltip of a toolbar icon button, shown as the Unlink icon. While it is on, selecting one person and then someone they are connected to removes the connection between them, leaving both people in the family tree.',
   },
   disconnectHint: {
     id: 'interview.familyPedigree.disconnectHint',
@@ -564,20 +325,7 @@ export const messages = defineMessages({
     defaultMessage:
       '{isYou, select, true {Now select the person to disconnect from you.} other {Now select the person to disconnect from “{name}”.}}',
     description:
-      'Instruction shown under the toolbar once the first of two people to disconnect has been selected. name is that person’s name or how they are related to the participant.',
-  },
-  disconnectNotConnected: {
-    id: 'interview.familyPedigree.disconnectNotConnected',
-    defaultMessage:
-      '{firstIsYou, select, true {You and “{second}” are not connected.} other {“{first}” and “{second}” are not connected.}}',
-    description:
-      'Shown under the toolbar, and read out, when the participant selects two people to disconnect who have no connection between them. first and second are their names or how they are related to the participant.',
-  },
-  listedName: {
-    id: 'interview.familyPedigree.listedName',
-    defaultMessage: '“{name}”',
-    description:
-      'One person in a list of people named in a sentence, such as the people who would be left outside the family tree. name is their name or, when it is not known, how they are related to the participant. The list is joined in the participant’s language, so this is one item: quote the name as names are quoted in the rest of this part of the interview.',
+      'Read out to screen reader users, not shown, once the first of two people to disconnect has been selected. name is that person’s name or how they are related to the participant.',
   },
   disconnectWouldCutOff: {
     id: 'interview.familyPedigree.disconnectWouldCutOff',
@@ -599,12 +347,6 @@ export const messages = defineMessages({
       'Both people stay in your family tree. Only the connection between them is removed.',
     description:
       'Explanation in the confirmation shown before removing the connection between two people.',
-  },
-  disconnectConfirm: {
-    id: 'interview.familyPedigree.disconnectConfirm',
-    defaultMessage: 'Remove connection',
-    description:
-      'Button in the confirmation that removes the connection between two people.',
   },
   disconnectedAnnouncement: {
     id: 'interview.familyPedigree.disconnectedAnnouncement',
@@ -670,16 +412,9 @@ export const messages = defineMessages({
   sharedParentEggOnly: {
     id: 'interview.familyPedigree.sharedParentEggOnly',
     defaultMessage:
-      '{framing, select, gamete {Only the egg parent} other {Only the biological mother}}',
+      '{parent, select, egg {{framing, select, gamete {Only the egg parent} other {Only the biological mother}}} other {{framing, select, gamete {Only the sperm parent} other {Only the biological father}}}}',
     description:
-      'Option: the new sibling shares only the parent who provided the egg (a half-sibling). Gendered or gamete wording depends on the study.',
-  },
-  sharedParentSpermOnly: {
-    id: 'interview.familyPedigree.sharedParentSpermOnly',
-    defaultMessage:
-      '{framing, select, gamete {Only the sperm parent} other {Only the biological father}}',
-    description:
-      'Option: the new sibling shares only the parent who provided the sperm (a half-sibling). Gendered or gamete wording depends on the study.',
+      'Option: the new sibling shares only one parent, so is a half-sibling. parent is egg for the parent who provided the egg, or sperm for the parent who provided the sperm. Gendered or gamete wording depends on the study.',
   },
   sharedParentUnshown: {
     id: 'interview.familyPedigree.sharedParentUnshown',
@@ -688,18 +423,18 @@ export const messages = defineMessages({
     description:
       'Option when choosing which parents a new sibling shares, for someone with one parent recorded: their second parent, who is added unnamed for both of them. Also an option when asked who carried the new sibling’s pregnancy.',
   },
-  passphraseNeededNotice: {
-    id: 'interview.familyPedigree.passphraseNeededNotice',
+  panelTitle: {
+    id: 'interview.familyPedigree.panelTitle',
     defaultMessage:
-      'Enter your passphrase to see the names in your family and to add or change people.',
+      '{relation, select, edit {{isYou, select, true {About you} other {About {name}}}} parent {{isYou, select, true {Add your parent} other {Add a parent of {name}}}} sibling {{isYou, select, true {Add your sibling} other {Add a sibling of {name}}}} partner {{isYou, select, true {Add your partner} other {Add a partner of {name}}}} other {{isYou, select, true {Add your child} other {Add a child of {name}}}}}',
     description:
-      'Notice shown under the family tree when the study protects names with a passphrase that has not been entered yet. Until it is, people are shown by how they are related to the participant, and the family cannot be changed.',
+      'Title of the side panel, for a family member being described or added to. relation is edit when the panel describes them; otherwise the relation being added: parent, sibling or partner, or other for a child. isYou is whether that family member is the participant. name is their name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Relative” when they are not connected to the participant.',
   },
-  detailsPassphraseNeededNotice: {
-    id: 'interview.familyPedigree.detailsPassphraseNeededNotice',
+  generatedLabelOf: {
+    id: 'interview.familyPedigree.generatedLabelOf',
     defaultMessage:
-      'Enter your passphrase to add or change people in your family.',
+      '{relation, select, partner {{isYou, select, true {{term} (your partner)} other {{term} (partner of {name})}}} parent {{isYou, select, true {{term} (your parent)} other {{term} (parent of {name})}}} sibling {{isYou, select, true {{term} (your sibling)} other {{term} (sibling of {name})}}} owner {{owner}’s {term}} other {{isYou, select, true {{term} (your child)} other {{term} (child of {name})}}}}',
     description:
-      'Notice shown under the family tree when the study protects some of the answers about each family member (but not their names) with a passphrase that has not been entered yet. Until it is, the family cannot be changed.',
+      'Label for a family member the participant did not name, when their kinship word alone is shared with someone else. Shown inside their symbol in the family tree, and saved as their name so later parts of the interview show the same label. term is the already translated kinship word, such as “Half-sister”. relation says how they are related to the relative who tells them apart: partner, parent (the relative is their child), child (the relative is their parent), or sibling; name is that relative’s name, or their kinship word, such as “Julie” or “Mother”, and isYou is whether the relative is the participant. The owner form is used when that relative has no name or kinship word of their own: owner is that relative’s label (for example “Cousin”), and term is how this person is related to them. Translate the possessive grammar as a whole; owner stays verbatim. Child is the form for any other relation.',
   },
 });

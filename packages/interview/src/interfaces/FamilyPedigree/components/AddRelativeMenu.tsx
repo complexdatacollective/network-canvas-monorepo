@@ -3,11 +3,11 @@
 import { Toolbar } from '@base-ui/react/toolbar';
 import { useReducedMotion } from 'motion/react';
 
-import type { MessageDescriptor } from '@codaco/app-i18n/messages';
-import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { MotionButton } from '@codaco/fresco-ui/Button';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
+import { formatRelativeTerm } from '../kinship';
 import { messages } from '../messages';
 import type { Relation } from '../model';
 
@@ -19,7 +19,6 @@ type AddRelativeMenuProps = {
 
 type MenuItem = {
   relation: Relation;
-  label: MessageDescriptor;
   /** Where the button sits around the person's symbol. */
   placement: string;
 };
@@ -30,22 +29,18 @@ type MenuItem = {
 const ITEMS: MenuItem[] = [
   {
     relation: 'parent',
-    label: messages.addParent,
     placement: 'bottom-full left-1/2 mb-4 -translate-x-1/2',
   },
   {
     relation: 'sibling',
-    label: messages.addSibling,
     placement: 'right-full top-1/2 mr-4 -translate-y-1/2',
   },
   {
     relation: 'partner',
-    label: messages.addPartner,
     placement: 'left-full top-1/2 ml-4 -translate-y-1/2',
   },
   {
     relation: 'child',
-    label: messages.addChild,
     placement: 'top-full left-1/2 mt-4 -translate-x-1/2',
   },
 ];
@@ -101,7 +96,7 @@ export default function AddRelativeMenu({
               />
             }
           >
-            <AppMessage message={item.label} />
+            {formatRelativeTerm(item.relation, intl)}
           </Toolbar.Button>
         </div>
       ))}

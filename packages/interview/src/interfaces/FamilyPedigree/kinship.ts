@@ -568,6 +568,15 @@ function fillUnconnected(family: Family, labels: Map<string, PersonLabel>) {
   return labels;
 }
 
+/**
+ * A kinship word as participant-facing text, from the one vocabulary that
+ * holds every such word (`relativeTerm`). Used for the add menu, the framing
+ * options and anyone with no other label, which is shown as "Relative".
+ */
+export function formatRelativeTerm(term: string, intl: IntlShape): string {
+  return intl.formatMessage(messages.relativeTerm, { term });
+}
+
 /** The label as participant-facing text. */
 export function formatPersonLabel(label: PersonLabel, intl: IntlShape): string {
   switch (label.type) {
@@ -576,13 +585,14 @@ export function formatPersonLabel(label: PersonLabel, intl: IntlShape): string {
     case 'you':
       return intl.formatMessage(messages.you);
     case 'term':
-      return intl.formatMessage(messages.relativeTerm, { term: label.term });
+      return formatRelativeTerm(label.term, intl);
     case 'relativeOf':
-      return intl.formatMessage(messages.relativeOf, {
+      return intl.formatMessage(messages.generatedLabelOf, {
+        relation: 'owner',
         owner: formatPersonLabel(label.owner, intl),
-        term: label.term,
+        term: formatRelativeTerm(label.term, intl),
       });
     case 'unconnected':
-      return intl.formatMessage(messages.familyMember);
+      return formatRelativeTerm('other', intl);
   }
 }

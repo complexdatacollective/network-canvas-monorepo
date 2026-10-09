@@ -392,7 +392,7 @@ describe('labelFamily', () => {
       [...extendedNodes, man('cousinsSon')],
       [...extendedEdges, link('cousin', 'cousinsSon', 'biological')],
     );
-    expect(labels.cousinsSon).toBe("Cousin's son");
+    expect(labels.cousinsSon).toBe('Cousin’s Son');
   });
 
   test('unnamed people may share a kinship word, which generateLabels tells apart', () => {
@@ -407,10 +407,10 @@ describe('labelFamily', () => {
     expect(labels).toMatchObject({ a: 'Child', b: 'Child', c: 'Daughter' });
   });
 
-  test('someone not connected to the participant is a family member', () => {
+  test('someone not connected to the participant is described as a relative', () => {
     expect(
       labelsOf([person('ego', { isEgo: true }), person('loose')], []).loose,
-    ).toBe('Family member');
+    ).toBe('Relative');
   });
 
   test('every kinship word has its own wording', () => {
@@ -460,7 +460,7 @@ describe('soft hyphens', () => {
         },
         intl,
       ),
-    ).toBe("Cousin's step\u00ADmother");
+    ).toBe('Cousin’s Step\u00ADmother');
   });
 
   test('short words, and words that fit a symbol whole, have none', () => {

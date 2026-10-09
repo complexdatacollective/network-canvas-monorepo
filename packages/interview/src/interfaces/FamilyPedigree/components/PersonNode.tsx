@@ -9,16 +9,11 @@ import type {
   Ref,
 } from 'react';
 
-import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Node, {
   type NodeColorSequence,
   type NodeShape,
 } from '@codaco/fresco-ui/Node';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@codaco/fresco-ui/Tooltip';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { withoutSoftHyphens } from '../generatedLabels';
@@ -138,21 +133,13 @@ export default function PersonNode({
         onKeyDown={onKeyDown}
       />
       {hasMissingDetails && (
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <span
-                aria-hidden
-                className="bg-warning text-warning-contrast elevation-low absolute top-0 right-0 flex size-8 items-center justify-center rounded-full"
-              />
-            }
-          >
-            <TriangleAlert className="size-5" aria-hidden />
-          </TooltipTrigger>
-          <TooltipContent>
-            <AppMessage message={messages.missingDetails} />
-          </TooltipContent>
-        </Tooltip>
+        // The person's accessible name says that details are missing.
+        <span
+          aria-hidden
+          className="bg-warning text-warning-contrast elevation-low absolute top-0 right-0 flex size-8 items-center justify-center rounded-full"
+        >
+          <TriangleAlert className="size-5" aria-hidden />
+        </span>
       )}
       {children}
     </div>
