@@ -1644,3 +1644,228 @@ describe('questions worked out from the answers as they stand', () => {
     ).toBeChecked();
   });
 });
+
+// Decided (9 Oct 2026): every answer the sibling form accepts makes the new
+// person a sibling (`siblingTie`). A step-parent or the surrogate who
+// carried the participant, chosen alone, does not, so the form refuses it
+// and says to add the person as a child of their own parent; beside a parent
+// who makes a sibling, either is accepted.
+describe('the parents a sibling shares make them a sibling', () => {
+  const nodes = [
+    person('ego', { isEgo: true, sex: ['male'] }),
+    person('amy', { sex: ['female'] }),
+    person('rob', { sex: ['male'] }),
+    person('sue', { sex: ['female'] }),
+    person('gail', { sex: ['female'] }),
+  ];
+  const edges = [
+    link('amy', 'ego', 'biological'),
+    link('rob', 'ego', 'biological'),
+    link('sue', 'ego', 'social'),
+    link('gail', 'ego', 'surrogate', { carrier: true }),
+  ];
+  const family = readFamily(nodes, edges, config);
+
+  const choose = async (
+    user: ReturnType<typeof userEvent.setup>,
+    chosen: readonly string[],
+  ) => {
+    const shared = screen.getByRole('group', {
+      name: /^Which parents do they share with you\?/,
+    });
+    for (const id of ['amy', 'rob', 'sue', 'gail']) {
+      const box = within(shared).getByRole('checkbox', { name: id });
+      const checked = box.getAttribute('aria-checked') === 'true';
+      if (checked !== chosen.includes(id)) await user.click(box);
+    }
+  };
+
+  const isSibling = (request: PersonFormResult['request']) => {
+    if (!request) throw new Error('No addition saved');
+    let counter = 0;
+    const plan = planAddRelative({
+      family,
+      anchorId: 'ego',
+      newPersonId: 'added',
+      details: {},
+      request,
+      createId: () => `new-${++counter}`,
+      sexAttribute: config.sexAssignedAtBirthAttribute,
+    });
+    return (
+      siblingTie(
+        familyWithPlan(
+          family,
+          plan.people,
+          plan.links,
+          config.sexAssignedAtBirthAttribute,
+        ),
+        'ego',
+        'added',
+      ) !== undefined
+    );
+  };
+
+  it.each([
+    { chosen: ['sue'], names: '“sue”' },
+    { chosen: ['gail'], names: '“gail”' },
+    { chosen: ['sue', 'gail'], names: '“sue” and “gail”' },
+  ])(
+    'refuses $chosen alone, saying to add them as a child of their own parent',
+    async ({ chosen, names }) => {
+      const { onSubmit, user } = renderPersonForm('ego', {
+        nodes,
+        edges,
+        adding: 'sibling',
+      });
+      await user.click(screen.getByRole('radio', { name: 'Female' }));
+      await choose(user, chosen);
+      await save(user);
+
+      expect(
+        await screen.findByText(
+          `Someone who shares only ${names} with you is not your sibling. Choose a parent you both share as well, or add them as a child of their own parent instead.`,
+        ),
+      ).toBeInTheDocument();
+      expect(onSubmit).not.toHaveBeenCalled();
+
+      // Choosing a parent they share as well makes them a sibling.
+      await choose(user, [...chosen, 'amy']);
+      await save(user);
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+      expect(isSibling(onSubmit.mock.calls[0]?.[0].request)).toBe(true);
+    },
+  );
+
+  it('saves every other choice of shared parents, and of their biological parents, as a sibling', async () => {
+    const { onSubmit, user } = renderPersonForm('ego', {
+      nodes,
+      edges,
+      adding: 'sibling',
+    });
+    await user.click(screen.getByRole('radio', { name: 'Female' }));
+    const ids = ['amy', 'rob', 'sue', 'gail'];
+    const choices = Array.from({ length: 15 }, (_, mask) =>
+      ids.filter((_id, index) => ((mask + 1) >> index) & 1),
+    ).filter((chosen) => chosen.includes('amy') || chosen.includes('rob'));
+    const namingQuestion = (other: boolean) =>
+      screen.queryByRole('radiogroup', {
+        name: other
+          ? /^Which of them is the sibling’s other biological parent\?/
+          : /^Which of them is the sibling’s biological parent\?/,
+      });
+    let saved = 0;
+    const saveAsSibling = async (answers: string) => {
+      await save(user);
+      saved += 1;
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(saved));
+      expect(
+        isSibling(onSubmit.mock.calls[saved - 1]?.[0].request),
+        answers,
+      ).toBe(true);
+    };
+    for (const chosen of choices) {
+      await choose(user, chosen);
+      const first = namingQuestion(false);
+      if (!first) {
+        await saveAsSibling(`shared ${chosen.join(', ')}`);
+        continue;
+      }
+      // Each biological parent the form offers to name makes a sibling.
+      const offered = (question: HTMLElement) =>
+        ids.filter(
+          (id) => within(question).queryByRole('radio', { name: id }) !== null,
+        );
+      const names = offered(first);
+      expect(names.length).toBe(within(first).getAllByRole('radio').length);
+      for (const name of names) {
+        await user.click(
+          within(namingQuestion(false)!).getByRole('radio', { name }),
+        );
+        const second = namingQuestion(true);
+        const others = second ? offered(second) : [undefined];
+        for (const other of others) {
+          if (other !== undefined) {
+            await user.click(
+              within(namingQuestion(true)!).getByRole('radio', {
+                name: other,
+              }),
+            );
+          }
+          await saveAsSibling(
+            `shared ${chosen.join(', ')}, named ${[name, other].join(' ')}`,
+          );
+        }
+      }
+    }
+    expect(saved).toBeGreaterThanOrEqual(choices.length);
+  });
+
+  // With no parents or donors recorded, the participant is given unnamed
+  // parents for the sibling to share; the surrogate who carried them is
+  // offered beside that answer, never in its place.
+  it('offers the surrogate of someone with no parents beside the unnamed parents they share', async () => {
+    const alone = [
+      person('ego', { isEgo: true, sex: ['male'] }),
+      person('gail', { sex: ['female'] }),
+    ];
+    const carried = [link('gail', 'ego', 'surrogate', { carrier: true })];
+    const { onSubmit, user } = renderPersonForm('ego', {
+      nodes: alone,
+      edges: carried,
+      adding: 'sibling',
+    });
+    await user.click(screen.getByRole('radio', { name: 'Female' }));
+    const surrogate = within(
+      screen.getByRole('group', {
+        name: /^Did the surrogate who carried you carry them too\?/,
+      }),
+    ).getByRole('checkbox', { name: 'gail' });
+    expect(surrogate).not.toBeChecked();
+    await user.click(surrogate);
+    const counts = within(
+      screen.getByRole('radiogroup', {
+        name: /^Which parents do they share with you\?/,
+      }),
+    ).getAllByRole('radio');
+    expect(counts).toHaveLength(3);
+    const aloneFamily = readFamily(alone, carried, config);
+    for (const [index, count] of counts.entries()) {
+      await user.click(count);
+      await save(user);
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(index + 1));
+      const { request } = onSubmit.mock.calls[index]![0];
+      if (!request) throw new Error('No addition saved');
+      expect(request).toMatchObject({ sharedParentIds: ['gail'] });
+      let counter = 0;
+      const plan = planAddRelative({
+        family: aloneFamily,
+        anchorId: 'ego',
+        newPersonId: 'added',
+        details: {},
+        request,
+        createId: () => `new-${++counter}`,
+        sexAttribute: config.sexAssignedAtBirthAttribute,
+      });
+      expect(plan.links).toContainEqual({
+        source: 'gail',
+        target: 'added',
+        kind: 'surrogate',
+        isGestationalCarrier: true,
+      });
+      expect(
+        siblingTie(
+          familyWithPlan(
+            aloneFamily,
+            plan.people,
+            plan.links,
+            config.sexAssignedAtBirthAttribute,
+          ),
+          'ego',
+          'added',
+        ),
+        `shared ${count.getAttribute('value') ?? index}`,
+      ).toBeDefined();
+    }
+  });
+});

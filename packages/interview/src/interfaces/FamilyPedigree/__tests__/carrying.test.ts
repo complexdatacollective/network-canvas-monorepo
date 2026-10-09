@@ -97,22 +97,30 @@ describe('connecting a parent who carried the pregnancy', () => {
 
   test('an adoptive parent or a donor who carried is recorded as having carried', () => {
     expect(
-      planConnection({
-        kind: 'parent',
-        parentId: 'amy',
-        childId: 'ego',
-        parentKind: 'adoptive',
-        carriedPregnancy: true,
-      }).isGestationalCarrier,
+      planConnection(
+        {
+          kind: 'parent',
+          parentId: 'amy',
+          childId: 'ego',
+          parentKind: 'adoptive',
+          carriedPregnancy: true,
+        },
+        family([person('ego', { isEgo: true }), person('amy')]),
+        config.sexAssignedAtBirthAttribute,
+      ).isGestationalCarrier,
     ).toBe(true);
     expect(
-      planConnection({
-        kind: 'parent',
-        parentId: 'amy',
-        childId: 'ego',
-        parentKind: 'donor',
-        carriedPregnancy: true,
-      }).isGestationalCarrier,
+      planConnection(
+        {
+          kind: 'parent',
+          parentId: 'amy',
+          childId: 'ego',
+          parentKind: 'donor',
+          carriedPregnancy: true,
+        },
+        family([person('ego', { isEgo: true }), person('amy')]),
+        config.sexAssignedAtBirthAttribute,
+      ).isGestationalCarrier,
     ).toBe(true);
   });
 });
@@ -374,5 +382,80 @@ describe('carrying not known', () => {
     );
     expect(carrierOf(f.links, 'mum', 'ego')).toBeUndefined();
     expect(carrierOf(f.links, 'ann', 'ego')).toBe(false);
+  });
+});
+
+// Decided (9 Oct 2026): choosing a kind of parent in Connect without
+// "(carried the pregnancy)" is not an answer of "No". Carrying is recorded
+// as false only where the parent could not have carried the child.
+describe('connecting a parent without saying they carried the pregnancy', () => {
+  const connect = (
+    f: Family,
+    parentId: string,
+    parentKind: 'biological' | 'adoptive' | 'social' | 'donor',
+  ) =>
+    planConnection(
+      {
+        kind: 'parent',
+        parentId,
+        childId: 'ego',
+        parentKind,
+        carriedPregnancy: false,
+      },
+      f,
+      config.sexAssignedAtBirthAttribute,
+    ).isGestationalCarrier;
+
+  test.each(['biological', 'adoptive', 'social', 'donor'] as const)(
+    'leaves carrying unrecorded for a %s parent who could have carried',
+    (parentKind) => {
+      const f = family([
+        person('ego', { isEgo: true }),
+        person('amy', { sex: ['female'] }),
+        person('kit'),
+      ]);
+      expect(connect(f, 'amy', parentKind)).toBeUndefined();
+      expect(connect(f, 'kit', parentKind)).toBeUndefined();
+    },
+  );
+
+  test('records that a parent recorded as male at birth did not carry', () => {
+    const f = family([
+      person('ego', { isEgo: true }),
+      person('rob', { sex: ['male'] }),
+    ]);
+    expect(connect(f, 'rob', 'biological')).toBe(false);
+  });
+
+  test('records that a parent did not carry a child someone else carried', () => {
+    const f = family(
+      [
+        person('ego', { isEgo: true }),
+        person('mum', { sex: ['female'] }),
+        person('amy', { sex: ['female'] }),
+      ],
+      [link('mum', 'ego', 'biological', { carrier: true })],
+    );
+    expect(connect(f, 'amy', 'adoptive')).toBe(false);
+  });
+
+  test('records that a parent who carried did', () => {
+    const f = family([
+      person('ego', { isEgo: true }),
+      person('amy', { sex: ['female'] }),
+    ]);
+    expect(
+      planConnection(
+        {
+          kind: 'parent',
+          parentId: 'amy',
+          childId: 'ego',
+          parentKind: 'biological',
+          carriedPregnancy: true,
+        },
+        f,
+        config.sexAssignedAtBirthAttribute,
+      ).isGestationalCarrier,
+    ).toBe(true);
   });
 });

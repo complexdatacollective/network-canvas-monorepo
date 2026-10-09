@@ -460,10 +460,13 @@ describe('peopleCutOffByChange', () => {
       'standIn-ego-biological',
       'standIn-half-biological',
     ]);
+    // The participant answered that he did not carry the pregnancy, so the
+    // link records it.
     expect(plan.links).toContainEqual({
       source: 'newDad',
       target: 'ego',
       kind: 'biological',
+      isGestationalCarrier: false,
     });
     expect(
       peopleCutOffByChange(

@@ -2364,8 +2364,17 @@ export function availableParentChoices(
     .map((option) => option.choice);
 }
 
-/** The link that records a connection. */
-export function planConnection(connection: Connection): PlannedLink {
+/**
+ * The link that records a connection. A kind of parent chosen without
+ * "carried the pregnancy" is not an answer of "No": carrying is left
+ * unrecorded, unless the parent could not have carried the child
+ * (`settleCarriers`).
+ */
+export function planConnection(
+  connection: Connection,
+  family: Family,
+  sexAttribute: string,
+): PlannedLink {
   if (connection.kind === 'partner') {
     return {
       source: connection.firstId,
@@ -2374,13 +2383,13 @@ export function planConnection(connection: Connection): PlannedLink {
       isCurrentPartner: connection.current,
     };
   }
-  return {
+  const link: PlannedLink = {
     source: connection.parentId,
     target: connection.childId,
     kind: connection.parentKind,
-    isGestationalCarrier: carriesAs(
-      connection.parentKind,
-      connection.carriedPregnancy,
-    ),
+    ...(carriesAs(connection.parentKind, connection.carriedPregnancy)
+      ? { isGestationalCarrier: true }
+      : {}),
   };
+  return settleCarriers(family, [], [link], sexAttribute)[0] ?? link;
 }

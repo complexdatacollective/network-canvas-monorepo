@@ -451,6 +451,20 @@ export const messages = defineMessages({
     description:
       'Question in the side panel for adding a sibling to someone recorded with only egg or sperm donors as parents. Options are those donors, and the surrogate who carried the person when one is recorded (hasSurrogate), by name or by how they are related to the participant; any number, or none, may be chosen. name is the person the sibling is added to.',
   },
+  sharedSurrogateLabel: {
+    id: 'interview.familyPedigree.sharedSurrogateLabel',
+    defaultMessage:
+      '{isYou, select, true {Did the surrogate who carried you carry them too?} other {Did the surrogate who carried “{name}” carry them too?}}',
+    description:
+      'Question in the side panel for adding a sibling to someone with no parents recorded yet, shown below the question about which of the parents to be added the sibling shares, when a surrogate (a woman who carried the pregnancy for someone else, without being a genetic or raising parent) is recorded as having carried the person. The option is that surrogate, by name or by how they are related to the participant; it may be left unchosen. name is the person the sibling is added to.',
+  },
+  sharedParentsNotSibling: {
+    id: 'interview.familyPedigree.sharedParentsNotSibling',
+    defaultMessage:
+      '{isYou, select, true {Someone who shares only {chosen} with you is not your sibling. Choose a parent you both share as well, or add them as a child of their own parent instead.} other {Someone who shares only {chosen} with “{name}” is not their sibling. Choose a parent they both share as well, or add them as a child of their own parent instead.}}',
+    description:
+      'Error under the question about which parents a new sibling shares, when the people chosen are only a step-parent or social parent, or the surrogate who carried the person, or both: sharing only them does not make someone a sibling. The participant can choose a parent the two share by birth or adoption as well, or add the person from their own parent instead. chosen is the list of people chosen, each quoted and already joined in the participant’s language (for example “Sue” and “Gail”). name is the person the sibling is added to.',
+  },
   carrierLabel: {
     id: 'interview.familyPedigree.carrierLabel',
     defaultMessage: 'Who carried the pregnancy?',
@@ -756,13 +770,6 @@ export const messages = defineMessages({
     defaultMessage: '{parentKind} (carried the pregnancy)',
     description:
       'Option in the menu for connecting a parent and child: a parent of this kind who was also pregnant with the child, such as a biological parent who gave birth, an adoptive or step parent who gave birth, or a donor who carried the pregnancy. parentKind is the protocol’s wording for the kind of parent (for example Biological parent, Adoptive parent); keep the qualifier separate from it, since the wording is the researcher’s.',
-  },
-  unavailableCarrierChoice: {
-    id: 'interview.familyPedigree.unavailableCarrierChoice',
-    defaultMessage:
-      '{who, select, carrierIsYou {You are recorded as having carried “{child}”, and only one person carries a pregnancy.} childIsYou {“{carrier}” is recorded as having carried you, and only one person carries a pregnancy.} other {“{carrier}” is recorded as having carried “{child}”, and only one person carries a pregnancy.}}',
-    description:
-      'Reason shown under the unavailable choices in the menu that connects a parent and child that would record the parent as having carried the pregnancy: someone else is already recorded as having carried the child. {carrier} and {child} are names, or how the people are related to the participant when unnamed.',
   },
   disconnectTool: {
     id: 'interview.familyPedigree.disconnectTool',

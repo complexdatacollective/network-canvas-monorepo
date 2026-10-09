@@ -70,6 +70,7 @@ import {
   familyWithLinkKinds,
   type FamilyLinkKind,
   couldCarryPregnancy,
+  familyWithPlan,
   firmGeneticParentSexes,
   firmGeneticParentsOf,
   fullSiblingsOf,
@@ -88,6 +89,7 @@ import {
   planTwinChanges,
   possibleCarriers,
   primaryParentsOf,
+  siblingTie,
   siblingsOf,
   standInPlaceTakenFor,
   twinCandidatesOf,
@@ -434,6 +436,51 @@ export default function PersonForm({
         answer(ROLE.hasChildren, RELATIVES_NOT_RECORDED.children);
       }
       writeOwnProperty(set, notRecordedAttribute, recorded);
+    }
+
+    // Every answer the sibling form accepts makes the new person a sibling
+    // (`siblingTie`). Someone who shares only a step-parent, or only the
+    // surrogate who carried the anchor, is not one, and is added as the
+    // child of their own parent instead.
+    if (mode.kind === 'add' && mode.relation === 'sibling') {
+      const request = readSiblingRequest(values);
+      if (
+        !makesSibling(
+          family,
+          mode.anchor.id,
+          mode.ids,
+          request,
+          config.sexAssignedAtBirthAttribute,
+        )
+      ) {
+        return {
+          success: false,
+          formErrors: [],
+          fieldErrors: {
+            [ROLE.sharedParents]: [
+              intl.formatMessage(messages.sharedParentsNotSibling, {
+                isYou: mode.anchor.isEgo ? 'true' : 'false',
+                name: displayName(mode.anchor.id),
+                chosen: intl.formatList(
+                  request.sharedParentIds.map((id) =>
+                    intl.formatMessage(messages.listedName, {
+                      name: siblingParentLabel(
+                        intl,
+                        family,
+                        mode.anchor,
+                        id,
+                        displayName,
+                        framing,
+                      ),
+                    }),
+                  ),
+                  { type: 'conjunction' },
+                ),
+              }),
+            ],
+          },
+        };
+      }
     }
 
     // An answer the network cannot hold fails the whole save, as on the
@@ -1412,6 +1459,69 @@ function readRequest(
   }
 }
 
+/**
+ * Whether the answers about a new sibling make them the anchor's sibling
+ * (`siblingTie`), as every answer the sibling form accepts must: the new
+ * person is `ids[0]`, as `planAdditionUnder` plans them.
+ */
+function makesSibling(
+  family: Family,
+  anchorId: string,
+  ids: readonly string[],
+  request: Extract<AddRelativeRequest, { relation: 'sibling' }>,
+  sexAttribute: string,
+): boolean {
+  const [newPersonId] = ids;
+  if (newPersonId === undefined) return true;
+  const plan = planAdditionUnder(ids, {
+    family,
+    anchorId,
+    details: {},
+    request,
+    sexAttribute,
+  });
+  return (
+    siblingTie(
+      familyWithPlan(family, plan.people, plan.links, sexAttribute),
+      anchorId,
+      newPersonId,
+    ) !== undefined
+  );
+}
+
+/**
+ * A parent the sibling form offers, as it names them. An unnamed parent of
+ * someone other than the participant is called by how they are related to
+ * them ("Priya’s father"), not to the participant, whose relationship to them
+ * says nothing about which parent they are. A name is shown as typed.
+ */
+function siblingParentLabel(
+  intl: ReturnType<typeof useAppIntl>,
+  family: Family,
+  anchor: Person,
+  id: string,
+  displayName: (personId: string) => string,
+  framing: FramingId,
+): string {
+  const parent = family.byId.get(id);
+  if (
+    anchor.isEgo ||
+    !parent ||
+    parent.isEgo ||
+    parent.name !== undefined ||
+    parent.hasUnreadableName
+  ) {
+    return displayName(id);
+  }
+  const term = parentTermFrom(family, anchor.id, id, framing);
+  return term === undefined
+    ? displayName(id)
+    : intl.formatMessage(messages.relativeOf, {
+        owner: displayName(anchor.id),
+        term,
+      });
+}
+
 /** The answers about a new sibling, as the request to add them. */
 function readSiblingRequest(
   values: Record<string, FieldValue | undefined>,
@@ -2189,29 +2299,8 @@ function SiblingFields({
     isYou: anchor.isEgo ? 'true' : 'false',
     name: displayName(anchor.id),
   };
-  // An unnamed parent of someone other than the participant is called by
-  // how they are related to them ("Priya’s father"), not to the participant,
-  // whose relationship to them says nothing about which parent they are. A
-  // name is shown as typed.
-  const parentLabel = (id: string) => {
-    const parent = family.byId.get(id);
-    if (
-      anchor.isEgo ||
-      !parent ||
-      parent.isEgo ||
-      parent.name !== undefined ||
-      parent.hasUnreadableName
-    ) {
-      return displayName(id);
-    }
-    const term = parentTermFrom(family, anchor.id, id, framing);
-    return term === undefined
-      ? displayName(id)
-      : intl.formatMessage(messages.relativeOf, {
-          owner: displayName(anchor.id),
-          term,
-        });
-  };
+  const parentLabel = (id: string) =>
+    siblingParentLabel(intl, family, anchor, id, displayName, framing);
 
   // The sibling as the biological child of the parents they share, as the
   // answers stand. The plan makes them the biological child of every shared
@@ -2229,10 +2318,23 @@ function SiblingFields({
     (link) => link.target === ids[0] && link.kind === 'biological',
   );
   // Choosing parents can make a biological child impossible; the question
-  // is then asked again.
+  // is then asked again. Parents who would make no sibling of either kind
+  // (a step-parent or the surrogate alone) are refused on saving, saying
+  // why, so the kind is left as it is for them.
+  const sharesEnough = (['biological', 'adoptive'] as const).some((kind) =>
+    makesSibling(
+      family,
+      anchor.id,
+      ids,
+      { ...readSiblingRequest(values), parentKind: kind },
+      config.sexAssignedAtBirthAttribute,
+    ),
+  );
+  const biologicalUnavailable = !biologicalPossible && sharesEnough;
   const setFieldValue = useFormStore((store) => store.setFieldValue);
   const biologicalImpossible =
-    asString(values[ROLE.siblingKind]) === 'biological' && !biologicalPossible;
+    asString(values[ROLE.siblingKind]) === 'biological' &&
+    biologicalUnavailable;
   useEffect(() => {
     if (biologicalImpossible) setFieldValue(ROLE.siblingKind, undefined);
   }, [biologicalImpossible, setFieldValue]);
@@ -2300,10 +2402,28 @@ function SiblingFields({
         link.kind === 'biological',
     );
   // Who could be named after `named`, and whether they must be: while not
-  // all of them would be genetic parents beside `named` anyway.
+  // all of them would be genetic parents beside `named` anyway. A naming
+  // that would leave the sibling sharing no genetic or adoptive parent with
+  // the anchor — a step-parent named the biological parent in place of the
+  // anchor's own — makes no sibling, so is not offered.
+  const siblingWhenNamed = (named: readonly string[]) =>
+    makesSibling(
+      family,
+      anchor.id,
+      ids,
+      {
+        ...readSiblingRequest(values),
+        parentKind: 'biological',
+        biologicalParentIds: named,
+      },
+      config.sexAssignedAtBirthAttribute,
+    );
   const namingAfter = (named: readonly string[]) => {
     const candidates = sharedRecorded.filter(
-      (id) => !named.includes(id) && biologicalWhenNamed([...named, id], id),
+      (id) =>
+        !named.includes(id) &&
+        biologicalWhenNamed([...named, id], id) &&
+        siblingWhenNamed([...named, id]),
     );
     return {
       candidates,
@@ -2368,7 +2488,9 @@ function SiblingFields({
   }, [identicalImpossible, setFieldValue]);
 
   // Someone with no parents is given an egg parent and a sperm parent,
-  // unnamed; the sibling may share both or one of them. Someone with only
+  // unnamed; the sibling may share both or one of them, and the surrogate
+  // who carried the anchor beside them (never in their place, which would
+  // make no sibling). Someone with only
   // donors (two, since one donor alone is given a stand-in beside them) is
   // given unnamed adoptive parents, whom the sibling shares, and may share
   // the donors too. Anyone else chooses among the parents recorded, stand-ins
@@ -2390,35 +2512,49 @@ function SiblingFields({
         initialValue={[]}
       />
     ) : parents.length === 0 ? (
-      <Field
-        component={RadioGroupField}
-        name={ROLE.sharedParentCount}
-        label={intl.formatMessage(messages.sharedParentCountLabel, args)}
-        hint={intl.formatMessage(messages.placeholderParentsNote, {
-          framing,
-          shared: asString(values[ROLE.sharedParentCount]) ?? 'both',
-        })}
-        options={[
-          {
-            value: 'both',
-            label: intl.formatMessage(messages.sharedParentCountBoth),
-          },
-          {
-            value: 'eggParent',
-            label: intl.formatMessage(messages.sharedParentEggOnly, {
-              framing,
-            }),
-          },
-          {
-            value: 'spermParent',
-            label: intl.formatMessage(messages.sharedParentSpermOnly, {
-              framing,
-            }),
-          },
-        ]}
-        required
-        initialValue="both"
-      />
+      <>
+        <Field
+          component={RadioGroupField}
+          name={ROLE.sharedParentCount}
+          label={intl.formatMessage(messages.sharedParentCountLabel, args)}
+          hint={intl.formatMessage(messages.placeholderParentsNote, {
+            framing,
+            shared: asString(values[ROLE.sharedParentCount]) ?? 'both',
+          })}
+          options={[
+            {
+              value: 'both',
+              label: intl.formatMessage(messages.sharedParentCountBoth),
+            },
+            {
+              value: 'eggParent',
+              label: intl.formatMessage(messages.sharedParentEggOnly, {
+                framing,
+              }),
+            },
+            {
+              value: 'spermParent',
+              label: intl.formatMessage(messages.sharedParentSpermOnly, {
+                framing,
+              }),
+            },
+          ]}
+          required
+          initialValue="both"
+        />
+        {surrogates.length > 0 && (
+          <Field
+            component={CheckboxGroupField}
+            name={ROLE.sharedParents}
+            label={intl.formatMessage(messages.sharedSurrogateLabel, args)}
+            options={surrogates.map((id) => ({
+              value: id,
+              label: parentLabel(id),
+            }))}
+            initialValue={[]}
+          />
+        )}
+      </>
     ) : (
       <Field
         component={CheckboxGroupField}
@@ -2444,7 +2580,7 @@ function SiblingFields({
         options={SIBLING_KINDS.map((value) => ({
           value,
           label: intl.formatMessage(CHILD_KIND_LABELS[value]),
-          disabled: value === 'biological' && !biologicalPossible,
+          disabled: value === 'biological' && biologicalUnavailable,
         }))}
         required
         initialValue="biological"

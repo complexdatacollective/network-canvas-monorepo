@@ -217,17 +217,18 @@ describe('ConnectMenu', () => {
     await userEvent.click(
       await screen.findByTestId('pedigree-connect-parent-amy'),
     );
-    for (const id of [
-      'biological-carrier',
-      'adoptive-carrier',
-      'social-carrier',
-      'donor-carrier',
-      'surrogate',
-    ]) {
+    // Each reason names the choice it disables.
+    for (const [id, label] of [
+      ['biological-carrier', 'Genetic parent (carried the pregnancy)'],
+      ['adoptive-carrier', 'Adoptive parent (carried the pregnancy)'],
+      ['social-carrier', 'Step or social parent (carried the pregnancy)'],
+      ['donor-carrier', 'Egg or sperm donor (carried the pregnancy)'],
+      ['surrogate', 'Surrogate'],
+    ] as const) {
       const item = await screen.findByTestId(`pedigree-connect-kind-${id}`);
       expect(item).toHaveAttribute('aria-disabled', 'true');
       expect(item).toHaveAccessibleDescription(
-        '“Mum” is recorded as having carried you, and only one person carries a pregnancy.',
+        `“${label}” is unavailable because “Mum” is recorded as having carried you, and only one person carries a pregnancy. To choose it, first change how “Mum” is connected to you.`,
       );
     }
     expect(
@@ -269,9 +270,13 @@ describe('ConnectMenu', () => {
     await userEvent.click(
       await screen.findByTestId('pedigree-connect-parent-zainab'),
     );
-    const reason =
-      '“Huda” is recorded as having carried you, and only one person carries a pregnancy.';
-    for (const id of ['adoptive-carrier', 'social-carrier', 'surrogate']) {
+    // Each unavailable choice shows its own reason, naming it.
+    for (const [id, label] of [
+      ['adoptive-carrier', 'Adoptive parent (carried the pregnancy)'],
+      ['social-carrier', 'Step or social parent (carried the pregnancy)'],
+      ['surrogate', 'Surrogate'],
+    ] as const) {
+      const reason = `“${label}” is unavailable because “Huda” is recorded as having carried you, and only one person carries a pregnancy. To choose it, first change how “Huda” is connected to you.`;
       const item = await screen.findByTestId(`pedigree-connect-kind-${id}`);
       expect(item).toHaveTextContent(reason);
       expect(item).toHaveAccessibleDescription(reason);
@@ -319,11 +324,15 @@ describe('ConnectMenu', () => {
     await userEvent.click(
       await screen.findByTestId('pedigree-connect-parent-doris'),
     );
-    for (const id of ['biological', 'donor']) {
+    for (const [id, label] of [
+      ['biological', 'Genetic parent'],
+      ['donor', 'Egg or sperm donor'],
+    ] as const) {
+      const reason = `“${label}” is unavailable because you already have two genetic parents recorded, “Debra” and “Steve”. To choose it, first change how one of them is connected to you.`;
       const item = await screen.findByTestId(`pedigree-connect-kind-${id}`);
       expect(item).toHaveAttribute('aria-disabled', 'true');
-      expect(item).toHaveTextContent(/two genetic parents/);
-      expect(item).toHaveAccessibleDescription(/“Debra” and “Steve”/);
+      expect(item).toHaveTextContent(reason);
+      expect(item).toHaveAccessibleDescription(reason);
     }
     expect(
       screen.getByTestId('pedigree-connect-kind-adoptive'),

@@ -2278,7 +2278,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   const handleConnect = async (connection: Connection) => {
     endConnecting();
-    const link = planConnection(connection);
+    const link = planConnection(
+      connection,
+      family,
+      config.sexAssignedAtBirthAttribute,
+    );
     // A connection that makes a stand-in give way where they were someone's
     // only connection to the participant is refused, as a disconnection
     // that would leave them out is.

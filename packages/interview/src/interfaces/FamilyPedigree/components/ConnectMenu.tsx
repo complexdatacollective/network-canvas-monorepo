@@ -30,7 +30,11 @@ import {
   parentConnectionBlock,
 } from '../model';
 import type { OwnedOptionLabels } from '../options';
-import { geneticParentReason } from './unavailableReasons';
+import {
+  carrierRecordedReason,
+  geneticParentReason,
+  joinReasons,
+} from './unavailableReasons';
 
 export type ConnectPair = { firstId: string; secondId: string };
 
@@ -216,24 +220,29 @@ export default function ConnectMenu({
     if (parentChoice) {
       const label = parentLabel(parentChoice);
       // A choice that would contradict the family is unavailable, with the
-      // reason shown under it, and describing it: who carried the child,
-      // for a choice that would record a second carrier, or the genetic
-      // parents already recorded, for a genetic kind.
-      const reasonFor = (unavailable: ParentChoiceBlock) =>
-        unavailable.rule === 'carrierRecorded'
-          ? intl.formatMessage(messages.unavailableCarrierChoice, {
-              who: isYou(unavailable.carrierId)
-                ? 'carrierIsYou'
-                : isYou(parentChoice.childId)
-                  ? 'childIsYou'
-                  : 'other',
-              carrier: displayName(unavailable.carrierId),
-              child: displayName(parentChoice.childId),
-            })
-          : geneticParentReason(
-              { intl, family, displayName, sexLabels },
-              unavailable,
-            );
+      // reason shown under it, and describing it. The reason names the
+      // choice it disables, and why: who carried the child, for a choice
+      // that would record a second carrier, or the genetic parents already
+      // recorded, for a genetic kind.
+      const reasonContext = { intl, family, displayName, sexLabels };
+      const reasonFor = (
+        unavailable: ParentChoiceBlock,
+        option: ParentChoice,
+        kindLabel: string,
+      ) => {
+        const answers = [
+          { value: choiceId(option), label: getMarkdownLabelText(kindLabel) },
+        ];
+        return joinReasons(reasonContext, [
+          unavailable.rule === 'carrierRecorded'
+            ? carrierRecordedReason(
+                parentChoice.childId,
+                unavailable.carrierId,
+                answers,
+              )
+            : geneticParentReason(unavailable, answers),
+        ]);
+      };
       return (
         <DropdownMenuGroup>
           <DropdownMenuLabel>{label}</DropdownMenuLabel>
@@ -244,7 +253,9 @@ export default function ConnectMenu({
           ).map(({ choice: option, unavailable }, index) => {
             const kindLabel = parentChoiceLabel(option);
             const id = choiceId(option);
-            const reason = unavailable ? reasonFor(unavailable) : undefined;
+            const reason = unavailable
+              ? reasonFor(unavailable, option, kindLabel)
+              : undefined;
             const reasonId = `${reasonIdPrefix}-kind-${id}`;
             return (
               <DropdownMenuItem
