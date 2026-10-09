@@ -5,12 +5,14 @@ import {
   PEDIGREE_RELATIONSHIP_KINDS,
   PEDIGREE_RELATIVES_NOT_RECORDED,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
+  PEDIGREE_TWIN_KINDS,
   type FamilyPedigreeStageDefinition,
   type PedigreeGenderWords,
   type PedigreeParentKind,
   type PedigreeRelationshipKind,
   type PedigreeRelativesNotRecorded,
   type PedigreeSexAssignedAtBirth,
+  type PedigreeTwinKind,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -100,6 +102,13 @@ export type Person = {
    * canvas shows them by a label of their own until the name can be read.
    */
   hasUnreadableName: boolean;
+  /**
+   * Something is recorded about them beyond a name and a sex at birth: a
+   * gender identity, an answer to one of the researcher's questions or
+   * nominations, or an answer about their siblings or children. Someone with
+   * none of these, and no name, may be a stand-in (`isStandIn`).
+   */
+  hasOtherDetails: boolean;
   /** The value of the gender identity option the person was given, whatever
    * the researcher defined it to be. Undefined when not yet answered. */
   genderIdentity: string | number | undefined;
@@ -117,22 +126,62 @@ export type Person = {
   attributes: NcNode[typeof entityAttributesProperty];
 };
 
+/** The kind of a parent or partner link: any relationship kind but a twin
+ * kind, since twins are recorded apart (`Family.twins`). */
+export type FamilyLinkKind = Exclude<
+  PedigreeRelationshipKind,
+  PedigreeTwinKind
+>;
+
 export type FamilyLink = {
   id: string;
   /** The parent, for a parent link; either partner, for a partner link. */
   source: string;
   /** The child, for a parent link; the other partner, for a partner link. */
   target: string;
-  kind: PedigreeRelationshipKind;
+  kind: FamilyLinkKind;
+  /** This parent carried the child's pregnancy. Any kind of parent may have
+   * (a surrogate always did); a child has at most one. */
   isGestationalCarrier: boolean;
   isCurrentPartner: boolean;
 };
+
+/** Whether twins are identical (monozygotic), fraternal (dizygotic), or not
+ * known to be either. */
+export type TwinZygosity = 'identical' | 'fraternal' | 'unknown';
+
+const ZYGOSITY_BY_KIND: Record<PedigreeTwinKind, TwinZygosity> = {
+  identicalTwin: 'identical',
+  fraternalTwin: 'fraternal',
+  unknownZygosityTwin: 'unknown',
+};
+
+/** The relationship kind that records twins of this zygosity. */
+export const TWIN_KIND_BY_ZYGOSITY: Record<TwinZygosity, PedigreeTwinKind> = {
+  identical: 'identicalTwin',
+  fraternal: 'fraternalTwin',
+  unknown: 'unknownZygosityTwin',
+};
+
+/** Two people recorded as twins, in either order. */
+export type TwinLink = {
+  id: string;
+  source: string;
+  target: string;
+  zygosity: TwinZygosity;
+};
+
+const isTwinKind = (kind: string): kind is PedigreeTwinKind =>
+  PEDIGREE_TWIN_KINDS.some((twinKind) => twinKind === kind);
 
 export type Family = {
   /** In the order they were added. */
   people: Person[];
   byId: ReadonlyMap<string, Person>;
+  /** Parent and partner links. */
   links: FamilyLink[];
+  /** Pairs recorded as twins. */
+  twins: TwinLink[];
   egoId: string | undefined;
 };
 
@@ -246,11 +295,24 @@ export function readFamily(
         attribute(config.sexAssignedAtBirthAttribute),
         PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
       );
+      // The attributes the interface itself writes, which say nothing the
+      // participant told it about the person: a name and a sex at birth are
+      // judged on their own.
+      const ownAttributes = new Set([
+        config.nameAttribute,
+        config.sexAssignedAtBirthAttribute,
+        config.egoAttribute,
+        config.relationshipToParticipantAttribute,
+      ]);
+      const hasOtherDetails = Object.entries(attributes).some(
+        ([key, value]) => !ownAttributes.has(key) && !isEmpty(value),
+      );
       return {
         id,
         isEgo: attribute(config.egoAttribute) === true,
         name,
         hasUnreadableName,
+        hasOtherDetails,
         genderIdentity,
         genderWords: genderIdentityConfig
           ? genderIdentity === undefined
@@ -272,6 +334,7 @@ export function readFamily(
   const byId = new Map(people.map((person) => [person.id, person]));
 
   const links: FamilyLink[] = [];
+  const twins: TwinLink[] = [];
   for (const edge of edges) {
     if (edge.type !== config.relationshipType) continue;
     if (!byId.has(edge.from) || !byId.has(edge.to)) continue;
@@ -282,6 +345,15 @@ export function readFamily(
       PEDIGREE_RELATIONSHIP_KINDS,
     );
     if (!kind) continue;
+    if (isTwinKind(kind)) {
+      twins.push({
+        id: edge[entityPrimaryKeyProperty],
+        source: edge.from,
+        target: edge.to,
+        zygosity: ZYGOSITY_BY_KIND[kind],
+      });
+      continue;
+    }
     links.push({
       id: edge[entityPrimaryKeyProperty],
       source: edge.from,
@@ -298,6 +370,7 @@ export function readFamily(
     people,
     byId,
     links,
+    twins,
     egoId: people.find((person) => person.isEgo)?.id,
   };
 }
@@ -494,9 +567,9 @@ export type AddRelativeRequest =
   | {
       relation: 'parent';
       parentKind: PedigreeParentKind;
-      /** A biological parent carried the pregnancy of the anchor and of each
+      /** The new parent carried the pregnancy of the anchor and of each
        * sibling chosen, among those with nobody else recorded as carrying
-       * theirs. */
+       * theirs. Any kind of parent may have; a surrogate always did. */
       carriedPregnancy: boolean;
       /** An existing parent of the anchor who is this parent's partner. */
       partnerId: string | null;
@@ -516,7 +589,10 @@ export type AddRelativeRequest =
       /** For a biological child with another parent, which of them is a
        * biological parent; the other is a social parent. */
       biologicalParent: 'both' | 'anchor' | 'otherParent';
-      /** Who carried the pregnancy, for a biological child. */
+      /** Which of the child's parents carried the pregnancy, whatever kind
+       * of parent they are, or null when neither did or it is not known. A
+       * surrogate carried a child they are the surrogate of, so is never
+       * asked. */
       carrier: 'anchor' | 'otherParent' | null;
     }
   | {
@@ -535,6 +611,15 @@ export type AddRelativeRequest =
        * need not be the anchor's: one may be adopted and the other not. */
       parentKind: 'biological' | 'adoptive' | 'social';
       /**
+       * For a biological sibling, which of the parents they share is their
+       * biological parent, when only one of them could be (ruling 26): two
+       * mothers, say. Absent, the anchor's biological parents are taken
+       * first.
+       */
+      biologicalParentId?: string;
+      /** The sibling is the anchor's twin, of this zygosity (ruling 16). */
+      twin?: TwinZygosity;
+      /**
        * Who carried the pregnancy, for a biological sibling: one of the
        * parents the sibling is planned to have (`possibleCarriers`), by id,
        * which for an unnamed parent the addition gives them is the id the
@@ -548,7 +633,7 @@ export type PlannedPerson = { id: string; details: PersonDetails };
 export type PlannedLink = {
   source: string;
   target: string;
-  kind: PedigreeRelationshipKind;
+  kind: FamilyLinkKind;
   isGestationalCarrier?: boolean;
   isCurrentPartner?: boolean;
 };
@@ -556,6 +641,22 @@ export type PlannedLink = {
 export type AdditionPlan = {
   people: PlannedPerson[];
   links: PlannedLink[];
+  /** Stand-ins whose sex at birth the addition changes (`planStandIns`). */
+  updatedPeople?: PlannedPerson[];
+  /** Links of stand-ins who give way to someone the addition records in
+   * their place. */
+  removedLinkIds?: string[];
+  /** Stand-ins the addition leaves standing in for nobody. */
+  removedPersonIds?: string[];
+  /** Twins the addition records. */
+  twins?: PlannedTwin[];
+};
+
+/** Two people to record as twins. */
+export type PlannedTwin = {
+  source: string;
+  target: string;
+  zygosity: TwinZygosity;
 };
 
 /**
@@ -595,9 +696,7 @@ export function planAddRelative({
   switch (request.relation) {
     case 'parent': {
       const kind = request.parentKind;
-      const carried =
-        kind === 'surrogate' ||
-        (kind === 'biological' && request.carriedPregnancy);
+      const carried = carriesAs(kind, request.carriedPregnancy);
       // The new parent is the same parent to the anchor and to each sibling
       // chosen: the same kind, and the same record of carrying the
       // pregnancy, except for anyone who already has someone recorded as
@@ -648,9 +747,10 @@ export function planAddRelative({
       } else if (request.otherParent) {
         otherParentId = request.otherParent;
       }
-      // Only a biological parent or a surrogate is recorded as having
-      // carried the pregnancy. The other parent of a child conceived with a
-      // donor's gamete, or carried by a surrogate, is its biological parent.
+      // Any kind of parent may have carried the pregnancy: a surrogate
+      // always did, and otherwise the parent the participant chose. The
+      // other parent of a child conceived with a donor's gamete, or carried
+      // by a surrogate, is its biological parent.
       const kindFor = (parent: 'anchor' | 'otherParent') => {
         if (
           parent === 'otherParent' &&
@@ -669,9 +769,10 @@ export function planAddRelative({
         source: anchorId,
         target: newPersonId,
         kind: anchorKind,
-        isGestationalCarrier:
-          anchorKind === 'surrogate' ||
-          (anchorKind === 'biological' && request.carrier === 'anchor'),
+        isGestationalCarrier: carriesAs(
+          anchorKind,
+          request.carrier === 'anchor',
+        ),
       });
       if (otherParentId) {
         const otherKind = kindFor('otherParent');
@@ -680,25 +781,31 @@ export function planAddRelative({
           target: newPersonId,
           kind: otherKind,
           isGestationalCarrier:
-            otherKind === 'biological' && request.carrier === 'otherParent',
+            kind !== 'surrogate' && request.carrier === 'otherParent',
         });
       }
       break;
     }
     case 'sibling': {
       const anchorParents = primaryParentsOf(family, anchorId);
+      // The anchor's donors are offered too, so that a sibling who shares
+      // only a donor can be added (ruling 20).
+      const anchorDonors = parentLinksOf(family, anchorId)
+        .filter((link) => link.kind === 'donor')
+        .map((link) => link.source);
       const shared = request.sharedParentIds.filter((id) =>
         anchorParents.includes(id),
       );
+      const sharedDonors = request.sharedParentIds.filter((id) =>
+        anchorDonors.includes(id),
+      );
       // Siblings hang from the parents they share. An unnamed parent the
-      // addition gives the anchor stands for a genetic parent not yet shown,
-      // giving a gamete not yet given (`openGeneticParentSlots`): someone
+      // addition gives the anchor stands in for a genetic parent not yet
+      // shown (`openGeneticParentSlots`, and the stand-in rule,
+      // `planStandIns`, which the plan keeps once it is made): someone
       // without parents is given one for each gamete still to give, for the
-      // participant to fill in later, and someone with one parent is given
-      // their second while there is room for one. Once the anchor's genetic
-      // parents (donors included) are all recorded, nobody is added to stand
-      // in for one. Unnamed parents are never recorded as anyone's partner:
-      // the participant is not asked about it.
+      // participant to fill in later. Stand-ins only ever stand in for
+      // genetic parents, and are never recorded as anyone's partner.
       const open = openGeneticParentSlots(family, anchorId);
       const placeholders: { id: string; kind: 'biological' | 'adoptive' }[] =
         [];
@@ -713,8 +820,9 @@ export function planAddRelative({
       let sharedPlaceholders: string[] = [];
       if (anchorParents.length === 0) {
         // With no gamete left to give, someone recorded with only donors
-        // still needs parents to hang the sibling from: they are taken to be
-        // parents who raised the anchor, as adoptive parents.
+        // still needs parents to hang the sibling from: donors do not
+        // conceive children, so someone used them and raised the anchor,
+        // taken to be adoptive parents (ruling 23).
         const added =
           open.length > 0
             ? open.map((sex) => addParentPlaceholder('biological', sex))
@@ -732,27 +840,29 @@ export function planAddRelative({
         );
         sharedPlaceholders = chosen.length > 0 ? chosen : added;
       } else if (anchorParents.length === 1) {
+        // Someone with one parent recorded before the stand-in rule kept
+        // them company. An adoptive or social parent is never stood in for:
+        // a single person adopting or raising a child is reasonable
+        // (ruling 24).
         const [known] = parentLinksOf(family, anchorId).filter((link) =>
           anchorParents.includes(link.source),
         );
         const secondSex = open.length === 1 ? open[0] : undefined;
-        if (request.sharesUnshown === 'none') {
-          // A sibling who does not share the anchor's second genetic parent
-          // has another: the anchor's is added for the anchor alone, so the
-          // two are recorded with different genetic parents, as half
-          // siblings, rather than with the one parent each that would make
-          // them full siblings.
-          if (known?.kind === 'biological' && open.length > 0) {
-            addParentPlaceholder('biological', secondSex);
+        if (known?.kind === 'biological' && open.length > 0) {
+          if (request.sharesUnshown === 'none') {
+            // A sibling who does not share the anchor's second genetic
+            // parent has another, a stand-in of their own, so the two are
+            // recorded as half siblings (ruling 25). The anchor's own is
+            // added by the stand-in rule.
+            const id = addPlaceholder(secondSex);
+            links.push({ source: id, target: newPersonId, kind: 'biological' });
+          } else if (request.sharesUnshown === 'other') {
+            // The anchor's second genetic parent, shared: a biological
+            // parent who gave the other gamete when that is known.
+            sharedPlaceholders = [
+              addParentPlaceholder('biological', secondSex),
+            ];
           }
-        } else if (known?.kind === 'adoptive') {
-          // The other parent of someone adopted was most likely an adoptive
-          // parent too.
-          sharedPlaceholders = [addParentPlaceholder('adoptive', undefined)];
-        } else if (open.length > 0) {
-          // Otherwise they are a biological parent, who gave the other
-          // gamete when that is known.
-          sharedPlaceholders = [addParentPlaceholder('biological', secondSex)];
         }
       }
       for (const { id, kind } of placeholders) {
@@ -760,11 +870,16 @@ export function planAddRelative({
       }
       // A sibling shares at least one parent; with none chosen, all of them.
       // Their relationship to those parents is their own. A biological
-      // sibling is the biological child of the anchor's biological parents
-      // they share first, then of the others while they could have given a
+      // sibling is the biological child of the parent named as their
+      // biological parent (ruling 26), then of the anchor's biological
+      // parents they share, then of the others while they could have given a
       // gamete beside them; a shared parent who could not stays the kind of
-      // parent they are to the anchor (a step-parent beside two mothers, say).
-      const sharesNone = shared.length === 0 && sharedPlaceholders.length === 0;
+      // parent they are to the anchor (a step-parent beside two mothers,
+      // say). A donor they share is their donor.
+      const sharesNone =
+        shared.length === 0 &&
+        sharedPlaceholders.length === 0 &&
+        sharedDonors.length === 0;
       const anchorKindOf = (parentId: string) =>
         placeholders.find((placeholder) => placeholder.id === parentId)?.kind ??
         parentLinksOf(family, anchorId).find((link) => link.source === parentId)
@@ -773,20 +888,28 @@ export function planAddRelative({
         ...(sharesNone ? anchorParents : shared),
         ...sharedPlaceholders,
       ];
+      const named = request.biologicalParentId;
       const ordered =
         request.parentKind === 'biological'
           ? [
+              ...siblingParents.filter((id) => id === named),
               ...siblingParents.filter(
-                (id) => anchorKindOf(id) === 'biological',
+                (id) => id !== named && anchorKindOf(id) === 'biological',
               ),
               ...siblingParents.filter(
-                (id) => anchorKindOf(id) !== 'biological',
+                (id) => id !== named && anchorKindOf(id) !== 'biological',
               ),
             ]
           : siblingParents;
       const geneticSexes: (string | undefined)[] = [];
+      for (const donorId of sharedDonors) {
+        const sex = family.byId.get(donorId)?.sexAssignedAtBirth;
+        if (!geneticParentsPossible([...geneticSexes, sex])) continue;
+        geneticSexes.push(sex);
+        links.push({ source: donorId, target: newPersonId, kind: 'donor' });
+      }
       for (const parentId of ordered) {
-        let kind: PedigreeRelationshipKind = request.parentKind;
+        let kind: FamilyLinkKind = request.parentKind;
         if (kind === 'biological') {
           const sex = plannedSexOf(
             family,
@@ -808,13 +931,48 @@ export function planAddRelative({
   }
 
   const kept = keepWithinGeneticLimit(family, people, links, sexAttribute);
+  // The family as the addition leaves it keeps the stand-in rule: anyone it
+  // leaves with one genetic parent is given a stand-in for the other, and a
+  // stand-in whose place the addition fills gives way.
+  const standIns = planStandIns(
+    familyWithPlan(family, people, kept, sexAttribute),
+    createId,
+    sexAttribute,
+  );
+  const isPlanned = (linkId: string) =>
+    linkId.startsWith(plannedLinkId(0).slice(0, -1));
+  const plan: AdditionPlan = {
+    people: [
+      ...people.filter(
+        (planned) => !standIns.removedPersonIds.includes(planned.id),
+      ),
+      ...standIns.people,
+    ],
+    links: [
+      ...kept.filter(
+        (_, index) => !standIns.removedLinkIds.includes(plannedLinkId(index)),
+      ),
+      ...standIns.links,
+    ],
+    updatedPeople: standIns.updatedPeople,
+    removedLinkIds: standIns.removedLinkIds.filter((id) => !isPlanned(id)),
+    removedPersonIds: standIns.removedPersonIds,
+  };
+  if (request.relation === 'sibling' && request.twin !== undefined) {
+    plan.twins = twinsForNewSibling(
+      family,
+      familyWithPlan(family, plan.people, plan.links, sexAttribute),
+      anchorId,
+      newPersonId,
+      request.twin,
+    );
+  }
   if (request.relation !== 'sibling' || request.carrier === null) {
-    return { people, links: kept };
+    return plan;
   }
   // The sibling's carrier is one of the parents they are planned to have
   // who could have carried the pregnancy; any other answer, which a later
   // one has made impossible, records nobody.
-  const plan = { people, links: kept };
   const carrier = possibleCarriers(
     family,
     plan,
@@ -822,14 +980,117 @@ export function planAddRelative({
     sexAttribute,
   ).find((id) => id === request.carrier);
   return {
-    people,
-    links: kept.map((link) =>
+    ...plan,
+    links: plan.links.map((link) =>
       carrier !== undefined &&
       link.source === carrier &&
       link.target === newPersonId
         ? { ...link, isGestationalCarrier: true }
         : link,
     ),
+  };
+}
+
+/** The person's twins, each with their zygosity and the link recording it. */
+export function twinsOf(
+  family: Family,
+  personId: string,
+): { twinId: string; zygosity: TwinZygosity; linkId: string }[] {
+  return family.twins.flatMap((twin) =>
+    twin.source === personId || twin.target === personId
+      ? [
+          {
+            twinId: twin.source === personId ? twin.target : twin.source,
+            zygosity: twin.zygosity,
+            linkId: twin.id,
+          },
+        ]
+      : [],
+  );
+}
+
+/** Whether two people could be identical twins: identical twins come from
+ * one egg and one sperm, so they have the same genetic parents. */
+export function identicalTwinsPossible(
+  family: Family,
+  a: string,
+  b: string,
+): boolean {
+  const first = new Set(geneticParentsOf(family, a));
+  const second = geneticParentsOf(family, b);
+  return first.size === second.length && second.every((id) => first.has(id));
+}
+
+/**
+ * The twins a new sibling, recorded as the anchor's twin of `zygosity`, is
+ * given: the anchor, and each of the anchor's own twins, born of the same
+ * pregnancy. Twins are identical only while they would have the same genetic
+ * parents, and otherwise not known to be; the anchor's twin is identical to
+ * the sibling only when both pairs are, fraternal when either pair is, and
+ * otherwise not known to be either.
+ */
+function twinsForNewSibling(
+  family: Family,
+  planned: Family,
+  anchorId: string,
+  siblingId: string,
+  zygosity: TwinZygosity,
+): PlannedTwin[] {
+  const possible = (a: string, b: string, wanted: TwinZygosity) =>
+    wanted === 'identical' && !identicalTwinsPossible(planned, a, b)
+      ? 'unknown'
+      : wanted;
+  const withAnchor = possible(anchorId, siblingId, zygosity);
+  return [
+    { source: anchorId, target: siblingId, zygosity: withAnchor },
+    ...twinsOf(family, anchorId).map(({ twinId, zygosity: theirs }) => {
+      const combined: TwinZygosity =
+        withAnchor === 'identical' && theirs === 'identical'
+          ? 'identical'
+          : withAnchor === 'fraternal' || theirs === 'fraternal'
+            ? 'fraternal'
+            : 'unknown';
+      return {
+        source: twinId,
+        target: siblingId,
+        zygosity: possible(twinId, siblingId, combined),
+      };
+    }),
+  ];
+}
+
+/**
+ * What to change so that the person's twins are the siblings answered, each
+ * of the zygosity answered: a twin link added for each new twin, changed for
+ * each whose zygosity changes, and removed for each no longer their twin.
+ */
+export function planTwinChanges(
+  family: Family,
+  personId: string,
+  answers: ReadonlyMap<string, TwinZygosity>,
+): {
+  added: PlannedTwin[];
+  changed: { linkId: string; zygosity: TwinZygosity }[];
+  removedLinkIds: string[];
+} {
+  const current = twinsOf(family, personId);
+  return {
+    added: [...answers]
+      .filter(([twinId]) => !current.some((each) => each.twinId === twinId))
+      .map(([twinId, zygosity]) => ({
+        source: personId,
+        target: twinId,
+        zygosity,
+      })),
+    changed: current.flatMap(({ twinId, zygosity, linkId }) => {
+      const answer = answers.get(twinId);
+      return answer !== undefined && answer !== zygosity
+        ? [{ linkId, zygosity: answer }]
+        : [];
+    }),
+    removedLinkIds: current
+      .filter(({ twinId }) => !answers.has(twinId))
+      .map(({ linkId }) => linkId),
   };
 }
 
@@ -850,7 +1111,7 @@ function plannedSexOf(
 
 /**
  * The parents a planned addition gives `childId` who could have carried their
- * pregnancy: their biological parents, as planned, except anyone recorded (or
+ * pregnancy: any of their parents, as planned, except anyone recorded (or
  * planned) as male at birth. Unnamed parents the addition creates are
  * included, by the ids the plan gives them.
  */
@@ -864,7 +1125,7 @@ export function possibleCarriers(
     .filter(
       (link) =>
         link.target === childId &&
-        link.kind === 'biological' &&
+        mayHaveCarried(link.kind) &&
         couldCarryPregnancy(
           plannedSexOf(family, plan, link.source, sexAttribute),
         ),
@@ -914,6 +1175,283 @@ export function openGeneticParentSlots(
 }
 
 /**
+ * Whether someone is an unnamed stand-in for a genetic parent (the stand-in
+ * rule, `planStandIns`): someone the participant has neither named nor told
+ * the interface anything about but their sex at birth (`hasOtherDetails`),
+ * who is a biological parent and nothing else — no parents, partners or
+ * twins of their own, and recorded as having carried nobody. A stand-in
+ * holds a genetic parent's place until someone is recorded in it, and gives
+ * way to them (a genetic parent recorded beside the person's others takes
+ * their place). Anyone the participant describes, names or relates further
+ * is someone in their own right.
+ */
+export function isStandIn(family: Family, personId: string): boolean {
+  const person = family.byId.get(personId);
+  if (
+    !person ||
+    person.isEgo ||
+    person.name !== undefined ||
+    person.hasUnreadableName ||
+    person.hasOtherDetails
+  ) {
+    return false;
+  }
+  if (
+    family.twins.some(
+      (twin) => twin.source === personId || twin.target === personId,
+    )
+  ) {
+    return false;
+  }
+  const links = family.links.filter(
+    (link) => link.source === personId || link.target === personId,
+  );
+  return (
+    links.length > 0 &&
+    links.every(
+      (link) =>
+        link.source === personId &&
+        link.kind === 'biological' &&
+        !link.isGestationalCarrier,
+    )
+  );
+}
+
+/** The person's genetic parents leaving out stand-ins, who give way to
+ * anyone recorded in their place. */
+export function firmGeneticParentsOf(
+  family: Family,
+  personId: string,
+): string[] {
+  return geneticParentsOf(family, personId).filter(
+    (parentId) => !isStandIn(family, parentId),
+  );
+}
+
+/** The sexes at birth of the person's genetic parents leaving out stand-ins
+ * (`firmGeneticParentsOf`): the ones a new genetic parent must be possible
+ * beside. */
+export function firmGeneticParentSexes(
+  family: Family,
+  personId: string,
+): (string | undefined)[] {
+  return firmGeneticParentsOf(family, personId).map(
+    (parentId) => family.byId.get(parentId)?.sexAssignedAtBirth,
+  );
+}
+
+/** What keeping the stand-in rule changes in a family. */
+export type StandInChanges = {
+  /** New stand-ins, with the sex at birth of the gamete they gave when that
+   * follows. */
+  people: PlannedPerson[];
+  /** Their links: each a biological parent of the people they stand in for. */
+  links: PlannedLink[];
+  /** Stand-ins whose sex at birth changes, to that of the gamete the other
+   * genetic parent did not give. */
+  updatedPeople: PlannedPerson[];
+  /** Links of stand-ins who gave way to a genetic parent recorded in their
+   * place. */
+  removedLinkIds: string[];
+  /** Stand-ins left standing in for nobody. */
+  removedPersonIds: string[];
+};
+
+/**
+ * The stand-in rule (Josh, 9 Oct 2026, ruling 25): whenever a person has at
+ * least one genetic parent recorded (a biological parent or a donor), an
+ * unnamed stand-in fills the missing genetic parent, so that a participant's
+ * answer about who shares that parent — which tells full siblings from half
+ * siblings — is never silently lost, whoever is later added or removed.
+ * Asked of the family after every change to it.
+ *
+ * - Someone with one genetic parent is given a stand-in as a biological
+ *   parent, with the sex at birth of the other gamete when that follows.
+ *   Full siblings (exactly the same parents, at least one of whom raises
+ *   them, as `fullSiblingsOf`) share one stand-in, so people who were full
+ *   siblings stay full siblings and half siblings stay half siblings.
+ * - Adoptive and social parents are never stood in for, and nobody with no
+ *   genetic parent is given one.
+ * - A stand-in is never recorded as anyone's partner.
+ * - A stand-in gives way to a genetic parent recorded in their place: their
+ *   link to anyone with more genetic parents than the rule allows
+ *   (`geneticParentsPossible`) is removed, and a stand-in left standing in
+ *   for nobody is removed.
+ * - A stand-in's sex at birth follows the gamete their children's other
+ *   genetic parent gave, when every such child agrees on it.
+ */
+export function planStandIns(
+  family: Family,
+  createId: () => string,
+  sexAttribute: string,
+): StandInChanges {
+  const standIns = new Set(
+    family.people
+      .map((person) => person.id)
+      .filter((id) => isStandIn(family, id)),
+  );
+  const geneticLinksOf = (personId: string) =>
+    parentLinksOf(family, personId).filter((link) => isGeneticKind(link.kind));
+
+  const sexes = new Map<string, string | undefined>();
+  const sexOf = (personId: string) =>
+    sexes.has(personId)
+      ? sexes.get(personId)
+      : family.byId.get(personId)?.sexAssignedAtBirth;
+
+  // A stand-in's sex at birth follows from the gamete the other genetic
+  // parent of each child they share with someone in their own right gave,
+  // when the children all agree. Asked first, so that a stand-in whose sex
+  // only needs to follow does not give way.
+  const updatedPeople: PlannedPerson[] = [];
+  for (const standInId of standIns) {
+    const required = new Set<string>();
+    for (const link of family.links) {
+      if (link.source !== standInId) continue;
+      const genetic = geneticLinksOf(link.target);
+      const other = genetic.find((each) => each.source !== standInId);
+      if (genetic.length !== 2 || !other || standIns.has(other.source)) {
+        continue;
+      }
+      const sex = otherGameteSex(sexOf(other.source));
+      if (sex !== undefined) required.add(sex);
+    }
+    const [sex] = required;
+    if (required.size === 1 && sex !== undefined && sex !== sexOf(standInId)) {
+      sexes.set(standInId, sex);
+      updatedPeople.push({ id: standInId, details: { [sexAttribute]: [sex] } });
+    }
+  }
+
+  // A stand-in gives way to a genetic parent recorded in their place.
+  const removedLinkIds = new Set<string>();
+  for (const person of family.people) {
+    const genetic = geneticLinksOf(person.id);
+    const possible = () =>
+      geneticParentsPossible(
+        genetic
+          .filter((link) => !removedLinkIds.has(link.id))
+          .map((link) => sexOf(link.source)),
+      );
+    if (possible()) continue;
+    const standInLinks = genetic.filter((link) => standIns.has(link.source));
+    // The one whose leaving is enough, or else each in turn until it is.
+    const enough = standInLinks.find((link) => {
+      removedLinkIds.add(link.id);
+      const fits = possible();
+      removedLinkIds.delete(link.id);
+      return fits;
+    });
+    if (enough) {
+      removedLinkIds.add(enough.id);
+      continue;
+    }
+    for (const link of standInLinks) {
+      if (possible()) break;
+      removedLinkIds.add(link.id);
+    }
+  }
+  const removedPersonIds = [...standIns].filter((standInId) =>
+    family.links
+      .filter((link) => link.source === standInId)
+      .every((link) => removedLinkIds.has(link.id)),
+  );
+
+  // Someone with one genetic parent is given a stand-in for the other, one
+  // for everyone with exactly the same parents.
+  const groups = new Map<string, { parentId: string; childIds: string[] }>();
+  for (const person of family.people) {
+    if (removedPersonIds.includes(person.id)) continue;
+    const parents = parentLinksOf(family, person.id).filter(
+      (link) => !removedLinkIds.has(link.id),
+    );
+    const genetic = parents.filter((link) => isGeneticKind(link.kind));
+    const [only] = genetic;
+    if (genetic.length !== 1 || only === undefined) continue;
+    // Full siblings — the same primary parents, at least one of them
+    // (`fullSiblingsOf`) — share one; anyone else has their own.
+    const raised = parents.some((link) => PRIMARY_PARENT_KINDS.has(link.kind));
+    const key = raised
+      ? parents
+          .map((link) => link.source)
+          .toSorted()
+          .join('\u0000')
+      : `\u0000${person.id}`;
+    const group = groups.get(key) ?? { parentId: only.source, childIds: [] };
+    group.childIds.push(person.id);
+    groups.set(key, group);
+  }
+  const people: PlannedPerson[] = [];
+  const links: PlannedLink[] = [];
+  for (const { parentId, childIds } of groups.values()) {
+    const id = createId();
+    const sex = otherGameteSex(sexOf(parentId));
+    people.push({ id, details: sex ? { [sexAttribute]: [sex] } : {} });
+    for (const childId of childIds) {
+      links.push({ source: id, target: childId, kind: 'biological' });
+    }
+  }
+
+  return {
+    people,
+    links,
+    updatedPeople: updatedPeople.filter(
+      (updated) => !removedPersonIds.includes(updated.id),
+    ),
+    removedLinkIds: [...removedLinkIds],
+    removedPersonIds,
+  };
+}
+
+/**
+ * The family as it would be with a planned addition made: the people it
+ * plans, read as someone in their own right (never a stand-in, since they
+ * are the ones the participant is adding, or placed for them), and the links
+ * it plans under ids of their own.
+ */
+function familyWithPlan(
+  family: Family,
+  people: readonly PlannedPerson[],
+  links: readonly PlannedLink[],
+  sexAttribute: string,
+): Family {
+  const planned: Person[] = people.map((each) => ({
+    id: each.id,
+    isEgo: false,
+    name: undefined,
+    hasUnreadableName: false,
+    hasOtherDetails: true,
+    genderIdentity: undefined,
+    genderWords: undefined,
+    sexAssignedAtBirth: readCategorical(
+      readOwnProperty(each.details, sexAttribute),
+      PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
+    ),
+    relativesNotRecorded: [],
+    attributes: {},
+  }));
+  const allPeople = [...family.people, ...planned];
+  return {
+    ...family,
+    people: allPeople,
+    byId: new Map(allPeople.map((person) => [person.id, person])),
+    links: [
+      ...family.links,
+      ...links.map((link, index) => ({
+        id: plannedLinkId(index),
+        source: link.source,
+        target: link.target,
+        kind: link.kind,
+        isGestationalCarrier: link.isGestationalCarrier ?? false,
+        isCurrentPartner: link.isCurrentPartner ?? true,
+      })),
+    ],
+  };
+}
+
+const plannedLinkId = (index: number) => `\u0000planned-${index}`;
+
+/**
  * The rule every addition keeps: nobody has more than two genetic parents, or
  * two recorded as the same binary sex at birth (`geneticParentsPossible`),
  * counting the genetic parents they already have, donors included, and those
@@ -943,7 +1481,7 @@ function keepWithinGeneticLimit(
   const sexesOf = (childId: string) => {
     const known =
       geneticSexes.get(childId) ??
-      (family.byId.has(childId) ? geneticParentSexes(family, childId) : []);
+      (family.byId.has(childId) ? firmGeneticParentSexes(family, childId) : []);
     geneticSexes.set(childId, known);
     return known;
   };
@@ -955,7 +1493,8 @@ function keepWithinGeneticLimit(
       sexes.push(sex);
       return link;
     }
-    return { ...link, kind: 'social', isGestationalCarrier: false };
+    // Recorded as a social parent, they may still have carried the child.
+    return { ...link, kind: 'social' };
   });
 }
 
@@ -964,8 +1503,8 @@ export type Connection =
   | { kind: 'partner'; firstId: string; secondId: string; current: boolean }
   | ({ kind: 'parent'; parentId: string; childId: string } & ParentChoice);
 
-/** A kind of parent, and — for a biological parent — whether they carried
- * the pregnancy. */
+/** A kind of parent, and whether they carried the pregnancy: any kind of
+ * parent may have, and a surrogate always did. */
 export type ParentChoice = {
   parentKind: PedigreeParentKind;
   carriedPregnancy: boolean;
@@ -1028,6 +1567,27 @@ export const isGeneticKind = (kind: string) =>
   kind === 'biological' || kind === 'donor';
 
 /**
+ * Whether a parent of this kind may be recorded as having carried the
+ * pregnancy: any kind of parent may. A biological parent who carried is the
+ * birth parent; an adoptive or social parent who carried is, for instance, a
+ * legal co-mother who gave birth; a donor who carried is a traditional
+ * surrogate; and a surrogate (a gestational carrier who neither raises the
+ * child nor gave them a gamete) always carried.
+ */
+export const mayHaveCarried = (kind: string) =>
+  kind === 'biological' ||
+  kind === 'adoptive' ||
+  kind === 'social' ||
+  kind === 'donor' ||
+  kind === 'surrogate';
+
+/** Whether a parent of this kind, for whom the participant answered
+ * `carried`, is recorded as having carried the pregnancy: a surrogate always
+ * is. */
+export const carriesAs = (kind: string, carried: boolean) =>
+  kind === 'surrogate' || (carried && mayHaveCarried(kind));
+
+/**
  * Whether one person could have genetic parents with these sexes assigned at
  * birth: two at most, one providing the egg and the other the sperm, so at
  * most one recorded as female at birth and one as male. Anyone else —
@@ -1069,10 +1629,14 @@ export function sexesRuledOut(family: Family, personId: string): SexRuledOut[] {
   for (const sex of PEDIGREE_SEX_ASSIGNED_AT_BIRTH) {
     for (const link of asParent) {
       if (isGeneticKind(link.kind)) {
+        // A stand-in's sex follows the other genetic parent's, so never
+        // rules theirs out.
         const block = geneticParentBlock(
           family,
           link.target,
-          geneticParentsOf(family, link.target).filter((id) => id !== personId),
+          firmGeneticParentsOf(family, link.target).filter(
+            (id) => id !== personId,
+          ),
           sex,
         );
         if (block?.rule === 'sameSexGeneticParent') {
@@ -1141,7 +1705,7 @@ export function carrierOf(
 
 /** The sexes at birth of the person's genetic parents, as recorded, leaving
  * out `exceptParentId`. */
-export function geneticParentSexes(
+function geneticParentSexes(
   family: Family,
   personId: string,
   exceptParentId?: string,
@@ -1172,11 +1736,10 @@ function isAncestor(family: Family, ancestorId: string, personId: string) {
 /** Whether two people are already linked, as partners or parent and child.
  * A pair has at most one link, so they cannot be connected again. */
 export function areConnected(family: Family, a: string, b: string): boolean {
-  return family.links.some(
-    (link) =>
-      (link.source === a && link.target === b) ||
-      (link.source === b && link.target === a),
-  );
+  const joins = (link: { source: string; target: string }) =>
+    (link.source === a && link.target === b) ||
+    (link.source === b && link.target === a);
+  return family.links.some(joins) || family.twins.some(joins);
 }
 
 /**
@@ -1206,18 +1769,30 @@ export function canConnectPartners(
 }
 
 /**
- * The kinds of parent one person can be made of another. None when they are
+ * Why a kind of parent is unavailable although the two people could be
+ * connected: the child already has someone recorded as having carried them,
+ * and a child has one carrier at most.
+ */
+export type ParentChoiceBlock = { rule: 'carrierRecorded'; carrierId: string };
+
+/**
+ * The kinds of parent the connect menu offers for making one person the
+ * parent of another, each as it is and as having carried the pregnancy, and
+ * each with what makes it unavailable, if anything. Nothing when they are
  * already linked, or when the would-be parent descends from the child. A
  * person has at most two genetic parents (biological or donor) — one who
- * provided the egg and one the sperm, as `geneticParentsPossible` — and one
- * person who carried the pregnancy (a biological parent or a surrogate) —
- * never someone recorded as male at birth.
+ * provided the egg and one the sperm, as `geneticParentsPossible` — so the
+ * genetic kinds are left out once that is impossible. Nobody recorded as male
+ * at birth carried a pregnancy, so for them the choices that carry are left
+ * out. A child has one carrier at most, so while they have one, every choice
+ * that carries (a surrogate always does) is offered unavailable, naming the
+ * carrier.
  */
-export function availableParentChoices(
+export function parentChoiceOptions(
   family: Family,
   parentId: string,
   childId: string,
-): ParentChoice[] {
+): { choice: ParentChoice; unavailable?: ParentChoiceBlock }[] {
   if (
     parentId === childId ||
     areConnected(family, parentId, childId) ||
@@ -1226,23 +1801,45 @@ export function availableParentChoices(
     return [];
   }
   const parentSex = family.byId.get(parentId)?.sexAssignedAtBirth;
+  // A stand-in gives way to a genetic parent recorded in their place.
   const canBeGenetic = geneticParentsPossible([
-    ...geneticParentSexes(family, childId),
+    ...firmGeneticParentSexes(family, childId),
     parentSex,
   ]);
-  const canCarry =
-    !hasCarrier(family, childId) && couldCarryPregnancy(parentSex);
-  const choices: ParentChoice[] = [];
+  const couldCarry = couldCarryPregnancy(parentSex);
+  const carrierId = carrierOf(family, childId);
+  const carrierBlock: ParentChoiceBlock | undefined =
+    carrierId === undefined
+      ? undefined
+      : { rule: 'carrierRecorded', carrierId };
+  const options: { choice: ParentChoice; unavailable?: ParentChoiceBlock }[] =
+    [];
   for (const kind of PEDIGREE_RELATIONSHIP_KINDS) {
-    if (kind === 'partner') continue;
+    if (kind === 'partner' || isTwinKind(kind)) continue;
     if (isGeneticKind(kind) && !canBeGenetic) continue;
-    if (kind === 'surrogate' && !canCarry) continue;
-    choices.push({ parentKind: kind, carriedPregnancy: kind === 'surrogate' });
-    if (kind === 'biological' && canCarry) {
-      choices.push({ parentKind: kind, carriedPregnancy: true });
+    if (kind !== 'surrogate') {
+      options.push({ choice: { parentKind: kind, carriedPregnancy: false } });
+    }
+    if (couldCarry) {
+      options.push({
+        choice: { parentKind: kind, carriedPregnancy: true },
+        ...(carrierBlock ? { unavailable: carrierBlock } : {}),
+      });
     }
   }
-  return choices;
+  return options;
+}
+
+/** The kinds of parent one person can be made of another, as
+ * `parentChoiceOptions` offers them, leaving out those unavailable. */
+export function availableParentChoices(
+  family: Family,
+  parentId: string,
+  childId: string,
+): ParentChoice[] {
+  return parentChoiceOptions(family, parentId, childId)
+    .filter((option) => option.unavailable === undefined)
+    .map((option) => option.choice);
 }
 
 /** The link that records a connection. */
@@ -1259,8 +1856,9 @@ export function planConnection(connection: Connection): PlannedLink {
     source: connection.parentId,
     target: connection.childId,
     kind: connection.parentKind,
-    isGestationalCarrier:
-      connection.parentKind === 'surrogate' ||
-      (connection.parentKind === 'biological' && connection.carriedPregnancy),
+    isGestationalCarrier: carriesAs(
+      connection.parentKind,
+      connection.carriedPregnancy,
+    ),
   };
 }

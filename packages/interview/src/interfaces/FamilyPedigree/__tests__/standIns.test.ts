@@ -1,0 +1,516 @@
+import { describe, expect, test } from 'vitest';
+
+import type { NcEdge, NcNode } from '@codaco/shared-consts';
+
+import {
+  type AddRelativeRequest,
+  availableParentChoices,
+  type Family,
+  fullSiblingsOf,
+  isStandIn,
+  planAddRelative,
+  planStandIns,
+  readFamily,
+  sexesRuledOut,
+} from '../model';
+import { config, link, person } from './fixtures';
+
+// Ruling 25, the stand-in rule: whenever a person has at least one genetic
+// parent recorded (biological or donor), an unnamed stand-in fills the
+// missing genetic parent. Adoptive and social parents never get stand-ins,
+// and stand-ins are never recorded as anyone's partner.
+
+const family = (nodes: NcNode[], edges: NcEdge[] = []) =>
+  readFamily(nodes, edges, config);
+
+const ids = () => {
+  let counter = 0;
+  return () => `stand-in-${++counter}`;
+};
+
+const changes = (f: Family) =>
+  planStandIns(f, ids(), config.sexAssignedAtBirthAttribute);
+
+const plan = (f: Family, anchorId: string, request: AddRelativeRequest) =>
+  planAddRelative({
+    family: f,
+    anchorId,
+    newPersonId: 'added',
+    details: {},
+    request,
+    createId: ids(),
+    sexAttribute: config.sexAssignedAtBirthAttribute,
+  });
+
+const parentRequest = (
+  parentKind: 'biological' | 'adoptive' | 'donor',
+): AddRelativeRequest => ({
+  relation: 'parent',
+  parentKind,
+  carriedPregnancy: false,
+  partnerId: null,
+  partnershipCurrent: true,
+  alsoParentOf: [],
+});
+
+describe('who is a stand-in', () => {
+  const nodes = (attributes: Record<string, unknown> = {}) => [
+    person('ego', { isEgo: true }),
+    person('mum', { sex: ['female'] }),
+    person('dad', { sex: ['male'], ...attributes }),
+  ];
+  const edges = [
+    link('mum', 'ego', 'biological'),
+    link('dad', 'ego', 'biological'),
+  ];
+
+  test('an unnamed biological parent with nothing recorded but their sex at birth', () => {
+    expect(isStandIn(family(nodes(), edges), 'dad')).toBe(true);
+  });
+
+  test.each([
+    ['named', { name: 'Rob' }],
+    ['described', { gender: ['man'] }],
+    ['answered about', { nickname: 'Bob' }],
+  ])('not someone %s', (_, attributes) => {
+    expect(isStandIn(family(nodes(attributes), edges), 'dad')).toBe(false);
+  });
+
+  test('not someone with a partner, a parent, or who carried a pregnancy', () => {
+    expect(
+      isStandIn(
+        family(nodes(), [...edges, link('dad', 'mum', 'partner')]),
+        'dad',
+      ),
+    ).toBe(false);
+    expect(
+      isStandIn(
+        family(
+          [...nodes(), person('gran')],
+          [...edges, link('gran', 'dad', 'biological')],
+        ),
+        'dad',
+      ),
+    ).toBe(false);
+    expect(
+      isStandIn(
+        family(nodes(), [
+          link('mum', 'ego', 'biological', { carrier: true }),
+          link('dad', 'ego', 'biological'),
+        ]),
+        'mum',
+      ),
+    ).toBe(false);
+  });
+
+  test('not an adoptive parent', () => {
+    expect(
+      isStandIn(
+        family(nodes(), [
+          link('mum', 'ego', 'biological'),
+          link('dad', 'ego', 'adoptive'),
+        ]),
+        'dad',
+      ),
+    ).toBe(false);
+  });
+});
+
+describe('the stand-in rule', () => {
+  test('someone with one biological parent is given a stand-in for the other, partnered with nobody', () => {
+    const result = changes(
+      family(
+        [person('ego', { isEgo: true }), person('mum', { sex: ['female'] })],
+        [link('mum', 'ego', 'biological')],
+      ),
+    );
+    expect(result.people).toEqual([
+      { id: 'stand-in-1', details: { sex: ['male'] } },
+    ]);
+    expect(result.links).toEqual([
+      { source: 'stand-in-1', target: 'ego', kind: 'biological' },
+    ]);
+  });
+
+  test('someone with one donor is given a stand-in for the other genetic parent', () => {
+    const result = changes(
+      family(
+        [person('ego', { isEgo: true }), person('donor', { sex: ['male'] })],
+        [link('donor', 'ego', 'donor')],
+      ),
+    );
+    expect(result.people).toEqual([
+      { id: 'stand-in-1', details: { sex: ['female'] } },
+    ]);
+    expect(result.links).toEqual([
+      { source: 'stand-in-1', target: 'ego', kind: 'biological' },
+    ]);
+  });
+
+  test('adoptive and social parents never get stand-ins', () => {
+    const result = changes(
+      family(
+        [person('ego', { isEgo: true }), person('amy'), person('beth')],
+        [link('amy', 'ego', 'adoptive'), link('beth', 'ego', 'social')],
+      ),
+    );
+    expect(result.people).toEqual([]);
+    expect(result.links).toEqual([]);
+  });
+
+  test('people with the same parents share one stand-in, so full siblings stay full siblings', () => {
+    const result = changes(
+      family(
+        [
+          person('ego', { isEgo: true }),
+          person('sib'),
+          person('mum', { sex: ['female'] }),
+        ],
+        [link('mum', 'ego', 'biological'), link('mum', 'sib', 'biological')],
+      ),
+    );
+    expect(result.people.map((planned) => planned.id)).toEqual(['stand-in-1']);
+    expect(result.links.map((planned) => planned.target)).toEqual([
+      'ego',
+      'sib',
+    ]);
+  });
+
+  test('a stand-in gives way to a genetic parent recorded in their place', () => {
+    const result = changes(
+      family(
+        [
+          person('ego', { isEgo: true }),
+          person('mum', { sex: ['female'] }),
+          person('standIn', { sex: ['male'] }),
+          person('dad', { name: 'Rob', sex: ['male'] }),
+        ],
+        [
+          link('mum', 'ego', 'biological'),
+          link('standIn', 'ego', 'biological'),
+          link('dad', 'ego', 'biological'),
+        ],
+      ),
+    );
+    expect(result.removedLinkIds).toEqual(['standIn-ego-biological']);
+    expect(result.removedPersonIds).toEqual(['standIn']);
+    expect(result.people).toEqual([]);
+  });
+
+  test('a stand-in another person still needs is kept for them', () => {
+    const result = changes(
+      family(
+        [
+          person('ego', { isEgo: true }),
+          person('sib'),
+          person('mum', { sex: ['female'] }),
+          person('standIn', { sex: ['male'] }),
+          person('dad', { name: 'Rob', sex: ['male'] }),
+        ],
+        [
+          link('mum', 'ego', 'biological'),
+          link('standIn', 'ego', 'biological'),
+          link('dad', 'ego', 'biological'),
+          link('mum', 'sib', 'biological'),
+          link('standIn', 'sib', 'biological'),
+        ],
+      ),
+    );
+    expect(result.removedLinkIds).toEqual(['standIn-ego-biological']);
+    expect(result.removedPersonIds).toEqual([]);
+  });
+
+  test('a stand-in’s sex at birth follows the gamete the other genetic parent gave', () => {
+    const result = changes(
+      family(
+        [
+          person('ego', { isEgo: true }),
+          person('parent', { name: 'Robin', sex: ['male'] }),
+          person('standIn', { sex: ['male'] }),
+        ],
+        [
+          link('parent', 'ego', 'biological'),
+          link('standIn', 'ego', 'biological'),
+        ],
+      ),
+    );
+    expect(result.updatedPeople).toEqual([
+      { id: 'standIn', details: { sex: ['female'] } },
+    ]);
+    expect(result.removedLinkIds).toEqual([]);
+  });
+
+  test('a stand-in does not stop the other genetic parent’s sex at birth from changing', () => {
+    const f = family(
+      [
+        person('ego', { isEgo: true }),
+        person('mum', { name: 'Julie', sex: ['female'] }),
+        person('standIn', { sex: ['male'] }),
+      ],
+      [link('mum', 'ego', 'biological'), link('standIn', 'ego', 'biological')],
+    );
+    expect(sexesRuledOut(f, 'mum')).toEqual([]);
+  });
+
+  test('connecting a genetic parent in a stand-in’s place is possible', () => {
+    const f = family(
+      [
+        person('ego', { isEgo: true }),
+        person('mum', { sex: ['female'] }),
+        person('standIn', { sex: ['male'] }),
+        person('dad', { name: 'Rob', sex: ['male'] }),
+      ],
+      [link('mum', 'ego', 'biological'), link('standIn', 'ego', 'biological')],
+    );
+    expect(
+      availableParentChoices(f, 'dad', 'ego').map(
+        (choice) => choice.parentKind,
+      ),
+    ).toContain('biological');
+  });
+});
+
+describe('additions keep the stand-in rule', () => {
+  test('a new biological parent brings a stand-in for the other', () => {
+    const result = plan(
+      family([person('ego', { isEgo: true })]),
+      'ego',
+      parentRequest('biological'),
+    );
+    expect(result.people.map((planned) => planned.id)).toEqual([
+      'added',
+      'stand-in-1',
+    ]);
+    expect(result.links).toEqual([
+      {
+        source: 'added',
+        target: 'ego',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
+      { source: 'stand-in-1', target: 'ego', kind: 'biological' },
+    ]);
+  });
+
+  test('a new genetic parent takes a stand-in’s place', () => {
+    const f = family(
+      [
+        person('ego', { isEgo: true }),
+        person('mum', { name: 'Julie', sex: ['female'] }),
+        person('standIn', { sex: ['male'] }),
+      ],
+      [link('mum', 'ego', 'biological'), link('standIn', 'ego', 'biological')],
+    );
+    const result = planAddRelative({
+      family: f,
+      anchorId: 'ego',
+      newPersonId: 'added',
+      details: { sex: ['male'] },
+      request: parentRequest('biological'),
+      createId: ids(),
+      sexAttribute: config.sexAssignedAtBirthAttribute,
+    });
+    expect(result.links).toEqual([
+      {
+        source: 'added',
+        target: 'ego',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
+    ]);
+    expect(result.removedLinkIds).toEqual(['standIn-ego-biological']);
+    expect(result.removedPersonIds).toEqual(['standIn']);
+  });
+
+  // Ruling 24.
+  test('a new adoptive parent brings no stand-in', () => {
+    const result = plan(
+      family([person('ego', { isEgo: true })]),
+      'ego',
+      parentRequest('adoptive'),
+    );
+    expect(result.people.map((planned) => planned.id)).toEqual(['added']);
+  });
+
+  test('a new biological child with no other parent is given a stand-in for one', () => {
+    const result = plan(
+      family([person('ego', { isEgo: true, sex: ['female'] })]),
+      'ego',
+      {
+        relation: 'child',
+        otherParent: null,
+        parentKind: 'biological',
+        biologicalParent: 'both',
+        carrier: null,
+      },
+    );
+    expect(result.links).toContainEqual({
+      source: 'stand-in-1',
+      target: 'added',
+      kind: 'biological',
+    });
+    expect(result.people).toContainEqual({
+      id: 'stand-in-1',
+      details: { sex: ['male'] },
+    });
+  });
+});
+
+describe('a sibling who does not share a parent', () => {
+  // Ruling 25: the new stand-in is connected to the sibling, not the
+  // participant.
+  test('is given a stand-in of their own, and the participant keeps theirs', () => {
+    const f = family(
+      [
+        person('ego', { isEgo: true }),
+        person('mum', { sex: ['female'] }),
+        person('standIn', { sex: ['male'] }),
+      ],
+      [link('mum', 'ego', 'biological'), link('standIn', 'ego', 'biological')],
+    );
+    const result = plan(f, 'ego', {
+      relation: 'sibling',
+      sharedParentIds: ['mum'],
+      sharesUnshown: 'none',
+      parentKind: 'biological',
+      carrier: null,
+    });
+    expect(result.links).toEqual([
+      { source: 'mum', target: 'added', kind: 'biological' },
+      { source: 'stand-in-1', target: 'added', kind: 'biological' },
+    ]);
+    expect(result.removedLinkIds ?? []).toEqual([]);
+  });
+
+  test('who does not share the participant’s one recorded parent’s partner is given their own stand-in', () => {
+    // The participant's family was recorded before the stand-in rule, with
+    // one parent.
+    const f = family(
+      [person('ego', { isEgo: true }), person('mum', { sex: ['female'] })],
+      [link('mum', 'ego', 'biological')],
+    );
+    const result = plan(f, 'ego', {
+      relation: 'sibling',
+      sharedParentIds: ['mum'],
+      sharesUnshown: 'none',
+      parentKind: 'biological',
+      carrier: null,
+    });
+    const after = family(
+      [
+        person('ego', { isEgo: true }),
+        person('mum', { sex: ['female'] }),
+        person('added'),
+        ...result.people
+          .filter((planned) => planned.id !== 'added')
+          .map((planned) => person(planned.id, planned.details)),
+      ],
+      [
+        link('mum', 'ego', 'biological'),
+        ...result.links.map((planned) =>
+          link(planned.source, planned.target, planned.kind),
+        ),
+      ],
+    );
+    // Each has a stand-in of their own: half siblings.
+    expect(fullSiblingsOf(after, 'ego')).toEqual([]);
+    expect(
+      result.links.filter(
+        (planned) => planned.target === 'added' && planned.source !== 'mum',
+      ),
+    ).toHaveLength(1);
+    expect(
+      result.links.filter(
+        (planned) => planned.target === 'ego' && planned.source !== 'mum',
+      ),
+    ).toHaveLength(1);
+  });
+});
+
+// Ruling 24.
+describe('an adopted person with one adoptive parent', () => {
+  test('is given no unnamed adoptive parent when a sibling is added', () => {
+    const f = family(
+      [person('ego', { isEgo: true }), person('amy', { sex: ['female'] })],
+      [link('amy', 'ego', 'adoptive')],
+    );
+    const result = plan(f, 'ego', {
+      relation: 'sibling',
+      sharedParentIds: ['amy'],
+      sharesUnshown: 'other',
+      parentKind: 'adoptive',
+      carrier: null,
+    });
+    expect(result.people.map((planned) => planned.id)).toEqual(['added']);
+    expect(result.links).toEqual([
+      { source: 'amy', target: 'added', kind: 'adoptive' },
+    ]);
+  });
+});
+
+// Ruling 23.
+describe('someone recorded with two donors and no other parents', () => {
+  test('is given two unnamed adoptive parents when a sibling is added', () => {
+    const f = family(
+      [
+        person('ego', { isEgo: true }),
+        person('eggDonor', { sex: ['female'] }),
+        person('spermDonor', { sex: ['male'] }),
+      ],
+      [link('eggDonor', 'ego', 'donor'), link('spermDonor', 'ego', 'donor')],
+    );
+    const result = plan(f, 'ego', {
+      relation: 'sibling',
+      sharedParentIds: [],
+      sharesUnshown: 'both',
+      parentKind: 'biological',
+      carrier: null,
+    });
+    expect(
+      result.links
+        .filter((planned) => planned.target === 'ego')
+        .map((planned) => planned.kind),
+    ).toEqual(['adoptive', 'adoptive']);
+  });
+});
+
+// Ruling 22.
+describe('removing a parent who tells half siblings apart', () => {
+  test('leaves a stand-in in their place, so the siblings stay half siblings', () => {
+    // Dad B was removed from a family in which Ego and Sam shared Mum and
+    // had different fathers.
+    const after = family(
+      [
+        person('ego', { isEgo: true }),
+        person('sam'),
+        person('mum', { sex: ['female'] }),
+        person('dadA', { name: 'Al', sex: ['male'] }),
+      ],
+      [
+        link('mum', 'ego', 'biological'),
+        link('dadA', 'ego', 'biological'),
+        link('mum', 'sam', 'biological'),
+      ],
+    );
+    const result = changes(after);
+    expect(result.links).toEqual([
+      { source: 'stand-in-1', target: 'sam', kind: 'biological' },
+    ]);
+    const refilled = family(
+      [
+        person('ego', { isEgo: true }),
+        person('sam'),
+        person('mum', { sex: ['female'] }),
+        person('dadA', { name: 'Al', sex: ['male'] }),
+        person('stand-in-1', { sex: ['male'] }),
+      ],
+      [
+        link('mum', 'ego', 'biological'),
+        link('dadA', 'ego', 'biological'),
+        link('mum', 'sam', 'biological'),
+        link('stand-in-1', 'sam', 'biological'),
+      ],
+    );
+    expect(fullSiblingsOf(refilled, 'ego')).toEqual([]);
+  });
+});

@@ -24,7 +24,13 @@ import {
 export function participantsFamily(family: Family): Family {
   const { egoId } = family;
   if (egoId === undefined) {
-    return { people: [], byId: new Map(), links: [], egoId: undefined };
+    return {
+      people: [],
+      byId: new Map(),
+      links: [],
+      twins: [],
+      egoId: undefined,
+    };
   }
 
   const neighbours = new Map<string, string[]>();
@@ -62,6 +68,9 @@ export function participantsFamily(family: Family): Family {
     byId: new Map(people.map((person) => [person.id, person])),
     links: family.links.filter(
       (link) => members.has(link.source) && members.has(link.target),
+    ),
+    twins: family.twins.filter(
+      (twin) => members.has(twin.source) && members.has(twin.target),
     ),
     egoId,
   };
@@ -102,7 +111,8 @@ export function peopleCutOff(
 /**
  * Everything to remove along with a person: the people connected to the
  * participant only through them (`peopleCutOff`), who would otherwise drop
- * out of the family unannounced, and every link touching any of them.
+ * out of the family unannounced, and every link touching any of them,
+ * twin links included.
  */
 export function planRemovePerson(
   family: Family,
@@ -112,7 +122,7 @@ export function planRemovePerson(
   const removed = new Set([personId, ...cutOffIds]);
   return {
     cutOffIds,
-    linkIds: family.links
+    linkIds: [...family.links, ...family.twins]
       .filter((link) => removed.has(link.source) || removed.has(link.target))
       .map((link) => link.id),
   };

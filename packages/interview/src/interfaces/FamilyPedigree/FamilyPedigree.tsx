@@ -122,12 +122,16 @@ import { messages } from './messages';
 import {
   areConnected,
   type Connection,
+  isStandIn,
   missingDetailsFor,
   type PedigreeConfig,
   pedigreeConfigFromStage,
   planAdditionUnder,
   planConnection,
   type PlannedLink,
+  type PlannedTwin,
+  planStandIns,
+  type StandInChanges,
   nameFingerprint,
   nominationAppliesTo,
   nominationsWithdrawnBy,
@@ -135,6 +139,7 @@ import {
   type Family,
   type Person,
   type Relation,
+  TWIN_KIND_BY_ZYGOSITY,
 } from './model';
 import { ownedOptionLabels } from './options';
 import PedigreeLayout from './pedigree-layout/components/PedigreeLayout';
@@ -190,6 +195,12 @@ const linkAttributesFor = (config: PedigreeConfig, link: PlannedLink) => ({
         [config.gestationalCarrierAttribute]:
           link.isGestationalCarrier ?? false,
       }),
+});
+
+/** The attributes recording twins: their zygosity, as the relationship
+ * kind. */
+const twinAttributesFor = (config: PedigreeConfig, twin: PlannedTwin) => ({
+  [config.kindAttribute]: [TWIN_KIND_BY_ZYGOSITY[twin.zygosity]],
 });
 
 /** Everything to create to add a relative, under the panel's ids. */
@@ -360,6 +371,30 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         type: config.personType,
         [entityAttributesProperty]: person.details,
       }));
+    // A stand-in whose place the addition fills gives way, and one whose sex
+    // at birth follows from it changes, as they will once it is recorded.
+    const removedLinks = new Set(plan.removedLinkIds ?? []);
+    const removedPeople = new Set(plan.removedPersonIds ?? []);
+    const updated = new Map(
+      (plan.updatedPeople ?? []).map((person) => [person.id, person.details]),
+    );
+    const keptNodes = nodes
+      .filter((node) => !removedPeople.has(node[entityPrimaryKeyProperty]))
+      .map((node) => {
+        const details = updated.get(node[entityPrimaryKeyProperty]);
+        return details
+          ? {
+              ...node,
+              [entityAttributesProperty]: {
+                ...node[entityAttributesProperty],
+                ...details,
+              },
+            }
+          : node;
+      });
+    const keptEdges = edges.filter(
+      (edge) => !removedLinks.has(edge[entityPrimaryKeyProperty]),
+    );
     const draftEdges: NcEdge[] = plan.links
       .filter(
         (link) =>
@@ -377,10 +412,17 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         to: link.target,
         [entityAttributesProperty]: linkAttributesFor(config, link),
       }));
+    const draftTwinEdges: NcEdge[] = (plan.twins ?? []).map((twin, index) => ({
+      [entityPrimaryKeyProperty]: `draft-twin-${index}`,
+      type: config.relationshipType,
+      from: twin.source,
+      to: twin.target,
+      [entityAttributesProperty]: twinAttributesFor(config, twin),
+    }));
     return participantsFamily(
       readFamily(
-        [...nodes, ...draftNodes],
-        [...edges, ...draftEdges],
+        [...keptNodes, ...draftNodes],
+        [...keptEdges, ...draftEdges, ...draftTwinEdges],
         config,
         generatedLabels,
         decryptedNames,
@@ -901,8 +943,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       setFramingOpen(true);
       return;
     }
-    // The new person, and up to two unnamed parents for a sibling.
-    const ids = [uuid(), uuid(), uuid()];
+    // The new person, then the unnamed parents and stand-ins the addition
+    // may need, fixed so the people drawn while the form is filled in are
+    // the ones added.
+    const ids = Array.from({ length: 8 }, () => uuid());
     rememberView(anchor.id, ids[0] ?? anchor.id);
     setPanel({
       open: true,
@@ -1387,6 +1431,13 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     attributeData: linkAttributes(link),
   });
 
+  const twinEdge = (twin: PlannedTwin) => ({
+    from: twin.source,
+    to: twin.target,
+    type: config.relationshipType,
+    attributeData: twinAttributesFor(config, twin),
+  });
+
   const addLink = (link: PlannedLink) =>
     dispatch(addEdge({ ...linkEdge(link), currentStep })).unwrap();
 
@@ -1418,6 +1469,59 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         }),
       );
     }
+  };
+
+  // The stand-in rule (`planStandIns`), kept after every change to the
+  // family, read as stored: anyone a change leaves with one genetic parent
+  // is given a stand-in for the other, and a stand-in whose place a genetic
+  // parent fills gives way.
+  const keepStandInRule = async () => {
+    const state = store.getState();
+    const latest = participantsFamily(
+      readFamily(
+        getNetworkNodes(state, displayedStep),
+        getNetworkEdges(state, displayedStep),
+        config,
+        generatedLabels,
+        decryptedNames,
+      ),
+    );
+    await applyStandIns(
+      planStandIns(latest, uuid, config.sexAssignedAtBirthAttribute),
+    );
+  };
+
+  const applyStandIns = async ({
+    people: standIns = [],
+    links: standInLinks = [],
+    updatedPeople = [],
+    removedLinkIds = [],
+    removedPersonIds = [],
+  }: Partial<StandInChanges>) => {
+    if (standIns.length > 0 || standInLinks.length > 0) {
+      await dispatch(
+        addNodesAndEdges({
+          nodes: standIns.map((person) => ({
+            type: config.personType,
+            attributeData: person.details,
+            modelData: { [entityPrimaryKeyProperty]: person.id },
+          })),
+          edges: standInLinks.map(linkEdge),
+          currentStep,
+        }),
+      ).unwrap();
+    }
+    for (const person of updatedPeople) {
+      await dispatch(
+        updateNode({
+          nodeId: person.id,
+          attributePatch: { set: person.details, unset: [] },
+          currentStep,
+        }),
+      );
+    }
+    for (const linkId of removedLinkIds) dispatch(deleteEdge(linkId));
+    for (const personId of removedPersonIds) dispatch(deleteNode(personId));
   };
 
   const handleSubmit = async (result: PersonFormResult) => {
@@ -1506,6 +1610,32 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           }),
         );
       }
+      // Twins answered, re-described or no longer twins.
+      const twinChanges = result.twinChanges;
+      if (twinChanges) {
+        for (const twin of twinChanges.added) {
+          await dispatch(addEdge({ ...twinEdge(twin), currentStep })).unwrap();
+        }
+        for (const { linkId, zygosity } of twinChanges.changed) {
+          await dispatch(
+            updateEdge({
+              edgeId: linkId,
+              attributePatch: {
+                set: {
+                  [config.kindAttribute]: [TWIN_KIND_BY_ZYGOSITY[zygosity]],
+                },
+                unset: [],
+              },
+            }),
+          );
+        }
+        for (const linkId of twinChanges.removedLinkIds) {
+          dispatch(deleteEdge(linkId));
+        }
+      }
+      // A parent re-described, or a parent's sex at birth changed, may leave
+      // someone needing a stand-in, or let one give way.
+      await keepStandInRule();
       // A parent re-described as biological gives the person siblings, and
       // the parent a child.
       await withdrawContradictedAnswers();
@@ -1562,10 +1692,19 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           // encrypts it.
           useEncryption: encryptDetails,
         })),
-        edges: plan.links.map(linkEdge),
+        edges: [
+          ...plan.links.map(linkEdge),
+          ...(plan.twins ?? []).map(twinEdge),
+        ],
         currentStep,
       }),
     ).unwrap();
+    // A stand-in whose place the addition fills gives way (`planStandIns`).
+    await applyStandIns({
+      updatedPeople: plan.updatedPeople,
+      removedLinkIds: plan.removedLinkIds,
+      removedPersonIds: plan.removedPersonIds,
+    });
     await withdrawContradictedAnswers();
     // Recorded: the people drawn are now the family's own.
     setDraft(null);
@@ -1697,6 +1836,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const handleConnect = async (connection: Connection) => {
     endConnecting();
     await addLink(planConnection(connection));
+    await keepStandInRule();
     await withdrawContradictedAnswers();
     setJustConnected(connection);
   };
@@ -1718,6 +1858,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     });
     endConnecting();
     if (removed) {
+      // A genetic parent disconnected leaves a stand-in in their place.
+      await keepStandInRule();
       setAnnouncement(
         intl.formatMessage(messages.disconnectedAnnouncement, args),
       );
@@ -1747,6 +1889,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     // Close the panel first: its focus trap would otherwise hold focus away
     // from the confirmation.
     closePanel();
+    let removed = false;
     await confirm({
       title: intl.formatMessage(messages.removeConfirmTitle, { name }),
       description:
@@ -1765,6 +1908,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         if (survivorId) setLastFocusedId(survivorId);
         for (const linkId of linkIds) dispatch(deleteEdge(linkId));
         for (const id of removedIds) dispatch(deleteNode(id));
+        removed = true;
         if (focusedId !== null && removedIds.includes(focusedId)) {
           setFocusedId(null);
         }
@@ -1778,6 +1922,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         );
       },
     });
+    // Removing a parent who tells half siblings apart leaves an unnamed
+    // stand-in in their place, so the half-sibling answer is never lost
+    // (ruling 22).
+    if (removed) await keepStandInRule();
   };
 
   // Escape in the add menu returns focus to its person; Escape on the person
@@ -2163,17 +2311,21 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         title={panelTitle}
         footer={
           <>
-            {editedPerson && !editedPerson.isEgo && (
-              <Button
-                type="button"
-                variant="text"
-                color="destructive"
-                className="mr-auto"
-                onClick={() => void handleRemove(editedPerson.id)}
-              >
-                <AppMessage message={messages.remove} />
-              </Button>
-            )}
+            {/* A stand-in is never removed: the stand-in rule would put one
+                back in their place. */}
+            {editedPerson &&
+              !editedPerson.isEgo &&
+              !isStandIn(family, editedPerson.id) && (
+                <Button
+                  type="button"
+                  variant="text"
+                  color="destructive"
+                  className="mr-auto"
+                  onClick={() => void handleRemove(editedPerson.id)}
+                >
+                  <AppMessage message={messages.remove} />
+                </Button>
+              )}
             <Button type="button" variant="text" onClick={cancelPanel}>
               <AppMessage message={commonMessages.cancel} />
             </Button>

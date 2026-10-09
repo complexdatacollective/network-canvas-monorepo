@@ -1,5 +1,5 @@
 import type {
-  PedigreeRelationshipKind,
+  PedigreeParentKind,
   PedigreeRelationshipToParticipant,
 } from '@codaco/protocol-validation';
 import {
@@ -98,7 +98,7 @@ function relationshipOfPath(
 /** The longest path any relationship but `otherRelative` needs. */
 const MAX_PATH = 3;
 
-type ParentKind = Exclude<PedigreeRelationshipKind, 'partner'>;
+type ParentKind = PedigreeParentKind;
 
 const PARENT_RELATIONSHIP: Record<
   ParentKind,

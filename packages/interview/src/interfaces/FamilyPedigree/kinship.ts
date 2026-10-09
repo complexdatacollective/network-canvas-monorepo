@@ -1,6 +1,7 @@
 import type { IntlShape } from '@codaco/app-i18n/messages';
 import type {
   FramingId,
+  PedigreeParentKind,
   PedigreeRelationshipKind,
 } from '@codaco/protocol-validation';
 
@@ -124,7 +125,7 @@ export type RelativeAnchor = {
   term: KinTerm;
 };
 
-type ParentKind = Exclude<PedigreeRelationshipKind, 'partner'>;
+type ParentKind = PedigreeParentKind;
 
 /** One step from a person to a relative of theirs. */
 export type Step =

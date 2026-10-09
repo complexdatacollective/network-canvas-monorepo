@@ -157,6 +157,12 @@ export const EdgeConfigurationSchema = z.strictObject({
     ownedOptions: 'pedigreeRelationship',
   }),
   // Boolean attribute on a parent edge: this parent carried the pregnancy.
+  // Any kind of parent but a partner may have carried it: a biological,
+  // adoptive or social parent who carried the child (a legal co-mother who
+  // gave birth is an adoptive or social parent who carried), a donor who
+  // carried (a traditional surrogate), or a surrogate, who always did. A
+  // child has at most one parent who carried them. Never set on a partner or
+  // twin edge.
   gestationalCarrierAttribute: entityAttributeReference({
     subject: { sibling: 'type', entity: 'edge' },
     usage: 'unvalidatedAttribute',

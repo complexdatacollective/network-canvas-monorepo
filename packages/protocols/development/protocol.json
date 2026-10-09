@@ -3228,6 +3228,27 @@
                   "en-US": "Surrogate",
                   "es": "Gestante subrogada"
                 }
+              },
+              {
+                "value": "identicalTwin",
+                "label": {
+                  "en-US": "Identical twin",
+                  "es": "Gemelo idéntico"
+                }
+              },
+              {
+                "value": "fraternalTwin",
+                "label": {
+                  "en-US": "Fraternal twin",
+                  "es": "Mellizo"
+                }
+              },
+              {
+                "value": "unknownZygosityTwin",
+                "label": {
+                  "en-US": "Twin, not known if identical",
+                  "es": "Gemelo, sin saber si idéntico"
+                }
               }
             ],
             "label": "relationshipKind"
