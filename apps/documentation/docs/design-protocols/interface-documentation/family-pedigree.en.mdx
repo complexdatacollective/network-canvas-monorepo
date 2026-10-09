@@ -83,6 +83,8 @@ The interface labels a person by their name when they have one, and a person who
 
 A participant may not know a relative's name, so they can always leave it blank. When they leave the stage, the interface saves a label as the name of everyone they left unnamed, including any unnamed parents it added, so that later stages can show who is who. The label is the person's kinship word in the participant's language and the stage's [wording](#wording), such as "Maternal grandmother". Labels are distinct from each other and from every typed name: where two people would share a word, each is told apart by a relative, as in "Sister (partner of Tom)", or else numbered, as in "Sister 2". If the participant comes back to the stage, those people are unnamed again: their labels follow the family as it changes, and are saved afresh when the participant leaves. A name given to one of them on a later stage, such as a form, is theirs and is kept. The participant is never given a label, and any name their own person already holds from elsewhere in the interview is left as it is.
 
+The side panel asks for the name with a question and a hint beneath it. Network Canvas supplies both: "Name (optional)", and a hint saying that a first name or nickname is fine and that a person left unnamed is shown by how they are related to the participant. Change them under **Name question** and **Name question guidance**. The hint can be removed; the question cannot.
+
 The name attribute's validation rules apply to the names the participant types, and you can set them in the **Validation** section under the name control. If the attribute is unique, a typed name cannot repeat another typed name of a person of the stage's type. If it is required, every person still ends up with a name, because the interface fills in anyone left unnamed, so a blank name is allowed and is not a missing detail. Saved labels are not checked against the other rules, such as a maximum length.
 
 If your study encrypts the name attribute, the participant is asked for their passphrase when they reach the stage. Until they enter it, they cannot add or change people, and anyone with an encrypted name is shown by how they are related to the participant. The same happens if the passphrase does not unlock the names already saved. Names the participant types, and the labels saved for anyone left unnamed, are stored encrypted with that passphrase.
@@ -226,6 +228,12 @@ Choose **When the family is incomplete**:
 - **Recommended**: participants are shown what is missing but may continue.
 
 A checklist in the toolbar shows what is still needed and takes the participant to where each item is resolved. Whether or not you set a completeness requirement, a warning appears next to any person whose required details are missing.
+
+#### What the list says
+
+Under **What the list says** you can change the words participants read in the checklist: the item asking for a person's missing parents, the items asking for their brothers and sisters and for their children, the buttons that answer that they have none, the side panel's questions about them, the item for missing details, and the note shown under the checklist when completeness is only recommended. Network Canvas supplies all of them, and Architect fills them in when you switch completeness on.
+
+Most of these texts read differently when they are about the participant ("Add your biological parents") and when they are about someone else ("Add biological parents for “Tom”"), so each has a version for each. The item asking for parents also has a version for each number of missing parents that your language words differently, such as one parent and two. A version can show the person's name, or the number of parents missing, as a placeholder: click the placeholder's button above the text to insert it. When every version reads the same, Architect saves the text once.
 
 ### Nomination prompts
 

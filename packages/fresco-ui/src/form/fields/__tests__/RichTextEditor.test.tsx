@@ -968,7 +968,7 @@ describe('a RichTextEditorField with tokens', () => {
   const renderWithTokens = (
     props?: Partial<ComponentProps<typeof RichTextEditorField>>,
   ) => {
-    const onChange = vi.fn<(value: JSONContent) => void>();
+    const onChange = vi.fn<(value: JSONContent | undefined) => void>();
     const user = userEvent.setup();
     render(
       <RichTextEditorField

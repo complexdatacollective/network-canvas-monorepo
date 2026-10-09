@@ -133,6 +133,7 @@ function protocolWithFamilyPedigreeStage(): CurrentProtocol {
         prompt: { en: 'Who is in your family?' },
         nodeConfiguration: {
           nameAttribute: asEntityAttributeReference('name'),
+          nameField: { prompt: { en: 'Name (optional)' } },
           sexAssignedAtBirthAttribute:
             asEntityAttributeReference('sexAssignedAtBirth'),
           egoAttribute: asEntityAttributeReference('is_ego'),

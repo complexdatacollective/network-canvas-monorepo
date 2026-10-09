@@ -123,9 +123,10 @@ Localization:
   translation, in the default language or any other, is a warning from
   `analyzeProtocolLocalization` and never a validation error. The order of
   `locales` has no meaning, so nothing reads it.
-- Each value is an ICU MessageFormat message. For now a message may only be
-  literal text: arguments, `plural`, `select`, number and date formats are
-  refused, and markup is read as literal text. `escapeMessageText` turns plain
+- Each value is an ICU MessageFormat message. A message may only be literal
+  text unless its setting declares arguments (see the Family Pedigree's
+  checklist wording): otherwise arguments, `plural`, `select`, number and date
+  formats are refused, and markup is read as literal text everywhere. `escapeMessageText` turns plain
   text into such a message (escaping `{`, `}` and quoting apostrophes) and
   `messageText` turns it back, so an editor can show and save plain text.
 - Codebook node types and edge types have a required localized `label`, which
