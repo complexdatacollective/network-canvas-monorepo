@@ -352,6 +352,62 @@ describe('adding a sibling', () => {
 });
 
 describe('adding a child', () => {
+  const otherParent = () =>
+    screen.getByRole('radiogroup', { name: /^Who is the child’s other/ });
+
+  it('chooses the current partner as the other parent, not a former one', async () => {
+    const { onSubmit, user } = renderPersonForm('kayla', {
+      nodes: [
+        person('kayla', { sex: ['female'] }),
+        person('father', { sex: ['male'] }),
+        person('tyler', { sex: ['male'] }),
+      ],
+      edges: [
+        link('kayla', 'father', 'partner', { current: false }),
+        link('kayla', 'tyler', 'partner', { current: true }),
+      ],
+      adding: 'child',
+    });
+    expect(
+      within(otherParent()).getByRole('radio', { name: 'tyler' }),
+    ).toBeChecked();
+    expect(
+      within(otherParent()).getByRole('radio', { name: 'father' }),
+    ).not.toBeChecked();
+    await user.click(screen.getByRole('radio', { name: 'Female' }));
+    await save(user);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0].request).toMatchObject({
+      otherParent: 'tyler',
+    });
+  });
+
+  it('chooses no other parent while it could be either of two current partners', async () => {
+    const { onSubmit, user } = renderPersonForm('kayla', {
+      nodes: [
+        person('kayla', { sex: ['female'] }),
+        person('ana', { sex: ['female'] }),
+        person('tyler', { sex: ['male'] }),
+      ],
+      edges: [
+        link('kayla', 'ana', 'partner', { current: true }),
+        link('kayla', 'tyler', 'partner', { current: true }),
+      ],
+      adding: 'child',
+    });
+    for (const option of within(otherParent()).getAllByRole('radio')) {
+      expect(option).not.toBeChecked();
+    }
+    // Left unanswered, it is asked rather than recorded as no other parent.
+    await user.click(screen.getByRole('radio', { name: 'Female' }));
+    await save(user);
+    await waitFor(() =>
+      expect(otherParent()).toHaveAttribute('aria-invalid', 'true'),
+    );
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it('offers the other parent of an earlier child, who is not a partner', () => {
     renderPersonForm('ego', {
       nodes: [

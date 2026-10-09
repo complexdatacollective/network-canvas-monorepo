@@ -340,7 +340,7 @@ export function partnersOf(family: Family, personId: string): string[] {
  * someone they had a child with, recorded as the child's parent alone, as an
  * unnamed parent added for a child is.
  */
-export function coParentsOf(family: Family, personId: string): string[] {
+function coParentsOf(family: Family, personId: string): string[] {
   const partners = new Set(partnersOf(family, personId));
   const children = new Set(
     family.links
@@ -359,6 +359,36 @@ export function coParentsOf(family: Family, personId: string): string[] {
     }
   }
   return [...coParents];
+}
+
+/**
+ * Who could be the other parent of a child the person has: their current
+ * partners, then their former partners, then anyone else they already have
+ * a child with (`coParentsOf`). `preferred` is the one to assume until the
+ * participant answers: their only current partner, and nobody while the
+ * child could as well be another's.
+ */
+export function otherParentChoices(
+  family: Family,
+  personId: string,
+): { choices: string[]; preferred: string | undefined } {
+  const partnerships = family.links.filter(
+    (link) =>
+      link.kind === 'partner' &&
+      (link.source === personId || link.target === personId),
+  );
+  const partnerOf = (link: FamilyLink) =>
+    link.source === personId ? link.target : link.source;
+  const current = partnerships
+    .filter((link) => link.isCurrentPartner)
+    .map(partnerOf);
+  const former = partnerships
+    .filter((link) => !link.isCurrentPartner)
+    .map(partnerOf);
+  return {
+    choices: [...current, ...former, ...coParentsOf(family, personId)],
+    preferred: current.length === 1 ? current[0] : undefined,
+  };
 }
 
 /** Everyone who shares at least one primary parent with the person. */

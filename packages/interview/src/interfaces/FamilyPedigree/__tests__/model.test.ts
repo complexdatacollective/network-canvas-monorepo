@@ -8,6 +8,7 @@ import {
   nameFingerprint,
   nominationAppliesTo,
   nominationsWithdrawnBy,
+  otherParentChoices,
   partnersOf,
   planAddRelative,
   possibleCarriers,
@@ -1253,5 +1254,51 @@ describe('fullSiblingsOf', () => {
     // their full sibling, as ego's second parent is not that person.
     expect(fullSiblingsOf(family, 'ego')).toEqual(['fullSib']);
     expect(fullSiblingsOf(family, 'halfSib')).toEqual([]);
+  });
+});
+
+describe('otherParentChoices', () => {
+  test('offers current partners first and assumes the only one', () => {
+    const family = readFamily(
+      [
+        person('kayla'),
+        person('father'),
+        person('tyler'),
+        person('theo'),
+        person('theoDad'),
+      ],
+      [
+        link('kayla', 'father', 'partner', { current: false }),
+        link('kayla', 'tyler', 'partner'),
+        link('kayla', 'theo', 'biological'),
+        link('theoDad', 'theo', 'biological'),
+      ],
+      config,
+    );
+    expect(otherParentChoices(family, 'kayla')).toEqual({
+      choices: ['tyler', 'father', 'theoDad'],
+      preferred: 'tyler',
+    });
+  });
+
+  test('assumes nobody while two current partners could be the parent', () => {
+    const family = readFamily(
+      [person('kayla'), person('ana'), person('tyler')],
+      [link('kayla', 'ana', 'partner'), link('kayla', 'tyler', 'partner')],
+      config,
+    );
+    expect(otherParentChoices(family, 'kayla').preferred).toBeUndefined();
+  });
+
+  test('assumes nobody when the only partner is a former one', () => {
+    const family = readFamily(
+      [person('kayla'), person('father')],
+      [link('kayla', 'father', 'partner', { current: false })],
+      config,
+    );
+    expect(otherParentChoices(family, 'kayla')).toEqual({
+      choices: ['father'],
+      preferred: undefined,
+    });
   });
 });

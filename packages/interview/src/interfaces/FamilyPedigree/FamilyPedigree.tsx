@@ -105,7 +105,12 @@ import PersonForm, {
 } from './components/PersonForm';
 import PersonNode from './components/PersonNode';
 import { decryptDetails, useDecryptedNames } from './encryptedNames';
-import { generateLabels, labelEveryone, labelWrites } from './generatedLabels';
+import {
+  generateLabels,
+  labelEveryone,
+  labelOfNoKind,
+  labelWrites,
+} from './generatedLabels';
 import { messages } from './messages';
 import {
   areConnected,
@@ -539,10 +544,32 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // Everyone the participant has not named is shown by the label that will
   // be saved as their name when they leave, worked out afresh from the family
   // as it stands, so the canvas and the stages after it always agree.
-  const labels = useMemo(
-    () => labelEveryone(shown, framing, intl),
-    [shown, framing, intl],
-  );
+  // The person being added is not called by a kind of parent, child or
+  // sibling the participant has not chosen.
+  const labels = useMemo(() => {
+    const everyone = labelEveryone(shown, framing, intl);
+    const [draftId] = draft?.ids ?? [];
+    const drafted = draftId === undefined ? undefined : shown.byId.get(draftId);
+    const anchor = draft && shown.byId.get(draft.anchorId);
+    if (
+      draft?.kindUnanswered &&
+      draft.request.relation !== 'partner' &&
+      drafted?.name === undefined &&
+      draftId !== undefined &&
+      anchor
+    ) {
+      everyone.set(
+        draftId,
+        labelOfNoKind(
+          draft.request.relation,
+          anchor,
+          everyone.get(anchor.id) ?? '',
+          intl,
+        ),
+      );
+    }
+    return everyone;
+  }, [shown, framing, intl, draft]);
   const displayName = useCallback(
     (personId: string) =>
       labels.get(personId) ?? intl.formatMessage(messages.familyMember),

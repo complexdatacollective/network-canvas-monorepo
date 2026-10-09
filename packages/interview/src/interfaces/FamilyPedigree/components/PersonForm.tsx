@@ -63,7 +63,6 @@ import {
   type Person,
   type PersonDetails,
   type Relation,
-  coParentsOf,
   couldCarryPregnancy,
   fullSiblingsOf,
   geneticParentSexes,
@@ -72,8 +71,8 @@ import {
   holdsGeneratedLabel,
   isGeneticKind,
   openGeneticParentSlots,
+  otherParentChoices,
   sexesRuledOut,
-  partnersOf,
   planAdditionUnder,
   possibleCarriers,
   primaryParentsOf,
@@ -120,6 +119,10 @@ export type PersonFormResult = {
 export type PersonDraft = {
   details: PersonDetails;
   request: AddRelativeRequest;
+  /** The kind of parent, child or sibling they are has not been chosen: the
+   * request assumes one only to draw them in place, so they are not called
+   * by it. */
+  kindUnanswered: boolean;
 };
 
 export type LinkUpdate = {
@@ -832,6 +835,14 @@ function readOwnDetails(
   return details;
 }
 
+/** The question asking what kind of relative the new person is. */
+const KIND_QUESTION: Record<Relation, string | undefined> = {
+  parent: ROLE.parentKind,
+  child: ROLE.childKind,
+  sibling: ROLE.siblingKind,
+  partner: undefined,
+};
+
 /** Reports the person being added as the answers that decide how they are
  * drawn — their own details and how they are related — change. */
 function DraftWatcher({
@@ -856,9 +867,13 @@ function DraftWatcher({
   const report = useRef(onDraftChange);
   report.current = onDraftChange;
   useEffect(() => {
+    const kindQuestion = KIND_QUESTION[relation];
     report.current({
       details: readOwnDetails(values, config),
       request: readRequest(relation, values, anchor, family),
+      kindUnanswered:
+        kindQuestion !== undefined &&
+        asString(values[kindQuestion]) === undefined,
     });
   }, [values, config, relation, anchor, family]);
   return null;
@@ -1311,7 +1326,10 @@ function ChildFields({
     ROLE.otherParent,
     ROLE.biologicalParent,
   ]);
-  const partners = partnersOf(family, anchor.id);
+  // The other parent assumed is the anchor's only current partner; with
+  // nobody to choose from, someone not shown yet; and with several who could
+  // be, nobody, so the participant chooses.
+  const { choices, preferred } = otherParentChoices(family, anchor.id);
   const childKind = asString(values[ROLE.childKind]) ?? 'biological';
   const otherParent = asString(values[ROLE.otherParent]);
   const hasOtherParent = otherParent !== undefined && otherParent !== NONE;
@@ -1362,17 +1380,15 @@ function ChildFields({
         name={ROLE.otherParent}
         label={intl.formatMessage(messages.otherParentLabel)}
         options={[
-          ...[...partners, ...coParentsOf(family, anchor.id)].map((id) => ({
-            value: id,
-            label: displayName(id),
-          })),
+          ...choices.map((id) => ({ value: id, label: displayName(id) })),
           {
             value: UNKNOWN,
             label: intl.formatMessage(messages.otherParentUnknown),
           },
           { value: NONE, label: intl.formatMessage(messages.otherParentNone) },
         ]}
-        initialValue={partners[0] ?? UNKNOWN}
+        required
+        initialValue={preferred ?? (choices.length === 0 ? UNKNOWN : undefined)}
       />
       <Field
         component={RadioGroupField}

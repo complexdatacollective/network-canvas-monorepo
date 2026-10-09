@@ -1419,6 +1419,71 @@ export const AParentIsAssumedToBeTheirCoParentsPartner: Story = {
   },
 };
 
+/**
+ * Maya already has her two biological parents, so a third parent cannot be
+ * biological, and the kind of parent starts unanswered. Until it is chosen,
+ * the new parent drawn is called her parent, by no kind: not her stepmother,
+ * which the participant has not said.
+ */
+export const AParentOfNoKindYetIsCalledAParent: Story = {
+  args: { requirement: 'none' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      family={{
+        people: [
+          {
+            id: 'ego',
+            name: 'Maya',
+            gender: 'woman',
+            sex: 'female',
+            ego: true,
+          },
+          { id: 'olga', name: 'Olga', gender: 'woman', sex: 'female' },
+          { id: 'piotr', name: 'Piotr', gender: 'man', sex: 'male' },
+        ],
+        links: [
+          { from: 'olga', to: 'piotr', kind: 'partner' },
+          { from: 'olga', to: 'ego', kind: 'biological', carrier: true },
+          { from: 'piotr', to: 'ego', kind: 'biological' },
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+
+    await userEvent.hover(await canvas.findByRole('button', { name: /^You/ }));
+    await userEvent.click(await canvas.findByTestId('pedigree-menu-parent'));
+    await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
+    await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
+    const kind = await body.findByRole('radiogroup', {
+      name: /^What kind of parent are they\?/,
+    });
+    await waitFor(() => {
+      for (const option of within(kind).getAllByRole('radio')) {
+        expect(option).not.toBeChecked();
+      }
+    });
+    const drawn = () =>
+      canvas
+        .getAllByTestId('pedigree-person')
+        .map((person) => (person.textContent ?? '').replace(/\u00ad/g, ''));
+    await waitFor(() => expect(drawn()).toHaveLength(4));
+    await expect(drawn().some((label) => /step/i.test(label))).toBe(false);
+    await expect(drawn().some((label) => /^Parent\b/.test(label))).toBe(true);
+
+    // Chosen, the kind names them.
+    await userEvent.click(
+      within(kind).getByRole('radio', { name: 'Step or social parent' }),
+    );
+    await waitFor(() =>
+      expect(drawn().some((label) => /^Step.?mother/.test(label))).toBe(true),
+    );
+  },
+};
+
 /** Drags the canvas 600 pixels to the right with the mouse. */
 function dragFamilyRight(viewport: HTMLElement) {
   const box = viewport.getBoundingClientRect();
