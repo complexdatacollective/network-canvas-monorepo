@@ -3,7 +3,9 @@ import { toScriptMatchingTag } from '@codaco/shared-consts';
 import {
   canonicalizeLocale,
   type LocaleTag,
+  type LocalizationDeclaration,
 } from '../../localization/localeTag.ts';
+import type { LocalizedString } from './localized-string.ts';
 
 /**
  * The tag itself, then each shorter tag left by removing its last subtag
@@ -40,4 +42,57 @@ export const suppliedTextFor = <Text>(
     if (text !== undefined) return text;
   }
   return undefined;
+};
+
+/**
+ * A change to a protocol's languages: the declaration before and after it,
+ * and, when a language's tag was corrected, the tag each language now has.
+ * A language missing from `after` was removed.
+ */
+export type LanguageChange = Readonly<{
+  before: LocalizationDeclaration;
+  after: LocalizationDeclaration;
+  renamed?: Readonly<Record<LocaleTag, LocaleTag>>;
+}>;
+
+/**
+ * The text Network Canvas writes in a protocol language, which may depend on
+ * whether that language is the default, or `undefined` when it writes none.
+ */
+export type SuppliedTextIn = (
+  locale: LocaleTag,
+  isDefault: boolean,
+) => string | undefined;
+
+/**
+ * One text Network Canvas supplies, as it reads after a change to the
+ * protocol's languages, for a text the researcher has not changed in the
+ * default language. Each translation that is still Network Canvas's text for
+ * its language becomes Network Canvas's text for the language as it now is,
+ * or is removed where it writes none there; a translation the researcher
+ * wrote moves with its language; and a language with no translation gains
+ * Network Canvas's text.
+ */
+export const suppliedTextAfterLanguageChange = (
+  value: LocalizedString,
+  supplied: SuppliedTextIn,
+  { before, after, renamed = {} }: LanguageChange,
+): LocalizedString => {
+  const next: Record<LocaleTag, string> = {};
+  for (const [locale, text] of Object.entries(value)) {
+    const target = renamed[locale] ?? locale;
+    if (!after.locales.includes(target)) continue;
+    if (text !== supplied(locale, locale === before.defaultLocale)) {
+      next[target] = text;
+      continue;
+    }
+    const replacement = supplied(target, target === after.defaultLocale);
+    if (replacement !== undefined) next[target] = replacement;
+  }
+  for (const locale of after.locales) {
+    if (next[locale] !== undefined) continue;
+    const text = supplied(locale, locale === after.defaultLocale);
+    if (text !== undefined) next[locale] = text;
+  }
+  return next;
 };

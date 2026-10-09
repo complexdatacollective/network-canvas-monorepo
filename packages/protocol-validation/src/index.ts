@@ -150,8 +150,10 @@ export {
   type SuppliedOptionLabelSet,
   suppliedOptionLabel,
   suppliedOptionLabels,
-  withSuppliedOptionLabelTranslation,
+  suppliedOptionLabelsAfterLanguageChange,
 } from './schemas/9/family-pedigree-option-labels.ts';
+// How text Network Canvas supplies follows a change to a protocol's languages.
+export { type LanguageChange } from './schemas/9/supplied-text.ts';
 // The finish stage text Network Canvas supplies, written into a protocol by
 // the v8 → v9 migration and by Architect.
 export {
@@ -161,7 +163,7 @@ export {
   defaultFinishSessionText,
   type FinishSessionText,
   hasDefaultFinishSessionText,
-  withDefaultFinishSessionTranslation,
+  defaultFinishSessionTextAfterLanguageChange,
 } from './schemas/9/finish-session-defaults.ts';
 export {
   findFinishStageTextProblems,

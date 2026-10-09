@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
+import type { LocalizationDeclaration } from '../../../localization/localeTag.ts';
 import {
   hasSuppliedOptionLabels,
   SUPPLIED_PEDIGREE_OPTION_LABELS,
   suppliedOptionLabel,
   suppliedOptionLabels,
-  withSuppliedOptionLabelTranslation,
+  suppliedOptionLabelsAfterLanguageChange,
 } from '../family-pedigree-option-labels.ts';
 import {
   PEDIGREE_RELATIONSHIP_KINDS,
@@ -14,6 +15,7 @@ import {
 } from '../family-pedigree-values.ts';
 import { localizedString } from '../localized-string.ts';
 import ProtocolSchemaV9 from '../schema.ts';
+import type { LanguageChange } from '../supplied-text.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
 
 const labelSchema = localizedString(z.string().min(1), 'markdown');
@@ -67,103 +69,152 @@ describe('supplied Family Pedigree option labels', () => {
     ).toEqual({ en: 'Female', fr: 'Féminin' });
   });
 
-  it('falls back to English in the default language when no protocol language has supplied labels', () => {
+  it('falls back to English in a default language Network Canvas supplies no labels in', () => {
     expect(
       suppliedOptionLabels('pedigreeRelationship', 'donor', {
         defaultLocale: 'hu',
         locales: ['hu'],
       }),
     ).toEqual({ hu: 'Egg or sperm donor' });
+    expect(
+      suppliedOptionLabels('pedigreeRelationship', 'donor', {
+        defaultLocale: 'hu',
+        locales: ['hu', 'de'],
+      }),
+    ).toEqual({ hu: 'Egg or sperm donor', de: 'Eizell- oder Samenspender/in' });
   });
 
-  const sexOptions = (locale: string) =>
+  const SET = 'pedigreeSexAssignedAtBirth';
+  const optionsFor = (localization: LocalizationDeclaration) =>
     PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
       value,
-      label: {
-        [locale]: suppliedOptionLabel(
-          'pedigreeSexAssignedAtBirth',
-          value,
-          locale,
-        )!,
-      },
+      label: suppliedOptionLabels(SET, value, localization),
     }));
+  const labelsIn = (labels: Record<string, string>): Record<string, string>[] =>
+    PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) =>
+      Object.fromEntries(
+        Object.entries(labels).map(([locale, source]) => [
+          locale,
+          suppliedOptionLabel(SET, value, source)!,
+        ]),
+      ),
+    );
+  const relabelled = (
+    options: ReturnType<typeof optionsFor>,
+    change: LanguageChange,
+  ) =>
+    suppliedOptionLabelsAfterLanguageChange(SET, options, change)?.map(
+      (option) => option.label,
+    );
+  const english = { defaultLocale: 'en', locales: ['en'] };
+  const hungarian = { defaultLocale: 'hu', locales: ['hu'] };
 
   it('fills in a new language while the default-language labels are still the supplied ones', () => {
-    const options = sexOptions('en');
+    const options = optionsFor(english);
+    expect(hasSuppliedOptionLabels(SET, options, 'en')).toBe(true);
     expect(
-      hasSuppliedOptionLabels('pedigreeSexAssignedAtBirth', options, 'en'),
-    ).toBe(true);
-    const filled = withSuppliedOptionLabelTranslation(
-      'pedigreeSexAssignedAtBirth',
-      options,
-      'es',
-      'en',
-    );
-    expect(filled.map((option) => option.label)).toEqual(
-      PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
-        en: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'en'),
-        es: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'es'),
-      })),
-    );
+      relabelled(options, {
+        before: english,
+        after: { defaultLocale: 'en', locales: ['en', 'es'] },
+      }),
+    ).toEqual(labelsIn({ en: 'en', es: 'es' }));
   });
 
   it('fills in a new language while a default language with no supplied labels still has the English ones', () => {
-    const options = PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
-      value,
-      label: suppliedOptionLabels('pedigreeSexAssignedAtBirth', value, {
-        defaultLocale: 'hu',
-        locales: ['hu'],
+    expect(
+      relabelled(optionsFor(hungarian), {
+        before: hungarian,
+        after: { defaultLocale: 'hu', locales: ['hu', 'de'] },
       }),
-    }));
-    const filled = withSuppliedOptionLabelTranslation(
-      'pedigreeSexAssignedAtBirth',
-      options,
-      'de',
-      'hu',
-    );
-    expect(filled.map((option) => option.label)).toEqual(
-      PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
-        hu: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'en'),
-        de: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'de'),
-      })),
-    );
+    ).toEqual(labelsIn({ hu: 'en', de: 'de' }));
   });
 
-  it('leaves the labels alone once the researcher has reworded one', () => {
-    const options = sexOptions('en').map((option) =>
+  it('fills in a new language in a protocol created with an unsupported default and a supported language', () => {
+    const mixed = { defaultLocale: 'hu', locales: ['hu', 'en'] };
+    expect(
+      relabelled(optionsFor(mixed), {
+        before: mixed,
+        after: { defaultLocale: 'hu', locales: ['hu', 'en', 'de'] },
+      }),
+    ).toEqual(labelsIn({ hu: 'en', en: 'en', de: 'de' }));
+  });
+
+  it('gives a corrected language its own labels, as when an English protocol migrated from schema 8 is really German', () => {
+    expect(
+      relabelled(optionsFor(english), {
+        before: english,
+        after: { defaultLocale: 'de', locales: ['de'] },
+        renamed: { en: 'de' },
+      }),
+    ).toEqual(labelsIn({ de: 'de' }));
+  });
+
+  it('keeps English in a corrected default language Network Canvas supplies no labels in', () => {
+    expect(
+      relabelled(optionsFor(english), {
+        before: english,
+        after: hungarian,
+        renamed: { en: 'hu' },
+      }),
+    ).toEqual(labelsIn({ hu: 'en' }));
+  });
+
+  it('follows a new default language: English fallback only while a language is the default', () => {
+    const both = { defaultLocale: 'en', locales: ['en', 'hu'] };
+    const options = optionsFor(both);
+    const toHungarian = relabelled(options, {
+      before: both,
+      after: { defaultLocale: 'hu', locales: ['en', 'hu'] },
+    });
+    expect(toHungarian).toEqual(labelsIn({ en: 'en', hu: 'en' }));
+    expect(
+      relabelled(
+        options.map((option, index) => ({
+          ...option,
+          label: toHungarian![index]!,
+        })),
+        {
+          before: { defaultLocale: 'hu', locales: ['en', 'hu'] },
+          after: both,
+        },
+      ),
+    ).toEqual(labelsIn({ en: 'en' }));
+  });
+
+  it('leaves the labels to the researcher once they have reworded one', () => {
+    const options = optionsFor(english).map((option) =>
       option.value === 'intersex'
         ? { ...option, label: { en: 'Intersex or variation of sex' } }
         : option,
     );
     expect(
-      withSuppliedOptionLabelTranslation(
-        'pedigreeSexAssignedAtBirth',
-        options,
-        'es',
-        'en',
-      ),
-    ).toBe(options);
+      suppliedOptionLabelsAfterLanguageChange(SET, options, {
+        before: english,
+        after: { defaultLocale: 'de', locales: ['de'] },
+        renamed: { en: 'de' },
+      }),
+    ).toBeUndefined();
   });
 
-  it('keeps a label the option already has in the new language', () => {
-    const options = sexOptions('en').map((option) =>
+  it('keeps a label the researcher wrote in another language', () => {
+    const options = optionsFor(english).map((option) =>
       option.value === 'male'
         ? { ...option, label: { ...option.label, es: 'Varón' } }
         : option,
     );
-    const filled = withSuppliedOptionLabelTranslation(
-      'pedigreeSexAssignedAtBirth',
-      options,
-      'es',
-      'en',
-    );
-    expect(filled.find((option) => option.value === 'male')?.label).toEqual({
+    const filled = suppliedOptionLabelsAfterLanguageChange(SET, options, {
+      before: { defaultLocale: 'en', locales: ['en', 'es'] },
+      after: { defaultLocale: 'en', locales: ['en', 'es', 'fr'] },
+    });
+    expect(filled?.find((option) => option.value === 'male')?.label).toEqual({
       en: 'Male',
       es: 'Varón',
+      fr: 'Masculin',
     });
-    expect(filled.find((option) => option.value === 'female')?.label).toEqual({
+    expect(filled?.find((option) => option.value === 'female')?.label).toEqual({
       en: 'Female',
       es: 'Femenino',
+      fr: 'Féminin',
     });
   });
 });

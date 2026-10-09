@@ -11,7 +11,11 @@ import {
   type PedigreeSexAssignedAtBirth,
 } from './family-pedigree-values.ts';
 import type { LocalizedString } from './localized-string.ts';
-import { suppliedTextFor } from './supplied-text.ts';
+import {
+  type LanguageChange,
+  suppliedTextAfterLanguageChange,
+  suppliedTextFor,
+} from './supplied-text.ts';
 
 /**
  * The interface-owned value sets whose labels a Family Pedigree participant
@@ -218,22 +222,23 @@ export const suppliedOptionLabel = (
 
 /**
  * The label Network Canvas writes for one value of a set in a protocol
- * language: the language's supplied label, or the English one where the
- * language has none.
+ * language: the language's supplied label, or, in the default language of a
+ * protocol whose default Network Canvas supplies no labels in, the English
+ * one, since participants choose from these answers and a protocol needs one
+ * in its default language. `undefined` where it writes none.
  */
-const seededOptionLabel = (
+const writtenOptionLabel = (
   set: SuppliedOptionLabelSet,
   value: string,
   locale: LocaleTag,
+  isDefault: boolean,
 ): string | undefined =>
   suppliedOptionLabel(set, value, locale) ??
-  suppliedOptionLabel(set, value, 'en');
+  (isDefault ? suppliedOptionLabel(set, value, 'en') : undefined);
 
 /**
- * The label for one value of a set in each of the protocol's languages that
- * has a supplied label. A protocol written only in languages Network Canvas
- * supplies none for still needs one translation, so it gets the English label
- * in its default language, as a protocol migrated from schema 8 does.
+ * The label Network Canvas writes for one value of a set in each of the
+ * protocol's languages (see `writtenOptionLabel`).
  */
 export const suppliedOptionLabels = (
   set: SuppliedOptionLabelSet,
@@ -242,73 +247,68 @@ export const suppliedOptionLabels = (
 ): LocalizedString => {
   const label: Record<LocaleTag, string> = {};
   for (const locale of localization.locales) {
-    const text = suppliedOptionLabel(set, value, locale);
+    const text = writtenOptionLabel(
+      set,
+      value,
+      locale,
+      locale === localization.defaultLocale,
+    );
     if (text !== undefined) label[locale] = text;
   }
-  if (Object.keys(label).length > 0) return label;
-  return {
-    [localization.defaultLocale]:
-      seededOptionLabel(set, value, localization.defaultLocale) ??
-      escapeMessageText(value),
-  };
+  return label;
 };
 
 type LabelledOption = Readonly<{ value: unknown; label?: unknown }>;
 
-const labelIn = (option: LabelledOption, locale: LocaleTag) =>
+const labelOf = (option: LabelledOption): LocalizedString =>
   typeof option.label === 'object' && option.label !== null
-    ? (option.label as Readonly<Record<string, unknown>>)[locale]
-    : undefined;
+    ? (option.label as LocalizedString)
+    : {};
 
 /**
- * Whether every option's label in `locale` is still exactly the label Network
- * Canvas wrote for its value: the supplied label, or the English one in a
- * language that has none. The researcher has not reworded any of them.
+ * Whether every option's label in the protocol's default language is still
+ * exactly the label Network Canvas wrote there: the researcher has not
+ * reworded any of them.
  */
 export const hasSuppliedOptionLabels = (
   set: SuppliedOptionLabelSet,
   options: readonly LabelledOption[],
-  locale: LocaleTag,
+  defaultLocale: LocaleTag,
 ): boolean =>
   options.every((option) => {
     const text =
       typeof option.value === 'string'
-        ? seededOptionLabel(set, option.value, locale)
+        ? writtenOptionLabel(set, option.value, defaultLocale, true)
         : undefined;
-    return text !== undefined && labelIn(option, locale) === text;
+    return text !== undefined && labelOf(option)[defaultLocale] === text;
   });
 
 /**
- * The options with the supplied label added in `locale`, when every label in
- * the protocol's default language is still the supplied one and `locale` has
- * supplied labels. A label the option already has in `locale` is kept.
- * Returns the options unchanged otherwise.
+ * The options as Network Canvas labels them after a change to the protocol's
+ * languages (see `suppliedTextAfterLanguageChange`), when their labels in the
+ * default language before it are still the ones it wrote; `undefined`
+ * otherwise, as the labels are then the researcher's.
  */
-export const withSuppliedOptionLabelTranslation = <
+export const suppliedOptionLabelsAfterLanguageChange = <
   Option extends LabelledOption,
 >(
   set: SuppliedOptionLabelSet,
   options: readonly Option[],
-  locale: LocaleTag,
-  defaultLocale: LocaleTag,
-): readonly Option[] => {
-  if (!hasSuppliedOptionLabels(set, options, defaultLocale)) return options;
-  let changed = false;
-  const next = options.map((option) => {
-    if (labelIn(option, locale) !== undefined) return option;
-    const text =
-      typeof option.value === 'string'
-        ? suppliedOptionLabel(set, option.value, locale)
-        : undefined;
-    if (text === undefined) return option;
-    changed = true;
+  change: LanguageChange,
+): Option[] | undefined => {
+  if (!hasSuppliedOptionLabels(set, options, change.before.defaultLocale))
+    return undefined;
+  return options.map((option) => {
+    const { value } = option;
+    if (typeof value !== 'string') return option;
     return {
       ...option,
-      label: {
-        ...(option.label as Readonly<Record<string, string>>),
-        [locale]: text,
-      },
+      label: suppliedTextAfterLanguageChange(
+        labelOf(option),
+        (locale, isDefault) =>
+          writtenOptionLabel(set, value, locale, isDefault),
+        change,
+      ),
     };
   });
-  return changed ? next : options;
 };
