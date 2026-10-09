@@ -228,7 +228,7 @@ describe('Protocol Summary family pedigree', () => {
       itemText: {
         parents: {
           listItem: {
-            en: '{isYou, select, true {{missing, plural, one {Add your other parent} other {Add your parents}}} other {Parents of {name}}}',
+            en: '{isYou, select, true {Add your parents} other {Parents of {name}}}',
           },
         },
         siblings: {
@@ -271,7 +271,7 @@ describe('Protocol Summary family pedigree', () => {
     expect(screen.getByText('A nickname is fine.')).toBeInTheDocument();
     // The message reads as its versions, its placeholders named, never as
     // the syntax it is stored in.
-    expect(screen.getByText('Add your other parent')).toBeInTheDocument();
+    expect(screen.getByText('Add your parents')).toBeInTheDocument();
     expect(screen.getByText('Parents of [Name]')).toBeInTheDocument();
     expect(screen.getByText('About [Name]')).toBeInTheDocument();
     expect(screen.queryByText(/isYou/)).toBeNull();

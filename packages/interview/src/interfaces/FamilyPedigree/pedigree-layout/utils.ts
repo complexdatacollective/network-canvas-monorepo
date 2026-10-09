@@ -60,7 +60,7 @@ export function tableCounts(arr: number[]): Map<number, number> {
   return counts;
 }
 
-import type { ParentConnection } from './types';
+import type { ParentConnection, PartnerConnection } from './types';
 
 // Chase all ancestors of a person
 export function ancestor(me: number, parents: ParentConnection[][]): number[] {
@@ -93,6 +93,33 @@ export function ancestor(me: number, parents: ParentConnection[][]): number[] {
     if (result[i]) indices.push(i);
   }
   return indices;
+}
+
+/** A parent link that passes on genes: a biological parent or a donor, as
+ * recorded (`ParentConnection.isGenetic`), whatever line it is drawn with.
+ * Social, adoptive and surrogate links do not, even a carrier's drawn as a
+ * biological parent's. */
+function isGeneticConnection(connection: ParentConnection): boolean {
+  return (
+    connection.isGenetic ??
+    (connection.edgeType === 'biological' || connection.edgeType === 'donor')
+  );
+}
+
+/**
+ * Whether two people are blood relatives — they share a genetic ancestor —
+ * so their partnership is drawn with the double consanguinity line. Only
+ * genetic parent links are followed: step-siblings who share a social parent,
+ * or adoptive siblings, are not consanguineous.
+ */
+export function areConsanguineous(
+  a: number,
+  b: number,
+  parents: ParentConnection[][],
+): boolean {
+  const genetic = parents.map((conns) => conns.filter(isGeneticConnection));
+  const ancestorsOfB = new Set(ancestor(b, genetic));
+  return ancestor(a, genetic).some((x) => ancestorsOfB.has(x));
 }
 
 // Chase up ancestors — returns all ancestors reachable from x (including x)
@@ -183,4 +210,74 @@ export function layerConstraints(n: number) {
       }
     },
   };
+}
+
+/**
+ * For each child, the relatives who raise them, and those raising them
+ * alongside a relative: a child adopted or raised by a relative stays in
+ * their birth family, joined to these people by lines of their own.
+ *
+ * A relative is someone joined to one of the child's birth (biological)
+ * parents by a chain of biological, donor and partnership ties that does not
+ * pass through the child: a sibling, grandparent, aunt or uncle (by birth or
+ * by partnership), cousin, and so on. Someone partnered with a birth parent,
+ * now or formerly, is not counted: they raise the child in the birth
+ * parent's own family (a step-parent adoption). Anyone else raising the child
+ * who is partnered with a relative who raises them is counted with them.
+ */
+export function relativeRaisers(
+  parents: ParentConnection[][],
+  partners: readonly PartnerConnection[] = [],
+): Set<number>[] {
+  const n = parents.length;
+  const ties: number[][] = Array.from({ length: n }, () => []);
+  const tie = (a: number, b: number) => {
+    ties[a]!.push(b);
+    ties[b]!.push(a);
+  };
+  parents.forEach((conns, child) => {
+    for (const p of conns) {
+      if (isGeneticConnection(p)) tie(p.parentIndex, child);
+    }
+  });
+  const partnersOf: number[][] = Array.from({ length: n }, () => []);
+  for (const { partnerIndex1: a, partnerIndex2: b } of partners) {
+    tie(a, b);
+    partnersOf[a]!.push(b);
+    partnersOf[b]!.push(a);
+  }
+
+  return parents.map((conns, child) => {
+    const birthParents = conns
+      .filter((p) => p.edgeType === 'biological')
+      .map((p) => p.parentIndex);
+    const raisers = conns
+      .filter((p) => p.edgeType === 'adoptive' || p.edgeType === 'social')
+      .map((p) => p.parentIndex);
+    if (birthParents.length === 0 || raisers.length === 0) return new Set();
+
+    // Everyone tied to the birth family, without passing through the child.
+    const family = new Set(birthParents);
+    const queue = [...birthParents];
+    while (queue.length > 0) {
+      for (const next of ties[queue.shift()!]!) {
+        if (next === child || family.has(next)) continue;
+        family.add(next);
+        queue.push(next);
+      }
+    }
+    const relatives = raisers.filter(
+      (r) =>
+        family.has(r) &&
+        !birthParents.includes(r) &&
+        !partnersOf[r]!.some((p) => birthParents.includes(p)),
+    );
+    if (relatives.length === 0) return new Set();
+    return new Set([
+      ...relatives,
+      ...raisers.filter((r) =>
+        partnersOf[r]!.some((p) => relatives.includes(p)),
+      ),
+    ]);
+  });
 }

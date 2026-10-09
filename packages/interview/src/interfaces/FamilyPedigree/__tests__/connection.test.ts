@@ -19,6 +19,9 @@ const family = (nodes: NcNode[], edges: NcEdge[]) =>
 const people = ['ego', 'mum', 'dad', 'nan', 'other'].map((id) =>
   person(id, id === 'ego' ? { isEgo: true } : {}),
 );
+const namedMum = people.map((node) =>
+  node._uid === 'mum' ? person('mum', { name: 'Julie' }) : node,
+);
 
 describe('connecting two people', () => {
   test('people already linked in any way are connected', () => {
@@ -46,7 +49,7 @@ describe('connecting two people', () => {
   const kinds = (choices: ReturnType<typeof availableParentChoices>) =>
     choices.map(
       (choice) =>
-        `${choice.parentKind}${choice.parentKind === 'biological' && choice.carriedPregnancy ? '+carried' : ''}`,
+        `${choice.parentKind}${choice.parentKind !== 'surrogate' && choice.carriedPregnancy ? '+carried' : ''}`,
     );
 
   test('parents: every kind for two unrelated people', () => {
@@ -56,8 +59,11 @@ describe('connecting two people', () => {
       'biological',
       'biological+carried',
       'adoptive',
+      'adoptive+carried',
       'social',
+      'social+carried',
       'donor',
+      'donor+carried',
       'surrogate',
     ]);
   });
@@ -82,7 +88,9 @@ describe('connecting two people', () => {
   });
 
   test('parents: at most two genetic parents and one surrogate', () => {
-    const f = family(people, [
+    // Mum is named, so is not a stand-in who gives way to a genetic parent
+    // recorded in her place (ruling 25).
+    const f = family(namedMum, [
       link('mum', 'ego', 'biological'),
       link('dad', 'ego', 'donor'),
       link('nan', 'ego', 'surrogate', { carrier: true }),
@@ -173,13 +181,21 @@ describe('connecting two people', () => {
       ],
     );
     // Ego's only genetic parent could have been either; nothing is ruled out.
-    expect([...sexesRuledOut(f, 'mother')]).toEqual([]);
-    expect([...sexesRuledOut(f, 'carrier')]).toEqual(['male']);
+    const sexes = (fam: typeof f, id: string) =>
+      sexesRuledOut(fam, id).map((reason) => reason.sex);
+    expect(sexes(f, 'mother')).toEqual([]);
+    expect(sexes(f, 'carrier')).toEqual(['male']);
+    // The mother is named, so is not a stand-in, whose sex at birth would
+    // follow the father's (ruling 25).
     const twoParents = family(
-      [...people, person('mother', { sex: ['female'] }), person('father')],
+      [
+        ...people,
+        person('mother', { name: 'Julie', sex: ['female'] }),
+        person('father'),
+      ],
       [link('mother', 'ego', 'biological'), link('father', 'ego', 'donor')],
     );
-    expect([...sexesRuledOut(twoParents, 'father')]).toEqual(['female']);
+    expect(sexes(twoParents, 'father')).toEqual(['female']);
   });
 
   test('the recorded link', () => {

@@ -6,7 +6,6 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import type { CustomFieldValidation } from '@codaco/fresco-ui/form/store/types';
 import {
   type MessageArguments,
-  PEDIGREE_PARENTS_ARGUMENTS,
   PEDIGREE_PERSON_ARGUMENTS,
 } from '@codaco/protocol-validation';
 
@@ -37,7 +36,7 @@ const MESSAGE_SETTINGS: readonly MessageSetting[] = [
     path: TRACKER_TEXT_PATHS.parentsItem,
     label: messages.trackerParentsLabel,
     hint: messages.trackerParentsHint,
-    arguments: PEDIGREE_PARENTS_ARGUMENTS,
+    arguments: PEDIGREE_PERSON_ARGUMENTS,
   },
   {
     path: TRACKER_TEXT_PATHS.siblingsItem,
@@ -99,12 +98,10 @@ export default function TrackerTextSection() {
   const validations = useMemo(
     () =>
       new Map<MessageArguments, CustomFieldValidation>(
-        [PEDIGREE_PARENTS_ARGUMENTS, PEDIGREE_PERSON_ARGUMENTS].map(
-          (declaration) => [
-            declaration,
-            localizedMessageValidation(declaration, intl),
-          ],
-        ),
+        [PEDIGREE_PERSON_ARGUMENTS].map((declaration) => [
+          declaration,
+          localizedMessageValidation(declaration, intl),
+        ]),
       ),
     [intl],
   );

@@ -123,7 +123,7 @@ export const RESEARCHER_TRACKER_TEXT: SectionDoc = {
     parents: {
       listItem: {
         'en-US':
-          '{isYou, select, true {{missing, plural, one {One more parent to add} other {# parents to add}}} other {{missing, plural, one {One more parent for {name}} other {# parents for {name}}}}}',
+          '{isYou, select, true {Your birth parents} other {Birth parents of {name}}}',
       },
     },
     siblings: {

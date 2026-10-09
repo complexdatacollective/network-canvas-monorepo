@@ -141,11 +141,13 @@ export {
   PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+  PEDIGREE_TWIN_KINDS,
   type PedigreeCompletenessScope,
   type PedigreeDefaultGenderIdentityValue,
   type PedigreeGenderWords,
   type PedigreeParentKind,
   type PedigreeRelationshipKind,
+  type PedigreeTwinKind,
   type PedigreeRelationshipToParticipant,
   type PedigreeRelativesNotRecorded,
   type PedigreeSexAssignedAtBirth,
@@ -158,7 +160,6 @@ export {
 // them.
 export {
   type FamilyPedigreeWording,
-  PEDIGREE_PARENTS_ARGUMENTS,
   PEDIGREE_PERSON_ARGUMENTS,
   PEDIGREE_WORDING_ARGUMENTS,
 } from './schemas/9/stages/family-pedigree.ts';

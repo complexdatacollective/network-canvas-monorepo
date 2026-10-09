@@ -816,6 +816,30 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
       [2, words(familyPedigreeMessages.wordingDisconnectWouldCutOff)],
     ),
     rule(
+      'wording.changeWouldCutOff',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_CONNECTING,
+      [2, words(familyPedigreeMessages.wordingChangeWouldCutOff)],
+    ),
+    rule(
+      'wording.unavailableAlreadyConnected',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_CONNECTING,
+      [2, words(familyPedigreeMessages.wordingUnavailableAlreadyConnected)],
+    ),
+    rule(
+      'wording.unavailableAncestor',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_CONNECTING,
+      [2, words(familyPedigreeMessages.wordingUnavailableAncestor)],
+    ),
+    rule(
+      'wording.unavailableCarrierChoice',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_CONNECTING,
+      [2, words(familyPedigreeMessages.wordingUnavailableCarrierChoice)],
+    ),
+    rule(
       'wording.removeConfirmTitle',
       PEDIGREE_WORDING,
       PEDIGREE_WORDING_CONNECTING,
@@ -842,10 +866,10 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
       words(familyPedigreeMessages.wordingParentKindLabel),
     ]),
     rule(
-      'wording.parentKindBiologicalCarrier',
+      'wording.parentKindCarrier',
       PEDIGREE_WORDING,
       PEDIGREE_WORDING_ADDING,
-      [2, words(familyPedigreeMessages.wordingParentKindBiologicalCarrier)],
+      [2, words(familyPedigreeMessages.wordingParentKindCarrier)],
     ),
     rule(
       'wording.biologicalParentLabel',
@@ -926,16 +950,60 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
       [2, words(familyPedigreeMessages.wordingSharedParentEggOnly)],
     ),
     rule(
-      'wording.sharedParentUnshown',
+      'wording.sharedDonorsLabel',
       PEDIGREE_WORDING,
       PEDIGREE_WORDING_ADDING,
-      [2, words(familyPedigreeMessages.wordingSharedParentUnshown)],
+      [2, words(familyPedigreeMessages.wordingSharedDonorsLabel)],
     ),
     rule(
       'wording.siblingKindLabel',
       PEDIGREE_WORDING,
       PEDIGREE_WORDING_ADDING,
       [2, words(familyPedigreeMessages.wordingSiblingKindLabel)],
+    ),
+    rule(
+      'wording.siblingBiologicalParentLabel',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingSiblingBiologicalParentLabel)],
+    ),
+    rule(
+      'wording.siblingTwinLabel',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingSiblingTwinLabel)],
+    ),
+    rule('wording.siblingTwinHint', PEDIGREE_WORDING, PEDIGREE_WORDING_ADDING, [
+      2,
+      words(familyPedigreeMessages.wordingSiblingTwinHint),
+    ]),
+    rule('wording.siblingTwinNo', PEDIGREE_WORDING, PEDIGREE_WORDING_ADDING, [
+      2,
+      words(familyPedigreeMessages.wordingSiblingTwinNo),
+    ]),
+    rule(
+      'wording.siblingTwinIdentical',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingSiblingTwinIdentical)],
+    ),
+    rule(
+      'wording.siblingTwinFraternal',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingSiblingTwinFraternal)],
+    ),
+    rule(
+      'wording.siblingTwinUnknown',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingSiblingTwinUnknown)],
+    ),
+    rule(
+      'wording.unavailableIdenticalTwinNew',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingUnavailableIdenticalTwinNew)],
     ),
     rule(
       'wording.carriedSiblingsPregnancyLabel',
@@ -963,6 +1031,16 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
       2,
       words(familyPedigreeMessages.wordingChildKindSocial),
     ]),
+    rule('wording.childKindDonor', PEDIGREE_WORDING, PEDIGREE_WORDING_ADDING, [
+      2,
+      words(familyPedigreeMessages.wordingChildKindDonor),
+    ]),
+    rule(
+      'wording.childKindSurrogate',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingChildKindSurrogate)],
+    ),
     rule(
       'wording.alsoParentOfLabel',
       PEDIGREE_WORDING,
@@ -981,10 +1059,78 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
       PEDIGREE_WORDING_ADDING,
       [2, words(familyPedigreeMessages.wordingGenderIdentityLabel)],
     ),
-    rule('wording.sexRuledOutHint', PEDIGREE_WORDING, PEDIGREE_WORDING_ADDING, [
+    rule('wording.twinsLabel', PEDIGREE_WORDING, PEDIGREE_WORDING_ADDING, [
       2,
-      words(familyPedigreeMessages.wordingSexRuledOutHint),
+      words(familyPedigreeMessages.wordingTwinsLabel),
     ]),
+    rule('wording.twinsHint', PEDIGREE_WORDING, PEDIGREE_WORDING_ADDING, [
+      2,
+      words(familyPedigreeMessages.wordingTwinsHint),
+    ]),
+    rule(
+      'wording.twinZygosityLabel',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingTwinZygosityLabel)],
+    ),
+    rule(
+      'wording.zygosityIdentical',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingZygosityIdentical)],
+    ),
+    rule(
+      'wording.zygosityFraternal',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingZygosityFraternal)],
+    ),
+    rule('wording.zygosityUnknown', PEDIGREE_WORDING, PEDIGREE_WORDING_ADDING, [
+      2,
+      words(familyPedigreeMessages.wordingZygosityUnknown),
+    ]),
+    rule(
+      'wording.unavailableIdenticalTwin',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingUnavailableIdenticalTwin)],
+    ),
+    rule(
+      'wording.unavailableSameSexGeneticParent',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingUnavailableSameSexGeneticParent)],
+    ),
+    rule(
+      'wording.unavailableGeneticParentsFull',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingUnavailableGeneticParentsFull)],
+    ),
+    rule(
+      'wording.unavailableBothSameSex',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingUnavailableBothSameSex)],
+    ),
+    rule(
+      'wording.unavailableCarrierRecorded',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingUnavailableCarrierRecorded)],
+    ),
+    rule(
+      'wording.unavailableCannotCarry',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingUnavailableCannotCarry)],
+    ),
+    rule(
+      'wording.unavailableCarried',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingUnavailableCarried)],
+    ),
   ],
   Geospatial: [
     promptText(geospatialMessages.promptTextLabel),

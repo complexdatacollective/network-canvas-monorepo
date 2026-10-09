@@ -24,6 +24,50 @@ The interface allows a child at most two genetic parents, at most one recorded
 female at birth and at most one recorded male, so the rule never meets two
 eggs or two sperm.
 
+## Stand-ins for a missing genetic parent
+
+Because each person has two genetic parents, anyone with one genetic parent
+recorded (a biological parent or a donor) is given an unnamed stand-in for
+the other (`planStandIns` in `model.ts`). The stand-in's sex at birth is the
+one the gamete rule gives the other gamete, and follows the recorded genetic
+parent's when that changes, so a stand-in never contradicts the rule above:
+it gives way to a genetic parent the participant records in its place, and
+never rules out a sex at birth for the genetic parent beside it. Adoptive and
+social parents are never stood in for.
+
+## Who carried the pregnancy
+
+Carrying the pregnancy is recorded apart from the gamete, as a yes/no answer
+on a parent link (`isGestationalCarrier`), because it is independent of it.
+Any kind of parent may have carried the child:
+
+- a biological parent who gave birth;
+- an adoptive or social parent who did, such as a legal co-mother who carried
+  a child conceived with her partner's egg;
+- a donor who did, which makes them a traditional surrogate;
+- a surrogate, who always did. "Surrogate" means only a gestational carrier
+  with no genetic tie who does not raise the child.
+
+The canvas draws no letters for these roles; a screen reader hears each
+person's role ("egg or sperm donor", "surrogate") instead.
+
+A child has at most one carrier, and nobody recorded male at birth carried a
+pregnancy (`couldCarryPregnancy`). Every form and the connect menu offer
+"carried the pregnancy" for any kind of parent, and show an answer that would
+record a second carrier as unavailable, naming who carried the child.
+
+## Twins
+
+Twins are recorded as a relationship kind on an undirected link between each
+pair: `identicalTwin`, `fraternalTwin` or `unknownZygosityTwin` (read into
+`Family.twins`, never into the parent or partner links). Identical twins grow
+from one fertilised egg, so they have the same genetic parents
+(`identicalTwinsPossible`): the forms show "identical" as unavailable for two
+siblings whose recorded genetic parents differ, and a twin added in the
+sibling form whose genetic parents would differ is recorded as not known to
+be identical. Twins are not checked against who carried them, and the
+genetics engine does not yet use identical twins.
+
 ## Why
 
 A separate gamete question (as schema 8 had, on each parent relationship) is a

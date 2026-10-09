@@ -1,7 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
+import { alignPedigree } from '../alignPedigree';
 import { computeConnectors } from '../connectors';
-import type { ParentConnection, PedigreeLayout, ScalingParams } from '../types';
+import type {
+  LineSegment,
+  ParentConnection,
+  PedigreeInput,
+  PedigreeLayout,
+  ScalingParams,
+} from '../types';
+
+/** Where an auxiliary line ends: on the child, or on the bar it joins. */
+const endOf = (line: { points: { x: number; y: number }[] }) =>
+  line.points[line.points.length - 1]!;
 
 describe('computeConnectors', () => {
   const scaling: ScalingParams = {
@@ -67,7 +78,7 @@ describe('computeConnectors', () => {
     expect(connectors.parentChildLines[0]!.edgeType).toBe('biological');
   });
 
-  it('produces branched parent links (4 segments) when branch > 0', () => {
+  it('draws a parent link as one straight drop when the bar is joined under the descent', () => {
     const connectors = computeConnectors(
       layout,
       scaling,
@@ -76,12 +87,67 @@ describe('computeConnectors', () => {
       0.6,
     );
     const pc = connectors.parentChildLines[0]!;
-    expect(pc.parentLink.length).toBe(4);
+    expect(pc.parentLink).toEqual([
+      { type: 'line', x1: 1, y1: 0.25, x2: 1, y2: 0.75 },
+    ]);
   });
 
-  it('produces 2 parent link segments when branch = 0', () => {
+  it('draws an offset parent link as a drop, a level run and a drop, with no zero-length piece', () => {
+    // A lone child under the left parent of a couple centred on x = 1.
+    const offsetLayout: PedigreeLayout = {
+      ...layout,
+      n: [2, 1],
+      nid: [
+        [1, 2, 0],
+        [3, 0, 0],
+      ],
+      pos: [
+        [0, 2, 0],
+        [0, 0, 0],
+      ],
+      fam: [
+        [0, 0, 0],
+        [1, 0, 0],
+      ],
+    };
     const connectors = computeConnectors(
-      layout,
+      offsetLayout,
+      scaling,
+      parents,
+      undefined,
+      0.6,
+    );
+    const pc = connectors.parentChildLines[0]!;
+    expect(pc.parentLink).toHaveLength(3);
+    const [drop, run, foot] = pc.parentLink as [
+      LineSegment,
+      LineSegment,
+      LineSegment,
+    ];
+    expect(drop.x1).toBe(drop.x2);
+    expect(run.y1).toBe(run.y2);
+    expect(foot.x1).toBe(foot.x2);
+    // The run lies between the parents' row and the sibling bar.
+    expect(run.y1).toBeGreaterThan(0.5);
+    expect(run.y1).toBeLessThan(0.75);
+    // A lone child has no sibling bar to draw.
+    expect(pc.siblingBar).toBeUndefined();
+    for (const segment of [...pc.parentLink, ...pc.uplines]) {
+      expect(
+        Math.hypot(segment.x2 - segment.x1, segment.y2 - segment.y1),
+      ).toBeGreaterThan(0);
+    }
+  });
+
+  it('produces 2 parent link segments, the shoulder diagonal, when branch = 0', () => {
+    const connectors = computeConnectors(
+      {
+        ...layout,
+        pos: [
+          [0, 2, 0],
+          [1.5, 2.5, 3.5],
+        ],
+      },
       scaling,
       parents,
       undefined,
@@ -89,6 +155,7 @@ describe('computeConnectors', () => {
     );
     const pc = connectors.parentChildLines[0]!;
     expect(pc.parentLink.length).toBe(2);
+    expect(pc.parentLink[1]!.x1).not.toBe(pc.parentLink[1]!.x2);
   });
 
   it('group connector double flag reflects consanguinity', () => {
@@ -180,7 +247,7 @@ describe('computeConnectors', () => {
     const connectors = computeConnectors(donorLayout, scaling, donorParents);
     expect(connectors.auxiliaryLines.length).toBe(1);
     expect(connectors.auxiliaryLines[0]!.edgeType).toBe('donor');
-    expect(connectors.auxiliaryLines[0]!.segment).toBeDefined();
+    expect(connectors.auxiliaryLines[0]!.points.length).toBeGreaterThan(1);
   });
 
   it('routes parent links to specific couple midpoints in multi-partner layouts', () => {
@@ -391,7 +458,7 @@ describe('computeConnectors', () => {
     );
     expect(connectors.auxiliaryLines.length).toBe(1);
     // Sibling bar y = childLevel(1) - legh(0.25) = 0.75
-    expect(connectors.auxiliaryLines[0]!.segment.y2).toBeCloseTo(0.75, 5);
+    expect(endOf(connectors.auxiliaryLines[0]!).y).toBeCloseTo(0.75, 5);
   });
 
   it('auxiliary connector connects directly to child when donor is parent of only SOME siblings', () => {
@@ -444,8 +511,8 @@ describe('computeConnectors', () => {
     );
     expect(connectors.auxiliaryLines.length).toBe(2);
     // Each connects directly to child: y = childLevel(1) + boxh/2(0.25) = 1.25
-    expect(connectors.auxiliaryLines[0]!.segment.y2).toBeCloseTo(1.25, 5);
-    expect(connectors.auxiliaryLines[1]!.segment.y2).toBeCloseTo(1.25, 5);
+    expect(endOf(connectors.auxiliaryLines[0]!).y).toBeCloseTo(1.25, 5);
+    expect(endOf(connectors.auxiliaryLines[1]!).y).toBeCloseTo(1.25, 5);
   });
 
   it('auxiliary connector connects directly to child when single child in family', () => {
@@ -491,7 +558,7 @@ describe('computeConnectors', () => {
     );
     expect(connectors.auxiliaryLines.length).toBe(1);
     // Single child: connects directly to child node y = 1 + 0.25 = 1.25
-    expect(connectors.auxiliaryLines[0]!.segment.y2).toBeCloseTo(1.25, 5);
+    expect(endOf(connectors.auxiliaryLines[0]!).y).toBeCloseTo(1.25, 5);
   });
 
   it('social parent connector connects to sibling bar when social parent of ALL siblings', () => {
@@ -549,7 +616,7 @@ describe('computeConnectors', () => {
     );
     expect(bioAux.length).toBe(1);
     // Connects to sibling bar y = 1 - 0.25 = 0.75
-    expect(bioAux[0]!.segment.y2).toBeCloseTo(0.75, 5);
+    expect(endOf(bioAux[0]!).y).toBeCloseTo(0.75, 5);
   });
 
   it('social parent connector connects directly to child when social parent of only SOME siblings', () => {
@@ -606,8 +673,8 @@ describe('computeConnectors', () => {
     );
     expect(bioAux.length).toBe(2);
     // Each connects directly to child: y = 1 + 0.25 = 1.25
-    expect(bioAux[0]!.segment.y2).toBeCloseTo(1.25, 5);
-    expect(bioAux[1]!.segment.y2).toBeCloseTo(1.25, 5);
+    expect(endOf(bioAux[0]!).y).toBeCloseTo(1.25, 5);
+    expect(endOf(bioAux[1]!).y).toBeCloseTo(1.25, 5);
   });
 
   it('slashSide is set correctly for inactive group lines', () => {
@@ -749,10 +816,12 @@ describe('computeConnectors', () => {
       activePairs,
     );
     const pc = connectors.parentChildLines[0]!;
-    // Should produce standard branched parent link (4 segments), not diagonal joins
-    expect(pc.parentLink.length).toBe(4);
+    // A standard parent link, straight down to the child below the couple's
+    // midpoint, not diagonal joins
+    expect(pc.parentLink).toHaveLength(1);
     // Parent link should descend from couple midpoint (both biological)
     expect(pc.parentLink[0]!.x1).toBeCloseTo(1, 1);
+    expect(pc.parentLink[0]!.x2).toBeCloseTo(1, 1);
   });
 
   describe('node id attachment (id parameter)', () => {
@@ -880,5 +949,233 @@ describe('computeConnectors', () => {
       expect(connectors.parentChildLines[0]!.parentIds).toBeUndefined();
       expect(connectors.parentChildLines[0]!.uplineChildIds).toBeUndefined();
     });
+  });
+
+  it('joins a sibling who adopted the child by a line below the row, into the child from below', () => {
+    // Jade (2) adopted her sibling (3), who stays in their birth sibship, so
+    // she sits on the child's row.
+    const sameRowLayout: PedigreeLayout = {
+      n: [2, 2],
+      nid: [
+        [0, 1],
+        [2, 3],
+      ],
+      pos: [
+        [0.5, 1.5],
+        [0, 2],
+      ],
+      fam: [
+        [0, 0],
+        [1, 1],
+      ],
+      group: [
+        [1, 0],
+        [0, 0],
+      ],
+      twins: null,
+      groupMember: [
+        [false, false],
+        [false, false],
+      ],
+    };
+    const sameRowParents: ParentConnection[][] = [
+      [],
+      [],
+      [
+        { parentIndex: 0, edgeType: 'biological' },
+        { parentIndex: 1, edgeType: 'biological' },
+      ],
+      [
+        { parentIndex: 0, edgeType: 'biological' },
+        { parentIndex: 1, edgeType: 'biological' },
+        { parentIndex: 2, edgeType: 'adoptive' },
+      ],
+    ];
+    const connectors = computeConnectors(
+      sameRowLayout,
+      scaling,
+      sameRowParents,
+    );
+    expect(connectors.auxiliaryLines).toHaveLength(1);
+    expect(connectors.auxiliaryLines[0]!.edgeType).toBe('adoptive');
+    const { points } = connectors.auxiliaryLines[0]!;
+    const rowBottom = 1 + scaling.boxHeight;
+    // No level piece along the row, where it would read as a partnership.
+    for (let k = 1; k < points.length; k++) {
+      if (Math.abs(points[k]!.y - points[k - 1]!.y) < 1e-9) {
+        expect(points[k]!.y).toBeGreaterThan(rowBottom);
+      }
+    }
+    // It ends in the child, coming up from below, off their centre.
+    const last = endOf(connectors.auxiliaryLines[0]!);
+    const beforeLast = points[points.length - 2]!;
+    expect(last.y).toBeCloseTo(1 + scaling.boxHeight / 2, 5);
+    expect(beforeLast.x).toBeCloseTo(last.x, 5);
+    expect(beforeLast.y).toBeGreaterThan(last.y);
+    expect(Math.abs(last.x - 2)).toBeGreaterThan(0.01);
+  });
+});
+
+describe('consanguinity follows genetic parents only', () => {
+  const scaling: ScalingParams = {
+    boxWidth: 0.5,
+    boxHeight: 0.5,
+    legHeight: 0.25,
+    hScale: 1,
+    vScale: 1,
+  };
+  const bio = (parentIndex: number): ParentConnection => ({
+    parentIndex,
+    edgeType: 'biological',
+  });
+  const social = (parentIndex: number): ParentConnection => ({
+    parentIndex,
+    edgeType: 'social',
+  });
+  const donor = (parentIndex: number): ParentConnection => ({
+    parentIndex,
+    edgeType: 'donor',
+  });
+  const adoptive = (parentIndex: number): ParentConnection => ({
+    parentIndex,
+    edgeType: 'adoptive',
+  });
+
+  // The partnership line between two people, drawn from the layout.
+  const partnershipBetween = (ped: PedigreeInput, a: number, b: number) => {
+    const layout = alignPedigree(ped);
+    const pairs = new Set(
+      (ped.partners ?? []).map(({ partnerIndex1: x, partnerIndex2: y }) =>
+        [x, y].toSorted((m, n) => m - n).join(','),
+      ),
+    );
+    const { groupLines } = computeConnectors(
+      layout,
+      scaling,
+      ped.parents,
+      pairs,
+      undefined,
+      undefined,
+      undefined,
+      ped.id,
+      pairs,
+    );
+    const line = groupLines.find(
+      (g) =>
+        g.partnerIds?.includes(ped.id[a]!) && g.partnerIds.includes(ped.id[b]!),
+    );
+    expect(line, `${ped.id[a]} – ${ped.id[b]}`).toBeDefined();
+    return line!;
+  };
+
+  it('draws step-siblings who share only a social parent with a single line', () => {
+    // karen → you; steve, karen's partner, is your social parent and jake's
+    // biological one. You and jake are partners.
+    const ped: PedigreeInput = {
+      id: ['you', 'karen', 'steve', 'jake'],
+      parents: [[bio(1), social(2)], [], [], [bio(2)]],
+      partners: [
+        { partnerIndex1: 1, partnerIndex2: 2, isActive: true },
+        { partnerIndex1: 0, partnerIndex2: 3, isActive: true },
+      ],
+    };
+    const line = partnershipBetween(ped, 0, 3);
+    expect(line.double).toBe(false);
+    expect(line.doubleSegment).toBeUndefined();
+  });
+
+  it('draws adoptive siblings with a single line', () => {
+    // mum + dad adopted you and biologically had sam; you and sam are partners.
+    const ped: PedigreeInput = {
+      id: ['you', 'mum', 'dad', 'sam'],
+      parents: [[adoptive(1), adoptive(2)], [], [], [bio(1), bio(2)]],
+      partners: [
+        { partnerIndex1: 1, partnerIndex2: 2, isActive: true },
+        { partnerIndex1: 0, partnerIndex2: 3, isActive: true },
+      ],
+    };
+    const line = partnershipBetween(ped, 0, 3);
+    expect(line.double).toBe(false);
+  });
+
+  it('still draws first cousins through an adopted cousin’s birth parent with a double line', () => {
+    // gm + gd → aunt, mum. mum → you. aunt is the birth parent of cousin, whom
+    // x and y adopted (the adapter turns aunt's edge into a donor edge). You
+    // and cousin are partners.
+    const ped: PedigreeInput = {
+      id: ['gm', 'gd', 'aunt', 'mum', 'you', 'x', 'y', 'cousin'],
+      parents: [
+        [],
+        [],
+        [bio(0), bio(1)],
+        [bio(0), bio(1)],
+        [bio(3)],
+        [],
+        [],
+        [donor(2), adoptive(5), adoptive(6)],
+      ],
+      partners: [
+        { partnerIndex1: 0, partnerIndex2: 1, isActive: true },
+        { partnerIndex1: 5, partnerIndex2: 6, isActive: true },
+        { partnerIndex1: 4, partnerIndex2: 7, isActive: true },
+      ],
+    };
+    const line = partnershipBetween(ped, 4, 7);
+    expect(line.double).toBe(true);
+    expect(line.doubleSegment).toBeDefined();
+  });
+
+  it('draws a routed partnership between step-siblings with a single line', () => {
+    // As the step-siblings above, but the two sit apart, so their
+    // partnership is routed above the row rather than read from the layout.
+    const layout: PedigreeLayout = {
+      n: [2, 3],
+      nid: [
+        [1, 2, 0],
+        [0, 4, 3],
+      ],
+      pos: [
+        [0.5, 1.5, 0],
+        [0, 1, 2],
+      ],
+      fam: [
+        [0, 0, 0],
+        [1, 0, 1],
+      ],
+      group: [
+        [1, 0, 0],
+        [0, 0, 0],
+      ],
+      twins: null,
+      groupMember: [
+        [false, false, false],
+        [false, false, false],
+      ],
+    };
+    const parents: ParentConnection[][] = [
+      [bio(1), social(2)],
+      [],
+      [],
+      [bio(2)],
+      [],
+    ];
+    const ids = ['you', 'karen', 'steve', 'jake', 'friend'];
+    const { groupLines } = computeConnectors(
+      layout,
+      scaling,
+      parents,
+      new Set(['0,3', '1,2']),
+      undefined,
+      undefined,
+      undefined,
+      ids,
+      new Set(['0,3', '1,2']),
+    );
+    const routed = groupLines.find(
+      (g) => g.partnerIds?.includes('you') && g.partnerIds.includes('jake'),
+    );
+    expect(routed).toBeDefined();
+    expect(routed!.double).toBe(false);
+    expect(routed!.doubleSegment).toBeUndefined();
   });
 });

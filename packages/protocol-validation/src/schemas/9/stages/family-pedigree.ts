@@ -172,6 +172,12 @@ export const EdgeConfigurationSchema = z.strictObject({
     ownedOptions: 'pedigreeRelationship',
   }),
   // Boolean attribute on a parent edge: this parent carried the pregnancy.
+  // Any kind of parent but a partner may have carried it: a biological,
+  // adoptive or social parent who carried the child (a legal co-mother who
+  // gave birth is an adoptive or social parent who carried), a donor who
+  // carried (a traditional surrogate), or a surrogate, who always did. A
+  // child has at most one parent who carried them. Never set on a partner or
+  // twin edge.
   gestationalCarrierAttribute: entityAttributeReference({
     subject: { sibling: 'type', entity: 'edge' },
     usage: 'unvalidatedAttribute',
@@ -205,15 +211,6 @@ export const PEDIGREE_PERSON_ARGUMENTS = {
   name: { kind: 'text' },
 } as const satisfies MessageArguments;
 
-/**
- * What the tracker's entry for a person missing biological parents may use:
- * the person, and how many parents are missing (one or two).
- */
-export const PEDIGREE_PARENTS_ARGUMENTS = {
-  ...PEDIGREE_PERSON_ARGUMENTS,
-  missing: { kind: 'plural' },
-} as const satisfies MessageArguments;
-
 const personMessage = () =>
   localizedMessage(nonBlankText(), { arguments: PEDIGREE_PERSON_ARGUMENTS });
 
@@ -226,9 +223,7 @@ const personMessage = () =>
  */
 const CompletenessTextSchema = z.strictObject({
   parents: z.strictObject({
-    listItem: localizedMessage(nonBlankText(), {
-      arguments: PEDIGREE_PARENTS_ARGUMENTS,
-    }),
+    listItem: personMessage(),
   }),
   siblings: z.strictObject({
     listItem: personMessage(),
@@ -338,6 +333,9 @@ export const PEDIGREE_RELATIVE_TERMS = [
   'halfSister',
   'halfBrother',
   'halfSibling',
+  'adoptiveSister',
+  'adoptiveBrother',
+  'adoptiveSibling',
   'stepsister',
   'stepbrother',
   'stepsibling',
@@ -355,6 +353,9 @@ export const PEDIGREE_RELATIVE_TERMS = [
   'greatGrandmother',
   'greatGrandfather',
   'greatGrandparent',
+  'stepGrandmother',
+  'stepGrandfather',
+  'stepGrandparent',
   'granddaughter',
   'grandson',
   'grandchild',
@@ -397,6 +398,22 @@ const TWO_PEOPLE_ARGUMENTS = {
   second: TEXT,
 } as const satisfies MessageArguments;
 
+/** What a message about a family member and one of their twins may use:
+ * whether either is the participant. */
+const TWIN_PAIR_ARGUMENTS = {
+  who: { kind: 'select', cases: ['personIsYou', 'twinIsYou'] },
+  name: TEXT,
+  twin: TEXT,
+} as const satisfies MessageArguments;
+
+/** What a message about who carried a child may use: whether the person who
+ * carried, or the child, is the participant. */
+const CARRIER_ARGUMENTS = {
+  who: { kind: 'select', cases: ['carrierIsYou', 'childIsYou'] },
+  carrier: TEXT,
+  child: TEXT,
+} as const satisfies MessageArguments;
+
 /**
  * What each of the Family Pedigree's wording settings with arguments may use,
  * by setting. A `select` argument lists the cases the message chooses between
@@ -410,6 +427,7 @@ export const PEDIGREE_WORDING_ARGUMENTS = {
     count: TEXT,
     ...PEDIGREE_PERSON_ARGUMENTS,
   },
+  changeWouldCutOff: { count: PLURAL, names: TEXT },
   connectParent: {
     parentIsYou: SELECT_TRUE,
     parent: TEXT,
@@ -420,17 +438,10 @@ export const PEDIGREE_WORDING_ARGUMENTS = {
   connectQuestion: TWO_PEOPLE_ARGUMENTS,
   disconnectConfirmTitle: TWO_PEOPLE_ARGUMENTS,
   disconnectWouldCutOff: { count: PLURAL, names: TEXT },
-  panelTitle: {
-    relation: {
-      kind: 'select',
-      cases: ['edit', 'parent', 'sibling', 'partner'],
-    },
-    ...PEDIGREE_PERSON_ARGUMENTS,
-  },
   generatedLabelOf: {
     relation: {
       kind: 'select',
-      cases: ['partner', 'parent', 'sibling', 'owner'],
+      cases: ['partner', 'formerPartner', 'parent', 'sibling', 'owner'],
     },
     isYou: SELECT_TRUE,
     term: TEXT,
@@ -438,12 +449,19 @@ export const PEDIGREE_WORDING_ARGUMENTS = {
     owner: TEXT,
   },
   missingDetailsList: { details: TEXT },
+  panelTitle: {
+    relation: {
+      kind: 'select',
+      cases: ['edit', 'parent', 'sibling', 'partner'],
+    },
+    ...PEDIGREE_PERSON_ARGUMENTS,
+  },
   parentCarriedLabel: {
     named: SELECT_TRUE,
     parentIsYou: SELECT_TRUE,
     parent: TEXT,
   },
-  parentKindBiologicalCarrier: { parentKind: TEXT },
+  parentKindCarrier: { parentKind: TEXT },
   parentLinkKindLabel: {
     parentIsYou: SELECT_TRUE,
     personIsYou: SELECT_TRUE,
@@ -461,18 +479,53 @@ export const PEDIGREE_WORDING_ARGUMENTS = {
     names: TEXT,
   },
   removeConfirmTitle: { name: TEXT },
-  sexRuledOutHint: { isYou: SELECT_TRUE },
+  sharedDonorsLabel: PEDIGREE_PERSON_ARGUMENTS,
   sharedParentCountLabel: PEDIGREE_PERSON_ARGUMENTS,
   sharedParentEggOnly: {
     parent: { kind: 'select', cases: ['egg'] },
     framing: { kind: 'select', cases: ['gamete'] },
   },
-  sharedParentUnshown: PEDIGREE_PERSON_ARGUMENTS,
+  siblingTwinLabel: PEDIGREE_PERSON_ARGUMENTS,
   stillTogetherLabel: {
     named: SELECT_TRUE,
     personIsYou: SELECT_TRUE,
     partner: TEXT,
     partnerIsYou: SELECT_TRUE,
+  },
+  twinsLabel: PEDIGREE_PERSON_ARGUMENTS,
+  twinZygosityLabel: TWIN_PAIR_ARGUMENTS,
+  unavailableAlreadyConnected: TWO_PEOPLE_ARGUMENTS,
+  unavailableAncestor: {
+    who: { kind: 'select', cases: ['parentIsYou', 'childIsYou'] },
+    parent: TEXT,
+    child: TEXT,
+  },
+  unavailableBothSameSex: { ...TWO_PEOPLE_ARGUMENTS, sex: TEXT },
+  unavailableCannotCarry: {
+    who: { kind: 'select', cases: ['you', 'this'] },
+    name: TEXT,
+    sex: TEXT,
+  },
+  unavailableCarried: {
+    who: { kind: 'select', cases: ['personIsYou', 'childIsYou'] },
+    child: TEXT,
+    sex: TEXT,
+  },
+  unavailableCarrierChoice: CARRIER_ARGUMENTS,
+  unavailableCarrierRecorded: CARRIER_ARGUMENTS,
+  unavailableGeneticParentsFull: {
+    who: { kind: 'select', cases: ['childIsYou', 'includesYou'] },
+    child: TEXT,
+    first: TEXT,
+    second: TEXT,
+  },
+  unavailableIdenticalTwin: TWIN_PAIR_ARGUMENTS,
+  unavailableIdenticalTwinNew: PEDIGREE_PERSON_ARGUMENTS,
+  unavailableSameSexGeneticParent: {
+    who: { kind: 'select', cases: ['coParentIsYou', 'childIsYou'] },
+    coParent: TEXT,
+    child: TEXT,
+    sex: TEXT,
   },
 } as const satisfies Readonly<Record<string, MessageArguments>>;
 
@@ -505,10 +558,13 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
   ),
   carrierLabel: plainWording(),
   carrierUnknown: plainWording(),
+  changeWouldCutOff: argumentWording('changeWouldCutOff'),
   childKindAdoptive: plainWording(),
   childKindBiological: plainWording(),
-  childKindSocial: plainWording(),
+  childKindDonor: plainWording(),
   childKindLabel: plainWording(),
+  childKindSocial: plainWording(),
+  childKindSurrogate: plainWording(),
   connectHint: plainWording(),
   connectParent: argumentWording('connectParent'),
   connectPartners: argumentWording('connectPartners'),
@@ -518,7 +574,6 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
   disconnectHint: plainWording(),
   disconnectWouldCutOff: argumentWording('disconnectWouldCutOff'),
   dontKnow: plainWording(),
-  panelTitle: argumentWording('panelTitle'),
   framingChoiceDescription: plainWording().optional(),
   framingChoiceTitle: plainWording().optional(),
   genderIdentityLabel: plainWording().optional(),
@@ -527,8 +582,9 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
   otherParentLabel: plainWording(),
   otherParentNone: plainWording(),
   otherParentUnknown: plainWording(),
+  panelTitle: argumentWording('panelTitle'),
   parentCarriedLabel: argumentWording('parentCarriedLabel'),
-  parentKindBiologicalCarrier: argumentWording('parentKindBiologicalCarrier'),
+  parentKindCarrier: argumentWording('parentKindCarrier'),
   parentKindLabel: plainWording(),
   parentLinkKindLabel: argumentWording('parentLinkKindLabel'),
   parentPartnerLabel: plainWording(),
@@ -537,13 +593,40 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
   removeConfirmDescription: argumentWording('removeConfirmDescription'),
   removeConfirmTitle: argumentWording('removeConfirmTitle'),
   sexAssignedAtBirthLabel: plainWording(),
-  sexRuledOutHint: argumentWording('sexRuledOutHint'),
+  sharedDonorsLabel: argumentWording('sharedDonorsLabel'),
   sharedParentCountBoth: plainWording(),
   sharedParentCountLabel: argumentWording('sharedParentCountLabel'),
   sharedParentEggOnly: argumentWording('sharedParentEggOnly'),
-  sharedParentUnshown: argumentWording('sharedParentUnshown'),
+  siblingBiologicalParentLabel: plainWording(),
   siblingKindLabel: plainWording(),
+  siblingTwinFraternal: plainWording(),
+  siblingTwinHint: plainWording(),
+  siblingTwinIdentical: plainWording(),
+  siblingTwinLabel: argumentWording('siblingTwinLabel'),
+  siblingTwinNo: plainWording(),
+  siblingTwinUnknown: plainWording(),
   stillTogetherLabel: argumentWording('stillTogetherLabel'),
+  twinsHint: plainWording(),
+  twinsLabel: argumentWording('twinsLabel'),
+  twinZygosityLabel: argumentWording('twinZygosityLabel'),
+  unavailableAlreadyConnected: argumentWording('unavailableAlreadyConnected'),
+  unavailableAncestor: argumentWording('unavailableAncestor'),
+  unavailableBothSameSex: argumentWording('unavailableBothSameSex'),
+  unavailableCannotCarry: argumentWording('unavailableCannotCarry'),
+  unavailableCarried: argumentWording('unavailableCarried'),
+  unavailableCarrierChoice: argumentWording('unavailableCarrierChoice'),
+  unavailableCarrierRecorded: argumentWording('unavailableCarrierRecorded'),
+  unavailableGeneticParentsFull: argumentWording(
+    'unavailableGeneticParentsFull',
+  ),
+  unavailableIdenticalTwin: argumentWording('unavailableIdenticalTwin'),
+  unavailableIdenticalTwinNew: argumentWording('unavailableIdenticalTwinNew'),
+  unavailableSameSexGeneticParent: argumentWording(
+    'unavailableSameSexGeneticParent',
+  ),
+  zygosityFraternal: plainWording(),
+  zygosityIdentical: plainWording(),
+  zygosityUnknown: plainWording(),
   you: plainWording(),
   save: plainWording(),
   connectTool: plainWording(),

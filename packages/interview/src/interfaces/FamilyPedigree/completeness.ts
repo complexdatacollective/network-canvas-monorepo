@@ -10,48 +10,40 @@ import { type Family, isGeneticKind, type Person } from './model';
  * Something the participant still needs to record about one person before
  * their family is complete enough to continue.
  *
- * - `parents`: the person has fewer than two biological parents (`missing` of
- *   them). Every person has two, so a parent the participant knows nothing
- *   about is still added.
+ * - `parents`: the person has no biological parents recorded. Every person
+ *   has two, so a parent the participant knows nothing about is still added.
+ *   Anyone with one is given an unnamed stand-in for the other (the stand-in
+ *   rule, `planStandIns`), whose details are asked for instead.
  * - `siblings` / `children`: none are recorded and the participant has not
  *   said there are none, or that they don't know.
  * - `details`: some of the person's required details are not given.
  */
-export type CompletenessItem =
-  | { kind: 'parents'; personId: string; missing: number }
-  | { kind: 'siblings' | 'children' | 'details'; personId: string };
+export type CompletenessItem = {
+  kind: 'parents' | 'siblings' | 'children' | 'details';
+  personId: string;
+};
 
-/** What an item asks for, the same however many of it are still missing:
- * a person's parents, siblings, children or details. */
+/** What a list of recommendations showed: the items in it, by what each
+ * asks for (`completenessItemKey`). */
+export type ShownRecommendations = ReadonlySet<string>;
+
+/** What an item asks for: a person's parents, siblings, children or
+ * details. */
 const completenessItemKey = (item: CompletenessItem) =>
   `${item.kind}:${item.personId}`;
 
-/** How much of an item is still missing: the parents still to add, or one. */
-const amountMissing = (item: CompletenessItem) =>
-  item.kind === 'parents' ? item.missing : 1;
-
-/** What a list of recommendations showed: how much of each item was
- * missing when it was shown. */
-export type ShownRecommendations = ReadonlyMap<string, number>;
-
 export const recommendationsShown = (
   items: readonly CompletenessItem[],
-): ShownRecommendations =>
-  new Map(
-    items.map((item) => [completenessItemKey(item), amountMissing(item)]),
-  );
+): ShownRecommendations => new Set(items.map(completenessItemKey));
 
 /** Whether a list already shown covers everything still outstanding: every
- * item was in it, and none has grown since (a person who has lost a parent
- * now needs more than the list asked for). */
+ * item was in it. An item never asks for more than it did when shown: a
+ * person's parents are asked for only while they have none, and anyone
+ * with one recorded keeps two, a stand-in for any not recorded. */
 export const recommendationsCover = (
   shown: ShownRecommendations,
   items: readonly CompletenessItem[],
-) =>
-  items.every((item) => {
-    const before = shown.get(completenessItemKey(item));
-    return before !== undefined && amountMissing(item) <= before;
-  });
+) => items.every((item) => shown.has(completenessItemKey(item)));
 
 export type CompletenessProgress = {
   /** What is still needed, about people already in the family. */
@@ -220,11 +212,10 @@ export function evaluateCompleteness(
         else total += 1;
         visit(parentId ?? null, requirements.parents, distance + 1);
       }
-      if (personId && parents.length < 2) {
-        found.push({
-          item: { kind: 'parents', personId, missing: 2 - parents.length },
-          distance,
-        });
+      // Someone with one biological parent is given a stand-in for the other
+      // (`planStandIns`), whose details are asked for in their own right.
+      if (personId && parents.length === 0) {
+        found.push({ item: { kind: 'parents', personId }, distance });
       }
     }
 
