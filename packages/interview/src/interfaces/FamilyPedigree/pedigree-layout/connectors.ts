@@ -25,6 +25,10 @@ import { areConsanguineous } from './utils';
 
 const AUXILIARY_EDGE_TYPES = new Set<PedigreeEdgeType>(['donor', 'surrogate']);
 
+/** The height of the question mark between twins of unknown zygosity, as a
+ * fraction of a symbol's height. */
+const TWIN_LABEL_SIZE = 0.3;
+
 function isPrimaryEdge(edgeType: PedigreeEdgeType): boolean {
   return !AUXILIARY_EDGE_TYPES.has(edgeType);
 }
@@ -375,60 +379,6 @@ export function computeConnectors(
       });
     }
 
-    // Twin indicators
-    if (layout.twins) {
-      for (let k = 0; k < whoIdx.length; k++) {
-        // The twin bar/label joins siblings k and k+1, who share a twin
-        // group target. Resolve their node ids so the connector can be
-        // dimmed by node membership in the focal view.
-        const twinColumns = [whoIdx[k], whoIdx[k + 1]];
-        const twinIds = id
-          ? twinColumns
-              .map((col) =>
-                col !== undefined ? layout.nid[i]?.[col] : undefined,
-              )
-              .filter((idx) => idx !== undefined)
-              .map((idx) => id[idx] ?? '')
-          : undefined;
-
-        if (layout.twins[i]?.[whoIdx[k]!] === 1) {
-          const temp1 = (layout.pos[i]![whoIdx[k]!]! + target[k]!) / 2;
-          const temp2 = (layout.pos[i]![whoIdx[k + 1]!]! + target[k]!) / 2;
-          twinIndicators.push({
-            type: 'twin',
-            code: 1,
-            segment: {
-              type: 'line',
-              x1: temp1,
-              y1: i - legh / 2,
-              x2: temp2,
-              y2: i - legh / 2,
-            },
-            ...(twinIds ? { twinIds } : {}),
-          });
-        }
-
-        if (layout.twins[i]?.[whoIdx[k]!] === 3) {
-          const temp1 = (layout.pos[i]![whoIdx[k]!]! + target[k]!) / 2;
-          const temp2 = (layout.pos[i]![whoIdx[k + 1]!]! + target[k]!) / 2;
-          twinIndicators.push({
-            type: 'twin',
-            code: 3,
-            label: { x: (temp1 + temp2) / 2, y: i - legh / 2 },
-            ...(twinIds ? { twinIds } : {}),
-          });
-        }
-
-        if (layout.twins[i]?.[whoIdx[k]!] === 2) {
-          twinIndicators.push({
-            type: 'twin',
-            code: 2,
-            ...(twinIds ? { twinIds } : {}),
-          });
-        }
-      }
-    }
-
     // Sibling bar
     const minTarget = Math.min(...target);
     const maxTarget = Math.max(...target);
@@ -744,6 +694,68 @@ export function computeConnectors(
           ...(id
             ? { parentIds: parentIdsForFamily, uplineChildIds: [childIdOf(j)] }
             : {}),
+        });
+      }
+    }
+  }
+
+  // --- Twin marks ---
+  // A twin code is kept at the left twin's column, and the other twin sits
+  // in the next column. The marks are placed from the two twins' own lines
+  // up, whichever sibships those lines belong to (twins with different
+  // recorded parents hang from different bars).
+  if (layout.twins) {
+    const allUplines = parentChildLines.flatMap((line) => line.uplines);
+    const markY = (i: number) => i - legh / 2;
+    // Where the twin's line up crosses the height of the marks: an upline
+    // starts at the centre of the child's symbol. A twin with no line up
+    // (no recorded parent drawn) is marked straight above their symbol.
+    const crossingX = (i: number, col: number) => {
+      const x = layout.pos[i]![col]!;
+      const upline = allUplines.find(
+        (line) =>
+          Math.abs(line.x1 - x) < 1e-9 &&
+          Math.abs(line.y1 - (i + boxh / 2)) < 1e-9,
+      );
+      if (!upline || Math.abs(upline.y2 - upline.y1) < 1e-9) return x;
+      const t = (markY(i) - upline.y1) / (upline.y2 - upline.y1);
+      return upline.x1 + Math.max(0, Math.min(1, t)) * (upline.x2 - upline.x1);
+    };
+    for (let i = 0; i < maxlev; i++) {
+      for (let col = 0; col + 1 < (layout.n[i] ?? 0); col++) {
+        const code = layout.twins[i]?.[col];
+        if (code !== 1 && code !== 2 && code !== 3) continue;
+        // Resolve the twins' node ids so the mark can be dimmed by node
+        // membership in the focal view.
+        const twinIds = id
+          ? [col, col + 1].map((c) => id[layout.nid[i]![c]!] ?? '')
+          : undefined;
+        const [leftX, rightX] = [crossingX(i, col), crossingX(i, col + 1)];
+        const y = markY(i);
+        twinIndicators.push({
+          type: 'twin',
+          code,
+          // Identical twins: a bar ending on each twin's line.
+          ...(code === 1
+            ? {
+                segment: {
+                  type: 'line',
+                  x1: leftX,
+                  y1: y,
+                  x2: rightX,
+                  y2: y,
+                } satisfies LineSegment,
+              }
+            : {}),
+          // Zygosity unknown: a question mark between their lines, sized
+          // with the symbols.
+          ...(code === 3
+            ? {
+                label: { x: (leftX + rightX) / 2, y },
+                labelSize: TWIN_LABEL_SIZE * boxh,
+              }
+            : {}),
+          ...(twinIds ? { twinIds } : {}),
         });
       }
     }

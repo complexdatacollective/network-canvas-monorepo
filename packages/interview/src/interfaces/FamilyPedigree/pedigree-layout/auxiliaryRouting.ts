@@ -417,9 +417,23 @@ export function routeLine(
 ): { points: Point[]; endX: number } {
   const { boxWidth: boxw, boxHeight: boxh } = scene;
   const start = { x: from.x, y: from.layer + boxh / 2 };
+  // Every line is drawn: with no place offered, a line ends at the middle of
+  // the child's top edge, or of the bar.
+  const attachments =
+    end.kind === 'child' && end.attachments.length === 0
+      ? [end.x]
+      : end.kind === 'child'
+        ? end.attachments
+        : [];
+  const joins =
+    end.kind === 'bar' && end.joins.length === 0
+      ? [(end.bar.x1 + end.bar.x2) / 2]
+      : end.kind === 'bar'
+        ? end.joins
+        : [];
   const targets =
     end.kind === 'child'
-      ? end.attachments.map((x) => {
+      ? attachments.map((x) => {
           // Into the child from above, down to their centre. A straight line
           // ends where it meets the symbol, whatever its shape: a circle, or
           // a diamond (a square turned and scaled to 0.85), at this distance
@@ -437,7 +451,7 @@ export function routeLine(
             tail: [{ x, y: end.layer + boxh / 2 }],
           };
         })
-      : end.joins.map((x) => ({
+      : joins.map((x) => ({
           x,
           entry: { x, y: end.bar.y1 },
           meet: { x, y: end.bar.y1 },
@@ -559,7 +573,13 @@ export function routeLine(
       best = { points, endX: candidate.endX, cost };
     }
   }
-  return best ?? { points: [start], endX: start.x };
+  if (best) return { points: best.points, endX: best.endX };
+  // Never a lone point, which would draw nothing.
+  const [first] = targets;
+  return {
+    points: [start, first!.meet, ...first!.tail],
+    endX: first!.x,
+  };
 }
 
 export { pieces as segmentsOf };

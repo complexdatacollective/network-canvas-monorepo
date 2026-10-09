@@ -150,6 +150,8 @@ export type TwinIndicator = {
   code: 1 | 2 | 3;
   segment?: LineSegment; // MZ: horizontal line between twin uplines
   label?: Point; // unknown: position for "?" label
+  /** Unknown: the font size of the "?" label, scaled with the symbols. */
+  labelSize?: number;
   twinIds?: string[];
 };
 

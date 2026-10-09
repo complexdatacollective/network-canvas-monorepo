@@ -302,6 +302,7 @@ export function buildConnectorData(
       ti.label.x = ti.label.x * sx + xOffset;
       ti.label.y = ti.label.y * sy;
     }
+    if (ti.labelSize !== undefined) ti.labelSize *= sy;
   }
 
   for (const aux of connectors.auxiliaryLines) {

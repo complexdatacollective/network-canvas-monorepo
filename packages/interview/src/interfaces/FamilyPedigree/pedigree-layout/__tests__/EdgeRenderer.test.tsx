@@ -896,6 +896,26 @@ describe('PedigreeEdgeSvg — twin and duplicate-arc dimming', () => {
       0,
     );
   });
+
+  test('draws the unknown-zygosity question mark at the size it is given', () => {
+    const connector = makeTwinIndicator({
+      code: 3,
+      segment: undefined,
+      label: { x: 50, y: 80 },
+      labelSize: 32,
+    });
+    const { container } = render(
+      <PedigreeEdgeSvg
+        connectorData={makeTwinConnectorData([connector])}
+        color="var(--edge-1)"
+        width={200}
+        height={200}
+      />,
+    );
+    expect(container.querySelector('text')?.getAttribute('font-size')).toBe(
+      '32',
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------
