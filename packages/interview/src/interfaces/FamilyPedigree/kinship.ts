@@ -64,6 +64,9 @@ export const KIN_TERMS = [
   'greatGrandmother',
   'greatGrandfather',
   'greatGrandparent',
+  'stepGrandmother',
+  'stepGrandfather',
+  'stepGrandparent',
   'granddaughter',
   'grandson',
   'grandchild',
@@ -588,6 +591,27 @@ export function kinTermFor(
     }
   }
   switch (shape) {
+    // A grandparent's partner, a step-parent's parent, or a parent's
+    // step-parent, as long as each step or social parent on the way is a
+    // step-parent (`isStepLink`): a social parent's parent is not.
+    case 'parent,parent':
+    case 'parent,parent,partner':
+    case 'parent,partner,parent': {
+      const fromOf = (index: number) =>
+        index === 0 ? family.egoId : path[index - 1]!.to;
+      const stepLinksOnly = path.every(
+        (step, index) =>
+          step.type !== 'parent' ||
+          step.kind !== 'social' ||
+          isStepLink(family, step.to, fromOf(index) ?? ''),
+      );
+      if (!stepLinksOnly) return undefined;
+      return pick(gender, {
+        woman: 'stepGrandmother',
+        man: 'stepGrandfather',
+        other: 'stepGrandparent',
+      });
+    }
     case 'parent,partner,child':
       return pick(gender, {
         woman: 'stepsister',
