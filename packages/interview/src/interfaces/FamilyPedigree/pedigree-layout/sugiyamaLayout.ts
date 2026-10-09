@@ -438,6 +438,223 @@ function partnershipChain(
   return chain;
 }
 
+type Partnership = {
+  members: [number, number];
+  isActive: boolean;
+  /** When it was recorded, relative to the others. */
+  order: number;
+  /** How many children descend from the two as a couple. */
+  sharedChildren: number;
+  /** How many children have both as parents of any kind. */
+  childrenInCommon: number;
+};
+
+/** The two-person partnerships joining `nodes` to one another. */
+function partnershipsAmong(
+  nodes: number[],
+  graph: PedigreeGraph,
+): Partnership[] {
+  const nodeSet = new Set(nodes);
+  const result: Partnership[] = [];
+  graph.partnerGroups.forEach((pg, order) => {
+    const [a, b] = pg.members;
+    if (pg.members.length !== 2 || a === undefined || b === undefined) return;
+    if (!nodeSet.has(a) || !nodeSet.has(b)) return;
+    const childrenInCommon = graph.parents.filter(
+      (conns) =>
+        conns.some((p) => p.parentIndex === a) &&
+        conns.some((p) => p.parentIndex === b),
+    ).length;
+    const sharedChildren = [...graph.familyOf.values()].filter(
+      (fu) => fu.parentGroup === pg,
+    ).length;
+    result.push({
+      members: [a, b],
+      isActive: pg.isActive,
+      order,
+      sharedChildren,
+      childrenInCommon,
+    });
+  });
+  return result;
+}
+
+/**
+ * Turns a row of partners to face a fixed way, so that recording another
+ * partnership never mirrors the partners already seated: the earliest
+ * recorded current partnership sitting side by side (the earliest of any
+ * when none is current) keeps its lower-indexed partner on the left, as a
+ * lone couple does.
+ */
+function orientPartners(
+  order: number[],
+  partnerships: Partnership[],
+): number[] {
+  const col = new Map(order.map((node, i) => [node, i]));
+  const adjacent = partnerships
+    .filter(({ members: [a, b] }) => Math.abs(col.get(a)! - col.get(b)!) === 1)
+    .toSorted(
+      (x, y) => Number(y.isActive) - Number(x.isActive) || x.order - y.order,
+    );
+  const reference = adjacent[0];
+  if (!reference) return order;
+  const [a, b] = reference.members;
+  const lower = Math.min(a, b);
+  const higher = Math.max(a, b);
+  return col.get(lower)! < col.get(higher)! ? order : order.toReversed();
+}
+
+/**
+ * The partners of one person, seated around them. Only two can sit beside
+ * them; partners who share the most children with them take those seats
+ * first. Former partners go on one side and current partners on the other,
+ * each side in the order the partnerships were recorded: former partners
+ * from the earliest, outermost, to the latest, beside the person; current
+ * partners from the earliest, beside the person, outwards.
+ */
+function seatAroundAnchor(
+  anchor: number,
+  partners: number[],
+  partnerships: Partnership[],
+): number[] {
+  const withAnchor = new Map(
+    partners.map((p) => [
+      p,
+      partnerships.find(
+        ({ members }) => members.includes(anchor) && members.includes(p),
+      )!,
+    ]),
+  );
+  const rel = (p: number) => withAnchor.get(p)!;
+  // Nearest the person in time: the latest former partner, the earliest
+  // current one.
+  const recency = (p: number) =>
+    rel(p).isActive ? -rel(p).order : rel(p).order;
+  const byPriority = (x: number, y: number) =>
+    rel(y).sharedChildren - rel(x).sharedChildren ||
+    rel(y).childrenInCommon - rel(x).childrenInCommon ||
+    Number(rel(y).isActive) - Number(rel(x).isActive) ||
+    recency(y) - recency(x);
+
+  const [first, ...rest] = partners.toSorted(byPriority);
+  if (first === undefined) return [anchor];
+  // The second seat beside the anchor: the next partner with the most
+  // children, and on a tie one whose partnership is the other kind, so each
+  // side keeps its own.
+  const second = rest.toSorted(
+    (x, y) =>
+      rel(y).sharedChildren - rel(x).sharedChildren ||
+      rel(y).childrenInCommon - rel(x).childrenInCommon ||
+      Number(rel(y).isActive !== rel(first).isActive) -
+        Number(rel(x).isActive !== rel(first).isActive) ||
+      recency(y) - recency(x),
+  )[0];
+  if (second === undefined)
+    return orientPartners([anchor, first], partnerships);
+
+  let left = first;
+  let right = second;
+  if (rel(first).isActive !== rel(second).isActive) {
+    left = rel(first).isActive ? second : first;
+    right = left === first ? second : first;
+  } else if (rel(second).order < rel(first).order) {
+    left = second;
+    right = first;
+  }
+  const others = partners.filter((p) => p !== first && p !== second);
+  const formers = others
+    .filter((p) => !rel(p).isActive)
+    .toSorted((x, y) => rel(x).order - rel(y).order);
+  const currents = others
+    .filter((p) => rel(p).isActive)
+    .toSorted((x, y) => rel(x).order - rel(y).order);
+  return orientPartners(
+    [...formers, left, anchor, right, ...currents],
+    partnerships,
+  );
+}
+
+/**
+ * A row for partners whose partnerships do not form a single chain: a loop,
+ * or several people with more than two partners. The longest chain of
+ * partnerships is kept side by side (preferring partnerships with children,
+ * then current ones), and everyone else sits on the end of the row nearer
+ * their partners in it.
+ */
+function seatPartnershipTangle(
+  nodes: number[],
+  partnerships: Partnership[],
+): number[] {
+  const partnersOf = new Map<number, Partnership[]>(nodes.map((n) => [n, []]));
+  for (const p of partnerships) {
+    partnersOf.get(p.members[0])!.push(p);
+    partnersOf.get(p.members[1])!.push(p);
+  }
+  const score = (edges: Partnership[]) => [
+    edges.reduce((sum, e) => sum + Math.min(e.sharedChildren, 1), 0),
+    edges.length,
+    edges.reduce((sum, e) => sum + e.sharedChildren, 0),
+    edges.reduce((sum, e) => sum + e.childrenInCommon, 0),
+    edges.filter((e) => e.isActive).length,
+    -edges.reduce((sum, e) => sum + e.order, 0),
+  ];
+  const better = (x: number[], y: number[]) => {
+    for (let i = 0; i < x.length; i++) {
+      if (x[i] !== y[i]) return x[i]! > y[i]!;
+    }
+    return false;
+  };
+
+  let best: number[] = [Math.min(...nodes)];
+  let bestScore = score([]);
+  // Partner groups are small; every simple path is tried, within a budget.
+  let budget = 20_000;
+  const extend = (path: number[], edges: Partnership[]) => {
+    if (budget-- <= 0) return;
+    const pathScore = score(edges);
+    if (better(pathScore, bestScore)) {
+      best = path;
+      bestScore = pathScore;
+    }
+    const last = path.at(-1)!;
+    for (const e of partnersOf.get(last)!) {
+      const next = e.members[0] === last ? e.members[1] : e.members[0];
+      if (path.includes(next)) continue;
+      extend([...path, next], [...edges, e]);
+    }
+  };
+  for (const start of nodes.toSorted((a, b) => a - b)) extend([start], []);
+
+  const left: number[] = [];
+  const right: number[] = [];
+  const distanceToEnd = (node: number) => {
+    const cols = partnersOf
+      .get(node)!
+      .map((e) => (e.members[0] === node ? e.members[1] : e.members[0]))
+      .map((p) => best.indexOf(p))
+      .filter((c) => c >= 0);
+    if (cols.length === 0)
+      return { side: 'right' as const, distance: Infinity };
+    const toLeft = Math.min(...cols);
+    const toRight = best.length - 1 - Math.max(...cols);
+    return toLeft <= toRight
+      ? { side: 'left' as const, distance: toLeft }
+      : { side: 'right' as const, distance: toRight };
+  };
+  const leftovers = nodes
+    .filter((n) => !best.includes(n))
+    .map((n) => ({ n, ...distanceToEnd(n) }))
+    .toSorted((x, y) => x.distance - y.distance || x.n - y.n);
+  for (const { n, side } of leftovers) {
+    if (side === 'left') left.push(n);
+    else right.push(n);
+  }
+  return orientPartners(
+    [...left.toReversed(), ...best, ...right],
+    partnerships,
+  );
+}
+
 function buildConstraintBlocks(
   nodesOnLayer: number[],
   graph: PedigreeGraph,
@@ -569,8 +786,13 @@ function buildConstraintBlocks(
       assigned.add(sib);
       for (const sp of spouses) assigned.add(sp);
       if (spouses.length >= 2) {
-        const half = Math.floor(spouses.length / 2);
-        ordered.push(...spouses.slice(0, half), sib, ...spouses.slice(half));
+        ordered.push(
+          ...seatAroundAnchor(
+            sib,
+            spouses,
+            partnershipsAmong([sib, ...spouses], graph),
+          ),
+        );
       } else if (idx === 0) {
         ordered.push(...spouses, sib);
       } else {
@@ -696,36 +918,42 @@ function buildConstraintBlocks(
 
   for (const [, members] of groupUnion) {
     const blockNodes = [...members].toSorted((a, b) => a - b);
-    // Order anchor (shared node) between its partners
+    // Seat the block by its partnerships, never by index: an anchor (a person
+    // with several partners) between its partners, a chain of partnerships in
+    // chain order (a participant between a former and a current partner, the
+    // current partner beside their own former partner), and anything else by
+    // its longest chain. Each is turned to face the way its couples already
+    // did.
     const anchors = blockNodes.filter(
       (n) => (nodeToPartnerGroups.get(n)?.length ?? 0) > 1,
     );
-    // Two or more anchors form a chain (a participant between a former and a
-    // current partner, the current partner beside their own former partner).
-    // Index order would split a couple, so follow the chain instead.
-    const chain =
-      anchors.length > 1
-        ? partnershipChain(
-            blockNodes,
-            [...graph.partnerGroups.entries()]
-              .filter(([gi]) => eligible.has(gi))
-              .map(([, pg]) => pg.members),
-          )
-        : null;
-    if (chain) {
-      for (const n of chain) assigned.add(n);
-      blocks.push({ nodes: chain, barycenter: 0 });
-    } else if (anchors.length === 1) {
+    const partnerships = partnershipsAmong(blockNodes, graph).filter(
+      ({ members: [a, b] }) =>
+        (nodeToPartnerGroups.get(a) ?? []).some((gi) =>
+          graph.partnerGroups[gi]!.members.includes(b),
+        ),
+    );
+    let ordered: number[];
+    if (anchors.length === 1) {
       const anchor = anchors[0]!;
-      const others = blockNodes.filter((n) => n !== anchor);
-      const half = Math.floor(others.length / 2);
-      const ordered = [...others.slice(0, half), anchor, ...others.slice(half)];
-      for (const n of ordered) assigned.add(n);
-      blocks.push({ nodes: ordered, barycenter: 0 });
+      ordered = seatAroundAnchor(
+        anchor,
+        blockNodes.filter((n) => n !== anchor),
+        partnerships,
+      );
+    } else if (anchors.length > 1) {
+      const chain = partnershipChain(
+        blockNodes,
+        partnerships.map((p) => p.members),
+      );
+      ordered = chain
+        ? orientPartners(chain, partnerships)
+        : seatPartnershipTangle(blockNodes, partnerships);
     } else {
-      for (const n of blockNodes) assigned.add(n);
-      blocks.push({ nodes: blockNodes, barycenter: 0 });
+      ordered = blockNodes;
     }
+    for (const n of ordered) assigned.add(n);
+    blocks.push({ nodes: ordered, barycenter: 0 });
   }
 
   // 2b. Seat each child's extra parents — donors, surrogates, and social or
