@@ -351,6 +351,58 @@ describe('adding a sibling', () => {
   });
 });
 
+describe('the kinds a relative can be added as', () => {
+  it('adds a child as a donor’s donor-conceived child', async () => {
+    const { onSubmit, user } = renderPersonForm('donor', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['female'] }),
+        person('donor', { sex: ['male'] }),
+      ],
+      edges: [link('donor', 'ego', 'donor')],
+      adding: 'child',
+    });
+    await user.click(
+      screen.getByRole('radio', {
+        name: 'A child conceived with an egg or sperm they donated',
+      }),
+    );
+    await user.click(screen.getByRole('radio', { name: 'No other parent' }));
+    await user.click(screen.getByRole('radio', { name: 'Female' }));
+    await save(user);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0].request).toMatchObject({
+      parentKind: 'donor',
+      otherParent: null,
+    });
+  });
+
+  it('offers a biological sibling of two mothers, one a step-parent', () => {
+    renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('amy', { sex: ['female'] }),
+        person('beth', { sex: ['female'] }),
+      ],
+      edges: [
+        link('amy', 'beth', 'partner'),
+        link('amy', 'ego', 'biological', { carrier: true }),
+        link('beth', 'ego', 'social'),
+      ],
+      adding: 'sibling',
+    });
+    const shared = screen.getByRole('group', {
+      name: /^Which parents do they share/,
+    });
+    expect(
+      within(shared).getByRole('checkbox', { name: 'beth' }),
+    ).toBeChecked();
+    expect(
+      screen.getByRole('radio', { name: 'A biological child' }),
+    ).toBeEnabled();
+  });
+});
+
 describe('adding a child', () => {
   const otherParent = () =>
     screen.getByRole('radiogroup', { name: /^Who is the child’s other/ });

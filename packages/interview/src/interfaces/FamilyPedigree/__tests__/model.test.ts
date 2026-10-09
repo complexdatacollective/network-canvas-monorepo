@@ -922,6 +922,144 @@ describe('planAddRelative', () => {
     ]);
   });
 
+  test('a child conceived with a donor’s egg or sperm, with no other parent', () => {
+    const family = readFamily(
+      [person('ego'), person('donor', { sex: ['male'] })],
+      [link('donor', 'ego', 'donor')],
+      config,
+    );
+    const result = plan(family, 'donor', {
+      relation: 'child',
+      otherParent: null,
+      parentKind: 'donor',
+      biologicalParent: 'both',
+      carrier: null,
+    });
+    expect(result.links).toEqual([
+      {
+        source: 'donor',
+        target: 'added',
+        kind: 'donor',
+        isGestationalCarrier: false,
+      },
+    ]);
+  });
+
+  test('a donor-conceived child’s other parent not shown yet gave the other gamete and may have carried them', () => {
+    const family = readFamily(
+      [person('ego'), person('donor', { sex: ['male'] })],
+      [link('donor', 'ego', 'donor')],
+      config,
+    );
+    const result = plan(family, 'donor', {
+      relation: 'child',
+      otherParent: 'unknown',
+      parentKind: 'donor',
+      biologicalParent: 'both',
+      carrier: 'otherParent',
+    });
+    expect(result.people[1]!.details).toEqual({ sex: ['female'] });
+    expect(result.links).toEqual([
+      {
+        source: 'donor',
+        target: 'added',
+        kind: 'donor',
+        isGestationalCarrier: false,
+      },
+      {
+        source: 'new-1',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: true,
+      },
+    ]);
+  });
+
+  test('a child carried as a surrogate', () => {
+    const result = plan(nuclearFamily(), 'mum', {
+      relation: 'child',
+      otherParent: 'unknown',
+      parentKind: 'surrogate',
+      biologicalParent: 'both',
+      carrier: null,
+    });
+    // Not a gamete parent, so the parent added's sex at birth does not
+    // follow.
+    expect(result.people[1]!.details).toEqual({});
+    expect(result.links).toEqual([
+      {
+        source: 'mum',
+        target: 'added',
+        kind: 'surrogate',
+        isGestationalCarrier: true,
+      },
+      {
+        source: 'new-1',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
+    ]);
+  });
+
+  test('a biological sibling keeps a shared step-parent as a step-parent', () => {
+    const family = readFamily(
+      [
+        person('ego'),
+        person('beth', { sex: ['female'] }),
+        person('amy', { sex: ['female'] }),
+      ],
+      [
+        link('amy', 'beth', 'partner'),
+        link('beth', 'ego', 'social'),
+        link('amy', 'ego', 'biological', { carrier: true }),
+      ],
+      config,
+    );
+    const result = plan(family, 'ego', {
+      relation: 'sibling',
+      sharedParentIds: ['beth', 'amy'],
+      sharesUnshown: 'none',
+      parentKind: 'biological',
+      carrier: 'amy',
+    });
+    // Amy, the participant's biological parent, is the sibling's; Beth,
+    // who cannot be a second genetic parent beside her, keeps the kind of
+    // parent she is to the participant.
+    expect(result.links).toEqual([
+      {
+        source: 'amy',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: true,
+      },
+      { source: 'beth', target: 'added', kind: 'social' },
+    ]);
+  });
+
+  test('a biological sibling keeps a shared adoptive parent who cannot be genetic as adoptive', () => {
+    const family = readFamily(
+      [
+        person('ego'),
+        person('ann', { sex: ['female'] }),
+        person('bea', { sex: ['female'] }),
+      ],
+      [link('ann', 'ego', 'adoptive'), link('bea', 'ego', 'adoptive')],
+      config,
+    );
+    const result = plan(family, 'ego', {
+      relation: 'sibling',
+      sharedParentIds: ['ann', 'bea'],
+      sharesUnshown: 'none',
+      parentKind: 'biological',
+      carrier: null,
+    });
+    expect(result.links).toEqual([
+      { source: 'ann', target: 'added', kind: 'biological' },
+      { source: 'bea', target: 'added', kind: 'adoptive' },
+    ]);
+  });
+
   test('an adopted child records no carrier', () => {
     const result = plan(nuclearFamily(), 'mum', {
       relation: 'child',

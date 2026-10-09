@@ -76,14 +76,14 @@ export const ownedOptionLabels = (
   };
 };
 
-export const CHILD_KIND_LABELS: Record<
-  'biological' | 'adoptive' | 'social',
-  MessageDescriptor
-> = {
-  biological: messages.childKindBiological,
-  adoptive: messages.childKindAdoptive,
-  social: messages.childKindSocial,
-};
+export const CHILD_KIND_LABELS: Record<PedigreeParentKind, MessageDescriptor> =
+  {
+    biological: messages.childKindBiological,
+    adoptive: messages.childKindAdoptive,
+    social: messages.childKindSocial,
+    donor: messages.childKindDonor,
+    surrogate: messages.childKindSurrogate,
+  };
 
 export const BUILT_IN_DETAIL_LABELS: Record<
   Exclude<MissingDetail, { variable: string }>,

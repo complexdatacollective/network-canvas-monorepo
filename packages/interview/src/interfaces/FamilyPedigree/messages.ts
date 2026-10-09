@@ -255,6 +255,18 @@ export const messages = defineMessages({
     description:
       'Option: a child who is neither genetically related nor adopted, such as a step-child.',
   },
+  childKindDonor: {
+    id: 'interview.familyPedigree.childKind.donor',
+    defaultMessage: 'A child conceived with an egg or sperm they donated',
+    description:
+      'Option: a child conceived with an egg or sperm the person donated, who is raised by someone else.',
+  },
+  childKindSurrogate: {
+    id: 'interview.familyPedigree.childKind.surrogate',
+    defaultMessage: 'A child they carried as a surrogate',
+    description:
+      'Option: a child the person carried as a surrogate for someone else.',
+  },
   carriedPregnancyLabel: {
     id: 'interview.familyPedigree.carriedPregnancyLabel',
     defaultMessage: 'Did this parent carry the pregnancy?',
