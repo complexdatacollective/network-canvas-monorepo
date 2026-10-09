@@ -1,9 +1,14 @@
 import { localized, localizedOptions } from '../../../utils/test-utils.ts';
 import {
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import { DEFAULT_FINISH_SESSION_TEXT } from '../finish-session-defaults.ts';
+import {
+  pedigreeCompletenessText,
+  pedigreeNameField,
+} from './family-pedigree-text.ts';
 
 const shape = { default: 'circle' };
 
@@ -131,6 +136,12 @@ export const completeProtocol = () => ({
             label: 'Sex',
             type: 'categorical',
             options: localizedOptions(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS),
+          },
+          relativesNotRecorded: {
+            name: 'RelativesNotRecorded',
+            label: 'Relatives not recorded',
+            type: 'categorical',
+            options: localizedOptions(PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS),
           },
           birthYear: {
             name: 'BirthYear',
@@ -489,6 +500,7 @@ export const completeProtocol = () => ({
       prompt: localized('Build your family'),
       nodeConfiguration: {
         nameAttribute: 'displayName',
+        nameField: pedigreeNameField(),
         sexAssignedAtBirthAttribute: 'sex',
         egoAttribute: 'isEgo',
       },
@@ -497,6 +509,12 @@ export const completeProtocol = () => ({
         kindAttribute: 'relType',
         gestationalCarrierAttribute: 'isGc',
         currentPartnerAttribute: 'isActive',
+      },
+      completeness: {
+        scope: 'parents',
+        enforcement: 'recommended',
+        relativesNotRecordedAttribute: 'relativesNotRecorded',
+        ...pedigreeCompletenessText(),
       },
       form: {
         fields: [

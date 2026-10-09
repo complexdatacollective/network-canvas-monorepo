@@ -4,6 +4,10 @@ import { withFinishStage } from '../../../../__tests__/finishStage.ts';
 import { findExclusiveVariableConflicts } from '../../../../utils/findExclusiveVariableConflicts.ts';
 import { localized, localizedOptions } from '../../../../utils/test-utils.ts';
 import {
+  pedigreeCompletenessText,
+  pedigreeNameField,
+} from '../../__tests__/family-pedigree-text.ts';
+import {
   GENDER_IDENTITY_OPTIONS,
   GENDER_IDENTITY_TERMS,
 } from '../../__tests__/pedigreeGenderFixtures.ts';
@@ -26,6 +30,7 @@ const base = {
   prompt: localized('Draw your family'),
   nodeConfiguration: {
     nameAttribute: 'name',
+    nameField: pedigreeNameField(),
     genderIdentity: { attribute: 'gender', terms: GENDER_IDENTITY_TERMS },
     sexAssignedAtBirthAttribute: 'sab',
     egoAttribute: 'isEgo',
@@ -175,6 +180,95 @@ describe('familyPedigreeStage', () => {
       familyPedigreeStage.safeParse({ ...base, nodeConfiguration: incomplete })
         .success,
     ).toBe(false);
+  });
+
+  it('asks the name with a question of its own, and an optional hint', () => {
+    const { nameField: _omitted, ...withoutNameField } = base.nodeConfiguration;
+    expect(
+      familyPedigreeStage.safeParse({
+        ...base,
+        nodeConfiguration: withoutNameField,
+      }).success,
+    ).toBe(false);
+    const { hint: _hint, ...promptOnly } = pedigreeNameField();
+    expect(
+      familyPedigreeStage.safeParse({
+        ...base,
+        nodeConfiguration: { ...base.nodeConfiguration, nameField: promptOnly },
+      }).success,
+    ).toBe(true);
+  });
+
+  describe('the tracker’s wording', () => {
+    const withCompleteness = (completeness: Record<string, unknown>) => ({
+      ...base,
+      completeness: {
+        scope: 'parents',
+        enforcement: 'required',
+        relativesNotRecordedAttribute: 'notRecorded',
+        ...completeness,
+      },
+    });
+    const withParentsItem = (message: string) => {
+      const text = pedigreeCompletenessText();
+      return withCompleteness({
+        ...text,
+        itemText: { ...text.itemText, parents: { listItem: { en: message } } },
+      });
+    };
+
+    it('is required wherever the family must be complete', () => {
+      expect(
+        familyPedigreeStage.safeParse(
+          withCompleteness(pedigreeCompletenessText()),
+        ).success,
+      ).toBe(true);
+      expect(familyPedigreeStage.safeParse(withCompleteness({})).success).toBe(
+        false,
+      );
+    });
+
+    it('may say who the person is, and how many parents are missing', () => {
+      expect(
+        familyPedigreeStage.safeParse(
+          withParentsItem(
+            '{isYou, select, true {Add your parents} other {{missing, plural, one {Add a parent for {name}} other {Add parents for {name}}}}}',
+          ),
+        ).success,
+      ).toBe(true);
+    });
+
+    it('may be one phrase for everyone', () => {
+      expect(
+        familyPedigreeStage.safeParse(withParentsItem('Add biological parents'))
+          .success,
+      ).toBe(true);
+    });
+
+    it('may not use anything else', () => {
+      expect(
+        familyPedigreeStage.safeParse(
+          withParentsItem('Add parents for {relative}'),
+        ).success,
+      ).toBe(false);
+      // Only the parents entry is told how many are missing.
+      const text = pedigreeCompletenessText();
+      expect(
+        familyPedigreeStage.safeParse(
+          withCompleteness({
+            ...text,
+            itemText: {
+              ...text.itemText,
+              details: {
+                listItem: {
+                  en: '{missing, plural, other {# details missing}}',
+                },
+              },
+            },
+          }),
+        ).success,
+      ).toBe(false);
+    });
   });
 
   it('requires a relationship configuration', () => {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../../__tests__/finishStage.ts';
 import { localized, localizedOptions } from '../../../../utils/test-utils.ts';
+import { pedigreeNameField } from '../../__tests__/family-pedigree-text.ts';
 import { NodeColorSequence } from '../../color-reference.ts';
 import {
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
@@ -20,6 +21,7 @@ const validFamilyPedigreeStage = {
   prompt: localized('Build your family'),
   nodeConfiguration: {
     nameAttribute: 'personLabel',
+    nameField: pedigreeNameField(),
     sexAssignedAtBirthAttribute: 'personSab',
     egoAttribute: 'egoIsEgo',
   },

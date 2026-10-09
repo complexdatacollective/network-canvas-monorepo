@@ -2,7 +2,7 @@ import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import {
   type LocalizationDeclaration,
   type StageType,
-  suppliedStageText,
+  missingSuppliedStageText,
 } from '@codaco/protocol-validation';
 
 /**
@@ -88,7 +88,7 @@ export const getInterfaceTemplate = (
  * The fields a new stage opens with: the interface's template, plus the
  * wording Network Canvas supplies for its settings, such as a roster's panel
  * title, in each of the protocol's languages that has it (see
- * `suppliedStageText`). Unlike a template value the supplied wording depends
+ * `missingSuppliedStageText`). Unlike a template value the supplied wording depends
  * on the protocol, and it is prose about the stage rather than about its
  * subject, so a change of subject keeps it.
  */
@@ -97,8 +97,8 @@ export const newStageFields = (
   localization: LocalizationDeclaration,
 ): Record<string, FieldValue> => {
   const next = getInterfaceTemplate(interfaceType);
-  for (const { path, value } of suppliedStageText(
-    interfaceType,
+  for (const { path, value } of missingSuppliedStageText(
+    { ...next, type: interfaceType },
     localization,
   )) {
     let container: Record<string, FieldValue> = next;

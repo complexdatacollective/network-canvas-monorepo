@@ -638,6 +638,14 @@
       },
       "nodeConfiguration": {
         "nameAttribute": "name",
+        "nameField": {
+          "prompt": {
+            "en-US": "Name (optional)"
+          },
+          "hint": {
+            "en-US": "A first name or nickname is fine. If you don’t know it, leave this blank and they will be shown by how they are related to you."
+          }
+        },
         "sexAssignedAtBirthAttribute": "sexAssignedAtBirth",
         "egoAttribute": "is_ego"
       },
@@ -651,7 +659,44 @@
       "completeness": {
         "scope": "grandparents",
         "enforcement": "recommended",
-        "relativesNotRecordedAttribute": "relativesNotRecorded"
+        "relativesNotRecordedAttribute": "relativesNotRecorded",
+        "itemText": {
+          "parents": {
+            "listItem": {
+              "en-US": "{isYou, select, true {{missing, plural, one {Add your other biological parent} other {Add your biological parents}}} other {{missing, plural, one {Add another biological parent for “{name}”} other {Add biological parents for “{name}”}}}}"
+            }
+          },
+          "siblings": {
+            "listItem": {
+              "en-US": "{isYou, select, true {Add your biological brothers and sisters, or say you have none} other {Add biological brothers and sisters for “{name}”, or say they have none}}"
+            },
+            "noneButton": {
+              "en-US": "{isYou, select, true {I have no biological siblings} other {“{name}” has no biological siblings}}"
+            },
+            "question": {
+              "en-US": "{isYou, select, true {Do you have any biological brothers or sisters, including half-brothers and half-sisters?} other {Does {name} have any biological brothers or sisters, including half-brothers and half-sisters?}}"
+            }
+          },
+          "children": {
+            "listItem": {
+              "en-US": "{isYou, select, true {Add your biological children, or say you have none} other {Add biological children for “{name}”, or say they have none}}"
+            },
+            "noneButton": {
+              "en-US": "{isYou, select, true {I have no biological children} other {“{name}” has no biological children}}"
+            },
+            "question": {
+              "en-US": "{isYou, select, true {Do you have any biological children?} other {Does {name} have any biological children?}}"
+            }
+          },
+          "details": {
+            "listItem": {
+              "en-US": "{isYou, select, true {Some details are missing about you} other {Some details are missing for “{name}”}}"
+            }
+          }
+        },
+        "recommendedNote": {
+          "en-US": "You can also continue without these by pressing Next again."
+        }
       },
       "form": {
         "fields": [

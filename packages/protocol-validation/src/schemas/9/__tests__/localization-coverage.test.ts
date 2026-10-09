@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { analyzeProtocolLocalization } from '../../../localization/analyzeProtocolLocalization.ts';
+import type { MessageArguments } from '../../../localization/messageArguments.ts';
 import { resolveLocalizedString } from '../../../localization/resolveLocalizedString.ts';
 import {
   collectLocalizedStrings,
@@ -14,6 +15,10 @@ import {
   localizedString,
 } from '../localized-string.ts';
 import ProtocolSchemaV9 from '../schema.ts';
+import {
+  PEDIGREE_PARENTS_ARGUMENTS,
+  PEDIGREE_PERSON_ARGUMENTS,
+} from '../stages/family-pedigree.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
 
 type Path = readonly (string | number)[];
@@ -27,6 +32,8 @@ type ExpectedSite = Readonly<{
   // stage's text, which a new protocol in a language Network Canvas supplies
   // none for starts without (`findFinishStageTextProblems`).
   allowsNoTranslation: boolean;
+  // What a localized message may use; absent for literal text.
+  arguments?: MessageArguments;
 }>;
 
 const site = (
@@ -35,6 +42,14 @@ const site = (
   allowsEmpty = false,
   allowsNoTranslation = false,
 ): ExpectedSite => ({ path, format, allowsEmpty, allowsNoTranslation });
+
+const messageSite = (
+  path: Path,
+  declaration: MessageArguments,
+): ExpectedSite => ({
+  ...site(path, 'plain'),
+  arguments: declaration,
+});
 
 const FINISH_STAGE_INDEX = 20;
 
@@ -99,6 +114,23 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
         'label',
       ],
       'markdown',
+    ),
+  ),
+  ...Array.from({ length: 4 }, (_, index) =>
+    site(
+      [
+        'codebook',
+        'node',
+        'relative',
+        'variables',
+        'relativesNotRecorded',
+        'options',
+        index,
+        'label',
+      ],
+      'markdown',
+      // Participants never choose from these, so they may be left blank.
+      true,
     ),
   ),
   site(['codebook', 'edge', 'knows', 'label'], 'plain', true),
@@ -216,6 +248,29 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(17, 'prompts', 0, 'text'), 'markdown'),
 
   site(stage(18, 'prompt'), 'markdown'),
+  // The Family Pedigree's own wording, which Network Canvas supplies.
+  site(stage(18, 'nodeConfiguration', 'nameField', 'prompt'), 'plain'),
+  site(stage(18, 'nodeConfiguration', 'nameField', 'hint'), 'plain'),
+  ...(
+    [
+      ['parents', 'listItem'],
+      ['siblings', 'listItem'],
+      ['siblings', 'noneButton'],
+      ['siblings', 'question'],
+      ['children', 'listItem'],
+      ['children', 'noneButton'],
+      ['children', 'question'],
+      ['details', 'listItem'],
+    ] as const
+  ).map((path) =>
+    messageSite(
+      stage(18, 'completeness', 'itemText', ...path),
+      path[0] === 'parents'
+        ? PEDIGREE_PARENTS_ARGUMENTS
+        : PEDIGREE_PERSON_ARGUMENTS,
+    ),
+  ),
+  site(stage(18, 'completeness', 'recommendedNote'), 'plain'),
   site(stage(18, 'form', 'fields', 0, 'prompt'), 'markdown'),
   site(stage(18, 'form', 'fields', 0, 'hint'), 'markdown', true),
   site(stage(18, 'nominationPrompts', 0, 'text'), 'markdown'),
@@ -284,12 +339,19 @@ describe('localized string coverage', () => {
 
   it('finds exactly the expected localized sites', () => {
     const found = collectLocalizedStrings(completeProtocol())
-      .map(({ path, format }) => ({ path: pathKey(path), format }))
+      .map(({ path, format, arguments: declaration }) => ({
+        path: pathKey(path),
+        format,
+        arguments: declaration,
+      }))
       .toSorted((a, b) => a.path.localeCompare(b.path));
-    const expected = EXPECTED_SITES.map(({ path, format }) => ({
-      path: pathKey(path),
-      format,
-    })).toSorted((a, b) => a.path.localeCompare(b.path));
+    const expected = EXPECTED_SITES.map(
+      ({ path, format, arguments: declaration }) => ({
+        path: pathKey(path),
+        format,
+        arguments: declaration,
+      }),
+    ).toSorted((a, b) => a.path.localeCompare(b.path));
     expect(found).toEqual(expected);
   });
 
@@ -329,13 +391,27 @@ describe('localized string coverage', () => {
   );
 
   it.each(EXPECTED_SITES.map((expected) => [siteName(expected), expected]))(
-    'rejects message placeholders at %s',
+    'rejects message placeholders it does not declare at %s',
     (_name, { path }) => {
-      expect(failurePaths(withValueAt(path, { en: 'Hello {name}' }))).toContain(
-        pathKey([...path, 'en']),
-      );
+      expect(
+        failurePaths(withValueAt(path, { en: 'Hello {undeclared}' })),
+      ).toContain(pathKey([...path, 'en']));
     },
   );
+
+  it.each(
+    EXPECTED_SITES.flatMap((expected) =>
+      expected.arguments === undefined ? [] : [[siteName(expected), expected]],
+    ),
+  )('accepts the arguments it declares at %s', (_name, { path }) => {
+    expect(
+      failurePaths(
+        withValueAt(path, {
+          en: '{isYou, select, true {You} other {“{name}”}}',
+        }),
+      ),
+    ).toEqual([]);
+  });
 });
 
 describe('attribute labels', () => {

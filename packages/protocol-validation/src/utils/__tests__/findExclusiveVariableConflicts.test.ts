@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../__tests__/finishStage.ts';
+import { pedigreeNameField } from '../../schemas/9/__tests__/family-pedigree-text.ts';
 import {
   GENDER_IDENTITY_OPTIONS,
   GENDER_IDENTITY_TERMS,
@@ -20,6 +21,7 @@ type Stage = Record<string, unknown>;
 
 const nodeConfiguration = {
   nameAttribute: 'fmName',
+  nameField: pedigreeNameField(),
   genderIdentity: { attribute: 'genderIdentity', terms: GENDER_IDENTITY_TERMS },
   sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
   egoAttribute: 'isEgo',

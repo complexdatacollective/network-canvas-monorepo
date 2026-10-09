@@ -13,6 +13,7 @@ import {
 } from '../family-pedigree-values.ts';
 import ProtocolSchemaV9 from '../schema.ts';
 import { familyPedigreeStage } from '../stages/family-pedigree.ts';
+import { pedigreeNameField } from './family-pedigree-text.ts';
 import {
   GENDER_IDENTITY_OPTIONS,
   GENDER_IDENTITY_TERMS,
@@ -31,6 +32,7 @@ const pedigreeStage = (form?: ReturnType<typeof field>[]) => ({
   prompt: localized('Build your family'),
   nodeConfiguration: {
     nameAttribute: 'name',
+    nameField: pedigreeNameField(),
     genderIdentity: { attribute: 'gender', terms: GENDER_IDENTITY_TERMS },
     sexAssignedAtBirthAttribute: 'sab',
     egoAttribute: 'isEgo',

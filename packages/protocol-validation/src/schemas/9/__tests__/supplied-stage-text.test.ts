@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import ProtocolSchemaV9 from '../schema.ts';
 import {
+  missingSuppliedStageText,
   suppliedStageText,
   suppliedStageTextAfterLanguageChange,
 } from '../supplied-stage-text.ts';
@@ -159,5 +160,83 @@ describe('migrating a roster stage to schema 9', () => {
     expect(rosterOf(migrateProtocol(titled, 9))).toMatchObject({
       panelTitle: { en: 'Services' },
     });
+  });
+});
+
+describe('the Family Pedigree wording Network Canvas supplies', () => {
+  const paths = (stage: Record<string, unknown>) =>
+    missingSuppliedStageText(
+      { type: 'FamilyPedigree', ...stage },
+      { defaultLocale: 'en', locales: ['en', 'de'] },
+    ).map(({ path }) => path.join('.'));
+
+  it('gives a new stage its name question, and no tracker wording until it has a tracker', () => {
+    expect(paths({})).toEqual([
+      'nodeConfiguration.nameField.prompt',
+      'nodeConfiguration.nameField.hint',
+    ]);
+  });
+
+  it('gives a stage with a tracker all of its wording', () => {
+    expect(
+      paths({
+        nodeConfiguration: { nameField: { prompt: { en: 'Name' } } },
+        completeness: { scope: 'parents' },
+      }),
+    ).toEqual([
+      'completeness.itemText.parents.listItem',
+      'completeness.itemText.siblings.listItem',
+      'completeness.itemText.siblings.noneButton',
+      'completeness.itemText.siblings.question',
+      'completeness.itemText.children.listItem',
+      'completeness.itemText.children.noneButton',
+      'completeness.itemText.children.question',
+      'completeness.itemText.details.listItem',
+      'completeness.recommendedNote',
+    ]);
+  });
+
+  it('does not put back a hint the researcher removed', () => {
+    expect(
+      paths({ nodeConfiguration: { nameField: { prompt: { en: 'Name' } } } }),
+    ).toEqual([]);
+  });
+
+  it('writes the wording with its arguments, in each language it is supplied in', () => {
+    const [parents] = missingSuppliedStageText(
+      {
+        type: 'FamilyPedigree',
+        completeness: {},
+        nodeConfiguration: { nameField: { prompt: {} } },
+      },
+      { defaultLocale: 'en', locales: ['en', 'zh-Hans'] },
+    );
+    expect(parents?.value['zh-Hans']).toContain('{missing, plural,');
+    expect(parents?.value.en).toContain('{name}');
+  });
+
+  it('follows a language change while the default language still has it', () => {
+    const stage = {
+      type: 'FamilyPedigree',
+      completeness: {
+        recommendedNote: {
+          en: 'You can also continue without these by pressing Next again.',
+        },
+      },
+    };
+    expect(
+      suppliedStageTextAfterLanguageChange(stage, {
+        before: english,
+        after: { defaultLocale: 'en', locales: ['en', 'fr'] },
+      }),
+    ).toEqual([
+      {
+        path: ['completeness', 'recommendedNote'],
+        value: {
+          en: 'You can also continue without these by pressing Next again.',
+          fr: expect.stringContaining('Suivant') as unknown as string,
+        },
+      },
+    ]);
   });
 });

@@ -12,6 +12,7 @@ import {
 import ProtocolSchemaV9 from '../schema.ts';
 import { getStageSubjectResolution } from '../stage-subject-resolution.ts';
 import { stageSchema } from '../stages/index.ts';
+import { pedigreeNameField } from './family-pedigree-text.ts';
 import {
   GENDER_IDENTITY_OPTIONS,
   GENDER_IDENTITY_TERMS,
@@ -27,6 +28,7 @@ const familyPedigree = (overrides: Stage = {}): Stage => ({
   prompt: localized('Build your family'),
   nodeConfiguration: {
     nameAttribute: 'fmName',
+    nameField: pedigreeNameField(),
     genderIdentity: {
       attribute: 'genderIdentity',
       terms: GENDER_IDENTITY_TERMS,
@@ -200,6 +202,7 @@ describe('stage subjects resolve during collection', () => {
       familyPedigree({
         nodeConfiguration: {
           nameAttribute: 'notInCodebook',
+          nameField: pedigreeNameField(),
           genderIdentity: {
             attribute: 'genderIdentity',
             terms: GENDER_IDENTITY_TERMS,

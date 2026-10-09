@@ -2,7 +2,19 @@ import type {
   LocaleTag,
   LocalizationDeclaration,
 } from '../../localization/localeTag.ts';
-import { escapeMessageText } from '../../localization/messageSyntax.ts';
+import {
+  CHILDREN_ITEM,
+  CHILDREN_NONE,
+  CHILDREN_QUESTION,
+  DETAILS_ITEM,
+  NAME_HINT,
+  NAME_PROMPT,
+  PARENTS_ITEM,
+  RECOMMENDED_NOTE,
+  SIBLINGS_ITEM,
+  SIBLINGS_NONE,
+  SIBLINGS_QUESTION,
+} from './family-pedigree-wording.ts';
 import type { LocalizedString } from './localized-string.ts';
 import {
   type LanguageChange,
@@ -30,9 +42,29 @@ const ROSTER_PANEL_TITLE = {
 type SuppliedStageSetting = Readonly<{
   /** Where the stage holds the setting. */
   path: readonly string[];
-  /** The supplied text, by language. */
-  text: Readonly<Record<LocaleTag, string>>;
+  /** The supplied wording, by language, as ICU messages the stage can hold. */
+  message: Readonly<Record<LocaleTag, string>>;
+  /**
+   * An optional object the setting belongs to: it is written only into a
+   * stage that has it, and arrives with it (the Family Pedigree's
+   * completeness texts arrive with `completeness`).
+   */
+  within?: readonly string[];
+  /**
+   * A setting the researcher may remove. It is written with the object that
+   * holds it, never into one that already exists without it.
+   */
+  optional?: true;
 }>;
+
+const pedigreeCompleteness = (
+  path: readonly string[],
+  message: Readonly<Record<LocaleTag, string>>,
+): SuppliedStageSetting => ({
+  path: ['completeness', ...path],
+  message,
+  within: ['completeness'],
+});
 
 /**
  * The stage settings whose wording Network Canvas supplies, by stage type.
@@ -44,30 +76,54 @@ type SuppliedStageSetting = Readonly<{
 const SUPPLIED_STAGE_TEXT: Readonly<
   Record<string, readonly SuppliedStageSetting[]>
 > = {
-  NameGeneratorRoster: [{ path: ['panelTitle'], text: ROSTER_PANEL_TITLE }],
+  NameGeneratorRoster: [{ path: ['panelTitle'], message: ROSTER_PANEL_TITLE }],
+  FamilyPedigree: [
+    {
+      path: ['nodeConfiguration', 'nameField', 'prompt'],
+      message: NAME_PROMPT,
+    },
+    {
+      path: ['nodeConfiguration', 'nameField', 'hint'],
+      message: NAME_HINT,
+      optional: true,
+    },
+    pedigreeCompleteness(['itemText', 'parents', 'listItem'], PARENTS_ITEM),
+    pedigreeCompleteness(['itemText', 'siblings', 'listItem'], SIBLINGS_ITEM),
+    pedigreeCompleteness(['itemText', 'siblings', 'noneButton'], SIBLINGS_NONE),
+    pedigreeCompleteness(
+      ['itemText', 'siblings', 'question'],
+      SIBLINGS_QUESTION,
+    ),
+    pedigreeCompleteness(['itemText', 'children', 'listItem'], CHILDREN_ITEM),
+    pedigreeCompleteness(['itemText', 'children', 'noneButton'], CHILDREN_NONE),
+    pedigreeCompleteness(
+      ['itemText', 'children', 'question'],
+      CHILDREN_QUESTION,
+    ),
+    pedigreeCompleteness(['itemText', 'details', 'listItem'], DETAILS_ITEM),
+    pedigreeCompleteness(['recommendedNote'], RECOMMENDED_NOTE),
+  ],
 };
 
 const settingsOf = (stageType: string): readonly SuppliedStageSetting[] =>
   SUPPLIED_STAGE_TEXT[stageType] ?? [];
 
 /**
- * The text Network Canvas writes for a setting in a protocol language, as the
- * stage holds it: its supplied text there, or, in the default language when
- * it supplies none, the English text, because every supplied setting is
- * required and a stage must hold it in some language. That is the rule for
- * the Family Pedigree's option labels too (`writtenOptionLabel`), and what
- * the schema 8 to 9 migration has always recorded.
+ * The message Network Canvas writes for a setting in a protocol language:
+ * its supplied wording there, or, in the default language when it supplies
+ * none, the English wording, because every supplied setting is required (or,
+ * for an optional one, wanted) and a stage must hold it in some language.
+ * That is the rule for the Family Pedigree's option labels too
+ * (`writtenOptionLabel`), and what the schema 8 to 9 migration has always
+ * recorded.
  */
 const writtenIn = (
   setting: SuppliedStageSetting,
   locale: LocaleTag,
   isDefault: boolean,
-): string | undefined => {
-  const text =
-    suppliedTextFor(setting.text, locale) ??
-    (isDefault ? setting.text.en : undefined);
-  return text === undefined ? undefined : escapeMessageText(text);
-};
+): string | undefined =>
+  suppliedTextFor(setting.message, locale) ??
+  (isDefault ? setting.message.en : undefined);
 
 const valueAt = (value: unknown, path: readonly string[]): unknown =>
   path.reduce<unknown>(
@@ -85,9 +141,9 @@ export type SuppliedStageText = Readonly<{
 }>;
 
 /**
- * The supplied settings a new stage of `stageType` starts with, each holding
- * Network Canvas's text in every protocol language it writes one in (see
- * `writtenIn`).
+ * Every supplied setting of `stageType`, each holding Network Canvas's text
+ * in every protocol language it writes one in (see `writtenIn`): what an
+ * editor seeds a setting with when the object holding it is created.
  */
 export const suppliedStageText = (
   stageType: string,
@@ -137,13 +193,29 @@ export const suppliedStageTextAfterLanguageChange = (
   });
 
 /**
- * The supplied settings `stage` is missing, as the schema 8 to 9 migration
- * adds them: as a new stage would hold them.
+ * The supplied settings `stage` should gain, as a new stage starts with them
+ * and the schema 8 to 9 migration adds them: each one it lacks, except one
+ * whose optional object it lacks (that arrives with the object) and an
+ * optional one whose object it already has (the researcher removed it).
  */
 export const missingSuppliedStageText = (
   stage: Readonly<{ type: string }>,
   localization: LocalizationDeclaration,
-): readonly SuppliedStageText[] =>
-  suppliedStageText(stage.type, localization).filter(
-    ({ path }) => valueAt(stage, path) === undefined,
-  );
+): readonly SuppliedStageText[] => {
+  const settings = settingsOf(stage.type);
+  const supplied = suppliedStageText(stage.type, localization);
+  return supplied.filter((_text, index) => {
+    const setting = settings[index];
+    if (setting === undefined) return false;
+    if (valueAt(stage, setting.path) !== undefined) return false;
+    if (
+      setting.within !== undefined &&
+      valueAt(stage, setting.within) === undefined
+    )
+      return false;
+    return !(
+      setting.optional === true &&
+      valueAt(stage, setting.path.slice(0, -1)) !== undefined
+    );
+  });
+};

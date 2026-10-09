@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import type { MessageArguments } from '../../../localization/messageArguments.ts';
 import { duplicateIdRefinement } from '../../../utils/validation-helpers.ts';
 import {
   TitlelessFormSchema,
@@ -12,7 +13,11 @@ import {
   PEDIGREE_COMPLETENESS_SCOPES,
   PEDIGREE_GENDER_WORDS,
 } from '../family-pedigree-values.ts';
-import { localizedString } from '../localized-string.ts';
+import {
+  localizedMessage,
+  localizedString,
+  nonBlankText,
+} from '../localized-string.ts';
 import { categoricalOptionValueSchema } from '../variables/variable.ts';
 import { baseStageSchema } from './base.ts';
 
@@ -99,6 +104,12 @@ export const NodeConfigurationSchema = z.strictObject({
     usage: 'validatedAttribute',
     requireType: ['text'],
   }),
+  // The question asking that name, and the hint beneath it, worded like a
+  // form field's prompt and hint. Network Canvas supplies both.
+  nameField: z.strictObject({
+    prompt: localizedString(nonBlankText(), 'plain'),
+    hint: localizedString(nonBlankText(), 'plain').optional(),
+  }),
   // Optional: the gender identity question and the words it decides. See
   // `GenderIdentitySchema`.
   genderIdentity: GenderIdentitySchema.optional(),
@@ -181,6 +192,56 @@ export const EdgeConfigurationSchema = z.strictObject({
 });
 
 /**
+ * What the tracker's wording about one person may use: whether that person
+ * is the participant (`isYou` is `true`), so the text can say "you", and
+ * their name as the participant has it.
+ */
+export const PEDIGREE_PERSON_ARGUMENTS = {
+  isYou: { kind: 'select', cases: ['true'] },
+  name: { kind: 'text' },
+} as const satisfies MessageArguments;
+
+/**
+ * What the tracker's entry for a person missing biological parents may use:
+ * the person, and how many parents are missing (one or two).
+ */
+export const PEDIGREE_PARENTS_ARGUMENTS = {
+  ...PEDIGREE_PERSON_ARGUMENTS,
+  missing: { kind: 'plural' },
+} as const satisfies MessageArguments;
+
+const personMessage = () =>
+  localizedMessage(nonBlankText(), { arguments: PEDIGREE_PERSON_ARGUMENTS });
+
+/**
+ * The tracker's wording, by the kind of thing it says is missing
+ * (`CompletenessItem.kind` in the interview): the entry in its list
+ * (`listItem`), the button recording that a person has no siblings or
+ * children (`noneButton`), and the side panel's question about them
+ * (`question`). Network Canvas supplies all of it.
+ */
+const CompletenessTextSchema = z.strictObject({
+  parents: z.strictObject({
+    listItem: localizedMessage(nonBlankText(), {
+      arguments: PEDIGREE_PARENTS_ARGUMENTS,
+    }),
+  }),
+  siblings: z.strictObject({
+    listItem: personMessage(),
+    noneButton: personMessage(),
+    question: personMessage(),
+  }),
+  children: z.strictObject({
+    listItem: personMessage(),
+    noneButton: personMessage(),
+    question: personMessage(),
+  }),
+  details: z.strictObject({
+    listItem: personMessage(),
+  }),
+});
+
+/**
  * How much of the family the participant must record before continuing.
  * `recommended` lets them continue after being shown what is missing;
  * `required` does not.
@@ -201,6 +262,10 @@ export const CompletenessSchema = z.strictObject({
     },
     ownedOptions: 'pedigreeRelativesNotRecorded',
   }),
+  itemText: CompletenessTextSchema,
+  // Shown under the tracker when the family is only recommended. Kept under
+  // either enforcement, so switching between them loses no wording.
+  recommendedNote: localizedString(nonBlankText(), 'plain'),
 });
 
 /**

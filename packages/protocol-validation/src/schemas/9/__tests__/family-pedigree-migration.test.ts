@@ -13,6 +13,10 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import migrationV8toV9 from '../migration.ts';
+import {
+  pedigreeCompletenessText,
+  pedigreeNameField,
+} from './family-pedigree-text.ts';
 // The CEGRM template as `main` released it (commit 5dec6ca2), when the Family
 // Pedigree was a schema 8 stage.
 import ecoGeneticTemplate from './fixtures/eco-genetic-relationship-maps.schema-8.json';
@@ -266,6 +270,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
       prompt: en('Who is in your family? {braces} it’s fine'),
       nodeConfiguration: {
         nameAttribute: 'name',
+        nameField: pedigreeNameField(),
         sexAssignedAtBirthAttribute: 'biologicalSex',
         egoAttribute: 'isEgo',
       },
@@ -280,6 +285,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
         scope: 'grandparents',
         enforcement: 'required',
         relativesNotRecordedAttribute: 'relativesNotRecorded',
+        ...pedigreeCompletenessText(),
       },
       form: {
         fields: [
@@ -389,11 +395,13 @@ describe('v8 to v9 Family Pedigree migration', () => {
                 scope: 'parents',
                 enforcement: 'required',
                 relativesNotRecordedAttribute: 'relativesNotRecorded',
+                ...pedigreeCompletenessText(),
               }
             : {
                 scope: 'grandparents',
                 enforcement: requireGrandparents,
                 relativesNotRecordedAttribute: 'relativesNotRecorded',
+                ...pedigreeCompletenessText(),
               },
         );
         expect(relativesNotRecorded).toEqual({
@@ -413,6 +421,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
         scope: 'parents',
         enforcement: 'required',
         relativesNotRecordedAttribute: 'relativesNotRecorded',
+        ...pedigreeCompletenessText(),
       });
       expect(
         variableAt(migrated, 'node', 'person', 'relativesNotRecorded'),
@@ -462,6 +471,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
       for (const id of ['mother-side', 'father-side']) {
         expect(stageById(migrated, id).completeness).toMatchObject({
           relativesNotRecordedAttribute: 'relativesNotRecorded',
+          ...pedigreeCompletenessText(),
         });
       }
       expect(
@@ -919,6 +929,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
         prompt: en('Who is in your family? {braces} it’s fine'),
         nodeConfiguration: {
           nameAttribute: 'name',
+          nameField: pedigreeNameField(),
           sexAssignedAtBirthAttribute: 'biologicalSex',
           egoAttribute: 'isEgo',
         },
@@ -933,6 +944,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
           scope: 'parents',
           enforcement: 'required',
           relativesNotRecordedAttribute: 'relativesNotRecorded',
+          ...pedigreeCompletenessText(),
         },
       },
       expect.objectContaining({ type: 'FinishSession', id: 'finish' }),
@@ -1006,6 +1018,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
         prompt: en("Let's map out your family. Who is in it?"),
         nodeConfiguration: {
           nameAttribute: 'name',
+          nameField: pedigreeNameField(),
           sexAssignedAtBirthAttribute: 'biologicalSex',
           egoAttribute: 'is_ego',
         },
@@ -1020,6 +1033,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
           scope: 'grandparents',
           enforcement: 'recommended',
           relativesNotRecordedAttribute: 'relativesNotRecorded',
+          ...pedigreeCompletenessText(),
         },
         form: {
           fields: [{ variable: 'living_status' }, { variable: 'birth_year' }],

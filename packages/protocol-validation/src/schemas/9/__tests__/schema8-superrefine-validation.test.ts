@@ -17,6 +17,7 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import ProtocolSchemaV9 from '../schema.ts';
+import { pedigreeNameField } from './family-pedigree-text.ts';
 import {
   GENDER_IDENTITY_OPTIONS,
   GENDER_IDENTITY_TERMS,
@@ -2952,6 +2953,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           prompt: localized('Build your family'),
           nodeConfiguration: {
             nameAttribute: 'name',
+            nameField: pedigreeNameField(),
             ...(askGenderIdentity
               ? {
                   genderIdentity: {

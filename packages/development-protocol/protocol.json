@@ -1617,6 +1617,16 @@
       },
       "nodeConfiguration": {
         "nameAttribute": "fm_name",
+        "nameField": {
+          "prompt": {
+            "en-US": "Name (optional)",
+            "es": "Nombre (opcional)"
+          },
+          "hint": {
+            "en-US": "A first name or nickname is fine. If you don’t know it, leave this blank and they will be shown by how they are related to you.",
+            "es": "Basta con un nombre o un apodo. Si no lo sabes, deja este campo vacío y se mostrará según su parentesco contigo."
+          }
+        },
         "genderIdentity": {
           "attribute": "genderIdentity",
           "terms": [

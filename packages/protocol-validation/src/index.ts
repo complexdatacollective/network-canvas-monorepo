@@ -73,6 +73,18 @@ export {
   type LocalizationDeclaration,
 } from './localization/localeTag.ts';
 export { isBlankMessage, isBlankText } from './localization/blankText.ts';
+// Localized messages whose translations may use the arguments their setting
+// declares, and the versions an editor shows each one as.
+export {
+  composeMessage,
+  findMessageArgumentProblem,
+  type MessageArgument,
+  type MessageArguments,
+  type MessagePart,
+  type MessageVariant,
+  messageVariants,
+  pluralCategoriesOf,
+} from './localization/messageArguments.ts';
 export { escapeMarkdownText } from './localization/markdownText.ts';
 export {
   escapeMessageText,
@@ -157,6 +169,7 @@ export { type LanguageChange } from './schemas/9/supplied-text.ts';
 // The stage settings whose wording Network Canvas supplies, written into a
 // stage by Architect when it is made and when a language is added.
 export {
+  missingSuppliedStageText,
   type SuppliedStageText,
   suppliedStageText,
   suppliedStageTextAfterLanguageChange,
