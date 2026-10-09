@@ -335,6 +335,32 @@ export function partnersOf(family: Family, personId: string): string[] {
     .map((link) => (link.source === personId ? link.target : link.source));
 }
 
+/**
+ * The other parents of the person's children who are not their partners:
+ * someone they had a child with, recorded as the child's parent alone, as an
+ * unnamed parent added for a child is.
+ */
+export function coParentsOf(family: Family, personId: string): string[] {
+  const partners = new Set(partnersOf(family, personId));
+  const children = new Set(
+    family.links
+      .filter(
+        (link) =>
+          link.source === personId && PRIMARY_PARENT_KINDS.has(link.kind),
+      )
+      .map((link) => link.target),
+  );
+  const coParents = new Set<string>();
+  for (const childId of children) {
+    for (const parentId of primaryParentsOf(family, childId)) {
+      if (parentId !== personId && !partners.has(parentId)) {
+        coParents.add(parentId);
+      }
+    }
+  }
+  return [...coParents];
+}
+
 /** Everyone who shares at least one primary parent with the person. */
 export function siblingsOf(family: Family, personId: string): string[] {
   const parents = new Set(primaryParentsOf(family, personId));
@@ -560,18 +586,13 @@ export function planAddRelative({
       let otherParentId: string | null = null;
       if (request.otherParent === 'unknown') {
         // The other genetic parent of a biological child gave the other
-        // gamete.
+        // gamete. They are the child's parent and nothing more: whether they
+        // are or were the anchor's partner is not asked, so not recorded.
         otherParentId = addPlaceholder(
           kind === 'biological'
             ? otherGameteSex(family.byId.get(anchorId)?.sexAssignedAtBirth)
             : undefined,
         );
-        links.push({
-          source: anchorId,
-          target: otherParentId,
-          kind: 'partner',
-          isCurrentPartner: true,
-        });
       } else if (request.otherParent) {
         otherParentId = request.otherParent;
       }
@@ -608,14 +629,15 @@ export function planAddRelative({
       const shared = request.sharedParentIds.filter((id) =>
         anchorParents.includes(id),
       );
-      // Siblings hang from the parents they share. Someone without parents
-      // is given two, unnamed, for the participant to fill in later; someone
-      // with one is given their second when the sibling shares them. An
-      // unnamed parent is a biological parent, giving a gamete not yet
-      // given, while the anchor has room for another genetic parent; one
-      // added once the anchor's genetic parents (donors included) are
-      // complete is a parent who raised them without giving a gamete, and is
-      // added as an adoptive parent.
+      // Siblings hang from the parents they share. An unnamed parent the
+      // addition gives the anchor stands for a genetic parent not yet shown,
+      // giving a gamete not yet given (`openGeneticParentSlots`): someone
+      // without parents is given one for each gamete still to give, for the
+      // participant to fill in later, and someone with one parent is given
+      // their second while there is room for one. Once the anchor's genetic
+      // parents (donors included) are all recorded, nobody is added to stand
+      // in for one. Unnamed parents are never recorded as anyone's partner:
+      // the participant is not asked about it.
       const open = openGeneticParentSlots(family, anchorId);
       const placeholders: { id: string; kind: 'biological' | 'adoptive' }[] =
         [];
@@ -629,13 +651,15 @@ export function planAddRelative({
       };
       let sharedPlaceholders: string[] = [];
       if (anchorParents.length === 0) {
-        const added = [0, 1].map((slot) =>
-          slot < open.length
-            ? addParentPlaceholder('biological', open[slot])
-            : addParentPlaceholder('adoptive', undefined),
-        );
+        // With no gamete left to give, someone recorded with only donors
+        // still needs parents to hang the sibling from: they are taken to be
+        // parents who raised the anchor, as adoptive parents.
+        const added =
+          open.length > 0
+            ? open.map((sex) => addParentPlaceholder('biological', sex))
+            : [0, 1].map(() => addParentPlaceholder('adoptive', undefined));
         // Sharing one of them names the one who gave that gamete; with no
-        // such parent added, the sibling shares both.
+        // such parent added, the sibling shares all of them.
         const giver =
           request.sharesUnshown === 'eggParent'
             ? 'female'
@@ -646,38 +670,32 @@ export function planAddRelative({
           (id, index) => giver !== undefined && open[index] === giver,
         );
         sharedPlaceholders = chosen.length > 0 ? chosen : added;
-      } else if (
-        anchorParents.length === 1 &&
-        request.sharesUnshown !== 'none'
-      ) {
+      } else if (anchorParents.length === 1) {
         const [known] = parentLinksOf(family, anchorId).filter((link) =>
           anchorParents.includes(link.source),
         );
-        // The other parent of someone adopted was most likely an adoptive
-        // parent too; otherwise they are taken to be a biological parent,
-        // who gave the other gamete when that is known, while there is room
-        // for one.
-        const second =
-          known?.kind === 'adoptive' || open.length === 0
-            ? addParentPlaceholder('adoptive', undefined)
-            : addParentPlaceholder(
-                'biological',
-                open.length === 1 ? open[0] : undefined,
-              );
-        sharedPlaceholders = [second];
+        const secondSex = open.length === 1 ? open[0] : undefined;
+        if (request.sharesUnshown === 'none') {
+          // A sibling who does not share the anchor's second genetic parent
+          // has another: the anchor's is added for the anchor alone, so the
+          // two are recorded with different genetic parents, as half
+          // siblings, rather than with the one parent each that would make
+          // them full siblings.
+          if (known?.kind === 'biological' && open.length > 0) {
+            addParentPlaceholder('biological', secondSex);
+          }
+        } else if (known?.kind === 'adoptive') {
+          // The other parent of someone adopted was most likely an adoptive
+          // parent too.
+          sharedPlaceholders = [addParentPlaceholder('adoptive', undefined)];
+        } else if (open.length > 0) {
+          // Otherwise they are a biological parent, who gave the other
+          // gamete when that is known.
+          sharedPlaceholders = [addParentPlaceholder('biological', secondSex)];
+        }
       }
       for (const { id, kind } of placeholders) {
         links.push({ source: id, target: anchorId, kind });
-      }
-      const placeholderIds = placeholders.map(({ id }) => id);
-      const [first, second, ...others] = [...anchorParents, ...placeholderIds];
-      if (placeholders.length > 0 && first && second && others.length === 0) {
-        links.push({
-          source: first,
-          target: second,
-          kind: 'partner',
-          isCurrentPartner: true,
-        });
       }
       // A sibling shares at least one parent; with none chosen, all of them.
       // Their relationship to those parents is their own.

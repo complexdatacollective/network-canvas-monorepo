@@ -63,6 +63,7 @@ import {
   type Person,
   type PersonDetails,
   type Relation,
+  coParentsOf,
   couldCarryPregnancy,
   fullSiblingsOf,
   geneticParentSexes,
@@ -1361,7 +1362,10 @@ function ChildFields({
         name={ROLE.otherParent}
         label={intl.formatMessage(messages.otherParentLabel)}
         options={[
-          ...partners.map((id) => ({ value: id, label: displayName(id) })),
+          ...[...partners, ...coParentsOf(family, anchor.id)].map((id) => ({
+            value: id,
+            label: displayName(id),
+          })),
           {
             value: UNKNOWN,
             label: intl.formatMessage(messages.otherParentUnknown),
@@ -1477,6 +1481,8 @@ function SiblingFields({
       link.source === parents[0],
   );
   const open = openGeneticParentSlots(family, anchor.id);
+  // A parent not yet shown stands for a genetic parent not yet recorded.
+  const offersUnshown = parents.length === 1 && open.length > 0;
   const unshownSex =
     knownLink?.kind !== 'adoptive' && open.length === 1 ? open[0] : undefined;
   const shared = asStringArray(values[ROLE.sharedParents]);
@@ -1524,16 +1530,17 @@ function SiblingFields({
   // offered in the words the question about shared parents used, or one of
   // the two given to someone with no parents, shown by how they are related.
   const carrierLabel = (id: string) =>
-    family.byId.has(id) || parents.length !== 1
+    family.byId.has(id) || !offersUnshown
       ? displayName(id)
       : intl.formatMessage(messages.sharedParentUnshown, args);
 
   // Someone with no parents is given an egg parent and a sperm parent,
   // unnamed; the sibling may share both or one of them. Someone whose egg or
-  // sperm came from a donor already has that genetic parent, so the parents
-  // they are given are not an egg parent and a sperm parent, and the sibling
-  // shares both. A parent not yet shown can be shared too, and is added for
-  // both.
+  // sperm came from a donor already has that genetic parent, so is given
+  // only the one still to give, which the sibling shares. Someone with one
+  // parent can share their second, not yet shown, which is added for both;
+  // it is offered, and chosen to start with, only while that second parent
+  // is a genetic parent not yet recorded.
   const sharedField =
     parents.length === 0 && open.length < 2 ? null : parents.length === 0 ? (
       <Field
@@ -1569,7 +1576,7 @@ function SiblingFields({
         label={intl.formatMessage(messages.sharedParentCountLabel, args)}
         options={[
           ...parents.map((id) => ({ value: id, label: displayName(id) })),
-          ...(parents.length < 2
+          ...(offersUnshown
             ? [
                 {
                   value: UNKNOWN,
@@ -1579,7 +1586,7 @@ function SiblingFields({
             : []),
         ]}
         required
-        initialValue={parents.length < 2 ? [...parents, UNKNOWN] : parents}
+        initialValue={offersUnshown ? [...parents, UNKNOWN] : parents}
       />
     );
 

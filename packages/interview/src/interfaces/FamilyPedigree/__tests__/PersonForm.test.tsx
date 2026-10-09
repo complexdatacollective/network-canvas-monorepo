@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
@@ -11,7 +11,11 @@ import {
   asEntityAttributeReference,
   type FormField,
 } from '@codaco/protocol-validation';
-import { entityAttributesProperty, type NcNode } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  type NcEdge,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import * as attributePatch from '../../../forms/formValuesToAttributePatch';
@@ -20,9 +24,9 @@ import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import PersonForm, { type PersonFormResult } from '../components/PersonForm';
-import { readFamily } from '../model';
+import { type Relation, readFamily } from '../model';
 import type { OwnedOptionLabels } from '../options';
-import { config, person } from './fixtures';
+import { config, link, person } from './fixtures';
 
 const OPTION_LABELS: OwnedOptionLabels = {
   sexAssignedAtBirth: {
@@ -66,6 +70,9 @@ const nicknameField: FormField = {
 
 type Setup = {
   nodes: NcNode[];
+  edges?: NcEdge[];
+  /** Adds a relative of the person, rather than editing them. */
+  adding?: Relation;
   nameValidation?: Record<string, unknown>;
   formFields?: FormField[];
   /** Each encrypted name decrypted, by person id. */
@@ -73,12 +80,14 @@ type Setup = {
   optionLabels?: OwnedOptionLabels;
 };
 
-/** The pedigree's side panel, editing `editing`, in an interview whose network
- * holds `nodes`. */
+/** The pedigree's side panel, editing `editing` (or adding a relative of
+ * them), in an interview whose network holds `nodes` and `edges`. */
 function renderPersonForm(
   editing: string,
   {
     nodes,
+    edges = [],
+    adding,
     nameValidation,
     formFields = [],
     decryptedNames = new Map(),
@@ -93,7 +102,7 @@ function renderPersonForm(
         promptIndex: 0,
         network: {
           nodes,
-          edges: [],
+          edges,
           ego: { [entityAttributesProperty]: {} },
         },
       } as never,
@@ -137,7 +146,7 @@ function renderPersonForm(
     middleware: (getDefault) => getDefault({ serializableCheck: false }),
   });
 
-  const family = readFamily(nodes, [], config);
+  const family = readFamily(nodes, edges, config);
   const edited = family.byId.get(editing);
   if (!edited) throw new Error(`No person ${editing}`);
   const onSubmit = vi.fn<(result: PersonFormResult) => void>();
@@ -156,7 +165,16 @@ function renderPersonForm(
     <>
       <PersonForm
         formId={FORM_ID}
-        mode={{ kind: 'edit', person: edited, missing: [], unavailable: [] }}
+        mode={
+          adding
+            ? {
+                kind: 'add',
+                relation: adding,
+                anchor: edited,
+                ids: ['added', 'new-1', 'new-2'],
+              }
+            : { kind: 'edit', person: edited, missing: [], unavailable: [] }
+        }
         family={family}
         config={{ ...config, genderIdentity: undefined }}
         framing="gendered"
@@ -285,5 +303,72 @@ describe('the person form', () => {
       ),
     ).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+});
+
+describe('adding a sibling', () => {
+  const sharedParents = () =>
+    screen.getByRole('group', { name: /^Which parents do they share/ });
+
+  it('offers the second parent not shown yet, chosen, to someone with one parent', () => {
+    renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('mum', { sex: ['female'] }),
+      ],
+      edges: [link('mum', 'ego', 'biological')],
+      adding: 'sibling',
+    });
+    expect(
+      within(sharedParents()).getByRole('checkbox', {
+        name: 'Your other parent, not shown yet',
+      }),
+    ).toBeChecked();
+  });
+
+  it('offers no parent not shown yet to someone whose genetic parents are all recorded', async () => {
+    const { onSubmit, user } = renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('mum', { sex: ['female'] }),
+        person('donor', { sex: ['male'] }),
+      ],
+      edges: [
+        link('mum', 'ego', 'biological', { carrier: true }),
+        link('donor', 'ego', 'donor'),
+      ],
+      adding: 'sibling',
+    });
+    expect(within(sharedParents()).getAllByRole('checkbox')).toHaveLength(1);
+    await user.click(screen.getByRole('radio', { name: 'Female' }));
+    await save(user);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0].request).toMatchObject({
+      sharedParentIds: ['mum'],
+      sharesUnshown: 'none',
+    });
+  });
+});
+
+describe('adding a child', () => {
+  it('offers the other parent of an earlier child, who is not a partner', () => {
+    renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('theo'),
+        person('theoMum', { sex: ['female'] }),
+      ],
+      edges: [
+        link('ego', 'theo', 'biological'),
+        link('theoMum', 'theo', 'biological', { carrier: true }),
+      ],
+      adding: 'child',
+    });
+    expect(
+      within(
+        screen.getByRole('radiogroup', { name: /^Who is the child’s other/ }),
+      ).getByRole('radio', { name: 'theoMum' }),
+    ).toBeInTheDocument();
   });
 });
