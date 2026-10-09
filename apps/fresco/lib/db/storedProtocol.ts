@@ -11,12 +11,13 @@ const StoredProtocolSchema = z.object({
   stages: z.array(stageSchema),
   codebook: CodebookSchema,
   localization: CurrentProtocolSchema.shape.localization,
+  interfaceText: CurrentProtocolSchema.shape.interfaceText,
   experiments: ExperimentsSchema,
 });
 
 /**
- * Parse the design a protocol row holds: its stages, codebook, languages and
- * experiments.
+ * Parse the design a protocol row holds: its stages, codebook, languages,
+ * shared wording and experiments.
  *
  * There is deliberately no fallback. A row that does not parse still holds the
  * researcher's design; substituting an empty one would run interviews that
@@ -32,12 +33,15 @@ export function parseStoredProtocol(row: {
   stages: unknown;
   codebook: unknown;
   localization: unknown;
+  interfaceText: unknown;
   experiments: unknown;
 }) {
   return StoredProtocolSchema.safeParse({
     stages: row.stages,
     codebook: row.codebook,
     localization: row.localization,
+    // A protocol that holds no shared wording stores none.
+    interfaceText: row.interfaceText ?? undefined,
     // A protocol that enables no experiments stores none.
     experiments: row.experiments ?? {},
   });

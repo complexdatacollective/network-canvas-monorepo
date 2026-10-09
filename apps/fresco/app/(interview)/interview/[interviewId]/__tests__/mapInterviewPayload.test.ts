@@ -18,7 +18,7 @@ type Source = NonNullable<GetInterviewByIdQuery>;
 type StoredProtocol = Partial<
   Pick<
     Source['protocol'],
-    'stages' | 'codebook' | 'localization' | 'experiments'
+    'stages' | 'codebook' | 'localization' | 'interfaceText' | 'experiments'
   >
 >;
 
@@ -62,6 +62,7 @@ function makeSource(
       stages: [],
       codebook: { node: {}, edge: {} },
       localization: { defaultLocale: 'en', locales: ['en'] },
+      interfaceText: null,
       experiments: {},
       originalFileKey: null,
       originalFileUrl: null,
@@ -120,6 +121,27 @@ describe('mapInterviewPayload', () => {
       defaultLocale: 'fr',
       locales: ['fr', 'en', 'ar'],
     });
+  });
+
+  it('hands the interview the shared wording the protocol holds', () => {
+    const interfaceText = {
+      validation: { required: { en: 'Please answer this first.' } },
+    };
+    const source = makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION);
+    const { payload } = mapReady({
+      ...source,
+      protocol: { ...source.protocol, interfaceText },
+    });
+
+    expect(payload.protocol.interfaceText).toEqual(interfaceText);
+  });
+
+  it('hands the interview no shared wording for a protocol that holds none', () => {
+    const { payload } = mapReady(
+      makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION),
+    );
+
+    expect(payload.protocol.interfaceText).toBeUndefined();
   });
 
   it('carries the stored locale fields into the session', () => {
