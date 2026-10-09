@@ -15,6 +15,8 @@ const placeholder: Person = {
   sexAssignedAtBirth: undefined,
   relativesNotRecorded: [],
   attributes: {},
+  markedStandIn: false,
+  referencedElsewhere: false,
 };
 
 const noop = () => undefined;

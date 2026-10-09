@@ -427,7 +427,7 @@ export function partnersOf(family: Family, personId: string): string[] {
 
 /** The person's genetic parents: their biological parents and gamete
  * donors, who each gave them an egg or a sperm. */
-export function geneticParentsOf(family: Family, personId: string): string[] {
+function geneticParentsOf(family: Family, personId: string): string[] {
   return parentLinksOf(family, personId)
     .filter((link) => isGeneticKind(link.kind))
     .map((link) => link.source);
