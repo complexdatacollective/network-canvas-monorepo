@@ -170,6 +170,21 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
       ),
     },
   ],
+  // The wording questions show only while participants choose the words, so
+  // the fixture chooses them for the pattern check to reach their rules.
+  [[...fixtureStage('FamilyPedigree'), 'framing'], 'participantPreference'],
+  [
+    [...fixtureStage('FamilyPedigree'), 'wording', 'framingChoiceTitle'],
+    en('How should we describe your family?'),
+  ],
+  [
+    [...fixtureStage('FamilyPedigree'), 'wording', 'framingChoiceDescription'],
+    en('Choose the words you would like us to use for your family.'),
+  ],
+  [
+    [...fixtureStage('FamilyPedigree'), 'wording', 'framingControlLabel'],
+    en('Wording'),
+  ],
   [
     [...fixtureStage('FamilyPedigree'), 'completeness'],
     {

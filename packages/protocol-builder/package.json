@@ -21,6 +21,8 @@
     "./codebook/variableValidation": "./src/codebook/variableValidation.ts",
     "./codebook/writes": "./src/codebook/writes.ts",
     "./editors/defineStageEditor": "./src/editors/defineStageEditor.tsx",
+    "./editors/family-pedigree/participantWordingSettings": "./src/editors/family-pedigree/sections/participantWordingSettings.ts",
+    "./editors/family-pedigree/pedigreeMessages": "./src/editors/family-pedigree/sections/pedigreeMessages.ts",
     "./editors/finish-session/finishSessionMessages": "./src/editors/finish-session/sections/finishSessionMessages.ts",
     "./editors/narrative-pedigree/narrativePedigreeMessages": "./src/editors/narrative-pedigree/sections/narrativePedigreeMessages.ts",
     "./fields/AssetPickerField": "./src/fields/AssetPickerField.tsx",

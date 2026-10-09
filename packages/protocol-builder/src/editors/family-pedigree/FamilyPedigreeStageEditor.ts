@@ -6,6 +6,7 @@ import {
   framing,
   nodeConfiguration,
   nominationPrompts,
+  participantWording,
   pedigreePrompt,
   pedigreeSubject,
   personFormFields,
@@ -22,8 +23,8 @@ import {
  * where the interface records what it asks about each person (and whether it
  * asks about gender identity), how relationships are recorded, the words used for
  * family members, any further questions about each person, how complete the
- * family must be, and the questions asked of the whole family once it is
- * drawn.
+ * family must be, the words the participant sees while drawing, and the
+ * questions asked of the whole family once it is drawn.
  */
 export const familyPedigreeStageEditor = defineStageEditor('FamilyPedigree', [
   pedigreeSubject(),
@@ -33,6 +34,7 @@ export const familyPedigreeStageEditor = defineStageEditor('FamilyPedigree', [
   framing(),
   personFormFields(),
   completeness(),
+  participantWording(),
   nominationPrompts(),
   skipLogic(),
   interviewerGuidance(),

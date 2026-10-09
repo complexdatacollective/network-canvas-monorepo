@@ -3,6 +3,7 @@ import CompletenessSection from './CompletenessSection.tsx';
 import FramingSection from './FramingSection.tsx';
 import NodeConfigurationSection from './NodeConfigurationSection.tsx';
 import NominationPromptsSection from './NominationPromptsSection.tsx';
+import ParticipantWordingSection from './ParticipantWordingSection.tsx';
 import PedigreePromptSection from './PedigreePromptSection.tsx';
 import PedigreeSubjectSection from './PedigreeSubjectSection.tsx';
 import PersonFormFieldsSection from './PersonFormFieldsSection.tsx';
@@ -47,3 +48,8 @@ export const personFormFields = (): StageSection => () => (
 
 /** How much of the family the participant must record before continuing. */
 export const completeness = (): StageSection => () => <CompletenessSection />;
+
+/** The words the participant sees on this stage, in the order they meet them. */
+export const participantWording = (): StageSection => () => (
+  <ParticipantWordingSection />
+);

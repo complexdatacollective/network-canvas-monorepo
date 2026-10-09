@@ -356,6 +356,24 @@ const PEDIGREE_PERSON_FIELD: Step = [
   attributeOr(messages.fieldPosition, stageSubject),
 ];
 
+/**
+ * The Participant wording section: the whole section, then the group a
+ * setting sits in, then its label.
+ */
+const PEDIGREE_WORDING: Step = [0, words(familyPedigreeMessages.wordingTitle)];
+const PEDIGREE_WORDING_DRAWING: Step = [
+  1,
+  words(familyPedigreeMessages.wordingDrawingTitle),
+];
+const PEDIGREE_WORDING_CONNECTING: Step = [
+  1,
+  words(familyPedigreeMessages.wordingConnectingTitle),
+];
+const PEDIGREE_WORDING_ADDING: Step = [
+  1,
+  words(familyPedigreeMessages.wordingAddingTitle),
+];
+
 const composerEdgeSubject: SubjectOf = ({ place, at }) =>
   subjectFrom(valueAt(place, [...at.slice(0, 2), 'subject']));
 
@@ -482,6 +500,284 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
       PEDIGREE_TRACKER_TEXT,
       [2, words(familyPedigreeMessages.trackerRecommendedNoteLabel)],
     ),
+    rule('wording.pointerTool', PEDIGREE_WORDING, PEDIGREE_WORDING_DRAWING, [
+      2,
+      words(familyPedigreeMessages.wordingPointerTool),
+    ]),
+    rule('wording.connectTool', PEDIGREE_WORDING, PEDIGREE_WORDING_DRAWING, [
+      2,
+      words(familyPedigreeMessages.wordingConnectTool),
+    ]),
+    rule('wording.disconnectTool', PEDIGREE_WORDING, PEDIGREE_WORDING_DRAWING, [
+      2,
+      words(familyPedigreeMessages.wordingDisconnectTool),
+    ]),
+    rule('wording.connectHint', PEDIGREE_WORDING, PEDIGREE_WORDING_DRAWING, [
+      2,
+      words(familyPedigreeMessages.wordingConnectHint),
+    ]),
+    rule('wording.disconnectHint', PEDIGREE_WORDING, PEDIGREE_WORDING_DRAWING, [
+      2,
+      words(familyPedigreeMessages.wordingDisconnectHint),
+    ]),
+    rule(
+      'wording.framingChoiceTitle',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_DRAWING,
+      [2, words(familyPedigreeMessages.wordingFramingChoiceTitle)],
+    ),
+    rule(
+      'wording.framingChoiceDescription',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_DRAWING,
+      [2, words(familyPedigreeMessages.wordingFramingChoiceDescription)],
+    ),
+    rule(
+      'wording.framingControlLabel',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_DRAWING,
+      [2, words(familyPedigreeMessages.wordingFramingControlLabel)],
+    ),
+    rule(
+      'wording.placeholderParentsNote',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_DRAWING,
+      [2, words(familyPedigreeMessages.wordingPlaceholderParentsNote)],
+    ),
+    rule(
+      'wording.generatedLabelOf',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_DRAWING,
+      [2, words(familyPedigreeMessages.wordingGeneratedLabelOf)],
+    ),
+    rule('wording.relativeTerm', PEDIGREE_WORDING, PEDIGREE_WORDING_DRAWING, [
+      2,
+      words(familyPedigreeMessages.wordingRelativeTerm),
+    ]),
+    rule('wording.you', PEDIGREE_WORDING, PEDIGREE_WORDING_DRAWING, [
+      2,
+      words(familyPedigreeMessages.wordingYou),
+    ]),
+    rule('wording.save', PEDIGREE_WORDING, PEDIGREE_WORDING_DRAWING, [
+      2,
+      words(familyPedigreeMessages.wordingSave),
+    ]),
+    rule('wording.dontKnow', PEDIGREE_WORDING, PEDIGREE_WORDING_DRAWING, [
+      2,
+      words(familyPedigreeMessages.wordingDontKnow),
+    ]),
+    rule(
+      'wording.missingDetailsList',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_DRAWING,
+      [2, words(familyPedigreeMessages.wordingMissingDetailsList)],
+    ),
+    rule(
+      'wording.connectQuestion',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_CONNECTING,
+      [2, words(familyPedigreeMessages.wordingConnectQuestion)],
+    ),
+    rule(
+      'wording.connectParent',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_CONNECTING,
+      [2, words(familyPedigreeMessages.wordingConnectParent)],
+    ),
+    rule(
+      'wording.connectPartners',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_CONNECTING,
+      [2, words(familyPedigreeMessages.wordingConnectPartners)],
+    ),
+    rule(
+      'wording.disconnectConfirmTitle',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_CONNECTING,
+      [2, words(familyPedigreeMessages.wordingDisconnectConfirmTitle)],
+    ),
+    rule(
+      'wording.disconnectConfirmDescription',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_CONNECTING,
+      [2, words(familyPedigreeMessages.wordingDisconnectConfirmDescription)],
+    ),
+    rule(
+      'wording.disconnectWouldCutOff',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_CONNECTING,
+      [2, words(familyPedigreeMessages.wordingDisconnectWouldCutOff)],
+    ),
+    rule(
+      'wording.removeConfirmTitle',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_CONNECTING,
+      [2, words(familyPedigreeMessages.wordingRemoveConfirmTitle)],
+    ),
+    rule(
+      'wording.removeConfirmDescription',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_CONNECTING,
+      [2, words(familyPedigreeMessages.wordingRemoveConfirmDescription)],
+    ),
+    rule(
+      'wording.stillTogetherLabel',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_CONNECTING,
+      [2, words(familyPedigreeMessages.wordingStillTogetherLabel)],
+    ),
+    rule('wording.panelTitle', PEDIGREE_WORDING, PEDIGREE_WORDING_ADDING, [
+      2,
+      words(familyPedigreeMessages.wordingPanelTitle),
+    ]),
+    rule('wording.parentKindLabel', PEDIGREE_WORDING, PEDIGREE_WORDING_ADDING, [
+      2,
+      words(familyPedigreeMessages.wordingParentKindLabel),
+    ]),
+    rule(
+      'wording.parentKindBiologicalCarrier',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingParentKindBiologicalCarrier)],
+    ),
+    rule(
+      'wording.biologicalParentLabel',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingBiologicalParentLabel)],
+    ),
+    rule(
+      'wording.biologicalParentHint',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingBiologicalParentHint)],
+    ),
+    rule(
+      'wording.biologicalParentBoth',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingBiologicalParentBoth)],
+    ),
+    rule('wording.carrierLabel', PEDIGREE_WORDING, PEDIGREE_WORDING_ADDING, [
+      2,
+      words(familyPedigreeMessages.wordingCarrierLabel),
+    ]),
+    rule('wording.carrierUnknown', PEDIGREE_WORDING, PEDIGREE_WORDING_ADDING, [
+      2,
+      words(familyPedigreeMessages.wordingCarrierUnknown),
+    ]),
+    rule(
+      'wording.otherParentLabel',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingOtherParentLabel)],
+    ),
+    rule('wording.otherParentNone', PEDIGREE_WORDING, PEDIGREE_WORDING_ADDING, [
+      2,
+      words(familyPedigreeMessages.wordingOtherParentNone),
+    ]),
+    rule(
+      'wording.otherParentUnknown',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingOtherParentUnknown)],
+    ),
+    rule(
+      'wording.parentPartnerLabel',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingParentPartnerLabel)],
+    ),
+    rule(
+      'wording.parentLinkKindLabel',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingParentLinkKindLabel)],
+    ),
+    rule(
+      'wording.parentCarriedLabel',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingParentCarriedLabel)],
+    ),
+    rule(
+      'wording.sharedParentCountLabel',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingSharedParentCountLabel)],
+    ),
+    rule(
+      'wording.sharedParentCountBoth',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingSharedParentCountBoth)],
+    ),
+    rule(
+      'wording.sharedParentEggOnly',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingSharedParentEggOnly)],
+    ),
+    rule(
+      'wording.sharedParentUnshown',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingSharedParentUnshown)],
+    ),
+    rule(
+      'wording.siblingKindLabel',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingSiblingKindLabel)],
+    ),
+    rule(
+      'wording.carriedSiblingsPregnancyLabel',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingCarriedSiblingsPregnancyLabel)],
+    ),
+    rule('wording.childKindLabel', PEDIGREE_WORDING, PEDIGREE_WORDING_ADDING, [
+      2,
+      words(familyPedigreeMessages.wordingChildKindLabel),
+    ]),
+    rule(
+      'wording.childKindBiological',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingChildKindBiological)],
+    ),
+    rule(
+      'wording.childKindAdoptive',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingChildKindAdoptive)],
+    ),
+    rule('wording.childKindSocial', PEDIGREE_WORDING, PEDIGREE_WORDING_ADDING, [
+      2,
+      words(familyPedigreeMessages.wordingChildKindSocial),
+    ]),
+    rule(
+      'wording.alsoParentOfLabel',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingAlsoParentOfLabel)],
+    ),
+    rule(
+      'wording.sexAssignedAtBirthLabel',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingSexAssignedAtBirthLabel)],
+    ),
+    rule(
+      'wording.genderIdentityLabel',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingGenderIdentityLabel)],
+    ),
+    rule('wording.sexRuledOutHint', PEDIGREE_WORDING, PEDIGREE_WORDING_ADDING, [
+      2,
+      words(familyPedigreeMessages.wordingSexRuledOutHint),
+    ]),
   ],
   Geospatial: [promptText(geospatialMessages.promptTextLabel)],
   Information: [
