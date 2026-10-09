@@ -168,7 +168,7 @@ function buildLabels(
     );
   }
 
-  // Someone described through a relative ("Great-grandfather's father") is
+  // Someone described through a relative ("Great-grandfather’s father") is
   // described by the label that relative ends up with, qualified or
   // numbered, so the labels are worked out again until each one's relative
   // is described as they are. Each round settles everyone one step further

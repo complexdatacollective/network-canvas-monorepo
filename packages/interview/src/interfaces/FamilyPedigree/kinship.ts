@@ -96,7 +96,7 @@ export type KinTerm = (typeof KIN_TERMS)[number];
 
 /**
  * The words for one step from a person to their relative, used only to
- * describe someone the kinship words above do not reach ("Cousin's son").
+ * describe someone the kinship words above do not reach ("Cousin’s son").
  */
 type StepTerm =
   | 'mother'
@@ -579,7 +579,7 @@ export function kinTermFor(
  * the participant as "you"; everyone else by their kinship to the
  * participant, in the words of the stage's framing, found along the shortest
  * path between them. Someone with no everyday kinship word is described
- * through the person before them on that path ("Cousin's son"). Several
+ * through the person before them on that path ("Cousin’s son"). Several
  * unnamed people may share a label here: `generateLabels` tells them apart.
  */
 export function labelFamily(

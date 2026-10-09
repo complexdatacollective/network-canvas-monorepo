@@ -104,10 +104,10 @@ describe('labelFamily', () => {
       sis: 'Sibling',
       nan: 'Grandparent',
       grandad: 'Grandparent',
-      aunt: "Parent's sibling",
-      uncle: "Parent's sibling",
+      aunt: 'Parent’s sibling',
+      uncle: 'Parent’s sibling',
       cousin: 'Cousin',
-      nephew: "Sibling's child",
+      nephew: 'Sibling’s child',
       kid: 'Child',
       grandkid: 'Grandchild',
     });
@@ -393,7 +393,7 @@ describe('labelFamily', () => {
       [...extendedNodes, man('cousinsSon')],
       [...extendedEdges, link('cousin', 'cousinsSon', 'biological')],
     );
-    expect(labels.cousinsSon).toBe("Cousin's son");
+    expect(labels.cousinsSon).toBe('Cousin’s son');
   });
 
   test('unnamed people may share a kinship word, which generateLabels tells apart', () => {
@@ -632,7 +632,7 @@ describe('step and in-law relatives', () => {
             link('dad', 'her', 'partner', { current: false }),
           ],
         ).her,
-      ).toEqual(["Father's former partner", 'otherRelative']);
+      ).toEqual(['Father’s former partner', 'otherRelative']);
     });
   });
 
@@ -665,7 +665,7 @@ describe('step and in-law relatives', () => {
             link('ex', 'kid', 'biological'),
           ],
         ).kid,
-      ).toEqual(["Former partner's son", 'otherRelative']);
+      ).toEqual(['Former partner’s son', 'otherRelative']);
     });
   });
 
@@ -828,10 +828,42 @@ describe('step and in-law relatives', () => {
       ),
     ).toMatchObject({
       paul: ['Stepfather', 'stepParent'],
-      dansPartner: ["Sperm donor's partner", 'otherRelative'],
-      paulsEx: ["Stepfather's former partner", 'otherRelative'],
-      annsEx: ["Mother's former partner", 'otherRelative'],
+      dansPartner: ['Sperm donor’s partner', 'otherRelative'],
+      paulsEx: ['Stepfather’s former partner', 'otherRelative'],
+      annsEx: ['Mother’s former partner', 'otherRelative'],
     });
+  });
+});
+
+describe('apostrophes', () => {
+  test('English copy uses the typographic apostrophe, never a straight one outside ICU quoting', () => {
+    // In ICU messages a straight apostrophe quotes a following brace, hash,
+    // pipe or apostrophe; anywhere else it is text, which should be U+2019.
+    const straight = /(?<!')'(?![{}#|'])/;
+    const offending = Object.entries(messages)
+      .filter(([, message]) => straight.test(message.defaultMessage ?? ''))
+      .map(([key]) => key);
+    expect(offending).toEqual([]);
+  });
+
+  test('a label described through a relative reads with a typographic apostrophe', () => {
+    expect(
+      labelsOf(
+        [
+          person('ego', { isEgo: true }),
+          woman('mum'),
+          man('bro'),
+          woman('priya', { name: 'Priya' }),
+          woman('priyasMum'),
+        ],
+        [
+          link('mum', 'ego', 'biological'),
+          link('mum', 'bro', 'biological'),
+          link('bro', 'priya', 'partner'),
+          link('priyasMum', 'priya', 'biological'),
+        ],
+      ).priyasMum,
+    ).toBe('Priya\u2019s mother');
   });
 });
 
@@ -860,7 +892,7 @@ describe('soft hyphens', () => {
       stepbrother: 'Step\u00ADbrother',
       maternalGrandparent: 'Maternal grand\u00ADparent',
       greatGrandmother: 'Great-grand\u00ADmother',
-      grandparentsSibling: "Grand\u00ADparent's sibling",
+      grandparentsSibling: 'Grand\u00ADparent’s sibling',
       surrogate: 'Surro\u00ADgate',
       biologicalMother: 'Bio\u00ADlogical mother',
     });
@@ -874,7 +906,7 @@ describe('soft hyphens', () => {
         },
         intl,
       ),
-    ).toBe("Cousin's step\u00ADmother");
+    ).toBe('Cousin’s step\u00ADmother');
   });
 
   test('short words, and words that fit a symbol whole, have none', () => {

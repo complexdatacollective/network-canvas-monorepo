@@ -153,7 +153,7 @@ describe('generateLabels', () => {
     expect(labels).toMatchObject({
       miriamsDad: 'Great-grandfather (parent of Miriam)',
       isaacsDad: 'Great-grandfather (parent of Isaac)',
-      isaacsGrandad: "Great-grandfather (parent of Isaac)'s father",
+      isaacsGrandad: 'Great-grandfather (parent of Isaac)’s father',
     });
   });
 
