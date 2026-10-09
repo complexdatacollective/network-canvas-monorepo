@@ -1007,7 +1007,7 @@ describe('FormStore', () => {
 
       expect(field?.meta.isValidating).toBe(false);
       expect(field?.meta.isValid).toBe(false);
-      expect(fieldErrors).toEqual(['Something went wrong during validation']);
+      expect(fieldErrors).toEqual(['Something went wrong.']);
     });
 
     it('ignores a stale async result that resolves after a newer validation', async () => {

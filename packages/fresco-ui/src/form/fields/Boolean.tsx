@@ -26,7 +26,7 @@ import { cva, cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 
-const messages = defineMessages({
+export const messages = defineMessages({
   yes: {
     id: 'frescoUi.booleanField.yes',
     defaultMessage: 'Yes',

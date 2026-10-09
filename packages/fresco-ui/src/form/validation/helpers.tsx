@@ -1,8 +1,8 @@
 import { z } from 'zod/mini';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import {
   createAppIntl,
-  defineMessages,
   formatMessageError,
   type IntlShape,
 } from '@codaco/app-i18n/messages';
@@ -21,15 +21,6 @@ import {
   validationPropKeys,
   validations,
 } from './functions';
-
-const messages = defineMessages({
-  unexpectedError: {
-    id: 'frescoUi.validation.unexpectedError',
-    defaultMessage: 'An error occurred while validating.',
-    description:
-      'Error shown when a validation rule itself throws unexpectedly.',
-  },
-});
 
 let defaultHelperIntl: IntlShape | undefined;
 
@@ -165,7 +156,7 @@ export function makeValidationFunction(
               code: 'custom',
               message:
                 reason ??
-                helperIntl(intl).formatMessage(messages.unexpectedError),
+                helperIntl(intl).formatMessage(commonMessages.genericError),
             });
             return;
           }
@@ -207,7 +198,9 @@ export function makeValidationFunction(
             console.error('Error while validating:', error);
             ctx.addIssue({
               code: 'custom',
-              message: helperIntl(intl).formatMessage(messages.unexpectedError),
+              message: helperIntl(intl).formatMessage(
+                commonMessages.genericError,
+              ),
             });
           }
         }
@@ -243,7 +236,7 @@ export function makeValidationFunction(
               ctx.addIssue({
                 code: 'custom',
                 message: helperIntl(intl).formatMessage(
-                  messages.unexpectedError,
+                  commonMessages.genericError,
                 ),
               });
             }

@@ -161,6 +161,7 @@
     "./form/utils/getInputState": "./src/form/utils/getInputState.ts",
     "./form/utils/objectPath": "./src/form/utils/objectPath.ts",
     "./form/utils/ymd": "./src/form/utils/ymd.ts",
+    "./form/validation/functions": "./src/form/validation/functions.ts",
     "./form/validation/helpers": "./src/form/validation/helpers.tsx",
     "./form/validation/utils/isUnanswered": "./src/form/validation/utils/isUnanswered.ts",
     "./hooks/useFitText": "./src/hooks/useFitText.ts",
@@ -786,6 +787,10 @@
       "./form/utils/ymd": {
         "types": "./dist/form/utils/ymd.d.ts",
         "default": "./dist/form/utils/ymd.js"
+      },
+      "./form/validation/functions": {
+        "types": "./dist/form/validation/functions.d.ts",
+        "default": "./dist/form/validation/functions.js"
       },
       "./form/validation/helpers": {
         "types": "./dist/form/validation/helpers.d.ts",
