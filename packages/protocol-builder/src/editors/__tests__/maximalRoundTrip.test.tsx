@@ -356,6 +356,12 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
         ],
       },
       convexHullVariable: 'contactType',
+      groupsHeading: { 'en-US': 'Groups' },
+      tooltips: {
+        addPerson: { 'en-US': 'Add node' },
+        automaticLayout: { 'en-US': 'Automatic layout' },
+        drawConnection: { 'en-US': 'Draw edge' },
+      },
       behaviours: { automaticLayout: true },
       edges: [
         {
@@ -494,6 +500,22 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     fields: fixtureMaximal('narrative-pedigree-1', {
       ...EVERY_STAGE,
       showAtRiskStatuses: true,
+      conditionText: {
+        heading: { 'en-US': 'Conditions' },
+        instruction: { 'en-US': 'Select a condition to see who it affects.' },
+        notation: {
+          affected: { 'en-US': 'Has this condition' },
+          obligateAffected: { 'en-US': 'Will develop this condition' },
+          obligateCarrier: { 'en-US': 'Carries this condition' },
+          atRiskAffected: { 'en-US': 'May develop this condition' },
+          atRiskCarrier: { 'en-US': 'May carry this condition' },
+          unknown: { 'en-US': 'Not known' },
+        },
+        snapshotCondition: { 'en-US': '{title}: {condition}' },
+        snapshotInheritance: {
+          'en-US': '{title}: {condition} — inheritance for {name}',
+        },
+      },
     }),
   },
   {

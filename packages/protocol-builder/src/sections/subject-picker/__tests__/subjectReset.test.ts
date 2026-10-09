@@ -24,6 +24,14 @@ describe('what a subject change invalidates', () => {
       'introductionPanel',
       'panelTitle',
       'subject',
+      'addNamePlaceholder',
+      'overtakenEditNotice',
+      'groupsHeading',
+      'attributesHeading',
+      'linksHeading',
+      'tooltips',
+      'keyHeading',
+      'conditionText',
     ]);
   });
 

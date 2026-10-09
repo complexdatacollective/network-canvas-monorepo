@@ -40,11 +40,12 @@ describe('the network composer sections, read in Spanish', () => {
     // The outline reads its titles out of the same catalog, so a section named
     // in Spanish and listed in English would fail here rather than pass
     // halfway.
-    await waitFor(() => expect(harness.outline()).toHaveLength(3));
+    await waitFor(() => expect(harness.outline()).toHaveLength(4));
     expect(harness.outline().map((section) => section.title)).toEqual([
       'Configuración de nodos',
       'Atributos editables',
       'Configuración de vínculos',
+      'Textos del lienzo',
     ]);
     // Each attribute is chosen in a window its field's trigger opens, so the
     // control is named by the field's own label — which is what

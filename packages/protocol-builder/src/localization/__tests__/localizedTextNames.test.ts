@@ -231,6 +231,44 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
       },
     ],
   ],
+  // A composer with a connection type holds the tooltip of the tool that draws it.
+  [
+    [...fixtureStage('NetworkComposer'), 'tooltips', 'drawConnection'],
+    { 'en-US': 'Draw edge' },
+  ],
+  // Each setting a configuration switches on is held once that configuration is
+  // on, so the fixture exercises it: grouping, automatic layout and at-risk
+  // statuses.
+  [[...fixtureStage('NetworkComposer'), 'convexHullVariable'], 'contactType'],
+  [[...fixtureStage('NetworkComposer'), 'groupsHeading'], en('Groups')],
+  [[...fixtureStage('Narrative'), 'behaviours', 'automaticLayout'], true],
+  [
+    [...fixtureStage('Narrative'), 'tooltips', 'pauseLayout'],
+    en('Pause automatic layout'),
+  ],
+  [
+    [...fixtureStage('Narrative'), 'tooltips', 'resumeLayout'],
+    en('Resume automatic layout'),
+  ],
+  [[...fixtureStage('NarrativePedigree'), 'showAtRiskStatuses'], true],
+  [
+    [
+      ...fixtureStage('NarrativePedigree'),
+      'conditionText',
+      'notation',
+      'atRiskAffected',
+    ],
+    en('May develop this condition'),
+  ],
+  [
+    [
+      ...fixtureStage('NarrativePedigree'),
+      'conditionText',
+      'notation',
+      'atRiskCarrier',
+    ],
+    en('May carry this condition'),
+  ],
 ];
 
 const setAt = (root: unknown, path: Path, value: unknown): void => {

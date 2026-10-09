@@ -218,6 +218,53 @@ describe('a new stage given nothing but a name', () => {
             },
           }
         : {}),
+      ...(type === 'NetworkComposer'
+        ? {
+            addNamePlaceholder: { en: 'Type a name, then press Enter' },
+            overtakenEditNotice: {
+              en: 'Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost.',
+            },
+            tooltips: {
+              addPerson: { en: 'Add node' },
+              automaticLayout: { en: 'Automatic layout' },
+            },
+          }
+        : {}),
+      // The template turns automatic layout on, so its tooltips are asked; no
+      // preset highlights, shows edges or groups, and drawing is off.
+      ...(type === 'Narrative'
+        ? {
+            tooltips: {
+              pauseLayout: { en: 'Pause automatic layout' },
+              resumeLayout: { en: 'Resume automatic layout' },
+            },
+          }
+        : {}),
+      ...(type === 'NarrativePedigree'
+        ? {
+            keyHeading: { en: 'Key' },
+            tooltips: {
+              clearFocus: { en: 'Clear focus' },
+              saveSnapshot: { en: 'Save snapshot' },
+            },
+            conditionText: {
+              heading: { en: 'Conditions' },
+              instruction: {
+                en: 'Select a condition to see who it affects.',
+              },
+              notation: {
+                affected: { en: 'Has this condition' },
+                obligateAffected: { en: 'Will develop this condition' },
+                obligateCarrier: { en: 'Carries this condition' },
+                unknown: { en: 'Not known' },
+              },
+              snapshotCondition: { en: '{title}: {condition}' },
+              snapshotInheritance: {
+                en: '{title}: {condition} — inheritance for {name}',
+              },
+            },
+          }
+        : {}),
       type,
     });
   });
