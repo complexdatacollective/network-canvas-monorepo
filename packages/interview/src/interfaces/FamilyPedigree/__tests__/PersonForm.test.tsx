@@ -5,7 +5,9 @@ import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { createMessageError } from '@codaco/app-i18n/messages';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
+import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import {
   asEntityAttributeReference,
@@ -19,6 +21,7 @@ import {
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import * as attributePatch from '../../../forms/formValuesToAttributePatch';
+import { runtimeMessages } from '../../../i18n/runtimeMessages';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
@@ -80,6 +83,8 @@ type Setup = {
   /** Each encrypted name decrypted, by person id. */
   decryptedNames?: ReadonlyMap<string, string>;
   optionLabels?: OwnedOptionLabels;
+  /** What storing the submission comes to. */
+  submitted?: Promise<FormSubmissionResult>;
 };
 
 /** The pedigree's side panel, editing `editing` (or adding a relative of
@@ -95,6 +100,7 @@ function renderPersonForm(
     formFields = [],
     decryptedNames = new Map(),
     optionLabels = OPTION_LABELS,
+    submitted = Promise.resolve({ success: true }),
   }: Setup,
 ) {
   const store = configureStore({
@@ -152,7 +158,9 @@ function renderPersonForm(
   const family = readFamily(nodes, edges, config);
   const edited = family.byId.get(editing);
   if (!edited) throw new Error(`No person ${editing}`);
-  const onSubmit = vi.fn<(result: PersonFormResult) => void>();
+  const onSubmit = vi
+    .fn<(result: PersonFormResult) => Promise<FormSubmissionResult>>()
+    .mockImplementation(() => submitted);
 
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <TestProtocolLocalization>
@@ -256,6 +264,24 @@ describe('the person form', () => {
       expect(onSubmit.mock.calls[0]?.[0].set.name).toBe(typed);
     },
   );
+
+  it('keeps the answers and shows why when they could not be stored', async () => {
+    const { onSubmit, user } = renderPersonForm('sis', {
+      nodes: [person('sis', { sex: ['female'] })],
+      submitted: Promise.resolve({
+        success: false,
+        formErrors: [createMessageError(runtimeMessages.submissionFailed)],
+      }),
+    });
+    await user.type(nameField(), 'Ann');
+    await save(user);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(
+      await screen.findByText('An error occurred while submitting the form.'),
+    ).toBeInTheDocument();
+    expect(nameField()).toHaveValue('Ann');
+  });
 
   it('offers the answers about sex assigned at birth as the codebook labels them', () => {
     renderPersonForm('sis', {

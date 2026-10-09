@@ -176,6 +176,12 @@ describe('export column conflicts between names an export writes the same way', 
     );
   });
 
+  it('explains two options of the attribute GraphML writes as one column', () => {
+    expect(messageFor(categorical('q', 'a b', 'a?b'), [], ['option'])).toBe(
+      'In exported data, the option “a b” and the option “a?b” of the attribute “q” would become the same column, “q_a_b”. Change the option’s value or the attribute’s name.',
+    );
+  });
+
   it('explains a name CSV writes as another attribute’s column', () => {
     expect(messageFor(text('=total'), [text("'=total")])).toBe(
       "In exported data, this name and the attribute “'=total” would become the same column, “'=total”. Choose a different name.",

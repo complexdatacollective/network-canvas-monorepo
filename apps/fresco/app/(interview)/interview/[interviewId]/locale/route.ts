@@ -7,6 +7,13 @@ import { prisma } from '~/lib/db';
 import { captureException, flushPostHog } from '~/lib/posthog-server';
 import { getAppSetting } from '~/queries/appSettings';
 
+/**
+ * How many times a write is attempted when the row's `lastUpdated` moves
+ * between reading it and writing — a sync landing in that window. Syncs are
+ * debounced to seconds apart, so a second attempt all but always lands.
+ */
+const MAX_WRITE_ATTEMPTS = 3;
+
 const LocaleChangeSchema = z.object({
   locale: z.string(),
   localePreference: z.string().nullable(),
@@ -25,6 +32,13 @@ const invalidRequest = (error: unknown) => {
 
   return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
 };
+
+/**
+ * Flagged, as the sync route flags it: freezing declines every write
+ * permanently, so the client must not read it as a failure to retry.
+ */
+const frozenResponse = () =>
+  NextResponse.json({ success: true, applied: false, frozen: true });
 
 /**
  * Persist the interview's locale fields. Authorised exactly as the sync route
@@ -56,6 +70,7 @@ const routeHandler = async (
     where: { id: interviewId },
     select: {
       finishTime: true,
+      lastUpdated: true,
       protocol: { select: { localization: true } },
     },
   });
@@ -96,16 +111,62 @@ const routeHandler = async (
   const freezeEnabled = await getAppSetting('freezeInterviewsAfterCompletion');
 
   if (freezeEnabled && interview.finishTime) {
-    return NextResponse.json({ success: true, applied: false, frozen: true });
+    return frozenResponse();
   }
 
   try {
-    await prisma.interview.update({
-      where: { id: interviewId },
-      data: { locale, localePreference },
-    });
+    // Which language the interview is shown in is not an edit to it, so the
+    // write keeps the row's `lastUpdated` — which the dashboard sorts, filters
+    // and exports by — rather than letting `@updatedAt` advance it. Opening an
+    // old interview, or choosing a language, would otherwise make it look
+    // recently worked on.
+    //
+    // Both guards are part of the write itself, as in the sync route, since
+    // Postgres re-evaluates the WHERE clause after waiting on the row lock.
+    // Matching the `lastUpdated` that was read means a sync committed in
+    // between is not wound back to the older time; matching an unfinished row
+    // means an interview finished since the read is left frozen.
+    let lastUpdated = interview.lastUpdated;
+    for (let attempt = 0; attempt < MAX_WRITE_ATTEMPTS; attempt++) {
+      const { count } = await prisma.interview.updateMany({
+        where: {
+          id: interviewId,
+          lastUpdated,
+          ...(freezeEnabled ? { finishTime: null } : {}),
+        },
+        data: { locale, localePreference, lastUpdated },
+      });
 
-    return NextResponse.json({ success: true, applied: true });
+      if (count > 0) {
+        return NextResponse.json({ success: true, applied: true });
+      }
+
+      // Nothing matched: the interview has been deleted, finished and so
+      // frozen, or written since it was read. Only the last is worth another
+      // attempt, against the time that write left.
+      const current = await prisma.interview.findUnique({
+        where: { id: interviewId },
+        select: { finishTime: true, lastUpdated: true },
+      });
+
+      if (!current) {
+        return NextResponse.json(
+          { error: 'Interview not found' },
+          { status: 404 },
+        );
+      }
+
+      if (freezeEnabled && current.finishTime) {
+        return frozenResponse();
+      }
+
+      lastUpdated = current.lastUpdated;
+    }
+
+    return NextResponse.json(
+      { error: 'The interview changed while its locale was being written' },
+      { status: 409 },
+    );
   } catch (e) {
     const error = ensureError(e);
     return NextResponse.json({ error: error.message }, { status: 500 });

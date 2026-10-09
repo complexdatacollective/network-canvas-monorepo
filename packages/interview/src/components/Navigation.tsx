@@ -43,6 +43,8 @@ import { useSyncFlush } from '../store/SyncFlushContext';
 import PassphrasePrompter from './PassphrasePrompter';
 import StagesMenu, { STAGES_MENU_LIST_ID } from './StagesMenu';
 
+const describeExitError = () => <AppMessage message={messages.exitFailed} />;
+
 const variants = {
   initial: {
     opacity: 0,
@@ -351,14 +353,19 @@ const Navigation = ({
       // Shell controls, so wait out the full flush here; it never rejects
       // and typically resolves in milliseconds. It runs while the
       // confirmation is still open, so nothing more can be asked of the
-      // interview between the flush and the hand-over. When an answer still
-      // being saved is refused, or the participant cancels while it is
-      // saved, the interview stays open, so they see why and can try again.
-      // Cancelling is safe while the flush runs: the answers it saves belong
-      // to the interview either way, and the hand-over is what it stops.
+      // interview between the flush and the hand-over. When the host refuses
+      // an answer or the interview language, the confirmation stays open
+      // with an error, so the participant sees why and can try again; when
+      // they cancel while it is saved, the interview stays open. Cancelling
+      // is safe while the flush runs: the answers it saves belong to the
+      // interview either way, and the hand-over is what it stops.
       abortable: true,
+      describeError: describeExitError,
       onConfirm: async (signal) => {
-        if ((await flushPendingSync()) && !signal.aborted) onExit();
+        const stored = await flushPendingSync();
+        if (signal.aborted) return;
+        if (!stored) throw new Error('The interview could not be saved');
+        onExit();
       },
     });
   }, [confirm, onExit, reviewMode, flushPendingSync]);

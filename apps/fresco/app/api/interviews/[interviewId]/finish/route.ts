@@ -123,20 +123,52 @@ export async function POST(
 
     // A frozen interview keeps the finish it recorded, as it keeps every other
     // answer. The browser is still told the interview is finished, which it is.
-    if (freezeEnabled && interview.finishTime) {
+    const frozen = async () => {
       await setLimitInterviewsCookie(interview.protocolId, interviewId);
       return NextResponse.json({ success: true, applied: false, frozen: true });
+    };
+
+    if (freezeEnabled && interview.finishTime) {
+      return await frozen();
     }
 
-    const updatedInterview = await prisma.interview.update({
-      where: { id: interviewId },
+    // The freeze has to be part of the write itself, as in the sync route:
+    // checking the read above and then updating would let two overlapping
+    // finishes both pass the check, the later overwriting the first's time and
+    // both reporting a completion. Postgres re-evaluates the WHERE clause after
+    // waiting on the row lock, so of the two only one matches.
+    const { count } = await prisma.interview.updateMany({
+      where: {
+        id: interviewId,
+        ...(freezeEnabled ? { finishTime: null } : {}),
+      },
       data: {
         finishTime: new Date(),
         finishStageId: finishStage.id,
         finishOutcome: finishStage.outcome,
       },
-      include: { participant: true },
     });
+
+    // Nothing matched: the interview was finished, and so frozen, since it was
+    // read — or it no longer exists. The re-read below tells them apart.
+    const updatedInterview =
+      count > 0 || freezeEnabled
+        ? await prisma.interview.findUnique({
+            where: { id: interviewId },
+            include: { participant: true },
+          })
+        : null;
+
+    if (!updatedInterview) {
+      return NextResponse.json(
+        { error: 'Interview not found' },
+        { status: 404 },
+      );
+    }
+
+    if (count === 0) {
+      return await frozen();
+    }
 
     const { label, identifier } = updatedInterview.participant;
     const participantDisplay = label ? `${label} (${identifier})` : identifier;

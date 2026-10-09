@@ -65,11 +65,15 @@ export const store = (
   // so finishing or closing can stay when one was refused. While the page
   // unloads there is no time to wait for them. Exports read the recorded
   // locale, so this waits for the locale write as well as the session write.
+  // A session or locale the host refused to store counts as a refused write.
   const flushSync = async (flushOptions?: { unloading?: boolean }) => {
     const settling = flushOptions?.unloading ? undefined : writesSettled();
     const stored = (await settling) ?? true;
-    await Promise.all([flush(flushOptions), localeChangesSettled()]);
-    return stored;
+    const [synced, localeStored] = await Promise.all([
+      flush(flushOptions),
+      localeChangesSettled(),
+    ]);
+    return stored && synced && localeStored;
   };
   const tracker = options.tracker ?? NULL_TRACKER;
   const analyticsMiddleware = createAnalyticsListenerMiddleware({

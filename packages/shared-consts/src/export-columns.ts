@@ -260,6 +260,21 @@ export type ExportColumnConflict<
        * `close_friend`: the column as that format writes it.
        */
       readonly writtenColumn?: string;
+    }
+  | {
+      /**
+       * Two of the candidate's own columns, different text that a format
+       * writes the same way, such as GraphML's columns for the options `a b`
+       * and `a?b`. `otherColumn` and `otherOrigin` describe the other one.
+       */
+      readonly kind: 'own';
+      readonly column: string;
+      readonly origin: ExportColumnOrigin;
+      readonly otherColumn: string;
+      readonly otherOrigin: ExportColumnOrigin;
+      readonly formats: readonly ExportColumnFormat[];
+      /** The column both are written as. */
+      readonly writtenColumn: string;
     };
 
 const writtenColumn = (format: ExportColumnFormat, column: string): string =>
@@ -302,8 +317,9 @@ const reservedColumnsFor = (
 };
 
 /**
- * Every export column `candidate` would write that a built-in column or one of
- * `siblings` already writes, in any export format.
+ * Every export column `candidate` would write that a built-in column, one of
+ * `siblings`, or another of its own columns already writes, in any export
+ * format.
  *
  * `candidate` is the variable as it would be saved: its name, type and
  * options. `siblings` are the other variables of the same node or edge type,
@@ -317,7 +333,9 @@ const reservedColumnsFor = (
  * comparison the editors' duplicate-name check makes. A clash found in both
  * formats is reported once, with both formats. A sibling whose name is the
  * candidate's own is skipped: that is a duplicate name, which the editors
- * already refuse with their own message.
+ * already refuse with their own message. So are two of the candidate's own
+ * columns that are the same text, which are two options with the same value,
+ * refused as a duplicate value.
  */
 export const findExportColumnConflicts = <
   Sibling extends ExportColumnVariable,
@@ -366,10 +384,9 @@ export const findExportColumnConflicts = <
       index,
       entries: comparableEntries(format, sibling),
     }));
-    for (const { column, origin, key } of comparableEntries(
-      format,
-      candidate,
-    )) {
+    const ownEntries = comparableEntries(format, candidate);
+    for (const own of ownEntries) {
+      const { column, origin, key } = own;
       const ownColumn = normalizeForComparison(column);
       const reservedColumn = reserved.get(key);
       if (reservedColumn !== undefined) {
@@ -418,6 +435,30 @@ export const findExportColumnConflicts = <
             }),
           );
         }
+      }
+      for (const other of ownEntries) {
+        if (other === own || other.key !== key) continue;
+        const otherColumn = normalizeForComparison(other.column);
+        if (otherColumn === ownColumn) continue;
+        record(
+          [
+            'own',
+            ownColumn,
+            originKey(origin),
+            otherColumn,
+            originKey(other.origin),
+          ],
+          format,
+          (formats) => ({
+            kind: 'own',
+            column,
+            origin,
+            otherColumn: other.column,
+            otherOrigin: other.origin,
+            formats,
+            writtenColumn: writtenColumn(format, column),
+          }),
+        );
       }
     }
   }

@@ -148,7 +148,7 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
         const stored = await flushSync();
         if (signal.aborted) return;
         if (!stored) {
-          throw new Error('An answer still being saved was refused');
+          throw new Error('The answers could not all be saved');
         }
         await onFinish(
           interviewId,

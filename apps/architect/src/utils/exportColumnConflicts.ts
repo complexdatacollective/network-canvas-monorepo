@@ -108,28 +108,52 @@ export const toExportColumnCandidate = ({
   return { name: normalizedName, type, options: readOptions(options) };
 };
 
+// The column a conflict meets, when it is not a built-in one: a sibling's, or
+// another of the candidate's own, which is said as a column of the attribute
+// being saved.
+const otherColumnOf = (
+  conflict: ExportColumnConflict,
+  candidateName: string,
+) => {
+  switch (conflict.kind) {
+    case 'reserved':
+      return undefined;
+    case 'sibling':
+      return {
+        name: conflict.sibling.name,
+        column: conflict.siblingColumn,
+        origin: conflict.siblingOrigin,
+        writtenColumn: conflict.writtenColumn,
+      };
+    case 'own':
+      return {
+        name: candidateName,
+        column: conflict.otherColumn,
+        origin: conflict.otherOrigin,
+        writtenColumn: conflict.writtenColumn,
+      };
+  }
+};
+
 const exportColumnConflictMessage = (
   conflict: ExportColumnConflict,
+  candidateName: string,
   intl: IntlShape,
 ): string => {
   const { origin } = conflict;
-  const siblingConflict = conflict.kind === 'sibling' ? conflict : undefined;
+  const other = otherColumnOf(conflict, candidateName);
   const values = {
-    clashesWith: siblingConflict
-      ? siblingConflict.siblingOrigin.kind
-      : 'reserved',
+    clashesWith: other ? other.origin.kind : 'reserved',
     column: conflict.column,
     optionValue: origin.kind === 'option' ? String(origin.value) : '',
     reservedColumn: conflict.kind === 'reserved' ? conflict.reservedColumn : '',
-    sibling: siblingConflict ? siblingConflict.sibling.name : '',
-    siblingColumn: siblingConflict ? siblingConflict.siblingColumn : '',
+    sibling: other ? other.name : '',
+    siblingColumn: other ? other.column : '',
     siblingOption:
-      siblingConflict?.siblingOrigin.kind === 'option'
-        ? String(siblingConflict.siblingOrigin.value)
-        : '',
-    writtenColumn: siblingConflict?.writtenColumn ?? '',
+      other?.origin.kind === 'option' ? String(other.origin.value) : '',
+    writtenColumn: other?.writtenColumn ?? '',
   };
-  const written = siblingConflict?.writtenColumn !== undefined;
+  const written = other?.writtenColumn !== undefined;
 
   switch (origin.kind) {
     case 'option':
@@ -152,8 +176,9 @@ const exportColumnConflictMessage = (
 
 /**
  * Why `candidate` cannot be saved: the first of its export columns that
- * clashes with a built-in column or a column of one of `siblings` (the other
- * variables of the same node type, edge type or ego), as a whole message.
+ * clashes with a built-in column, a column of one of `siblings` (the other
+ * variables of the same node type, edge type or ego) or another of its own
+ * columns, as a whole message.
  *
  * `origins` limits which of the candidate's own columns are reported, for a
  * form whose fields each answer for a part of the variable: the name field for
@@ -181,5 +206,7 @@ export const findExportColumnConflictMessage = ({
     siblings,
   }).find(({ origin }) => !origins || origins.includes(origin.kind));
 
-  return conflict && exportColumnConflictMessage(conflict, intl);
+  return (
+    conflict && exportColumnConflictMessage(conflict, candidate.name, intl)
+  );
 };

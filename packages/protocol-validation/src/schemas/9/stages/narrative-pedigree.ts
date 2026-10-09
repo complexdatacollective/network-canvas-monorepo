@@ -8,7 +8,11 @@ import { resolveLocalizedString } from '../../../localization/resolveLocalizedSt
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
 import { NodeColorReferenceSchema } from '../color-reference.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
-import { type LocalizedString, localizedString } from '../localized-string.ts';
+import {
+  type LocalizedString,
+  localizedString,
+  nonBlankText,
+} from '../localized-string.ts';
 import { INHERITANCE_PATTERNS } from '../narrative-pedigree-values.ts';
 import { stageReference } from '../stage-reference.ts';
 import { withStageSubjectResolution } from '../stage-subject-resolution.ts';
@@ -85,7 +89,7 @@ const narrativePedigreeStageShape = baseStageSchema.extend({
     .array(
       z.strictObject({
         id: z.string(),
-        label: localizedString(z.string().min(1), 'plain'),
+        label: localizedString(nonBlankText(), 'plain'),
         color: NodeColorReferenceSchema,
         // Boolean attribute on the source pedigree's people: true marks
         // someone as affected. Usually one of the Family Pedigree's nomination

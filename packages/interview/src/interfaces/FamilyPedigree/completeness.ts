@@ -194,9 +194,19 @@ export function evaluateCompleteness(
     return notRecorded.includes(none) || notRecorded.includes(unknown);
   };
 
+  // Who has been reached in which role. When the family folds back on itself
+  // (parents who are siblings, say) the same aunt is reached through each of
+  // them, and her requirements are still asked once.
+  const visited = new Set<string>();
+
   // Walk the requirements outwards from the participant. `personId` is null
   // for someone not yet added, whose requirements are all still to do.
   const visit = (personId: string | null, role: Role, distance: number) => {
+    if (personId) {
+      const key = `${role}:${personId}`;
+      if (visited.has(key)) return;
+      visited.add(key);
+    }
     const requirements = requirementsFor(role, scope);
 
     if (requirements.parents) {

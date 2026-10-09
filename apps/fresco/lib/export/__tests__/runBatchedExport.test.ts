@@ -1,5 +1,22 @@
+import type * as Fflate from 'fflate';
 import { unzipSync } from 'fflate';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+// Runs just before the archive is assembled, so a test can act while it is.
+const { beforeZip } = vi.hoisted(() => ({
+  beforeZip: { current: (): void => undefined },
+}));
+
+vi.mock('fflate', async (importOriginal) => {
+  const actual = await importOriginal<typeof Fflate>();
+  return {
+    ...actual,
+    zip: ((...args: Parameters<typeof actual.zip>) => {
+      beforeZip.current();
+      return actual.zip(...args);
+    }) as typeof actual.zip,
+  };
+});
 
 import type { ExportOptions } from '@codaco/network-exporters/options';
 import type { ExportWarning } from '@codaco/network-exporters/output';
@@ -59,7 +76,17 @@ const warningFor = (sessionId: string): ExportWarning => ({
   caseIdChanged: false,
 });
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  beforeZip.current = () => undefined;
+});
+
+const twoBatchesOfIds = () =>
+  Array.from({ length: EXPORT_BATCH_SIZE + 1 }, (_, i) => `id${i}`);
+
+async function zipEntries(blob: Blob) {
+  return unzipSync(new Uint8Array(await blob.arrayBuffer()));
+}
 
 describe('runBatchedExport', () => {
   it('zips the files collected across batches', async () => {
@@ -167,31 +194,112 @@ describe('runBatchedExport', () => {
   });
 
   it.each([
-    ['the same name', 'shared.txt', 'shared.txt'],
-    ['names that differ only in case', 'Friend.csv', 'friend.csv'],
+    ['the same name', 'shared.csv', 'shared.csv', 'shared_2.csv'],
+    [
+      'names that differ only in case',
+      'Friend.csv',
+      'friend.csv',
+      'friend_2.csv',
+    ],
   ])(
-    'fails, rather than keep one file and drop the other, for %s in two batches',
-    async (_, first, second) => {
-      const ids = Array.from(
-        { length: EXPORT_BATCH_SIZE + 1 },
-        (_unused, i) => `id${i}`,
-      );
+    'keeps both files, under different names, for %s in two batches',
+    async (_, first, second, renamed) => {
       const fetchMock = vi
         .fn()
         .mockResolvedValueOnce(fileBatch(first, [1]))
         .mockResolvedValueOnce(fileBatch(second, [2]));
       vi.stubGlobal('fetch', fetchMock);
 
-      await expect(
-        runBatchedExport(
-          ids,
-          exportOptions,
-          new AbortController().signal,
-          () => undefined,
-        ),
-      ).rejects.toBeInstanceOf(DuplicateExportFileError);
+      const { blob, exportedIds } = await runBatchedExport(
+        twoBatchesOfIds(),
+        exportOptions,
+        new AbortController().signal,
+        () => undefined,
+      );
+
+      const entries = await zipEntries(blob);
+      expect(Object.keys(entries).toSorted()).toEqual(
+        [first, renamed].toSorted(),
+      );
+      expect(Array.from(entries[first]!)).toEqual([1]);
+      expect(Array.from(entries[renamed]!)).toEqual([2]);
+      expect(exportedIds).toHaveLength(EXPORT_BATCH_SIZE + 1);
     },
   );
+
+  it('names repeated files after the batch they were asked for in, not the one that finished first', async () => {
+    let releaseFirst = (): void => undefined;
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            releaseFirst = () => resolve(fileBatch('shared.csv', [1]));
+          }),
+      )
+      .mockResolvedValueOnce(fileBatch('shared.csv', [2]));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const exported = runBatchedExport(
+      twoBatchesOfIds(),
+      exportOptions,
+      new AbortController().signal,
+      (completed) => {
+        // The second batch has landed; only now does the first.
+        if (completed === 1) releaseFirst();
+      },
+    );
+
+    const entries = await zipEntries((await exported).blob);
+    expect(Array.from(entries['shared.csv']!)).toEqual([1]);
+    expect(Array.from(entries['shared_2.csv']!)).toEqual([2]);
+  });
+
+  it('keeps a renamed file within the file system’s 255-byte limit', async () => {
+    // A long case id fills the name; the exporter cuts it at 255 bytes.
+    const longName = `${'é'.repeat(124)}_ab.csv`;
+    expect(new TextEncoder().encode(longName).length).toBe(255);
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(fileBatch(longName, [1]))
+      .mockResolvedValueOnce(fileBatch(longName, [2]));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { blob } = await runBatchedExport(
+      twoBatchesOfIds(),
+      exportOptions,
+      new AbortController().signal,
+      () => undefined,
+    );
+
+    const names = Object.keys(await zipEntries(blob));
+    expect(names).toHaveLength(2);
+    for (const name of names) {
+      expect(new TextEncoder().encode(name).length).toBeLessThanOrEqual(255);
+      expect(name.endsWith('.csv')).toBe(true);
+    }
+  });
+
+  it('is cancelled by a cancel that arrives while the archive is being assembled', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(fileBatch('a.csv', [1])));
+    const controller = new AbortController();
+    let zipStarted = false;
+    beforeZip.current = () => {
+      zipStarted = true;
+      controller.abort();
+    };
+
+    await expect(
+      runBatchedExport(
+        ['id0'],
+        exportOptions,
+        controller.signal,
+        () => undefined,
+      ),
+    ).rejects.toThrow(/abort/i);
+    // Cancelled during assembly, not before it.
+    expect(zipStarted).toBe(true);
+  });
 
   it('does not retry a batch that contains two files with one name', async () => {
     const fetchMock = vi

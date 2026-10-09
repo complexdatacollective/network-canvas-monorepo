@@ -15,10 +15,12 @@ import { useSelector, useStore } from 'react-redux';
 import { v4 as uuid } from 'uuid';
 
 import { commonMessages } from '@codaco/app-i18n/common';
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
 import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Node from '@codaco/fresco-ui/Node';
 import {
@@ -40,6 +42,10 @@ import PassphraseOverlay from '../../components/PassphraseOverlay';
 import Prompts from '../../components/Prompts/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import {
+  writeFailureMessage,
+  writeSubmissionResult,
+} from '../../forms/writeSubmissionResult';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
@@ -66,6 +72,7 @@ import {
   updateStageMetadata,
 } from '../../store/modules/session';
 import { type RootState, useAppDispatch } from '../../store/store';
+import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { Direction, StageProps } from '../../types';
 import { readOwnProperty, writeOwnProperty } from '../../utils/ownProperty';
 import { getDecryptionScope } from '../Anonymisation/decryptionScope';
@@ -228,6 +235,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const { currentStep, displayedStep } = useCurrentStep();
   const store = useStore<RootState>();
   const { confirm } = useDialog();
+  const { showToast } = useInterviewToast();
   const formId = useId();
 
   const config = useMemo(() => pedigreeConfigFromStage(stage), [stage]);
@@ -1072,6 +1080,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // going on waits for the participant to enter the passphrase; going back
   // leaves the labels to be saved when they next leave. When no passphrase
   // can ever put the key in force, they are never saved.
+  //
+  // A label the session refuses keeps the participant on the stage, told why,
+  // and those written before it are still recorded as labels, so trying
+  // again writes only what is left.
   const saveGeneratedLabels = async (direction: Direction) => {
     // Every encrypted name is decrypted first, so that no label repeats a
     // typed name still being decrypted.
@@ -1097,6 +1109,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     for (const [personId, stored] of held) {
       record[personId] = nameFingerprint(stored);
     }
+    let refused: MessageDescriptor | undefined;
     for (const [personId, label] of toWrite) {
       const result = await dispatch(
         updateNode({
@@ -1108,6 +1121,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           currentStep,
         }),
       );
+      refused = writeFailureMessage(result);
+      if (refused) break;
       // The value as stored, which encryption may have turned to ciphertext.
       const written = updateNode.fulfilled.match(result)
         ? readOwnProperty(
@@ -1118,17 +1133,24 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       if (written !== undefined) record[personId] = nameFingerprint(written);
     }
     if (
-      Object.keys(record).length === 0 &&
-      pedigreeMetadata?.generatedLabels === undefined
+      Object.keys(record).length > 0 ||
+      pedigreeMetadata?.generatedLabels !== undefined
     ) {
-      return true;
+      dispatch(
+        updateStageMetadata({
+          currentStep,
+          metadata: { ...pedigreeMetadata, generatedLabels: record },
+        }),
+      );
     }
-    dispatch(
-      updateStageMetadata({
-        currentStep,
-        metadata: { ...pedigreeMetadata, generatedLabels: record },
-      }),
-    );
+    if (refused) {
+      showToast({
+        description: intl.formatMessage(refused),
+        variant: 'destructive',
+        anchor: direction === 'backwards' ? 'backward' : 'forward',
+      });
+      return false;
+    }
     return true;
   };
 
@@ -1466,7 +1488,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // The stand-in rule (`planStandIns`), kept after every change to the
   // family, read as stored: anyone a change leaves with one genetic parent
   // is given a stand-in for the other, and a stand-in whose place a genetic
-  // parent fills gives way.
+  // parent fills gives way. Resolves to the write the session refused, if
+  // one was.
   const keepStandInRule = async () => {
     const state = store.getState();
     const latest = participantsFamily(
@@ -1478,11 +1501,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         decryptedNames,
       ),
     );
-    await applyStandIns(
+    return applyStandIns(
       planStandIns(latest, uuid, config.sexAssignedAtBirthAttribute),
     );
   };
 
+  // Writes what keeping the stand-in rule changes, stopping at the first
+  // write the session refuses, which it resolves to. Stand-ins are taken
+  // away only once every other change is stored, so a refusal leaves no one
+  // without the parent they stood in for. Asked again of the family after
+  // the next change, the rule writes only what is left.
   const applyStandIns = async ({
     people: standIns = [],
     links: standInLinks = [],
@@ -1491,7 +1519,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     removedPersonIds = [],
   }: Partial<StandInChanges>) => {
     if (standIns.length > 0 || standInLinks.length > 0) {
-      await dispatch(
+      const added = await dispatch(
         addNodesAndEdges({
           nodes: standIns.map((person) => ({
             type: config.personType,
@@ -1501,31 +1529,55 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           edges: standInLinks.map(linkEdge),
           currentStep,
         }),
-      ).unwrap();
+      );
+      if (writeFailureMessage(added)) return added;
     }
     for (const person of updatedPeople) {
-      await dispatch(
+      const updated = await dispatch(
         updateNode({
           nodeId: person.id,
           attributePatch: { set: person.details, unset: [] },
           currentStep,
         }),
       );
+      if (writeFailureMessage(updated)) return updated;
     }
     for (const linkId of removedLinkIds) dispatch(deleteEdge(linkId));
     for (const personId of removedPersonIds) dispatch(deleteNode(personId));
+    return undefined;
   };
 
-  const handleSubmit = async (result: PersonFormResult) => {
-    if (!panel) return;
+  // A stand-in the session refused to write after a change made on the
+  // canvas (no panel is open to keep): the participant is told why, and the
+  // rule is kept again after their next change.
+  const reportRefusedStandIn = (
+    refused: Awaited<ReturnType<typeof keepStandInRule>>,
+  ) => {
+    const message = refused ? writeFailureMessage(refused) : undefined;
+    if (!message) return;
+    showToast({
+      description: intl.formatMessage(message),
+      variant: 'destructive',
+      anchor: 'forward',
+    });
+  };
+
+  // The panel closes once what the participant entered is stored, with
+  // everything it changes in the family (twins, stand-ins, and stand-ins
+  // giving way). A write the session refuses (a protected answer whose key
+  // went, say) keeps it open with their answers and says why, so they can
+  // save again.
+  const handleSubmit = async (
+    result: PersonFormResult,
+  ): Promise<FormSubmissionResult> => {
+    if (!panel) return { success: true };
     // Without the key (it went while the panel was open) nothing typed could
     // be saved, so the panel stays open until the passphrase is entered.
     if (detailsLocked) {
       askForPassphrase();
-      return;
+      return { success: false };
     }
     const { mode } = panel;
-    closePanel();
     const typedName = readOwnProperty(result.set, config.nameAttribute);
 
     if (mode.kind === 'edit') {
@@ -1547,7 +1599,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       )) {
         writeOwnProperty(set, attribute, false);
       }
-      await dispatch(
+      const updated = await dispatch(
         updateNode({
           nodeId: mode.person.id,
           attributePatch: {
@@ -1559,6 +1611,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           currentStep,
         }),
       );
+      if (writeFailureMessage(updated)) return writeSubmissionResult(updated);
       // A name typed for someone whose label was saved is theirs now, even
       // when it is the same words.
       if (
@@ -1582,7 +1635,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       }
 
       for (const update of result.linkUpdates ?? []) {
-        await dispatch(
+        const relinked = await dispatch(
           updateEdge({
             edgeId: update.linkId,
             attributePatch: {
@@ -1601,15 +1654,25 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             },
           }),
         );
+        if (writeFailureMessage(relinked)) {
+          return writeSubmissionResult(relinked);
+        }
       }
-      // Twins answered, re-described or no longer twins.
+      // Twins answered, re-described or no longer twins. Saving again after a
+      // refusal writes only what is left: the form reads the twins from the
+      // family as stored.
       const twinChanges = result.twinChanges;
       if (twinChanges) {
         for (const twin of twinChanges.added) {
-          await dispatch(addEdge({ ...twinEdge(twin), currentStep })).unwrap();
+          const twinned = await dispatch(
+            addEdge({ ...twinEdge(twin), currentStep }),
+          );
+          if (writeFailureMessage(twinned)) {
+            return writeSubmissionResult(twinned);
+          }
         }
         for (const { linkId, zygosity } of twinChanges.changed) {
-          await dispatch(
+          const redescribed = await dispatch(
             updateEdge({
               edgeId: linkId,
               attributePatch: {
@@ -1620,6 +1683,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               },
             }),
           );
+          if (writeFailureMessage(redescribed)) {
+            return writeSubmissionResult(redescribed);
+          }
         }
         for (const linkId of twinChanges.removedLinkIds) {
           dispatch(deleteEdge(linkId));
@@ -1627,7 +1693,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       }
       // A parent re-described, or a parent's sex at birth changed, may leave
       // someone needing a stand-in, or let one give way.
-      await keepStandInRule();
+      const refusedStandIn = await keepStandInRule();
+      if (refusedStandIn) return writeSubmissionResult(refusedStandIn);
+      closePanel();
       // A parent re-described as biological gives the person siblings, and
       // the parent a child.
       await withdrawContradictedAnswers();
@@ -1655,12 +1723,13 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       ) {
         setAddNext({ relation: then, personId: mode.person.id });
       }
-      return;
+      return { success: true };
     }
 
     if (!result.request) {
+      closePanel();
       setDraft(null);
-      return;
+      return { success: true };
     }
     const plan = planAddition(
       family,
@@ -1674,7 +1743,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     // Everyone the addition draws, and how they are related, is saved as one
     // change, or not at all, so nothing observing the session sees part of
     // it.
-    await dispatch(
+    const added = await dispatch(
       addNodesAndEdges({
         nodes: plan.people.map((person) => ({
           type: config.personType,
@@ -1690,17 +1759,33 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         ],
         currentStep,
       }),
-    ).unwrap();
+    );
+    if (writeFailureMessage(added)) return writeSubmissionResult(added);
     // A stand-in whose place the addition fills gives way (`planStandIns`).
-    await applyStandIns({
+    const refusedGiveWay = await applyStandIns({
       updatedPeople: plan.updatedPeople,
       removedLinkIds: plan.removedLinkIds,
       removedPersonIds: plan.removedPersonIds,
     });
+    if (refusedGiveWay) {
+      // The addition is taken back with it, so it is still saved as one
+      // change or not at all, and saving again adds everyone once. A
+      // stand-in whose sex at birth already followed the addition keeps it
+      // until then.
+      if (addNodesAndEdges.fulfilled.match(added)) {
+        for (const edge of added.payload.edges) {
+          dispatch(deleteEdge(edge.edgeId));
+        }
+      }
+      for (const person of plan.people) dispatch(deleteNode(person.id));
+      return writeSubmissionResult(refusedGiveWay);
+    }
+    closePanel();
     await withdrawContradictedAnswers();
     // Recorded: the people drawn are now the family's own.
     setDraft(null);
     setJustAddedId(newPersonId);
+    return { success: true };
   };
 
   // Ending connecting or disconnecting, however it ends, takes back what it
@@ -1828,7 +1913,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const handleConnect = async (connection: Connection) => {
     endConnecting();
     await addLink(planConnection(connection));
-    await keepStandInRule();
+    reportRefusedStandIn(await keepStandInRule());
     await withdrawContradictedAnswers();
     setJustConnected(connection);
   };
@@ -1851,7 +1936,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     endConnecting();
     if (removed) {
       // A genetic parent disconnected leaves a stand-in in their place.
-      await keepStandInRule();
+      reportRefusedStandIn(await keepStandInRule());
       setAnnouncement(
         intl.formatMessage(messages.disconnectedAnnouncement, args),
       );
@@ -1917,7 +2002,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     // Removing a parent who tells half siblings apart leaves an unnamed
     // stand-in in their place, so the half-sibling answer is never lost
     // (ruling 22).
-    if (removed) await keepStandInRule();
+    if (removed) reportRefusedStandIn(await keepStandInRule());
   };
 
   // Escape in the add menu returns focus to its person; Escape on the person
@@ -2297,7 +2382,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         open={panel?.open ?? false}
         formKey={panel?.key ?? 'closed'}
         onClose={cancelPanel}
-        onClosed={() => setPanel(null)}
+        // A panel opened again before the last one finished closing (going
+        // on to add a relative just said to exist) is kept.
+        onClosed={() => setPanel((current) => (current?.open ? current : null))}
         returnFocus={() =>
           returnFocusId ? (nodeRefs.current.get(returnFocusId) ?? null) : null
         }
@@ -2362,7 +2449,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 : undefined
             }
             onDraftChange={handleDraftChange}
-            onSubmit={(result) => void handleSubmit(result)}
+            onSubmit={handleSubmit}
           />
         )}
       </PersonDrawer>

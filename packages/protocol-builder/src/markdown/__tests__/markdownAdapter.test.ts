@@ -161,6 +161,27 @@ describe('RichText markdown adapter', () => {
     expect(richTextContentToMarkdown(paragraph('---'))).toBe('\\-\\-\\-');
   });
 
+  // The editor reads back what it stores: text that would open raw HTML, an
+  // autolink, a character reference or a block quote is the same text when
+  // the stored markdown is opened again, and is stored the same way again.
+  it.each([
+    ['<img>', '\\<img>'],
+    ['<https://example.org>', '\\<https://example.org>'],
+    ['Isabel &amp; Irene', 'Isabel \\&amp; Irene'],
+    ['Isabel & Irene', 'Isabel & Irene'],
+    ['> 65', '&gt; 65'],
+    ['18 < age > 65', '18 \\< age > 65'],
+  ])('stores %s as text it reads back', (text, stored) => {
+    const content: RichTextContent = {
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
+    };
+
+    expect(richTextContentToMarkdown(content)).toBe(stored);
+    expect(markdownToRichTextContent(stored)).toEqual(content);
+    expect(roundTrip(stored)).toBe(stored);
+  });
+
   it('keeps a link spanning mixed formatting as a single link', () => {
     const markdown =
       '[Ryan L, Mulholland J (2014). Talking Ties. _Sociological Research Online_ 19(2).](https://doi.org/10.5153/sro.3404)';

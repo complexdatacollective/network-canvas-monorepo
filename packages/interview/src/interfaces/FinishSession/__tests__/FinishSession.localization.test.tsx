@@ -122,7 +122,7 @@ beforeAll(async () => {
 });
 
 describe('FinishSession localized recoverable failures', () => {
-  it.each(['flush', 'finish'] as const)(
+  it.each(['flush', 'refused', 'finish'] as const)(
     'keeps a %s failure in the real dialog, changes its language without resubmission, and retries in order',
     async (failure) => {
       const order: string[] = [];
@@ -133,6 +133,11 @@ describe('FinishSession localized recoverable failures', () => {
         if (failure === 'flush' && !rejected) {
           rejected = true;
           throw new Error(diagnostic);
+        }
+        // The host refused to store the answers or the interview language.
+        if (failure === 'refused' && !rejected) {
+          rejected = true;
+          return false;
         }
         return true;
       });
@@ -159,9 +164,9 @@ describe('FinishSession localized recoverable failures', () => {
       ).toBeVisible();
       expect(within(dialog).queryByText(diagnostic)).not.toBeInTheDocument();
       expect(order).toEqual(
-        failure === 'flush' ? ['flush'] : ['flush', 'finish'],
+        failure !== 'finish' ? ['flush'] : ['flush', 'finish'],
       );
-      expect(finish).toHaveBeenCalledTimes(failure === 'flush' ? 0 : 1);
+      expect(finish).toHaveBeenCalledTimes(failure !== 'finish' ? 0 : 1);
 
       rerender(view('es'));
       expect(within(dialog).getByText(spanish, { exact: true })).toBeVisible();
@@ -171,7 +176,7 @@ describe('FinishSession localized recoverable failures', () => {
       });
       expect(retry).toBeEnabled();
       expect(flush).toHaveBeenCalledTimes(1);
-      expect(finish).toHaveBeenCalledTimes(failure === 'flush' ? 0 : 1);
+      expect(finish).toHaveBeenCalledTimes(failure !== 'finish' ? 0 : 1);
 
       rerender(view('en-GB'));
       expect(
@@ -186,7 +191,7 @@ describe('FinishSession localized recoverable failures', () => {
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
       );
       expect(order).toEqual(
-        failure === 'flush'
+        failure !== 'finish'
           ? ['flush', 'flush', 'finish']
           : ['flush', 'finish', 'flush', 'finish'],
       );
@@ -196,7 +201,7 @@ describe('FinishSession localized recoverable failures', () => {
         expect.any(AbortSignal),
       );
       expect(abortStatesAtFinish).toEqual(
-        failure === 'flush' ? [false] : [false, false],
+        failure !== 'finish' ? [false] : [false, false],
       );
     },
   );

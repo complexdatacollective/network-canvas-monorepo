@@ -58,11 +58,27 @@ const removeEncryptedMarks = (codebook: unknown) => {
   }
 };
 
+// Whether schema 8 encrypted the attributes marked `encrypted`. The schema 8
+// alpha named the flag `encryptNames`, and its runtime encrypted those
+// attributes while it was on, so a protocol from then is read by that name
+// when it does not set `encryptedVariables` itself, as Fresco reads the
+// experiments it stored.
+const encryptionWasOn = (experiments: unknown) => {
+  if (!isRecord(experiments)) return false;
+  return typeof experiments.encryptedVariables === 'boolean'
+    ? experiments.encryptedVariables
+    : experiments.encryptNames === true;
+};
+
 // Schema 9 keeps `experiments` for features released within it, but
-// encrypted attributes are no longer one of them.
+// encrypted attributes, under either name, are no longer one of them.
 const withoutEncryptedVariables = (experiments: unknown) => {
   if (!isRecord(experiments)) return experiments;
-  const { encryptedVariables: _released, ...remaining } = experiments;
+  const {
+    encryptedVariables: _released,
+    encryptNames: _releasedAlpha,
+    ...remaining
+  } = experiments;
   return remaining;
 };
 
@@ -470,9 +486,7 @@ const migrationV8toV9 = createMigration({
   migrate: ({ experiments, ...doc }) => {
     const migrated = structuredClone(doc);
     const localization = localizationOf(migrated);
-    if (!isRecord(experiments) || experiments.encryptedVariables !== true) {
-      removeEncryptedMarks(migrated.codebook);
-    }
+    if (!encryptionWasOn(experiments)) removeEncryptedMarks(migrated.codebook);
     removeContradictoryPassphraseRules(migrated);
     removeEncryptedAttributeComparisons(migrated);
     // Before the codebook labels and the localization pass, so the attribute

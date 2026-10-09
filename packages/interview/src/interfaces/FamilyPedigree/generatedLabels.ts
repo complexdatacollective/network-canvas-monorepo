@@ -99,9 +99,10 @@ const SOFT_HYPHEN = /\u00AD/g;
 export const withoutSoftHyphens = (text: string) =>
   text.replace(SOFT_HYPHEN, '');
 
-/** Labels are compared as a participant would read them. */
-const comparable = (text: string) =>
-  withoutSoftHyphens(text).trim().toLocaleLowerCase();
+/** Labels are compared as a participant would read them, without case in
+ * the language they are written in rather than the device's. */
+const comparableIn = (locale: string) => (text: string) =>
+  withoutSoftHyphens(text).trim().toLocaleLowerCase(locale);
 
 /**
  * How everyone in the family is shown on the canvas and named in the rest of
@@ -240,6 +241,7 @@ function resolveLabels(
   baseTexts: ReadonlyMap<string, string>,
   intl: IntlShape,
 ): Map<string, string> {
+  const comparable = comparableIn(intl.locale);
   // Every name typed, and any name the participant's own person was given
   // elsewhere in the interview.
   const used = new Set<string>();
@@ -425,6 +427,7 @@ export function distinctNames(
   labels: ReadonlyMap<string, string>,
   intl: IntlShape,
 ): Map<string, string> {
+  const comparable = comparableIn(intl.locale);
   const result = new Map(labels);
   const used = new Set([...labels.values()].map(comparable));
   const groups = new Map<string, Person[]>();

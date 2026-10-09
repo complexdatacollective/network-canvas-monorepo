@@ -16,7 +16,10 @@ import {
 
 type Source = NonNullable<GetInterviewByIdQuery>;
 type StoredProtocol = Partial<
-  Pick<Source['protocol'], 'stages' | 'codebook' | 'experiments'>
+  Pick<
+    Source['protocol'],
+    'stages' | 'codebook' | 'localization' | 'experiments'
+  >
 >;
 
 /**
@@ -254,6 +257,24 @@ describe('mapInterviewPayload', () => {
       ['stages', { stages: [{ id: 'stage-1', type: 'NotAnInterface' }] }],
       ['codebook', { codebook: { node: { person: 'not an entity type' } } }],
       ['experiments', { experiments: { notAnExperiment: true } }],
+      // Text written only in French, with a language declaration that does
+      // not parse: no stand-in declaration (English, say) could describe it,
+      // and the interview would fail on the first string it resolved.
+      [
+        'languages',
+        {
+          stages: [
+            {
+              id: 'intro',
+              type: 'Information',
+              label: { fr: 'Introduction' },
+              title: { fr: 'Bienvenue' },
+              items: [],
+            },
+          ],
+          localization: { defaultLocale: 'fr' },
+        },
+      ],
     ])(
       'refuses to start from %s it cannot read, rather than from an empty stand-in',
       (_field, storedProtocol) => {

@@ -141,12 +141,12 @@ describe('localeChangeMiddleware', () => {
       .fn<ProtocolLocaleChangeHandler>()
       .mockRejectedValueOnce(new Error('offline'))
       .mockResolvedValue(undefined);
-    const { store, settled } = createTestStore(handler);
+    const { store } = createTestStore(handler);
 
     store.dispatch(recordLocale('es'));
-    await settled();
+    await drainMicrotasks();
     store.dispatch(setLocalePreference('fr'));
-    await settled();
+    await drainMicrotasks();
 
     expect(console.error).toHaveBeenCalledWith(
       '❌ Error saving the interview language:',
@@ -157,6 +157,71 @@ describe('localeChangeMiddleware', () => {
       locale: 'fr',
       localePreference: 'fr',
     });
+  });
+
+  it('says a refused change is unsaved once trying it again is refused too', async () => {
+    const handler = vi
+      .fn<ProtocolLocaleChangeHandler>()
+      .mockRejectedValue(new Error('offline'));
+    const { store, settled } = createTestStore(handler);
+
+    store.dispatch(setLocalePreference('fr'));
+
+    await expect(settled()).resolves.toBe(false);
+    // The original call and the one retry.
+    expect(handler).toHaveBeenCalledTimes(2);
+    expect(handler).toHaveBeenLastCalledWith('interview-1', {
+      locale: 'fr',
+      localePreference: 'fr',
+    });
+  });
+
+  it('tries a refused change again when settling, and says when it is then stored', async () => {
+    const handler = vi
+      .fn<ProtocolLocaleChangeHandler>()
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValue(undefined);
+    const { store, settled } = createTestStore(handler);
+
+    store.dispatch(setLocalePreference('fr'));
+    await drainMicrotasks();
+    expect(handler).toHaveBeenCalledTimes(1);
+
+    await expect(settled()).resolves.toBe(true);
+    expect(handler).toHaveBeenCalledTimes(2);
+    expect(handler).toHaveBeenLastCalledWith('interview-1', {
+      locale: 'fr',
+      localePreference: 'fr',
+    });
+
+    // Stored now, so settling again writes nothing more.
+    await expect(settled()).resolves.toBe(true);
+    expect(handler).toHaveBeenCalledTimes(2);
+  });
+
+  it('counts a refused change as stored once a newer change is stored', async () => {
+    const handler = vi
+      .fn<ProtocolLocaleChangeHandler>()
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValue(undefined);
+    const { store, settled } = createTestStore(handler);
+
+    store.dispatch(recordLocale('es'));
+    store.dispatch(setLocalePreference('fr'));
+
+    await expect(settled()).resolves.toBe(true);
+    expect(handler).toHaveBeenCalledTimes(2);
+  });
+
+  it('says a stored change is stored', async () => {
+    const handler = vi
+      .fn<ProtocolLocaleChangeHandler>()
+      .mockResolvedValue(undefined);
+    const { store, settled } = createTestStore(handler);
+
+    store.dispatch(recordLocale('es'));
+
+    await expect(settled()).resolves.toBe(true);
   });
 
   it('reports nothing for an interview opened finished', async () => {

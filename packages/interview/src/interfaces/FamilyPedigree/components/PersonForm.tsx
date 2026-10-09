@@ -22,6 +22,7 @@ import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import type {
+  FormSubmissionResult,
   FormSubmitHandler,
   ValidationContext,
 } from '@codaco/fresco-ui/form/store/types';
@@ -241,7 +242,11 @@ type PersonFormProps = {
   /** Add only: called with the person being added whenever the answers
    * that decide how they are drawn change. */
   onDraftChange?: (draft: PersonDraft) => void;
-  onSubmit: (result: PersonFormResult) => void;
+  /** Stores the result, and says whether it was stored: the panel keeps
+   * the answers and shows the errors when it was not. */
+  onSubmit: (
+    result: PersonFormResult,
+  ) => FormSubmissionResult | Promise<FormSubmissionResult>;
 };
 
 const asString = (value: FieldValue | undefined) =>
@@ -430,7 +435,7 @@ export default function PersonForm({
       unset.push(...patch.patch.unset);
     }
 
-    onSubmit({
+    return onSubmit({
       set,
       unset,
       request:
@@ -447,7 +452,6 @@ export default function PersonForm({
           ? readTwinChanges(family, mode.person.id, values)
           : undefined,
     });
-    return { success: true };
   };
 
   // Every answer made unavailable by what the family records says why: the
