@@ -889,8 +889,9 @@ function genderIdentityTerms(): ScenarioDefinition {
  * Both biological parents are required. The participant starts alone and
  * undescribed: Next is held back, opening the list of what is still needed,
  * and pressing it again does not get through. Each item leads to where it is
- * resolved — adding a parent, or the participant's own details — and once
- * the list is empty the ring says so and Next moves on.
+ * resolved — adding a parent, describing the stand-in added for the other,
+ * or the participant's own details — and once the list is empty the ring
+ * says so and Next moves on.
  */
 function completenessParentsRequired(): ScenarioDefinition {
   const { synth, fp, person } = scaffold({
@@ -943,9 +944,13 @@ function completenessParentsRequired(): ScenarioDefinition {
       // Without a framing set, the gendered words describe her.
       await expect(member(page, 'Mother')).toBeVisible();
 
+      // Her addition adds an unnamed stand-in for the other biological
+      // parent (the stand-in rule), whose details the list then asks for.
       await trackerRing(page).click();
       await trackerList(page)
-        .getByRole('button', { name: 'Add your other biological parent' })
+        .getByRole('button', {
+          name: 'Some details are missing for “Biological father”',
+        })
         .click();
       await describe(page, { gender: 'Man', sex: 'Male' });
       await submitPanel(page, 'Save');
@@ -970,12 +975,13 @@ function completenessParentsRequired(): ScenarioDefinition {
       await leaveForward(ctx);
       const network = await networkOf(ctx);
       expect(network.nodes).toHaveLength(3);
-      // Both parents, partnered: the second was offered the first as partner.
+      // Both parents, not partnered: a stand-in is never recorded as anyone's
+      // partner.
       expect(
         network.edges
           .map((edge) => JSON.stringify(edge[ATTR][fp.kind]))
           .toSorted(),
-      ).toEqual(['["biological"]', '["biological"]', '["partner"]']);
+      ).toEqual(['["biological"]', '["biological"]']);
     },
   };
 }

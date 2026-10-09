@@ -29,15 +29,23 @@ const NetworkComposerStageMetadataSchema = z.object({
 // out of an encrypted attribute). On a return visit a person whose stored
 // value still matches is treated as unnamed and given a fresh label; a name
 // written since, here or on another stage, no longer matches and is kept.
-// Either may be absent, but not both: an entry holding neither is not one.
+// It also records, by node ID, the stand-ins it generated: unnamed people it
+// added to hold a missing genetic parent's place, who give way (and may be
+// removed) when a genetic parent is recorded there. Only people listed here
+// are ever treated as stand-ins; anyone the participant names or describes
+// is taken off the list, as someone in their own right.
+// Any may be absent, but not all: an entry holding none is not one.
 const FamilyPedigreeStageMetadataSchema = z
   .object({
     framing: z.enum(['gendered', 'gamete']).optional(),
     generatedLabels: z.record(z.string(), z.string()).optional(),
+    standIns: z.array(z.string()).optional(),
   })
   .refine(
     (entry) =>
-      entry.framing !== undefined || entry.generatedLabels !== undefined,
+      entry.framing !== undefined ||
+      entry.generatedLabels !== undefined ||
+      entry.standIns !== undefined,
   );
 
 export const StageMetadataSchema = z.record(

@@ -76,13 +76,11 @@ export const ownedOptionLabels = (
   };
 };
 
-/** The kinds of child the stage asks about, as the question offers them. */
-export type ChildKind = 'biological' | 'adoptive' | 'social';
-
-/** The words of the option for each kind of child. */
+/** The words of the option for each kind of child the stage asks about,
+ * by the kind of parent the person is to them. */
 export const childKindWording = (
   wording: FamilyPedigreeWording,
-  kind: ChildKind,
+  kind: PedigreeParentKind,
 ): LocalizedString => {
   switch (kind) {
     case 'biological':
@@ -91,6 +89,10 @@ export const childKindWording = (
       return wording.childKindAdoptive;
     case 'social':
       return wording.childKindSocial;
+    case 'donor':
+      return wording.childKindDonor;
+    case 'surrogate':
+      return wording.childKindSurrogate;
   }
 };
 

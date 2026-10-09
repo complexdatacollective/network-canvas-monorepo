@@ -20,6 +20,18 @@ const relationshipsOf = (nodes: NcNode[], edges: NcEdge[]) =>
 const ego = person('ego', { isEgo: true });
 
 describe('relationshipsToParticipant', () => {
+  test('a twin is a sibling, even with no parent recorded between them, and so is their partner an in-law', () => {
+    expect(
+      relationshipsOf(
+        [ego, person('twin'), person('twinsWife')],
+        [
+          link('ego', 'twin', 'unknownZygosityTwin'),
+          link('twin', 'twinsWife', 'partner'),
+        ],
+      ),
+    ).toEqual({ twin: 'sibling', twinsWife: 'siblingInLaw' });
+  });
+
   test('names every kind of parent, child and partner, neutrally', () => {
     expect(
       relationshipsOf(
@@ -100,6 +112,37 @@ describe('relationshipsToParticipant', () => {
       adopted: 'adoptiveSibling',
       step: 'stepSibling',
       stepdad: 'stepParent',
+    });
+  });
+
+  test('counts donors as genetic parents when telling siblings apart', () => {
+    expect(
+      relationshipsOf(
+        [
+          ego,
+          person('lisa'),
+          person('mark'),
+          person('karen'),
+          person('full'),
+          person('half'),
+          person('adopted'),
+        ],
+        [
+          link('lisa', 'ego', 'donor'),
+          link('mark', 'ego', 'donor'),
+          link('karen', 'ego', 'adoptive'),
+          link('lisa', 'mark', 'partner'),
+          link('lisa', 'full', 'biological'),
+          link('mark', 'full', 'biological'),
+          link('lisa', 'half', 'biological'),
+          link('karen', 'adopted', 'adoptive'),
+        ],
+      ),
+    ).toMatchObject({
+      // The same genetic parents, though only the participant was adopted.
+      full: 'sibling',
+      half: 'halfSibling',
+      adopted: 'adoptiveSibling',
     });
   });
 

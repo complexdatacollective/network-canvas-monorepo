@@ -21,14 +21,32 @@ describe('evaluateCompleteness', () => {
   test('parents: both biological parents are needed', () => {
     expect(
       evaluateCompleteness(family([ego], []), 'parents', noneMissing).items,
-    ).toEqual([{ kind: 'parents', personId: 'ego', missing: 2 }]);
+    ).toEqual([{ kind: 'parents', personId: 'ego' }]);
+  });
+
+  // The stand-in rule (`planStandIns`) gives anyone with one genetic parent a
+  // stand-in for the other, whose details are asked for instead, so the
+  // list never asks for "another" biological parent.
+  test('parents: someone with one biological parent is never asked for another', () => {
     const oneParent = family(
       [ego, person('mum')],
       [link('mum', 'ego', 'biological')],
     );
     expect(
       evaluateCompleteness(oneParent, 'parents', noneMissing).items,
-    ).toHaveLength(1);
+    ).toEqual([]);
+    const withStandIn = readFamily(
+      [ego, person('mum'), person('standIn')],
+      [link('mum', 'ego', 'biological'), link('standIn', 'ego', 'biological')],
+      config,
+      {},
+      new Map(),
+      new Set(['standIn']),
+    );
+    expect(
+      evaluateCompleteness(withStandIn, 'parents', (p) => p.id === 'standIn')
+        .items,
+    ).toEqual([{ kind: 'details', personId: 'standIn' }]);
   });
 
   test('parents: a gamete donor counts, a carrier or adoptive parent does not', () => {
@@ -50,7 +68,7 @@ describe('evaluateCompleteness', () => {
       [link('a', 'ego', 'adoptive'), link('b', 'ego', 'adoptive')],
     );
     expect(evaluateCompleteness(adopted, 'parents', noneMissing).items).toEqual(
-      [{ kind: 'parents', personId: 'ego', missing: 2 }],
+      [{ kind: 'parents', personId: 'ego' }],
     );
   });
 
@@ -104,18 +122,24 @@ describe('evaluateCompleteness', () => {
       notRecorded: ['noSiblings'],
     });
     const parents = [answeredEgo, person('mum'), person('dad')];
-    // A child added with no other parent does not complete the family.
-    const childAlone = family(
-      [...parents, person('kid')],
-      [...parented, link('ego', 'kid', 'biological')],
+    // A child added with no other parent is given a stand-in for them
+    // (`planStandIns`), whose details complete the family.
+    const childAlone = readFamily(
+      [...parents, person('kid'), person('standIn')],
+      [
+        ...parented,
+        link('ego', 'kid', 'biological'),
+        link('standIn', 'kid', 'biological'),
+      ],
+      config,
+      {},
+      new Map(),
+      new Set(['standIn']),
     );
+    const standInMissing = (p: { id: string }) => p.id === 'standIn';
     expect(
-      evaluateCompleteness(childAlone, 'firstDegree', noneMissing).items,
-    ).toEqual([{ kind: 'parents', personId: 'kid', missing: 1 }]);
-    // Nor for the parents scope, which does not ask about children.
-    expect(
-      evaluateCompleteness(childAlone, 'parents', noneMissing).items,
-    ).toEqual([]);
+      evaluateCompleteness(childAlone, 'firstDegree', standInMissing).items,
+    ).toEqual([{ kind: 'details', personId: 'standIn' }]);
 
     // The other parent the participant does not know is added unnamed, as
     // "Don't know" does, and satisfies it; their own parents and siblings
@@ -174,7 +198,7 @@ describe('evaluateCompleteness', () => {
     );
     expect(evaluateCompleteness(f, 'grandparents', noneMissing).items).toEqual([
       { kind: 'siblings', personId: 'mum' },
-      { kind: 'parents', personId: 'dad', missing: 2 },
+      { kind: 'parents', personId: 'dad' },
     ]);
   });
 
@@ -268,11 +292,6 @@ describe('evaluateCompleteness', () => {
       noneMissing,
     );
     expect(oneParent).toMatchObject({ done: 3, total: 17 });
-    expect(oneParent.items).toContainEqual({
-      kind: 'parents',
-      personId: 'ego',
-      missing: 1,
-    });
   });
 
   test('records who is asked about their siblings and children', () => {
@@ -361,14 +380,14 @@ describe('answersContradictedBy', () => {
 
 describe('recommendationsCover', () => {
   const shown = recommendationsShown([
-    { kind: 'parents', personId: 'ego', missing: 1 },
+    { kind: 'parents', personId: 'ego' },
     { kind: 'siblings', personId: 'ego' },
   ]);
 
   test('covers the same list, or a shorter one', () => {
     expect(
       recommendationsCover(shown, [
-        { kind: 'parents', personId: 'ego', missing: 1 },
+        { kind: 'parents', personId: 'ego' },
         { kind: 'siblings', personId: 'ego' },
       ]),
     ).toBe(true);
@@ -377,28 +396,12 @@ describe('recommendationsCover', () => {
     ).toBe(true);
   });
 
-  test('covers an item that now needs less than it did', () => {
-    const both = recommendationsShown([
-      { kind: 'parents', personId: 'ego', missing: 2 },
-    ]);
-    expect(
-      recommendationsCover(both, [
-        { kind: 'parents', personId: 'ego', missing: 1 },
-      ]),
-    ).toBe(true);
-  });
-
-  test('does not cover an item that now needs more than it did', () => {
-    expect(
-      recommendationsCover(shown, [
-        { kind: 'parents', personId: 'ego', missing: 2 },
-      ]),
-    ).toBe(false);
-  });
-
   test('does not cover an item it did not list', () => {
     expect(
       recommendationsCover(shown, [{ kind: 'children', personId: 'ego' }]),
+    ).toBe(false);
+    expect(
+      recommendationsCover(shown, [{ kind: 'details', personId: 'ego' }]),
     ).toBe(false);
   });
 });

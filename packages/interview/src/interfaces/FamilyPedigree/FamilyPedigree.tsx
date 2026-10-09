@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from 'motion/react';
 import {
   useCallback,
   useEffect,
+  useEffectEvent,
   useId,
   useLayoutEffect,
   useMemo,
@@ -53,6 +54,7 @@ import { useStageSelector } from '../../hooks/useStageSelector';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import {
+  getActiveSession,
   getEdgeColorForType,
   getNetworkEdges,
   getNetworkNodes,
@@ -60,7 +62,7 @@ import {
   getStageMetadata,
   resolveNodeShape,
 } from '../../selectors/session';
-import { getCodebook } from '../../store/modules/protocol';
+import { getCodebook, getStages } from '../../store/modules/protocol';
 import {
   addEdge,
   addNode,
@@ -81,7 +83,9 @@ import { useReportUnreadable } from '../Anonymisation/useReportUnreadable';
 import { pedigreeFraming } from '../pedigree-common/framing';
 import {
   participantsFamily,
+  type FamilyChange,
   peopleCutOff,
+  peopleCutOffByChange,
   planRemovePerson,
 } from '../pedigree-common/membership';
 import {
@@ -99,9 +103,15 @@ import {
   RELATIVES_NOT_RECORDED,
   relativesToAskAbout,
 } from './completeness';
-import AddRelativeMenu from './components/AddRelativeMenu';
+import AddRelativeMenu, {
+  AddMenuReachProbe,
+  addMenuReach,
+} from './components/AddRelativeMenu';
 import CompletenessTracker from './components/CompletenessTracker';
-import ConnectMenu, { type ConnectPair } from './components/ConnectMenu';
+import ConnectMenu, {
+  type ConnectPair,
+  describeConnection,
+} from './components/ConnectMenu';
 import ConnectorPreview from './components/ConnectorPreview';
 import FramingControl from './components/FramingControl';
 import PersonDrawer from './components/PersonDrawer';
@@ -112,18 +122,29 @@ import PersonForm, {
 } from './components/PersonForm';
 import PersonNode from './components/PersonNode';
 import { decryptDetails, useDecryptedNames } from './encryptedNames';
-import { generateLabels, labelEveryone, labelWrites } from './generatedLabels';
+import {
+  distinctNames,
+  generateLabels,
+  labelEveryone,
+  labelOfNoKind,
+  labelWrites,
+} from './generatedLabels';
 import { formatRelativeTerm } from './kinship';
 import { messages } from './messages';
 import {
   areConnected,
+  areLinked,
   type Connection,
+  isStandIn,
   missingDetailsFor,
   type PedigreeConfig,
   pedigreeConfigFromStage,
   planAdditionUnder,
   planConnection,
   type PlannedLink,
+  type PlannedTwin,
+  planStandIns,
+  type StandInChanges,
   nameFingerprint,
   nominationAppliesTo,
   nominationsWithdrawnBy,
@@ -131,14 +152,28 @@ import {
   type Family,
   type Person,
   type Relation,
+  TWIN_KIND_BY_ZYGOSITY,
 } from './model';
 import { ownedOptionLabels } from './options';
 import PedigreeLayout from './pedigree-layout/components/PedigreeLayout';
 import type { PedigreeLink } from './pedigree-layout/types';
+import { pedigreeLinksOf } from './pedigreeLinks';
 import { PedigreeWordsProvider, usePedigreeWordsOf } from './pedigreeWords';
 import { relationshipWrites } from './relationshipToParticipant';
+import { reproductiveRolesOf } from './reproductiveRoles';
+import {
+  readSharedFamilyRecord,
+  type SharedFamilyRecord,
+  sharedRecordWrites,
+  stepsSharingFamily,
+} from './sharedRecord';
 import type { Point } from './spatialNavigation';
-import { usePanZoom, type View } from './usePanZoom';
+import {
+  type Box,
+  usePanZoom,
+  type View,
+  viewKeepingInArea,
+} from './usePanZoom';
 
 /**
  * What selecting a person does: open their details (with their add menu on
@@ -160,7 +195,18 @@ type PanelState = {
   /** Changes for every opening, so the form starts fresh. */
   key: string;
   mode: PersonFormMode;
+  /** Opened from the list of what is still needed to add the person's
+   * siblings or children: answering that they have some goes on to adding
+   * one. */
+  then?: 'sibling' | 'child';
 } | null;
+
+/** The buttons of the add menu shown around a person's symbol, if any. */
+const menuItemsOf = (symbol: HTMLElement) => [
+  ...(symbol
+    .closest('[data-testid="pedigree-person"]')
+    ?.querySelectorAll<HTMLElement>('[data-add-menu-item]') ?? []),
+];
 
 /** The attributes recording a link. */
 const linkAttributesFor = (config: PedigreeConfig, link: PlannedLink) => ({
@@ -171,6 +217,12 @@ const linkAttributesFor = (config: PedigreeConfig, link: PlannedLink) => ({
         [config.gestationalCarrierAttribute]:
           link.isGestationalCarrier ?? false,
       }),
+});
+
+/** The attributes recording twins: their zygosity, as the relationship
+ * kind. */
+const twinAttributesFor = (config: PedigreeConfig, twin: PlannedTwin) => ({
+  [config.kindAttribute]: [TWIN_KIND_BY_ZYGOSITY[twin.zygosity]],
 });
 
 /** Everything to create to add a relative, under the panel's ids. */
@@ -228,16 +280,63 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     canNominate(person) || isNominated(person);
 
   // The stage's own record: the framing the participant chose, when the
-  // stage leaves it to them, and who holds a label saved as their name
-  // because they were left unnamed.
+  // stage leaves it to them.
   const stageMetadata = useStageSelector(getStageMetadata);
   const pedigreeMetadata = isFamilyPedigreeStageMetadata(stageMetadata)
     ? stageMetadata
     : undefined;
-  const generatedLabels = useMemo(
-    () => pedigreeMetadata?.generatedLabels ?? {},
-    [pedigreeMetadata],
+  // The family's record, which every stage drawing the same family keeps
+  // (`stepsSharingFamily`): who holds a label saved as their name because
+  // they were left unnamed, and the stand-ins a stage generated — only they
+  // are ever treated as stand-ins (`isStandIn`). A stand-in or a label
+  // another stage gave is one here too.
+  const stages = useSelector(getStages);
+  const sharingSteps = useMemo(
+    () => stepsSharingFamily(stages, currentStep),
+    [stages, currentStep],
   );
+  const allStageMetadata = useSelector(
+    (state: RootState) => getActiveSession(state)?.stageMetadata,
+  );
+  const sharedRecord = useMemo(
+    () => readSharedFamilyRecord(allStageMetadata, sharingSteps),
+    [allStageMetadata, sharingSteps],
+  );
+  const generatedLabels = sharedRecord.generatedLabels;
+  const standInIds = useMemo(
+    () => new Set(sharedRecord.standIns),
+    [sharedRecord],
+  );
+  // The records as stored now, which a handler may have changed since this
+  // render, so that each write keeps what the others wrote.
+  const storedPedigreeMetadata = () => {
+    const stored = getStageMetadata(store.getState(), currentStep);
+    return isFamilyPedigreeStageMetadata(stored) ? stored : undefined;
+  };
+  const writePedigreeMetadata = (
+    patch: Partial<NonNullable<typeof pedigreeMetadata>>,
+  ) =>
+    dispatch(
+      updateStageMetadata({
+        currentStep,
+        metadata: { ...storedPedigreeMetadata(), ...patch },
+      }),
+    );
+  const storedSharedRecord = () =>
+    readSharedFamilyRecord(
+      getActiveSession(store.getState())?.stageMetadata,
+      sharingSteps,
+    );
+  // Written to every stage drawing the family, so they all keep one record.
+  const writeSharedRecord = (patch: Partial<SharedFamilyRecord>) => {
+    for (const { step, metadata } of sharedRecordWrites(
+      getActiveSession(store.getState())?.stageMetadata,
+      sharingSteps,
+      patch,
+    )) {
+      dispatch(updateStageMetadata({ currentStep: step, metadata }));
+    }
+  };
 
   const nodes = useStageSelector(getNetworkNodes);
   const edges = useStageSelector(getNetworkEdges);
@@ -281,6 +380,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const namesLocked = encryptNames && !unlocked;
   // Nobody can be added or changed.
   const detailsLocked = encryptDetails && !unlocked;
+  // When the stage leaves the wording to the participant, the question is
+  // asked, and held open, until they answer it (below). While it is held
+  // open the family cannot be used: no one's panel opens and no one can be
+  // added or connected, so nothing competes with the question. Opened again
+  // once answered, it closes as any popover does.
+  const framingUnanswered =
+    stage.framing === 'participantPreference' &&
+    pedigreeMetadata?.framing === undefined;
+  const [framingOpen, setFramingOpen] = useState(false);
+  const wordingForced = framingUnanswered && framingOpen;
   useEffect(() => {
     if (encryptDetails) requirePassphrase();
   }, [encryptDetails, requirePassphrase]);
@@ -299,9 +408,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const family = useMemo(
     () =>
       participantsFamily(
-        readFamily(nodes, edges, config, generatedLabels, decryptedNames),
+        readFamily(
+          nodes,
+          edges,
+          config,
+          generatedLabels,
+          decryptedNames,
+          standInIds,
+        ),
       ),
-    [nodes, edges, config, generatedLabels, decryptedNames],
+    [nodes, edges, config, generatedLabels, decryptedNames, standInIds],
   );
 
   // The person being added is drawn in the family from the moment the panel
@@ -334,6 +450,46 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         type: config.personType,
         [entityAttributesProperty]: person.details,
       }));
+    // A stand-in whose place the addition fills gives way, one whose sex
+    // at birth follows from it changes, and identical twins whose genetic
+    // parents it makes differ are not known to be identical, as they will be
+    // once it is recorded.
+    const removedLinks = new Set(plan.removedLinkIds ?? []);
+    const removedPeople = new Set(plan.removedPersonIds ?? []);
+    const updated = new Map(
+      (plan.updatedPeople ?? []).map((person) => [person.id, person]),
+    );
+    const keptNodes = nodes
+      .filter((node) => !removedPeople.has(node[entityPrimaryKeyProperty]))
+      .map((node) => {
+        const update = updated.get(node[entityPrimaryKeyProperty]);
+        if (!update) return node;
+        const attributes = {
+          ...node[entityAttributesProperty],
+          ...update.details,
+        };
+        for (const attribute of update.unset ?? []) {
+          delete attributes[attribute];
+        }
+        return { ...node, [entityAttributesProperty]: attributes };
+      });
+    const changedTwins = new Map(
+      (plan.changedTwins ?? []).map((twin) => [twin.linkId, twin.zygosity]),
+    );
+    const keptEdges = edges
+      .filter((edge) => !removedLinks.has(edge[entityPrimaryKeyProperty]))
+      .map((edge) => {
+        const zygosity = changedTwins.get(edge[entityPrimaryKeyProperty]);
+        return zygosity
+          ? {
+              ...edge,
+              [entityAttributesProperty]: {
+                ...edge[entityAttributesProperty],
+                [config.kindAttribute]: [TWIN_KIND_BY_ZYGOSITY[zygosity]],
+              },
+            }
+          : edge;
+      });
     const draftEdges: NcEdge[] = plan.links
       .filter(
         (link) =>
@@ -351,16 +507,33 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         to: link.target,
         [entityAttributesProperty]: linkAttributesFor(config, link),
       }));
+    const draftTwinEdges: NcEdge[] = (plan.twins ?? []).map((twin, index) => ({
+      [entityPrimaryKeyProperty]: `draft-twin-${index}`,
+      type: config.relationshipType,
+      from: twin.source,
+      to: twin.target,
+      [entityAttributesProperty]: twinAttributesFor(config, twin),
+    }));
     return participantsFamily(
       readFamily(
-        [...nodes, ...draftNodes],
-        [...edges, ...draftEdges],
+        [...keptNodes, ...draftNodes],
+        [...keptEdges, ...draftEdges, ...draftTwinEdges],
         config,
         generatedLabels,
         decryptedNames,
+        standInIds,
       ),
     );
-  }, [draft, family, nodes, edges, config, generatedLabels, decryptedNames]);
+  }, [
+    draft,
+    family,
+    nodes,
+    edges,
+    config,
+    generatedLabels,
+    decryptedNames,
+    standInIds,
+  ]);
   const nodeColor = useStageSelector(getNodeColorSelector);
   // Connectors, and the preview of a new one, take the codebook's colour for
   // the relationship type ('edge-color-seq-N' is the CSS variable --edge-N).
@@ -444,6 +617,17 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   }, [family.egoId, family.people.length]);
 
   const [panel, setPanel] = useState<PanelState>(null);
+  // "Yes — I'll add them" to whether someone has siblings or children is not
+  // recorded in the network, so it is kept here for the visit, by person, and
+  // their panel opens on it again.
+  const [saidYes, setSaidYes] = useState<
+    ReadonlyMap<string, Partial<Record<'siblings' | 'children', boolean>>>
+  >(new Map());
+  // A relative to add once the saved answers are in the family.
+  const [addNext, setAddNext] = useState<{
+    relation: Relation;
+    personId: string;
+  } | null>(null);
   // The person whose details are open, or who is being added.
   const selectedId = !panel?.open
     ? null
@@ -463,10 +647,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const contentRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
-  const panZoom = usePanZoom({ viewportRef, contentRef });
   const promptRef = useRef<HTMLDivElement>(null);
   const toolbarAreaRef = useRef<HTMLDivElement>(null);
-  // The whole family, clear of the prompt above and the toolbar below.
+  const menuReachRef = useRef<HTMLSpanElement>(null);
   // How far in from each edge of the canvas the prompt and the toolbar leave
   // it clear.
   const clearInsets = useCallback(() => {
@@ -483,11 +666,18 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       right: 32,
     };
   }, []);
+  // Some of the family always stays in the clear part of the canvas.
+  const panZoom = usePanZoom({ viewportRef, contentRef, clearInsets });
+  // The whole family, clear of the prompt above and the toolbar below, with
+  // room around it for anyone's add menu.
   const showWholeFamily = useCallback(
     ({ animated = true }: { animated?: boolean } = {}) => {
       const layout = contentRef.current?.firstElementChild;
       if (!(layout instanceof HTMLElement)) return;
-      panZoom.fitToView(layout, clearInsets(), { animated });
+      panZoom.fitToView(layout, clearInsets(), {
+        animated,
+        reach: addMenuReach(menuReachRef.current),
+      });
     },
     [panZoom, clearInsets],
   );
@@ -498,13 +688,25 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   // No menu while the panel is open: it would offer to add to someone else
   // mid-way through describing this person. Nor while connecting or
-  // disconnecting people, nor while the family waits for the passphrase.
+  // disconnecting people, nor while the family waits for the passphrase or
+  // for the wording to be chosen.
   const menuPersonId =
-    panel?.open || tool !== 'pointer' || nomination || detailsLocked
+    panel?.open ||
+    tool !== 'pointer' ||
+    nomination ||
+    detailsLocked ||
+    wordingForced
       ? null
       : (hoveredId ?? focusedId);
   const menuPerson = menuPersonId ? family.byId.get(menuPersonId) : undefined;
-  const [announcement, setAnnouncement] = useState('');
+  // What the live region says, kept to the prompt it was said on, so moving
+  // to another prompt leaves nothing behind for a screen reader to find.
+  const [spoken, setSpoken] = useState({ text: '', promptId: prompt.id });
+  const setAnnouncement = useCallback(
+    (said: string) => setSpoken({ text: said, promptId: prompt.id }),
+    [prompt.id],
+  );
+  const announcement = spoken.promptId === prompt.id ? spoken.text : '';
 
   const nodeRefs = useRef(new Map<string, HTMLButtonElement>());
   const setNodeRef = useCallback(
@@ -526,7 +728,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const participantFraming = framingSetting === 'participantPreference';
   // Opened a moment after the stage loads, once the toolbar is in, so the
   // participant sees the rest of the interface first.
-  const [framingOpen, setFramingOpen] = useState(false);
   const askFramingOnLoad = useRef(
     participantFraming && chosenFraming === undefined,
   );
@@ -539,26 +740,53 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const framing = pedigreeFraming(framingSetting, chosenFraming);
   const chooseFraming = useCallback(
     (chosen: FramingId) => {
-      dispatch(
-        updateStageMetadata({
-          currentStep,
-          metadata: { ...pedigreeMetadata, framing: chosen },
-        }),
-      );
+      writePedigreeMetadata({ framing: chosen });
     },
-    [dispatch, currentStep, pedigreeMetadata],
+    [writePedigreeMetadata],
   );
   // Everyone the participant has not named is shown by the label that will
   // be saved as their name when they leave, worked out afresh from the family
   // as it stands, so the canvas and the stages after it always agree.
-  const labels = useMemo(
-    () => labelEveryone(shown, framing, intl, words),
-    [shown, framing, intl, words],
+  // The person being added is not called by a kind of parent, child or
+  // sibling the participant has not chosen.
+  const labels = useMemo(() => {
+    const everyone = labelEveryone(shown, framing, intl, words);
+    const [draftId] = draft?.ids ?? [];
+    const drafted = draftId === undefined ? undefined : shown.byId.get(draftId);
+    const anchor = draft && shown.byId.get(draft.anchorId);
+    if (
+      draft?.kindUnanswered &&
+      draft.request.relation !== 'partner' &&
+      drafted?.name === undefined &&
+      draftId !== undefined &&
+      anchor
+    ) {
+      everyone.set(
+        draftId,
+        labelOfNoKind(
+          draft.request.relation,
+          anchor,
+          everyone.get(anchor.id) ?? '',
+          words,
+        ),
+      );
+    }
+    return everyone;
+  }, [shown, framing, intl, words, draft]);
+  // Each person's symbol shows their label. Everywhere else they are named in
+  // words that tell them apart from anyone whose label matches theirs, as
+  // only words can there: the panel's title, announcements, hints and
+  // confirmations, and what a screen reader reads out for their symbol. A
+  // name the participant typed is never altered or added to: two relatives
+  // given the same name are both called by it, exactly as typed.
+  const names = useMemo(
+    () => distinctNames(shown, labels, intl, words),
+    [shown, labels, intl, words],
   );
   const displayName = useCallback(
     (personId: string) =>
-      labels.get(personId) ?? formatRelativeTerm('other', words),
-    [labels, words],
+      names.get(personId) ?? formatRelativeTerm('other', words),
+    [names, words],
   );
 
   // Announce an addition once the new person is in the family, so they can be
@@ -572,19 +800,40 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       }),
     );
     setJustAddedId(null);
-  }, [justAddedId, family.byId, displayName, intl]);
+  }, [justAddedId, family.byId, displayName, intl, setAnnouncement]);
 
-  const links: PedigreeLink[] = useMemo(
-    () =>
-      shown.links.map((link) => ({
-        source: link.source,
-        target: link.target,
-        kind: link.kind,
-        isActive: link.isCurrentPartner,
-        isGestationalCarrier: link.isGestationalCarrier,
-      })),
-    [shown.links],
-  );
+  // Announce a connection once it is in the family, in the words people have
+  // now, which it may have changed for someone unnamed.
+  const [justConnected, setJustConnected] = useState<Connection | null>(null);
+  useEffect(() => {
+    if (!justConnected) return;
+    const [a, b] =
+      justConnected.kind === 'partner'
+        ? [justConnected.firstId, justConnected.secondId]
+        : [justConnected.parentId, justConnected.childId];
+    if (!areConnected(family, a, b)) return;
+    setAnnouncement(
+      describeConnection(
+        justConnected,
+        words,
+        intl,
+        family,
+        displayName,
+        optionLabels.parentKind,
+      ),
+    );
+    setJustConnected(null);
+  }, [
+    justConnected,
+    family,
+    displayName,
+    words,
+    intl,
+    optionLabels,
+    setAnnouncement,
+  ]);
+
+  const links: PedigreeLink[] = useMemo(() => pedigreeLinksOf(shown), [shown]);
   const nodeIds = useMemo(
     () => shown.people.map((person) => person.id),
     [shown.people],
@@ -697,24 +946,76 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       y += (before.anchorAt.y - now.y) * scale;
     }
     const subject = nodeRefs.current.get(before.subjectId);
-    if (subject && subject !== anchor) {
-      const at = panZoom.contentPositionOf(subject);
-      const halfWidth = (subject.offsetWidth / 2) * scale;
-      const halfHeight = (subject.offsetHeight / 2) * scale;
-      const insets = clearInsets();
-      const left = insets.left + halfWidth;
-      const right = viewport.clientWidth - insets.right - halfWidth;
-      const top = insets.top + halfHeight;
-      const bottom = viewport.clientHeight - insets.bottom - halfHeight;
-      const screenX = x + at.x * scale;
-      const screenY = y + at.y * scale;
-      if (screenX < left) x += left - screenX;
-      else if (screenX > right) x -= screenX - right;
-      if (screenY < top) y += top - screenY;
-      else if (screenY > bottom) y -= screenY - bottom;
+    if (!subject || subject === anchor) {
+      panZoom.goTo({ x, y, scale });
+      return;
     }
-    panZoom.goTo({ x, y, scale });
+    // Everyone clear of the prompt and the toolbar stays clear of them, as
+    // the one added comes into the clear area too, with room for their add
+    // menu, the family zooming out if it has to.
+    const insets = clearInsets();
+    const area = {
+      left: insets.left,
+      top: insets.top,
+      right: viewport.clientWidth - insets.right,
+      bottom: viewport.clientHeight - insets.bottom,
+    };
+    const boxOf = (element: HTMLElement) => {
+      const centre = panZoom.contentPositionOf(element);
+      const halfWidth = element.offsetWidth / 2;
+      const halfHeight = element.offsetHeight / 2;
+      return {
+        left: centre.x - halfWidth,
+        top: centre.y - halfHeight,
+        right: centre.x + halfWidth,
+        bottom: centre.y + halfHeight,
+      };
+    };
+    // (To within a pixel, as someone placed at the edge of the area sits.)
+    const isClear = (box: Box) =>
+      x + box.left * scale >= area.left - 1 &&
+      x + box.right * scale <= area.right + 1 &&
+      y + box.top * scale >= area.top - 1 &&
+      y + box.bottom * scale <= area.bottom + 1;
+    const keep = [...nodeRefs.current.values()]
+      .filter((element) => element !== subject)
+      .map(boxOf)
+      .filter(isClear);
+    const reach = addMenuReach(menuReachRef.current);
+    const around = Math.max(reach.content, reach.screen / scale);
+    const added = boxOf(subject);
+    panZoom.goTo(
+      viewKeepingInArea({
+        view: { x, y, scale },
+        required: {
+          left: added.left - around,
+          top: added.top - around,
+          right: added.right + around,
+          bottom: added.bottom + around,
+        },
+        keep,
+        area,
+        pivot: anchor
+          ? panZoom.contentPositionOf(anchor)
+          : panZoom.contentPositionOf(subject),
+      }),
+    );
   }, [selectedId, panZoom, clearInsets]);
+
+  // An add menu opened from the keyboard, or by a tap, is brought into the
+  // clear part of the canvas with its person. (One shown by the mouse
+  // stays put, under the pointer.)
+  // Only when the menu opens, or moves to someone else.
+  const menuFromFocus = menuPersonId !== null && menuPersonId === focusedId;
+  const revealedMenuId = useRef<string | null>(null);
+  useEffect(() => {
+    const id = menuFromFocus ? menuPersonId : null;
+    if (id === revealedMenuId.current) return;
+    revealedMenuId.current = id;
+    const element = id ? nodeRefs.current.get(id) : undefined;
+    if (!element) return;
+    panZoom.bringIntoView([element, ...menuItemsOf(element)], clearInsets());
+  }, [menuFromFocus, menuPersonId, panZoom, clearInsets]);
 
   // Anything that could write what the study encrypts waits for the
   // passphrase, and asks for it instead, saying why. When no passphrase can
@@ -733,8 +1034,15 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       askForPassphrase();
       return;
     }
-    // The new person, and up to two unnamed parents for a sibling.
-    const ids = [uuid(), uuid(), uuid()];
+    // No panel opens before the wording is chosen: the question comes first.
+    if (framingUnanswered) {
+      setFramingOpen(true);
+      return;
+    }
+    // The new person, then the unnamed parents and stand-ins the addition
+    // may need, fixed so the people drawn while the form is filled in are
+    // the ones added.
+    const ids = Array.from({ length: 8 }, () => uuid());
     rememberView(anchor.id, ids[0] ?? anchor.id);
     setPanel({
       open: true,
@@ -746,6 +1054,14 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const openAdd = (relation: Relation) => {
     if (menuPerson) openAddPanel(relation, menuPerson);
   };
+
+  // The relative to add next, once the family holds the answers just saved.
+  useEffect(() => {
+    if (!addNext) return;
+    setAddNext(null);
+    const person = family.byId.get(addNext.personId);
+    if (person) openAddPanel(addNext.relation, person);
+  });
 
   // How far the family is from what the researcher requires (or recommends)
   // before the participant continues.
@@ -799,7 +1115,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // it, and lets them through.
   // (Pressing Next closes the list, as a press outside it, before this runs;
   // so a recommendation remembers what it has shown instead.)
-  const shownBeforeNext = useRef<ShownRecommendations>(new Map());
+  const shownBeforeNext = useRef<ShownRecommendations>(new Set());
   const completeEnoughToLeave = (direction: Direction) => {
     if (direction !== 'forwards' || !progress || !completeness) return true;
     // A family no passphrase can unlock can never be completed.
@@ -870,7 +1186,14 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     const decrypted = unlocked ? await decryption.decryptAll(nodes) : undefined;
     const current = decrypted
       ? participantsFamily(
-          readFamily(nodes, edges, config, generatedLabels, decrypted),
+          readFamily(
+            nodes,
+            edges,
+            config,
+            generatedLabels,
+            decrypted,
+            standInIds,
+          ),
         )
       : family;
     const saved = generateLabels(current, framing, intl, words);
@@ -912,17 +1235,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         : undefined;
       if (written !== undefined) record[personId] = nameFingerprint(written);
     }
-    if (
-      Object.keys(record).length > 0 ||
-      pedigreeMetadata?.generatedLabels !== undefined
-    ) {
-      dispatch(
-        updateStageMetadata({
-          currentStep,
-          metadata: { ...pedigreeMetadata, generatedLabels: record },
-        }),
-      );
-    }
+    writeSharedRecord({ generatedLabels: record });
     if (refused) {
       showToast({
         description: intl.formatMessage(refused),
@@ -940,7 +1253,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // without it opens the choice again. Going back is not held up, and saves
   // no labels: they are saved in the chosen words when the participant
   // next leaves.
-  const framingUnanswered = participantFraming && chosenFraming === undefined;
   useBeforeNext(async (direction) => {
     if (framingUnanswered) {
       if (direction === 'forwards') {
@@ -1000,13 +1312,24 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (item.kind === 'parents') {
       openAddPanel('parent', person);
     } else {
-      void openEdit(person.id);
+      void openEdit(
+        person.id,
+        item.kind === 'siblings'
+          ? 'sibling'
+          : item.kind === 'children'
+            ? 'child'
+            : undefined,
+      );
     }
   };
 
-  const openEdit = async (personId: string) => {
+  const openEdit = async (personId: string, then?: 'sibling' | 'child') => {
     if (detailsLocked) {
       askForPassphrase();
+      return;
+    }
+    if (framingUnanswered) {
+      setFramingOpen(true);
       return;
     }
     const recorded = family.byId.get(personId);
@@ -1051,6 +1374,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         missing: missingDetailsFor(person, requiredFormVariables, config),
         unavailable,
       },
+      ...(then ? { then } : {}),
     });
   };
 
@@ -1082,9 +1406,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       event.target.matches(':focus-visible')
     ) {
       setFocusedId(personId);
-      // The canvas does not scroll; keyboard focus pans to the person.
+      // The canvas does not scroll; keyboard focus pans to the person, clear
+      // of the prompt and the toolbar.
       const element = nodeRefs.current.get(personId);
-      if (element) panZoom.bringIntoView(element);
+      if (element) panZoom.bringIntoView(element, clearInsets());
     }
   };
 
@@ -1118,6 +1443,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (detailsLocked) {
       setLastFocusedId(personId);
       askForPassphrase();
+      return;
+    }
+    // Before the wording is chosen, selecting someone asks for it instead.
+    if (framingUnanswered) {
+      setFramingOpen(true);
       return;
     }
     if (nomination) {
@@ -1180,6 +1510,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       setHoveredId(null);
       setLinkingId(null);
       setConnectNotice(null);
+      if (linkingId) setAnnouncement('');
     }
   };
 
@@ -1205,6 +1536,13 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     to: link.target,
     type: config.relationshipType,
     attributeData: linkAttributes(link),
+  });
+
+  const twinEdge = (twin: PlannedTwin) => ({
+    from: twin.source,
+    to: twin.target,
+    type: config.relationshipType,
+    attributeData: twinAttributesFor(config, twin),
   });
 
   const addLink = (link: PlannedLink) =>
@@ -1240,9 +1578,146 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     }
   };
 
-  // The panel closes once what the participant entered is stored. A write
-  // the session refuses (a protected answer whose key went, say) keeps it
-  // open with their answers and says why, so they can save again.
+  // The family as stored now, with the stand-ins recorded now (`marked`, or
+  // else the family's record, `storedSharedRecord`).
+  const latestFamily = (
+    marked: ReadonlySet<string> = new Set(storedSharedRecord().standIns),
+  ) => {
+    const state = store.getState();
+    return participantsFamily(
+      readFamily(
+        getNetworkNodes(state, displayedStep),
+        getNetworkEdges(state, displayedStep),
+        config,
+        generatedLabels,
+        decryptedNames,
+        marked,
+      ),
+    );
+  };
+
+  // Records the stand-ins `added` as the stage's, and takes off its record
+  // anyone no longer a stand-in: someone removed, or named, described or
+  // related further, who is someone in their own right from then on.
+  const recordStandIns = (added: readonly string[] = []) => {
+    const marked = new Set([...storedSharedRecord().standIns, ...added]);
+    const latest = latestFamily(marked);
+    writeSharedRecord({
+      standIns: [...marked].filter((id) => isStandIn(latest, id)),
+    });
+  };
+
+  // The stand-in rule (`planStandIns`), kept after every change to the
+  // family, read as stored: anyone a change leaves with one genetic parent
+  // is given a stand-in for the other, a stand-in whose place a genetic
+  // parent fills gives way, a stand-in's sex at birth follows the other
+  // genetic parent's, and identical twins whose genetic parents now differ
+  // are not known to be identical. Resolves to the write the session
+  // refused, if one was.
+  const keepStandInRule = async () =>
+    applyStandIns(
+      planStandIns(latestFamily(), uuid, config.sexAssignedAtBirthAttribute),
+    );
+
+  // Writes what keeping the stand-in rule changes, stopping at the first
+  // write the session refuses, which it resolves to. Stand-ins are taken
+  // away only once every other change is stored, so a refusal leaves no one
+  // without the parent they stood in for. Asked again of the family after
+  // the next change, the rule writes only what is left.
+  const applyStandIns = async ({
+    people: standIns = [],
+    links: standInLinks = [],
+    updatedPeople = [],
+    changedTwins = [],
+    removedLinkIds = [],
+    removedPersonIds = [],
+  }: Partial<StandInChanges>) => {
+    if (standIns.length > 0 || standInLinks.length > 0) {
+      const added = await dispatch(
+        addNodesAndEdges({
+          nodes: standIns.map((person) => ({
+            type: config.personType,
+            attributeData: person.details,
+            modelData: { [entityPrimaryKeyProperty]: person.id },
+          })),
+          edges: standInLinks.map(linkEdge),
+          currentStep,
+        }),
+      );
+      if (writeFailureMessage(added)) return added;
+      recordStandIns(standIns.map((person) => person.id));
+    }
+    for (const person of updatedPeople) {
+      const updated = await dispatch(
+        updateNode({
+          nodeId: person.id,
+          attributePatch: { set: person.details, unset: person.unset ?? [] },
+          currentStep,
+        }),
+      );
+      if (writeFailureMessage(updated)) return updated;
+    }
+    for (const { linkId, zygosity } of changedTwins) {
+      const redescribed = await dispatch(
+        updateEdge({
+          edgeId: linkId,
+          attributePatch: {
+            set: { [config.kindAttribute]: [TWIN_KIND_BY_ZYGOSITY[zygosity]] },
+            unset: [],
+          },
+        }),
+      );
+      if (writeFailureMessage(redescribed)) return redescribed;
+    }
+    for (const linkId of removedLinkIds) dispatch(deleteEdge(linkId));
+    for (const personId of removedPersonIds) dispatch(deleteNode(personId));
+    recordStandIns();
+    return undefined;
+  };
+
+  // A stand-in the session refused to write after a change made on the
+  // canvas (no panel is open to keep): the participant is told why, and the
+  // rule is kept again after their next change.
+  const reportRefusedStandIn = (
+    refused: Awaited<ReturnType<typeof keepStandInRule>>,
+  ) => {
+    const message = refused ? writeFailureMessage(refused) : undefined;
+    if (!message) return;
+    showToast({
+      description: intl.formatMessage(message),
+      variant: 'destructive',
+      anchor: 'forward',
+    });
+  };
+
+  // The stand-ins a family read on opening the stage is missing (one saved
+  // before this version, or changed by another stage) are added once, so the
+  // participant sees them and the saved family matches one made here. Only
+  // stand-ins are added: nobody is removed or changed until the participant
+  // changes the family.
+  const standInsChecked = useRef(false);
+  const addMissingStandIns = useEffectEvent(async () => {
+    const missing = planStandIns(
+      latestFamily(),
+      uuid,
+      config.sexAssignedAtBirthAttribute,
+    );
+    if (missing.people.length === 0 && missing.links.length === 0) return;
+    reportRefusedStandIn(
+      await applyStandIns({ people: missing.people, links: missing.links }),
+    );
+  });
+  useEffect(() => {
+    if (!family.egoId || standInsChecked.current) return;
+    standInsChecked.current = true;
+    void addMissingStandIns();
+  }, [family.egoId]);
+
+  // The panel closes once what the participant entered is stored, with
+  // everything it changes in the family (twins, stand-ins, and stand-ins
+  // giving way). A write the session refuses (a protected answer whose key
+  // went, say) keeps it open with their answers and says why, so they can
+  // save again.
   const handleSubmit = async (
     result: PersonFormResult,
   ): Promise<FormSubmissionResult> => {
@@ -1267,6 +1742,23 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         : result.unset.includes(sexAttribute)
           ? undefined
           : mode.person.sexAssignedAtBirth;
+      // Nothing is saved that would leave someone outside the family: a twin
+      // link unticked, or a stand-in giving way to a parent re-described as
+      // genetic, that is their only connection to the participant.
+      const editCutOff = cutOffNotice({
+        linkKinds: new Map(
+          (result.linkUpdates ?? []).map((update) => [
+            update.linkId,
+            update.kind,
+          ]),
+        ),
+        sexes: new Map([[mode.person.id, sexAssignedAtBirth]]),
+        twins: result.twinChanges?.added,
+        removedLinkIds: result.twinChanges?.removedLinkIds,
+      });
+      if (editCutOff) {
+        return { success: false, formErrors: [editCutOff] };
+      }
       const set = { ...result.set };
       for (const attribute of nominationsWithdrawnBy(
         stage.nominationPrompts ?? [],
@@ -1295,19 +1787,13 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         typedName.trim() !== '' &&
         Object.hasOwn(generatedLabels, mode.person.id)
       ) {
-        dispatch(
-          updateStageMetadata({
-            currentStep,
-            metadata: {
-              ...pedigreeMetadata,
-              generatedLabels: Object.fromEntries(
-                Object.entries(generatedLabels).filter(
-                  ([personId]) => personId !== mode.person.id,
-                ),
-              ),
-            },
-          }),
-        );
+        writeSharedRecord({
+          generatedLabels: Object.fromEntries(
+            Object.entries(storedSharedRecord().generatedLabels).filter(
+              ([personId]) => personId !== mode.person.id,
+            ),
+          ),
+        });
       }
 
       for (const update of result.linkUpdates ?? []) {
@@ -1334,11 +1820,71 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           return writeSubmissionResult(relinked);
         }
       }
+      // Twins answered, re-described or no longer twins. Saving again after a
+      // refusal writes only what is left: the form reads the twins from the
+      // family as stored.
+      const twinChanges = result.twinChanges;
+      if (twinChanges) {
+        for (const twin of twinChanges.added) {
+          const twinned = await dispatch(
+            addEdge({ ...twinEdge(twin), currentStep }),
+          );
+          if (writeFailureMessage(twinned)) {
+            return writeSubmissionResult(twinned);
+          }
+        }
+        for (const { linkId, zygosity } of twinChanges.changed) {
+          const redescribed = await dispatch(
+            updateEdge({
+              edgeId: linkId,
+              attributePatch: {
+                set: {
+                  [config.kindAttribute]: [TWIN_KIND_BY_ZYGOSITY[zygosity]],
+                },
+                unset: [],
+              },
+            }),
+          );
+          if (writeFailureMessage(redescribed)) {
+            return writeSubmissionResult(redescribed);
+          }
+        }
+        for (const linkId of twinChanges.removedLinkIds) {
+          dispatch(deleteEdge(linkId));
+        }
+      }
+      // A parent re-described, or a parent's sex at birth changed, may leave
+      // someone needing a stand-in, or let one give way.
+      const refusedStandIn = await keepStandInRule();
+      if (refusedStandIn) return writeSubmissionResult(refusedStandIn);
       closePanel();
       // A parent re-described as biological gives the person siblings, and
       // the parent a child.
       await withdrawContradictedAnswers();
+      const answers = result.relativesAnswers ?? {};
+      if (Object.keys(answers).length > 0) {
+        setSaidYes((current) =>
+          new Map(current).set(mode.person.id, {
+            ...current.get(mode.person.id),
+            ...Object.fromEntries(
+              Object.entries(answers).map(([group, answer]) => [
+                group,
+                answer === 'yes',
+              ]),
+            ),
+          }),
+        );
+      }
       setAnnouncement(intl.formatMessage(messages.savedAnnouncement));
+      // Said to have the siblings or children the list asked for, the
+      // participant goes on to adding one.
+      const then = panel.then;
+      if (
+        then &&
+        answers[then === 'sibling' ? 'siblings' : 'children'] === 'yes'
+      ) {
+        setAddNext({ relation: then, personId: mode.person.id });
+      }
       return { success: true };
     }
 
@@ -1356,6 +1902,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       result.request,
     );
     const newPersonId = plan.people[0]?.id ?? '';
+    // Nor is an addition that makes a stand-in give way where they were
+    // someone's only connection to the participant.
+    const addCutOff = cutOffNotice({
+      people: plan.people,
+      links: plan.links,
+      twins: plan.twins,
+      removedLinkIds: plan.removedLinkIds,
+      removedPersonIds: plan.removedPersonIds,
+    });
+    if (addCutOff) return { success: false, formErrors: [addCutOff] };
     // Everyone the addition draws, and how they are related, is saved as one
     // change, or not at all, so nothing observing the session sees part of
     // it.
@@ -1369,11 +1925,38 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           // encrypts it.
           useEncryption: encryptDetails,
         })),
-        edges: plan.links.map(linkEdge),
+        edges: [
+          ...plan.links.map(linkEdge),
+          ...(plan.twins ?? []).map(twinEdge),
+        ],
         currentStep,
       }),
     );
     if (writeFailureMessage(added)) return writeSubmissionResult(added);
+    recordStandIns(plan.standInIds);
+    // A stand-in whose place the addition fills gives way, and identical
+    // twins whose genetic parents it makes differ are not known to be
+    // identical (`planStandIns`).
+    const refusedGiveWay = await applyStandIns({
+      updatedPeople: plan.updatedPeople,
+      changedTwins: plan.changedTwins,
+      removedLinkIds: plan.removedLinkIds,
+      removedPersonIds: plan.removedPersonIds,
+    });
+    if (refusedGiveWay) {
+      // The addition is taken back with it, so it is still saved as one
+      // change or not at all, and saving again adds everyone once. A
+      // stand-in whose sex at birth already followed the addition keeps it
+      // until then.
+      if (addNodesAndEdges.fulfilled.match(added)) {
+        for (const edge of added.payload.edges) {
+          dispatch(deleteEdge(edge.edgeId));
+        }
+      }
+      for (const person of plan.people) dispatch(deleteNode(person.id));
+      recordStandIns();
+      return writeSubmissionResult(refusedGiveWay);
+    }
     closePanel();
     await withdrawContradictedAnswers();
     // Recorded: the people drawn are now the family's own.
@@ -1382,6 +1965,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     return { success: true };
   };
 
+  // Ending connecting or disconnecting, however it ends, takes back what it
+  // last said.
   const chooseTool = (next: Tool) => {
     setTool(next);
     setLinkingId(null);
@@ -1389,6 +1974,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     setChosenPair(null);
     setHoveredId(null);
     setFocusedId(null);
+    setAnnouncement('');
   };
 
   // Two people in a sentence, the participant first, as "you and …".
@@ -1409,6 +1995,23 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       ids.map((id) => displayName(id)),
       { type: 'conjunction' },
     );
+
+  // Why a change made in the panel is refused, as a form error, when it
+  // would leave someone outside the participant's family
+  // (`peopleCutOffByChange`); undefined when it leaves nobody out.
+  const cutOffNotice = (change: FamilyChange) => {
+    const cutOff = peopleCutOffByChange(
+      family,
+      change,
+      config.sexAssignedAtBirthAttribute,
+    );
+    return cutOff.length === 0
+      ? undefined
+      : text(wording.changeWouldCutOff, {
+          count: cutOff.length,
+          names: listOfNames(cutOff),
+        });
+  };
 
   // The links between two people, in either direction.
   const linksBetween = (a: string, b: string) =>
@@ -1447,6 +2050,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (linkingId === personId) {
       // Selecting the first person again lets them go.
       setLinkingId(null);
+      setAnnouncement('');
       return;
     }
     // A pair has one link at most, so the people the tool cannot pair with
@@ -1476,17 +2080,38 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const endConnecting = () => {
     setChosenPair(null);
     setLinkingId(null);
+    setAnnouncement('');
   };
 
-  const handleConnect = async (connection: Connection, description: string) => {
+  const handleConnect = async (connection: Connection) => {
     endConnecting();
-    await addLink(planConnection(connection));
+    const link = planConnection(connection);
+    // A connection that makes a stand-in give way where they were someone's
+    // only connection to the participant is refused, as a disconnection
+    // that would leave them out is.
+    const cutOff = peopleCutOffByChange(
+      family,
+      { links: [link] },
+      config.sexAssignedAtBirthAttribute,
+    );
+    if (cutOff.length > 0) {
+      refuse(
+        text(wording.changeWouldCutOff, {
+          count: cutOff.length,
+          names: listOfNames(cutOff),
+        }),
+      );
+      return;
+    }
+    await addLink(link);
+    reportRefusedStandIn(await keepStandInRule());
     await withdrawContradictedAnswers();
-    setAnnouncement(description);
+    setJustConnected(connection);
   };
 
   const handleDisconnect = async (firstId: string, secondId: string) => {
     const args = pairArgs(firstId, secondId);
+    let removed = false;
     await confirm({
       title: text(wording.disconnectConfirmTitle, args),
       description: text(wording.disconnectConfirmDescription),
@@ -1496,12 +2121,17 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         for (const linkId of linksBetween(firstId, secondId)) {
           dispatch(deleteEdge(linkId));
         }
-        setAnnouncement(
-          intl.formatMessage(messages.disconnectedAnnouncement, args),
-        );
+        removed = true;
       },
     });
     endConnecting();
+    if (removed) {
+      // A genetic parent disconnected leaves a stand-in in their place.
+      reportRefusedStandIn(await keepStandInRule());
+      setAnnouncement(
+        intl.formatMessage(messages.disconnectedAnnouncement, args),
+      );
+    }
   };
 
   // Removing someone who is the only link between the participant and other
@@ -1512,9 +2142,22 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     const name = displayName(personId);
     const { cutOffIds, linkIds } = planRemovePerson(family, personId);
     const removedIds = [personId, ...cutOffIds];
+    // Focus goes on to someone who stays: a relative of the person removed,
+    // or else the participant.
+    const survivorId =
+      family.links
+        .flatMap((link) =>
+          link.source === personId
+            ? [link.target]
+            : link.target === personId
+              ? [link.source]
+              : [],
+        )
+        .find((id) => !removedIds.includes(id)) ?? family.egoId;
     // Close the panel first: its focus trap would otherwise hold focus away
     // from the confirmation.
     closePanel();
+    let removed = false;
     await confirm({
       title: text(wording.removeConfirmTitle, { name }),
       description: text(wording.removeConfirmDescription, {
@@ -1524,9 +2167,14 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       }),
       confirmLabel: intl.formatMessage(commonMessages.delete),
       intent: 'destructive',
+      // The dialog was opened from the person removed, who is gone.
+      finalFocus: () =>
+        survivorId ? (nodeRefs.current.get(survivorId) ?? null) : null,
       onConfirm: () => {
+        if (survivorId) setLastFocusedId(survivorId);
         for (const linkId of linkIds) dispatch(deleteEdge(linkId));
         for (const id of removedIds) dispatch(deleteNode(id));
+        removed = true;
         if (focusedId !== null && removedIds.includes(focusedId)) {
           setFocusedId(null);
         }
@@ -1540,6 +2188,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         );
       },
     });
+    // Removing a parent who tells half siblings apart leaves an unnamed
+    // stand-in in their place, so the half-sibling answer is never lost
+    // (ruling 22).
+    if (removed) reportRefusedStandIn(await keepStandInRule());
   };
 
   // Escape in the add menu returns focus to its person; Escape on the person
@@ -1549,6 +2201,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (event.key === 'Escape' && linkingId) {
       event.preventDefault();
       setLinkingId(null);
+      setConnectNotice(null);
+      setAnnouncement('');
       return;
     }
     if (event.key !== 'Escape' || !focusedId) return;
@@ -1586,13 +2240,17 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     ? (nodeRefs.current.get(linkingId) ?? null)
     : null;
   // Once the first person is chosen, the people the tool cannot pair them
-  // with are unavailable: connecting, anyone already connected to them;
-  // disconnecting, anyone who is not. The first person stays available, to
-  // let them go.
+  // with are unavailable: connecting, anyone already related to them, twins
+  // included; disconnecting, anyone without a line to them (a twin link is
+  // no line the disconnect tool removes: twins are siblings, joined through
+  // their parents, and are told apart in the person form). The first person
+  // stays available, to let them go.
   const pairUnavailable = (id: string) =>
     linkingId !== null &&
     id !== linkingId &&
-    areConnected(family, linkingId, id) !== (tool === 'disconnect');
+    (tool === 'disconnect'
+      ? !areLinked(family, linkingId, id)
+      : areConnected(family, linkingId, id));
   // Connecting, someone already connected to the first person is not a
   // target, and the line keeps following the mouse past them; disconnecting,
   // only they are.
@@ -1625,6 +2283,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           <Prompts prompts={prompts} currentPromptId={prompt.id} />
         </div>
         {measurementContainer}
+        <AddMenuReachProbe ref={menuReachRef} />
         <div className="relative flex min-h-0 w-full flex-1 flex-col">
           {/* Drag to pan, wheel or pinch to zoom. */}
           <PedigreeViewport
@@ -1633,6 +2292,22 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             panZoom={panZoom}
             onKeyDown={handleCanvasKeyDown}
             onBlur={handleCanvasBlur}
+            // Zooming from the keyboard keeps the person focused, and their
+            // add menu, in the clear part of the canvas.
+            zoomFocus={(target) => {
+              const person = target.closest<HTMLElement>(
+                '[data-testid="pedigree-person"]',
+              );
+              const element = person?.dataset.personId
+                ? nodeRefs.current.get(person.dataset.personId)
+                : undefined;
+              return element
+                ? {
+                    elements: [element, ...menuItemsOf(element)],
+                    insets: clearInsets(),
+                  }
+                : undefined;
+            }}
             overlay={
               connectorFrom &&
               tool === 'connect' && (
@@ -1664,7 +2339,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 return (
                   <PersonNode
                     person={person}
-                    label={displayName(personId)}
+                    label={
+                      labels.get(personId) ?? formatRelativeTerm('other', words)
+                    }
+                    accessibleName={displayName(personId)}
                     color={nodeColor}
                     shape={
                       shapeDefinition
@@ -1675,9 +2353,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                       nomination ? isNominated(person) : personId === selectedId
                     }
                     disabled={
-                      nomination
+                      wordingForced ||
+                      (nomination
                         ? !canSelect(person)
-                        : pairUnavailable(personId)
+                        : pairUnavailable(personId))
                     }
                     linking={
                       tool !== 'pointer' &&
@@ -1694,6 +2373,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     adopted={shown.links.some(
                       (link) =>
                         link.kind === 'adoptive' && link.target === personId,
+                    )}
+                    reproductiveRoles={reproductiveRolesOf(
+                      shown.links,
+                      personId,
                     )}
 
                     onActivate={() => handleActivate(personId)}
@@ -1714,6 +2397,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                         isYou={person.isEgo}
                         name={displayName(personId)}
                         onAdd={openAdd}
+                        scale={panZoom.scale}
                       />
                     )}
                   </PersonNode>
@@ -1745,7 +2429,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 </div>
               </Alert>
             )}
-            {tool !== 'pointer' && (
+            {/* Once a pair is picked, the menu or the confirmation asks its
+              own question, so the hint asks for no one else. */}
+            {tool !== 'pointer' && !chosenPair && (
               <p
                 className="text-sm opacity-80"
                 data-testid="pedigree-connect-hint"
@@ -1789,7 +2475,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 {!nomination && (
                   <ToolbarToggleGroup
                     aria-label={intl.formatMessage(messages.toolGroupLabel)}
-                    disabled={detailsLocked}
+                    disabled={detailsLocked || wordingForced}
                     value={[tool]}
                     onValueChange={(value) => {
                       const next = value[0];
@@ -1860,9 +2546,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               ? (nodeRefs.current.get(chosenPair.secondId) ?? null)
               : null
           }
-          onConnect={(connection, description) =>
-            void handleConnect(connection, description)
-          }
+          onConnect={(connection) => void handleConnect(connection)}
           onClose={endConnecting}
         />
         <div aria-live="polite" className="sr-only">
@@ -1881,24 +2565,32 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           open={panel?.open ?? false}
           formKey={panel?.key ?? 'closed'}
           onClose={cancelPanel}
-          onClosed={() => setPanel(null)}
+          // A panel opened again before the last one finished closing (going
+          // on to add a relative just said to exist) is kept.
+          onClosed={() =>
+            setPanel((current) => (current?.open ? current : null))
+          }
           returnFocus={() =>
             returnFocusId ? (nodeRefs.current.get(returnFocusId) ?? null) : null
           }
           title={panelTitle}
           footer={
             <>
-              {editedPerson && !editedPerson.isEgo && (
-                <Button
-                  type="button"
-                  variant="text"
-                  color="destructive"
-                  className="mr-auto"
-                  onClick={() => void handleRemove(editedPerson.id)}
-                >
-                  <AppMessage message={commonMessages.delete} />
-                </Button>
-              )}
+              {/* A stand-in is never removed: the stand-in rule would put one
+                back in their place. */}
+              {editedPerson &&
+                !editedPerson.isEgo &&
+                !isStandIn(family, editedPerson.id) && (
+                  <Button
+                    type="button"
+                    variant="text"
+                    color="destructive"
+                    className="mr-auto"
+                    onClick={() => void handleRemove(editedPerson.id)}
+                  >
+                    <AppMessage message={commonMessages.delete} />
+                  </Button>
+                )}
               <Button type="button" variant="text" onClick={cancelPanel}>
                 <AppMessage message={commonMessages.cancel} />
               </Button>
@@ -1930,6 +2622,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                         panel.mode.person.id,
                       ),
                       required: completeness.enforcement === 'required',
+                      answeredYes: saidYes.get(panel.mode.person.id),
                       questions: {
                         siblings: completeness.itemText.siblings.question,
                         children: completeness.itemText.children.question,

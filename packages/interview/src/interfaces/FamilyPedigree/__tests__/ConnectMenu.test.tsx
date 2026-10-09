@@ -2,12 +2,16 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { resolveInterviewIntl } from '../../../i18n/resolveIntl';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
-import ConnectMenu from '../components/ConnectMenu';
+import ConnectMenu, { describeConnection } from '../components/ConnectMenu';
 import { readFamily } from '../model';
 import { PedigreeWordsProvider } from '../pedigreeWords';
-import { config, person } from './fixtures';
+import { config, link, person } from './fixtures';
 import { pedigreeWordsIn } from './pedigreeWords';
+
+const intl = resolveInterviewIntl();
+const words = pedigreeWordsIn();
 
 const PARENT_KIND_LABELS = {
   biological: 'Genetic parent',
@@ -30,7 +34,7 @@ describe('ConnectMenu', () => {
 
     render(
       <TestProtocolLocalization>
-        <PedigreeWordsProvider value={pedigreeWordsIn()}>
+        <PedigreeWordsProvider value={words}>
           <ConnectMenu
             pair={{ firstId: 'julie', secondId: 'rob' }}
             family={family}
@@ -60,7 +64,179 @@ describe('ConnectMenu', () => {
     await userEvent.click(donor);
     expect(onConnect).toHaveBeenCalledWith(
       expect.objectContaining({ kind: 'parent', parentKind: 'donor' }),
-      '“Julie” is a parent of “Rob” (Egg or sperm donor)',
     );
+    const [connection] = onConnect.mock.calls[0] ?? [];
+    expect(
+      describeConnection(
+        connection,
+        words,
+        intl,
+        family,
+        (id) => (id === 'julie' ? 'Julie' : 'Rob'),
+        PARENT_KIND_LABELS,
+      ),
+    ).toBe('“Julie” is a parent of “Rob” (Egg or sperm donor)');
+  });
+
+  it('announces a connection in the names people have once it is made', () => {
+    const family = readFamily(
+      [person('julie', { name: 'Julie' }), person('rob', { name: 'Rob' })],
+      [],
+      config,
+    );
+    const names = new Map([
+      ['julie', 'Paternal grandmother'],
+      ['rob', 'Father'],
+    ]);
+    expect(
+      describeConnection(
+        {
+          kind: 'parent',
+          parentId: 'julie',
+          childId: 'rob',
+          parentKind: 'biological',
+          carriedPregnancy: true,
+        },
+        words,
+        intl,
+        family,
+        (id) => names.get(id) ?? '',
+        PARENT_KIND_LABELS,
+      ),
+    ).toBe(
+      '“Paternal grandmother” is a parent of “Father” (Genetic parent (carried the pregnancy))',
+    );
+    expect(
+      describeConnection(
+        { kind: 'partner', firstId: 'julie', secondId: 'rob', current: false },
+        words,
+        intl,
+        family,
+        (id) => names.get(id) ?? '',
+        PARENT_KIND_LABELS,
+      ),
+    ).toBe('“Paternal grandmother” and “Father” were partners');
+  });
+
+  it('says why someone cannot be connected as the parent of their own ancestor', async () => {
+    const family = readFamily(
+      [
+        person('ego', { isEgo: true }),
+        person('shannon', { name: 'Shannon' }),
+        person('grandpa', { name: 'Grandpa' }),
+      ],
+      [
+        link('shannon', 'ego', 'biological'),
+        link('grandpa', 'shannon', 'biological'),
+      ],
+      config,
+    );
+    const anchor = document.createElement('button');
+    document.body.append(anchor);
+    render(
+      <TestProtocolLocalization>
+        <PedigreeWordsProvider value={words}>
+          <ConnectMenu
+            pair={{ firstId: 'ego', secondId: 'grandpa' }}
+            family={family}
+            displayName={(id) => (id === 'ego' ? 'You' : 'Grandpa')}
+            parentKindLabels={PARENT_KIND_LABELS}
+            anchor={anchor}
+            onConnect={() => undefined}
+            onClose={() => undefined}
+          />
+        </PedigreeWordsProvider>
+      </TestProtocolLocalization>,
+    );
+    const item = await screen.findByTestId('pedigree-connect-parent-ego');
+    expect(item).toHaveAttribute('aria-disabled', 'true');
+    expect(item).toHaveAccessibleDescription(
+      /“Grandpa”.*one of your ancestors/,
+    );
+  });
+
+  it('says why two people already connected cannot be partners', async () => {
+    const family = readFamily(
+      [person('ego', { isEgo: true }), person('shannon', { name: 'Shannon' })],
+      [link('shannon', 'ego', 'biological')],
+      config,
+    );
+    const anchor = document.createElement('button');
+    document.body.append(anchor);
+    render(
+      <TestProtocolLocalization>
+        <PedigreeWordsProvider value={words}>
+          <ConnectMenu
+            pair={{ firstId: 'ego', secondId: 'shannon' }}
+            family={family}
+            displayName={(id) => (id === 'ego' ? 'You' : 'Shannon')}
+            parentKindLabels={PARENT_KIND_LABELS}
+            anchor={anchor}
+            onConnect={() => undefined}
+            onClose={() => undefined}
+          />
+        </PedigreeWordsProvider>
+      </TestProtocolLocalization>,
+    );
+    const partners = await screen.findByTestId('pedigree-connect-partners');
+    expect(partners).toHaveAttribute('aria-disabled', 'true');
+    expect(partners).toHaveAccessibleDescription(
+      /You and “Shannon” are already connected/,
+    );
+  });
+
+  // Ruling 21: a choice that would record a second carrier is unavailable,
+  // with a reason naming who carried the child.
+  it('says who carried the child under each choice that would record a second carrier', async () => {
+    const family = readFamily(
+      [
+        person('ego', { isEgo: true }),
+        person('mum', { name: 'Mum' }),
+        person('amy', { name: 'Amy' }),
+      ],
+      [link('mum', 'ego', 'biological', { carrier: true })],
+      config,
+    );
+    const anchor = document.createElement('button');
+    document.body.append(anchor);
+    render(
+      <TestProtocolLocalization>
+        <PedigreeWordsProvider value={words}>
+          <ConnectMenu
+            pair={{ firstId: 'amy', secondId: 'ego' }}
+            family={family}
+            displayName={(id) =>
+              id === 'ego' ? 'You' : id === 'mum' ? 'Mum' : 'Amy'
+            }
+            parentKindLabels={PARENT_KIND_LABELS}
+            anchor={anchor}
+            onConnect={() => undefined}
+            onClose={() => undefined}
+          />
+        </PedigreeWordsProvider>
+      </TestProtocolLocalization>,
+    );
+    await userEvent.click(
+      await screen.findByTestId('pedigree-connect-parent-amy'),
+    );
+    for (const id of [
+      'biological-carrier',
+      'adoptive-carrier',
+      'social-carrier',
+      'donor-carrier',
+      'surrogate',
+    ]) {
+      const item = await screen.findByTestId(`pedigree-connect-kind-${id}`);
+      expect(item).toHaveAttribute('aria-disabled', 'true');
+      expect(item).toHaveAccessibleDescription(
+        '“Mum” is recorded as having carried you, and only one person carries a pregnancy.',
+      );
+    }
+    expect(
+      screen.getByTestId('pedigree-connect-kind-adoptive-carrier'),
+    ).toHaveTextContent('Adoptive parent (carried the pregnancy)');
+    expect(
+      screen.getByTestId('pedigree-connect-kind-adoptive'),
+    ).not.toHaveAttribute('aria-disabled', 'true');
   });
 });

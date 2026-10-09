@@ -92,10 +92,21 @@ export const PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS: {
 }));
 
 /**
- * The kind of a relationship edge. A `partner` edge joins two partners in
- * either direction; every other kind is a parent edge, directed from the
- * parent to the child. Siblings are never stored: two people are siblings when
- * they share a parent.
+ * The kind of a relationship edge.
+ *
+ * - `partner` joins two partners, in either direction.
+ * - `identicalTwin`, `fraternalTwin` and `unknownZygosityTwin` join two
+ *   siblings born of the same pregnancy, in either direction: identical
+ *   (monozygotic), fraternal (dizygotic), or twins the participant does not
+ *   know to be either. Triplets and larger sets are recorded as a twin edge
+ *   between each pair.
+ * - Every other kind is a parent edge, directed from the parent to the child:
+ *   `biological`, `adoptive`, `social` (a step or social parent), `donor` (an
+ *   egg or sperm donor who does not raise the child) and `surrogate` (a
+ *   gestational carrier who neither raises the child nor gave them a gamete).
+ *
+ * Siblings are otherwise never stored: two people are siblings when they share
+ * a parent.
  */
 export const PEDIGREE_RELATIONSHIP_KINDS = [
   'partner',
@@ -104,12 +115,27 @@ export const PEDIGREE_RELATIONSHIP_KINDS = [
   'social',
   'donor',
   'surrogate',
+  'identicalTwin',
+  'fraternalTwin',
+  'unknownZygosityTwin',
 ] as const;
 
 export type PedigreeRelationshipKind =
   (typeof PEDIGREE_RELATIONSHIP_KINDS)[number];
 
-export type PedigreeParentKind = Exclude<PedigreeRelationshipKind, 'partner'>;
+/** The kinds of edge that join two twins (see `PEDIGREE_RELATIONSHIP_KINDS`). */
+export const PEDIGREE_TWIN_KINDS = [
+  'identicalTwin',
+  'fraternalTwin',
+  'unknownZygosityTwin',
+] as const satisfies readonly PedigreeRelationshipKind[];
+
+export type PedigreeTwinKind = (typeof PEDIGREE_TWIN_KINDS)[number];
+
+export type PedigreeParentKind = Exclude<
+  PedigreeRelationshipKind,
+  'partner' | PedigreeTwinKind
+>;
 
 const RELATIONSHIP_KIND_LABELS: Record<PedigreeRelationshipKind, string> = {
   partner: 'Partner',
@@ -118,6 +144,9 @@ const RELATIONSHIP_KIND_LABELS: Record<PedigreeRelationshipKind, string> = {
   social: 'Step or social parent',
   donor: 'Egg or sperm donor',
   surrogate: 'Surrogate',
+  identicalTwin: 'Identical twin',
+  fraternalTwin: 'Fraternal twin',
+  unknownZygosityTwin: 'Twin, not known if identical',
 };
 
 export const PEDIGREE_RELATIONSHIP_KIND_OPTIONS: {
@@ -174,15 +203,19 @@ export const PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS: {
  * Architect seeds them in the researcher's language.
  *
  * - Parents: `parent` (a biological parent), `adoptiveParent`, `stepParent`
- *   (a step or social parent, or a parent's partner), `donor`, `surrogate`.
+ *   (a step or social parent, or the current partner of a parent who raises
+ *   them), `donor`, `surrogate`.
  * - Children: `child` (a biological child), `adoptiveChild`, `stepChild`,
  *   `donorConceivedChild`, `surrogacyChild`.
- * - Siblings: `sibling` (sharing every biological parent), `halfSibling`,
- *   `adoptiveSibling` (related through adoption only), `stepSibling`.
+ * - Siblings: `sibling` (the same genetic parents: biological parents and
+ *   donors), `halfSibling`, `adoptiveSibling` (sharing an adoptive parent but
+ *   no genetic parent), `stepSibling`.
  * - Partners: `partner`, `formerPartner`.
  * - Further along the family: `grandparent`, `greatGrandparent`,
- *   `grandchild`, `greatGrandchild`, `parentsSibling`, `grandparentsSibling`,
- *   `siblingsChild`, `cousin`.
+ *   `stepGrandparent` (a grandparent's current partner, or a step-parent's
+ *   parent), `grandchild`, `greatGrandchild`, `adoptiveGrandchild` (a
+ *   grandchild related only through an adoption), `parentsSibling`,
+ *   `grandparentsSibling`, `siblingsChild`, `cousin`.
  * - In-laws: `parentInLaw`, `siblingInLaw`, `childInLaw`.
  * - `otherRelative`: connected to the participant, but by none of these.
  *
@@ -208,8 +241,10 @@ export const PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT = [
   'formerPartner',
   'grandparent',
   'greatGrandparent',
+  'stepGrandparent',
   'grandchild',
   'greatGrandchild',
+  'adoptiveGrandchild',
   'parentsSibling',
   'grandparentsSibling',
   'siblingsChild',

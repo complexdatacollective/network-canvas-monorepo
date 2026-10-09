@@ -117,6 +117,26 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
         arguments: PEDIGREE_WORDING_ARGUMENTS.disconnectWouldCutOff,
       },
       {
+        key: 'changeWouldCutOff',
+        label: messages.wordingChangeWouldCutOff,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.changeWouldCutOff,
+      },
+      {
+        key: 'unavailableAlreadyConnected',
+        label: messages.wordingUnavailableAlreadyConnected,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableAlreadyConnected,
+      },
+      {
+        key: 'unavailableAncestor',
+        label: messages.wordingUnavailableAncestor,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableAncestor,
+      },
+      {
+        key: 'unavailableCarrierChoice',
+        label: messages.wordingUnavailableCarrierChoice,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableCarrierChoice,
+      },
+      {
         key: 'removeConfirmTitle',
         label: messages.wordingRemoveConfirmTitle,
         arguments: PEDIGREE_WORDING_ARGUMENTS.removeConfirmTitle,
@@ -143,9 +163,9 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
       },
       { key: 'parentKindLabel', label: messages.wordingParentKindLabel },
       {
-        key: 'parentKindBiologicalCarrier',
-        label: messages.wordingParentKindBiologicalCarrier,
-        arguments: PEDIGREE_WORDING_ARGUMENTS.parentKindBiologicalCarrier,
+        key: 'parentKindCarrier',
+        label: messages.wordingParentKindCarrier,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.parentKindCarrier,
       },
       {
         key: 'biologicalParentLabel',
@@ -191,11 +211,36 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
         arguments: PEDIGREE_WORDING_ARGUMENTS.sharedParentEggOnly,
       },
       {
-        key: 'sharedParentUnshown',
-        label: messages.wordingSharedParentUnshown,
-        arguments: PEDIGREE_WORDING_ARGUMENTS.sharedParentUnshown,
+        key: 'sharedDonorsLabel',
+        label: messages.wordingSharedDonorsLabel,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.sharedDonorsLabel,
       },
       { key: 'siblingKindLabel', label: messages.wordingSiblingKindLabel },
+      {
+        key: 'siblingBiologicalParentLabel',
+        label: messages.wordingSiblingBiologicalParentLabel,
+      },
+      {
+        key: 'siblingTwinLabel',
+        label: messages.wordingSiblingTwinLabel,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.siblingTwinLabel,
+      },
+      { key: 'siblingTwinHint', label: messages.wordingSiblingTwinHint },
+      { key: 'siblingTwinNo', label: messages.wordingSiblingTwinNo },
+      {
+        key: 'siblingTwinIdentical',
+        label: messages.wordingSiblingTwinIdentical,
+      },
+      {
+        key: 'siblingTwinFraternal',
+        label: messages.wordingSiblingTwinFraternal,
+      },
+      { key: 'siblingTwinUnknown', label: messages.wordingSiblingTwinUnknown },
+      {
+        key: 'unavailableIdenticalTwinNew',
+        label: messages.wordingUnavailableIdenticalTwinNew,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableIdenticalTwinNew,
+      },
       {
         key: 'carriedSiblingsPregnancyLabel',
         label: messages.wordingCarriedSiblingsPregnancyLabel,
@@ -208,6 +253,8 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
       },
       { key: 'childKindAdoptive', label: messages.wordingChildKindAdoptive },
       { key: 'childKindSocial', label: messages.wordingChildKindSocial },
+      { key: 'childKindDonor', label: messages.wordingChildKindDonor },
+      { key: 'childKindSurrogate', label: messages.wordingChildKindSurrogate },
       { key: 'alsoParentOfLabel', label: messages.wordingAlsoParentOfLabel },
       {
         key: 'sexAssignedAtBirthLabel',
@@ -220,9 +267,53 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
         hint: messages.wordingGenderIdentityHint,
       },
       {
-        key: 'sexRuledOutHint',
-        label: messages.wordingSexRuledOutHint,
-        arguments: PEDIGREE_WORDING_ARGUMENTS.sexRuledOutHint,
+        key: 'twinsLabel',
+        label: messages.wordingTwinsLabel,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.twinsLabel,
+      },
+      { key: 'twinsHint', label: messages.wordingTwinsHint },
+      {
+        key: 'twinZygosityLabel',
+        label: messages.wordingTwinZygosityLabel,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.twinZygosityLabel,
+      },
+      { key: 'zygosityIdentical', label: messages.wordingZygosityIdentical },
+      { key: 'zygosityFraternal', label: messages.wordingZygosityFraternal },
+      { key: 'zygosityUnknown', label: messages.wordingZygosityUnknown },
+      {
+        key: 'unavailableIdenticalTwin',
+        label: messages.wordingUnavailableIdenticalTwin,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableIdenticalTwin,
+      },
+      {
+        key: 'unavailableSameSexGeneticParent',
+        label: messages.wordingUnavailableSameSexGeneticParent,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableSameSexGeneticParent,
+      },
+      {
+        key: 'unavailableGeneticParentsFull',
+        label: messages.wordingUnavailableGeneticParentsFull,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableGeneticParentsFull,
+      },
+      {
+        key: 'unavailableBothSameSex',
+        label: messages.wordingUnavailableBothSameSex,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableBothSameSex,
+      },
+      {
+        key: 'unavailableCarrierRecorded',
+        label: messages.wordingUnavailableCarrierRecorded,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableCarrierRecorded,
+      },
+      {
+        key: 'unavailableCannotCarry',
+        label: messages.wordingUnavailableCannotCarry,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableCannotCarry,
+      },
+      {
+        key: 'unavailableCarried',
+        label: messages.wordingUnavailableCarried,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableCarried,
       },
     ],
   },

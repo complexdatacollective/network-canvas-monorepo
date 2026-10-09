@@ -10,9 +10,9 @@ export const messages = defineMessages({
   personAccessibleName: {
     id: 'interview.familyPedigree.personAccessibleName',
     defaultMessage:
-      '{isYou, select, true {You} other {{name}}}{missing, select, true {, some details missing} other {}}',
+      '{isYou, select, true {You} other {{name}}}{adopted, select, true {, adopted} other {}}{missing, select, true {, some details missing} other {}}',
     description:
-      'Accessible name of a family member’s symbol in the family tree. {name} is the person’s name or, when it is not known, how they are related to the participant. The second part is read out when required details about the person have not been given yet.',
+      'Accessible name of a family member’s symbol in the family tree. {name} is the person’s name, exactly as the participant typed it, or, when it is not known, how they are related to the participant. The second part is read out when the person was adopted, which the tree shows by drawing brackets around their symbol. The third part is read out when required details about the person have not been given yet.',
   },
   actionsLabel: {
     id: 'interview.familyPedigree.actionsLabel',
@@ -111,5 +111,12 @@ export const messages = defineMessages({
       '{isYou, select, true {Recorded that you have no biological children.} other {Recorded that “{name}” has no biological children.}}',
     description:
       'Screen reader announcement after answering, from the list of family members still needed, that a person has no children. name is the person’s name or how they are related to the participant.',
+  },
+  reproductiveRoleDescription: {
+    id: 'interview.familyPedigree.reproductiveRoleDescription',
+    defaultMessage:
+      '{role, select, donor {egg or sperm donor} traditionalSurrogate {egg donor who carried the pregnancy} other {surrogate}}',
+    description:
+      'Read out with a family member’s symbol in the family tree, for each part they played in someone else’s conception or birth (the tree draws no mark for these). "donor" is someone who donated an egg or sperm; "traditionalSurrogate" is an egg donor who also carried the pregnancy; "other" is a surrogate who carried the pregnancy without a genetic tie to the child. When someone has more than one role, the phrases are joined into a list, so write each as it would appear inside a sentence (lower case in English).',
   },
 });

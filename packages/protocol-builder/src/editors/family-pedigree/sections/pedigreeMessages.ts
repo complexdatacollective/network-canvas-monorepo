@@ -270,9 +270,9 @@ export const familyPedigreeMessages = defineMessages({
   relationshipToParticipantOption: {
     id: 'protocolBuilder.pedigree.relationshipToParticipantOption',
     defaultMessage:
-      '{value, select, parent {Parent} adoptiveParent {Adoptive parent} stepParent {Step-parent} donor {Donor} surrogate {Surrogate} child {Child} adoptiveChild {Adoptive child} stepChild {Stepchild} donorConceivedChild {Donor-conceived child} surrogacyChild {Child born through surrogacy} sibling {Sibling} halfSibling {Half-sibling} adoptiveSibling {Adoptive sibling} stepSibling {Step-sibling} partner {Partner} formerPartner {Former partner} grandparent {Grandparent} greatGrandparent {Great-grandparent} grandchild {Grandchild} greatGrandchild {Great-grandchild} parentsSibling {Parent’s sibling} grandparentsSibling {Grandparent’s sibling} siblingsChild {Sibling’s child} cousin {Cousin} parentInLaw {Parent-in-law} siblingInLaw {Sibling-in-law} childInLaw {Child-in-law} other {Other relative}}',
+      '{value, select, parent {Parent} adoptiveParent {Adoptive parent} stepParent {Step-parent} donor {Donor} surrogate {Surrogate} child {Child} adoptiveChild {Adoptive child} stepChild {Stepchild} donorConceivedChild {Donor-conceived child} surrogacyChild {Child born through surrogacy} sibling {Sibling} halfSibling {Half-sibling} adoptiveSibling {Adoptive sibling} stepSibling {Step-sibling} partner {Partner} formerPartner {Former partner} grandparent {Grandparent} greatGrandparent {Great-grandparent} stepGrandparent {Step-grandparent} grandchild {Grandchild} greatGrandchild {Great-grandchild} adoptiveGrandchild {Adoptive grandchild} parentsSibling {Parent’s sibling} grandparentsSibling {Grandparent’s sibling} siblingsChild {Sibling’s child} cousin {Cousin} parentInLaw {Parent-in-law} siblingInLaw {Sibling-in-law} childInLaw {Child-in-law} other {Other relative}}',
     description:
-      'Default label of one option of a new relationship-to-the-participant attribute: how a family member is related to the participant, in words that name neither gender nor side of the family. The label is written into the protocol as participant-facing text, and researchers can change it. parent, child and sibling are biological; donor is an egg or sperm donor; surrogate carried the pregnancy without giving a gamete; donorConceivedChild is a child conceived with the participant as a donor; surrogacyChild is a child the participant carried as a surrogate; adoptiveSibling is related through adoption only; stepParent is a step or social parent.',
+      'Default label of one option of a new relationship-to-the-participant attribute: how a family member is related to the participant, in words that name neither gender nor side of the family. The label is written into the protocol as participant-facing text, and researchers can change it. parent, child and sibling are biological; donor is an egg or sperm donor; surrogate carried the pregnancy without giving a gamete; donorConceivedChild is a child conceived with the participant as a donor; surrogacyChild is a child the participant carried as a surrogate; adoptiveSibling is related through adoption only; stepParent is a step or social parent; stepGrandparent is a grandparent’s partner or a step-parent’s parent; adoptiveGrandchild is a grandchild related only through an adoption.',
   },
   genderOptionsEdit: {
     id: 'protocolBuilder.pedigree.genderOptionsEdit',
@@ -726,7 +726,7 @@ export const familyPedigreeMessages = defineMessages({
   trackerParentsHint: {
     id: 'protocolBuilder.pedigree.trackerParentsHint',
     defaultMessage:
-      'Asks for a person’s missing parents. It can show their name and how many parents are missing.',
+      'Asks for the parents of a person who has none recorded. It can show their name.',
     description: 'Guidance under the missing-parents list item box.',
   },
   trackerSiblingsLabel: {
@@ -1312,12 +1312,6 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Label of the question asking what kind of parent a person is.',
   },
-  wordingParentKindBiologicalCarrier: {
-    id: 'protocolBuilder.pedigree.wording.parentKindBiologicalCarrier',
-    defaultMessage: 'Biological parent who carried the pregnancy',
-    description:
-      'Label of the option for a biological parent who carried the pregnancy. The kind of parent is filled in.',
-  },
   wordingBiologicalParentLabel: {
     id: 'protocolBuilder.pedigree.wording.biologicalParentLabel',
     defaultMessage: 'Biological parent question',
@@ -1399,12 +1393,6 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Label of the option that only one of the shared parents is shared. The parent’s kind is filled in.',
   },
-  wordingSharedParentUnshown: {
-    id: 'protocolBuilder.pedigree.wording.sharedParentUnshown',
-    defaultMessage: 'Shared parent not shown option',
-    description:
-      'Label of the option for a shared parent who is not yet shown on the family tree.',
-  },
   wordingSiblingKindLabel: {
     id: 'protocolBuilder.pedigree.wording.siblingKindLabel',
     defaultMessage: 'Shared parents of siblings question',
@@ -1456,11 +1444,176 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Label of the gender identity question. Shown only when the interface asks about gender identity.',
   },
-  wordingSexRuledOutHint: {
-    id: 'protocolBuilder.pedigree.wording.sexRuledOutHint',
-    defaultMessage: 'Unavailable answers hint',
+  wordingChangeWouldCutOff: {
+    id: 'protocolBuilder.pedigree.wording.changeWouldCutOff',
+    defaultMessage: 'Change that would leave someone out',
     description:
-      'Label of the hint explaining why some sex assigned at birth answers are unavailable.',
+      'Label of the warning that a change, or a new connection, would leave people outside the family tree, so is not made.',
+  },
+  wordingChildKindDonor: {
+    id: 'protocolBuilder.pedigree.wording.childKindDonor',
+    defaultMessage: 'Child from a donation option',
+    description:
+      'Label of the option for a child conceived with an egg or sperm the person donated.',
+  },
+  wordingChildKindSurrogate: {
+    id: 'protocolBuilder.pedigree.wording.childKindSurrogate',
+    defaultMessage: 'Child carried as a surrogate option',
+    description:
+      'Label of the option for a child the person carried as a surrogate.',
+  },
+  wordingParentKindCarrier: {
+    id: 'protocolBuilder.pedigree.wording.parentKindCarrier',
+    defaultMessage: 'Parent who carried the pregnancy',
+    description:
+      'Label of the option for a parent of any kind who carried the pregnancy. The kind of parent is filled in.',
+  },
+  wordingSharedDonorsLabel: {
+    id: 'protocolBuilder.pedigree.wording.sharedDonorsLabel',
+    defaultMessage: 'Shared donors question',
+    description:
+      'Label of the question asking which donors a new sibling shares, for someone with only egg or sperm donors as parents.',
+  },
+  wordingSiblingBiologicalParentLabel: {
+    id: 'protocolBuilder.pedigree.wording.siblingBiologicalParentLabel',
+    defaultMessage: 'Sibling’s biological parent question',
+    description:
+      'Label of the question asking which of the parents a new sibling shares is their biological parent, when only one of them could be.',
+  },
+  wordingSiblingTwinLabel: {
+    id: 'protocolBuilder.pedigree.wording.siblingTwinLabel',
+    defaultMessage: 'Twin question',
+    description:
+      'Label of the question asking whether a new sibling is a twin of the person they are added to.',
+  },
+  wordingSiblingTwinHint: {
+    id: 'protocolBuilder.pedigree.wording.siblingTwinHint',
+    defaultMessage: 'Twin question hint',
+    description:
+      'Label of the hint under the question asking whether a new sibling is a twin.',
+  },
+  wordingSiblingTwinNo: {
+    id: 'protocolBuilder.pedigree.wording.siblingTwinNo',
+    defaultMessage: 'Not a twin option',
+    description: 'Label of the option that a new sibling is not a twin.',
+  },
+  wordingSiblingTwinIdentical: {
+    id: 'protocolBuilder.pedigree.wording.siblingTwinIdentical',
+    defaultMessage: 'Identical twin option',
+    description: 'Label of the option that a new sibling is an identical twin.',
+  },
+  wordingSiblingTwinFraternal: {
+    id: 'protocolBuilder.pedigree.wording.siblingTwinFraternal',
+    defaultMessage: 'Fraternal twin option',
+    description: 'Label of the option that a new sibling is a fraternal twin.',
+  },
+  wordingSiblingTwinUnknown: {
+    id: 'protocolBuilder.pedigree.wording.siblingTwinUnknown',
+    defaultMessage: 'Twin, not known if identical, option',
+    description:
+      'Label of the option that a new sibling is a twin, without knowing whether they are identical.',
+  },
+  wordingTwinsLabel: {
+    id: 'protocolBuilder.pedigree.wording.twinsLabel',
+    defaultMessage: 'Twins question',
+    description:
+      'Label of the question in a family member’s panel asking which of their siblings are their twins.',
+  },
+  wordingTwinsHint: {
+    id: 'protocolBuilder.pedigree.wording.twinsHint',
+    defaultMessage: 'Twins hint',
+    description:
+      'Label of the hint under the question asking which siblings are twins.',
+  },
+  wordingTwinZygosityLabel: {
+    id: 'protocolBuilder.pedigree.wording.twinZygosityLabel',
+    defaultMessage: 'Identical twins question',
+    description:
+      'Label of the question asking whether two twins are identical.',
+  },
+  wordingZygosityIdentical: {
+    id: 'protocolBuilder.pedigree.wording.zygosityIdentical',
+    defaultMessage: 'Identical option',
+    description: 'Label of the option that two twins are identical.',
+  },
+  wordingZygosityFraternal: {
+    id: 'protocolBuilder.pedigree.wording.zygosityFraternal',
+    defaultMessage: 'Fraternal option',
+    description: 'Label of the option that two twins are fraternal.',
+  },
+  wordingZygosityUnknown: {
+    id: 'protocolBuilder.pedigree.wording.zygosityUnknown',
+    defaultMessage: 'Not known if identical option',
+    description:
+      'Label of the option that the participant does not know whether two twins are identical.',
+  },
+  wordingUnavailableAlreadyConnected: {
+    id: 'protocolBuilder.pedigree.wording.unavailableAlreadyConnected',
+    defaultMessage: 'Unavailable choice: already connected',
+    description:
+      'Label of the reason shown under the choices for connecting two people who are already connected.',
+  },
+  wordingUnavailableAncestor: {
+    id: 'protocolBuilder.pedigree.wording.unavailableAncestor',
+    defaultMessage: 'Unavailable choice: own ancestor',
+    description:
+      'Label of the reason shown under the choice to make someone a parent of one of their own ancestors.',
+  },
+  wordingUnavailableCarrierChoice: {
+    id: 'protocolBuilder.pedigree.wording.unavailableCarrierChoice',
+    defaultMessage: 'Unavailable choice: someone else carried',
+    description:
+      'Label of the reason shown under the choices for a parent who carried the pregnancy, when someone else already did.',
+  },
+  wordingUnavailableCarrierRecorded: {
+    id: 'protocolBuilder.pedigree.wording.unavailableCarrierRecorded',
+    defaultMessage: 'Unavailable answers hint: someone else carried',
+    description:
+      'Label of the hint explaining that answers are unavailable because someone else is recorded as having carried the pregnancy.',
+  },
+  wordingUnavailableCannotCarry: {
+    id: 'protocolBuilder.pedigree.wording.unavailableCannotCarry',
+    defaultMessage: 'Unavailable answers hint: cannot have carried',
+    description:
+      'Label of the hint explaining that answers are unavailable because the person is recorded as male at birth, so cannot have carried a pregnancy.',
+  },
+  wordingUnavailableCarried: {
+    id: 'protocolBuilder.pedigree.wording.unavailableCarried',
+    defaultMessage: 'Unavailable answers hint: carried a child',
+    description:
+      'Label of the hint explaining that a sex at birth is unavailable because the person is recorded as having carried a child’s pregnancy.',
+  },
+  wordingUnavailableGeneticParentsFull: {
+    id: 'protocolBuilder.pedigree.wording.unavailableGeneticParentsFull',
+    defaultMessage: 'Unavailable answers hint: two genetic parents',
+    description:
+      'Label of the hint explaining that answers are unavailable because the child already has two genetic parents recorded.',
+  },
+  wordingUnavailableSameSexGeneticParent: {
+    id: 'protocolBuilder.pedigree.wording.unavailableSameSexGeneticParent',
+    defaultMessage:
+      'Unavailable answers hint: same sex at birth as the other genetic parent',
+    description:
+      'Label of the hint explaining that answers are unavailable because the child’s other genetic parent is recorded with the same sex at birth.',
+  },
+  wordingUnavailableBothSameSex: {
+    id: 'protocolBuilder.pedigree.wording.unavailableBothSameSex',
+    defaultMessage:
+      'Unavailable answers hint: both parents the same sex at birth',
+    description:
+      'Label of the hint explaining that both parents cannot be a new child’s genetic parents because they are recorded with the same sex at birth.',
+  },
+  wordingUnavailableIdenticalTwin: {
+    id: 'protocolBuilder.pedigree.wording.unavailableIdenticalTwin',
+    defaultMessage: 'Unavailable answers hint: twins’ parents differ',
+    description:
+      'Label of the hint explaining that two twins cannot be recorded as identical because their biological parents and donors differ.',
+  },
+  wordingUnavailableIdenticalTwinNew: {
+    id: 'protocolBuilder.pedigree.wording.unavailableIdenticalTwinNew',
+    defaultMessage: 'Unavailable answers hint: new twin’s parents differ',
+    description:
+      'Label of the hint explaining that a new sibling cannot be an identical twin because they would not have all the same biological parents and donors.',
   },
   wordingTitle: {
     id: 'protocolBuilder.pedigree.wording.title',

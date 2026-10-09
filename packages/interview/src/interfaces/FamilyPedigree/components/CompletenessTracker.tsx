@@ -302,12 +302,7 @@ function CompletenessTracker({
                         className="focusable text-left underline-offset-4 hover:underline"
                         onClick={() => onItemSelect(item)}
                       >
-                        {
-                          resolveMessage(wording.listItem, {
-                            ...values,
-                            missing: item.kind === 'parents' ? item.missing : 0,
-                          }).text
-                        }
+                        {resolveMessage(wording.listItem, values).text}
                       </button>
                       {noneAnswer && (
                         <Button size="sm" onClick={() => answer(item)}>

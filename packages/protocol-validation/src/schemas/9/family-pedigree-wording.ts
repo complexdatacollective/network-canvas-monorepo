@@ -38,18 +38,18 @@ export const NAME_HINT = {
 
 /** The tracker entry for a person missing biological parents. */
 export const PARENTS_ITEM = {
-  'en': '{isYou, select, true {{missing, plural, one {Add your other biological parent} other {Add your biological parents}}} other {{missing, plural, one {Add another biological parent for “{name}”} other {Add biological parents for “{name}”}}}}',
-  'de': '{isYou, select, true {{missing, plural, one {Fügen Sie Ihren anderen leiblichen Elternteil hinzu} other {Fügen Sie Ihre leiblichen Eltern hinzu}}} other {{missing, plural, one {Fügen Sie einen weiteren leiblichen Elternteil von „{name}“ hinzu} other {Fügen Sie die leiblichen Eltern von „{name}“ hinzu}}}}',
-  'es': '{isYou, select, true {{missing, plural, one {Añade a tu otro progenitor biológico} other {Añade a tus progenitores biológicos}}} other {{missing, plural, one {Añade otro progenitor biológico de «{name}»} other {Añade a los progenitores biológicos de «{name}»}}}}',
-  'fr': '{isYou, select, true {{missing, plural, one {Ajoutez votre autre parent biologique} other {Ajoutez vos parents biologiques}}} other {{missing, plural, one {Ajoutez un autre parent biologique de « {name} »} other {Ajoutez les parents biologiques de « {name} »}}}}',
-  'it': '{isYou, select, true {{missing, plural, one {Aggiungi il tuo altro genitore biologico} other {Aggiungi i tuoi genitori biologici}}} other {{missing, plural, one {Aggiungi un altro genitore biologico di «{name}»} other {Aggiungi i genitori biologici di «{name}»}}}}',
-  'nl': '{isYou, select, true {{missing, plural, one {Voeg je andere biologische ouder toe} other {Voeg je biologische ouders toe}}} other {{missing, plural, one {Voeg nog een biologische ouder van “{name}” toe} other {Voeg biologische ouders van “{name}” toe}}}}',
+  'en': '{isYou, select, true {Add your biological parents} other {Add biological parents for “{name}”}}',
+  'de': '{isYou, select, true {Fügen Sie Ihre leiblichen Eltern hinzu} other {Fügen Sie die leiblichen Eltern von „{name}“ hinzu}}',
+  'es': '{isYou, select, true {Añade a tus progenitores biológicos} other {Añade a los progenitores biológicos de «{name}»}}',
+  'fr': '{isYou, select, true {Ajoutez vos parents biologiques} other {Ajoutez les parents biologiques de « {name} »}}',
+  'it': '{isYou, select, true {Aggiungi i tuoi genitori biologici} other {Aggiungi i genitori biologici di «{name}»}}',
+  'nl': '{isYou, select, true {Voeg je biologische ouders toe} other {Voeg biologische ouders van “{name}” toe}}',
   'pt-BR':
-    '{isYou, select, true {{missing, plural, one {Adicione seu outro pai/mãe biológico(a)} other {Adicione seus pais biológicos}}} other {{missing, plural, one {Adicione outro pai/mãe biológico(a) de “{name}”} other {Adicione os pais biológicos de “{name}”}}}}',
+    '{isYou, select, true {Adicione seus pais biológicos} other {Adicione os pais biológicos de “{name}”}}',
   'zh-Hans':
-    '{isYou, select, true {{missing, plural, other {添加您尚缺的 # 位亲生父母}}} other {{missing, plural, other {添加“{name}”尚缺的 # 位亲生父母}}}}',
+    '{isYou, select, true {添加您的亲生父母} other {添加“{name}”的亲生父母}}',
   'zh-Hant':
-    '{isYou, select, true {{missing, plural, other {新增您尚缺的 # 位親生父母}}} other {{missing, plural, other {新增「{name}」尚缺的 # 位親生父母}}}}',
+    '{isYou, select, true {新增您的親生父母} other {新增「{name}」的親生父母}}',
 } as const satisfies Wording;
 
 /** The tracker entry for a person whose biological siblings are not yet recorded. */

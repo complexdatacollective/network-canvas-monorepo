@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { ParentConnection } from '../types';
 import {
   ancestor,
+  areConsanguineous,
   chaseup,
   createMatrix,
   isGroupMarker,
@@ -148,4 +149,42 @@ describe('isGroupMarker', () => {
     expect(isGroupMarker(3)).toBe(false);
     expect(isGroupMarker(0)).toBe(false);
   });
+});
+
+describe('areConsanguineous', () => {
+  const link = (
+    parentIndex: number,
+    edgeType: ParentConnection['edgeType'],
+  ): ParentConnection => ({ parentIndex, edgeType });
+
+  // gp → a and b, each through the given kinds of link from gp to their
+  // parent p and q.
+  const cousins = (
+    toP: ParentConnection['edgeType'],
+    toA: ParentConnection['edgeType'],
+  ): ParentConnection[][] => [
+    [],
+    [link(0, toP)],
+    [link(0, 'biological')],
+    [link(1, toA)],
+    [link(2, 'biological')],
+  ];
+
+  it('finds a shared biological ancestor', () => {
+    expect(areConsanguineous(3, 4, cousins('biological', 'biological'))).toBe(
+      true,
+    );
+  });
+
+  it('follows donor links, as an adopted child’s birth parent is drawn', () => {
+    expect(areConsanguineous(3, 4, cousins('biological', 'donor'))).toBe(true);
+  });
+
+  it.each(['social', 'adoptive', 'surrogate'] as const)(
+    'ignores a %s link',
+    (kind) => {
+      expect(areConsanguineous(3, 4, cousins(kind, 'biological'))).toBe(false);
+      expect(areConsanguineous(3, 4, cousins('biological', kind))).toBe(false);
+    },
+  );
 });

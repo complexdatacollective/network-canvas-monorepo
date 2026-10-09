@@ -10,6 +10,7 @@ import {
   collectLocalizedStringsFromSchema,
 } from '../../../utils/collectLocalizedStrings.ts';
 import { localized } from '../../../utils/test-utils.ts';
+import { PEDIGREE_RELATIONSHIP_KINDS } from '../family-pedigree-values.ts';
 import {
   type LocalizedStringFormat,
   localizedString,
@@ -17,7 +18,6 @@ import {
 import ProtocolSchemaV9 from '../schema.ts';
 import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import {
-  PEDIGREE_PARENTS_ARGUMENTS,
   PEDIGREE_PERSON_ARGUMENTS,
   PEDIGREE_WORDING_ARGUMENTS,
 } from '../stages/family-pedigree.ts';
@@ -138,7 +138,7 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site([...knowsVariable('tieStrength'), 'options', 0, 'label'], 'markdown'),
   site([...knowsVariable('tieStrength'), 'options', 1, 'label'], 'markdown'),
   site(['codebook', 'edge', 'family', 'label'], 'plain'),
-  ...Array.from({ length: 6 }, (_, index) =>
+  ...Array.from({ length: PEDIGREE_RELATIONSHIP_KINDS.length }, (_, index) =>
     site(
       [
         'codebook',
@@ -286,9 +286,7 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   ).map((path) =>
     messageSite(
       stage(18, 'completeness', 'itemText', ...path),
-      path[0] === 'parents'
-        ? PEDIGREE_PARENTS_ARGUMENTS
-        : PEDIGREE_PERSON_ARGUMENTS,
+      PEDIGREE_PERSON_ARGUMENTS,
     ),
   ),
   site(stage(18, 'completeness', 'recommendedNote'), 'plain'),

@@ -3,11 +3,18 @@ import { expect, within } from 'storybook/test';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
-import { PEDIGREE_PARENTS_ARGUMENTS } from '@codaco/protocol-validation';
+import type { MessageArguments } from '@codaco/protocol-validation';
 
 import { REQUIRED } from '../form/requiredField.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import LocalizedMessageField from './LocalizedMessageField.tsx';
+
+/** A person, and a count: a select and a plural. */
+const PARENTS_ARGUMENTS = {
+  isYou: { kind: 'select', cases: ['true'] },
+  name: { kind: 'text' },
+  missing: { kind: 'plural' },
+} as const satisfies MessageArguments;
 
 const PARENTS_ITEM = {
   'en-US':
@@ -20,7 +27,7 @@ const parentsItem = (
     component={LocalizedMessageField}
     label="Missing parents"
     hint="Asks for a person’s missing parents. It can show their name and how many parents are missing."
-    arguments={PEDIGREE_PARENTS_ARGUMENTS}
+    arguments={PARENTS_ARGUMENTS}
     initialValue={PARENTS_ITEM}
     required={REQUIRED}
   />
@@ -34,7 +41,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Participant-facing text that reads differently depending on what it is about: a version for each case (about the participant, about someone else) and, where it shows a number, one for each plural form of the editing language, labelled with examples of the numbers it is for. Placeholders such as a person’s name show as chips, inserted from the toolbar; their names, and the names of the cases, come from `useMessageArgumentLabels`. Versions that all read the same are saved as one phrase.\n\n```tsx\n<Field\n  name="completeness.itemText.parents.listItem"\n  component={LocalizedMessageField}\n  label="Missing parents"\n  arguments={PEDIGREE_PARENTS_ARGUMENTS}\n/>\n```',
+          'Participant-facing text that reads differently depending on what it is about: a version for each case (about the participant, about someone else) and, where it shows a number, one for each plural form of the editing language, labelled with examples of the numbers it is for. Placeholders such as a person’s name show as chips, inserted from the toolbar; their names, and the names of the cases, come from `useMessageArgumentLabels`. Versions that all read the same are saved as one phrase.\n\n```tsx\n<Field\n  name="completeness.itemText.parents.listItem"\n  component={LocalizedMessageField}\n  label="Missing parents"\n  arguments={PARENTS_ARGUMENTS}\n/>\n```',
       },
     },
   },

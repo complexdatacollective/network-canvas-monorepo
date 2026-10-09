@@ -16,10 +16,7 @@ import type {
   PedigreeCompletenessScope,
   PedigreeGenderWords,
 } from '@codaco/protocol-validation';
-import {
-  PEDIGREE_PARENTS_ARGUMENTS,
-  PEDIGREE_PERSON_ARGUMENTS,
-} from '@codaco/protocol-validation';
+import { PEDIGREE_PERSON_ARGUMENTS } from '@codaco/protocol-validation';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
 import EntityBadge from '../EntityBadge';
@@ -629,7 +626,7 @@ const FamilyPedigree = ({
       intl.formatMessage(messages.trackerParents),
       'tracker-parents',
       itemText?.parents?.listItem,
-      PEDIGREE_PARENTS_ARGUMENTS,
+      PEDIGREE_PERSON_ARGUMENTS,
     ),
     ...textRow(
       intl.formatMessage(messages.trackerSiblings),
