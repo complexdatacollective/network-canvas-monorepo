@@ -48,18 +48,18 @@ export const INTERVIEW_INTERFACE_TEXT = {
   stageError: {
     id: 'interview.runtime.taskErrorDescription',
     message: {
-      'en': 'There was an error with the interview software, and this task could not be displayed. Try refreshing the page. If the problem persists, please contact the study organizer and provide the debug information below. You may be able to continue your interview by clicking the next button.',
-      'de': 'In der Interview-Software ist ein Fehler aufgetreten, daher konnte diese Aufgabe nicht angezeigt werden. Versuchen Sie, die Seite neu zu laden. Wenn das Problem weiterhin besteht, wenden Sie sich bitte an die Studienleitung und geben Sie die unten stehenden Diagnoseinformationen an. Möglicherweise können Sie das Interview fortsetzen, indem Sie auf „Weiter“ klicken.',
-      'es': 'Se produjo un error en el programa de la entrevista y no se pudo mostrar esta tarea. Prueba a actualizar la página. Si el problema persiste, ponte en contacto con la persona que organiza el estudio y facilítale la información de diagnóstico que aparece a continuación. Es posible que puedas continuar la entrevista pulsando la flecha de avance.',
-      'fr': 'Une erreur s’est produite dans le logiciel d’entretien et cette tâche n’a pas pu être affichée. Essayez d’actualiser la page. Si le problème persiste, contactez l’équipe responsable de l’étude et transmettez-lui les informations de débogage ci-dessous. Vous pourrez peut-être poursuivre votre entretien en cliquant sur le bouton Suivant.',
-      'it': 'Si è verificato un errore nel software dell’intervista e non è stato possibile visualizzare questa attività. Prova ad aggiornare la pagina. Se il problema persiste, contatta chi organizza lo studio e fornisci le informazioni di debug riportate qui sotto. Potresti riuscire a continuare l’intervista facendo clic sul pulsante Avanti.',
-      'nl': 'Er is een fout opgetreden in de interviewsoftware, waardoor deze taak niet kan worden weergegeven. Probeer de pagina te vernieuwen. Blijft het probleem bestaan, neem dan contact op met de organisator van het onderzoek en geef de foutopsporingsgegevens hieronder door. Mogelijk kun je verder met je interview door op de knop Volgende te klikken.',
+      'en': 'There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button.',
+      'de': 'In der Interview-Software ist ein Fehler aufgetreten, daher konnte diese Aufgabe nicht angezeigt werden. Manche Aufgaben (zum Beispiel Karten) benötigen eine Internetverbindung. Prüfen Sie daher Ihre Verbindung und laden Sie dann die Seite neu. Wenn das Problem weiterhin besteht, wenden Sie sich bitte an die Studienleitung und senden Sie ihr die Diagnoseinformationen, die Sie mit der Schaltfläche unten kopieren können. Möglicherweise können Sie das Interview fortsetzen, indem Sie auf „Weiter“ klicken.',
+      'es': 'Se produjo un error en el programa de la entrevista y no se pudo mostrar esta tarea. Algunas tareas, como los mapas, necesitan conexión a internet, así que comprueba tu conexión y después prueba a actualizar la página. Si el problema persiste, ponte en contacto con la persona que organiza el estudio y envíale la información de diagnóstico, que puedes copiar con el botón de abajo. Es posible que puedas continuar la entrevista pulsando la flecha de avance.',
+      'fr': 'Une erreur s’est produite dans le logiciel d’entretien et cette tâche n’a pas pu être affichée. Certaines tâches, comme les cartes, nécessitent une connexion Internet : vérifiez votre connexion, puis essayez d’actualiser la page. Si le problème persiste, contactez l’équipe responsable de l’étude et transmettez-lui les informations de débogage, que vous pouvez copier avec le bouton ci-dessous. Vous pourrez peut-être poursuivre votre entretien en cliquant sur le bouton Suivant.',
+      'it': 'Si è verificato un errore nel software dell’intervista e non è stato possibile visualizzare questa attività. Alcune attività, come le mappe, richiedono una connessione a internet: controlla la connessione, poi prova ad aggiornare la pagina. Se il problema persiste, contatta chi organizza lo studio e inviagli le informazioni di debug, che puoi copiare con il pulsante qui sotto. Potresti riuscire a continuare l’intervista facendo clic sul pulsante Avanti.',
+      'nl': 'Er is een fout opgetreden in de interviewsoftware, waardoor deze taak niet kan worden weergegeven. Sommige taken, zoals kaarten, hebben een internetverbinding nodig. Controleer je verbinding en vernieuw daarna de pagina. Blijft het probleem bestaan, neem dan contact op met de organisator van het onderzoek en stuur de foutopsporingsgegevens, die je met de knop hieronder kunt kopiëren. Mogelijk kun je verder met je interview door op de knop Volgende te klikken.',
       'pt-BR':
-        'Ocorreu um erro no software da entrevista, e esta tarefa não pôde ser exibida. Tente atualizar a página. Se o problema persistir, entre em contato com a equipe responsável pelo estudo e informe os dados de depuração abaixo. Talvez você consiga continuar sua entrevista clicando no botão de avançar.',
+        'Ocorreu um erro no software da entrevista, e esta tarefa não pôde ser exibida. Algumas tarefas, como mapas, precisam de conexão com a internet: verifique sua conexão e depois tente atualizar a página. Se o problema persistir, entre em contato com a equipe responsável pelo estudo e envie os dados de depuração, que você pode copiar com o botão abaixo. Talvez você consiga continuar sua entrevista clicando no botão de avançar.',
       'zh-Hans':
-        '访谈软件出现错误，无法显示此任务。请尝试刷新页面。如果问题仍然存在，请联系研究组织者并提供下方的调试信息。您也许可以点击“下一步”按钮继续访谈。',
+        '访谈软件出现错误，无法显示此任务。某些任务（例如地图）需要网络连接，请先检查网络连接，然后尝试刷新页面。如果问题仍然存在，请联系研究组织者，并发送下方可通过按钮复制的调试信息。您也许可以点击“下一步”按钮继续访谈。',
       'zh-Hant':
-        '訪談軟體發生錯誤，因此無法顯示此任務。請嘗試重新整理頁面。如果問題持續發生，請聯絡研究團隊，並提供下方的偵錯資訊。您或許可以點選「下一步」按鈕，繼續進行訪談。',
+        '訪談軟體發生錯誤，因此無法顯示此任務。部分任務（例如地圖）需要網路連線，請先檢查網路連線，然後嘗試重新整理頁面。如果問題持續發生，請聯絡研究團隊，並傳送下方可透過按鈕複製的偵錯資訊。您或許可以點選「下一步」按鈕，繼續進行訪談。',
     },
   },
   itemUnavailable: {
@@ -180,18 +180,18 @@ export const PASSPHRASE_INTERFACE_TEXT = {
   choosePassphraseHelp: {
     id: 'interview.runtime.choosePassphraseHelp',
     message: {
-      'en': 'Some answers on this screen are protected by a passphrase. Choose one, and keep it safe: you will need it to see or change these answers later, and it cannot be recovered if it is forgotten.',
-      'de': 'Einige Antworten auf dieser Seite werden durch eine Passphrase geschützt. Wählen Sie eine und bewahren Sie sie sicher auf: Sie benötigen sie, um diese Antworten später anzuzeigen oder zu ändern, und sie kann nicht wiederhergestellt werden, wenn sie vergessen wird.',
-      'es': 'Algunas respuestas de esta pantalla están protegidas por una frase de contraseña. Elige una y guárdala en un lugar seguro: la necesitarás para ver o cambiar estas respuestas más adelante, y no se puede recuperar si la olvidas.',
-      'fr': 'Certaines réponses de cet écran sont protégées par une phrase secrète. Choisissez-en une et conservez-la en lieu sûr : vous en aurez besoin pour afficher ou modifier ces réponses plus tard, et elle ne pourra pas être récupérée si vous l’oubliez.',
-      'it': 'Alcune risposte in questa schermata sono protette da una passphrase. Scegline una e conservala al sicuro: ti servirà per vedere o modificare queste risposte in seguito, e non potrà essere recuperata se la dimentichi.',
-      'nl': 'Sommige antwoorden op dit scherm worden beschermd met een wachtzin. Kies er een en bewaar hem goed: je hebt hem later nodig om deze antwoorden te bekijken of te wijzigen, en hij kan niet worden hersteld als je hem vergeet.',
+      'en': 'Some answers on this screen are protected by a passphrase. Keep it safe: you will need it to see or change these answers later, and it cannot be recovered if it is forgotten.',
+      'de': 'Einige Antworten auf dieser Seite werden durch eine Passphrase geschützt. Bewahren Sie sie sicher auf: Sie benötigen sie, um diese Antworten später anzuzeigen oder zu ändern, und sie kann nicht wiederhergestellt werden, wenn sie vergessen wird.',
+      'es': 'Algunas respuestas de esta pantalla están protegidas por una frase de contraseña. Guárdala en un lugar seguro: la necesitarás para ver o cambiar estas respuestas más adelante, y no se puede recuperar si la olvidas.',
+      'fr': 'Certaines réponses de cet écran sont protégées par une phrase secrète. Conservez-la en lieu sûr : vous en aurez besoin pour afficher ou modifier ces réponses plus tard, et elle ne pourra pas être récupérée si vous l’oubliez.',
+      'it': 'Alcune risposte in questa schermata sono protette da una passphrase. Conservala al sicuro: ti servirà per vedere o modificare queste risposte in seguito, e non potrà essere recuperata se la dimentichi.',
+      'nl': 'Sommige antwoorden op dit scherm worden beschermd met een wachtzin. Bewaar hem goed: je hebt hem later nodig om deze antwoorden te bekijken of te wijzigen, en hij kan niet worden hersteld als je hem vergeet.',
       'pt-BR':
-        'Algumas respostas desta tela são protegidas por uma frase secreta. Escolha uma e guarde-a em segurança: você precisará dela para ver ou alterar essas respostas depois, e ela não poderá ser recuperada se for esquecida.',
+        'Algumas respostas desta tela são protegidas por uma frase secreta. Guarde-a em segurança: você precisará dela para ver ou alterar essas respostas depois, e ela não poderá ser recuperada se for esquecida.',
       'zh-Hans':
-        '此页面上的部分回答受密码短语保护。请设置一个密码短语并妥善保管：之后查看或修改这些回答时需要用到它，一旦忘记将无法找回。',
+        '此页面上的部分回答受密码短语保护。请妥善保管密码短语：之后查看或修改这些回答时需要用到它，一旦忘记将无法找回。',
       'zh-Hant':
-        '此畫面上的部分回答受通關密語保護。請設定一組通關密語並妥善保管：之後查看或修改這些回答時需要用到它，一旦忘記將無法找回。',
+        '此畫面上的部分回答受通關密語保護。請妥善保管通關密語：之後查看或修改這些回答時需要用到它，一旦忘記將無法找回。',
     },
   },
   passphraseIncorrect: {
@@ -277,18 +277,18 @@ export const PASSPHRASE_INTERFACE_TEXT = {
   answerUnavailableKept: {
     id: 'interview.runtime.answerUnavailableKept',
     message: {
-      'en': 'This answer was saved earlier but cannot be shown here. It will be kept as it is unless you enter a new one.',
-      'de': 'Diese Antwort wurde zuvor gespeichert, kann hier aber nicht angezeigt werden. Sie bleibt unverändert, sofern Sie keine neue eingeben.',
-      'es': 'Esta respuesta se guardó antes, pero no se puede mostrar aquí. Se conservará tal como está, a menos que introduzcas una nueva.',
-      'fr': 'Cette réponse a été enregistrée plus tôt, mais ne peut pas être affichée ici. Elle sera conservée telle quelle, sauf si vous en saisissez une nouvelle.',
-      'it': 'Questa risposta è stata salvata in precedenza, ma non può essere mostrata qui. Verrà conservata così com’è, a meno che tu non ne inserisca una nuova.',
-      'nl': 'Dit antwoord is eerder opgeslagen, maar kan hier niet worden getoond. Het blijft zoals het is, tenzij je een nieuw antwoord invoert.',
+      'en': 'This answer was saved earlier but cannot be shown here. Entering a new answer will replace it, so leave the field empty to keep the earlier answer.',
+      'de': 'Diese Antwort wurde zuvor gespeichert, kann hier aber nicht angezeigt werden. Wenn Sie eine neue Antwort eingeben, ersetzt sie diese; lassen Sie das Feld leer, um die frühere Antwort zu behalten.',
+      'es': 'Esta respuesta se guardó antes, pero no se puede mostrar aquí. Si introduces una nueva respuesta, sustituirá a esta; deja el campo vacío para conservar la respuesta anterior.',
+      'fr': 'Cette réponse a été enregistrée plus tôt, mais ne peut pas être affichée ici. Saisir une nouvelle réponse remplacera celle-ci ; laissez le champ vide pour conserver la réponse précédente.',
+      'it': 'Questa risposta è stata salvata in precedenza, ma non può essere mostrata qui. Inserire una nuova risposta la sostituirà; lascia il campo vuoto per conservare la risposta precedente.',
+      'nl': 'Dit antwoord is eerder opgeslagen, maar kan hier niet worden getoond. Een nieuw antwoord invoeren vervangt het; laat het veld leeg om het eerdere antwoord te behouden.',
       'pt-BR':
-        'Esta resposta foi salva anteriormente, mas não pode ser exibida aqui. Ela será mantida como está, a menos que você digite uma nova.',
+        'Esta resposta foi salva anteriormente, mas não pode ser exibida aqui. Digitar uma nova resposta vai substituí-la; deixe o campo vazio para manter a resposta anterior.',
       'zh-Hans':
-        '此回答先前已保存，但无法在此显示。除非您输入新的回答，否则它将保持不变。',
+        '此回答先前已保存，但无法在此显示。输入新的回答将替换它；如要保留先前的回答，请将此处留空。',
       'zh-Hant':
-        '此回答先前已儲存，但無法在此顯示。除非您輸入新的回答，否則它將維持不變。',
+        '此回答先前已儲存，但無法在此顯示。輸入新的回答將取代它；如要保留先前的回答，請將此處留空。',
     },
   },
   confirmPassphrase: {
