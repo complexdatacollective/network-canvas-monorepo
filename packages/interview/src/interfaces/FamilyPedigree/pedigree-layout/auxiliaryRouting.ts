@@ -11,10 +11,11 @@ import type { LineSegment, Point } from './types';
  * clear of everyone and every other line; otherwise it is routed
  * orthogonally, like the lines of descent, through the gaps between rows.
  *
- * A parent on the child's own row (a sibling who adopted them, who stays in
- * their birth sibship) is joined below the row, into the child's bottom edge:
- * a line along the row would read as a partnership, and one above it as a
- * line of descent. Donors and surrogates never share the child's row.
+ * A parent on the child's own row (a relative of the child's generation who
+ * raises them, such as a sibling or cousin, while the child stays in their
+ * birth family) is joined below the row, into the child's bottom edge: a line
+ * along the row would read as a partnership, and one above it as a line of
+ * descent. Donors and surrogates never share the child's row.
  *
  * All coordinates are in layout units: x in columns, y in rows.
  */

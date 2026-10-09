@@ -992,7 +992,7 @@ export function computeConnectors(
     ) {
       // A parent of every child in the sibship joins its bar, away from
       // every line already meeting it. (One on the children's own row, a
-      // sibling who raises them, joins each child, from below, instead.)
+      // relative who raises them, joins each child, from below, instead.)
       const stems = sibshipStems.get(conn.sibship) ?? [];
       const joined = draw(
         {

@@ -1976,11 +1976,10 @@ describe('a child sits one row below its primary parents', () => {
     expect(levelOf(result, 3)).toBe(levelOf(result, 4));
   });
 
-  it('except below a birth parent drawn as a donor, when grandparents adopt their grandchild', () => {
-    // patricia + gary → jade. jade is your birth parent (remapped to a donor
-    // edge, as the adapter does for an adopted child); patricia and gary
-    // adopted you. jade cannot share her parents' row, and you are never on
-    // a donor's row, so a row is inserted: you sit below jade.
+  it('except below a donor who is the child of the raising parents', () => {
+    // patricia + gary → jade. patricia and gary adopted you, conceived with
+    // jade's egg. jade cannot share her parents' row, and you are never on a
+    // donor's row, so a row is inserted: you sit below jade.
     const ped: PedigreeInput = {
       id: ['patricia', 'gary', 'jade', 'you'],
       parents: [[], [], [sp(0), sp(1)], [donor(2), adoptive(0), adoptive(1)]],
@@ -2449,9 +2448,8 @@ describe('a donor or surrogate sits beside the child’s parents, on their row',
     expect(placeOf(result, 6).layer).toBe(placeOf(result, 4).layer);
   });
 
-  it('when the child’s birth parent is drawn as a donor of a grandparent adoption', () => {
-    // g1 + g2 → mum; mum + dad → kid, whom g1 and g2 adopted. mum and dad
-    // are drawn as the kid's donors, on the row above them.
+  it('when grandparents adopt their grandchild', () => {
+    // g1 + g2 → mum; mum + dad → kid, whom g1 and g2 adopted.
     const { input } = toPedigreeInput(
       ['g1', 'g2', 'mum', 'dad', 'kid'],
       [
@@ -2568,5 +2566,155 @@ describe('a child adopted by their own sibling', () => {
         .filter((line) => line.edgeType === 'social')
         .map((line) => line.endpointIds),
     ).toEqual([['sis', 'kid']]);
+  });
+});
+
+describe('a child adopted by a relative', () => {
+  type Link = {
+    source: string;
+    target: string;
+    kind: 'partner' | 'biological' | 'adoptive';
+  };
+  const birthFamily: Link[] = [
+    { source: 'mum', target: 'dad', kind: 'partner' },
+    { source: 'mum', target: 'kid', kind: 'biological' },
+    { source: 'dad', target: 'kid', kind: 'biological' },
+  ];
+  const grandparents: Link[] = [
+    { source: 'g1', target: 'g2', kind: 'partner' },
+    { source: 'g1', target: 'mum', kind: 'biological' },
+    { source: 'g2', target: 'mum', kind: 'biological' },
+  ];
+  const lay = (nodeIds: string[], links: Link[]) => {
+    const { input } = toPedigreeInput(nodeIds, links);
+    const result = alignPedigree(input);
+    const at = (id: string) => {
+      const person = nodeIds.indexOf(id);
+      const layer = result.nid.findIndex((row, level) =>
+        row.slice(0, result.n[level]).includes(person),
+      );
+      const col = result.nid[layer]!.indexOf(person);
+      return { layer, col, fam: result.fam[layer]![col]! };
+    };
+    const conn = computeConnectors(
+      result,
+      defaultScaling,
+      input.parents,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      nodeIds,
+    );
+    const edgeTo = (id: string, from: string) =>
+      input.parents[nodeIds.indexOf(id)]!.find(
+        (p) => p.parentIndex === nodeIds.indexOf(from),
+      )?.edgeType;
+    return { at, conn, edgeTo };
+  };
+  /** The child stays in their birth family: their birth parents stay parents
+   * and their line of descent comes from them; each adopter joins them by a
+   * dashed adoptive line of their own. */
+  const expectInBirthFamily = (
+    { at, conn, edgeTo }: ReturnType<typeof lay>,
+    adopters: string[],
+  ) => {
+    expect(edgeTo('kid', 'mum')).toBe('biological');
+    expect(edgeTo('kid', 'dad')).toBe('biological');
+    expect(at('kid').layer).toBe(at('mum').layer + 1);
+    expect(at('kid').fam).toBeGreaterThan(0);
+    const descent = conn.parentChildLines.find((line) =>
+      line.uplineChildIds?.includes('kid'),
+    );
+    expect(descent?.parentIds).toEqual(expect.arrayContaining(['dad', 'mum']));
+    expect(descent?.parentIds).toHaveLength(2);
+    expect(
+      conn.auxiliaryLines
+        .filter((line) => line.edgeType === 'adoptive')
+        .map((line) => line.endpointIds),
+    ).toEqual(
+      expect.arrayContaining(adopters.map((adopter) => [adopter, 'kid'])),
+    );
+    expect(
+      conn.auxiliaryLines.filter((line) => line.edgeType === 'adoptive'),
+    ).toHaveLength(adopters.length);
+  };
+
+  it('stays in the birth family when grandparents adopt', () => {
+    expectInBirthFamily(
+      lay(
+        ['g1', 'g2', 'mum', 'dad', 'kid'],
+        [
+          ...grandparents,
+          ...birthFamily,
+          { source: 'g1', target: 'kid', kind: 'adoptive' },
+          { source: 'g2', target: 'kid', kind: 'adoptive' },
+        ],
+      ),
+      ['g1', 'g2'],
+    );
+  });
+
+  it('stays in the birth family when an aunt and her partner adopt', () => {
+    expectInBirthFamily(
+      lay(
+        ['g1', 'g2', 'mum', 'dad', 'aunt', 'uncle', 'kid'],
+        [
+          ...grandparents,
+          { source: 'g1', target: 'aunt', kind: 'biological' },
+          { source: 'g2', target: 'aunt', kind: 'biological' },
+          { source: 'aunt', target: 'uncle', kind: 'partner' },
+          ...birthFamily,
+          { source: 'aunt', target: 'kid', kind: 'adoptive' },
+          { source: 'uncle', target: 'kid', kind: 'adoptive' },
+        ],
+      ),
+      ['aunt', 'uncle'],
+    );
+  });
+
+  it('is drawn under the adoptive parents when they are not relatives', () => {
+    const { at, conn, edgeTo } = lay(
+      ['g1', 'g2', 'mum', 'dad', 'ann', 'bob', 'kid'],
+      [
+        ...grandparents,
+        ...birthFamily,
+        { source: 'ann', target: 'bob', kind: 'partner' },
+        { source: 'ann', target: 'kid', kind: 'adoptive' },
+        { source: 'bob', target: 'kid', kind: 'adoptive' },
+      ],
+    );
+    expect(edgeTo('kid', 'mum')).toBe('donor');
+    expect(edgeTo('kid', 'dad')).toBe('donor');
+    expect(at('kid').layer).toBe(at('ann').layer + 1);
+    const descent = conn.parentChildLines.find((line) =>
+      line.uplineChildIds?.includes('kid'),
+    );
+    expect(descent?.parentIds).toEqual(expect.arrayContaining(['ann', 'bob']));
+    expect(descent?.parentIds).toHaveLength(2);
+    expect(
+      conn.auxiliaryLines.filter((line) => line.edgeType === 'adoptive'),
+    ).toEqual([]);
+  });
+
+  it('is drawn under the birth parent and a step-parent who adopts, who is no relative', () => {
+    // mum and dad are kid's birth parents, never recorded as partners;
+    // steve, mum's partner, adopted kid (a step-parent adoption).
+    const { at, conn, edgeTo } = lay(
+      ['mum', 'dad', 'steve', 'kid'],
+      [
+        { source: 'mum', target: 'kid', kind: 'biological' },
+        { source: 'dad', target: 'kid', kind: 'biological' },
+        { source: 'mum', target: 'steve', kind: 'partner' },
+        { source: 'steve', target: 'kid', kind: 'adoptive' },
+      ],
+    );
+    expect(edgeTo('kid', 'mum')).toBe('biological');
+    expect(at('kid').fam).toBe(Math.min(at('mum').col, at('steve').col) + 1);
+    expect(
+      conn.auxiliaryLines
+        .filter((line) => line.edgeType === 'adoptive')
+        .map((line) => line.endpointIds),
+    ).toEqual([['steve', 'kid']]);
   });
 });

@@ -5,7 +5,7 @@ import type {
   PedigreeLayout,
   PedigreeEdgeType,
 } from './types';
-import { areConsanguineous, layerConstraints } from './utils';
+import { areConsanguineous, layerConstraints, relativeRaisers } from './utils';
 
 type PartnerGroup = {
   members: number[];
@@ -63,48 +63,26 @@ function partnerGroupKey(members: number[]): string {
 }
 
 /**
- * Each person's parents as the layout places them. A child raised by their
- * own sibling (kinship adoption, or a sibling who raises them without
- * adopting) stays in their birth family: the sibling, and any partner of the
- * sibling who raises them too, are drawn beside the birth sibship with a line
- * of their own, as extra parents, rather than as the parents the child
- * descends from. Their links are left out here. Everyone else's parents are
- * as given.
+ * Each person's parents as the layout places them. A child adopted or raised
+ * by a relative (see `relativeRaisers`) stays in their birth family: the
+ * relatives who raise them, and anyone raising them alongside, are drawn
+ * beside the birth family with a line of their own, as extra parents, rather
+ * than as the parents the child descends from. Their links are left out here.
+ * Everyone else's parents are as given.
  */
 function placementParents(ped: PedigreeInput): ParentConnection[][] {
-  const partnersOf = new Map<number, number[]>();
-  for (const { partnerIndex1: a, partnerIndex2: b } of ped.partners ?? []) {
-    partnersOf.set(a, [...(partnersOf.get(a) ?? []), b]);
-    partnersOf.set(b, [...(partnersOf.get(b) ?? []), a]);
-  }
-  const isRaising = (p: ParentConnection) =>
-    p.edgeType === 'adoptive' || p.edgeType === 'social';
-  return ped.parents.map((conns) => {
-    const birthParents = new Set(
-      conns
-        .filter((p) => p.edgeType === 'biological')
-        .map((p) => p.parentIndex),
-    );
-    const siblings = new Set(
-      conns
-        .filter(
+  const raisers = relativeRaisers(ped.parents, ped.partners);
+  return ped.parents.map((conns, child) =>
+    raisers[child]!.size === 0
+      ? conns
+      : conns.filter(
           (p) =>
-            isRaising(p) &&
-            ped.parents[p.parentIndex]!.some(
-              (q) =>
-                isPrimaryEdge(q.edgeType) && birthParents.has(q.parentIndex),
+            !(
+              (p.edgeType === 'adoptive' || p.edgeType === 'social') &&
+              raisers[child]!.has(p.parentIndex)
             ),
-        )
-        .map((p) => p.parentIndex),
-    );
-    if (siblings.size === 0) return conns;
-    const raisedWithSibling = (parent: number) =>
-      siblings.has(parent) ||
-      (partnersOf.get(parent) ?? []).some((partner) => siblings.has(partner));
-    return conns.filter(
-      (p) => !(isRaising(p) && raisedWithSibling(p.parentIndex)),
-    );
-  });
+        ),
+  );
 }
 
 function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {

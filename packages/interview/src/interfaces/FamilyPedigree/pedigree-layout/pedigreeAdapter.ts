@@ -15,6 +15,7 @@ import type {
   Relation,
   ScalingParams,
 } from './types';
+import { relativeRaisers } from './utils';
 
 export type ConnectorRenderData = {
   connectors: PedigreeConnectors;
@@ -104,31 +105,21 @@ export function toPedigreeInput(
   // birth parent who is the partner of one of the child's adoptive parents (a
   // step-parent adoption) raises the child in that family, so their edge stays
   // biological and the child descends from them within the couple. A child
-  // adopted by their own sibling (kinship adoption) stays in their birth
+  // adopted by a relative (see `relativeRaisers`) stays in their birth
   // family, so their birth parents stay parents too; the layout draws the
-  // sibling's adoptive line beside the birth sibship.
+  // relatives' adoptive lines beside the birth family.
   const partnersOf = new Map<number, Set<number>>();
   for (const { partnerIndex1: a, partnerIndex2: b } of partnerConnections) {
     partnersOf.set(a, new Set([...(partnersOf.get(a) ?? []), b]));
     partnersOf.set(b, new Set([...(partnersOf.get(b) ?? []), a]));
   }
-  const givenParents = parents.map((conns) => conns.map((p) => ({ ...p })));
+  const raisedByRelatives = relativeRaisers(parents, partnerConnections);
   for (let i = 0; i < n; i++) {
     const adoptiveParents = parents[i]!.filter(
       (p) => p.edgeType === 'adoptive',
     ).map((p) => p.parentIndex);
     if (adoptiveParents.length === 0) continue;
-    const birthParents = new Set(
-      givenParents[i]!.filter((p) => p.edgeType === 'biological').map(
-        (p) => p.parentIndex,
-      ),
-    );
-    const adoptedBySibling = adoptiveParents.some((adoptive) =>
-      givenParents[adoptive]!.some(
-        (p) => p.edgeType === 'biological' && birthParents.has(p.parentIndex),
-      ),
-    );
-    if (adoptedBySibling) continue;
+    if (raisedByRelatives[i]!.size > 0) continue;
     for (const p of parents[i]!) {
       if (p.edgeType !== 'biological') continue;
       const raisesChild = adoptiveParents.some(
