@@ -1,10 +1,11 @@
 import { Effect } from 'effect';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { SessionPayload } from '@codaco/interview/contract';
+import type { SessionSnapshot } from '@codaco/interview/contract';
 import { RateLimited } from '@codaco/studio-contract/schema/errors';
 import {
   LinkUnavailable,
+  SessionEnded,
   SessionOutOfDate,
   SessionTakenOver,
 } from '@codaco/studio-contract/schema/participant';
@@ -15,7 +16,10 @@ import {
   pageRevisionBase,
 } from '../interviewHandlers.ts';
 
-const session = (name: string): SessionPayload => ({
+/** Where these interviews end: the protocol's finish stage. */
+const FINISH = { stageId: 'finish', outcome: 'completed' } as const;
+
+const session = (name: string): SessionSnapshot => ({
   id: 'session-1',
   startTime: '2026-01-01T00:00:00.000Z',
   finishTime: null,
@@ -36,6 +40,8 @@ const session = (name: string): SessionPayload => ({
     edges: [],
   },
   stageMetadata: {},
+  localePreference: null,
+  locale: null,
 });
 
 const handlersFor = (step = 1) => {
@@ -54,7 +60,7 @@ const handlersFor = (step = 1) => {
 const SYNC = { immediate: true, unloading: false };
 
 const savedName = (payload: unknown): unknown =>
-  (payload as { network: SessionPayload['network'] }).network.ego.attributes
+  (payload as { network: SessionSnapshot['network'] }).network.ego.attributes
     .name;
 
 afterEach(() => {
@@ -191,7 +197,7 @@ describe('the participant sync handler’s recovery', () => {
     const { onSync, onFinish } = handlersFor();
 
     await onSync('session-1', session('Ada'), SYNC);
-    await onFinish('session-1', new AbortController().signal);
+    await onFinish('session-1', FINISH, new AbortController().signal);
 
     expect(harness.calls.map(({ tag, payload }) => [tag, payload])).toEqual([
       ['participant.sync', expect.objectContaining({ revision: '8' })],
@@ -202,7 +208,7 @@ describe('the participant sync handler’s recovery', () => {
           network: session('Ada').network,
         }),
       ],
-      ['participant.finish', { holderEpoch: 3, revision: '9' }],
+      ['participant.finish', { holderEpoch: 3, revision: '9', ...FINISH }],
     ]);
   });
 
@@ -391,7 +397,7 @@ describe('the participant sync handler’s own saves', () => {
   const savedNames = (calls: ReadonlyArray<{ readonly payload: unknown }>) =>
     calls.map(
       ({ payload }) =>
-        (payload as { network: SessionPayload['network'] }).network.ego
+        (payload as { network: SessionSnapshot['network'] }).network.ego
           .attributes.name,
     );
 
@@ -442,7 +448,7 @@ describe('the participant sync handler’s own saves', () => {
 
     await onSync('session-1', session('Ada'), SYNC);
     void onSync('session-1', session('Grace'), ORDINARY).catch(() => undefined);
-    await onFinish('session-1', new AbortController().signal);
+    await onFinish('session-1', FINISH, new AbortController().signal);
 
     expect(
       savedNames(harness.calls.filter(({ tag }) => tag === 'participant.sync')),
@@ -498,7 +504,7 @@ describe('the participant stage flush', () => {
     // no answer, and straight to Finish.
     moveTo(2);
     saveStep();
-    await onFinish('session-1', new AbortController().signal);
+    await onFinish('session-1', FINISH, new AbortController().signal);
 
     expect(harness.calls.map(({ tag, payload }) => [tag, payload])).toEqual([
       ['participant.sync', expect.objectContaining({ revision: '8' })],
@@ -506,7 +512,7 @@ describe('the participant stage flush', () => {
         'participant.sync',
         expect.objectContaining({ revision: '9', stageIndex: 2 }),
       ],
-      ['participant.finish', { holderEpoch: 3, revision: '9' }],
+      ['participant.finish', { holderEpoch: 3, revision: '9', ...FINISH }],
     ]);
   });
 
@@ -563,10 +569,13 @@ describe('the participant page’s save numbers', () => {
     });
     const { onFinish } = numbered(5000n);
 
-    await onFinish('session-1', new AbortController().signal);
+    await onFinish('session-1', FINISH, new AbortController().signal);
 
     expect(harness.calls).toEqual([
-      { tag: 'participant.finish', payload: { holderEpoch: 3, revision: '7' } },
+      {
+        tag: 'participant.finish',
+        payload: { holderEpoch: 3, revision: '7', ...FINISH },
+      },
     ]);
   });
 
@@ -580,7 +589,7 @@ describe('the participant page’s save numbers', () => {
 describe('the participant finish handler', () => {
   const signal = new AbortController().signal;
 
-  it('finishes at the last revision it saved, then shows the finished notice', async () => {
+  it('finishes at the last revision it saved, and leaves the interview mounted', async () => {
     const harness = installParticipantHarness({
       'participant.sync': (payload) =>
         Effect.succeed({ revision: payload.revision, applied: true }),
@@ -589,13 +598,38 @@ describe('the participant finish handler', () => {
     const { onSync, onFinish, onNotice } = handlersFor();
 
     await onSync('session-1', session('Ada'), SYNC);
-    await onFinish('session-1', signal);
+    await onFinish('session-1', FINISH, signal);
 
     expect(harness.calls.at(-1)).toEqual({
       tag: 'participant.finish',
-      payload: { holderEpoch: 3, revision: '8' },
+      payload: { holderEpoch: 3, revision: '8', ...FINISH },
     });
-    expect(onNotice).toHaveBeenCalledWith('finished');
+    expect(onNotice).not.toHaveBeenCalled();
+  });
+
+  it('sends the finish stage the interview ended at and its outcome', async () => {
+    const harness = installParticipantHarness({
+      'participant.finish': () => Effect.succeed({ state: 'completed' }),
+    });
+    const { onFinish } = handlersFor();
+
+    await onFinish(
+      'session-1',
+      { stageId: 'screened-out', outcome: 'ineligible' },
+      signal,
+    );
+
+    expect(harness.calls).toEqual([
+      {
+        tag: 'participant.finish',
+        payload: {
+          holderEpoch: 3,
+          revision: '7',
+          stageId: 'screened-out',
+          outcome: 'ineligible',
+        },
+      },
+    ]);
   });
 
   it('saves the latest answers again when the server is behind, then finishes', async () => {
@@ -620,12 +654,12 @@ describe('the participant finish handler', () => {
       unloading: true,
     });
     await expect(saved).rejects.toBeInstanceOf(RateLimited);
-    await onFinish('session-1', signal);
+    await onFinish('session-1', FINISH, signal);
 
     expect(harness.calls.map(({ tag, payload }) => [tag, payload])).toEqual([
       ['participant.sync', expect.objectContaining({ revision: '8' })],
       // The save at 8 was refused, so the server still holds 7.
-      ['participant.finish', { holderEpoch: 3, revision: '7' }],
+      ['participant.finish', { holderEpoch: 3, revision: '7', ...FINISH }],
       [
         'participant.sync',
         expect.objectContaining({
@@ -633,9 +667,9 @@ describe('the participant finish handler', () => {
           network: session('Ada').network,
         }),
       ],
-      ['participant.finish', { holderEpoch: 3, revision: '9' }],
+      ['participant.finish', { holderEpoch: 3, revision: '9', ...FINISH }],
     ]);
-    expect(onNotice).toHaveBeenCalledWith('finished');
+    expect(onNotice).not.toHaveBeenCalled();
   });
 
   it('stops when the participant cancels while the finish is on the wire', async () => {
@@ -648,7 +682,7 @@ describe('the participant finish handler', () => {
     const cancel = new AbortController();
 
     await onSync('session-1', session('Ada'), SYNC);
-    const finishing = onFinish('session-1', cancel.signal);
+    const finishing = onFinish('session-1', FINISH, cancel.signal);
     await vi.waitFor(() => expect(harness.calls).toHaveLength(2));
     cancel.abort();
 
@@ -669,7 +703,9 @@ describe('the participant finish handler', () => {
     const { onSync, onFinish, onNotice } = handlersFor();
 
     await onSync('session-1', session('Ada'), SYNC);
-    await expect(onFinish('session-1', cancel.signal)).rejects.toMatchObject({
+    await expect(
+      onFinish('session-1', FINISH, cancel.signal),
+    ).rejects.toMatchObject({
       name: 'AbortError',
     });
 
@@ -681,16 +717,38 @@ describe('the participant finish handler', () => {
     expect(onNotice).not.toHaveBeenCalled();
   });
 
-  it('shows the finished notice when the interview was already finished', async () => {
-    installParticipantHarness({
-      'participant.finish': () =>
-        Effect.fail(new LinkUnavailable({ state: 'finished' })),
+  it.each([
+    ['the link', new LinkUnavailable({ state: 'finished' })],
+    ['the session', new SessionEnded({ state: 'completed' })],
+  ])(
+    'finishes without a notice when %s says the interview was already finished',
+    async (_, refusal) => {
+      installParticipantHarness({
+        'participant.finish': () => Effect.fail(refusal),
+      });
+      const { onFinish, onNotice } = handlersFor();
+
+      await expect(
+        onFinish('session-1', FINISH, signal),
+      ).resolves.toBeUndefined();
+
+      expect(onNotice).not.toHaveBeenCalled();
+    },
+  );
+
+  it('saves nothing more once the interview has finished', async () => {
+    const harness = installParticipantHarness({
+      'participant.sync': (payload) =>
+        Effect.succeed({ revision: payload.revision, applied: true }),
+      'participant.finish': () => Effect.succeed({ state: 'completed' }),
     });
-    const { onFinish, onNotice } = handlersFor();
+    const { onSync, onFinish, flushStep } = handlersFor();
 
-    await expect(onFinish('session-1', signal)).resolves.toBeUndefined();
+    await onFinish('session-1', FINISH, signal);
+    await onSync('session-1', session('Ada'), SYNC);
+    flushStep();
 
-    expect(onNotice).toHaveBeenCalledWith('finished');
+    expect(harness.calls.map(({ tag }) => tag)).toEqual(['participant.finish']);
   });
 
   it('shows the refusal and rejects, so the runtime does not count a finish', async () => {
@@ -700,7 +758,7 @@ describe('the participant finish handler', () => {
     });
     const { onFinish, onNotice } = handlersFor();
 
-    await expect(onFinish('session-1', signal)).rejects.toBeInstanceOf(
+    await expect(onFinish('session-1', FINISH, signal)).rejects.toBeInstanceOf(
       SessionTakenOver,
     );
     expect(onNotice).toHaveBeenCalledWith('takenOver');
@@ -712,7 +770,7 @@ describe('the participant finish handler', () => {
     });
     const { onFinish, onNotice } = handlersFor();
 
-    await expect(onFinish('session-1', signal)).rejects.toBeDefined();
+    await expect(onFinish('session-1', FINISH, signal)).rejects.toBeDefined();
     expect(onNotice).not.toHaveBeenCalled();
   });
 });

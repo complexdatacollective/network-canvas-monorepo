@@ -1,11 +1,24 @@
 {
+  "allAddedNotice": {
+    "en": "There is nothing left to add from this list."
+  },
   "dataSource": "roster_data",
+  "externalDataError": {
+    "en": "External data could not be loaded."
+  },
   "id": "id-1",
-  "label": "Select From Roster",
+  "label": {
+    "en": "Select From Roster"
+  },
+  "panelTitle": {
+    "en": "Available to add"
+  },
   "prompts": [
     {
       "id": "id-2",
-      "text": "Choose someone from the roster"
+      "text": {
+        "en": "Choose someone from the roster"
+      }
     }
   ],
   "subject": {

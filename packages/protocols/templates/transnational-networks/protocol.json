@@ -1,7 +1,11 @@
 {
   "name": "Transnational Networks",
-  "description": "An example template for studying the personal networks of people who have migrated. It pairs separate name generators for important people in the host country and abroad with a geospatial stage that places those people on a world map.",
-  "schemaVersion": 8,
+  "description": "An example template for studying the personal networks of people who have migrated. It pairs separate name generators for important people in the host country and abroad with a geospatial stage that places those people on a world map. It is written in English, Hungarian and Spanish.",
+  "schemaVersion": 9,
+  "localization": {
+    "defaultLocale": "en-US",
+    "locales": ["en-US", "es", "hu"]
+  },
   "lastModified": "2026-07-09T13:28:12.372Z",
   "assetManifest": {
     "mapbox-testing-token": {
@@ -22,17 +26,26 @@
       "variables": {
         "participant_consent": {
           "name": "participant_consent",
+          "label": "participant_consent",
           "type": "boolean",
           "component": "Boolean",
           "validation": { "required": true },
           "options": [
             {
-              "label": "Yes. I agree to take part.",
+              "label": {
+                "en-US": "Yes. I agree to take part.",
+                "es": "Sí. Acepto participar.",
+                "hu": "Igen. Beleegyezem a részvételbe."
+              },
               "value": true,
               "negative": false
             },
             {
-              "label": "No. I do not agree to take part.",
+              "label": {
+                "en-US": "No. I do not agree to take part.",
+                "es": "No. No acepto participar.",
+                "hu": "Nem. Nem egyezem bele a részvételbe."
+              },
               "value": false,
               "negative": true
             }
@@ -40,6 +53,7 @@
         },
         "birth_country": {
           "name": "birth_country",
+          "label": "birth_country",
           "type": "categorical",
           "component": "CheckboxGroup",
           "validation": {
@@ -48,17 +62,26 @@
           },
           "options": [
             {
-              "label": "Host country (where you live now)",
+              "label": {
+                "en-US": "This country (where I live now)",
+                "es": "En el país donde vivo ahora",
+                "hu": "Ebben az országban (ahol most élek)"
+              },
               "value": "host"
             },
             {
-              "label": "Another country (your country of origin)",
+              "label": {
+                "en-US": "Another country (my country of origin)",
+                "es": "En otro país (mi país de origen)",
+                "hu": "Egy másik országban (a származási országomban)"
+              },
               "value": "origin"
             }
           ]
         },
         "arrival_year": {
           "name": "arrival_year",
+          "label": "arrival_year",
           "type": "datetime",
           "component": "DatePicker",
           "parameters": {
@@ -68,6 +91,7 @@
         },
         "residency_status": {
           "name": "residency_status",
+          "label": "residency_status",
           "type": "categorical",
           "component": "ToggleButtonGroup",
           "validation": {
@@ -75,56 +99,90 @@
           },
           "options": [
             {
-              "label": "Citizen",
+              "label": {
+                "en-US": "Citizen of this country",
+                "es": "Nacionalidad o ciudadanía de este país",
+                "hu": "Ennek az országnak az állampolgára"
+              },
               "value": "citizen"
             },
             {
-              "label": "Permanent resident",
+              "label": {
+                "en-US": "Permanent resident",
+                "es": "Residencia permanente",
+                "hu": "Állandó tartózkodási engedély vagy jog"
+              },
               "value": "permanent_resident"
             },
             {
-              "label": "Temporary visa or permit",
+              "label": {
+                "en-US": "Temporary visa or permit",
+                "es": "Visa o permiso temporal",
+                "hu": "Ideiglenes vízum vagy engedély"
+              },
               "value": "temporary"
             },
             {
-              "label": "Refugee or asylum status",
+              "label": {
+                "en-US": "Refugee or asylum status",
+                "es": "Refugio o asilo",
+                "hu": "Menekültstátusz vagy menedékjog"
+              },
               "value": "refugee_asylum"
             },
             {
-              "label": "Undocumented or in process",
+              "label": {
+                "en-US": "Undocumented or in process",
+                "es": "Sin documentos o en trámite",
+                "hu": "Rendezetlen tartózkodási státusz vagy folyamatban lévő kérelem"
+              },
               "value": "undocumented"
             },
             {
-              "label": "Prefer not to say",
+              "label": {
+                "en-US": "Prefer not to say",
+                "es": "Prefiero no decirlo",
+                "hu": "Inkább nem válaszolnék"
+              },
               "value": "prefer_not_to_say"
             }
           ]
         },
         "language_proficiency": {
           "name": "language_proficiency",
+          "label": "language_proficiency",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
             {
-              "label": "Not at all",
+              "label": {
+                "en-US": "Not at all",
+                "es": "No lo hablo",
+                "hu": "Egyáltalán nem"
+              },
               "value": 1
             },
             {
-              "label": "Not well",
+              "label": { "en-US": "Not well", "es": "Mal", "hu": "Nem jól" },
               "value": 2
             },
             {
-              "label": "Well",
+              "label": { "en-US": "Well", "es": "Bien", "hu": "Jól" },
               "value": 3
             },
             {
-              "label": "Very well",
+              "label": {
+                "en-US": "Very well",
+                "es": "Muy bien",
+                "hu": "Nagyon jól"
+              },
               "value": 4
             }
           ]
         },
         "years_since_migration": {
           "name": "years_since_migration",
+          "label": "years_since_migration",
           "type": "number",
           "component": "Number",
           "validation": {
@@ -134,27 +192,48 @@
         },
         "acculturative_stress": {
           "name": "acculturative_stress",
+          "label": "acculturative_stress",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
             {
-              "label": "Strongly disagree",
+              "label": {
+                "en-US": "Strongly disagree",
+                "es": "Muy en desacuerdo",
+                "hu": "Egyáltalán nem értek egyet"
+              },
               "value": 1
             },
             {
-              "label": "Disagree",
+              "label": {
+                "en-US": "Disagree",
+                "es": "En desacuerdo",
+                "hu": "Nem értek egyet"
+              },
               "value": 2
             },
             {
-              "label": "Neither agree nor disagree",
+              "label": {
+                "en-US": "Neither agree nor disagree",
+                "es": "Ni de acuerdo ni en desacuerdo",
+                "hu": "Egyet is értek, meg nem is"
+              },
               "value": 3
             },
             {
-              "label": "Agree",
+              "label": {
+                "en-US": "Agree",
+                "es": "De acuerdo",
+                "hu": "Egyetértek"
+              },
               "value": 4
             },
             {
-              "label": "Strongly agree",
+              "label": {
+                "en-US": "Strongly agree",
+                "es": "Muy de acuerdo",
+                "hu": "Teljesen egyetértek"
+              },
               "value": 5
             }
           ]
@@ -164,6 +243,7 @@
     "node": {
       "person": {
         "name": "Person",
+        "label": { "en-US": "Person", "es": "Persona", "hu": "Személy" },
         "color": "node-color-seq-1",
         "icon": "add-a-person",
         "shape": {
@@ -172,6 +252,7 @@
         "variables": {
           "alter_name": {
             "name": "alter_name",
+            "label": "alter_name",
             "type": "text",
             "component": "Text",
             "validation": {
@@ -181,6 +262,7 @@
           },
           "relationship": {
             "name": "relationship",
+            "label": "relationship",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -188,33 +270,50 @@
             },
             "options": [
               {
-                "label": "Partner or spouse",
+                "label": {
+                  "en-US": "Partner or spouse",
+                  "es": "Pareja o cónyuge",
+                  "hu": "Partner vagy házastárs"
+                },
                 "value": "partner"
               },
               {
-                "label": "Family member or relative",
+                "label": {
+                  "en-US": "Family member or relative",
+                  "es": "Familiar o pariente",
+                  "hu": "Családtag vagy rokon"
+                },
                 "value": "family"
               },
               {
-                "label": "Friend",
+                "label": { "en-US": "Friend", "es": "Amistad", "hu": "Barát" },
                 "value": "friend"
               },
               {
-                "label": "Co-worker or classmate",
+                "label": {
+                  "en-US": "Co-worker or classmate",
+                  "es": "Persona del trabajo o de los estudios",
+                  "hu": "Munkatárs vagy osztálytárs"
+                },
                 "value": "coworker"
               },
               {
-                "label": "Community or religious member",
+                "label": {
+                  "en-US": "Community or religious member",
+                  "es": "Persona de su comunidad o de un grupo religioso",
+                  "hu": "Közösségi vagy vallási csoport tagja"
+                },
                 "value": "community_member"
               },
               {
-                "label": "Other",
+                "label": { "en-US": "Other", "es": "Otro", "hu": "Egyéb" },
                 "value": "other"
               }
             ]
           },
           "origin_country": {
             "name": "origin_country",
+            "label": "origin_country",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -222,25 +321,42 @@
             },
             "options": [
               {
-                "label": "Same origin country as me",
+                "label": {
+                  "en-US": "Same origin country as me",
+                  "es": "Del mismo país de origen que yo",
+                  "hu": "Ugyanabból a származási országból, mint én"
+                },
                 "value": "same_origin"
               },
               {
-                "label": "The host country",
+                "label": {
+                  "en-US": "This country",
+                  "es": "De este país",
+                  "hu": "Ebből az országból"
+                },
                 "value": "host_country"
               },
               {
-                "label": "A different country",
+                "label": {
+                  "en-US": "A different country",
+                  "es": "De otro país",
+                  "hu": "Egy másik országból"
+                },
                 "value": "other_country"
               },
               {
-                "label": "Don't know",
+                "label": {
+                  "en-US": "Don't know",
+                  "es": "No lo sé",
+                  "hu": "Nem tudom"
+                },
                 "value": "dont_know"
               }
             ]
           },
           "shared_language": {
             "name": "shared_language",
+            "label": "shared_language",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -248,25 +364,42 @@
             },
             "options": [
               {
-                "label": "My first / origin language",
+                "label": {
+                  "en-US": "My first / origin language",
+                  "es": "Mi lengua materna o de origen",
+                  "hu": "Az anyanyelvem / a származásom nyelve"
+                },
                 "value": "origin_language"
               },
               {
-                "label": "The main host-country language",
+                "label": {
+                  "en-US": "The main language of this country",
+                  "es": "El idioma principal de este país",
+                  "hu": "Ennek az országnak a fő nyelve"
+                },
                 "value": "host_language"
               },
               {
-                "label": "Both languages",
+                "label": {
+                  "en-US": "Both languages",
+                  "es": "Los dos idiomas",
+                  "hu": "Mindkét nyelv"
+                },
                 "value": "both"
               },
               {
-                "label": "Another language",
+                "label": {
+                  "en-US": "Another language",
+                  "es": "Otro idioma",
+                  "hu": "Egy másik nyelv"
+                },
                 "value": "other_language"
               }
             ]
           },
           "how_met": {
             "name": "how_met",
+            "label": "how_met",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -274,48 +407,70 @@
             },
             "options": [
               {
-                "label": "In my country of origin",
+                "label": {
+                  "en-US": "In my country of origin",
+                  "es": "En mi país de origen",
+                  "hu": "A származási országomban"
+                },
                 "value": "in_origin_country"
               },
               {
-                "label": "Since arriving in the host country",
+                "label": {
+                  "en-US": "In this country, after I arrived",
+                  "es": "En este país, después de llegar",
+                  "hu": "Ebben az országban, miután ideérkeztem"
+                },
                 "value": "since_arriving"
               },
               {
-                "label": "Through family",
+                "label": {
+                  "en-US": "Through family",
+                  "es": "A través de la familia",
+                  "hu": "A családon keresztül"
+                },
                 "value": "through_family"
               },
               {
-                "label": "Through work or study",
+                "label": {
+                  "en-US": "Through work or study",
+                  "es": "A través del trabajo o los estudios",
+                  "hu": "Munka vagy tanulás révén"
+                },
                 "value": "through_work"
               },
               {
-                "label": "Online",
+                "label": {
+                  "en-US": "Online",
+                  "es": "Por internet",
+                  "hu": "Az interneten"
+                },
                 "value": "online"
               },
               {
-                "label": "Other",
+                "label": { "en-US": "Other", "es": "Otro", "hu": "Egyéb" },
                 "value": "other"
               }
             ]
           },
           "co_ethnic": {
             "name": "co_ethnic",
+            "label": "co_ethnic",
             "type": "boolean",
             "component": "Boolean",
             "options": [
               {
-                "label": "Yes",
+                "label": { "en-US": "Yes", "es": "Sí", "hu": "Igen" },
                 "value": true
               },
               {
-                "label": "No",
+                "label": { "en-US": "No", "es": "No", "hu": "Nem" },
                 "value": false
               }
             ]
           },
           "support_type": {
             "name": "support_type",
+            "label": "support_type",
             "type": "categorical",
             "component": "CheckboxGroup",
             "validation": {
@@ -323,56 +478,95 @@
             },
             "options": [
               {
-                "label": "Emotional support (someone to confide in or who shows you love and affection)",
+                "label": {
+                  "en-US": "Emotional support (someone to confide in or who shows you love and affection)",
+                  "es": "Apoyo emocional (alguien a quien contarle sus cosas o que le muestra amor y afecto)",
+                  "hu": "Érzelmi támogatás (valaki, akivel bizalmasan beszélhet, vagy aki szeretetet és törődést mutat Ön iránt)"
+                },
                 "value": "emotional"
               },
               {
-                "label": "Practical support (help with chores, errands, or a place to stay)",
+                "label": {
+                  "en-US": "Practical support (help with chores, errands, or a place to stay)",
+                  "es": "Apoyo práctico (ayuda con las tareas de la casa, con recados o mandados, o con un lugar donde quedarse)",
+                  "hu": "Gyakorlati támogatás (segítség a házimunkában vagy a mindennapi teendők elintézésében, illetve szállás biztosítása)"
+                },
                 "value": "practical"
               },
               {
-                "label": "Informational support (advice and information when you need it)",
+                "label": {
+                  "en-US": "Informational support (advice and information when you need it)",
+                  "es": "Apoyo informativo (consejos e información cuando los necesita)",
+                  "hu": "Információs támogatás (tanács és információ, amikor Önnek szüksége van rá)"
+                },
                 "value": "informational"
               },
               {
-                "label": "Financial support (help with money or sending money)",
+                "label": {
+                  "en-US": "Financial support (help with money or sending money)",
+                  "es": "Apoyo económico (ayuda con dinero o con el envío de dinero)",
+                  "hu": "Anyagi támogatás (segítség pénzzel vagy pénzküldéssel)"
+                },
                 "value": "financial"
               }
             ]
           },
           "closeness": {
             "name": "closeness",
+            "label": "closeness",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
               {
-                "label": "Not close",
+                "label": {
+                  "en-US": "Not close",
+                  "es": "No cercana",
+                  "hu": "Nem áll közel"
+                },
                 "value": 1
               },
               {
-                "label": "Somewhat close",
+                "label": {
+                  "en-US": "Somewhat close",
+                  "es": "Algo cercana",
+                  "hu": "Valamennyire közel áll"
+                },
                 "value": 2
               },
               {
-                "label": "Close",
+                "label": {
+                  "en-US": "Close",
+                  "es": "Cercana",
+                  "hu": "Közel áll"
+                },
                 "value": 3
               },
               {
-                "label": "Very close",
+                "label": {
+                  "en-US": "Very close",
+                  "es": "Muy cercana",
+                  "hu": "Nagyon közel áll"
+                },
                 "value": 4
               },
               {
-                "label": "Especially close",
+                "label": {
+                  "en-US": "Especially close",
+                  "es": "Especialmente cercana",
+                  "hu": "Rendkívül közel áll"
+                },
                 "value": 5
               }
             ]
           },
           "alter_location": {
             "name": "alter_location",
+            "label": "alter_location",
             "type": "location"
           },
           "layout": {
             "name": "layout",
+            "label": "layout",
             "type": "layout"
           }
         }
@@ -381,6 +575,11 @@
     "edge": {
       "knows": {
         "name": "Knows",
+        "label": {
+          "en-US": "Knows",
+          "es": "Se conocen",
+          "hu": "Ismerik egymást"
+        },
         "color": "edge-color-seq-1"
       }
     }
@@ -389,29 +588,62 @@
     {
       "id": "information-researcher-notes",
       "type": "Information",
-      "label": "Template notes (delete before deploying)",
-      "title": "Template notes",
+      "label": {
+        "en-US": "Template notes (delete before deploying)",
+        "es": "Notas de la plantilla (eliminar antes de la puesta en marcha)",
+        "hu": "Megjegyzések a sablonhoz (az adatfelvétel előtt törölje)"
+      },
+      "title": {
+        "en-US": "Template notes",
+        "es": "Notas de la plantilla",
+        "hu": "Megjegyzések a sablonhoz"
+      },
       "items": [
         {
           "id": "researcher-notes",
           "type": "text",
-          "content": "## For researchers\n\n_Delete this screen before you field the study._\n\n_Customize the consent screen for your study and obtain the necessary ethics approval before fielding._\n\n**Map setup:** this template ships with Network Canvas's shared Mapbox testing token and a bundled world-countries GeoJSON, so the Geospatial stage renders out of the box while you evaluate it in Architect and Interviewer on networkcanvas.com. The testing token is rate-limited, for evaluation only, and works only on Network Canvas hosts: on Fresco or any other deployment of your own, the map will not load with it. Before you field this study anywhere, replace it with your own Mapbox access token in Architect (see the warning on the protocol timeline).\n\nThe instruments and studies this template draws on:\n\n- [Vacca R et al. Measuring personal networks of transnational migrants via binational link-tracing. *PLOS ONE*.](https://pmc.ncbi.nlm.nih.gov/articles/PMC8202912/)\n- [Lubbers MJ, Molina JL et al. A Personal Network Approach to the Study of Immigrant Structural Assimilation and Transnationalism.](https://www.researchgate.net/publication/309153406_A_Personal_Network_Approach_to_the_Study_of_Immigrant_Structural_Assimilation_and_Transnationalism)\n- [McCarty, Lubbers, Vacca & Molina (2019). *Conducting Personal Network Research* (Guilford Press).](https://www.guilford.com/books/Conducting-Personal-Network-Research/McCarty-Lubbers-Vacca-Molina/9781462538386/authors)\n- [Sherbourne CD, Stewart AL (1991). The MOS Social Support Survey. *Soc Sci Med* 32(6):705–714.](https://www.rand.org/pubs/reprints/RP218.html)"
+          "content": {
+            "en-US": "## For researchers\n\n_Delete this screen before you field the study._\n\n_Customize the consent screen for your study and obtain the necessary ethics approval before fielding._\n\n**Map setup:** this template ships with Network Canvas's shared Mapbox testing token and a bundled world-countries GeoJSON, so the Geospatial stage renders out of the box while you evaluate it in Architect and Interviewer on networkcanvas.com. The testing token is rate-limited, for evaluation only, and works only on Network Canvas hosts: on Fresco or any other deployment of your own, the map will not load with it. Before you field this study anywhere, replace it with your own Mapbox access token in Architect (see the warning on the protocol timeline).\n\n**Languages:** this template is written in English, Hungarian and Spanish, and the Language screen after this one lets participants choose between them. To field it in fewer languages, remove the others on the Languages page, and if only one is left, delete the Language screen too. To add a language, add it on the Languages page and translate each text in the translation table.\n\nThe instruments and studies this template draws on:\n\n- [Vacca R et al. Measuring personal networks of transnational migrants via binational link-tracing. *PLOS ONE*.](https://pmc.ncbi.nlm.nih.gov/articles/PMC8202912/)\n- [Lubbers MJ, Molina JL et al. A Personal Network Approach to the Study of Immigrant Structural Assimilation and Transnationalism.](https://www.researchgate.net/publication/309153406_A_Personal_Network_Approach_to_the_Study_of_Immigrant_Structural_Assimilation_and_Transnationalism)\n- [McCarty, Lubbers, Vacca & Molina (2019). *Conducting Personal Network Research* (Guilford Press).](https://www.guilford.com/books/Conducting-Personal-Network-Research/McCarty-Lubbers-Vacca-Molina/9781462538386/authors)\n- [Sherbourne CD, Stewart AL (1991). The MOS Social Support Survey. *Soc Sci Med* 32(6):705–714.](https://www.rand.org/pubs/reprints/RP218.html)",
+            "es": "## Para el equipo de investigación\n\n_Elimina esta pantalla antes de poner en marcha el estudio._\n\n_Adapta la pantalla de consentimiento a tu estudio y obtén la aprobación ética necesaria antes de ponerlo en marcha._\n\n**Configuración del mapa:** esta plantilla trae el token compartido de prueba de Mapbox de Network Canvas y un GeoJSON integrado con los países del mundo, para que la etapa geoespacial se muestre desde el inicio mientras evalúas la plantilla en Architect y en Interviewer en networkcanvas.com. El token de prueba tiene un límite de uso, solo sirve para evaluación y solo funciona en los sitios de Network Canvas: en Fresco o en cualquier otra instalación propia, el mapa no se cargará con él. Antes de poner en marcha este estudio en cualquier lugar, sustitúyelo en Architect por tu propio token de acceso de Mapbox (consulta el aviso en la secuencia de etapas del protocolo).\n\n**Idiomas:** esta plantilla está escrita en inglés, húngaro y español, y la pantalla Idioma, que sigue a esta, permite a los participantes elegir entre ellos. Para ponerla en marcha en menos idiomas, elimina los demás en la página Idiomas y, si solo queda uno, elimina también la pantalla Idioma. Para añadir un idioma, añádelo en la página Idiomas y traduce cada texto en la Tabla de traducciones.\n\nInstrumentos y estudios en los que se basa esta plantilla:\n\n- [Vacca R et al. Measuring personal networks of transnational migrants via binational link-tracing. *PLOS ONE*.](https://pmc.ncbi.nlm.nih.gov/articles/PMC8202912/)\n- [Lubbers MJ, Molina JL et al. A Personal Network Approach to the Study of Immigrant Structural Assimilation and Transnationalism.](https://www.researchgate.net/publication/309153406_A_Personal_Network_Approach_to_the_Study_of_Immigrant_Structural_Assimilation_and_Transnationalism)\n- [McCarty, Lubbers, Vacca & Molina (2019). *Conducting Personal Network Research* (Guilford Press).](https://www.guilford.com/books/Conducting-Personal-Network-Research/McCarty-Lubbers-Vacca-Molina/9781462538386/authors)\n- [Sherbourne CD, Stewart AL (1991). The MOS Social Support Survey. *Soc Sci Med* 32(6):705–714.](https://www.rand.org/pubs/reprints/RP218.html)",
+            "hu": "## Kutatóknak\n\n_Törölje ezt a képernyőt, mielőtt elindítja az adatfelvételt._\n\n_Igazítsa a beleegyezési képernyőt a saját kutatásához, és az adatfelvétel előtt szerezze be a szükséges etikai engedélyt._\n\n**A térkép beállítása:** a sablon a Network Canvas közös Mapbox-tesztelési tokenjével és egy beépített, a világ országait tartalmazó GeoJSON-fájllal érkezik, így a térképes („Geospatial”) képernyő külön beállítás nélkül is megjelenik, amíg Ön a networkcanvas.com oldalon elérhető Architect és Interviewer alkalmazásban kipróbálja a sablont. A tesztelési tokenre lekérési korlát vonatkozik, csak kipróbálásra szolgál, és kizárólag a Network Canvas által üzemeltetett oldalakon működik: a Fresco vagy bármely más saját telepítés esetén a térkép nem töltődik be vele. Mielőtt bárhol elindítja az adatfelvételt, cserélje le a tokent az Architect alkalmazásban a saját Mapbox-hozzáférési tokenjére; ehhez lásd a protokoll idővonalán („timeline”) megjelenő figyelmeztetést.\n\n**Nyelvek:** a sablon angol, magyar és spanyol nyelven készült, és az ezt követő Nyelv („Language”) képernyőn a résztvevők választhatnak ezek közül. Ha kevesebb nyelven szeretné elvégezni az adatfelvételt, törölje a többi nyelvet a Nyelvek („Languages”) oldalon, és ha csak egy marad, törölje a Nyelv képernyőt is. Új nyelv hozzáadásához vegye fel a nyelvet a Nyelvek oldalon, majd fordítsa le az egyes szövegeket a fordítási táblázatban („translation table”).\n\nA sablon az alábbi mérőeszközökre és kutatásokra épül:\n\n- [Vacca R et al. Measuring personal networks of transnational migrants via binational link-tracing. *PLOS ONE*.](https://pmc.ncbi.nlm.nih.gov/articles/PMC8202912/)\n- [Lubbers MJ, Molina JL et al. A Personal Network Approach to the Study of Immigrant Structural Assimilation and Transnationalism.](https://www.researchgate.net/publication/309153406_A_Personal_Network_Approach_to_the_Study_of_Immigrant_Structural_Assimilation_and_Transnationalism)\n- [McCarty, Lubbers, Vacca & Molina (2019). *Conducting Personal Network Research* (Guilford Press).](https://www.guilford.com/books/Conducting-Personal-Network-Research/McCarty-Lubbers-Vacca-Molina/9781462538386/authors)\n- [Sherbourne CD, Stewart AL (1991). The MOS Social Support Survey. *Soc Sci Med* 32(6):705–714.](https://www.rand.org/pubs/reprints/RP218.html)"
+          }
         }
       ]
     },
     {
+      "id": "language-chooser",
+      "type": "LanguageChooser",
+      "label": { "en-US": "Language", "es": "Idioma", "hu": "Nyelv" }
+    },
+    {
       "id": "information-intro",
       "type": "EgoForm",
-      "label": "Welcome and consent",
+      "label": {
+        "en-US": "Welcome and consent",
+        "es": "Bienvenida y consentimiento",
+        "hu": "Üdvözlés és beleegyezés"
+      },
       "introductionPanel": {
-        "title": "About this study",
-        "text": "## Welcome\n\nThank you for considering taking part. In this interview we will talk about the **important people in your life** — both those near you here, and those who live in your country of origin or elsewhere abroad.\n\nThere are no right or wrong answers. We are simply interested in your own experience and the people who matter to you.\n\n### How it works\n\n- First we will ask a few questions about your own background and migration history.\n- Then you will be asked to name people you are connected to, here and abroad, and answer some questions about each of them.\n- Later you will place some of these people on a map, sort them into groups, and show how they know one another.\n\nYou may skip any question you prefer not to answer, and you can stop at any time. Your answers are confidential and will be used only for research. The researcher should explain the study and give you a chance to ask questions before you choose an option below. If you do not agree to take part, the interview will end."
+        "title": {
+          "en-US": "About this study",
+          "es": "Sobre este estudio",
+          "hu": "A kutatásról"
+        },
+        "text": {
+          "en-US": "## Welcome\n\nThank you for considering taking part. In this interview we will talk about the **important people in your life** — both those near you here, and those who live in your country of origin or elsewhere abroad.\n\nThere are no right or wrong answers. We are simply interested in your own experience and the people who matter to you.\n\n### How it works\n\n- First we will ask a few questions about your own background and migration history.\n- Then you will be asked to name people you are connected to, here and abroad, and answer some questions about each of them.\n- Later you will place these people on a map, sort them into groups, and show how they know one another.\n\nYou may skip any question you prefer not to answer, and you can stop at any time. Your answers are confidential and will be used only for research. The researcher should explain the study and give you a chance to ask questions before you choose an option below. If you do not agree to take part, the interview will end.",
+          "es": "## Le damos la bienvenida\n\nGracias por considerar su participación. En esta entrevista hablaremos de las **personas importantes en su vida**: tanto las que tiene cerca, aquí, como las que viven en su país de origen o en otros países.\n\nNo hay respuestas correctas ni incorrectas. Simplemente nos interesan su propia experiencia y las personas que le importan.\n\n### Cómo funciona\n\n- Primero le haremos algunas preguntas sobre su propia historia personal y migratoria.\n- Después le pediremos que nombre a las personas con las que tiene relación, aquí y en el extranjero, y que responda algunas preguntas sobre cada una de ellas.\n- Más adelante colocará a estas personas en un mapa, las clasificará en grupos y mostrará quién conoce a quién.\n\nPuede saltarse cualquier pregunta que prefiera no responder y puede parar en cualquier momento. Sus respuestas son confidenciales y solo se usarán con fines de investigación. La persona encargada del estudio debería explicarle en qué consiste y darle la oportunidad de hacer preguntas antes de que elija una opción más abajo. Si no acepta participar, la entrevista terminará.",
+          "hu": "## Üdvözöljük\n\nKöszönjük, hogy fontolóra veszi a részvételt. Ebben az interjúban az **Ön életében fontos emberekről** fogunk beszélgetni – azokról is, akik itt, az Ön közelében élnek, és azokról is, akik a származási országában vagy máshol külföldön élnek.\n\nNincsenek jó vagy rossz válaszok. Egyszerűen az Ön saját tapasztalatai és az Ön számára fontos emberek érdekelnek minket.\n\n### Hogyan zajlik?\n\n- Először néhány kérdést teszünk fel az Ön saját hátteréről és migrációs történetéről.\n- Ezután megkérjük, hogy nevezze meg azokat az embereket, akikhez kapcsolat fűzi, itt és külföldön, és válaszoljon néhány kérdésre mindegyikükről.\n- Később elhelyezi őket egy térképen, csoportokba sorolja, és megmutatja, ki kit ismer közülük.\n\nBármelyik kérdést kihagyhatja, amelyre nem szeretne válaszolni, és bármikor abbahagyhatja. Válaszait bizalmasan kezeljük, és csak kutatási célra használjuk fel. Mielőtt az alábbi lehetőségek közül választana, a kutatónak ismertetnie kell Önnel a kutatást, és lehetőséget kell adnia Önnek, hogy kérdéseket tegyen fel. Ha nem egyezik bele a részvételbe, az interjú véget ér."
+        }
       },
       "form": {
         "fields": [
           {
             "variable": "participant_consent",
-            "prompt": "Do you consent to participate in this study?"
+            "prompt": {
+              "en-US": "Do you consent to participate in this study?",
+              "es": "¿Da su consentimiento para participar en este estudio?",
+              "hu": "Beleegyezik, hogy részt vegyen ebben a kutatásban?"
+            }
           }
         ]
       }
@@ -419,7 +651,11 @@
     {
       "id": "ego-form-background",
       "type": "EgoForm",
-      "label": "Your background and migration history",
+      "label": {
+        "en-US": "Your background and migration history",
+        "es": "Su historia personal y migratoria",
+        "hu": "Az Ön háttere és migrációs története"
+      },
       "skipLogic": {
         "action": "SKIP",
         "filter": {
@@ -438,47 +674,96 @@
         "destination": { "type": "finish" }
       },
       "introductionPanel": {
-        "title": "A little about you",
-        "text": "Before we talk about the people in your life, we would like to understand a bit about **your own background and your migration history**. This helps us put the rest of your answers in context."
+        "title": {
+          "en-US": "A little about you",
+          "es": "Un poco sobre usted",
+          "hu": "Röviden Önről"
+        },
+        "text": {
+          "en-US": "Before we talk about the people in your life, we would like to understand a bit about **your own background and your migration history**. This helps us put the rest of your answers in context.",
+          "es": "Antes de hablar de las personas de su vida, nos gustaría conocer un poco **su propia historia personal y migratoria**. Esto nos ayuda a poner en contexto el resto de sus respuestas.",
+          "hu": "Mielőtt az Ön életében jelen lévő emberekről beszélnénk, szeretnénk egy kicsit megismerni **az Ön saját hátterét és migrációs történetét**. Ez segít abban, hogy a többi válaszát a megfelelő összefüggésben lássuk."
+        }
       },
       "form": {
         "fields": [
           {
             "variable": "birth_country",
-            "prompt": "Were you born in the country where you live now, or in another country?"
+            "prompt": {
+              "en-US": "Were you born in the country where you live now, or in another country?",
+              "es": "¿Nació en el país donde vive ahora o en otro país?",
+              "hu": "Abban az országban született, ahol most él, vagy egy másik országban?"
+            }
           },
           {
             "variable": "arrival_year",
-            "prompt": "In what year did you first come to live in this country?",
-            "hint": "If you were born here, you may skip this question."
+            "prompt": {
+              "en-US": "In what year did you first come to live in this country?",
+              "es": "¿En qué año vino a vivir a este país por primera vez?",
+              "hu": "Melyik évben költözött először ebbe az országba?"
+            },
+            "hint": {
+              "en-US": "If you were born here, you may skip this question.",
+              "es": "Si nació aquí, puede saltarse esta pregunta.",
+              "hu": "Ha itt született, ezt a kérdést kihagyhatja."
+            }
           },
           {
             "variable": "years_since_migration",
-            "prompt": "About how many years have you lived in this country?"
+            "prompt": {
+              "en-US": "About how many years have you lived in this country?",
+              "es": "¿Cuántos años, aproximadamente, lleva viviendo en este país?",
+              "hu": "Körülbelül hány éve él ebben az országban?"
+            }
           },
           {
             "variable": "residency_status",
-            "prompt": "Which of the following best describes your current residency or legal status?"
+            "prompt": {
+              "en-US": "Which of the following best describes your current residency or legal status?",
+              "es": "¿Cuál de las siguientes opciones describe mejor su situación legal o de residencia actual?",
+              "hu": "Az alábbiak közül melyik írja le legjobban az Ön jelenlegi tartózkodási vagy jogi státuszát?"
+            }
           },
           {
             "variable": "language_proficiency",
-            "prompt": "How well do you feel you can speak the main language of this country?"
+            "prompt": {
+              "en-US": "How well do you feel you can speak the main language of this country?",
+              "es": "¿Cómo cree que habla el idioma principal de este país?",
+              "hu": "Mit gondol, milyen jól beszéli ennek az országnak a fő nyelvét?"
+            }
           },
           {
             "variable": "acculturative_stress",
-            "prompt": "How much do you agree with the following: \"Because of where I come from, I often feel out of place or that I do not fully belong here.\""
+            "prompt": {
+              "en-US": "How much do you agree with the following: \"Because of where I come from, I often feel out of place or that I do not fully belong here.\"",
+              "es": "¿Hasta qué punto está de acuerdo con la siguiente afirmación: «Por venir de donde vengo, a menudo me siento fuera de lugar o siento que aquí no pertenezco del todo»?",
+              "hu": "Mennyire ért egyet a következő állítással? „Amiatt, hogy honnan jöttem, gyakran érzem úgy, hogy nem vagyok a helyemen, vagy hogy nem tartozom teljesen ide.”"
+            }
           }
         ]
       }
     },
     {
       "id": "name-generator-host",
+      "maxNodesNotice": {
+        "en-US": "You have completed this task. Click the next arrow to continue.",
+        "es": "Has completado esta tarea. Pulsa la flecha de avance para continuar.",
+        "hu": "Ezt a feladatot befejezte. A folytatáshoz kattintson a következő nyílra."
+      },
       "type": "NameGenerator",
-      "label": "Important people here",
+      "label": {
+        "en-US": "Important people here",
+        "es": "Personas importantes aquí",
+        "hu": "Fontos emberek itt"
+      },
       "panels": [
         {
           "id": "name-generator-host-existing",
-          "title": "Already mentioned",
+          "title": {
+            "en-US": "Already mentioned",
+            "es": "Personas ya mencionadas",
+            "hu": "Már említett személyek"
+          },
           "dataSource": "existing"
         }
       ],
@@ -487,11 +772,19 @@
         "type": "person"
       },
       "form": {
-        "title": "Add Person",
+        "title": {
+          "en-US": "Add Person",
+          "es": "Añadir persona",
+          "hu": "Személy hozzáadása"
+        },
         "fields": [
           {
             "variable": "alter_name",
-            "prompt": "What is this person's name or a nickname you will recognise?"
+            "prompt": {
+              "en-US": "What is this person's name or a nickname you will recognise?",
+              "es": "¿Cuál es el nombre de esta persona, o un apodo que le permita reconocerla?",
+              "hu": "Mi ennek a személynek a neve, vagy egy olyan beceneve, amelyről Ön majd felismeri?"
+            }
           }
         ]
       },
@@ -502,22 +795,43 @@
       "prompts": [
         {
           "id": "host-discuss",
-          "text": "Thinking about the **place where you live now**, who are the people here that you feel **closest to**, or who are most important to you? These might be family, friends, neighbours, or people from work, study, or your community."
+          "text": {
+            "en-US": "Thinking about the **place where you live now**, who are the people here that you feel **closest to**, or who are most important to you? These might be family, friends, neighbours, or people from work, study, or your community.",
+            "es": "Pensando en el **lugar donde vive ahora**, ¿quiénes son las personas que están aquí y de las que se siente **más cerca**, o que son más importantes para usted? Pueden ser familiares, amistades, vecinos o personas del trabajo, de los estudios o de su comunidad.",
+            "hu": "Gondoljon arra a **helyre, ahol most él**: kik azok az emberek itt, akikhez **a legközelebb érzi magát**, vagy akik a legfontosabbak az Ön számára? Lehetnek ők családtagok, barátok, szomszédok vagy olyan emberek, akiket a munkájából, a tanulmányaiból vagy a közösségéből ismer."
+          }
         },
         {
           "id": "host-support",
-          "text": "Still thinking about people **here in this country**, who do you turn to for help — for example, someone to **talk to about something personal**, or who could **help you with a practical problem**?"
+          "text": {
+            "en-US": "Still thinking about people **here in this country**, who do you turn to for help — for example, someone to **talk to about something personal**, or who could **help you with a practical problem**?",
+            "es": "Pensando todavía en las personas que están **aquí, en este país**, ¿a quiénes acude cuando necesita ayuda? Por ejemplo, a alguien con quien **hablar de algo personal** o que pueda **ayudarle con un problema práctico**.",
+            "hu": "Továbbra is az **itt, ebben az országban** élő emberekre gondolva: kihez fordul segítségért – például olyan valakihez, **akivel beszélhet valami személyes dologról**, vagy aki **segíthet Önnek egy gyakorlati problémában**?"
+          }
         }
       ]
     },
     {
       "id": "name-generator-transnational",
+      "maxNodesNotice": {
+        "en-US": "You have completed this task. Click the next arrow to continue.",
+        "es": "Has completado esta tarea. Pulsa la flecha de avance para continuar.",
+        "hu": "Ezt a feladatot befejezte. A folytatáshoz kattintson a következő nyílra."
+      },
       "type": "NameGenerator",
-      "label": "Important people abroad",
+      "label": {
+        "en-US": "Important people abroad",
+        "es": "Personas importantes en el extranjero",
+        "hu": "Fontos emberek külföldön"
+      },
       "panels": [
         {
           "id": "name-generator-transnational-existing",
-          "title": "Already mentioned",
+          "title": {
+            "en-US": "Already mentioned",
+            "es": "Personas ya mencionadas",
+            "hu": "Már említett személyek"
+          },
           "dataSource": "existing"
         }
       ],
@@ -526,11 +840,19 @@
         "type": "person"
       },
       "form": {
-        "title": "Add Person",
+        "title": {
+          "en-US": "Add Person",
+          "es": "Añadir persona",
+          "hu": "Személy hozzáadása"
+        },
         "fields": [
           {
             "variable": "alter_name",
-            "prompt": "What is this person's name or a nickname you will recognise?"
+            "prompt": {
+              "en-US": "What is this person's name or a nickname you will recognise?",
+              "es": "¿Cuál es el nombre de esta persona, o un apodo que le permita reconocerla?",
+              "hu": "Mi ennek a személynek a neve, vagy egy olyan beceneve, amelyről Ön majd felismeri?"
+            }
           }
         ]
       },
@@ -541,44 +863,84 @@
       "prompts": [
         {
           "id": "transnational-origin",
-          "text": "Now think about people who live in **your country of origin**. Who are the people there who are **still important in your life** — people you stay in touch with, rely on, or feel close to?"
+          "text": {
+            "en-US": "Now think about people who live in **your country of origin**. Who are the people there who are **still important in your life** — people you stay in touch with, rely on, or feel close to?",
+            "es": "Ahora piense en las personas que viven en **su país de origen**. ¿Cuáles de ellas **siguen siendo importantes en su vida**: personas con las que mantiene el contacto, con las que cuenta o de las que se siente cerca?",
+            "hu": "Most gondoljon azokra az emberekre, akik **az Ön származási országában** élnek. Kik azok közülük, akik **továbbra is fontosak az életében** – akikkel tartja a kapcsolatot, akikre számíthat, vagy akikhez közel érzi magát?"
+          }
         },
         {
           "id": "transnational-elsewhere",
-          "text": "Are there other people important to you who live **somewhere else abroad** (not in this country and not in your country of origin)? If so, please add them here."
+          "text": {
+            "en-US": "Are there other people important to you who live **somewhere else abroad** (not in this country and not in your country of origin)? If so, please add them here.",
+            "es": "¿Hay otras personas importantes para usted que vivan **en otros países** (ni en este país ni en su país de origen)? Si es así, por favor, añádalas aquí.",
+            "hu": "Vannak-e más, az Ön számára fontos emberek, akik **valahol máshol külföldön** élnek (nem ebben az országban, és nem is a származási országában)? Ha igen, kérjük, adja hozzá őket itt."
+          }
         }
       ]
     },
     {
       "id": "alter-attributes",
       "type": "AlterForm",
-      "label": "About each person",
+      "label": {
+        "en-US": "About each person",
+        "es": "Sobre cada persona",
+        "hu": "Az egyes személyekről"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
       },
       "introductionPanel": {
-        "title": "About each person you named",
-        "text": "For each person you named, we will ask a few short questions about your relationship with them, where they are from, and the kinds of support they give you."
+        "title": {
+          "en-US": "About each person you named",
+          "es": "Sobre cada persona que ha nombrado",
+          "hu": "Minden személyről, akit megnevezett"
+        },
+        "text": {
+          "en-US": "For each person you named, we will ask a few short questions about your relationship with them, where they are from, and the kinds of support they give you.",
+          "es": "Para cada persona que ha nombrado, le haremos algunas preguntas breves sobre su relación con ella, de dónde es y qué tipos de apoyo le da a usted.",
+          "hu": "Minden személyről, akit megnevezett, felteszünk néhány rövid kérdést arról, milyen kapcsolat fűzi Önt hozzá, honnan származik az illető, és milyen fajta támogatást ad Önnek."
+        }
       },
       "form": {
         "fields": [
           {
             "variable": "relationship",
-            "prompt": "What is this person to you?"
+            "prompt": {
+              "en-US": "What is this person to you?",
+              "es": "¿Qué es esta persona para usted?",
+              "hu": "Ki Önnek ez a személy?"
+            }
           },
           {
             "variable": "shared_language",
-            "prompt": "Which language do you mainly speak together?"
+            "prompt": {
+              "en-US": "Which language do you mainly speak together?",
+              "es": "¿Qué idioma hablan principalmente entre ustedes?",
+              "hu": "Főként milyen nyelven beszél Ön ezzel a személlyel?"
+            }
           },
           {
             "variable": "co_ethnic",
-            "prompt": "Would you say this person is from the **same ethnic or cultural background** as you?"
+            "prompt": {
+              "en-US": "Would you say this person is from the **same ethnic or cultural background** as you?",
+              "es": "¿Diría que esta persona tiene **el mismo origen étnico o cultural** que usted?",
+              "hu": "Ön szerint ennek a személynek **ugyanaz az etnikai vagy kulturális háttere**, mint Önnek?"
+            }
           },
           {
             "variable": "support_type",
-            "prompt": "What kinds of **support** does this person give you?",
-            "hint": "Select all that apply."
+            "prompt": {
+              "en-US": "What kinds of **support** does this person give you?",
+              "es": "¿Qué tipos de **apoyo** le da esta persona?",
+              "hu": "Milyen fajta **támogatást** ad Önnek ez a személy?"
+            },
+            "hint": {
+              "en-US": "Select all that apply.",
+              "es": "Seleccione todas las opciones que correspondan.",
+              "hu": "Kérjük, jelöljön meg minden megfelelő választ."
+            }
           }
         ]
       }
@@ -586,7 +948,11 @@
     {
       "id": "ordinal-bin-closeness",
       "type": "OrdinalBin",
-      "label": "How close you feel to each person",
+      "label": {
+        "en-US": "How close you feel to each person",
+        "es": "Lo cerca que se siente de cada persona",
+        "hu": "Mennyire érzi magát közel az egyes személyekhez"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -594,7 +960,11 @@
       "prompts": [
         {
           "id": "bin-closeness",
-          "text": "Sort each person by **how close you feel** to them.",
+          "text": {
+            "en-US": "Sort each person by **how close you feel** to them.",
+            "es": "Clasifique a cada persona según **lo cerca que se siente** de ella.",
+            "hu": "Kérjük, sorolja be az egyes személyeket aszerint, hogy **mennyire érzi magát közel** hozzájuk."
+          },
           "variable": "closeness",
           "color": "ord-color-seq-1"
         }
@@ -602,8 +972,27 @@
     },
     {
       "id": "geospatial-map",
+      "offlineNotice": {
+        "en-US": "You are offline — the map will not load until you reconnect.",
+        "es": "No tienes conexión. El mapa no se cargará hasta que vuelvas a conectarte.",
+        "hu": "Nincs internetkapcsolat. A térkép csak újracsatlakozás után töltődik be."
+      },
+      "mapUnavailable": {
+        "en-US": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.",
+        "es": "Esto puede ocurrir si tu navegador o dispositivo no admite las funciones que necesita el mapa (por ejemplo, WebGL). Prueba con otro navegador o dispositivo, o contacta con la persona que organiza el estudio. Es posible que puedas continuar la entrevista pulsando la flecha de avance.",
+        "hu": "Ez akkor fordulhat elő, ha a böngésző vagy az eszköz nem támogatja a térkép által igényelt funkciókat (például a WebGL-t). Próbáljon meg másik böngészőt vagy eszközt, vagy forduljon a vizsgálat szervezőjéhez. Az interjút a következő nyílra kattintva is folytathatja."
+      },
+      "outsideAreasLabel": {
+        "en-US": "Outside Selectable Areas",
+        "es": "Fuera de las áreas seleccionables",
+        "hu": "Kijelölhető területeken kívül"
+      },
       "type": "Geospatial",
-      "label": "Place people on the map",
+      "label": {
+        "en-US": "Place people on the map",
+        "es": "Coloque a las personas en el mapa",
+        "hu": "Az emberek elhelyezése a térképen"
+      },
       "interviewScript": "This map stage ships ready to run: it uses Network Canvas's shared Mapbox testing token and a bundled world-countries GeoJSON whose features expose a `name` property. The testing token is rate-limited and for evaluation only — before you field this study, replace it in Architect with your OWN Mapbox access token (see the warning on the protocol timeline). You can also swap the bundled boundaries for your own GeoJSON if you need finer detail.",
       "subject": {
         "entity": "node",
@@ -623,7 +1012,11 @@
       "prompts": [
         {
           "id": "geo-location",
-          "text": "For each person, please select the **country where they currently live** on the map. This helps us see how your network of important people is spread across the world.",
+          "text": {
+            "en-US": "For each person, please select the **country where they currently live** on the map. This helps us see how your network of important people is spread across the world.",
+            "es": "Por favor, seleccione en el mapa el **país donde vive actualmente cada persona**. Esto nos ayuda a ver cómo está repartida por el mundo su red de personas importantes.",
+            "hu": "Kérjük, minden személynél jelölje ki a térképen azt az **országot, ahol az illető jelenleg él**. Ez segít abban, hogy lássuk, hogyan oszlik el a világban az Ön számára fontos emberek köre."
+          },
           "variable": "alter_location"
         }
       ]
@@ -631,7 +1024,11 @@
     {
       "id": "categorical-bin-support",
       "type": "CategoricalBin",
-      "label": "Where each person is from, and how you met",
+      "label": {
+        "en-US": "Where each person is from, and how you met",
+        "es": "De dónde es cada persona y cómo la conoció",
+        "hu": "Honnan származnak, és hogyan ismerkedett meg velük"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -639,20 +1036,44 @@
       "prompts": [
         {
           "id": "bin-origin-country",
-          "text": "Sort each person by **where they are from**, in relation to you.",
+          "text": {
+            "en-US": "Sort each person by **where they are from**, in relation to you.",
+            "es": "Clasifique a cada persona según **de dónde es**, en relación con usted.",
+            "hu": "Kérjük, sorolja be az egyes személyeket aszerint, hogy Önhöz képest **honnan származnak**."
+          },
           "variable": "origin_country"
         },
         {
           "id": "bin-how-met",
-          "text": "Now sort the same people by **how or where you first met them**.",
+          "text": {
+            "en-US": "Now sort the same people by **how or where you first met them**.",
+            "es": "Ahora clasifique a esas mismas personas según **cómo o dónde las conoció**.",
+            "hu": "Most sorolja be ugyanezeket a személyeket aszerint, hogy **hogyan vagy hol ismerkedett meg velük**."
+          },
           "variable": "how_met"
         }
       ]
     },
     {
       "id": "sociogram-ties",
+      "tooltips": {
+        "pauseLayout": {
+          "en-US": "Pause automatic layout",
+          "es": "Pausar la disposición automática",
+          "hu": "Automatikus elrendezés szüneteltetése"
+        },
+        "resumeLayout": {
+          "en-US": "Resume automatic layout",
+          "es": "Reanudar la disposición automática",
+          "hu": "Automatikus elrendezés folytatása"
+        }
+      },
       "type": "Sociogram",
-      "label": "How these people know each other",
+      "label": {
+        "en-US": "How these people know each other",
+        "es": "Quién conoce a quién",
+        "hu": "Ki kit ismer közülük"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -666,7 +1087,11 @@
       "prompts": [
         {
           "id": "socio-knows",
-          "text": "The people you mentioned are arranged for you automatically below. Please draw a line between any **two people who know each other** — that is, who would recognise one another and have at least a little contact, independently of you.",
+          "text": {
+            "en-US": "The people you mentioned are arranged for you automatically below. Please draw a line between any **two people who know each other** — that is, who would recognise one another and have at least a little contact, independently of you.",
+            "es": "Las personas que ha mencionado aparecen abajo, ya colocadas automáticamente. Por favor, dibuje una línea entre cada **par de personas que se conozcan entre sí**, es decir, que se reconozcan mutuamente y tengan al menos algo de contacto, no solo a través de usted.",
+            "hu": "Az Ön által említett embereket alább automatikusan elrendeztük. Kérjük, húzzon vonalat minden olyan **két ember közé, akik ismerik egymást** – vagyis akik felismernék egymást, és akiknek Öntől függetlenül is van legalább egy kis kapcsolatuk egymással."
+          },
           "layout": {
             "layoutVariable": "layout"
           },
@@ -679,8 +1104,64 @@
     },
     {
       "id": "narrative-review",
+      "attributesHeading": {
+        "en-US": "Attributes",
+        "es": "Atributos",
+        "hu": "Attribútumok"
+      },
+      "linksHeading": {
+        "en-US": "Links",
+        "es": "Conexiones",
+        "hu": "Kapcsolatok"
+      },
+      "groupsHeading": {
+        "en-US": "Groups",
+        "es": "Grupos",
+        "hu": "Csoportok"
+      },
+      "tooltips": {
+        "enableDrawing": {
+          "en-US": "Enable drawing",
+          "es": "Activar el dibujo",
+          "hu": "Rajzolás bekapcsolása"
+        },
+        "disableDrawing": {
+          "en-US": "Disable drawing",
+          "es": "Desactivar el dibujo",
+          "hu": "Rajzolás kikapcsolása"
+        },
+        "freezeAnnotations": {
+          "en-US": "Freeze annotations",
+          "es": "Bloquear las anotaciones",
+          "hu": "Jegyzetek rögzítése"
+        },
+        "unfreezeAnnotations": {
+          "en-US": "Unfreeze annotations",
+          "es": "Desbloquear las anotaciones",
+          "hu": "Jegyzetek feloldása"
+        },
+        "resetAnnotations": {
+          "en-US": "Reset annotations",
+          "es": "Restablecer las anotaciones",
+          "hu": "Jegyzetek visszaállítása"
+        },
+        "pauseLayout": {
+          "en-US": "Pause automatic layout",
+          "es": "Pausar la disposición automática",
+          "hu": "Automatikus elrendezés szüneteltetése"
+        },
+        "resumeLayout": {
+          "en-US": "Resume automatic layout",
+          "es": "Reanudar la disposición automática",
+          "hu": "Automatikus elrendezés folytatása"
+        }
+      },
       "type": "Narrative",
-      "label": "Your network, here and abroad",
+      "label": {
+        "en-US": "Your network, here and abroad",
+        "es": "Su red, aquí y en el extranjero",
+        "hu": "Az Ön kapcsolati hálója itt és külföldön"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -693,17 +1174,34 @@
       "presets": [
         {
           "id": "preset-origin",
-          "label": "Where people live",
+          "label": {
+            "en-US": "Where people are from",
+            "es": "De dónde son las personas",
+            "hu": "Ki honnan származik"
+          },
           "layoutVariable": "layout",
           "groupVariable": "origin_country",
           "edges": {
             "display": ["knows"]
           },
-          "highlight": ["co_ethnic"]
+          "highlight": [
+            {
+              "variable": "co_ethnic",
+              "label": {
+                "en-US": "Same ethnic or cultural background",
+                "es": "Mismo origen étnico o cultural",
+                "hu": "Azonos etnikai vagy kulturális háttér"
+              }
+            }
+          ]
         },
         {
           "id": "preset-support",
-          "label": "Support across the network",
+          "label": {
+            "en-US": "Support across the network",
+            "es": "Apoyo en toda la red",
+            "hu": "Támogatás a kapcsolati hálóban"
+          },
           "layoutVariable": "layout",
           "groupVariable": "support_type",
           "edges": {
@@ -715,6 +1213,169 @@
         "concentricCircles": 4,
         "skewedTowardCenter": true
       }
+    },
+    {
+      "id": "finish",
+      "finishLabel": {
+        "en-US": "Finish",
+        "es": "Finalizar",
+        "hu": "Befejezés"
+      },
+      "finishConfirmation": {
+        "en-US": "Are you sure you want to finish the interview?",
+        "es": "¿Seguro que quieres finalizar la entrevista?",
+        "hu": "Biztosan befejezi az interjút?"
+      },
+      "finishedNotice": {
+        "en-US": "This interview is finished, and its answers can no longer be changed.",
+        "es": "Esta entrevista ha finalizado y ya no se pueden cambiar sus respuestas.",
+        "hu": "Ez az interjú befejeződött, a válaszai már nem módosíthatók."
+      },
+      "finishFailed": {
+        "en-US": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer.",
+        "es": "No se pudo finalizar la entrevista. Inténtalo de nuevo. Si el problema continúa, ponte en contacto con la persona que organiza el estudio.",
+        "hu": "Az interjút nem sikerült befejezni. Kérjük, próbálja újra. Ha a probléma továbbra is fennáll, forduljon a kutatás szervezőjéhez."
+      },
+      "type": "FinishSession",
+      "label": {
+        "en-US": "Finish Interview",
+        "es": "Finalizar entrevista",
+        "hu": "Interjú befejezése"
+      },
+      "title": {
+        "en-US": "Finish Interview",
+        "es": "Finalizar entrevista",
+        "hu": "Interjú befejezése"
+      },
+      "content": {
+        "en-US": "You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now.",
+        "es": "Ha llegado al final de la entrevista. Si está conforme con la información que ha introducido, ya puede finalizar la entrevista.",
+        "hu": "Elérte az interjú végét. Ha elégedett az Ön által megadott információkkal, most befejezheti az interjút."
+      },
+      "outcome": "completed"
     }
-  ]
+  ],
+  "interfaceText": {
+    "interview": {
+      "exitInterview": {
+        "en-US": "Exit interview",
+        "es": "Salir de la entrevista",
+        "hu": "Kilépés az interjúból"
+      },
+      "exitInterviewDescription": {
+        "en-US": "Your answers so far will be saved and you can continue later.",
+        "es": "Tus respuestas hasta ahora se guardarán y podrás continuar más adelante.",
+        "hu": "Az eddigi válaszai mentésre kerülnek, és később folytathatja."
+      },
+      "stageError": {
+        "en-US": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button.",
+        "es": "Se produjo un error en el programa de la entrevista y no se pudo mostrar esta tarea. Algunas tareas, como los mapas, necesitan conexión a internet, así que comprueba tu conexión y después prueba a actualizar la página. Si el problema persiste, ponte en contacto con la persona que organiza el estudio y envíale la información de diagnóstico, que puedes copiar con el botón de abajo. Es posible que puedas continuar la entrevista pulsando la flecha de avance.",
+        "hu": "Hiba történt az interjúszoftverben, ezért ez a feladat nem jeleníthető meg. Egyes feladatokhoz, például a térképekhez, internetkapcsolat szükséges, ezért ellenőrizze a kapcsolatot, majd próbálja meg frissíteni az oldalt. Ha a probléma továbbra is fennáll, kérjük, forduljon a kutatás szervezőjéhez, és küldje el neki a hibakeresési információkat, amelyeket az alábbi gombbal másolhat ki. Lehet, hogy a Tovább gombra kattintva folytathatja az interjút."
+      },
+      "itemUnavailable": {
+        "en-US": "This item could not be displayed.",
+        "es": "No se pudo mostrar este elemento.",
+        "hu": "Ez az elem nem jeleníthető meg."
+      },
+      "back": {
+        "en-US": "Back",
+        "es": "Volver",
+        "hu": "Vissza"
+      },
+      "continue": {
+        "en-US": "Continue",
+        "es": "Continuar",
+        "hu": "Tovább"
+      },
+      "cancel": {
+        "en-US": "Cancel",
+        "es": "Cancelar",
+        "hu": "Mégse"
+      },
+      "done": {
+        "en-US": "Done",
+        "es": "Listo",
+        "hu": "Kész"
+      },
+      "delete": {
+        "en-US": "Delete",
+        "es": "Eliminar",
+        "hu": "Törlés"
+      },
+      "genericError": {
+        "en-US": "Something went wrong.",
+        "es": "Se ha producido un error.",
+        "hu": "Hiba történt."
+      }
+    },
+    "forms": {
+      "discardChanges": {
+        "en-US": "Discard changes",
+        "es": "Descartar cambios",
+        "hu": "Változtatások elvetése"
+      },
+      "discardChangesTitle": {
+        "en-US": "Discard changes?",
+        "es": "¿Descartar los cambios?",
+        "hu": "Elveti a változtatásokat?"
+      },
+      "discardChangesDescription": {
+        "en-US": "This form contains invalid data, so it cannot be saved. If you continue it will be reset, and your changes will be lost. Do you want to discard your changes?",
+        "es": "Este formulario contiene datos que no son válidos y no se puede guardar. Si continúas, se restablecerá y se perderán los cambios. ¿Quieres descartar los cambios?",
+        "hu": "Ez az űrlap érvénytelen adatokat tartalmaz, ezért nem menthető. Ha folytatja, az űrlap visszaáll, és a változtatások elvesznek. Elveti a változtatásokat?"
+      },
+      "yes": {
+        "en-US": "Yes",
+        "es": "Sí",
+        "hu": "Igen"
+      },
+      "no": {
+        "en-US": "No",
+        "es": "No",
+        "hu": "Nem"
+      },
+      "submitFailed": {
+        "en-US": "An error occurred while submitting the form.",
+        "es": "Se ha producido un error al enviar el formulario.",
+        "hu": "Hiba történt az űrlap elküldésekor."
+      }
+    },
+    "validation": {
+      "required": {
+        "en-US": "You must answer this question before continuing.",
+        "es": "Debes responder a esta pregunta antes de continuar.",
+        "hu": "A folytatás előtt válaszolnia kell erre a kérdésre."
+      },
+      "minValue": {
+        "en-US": "Enter a value greater than or equal to {min}.",
+        "es": "Introduce un valor mayor o igual que {min}.",
+        "hu": "Az érték legalább {min} legyen."
+      },
+      "maxValue": {
+        "en-US": "Enter a value less than or equal to {max}.",
+        "es": "Introduce un valor menor o igual que {max}.",
+        "hu": "Az érték legfeljebb {max} legyen."
+      },
+      "minDate": {
+        "en-US": "Must be on or after {min}.",
+        "es": "Debe ser igual o posterior a {min}.",
+        "hu": "Legkorábban {min} lehet."
+      },
+      "minSelected": {
+        "en-US": "{count, plural, one {Select at least # value.} other {Select at least # values.}}",
+        "es": "{count, plural, one {Selecciona al menos # valor.} other {Selecciona al menos # valores.}}",
+        "hu": "{count, plural, one {Válasszon legalább # értéket.} other {Válasszon legalább # értéket.}}"
+      },
+      "maxSelected": {
+        "en-US": "{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}",
+        "es": "{count, plural, one {Selecciona como máximo # valor.} other {Selecciona como máximo # valores.}}",
+        "hu": "{count, plural, one {Legfeljebb # értéket válasszon.} other {Legfeljebb # értéket válasszon.}}"
+      },
+      "unique": {
+        "en-US": "Must be unique.",
+        "es": "Debe ser una respuesta única.",
+        "hu": "Egyedinek kell lennie."
+      }
+    }
+  }
 }

@@ -139,7 +139,7 @@ const buildStateWithValidationRef = (
       ? { ego: { variables } }
       : { [entity]: { 'entity-type-id': { variables } } };
 
-  const protocol = { schemaVersion: 8, name: 'test', codebook, stages: [] };
+  const protocol = { schemaVersion: 9, name: 'test', codebook, stages: [] };
 
   return {
     state: getMockState({
@@ -203,7 +203,7 @@ describe('indexes selectors', () => {
     it('counts a variable used only as a prompt sort key as used', () => {
       const sortVariableId = 'sort-only-variable-id';
       const protocol = {
-        schemaVersion: 8,
+        schemaVersion: 9,
         name: 'test',
         codebook: {
           node: {
@@ -236,7 +236,7 @@ describe('indexes selectors', () => {
       expect(Object.values(getVariableIndex(state))).toContain(sortVariableId);
     });
 
-    it('includes stage prompt variable references from a real v8 protocol', () => {
+    it('includes stage prompt variable references from the shipped development protocol', () => {
       const thisDir = dirname(fileURLToPath(import.meta.url));
       const protocolPath = join(
         thisDir,
@@ -335,12 +335,12 @@ describe('indexes selectors', () => {
 
   describe('getVariableUsageHits()', () => {
     // A codebook record key is constrained only by `/^[a-zA-Z0-9._:-]+$/`
-    // (`VariableNameSchema`), so these ids are legal protocol content.
+    // (`CodebookIdSchema`), so these ids are legal protocol content.
     const dottedIdState = (): RootState =>
       getMockState({
         activeProtocol: {
           present: {
-            schemaVersion: 8,
+            schemaVersion: 9,
             name: 'test',
             codebook: {
               node: {
@@ -422,7 +422,7 @@ describe('indexes selectors', () => {
   describe('getEntityTypeUsageHitsById()', () => {
     it('groups the structured type-reference hits by type id', () => {
       const protocol = {
-        schemaVersion: 8,
+        schemaVersion: 9,
         name: 'test',
         codebook: { edge: { 'friendship-type-id': { name: 'Friendship' } } },
         stages: [
@@ -477,6 +477,10 @@ describe('indexes selectors', () => {
         {
           id: 's1',
           type: 'NameGeneratorRoster',
+          externalDataError: { en: 'External data could not be loaded.' },
+          allAddedNotice: {
+            en: 'There is nothing left to add from this list.',
+          },
           label: 'Roster',
           subject: { entity: 'node', type: 'person' },
           dataSource: 'asset-under-test',
@@ -487,6 +491,7 @@ describe('indexes selectors', () => {
         {
           id: 's1',
           type: 'NameGenerator',
+          externalDataError: { en: 'External data could not be loaded.' },
           label: 'Generator',
           subject: { entity: 'node', type: 'person' },
           panels: [
@@ -509,6 +514,13 @@ describe('indexes selectors', () => {
         {
           id: 's1',
           type: 'Geospatial',
+          offlineNotice: {
+            en: 'You are offline — the map will not load until you reconnect.',
+          },
+          mapUnavailable: {
+            en: 'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
+          },
+          outsideAreasLabel: { en: 'Outside Selectable Areas' },
           label: 'Map',
           subject: { entity: 'node', type: 'person' },
           mapOptions: { tokenAssetId: 'asset-under-test' },
@@ -519,6 +531,13 @@ describe('indexes selectors', () => {
         {
           id: 's1',
           type: 'Geospatial',
+          offlineNotice: {
+            en: 'You are offline — the map will not load until you reconnect.',
+          },
+          mapUnavailable: {
+            en: 'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
+          },
+          outsideAreasLabel: { en: 'Outside Selectable Areas' },
           label: 'Map',
           subject: { entity: 'node', type: 'person' },
           mapOptions: { dataSourceAssetId: 'asset-under-test' },
@@ -538,7 +557,7 @@ describe('indexes selectors', () => {
       const state = getMockState({
         activeProtocol: {
           present: {
-            schemaVersion: 8,
+            schemaVersion: 9,
             name: 'test',
             codebook: { node: {} },
             stages: [stage],
@@ -558,7 +577,7 @@ describe('indexes selectors', () => {
       const state = getMockState({
         activeProtocol: {
           present: {
-            schemaVersion: 8,
+            schemaVersion: 9,
             name: 'test',
             codebook: { node: {} },
             stages: [
@@ -579,30 +598,6 @@ describe('indexes selectors', () => {
       expect(Object.values(getAssetIndex(state))).not.toContain('existing');
     });
 
-    it('counts a FamilyPedigree intro-screen asset item as used', () => {
-      const assetId = 'intro-asset-id';
-      const protocol = {
-        schemaVersion: 8,
-        name: 'test',
-        codebook: { node: {} },
-        stages: [
-          {
-            id: 's1',
-            type: 'FamilyPedigree',
-            label: 'Pedigree',
-            introScreen: {
-              items: [{ id: 'i1', type: 'asset', content: assetId }],
-            },
-          },
-        ],
-      };
-      const state = getMockState({
-        activeProtocol: { present: protocol },
-      }) as unknown as RootState;
-
-      expect(Object.values(getAssetIndex(state))).toContain(assetId);
-    });
-
     // #1393's acceptance criterion "Resource usage remains correct through
     // Save/Cancel/Undo" needed no code change: an item that becomes text stops
     // referencing its asset, so the asset is honestly reported as unused
@@ -610,43 +605,29 @@ describe('indexes selectors', () => {
     // description cannot silently become true — an `assetReference` tag moved
     // onto the shared item base (where it would cover the text branch too)
     // would leave a researcher believing an orphaned resource is still in use.
-    it.each([
-      ['an Information', 'items'],
-      ['a FamilyPedigree intro-screen', 'introScreen'],
-    ])(
-      'stops counting the asset once %s item becomes text',
-      (_label: string, location: string) => {
-        const assetId = 'converted-asset-id';
-        const items = [{ id: 'i1', type: 'text', content: assetId }];
-        const stage =
-          location === 'items'
-            ? {
+    it('stops counting the asset once an Information item becomes text', () => {
+      const assetId = 'converted-asset-id';
+      const state = getMockState({
+        activeProtocol: {
+          present: {
+            schemaVersion: 8,
+            name: 'test',
+            codebook: { node: {} },
+            stages: [
+              {
                 id: 's1',
                 type: 'Information',
                 label: 'Info',
                 title: 'Welcome',
-                items,
-              }
-            : {
-                id: 's1',
-                type: 'FamilyPedigree',
-                label: 'Pedigree',
-                introScreen: { items },
-              };
-        const state = getMockState({
-          activeProtocol: {
-            present: {
-              schemaVersion: 8,
-              name: 'test',
-              codebook: { node: {} },
-              stages: [stage],
-            },
+                items: [{ id: 'i1', type: 'text', content: assetId }],
+              },
+            ],
           },
-        }) as unknown as RootState;
+        },
+      }) as unknown as RootState;
 
-        expect(Object.values(getAssetIndex(state))).not.toContain(assetId);
-      },
-    );
+      expect(Object.values(getAssetIndex(state))).not.toContain(assetId);
+    });
   });
 
   describe('getNodeIndex()', () => {
@@ -666,7 +647,7 @@ describe('indexes selectors', () => {
 
     it('detects edge types used by a NetworkComposer stage (edges[].subject)', () => {
       const protocol = {
-        schemaVersion: 8,
+        schemaVersion: 9,
         name: 'test',
         codebook: { edge: { 'friendship-type-id': { name: 'Friendship' } } },
         stages: [

@@ -3,11 +3,19 @@ import { type ReactNode, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
-import type { InterviewPayload, SessionPayload } from '@codaco/interview';
+import type {
+  CompletedAction,
+  FinishHandler,
+  InterviewPayload,
+  ProtocolLocaleChangeHandler,
+  SessionPayload,
+} from '@codaco/interview';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
+import { getLocaleMetadata } from '@codaco/protocol-validation';
 import { InterviewerI18nProvider } from '~/i18n/InterviewerI18nProvider';
 import { interviewerProductionLocales } from '~/i18n/locales';
 import { LOCALE_PREFERENCE_KEY } from '~/i18n/preference';
+import { recordStoredProtocolMigrationFailures } from '~/lib/protocol/storedProtocolMigrationFailures';
 import { interviewerCatalogSource } from '~/locales/catalogs';
 
 const navigateMock = vi.fn();
@@ -47,12 +55,14 @@ const getSessionMock = vi.fn();
 const getProtocolByHashMock = vi.fn();
 const markSessionFinishedMock = vi.fn();
 const updateSessionMock = vi.fn();
+const setSessionLocaleMock = vi.fn();
 const updateSettingsMock = vi.fn();
 vi.mock('~/lib/db/api', () => ({
   getSettings: (...a: unknown[]) => getSettingsMock(...a),
   getSession: (...a: unknown[]) => getSessionMock(...a),
   getProtocolByHash: (...a: unknown[]) => getProtocolByHashMock(...a),
   updateSession: (...a: unknown[]) => updateSessionMock(...a),
+  setSessionLocale: (...a: unknown[]) => setSessionLocaleMock(...a),
   updateSettings: (...a: unknown[]) => updateSettingsMock(...a),
   markSessionFinished: (...a: unknown[]) => markSessionFinishedMock(...a),
 }));
@@ -103,13 +113,13 @@ type CapturedShellProps = {
   disableAnalytics: boolean;
   posthogClient?: unknown;
   finishConfirmationDescription: ReactNode;
-  requestedLocale: string;
-  localePreference: string | null;
-  onLocaleChange: (locale: string | null) => void;
+  requestedLocales: readonly string[];
+  onProtocolLocaleChange: ProtocolLocaleChangeHandler;
   initialStageOverrideIndex?: number;
   payload: InterviewPayload;
   onExit: () => void;
-  onFinish: (id: string) => Promise<void>;
+  onFinish: FinishHandler;
+  completedActions?: readonly CompletedAction[];
   onSync: (
     id: string,
     session: SessionPayload,
@@ -120,10 +130,12 @@ type CapturedShellProps = {
     meta: { progress: number; totalSteps: number },
   ) => void;
   reviewMode: boolean;
+  flags?: { isDevelopment?: boolean };
 };
 
-const { shellMock } = vi.hoisted(() => ({
+const { shellMock, shellInterfaceLocale } = vi.hoisted(() => ({
   shellMock: vi.fn<(props: CapturedShellProps) => void>(),
+  shellInterfaceLocale: { current: 'en' },
 }));
 vi.mock('@codaco/interview', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@codaco/interview')>();
@@ -131,17 +143,29 @@ vi.mock('@codaco/interview', async (importOriginal) => {
     ...actual,
     Shell: (props: CapturedShellProps) => {
       shellMock(props);
-      // A queued confirmation retains its original node. Deliberately give
-      // the package a different locale so this tests the host subscription,
-      // not accidental inheritance of the host catalog through Shell.
+      // A queued confirmation retains its original node. The provider stands
+      // in for the Shell's own one, which carries the interview's interface
+      // language rather than Interviewer's.
       const [queuedDescription] = useState(props.finishConfirmationDescription);
       return (
         <AppI18nProvider
-          locale="en"
+          locale={shellInterfaceLocale.current}
           locales={interviewerProductionLocales}
           manageDocument={false}
         >
-          <div data-testid="shell-mounted">{queuedDescription}</div>
+          <div data-testid="shell-mounted">
+            {queuedDescription}
+            {props.completedActions?.map((action, index) => (
+              <button
+                // eslint-disable-next-line react/no-array-index-key
+                key={index}
+                type="button"
+                onClick={action.onAction}
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
         </AppI18nProvider>
       );
     },
@@ -172,6 +196,8 @@ function makeSession(overrides: Record<string, unknown> = {}) {
       edges: [],
       ego: { _uid: 'ego-1', attributes: {} },
     },
+    localePreference: null,
+    locale: null,
     ...overrides,
   };
 }
@@ -183,6 +209,9 @@ function makeProtocol() {
     schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
     importedAt: '2026-01-01T00:00:00.000Z',
     protocol: {
+      // Neither alphabetical nor default-first, so the offered order can only
+      // come from the declaration.
+      localization: { defaultLocale: 'en', locales: ['fr', 'ar', 'en'] },
       stages: [
         { id: 'stage-1' },
         { id: 'stage-2' },
@@ -233,8 +262,17 @@ function makeSyncPayload(
     exportTime: null,
     lastUpdated: '2026-01-01T00:00:00.000Z',
     network: { nodes: [], edges: [], ego: { _uid: 'ego-1', attributes: {} } },
+    localePreference: null,
+    locale: null,
+    localeOptions: [],
     ...overrides,
   };
+}
+
+const finish = { stageId: 'finish', outcome: 'completed' } as const;
+
+function finishInterview(props: CapturedShellProps) {
+  return props.onFinish('s1', finish, new AbortController().signal);
 }
 
 async function invoke(fn: () => unknown) {
@@ -250,65 +288,18 @@ beforeEach(() => {
   getProtocolByHashMock.mockResolvedValue(makeProtocol());
   requireFreshUnlockMock.mockResolvedValue({ ok: true });
   getAuthorizedInterviewIdMock.mockReturnValue(null);
+  setSessionLocaleMock.mockResolvedValue(undefined);
   useSearchMock.mockReturnValue('');
   useRouteMock.mockReturnValue([true, { sessionId: 's1' }]);
+  shellInterfaceLocale.current = 'en';
   refreshStepUpContextIdentities();
 });
 
 describe('InterviewRoute enter gate', () => {
-  it('passes the negotiated device locale to Shell and persists menu choices without reloading the interview', async () => {
+  it("asks the interview for the browser languages rather than Interviewer's own language", async () => {
     const languages = vi
       .spyOn(navigator, 'languages', 'get')
-      .mockReturnValue(['en-GB']);
-    localStorage.removeItem(LOCALE_PREFERENCE_KEY);
-    getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
-    try {
-      render(
-        <InterviewerI18nProvider>
-          <InterviewRoute sessionId="s1" />
-        </InterviewerI18nProvider>,
-      );
-      const shell = await screen.findByTestId('shell-mounted');
-      expect(lastShellProps().requestedLocale).toBe('en-GB');
-      expect(lastShellProps().localePreference).toBeNull();
-      const originalPayload = lastShellProps().payload;
-      expect(shell).toHaveTextContent('Finishing ends this interview.');
-      const reads = getSessionMock.mock.calls.length;
-
-      act(() => lastShellProps().onLocaleChange('es'));
-      expect(lastShellProps().requestedLocale).toBe('es');
-      expect(lastShellProps().localePreference).toBe('es');
-      expect(shell).toHaveTextContent(
-        'Al finalizar, se cierra esta entrevista.',
-      );
-      expect(shell).toHaveTextContent(
-        'la persona responsable de la investigación puede volver a marcarla como sin finalizar',
-      );
-      expect(document.documentElement).toHaveAttribute('lang', 'es');
-      expect(localStorage.getItem(LOCALE_PREFERENCE_KEY)).toBe('es');
-      expect(lastShellProps().payload).toBe(originalPayload);
-      expect(getSessionMock).toHaveBeenCalledTimes(reads);
-      expect(updateSessionMock).not.toHaveBeenCalled();
-      expect(requireFreshUnlockMock).not.toHaveBeenCalled();
-
-      act(() => lastShellProps().onLocaleChange(null));
-      expect(lastShellProps().requestedLocale).toBe('en-GB');
-      expect(lastShellProps().localePreference).toBeNull();
-      expect(localStorage.getItem(LOCALE_PREFERENCE_KEY)).toBeNull();
-      expect(document.documentElement).toHaveAttribute('lang', 'en-GB');
-      expect(shell).toHaveTextContent('Finishing ends this interview.');
-      expect(lastShellProps().payload).toBe(originalPayload);
-      expect(getSessionMock).toHaveBeenCalledTimes(reads);
-    } finally {
-      languages.mockRestore();
-      localStorage.removeItem(LOCALE_PREFERENCE_KEY);
-    }
-  });
-
-  it('initializes the menu with the saved explicit preference and can return directly to Automatic', async () => {
-    const languages = vi
-      .spyOn(navigator, 'languages', 'get')
-      .mockReturnValue(['en-GB']);
+      .mockReturnValue(['fr-CA', 'en-GB']);
     localStorage.setItem(LOCALE_PREFERENCE_KEY, 'es');
     getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
     try {
@@ -317,27 +308,121 @@ describe('InterviewRoute enter gate', () => {
           <InterviewRoute sessionId="s1" />
         </InterviewerI18nProvider>,
       );
-      const shell = await screen.findByTestId('shell-mounted');
-      expect(lastShellProps().requestedLocale).toBe('es');
-      expect(lastShellProps().localePreference).toBe('es');
-      expect(shell).toHaveTextContent(
-        'Al finalizar, se cierra esta entrevista.',
-      );
-      const payload = lastShellProps().payload;
-      const reads = getSessionMock.mock.calls.length;
-      act(() => lastShellProps().onLocaleChange(null));
-      expect(lastShellProps().requestedLocale).toBe('en-GB');
-      expect(lastShellProps().localePreference).toBeNull();
-      expect(shell).toHaveTextContent('Finishing ends this interview.');
-      expect(localStorage.getItem(LOCALE_PREFERENCE_KEY)).toBeNull();
-      expect(lastShellProps().payload).toBe(payload);
-      expect(getSessionMock).toHaveBeenCalledTimes(reads);
-      expect(updateSessionMock).not.toHaveBeenCalled();
-      expect(requireFreshUnlockMock).not.toHaveBeenCalled();
+      await screen.findByTestId('shell-mounted');
+      expect(lastShellProps().requestedLocales).toEqual(['fr-CA', 'en-GB']);
     } finally {
       languages.mockRestore();
       localStorage.removeItem(LOCALE_PREFERENCE_KEY);
     }
+  });
+
+  it("words the finish confirmation in the interview's interface language", async () => {
+    localStorage.setItem(LOCALE_PREFERENCE_KEY, 'en');
+    shellInterfaceLocale.current = 'es';
+    getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
+    try {
+      render(
+        <InterviewerI18nProvider>
+          <InterviewRoute sessionId="s1" />
+        </InterviewerI18nProvider>,
+      );
+      const shell = await screen.findByTestId('shell-mounted');
+      expect(shell).toHaveTextContent(
+        'Al finalizar, se cierra esta entrevista.',
+      );
+      expect(shell).not.toHaveTextContent('Finishing ends this interview.');
+    } finally {
+      localStorage.removeItem(LOCALE_PREFERENCE_KEY);
+    }
+  });
+
+  it('hydrates the stored language and offers every protocol language', async () => {
+    getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
+    getSessionMock.mockResolvedValue(
+      makeSession({ localePreference: 'ar', locale: 'ar' }),
+    );
+
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+
+    const { session } = lastShellProps().payload;
+    expect(session.localePreference).toBe('ar');
+    expect(session.locale).toBe('ar');
+    expect(session.localeOptions.map(({ locale }) => locale)).toEqual([
+      'fr',
+      'ar',
+      'en',
+    ]);
+    expect(session.localeOptions).toEqual(
+      ['fr', 'ar', 'en'].map((locale) => getLocaleMetadata(locale)),
+    );
+  });
+
+  it("stores the participant's language choice on the session without reloading the interview", async () => {
+    getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    const payload = lastShellProps().payload;
+    const reads = getSessionMock.mock.calls.length;
+    updateSessionMock.mockClear();
+
+    await act(async () => {
+      await lastShellProps().onProtocolLocaleChange('s1', {
+        locale: 'fr',
+        localePreference: 'fr',
+      });
+    });
+
+    expect(setSessionLocaleMock).toHaveBeenCalledWith('s1', {
+      locale: 'fr',
+      localePreference: 'fr',
+    });
+    expect(updateSessionMock).not.toHaveBeenCalled();
+    expect(lastShellProps().payload).toBe(payload);
+    expect(getSessionMock).toHaveBeenCalledTimes(reads);
+  });
+
+  // The runtime treats a refused write as unsaved and offers it again, so a
+  // failure has to reach it as a rejection rather than be swallowed here.
+  it('rejects a language change the session could not store', async () => {
+    getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    const cause = new Error('IndexedDB write failed');
+    setSessionLocaleMock.mockRejectedValueOnce(cause);
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await lastShellProps()
+        .onProtocolLocaleChange('s1', { locale: 'fr', localePreference: 'fr' })
+        .then(
+          () => 'resolved',
+          (error: unknown) => error,
+        );
+    });
+
+    expect(outcome).toBe(cause);
+  });
+
+  it('rejects answers the session could not store', async () => {
+    getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    const cause = new Error('IndexedDB write failed');
+    updateSessionMock.mockRejectedValueOnce(cause);
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await lastShellProps()
+        .onSync('s1', makeSyncPayload(), { immediate: true, unloading: false })
+        .then(
+          () => 'resolved',
+          (error: unknown) => error,
+        );
+    });
+
+    expect(updateSessionMock).toHaveBeenCalledTimes(1);
+    expect(outcome).toBe(cause);
   });
 
   it('navigates home when the enter gate is cancelled', async () => {
@@ -442,6 +527,28 @@ describe('InterviewRoute enter gate', () => {
   });
 });
 
+describe('InterviewRoute development tools', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it.each([
+    { build: 'development', DEV: true },
+    { build: 'production', DEV: false },
+  ])(
+    'connects Redux DevTools and the logger only in a development build ($build)',
+    async ({ DEV }) => {
+      vi.stubEnv('DEV', DEV);
+      getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
+
+      render(<InterviewRoute sessionId="s1" />);
+      await screen.findByTestId('shell-mounted');
+
+      expect(lastShellProps().flags).toEqual({ isDevelopment: DEV });
+    },
+  );
+});
+
 describe('InterviewRoute exit gate', () => {
   beforeEach(() => {
     getSettingsMock.mockResolvedValue({
@@ -529,17 +636,92 @@ describe('InterviewRoute finish flow', () => {
     });
   });
 
-  it('shows the completion screen after finishing', async () => {
+  it('records the finish stage and outcome, and leaves the completed state to the Shell', async () => {
     render(<InterviewRoute sessionId="s1" />);
     await screen.findByTestId('shell-mounted');
 
+    const finishing = new AbortController();
     await act(async () => {
-      await lastShellProps().onFinish('s1');
+      await lastShellProps().onFinish(
+        's1',
+        { stageId: 'finish-ineligible', outcome: 'ineligible' },
+        finishing.signal,
+      );
     });
 
-    expect(markSessionFinishedMock).toHaveBeenCalledWith('s1');
-    expect(await screen.findByText('Interview complete')).toBeInTheDocument();
-    expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
+    // The signal goes with the write, which checks it again before it
+    // commits (sessions.finishRace.test.ts).
+    expect(markSessionFinishedMock).toHaveBeenCalledWith(
+      's1',
+      { stageId: 'finish-ineligible', outcome: 'ineligible' },
+      finishing.signal,
+    );
+    // The Shell shows the completed state in place: the route neither
+    // navigates nor replaces it, and offers Exit there.
+    expect(screen.getByTestId('shell-mounted')).toBeInTheDocument();
+    expect(navigateMock).not.toHaveBeenCalled();
+    expect(lastShellProps().completedActions).toHaveLength(1);
+  });
+
+  it('writes no finish once the finish has been abandoned', async () => {
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    const abandoned = new AbortController();
+    abandoned.abort();
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await lastShellProps()
+        .onFinish(
+          's1',
+          { stageId: 'finish-ineligible', outcome: 'ineligible' },
+          abandoned.signal,
+        )
+        .then(
+          () => 'resolved',
+          (error: unknown) => error,
+        );
+    });
+
+    // Rejected, so the Shell does not show a completed state, and nothing is
+    // stored that it would then not be showing.
+    expect(outcome).toMatchObject({ name: 'AbortError' });
+    expect(markSessionFinishedMock).not.toHaveBeenCalled();
+  });
+
+  it("offers Exit on the completed state in the interview's interface language", async () => {
+    localStorage.setItem(LOCALE_PREFERENCE_KEY, 'en');
+    shellInterfaceLocale.current = 'es';
+    try {
+      render(
+        <InterviewerI18nProvider>
+          <InterviewRoute sessionId="s1" />
+        </InterviewerI18nProvider>,
+      );
+      await screen.findByTestId('shell-mounted');
+
+      expect(screen.getByRole('button', { name: 'Salir' })).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Exit' }),
+      ).not.toBeInTheDocument();
+    } finally {
+      localStorage.removeItem(LOCALE_PREFERENCE_KEY);
+    }
+  });
+
+  it('exits home from the completed state', async () => {
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    await act(async () => {
+      await finishInterview(lastShellProps());
+    });
+
+    await invoke(() => screen.getByRole('button', { name: 'Exit' }).click());
+
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith('/', { replace: true }),
+    );
+    expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith(null);
   });
 
   it('never writes finishedAt from a sync', async () => {
@@ -566,9 +748,8 @@ describe('InterviewRoute finish flow', () => {
     const { onFinish, onSync } = lastShellProps();
 
     await act(async () => {
-      await onFinish('s1');
+      await onFinish('s1', finish, new AbortController().signal);
     });
-    await screen.findByText('Interview complete');
 
     updateSessionMock.mockClear();
     // A sync landing after finish still carries finishTime: null (the engine
@@ -585,7 +766,48 @@ describe('InterviewRoute finish flow', () => {
     }
   });
 
-  it('opens an already-finished session in read-only review mode', async () => {
+  it('opens a finished session in its completed state, with Exit', async () => {
+    getSessionMock.mockResolvedValue(
+      makeSession({
+        currentStep: 4,
+        finishedAt: '2026-01-02T00:00:00.000Z',
+        finishStageId: 'finish-ineligible',
+        finishOutcome: 'ineligible',
+      }),
+    );
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+    const props = lastShellProps();
+    expect(props.reviewMode).toBe(false);
+    expect(props.payload.session.finishTime).toBe('2026-01-02T00:00:00.000Z');
+    expect(props.payload.session.finishStageId).toBe('finish-ineligible');
+    expect(props.disableAnalytics).toBe(true);
+    expect(screen.queryByText('Read-only review')).not.toBeInTheDocument();
+
+    await invoke(() => screen.getByRole('button', { name: 'Exit' }).click());
+
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith('/', { replace: true }),
+    );
+    expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith(null);
+  });
+
+  it('hands the Shell no finish stage for a session finished before they were recorded', async () => {
+    getSessionMock.mockResolvedValue(
+      makeSession({ finishedAt: '2026-01-02T00:00:00.000Z' }),
+    );
+
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+
+    expect(lastShellProps().payload.session.finishStageId).toBeNull();
+    expect(lastShellProps().reviewMode).toBe(false);
+  });
+
+  it('opens a finished session as a read-only review when review is asked for', async () => {
+    useSearchMock.mockReturnValue('mode=review');
     getSessionMock.mockResolvedValue(
       makeSession({
         currentStep: 4,
@@ -608,7 +830,11 @@ describe('InterviewRoute finish flow', () => {
     expect(screen.getByTestId('shell-mounted')).toHaveTextContent(
       'Finishing ends this interview. A researcher can mark it unfinished later if changes are needed.',
     );
-    expect(screen.queryByText('Interview complete')).not.toBeInTheDocument();
+    // A review shows the stages; there is no completed state to act on.
+    expect(lastShellProps().completedActions).toBeUndefined();
+    expect(
+      screen.queryByRole('button', { name: 'Exit' }),
+    ).not.toBeInTheDocument();
   });
 
   it('preserves the finish step for an ordinary unfinished session', async () => {
@@ -652,11 +878,69 @@ describe('InterviewRoute finish flow', () => {
       lastShellProps().onStepChange(1, { progress: 50, totalSteps: 4 });
     });
 
-    expect(updateSessionMock).toHaveBeenCalledWith('s1', {
-      currentStep: 1,
-      progress: 50,
-      resumeStageOverrideIndex: undefined,
+    expect(updateSessionMock).toHaveBeenCalledWith(
+      's1',
+      expect.objectContaining({
+        currentStep: 1,
+        progress: 50,
+        resumeStageOverrideIndex: undefined,
+      }),
+      { protocolHash: 'h1' },
+    );
+  });
+
+  // Every write names the protocol the interview loaded and carries the
+  // session's whole state, so a write made after another tab migrated the
+  // protocol can be kept under the protocol it was made against and carried
+  // across the migration at the next launch, instead of being refused.
+  it('writes the whole state, against the loaded protocol, on a step change and a sync', async () => {
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    updateSessionMock.mockClear();
+    const stored = makeSession();
+
+    act(() => {
+      lastShellProps().onStepChange(1, { progress: 50, totalSteps: 4 });
     });
+    expect(updateSessionMock).toHaveBeenLastCalledWith(
+      's1',
+      {
+        network: stored.network,
+        stageMetadata: undefined,
+        currentStep: 1,
+        progress: 50,
+        resumeStageOverrideIndex: undefined,
+      },
+      { protocolHash: 'h1' },
+    );
+
+    const answered = {
+      ...stored.network,
+      nodes: [{ _uid: 'n1', type: 'person', attributes: {} }],
+    } as SessionPayload['network'];
+    await act(async () => {
+      await lastShellProps().onSync(
+        's1',
+        makeSyncPayload({ network: answered }),
+        { immediate: true, unloading: false },
+      );
+    });
+    await waitFor(() =>
+      expect(updateSessionMock).toHaveBeenLastCalledWith(
+        's1',
+        expect.objectContaining({ network: answered, currentStep: 1 }),
+        { protocolHash: 'h1' },
+      ),
+    );
+
+    act(() => {
+      lastShellProps().onStepChange(2, { progress: 75, totalSteps: 4 });
+    });
+    expect(updateSessionMock).toHaveBeenLastCalledWith(
+      's1',
+      expect.objectContaining({ network: answered, currentStep: 2 }),
+      { protocolHash: 'h1' },
+    );
   });
 
   it('honours explicit review intent when the stored session is unfinished', async () => {
@@ -664,7 +948,8 @@ describe('InterviewRoute finish flow', () => {
 
     render(<InterviewRoute sessionId="s1" />);
     await screen.findByTestId('shell-mounted');
-    const { onFinish, onStepChange, onSync } = lastShellProps();
+    const { onFinish, onProtocolLocaleChange, onStepChange, onSync } =
+      lastShellProps();
 
     await act(async () => {
       await onSync('s1', makeSyncPayload(), {
@@ -672,37 +957,55 @@ describe('InterviewRoute finish flow', () => {
         unloading: false,
       });
       onStepChange(2, { progress: 75, totalSteps: 4 });
-      await onFinish('s1');
+      await onProtocolLocaleChange('s1', {
+        locale: 'fr',
+        localePreference: 'fr',
+      });
+      await onFinish('s1', finish, new AbortController().signal);
     });
 
     expect(lastShellProps().reviewMode).toBe(true);
     expect(updateSessionMock).not.toHaveBeenCalled();
+    expect(setSessionLocaleMock).not.toHaveBeenCalled();
     expect(markSessionFinishedMock).not.toHaveBeenCalled();
     expect(updateSettingsMock).not.toHaveBeenCalled();
   });
 
-  it('suppresses every session write while reviewing a finished session', async () => {
-    getSessionMock.mockResolvedValue(
-      makeSession({ finishedAt: '2026-01-02T00:00:00.000Z' }),
-    );
+  it.each([
+    ['reviewing', 'mode=review'],
+    ['showing the completed state of', ''],
+  ])(
+    'suppresses every session write while %s a finished session',
+    async (_, search) => {
+      useSearchMock.mockReturnValue(search);
+      getSessionMock.mockResolvedValue(
+        makeSession({ finishedAt: '2026-01-02T00:00:00.000Z' }),
+      );
 
-    render(<InterviewRoute sessionId="s1" />);
-    await screen.findByTestId('shell-mounted');
-    const { onFinish, onStepChange, onSync } = lastShellProps();
+      render(<InterviewRoute sessionId="s1" />);
+      await screen.findByTestId('shell-mounted');
+      const { onFinish, onProtocolLocaleChange, onStepChange, onSync } =
+        lastShellProps();
 
-    await act(async () => {
-      await onSync('s1', makeSyncPayload(), {
-        immediate: true,
-        unloading: false,
+      await act(async () => {
+        await onSync('s1', makeSyncPayload(), {
+          immediate: true,
+          unloading: false,
+        });
+        onStepChange(2, { progress: 75, totalSteps: 4 });
+        await onProtocolLocaleChange('s1', {
+          locale: 'fr',
+          localePreference: 'fr',
+        });
+        await onFinish('s1', finish, new AbortController().signal);
       });
-      onStepChange(2, { progress: 75, totalSteps: 4 });
-      await onFinish('s1');
-    });
 
-    expect(updateSessionMock).not.toHaveBeenCalled();
-    expect(markSessionFinishedMock).not.toHaveBeenCalled();
-    expect(updateSettingsMock).not.toHaveBeenCalled();
-  });
+      expect(updateSessionMock).not.toHaveBeenCalled();
+      expect(setSessionLocaleMock).not.toHaveBeenCalled();
+      expect(markSessionFinishedMock).not.toHaveBeenCalled();
+      expect(updateSettingsMock).not.toHaveBeenCalled();
+    },
+  );
 
   it('clears authorization when returning home from the missing screen', async () => {
     getProtocolByHashMock.mockResolvedValue(null);
@@ -729,6 +1032,40 @@ describe('InterviewRoute finish flow', () => {
       await screen.findByRole('heading', { name: /interview unavailable/i }),
     ).toBeInTheDocument();
     expect(shellMock).not.toHaveBeenCalled();
+  });
+
+  // A protocol at the runtime's version is held back when interviews a
+  // pre-update tab wrote back under a hash it superseded could not be
+  // carried onto it: none of its interviews runs until every one can.
+  it('refuses to run a session whose protocol the sweep held back with its interviews', async () => {
+    const protocol = makeProtocol();
+    act(() => {
+      recordStoredProtocolMigrationFailures([
+        {
+          name: 'Study',
+          hash: protocol.hash,
+          reason: 'one interview could not be migrated',
+          kind: 'sessions',
+          sessions: [{ id: 'late', reason: 'invalid' }],
+        },
+      ]);
+    });
+
+    try {
+      render(<InterviewRoute sessionId="s1" />);
+
+      expect(
+        await screen.findByRole('heading', { name: /interview unavailable/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /Some interviews recorded with this protocol could not be updated/,
+        ),
+      ).toBeInTheDocument();
+      expect(shellMock).not.toHaveBeenCalled();
+    } finally {
+      act(() => recordStoredProtocolMigrationFailures([]));
+    }
   });
 
   it('refuses to open a session whose stored data cannot be read, and reports it', async () => {
@@ -768,7 +1105,7 @@ describe('InterviewRoute finish flow', () => {
     expect(shellMock).not.toHaveBeenCalled();
   });
 
-  it('applies the exit gate from the completion screen', async () => {
+  it('applies the exit gate from the completed state', async () => {
     getSettingsMock.mockResolvedValue({
       requireUnlockOnEnter: false,
       requireUnlockOnExit: true,
@@ -778,16 +1115,16 @@ describe('InterviewRoute finish flow', () => {
     await screen.findByTestId('shell-mounted');
 
     await act(async () => {
-      await lastShellProps().onFinish('s1');
+      await finishInterview(lastShellProps());
     });
-    await screen.findByText('Interview complete');
 
     requireFreshUnlockMock.mockResolvedValue({
       ok: false,
       reason: 'cancelled',
     });
-    await invoke(() => screen.getByRole('button', { name: /exit/i }).click());
+    await invoke(() => screen.getByRole('button', { name: 'Exit' }).click());
 
+    expect(requireFreshUnlockMock).toHaveBeenCalled();
     expect(navigateMock).not.toHaveBeenCalledWith('/', { replace: true });
   });
 });
@@ -844,6 +1181,70 @@ describe('InterviewRoute session change', () => {
       }),
     ).toBeInTheDocument();
     expect(shellMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps a write the previous interview makes after the next one loads out of the next one's state", async () => {
+    const previousNetwork = {
+      nodes: [{ _uid: 'from-s1', type: 'person', attributes: {} }],
+      edges: [],
+      ego: { _uid: 'ego-1', attributes: {} },
+    };
+    const nextNetwork = {
+      nodes: [{ _uid: 'from-s2', type: 'person', attributes: {} }],
+      edges: [],
+      ego: { _uid: 'ego-2', attributes: {} },
+    };
+    getSessionMock.mockImplementation((id: string) =>
+      Promise.resolve(
+        id === 's1'
+          ? makeSession()
+          : makeSession({ id: 's2', protocolHash: 'h2', network: nextNetwork }),
+      ),
+    );
+    getProtocolByHashMock.mockImplementation((hash: string) =>
+      Promise.resolve({ ...makeProtocol(), hash }),
+    );
+
+    const { rerender } = render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    const previousShell = lastShellProps();
+    act(() => {
+      previousShell.onStepChange(2, { progress: 50, totalSteps: 4 });
+    });
+
+    useRouteMock.mockReturnValue([true, { sessionId: 's2' }]);
+    rerender(<InterviewRoute sessionId="s2" />);
+    await waitFor(() => {
+      expect(lastShellProps().payload.session.id).toBe('s2');
+    });
+    const nextShell = lastShellProps();
+    updateSessionMock.mockClear();
+
+    // The previous interview's handler writes once the next one has loaded:
+    // a write that was queued behind another, or its Shell's teardown flush.
+    await act(async () => {
+      await previousShell.onSync(
+        's1',
+        makeSyncPayload({ network: previousNetwork }),
+        { immediate: true, unloading: false },
+      );
+    });
+    act(() => {
+      nextShell.onStepChange(1, { progress: 25, totalSteps: 4 });
+    });
+
+    expect(updateSessionMock.mock.calls).toEqual([
+      [
+        's1',
+        expect.objectContaining({ network: previousNetwork, currentStep: 2 }),
+        { protocolHash: 'h1' },
+      ],
+      [
+        's2',
+        expect.objectContaining({ network: nextNetwork, currentStep: 1 }),
+        { protocolHash: 'h2' },
+      ],
+    ]);
   });
 });
 

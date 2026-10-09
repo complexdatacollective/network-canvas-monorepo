@@ -3,6 +3,7 @@ import { validateProtocol } from '@codaco/protocol-validation';
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { emptyProtocol } from '../fixtures/seed.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
+import { defaultLanguageText } from '../helpers/localized-text.js';
 import { readProtocolJson } from '../helpers/read-store.js';
 import { StageEditor } from '../pageobjects/stage-editor.js';
 import { Timeline } from '../pageobjects/timeline.js';
@@ -56,6 +57,7 @@ test('separates history controls and returns project subpages to the timeline', 
   for (const route of [
     '/protocol/assets',
     '/protocol/codebook',
+    '/protocol/localization',
     '/protocol/summary',
   ]) {
     await architectPage.goto(route);
@@ -82,10 +84,17 @@ test('keeps history to saved changes while a stage editor is open', async ({
       {
         id: 'information-1',
         type: 'Information',
-        label: 'A page to rename',
-        title: 'Welcome',
-        items: [{ id: 'item-1', type: 'text', content: 'Thanks for coming.' }],
+        label: { en: 'A page to rename' },
+        title: { en: 'Welcome' },
+        items: [
+          {
+            id: 'item-1',
+            type: 'text',
+            content: { en: 'Thanks for coming.' },
+          },
+        ],
       },
+      ...emptyProtocol().stages,
     ],
   });
   await gotoProtocol(architectPage);
@@ -193,7 +202,9 @@ test('discards an invalid stage draft before returning to the start screen', asy
 
   await seed(protocol, { name: 'Discard Invalid Draft', assets });
   await gotoProtocol(architectPage);
-  await new Timeline(architectPage).openStage(informationStage.label);
+  await new Timeline(architectPage).openStage(
+    defaultLanguageText(protocol, informationStage.label),
+  );
 
   // Clearing Information's required page heading makes the in-progress stage
   // invalid. The stage editor keeps this in its separate draft until the user
@@ -280,7 +291,7 @@ test('reload restores the canonical protocol instead of a legacy session body', 
         activeProtocolId: 'e2e-protocol',
         present: {
           name: 'Invalid Session Copy',
-          schemaVersion: 8,
+          schemaVersion: 9,
           codebook: null,
           stages: null,
         },
@@ -498,7 +509,7 @@ test('applies one history operation per activation for a codebook change', async
   // records the locus at /protocol/codebook (VariablePill.tsx).
   await architectPage
     .getByRole('button', {
-      name: 'Edit attribute name: biologicalSex',
+      name: 'Edit attribute name: sexAssignedAtBirth',
       exact: true,
     })
     .click();
@@ -509,10 +520,10 @@ test('applies one history operation per activation for a codebook change', async
   });
   await variableEditor
     .getByRole('textbox', { name: 'Attribute name' })
-    .fill('biologicalSexRenamed');
+    .fill('sexAssignedAtBirthRenamed');
   await variableEditor.getByRole('button', { name: 'Save Changes' }).click();
   await readProtocolJson(architectPage, (current) =>
-    JSON.stringify(current.codebook).includes('biologicalSexRenamed'),
+    JSON.stringify(current.codebook).includes('sexAssignedAtBirthRenamed'),
   );
 
   await architectPage.getByRole('link', { name: 'Resources' }).click();
@@ -523,14 +534,14 @@ test('applies one history operation per activation for a codebook change', async
   await readProtocolJson(
     architectPage,
     (current) =>
-      !JSON.stringify(current.codebook).includes('biologicalSexRenamed'),
+      !JSON.stringify(current.codebook).includes('sexAssignedAtBirthRenamed'),
   );
 
   // Same-page redo: reapplies without moving the researcher.
   await toolbar.redo();
   await expect(architectPage).toHaveURL(/\/protocol\/codebook$/);
   await readProtocolJson(architectPage, (current) =>
-    JSON.stringify(current.codebook).includes('biologicalSexRenamed'),
+    JSON.stringify(current.codebook).includes('sexAssignedAtBirthRenamed'),
   );
 });
 

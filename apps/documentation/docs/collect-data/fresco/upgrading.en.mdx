@@ -1,6 +1,6 @@
 ---
 title: Upgrading Fresco
-date: 22nd July 2026
+date: 5th October 2026
 navOrder: 10
 wip: false
 ---
@@ -44,6 +44,20 @@ This version information is accessible from several places:
 - **Exported Data**: The version number of your Fresco instance is included in the exported data within the ego file. This information is useful for tracking the version of Fresco used to collect data.
 
 The health check endpoint, `/api/health`, does not report the version. If you monitored your instance's version through it, use the **Settings** page instead.
+
+## Upgrading to 5.0.0
+
+Fresco 5.0.0 runs protocol schema 9, which lets protocols be written in more than one language, and lets variables, node and edge types, and options be named in any language. Check the following before you upgrade.
+
+- **Update Fresco before you upload a schema 9 protocol.** Architect 9.0 and later saves every protocol as schema 9, and Fresco 4.x can't open one. See [Schema version 9](/en/get-started/protocol-schema-information#schema-version-9).
+- **Your protocols are upgraded when Fresco starts.** The first time the new version starts, it upgrades the protocols you have already uploaded to schema 9. Their text is kept as it is, and is recorded as English. If a protocol is really written in another language, change it in Architect (see [Changing the language your text is recorded as](/en/design-protocols/translating-your-protocol#changing-the-language-your-text-is-recorded-as)). Node types, edge types and attributes get a label that is the same as their name. See [Schema version 9](/en/get-started/protocol-schema-information#schema-version-9).
+- **Interviews follow the participant's browser.** An interview no longer uses the dashboard's language, and its settings menu no longer has a language option. It uses the first of the browser's languages that the protocol is written in, and participants can change language only on a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage. See [Language in interviews](/en/collect-data/fresco/using-fresco#language-in-interviews).
+- **Export file names can change.** File names now keep a node or edge type's name as you wrote it, including hyphens, dots, spaces and letters from any language. A type called "Close-Friend" now exports to a file ending `_Close-Friend.csv` rather than `_CloseFriend.csv`. If your analysis scripts find export files by name, check them. See [Data Export](/en/analyze-data/data-export).
+- **Exports have a new column.** The ego file has a `networkCanvasInterviewLocale` column, and GraphML files have an `nc:interviewLocale` attribute, recording the language each interview was shown in. It is empty for interviews from before the upgrade that aren't opened again. See [Interview language](/en/analyze-data/data-export#interview-language).
+- **Every protocol ends with a Finish Screen.** The screen that ends an interview is now a [Finish Screen](/en/design-protocols/interface-documentation/finish-screen) stage at the end of the protocol, and the protocols you have already uploaded get one when Fresco starts. A participant who finishes an interview now sees the Finish Screen's heading and text, plus a notice that the interview is finished, in place of the old "finished" page, which no longer exists. The page shows no button, so participants close the window. Reopening the URL of a finished interview shows the same screen again, and any bookmarks or links to `/interview/finished` stop working. The **Progress** column of the interviews table now counts the Finish Screen as a stage, so an interview waiting at its Finish Screen shows less than 100% until it is finished.
+- **Interviews record how they ended.** Each interview now records which Finish Screen ended it and its outcome (`completed`, `ineligible` or `terminated`). Interviews finished before the upgrade have no outcome. Exports include it as the `networkCanvasFinishOutcome` column and the `nc:finishOutcome` attribute (see [How the interview ended](/en/analyze-data/data-export#how-the-interview-ended)), and the [Interview Data API](/en/analyze-data/fresco-api) returns it as `finishOutcome`.
+- **The "limit interviews" cookie changed.** It now holds the id of the participant's finished interview and can't be read by scripts in the page. A participant whose cookie names a finished interview of the same protocol is sent back to that interview's completed state. Cookies set by earlier versions are ignored, so a participant who finished an interview before the upgrade may be able to start another one on the same browser. See [Limit interviews](/en/collect-data/fresco/using-fresco#limit-interviews).
+- **Exports can show warnings.** If an export has to rename a column or remove characters that GraphML can't store, Fresco tells you in a notification that stays until you close it. See [Export warnings](/en/analyze-data/data-export#export-warnings).
 
 ## Upgrading to 4.2.0
 

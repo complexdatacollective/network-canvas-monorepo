@@ -1,41 +1,62 @@
-import { act, render, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
 import { DndStoreProvider } from '@codaco/fresco-ui/dnd/dnd';
 import type { DropCallback } from '@codaco/fresco-ui/dnd/types';
+import type { Variable } from '@codaco/protocol-validation';
 import {
-  entityAttributesProperty,
+  entityPrimaryKeyProperty,
   entitySecureAttributesMeta,
 } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
-import { setPassphrase, setPassphraseInvalid } from '../../store/modules/ui';
 import { interviewToastManager } from '../../toast/interviewToastManager';
 import type { StageProps } from '../../types';
+import { TestProtocolLocalization } from '../__tests__/TestProtocolLocalization';
 import {
   createEncryptionStore,
+  encryptedVariables,
+  encryptionFor,
   NODE_TYPE,
+  outOfBoundsHeader,
+  unlockWith,
 } from '../Anonymisation/__tests__/encryptionFixtures';
-import { isNumberArray } from '../Anonymisation/decryptionScope';
-import { decryptData } from '../Anonymisation/utils';
+import { readEncryptedAttribute } from '../Anonymisation/decryptionScope';
+import { decryptValue } from '../Anonymisation/encryptionFormat';
+import * as anonymisation from '../Anonymisation/utils';
 import NameGeneratorRoster from './NameGeneratorRoster';
 import type { UseItemElement } from './useItems';
 
-const { rosterPeople } = vi.hoisted(() => ({
-  rosterPeople: [
-    {
-      _uid: 'roster-alice',
-      type: 'person',
-      attributes: { name: 'Alice', age: 40 },
-    },
-  ],
+const aliceRow = {
+  _uid: 'roster-alice',
+  type: 'person',
+  attributes: { name: 'Alice', age: 40 },
+};
+
+const external = vi.hoisted(() => ({
+  rosterPeople: [] as {
+    _uid: string;
+    type: string;
+    attributes: Record<string, string | number>;
+  }[],
 }));
 
 vi.mock('../../hooks/useExternalData', () => ({
-  default: () => ({ externalData: rosterPeople, status: { state: 'ready' } }),
+  default: () => ({
+    externalData: external.rosterPeople,
+    status: { state: 'ready' },
+  }),
 }));
 
 // The roster's virtualised cards do not lay out in jsdom, nor can a drag be
@@ -73,6 +94,10 @@ beforeAll(() => {
   vi.stubGlobal('IntersectionObserver', StubObserver);
 });
 
+beforeEach(() => {
+  external.rosterPeople = [aliceRow];
+});
+
 afterEach(() => {
   vi.restoreAllMocks();
 });
@@ -80,32 +105,55 @@ afterEach(() => {
 const stage: StageProps<'NameGeneratorRoster'>['stage'] = {
   id: 'roster-stage',
   type: 'NameGeneratorRoster',
-  label: 'Roster',
+  externalDataError: { en: 'External data could not be loaded.' },
+  allAddedNotice: { en: 'There is nothing left to add from this list.' },
+  panelTitle: { en: 'Available to add' },
+  label: { en: 'Roster' },
   subject: { entity: 'node', type: NODE_TYPE },
   dataSource: 'roster-data',
-  prompts: [{ id: 'prompt-1', text: 'Who do you know?' }],
+  prompts: [{ id: 'prompt-1', text: { en: 'Who do you know?' } }],
 };
 
-function renderRoster(passphrase?: string, encryptionEnabled = true) {
-  const store = createEncryptionStore([], [stage], undefined, {
-    encryptionEnabled,
+const PASSPHRASE = 'roster passphrase';
+
+/**
+ * Renders the roster in an interview where no passphrase has been chosen yet,
+ * or (`resumed`) one chosen earlier whose key is in force unless `locked`, or
+ * (`refused`) one whose header no passphrase can open.
+ */
+async function renderRoster(
+  interview: 'fresh' | 'refused' | { resumed: true; locked: boolean },
+  variables?: Record<string, Variable>,
+) {
+  const { header } = await encryptionFor(PASSPHRASE);
+  const store = createEncryptionStore([], [stage], variables, {
+    header:
+      interview === 'fresh'
+        ? undefined
+        : interview === 'refused'
+          ? outOfBoundsHeader(header)
+          : header,
   });
-  if (passphrase) store.dispatch(setPassphrase(passphrase));
+  if (typeof interview === 'object' && !interview.locked) {
+    await unlockWith(store, PASSPHRASE);
+  }
 
   render(
     <InterviewI18nProvider requestedLocale="en">
       <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-          <DndStoreProvider>
-            <NameGeneratorRoster
-              stage={stage}
-              getNavigationHelpers={() => ({
-                moveForward: () => {},
-                moveBackward: () => {},
-              })}
-            />
-          </DndStoreProvider>
-        </CurrentStepProvider>
+        <TestProtocolLocalization>
+          <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+            <DndStoreProvider>
+              <NameGeneratorRoster
+                stage={stage}
+                getNavigationHelpers={() => ({
+                  moveForward: () => {},
+                  moveBackward: () => {},
+                })}
+              />
+            </DndStoreProvider>
+          </CurrentStepProvider>
+        </TestProtocolLocalization>
       </Provider>
     </InterviewI18nProvider>,
   );
@@ -137,9 +185,28 @@ function renderRoster(passphrase?: string, encryptionEnabled = true) {
 }
 
 describe('NameGeneratorRoster adding people whose answers are encrypted', () => {
+  it('says why no one can be added when no passphrase can open the interview', async () => {
+    const toast = vi.spyOn(interviewToastManager, 'add');
+    const { store, draggable } = await renderRoster('refused');
+
+    expect(draggable()).toEqual([]);
+    await waitFor(() => expect(toast).toHaveBeenCalled());
+    render(
+      <InterviewI18nProvider requestedLocale="en">
+        {toast.mock.calls.map(([options], index) => (
+          <p key={index}>{options.description}</p>
+        ))}
+      </InterviewI18nProvider>,
+    );
+    expect(
+      screen.getByText(/cannot be shown or saved in this interview/),
+    ).toBeInTheDocument();
+    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
+  });
+
   it('lets no one be dragged in, and asks for the passphrase, before one is entered', async () => {
     const toast = vi.spyOn(interviewToastManager, 'add');
-    const { store, draggable, dropAlice } = renderRoster();
+    const { store, draggable, dropAlice } = await renderRoster('fresh');
 
     expect(roster.items).toHaveLength(1);
     expect(draggable()).toEqual([]);
@@ -151,17 +218,42 @@ describe('NameGeneratorRoster adding people whose answers are encrypted', () => 
     expect(toast).not.toHaveBeenCalled();
   });
 
-  it('stops taking people, and asks for the passphrase rather than trying to save, once the passphrase stops working', async () => {
+  // A roster's columns are keyed by variable id once read, and an id is rarely
+  // the variable's name.
+  it('holds back a row whose encrypted column is keyed by a variable id unlike its name', async () => {
+    external.rosterPeople = [
+      { ...aliceRow, attributes: { 'var-name': 'Alice', 'var-age': 40 } },
+    ];
+    const { store, draggable } = await renderRoster('fresh', {
+      'var-name': {
+        name: 'name',
+        label: 'name',
+        type: 'text',
+        component: 'Text',
+        encrypted: true,
+      },
+      'var-age': {
+        name: 'age',
+        label: 'age',
+        type: 'number',
+        component: 'Number',
+      },
+    });
+
+    expect(roster.items).toHaveLength(1);
+    expect(draggable()).toEqual([]);
+    expect(store.getState().ui.showPassphrasePrompter).toBe(true);
+  });
+
+  it('takes no one in a resumed interview, asking for the passphrase rather than trying to save, until it is entered again', async () => {
     const toast = vi.spyOn(interviewToastManager, 'add');
-    const { store, draggable, dropAlice } = renderRoster('pw');
-
-    expect(draggable()).toHaveLength(1);
-
-    act(() => {
-      store.dispatch(setPassphraseInvalid(true));
+    const { store, draggable, dropAlice } = await renderRoster({
+      resumed: true,
+      locked: true,
     });
 
     expect(draggable()).toEqual([]);
+    expect(store.getState().ui.showPassphrasePrompter).toBe(true);
 
     await dropAlice();
 
@@ -169,11 +261,17 @@ describe('NameGeneratorRoster adding people whose answers are encrypted', () => 
     // A write the session refused would be reported with a toast; the roster
     // should not have attempted one.
     expect(toast).not.toHaveBeenCalled();
-    expect(store.getState().ui.passphraseInvalid).toBe(true);
+
+    await act(() => unlockWith(store, PASSPHRASE));
+
+    expect(draggable()).toHaveLength(1);
   });
 
-  it('adds a dropped person with their answers encrypted while the passphrase works', async () => {
-    const { store, draggable, dropAlice } = renderRoster('pw');
+  it('adds a dropped person under their roster id, with their name encrypted for that id', async () => {
+    const { store, draggable, dropAlice } = await renderRoster({
+      resumed: true,
+      locked: false,
+    });
 
     expect(draggable()).toHaveLength(1);
 
@@ -183,40 +281,29 @@ describe('NameGeneratorRoster adding people whose answers are encrypted', () => 
       expect(store.getState().session.network.nodes).toHaveLength(1),
     );
     const [added] = store.getState().session.network.nodes;
-    const data = added?.[entityAttributesProperty].name;
-    const secureAttributes = added?.[entitySecureAttributesMeta]?.name;
-    expect(isNumberArray(data)).toBe(true);
-    expect(secureAttributes).toBeDefined();
-    if (!isNumberArray(data)) throw new Error('Expected a stored ciphertext');
-    if (!secureAttributes)
-      throw new Error('Expected secure-attribute metadata');
-    await expect(decryptData({ secureAttributes, data }, 'pw')).resolves.toBe(
+    if (!added) throw new Error('Expected Alice to be added');
+    expect(added[entityPrimaryKeyProperty]).toBe('roster-alice');
+    const stored = readEncryptedAttribute(added, 'name', encryptedVariables);
+    if (stored?.status !== 'encrypted') {
+      throw new Error('Expected a stored ciphertext');
+    }
+    expect(stored.value.nodeId).toBe('roster-alice');
+    expect(Object.keys(added[entitySecureAttributesMeta]?.name ?? {})).toEqual([
+      'iv',
+    ]);
+    const { key } = await encryptionFor(PASSPHRASE);
+    await expect(decryptValue(key, stored.value, stored.value)).resolves.toBe(
       'Alice',
     );
   });
 });
 
-describe('NameGeneratorRoster with the encrypted-variables experiment off', () => {
-  it('lets people be dragged in and adds them as plaintext without asking for a passphrase', async () => {
-    const { store, draggable, dropAlice } = renderRoster(undefined, false);
-
-    expect(draggable()).toHaveLength(1);
-    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
-
-    await dropAlice();
-
-    await waitFor(() =>
-      expect(store.getState().session.network.nodes).toHaveLength(1),
-    );
-    const [added] = store.getState().session.network.nodes;
-    expect(added?.[entityAttributesProperty].name).toBe('Alice');
-    expect(added?.[entitySecureAttributesMeta]).toBeUndefined();
-  });
-});
-
 describe('NameGeneratorRoster while a dropped person is being added', () => {
-  it('takes them out of the roster as soon as they are dropped', () => {
-    const { store, startDroppingAlice } = renderRoster('pw');
+  it('takes them out of the roster as soon as they are dropped', async () => {
+    const { store, startDroppingAlice } = await renderRoster({
+      resumed: true,
+      locked: false,
+    });
     const [alice] = roster.items;
     if (!alice) throw new Error('The roster lists Alice');
 
@@ -224,11 +311,15 @@ describe('NameGeneratorRoster while a dropped person is being added', () => {
 
     expect(store.getState().session.network.nodes).toEqual([]);
     expect(roster.items).toEqual([]);
+    await store.writesSettled();
   });
 
   it('adds someone dropped again before their add finishes only once, holding nothing back', async () => {
     const toast = vi.spyOn(interviewToastManager, 'add');
-    const { store, startDroppingAlice } = renderRoster('pw');
+    const { store, startDroppingAlice } = await renderRoster({
+      resumed: true,
+      locked: false,
+    });
     const [alice] = roster.items;
     if (!alice) throw new Error('The roster lists Alice');
 
@@ -245,15 +336,18 @@ describe('NameGeneratorRoster while a dropped person is being added', () => {
 
   it('puts them back in the roster, and says why, when they could not be added', async () => {
     const toast = vi.spyOn(interviewToastManager, 'add');
-    const { store, startDroppingAlice } = renderRoster('pw');
+    const { store, startDroppingAlice } = await renderRoster({
+      resumed: true,
+      locked: false,
+    });
     const [alice] = roster.items;
     if (!alice) throw new Error('The roster lists Alice');
+    // The key their answers were being protected with stopped being in force.
+    vi.spyOn(anonymisation, 'generateSecureAttributes').mockRejectedValue(
+      new anonymisation.PassphraseRequiredError(),
+    );
 
     startDroppingAlice(alice);
-    // Their answers were being protected with a passphrase no longer in force.
-    act(() => {
-      store.dispatch(setPassphrase('another passphrase'));
-    });
 
     expect(await store.writesSettled()).toBe(false);
     await waitFor(() =>

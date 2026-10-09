@@ -111,7 +111,7 @@ describe.each(hosts)('a test host %s', (_, serve) => {
       sectionId: INFORMATION,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: 'Written after a defect',
+        label: { 'en-US': 'Written after a defect' },
       }),
       revision: held.revision,
     });
@@ -130,6 +130,8 @@ describe.each(hosts)('a test host %s', (_, serve) => {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
-    expect(Redacted.value(read.document).label).toBe('Written after a defect');
+    expect(Redacted.value(read.document).label).toEqual({
+      'en-US': 'Written after a defect',
+    });
   });
 });

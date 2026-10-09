@@ -233,8 +233,10 @@
       "DyadCensus": "Dyad Census",
       "EgoForm": "Ego Form",
       "FamilyPedigree": "Family Pedigree",
+      "FinishSession": "Finish Screen",
       "Geospatial": "Geospatial Interface",
       "Information": "Information",
+      "LanguageChooser": "Language Chooser",
       "NameGenerator": "Name Generator (using forms)",
       "NameGeneratorQuickAdd": "Name Generator (quick add)",
       "NameGeneratorRoster": "Name Generator for Roster Data",
@@ -275,8 +277,6 @@
       },
       "loading": "Preparing the preview…",
       "finishConfirmation": "This is a preview, so nothing is saved. Finishing ends this run of the protocol, and you can start it again afterwards.",
-      "finishedHeading": "Preview finished",
-      "finishedDescription": "The interview finished just as it would for a participant. Nothing was saved.",
       "restart": "Start the preview again",
       "backToProtocol": "Back to the protocol",
       "errorHeading": "This protocol can't be previewed",
@@ -336,7 +336,7 @@
       "bestFor": "Best for",
       "downloadVersion": "Download version {version}",
       "platformAccessibleName": "{platform} for {app}",
-      "schemaVersionInfo": "Architect Classic and Interviewer Classic support Schema 7 protocols. The browser-based Architect, Interviewer, and Fresco use Schema 8, which includes the latest features. Upgrading a protocol is one-way, so keep the original Schema 7 file if you still need the Classic apps.",
+      "schemaVersionInfo": "Architect Classic and Interviewer Classic support Schema 7 protocols. The browser-based Architect, Interviewer, and Fresco use Schema 9, which includes the latest features. Upgrading a protocol is one-way, so keep the original Schema 7 file if you still need the Classic apps.",
       "schemaVersionLink": "Learn about schema versions"
     },
     "platforms": {

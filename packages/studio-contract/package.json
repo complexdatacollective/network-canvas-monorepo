@@ -51,6 +51,7 @@
   },
   "dependencies": {
     "@codaco/protocol-builder-core": "workspace:^",
+    "@codaco/protocol-validation": "workspace:^",
     "@codaco/studio-sync": "workspace:^",
     "effect": "catalog:"
   },

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { getEntityTypeReferenceDescriptor } from '../../schemas/8/entity-type-reference.ts';
+import { getEntityTypeReferenceDescriptor } from '../../schemas/9/entity-type-reference.ts';
 import { CurrentProtocolSchema } from '../../schemas/index.ts';
 
 // Count every meta-tagged node reachable by the same traversal the extractor
@@ -40,12 +40,12 @@ const countTagged = (
 };
 
 // Update this number deliberately when adding/removing a tagged field.
-// (12: node + edge stage subjects; sociogram prompt edges.create +
+// (11: node + edge stage subjects; sociogram prompt edges.create +
 //  edges.display element; DyadCensus / TieStrengthCensus /
 //  OneToManyDyadCensus createEdge; Narrative preset edges.display element;
-//  FamilyPedigree nodeConfig.type + edgeConfig.type; filter rule options.type
+//  FamilyPedigree relationship.type; filter rule options.type
 //  on the type-level and attribute-level rule branches.)
-const EXPECTED_TAGGED_FIELD_COUNT = 12;
+const EXPECTED_TAGGED_FIELD_COUNT = 11;
 
 describe('entity-type reference coverage', () => {
   it('has tagged the expected number of reference fields', () => {

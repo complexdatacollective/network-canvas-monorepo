@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import { Schema } from 'effect';
 
+import type { FinishOutcome } from '@codaco/protocol-validation';
 import { canonicalize } from '@codaco/studio-sync/apply';
 
 export const decodeAttributes = Schema.decodeUnknownSync(
@@ -14,7 +15,7 @@ export const decodeSecureAttributes = Schema.decodeUnknownSync(
       Schema.String,
       Schema.Struct({
         iv: Schema.Array(Schema.Number),
-        salt: Schema.Array(Schema.Number),
+        salt: Schema.optional(Schema.Array(Schema.Number)),
       }),
     ),
   ),
@@ -23,7 +24,7 @@ export const decodeSecureAttributes = Schema.decodeUnknownSync(
 type SecureAttributes = Readonly<
   Record<
     string,
-    { readonly iv: readonly number[]; readonly salt: readonly number[] }
+    { readonly iv: readonly number[]; readonly salt?: readonly number[] }
   >
 >;
 
@@ -141,6 +142,9 @@ export const snapshotPayload = (snapshot: {
   readonly network: Network;
   readonly stageMetadata: Readonly<Record<string, unknown>>;
   readonly currentStep: number;
+  /** The finish stage the interview ended at, and that stage's outcome. */
+  readonly finishStageId: string;
+  readonly finishOutcome: FinishOutcome;
 }): { readonly payload: string; readonly payloadHash: string } => {
   const payload = canonicalize(snapshot);
   return {

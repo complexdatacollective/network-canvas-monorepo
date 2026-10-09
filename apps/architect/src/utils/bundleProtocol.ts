@@ -1,6 +1,10 @@
 import JSZip from 'jszip';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  type CurrentProtocol,
+  type FinishStageTextProblem,
+  findFinishStageTextProblems,
+} from '@codaco/protocol-validation';
 
 import { getAssetById } from './assetUtils';
 
@@ -29,6 +33,28 @@ export class UnresolvedAssetsError extends Error {
     );
     this.name = 'UnresolvedAssetsError';
     this.assetNames = assetNames;
+  }
+}
+
+/**
+ * The stage that ends the interview has no heading or text in the protocol's
+ * default language. Architect lets a protocol be written and saved like this
+ * — a new protocol in a language Network Canvas supplies no closing text for
+ * starts so — but not handed out: every host refuses to import it, and a
+ * participant would finish the interview on an empty screen.
+ *
+ * Checked here, where every download and export is produced, so no path can
+ * hand one out.
+ */
+export class MissingFinishStageTextError extends Error {
+  readonly problem: FinishStageTextProblem;
+
+  constructor(problem: FinishStageTextProblem) {
+    super(
+      `The finish stage has no ${problem.missing.join(' or ')} in ${problem.locale}`,
+    );
+    this.name = 'MissingFinishStageTextError';
+    this.problem = problem;
   }
 }
 
@@ -157,6 +183,11 @@ export const bundleProtocol = async (
   protocol: CurrentProtocol,
   protocolId?: string,
 ): Promise<Blob> => {
+  const [finishStageTextProblem] = findFinishStageTextProblems(protocol);
+  if (finishStageTextProblem !== undefined) {
+    throw new MissingFinishStageTextError(finishStageTextProblem);
+  }
+
   const zip = new JSZip();
 
   const resolved = protocol.assetManifest
@@ -216,10 +247,13 @@ export async function downloadProtocolAsNetcanvas(
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   } catch (error) {
-    // Passed through rather than wrapped: the caller describes this one to the
-    // researcher by naming the resources, and wrapping would hide the type
+    // Passed through rather than wrapped: the caller describes these to the
+    // researcher by naming what is missing, and wrapping would hide the type
     // behind a message no dialog should ever show.
-    if (error instanceof UnresolvedAssetsError) {
+    if (
+      error instanceof UnresolvedAssetsError ||
+      error instanceof MissingFinishStageTextError
+    ) {
       throw error;
     }
     throw new Error(

@@ -82,13 +82,13 @@ describe('creating an ordinal bin stage', () => {
     const request = await harness.submit();
     expect(request?.stageDocument).toMatchObject({
       type: 'OrdinalBin',
-      label: 'Person Ordinal Bin',
+      label: { 'en-US': 'Person Ordinal Bin' },
       subject: { entity: 'node', type: 'person' },
     });
     expect(prompts(request?.stageDocument ?? {})).toEqual([
       {
         id: expect.any(String) as unknown as string,
-        text: 'How often do you see them?',
+        text: { 'en-US': 'How often do you see them?' },
         variable: 'contactFreq',
         color: 'ord-color-seq-1',
       },

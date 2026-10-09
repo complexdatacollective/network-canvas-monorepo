@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { interviewCatalogSource } from '../../i18n/catalog';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
+import { TestProtocolLocalization } from '../__tests__/TestProtocolLocalization';
 import useItems from './useItems';
 
 const { sourceNodes, typeDefinition } = vi.hoisted(() => ({
@@ -11,8 +12,11 @@ const { sourceNodes, typeDefinition } = vi.hoisted(() => ({
     { _uid: 'named-item', type: 'person', attributes: { name: 'Zoë Álvarez' } },
   ],
   typeDefinition: {
-    name: 'Researcher subject',
-    variables: { name: { name: 'name', type: 'text' } },
+    name: 'person_internal',
+    label: { en: 'Researcher subject' },
+    variables: {
+      name: { name: 'name', label: 'Name', type: 'text' },
+    },
   },
 }));
 
@@ -35,10 +39,13 @@ function RosterLabels() {
     stage: {
       id: 'stage',
       type: 'NameGeneratorRoster',
-      label: 'Authored stage',
+      externalDataError: { en: 'External data could not be loaded.' },
+      allAddedNotice: { en: 'There is nothing left to add from this list.' },
+      panelTitle: { en: 'Available to add' },
+      label: { en: 'Authored stage' },
       subject: { entity: 'node', type: 'person' },
       dataSource: 'source',
-      prompts: [{ id: 'prompt', text: 'Authored prompt' }],
+      prompts: [{ id: 'prompt', text: { en: 'Authored prompt' } }],
     },
     getNavigationHelpers: () => ({
       moveForward: () => {},
@@ -63,25 +70,27 @@ beforeAll(async () => {
 });
 
 describe('roster memoized fallback labels', () => {
-  it('invalidates already-loaded fallback labels on locale changes without rewriting roster data or authored type names', () => {
+  it('keeps the fallback label, the roster data and authored type labels unchanged across locale changes', () => {
     const before = structuredClone(sourceNodes);
     const tree = (locale: string) => (
       <InterviewI18nProvider requestedLocale={locale}>
-        <RosterLabels />
+        <TestProtocolLocalization>
+          <RosterLabels />
+        </TestProtocolLocalization>
       </InterviewI18nProvider>
     );
     const { rerender } = render(tree('en'));
     expect(
       screen.getAllByRole('listitem').map((item) => item.textContent),
-    ).toEqual(['Unnamed Researcher subject 1', 'Zoë Álvarez']);
+    ).toEqual(['Researcher subject 1', 'Zoë Álvarez']);
     rerender(tree('es'));
     expect(
       screen.getAllByRole('listitem').map((item) => item.textContent),
-    ).toEqual(['Researcher subject sin nombre 1', 'Zoë Álvarez']);
+    ).toEqual(['Researcher subject 1', 'Zoë Álvarez']);
     expect(sourceNodes).toEqual(before);
     rerender(tree('en-GB'));
     expect(
       screen.getAllByRole('listitem').map((item) => item.textContent),
-    ).toEqual(['Unnamed Researcher subject 1', 'Zoë Álvarez']);
+    ).toEqual(['Researcher subject 1', 'Zoë Álvarez']);
   });
 });

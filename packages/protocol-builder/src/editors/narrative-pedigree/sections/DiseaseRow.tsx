@@ -10,7 +10,6 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import ColorPickerField, {
   resolveSwatchColor,
 } from '@codaco/fresco-ui/form/fields/ColorPicker';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import {
   INHERITANCE_PATTERNS,
@@ -18,12 +17,15 @@ import {
   NodeColorSequence,
 } from '@codaco/protocol-validation';
 
+import { LocalizedInputField } from '../../../fields/LocalizedStringField.tsx';
 import VariablePickerField from '../../../fields/VariablePickerField.tsx';
 import type {
   RowEditorProps,
   RowPreviewProps,
 } from '../../../form/rowDialog.tsx';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
+import { asLocalizedString } from '../../../localization/localizedText.ts';
+import { useLocalizedText } from '../../../localization/ProtocolLocalization.tsx';
 import type { CodebookSubject } from '../../../protocol-context.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import {
@@ -40,7 +42,7 @@ import {
 
 const LABEL_FIELD = 'label';
 const COLOR_FIELD = 'color';
-const VARIABLE_FIELD = 'variable';
+const ATTRIBUTE_FIELD = 'attribute';
 const INHERITANCE_FIELD = 'inheritancePattern';
 const SOURCE_FIELD = 'sourceStageId';
 const DISEASES_FIELD = 'diseases';
@@ -90,7 +92,7 @@ const siblingVariables = (
   const used = new Set<string>();
   rows.forEach((row, index) => {
     if (index === editIndex || !isRecord(row)) return;
-    if (typeof row.variable === 'string') used.add(row.variable);
+    if (typeof row.attribute === 'string') used.add(row.attribute);
   });
   return used;
 };
@@ -130,7 +132,7 @@ export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
   const subject = useDiseaseSubject();
   const sourceStageId = useStageValue(SOURCE_FIELD);
   const rows = useStageValue(DISEASES_FIELD);
-  const currentVariable = asString(item.variable);
+  const currentVariable = asString(item.attribute);
 
   // Both lists are the same every render, and both are a control's `options`:
   // a fresh array each time re-registers the control on every keystroke.
@@ -186,15 +188,15 @@ export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
   // here would only say it again.
   return (
     <>
-      <Field<typeof InputField>
+      <Field<typeof LocalizedInputField>
         name={LABEL_FIELD}
-        component={InputField}
+        component={LocalizedInputField}
         label={intl.formatMessage(narrativePedigreeMessages.diseaseNameLabel)}
         hint={intl.formatMessage(narrativePedigreeMessages.diseaseNameHint)}
         placeholder={intl.formatMessage(
           narrativePedigreeMessages.diseaseNamePlaceholder,
         )}
-        initialValue={asString(item.label)}
+        initialValue={asLocalizedString(item.label)}
         required={intl.formatMessage(
           narrativePedigreeMessages.diseaseNameRequired,
         )}
@@ -211,7 +213,7 @@ export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
         )}
       />
       <Field<typeof VariablePickerField>
-        name={VARIABLE_FIELD}
+        name={ATTRIBUTE_FIELD}
         component={VariablePickerField}
         label={intl.formatMessage(
           narrativePedigreeMessages.diseaseVariableLabel,
@@ -268,6 +270,8 @@ export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
  */
 export function DiseasePreview({ item }: RowPreviewProps) {
   const intl = useAppIntl();
+  const localize = useLocalizedText();
+  const label = localize(item.label);
   const protocolContext = useProtocolContext();
   const { roleMap, slotMap } = useDiseaseVariableIndexes();
   const subject = useDiseaseSubject();
@@ -285,7 +289,7 @@ export function DiseasePreview({ item }: RowPreviewProps) {
     slotMap,
     subject,
     sourceStageId,
-    variableId: item.variable,
+    variableId: item.attribute,
   });
   // Narrowed against the palette rather than cast: a stored colour the theme
   // no longer defines loses its swatch, and the row still reads.
@@ -304,10 +308,15 @@ export function DiseasePreview({ item }: RowPreviewProps) {
             aria-hidden="true"
           />
         )}
-        <span>
-          {asString(item.label) ??
-            intl.formatMessage(narrativePedigreeMessages.diseaseUnnamed)}
-        </span>
+        {label.text === '' ? (
+          <span>
+            {intl.formatMessage(narrativePedigreeMessages.diseaseUnnamed)}
+          </span>
+        ) : (
+          <span lang={label.lang} dir={label.dir}>
+            {label.text}
+          </span>
+        )}
         {marksNobody && (
           <Badge tone="destructive">
             {intl.formatMessage(narrativePedigreeMessages.diseaseMarksNobody)}

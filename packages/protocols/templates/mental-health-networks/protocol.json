@@ -1,27 +1,27 @@
 {
   "name": "Mental Health Networks",
   "description": "An example template for studying how a personal network both supports a participant and adds stress while they manage their mental health. It uses separate name generators for supportive and difficult relationships, and records who knows about the participant's mental health (disclosure).",
-  "schemaVersion": 8,
+  "schemaVersion": 9,
+  "localization": { "defaultLocale": "en-US", "locales": ["en-US"] },
   "lastModified": "2026-06-15T00:00:00.000Z",
-  "experiments": {
-    "encryptedVariables": false
-  },
+  "experiments": {},
   "codebook": {
     "ego": {
       "variables": {
         "participant_consent": {
           "name": "participant_consent",
+          "label": "participant_consent",
           "type": "boolean",
           "component": "Boolean",
           "validation": { "required": true },
           "options": [
             {
-              "label": "Yes. I agree to take part.",
+              "label": { "en-US": "Yes. I agree to take part." },
               "value": true,
               "negative": false
             },
             {
-              "label": "No. I do not agree to take part.",
+              "label": { "en-US": "No. I do not agree to take part." },
               "value": false,
               "negative": true
             }
@@ -29,102 +29,110 @@
         },
         "k6_1": {
           "name": "k6_1",
+          "label": "k6_1",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": "None of the time", "value": 0 },
-            { "label": "A little of the time", "value": 1 },
-            { "label": "Some of the time", "value": 2 },
-            { "label": "Most of the time", "value": 3 },
-            { "label": "All of the time", "value": 4 }
+            { "label": { "en-US": "None of the time" }, "value": 0 },
+            { "label": { "en-US": "A little of the time" }, "value": 1 },
+            { "label": { "en-US": "Some of the time" }, "value": 2 },
+            { "label": { "en-US": "Most of the time" }, "value": 3 },
+            { "label": { "en-US": "All of the time" }, "value": 4 }
           ],
           "validation": { "required": true }
         },
         "k6_2": {
           "name": "k6_2",
+          "label": "k6_2",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": "None of the time", "value": 0 },
-            { "label": "A little of the time", "value": 1 },
-            { "label": "Some of the time", "value": 2 },
-            { "label": "Most of the time", "value": 3 },
-            { "label": "All of the time", "value": 4 }
+            { "label": { "en-US": "None of the time" }, "value": 0 },
+            { "label": { "en-US": "A little of the time" }, "value": 1 },
+            { "label": { "en-US": "Some of the time" }, "value": 2 },
+            { "label": { "en-US": "Most of the time" }, "value": 3 },
+            { "label": { "en-US": "All of the time" }, "value": 4 }
           ],
           "validation": { "required": true }
         },
         "k6_3": {
           "name": "k6_3",
+          "label": "k6_3",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": "None of the time", "value": 0 },
-            { "label": "A little of the time", "value": 1 },
-            { "label": "Some of the time", "value": 2 },
-            { "label": "Most of the time", "value": 3 },
-            { "label": "All of the time", "value": 4 }
+            { "label": { "en-US": "None of the time" }, "value": 0 },
+            { "label": { "en-US": "A little of the time" }, "value": 1 },
+            { "label": { "en-US": "Some of the time" }, "value": 2 },
+            { "label": { "en-US": "Most of the time" }, "value": 3 },
+            { "label": { "en-US": "All of the time" }, "value": 4 }
           ],
           "validation": { "required": true }
         },
         "k6_4": {
           "name": "k6_4",
+          "label": "k6_4",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": "None of the time", "value": 0 },
-            { "label": "A little of the time", "value": 1 },
-            { "label": "Some of the time", "value": 2 },
-            { "label": "Most of the time", "value": 3 },
-            { "label": "All of the time", "value": 4 }
+            { "label": { "en-US": "None of the time" }, "value": 0 },
+            { "label": { "en-US": "A little of the time" }, "value": 1 },
+            { "label": { "en-US": "Some of the time" }, "value": 2 },
+            { "label": { "en-US": "Most of the time" }, "value": 3 },
+            { "label": { "en-US": "All of the time" }, "value": 4 }
           ],
           "validation": { "required": true }
         },
         "k6_5": {
           "name": "k6_5",
+          "label": "k6_5",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": "None of the time", "value": 0 },
-            { "label": "A little of the time", "value": 1 },
-            { "label": "Some of the time", "value": 2 },
-            { "label": "Most of the time", "value": 3 },
-            { "label": "All of the time", "value": 4 }
+            { "label": { "en-US": "None of the time" }, "value": 0 },
+            { "label": { "en-US": "A little of the time" }, "value": 1 },
+            { "label": { "en-US": "Some of the time" }, "value": 2 },
+            { "label": { "en-US": "Most of the time" }, "value": 3 },
+            { "label": { "en-US": "All of the time" }, "value": 4 }
           ],
           "validation": { "required": true }
         },
         "k6_6": {
           "name": "k6_6",
+          "label": "k6_6",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": "None of the time", "value": 0 },
-            { "label": "A little of the time", "value": 1 },
-            { "label": "Some of the time", "value": 2 },
-            { "label": "Most of the time", "value": 3 },
-            { "label": "All of the time", "value": 4 }
+            { "label": { "en-US": "None of the time" }, "value": 0 },
+            { "label": { "en-US": "A little of the time" }, "value": 1 },
+            { "label": { "en-US": "Some of the time" }, "value": 2 },
+            { "label": { "en-US": "Most of the time" }, "value": 3 },
+            { "label": { "en-US": "All of the time" }, "value": 4 }
           ],
           "validation": { "required": true }
         },
         "self_rated_mental_health": {
           "name": "self_rated_mental_health",
+          "label": "self_rated_mental_health",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": "Poor", "value": 1 },
-            { "label": "Fair", "value": 2 },
-            { "label": "Good", "value": 3 },
-            { "label": "Very good", "value": 4 },
-            { "label": "Excellent", "value": 5 }
+            { "label": { "en-US": "Poor" }, "value": 1 },
+            { "label": { "en-US": "Fair" }, "value": 2 },
+            { "label": { "en-US": "Good" }, "value": 3 },
+            { "label": { "en-US": "Very good" }, "value": 4 },
+            { "label": { "en-US": "Excellent" }, "value": 5 }
           ],
           "validation": { "required": true }
         },
         "in_treatment": {
           "name": "in_treatment",
+          "label": "in_treatment",
           "type": "boolean",
           "component": "Boolean",
           "options": [
-            { "label": "Yes", "value": true },
-            { "label": "No", "value": false }
+            { "label": { "en-US": "Yes" }, "value": true },
+            { "label": { "en-US": "No" }, "value": false }
           ]
         }
       }
@@ -132,102 +140,123 @@
     "node": {
       "person": {
         "name": "Person",
+        "label": { "en-US": "Person" },
         "color": "node-color-seq-1",
         "icon": "add-a-person",
         "shape": { "default": "circle" },
         "variables": {
           "alter_name": {
             "name": "alter_name",
+            "label": "alter_name",
             "type": "text",
             "component": "Text",
             "validation": { "required": true, "unique": true }
           },
           "relationship": {
             "name": "relationship",
+            "label": "relationship",
             "type": "categorical",
             "component": "CheckboxGroup",
             "options": [
-              { "label": "Partner or spouse", "value": "partner" },
-              { "label": "Parent", "value": "parent" },
-              { "label": "Child", "value": "child" },
-              { "label": "Sibling", "value": "sibling" },
-              { "label": "Other family member", "value": "other_family" },
-              { "label": "Friend", "value": "friend" },
-              { "label": "Neighbour", "value": "neighbour" },
-              { "label": "Co-worker or classmate", "value": "coworker" },
+              { "label": { "en-US": "Partner or spouse" }, "value": "partner" },
+              { "label": { "en-US": "Parent" }, "value": "parent" },
+              { "label": { "en-US": "Child" }, "value": "child" },
+              { "label": { "en-US": "Sibling" }, "value": "sibling" },
               {
-                "label": "Health or care professional",
+                "label": { "en-US": "Other family member" },
+                "value": "other_family"
+              },
+              { "label": { "en-US": "Friend" }, "value": "friend" },
+              { "label": { "en-US": "Neighbour" }, "value": "neighbour" },
+              {
+                "label": { "en-US": "Co-worker or classmate" },
+                "value": "coworker"
+              },
+              {
+                "label": { "en-US": "Health or care professional" },
                 "value": "professional"
               },
-              { "label": "Peer or support-group member", "value": "peer" },
-              { "label": "Other", "value": "other" }
+              {
+                "label": { "en-US": "Peer or support-group member" },
+                "value": "peer"
+              },
+              { "label": { "en-US": "Other" }, "value": "other" }
             ]
           },
           "support_emotional": {
             "name": "support_emotional",
+            "label": "support_emotional",
             "type": "boolean",
             "component": "Boolean",
             "options": [
-              { "label": "Yes", "value": true },
-              { "label": "No", "value": false }
+              { "label": { "en-US": "Yes" }, "value": true },
+              { "label": { "en-US": "No" }, "value": false }
             ]
           },
           "support_practical": {
             "name": "support_practical",
+            "label": "support_practical",
             "type": "boolean",
             "component": "Boolean",
             "options": [
-              { "label": "Yes", "value": true },
-              { "label": "No", "value": false }
+              { "label": { "en-US": "Yes" }, "value": true },
+              { "label": { "en-US": "No" }, "value": false }
             ]
           },
           "support_informational": {
             "name": "support_informational",
+            "label": "support_informational",
             "type": "boolean",
             "component": "Boolean",
             "options": [
-              { "label": "Yes", "value": true },
-              { "label": "No", "value": false }
+              { "label": { "en-US": "Yes" }, "value": true },
+              { "label": { "en-US": "No" }, "value": false }
             ]
           },
           "is_clinical": {
             "name": "is_clinical",
+            "label": "is_clinical",
             "type": "boolean",
             "component": "Boolean",
             "options": [
-              { "label": "Yes", "value": true },
-              { "label": "No", "value": false }
+              { "label": { "en-US": "Yes" }, "value": true },
+              { "label": { "en-US": "No" }, "value": false }
             ]
           },
           "knows_about_mh": {
             "name": "knows_about_mh",
+            "label": "knows_about_mh",
             "type": "boolean",
             "component": "Boolean",
             "options": [
-              { "label": "Yes", "value": true },
-              { "label": "No", "value": false }
+              { "label": { "en-US": "Yes" }, "value": true },
+              { "label": { "en-US": "No" }, "value": false }
             ]
           },
           "is_source_of_stress": {
             "name": "is_source_of_stress",
+            "label": "is_source_of_stress",
             "type": "boolean",
             "component": "Boolean",
             "options": [
-              { "label": "Yes", "value": true },
-              { "label": "No", "value": false }
+              { "label": { "en-US": "Yes" }, "value": true },
+              { "label": { "en-US": "No" }, "value": false }
             ]
           },
           "help_source_type": {
             "name": "help_source_type",
+            "label": "help_source_type",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
               {
-                "label": "Informal (family, friends, peers)",
+                "label": { "en-US": "Informal (family, friends, peers)" },
                 "value": "informal"
               },
               {
-                "label": "Formal or clinical (professionals, services)",
+                "label": {
+                  "en-US": "Formal or clinical (professionals, services)"
+                },
                 "value": "formal"
               }
             ],
@@ -235,30 +264,33 @@
           },
           "contact_frequency": {
             "name": "contact_frequency",
+            "label": "contact_frequency",
             "type": "ordinal",
             "component": "RadioGroup",
             "options": [
-              { "label": "Daily", "value": 5 },
-              { "label": "A few times a week", "value": 4 },
-              { "label": "About once a week", "value": 3 },
-              { "label": "About once a month", "value": 2 },
-              { "label": "Less than once a month", "value": 1 }
+              { "label": { "en-US": "Daily" }, "value": 5 },
+              { "label": { "en-US": "A few times a week" }, "value": 4 },
+              { "label": { "en-US": "About once a week" }, "value": 3 },
+              { "label": { "en-US": "About once a month" }, "value": 2 },
+              { "label": { "en-US": "Less than once a month" }, "value": 1 }
             ]
           },
           "closeness": {
             "name": "closeness",
+            "label": "closeness",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
-              { "label": "Not at all close", "value": 1 },
-              { "label": "A little close", "value": 2 },
-              { "label": "Fairly close", "value": 3 },
-              { "label": "Very close", "value": 4 },
-              { "label": "Extremely close", "value": 5 }
+              { "label": { "en-US": "Not at all close" }, "value": 1 },
+              { "label": { "en-US": "A little close" }, "value": 2 },
+              { "label": { "en-US": "Fairly close" }, "value": 3 },
+              { "label": { "en-US": "Very close" }, "value": 4 },
+              { "label": { "en-US": "Extremely close" }, "value": 5 }
             ]
           },
           "layout": {
             "name": "layout",
+            "label": "layout",
             "type": "layout"
           }
         }
@@ -267,6 +299,7 @@
     "edge": {
       "knows": {
         "name": "Knows",
+        "label": { "en-US": "Knows" },
         "color": "edge-color-seq-1"
       }
     }
@@ -275,29 +308,35 @@
     {
       "id": "information-researcher-notes",
       "type": "Information",
-      "label": "Template notes (delete before fielding)",
-      "title": "Template notes",
+      "label": { "en-US": "Template notes (delete before fielding)" },
+      "title": { "en-US": "Template notes" },
       "items": [
         {
           "id": "researcher-notes",
           "type": "text",
-          "content": "## For researchers\n\n_Delete this screen before you field the study. It lists the instruments and studies this template draws on._\n\n_Customize the consent screen for your study and obtain the necessary ethics approval before fielding._\n\n- [Kessler RC et al. The K6 psychological distress scale (overview, Cognitive Atlas).](https://www.cognitiveatlas.org/task/id/tsk_OA90UJX5qwTyc/)\n- [Offer S, Fischer CS (2018). They Drive Me Crazy: Difficult Social Ties and Subjective Well-Being (UCNets). *J Health Soc Behav*.](https://pmc.ncbi.nlm.nih.gov/articles/PMC9242844/)\n- [GSS \"important matters\" generator — Contributions of the GSS to Egocentric Network Research (TR45).](https://gss.norc.org/content/dam/gss/get-documentation/pdf/reports/topical-reports/TR45%20Egocentric%20Network.pdf)"
+          "content": {
+            "en-US": "## For researchers\n\n_Delete this screen before you field the study. It lists the instruments and studies this template draws on._\n\n_Customize the consent screen for your study and obtain the necessary ethics approval before fielding._\n\n- [Kessler RC et al. The K6 psychological distress scale (overview, Cognitive Atlas).](https://www.cognitiveatlas.org/task/id/tsk_OA90UJX5qwTyc/)\n- [Offer S, Fischer CS (2018). They Drive Me Crazy: Difficult Social Ties and Subjective Well-Being (UCNets). *J Health Soc Behav*.](https://pmc.ncbi.nlm.nih.gov/articles/PMC9242844/)\n- [GSS \"important matters\" generator — Contributions of the GSS to Egocentric Network Research (TR45).](https://gss.norc.org/content/dam/gss/get-documentation/pdf/reports/topical-reports/TR45%20Egocentric%20Network.pdf)"
+          }
         }
       ]
     },
     {
       "id": "information-intro",
       "type": "EgoForm",
-      "label": "Welcome and consent",
+      "label": { "en-US": "Welcome and consent" },
       "introductionPanel": {
-        "title": "About this interview",
-        "text": "## Thank you for taking part\n\nIn this interview we will talk about the people in your life and how they relate to your mental health and wellbeing. We will ask you to name people who **support** you, and also people who are sometimes a **source of stress, conflict, or strain**. There are no right or wrong answers — we are simply interested in your own experience.\n\n### Some of these questions are personal\n\nWe will ask about how you have been feeling recently and about who knows about your mental health. You are free to skip any question, to pause, or to stop the interview at any time, and you do not have to give a reason. The people you name are recorded only by the first name or nickname you choose, and your answers are kept confidential and used only for research.\n\n### Your consent\n\nThe researcher should explain the study and give you a chance to ask questions before you choose an option below. If you do not agree to take part, the interview will end. If you would like to stop at any later point, just let the interviewer know.\n\n**If reading or talking about these topics brings up difficult feelings, please tell the interviewer. They can help you pause and find appropriate local support whether or not you choose to participate.**"
+        "title": { "en-US": "About this interview" },
+        "text": {
+          "en-US": "## Thank you for taking part\n\nIn this interview we will talk about the people in your life and how they relate to your mental health and wellbeing. We will ask you to name people who **support** you, and also people who are sometimes a **source of stress, conflict, or strain**. There are no right or wrong answers — we are simply interested in your own experience.\n\n### Some of these questions are personal\n\nWe will ask about how you have been feeling recently and about who knows about your mental health. You are free to skip any question, to pause, or to stop the interview at any time, and you do not have to give a reason. The people you name are recorded only by the first name or nickname you choose, and your answers are kept confidential and used only for research.\n\n### Your consent\n\nThe researcher should explain the study and give you a chance to ask questions before you choose an option below. If you do not agree to take part, the interview will end. If you would like to stop at any later point, just let the interviewer know.\n\n**If reading or talking about these topics brings up difficult feelings, please tell the interviewer. They can help you pause and find appropriate local support whether or not you choose to participate.**"
+        }
       },
       "form": {
         "fields": [
           {
             "variable": "participant_consent",
-            "prompt": "Do you consent to participate in this study?"
+            "prompt": {
+              "en-US": "Do you consent to participate in this study?"
+            }
           }
         ]
       }
@@ -305,7 +344,7 @@
     {
       "id": "ego-form-background",
       "type": "EgoForm",
-      "label": "About you",
+      "label": { "en-US": "About you" },
       "skipLogic": {
         "action": "SKIP",
         "filter": {
@@ -324,43 +363,63 @@
         "destination": { "type": "finish" }
       },
       "introductionPanel": {
-        "title": "A few questions about you",
-        "text": "Before we talk about the people in your life, we would like to ask how you have been feeling **over the last 30 days**. Please answer as honestly as you can. Remember you can skip any question you would prefer not to answer."
+        "title": { "en-US": "A few questions about you" },
+        "text": {
+          "en-US": "Before we talk about the people in your life, we would like to ask how you have been feeling **over the last 30 days**. Please answer as honestly as you can. Remember you can skip any question you would prefer not to answer."
+        }
       },
       "form": {
         "fields": [
           {
             "variable": "k6_1",
-            "prompt": "During the **last 30 days**, about how often did you feel nervous?"
+            "prompt": {
+              "en-US": "During the **last 30 days**, about how often did you feel nervous?"
+            }
           },
           {
             "variable": "k6_2",
-            "prompt": "During the **last 30 days**, about how often did you feel hopeless?"
+            "prompt": {
+              "en-US": "During the **last 30 days**, about how often did you feel hopeless?"
+            }
           },
           {
             "variable": "k6_3",
-            "prompt": "During the **last 30 days**, about how often did you feel restless or fidgety?"
+            "prompt": {
+              "en-US": "During the **last 30 days**, about how often did you feel restless or fidgety?"
+            }
           },
           {
             "variable": "k6_4",
-            "prompt": "During the **last 30 days**, about how often did you feel so depressed that nothing could cheer you up?"
+            "prompt": {
+              "en-US": "During the **last 30 days**, about how often did you feel so depressed that nothing could cheer you up?"
+            }
           },
           {
             "variable": "k6_5",
-            "prompt": "During the **last 30 days**, about how often did you feel that everything was an effort?"
+            "prompt": {
+              "en-US": "During the **last 30 days**, about how often did you feel that everything was an effort?"
+            }
           },
           {
             "variable": "k6_6",
-            "prompt": "During the **last 30 days**, about how often did you feel worthless?"
+            "prompt": {
+              "en-US": "During the **last 30 days**, about how often did you feel worthless?"
+            }
           },
           {
             "variable": "self_rated_mental_health",
-            "prompt": "In general, how would you rate your mental health these days?"
+            "prompt": {
+              "en-US": "In general, how would you rate your mental health these days?"
+            }
           },
           {
             "variable": "in_treatment",
-            "prompt": "Are you currently receiving any treatment or support for your mental health?",
-            "hint": "For example, from a doctor, therapist, counsellor, or support service."
+            "prompt": {
+              "en-US": "Are you currently receiving any treatment or support for your mental health?"
+            },
+            "hint": {
+              "en-US": "For example, from a doctor, therapist, counsellor, or support service."
+            }
           }
         ]
       }
@@ -368,11 +427,11 @@
     {
       "id": "ng-supportive",
       "type": "NameGenerator",
-      "label": "People who support you",
+      "label": { "en-US": "People who support you" },
       "panels": [
         {
           "id": "ng-supportive-existing",
-          "title": "Already mentioned",
+          "title": { "en-US": "Already mentioned" },
           "dataSource": "existing"
         }
       ],
@@ -382,11 +441,13 @@
         "type": "person"
       },
       "form": {
-        "title": "Add Person",
+        "title": { "en-US": "Add Person" },
         "fields": [
           {
             "variable": "alter_name",
-            "prompt": "What is this person's first name or a nickname you will recognise?"
+            "prompt": {
+              "en-US": "What is this person's first name or a nickname you will recognise?"
+            }
           }
         ]
       },
@@ -396,21 +457,27 @@
       "prompts": [
         {
           "id": "ng-support-confide",
-          "text": "Who are the people you can **talk to about how you're feeling**, or confide in about personal matters?",
+          "text": {
+            "en-US": "Who are the people you can **talk to about how you're feeling**, or confide in about personal matters?"
+          },
           "additionalAttributes": [
             { "variable": "support_emotional", "value": true }
           ]
         },
         {
           "id": "ng-support-advice",
-          "text": "Who do you turn to for **advice or guidance** when you have an important decision to make about your health or your life?",
+          "text": {
+            "en-US": "Who do you turn to for **advice or guidance** when you have an important decision to make about your health or your life?"
+          },
           "additionalAttributes": [
             { "variable": "support_informational", "value": true }
           ]
         },
         {
           "id": "ng-support-practical",
-          "text": "Who would you ask for **practical help** — for example if you were unwell and needed help for a couple of weeks?",
+          "text": {
+            "en-US": "Who would you ask for **practical help** — for example if you were unwell and needed help for a couple of weeks?"
+          },
           "additionalAttributes": [
             { "variable": "support_practical", "value": true }
           ]
@@ -420,11 +487,11 @@
     {
       "id": "ng-difficult",
       "type": "NameGenerator",
-      "label": "People who are difficult or draining",
+      "label": { "en-US": "People who are difficult or draining" },
       "panels": [
         {
           "id": "ng-difficult-existing",
-          "title": "Already mentioned",
+          "title": { "en-US": "Already mentioned" },
           "dataSource": "existing"
         }
       ],
@@ -434,11 +501,13 @@
         "type": "person"
       },
       "form": {
-        "title": "Add Person",
+        "title": { "en-US": "Add Person" },
         "fields": [
           {
             "variable": "alter_name",
-            "prompt": "What is this person's first name or a nickname you will recognise?"
+            "prompt": {
+              "en-US": "What is this person's first name or a nickname you will recognise?"
+            }
           }
         ]
       },
@@ -448,14 +517,18 @@
       "prompts": [
         {
           "id": "ng-difficult-demanding",
-          "text": "Thinking about the people in your life, who do you **sometimes find demanding or difficult**, or who are a source of stress or conflict for you?",
+          "text": {
+            "en-US": "Thinking about the people in your life, who do you **sometimes find demanding or difficult**, or who are a source of stress or conflict for you?"
+          },
           "additionalAttributes": [
             { "variable": "is_source_of_stress", "value": true }
           ]
         },
         {
           "id": "ng-difficult-draining",
-          "text": "Who tends to **drain your energy** or leave you feeling worse after spending time with them? (If you have already named them as someone who supports you, drag them in from the 'Already mentioned' panel rather than typing their name again — this keeps them as a single person who is both supportive and difficult.)",
+          "text": {
+            "en-US": "Who tends to **drain your energy** or leave you feeling worse after spending time with them? (If you have already named them as someone who supports you, drag them in from the 'Already mentioned' panel rather than typing their name again — this keeps them as a single person who is both supportive and difficult.)"
+          },
           "additionalAttributes": [
             { "variable": "is_source_of_stress", "value": true }
           ]
@@ -465,30 +538,38 @@
     {
       "id": "alter-form-attributes",
       "type": "AlterForm",
-      "label": "About each person",
+      "label": { "en-US": "About each person" },
       "subject": {
         "entity": "node",
         "type": "person"
       },
       "introductionPanel": {
-        "title": "Tell us a little about each person",
-        "text": "For each person you named, we would like to understand your relationship with them, what kinds of support they provide, whether they know about your mental health, and how often you are in contact. There are no right answers — just describe things as they are for you."
+        "title": { "en-US": "Tell us a little about each person" },
+        "text": {
+          "en-US": "For each person you named, we would like to understand your relationship with them, what kinds of support they provide, whether they know about your mental health, and how often you are in contact. There are no right answers — just describe things as they are for you."
+        }
       },
       "form": {
         "fields": [
           {
             "variable": "relationship",
-            "prompt": "How is this person related to you?"
+            "prompt": { "en-US": "How is this person related to you?" }
           },
           {
             "variable": "knows_about_mh",
-            "prompt": "Does this person **know about your mental health**?",
-            "hint": "That is, have you told them about it?"
+            "prompt": {
+              "en-US": "Does this person **know about your mental health**?"
+            },
+            "hint": { "en-US": "That is, have you told them about it?" }
           },
           {
             "variable": "is_clinical",
-            "prompt": "Is this person a **formal or clinical source of help**?",
-            "hint": "For example, a doctor, therapist, counsellor, or other professional."
+            "prompt": {
+              "en-US": "Is this person a **formal or clinical source of help**?"
+            },
+            "hint": {
+              "en-US": "For example, a doctor, therapist, counsellor, or other professional."
+            }
           }
         ]
       }
@@ -496,7 +577,7 @@
     {
       "id": "ordinal-bin-closeness",
       "type": "OrdinalBin",
-      "label": "How close, and how often you're in touch",
+      "label": { "en-US": "How close, and how often you're in touch" },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -504,13 +585,17 @@
       "prompts": [
         {
           "id": "bin-closeness",
-          "text": "Drag each person into the band that best describes **how close you feel to them**.",
+          "text": {
+            "en-US": "Drag each person into the band that best describes **how close you feel to them**."
+          },
           "variable": "closeness",
           "color": "ord-color-seq-1"
         },
         {
           "id": "bin-contact-frequency",
-          "text": "Now drag the same people into the band that best describes **how often you are usually in contact** with them.",
+          "text": {
+            "en-US": "Now drag the same people into the band that best describes **how often you are usually in contact** with them."
+          },
           "variable": "contact_frequency",
           "color": "ord-color-seq-2"
         }
@@ -519,7 +604,7 @@
     {
       "id": "categorical-bin-help-source",
       "type": "CategoricalBin",
-      "label": "Where your help comes from",
+      "label": { "en-US": "Where your help comes from" },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -527,7 +612,9 @@
       "prompts": [
         {
           "id": "bin-help-source",
-          "text": "Sort the people you named by the kind of help they represent: **informal** help (family, friends, peers) or **formal/clinical** help (professionals and services).",
+          "text": {
+            "en-US": "Sort the people you named by the kind of help they represent: **informal** help (family, friends, peers) or **formal/clinical** help (professionals and services)."
+          },
           "variable": "help_source_type"
         }
       ]
@@ -535,7 +622,7 @@
     {
       "id": "sociogram-position",
       "type": "Sociogram",
-      "label": "Arrange your network",
+      "label": { "en-US": "Arrange your network" },
       "interviewScript": "This is a reflective, manual-positioning stage (no automatic layout): invite the participant to arrange the people meaningfully — for example supportive people on one side, difficult or draining people on the other, and those they feel closest to nearer the centre of the rings — then draw lines between people who know one another. The arrangement they build becomes the network map they talk through on the final review screen, so the positions are meaningful here rather than incidental.",
       "subject": {
         "entity": "node",
@@ -548,7 +635,9 @@
       "prompts": [
         {
           "id": "sociogram-position-knows",
-          "text": "Here are the people you named. Take a moment to **arrange them in a way that feels right to you** — for example, placing the people who **support you** on one side and those who are **difficult or draining** on the other, and the people you feel **closest to** nearer the centre. Then draw a line between any **two people who know one another**.",
+          "text": {
+            "en-US": "Here are the people you named. Take a moment to **arrange them in a way that feels right to you** — for example, placing the people who **support you** on one side and those who are **difficult or draining** on the other, and the people you feel **closest to** nearer the centre. Then draw a line between any **two people who know one another**."
+          },
           "layout": {
             "layoutVariable": "layout"
           },
@@ -561,8 +650,34 @@
     },
     {
       "id": "narrative-support-vs-strain",
+      "attributesHeading": {
+        "en-US": "Attributes"
+      },
+      "tooltips": {
+        "enableDrawing": {
+          "en-US": "Enable drawing"
+        },
+        "disableDrawing": {
+          "en-US": "Disable drawing"
+        },
+        "freezeAnnotations": {
+          "en-US": "Freeze annotations"
+        },
+        "unfreezeAnnotations": {
+          "en-US": "Unfreeze annotations"
+        },
+        "resetAnnotations": {
+          "en-US": "Reset annotations"
+        },
+        "pauseLayout": {
+          "en-US": "Pause automatic layout"
+        },
+        "resumeLayout": {
+          "en-US": "Resume automatic layout"
+        }
+      },
       "type": "Narrative",
-      "label": "Your network of support and strain",
+      "label": { "en-US": "Your network of support and strain" },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -575,15 +690,30 @@
       "presets": [
         {
           "id": "preset-support-strain",
-          "label": "Supportive vs difficult ties",
+          "label": { "en-US": "Supportive vs difficult ties" },
           "layoutVariable": "layout",
-          "highlight": ["support_emotional", "is_source_of_stress"]
+          "highlight": [
+            {
+              "variable": "support_emotional",
+              "label": { "en-US": "support_emotional" }
+            },
+            {
+              "variable": "is_source_of_stress",
+              "label": { "en-US": "is_source_of_stress" }
+            }
+          ]
         },
         {
           "id": "preset-disclosure",
-          "label": "Who knows about your mental health",
+          "label": { "en-US": "Who knows about your mental health" },
           "layoutVariable": "layout",
-          "highlight": ["knows_about_mh", "is_clinical"]
+          "highlight": [
+            {
+              "variable": "knows_about_mh",
+              "label": { "en-US": "knows_about_mh" }
+            },
+            { "variable": "is_clinical", "label": { "en-US": "is_clinical" } }
+          ]
         }
       ],
       "background": {
@@ -594,15 +724,108 @@
     {
       "id": "information-safety",
       "type": "Information",
-      "label": "Thank you and support services",
-      "title": "Thank you — and where to find support",
+      "label": { "en-US": "Thank you and support services" },
+      "title": { "en-US": "Thank you — and where to find support" },
       "items": [
         {
           "id": "safety-thanks",
           "type": "text",
-          "content": "## Thank you for sharing\n\nTalking about your mental health and your relationships takes courage, and we are grateful for your time and honesty.\n\n### If you would like support\n\nIf any of these questions brought up difficult feelings, please consider reaching out for support:\n\n- **Talk to the interviewer now** if you would like to stop and take a moment.\n- **Contact your doctor or usual mental-health service.**\n- **If you are in crisis or thinking about harming yourself, please contact your local emergency services or a crisis line immediately.** _The researcher will insert the specific local and national helpline numbers for your study site here (for example, in the US: call or text 988; in the UK: Samaritans on 116 123)._\n\nYou do not have to face difficult feelings alone, and reaching out for help is a sign of strength."
+          "content": {
+            "en-US": "## Thank you for sharing\n\nTalking about your mental health and your relationships takes courage, and we are grateful for your time and honesty.\n\n### If you would like support\n\nIf any of these questions brought up difficult feelings, please consider reaching out for support:\n\n- **Talk to the interviewer now** if you would like to stop and take a moment.\n- **Contact your doctor or usual mental-health service.**\n- **If you are in crisis or thinking about harming yourself, please contact your local emergency services or a crisis line immediately.** _The researcher will insert the specific local and national helpline numbers for your study site here (for example, in the US: call or text 988; in the UK: Samaritans on 116 123)._\n\nYou do not have to face difficult feelings alone, and reaching out for help is a sign of strength."
+          }
         }
       ]
+    },
+    {
+      "id": "finish",
+      "finishLabel": {
+        "en-US": "Finish"
+      },
+      "finishConfirmation": {
+        "en-US": "Are you sure you want to finish the interview?"
+      },
+      "finishedNotice": {
+        "en-US": "This interview is finished, and its answers can no longer be changed."
+      },
+      "finishFailed": {
+        "en-US": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
+      },
+      "type": "FinishSession",
+      "label": {
+        "en-US": "Finish Interview"
+      },
+      "title": {
+        "en-US": "Finish Interview"
+      },
+      "content": {
+        "en-US": "You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
+      },
+      "outcome": "completed"
     }
-  ]
+  ],
+  "interfaceText": {
+    "interview": {
+      "exitInterview": {
+        "en-US": "Exit interview"
+      },
+      "exitInterviewDescription": {
+        "en-US": "Your answers so far will be saved and you can continue later."
+      },
+      "stageError": {
+        "en-US": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
+      },
+      "itemUnavailable": {
+        "en-US": "This item could not be displayed."
+      },
+      "back": {
+        "en-US": "Back"
+      },
+      "continue": {
+        "en-US": "Continue"
+      },
+      "cancel": {
+        "en-US": "Cancel"
+      },
+      "done": {
+        "en-US": "Done"
+      },
+      "delete": {
+        "en-US": "Delete"
+      },
+      "genericError": {
+        "en-US": "Something went wrong."
+      }
+    },
+    "forms": {
+      "discardChanges": {
+        "en-US": "Discard changes"
+      },
+      "discardChangesTitle": {
+        "en-US": "Discard changes?"
+      },
+      "discardChangesDescription": {
+        "en-US": "This form contains invalid data, so it cannot be saved. If you continue it will be reset, and your changes will be lost. Do you want to discard your changes?"
+      },
+      "yes": {
+        "en-US": "Yes"
+      },
+      "no": {
+        "en-US": "No"
+      },
+      "submitFailed": {
+        "en-US": "An error occurred while submitting the form."
+      }
+    },
+    "validation": {
+      "required": {
+        "en-US": "You must answer this question before continuing."
+      },
+      "maxSelected": {
+        "en-US": "{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}"
+      },
+      "unique": {
+        "en-US": "Must be unique."
+      }
+    }
+  }
 }

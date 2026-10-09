@@ -60,6 +60,14 @@ export type BuilderSectionProps = Readonly<{
   disabled?: boolean;
   capability?: SectionCapability;
   /**
+   * Opens a capability switched ON although it holds nothing yet, for a
+   * capability a new stage is expected to use. Anything required inside it
+   * then has to be filled in before the stage can be saved, exactly as a
+   * section that is always on. The researcher can still switch it off, which
+   * leaves nothing behind. Read once, when the section mounts.
+   */
+  startOn?: boolean;
+  /**
    * The stage path holding the thing this capability's values only mean
    * anything against — a roster's data file, say, at `dataSource`.
    *
@@ -121,6 +129,7 @@ export default function BuilderSection({
   description,
   disabled = false,
   capability,
+  startOn = false,
   resetOn,
   children,
 }: BuilderSectionProps) {
@@ -129,7 +138,7 @@ export default function BuilderSection({
   const { confirm } = useDialog();
   const discardStageValues = useDiscardStageValues();
   const configured = useStageHasAnyValue(capability?.fields ?? NO_FIELDS);
-  const [switchedOn, setSwitchedOn] = useState(configured);
+  const [switchedOn, setSwitchedOn] = useState(configured || startOn);
   // Holding a value is itself proof the capability is on, which is what keeps
   // this mirror of Fresco's Section in step with it rather than drifting.
   const enabled = switchedOn || configured;

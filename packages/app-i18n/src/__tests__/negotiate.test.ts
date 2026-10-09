@@ -163,6 +163,69 @@ describe('resolveAppLocale', () => {
   });
 });
 
+describe('ordered preference negotiation', () => {
+  const negotiate = (requested: readonly string[]) =>
+    resolveAppLocale({
+      requested,
+      locales: ecosystemLocales,
+      defaultLocale: 'en',
+    });
+
+  // Best fit over the whole list would hand back 'en' here: the later exact
+  // match beats the earlier regional one.
+  it('lets an earlier regional preference beat a later exact match', () => {
+    expect(negotiate(['es-MX', 'en'])).toEqual({
+      locale: 'es',
+      source: 'negotiated',
+    });
+  });
+
+  it('gives an earlier regional preference its own single-tag best fit', () => {
+    // 'en-AU' alone best-fits the declared 'en-GB' rather than plain 'en';
+    // the later 'es' does not get to override that.
+    expect(negotiate(['en-AU'])).toEqual({
+      locale: 'en-GB',
+      source: 'negotiated',
+    });
+    expect(negotiate(['en-AU', 'es'])).toEqual({
+      locale: 'en-GB',
+      source: 'negotiated',
+    });
+  });
+
+  it('matches an earlier Chinese regional tag by script ahead of a later exact match', () => {
+    expect(negotiate(['zh-TW', 'en'])).toEqual({
+      locale: 'zh-Hant',
+      source: 'negotiated',
+    });
+  });
+
+  it('falls through an unfitted first preference to the second', () => {
+    expect(negotiate(['ja', 'es-MX'])).toEqual({
+      locale: 'es',
+      source: 'negotiated',
+    });
+    expect(negotiate(['!!', 'ja', 'de-AT', 'es'])).toEqual({
+      locale: 'de',
+      source: 'negotiated',
+    });
+  });
+
+  it('resolves to the default as negotiated when no preference fits', () => {
+    expect(negotiate(['ja', 'ko'])).toEqual({
+      locale: 'en',
+      source: 'negotiated',
+    });
+    expect(
+      resolveAppLocale({
+        requested: ['ja', 'ko'],
+        locales: ecosystemLocales,
+        defaultLocale: 'de',
+      }),
+    ).toEqual({ locale: 'de', source: 'negotiated' });
+  });
+});
+
 describe('Chinese script negotiation across the ecosystem registry', () => {
   const resolveEcosystem = (input: {
     stored?: string | null;

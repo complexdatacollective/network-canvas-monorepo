@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { collectAssetReferences } from '../collectEntityAttributeReferences.ts';
+import { localized } from '../test-utils.ts';
 
 // Walks the REAL protocol schema, so this covers both the walker and the
 // `assetReference` tagging of each schema spot. Stage fixtures are minimal:
@@ -12,15 +13,22 @@ const protocol = {
     {
       id: 'roster',
       type: 'NameGeneratorRoster',
+      externalDataError: localized('External data could not be loaded.'),
+      allAddedNotice: localized('There is nothing left to add from this list.'),
       subject: { entity: 'node', type: 'person' },
       dataSource: 'roster-asset',
     },
     {
       id: 'ng',
       type: 'NameGenerator',
+      externalDataError: localized('External data could not be loaded.'),
       subject: { entity: 'node', type: 'person' },
       panels: [
-        { id: 'panel-1', title: 'From roster', dataSource: 'panel-asset' },
+        {
+          id: 'panel-1',
+          title: localized('From roster'),
+          dataSource: 'panel-asset',
+        },
         // The sentinel names the interview network, not the manifest.
         { id: 'panel-2', title: 'Already added', dataSource: 'existing' },
       ],
@@ -34,6 +42,13 @@ const protocol = {
     {
       id: 'geo',
       type: 'Geospatial',
+      offlineNotice: localized(
+        'You are offline — the map will not load until you reconnect.',
+      ),
+      mapUnavailable: localized(
+        'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
+      ),
+      outsideAreasLabel: localized('Outside Selectable Areas'),
       subject: { entity: 'node', type: 'person' },
       mapOptions: {
         tokenAssetId: 'token-asset',
@@ -48,21 +63,15 @@ const protocol = {
     {
       id: 'info',
       type: 'Information',
-      title: 'About this study',
+      title: localized('About this study'),
       items: [
-        { id: 'i1', type: 'text', content: 'Some words about the study.' },
+        {
+          id: 'i1',
+          type: 'text',
+          content: localized('Some words about the study.'),
+        },
         { id: 'i2', type: 'asset', content: 'information-asset' },
       ],
-    },
-    {
-      id: 'ped',
-      type: 'FamilyPedigree',
-      introScreen: {
-        items: [
-          { id: 'ii1', type: 'text', content: 'Introductory words.' },
-          { id: 'ii2', type: 'asset', content: 'intro-asset' },
-        ],
-      },
     },
   ],
 };
@@ -77,7 +86,6 @@ describe('collectAssetReferences', () => {
     expect(assetIdsIn(protocol)).toEqual([
       'background-asset',
       'information-asset',
-      'intro-asset',
       'map-data-asset',
       'panel-asset',
       'roster-asset',
@@ -100,7 +108,6 @@ describe('collectAssetReferences', () => {
       'token-asset': 'stages.3.mapOptions.tokenAssetId',
       'map-data-asset': 'stages.3.mapOptions.dataSourceAssetId',
       'information-asset': 'stages.4.items.1.content',
-      'intro-asset': 'stages.5.introScreen.items.1.content',
     });
   });
 
@@ -121,7 +128,6 @@ describe('collectAssetReferences', () => {
    */
   it('reads an item body as an asset only on the asset branch', () => {
     expect(assetIdsIn(protocol)).not.toContain('Some words about the study.');
-    expect(assetIdsIn(protocol)).not.toContain('Introductory words.');
   });
 
   it('finds nothing in a protocol that names no assets', () => {
@@ -137,7 +143,7 @@ describe('collectAssetReferences', () => {
           {
             id: 'empty-asset',
             type: 'Information',
-            title: 'Invalid asset item',
+            title: localized('Invalid asset item'),
             items: [{ id: 'item-1', type: 'asset', content: '' }],
           },
         ],

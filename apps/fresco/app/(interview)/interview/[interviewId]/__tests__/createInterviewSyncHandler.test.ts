@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { SessionPayload, SyncOptions } from '@codaco/interview/contract';
+import type { SessionSnapshot, SyncOptions } from '@codaco/interview/contract';
 
 import { createInterviewSyncHandler } from '../createInterviewSyncHandler';
 
@@ -22,7 +22,7 @@ function settle(write: Promise<void>) {
   );
 }
 
-function sessionWith(name: string): SessionPayload {
+function sessionWith(name: string): SessionSnapshot {
   return {
     id: 'interview-1',
     startTime: '2026-08-12T00:00:00.000Z',
@@ -34,10 +34,12 @@ function sessionWith(name: string): SessionPayload {
       edges: [],
       ego: { _uid: 'ego-1', attributes: {} },
     },
+    localePreference: null,
+    locale: null,
   };
 }
 
-type SyncBody = { network: SessionPayload['network']; syncRevision?: number };
+type SyncBody = { network: SessionSnapshot['network']; syncRevision?: number };
 
 /**
  * The endpoint's own rule, so these tests measure what the participant's
@@ -383,6 +385,28 @@ describe('createInterviewSyncHandler', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(bodies[1]?.network).toEqual(sessionWith('third').network);
     expect(bodies[1]?.syncRevision).toBe(2);
+  });
+
+  it('never sends the locale fields, which only the locale route writes', async () => {
+    const { apply } = makeServer();
+    const { fetchMock, bodies } = makeAutoFetch(apply);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const onSync = createInterviewSyncHandler({
+      interviewId: 'interview-1',
+      initialSyncRevision: 0,
+      getCurrentStep: () => 0,
+    });
+
+    await onSync(
+      'interview-1',
+      { ...sessionWith('chosen'), localePreference: 'fr', locale: 'fr' },
+      ORDINARY,
+    );
+
+    expect(bodies[0]).not.toHaveProperty('locale');
+    expect(bodies[0]).not.toHaveProperty('localePreference');
+    expect(bodies[0]?.network).toEqual(sessionWith('chosen').network);
   });
 
   it('refuses a sync for an interview it does not belong to', async () => {

@@ -3,7 +3,10 @@ import { randomUUID } from 'node:crypto';
 import { Effect, Redacted } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  CURRENT_SCHEMA_VERSION,
+  type CurrentProtocol,
+} from '@codaco/protocol-validation';
 import { type SectionDoc, canonicalize } from '@codaco/studio-sync/apply';
 
 import { testCipher } from '../../__tests__/support/secrets.ts';
@@ -11,11 +14,13 @@ import type { Transaction } from '../../db/tenant.ts';
 import { ASSET_KEY_PLACEHOLDER, openAssetKey } from '../asset-keys.ts';
 import { migrateStoredVersionToDraft } from '../migrate.ts';
 import {
+  createDraftFromVersion,
   createProtocol,
   getDraftDocument,
   listVersions,
   publishDraft,
 } from '../store.ts';
+import { createProtocolSyncServer } from '../sync.ts';
 import {
   TEST_TEAM_ID,
   baseProtocol,
@@ -40,6 +45,27 @@ const V7_SECTIONS: Record<string, SectionDoc> = {
   },
 };
 
+// A stored schema-8 version whose person name is marked encrypted, under the
+// given experiments.
+const v8EncryptedSections = (
+  experiments: SectionDoc | undefined,
+): Record<string, SectionDoc> => ({
+  'settings': {
+    name: 'Legacy Protocol',
+    schemaVersion: 8,
+    ...(experiments !== undefined && { experiments }),
+  },
+  'stageOrder': { stages: [] },
+  'codebook:node:person': {
+    name: 'Person',
+    color: 'node-color-seq-1',
+    shape: { default: 'circle' },
+    variables: {
+      personName: { name: 'Name', type: 'text', encrypted: true },
+    },
+  },
+});
+
 describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
   let store: StoreSchema;
   let run: <A, E>(body: Effect.Effect<A, E, Transaction>) => Promise<A>;
@@ -53,7 +79,9 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
     await store.dispose();
   });
 
-  async function seedV7Version(): Promise<{
+  async function seedVersion(
+    storedSections: Record<string, SectionDoc>,
+  ): Promise<{
     protocolId: string;
     versionId: string;
   }> {
@@ -63,7 +91,7 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
       `INSERT INTO protocols (id, team_id, name) VALUES ($1, $2, $3)`,
       [protocolId, TEST_TEAM_ID, 'Legacy Protocol'],
     );
-    await run(makeTestSyncServer().createDraft(draftId, V7_SECTIONS));
+    await run(makeTestSyncServer().createDraft(draftId, storedSections));
     await store.affected(
       `INSERT INTO protocol_drafts (draft_id, team_id, protocol_id)
        VALUES ($1, $2, $3)`,
@@ -71,13 +99,13 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
     );
     const published = await run(publishDraft(TEST_TEAM_ID, { draftId }));
     if (published.status !== 'published') {
-      throw new Error(`v7 publish failed: ${published.status}`);
+      throw new Error(`seeded publish failed: ${published.status}`);
     }
     return { protocolId, versionId: published.versionId };
   }
 
   it('migrates a stored v7 version into a current-schema draft and records provenance on publish', async () => {
-    const { protocolId, versionId } = await seedV7Version();
+    const { protocolId, versionId } = await seedVersion(V7_SECTIONS);
     const versions = await run(listVersions(TEST_TEAM_ID, protocolId));
     expect(versions[0]!.schemaVersion).toBe(7);
 
@@ -92,7 +120,7 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
     expect(migration).toMatchObject({
       protocolId,
       fromSchemaVersion: 7,
-      toSchemaVersion: 8,
+      toSchemaVersion: CURRENT_SCHEMA_VERSION,
     });
 
     const document = (await run(
@@ -100,12 +128,21 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
     )) as {
       name: string;
       schemaVersion: number;
+      localization: unknown;
       codebook: {
-        node: Record<string, { displayVariable?: string; shape?: unknown }>;
+        node: Record<
+          string,
+          { displayVariable?: string; shape?: unknown; label?: unknown }
+        >;
       };
     };
-    expect(document.schemaVersion).toBe(8);
+    expect(document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(document.name).toBe('Legacy Protocol');
+    expect(document.localization).toEqual({
+      defaultLocale: 'en',
+      locales: ['en'],
+    });
+    expect(document.codebook.node.person!.label).toEqual({ en: 'Person' });
     expect(document.codebook.node.person!.displayVariable).toBeUndefined();
     expect(document.codebook.node.person!.shape).toBeDefined();
 
@@ -116,7 +153,7 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
     const after = await run(listVersions(TEST_TEAM_ID, protocolId));
     expect(after[0]).toMatchObject({
       versionNumber: 2,
-      schemaVersion: 8,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
       migratedFromVersionId: versionId,
     });
 
@@ -125,6 +162,105 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
       [versionId],
     );
     expect(canonicalize(frozenAfter[0])).toBe(canonicalize(frozenBefore[0]));
+  });
+
+  async function migratedDraftOf(versionId: string) {
+    const migration = await run(
+      migrateStoredVersionToDraft(TEST_TEAM_ID, { versionId }),
+    );
+    return run(getDraftDocument(TEST_TEAM_ID, migration.draftId));
+  }
+
+  it('keeps a stored v8 version’s attributes encrypted when its experiments turned encryption on, and keeps its experiments without that one', async () => {
+    // Values already collected for them are ciphertext.
+    const { versionId } = await seedVersion(
+      v8EncryptedSections({ encryptedVariables: true }),
+    );
+
+    const document = await migratedDraftOf(versionId);
+
+    expect(document).toHaveProperty(
+      'codebook.node.person.variables.personName.encrypted',
+      true,
+    );
+    expect(document.experiments).toStrictEqual({});
+  });
+
+  async function expectEncryptionUnmarked(versionId: string) {
+    const document = await migratedDraftOf(versionId);
+
+    expect(document).toHaveProperty(
+      'codebook.node.person.variables.personName.type',
+      'text',
+    );
+    expect(document).not.toHaveProperty(
+      'codebook.node.person.variables.personName.encrypted',
+    );
+    return document;
+  }
+
+  it('unmarks a stored v8 version’s encrypted attributes when encryption was off, and keeps its experiments', async () => {
+    const { versionId } = await seedVersion(
+      v8EncryptedSections({ encryptedVariables: false }),
+    );
+
+    const document = await expectEncryptionUnmarked(versionId);
+
+    expect(document.experiments).toStrictEqual({});
+  });
+
+  it('unmarks a stored v8 version’s encrypted attributes when it had no experiments, and adds none', async () => {
+    const { versionId } = await seedVersion(v8EncryptedSections(undefined));
+
+    const document = await expectEncryptionUnmarked(versionId);
+
+    expect(document).not.toHaveProperty('experiments');
+  });
+
+  it('branches an editable current-schema draft from a stored v7 version', async () => {
+    const { protocolId, versionId } = await seedVersion(V7_SECTIONS);
+
+    const branched = await run(
+      createDraftFromVersion(TEST_TEAM_ID, { versionId }),
+    );
+    expect(branched.protocolId).toBe(protocolId);
+
+    const document = await run(
+      getDraftDocument(TEST_TEAM_ID, branched.draftId),
+    );
+    expect(document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(document.localization).toEqual({
+      defaultLocale: 'en',
+      locales: ['en'],
+    });
+
+    const sync = createProtocolSyncServer();
+    const lease = await run(
+      sync.acquire(branched.draftId, 'settings', 'branch-tab'),
+    );
+    expect(lease).not.toBeNull();
+    await expect(
+      run(
+        sync.commit({
+          draftId: branched.draftId,
+          sectionId: 'settings',
+          owner: 'branch-tab',
+          epoch: lease!.epoch,
+          clientSeq: 1n,
+          commands: [{ op: 'set', key: 'description', value: 'Branched' }],
+        }),
+      ),
+    ).resolves.toBeDefined();
+
+    const published = await run(
+      publishDraft(TEST_TEAM_ID, { draftId: branched.draftId }),
+    );
+    if (published.status !== 'published') throw new Error(published.status);
+    const after = await run(listVersions(TEST_TEAM_ID, protocolId));
+    expect(after[0]).toMatchObject({
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      migratedFromVersionId: versionId,
+    });
   });
 
   it('migrates a version whose API key is sealed, and leaves it sealed', async () => {
@@ -196,8 +332,8 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
         versionId: published.versionId,
       }),
     );
-    expect(migration.fromSchemaVersion).toBe(8);
-    expect(migration.toSchemaVersion).toBe(8);
+    expect(migration.fromSchemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(migration.toSchemaVersion).toBe(CURRENT_SCHEMA_VERSION);
 
     const republished = await run(
       publishDraft(TEST_TEAM_ID, { draftId: migration.draftId }),

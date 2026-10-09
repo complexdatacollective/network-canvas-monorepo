@@ -10,6 +10,7 @@ export const DIALOG_SIZES = [
   'editor',
   'workspace',
   'fullscreen',
+  'viewport',
 ] as const;
 
 export type DialogSize = (typeof DIALOG_SIZES)[number];
@@ -20,6 +21,10 @@ const dialogSizeClasses: Record<DialogSize, string> = {
   workspace: 'max-w-7xl',
   fullscreen:
     'h-full max-w-[100rem] @min-[30rem]:h-[calc(100%-var(--spacing-base)*16)] @min-[30rem]:max-h-[64rem]',
+  // No cap in either direction: the whole viewport less a narrow margin, for
+  // tools whose content is wider and taller than any screen.
+  viewport:
+    'h-full max-w-none @min-[30rem]:h-[calc(100%-var(--spacing-base)*8)] @min-[30rem]:max-h-[calc(100%-var(--spacing-base)*8)]',
 };
 
 type DialogPopupProps = React.ComponentProps<typeof ModalPopup> & {

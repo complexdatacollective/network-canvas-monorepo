@@ -486,6 +486,13 @@ const interviewSessions = pgTable(
       .defaultNow(),
     completedAt: timestamp('completed_at', { withTimezone: true }),
     abandonedAt: timestamp('abandoned_at', { withTimezone: true }),
+
+    // Where a completed interview ended: the protocol's finish stage the
+    // participant confirmed Finish on, and the outcome that stage declares.
+    // Every session completed since Studio recorded them carries both
+    // (`interview_sessions_writable`); one completed before then has neither.
+    finishStageId: text('finish_stage_id'),
+    finishOutcome: text('finish_outcome'),
   },
   (table) => [
     unique().on(table.id, table.teamId),
@@ -554,6 +561,15 @@ const interviewSessions = pgTable(
       'interview_sessions_terminal_state_check',
       sql`(${table.status} = 'completed') = (${table.completedAt} IS NOT NULL)
           AND (${table.status} = 'abandoned') = (${table.abandonedAt} IS NOT NULL)`,
+    ),
+    // The outcomes are the protocol schema's `FINISH_OUTCOMES` (check-enums.test.ts).
+    check(
+      'interview_sessions_finish_check',
+      sql`(${table.finishStageId} IS NULL) = (${table.finishOutcome} IS NULL)
+          AND (${table.finishStageId} IS NULL OR (
+            ${table.status} = 'completed'
+            AND char_length(${table.finishStageId}) BETWEEN 1 AND 128
+            AND ${table.finishOutcome} IN ('completed', 'ineligible', 'terminated')))`,
     ),
     check(
       'interview_sessions_stage_check',
@@ -911,6 +927,14 @@ BEGIN
        CASE WHEN TG_OP = 'INSERT' THEN NEW.study_id ELSE OLD.study_id END,
        CASE WHEN TG_OP = 'INSERT' THEN NEW.team_id ELSE OLD.team_id END) THEN
     RAISE EXCEPTION 'closed studies are read-only';
+  END IF;
+
+  -- A session completes at its protocol's finish stage, and records which
+  -- stage and its outcome as it does. Only a session completed before Studio
+  -- recorded them has neither, and that row can no longer change.
+  IF NEW.status = 'completed' AND NEW.finish_stage_id IS NULL
+     AND (TG_OP = 'INSERT' OR OLD.status <> 'completed') THEN
+    RAISE EXCEPTION 'a completed interview session must record its finish stage and outcome';
   END IF;
 
   IF TG_OP = 'INSERT' THEN

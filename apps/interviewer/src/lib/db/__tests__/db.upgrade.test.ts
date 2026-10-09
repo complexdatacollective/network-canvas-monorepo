@@ -16,7 +16,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { fromBase64 } from '../../vault/crypto';
-import { db, getSettings } from '../db';
+import { db, getSettings, type StoredProtocolMigrationRecord } from '../db';
 import { migrateStoredProtocols } from '../migrateStoredProtocols';
 import {
   decryptAsset,
@@ -40,8 +40,8 @@ import {
 
 // ---------------------------------------------------------------------------
 // Frozen history. These literals are copies of the schema declarations the
-// released app CREATED databases with — Dexie v1 (a4b08d828) and v2
-// (04b74a6fc) — kept deliberately independent of db.ts. Seeding through an
+// released app CREATED databases with — Dexie v1 (a4b08d828), v2
+// (04b74a6fc) and v3 (9454ce257) — kept deliberately independent of db.ts. Seeding through an
 // independent copy is the whole oracle: if db.ts's shipped version blocks are
 // ever edited (renamed store, changed primary key, renumbered version), these
 // tests open a genuinely old database against the new declarations and fail.
@@ -59,15 +59,30 @@ const V2_SESSIONS_STORES = {
   sessions:
     'id, protocolHash, caseId, startedAt, lastUpdatedAt, finishedAt, exportedAt, isSynthetic',
 };
+const V3_STORES = {
+  protocolMigrations: 'previousHash',
+};
 
-// The Dexie version db.ts currently declares. When a version(4) is added,
-// this suite must grow a v3 seed in LEGACY_VERSIONS below alongside bumping
+// Every released version predates the session locale fields, so a legacy
+// session row is the current row without them.
+type LegacySessionRow = Omit<StoredSessionRow, 'localePreference' | 'locale'>;
+
+function legacySessionRow({
+  localePreference: _localePreference,
+  locale: _locale,
+  ...row
+}: StoredSessionRow): LegacySessionRow {
+  return row;
+}
+
+// The Dexie version db.ts currently declares. When a version(5) is added,
+// this suite must grow a v4 seed in LEGACY_VERSIONS below alongside bumping
 // this constant — the "historical coverage" guard test enforces that pairing
 // mechanically.
-const CURRENT_DEXIE_VERSION = 3;
+const CURRENT_DEXIE_VERSION = 4;
 
-type LegacyVersion = 1 | 2;
-const LEGACY_VERSIONS: LegacyVersion[] = [1, 2];
+type LegacyVersion = 1 | 2 | 3;
+const LEGACY_VERSIONS: LegacyVersion[] = [1, 2, 3];
 
 // The complete INSTALLED shape the current schema must produce after any
 // upgrade: every store's primary key and full index set. The production repos
@@ -100,11 +115,11 @@ const EXPECTED_INSTALLED_SCHEMA: Record<
 describe('historical coverage', () => {
   it('seeds every version the current schema can upgrade from', () => {
     // Nothing else forces this suite to keep pace with db.ts: without this
-    // guard, adding a version(4) upgrade step and bumping
-    // CURRENT_DEXIE_VERSION would leave the v3 → v4 step untested — the
-    // v1/v2 seeds reach v4 through a freshly created, EMPTY v3 schema,
-    // whereas a real v3 installation carries rows (protocolMigrations
-    // re-keying records, say) that the new step could destroy unnoticed.
+    // guard, adding a version(5) upgrade step and bumping
+    // CURRENT_DEXIE_VERSION would leave the v4 → v5 step untested — the
+    // v1–v3 seeds reach v5 through a freshly created, EMPTY v4 schema,
+    // whereas a real v4 installation carries rows (sessions with recorded
+    // languages, say) that the new step could destroy unnoticed.
     // When this fails, add the new legacy version to LEGACY_VERSIONS and
     // seed representative rows for the stores it introduced.
     expect(LEGACY_VERSIONS).toEqual(
@@ -122,6 +137,7 @@ async function withLegacyDb(
   const legacy = new Dexie('interviewer');
   legacy.version(1).stores(V1_STORES);
   if (fromVersion >= 2) legacy.version(2).stores(V2_SESSIONS_STORES);
+  if (fromVersion >= 3) legacy.version(3).stores(V3_STORES);
   await legacy.open();
   // Dexie maps a declared version onto the native IndexedDB version by
   // multiplying by 10. The e2e upgrade spec (e2e/specs/db-upgrade.spec.ts)
@@ -229,6 +245,8 @@ function completeSession(protocol: StoredProtocol): StoredSession {
     currentStep: 4,
     progress: 100,
     network,
+    localePreference: null,
+    locale: null,
   };
 }
 
@@ -248,6 +266,8 @@ function inProgressSession(protocol: StoredProtocol): StoredSession {
     resumeStageOverrideIndex: 1,
     network,
     stageMetadata: { '0': { automaticLayout: true } },
+    localePreference: null,
+    locale: null,
   };
 }
 
@@ -266,6 +286,8 @@ function syntheticSession(protocol: StoredProtocol, id: string): StoredSession {
     progress: 100,
     isSynthetic: true,
     network,
+    localePreference: null,
+    locale: null,
   };
 }
 
@@ -312,6 +334,20 @@ const legacySettingsRow: Record<string, unknown> = {
   sampleProtocolDismissed: true,
 };
 
+// Only seedable at v3+: the store rode in with version(3). No seeded session
+// points at the superseded hash, so the launch sweep has nothing to heal.
+function migrationRecord(
+  protocol: StoredProtocol,
+): StoredProtocolMigrationRecord {
+  return {
+    previousHash: `superseded-${protocol.hash}`,
+    hash: protocol.hash,
+    migratedAt: '2026-01-04T00:00:00.000Z',
+  };
+}
+
+// `sessions` and `sessionRows` are what the upgrade must produce; the legacy
+// database is seeded with `sessionRows` stripped of the locale fields.
 type Seeded = {
   protocols: StoredProtocol[];
   sessions: StoredSession[];
@@ -319,6 +355,7 @@ type Seeded = {
   protocolRows: StoredProtocolRow[];
   sessionRows: StoredSessionRow[];
   assetRows: StoredAssetRow[];
+  migrationRecords: StoredProtocolMigrationRecord[];
 };
 
 async function seedLegacyDatabase(
@@ -333,6 +370,7 @@ async function seedLegacyDatabase(
   if (fromVersion >= 2) sessions.push(syntheticSession(alpha, 'session-syn'));
   const assets = [apiKeyAsset(alpha)];
   if (encrypted) assets.push(imageAsset(alpha));
+  const migrationRecords = fromVersion >= 3 ? [migrationRecord(alpha)] : [];
 
   // Encode through the real per-row codecs — they pass plaintext through when
   // no DEK is set (mode 'none') and produce genuine ciphertext when one is.
@@ -345,15 +383,28 @@ async function seedLegacyDatabase(
       .table<StoredProtocolRow, string>('protocols')
       .bulkPut(protocolRows);
     await legacy
-      .table<StoredSessionRow, string>('sessions')
-      .bulkPut(sessionRows);
+      .table<LegacySessionRow, string>('sessions')
+      .bulkPut(sessionRows.map(legacySessionRow));
     await legacy.table<StoredAssetRow, string>('assets').bulkPut(assetRows);
     await legacy
       .table<Record<string, unknown>, string>('settings')
       .put(legacySettingsRow);
+    if (fromVersion >= 3) {
+      await legacy
+        .table<StoredProtocolMigrationRecord, string>('protocolMigrations')
+        .bulkPut(migrationRecords);
+    }
   });
 
-  return { protocols, sessions, assets, protocolRows, sessionRows, assetRows };
+  return {
+    protocols,
+    sessions,
+    assets,
+    protocolRows,
+    sessionRows,
+    assetRows,
+    migrationRecords,
+  };
 }
 
 function byId<T extends { id: string }>(a: T, b: T): number {
@@ -417,7 +468,8 @@ describe.each([
           }
 
           // Every row survives byte-for-byte — encrypted rows keep their exact
-          // ciphertext, plaintext rows their exact fields.
+          // ciphertext, plaintext rows their exact fields — and sessions gain
+          // only the two empty locale fields.
           expect((await db.protocols.toArray()).toSorted(byId)).toEqual(
             [...seeded.protocolRows].toSorted(byId),
           );
@@ -426,6 +478,9 @@ describe.each([
           );
           expect((await db.assets.toArray()).toSorted(byId)).toEqual(
             [...seeded.assetRows].toSorted(byId),
+          );
+          expect(await db.protocolMigrations.toArray()).toEqual(
+            seeded.migrationRecords,
           );
 
           // And every row still decodes to the exact domain object it was written
@@ -460,6 +515,17 @@ describe.each([
             ...DEFAULT_SETTINGS,
             ...legacySettingsRow,
           });
+        });
+
+        it('records no language for any session started before the upgrade', async () => {
+          const seeded = await seedLegacyDatabase(fromVersion, encrypted);
+          await db.open();
+
+          const rows = await db.sessions.toArray();
+          expect(rows).toHaveLength(seeded.sessions.length);
+          for (const row of rows) {
+            expect(row).toMatchObject({ localePreference: null, locale: null });
+          }
         });
 
         it('keeps synthetic-session bookkeeping working over the upgraded database', async () => {
@@ -506,8 +572,12 @@ describe.each([
             [...seeded.protocolRows].toSorted(byId),
           );
 
-          // The store added by version(3) exists and holds re-keying records —
-          // if the upgrade had failed to create it, this put would throw.
+          // The store added by version(3) exists, keeps any records a v3
+          // installation wrote, and accepts new ones — if the upgrade had failed
+          // to create it, this put would throw.
+          expect(await db.protocolMigrations.toArray()).toEqual(
+            seeded.migrationRecords,
+          );
           const record = {
             previousHash: 'superseded-hash',
             hash: 'live-hash',
@@ -564,7 +634,7 @@ const FROZEN_NETWORK_PLAINTEXT = {
 
 const FROZEN_ROWS: {
   protocol: StoredProtocolRow;
-  session: StoredSessionRow;
+  session: LegacySessionRow;
   apiKeyAsset: StoredAssetRow;
   imageAsset: StoredAssetRow;
 } = {
@@ -660,7 +730,7 @@ describe('ciphertext written by the released persisted format', () => {
         .table<StoredProtocolRow, string>('protocols')
         .put(FROZEN_ROWS.protocol);
       await legacy
-        .table<StoredSessionRow, string>('sessions')
+        .table<LegacySessionRow, string>('sessions')
         .put(FROZEN_ROWS.session);
       await legacy
         .table<StoredAssetRow, string>('assets')
@@ -683,6 +753,8 @@ describe('ciphertext written by the released persisted format', () => {
     const { _enc: _encS, ...sessionRest } = FROZEN_ROWS.session;
     expect(await decryptSession(sessionRow)).toEqual({
       ...sessionRest,
+      localePreference: null,
+      locale: null,
       network: FROZEN_NETWORK_PLAINTEXT,
       stageMetadata: { '0': { automaticLayout: true } },
     });

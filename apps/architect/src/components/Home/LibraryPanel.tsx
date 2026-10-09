@@ -55,6 +55,10 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import Table from '~/components/Assets/Table';
 import ExternalLink from '~/components/ExternalLink';
+import {
+  FinishStageTextRefusal,
+  FinishStageTextRefusalTitle,
+} from '~/components/FinishStageTextAlert';
 import { useAppDispatch } from '~/ducks/hooks';
 import { deleteLibraryProtocol } from '~/ducks/modules/userActions/userActions';
 import { useProtocolLibrary } from '~/hooks/useProtocolLibrary';
@@ -65,6 +69,7 @@ import { clearAllStorage, type StoredProtocolRow } from '~/utils/assetDB';
 import { getProtocolAssetCount } from '~/utils/assetUtils';
 import {
   downloadProtocolAsNetcanvas,
+  MissingFinishStageTextError,
   UnresolvedAssetsError,
 } from '~/utils/bundleProtocol';
 import { documentationLinks } from '~/utils/documentationLinks';
@@ -763,6 +768,26 @@ const LibraryPanel = ({
           protocol.id,
         );
       } catch (error) {
+        // Nor one whose finish stage has no heading or text in its default
+        // language: no host would import it.
+        if (error instanceof MissingFinishStageTextError) {
+          void openDialog({
+            type: 'acknowledge',
+            intent: 'destructive',
+            title: createElement(FinishStageTextRefusalTitle),
+            description: createElement(FinishStageTextRefusal, {
+              problem: error.problem,
+            }),
+            actions: {
+              primary: {
+                label: createElement(AppMessage, { message: messages.oK }),
+                value: true,
+              },
+            },
+            finalFocus: resolveFocus,
+          });
+          return;
+        }
         // A protocol whose resources cannot all be read is not written at all:
         // omitting them would produce a file whose stages reference resources
         // the manifest no longer lists, which no version of Architect can

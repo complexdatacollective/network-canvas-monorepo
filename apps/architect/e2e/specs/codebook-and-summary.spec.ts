@@ -15,7 +15,7 @@ const FIXED_CLOCK = new Date('2026-01-01T12:00:00Z');
 /**
  * The printed document's own page structure. `SummaryPage.tsx` stamps
  * `page-break-marker` on every element that begins a printed page — the cover,
- * the contents, each stage, each codebook entity, and the resource library —
+ * the contents, each stage, each codebook entity, the resource library, and the interview text —
  * so this is the document telling us where its sections are, not a selector
  * guessing.
  */
@@ -184,7 +184,13 @@ test(
       Object.keys(protocol.codebook.node ?? {}).length +
       Object.keys(protocol.codebook.edge ?? {}).length;
     // cover + contents + one per stage + one per codebook entity + resources
-    const expectedSections = 2 + protocol.stages.length + entityCount + 1;
+    // + the interview's shared text, when the protocol holds any
+    const expectedSections =
+      2 +
+      protocol.stages.length +
+      entityCount +
+      1 +
+      (protocol.interfaceText ? 1 : 0);
     await expect(sections).toHaveCount(expectedSections);
 
     // Each section names its own baseline: an `id` where the document has one
@@ -282,10 +288,10 @@ test(
     // Each variable renders as an editable ConnectedVariablePill button whose
     // accessible name identifies the variable and the edit action
     // (VariablePill.tsx);
-    // `biologicalSex` is unique to the `person` node type in the fixture.
+    // `contactFreq` is unique to the `person` node type in the fixture.
     await expect(
       architectPage.getByRole('button', {
-        name: 'Edit attribute name: biologicalSex',
+        name: 'Edit attribute name: contactFreq',
         exact: true,
       }),
     ).toBeVisible();
@@ -379,6 +385,50 @@ test('names each stage once in the printable summary Used In column', async ({
   expect(repeated).toEqual([]);
 });
 
+// One printed summary serves every reader of a translated protocol, so it
+// holds each text in every protocol language rather than offering a choice.
+test('prints each protocol text in every protocol language', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  const stage = protocol.stages.find(
+    (candidate) => candidate.type === 'Information',
+  );
+  if (stage?.type !== 'Information') {
+    throw new Error('Expected the Information stage fixture');
+  }
+  const { defaultLocale } = protocol.localization;
+  protocol.localization = { defaultLocale, locales: [defaultLocale, 'fr'] };
+  stage.title = { ...stage.title, fr: 'Bienvenue' };
+  await seed(protocol, { name: 'Bilingual summary', assets });
+  await architectPage.goto('/protocol/summary');
+  await expect(architectPage.getByText('Loading protocol...')).toHaveCount(0);
+
+  await expect(architectPage.getByText('Summary language')).toHaveCount(0);
+
+  const cover = architectPage.locator(SECTION).first();
+  await expect(cover.getByRole('heading', { name: 'Languages' })).toBeVisible();
+  const coverLanguages = cover.getByRole('listitem');
+  await expect(coverLanguages).toHaveCount(2);
+  await expect(coverLanguages.filter({ hasText: 'Default' })).toHaveCount(1);
+
+  const section = architectPage.locator(`#stage-${stage.id}`);
+  await expect(section.locator('dd[lang="fr"]')).toHaveText('Bienvenue');
+  await expect(
+    section
+      .locator(`dd[lang="${defaultLocale}"]`)
+      .filter({ hasText: /^Welcome$/ }),
+  ).toBeVisible();
+  // The stage's item has no French translation, so the summary says which
+  // language participants using French see it in instead.
+  await expect(
+    section
+      .getByText(/^Not translated yet\. Participants see the .+ text\.$/)
+      .first(),
+  ).toBeVisible();
+});
+
 test('lands keyboard focus on the destination heading of a Used In link', async ({
   architectPage,
   seed,
@@ -458,6 +508,7 @@ test('deletes a very long variable from a dialog that stays inside its box', asy
   if (!personType?.variables) throw new Error('fixture lost its person type');
   personType.variables['long-name-variable'] = {
     name: LONG_NAME,
+    label: LONG_NAME,
     type: 'text',
     component: 'Text',
   };

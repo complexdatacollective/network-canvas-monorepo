@@ -1,44 +1,59 @@
-import { findKey } from 'es-toolkit';
-import { find, has, isEmpty } from 'es-toolkit/compat';
-
 import type { EntityDefinition } from '@codaco/protocol-validation';
 
-const findCategoricalKey = (
-  object: Record<
-    string,
-    Extract<NonNullable<O>[string], { type: 'categorical' }>
-  >,
-  toFind: string,
-) => {
-  // make list of possible var_option pairs
-  let previousIndex = 0;
-  const collection = [] as { name: string; option: string }[];
-  while (toFind.includes('_', previousIndex)) {
-    previousIndex = toFind.indexOf('_', previousIndex) + 1;
-    const name = toFind.substr(0, previousIndex - 1);
-    const option = toFind.substr(previousIndex, toFind.length);
-    if (name && option) {
-      collection.push({ name, option });
+type Variables = NonNullable<EntityDefinition['variables']>;
+
+/**
+ * Names are compared in NFC. A researcher's variable name is stored in NFC, but
+ * the header of a data file produced elsewhere (a spreadsheet exported on
+ * macOS, say) may spell the same text decomposed.
+ */
+const findVariableIdByName = (variables: Variables, name: string) => {
+  const target = name.normalize('NFC');
+
+  return Object.entries(variables).find(
+    ([, variable]) => variable.name.normalize('NFC') === target,
+  )?.[0];
+};
+
+/**
+ * Resolves a `<variable name>_<option value>` column to
+ * `<variable id>_<option value>`, where the option value is spelled as the
+ * codebook spells it.
+ *
+ * Both the variable name and the option value may contain underscores, so every
+ * underscore is tried as the split point.
+ */
+const findCategoricalKey = (variables: Variables, toFind: string) => {
+  for (
+    let index = toFind.indexOf('_');
+    index !== -1;
+    index = toFind.indexOf('_', index + 1)
+  ) {
+    const name = toFind.slice(0, index);
+    const option = toFind.slice(index + 1).normalize('NFC');
+
+    if (!name || !option) {
+      continue;
     }
-  }
 
-  let foundKey: string | undefined;
-  // check for a categorical variable with a valid option value
-  const categoricalVariable = collection.find((pair) => {
-    foundKey = findKey(object, (objectItem) => objectItem.name === pair.name);
+    const target = name.normalize('NFC');
 
-    return (
-      foundKey &&
-      has(object[foundKey], 'options') &&
-      find(
-        object[foundKey]!.options,
-        (option) => option.value.toString() === pair.option,
-      )
-    );
-  });
+    for (const [id, variable] of Object.entries(variables)) {
+      if (
+        variable.type !== 'categorical' ||
+        variable.name.normalize('NFC') !== target
+      ) {
+        continue;
+      }
 
-  if (categoricalVariable && has(categoricalVariable, 'option')) {
-    return `${foundKey}_${categoricalVariable.option}`;
+      const match = variable.options.find(
+        (candidate) => String(candidate.value).normalize('NFC') === option,
+      );
+
+      if (match) {
+        return `${id}_${String(match.value)}`;
+      }
+    }
   }
 
   return null;
@@ -48,7 +63,7 @@ const findCategoricalKey = (
  * Utility function that can be used to help with translating external data
  * variable labels to UUIDs, if a match is possible.
  *
- * Assuming that {object} contains other objects, keyed by a UUID, this function
+ * Assuming that {variables} contains other objects, keyed by a UUID, this function
  * first checks if the string to find is a valid key in the object, and returns it
  * if so (equivalent to codebook.node.uuid === toFind )
  *
@@ -58,49 +73,43 @@ const findCategoricalKey = (
  * the parent object is returned.
  *
  * Finally, if neither approach finds a UUID, {toFind} is returned.
+ *
+ * Names and option values are matched in NFC, and the keys of {variables} are
+ * read only as own properties, so a name such as `__proto__` or `constructor`
+ * is just a name.
  */
-
-type O = NonNullable<EntityDefinition['variables']> | undefined;
-
-const getParentKeyByNameValue = (object: O, toFind: string) => {
+const getParentKeyByNameValue = (
+  variables: Variables | undefined,
+  toFind: string,
+) => {
   // No entity definition for this type
-  if (isEmpty(object)) {
+  if (!variables || Object.keys(variables).length === 0) {
     return toFind;
   }
 
   // Immediate match
-  if (object[toFind]) {
+  if (Object.hasOwn(variables, toFind)) {
     return toFind;
   }
 
-  // Iterate object keys and return the key (itself )
-  let foundKey =
-    findKey(object, (objectItem) => objectItem.name === toFind) ?? undefined;
+  const idByName = findVariableIdByName(variables, toFind);
+  if (idByName !== undefined) {
+    return idByName;
+  }
 
-  // check for special cases
   // possible location
-  if (!foundKey && toFind && (toFind.endsWith('_x') || toFind.endsWith('_y'))) {
-    const locationName = toFind.substring(0, toFind.length - 2);
-    foundKey =
-      findKey(object, (objectItem) => objectItem.name === locationName) ??
-      undefined;
-    if (foundKey) {
-      foundKey += toFind.substring(toFind.length - 2);
+  if (toFind.endsWith('_x') || toFind.endsWith('_y')) {
+    const locationId = findVariableIdByName(
+      variables,
+      toFind.slice(0, toFind.length - 2),
+    );
+    if (locationId !== undefined) {
+      return `${locationId}${toFind.slice(toFind.length - 2)}`;
     }
   }
-  // possible categorical
-  if (!foundKey && toFind?.includes('_')) {
-    foundKey =
-      findCategoricalKey(
-        object as Record<
-          string,
-          Extract<NonNullable<O>[string], { type: 'categorical' }>
-        >,
-        toFind,
-      ) ?? undefined;
-  }
 
-  return foundKey ?? toFind;
+  // possible categorical
+  return findCategoricalKey(variables, toFind) ?? toFind;
 };
 
 export default getParentKeyByNameValue;

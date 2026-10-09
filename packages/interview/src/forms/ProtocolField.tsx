@@ -1,3 +1,7 @@
+'use client';
+
+import type { ReactNode } from 'react';
+
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import type {
   FieldValue,
@@ -16,8 +20,13 @@ import ToggleButtonGroupField from '@codaco/fresco-ui/form/fields/ToggleButtonGr
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import VisualAnalogScaleField from '@codaco/fresco-ui/form/fields/VisualAnalogScale';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
-import type { ComponentType, Variable } from '@codaco/protocol-validation';
+import type {
+  ComponentType,
+  LocalizedString,
+  Variable,
+} from '@codaco/protocol-validation';
 
+import { useResolveLocalizedString } from '../localization/ProtocolLocalizationProvider';
 import { buildDatePickerBoundProps } from './buildDatePickerBoundProps';
 import { buildFieldValidationProps } from './buildFieldValidationProps';
 import { resolveRenderedControl } from './resolveRenderedControl';
@@ -37,21 +46,38 @@ const fieldTypeMap: Record<ComponentType, ValidFieldComponent> = {
   RelativeDatePicker: RelativeDatePickerField,
 };
 
+type ProtocolFieldOption = {
+  label: LocalizedString;
+  value: string | number | boolean;
+  negative?: boolean;
+};
+
 export type ProtocolFieldDefinition = {
   variable: string;
-  label: string;
+  label: LocalizedString;
   type: Variable['type'];
   component: ComponentType;
-  hint?: string;
+  hint?: LocalizedString;
   showValidationHints?: boolean;
-  options?: unknown[];
+  options?: readonly ProtocolFieldOption[];
   parameters?: Record<string, unknown>;
   validation?: Record<string, unknown>;
 };
 
+// `parameters` is a loose record (a NetworkComposer field may carry any key),
+// so a scale's end label is checked for the localized shape before it is used.
+const isLocalizedString = (value: unknown): value is LocalizedString =>
+  typeof value === 'object' &&
+  value !== null &&
+  !Array.isArray(value) &&
+  Object.keys(value).length > 0 &&
+  Object.values(value).every((text) => typeof text === 'string');
+
 type ProtocolFieldProps = {
   field: ProtocolFieldDefinition;
   name?: string;
+  /** Shown in place of the field's authored hint. */
+  hint?: ReactNode;
   initialValue?: FieldValue;
   autoFocus?: boolean;
   validationContext?: ValidationContext;
@@ -68,10 +94,12 @@ type ProtocolFieldProps = {
 export default function ProtocolField({
   field,
   name = field.variable,
+  hint,
   initialValue,
   autoFocus,
   validationContext,
 }: ProtocolFieldProps) {
+  const resolve = useResolveLocalizedString();
   const { component, optionsApply } = resolveRenderedControl({
     type: field.type,
     component: field.component,
@@ -82,9 +110,11 @@ export default function ProtocolField({
     name: string;
     nameMode: 'opaque';
     label: string;
-    hint?: string;
+    hint?: ReactNode | string;
     showValidationHints?: boolean;
-    options?: unknown[];
+    options?: (Omit<ProtocolFieldOption, 'label'> & {
+      label: string;
+    })[];
     useColumns?: boolean;
     type?: string;
     minLabel?: string;
@@ -100,8 +130,10 @@ export default function ProtocolField({
   } & Partial<ValidationPropsCatalogue> = {
     name,
     nameMode: 'opaque',
-    label: field.label,
-    ...(field.hint !== undefined && { hint: field.hint }),
+    label: resolve(field.label).text,
+    ...(hint !== undefined
+      ? { hint }
+      : field.hint !== undefined && { hint: resolve(field.hint).text }),
     ...(field.showValidationHints !== undefined && {
       showValidationHints: field.showValidationHints,
     }),
@@ -125,7 +157,10 @@ export default function ProtocolField({
   // replacement asks its own two-valued question, so the codebook's boolean
   // options would change the question's answer domain.
   if (field.options && optionsApply) {
-    props.options = field.options;
+    props.options = field.options.map((option) => ({
+      ...option,
+      label: resolve(option.label).text,
+    }));
     if (
       (component === 'CheckboxGroup' || component === 'RadioGroup') &&
       field.options.length > 6
@@ -139,8 +174,12 @@ export default function ProtocolField({
 
   if (component === 'VisualAnalogScale' && field.parameters) {
     const { minLabel, maxLabel } = field.parameters;
-    if (typeof minLabel === 'string') props.minLabel = minLabel;
-    if (typeof maxLabel === 'string') props.maxLabel = maxLabel;
+    if (isLocalizedString(minLabel)) {
+      props.minLabel = resolve(minLabel).text;
+    }
+    if (isLocalizedString(maxLabel)) {
+      props.maxLabel = resolve(maxLabel).text;
+    }
   }
 
   if (component === 'DatePicker' && field.parameters) {

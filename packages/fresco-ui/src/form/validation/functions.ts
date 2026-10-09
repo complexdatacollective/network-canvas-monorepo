@@ -41,6 +41,10 @@ export type ValidationFunction<T extends ValidationParameter> = (
   // rule signature stays callable without it. Absent (external callers, the
   // provider-less default), messages render their English defaultMessage.
   intl?: IntlShape,
+  // The language the field shows its values in (`useFieldValueFormat`), which
+  // a value written into a message, such as a date bound, is formatted in.
+  // Absent, it is the formatter's.
+  valueLocale?: string,
 ) => (formValues: Record<string, FieldValue>) => z.ZodMiniType;
 
 // A number written as `{x, number}` or an ICU plural's `#` is formatted in the locale of the message
@@ -51,55 +55,35 @@ export type ValidationFunction<T extends ValidationParameter> = (
 // protocol author supplied, which need not be a quantity at all — a year, a
 // score, an identifier — and is the literal the participant has to type back.
 // "greater than or equal to 1,990" would be a rule about a different number.
-const messages = defineMessages({
+export const messages = defineMessages({
   required: {
     id: 'frescoUi.validation.required',
     defaultMessage: 'You must answer this question before continuing.',
     description: 'Error shown when a required form field is left unanswered.',
   },
-  maxLengthHint: {
-    id: 'frescoUi.validation.maxLengthHint',
-    defaultMessage:
-      '{max, plural, one {Enter at most # character.} other {Enter at most # characters.}}',
-    description: 'Hint summarising a maximum text length rule.',
-  },
   maxLengthError: {
     id: 'frescoUi.validation.maxLengthError',
     defaultMessage:
-      '{max, plural, one {Too long. Enter at most # character.} other {Too long. Enter at most # characters.}}',
-    description: 'Error shown when text exceeds its maximum length.',
-  },
-  minLengthHint: {
-    id: 'frescoUi.validation.minLengthHint',
-    defaultMessage:
-      '{min, plural, one {Enter at least # character.} other {Enter at least # characters.}}',
-    description: 'Hint summarising a minimum text length rule.',
+      '{max, plural, one {Enter at most # character.} other {Enter at most # characters.}}',
+    description:
+      'Error and hint shown when text is longer than its maximum length.',
   },
   minLengthError: {
     id: 'frescoUi.validation.minLengthError',
     defaultMessage:
-      '{min, plural, one {Too short. Enter at least # character.} other {Too short. Enter at least # characters.}}',
-    description: 'Error shown when text is shorter than its minimum length.',
-  },
-  minValueHint: {
-    id: 'frescoUi.validation.minValueHint',
-    defaultMessage: 'Enter a value greater than or equal to {min}.',
-    description: 'Hint summarising a numeric minimum rule.',
+      '{min, plural, one {Enter at least # character.} other {Enter at least # characters.}}',
+    description:
+      'Error and hint shown when text is shorter than its minimum length.',
   },
   minValueError: {
     id: 'frescoUi.validation.minValueError',
-    defaultMessage: 'Too small. Value must be at least {min}.',
-    description: 'Error shown when a number is below its minimum.',
-  },
-  maxValueHint: {
-    id: 'frescoUi.validation.maxValueHint',
-    defaultMessage: 'Enter a value less than or equal to {max}.',
-    description: 'Hint summarising a numeric maximum rule.',
+    defaultMessage: 'Enter a value greater than or equal to {min}.',
+    description: 'Error and hint shown when a number is below its minimum.',
   },
   maxValueError: {
     id: 'frescoUi.validation.maxValueError',
-    defaultMessage: 'Too large. Value must be at most {max}.',
-    description: 'Error shown when a number is above its maximum.',
+    defaultMessage: 'Enter a value less than or equal to {max}.',
+    description: 'Error and hint shown when a number is above its maximum.',
   },
   minDate: {
     id: 'frescoUi.validation.minDate',
@@ -113,189 +97,65 @@ const messages = defineMessages({
     description:
       'Hint and error for a date/time maximum; {max} is the formatted bound.',
   },
-  minSelectedHint: {
-    id: 'frescoUi.validation.minSelectedHint',
-    defaultMessage:
-      '{count, plural, one {Select at least # value.} other {Select at least # values.}}',
-    description: 'Hint summarising a minimum selection-count rule.',
-  },
   minSelectedError: {
     id: 'frescoUi.validation.minSelectedError',
     defaultMessage:
-      '{count, plural, one {Too few selected. Select at least # value.} other {Too few selected. Select at least # values.}}',
-    description: 'Error shown when too few options are selected.',
-  },
-  maxSelectedHint: {
-    id: 'frescoUi.validation.maxSelectedHint',
-    defaultMessage:
-      '{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}',
-    description: 'Hint summarising a maximum selection-count rule.',
+      '{count, plural, one {Select at least # value.} other {Select at least # values.}}',
+    description: 'Error and hint shown when too few options are selected.',
   },
   maxSelectedError: {
     id: 'frescoUi.validation.maxSelectedError',
     defaultMessage:
-      '{count, plural, one {Too many items selected. Select a maximum of # value.} other {Too many items selected. Select a maximum of # values.}}',
-    description: 'Error shown when too many options are selected.',
-  },
-  uniqueHint: {
-    id: 'frescoUi.validation.uniqueHint',
-    defaultMessage: 'Must be unique.',
-    description: 'Hint summarising a uniqueness rule.',
+      '{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}',
+    description: 'Error and hint shown when too many options are selected.',
   },
   uniqueError: {
     id: 'frescoUi.validation.uniqueError',
-    defaultMessage: 'This value is used elsewhere. It must be unique.',
-    description: 'Error shown when a value duplicates one used elsewhere.',
+    defaultMessage: 'Must be unique.',
+    description:
+      'Error and hint shown when a value duplicates one used elsewhere.',
   },
   differentFromError: {
     id: 'frescoUi.validation.differentFromError',
-    defaultMessage: 'Your answer must be different from your earlier answer.',
-    description:
-      'Error for a must-differ comparison when the other answer has no visible label.',
-  },
-  differentFromLabelledError: {
-    id: 'frescoUi.validation.differentFromLabelledError',
     defaultMessage:
-      "Your answer must be different from your answer to ''{label}''.",
+      "{hasLabel, select, true {Your answer must be different from your answer to ''{label}''.} other {Your answer must be different from your earlier answer.}}",
     description:
-      'Error for a must-differ comparison naming the other question.',
-  },
-  differentFromHint: {
-    id: 'frescoUi.validation.differentFromHint',
-    defaultMessage: 'Must be different from your earlier answer.',
-    description:
-      'Hint for a must-differ comparison when the other answer has no visible label.',
-  },
-  differentFromLabelledHint: {
-    id: 'frescoUi.validation.differentFromLabelledHint',
-    defaultMessage: "Must be different from your answer to ''{label}''.",
-    description: 'Hint for a must-differ comparison naming the other question.',
+      'Error and hint for a must-differ comparison. hasLabel says whether the other question has a visible label; label is that label.',
   },
   sameAsError: {
     id: 'frescoUi.validation.sameAsError',
-    defaultMessage: 'Your answer must be the same as your earlier answer.',
-    description:
-      'Error for a must-match comparison when the other answer has no visible label.',
-  },
-  sameAsLabelledError: {
-    id: 'frescoUi.validation.sameAsLabelledError',
     defaultMessage:
-      "Your answer must be the same as your answer to ''{label}''.",
-    description: 'Error for a must-match comparison naming the other question.',
-  },
-  sameAsHint: {
-    id: 'frescoUi.validation.sameAsHint',
-    defaultMessage: 'Must be the same as your earlier answer.',
+      "{hasLabel, select, true {Your answer must be the same as your answer to ''{label}''.} other {Your answer must be the same as your earlier answer.}}",
     description:
-      'Hint for a must-match comparison when the other answer has no visible label.',
-  },
-  sameAsLabelledHint: {
-    id: 'frescoUi.validation.sameAsLabelledHint',
-    defaultMessage: "Must be the same as your answer to ''{label}''.",
-    description: 'Hint for a must-match comparison naming the other question.',
+      'Error and hint for a must-match comparison. hasLabel says whether the other question has a visible label; label is that label.',
   },
   greaterThanError: {
     id: 'frescoUi.validation.greaterThanError',
-    defaultMessage: 'Your answer must be greater than your earlier answer.',
-    description:
-      'Error for a must-be-greater comparison when the other answer has no visible label.',
-  },
-  greaterThanLabelledError: {
-    id: 'frescoUi.validation.greaterThanLabelledError',
     defaultMessage:
-      "Your answer must be greater than your answer to ''{label}''.",
+      "{hasLabel, select, true {Your answer must be greater than your answer to ''{label}''.} other {Your answer must be greater than your earlier answer.}}",
     description:
-      'Error for a must-be-greater comparison naming the other question.',
-  },
-  greaterThanHint: {
-    id: 'frescoUi.validation.greaterThanHint',
-    defaultMessage: 'Must be greater than your earlier answer.',
-    description:
-      'Hint for a must-be-greater comparison when the other answer has no visible label.',
-  },
-  greaterThanLabelledHint: {
-    id: 'frescoUi.validation.greaterThanLabelledHint',
-    defaultMessage: "Must be greater than your answer to ''{label}''.",
-    description:
-      'Hint for a must-be-greater comparison naming the other question.',
+      'Error and hint for a must-be-greater comparison. hasLabel says whether the other question has a visible label; label is that label.',
   },
   lessThanError: {
     id: 'frescoUi.validation.lessThanError',
-    defaultMessage: 'Your answer must be less than your earlier answer.',
+    defaultMessage:
+      "{hasLabel, select, true {Your answer must be less than your answer to ''{label}''.} other {Your answer must be less than your earlier answer.}}",
     description:
-      'Error for a must-be-less comparison when the other answer has no visible label.',
-  },
-  lessThanLabelledError: {
-    id: 'frescoUi.validation.lessThanLabelledError',
-    defaultMessage: "Your answer must be less than your answer to ''{label}''.",
-    description:
-      'Error for a must-be-less comparison naming the other question.',
-  },
-  lessThanHint: {
-    id: 'frescoUi.validation.lessThanHint',
-    defaultMessage: 'Must be less than your earlier answer.',
-    description:
-      'Hint for a must-be-less comparison when the other answer has no visible label.',
-  },
-  lessThanLabelledHint: {
-    id: 'frescoUi.validation.lessThanLabelledHint',
-    defaultMessage: "Must be less than your answer to ''{label}''.",
-    description:
-      'Hint for a must-be-less comparison naming the other question.',
+      'Error and hint for a must-be-less comparison. hasLabel says whether the other question has a visible label; label is that label.',
   },
   greaterThanOrEqualError: {
     id: 'frescoUi.validation.greaterThanOrEqualError',
     defaultMessage:
-      'Your answer must be the same as or greater than your earlier answer.',
+      "{hasLabel, select, true {Your answer must be the same as or greater than your answer to ''{label}''.} other {Your answer must be the same as or greater than your earlier answer.}}",
     description:
-      'Error for a must-be-at-least comparison when the other answer has no visible label.',
-  },
-  greaterThanOrEqualLabelledError: {
-    id: 'frescoUi.validation.greaterThanOrEqualLabelledError',
-    defaultMessage:
-      "Your answer must be the same as or greater than your answer to ''{label}''.",
-    description:
-      'Error for a must-be-at-least comparison naming the other question.',
-  },
-  greaterThanOrEqualHint: {
-    id: 'frescoUi.validation.greaterThanOrEqualHint',
-    defaultMessage: 'Must be the same as or greater than your earlier answer.',
-    description:
-      'Hint for a must-be-at-least comparison when the other answer has no visible label.',
-  },
-  greaterThanOrEqualLabelledHint: {
-    id: 'frescoUi.validation.greaterThanOrEqualLabelledHint',
-    defaultMessage:
-      "Must be the same as or greater than your answer to ''{label}''.",
-    description:
-      'Hint for a must-be-at-least comparison naming the other question.',
+      'Error and hint for a must-be-at-least comparison. hasLabel says whether the other question has a visible label; label is that label.',
   },
   lessThanOrEqualError: {
     id: 'frescoUi.validation.lessThanOrEqualError',
     defaultMessage:
-      'Your answer must be the same as or less than your earlier answer.',
+      "{hasLabel, select, true {Your answer must be the same as or less than your answer to ''{label}''.} other {Your answer must be the same as or less than your earlier answer.}}",
     description:
-      'Error for a must-be-at-most comparison when the other answer has no visible label.',
-  },
-  lessThanOrEqualLabelledError: {
-    id: 'frescoUi.validation.lessThanOrEqualLabelledError',
-    defaultMessage:
-      "Your answer must be the same as or less than your answer to ''{label}''.",
-    description:
-      'Error for a must-be-at-most comparison naming the other question.',
-  },
-  lessThanOrEqualHint: {
-    id: 'frescoUi.validation.lessThanOrEqualHint',
-    defaultMessage: 'Must be the same as or less than your earlier answer.',
-    description:
-      'Hint for a must-be-at-most comparison when the other answer has no visible label.',
-  },
-  lessThanOrEqualLabelledHint: {
-    id: 'frescoUi.validation.lessThanOrEqualLabelledHint',
-    defaultMessage:
-      "Must be the same as or less than your answer to ''{label}''.",
-    description:
-      'Hint for a must-be-at-most comparison naming the other question.',
+      'Error and hint for a must-be-at-most comparison. hasLabel says whether the other question has a visible label; label is that label.',
   },
   emailHint: {
     id: 'frescoUi.validation.emailHint',
@@ -372,7 +232,7 @@ const maxLength: ValidationFunction<number> = (max, _context, intl) => () => {
     'Max length must be specified',
   );
 
-  const hint = resolveIntl(intl).formatMessage(messages.maxLengthHint, {
+  const hint = resolveIntl(intl).formatMessage(messages.maxLengthError, {
     max,
   });
 
@@ -412,7 +272,7 @@ const minLength: ValidationFunction<number> = (min, _context, intl) => () => {
     'Min length must be specified',
   );
 
-  const hint = resolveIntl(intl).formatMessage(messages.minLengthHint, {
+  const hint = resolveIntl(intl).formatMessage(messages.minLengthError, {
     min,
   });
 
@@ -452,7 +312,7 @@ const minValue: ValidationFunction<number> = (min, _context, intl) => () => {
     'Min value must be specified',
   );
 
-  const hint = resolveIntl(intl).formatMessage(messages.minValueHint, {
+  const hint = resolveIntl(intl).formatMessage(messages.minValueError, {
     min,
   });
 
@@ -494,7 +354,7 @@ const maxValue: ValidationFunction<number> = (max, _context, intl) => () => {
     'Max value must be specified',
   );
 
-  const hint = resolveIntl(intl).formatMessage(messages.maxValueHint, {
+  const hint = resolveIntl(intl).formatMessage(messages.maxValueError, {
     max,
   });
 
@@ -608,14 +468,16 @@ function utcDateFromParts(
  *
  * Returns the raw string for values we don't recognise as date/time literals.
  */
-function formatBoundForDisplay(bound: string, intl: IntlShape): string {
+function formatBoundForDisplay(bound: string, locale: string): string {
+  const formatDate = (date: Date, options: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat(locale, options).format(date);
   if (YEAR_RE.test(bound)) return bound;
 
   const yearMonth = YEAR_MONTH_RE.exec(bound);
   if (yearMonth) {
     const year = Number(yearMonth[1]);
     const month = Number(yearMonth[2]);
-    return intl.formatDate(utcDateFromParts(year, month, 1), {
+    return formatDate(utcDateFromParts(year, month, 1), {
       year: 'numeric',
       month: 'long',
       timeZone: 'UTC',
@@ -639,14 +501,14 @@ function formatBoundForDisplay(bound: string, intl: IntlShape): string {
         Number(dateTime[5]),
         seconds !== undefined ? Number(seconds) : 0,
       );
-      return intl.formatDate(date, {
+      return formatDate(date, {
         dateStyle: 'long',
         timeStyle: boundTimeStyle(seconds),
         timeZone: 'UTC',
         calendar: 'gregory',
       });
     }
-    return intl.formatDate(utcDateFromParts(year, month, day), {
+    return formatDate(utcDateFromParts(year, month, day), {
       dateStyle: 'long',
       timeZone: 'UTC',
       calendar: 'gregory',
@@ -663,7 +525,7 @@ function formatBoundForDisplay(bound: string, intl: IntlShape): string {
       seconds !== undefined ? Number(seconds) : 0,
       0,
     );
-    return intl.formatTime(anchor, {
+    return formatDate(anchor, {
       timeStyle: boundTimeStyle(seconds),
       timeZone: 'UTC',
     });
@@ -684,7 +546,7 @@ function formatBoundForDisplay(bound: string, intl: IntlShape): string {
  * sorts the spaces before the year.
  */
 const min: ValidationFunction<number | string> =
-  (minParam, _context, intl) => () => {
+  (minParam, _context, intl, valueLocale) => () => {
     invariant(
       minParam !== undefined && minParam !== null && minParam !== '',
       'Min must be specified',
@@ -693,13 +555,13 @@ const min: ValidationFunction<number | string> =
     const paramIsDateShaped =
       typeof minParam === 'string' && matchesDatePattern(minParam);
     const displayMin = paramIsDateShaped
-      ? formatBoundForDisplay(minParam, resolveIntl(intl))
+      ? formatBoundForDisplay(minParam, valueLocale ?? resolveIntl(intl).locale)
       : String(minParam);
     const hint = paramIsDateShaped
       ? resolveIntl(intl).formatMessage(messages.minDate, {
           min: displayMin,
         })
-      : resolveIntl(intl).formatMessage(messages.minValueHint, {
+      : resolveIntl(intl).formatMessage(messages.minValueError, {
           min: displayMin,
         });
 
@@ -750,7 +612,7 @@ const min: ValidationFunction<number | string> =
  * shared `isUnanswered` short-circuit has to come before either branch.
  */
 const max: ValidationFunction<number | string> =
-  (maxParam, _context, intl) => () => {
+  (maxParam, _context, intl, valueLocale) => () => {
     invariant(
       maxParam !== undefined && maxParam !== null && maxParam !== '',
       'Max must be specified',
@@ -759,13 +621,13 @@ const max: ValidationFunction<number | string> =
     const paramIsDateShaped =
       typeof maxParam === 'string' && matchesDatePattern(maxParam);
     const displayMax = paramIsDateShaped
-      ? formatBoundForDisplay(maxParam, resolveIntl(intl))
+      ? formatBoundForDisplay(maxParam, valueLocale ?? resolveIntl(intl).locale)
       : String(maxParam);
     const hint = paramIsDateShaped
       ? resolveIntl(intl).formatMessage(messages.maxDate, {
           max: displayMax,
         })
-      : resolveIntl(intl).formatMessage(messages.maxValueHint, {
+      : resolveIntl(intl).formatMessage(messages.maxValueError, {
           max: displayMax,
         });
 
@@ -833,7 +695,7 @@ const minSelected: ValidationFunction<number> =
   (minParam, _context, intl) => () => {
     invariant(typeof minParam === 'number', 'Min items must be specified');
 
-    const hint = resolveIntl(intl).formatMessage(messages.minSelectedHint, {
+    const hint = resolveIntl(intl).formatMessage(messages.minSelectedError, {
       count: minParam,
     });
 
@@ -875,7 +737,7 @@ const maxSelected: ValidationFunction<number> =
   (maxParam, _context, intl) => () => {
     invariant(typeof maxParam === 'number', 'Max items must be specified');
 
-    const hint = resolveIntl(intl).formatMessage(messages.maxSelectedHint, {
+    const hint = resolveIntl(intl).formatMessage(messages.maxSelectedError, {
       count: maxParam,
     });
 
@@ -912,7 +774,7 @@ const unique: ValidationFunction<string> = (attribute, context, intl) => () => {
   );
   const { stageSubject, network, currentEntityId, codebook } = context;
 
-  const hint = resolveIntl(intl).formatMessage(messages.uniqueHint);
+  const hint = resolveIntl(intl).formatMessage(messages.uniqueError);
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
@@ -1027,28 +889,18 @@ const comparisonLabel = (
 };
 
 /**
- * Message + hint for one comparison rule: the label-free sentences when the
- * target has no participant-facing label, the labelled ones otherwise.
+ * The message for one comparison rule. Each relation has one sentence; its
+ * ICU select names the other question when that question has a visible label.
  */
-const comparisonCopy = (
+const comparisonMessage = (
   intl: IntlShape,
   label: string | undefined,
-  copy: {
-    error: (typeof messages)[keyof typeof messages];
-    hint: (typeof messages)[keyof typeof messages];
-    labelledError: (typeof messages)[keyof typeof messages];
-    labelledHint: (typeof messages)[keyof typeof messages];
-  },
-): { message: string; hint: string } =>
-  label === undefined
-    ? {
-        message: intl.formatMessage(copy.error),
-        hint: intl.formatMessage(copy.hint),
-      }
-    : {
-        message: intl.formatMessage(copy.labelledError, { label }),
-        hint: intl.formatMessage(copy.labelledHint, { label }),
-      };
+  descriptor: (typeof messages)[keyof typeof messages],
+): string =>
+  intl.formatMessage(descriptor, {
+    hasLabel: label !== undefined,
+    label: label ?? '',
+  });
 
 /**
  * Require that a value is different from another variable in the same form
@@ -1064,12 +916,11 @@ const differentFrom: ValidationFunction<string> =
     );
 
     const label = comparisonLabel(attribute, context);
-    const { message, hint } = comparisonCopy(resolveIntl(intl), label, {
-      error: messages.differentFromError,
-      hint: messages.differentFromHint,
-      labelledError: messages.differentFromLabelledError,
-      labelledHint: messages.differentFromLabelledHint,
-    });
+    const message = comparisonMessage(
+      resolveIntl(intl),
+      label,
+      messages.differentFromError,
+    );
 
     return z.unknown().check(
       z.superRefine((value, ctx) => {
@@ -1093,7 +944,7 @@ const differentFrom: ValidationFunction<string> =
           });
         }
       }),
-      z.meta({ hint }),
+      z.meta({ hint: message }),
     );
   };
 
@@ -1110,12 +961,11 @@ const sameAs: ValidationFunction<string> =
     );
 
     const label = comparisonLabel(attribute, context);
-    const { message, hint } = comparisonCopy(resolveIntl(intl), label, {
-      error: messages.sameAsError,
-      hint: messages.sameAsHint,
-      labelledError: messages.sameAsLabelledError,
-      labelledHint: messages.sameAsLabelledHint,
-    });
+    const message = comparisonMessage(
+      resolveIntl(intl),
+      label,
+      messages.sameAsError,
+    );
 
     return z.unknown().check(
       z.superRefine((value, ctx) => {
@@ -1139,7 +989,7 @@ const sameAs: ValidationFunction<string> =
           });
         }
       }),
-      z.meta({ hint }),
+      z.meta({ hint: message }),
     );
   };
 
@@ -1163,12 +1013,11 @@ const greaterThanVariable: ValidationFunction<{
   );
 
   const label = comparisonLabel(attribute, context);
-  const { message, hint } = comparisonCopy(resolveIntl(intl), label, {
-    error: messages.greaterThanError,
-    hint: messages.greaterThanHint,
-    labelledError: messages.greaterThanLabelledError,
-    labelledHint: messages.greaterThanLabelledHint,
-  });
+  const message = comparisonMessage(
+    resolveIntl(intl),
+    label,
+    messages.greaterThanError,
+  );
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
@@ -1194,7 +1043,7 @@ const greaterThanVariable: ValidationFunction<{
         });
       }
     }),
-    z.meta({ hint }),
+    z.meta({ hint: message }),
   );
 };
 
@@ -1261,12 +1110,11 @@ const lessThanVariable: ValidationFunction<{
   );
 
   const label = comparisonLabel(attribute, context);
-  const { message, hint } = comparisonCopy(resolveIntl(intl), label, {
-    error: messages.lessThanError,
-    hint: messages.lessThanHint,
-    labelledError: messages.lessThanLabelledError,
-    labelledHint: messages.lessThanLabelledHint,
-  });
+  const message = comparisonMessage(
+    resolveIntl(intl),
+    label,
+    messages.lessThanError,
+  );
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
@@ -1293,7 +1141,7 @@ const lessThanVariable: ValidationFunction<{
         });
       }
     }),
-    z.meta({ hint }),
+    z.meta({ hint: message }),
   );
 };
 
@@ -1317,12 +1165,11 @@ const greaterThanOrEqualToVariable: ValidationFunction<{
   );
 
   const label = comparisonLabel(attribute, context);
-  const { message, hint } = comparisonCopy(resolveIntl(intl), label, {
-    error: messages.greaterThanOrEqualError,
-    hint: messages.greaterThanOrEqualHint,
-    labelledError: messages.greaterThanOrEqualLabelledError,
-    labelledHint: messages.greaterThanOrEqualLabelledHint,
-  });
+  const message = comparisonMessage(
+    resolveIntl(intl),
+    label,
+    messages.greaterThanOrEqualError,
+  );
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
@@ -1347,7 +1194,7 @@ const greaterThanOrEqualToVariable: ValidationFunction<{
         });
       }
     }),
-    z.meta({ hint }),
+    z.meta({ hint: message }),
   );
 };
 
@@ -1371,12 +1218,11 @@ const lessThanOrEqualToVariable: ValidationFunction<{
   );
 
   const label = comparisonLabel(attribute, context);
-  const { message, hint } = comparisonCopy(resolveIntl(intl), label, {
-    error: messages.lessThanOrEqualError,
-    hint: messages.lessThanOrEqualHint,
-    labelledError: messages.lessThanOrEqualLabelledError,
-    labelledHint: messages.lessThanOrEqualLabelledHint,
-  });
+  const message = comparisonMessage(
+    resolveIntl(intl),
+    label,
+    messages.lessThanOrEqualError,
+  );
 
   return z.unknown().check(
     z.superRefine((value, ctx) => {
@@ -1402,7 +1248,7 @@ const lessThanOrEqualToVariable: ValidationFunction<{
         });
       }
     }),
-    z.meta({ hint }),
+    z.meta({ hint: message }),
   );
 };
 

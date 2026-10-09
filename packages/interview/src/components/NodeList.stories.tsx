@@ -20,24 +20,28 @@ const mockProtocol = {
     node: {
       person: {
         name: 'Person',
+        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         displayVariable: 'name',
         variables: {
           name: {
             name: 'Name',
+            label: 'Name',
             type: 'text',
           },
         },
       },
       place: {
         name: 'Place',
+        label: { en: 'Place' },
         color: 'node-color-seq-2',
         shape: { default: 'circle' },
         displayVariable: 'name',
         variables: {
           name: {
             name: 'Name',
+            label: 'Name',
             type: 'text',
           },
         },
@@ -48,7 +52,7 @@ const mockProtocol = {
     {
       id: 'stage-1',
       type: 'NameGenerator',
-      label: 'Name Generator',
+      label: { en: 'Name Generator' },
       subject: {
         entity: 'node',
         type: 'person',
@@ -56,14 +60,11 @@ const mockProtocol = {
       prompts: [
         {
           id: 'prompt-1',
-          text: 'Name the people in your network',
+          text: { en: 'Name the people in your network' },
         },
       ],
     },
   ],
-  experiments: {
-    encryptedVariables: false,
-  },
   assets: [],
 };
 
@@ -81,8 +82,7 @@ const mockSession = {
 };
 
 const mockUiState = {
-  passphrase: null as string | null,
-  passphraseInvalid: false,
+  encryptionKeyId: null,
   showPassphrasePrompter: false,
 };
 

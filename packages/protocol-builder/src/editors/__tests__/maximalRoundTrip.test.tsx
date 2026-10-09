@@ -1,7 +1,10 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { StageType } from '@codaco/protocol-validation';
+import {
+  PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT,
+  type StageType,
+} from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { stageEditorRegistry } from '../../stageEditorRegistry.ts';
@@ -9,7 +12,17 @@ import {
   loadFixtureStage,
   type FixtureStageId,
 } from '../../testing/protocolFixture.ts';
-import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import {
+  renderStageEditor,
+  type StageEditorHarness,
+} from '../../testing/renderStageEditor.tsx';
+import { openWordingGroup } from '../family-pedigree/__tests__/editorFixtures.ts';
+import {
+  addFamilyMemberVariables,
+  EVERY_PEDIGREE_WORD,
+  RELATIVES_NOT_RECORDED_VARIABLE,
+  RESEARCHER_TRACKER_TEXT,
+} from '../family-pedigree/__tests__/pedigreeFixtures.ts';
 import { schemaKeysFor } from './schemaKeys.ts';
 
 /** See each editor's own test for why the rich-text editor is stood in for. */
@@ -66,6 +79,12 @@ type MaximalStage = Readonly<{
   /** Names the case, and is what a failure reports. */
   interfaceName: string;
   type: StageType;
+  /**
+   * The fixture stage this one stands in for, where opening it as a stage of
+   * its own would clash with that one: a second Family Pedigree may not
+   * manage the gender identity attribute the fixture's pedigree manages.
+   */
+  stageId?: string;
   /** Every key this interface's schema offers, filled in. */
   fields: SectionDoc;
   /**
@@ -76,6 +95,16 @@ type MaximalStage = Readonly<{
    * covers the sections that come after it.
    */
   settle?: () => Promise<unknown>;
+  /** Puts in place what the stage needs that the fixture protocol lacks. */
+  prepare?: (harness: StageEditorHarness) => void;
+  /** Opens what holds fields only while it is open, once the editor is up. */
+  reveal?: (harness: StageEditorHarness) => Promise<void>;
+  /**
+   * Keys the interface's schema has and its editor has no section for yet.
+   * They round-trip untouched, so a researcher cannot see or change them;
+   * naming one here is the way to say so rather than to claim it is owned.
+   */
+  unowned?: readonly string[];
 }>;
 
 const stageName = () => screen.findByRole('textbox', { name: 'Stage name' });
@@ -85,8 +114,8 @@ const stageName = () => screen.findByRole('textbox', { name: 'Stage name' });
  * the keys the fixture leaves out filled in here.
  *
  * The cases written out in full below came first and are kept that way: they
- * seed corners the fixture does not have at all. But writing nineteen of them
- * by hand would be nineteen more configurations to keep true, and the fixture
+ * seed corners the fixture does not have at all. But writing twenty of them
+ * by hand would be twenty more configurations to keep true, and the fixture
  * already holds one plausible configuration per interface that Architect's own
  * end-to-end suites drive. So the rest start from it and add only what it is
  * missing — which is a much shorter thing to read, and a much shorter thing to
@@ -101,6 +130,12 @@ const fixtureMaximal = (
   ...missingFromTheFixture,
 });
 
+/** The fixture's map options, as a plain object to add a key to. */
+const mapOptionsOfFixture = (): Record<string, unknown> => {
+  const options = loadFixtureStage('geospatial-1').fields.mapOptions;
+  return typeof options === 'object' && options !== null ? { ...options } : {};
+};
+
 /** What every stage may carry, and no fixture stage does. */
 const EVERY_STAGE = {
   interviewScript: 'Read this to the participant before you begin.',
@@ -112,22 +147,22 @@ const MAXIMAL_STAGES: MaximalStage[] = [
     interfaceName: 'Information',
     type: 'Information',
     fields: {
-      label: 'Information',
-      title: 'Welcome',
+      label: { 'en-US': 'Information' },
+      title: { 'en-US': 'Welcome' },
       interviewScript: 'Read this aloud.',
       skipLogic,
       items: [
         {
           id: 'info-item-1',
           type: 'text',
-          content: 'Welcome to this interview.',
+          content: { 'en-US': 'Welcome to this interview.' },
           description: 'The opening line.',
         },
         {
           id: 'info-item-2',
           type: 'asset',
           content: 'geo_data',
-          description: 'A map of the regions.',
+          description: { 'en-US': 'A map of the regions.' },
           size: 'LARGE',
         },
       ],
@@ -138,17 +173,20 @@ const MAXIMAL_STAGES: MaximalStage[] = [
     interfaceName: 'EgoForm',
     type: 'EgoForm',
     fields: {
-      label: 'Ego Form',
+      label: { 'en-US': 'Ego Form' },
       interviewScript: 'Ask about them.',
       skipLogic,
-      introductionPanel: { title: 'Introduction', text: 'A few questions.' },
+      introductionPanel: {
+        title: { 'en-US': 'Introduction' },
+        text: { 'en-US': 'A few questions.' },
+      },
       form: {
         fields: [
           {
             id: 'field-1',
             variable: 'ego_name',
-            prompt: 'What is your name?',
-            hint: 'Your full name.',
+            prompt: { 'en-US': 'What is your name?' },
+            hint: { 'en-US': 'Your full name.' },
             showValidationHints: true,
           },
         ],
@@ -160,19 +198,22 @@ const MAXIMAL_STAGES: MaximalStage[] = [
     interfaceName: 'AlterForm',
     type: 'AlterForm',
     fields: {
-      label: 'Alter Form',
+      label: { 'en-US': 'Alter Form' },
       interviewScript: 'Ask about each person.',
       skipLogic,
       filter: nodeFilter,
       subject: { entity: 'node', type: 'person' },
-      introductionPanel: { title: 'Introduction', text: 'A few questions.' },
+      introductionPanel: {
+        title: { 'en-US': 'Introduction' },
+        text: { 'en-US': 'A few questions.' },
+      },
       form: {
         fields: [
           {
             id: 'field-1',
             variable: 'relationship_to_ego',
-            prompt: 'Relationship?',
-            hint: 'How you know them.',
+            prompt: { 'en-US': 'Relationship?' },
+            hint: { 'en-US': 'How you know them.' },
             showValidationHints: true,
           },
         ],
@@ -184,19 +225,22 @@ const MAXIMAL_STAGES: MaximalStage[] = [
     interfaceName: 'AlterEdgeForm',
     type: 'AlterEdgeForm',
     fields: {
-      label: 'Alter Edge Form',
+      label: { 'en-US': 'Alter Edge Form' },
       interviewScript: 'Ask about each relationship.',
       skipLogic,
       filter: edgeFilter,
       subject: { entity: 'edge', type: 'knows' },
-      introductionPanel: { title: 'Introduction', text: 'A few questions.' },
+      introductionPanel: {
+        title: { 'en-US': 'Introduction' },
+        text: { 'en-US': 'A few questions.' },
+      },
       form: {
         fields: [
           {
             id: 'field-1',
             variable: 'edgeNotes',
-            prompt: 'Any notes?',
-            hint: 'Free text.',
+            prompt: { 'en-US': 'Any notes?' },
+            hint: { 'en-US': 'Free text.' },
             showValidationHints: true,
           },
         ],
@@ -208,18 +252,18 @@ const MAXIMAL_STAGES: MaximalStage[] = [
     interfaceName: 'NameGenerator',
     type: 'NameGenerator',
     fields: {
-      label: 'Name Generator',
+      label: { 'en-US': 'Name Generator' },
       interviewScript: 'Guidance.',
       skipLogic,
       subject: { entity: 'node', type: 'person' },
       form: {
-        title: 'Add a person',
+        title: { 'en-US': 'Add a person' },
         fields: [
           {
             id: 'field-1',
             variable: 'name',
-            prompt: 'What is their name?',
-            hint: 'Their first name.',
+            prompt: { 'en-US': 'What is their name?' },
+            hint: { 'en-US': 'Their first name.' },
             showValidationHints: true,
           },
         ],
@@ -227,31 +271,44 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       prompts: [
         {
           id: 'p1',
-          text: 'Who are the people you know?',
+          text: { 'en-US': 'Who are the people you know?' },
           additionalAttributes: [{ variable: 'flagged', value: true }],
         },
       ],
       panels: [
         {
           id: 'panel-1',
-          title: 'People you named earlier',
+          title: { 'en-US': 'People you named earlier' },
           dataSource: 'existing',
           filter: nodeFilter,
         },
-        { id: 'panel-2', title: 'From the roster', dataSource: 'roster_data' },
+        {
+          id: 'panel-2',
+          title: { 'en-US': 'From the roster' },
+          dataSource: 'roster_data',
+        },
       ],
       behaviours: { minNodes: 1, maxNodes: 8 },
+      minNodesNotice: {
+        'en-US':
+          '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+      },
+      maxNodesNotice: {
+        'en-US':
+          'You have completed this task. Click the next arrow to continue.',
+      },
+      externalDataError: { 'en-US': 'External data could not be loaded.' },
     },
     settle: () => screen.findByRole('textbox', { name: 'Form title' }),
   },
 ];
 
 /**
- * The other fourteen, from the fixture's own stages plus what they are
+ * The other fifteen, from the fixture's own stages plus what they are
  * missing.
  *
- * The gaps are not evenly spread. `filter` is absent from ten of the nineteen
- * fixture stages and `interviewScript`/`skipLogic` from all of them, so those
+ * The gaps are not evenly spread. `filter` is absent from ten of the fixture
+ * stages and `interviewScript`/`skipLogic` from all of them, so those
  * three are most of what is added here — and they are exactly the keys a
  * shared section owns, which is to say the keys an editor is most likely to
  * leave off its own section list and never notice.
@@ -262,21 +319,51 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     type: 'NameGeneratorQuickAdd',
     fields: fixtureMaximal('name-generator-quick-add-1', {
       ...EVERY_STAGE,
+      behaviours: { minNodes: 1, maxNodes: 6 },
       panels: [
         {
           id: 'quick-add-panel-1',
-          title: 'People you named earlier',
+          title: { 'en-US': 'People you named earlier' },
           dataSource: 'existing',
           filter: nodeFilter,
         },
+        // A panel reading a data file is what shows its error words.
+        {
+          id: 'quick-add-panel-2',
+          title: { 'en-US': 'From the roster' },
+          dataSource: 'roster_data',
+        },
       ],
-      behaviours: { minNodes: 1, maxNodes: 6 },
+      quickAddHint: { 'en-US': 'Press Enter when you are finished.' },
+      minNodesNotice: {
+        'en-US':
+          '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+      },
+      maxNodesNotice: {
+        'en-US':
+          'You have completed this task. Click the next arrow to continue.',
+      },
+      externalDataError: { 'en-US': 'External data could not be loaded.' },
     }),
   },
   {
     interfaceName: 'NameGeneratorRoster',
     type: 'NameGeneratorRoster',
     fields: fixtureMaximal('name-generator-roster-1', EVERY_STAGE),
+  },
+  {
+    interfaceName: 'LanguageChooser',
+    type: 'LanguageChooser',
+    fields: fixtureMaximal('language-chooser-1', EVERY_STAGE),
+  },
+  {
+    // Every stage may carry skip logic but this one: every route through the
+    // interview ends at a finish stage.
+    interfaceName: 'FinishSession',
+    type: 'FinishSession',
+    fields: fixtureMaximal('finish', {
+      interviewScript: EVERY_STAGE.interviewScript,
+    }),
   },
   {
     interfaceName: 'Sociogram',
@@ -297,13 +384,19 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
             id: 'composer-field-1',
             variable: 'relationship_to_ego',
             component: 'Text',
-            label: 'How you know them',
-            hint: 'In a word or two.',
+            label: { 'en-US': 'How you know them' },
+            hint: { 'en-US': 'In a word or two.' },
             showValidationHints: true,
           },
         ],
       },
       convexHullVariable: 'contactType',
+      groupsHeading: { 'en-US': 'Groups' },
+      tooltips: {
+        addPerson: { 'en-US': 'Add node' },
+        automaticLayout: { 'en-US': 'Automatic layout' },
+        drawConnection: { 'en-US': 'Draw edge' },
+      },
       behaviours: { automaticLayout: true },
       edges: [
         {
@@ -315,6 +408,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
                 id: 'composer-edge-field-1',
                 variable: 'closeness',
                 component: 'LikertScale',
+                label: { 'en-US': 'How close are you?' },
               },
             ],
           },
@@ -376,23 +470,77 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     fields: fixtureMaximal('geospatial-1', {
       ...EVERY_STAGE,
       filter: nodeFilter,
+      // Searching is offered, so the search's own words are the stage's.
+      mapOptions: {
+        ...mapOptionsOfFixture(),
+        allowSearch: true,
+      },
+      offlineNotice: { 'en-US': 'You are offline. The map will not load.' },
+      mapUnavailable: { 'en-US': 'The map cannot be drawn on this device.' },
+      outsideAreasLabel: { 'en-US': 'Outside selectable areas' },
+      searchLabel: { 'en-US': 'Search places' },
+      searchNoMatch: { 'en-US': 'No place matches.' },
+      searchFailed: { 'en-US': 'The search failed.' },
     }),
   },
   {
     interfaceName: 'FamilyPedigree',
     type: 'FamilyPedigree',
+    stageId: 'family-pedigree-1',
+    reveal: (harness) => openWordingGroup(harness),
     fields: fixtureMaximal('family-pedigree-1', {
       ...EVERY_STAGE,
-      introScreen: {
-        items: [
+      nodeConfiguration: {
+        ...(loadFixtureStage('family-pedigree-1').fields
+          .nodeConfiguration as SectionDoc),
+        relationshipToParticipantAttribute: 'fm_relationship',
+      },
+      form: {
+        fields: [
           {
-            id: 'pedigree-intro-1',
-            type: 'text',
-            content: 'We are going to draw your family.',
+            variable: 'fm_occupation',
+            prompt: { 'en-US': 'What do they do?' },
           },
         ],
       },
+      completeness: {
+        scope: 'thirdDegree',
+        enforcement: 'recommended',
+        relativesNotRecordedAttribute: 'relativesNotRecorded',
+        ...RESEARCHER_TRACKER_TEXT,
+      },
+      framing: 'participantPreference',
+      wording: EVERY_PEDIGREE_WORD,
+      nominationPrompts: [
+        {
+          id: 'nomination-1',
+          text: { 'en-US': 'Who in your family has had heart disease?' },
+          attribute: 'has_heart_disease',
+          onlyForSexAssignedAtBirth: 'female',
+        },
+      ],
     }),
+    // Every attribute the fixture's person type carries is bound to one of the
+    // pedigree's own slots, so the attribute its extra field collects arrives
+    // the way a collaborator's would.
+    prepare: (harness) =>
+      addFamilyMemberVariables(harness, {
+        fm_occupation: {
+          name: 'fm_occupation',
+          type: 'text',
+          component: 'Text',
+        },
+        relativesNotRecorded: RELATIVES_NOT_RECORDED_VARIABLE,
+        has_heart_disease: { name: 'has_heart_disease', type: 'boolean' },
+        fm_relationship: {
+          name: 'fm_relationship',
+          type: 'categorical',
+          options: PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT.map((value) => ({
+            value,
+            label: { 'en-US': value },
+          })),
+        },
+      }),
   },
   {
     interfaceName: 'NarrativePedigree',
@@ -400,6 +548,22 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     fields: fixtureMaximal('narrative-pedigree-1', {
       ...EVERY_STAGE,
       showAtRiskStatuses: true,
+      conditionText: {
+        heading: { 'en-US': 'Conditions' },
+        instruction: { 'en-US': 'Select a condition to see who it affects.' },
+        notation: {
+          affected: { 'en-US': 'Has this condition' },
+          obligateAffected: { 'en-US': 'Will develop this condition' },
+          obligateCarrier: { 'en-US': 'Carries this condition' },
+          atRiskAffected: { 'en-US': 'May develop this condition' },
+          atRiskCarrier: { 'en-US': 'May carry this condition' },
+          unknown: { 'en-US': 'Not known' },
+        },
+        snapshotCondition: { 'en-US': '{title}: {condition}' },
+        snapshotInheritance: {
+          'en-US': '{title}: {condition} — inheritance for {name}',
+        },
+      },
     }),
   },
   {
@@ -466,20 +630,36 @@ describe('a maximal stage of each interface', () => {
 
   it.each(EVERY_MAXIMAL_STAGE)(
     '$interfaceName: is fully editable, and saves every key unchanged',
-    async ({ type, fields, settle }) => {
+    async ({
+      type,
+      stageId,
+      fields,
+      settle,
+      prepare,
+      reveal,
+      unowned = [],
+    }) => {
       // No registry passed: every interface is claimed by the package's own,
       // so the dispatcher finding the editor is part of what the case shows.
-      const harness = renderStageEditor({ stage: { type, fields } });
+      const harness = renderStageEditor({
+        stage: {
+          ...(stageId === undefined ? {} : { id: stageId }),
+          type,
+          fields,
+        },
+      });
+      prepare?.(harness);
       await (settle ?? stageName)();
       // Every section registers its fields on mount, and the outline is built
       // from what is registered — so a mount that has not filled the outline
       // has not finished registering.
       await waitFor(() => expect(harness.outline().length).toBeGreaterThan(2));
+      await reveal?.(harness);
 
-      // Nothing is excused: a maximal stage is the one case where every key
-      // the interface offers must be on screen, so an empty `unowned` is the
-      // whole claim about the outline.
-      await harness.roundTrip({ unowned: [] });
+      // Nothing is excused unless the case says so: a maximal stage is the one
+      // case where every key the interface offers must be on screen, so an
+      // empty `unowned` is the whole claim about the outline.
+      await harness.roundTrip({ unowned });
     },
   );
 });

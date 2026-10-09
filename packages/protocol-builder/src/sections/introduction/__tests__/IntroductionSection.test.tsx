@@ -43,8 +43,7 @@ describe('the introduction a participant reads before a task', () => {
 
   /**
    * Not a capability: every interface with an introduction requires one, so
-   * there is nothing to switch off and no state in which half of it is
-   * acceptable.
+   * there is nothing to switch off. Only its text may be left out.
    */
   it('offers no way to switch the introduction off', () => {
     renderStageEditor({ stageId: 'ego-form-1', sections: introduction });
@@ -69,6 +68,62 @@ describe('the introduction a participant reads before a task', () => {
     expect(
       await screen.findByText('This field is required.'),
     ).toBeInTheDocument();
+  });
+
+  // A panel with only a title is a complete introduction: published protocols
+  // open a stage with their heading alone.
+  it('saves a stage whose introduction has a heading and no text', async () => {
+    const harness = renderStageEditor({
+      stageId: 'ego-form-1',
+      sections: introduction,
+    });
+    const before = harness.seeded.fields.introductionPanel;
+
+    await harness.user.clear(
+      await screen.findByRole('textbox', { name: 'Introduction text' }),
+    );
+    await waitFor(() => expect(harness.outline()[0]?.state).toBe('Finished'));
+
+    const request = await harness.submit();
+    expect(request?.stageDocument.introductionPanel).toEqual({
+      title: Reflect.get(before as object, 'title'),
+    });
+  });
+
+  /**
+   * The limit belongs to each language's heading: a translation over it is
+   * refused although the language the researcher is looking at is within it,
+   * and exactly at it is accepted.
+   */
+  it('refuses a heading over 50 characters in any of the protocol languages', async () => {
+    const harness = renderStageEditor({
+      stageId: 'ego-form-1',
+      sections: introduction,
+      localization: { defaultLocale: 'en-US', locales: ['en-US', 'es'] },
+    });
+
+    // Every localized field draws the one shared menu, so any of them will do.
+    const [languageMenu] = await screen.findAllByRole('button', {
+      name: /Editing language/,
+    });
+    if (languageMenu === undefined) throw new Error('No language menu');
+    await harness.user.click(languageMenu);
+    await harness.user.click(
+      await screen.findByRole('menuitemradio', { name: /^español/ }),
+    );
+    const heading = screen.getByRole('textbox', { name: 'Title' });
+    await harness.user.type(heading, 'x'.repeat(51));
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText('Enter at most 50 characters.'),
+    ).toBeInTheDocument();
+
+    await harness.user.type(heading, '{Backspace}');
+    const saved = await harness.submit();
+    expect(saved?.stageDocument.introductionPanel).toMatchObject({
+      title: { es: 'x'.repeat(50) },
+    });
   });
 
   /**
@@ -124,53 +179,8 @@ describe('the introduction a participant reads before a task', () => {
 
     const request = await harness.submit();
     expect(request?.stageDocument.introductionPanel).toEqual({
-      title: 'About you',
-      text: Reflect.get(before as object, 'text') as string,
+      title: { 'en-US': 'About you' },
+      text: Reflect.get(before as object, 'text'),
     });
-  });
-});
-
-/**
- * The introduction's heading is a HEADING, shown at the top of a screen the
- * participant reads — not a label of unbounded length. Left uncapped, a
- * researcher can type a paragraph into it and only find out it does not fit
- * when they run the interview.
- */
-describe('the length of an introduction heading', () => {
-  it('stops the researcher at the length the screen can show', async () => {
-    const harness = renderStageEditor({
-      stageId: 'ego-form-1',
-      sections: introduction,
-    });
-
-    const heading = screen.getByRole('textbox', {
-      name: 'Title',
-    });
-    await harness.user.clear(heading);
-    await harness.user.type(heading, 'A'.repeat(60));
-
-    // Refused rather than silently truncated: the researcher wrote something
-    // and gets to decide what to cut.
-    expect(await harness.submit()).toBeNull();
-    expect(await screen.findByText(/Too long/)).toBeInTheDocument();
-    expect(heading).toHaveValue('A'.repeat(60));
-  });
-
-  it('accepts a heading of exactly that length', async () => {
-    const harness = renderStageEditor({
-      stageId: 'ego-form-1',
-      sections: introduction,
-    });
-
-    const heading = screen.getByRole('textbox', {
-      name: 'Title',
-    });
-    await harness.user.clear(heading);
-    await harness.user.type(heading, 'A'.repeat(50));
-
-    const request = await harness.submit();
-    expect(
-      Reflect.get(request?.stageDocument.introductionPanel as object, 'title'),
-    ).toBe('A'.repeat(50));
   });
 });

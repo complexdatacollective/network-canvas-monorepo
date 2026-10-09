@@ -90,6 +90,28 @@ export class InterviewFixture {
     await this.waitForStageLoad();
   }
 
+  /**
+   * Open a finished interview. It opens in its completed state, which is no
+   * stage the host can step to, so there is no step to wait for: wait for the
+   * completed state's heading instead.
+   */
+  async gotoFinished(stageIndex: number): Promise<void> {
+    if (!this.interviewId) {
+      throw new Error(
+        'interviewId must be set before calling gotoFinished(). Set it in beforeEach.',
+      );
+    }
+
+    await this.page.goto(
+      `/?interviewId=${this.interviewId}&step=${stageIndex}`,
+    );
+    const main = this.page.locator('main[data-theme-interview]');
+    await expect(main).toBeVisible({ timeout: 15_000 });
+    await expect(main.locator('[data-interview-completed]')).toBeVisible();
+    await expect(main.getByRole('heading', { level: 1 })).toBeVisible();
+    await this.waitForMotionCommit();
+  }
+
   async captureInitial(mask?: Locator[]): Promise<void> {
     if (!this.interviewId) {
       throw new Error(
@@ -229,13 +251,13 @@ export class InterviewFixture {
     const dialog = this.page.getByRole('dialog');
     await expect(dialog).toBeVisible();
 
-    await dialog.getByRole('button', { name: 'Finish Interview' }).click();
+    await dialog.getByRole('button', { name: 'Finish', exact: true }).click();
   }
 
   /**
    * Leave the interview and resume it, as a participant returning later
    * would: the host remounts it from the session it holds, so answers are
-   * kept and the in-memory passphrase is not. The step is kept too.
+   * kept and the in-memory encryption key is not. The step is kept too.
    */
   async resume(): Promise<void> {
     if (!this.interviewId) {
@@ -306,9 +328,12 @@ export class InterviewFixture {
       // If we know the expected step, wait for the Shell's two-phase
       // transition to complete. The motion.div gets data-stage-step={n} only
       // after handleExitComplete updates Redux (via onExitComplete or timer).
+      // A finished interview shows its completed state instead, which has no
+      // stage step: it is marked data-interview-completed.
       if (currentStep !== null) {
         await this.page
           .locator(`[data-stage-step="${currentStep}"]`)
+          .or(this.page.locator('[data-interview-completed]'))
           .waitFor({ state: 'attached', timeout: 5_000 });
       }
       await this.waitForMotionCommit();

@@ -27,13 +27,17 @@ type TestStage = {
   prompts?: { id: string; text: string }[];
 };
 
-const makeStages = (count: number): TestStage[] =>
-  Array.from({ length: count }, (_, i) => ({
+// `count` authored stages, followed by the finish stage every protocol ends
+// at; its index is `count`.
+const makeStages = (count: number): TestStage[] => [
+  ...Array.from({ length: count }, (_, i) => ({
     id: `s${i}`,
     type: 'Information',
     label: `Stage ${i}`,
-    items: [],
-  }));
+    items: [] as never[],
+  })),
+  { id: 'finish', type: 'FinishSession', label: 'Finish', items: [] },
+];
 
 const ALWAYS_SKIPPED = {
   action: 'SKIP' as const,
@@ -82,7 +86,7 @@ function makeStore(stages: TestStage[], extraMiddleware: Middleware[] = []) {
       protocol: {
         id: 'p',
         hash: 'h',
-        schemaVersion: 8,
+        schemaVersion: 9,
         codebook: {
           node: {},
           edge: {},
@@ -189,7 +193,7 @@ function renderNavigation(
       protocol: {
         id: 'p',
         hash: 'h',
-        schemaVersion: 8,
+        schemaVersion: 9,
         codebook: {
           node: {},
           edge: {},
@@ -230,7 +234,7 @@ function renderNavigation(
 
 describe('useInterviewNavigation step-change meta', () => {
   it('reports progress and the finish-inclusive total when advancing a stage', async () => {
-    // Two protocol stages ⇒ totalSteps is 3 (the appended FinishSession stage).
+    // Two authored stages and the finish stage ⇒ totalSteps is 3.
     const { result, onStepChange } = renderNavigation(2, 0);
 
     await act(async () => {
@@ -244,7 +248,7 @@ describe('useInterviewNavigation step-change meta', () => {
     });
   });
 
-  it('reports 100% when advancing into the appended finish stage', async () => {
+  it('reports 100% when advancing into the finish stage', async () => {
     // From the last protocol stage (index 1), forward lands on finish (index 2).
     const { result, onStepChange } = renderNavigation(2, 1);
 
@@ -302,7 +306,7 @@ describe('useInterviewNavigation targeted skip routes', () => {
     expect(onStepChange).toHaveBeenLastCalledWith(4, expect.anything());
   });
 
-  it('advances to the synthetic finish screen for a finish destination', async () => {
+  it('advances to the finish stage for a finish destination', async () => {
     const stages = makeStages(3);
     stages[1]!.skipLogic = skipTo({ type: 'finish' });
     const { result, onStepChange } = renderStatefulNavigation(stages, 0);
@@ -598,6 +602,25 @@ describe('useInterviewNavigation goToStage (progress-bar jump)', () => {
       2,
       expect.objectContaining({ totalSteps: 5 }),
     );
+  });
+
+  it('never takes a review to the finish stage', async () => {
+    const { result, onStepChange } = renderStatefulNavigation(
+      makeStages(3),
+      0,
+      undefined,
+      true,
+    );
+
+    await act(async () => {
+      await result.current.goToStage(3);
+    });
+    expect(onStepChange).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.goToStage(2);
+    });
+    expect(onStepChange).toHaveBeenCalledWith(2, expect.anything());
   });
 
   it('does nothing when the target is the current step', async () => {
@@ -929,27 +952,37 @@ describe('useInterviewNavigation waiting for writes begun on the stage', () => {
     },
   );
 
-  it('stays when an answer the stage begins storing as it is left is refused', async () => {
-    const { result, onStepChange, store } = renderTrackingWrites(makeStages(3));
-    act(() => {
-      result.current.registerBeforeNext(() => {
-        store.dispatch(updateEgo.pending('w1', declined));
-        return true;
+  it.each<[string, (navigation: Navigation) => Promise<unknown>]>([
+    ['forward', (navigation) => navigation.moveForward()],
+    ['to a menu target', (navigation) => navigation.goToStage(2)],
+  ])(
+    'stays, going %s, when an answer the stage begins storing as it is left is refused',
+    async (_direction, navigate) => {
+      const { result, onStepChange, store } = renderTrackingWrites(
+        makeStages(3),
+      );
+      act(() => {
+        result.current.registerBeforeNext(() => {
+          store.dispatch(updateEgo.pending('w1', declined));
+          return true;
+        });
       });
-    });
 
-    let moving: Promise<unknown> = Promise.resolve();
-    act(() => {
-      moving = result.current.moveForward();
-    });
-    await queuedWorkRuns();
-    await act(async () => {
-      store.dispatch(updateEgo.rejected(new Error('refused'), 'w1', declined));
-      await moving;
-    });
+      let moving: Promise<unknown> = Promise.resolve();
+      act(() => {
+        moving = navigate(result.current);
+      });
+      await queuedWorkRuns();
+      await act(async () => {
+        store.dispatch(
+          updateEgo.rejected(new Error('refused'), 'w1', declined),
+        );
+        await moving;
+      });
 
-    expect(onStepChange).not.toHaveBeenCalled();
-  });
+      expect(onStepChange).not.toHaveBeenCalled();
+    },
+  );
 
   // One stage asking two questions, then a second stage.
   const twoPrompts = () => {

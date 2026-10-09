@@ -6,14 +6,12 @@ import config from '../../vite.config.ts';
  * What this package's own published build does to its messages.
  *
  * `common.*` descriptors and their catalogs ship inside `dist`, so they have
- * to be compiled on the way out, exactly as a host compiles its own. Shipping
- * them as ICU source looks harmless for as long as every message is
- * placeholder-free literal text: a host whose production bundle has aliased
- * the ICU parser away cannot format them, falls back to rendering the source
- * verbatim, and for `Cancel` that is the same string. The first message with a
- * placeholder — or the first real translation — is where that stops being
- * true, which is why this is a guard on the build rather than on any output
- * text.
+ * to be compiled on the way out, exactly as a host compiles its own. A host's
+ * build cannot do it for them: the FormatJS source transform skips
+ * `node_modules`, and the catalog compiler only matches `.json` module ids.
+ * Left as ICU source they would be parsed at run time in every host without
+ * anything erroring, which is why this is a guard on the build rather than on
+ * any output text.
  */
 
 type ConfiguredPlugin = Readonly<{ name: string; transform?: unknown }>;
@@ -77,7 +75,7 @@ describe('the published library build', () => {
     // matches on the called name rather than on where it was imported from,
     // so the wrapper is compiled identically — pinned here because a change
     // to that upstream matching would otherwise leave every real call site
-    // shipping ICU strings into a bundle with no parser.
+    // shipping ICU strings.
     const transform = transformOf(pluginNamed('formatjs'));
     const result = await transform(
       DESCRIPTOR_SOURCE.replace("'react-intl'", "'@codaco/app-i18n/messages'"),
@@ -95,14 +93,5 @@ describe('the published library build', () => {
     );
     expect(result?.code).not.toContain('Hello {name}');
     expect(result?.code).toContain('"type"');
-  });
-
-  it('leaves the ICU parser resolvable for consumers', () => {
-    // Swapping in the no-parser build is an application's decision about its
-    // own bundle. Made here it would follow this package everywhere, including
-    // into dev servers and test runs that format ICU strings.
-    expect(configuredPlugins.map((plugin) => plugin.name)).not.toContain(
-      'app-i18n-no-parser',
-    );
   });
 });

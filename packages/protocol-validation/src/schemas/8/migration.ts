@@ -3,23 +3,26 @@ import {
   type ProtocolDocument,
 } from '../../migration/index.ts';
 import { traverseAndTransform } from '../../utils/traverse-and-transform.ts';
-import { NodeColorSequence, OrdinalColorSequence } from './color-reference.ts';
-import { duplicateFormFieldIndices } from './common/forms.ts';
-import { NON_RENDERABLE_VARIABLE_TYPES } from './variables/types.ts';
+import {
+  NodeColorSequence,
+  OrdinalColorSequence,
+} from '../9/color-reference.ts';
+import { duplicateFormFieldIndices } from '../9/common/forms.ts';
+import { NON_RENDERABLE_VARIABLE_TYPES } from '../9/variables/types.ts';
 import {
   type ContradictionClass,
   findValidationContradictions,
   isRelativeDatePickerShape,
   type ValidationContradiction,
-} from './variables/validation-contradictions.ts';
-import { VARIABLE_REFERENCE_VALIDATIONS } from './variables/validation.ts';
+} from '../9/variables/validation-contradictions.ts';
+import { VARIABLE_REFERENCE_VALIDATIONS } from '../9/variables/validation.ts';
 import {
   DATE_RESOLUTION,
   isIsoDate,
   isValidDateAtResolution,
   VARIABLE_TYPE_COMPONENTS,
   VARIABLE_TYPE_VALIDATIONS,
-} from './variables/variable.ts';
+} from '../9/variables/variable.ts';
 
 // Operators whose operand is a categorical option value (as opposed to a count,
 // like OPTIONS_*, or a regex). Their legacy scalar operands are wrapped in a
@@ -1917,14 +1920,24 @@ const migrationV7toV8 = createMigration({
         },
       },
       {
-        // Update schema version and add experiments field
+        // Update schema version and add experiments field. A version 7
+        // document has none, but a host that keeps a protocol's experiments
+        // apart from it, and migrates it again from version 7, puts them back
+        // in, and they are kept so that later migrations can read them.
         paths: [''],
-        fn: <V>(protocol: V) =>
-          ({
+        fn: <V>(protocol: V) => {
+          const { experiments } = protocol as Record<string, unknown>;
+          return {
             ...(protocol as Record<string, unknown>),
             schemaVersion: 8 as const,
-            experiments: {},
-          }) as V,
+            experiments:
+              typeof experiments === 'object' &&
+              experiments !== null &&
+              !Array.isArray(experiments)
+                ? experiments
+                : {},
+          } as V;
+        },
       },
     ]);
 
@@ -1990,6 +2003,9 @@ const migrationV7toV8 = createMigration({
 
     return result as ProtocolDocument<8>;
   },
+  // Dropping a form stage with no fields moves every later stage up. The
+  // framework moves each session's stage records and resume position with
+  // their stages, so this step needs no session step of its own.
 });
 
 export default migrationV7toV8;

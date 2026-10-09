@@ -116,7 +116,10 @@ describe('protocolValidationListener', () => {
 
     // The second edit must have been validated despite the first run throwing.
     expect(validateProtocol).toHaveBeenCalledTimes(2);
-    expect(validateProtocol).toHaveBeenLastCalledWith({ name: 'p2' });
+    expect(validateProtocol).toHaveBeenLastCalledWith(
+      { name: 'p2' },
+      { draft: true },
+    );
   });
 
   // #776: a valid newer edit that lands during an invalid edit's validation

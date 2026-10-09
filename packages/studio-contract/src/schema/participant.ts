@@ -1,5 +1,7 @@
 import { Schema } from 'effect';
 
+import { FINISH_OUTCOMES } from '@codaco/protocol-validation';
+
 import { LinkToken, SessionToken, StudyId } from './ids.ts';
 import { DecimalSequence, NonNegativeInt } from './primitives.ts';
 import { problemFields } from './problem.ts';
@@ -31,7 +33,8 @@ const SecureAttributesMeta = Schema.Record(
   Schema.String,
   Schema.Struct({
     iv: Schema.Array(Schema.Number),
-    salt: Schema.Array(Schema.Number),
+    // Only a value collected under schema 8 carries its own salt.
+    salt: Schema.optional(Schema.Array(Schema.Number)),
   }),
 );
 
@@ -57,10 +60,38 @@ export const NetworkEdge = Schema.Struct({
   to: NetworkIdentifier,
 });
 
+const ByteArray = Schema.Array(
+  Schema.Number.check(
+    Schema.isInt(),
+    Schema.isBetween({ minimum: 0, maximum: 255 }),
+  ),
+);
+
+/**
+ * The one key a schema 9 interview encrypts its protected answers with, as
+ * `NcNetworkSchema` describes it: how the key is derived from the passphrase,
+ * and a value only that key decrypts.
+ */
+const NetworkEncryptionHeader = Schema.Struct({
+  version: Schema.Literal(1),
+  method: Schema.Literal('AES-256-GCM'),
+  kdf: Schema.Struct({
+    algorithm: Schema.Literal('PBKDF2'),
+    hash: Schema.Literal('SHA-256'),
+    iterations: Schema.Number.check(Schema.isInt(), Schema.isGreaterThan(0)),
+    salt: ByteArray,
+  }),
+  check: Schema.Struct({
+    iv: ByteArray,
+    data: ByteArray,
+  }),
+});
+
 export const InterviewNetwork = Schema.Struct({
   nodes: Schema.Array(NetworkNode),
   edges: Schema.Array(NetworkEdge),
   ego: NetworkEgo,
+  encryption: Schema.optional(NetworkEncryptionHeader),
 });
 
 const StageMetadata = Schema.Record(Schema.String, Schema.Unknown);
@@ -152,9 +183,22 @@ export const SyncResult = Schema.Struct({
   applied: Schema.Boolean,
 });
 
+/**
+ * How the interview ended, as the finish stage it ended at declares: one of
+ * the protocol schema's finish outcomes.
+ */
+export const FinishOutcome = Schema.Literals(FINISH_OUTCOMES);
+
+/**
+ * Where the interview ended: the finish stage the participant confirmed Finish
+ * on, and the outcome that stage declares. The server records both only when
+ * they are the protocol's own finish stage and its outcome.
+ */
 export const FinishInput = Schema.Struct({
   holderEpoch: NonNegativeInt,
   revision: DecimalSequence,
+  stageId: NetworkIdentifier,
+  outcome: FinishOutcome,
 });
 
 export const FinishResult = Schema.Struct({
@@ -186,6 +230,16 @@ export class SessionOutOfDate extends Schema.TaggedError<SessionOutOfDate>()(
     revision: DecimalSequence,
   },
   { httpApiStatus: 409 },
+) {}
+
+/**
+ * A finish that names a stage other than the protocol's finish stage, or an
+ * outcome other than the one that stage declares. Nothing is recorded.
+ */
+export class FinishUnrecognised extends Schema.TaggedError<FinishUnrecognised>()(
+  'FinishUnrecognised',
+  problemFields('Finish unrecognised', 422),
+  { httpApiStatus: 422 },
 ) {}
 
 export class LinkUnavailable extends Schema.TaggedError<LinkUnavailable>()(

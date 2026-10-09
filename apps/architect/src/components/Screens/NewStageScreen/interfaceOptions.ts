@@ -31,7 +31,7 @@ const descriptionMessages = defineMessages({
   FamilyPedigree: {
     id: 'architect.interface.description.FamilyPedigree',
     defaultMessage:
-      'An interface for collecting family pedigrees, allowing for the capture of complex family relationships and attributes as well as hereditary disease information.',
+      'An interface where participants draw their family: they select a person and add that person’s parents, siblings, partners or children, describing each new person as they go.',
     description:
       'Description of the interview interface in the New Stage chooser.',
   },
@@ -133,6 +133,13 @@ const descriptionMessages = defineMessages({
     description:
       'Description of the interview interface in the New Stage chooser.',
   },
+  LanguageChooser: {
+    id: 'architect.interface.description.LanguageChooser',
+    defaultMessage:
+      'A screen where participants choose the language for the rest of the interview, from the languages your protocol offers.',
+    description:
+      'Description of the interview interface in the New Stage chooser.',
+  },
   Anonymisation: {
     id: 'architect.interface.description.Anonymisation',
     defaultMessage:
@@ -158,6 +165,7 @@ export const TAGS = {
   ROSTER_DATA: 'Use Roster Data',
   SHOW_MEDIA: 'Display Media',
   PROVIDE_INFORMATION: 'Display Data',
+  UTILITIES: 'Utilities',
 } as const;
 const tagMessages = defineMessages({
   [TAGS.CREATE_NODES]: {
@@ -208,6 +216,12 @@ const tagMessages = defineMessages({
     description:
       'Capability filter and badge on an interface card; the value remains a stable internal key.',
   },
+  [TAGS.UTILITIES]: {
+    id: 'architect.interface.capability.utilities',
+    defaultMessage: 'Utilities',
+    description:
+      'Capability filter and badge on an interface card, for stages that set up the interview (such as choosing its language or setting a passphrase) rather than collect or display network data.',
+  },
 });
 
 export const interfaceTagLabel = (tag: string, intl: IntlShape): string => {
@@ -229,6 +243,7 @@ export const TAG_COLORS = {
   [TAGS.ROSTER_DATA]: 'paradise-pink',
   [TAGS.SHOW_MEDIA]: 'neon-carrot',
   [TAGS.PROVIDE_INFORMATION]: 'barbie-pink',
+  [TAGS.UTILITIES]: 'kiwi',
 } as const;
 
 // Define the interface types as a const array first
@@ -251,6 +266,7 @@ const INTERFACE_TYPE_NAMES = [
   'AlterEdgeForm',
   'EgoForm',
   'Information',
+  'LanguageChooser',
   'Anonymisation',
 ] as const;
 
@@ -304,8 +320,8 @@ const INTERFACE_DEFINITIONS: InterfaceDefinition[] = [
   },
   {
     category: CATEGORIES.GENERATORS,
-    // Captures node attributes (sex, form fields, nomination flags) and edge
-    // attributes (relationship type, active status, carrier/gamete roles).
+    // Captures node attributes (name, gender, sex, form fields) and edge
+    // attributes (relationship kind, gestational carrier, current partner).
     tags: [
       TAGS.CREATE_NODES,
       TAGS.CREATE_EDGES,
@@ -419,7 +435,7 @@ const INTERFACE_DEFINITIONS: InterfaceDefinition[] = [
   },
   {
     category: CATEGORIES.UTILITIES,
-    tags: [TAGS.SHOW_MEDIA, TAGS.PROVIDE_INFORMATION],
+    tags: [TAGS.SHOW_MEDIA, TAGS.PROVIDE_INFORMATION, TAGS.UTILITIES],
     keywords:
       'instruction text participant guide intro image video audio media resource',
     type: 'Information',
@@ -427,9 +443,17 @@ const INTERFACE_DEFINITIONS: InterfaceDefinition[] = [
   },
   {
     category: CATEGORIES.UTILITIES,
-    tags: [TAGS.NODE_ATTRIBUTES],
+    tags: [TAGS.UTILITIES],
     keywords:
-      'instruction text participant guide intro image video audio media resource',
+      'language languages translation translate multilingual locale choose chooser participant',
+    type: 'LanguageChooser',
+    description: descriptionMessages.LanguageChooser,
+  },
+  {
+    category: CATEGORIES.UTILITIES,
+    tags: [TAGS.UTILITIES],
+    keywords:
+      'anonymisation anonymization anonymise anonymize passphrase password encrypt encryption encrypted privacy protect security participant',
     type: 'Anonymisation',
     description: descriptionMessages.Anonymisation,
   },

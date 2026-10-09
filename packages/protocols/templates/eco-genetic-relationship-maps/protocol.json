@@ -1,13 +1,14 @@
 {
   "name": "Colored Eco-Genetic Relationship Map (CEGRM)",
   "description": "An implementation of the Colored Eco-Genetic Relationship Map (CEGRM) method for families living with an inherited condition. It combines a family pedigree with the participant's wider social network, records exchanges of information, practical help, emotional and spiritual support, and closes on a visual map and an inheritance view.",
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "lastModified": "2026-08-06T00:00:00.000Z",
   "codebook": {
     "ego": {
       "variables": {
         "participant_consent": {
           "name": "participant_consent",
+          "label": "participant_consent",
           "type": "boolean",
           "component": "Boolean",
           "validation": {
@@ -15,12 +16,16 @@
           },
           "options": [
             {
-              "label": "Yes. I agree to take part.",
+              "label": {
+                "en-US": "Yes. I agree to take part."
+              },
               "value": true,
               "negative": false
             },
             {
-              "label": "No. I do not agree to take part.",
+              "label": {
+                "en-US": "No. I do not agree to take part."
+              },
               "value": false,
               "negative": true
             }
@@ -28,28 +33,38 @@
         },
         "ego_age": {
           "name": "ego_age",
+          "label": "ego_age",
           "type": "number",
           "component": "Number"
         },
         "ego_education": {
           "name": "ego_education",
+          "label": "ego_education",
           "type": "ordinal",
           "component": "RadioGroup",
           "options": [
             {
-              "label": "Secondary school or less",
+              "label": {
+                "en-US": "Secondary school or less"
+              },
               "value": 1
             },
             {
-              "label": "Post-secondary or vocational training",
+              "label": {
+                "en-US": "Post-secondary or vocational training"
+              },
               "value": 2
             },
             {
-              "label": "University degree",
+              "label": {
+                "en-US": "University degree"
+              },
               "value": 3
             },
             {
-              "label": "Postgraduate degree",
+              "label": {
+                "en-US": "Postgraduate degree"
+              },
               "value": 4
             }
           ]
@@ -65,18 +80,22 @@
           "default": "diamond",
           "dynamic": {
             "type": "discrete",
-            "variable": "biologicalSex",
+            "variable": "genderIdentity",
             "map": [
               {
-                "value": "male",
+                "value": "man",
                 "shape": "square"
               },
               {
-                "value": "female",
+                "value": "woman",
                 "shape": "circle"
               },
               {
-                "value": "intersex",
+                "value": "nonBinary",
+                "shape": "diamond"
+              },
+              {
+                "value": "differentIdentity",
                 "shape": "diamond"
               },
               {
@@ -93,6 +112,7 @@
         "variables": {
           "name": {
             "name": "name",
+            "label": "name",
             "type": "text",
             "component": "Text",
             "validation": {
@@ -102,77 +122,68 @@
           },
           "is_ego": {
             "name": "is_ego",
+            "label": "is_ego",
             "type": "boolean",
             "component": "Toggle"
           },
-          "relationship_to_ego": {
-            "name": "relationship_to_ego",
-            "type": "text",
-            "component": "Text"
-          },
-          "biologicalSex": {
-            "name": "biologicalSex",
-            "type": "categorical",
-            "options": [
-              {
-                "value": "female",
-                "label": "Female"
-              },
-              {
-                "value": "male",
-                "label": "Male"
-              },
-              {
-                "value": "intersex",
-                "label": "Intersex or a variation in sex characteristics"
-              },
-              {
-                "value": "unknown",
-                "label": "Don’t know"
-              },
-              {
-                "value": "preferNotToSay",
-                "label": "Prefer not to say"
-              }
-            ]
+          "non_kin": {
+            "name": "non_kin",
+            "type": "boolean",
+            "component": "Toggle",
+            "label": "non_kin"
           },
           "layout": {
             "name": "layout",
+            "label": "layout",
             "type": "layout"
           },
           "tie_type": {
             "name": "tie_type",
+            "label": "tie_type",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
               {
-                "label": "Close friend",
+                "label": {
+                  "en-US": "Close friend"
+                },
                 "value": "close_friend"
               },
               {
-                "label": "Friend",
+                "label": {
+                  "en-US": "Friend"
+                },
                 "value": "friend"
               },
               {
-                "label": "Colleague or classmate",
+                "label": {
+                  "en-US": "Colleague or classmate"
+                },
                 "value": "colleague"
               },
               {
-                "label": "Neighbour",
+                "label": {
+                  "en-US": "Neighbour"
+                },
                 "value": "neighbour"
               },
               {
-                "label": "Faith community",
+                "label": {
+                  "en-US": "Faith community"
+                },
                 "value": "faith"
               },
               {
-                "label": "Health professional",
+                "label": {
+                  "en-US": "Health professional"
+                },
                 "value": "professional"
               }
             ]
           },
           "tie_type_other": {
             "name": "tie_type_other",
+            "label": "tie_type_other",
             "type": "text",
             "component": "Text",
             "validation": {
@@ -181,127 +192,249 @@
           },
           "has_condition": {
             "name": "has_condition",
+            "label": "has_condition",
             "type": "boolean",
             "component": "Toggle"
           },
           "had_testing": {
             "name": "had_testing",
+            "label": "had_testing",
             "type": "boolean",
             "component": "Toggle"
           },
           "living_status": {
             "name": "living_status",
+            "label": "living_status",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
               {
-                "label": "Living",
+                "label": {
+                  "en-US": "Living"
+                },
                 "value": "living"
               },
               {
-                "label": "Deceased",
+                "label": {
+                  "en-US": "Deceased"
+                },
                 "value": "deceased"
               },
               {
-                "label": "Don’t know",
+                "label": {
+                  "en-US": "Don’t know"
+                },
                 "value": "unknown"
               }
             ]
           },
           "birth_year": {
             "name": "birth_year",
+            "label": "birth_year",
             "type": "number",
             "component": "Number"
           },
           "closeness": {
             "name": "closeness",
+            "label": "closeness",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
               {
-                "label": "Not close",
+                "label": {
+                  "en-US": "Not close"
+                },
                 "value": 1
               },
               {
-                "label": "A little close",
+                "label": {
+                  "en-US": "A little close"
+                },
                 "value": 2
               },
               {
-                "label": "Quite close",
+                "label": {
+                  "en-US": "Quite close"
+                },
                 "value": 3
               },
               {
-                "label": "Very close",
+                "label": {
+                  "en-US": "Very close"
+                },
                 "value": 4
               }
             ]
           },
           "contact_frequency": {
             "name": "contact_frequency",
+            "label": "contact_frequency",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
               {
-                "label": "No contact",
+                "label": {
+                  "en-US": "No contact"
+                },
                 "value": 1
               },
               {
-                "label": "Less than once a year",
+                "label": {
+                  "en-US": "Less than once a year"
+                },
                 "value": 2
               },
               {
-                "label": "A few times a year",
+                "label": {
+                  "en-US": "A few times a year"
+                },
                 "value": 3
               },
               {
-                "label": "Monthly",
+                "label": {
+                  "en-US": "Monthly"
+                },
                 "value": 4
               },
               {
-                "label": "Weekly",
+                "label": {
+                  "en-US": "Weekly"
+                },
                 "value": 5
               },
               {
-                "label": "Daily or almost daily",
+                "label": {
+                  "en-US": "Daily or almost daily"
+                },
                 "value": 6
               }
             ]
           },
           "exch_information": {
             "name": "exch_information",
+            "label": "exch_information",
             "type": "boolean",
             "component": "Toggle"
           },
           "exch_tangible": {
             "name": "exch_tangible",
+            "label": "exch_tangible",
             "type": "boolean",
             "component": "Toggle"
           },
           "exch_emotional": {
             "name": "exch_emotional",
+            "label": "exch_emotional",
             "type": "boolean",
             "component": "Toggle"
           },
           "exch_spiritual": {
             "name": "exch_spiritual",
+            "label": "exch_spiritual",
             "type": "boolean",
             "component": "Toggle"
           },
           "role_gatherer": {
             "name": "role_gatherer",
+            "label": "role_gatherer",
             "type": "boolean",
             "component": "Toggle"
           },
           "role_disseminator": {
             "name": "role_disseminator",
+            "label": "role_disseminator",
             "type": "boolean",
             "component": "Toggle"
           },
           "role_blocker": {
             "name": "role_blocker",
+            "label": "role_blocker",
             "type": "boolean",
             "component": "Toggle"
+          },
+          "genderIdentity": {
+            "name": "genderIdentity",
+            "type": "categorical",
+            "options": [
+              {
+                "value": "woman",
+                "label": {
+                  "en-US": "Woman"
+                }
+              },
+              {
+                "value": "man",
+                "label": {
+                  "en-US": "Man"
+                }
+              },
+              {
+                "value": "nonBinary",
+                "label": {
+                  "en-US": "Non-binary"
+                }
+              },
+              {
+                "value": "differentIdentity",
+                "label": {
+                  "en-US": "A different identity"
+                }
+              },
+              {
+                "value": "unknown",
+                "label": {
+                  "en-US": "Don’t know"
+                }
+              },
+              {
+                "value": "preferNotToSay",
+                "label": {
+                  "en-US": "Prefer not to say"
+                }
+              }
+            ],
+            "label": "genderIdentity"
+          },
+          "sexAssignedAtBirth": {
+            "name": "sexAssignedAtBirth",
+            "type": "categorical",
+            "options": [
+              {
+                "value": "female",
+                "label": {
+                  "en-US": "Female"
+                }
+              },
+              {
+                "value": "male",
+                "label": {
+                  "en-US": "Male"
+                }
+              },
+              {
+                "value": "intersex",
+                "label": {
+                  "en-US": "Intersex"
+                }
+              },
+              {
+                "value": "unknown",
+                "label": {
+                  "en-US": "Don’t know"
+                }
+              },
+              {
+                "value": "preferNotToSay",
+                "label": {
+                  "en-US": "Prefer not to say"
+                }
+              }
+            ],
+            "label": "sexAssignedAtBirth"
           }
+        },
+        "label": {
+          "en-US": "Person"
         }
       }
     },
@@ -310,62 +443,87 @@
         "name": "Family relationship",
         "color": "edge-color-seq-1",
         "variables": {
-          "relationshipType": {
-            "name": "relationshipType",
+          "relationshipKind": {
+            "name": "relationshipKind",
             "type": "categorical",
             "options": [
               {
+                "value": "partner",
+                "label": {
+                  "en-US": "Partner"
+                }
+              },
+              {
                 "value": "biological",
-                "label": "Biological"
-              },
-              {
-                "value": "social",
-                "label": "Social"
-              },
-              {
-                "value": "donor",
-                "label": "Donor"
-              },
-              {
-                "value": "surrogate",
-                "label": "Surrogate"
+                "label": {
+                  "en-US": "Biological parent"
+                }
               },
               {
                 "value": "adoptive",
-                "label": "Adoptive"
+                "label": {
+                  "en-US": "Adoptive parent"
+                }
               },
               {
-                "value": "partner",
-                "label": "Partner"
+                "value": "social",
+                "label": {
+                  "en-US": "Step or social parent"
+                }
+              },
+              {
+                "value": "donor",
+                "label": {
+                  "en-US": "Donor"
+                }
+              },
+              {
+                "value": "surrogate",
+                "label": {
+                  "en-US": "Surrogate"
+                }
+              },
+              {
+                "value": "identicalTwin",
+                "label": {
+                  "en-US": "Identical twin"
+                }
+              },
+              {
+                "value": "fraternalTwin",
+                "label": {
+                  "en-US": "Fraternal twin"
+                }
+              },
+              {
+                "value": "unknownZygosityTwin",
+                "label": {
+                  "en-US": "Twin, not known if identical"
+                }
               }
-            ]
-          },
-          "isActive": {
-            "name": "isActive",
-            "type": "boolean"
+            ],
+            "label": "relationshipKind"
           },
           "isGestationalCarrier": {
             "name": "isGestationalCarrier",
+            "label": "isGestationalCarrier",
             "type": "boolean"
           },
-          "gameteRole": {
-            "name": "gameteRole",
-            "type": "categorical",
-            "options": [
-              {
-                "value": "egg",
-                "label": "Egg"
-              },
-              {
-                "value": "sperm",
-                "label": "Sperm"
-              }
-            ]
+          "isCurrentPartner": {
+            "name": "isCurrentPartner",
+            "type": "boolean",
+            "label": "isCurrentPartner"
           }
+        },
+        "label": {
+          "en-US": "Family relationship"
         }
       },
       "knows": {
         "name": "Knows",
+        "label": {
+          "en-US": "Knows"
+        },
         "color": "edge-color-seq-2"
       }
     }
@@ -374,29 +532,43 @@
     {
       "id": "information-researcher-notes",
       "type": "Information",
-      "label": "Template notes (delete before fielding)",
-      "title": "Template notes",
+      "label": {
+        "en-US": "Template notes (delete before fielding)"
+      },
+      "title": {
+        "en-US": "Template notes"
+      },
       "items": [
         {
           "id": "researcher-notes",
           "type": "text",
-          "content": "## For researchers\n\n_Delete this screen before you field the study._\n\nThis template adapts the **Colored Eco-Genetic Relationship Map (CEGRM)**, a conjointly constructed instrument that overlays a personal support network onto a genetic pedigree. It blends the genetic pedigree, the family systems genogram and the ecomap, and is grounded in social exchange and resource theory. Published sessions run 20–60 minutes and are led by the interviewer alongside the participant.\n\n### Before you field this\n\n- **Name the condition.** Every prompt says \"this condition\". Replace it with the condition your study is about, in the words your participants use.\n- **Set the inheritance pattern.** The closing inheritance view deliberately defaults to `unknown`, and possible at-risk statuses are switched off. Only select a clinically supported inheritance pattern, and only enable inferred statuses when a qualified professional will interpret them under an approved disclosure procedure. The display is not a diagnosis and assumes full penetrance.\n- **Adapt the consent and support plan.** Replace the example consent language, participant information, confidentiality statement, referral pathways, safeguarding process and distress procedure with those approved for your setting.\n- **Review the scope.** The four support domains are asked about family and non-family contacts. Gatherer, disseminator and blocker are configured as family health-communication roles. Widen that stage only when non-family information brokerage is part of the research question.\n- **Review spiritual support.** Retain, adapt or remove the spiritual/religious prompt according to the population and study purpose.\n- **Plan how to capture reflection.** Narrative drawings and conversation are not exported. Arrange approved audio, notes or screen capture when the qualitative account is research data.\n\n### What it measures\n\nFour exchange domains (information, practical help, feelings, spiritual connection) are recorded for family and non-family contacts. Three communication roles (gatherer, disseminator, blocker) are recorded for family members. Closeness and contact frequency are collected as ordinal Network Canvas measures for the whole living network. From the exchange variables you can derive the published measures: **breadth** of support (how many people), **types** of support (which domains), and **depth** (how many domains one relationship covers, 0–4). Relationship categories are collected only for people added beyond the pedigree; use `relationship_to_ego` for family relationships and `tie_type` for non-family contacts in analysis.\n\n**Caveat:** these counts are a discussion aid, not a validated support scale. The instrument's own literature treats the conversation the map provokes as the primary data.\n\n### The instrument's literature\n\n- Kenen R, Peters J. [The Colored, Eco-Genetic Relationship Map (CEGRM): a conceptual approach and tool for genetic counseling research.](https://doi.org/10.1023/A:1016627426430) J Genet Couns. 2001;10(4):289–309.\n- Peters JA, et al. [Exploratory study of the feasibility and utility of the CEGRM in women at high genetic risk of developing breast cancer.](https://pubmed.ncbi.nlm.nih.gov/15378540/) Am J Med Genet A. 2004.\n- Peters JA, et al. [Evolution of the CEGRM for assessing social functioning in women in hereditary breast-ovarian (HBOC) families.](https://pubmed.ncbi.nlm.nih.gov/17111216/) J Genet Couns. 2006. — adds the spiritual/religious domain.\n- Koehly LM, et al. [Characteristics of health information gatherers, disseminators, and blockers within families at risk of hereditary cancer.](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2775786/) Am J Public Health. 2009.\n- Peters JA, et al. [Easing the burden: describing the role of social, emotional and spiritual support in research families with Li-Fraumeni syndrome.](https://pubmed.ncbi.nlm.nih.gov/26621765/) J Genet Couns. 2016. — the breadth/types/depth framework."
+          "content": {
+            "en-US": "## For researchers\n\n_Delete this screen before you field the study._\n\nThis template adapts the **Colored Eco-Genetic Relationship Map (CEGRM)**, a conjointly constructed instrument that overlays a personal support network onto a genetic pedigree. It blends the genetic pedigree, the family systems genogram and the ecomap, and is grounded in social exchange and resource theory. Published sessions run 20–60 minutes and are led by the interviewer alongside the participant.\n\n### Before you field this\n\n- **Name the condition.** Every prompt says \"this condition\". Replace it with the condition your study is about, in the words your participants use.\n- **Set the inheritance pattern.** The closing inheritance view deliberately defaults to `unknown`, and possible at-risk statuses are switched off. Only select a clinically supported inheritance pattern, and only enable inferred statuses when a qualified professional will interpret them under an approved disclosure procedure. The display is not a diagnosis and assumes full penetrance.\n- **Adapt the consent and support plan.** Replace the example consent language, participant information, confidentiality statement, referral pathways, safeguarding process and distress procedure with those approved for your setting.\n- **Review the scope.** The four support domains are asked about family and non-family contacts. Gatherer, disseminator and blocker are configured as family health-communication roles. Widen that stage only when non-family information brokerage is part of the research question.\n- **Review spiritual support.** Retain, adapt or remove the spiritual/religious prompt according to the population and study purpose.\n- **Plan how to capture reflection.** Narrative drawings and conversation are not exported. Arrange approved audio, notes or screen capture when the qualitative account is research data.\n\n### What it measures\n\nFour exchange domains (information, practical help, feelings, spiritual connection) are recorded for family and non-family contacts. Three communication roles (gatherer, disseminator, blocker) are recorded for family members. Closeness and contact frequency are collected as ordinal Network Canvas measures for the whole living network. From the exchange variables you can derive the published measures: **breadth** of support (how many people), **types** of support (which domains), and **depth** (how many domains one relationship covers, 0–4). Relationship categories are collected only for people added beyond the pedigree; family relationships are the family edges the pedigree records, and `tie_type` describes non-family contacts in analysis. The people named in the **People in your life** stage are marked `non_kin`; everyone the pedigree adds, including relatives the participant did not describe and parents the interface adds automatically, is not. The beyond-family stages and the family health-communication roles are filtered on that attribute rather than on any pedigree answer, so the pedigree can leave gender identity switched off.\n\n**Caveat:** these counts are a discussion aid, not a validated support scale. The instrument's own literature treats the conversation the map provokes as the primary data.\n\n### The instrument's literature\n\n- Kenen R, Peters J. [The Colored, Eco-Genetic Relationship Map (CEGRM): a conceptual approach and tool for genetic counseling research.](https://doi.org/10.1023/A:1016627426430) J Genet Couns. 2001;10(4):289–309.\n- Peters JA, et al. [Exploratory study of the feasibility and utility of the CEGRM in women at high genetic risk of developing breast cancer.](https://pubmed.ncbi.nlm.nih.gov/15378540/) Am J Med Genet A. 2004.\n- Peters JA, et al. [Evolution of the CEGRM for assessing social functioning in women in hereditary breast-ovarian (HBOC) families.](https://pubmed.ncbi.nlm.nih.gov/17111216/) J Genet Couns. 2006. — adds the spiritual/religious domain.\n- Koehly LM, et al. [Characteristics of health information gatherers, disseminators, and blockers within families at risk of hereditary cancer.](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2775786/) Am J Public Health. 2009.\n- Peters JA, et al. [Easing the burden: describing the role of social, emotional and spiritual support in research families with Li-Fraumeni syndrome.](https://pubmed.ncbi.nlm.nih.gov/26621765/) J Genet Couns. 2016. — the breadth/types/depth framework."
+          }
         }
       ]
     },
     {
       "id": "information-intro",
       "type": "EgoForm",
-      "label": "Welcome and consent",
+      "label": {
+        "en-US": "Welcome and consent"
+      },
       "introductionPanel": {
-        "title": "About this interview",
-        "text": "## Thank you for taking part\n\nIn this interview we will build a map together. First your family and who in it has been affected by this condition, then the friends and other people who matter to you, and then what you share with each of them — information, practical help, feelings, and spiritual connection.\n\n### Some of these questions are personal\n\nWe will ask about illness and about people in your family who have died. We will also ask who finds this subject hard to talk about. You are free to skip any question, to pause, or to stop at any time, and you do not have to give a reason. The people you name are recorded only by the first name or nickname you choose, and your answers are kept confidential and used only for research.\n\n### Your consent\n\nThe researcher should explain the study and give you a chance to ask questions before you choose an option below. If you do not agree to take part, the interview will end. If you would like to stop at any later point, just let the interviewer know.\n\n**If talking about your family's health brings up difficult feelings, please tell the interviewer. They can help you pause and find appropriate support whether or not you choose to take part.**"
+        "title": {
+          "en-US": "About this interview"
+        },
+        "text": {
+          "en-US": "## Thank you for taking part\n\nIn this interview we will build a map together. First your family and who in it has been affected by this condition, then the friends and other people who matter to you, and then what you share with each of them — information, practical help, feelings, and spiritual connection.\n\n### Some of these questions are personal\n\nWe will ask about illness and about people in your family who have died. We will also ask who finds this subject hard to talk about. You are free to skip any question, to pause, or to stop at any time, and you do not have to give a reason. The people you name are recorded only by the first name or nickname you choose, and your answers are kept confidential and used only for research.\n\n### Your consent\n\nThe researcher should explain the study and give you a chance to ask questions before you choose an option below. If you do not agree to take part, the interview will end. If you would like to stop at any later point, just let the interviewer know.\n\n**If talking about your family's health brings up difficult feelings, please tell the interviewer. They can help you pause and find appropriate support whether or not you choose to take part.**"
+        }
       },
       "form": {
         "fields": [
           {
             "variable": "participant_consent",
-            "prompt": "Do you consent to participate in this study?"
+            "prompt": {
+              "en-US": "Do you consent to participate in this study?"
+            }
           }
         ]
       }
@@ -404,7 +576,9 @@
     {
       "id": "ego-form-background",
       "type": "EgoForm",
-      "label": "About you",
+      "label": {
+        "en-US": "About you"
+      },
       "skipLogic": {
         "action": "SKIP",
         "filter": {
@@ -425,100 +599,381 @@
         }
       },
       "introductionPanel": {
-        "title": "A little about you",
-        "text": "A few short questions before we start on the map."
+        "title": {
+          "en-US": "A little about you"
+        },
+        "text": {
+          "en-US": "A few short questions before we start on the map."
+        }
       },
       "form": {
         "fields": [
           {
             "variable": "ego_age",
-            "prompt": "How old are you?"
+            "prompt": {
+              "en-US": "How old are you?"
+            }
           },
           {
             "variable": "ego_education",
-            "prompt": "What is the highest level of education you have completed?"
+            "prompt": {
+              "en-US": "What is the highest level of education you have completed?"
+            }
           }
         ]
       }
     },
     {
       "id": "family-pedigree",
+      "wording": {
+        "alsoParentOfLabel": {
+          "en-US": "Are they also the parent of…"
+        },
+        "biologicalParentBoth": {
+          "en-US": "{firstIsYou, select, true {Both you and “{second}”} other {Both “{first}” and “{second}”}}"
+        },
+        "biologicalParentHint": {
+          "en-US": "A parent who is not a biological parent is added as a step or social parent."
+        },
+        "biologicalParentLabel": {
+          "en-US": "Who is the child’s biological parent?"
+        },
+        "carriedSiblingsPregnancyLabel": {
+          "en-US": "{single, select, true {{isYou, select, true {Was this parent pregnant with you?} other {Was this parent pregnant with “{name}”?}}} other {Was this parent pregnant with each of the {count} people chosen above who have nobody recorded as having carried them?}}"
+        },
+        "carrierLabel": {
+          "en-US": "Who carried the pregnancy?"
+        },
+        "carrierUnknown": {
+          "en-US": "Someone else, or I don’t know"
+        },
+        "childKindAdoptive": {
+          "en-US": "An adopted child"
+        },
+        "childKindBiological": {
+          "en-US": "A biological child"
+        },
+        "childKindSocial": {
+          "en-US": "A step-child or other child they raise"
+        },
+        "childKindLabel": {
+          "en-US": "Is this child…"
+        },
+        "connectHint": {
+          "en-US": "Select a person, then select another to connect them."
+        },
+        "connectParent": {
+          "en-US": "{parentIsYou, select, true {You are a parent of “{child}”} other {{childIsYou, select, true {“{parent}” is your parent} other {“{parent}” is a parent of “{child}”}}}}"
+        },
+        "connectPartners": {
+          "en-US": "{current, select, true {{firstIsYou, select, true {You and “{second}” are partners} other {“{first}” and “{second}” are partners}}} other {{firstIsYou, select, true {You and “{second}” were partners} other {“{first}” and “{second}” were partners}}}}"
+        },
+        "connectQuestion": {
+          "en-US": "{firstIsYou, select, true {How are you and “{second}” related?} other {How are “{first}” and “{second}” related?}}"
+        },
+        "disconnectConfirmDescription": {
+          "en-US": "Both people stay in your family tree. Only the connection between them is removed."
+        },
+        "disconnectConfirmTitle": {
+          "en-US": "{firstIsYou, select, true {Remove the connection between you and “{second}”?} other {Remove the connection between “{first}” and “{second}”?}}"
+        },
+        "disconnectHint": {
+          "en-US": "Select a person, then select someone they are connected to, to remove that connection."
+        },
+        "disconnectWouldCutOff": {
+          "en-US": "{count, plural, one {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.} other {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.}}"
+        },
+        "dontKnow": {
+          "en-US": "Don’t know"
+        },
+        "panelTitle": {
+          "en-US": "{relation, select, edit {{isYou, select, true {About you} other {About {name}}}} parent {{isYou, select, true {Add your parent} other {Add a parent of {name}}}} sibling {{isYou, select, true {Add your sibling} other {Add a sibling of {name}}}} partner {{isYou, select, true {Add your partner} other {Add a partner of {name}}}} other {{isYou, select, true {Add your child} other {Add a child of {name}}}}}"
+        },
+        "genderIdentityLabel": {
+          "en-US": "Gender identity"
+        },
+        "generatedLabelOf": {
+          "en-US": "{relation, select, partner {{isYou, select, true {{term} (your partner)} other {{term} (partner of {name})}}} formerPartner {{isYou, select, true {{term} (your former partner)} other {{term} (former partner of {name})}}} parent {{isYou, select, true {{term} (your parent)} other {{term} (parent of {name})}}} sibling {{isYou, select, true {{term} (your sibling)} other {{term} (sibling of {name})}}} owner {{owner}’s {term}} other {{isYou, select, true {{term} (your child)} other {{term} (child of {name})}}}}"
+        },
+        "missingDetailsList": {
+          "en-US": "Some details are missing: {details}."
+        },
+        "otherParentLabel": {
+          "en-US": "Who is the child’s other parent?"
+        },
+        "otherParentNone": {
+          "en-US": "No other parent"
+        },
+        "otherParentUnknown": {
+          "en-US": "Someone not shown yet"
+        },
+        "parentCarriedLabel": {
+          "en-US": "{named, select, true {{parentIsYou, select, true {Did you carry the pregnancy?} other {Did {parent} carry the pregnancy?}}} other {Did this parent carry the pregnancy?}}"
+        },
+        "parentKindLabel": {
+          "en-US": "What kind of parent are they?"
+        },
+        "parentLinkKindLabel": {
+          "en-US": "{parentIsYou, select, true {You are their…} other {{personIsYou, select, true {{parent} is your…} other {{parent} is their…}}}}"
+        },
+        "parentPartnerLabel": {
+          "en-US": "Are they the partner of another parent?"
+        },
+        "placeholderParentsNote": {
+          "en-US": "{framing, select, gamete {An egg parent and a sperm parent will be added for you to fill in later, so the family tree can show these siblings together.} other {A biological mother and a biological father will be added for you to fill in later, so the family tree can show these siblings together.}}"
+        },
+        "relativeTerm": {
+          "en-US": "{term, select, mother {Mother} father {Father} parent {Parent} eggParent {Egg parent} spermParent {Sperm parent} biologicalMother {Bio­logical mother} biologicalFather {Bio­logical father} adoptiveMother {Adoptive mother} adoptiveFather {Adoptive father} adoptiveParent {Adoptive parent} stepmother {Step­mother} stepfather {Step­father} stepparent {Step-parent} eggDonor {Egg donor} spermDonor {Sperm donor} donor {Donor} surrogate {Surro­gate} daughter {Daughter} son {Son} child {Child} stepdaughter {Step­daughter} stepson {Stepson} stepchild {Stepchild} donorConceivedChild {Donor-conceived child} surrogacyChild {Surro­gacy child} sister {Sister} brother {Brother} sibling {Sibling} halfSister {Half-sister} halfBrother {Half-brother} halfSibling {Half-sibling} adoptiveSister {Adoptive sister} adoptiveBrother {Adoptive brother} adoptiveSibling {Adoptive sibling} stepsister {Step­sister} stepbrother {Step­brother} stepsibling {Step-sibling} partner {Partner} formerPartner {Former partner} grandmother {Grand­mother} grandfather {Grand­father} grandparent {Grand­parent} maternalGrandmother {Maternal grand­mother} maternalGrandfather {Maternal grand­father} maternalGrandparent {Maternal grand­parent} paternalGrandmother {Paternal grand­mother} paternalGrandfather {Paternal grand­father} paternalGrandparent {Paternal grand­parent} greatGrandmother {Great-grand­mother} greatGrandfather {Great-grand­father} greatGrandparent {Great-grand­parent} stepGrandmother {Step-grand­mother} stepGrandfather {Step-grand­father} stepGrandparent {Step-grand­parent} granddaughter {Grand­daughter} grandson {Grandson} grandchild {Grand­child} greatGranddaughter {Great-grand­daughter} greatGrandson {Great-grandson} greatGrandchild {Great-grand­child} aunt {Aunt} uncle {Uncle} maternalAunt {Maternal aunt} maternalUncle {Maternal uncle} paternalAunt {Paternal aunt} paternalUncle {Paternal uncle} parentsSibling {Parent’s sibling} greatAunt {Great-aunt} greatUncle {Great-uncle} grandparentsSibling {Grand­parent’s sibling} niece {Niece} nephew {Nephew} siblingsChild {Sibling’s child} cousin {Cousin} motherInLaw {Mother-in-law} fatherInLaw {Father-in-law} parentInLaw {Parent-in-law} sisterInLaw {Sister-in-law} brotherInLaw {Brother-in-law} siblingInLaw {Sibling-in-law} daughterInLaw {Daugh­ter-in-law} sonInLaw {Son-in-law} childInLaw {Child-in-law} other {Relative}}"
+        },
+        "removeConfirmDescription": {
+          "en-US": "{hasOthers, select, true {They will be removed from your family tree, along with their connections to other people. {count, plural, one {{names} is connected to you only through them, so will be removed too.} other {{names} are connected to you only through them, so will be removed too.}}} other {They will be removed from your family tree, along with their connections to other people.}}"
+        },
+        "removeConfirmTitle": {
+          "en-US": "Remove {name}?"
+        },
+        "sexAssignedAtBirthLabel": {
+          "en-US": "Sex assigned at birth"
+        },
+        "sharedParentCountBoth": {
+          "en-US": "Both parents"
+        },
+        "sharedParentCountLabel": {
+          "en-US": "{isYou, select, true {Which parents do they share with you?} other {Which parents do they share with “{name}”?}}"
+        },
+        "sharedParentEggOnly": {
+          "en-US": "{parent, select, egg {{framing, select, gamete {Only the egg parent} other {Only the biological mother}}} other {{framing, select, gamete {Only the sperm parent} other {Only the biological father}}}}"
+        },
+        "siblingKindLabel": {
+          "en-US": "To the parents they share, are they…"
+        },
+        "stillTogetherLabel": {
+          "en-US": "{named, select, true {{personIsYou, select, true {Are you still together with {partner}?} other {{partnerIsYou, select, true {Are you still together?} other {Are they still together with {partner}?}}}}} other {Are they still together?}}"
+        },
+        "you": {
+          "en-US": "You"
+        },
+        "save": {
+          "en-US": "Save"
+        },
+        "connectTool": {
+          "en-US": "Connect"
+        },
+        "disconnectTool": {
+          "en-US": "Disconnect"
+        },
+        "pointerTool": {
+          "en-US": "Add and edit"
+        },
+        "changeWouldCutOff": {
+          "en-US": "{count, plural, one {This would leave {names} outside your family tree, because it removes their only connection to you. Connect them to someone else in your family first.} other {This would leave {names} outside your family tree, because it removes their only connection to you. Connect them to someone else in your family first.}}"
+        },
+        "childKindDonor": {
+          "en-US": "A child conceived with an egg or sperm they donated"
+        },
+        "childKindSurrogate": {
+          "en-US": "A child they carried as a surrogate"
+        },
+        "parentKindCarrier": {
+          "en-US": "{parentKind} (carried the pregnancy)"
+        },
+        "sharedDonorsLabel": {
+          "en-US": "{isYou, select, true {Do they share any of your donors?} other {Do they share any of “{name}”’s donors?}}"
+        },
+        "siblingBiologicalParentLabel": {
+          "en-US": "Which of them is the sibling’s biological parent?"
+        },
+        "siblingTwinFraternal": {
+          "en-US": "Yes, fraternal (non-identical) twins"
+        },
+        "siblingTwinHint": {
+          "en-US": "Answer yes for triplets and other multiple births too."
+        },
+        "siblingTwinIdentical": {
+          "en-US": "Yes, identical twins"
+        },
+        "siblingTwinLabel": {
+          "en-US": "{isYou, select, true {Are they your twin?} other {Are they “{name}”’s twin?}}"
+        },
+        "siblingTwinNo": {
+          "en-US": "No"
+        },
+        "siblingTwinUnknown": {
+          "en-US": "Yes, but I don’t know if they are identical"
+        },
+        "twinsHint": {
+          "en-US": "Include triplets and other multiple births."
+        },
+        "twinsLabel": {
+          "en-US": "{isYou, select, true {Which of your siblings, if any, are your twins?} other {Which of “{name}”’s siblings, if any, are their twins?}}"
+        },
+        "twinZygosityLabel": {
+          "en-US": "{who, select, personIsYou {Are you and “{twin}” identical twins?} twinIsYou {Are “{name}” and you identical twins?} other {Are “{name}” and “{twin}” identical twins?}}"
+        },
+        "unavailableAncestor": {
+          "en-US": "{who, select, parentIsYou {You cannot be a parent of “{child}”, who is already one of your ancestors.} childIsYou {“{parent}” cannot be your parent, because you are already one of their ancestors.} other {“{parent}” cannot be a parent of “{child}”, who is already one of their ancestors.}}"
+        },
+        "unavailableBothSameSex": {
+          "en-US": "{firstIsYou, select, true {Some answers are unavailable because you and “{second}” are both recorded as “{sex}” at birth, so you cannot both be the child’s genetic parents. To choose one, first change one of your sexes at birth.} other {Some answers are unavailable because “{first}” and “{second}” are both recorded as “{sex}” at birth, so they cannot both be the child’s genetic parents. To choose one, first change the sex at birth of one of them.}}"
+        },
+        "unavailableCannotCarry": {
+          "en-US": "{who, select, you {Some answers are unavailable because you are recorded as “{sex}” at birth, so you cannot have carried a pregnancy. To choose one, first change your sex at birth.} this {Some answers are unavailable because this person is recorded as “{sex}” at birth, so they cannot have carried a pregnancy. To choose one, first change their sex at birth.} other {Some answers are unavailable because “{name}” is recorded as “{sex}” at birth, so they cannot have carried a pregnancy. To choose one, first change their sex at birth.}}"
+        },
+        "unavailableCarried": {
+          "en-US": "{who, select, personIsYou {Some answers are unavailable because you are recorded as having carried “{child}”, which nobody recorded as “{sex}” at birth can have. To choose one, first change how you are connected to “{child}”.} childIsYou {Some answers are unavailable because this person is recorded as having carried you, which nobody recorded as “{sex}” at birth can have. To choose one, first change how they are connected to you.} other {Some answers are unavailable because this person is recorded as having carried “{child}”, which nobody recorded as “{sex}” at birth can have. To choose one, first change how they are connected to “{child}”.}}"
+        },
+        "unavailableCarrierChoice": {
+          "en-US": "{who, select, carrierIsYou {You are recorded as having carried “{child}”, and only one person carries a pregnancy.} childIsYou {“{carrier}” is recorded as having carried you, and only one person carries a pregnancy.} other {“{carrier}” is recorded as having carried “{child}”, and only one person carries a pregnancy.}}"
+        },
+        "unavailableCarrierRecorded": {
+          "en-US": "{who, select, carrierIsYou {Some answers are unavailable because you are recorded as having carried “{child}”, and only one person carries a pregnancy. To choose one, first change how you are connected to “{child}”.} childIsYou {Some answers are unavailable because “{carrier}” is recorded as having carried you, and only one person carries a pregnancy. To choose one, first change how “{carrier}” is connected to you.} other {Some answers are unavailable because “{carrier}” is recorded as having carried “{child}”, and only one person carries a pregnancy. To choose one, first change how “{carrier}” is connected to “{child}”.}}"
+        },
+        "unavailableGeneticParentsFull": {
+          "en-US": "{who, select, childIsYou {Some answers are unavailable because you already have two genetic parents recorded, “{first}” and “{second}”. To choose one, first change how one of them is connected to you.} includesYou {Some answers are unavailable because “{child}” already has two genetic parents recorded, you and “{second}”. To choose one, first change how one of you is connected to “{child}”.} other {Some answers are unavailable because “{child}” already has two genetic parents recorded, “{first}” and “{second}”. To choose one, first change how one of them is connected to “{child}”.}}"
+        },
+        "unavailableIdenticalTwin": {
+          "en-US": "{who, select, personIsYou {Some answers are unavailable because identical twins have the same biological parents and donors, and you and “{twin}” do not. To choose one, first record the same biological parents and donors for both of you.} twinIsYou {Some answers are unavailable because identical twins have the same biological parents and donors, and “{name}” and you do not. To choose one, first record the same biological parents and donors for both of you.} other {Some answers are unavailable because identical twins have the same biological parents and donors, and “{name}” and “{twin}” do not. To choose one, first record the same biological parents and donors for both of them.}}"
+        },
+        "unavailableIdenticalTwinNew": {
+          "en-US": "{isYou, select, true {Some answers are unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of yours. To choose one, choose all of your biological parents and donors above.} other {Some answers are unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of “{name}”’s. To choose one, choose all of their biological parents and donors above.}}"
+        },
+        "unavailableSameSexGeneticParent": {
+          "en-US": "{who, select, coParentIsYou {Some answers are unavailable because you are recorded as “{sex}” at birth and are a genetic parent of “{child}”, who cannot have two genetic parents of the same sex at birth. To choose one, first change your sex at birth or how you are connected to “{child}”.} childIsYou {Some answers are unavailable because “{coParent}”, your genetic parent, is recorded as “{sex}” at birth, and you cannot have two genetic parents of the same sex at birth. To choose one, first change the sex at birth of “{coParent}” or how they are connected to you.} other {Some answers are unavailable because “{coParent}”, a genetic parent of “{child}”, is recorded as “{sex}” at birth, and “{child}” cannot have two genetic parents of the same sex at birth. To choose one, first change the sex at birth of “{coParent}” or how they are connected to “{child}”.}}"
+        },
+        "zygosityFraternal": {
+          "en-US": "No, fraternal (non-identical)"
+        },
+        "zygosityIdentical": {
+          "en-US": "Yes, identical"
+        },
+        "zygosityUnknown": {
+          "en-US": "I don’t know"
+        }
+      },
       "type": "FamilyPedigree",
-      "label": "Family pedigree",
-      "interviewScript": "Build the pedigree with the participant rather than handing them the device. Published CEGRM sessions are co-constructed, and recent studies pre-populate the pedigree before the session and review it with the participant instead of drawing it from scratch — do that if your study design allows, since it substantially reduces burden.\n\nLiving status and birth year are collected while each person is added. The two questions after the pedigree is finalised are asked by tapping people on the finished tree. Take them slowly. Illness, testing and bereavement will often prompt a story; let it run, and capture it using your approved study procedure.",
-      "nodeConfig": {
-        "type": "person",
-        "nodeLabelVariable": "name",
-        "egoVariable": "is_ego",
-        "relationshipVariable": "relationship_to_ego",
-        "biologicalSexVariable": "biologicalSex",
-        "form": [
+      "label": {
+        "en-US": "Family pedigree"
+      },
+      "interviewScript": "Build the pedigree with the participant rather than handing them the device. Published CEGRM sessions are co-constructed, and recent studies pre-populate the pedigree before the session and review it with the participant instead of drawing it from scratch — do that if your study design allows, since it substantially reduces burden.\n\nLiving status, birth year, whether the person has had the condition, and whether they have had genetic testing for it are all asked while each person is added. Take the condition and testing questions slowly. Illness, testing and bereavement will often prompt a story; let it run, and capture it using your approved study procedure.",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "prompt": {
+        "en-US": "Let's map out your family. Who is in it?"
+      },
+      "nodeConfiguration": {
+        "nameAttribute": "name",
+        "nameField": {
+          "prompt": {
+            "en-US": "Name (optional)"
+          },
+          "hint": {
+            "en-US": "A first name or nickname is fine. If you don’t know it, leave this blank and they will be shown by how they are related to you."
+          }
+        },
+        "genderIdentity": {
+          "attribute": "genderIdentity",
+          "terms": [
+            {
+              "value": "woman",
+              "words": "feminine"
+            },
+            {
+              "value": "man",
+              "words": "masculine"
+            },
+            {
+              "value": "nonBinary",
+              "words": "neutral"
+            },
+            {
+              "value": "differentIdentity",
+              "words": "neutral"
+            },
+            {
+              "value": "unknown",
+              "words": "unknown"
+            },
+            {
+              "value": "preferNotToSay",
+              "words": "neutral"
+            }
+          ]
+        },
+        "sexAssignedAtBirthAttribute": "sexAssignedAtBirth",
+        "egoAttribute": "is_ego"
+      },
+      "edgeConfiguration": {
+        "type": "family_relationship",
+        "kindAttribute": "relationshipKind",
+        "gestationalCarrierAttribute": "isGestationalCarrier",
+        "currentPartnerAttribute": "isCurrentPartner"
+      },
+      "form": {
+        "fields": [
           {
             "variable": "living_status",
-            "prompt": "Is this person living or deceased?"
+            "prompt": {
+              "en-US": "Is this person living or deceased?"
+            }
           },
           {
             "variable": "birth_year",
-            "prompt": "What year was this person born?",
-            "hint": "Leave this blank if you do not know."
+            "prompt": {
+              "en-US": "What year was this person born?"
+            },
+            "hint": {
+              "en-US": "Leave this blank if you do not know."
+            }
           }
         ]
       },
-      "edgeConfig": {
-        "type": "family_relationship",
-        "relationshipTypeVariable": "relationshipType",
-        "isActiveVariable": "isActive",
-        "isGestationalCarrierVariable": "isGestationalCarrier",
-        "gameteRoleVariable": "gameteRole"
-      },
-      "framing": {
-        "mode": "participantChoice"
-      },
-      "boundaries": {
-        "requireGrandparents": "recommended",
-        "requireChildrenContributors": "recommended"
-      },
-      "introScreen": {
-        "items": [
-          {
-            "id": "pedigree-intro",
-            "type": "text",
-            "content": "A family tree records everyone in your family — including partners, step-parents, adoptive and social parents, donors, surrogates, and anyone else who helped you come into the world.\n\nIt also keeps track of which relationships are **biological**, because that is what lets us follow how a condition may pass down a family. You will be asked about both, so please include everyone who belongs in your family story."
-          }
-        ]
-      },
-      "censusPrompt": "Let's map out your family. Who is in it?",
       "nominationPrompts": [
         {
           "id": "nom-condition",
-          "text": "Who in your family has had **this condition**?",
-          "variable": "has_condition"
+          "text": {
+            "en-US": "Who in your family has had **this condition**?"
+          },
+          "attribute": "has_condition"
         },
         {
           "id": "nom-testing",
-          "text": "Who has had **genetic testing** for it?",
-          "variable": "had_testing"
+          "text": {
+            "en-US": "Who has had **genetic testing** for it?"
+          },
+          "attribute": "had_testing"
         }
       ]
     },
     {
       "id": "information-beyond-family",
       "type": "Information",
-      "label": "Beyond the family",
-      "title": "The people beyond your family",
+      "label": {
+        "en-US": "Beyond the family"
+      },
+      "title": {
+        "en-US": "The people beyond your family"
+      },
       "items": [
         {
           "id": "beyond-text",
           "type": "text",
-          "content": "You have mapped the people who belong in your family story. The next few screens add everyone else who matters — friends, colleagues, neighbours, people from groups you belong to, and the people who look after your health.\n\nThey will sit alongside your family on the same map."
+          "content": {
+            "en-US": "You have mapped the people who belong in your family story. The next few screens add everyone else who matters — friends, colleagues, neighbours, people from groups you belong to, and the people who look after your health.\n\nThey will sit alongside your family on the same map."
+          }
         }
       ]
     },
     {
       "id": "ng-non-kin",
+      "quickAddHint": {
+        "en-US": "Press Enter when you are finished."
+      },
       "type": "NameGeneratorQuickAdd",
-      "label": "People in your life",
-      "interviewScript": "The same person can belong in several of these questions. Add them once, then pick them from the panel of people already named rather than typing the name again.\n\nThe published instrument treats this step as widening the map to the participant's whole social universe, so do not rush it — friends and co-members of groups are where the spiritual and emotional domains usually turn out to live.",
+      "label": {
+        "en-US": "People in your life"
+      },
+      "interviewScript": "The same person can belong in several of these questions. Add them once, then pick them from the panel of people already named rather than typing the name again.\n\nThe published instrument treats this step as widening the map to the participant's whole social universe, so do not rush it — friends and co-members of groups are where the spiritual and emotional domains usually turn out to live.\n\nEveryone added here is recorded as a non-kin member of the network (`non_kin`). That is how the next screens tell them apart from the family on the pedigree, so a relative who was missed in the pedigree should be added to the pedigree, not here.",
       "subject": {
         "entity": "node",
         "type": "person"
@@ -527,7 +982,9 @@
       "panels": [
         {
           "id": "already-mentioned",
-          "title": "People you added earlier",
+          "title": {
+            "en-US": "People you added earlier"
+          },
           "dataSource": "existing",
           "filter": {
             "join": "AND",
@@ -547,8 +1004,9 @@
                 "type": "node",
                 "options": {
                   "type": "person",
-                  "attribute": "relationship_to_ego",
-                  "operator": "NOT_EXISTS"
+                  "attribute": "non_kin",
+                  "operator": "EXACTLY",
+                  "value": true
                 }
               }
             ]
@@ -558,26 +1016,60 @@
       "prompts": [
         {
           "id": "p-friends",
-          "text": "Who are the **friends** who matter most to you?"
+          "text": {
+            "en-US": "Who are the **friends** who matter most to you?"
+          },
+          "additionalAttributes": [
+            {
+              "variable": "non_kin",
+              "value": true
+            }
+          ]
         },
         {
           "id": "p-work",
-          "text": "Who are the people you know through **work or study**?"
+          "text": {
+            "en-US": "Who are the people you know through **work or study**?"
+          },
+          "additionalAttributes": [
+            {
+              "variable": "non_kin",
+              "value": true
+            }
+          ]
         },
         {
           "id": "p-groups",
-          "text": "Who do you know through **groups you belong to** — a faith community, a team, a club, or a community you are part of online?"
+          "text": {
+            "en-US": "Who do you know through **groups you belong to** — a faith community, a team, a club, or a community you are part of online?"
+          },
+          "additionalAttributes": [
+            {
+              "variable": "non_kin",
+              "value": true
+            }
+          ]
         },
         {
           "id": "p-care",
-          "text": "Who is involved in looking after your **health**?"
+          "text": {
+            "en-US": "Who is involved in looking after your **health**?"
+          },
+          "additionalAttributes": [
+            {
+              "variable": "non_kin",
+              "value": true
+            }
+          ]
         }
       ]
     },
     {
       "id": "bin-tie-type",
       "type": "CategoricalBin",
-      "label": "How you know each person",
+      "label": {
+        "en-US": "How you know each person"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -585,11 +1077,17 @@
       "prompts": [
         {
           "id": "p-tie-type",
-          "text": "Sort the people you have just named by **how you know them**.",
+          "text": {
+            "en-US": "Sort the people you have just named by **how you know them**."
+          },
           "variable": "tie_type",
           "otherVariable": "tie_type_other",
-          "otherVariablePrompt": "How would you describe how you know this person?",
-          "otherOptionLabel": "Something else"
+          "otherVariablePrompt": {
+            "en-US": "How would you describe how you know this person?"
+          },
+          "otherOptionLabel": {
+            "en-US": "Something else"
+          }
         }
       ],
       "filter": {
@@ -610,8 +1108,9 @@
             "type": "node",
             "options": {
               "type": "person",
-              "attribute": "relationship_to_ego",
-              "operator": "NOT_EXISTS"
+              "attribute": "non_kin",
+              "operator": "EXACTLY",
+              "value": true
             }
           }
         ]
@@ -620,7 +1119,9 @@
     {
       "id": "bin-closeness",
       "type": "OrdinalBin",
-      "label": "How close you feel",
+      "label": {
+        "en-US": "How close you feel"
+      },
       "interviewScript": "Closeness is a Network Canvas addition rather than a CEGRM symbol. It locates the support exchanges within the participant's perceived relationship structure and makes it possible to distinguish emotionally close ties from ties that perform a particular support function.",
       "subject": {
         "entity": "node",
@@ -629,7 +1130,9 @@
       "prompts": [
         {
           "id": "p-closeness",
-          "text": "Sort each person by **how close you feel** to them now.",
+          "text": {
+            "en-US": "Sort each person by **how close you feel** to them now."
+          },
           "variable": "closeness",
           "color": "ord-color-seq-1"
         }
@@ -652,7 +1155,9 @@
     {
       "id": "bin-contact-frequency",
       "type": "OrdinalBin",
-      "label": "How often you are in contact",
+      "label": {
+        "en-US": "How often you are in contact"
+      },
       "interviewScript": "Contact frequency is a Network Canvas addition rather than a CEGRM symbol. Ask about contact by any channel during the past 12 months. People recorded as deceased are excluded because a current-frequency category would be inapplicable; people whose living status is unknown remain available.",
       "subject": {
         "entity": "node",
@@ -661,7 +1166,9 @@
       "prompts": [
         {
           "id": "p-contact-frequency",
-          "text": "Thinking about the past 12 months, sort each person by **how often you have been in contact** — in person, by phone, or online.",
+          "text": {
+            "en-US": "Thinking about the past 12 months, sort each person by **how often you have been in contact** — in person, by phone, or online."
+          },
           "variable": "contact_frequency",
           "color": "ord-color-seq-2"
         }
@@ -694,8 +1201,18 @@
     },
     {
       "id": "socio-exchanges",
+      "tooltips": {
+        "pauseLayout": {
+          "en-US": "Pause automatic layout"
+        },
+        "resumeLayout": {
+          "en-US": "Resume automatic layout"
+        }
+      },
       "type": "Sociogram",
-      "label": "Exchanges of support",
+      "label": {
+        "en-US": "Exchanges of support"
+      },
       "interviewScript": "These four questions are the coloured dots of the original paper instrument: information, practical help, feelings, and spiritual connection. Each is asked about every person on the map, family and non-family alike.\n\nAll the people are placed automatically so the participant reads the map rather than arranging it. Answer the first question about who knows whom before the four exchange questions — the connections make the later views legible.",
       "subject": {
         "entity": "node",
@@ -711,7 +1228,9 @@
       "prompts": [
         {
           "id": "p-ties",
-          "text": "Connect any of these people who **know one another**.",
+          "text": {
+            "en-US": "Connect any of these people who **know one another**."
+          },
           "layout": {
             "layoutVariable": "layout"
           },
@@ -722,7 +1241,9 @@
         },
         {
           "id": "p-information",
-          "text": "Who do you **share health or genetic information** with?",
+          "text": {
+            "en-US": "Who do you **share health or genetic information** with?"
+          },
           "layout": {
             "layoutVariable": "layout"
           },
@@ -736,7 +1257,9 @@
         },
         {
           "id": "p-tangible",
-          "text": "Who gives you **practical help** — a lift to an appointment, a meal, looking after the children?",
+          "text": {
+            "en-US": "Who gives you **practical help** — a lift to an appointment, a meal, looking after the children?"
+          },
           "layout": {
             "layoutVariable": "layout"
           },
@@ -750,7 +1273,9 @@
         },
         {
           "id": "p-emotional",
-          "text": "Who do you **share your feelings** with about all of this?",
+          "text": {
+            "en-US": "Who do you **share your feelings** with about all of this?"
+          },
           "layout": {
             "layoutVariable": "layout"
           },
@@ -764,7 +1289,9 @@
         },
         {
           "id": "p-spiritual",
-          "text": "Who do you share a **spiritual or religious connection** with?",
+          "text": {
+            "en-US": "Who do you share a **spiritual or religious connection** with?"
+          },
           "layout": {
             "layoutVariable": "layout"
           },
@@ -795,8 +1322,10 @@
     {
       "id": "socio-roles",
       "type": "Sociogram",
-      "label": "Talking about the condition",
-      "interviewScript": "These three questions are the coloured stars of the paper instrument — the gatherer, disseminator and blocker roles described by Koehly and colleagues. They are configured for family members because the published roles describe communication within families at hereditary risk. Widen the filter only when non-family information brokerage is part of the research question.\n\nThis stage keeps the positions established on the preceding all-contact Sociogram. Do not enable automatic layout here: recomputing only the filtered family subset would make the relatives' coordinates incompatible with the non-family contacts when the completed map combines them again.\n\nThe third question names someone as a barrier to family communication, so frame it gently and without judgement: people usually have reasons, and those reasons are often the most useful thing the participant tells you.",
+      "label": {
+        "en-US": "Talking about the condition"
+      },
+      "interviewScript": "These three questions are the coloured stars of the paper instrument — the gatherer, disseminator and blocker roles described by Koehly and colleagues. They are configured for everyone who is not marked `non_kin`, which is the family from the pedigree, because the published roles describe communication within families at hereditary risk. Widen the filter only when non-family information brokerage is part of the research question.\n\nThis stage keeps the positions established on the preceding all-contact Sociogram. Do not enable automatic layout here: recomputing only the filtered family subset would make the relatives' coordinates incompatible with the non-family contacts when the completed map combines them again.\n\nThe third question names someone as a barrier to family communication, so frame it gently and without judgement: people usually have reasons, and those reasons are often the most useful thing the participant tells you.",
       "subject": {
         "entity": "node",
         "type": "person"
@@ -810,7 +1339,9 @@
       "prompts": [
         {
           "id": "p-gatherer",
-          "text": "Who in your family **looks for information** about this condition — reads about it, asks questions, or keeps track of what is known?",
+          "text": {
+            "en-US": "Who in your family **looks for information** about this condition — reads about it, asks questions, or keeps track of what is known?"
+          },
           "layout": {
             "layoutVariable": "layout"
           },
@@ -824,7 +1355,9 @@
         },
         {
           "id": "p-disseminator",
-          "text": "Who in your family **helps people talk** about it and passes news on?",
+          "text": {
+            "en-US": "Who in your family **helps people talk** about it and passes news on?"
+          },
           "layout": {
             "layoutVariable": "layout"
           },
@@ -838,7 +1371,9 @@
         },
         {
           "id": "p-blocker",
-          "text": "Who in your family finds it **hard to talk** about it, or would rather not know?",
+          "text": {
+            "en-US": "Who in your family finds it **hard to talk** about it, or would rather not know?"
+          },
           "layout": {
             "layoutVariable": "layout"
           },
@@ -869,8 +1404,9 @@
             "type": "node",
             "options": {
               "type": "person",
-              "attribute": "relationship_to_ego",
-              "operator": "EXISTS"
+              "attribute": "non_kin",
+              "operator": "NOT",
+              "value": true
             }
           }
         ]
@@ -878,8 +1414,33 @@
     },
     {
       "id": "narrative-cegrm",
+      "attributesHeading": {
+        "en-US": "Attributes"
+      },
+      "linksHeading": {
+        "en-US": "Links"
+      },
+      "tooltips": {
+        "enableDrawing": {
+          "en-US": "Enable drawing"
+        },
+        "disableDrawing": {
+          "en-US": "Disable drawing"
+        },
+        "freezeAnnotations": {
+          "en-US": "Freeze annotations"
+        },
+        "unfreezeAnnotations": {
+          "en-US": "Unfreeze annotations"
+        },
+        "resetAnnotations": {
+          "en-US": "Reset annotations"
+        }
+      },
       "type": "Narrative",
-      "label": "The completed map",
+      "label": {
+        "en-US": "The completed map"
+      },
       "interviewScript": "This is the payoff of the whole session, and the point at which the CEGRM stops being a questionnaire and becomes an elicitation device. Operate it yourself and use it to prompt the participant.\n\nBegin with everyone and their connections. Then use Forms of support to move through information, practical help, feelings and spiritual connection, followed by Family health communication for the gatherer, disseminator and blocker roles. Ask what the participant notices. Where do the colours cluster? Where are they absent? Absence is as informative as presence — a person with no one in the feelings overlay, or a family where practical help comes entirely from outside it, is the finding.\n\nMove between overlays at the participant's pace and let them ask to go back. The positions are kept fixed so comparisons remain meaningful. Nothing drawn on this screen is saved, so capture the conversation using your approved study procedure.",
       "subject": {
         "entity": "node",
@@ -897,7 +1458,9 @@
       "presets": [
         {
           "id": "preset-everyone",
-          "label": "Everyone on your map",
+          "label": {
+            "en-US": "Everyone on your map"
+          },
           "layoutVariable": "layout",
           "edges": {
             "display": ["knows"]
@@ -905,26 +1468,69 @@
         },
         {
           "id": "preset-support",
-          "label": "Forms of support",
+          "label": {
+            "en-US": "Forms of support"
+          },
           "layoutVariable": "layout",
           "edges": {
             "display": ["knows"]
           },
           "highlight": [
-            "exch_information",
-            "exch_tangible",
-            "exch_emotional",
-            "exch_spiritual"
+            {
+              "variable": "exch_information",
+              "label": {
+                "en-US": "exch_information"
+              }
+            },
+            {
+              "variable": "exch_tangible",
+              "label": {
+                "en-US": "exch_tangible"
+              }
+            },
+            {
+              "variable": "exch_emotional",
+              "label": {
+                "en-US": "exch_emotional"
+              }
+            },
+            {
+              "variable": "exch_spiritual",
+              "label": {
+                "en-US": "exch_spiritual"
+              }
+            }
           ]
         },
         {
           "id": "preset-roles",
-          "label": "Family health communication",
+          "label": {
+            "en-US": "Family health communication"
+          },
           "layoutVariable": "layout",
           "edges": {
             "display": ["knows"]
           },
-          "highlight": ["role_gatherer", "role_disseminator", "role_blocker"]
+          "highlight": [
+            {
+              "variable": "role_gatherer",
+              "label": {
+                "en-US": "role_gatherer"
+              }
+            },
+            {
+              "variable": "role_disseminator",
+              "label": {
+                "en-US": "role_disseminator"
+              }
+            },
+            {
+              "variable": "role_blocker",
+              "label": {
+                "en-US": "role_blocker"
+              }
+            }
+          ]
         }
       ],
       "filter": {
@@ -944,17 +1550,60 @@
     },
     {
       "id": "narrative-pedigree",
+      "keyHeading": {
+        "en-US": "Key"
+      },
+      "tooltips": {
+        "clearFocus": {
+          "en-US": "Clear focus"
+        },
+        "saveSnapshot": {
+          "en-US": "Save snapshot"
+        }
+      },
+      "conditionText": {
+        "heading": {
+          "en-US": "Conditions"
+        },
+        "instruction": {
+          "en-US": "Select a condition to see who it affects."
+        },
+        "notation": {
+          "affected": {
+            "en-US": "Has this condition"
+          },
+          "obligateAffected": {
+            "en-US": "Will develop this condition"
+          },
+          "obligateCarrier": {
+            "en-US": "Carries this condition"
+          },
+          "unknown": {
+            "en-US": "Not known"
+          }
+        },
+        "snapshotCondition": {
+          "en-US": "{title}: {condition}"
+        },
+        "snapshotInheritance": {
+          "en-US": "{title}: {condition} — inheritance for {name}"
+        }
+      },
       "type": "NarrativePedigree",
-      "label": "How the condition runs in the family",
+      "label": {
+        "en-US": "How the condition runs in the family"
+      },
       "interviewScript": "This view reports the family structure and the people the participant identified as having the condition. It does not establish a diagnosis.\n\nThe inheritance pattern deliberately defaults to unknown and possible at-risk statuses are switched off. Before fielding, select a clinically supported pattern if one applies. Only enable inferred statuses when a qualified professional will interpret them under an approved disclosure procedure; the inference assumes full penetrance and may surface information a participant has not previously been told.",
       "sourceStageId": "family-pedigree",
       "showAtRiskStatuses": false,
       "diseases": [
         {
           "id": "condition",
-          "label": "This condition",
+          "label": {
+            "en-US": "This condition"
+          },
           "color": "node-color-seq-1",
-          "variable": "has_condition",
+          "attribute": "has_condition",
           "inheritancePattern": "unknown"
         }
       ]
@@ -962,15 +1611,113 @@
     {
       "id": "information-close",
       "type": "Information",
-      "label": "Closing",
-      "title": "Thank you",
+      "label": {
+        "en-US": "Closing"
+      },
+      "title": {
+        "en-US": "Thank you"
+      },
       "items": [
         {
           "id": "close-text",
           "type": "text",
-          "content": "Thank you for building this map with us.\n\nIf anything we have talked about today has left you wanting to speak to someone, please tell the interviewer before you leave. They can help you find the right support."
+          "content": {
+            "en-US": "Thank you for building this map with us.\n\nIf anything we have talked about today has left you wanting to speak to someone, please tell the interviewer before you leave. They can help you find the right support."
+          }
         }
       ]
+    },
+    {
+      "id": "finish",
+      "finishLabel": {
+        "en-US": "Finish"
+      },
+      "finishConfirmation": {
+        "en-US": "Are you sure you want to finish the interview?"
+      },
+      "finishedNotice": {
+        "en-US": "This interview is finished, and its answers can no longer be changed."
+      },
+      "finishFailed": {
+        "en-US": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
+      },
+      "type": "FinishSession",
+      "label": {
+        "en-US": "Finish Interview"
+      },
+      "title": {
+        "en-US": "Finish Interview"
+      },
+      "content": {
+        "en-US": "You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
+      },
+      "outcome": "completed"
     }
-  ]
+  ],
+  "localization": {
+    "defaultLocale": "en-US",
+    "locales": ["en-US"]
+  },
+  "interfaceText": {
+    "interview": {
+      "exitInterview": {
+        "en-US": "Exit interview"
+      },
+      "exitInterviewDescription": {
+        "en-US": "Your answers so far will be saved and you can continue later."
+      },
+      "stageError": {
+        "en-US": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
+      },
+      "itemUnavailable": {
+        "en-US": "This item could not be displayed."
+      },
+      "back": {
+        "en-US": "Back"
+      },
+      "continue": {
+        "en-US": "Continue"
+      },
+      "cancel": {
+        "en-US": "Cancel"
+      },
+      "done": {
+        "en-US": "Done"
+      },
+      "delete": {
+        "en-US": "Delete"
+      },
+      "genericError": {
+        "en-US": "Something went wrong."
+      }
+    },
+    "forms": {
+      "discardChanges": {
+        "en-US": "Discard changes"
+      },
+      "discardChangesTitle": {
+        "en-US": "Discard changes?"
+      },
+      "discardChangesDescription": {
+        "en-US": "This form contains invalid data, so it cannot be saved. If you continue it will be reset, and your changes will be lost. Do you want to discard your changes?"
+      },
+      "yes": {
+        "en-US": "Yes"
+      },
+      "no": {
+        "en-US": "No"
+      },
+      "submitFailed": {
+        "en-US": "An error occurred while submitting the form."
+      }
+    },
+    "validation": {
+      "required": {
+        "en-US": "You must answer this question before continuing."
+      },
+      "unique": {
+        "en-US": "Must be unique."
+      }
+    }
+  }
 }

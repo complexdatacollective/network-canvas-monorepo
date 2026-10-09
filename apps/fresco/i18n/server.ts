@@ -11,18 +11,22 @@ import { frescoCatalogSource } from '~/src/locales/catalogs';
 
 // React cache deduplicates within a server render only. Never use Next's
 // shared `use cache` here: the result is private to this request and user.
+export const getRequestedLocales = cache(async () =>
+  parseAcceptLanguage((await headers()).get('accept-language')),
+);
+
 export const getFrescoI18nInitialization = cache(async () => {
-  const [session, cookieStore, requestHeaders] = await Promise.all([
+  const [session, cookieStore, requested] = await Promise.all([
     getServerSession(),
     cookies(),
-    headers(),
+    getRequestedLocales(),
   ]);
   return resolveFrescoLocale({
     account: session
       ? { userId: session.user.userId, locale: session.user.locale }
       : null,
     mirror: cookieStore.get(localeMirrorCookie)?.value ?? null,
-    requested: parseAcceptLanguage(requestHeaders.get('accept-language')),
+    requested,
   });
 });
 

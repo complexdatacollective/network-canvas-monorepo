@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { Variable } from '@codaco/protocol-validation';
 import type { EntityAttributesProperty, NcNode } from '@codaco/shared-consts';
 
+import { encryptionFor } from './__tests__/encryptionFixtures';
 import { generateSecureAttributes, writesEncryptedValue } from './utils';
 
 describe('generateSecureAttributes', () => {
@@ -18,18 +19,16 @@ describe('generateSecureAttributes', () => {
       component: 'Text',
       encrypted: true,
       name: '__proto__',
+      label: '__proto__',
       type: 'text',
     };
     const codebookVariables: Record<string, Variable> = Object.fromEntries([
       ['__proto__', encryptedVariable],
     ]);
 
+    const { key } = await encryptionFor('test passphrase');
     const { encryptedAttributes, secureAttributes } =
-      await generateSecureAttributes(
-        attributes,
-        codebookVariables,
-        'test passphrase',
-      );
+      await generateSecureAttributes(attributes, codebookVariables, key, 'n1');
 
     expect(secureAttributes).toBeDefined();
     if (!secureAttributes) {
@@ -37,8 +36,10 @@ describe('generateSecureAttributes', () => {
     }
     expect(Object.hasOwn(secureAttributes, '__proto__')).toBe(true);
     expect(Object.hasOwn(encryptedAttributes, '__proto__')).toBe(true);
+    expect(secureAttributes['__proto__']).toEqual({
+      iv: expect.arrayContaining([expect.any(Number)]),
+    });
     expect(secureAttributes['__proto__']?.iv).toHaveLength(12);
-    expect(secureAttributes['__proto__']?.salt).toHaveLength(16);
     expect(encryptedAttributes['__proto__']).toEqual(
       expect.arrayContaining([expect.any(Number)]),
     );
@@ -52,8 +53,19 @@ describe('generateSecureAttributes', () => {
 
 describe('writesEncryptedValue', () => {
   const variables: Record<string, Variable> = {
-    name: { name: 'name', type: 'text', component: 'Text', encrypted: true },
-    nickname: { name: 'nickname', type: 'text', component: 'Text' },
+    name: {
+      name: 'name',
+      label: 'name',
+      type: 'text',
+      component: 'Text',
+      encrypted: true,
+    },
+    nickname: {
+      name: 'nickname',
+      label: 'nickname',
+      type: 'text',
+      component: 'Text',
+    },
   };
 
   it.each([
@@ -69,20 +81,16 @@ describe('writesEncryptedValue', () => {
           (entry): entry is [string, string] => entry[1] !== undefined,
         ),
       );
+      const { key } = await encryptionFor('passphrase');
       const { secureAttributes } = await generateSecureAttributes(
         stored,
         variables,
-        'passphrase',
+        key,
+        'n1',
       );
 
-      expect(writesEncryptedValue(attributes, variables, true)).toBe(expected);
+      expect(writesEncryptedValue(attributes, variables)).toBe(expected);
       expect(Object.keys(secureAttributes ?? {}).length > 0).toBe(expected);
     },
   );
-
-  it('encrypts nothing while the experiment is off', () => {
-    expect(writesEncryptedValue({ name: 'Alice' }, variables, false)).toBe(
-      false,
-    );
-  });
 });

@@ -29,7 +29,9 @@ export function calculateProgress(
   currentPrompt: number,
   totalPrompts: number,
 ) {
-  // Don't subtract 1 because we have a finish stage automatically added that isn't accounted for.
+  // Not `totalSteps - 1`: reaching the last stage (the finish stage) is not
+  // the end of it, so its own worth is added below, reaching 100 on its last
+  // prompt.
   const stageProgress = currentStep / totalSteps;
 
   const stageWorth = 1 / totalSteps; // The amount of progress each stage is worth
@@ -56,19 +58,17 @@ export const notInSet =
 type ProgressStage = { type: string; prompts?: readonly unknown[] };
 
 /**
- * Participant-facing progress for a freshly entered stage, encapsulating the
- * package's appended FinishSession stage so hosts don't have to. Pass the raw
- * protocol stages (without the finish stage) and the host-controlled step;
- * `totalSteps` is `stages.length + 1` and `progress` matches the interview's own
- * progress bar at the start of `currentStep` (prompt index 0). When
- * `currentStep` equals `stages.length`, the participant is on the finish stage
- * and progress is 100.
+ * Participant-facing progress for a freshly entered stage. Pass the protocol's
+ * stages (finish stage included) and the host-controlled step; `totalSteps` is
+ * the stage count and `progress` matches the interview's own progress bar at
+ * the start of `currentStep` (prompt index 0). On the last stage, the finish
+ * stage, progress is 100.
  */
 export function getInterviewProgress(
   stages: readonly ProgressStage[],
   currentStep: number,
 ): StepChangeMeta {
-  const totalSteps = stages.length + 1; // + 1 for the appended FinishSession stage
+  const totalSteps = stages.length;
   const stage = stages[currentStep];
   const promptCount = stage?.prompts?.length ?? 1;
 

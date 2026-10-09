@@ -10,7 +10,8 @@ function makeProtocol(name: string, hash = `hash-${name}`): ProtocolWithCounts {
   const protocol: CurrentProtocol = {
     name,
     description: '',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {},
     stages: [],
   };
@@ -18,7 +19,7 @@ function makeProtocol(name: string, hash = `hash-${name}`): ProtocolWithCounts {
     id: `test-${hash}`,
     hash,
     name,
-    schemaVersion: 8,
+    schemaVersion: 9,
     importedAt: '2026-05-20T10:00:00.000Z',
     description: '',
     codebook: {},

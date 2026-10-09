@@ -191,13 +191,21 @@ function getAuxiliaryStyle(edgeType: AuxiliaryConnector['edgeType']) {
 
 function renderAuxiliary(conn: AuxiliaryConnector, idx: number, color: string) {
   const style = getAuxiliaryStyle(conn.edgeType);
-  return renderLine(conn.segment, color, `aux-${idx}`, {
-    ...('strokeDasharray' in style
-      ? { strokeDasharray: style.strokeDasharray }
-      : {}),
-    strokeWidth: style.strokeWidth,
-    strokeLinecap: 'round',
-  });
+  // One polyline, so a dashed line's pattern flows round its corners.
+  return (
+    <polyline
+      key={`aux-${idx}`}
+      points={conn.points.map((p) => `${p.x},${p.y}`).join(' ')}
+      fill="none"
+      stroke={color}
+      strokeWidth={style.strokeWidth}
+      {...('strokeDasharray' in style
+        ? { strokeDasharray: style.strokeDasharray }
+        : {})}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  );
 }
 
 /**
@@ -206,7 +214,7 @@ function renderAuxiliary(conn: AuxiliaryConnector, idx: number, color: string) {
  * When highlightedEdgeKeys is provided, uses edge-key membership so that a
  * contributing descent line is BRIGHT even when the co-parent is excluded from
  * the contributor set (the non-transmitting co-parent case). Falls back to
- * node-membership when highlightedEdgeKeys is absent (non-NarrativePedigree
+ * node-membership when highlightedEdgeKeys is absent (a caller that
  * path where neither prop is set).
  */
 function isDescentSegmentDimmed(
@@ -222,7 +230,7 @@ function isDescentSegmentDimmed(
     if (childId === undefined) return false;
     if (parentIds === undefined || parentIds.length === 0) return false;
     return !parentIds.some((pid) =>
-      highlightedEdgeKeys.has(`${pid}->${childId}`),
+      highlightedEdgeKeys.has(edgeKey(pid, childId)),
     );
   }
   return isDimmedByIds(
@@ -253,7 +261,7 @@ function isSharedBarDimmed(
     for (const childId of uplineChildIds) {
       if (childId === undefined) continue;
       for (const pid of parentIds) {
-        if (highlightedEdgeKeys.has(`${pid}->${childId}`)) return false;
+        if (highlightedEdgeKeys.has(edgeKey(pid, childId))) return false;
       }
     }
     return true;
@@ -277,6 +285,27 @@ function renderSplitBar(
   color: string,
   keyPrefix: string,
 ): JSX.Element[] {
+  return splitBar(bar, splitXs, isDimmed).map(({ segment, dimmed }, i) => (
+    <g
+      key={`${keyPrefix}-${i}`}
+      {...(dimmed ? { 'data-edge-dimmed': 'true' } : {})}
+    >
+      {renderLine(
+        segment,
+        dimmed ? dimColor(color) : color,
+        `${keyPrefix}-line-${i}`,
+        { strokeLinecap: 'round' },
+      )}
+    </g>
+  ));
+}
+
+/** A horizontal bar cut at the given x-coordinates, each piece dimmed or not. */
+function splitBar(
+  bar: LineSegment,
+  splitXs: number[],
+  isDimmed: (segStart: number, segEnd: number) => boolean,
+): { segment: LineSegment; dimmed: boolean }[] {
   const y = bar.y1;
   const barMin = Math.min(bar.x1, bar.x2);
   const barMax = Math.max(bar.x1, bar.x2);
@@ -290,25 +319,14 @@ function renderSplitBar(
     (x, i) => i === 0 || x !== boundaries[i - 1],
   );
 
-  const pieces: JSX.Element[] = [];
+  const pieces: { segment: LineSegment; dimmed: boolean }[] = [];
   for (let i = 0; i < unique.length - 1; i++) {
     const a = unique[i]!;
     const b = unique[i + 1]!;
-    const dimmed = isDimmed(a, b);
-    const segColor = dimmed ? dimColor(color) : color;
-    pieces.push(
-      <g
-        key={`${keyPrefix}-${i}`}
-        {...(dimmed ? { 'data-edge-dimmed': 'true' } : {})}
-      >
-        {renderLine(
-          { type: 'line', x1: a, y1: y, x2: b, y2: y },
-          segColor,
-          `${keyPrefix}-line-${i}`,
-          { strokeLinecap: 'round' },
-        )}
-      </g>,
-    );
+    pieces.push({
+      segment: { type: 'line', x1: a, y1: y, x2: b, y2: y },
+      dimmed: isDimmed(a, b),
+    });
   }
   return pieces;
 }
@@ -465,7 +483,11 @@ function renderParentChild(
   // polyline so the dash pattern flows continuously instead of restarting
   // at each segment boundary.
   if (isDashed) {
-    const allSegments = [...conn.parentLink, conn.siblingBar, ...conn.uplines];
+    const allSegments = [
+      ...conn.parentLink,
+      ...(conn.siblingBar ? [conn.siblingBar] : []),
+      ...conn.uplines,
+    ];
     const points = segmentsToPolylinePoints(allSegments);
     const strokeColor = sharedDimmed ? dimColor(color) : color;
 
@@ -490,16 +512,15 @@ function renderParentChild(
     );
   }
 
-  const sharedColor = sharedDimmed ? dimColor(color) : color;
-
   const highlightActive =
     highlightedNodeIds !== undefined || highlightedEdgeKeys !== undefined;
 
   // Sibling-bar split points: the descent junction plus each child's upline
   // junction. Each upline carries its child id, so the bar is lit only along
   // the descent → contributing-child path and dimmed toward non-contributors.
-  const barY = conn.siblingBar.y1;
-  const descentX = descentJunctionX(conn.parentLink, barY);
+  const barY = conn.siblingBar?.y1;
+  const descentX =
+    barY === undefined ? undefined : descentJunctionX(conn.parentLink, barY);
   const uplineJunctions = conn.uplines.map((ul, i) => ({
     x: ul.y2 === barY ? ul.x2 : ul.x1,
     childId: conn.uplineChildIds?.[i],
@@ -574,88 +595,119 @@ function renderParentChild(
   const splitXs = descentX !== undefined ? [descentX] : [];
   for (const { x } of uplineJunctions) splitXs.push(x);
 
+  // Every piece of the connector, dimmed or not; the pieces of each shade are
+  // then drawn as polylines, so a line that runs on (a descent straight down
+  // into an only child, say) is one stroke with no seams at its joins.
+  const pieces: { segment: LineSegment; dimmed: boolean }[] = [
+    ...conn.uplines.map((ul, i) => ({
+      segment: ul,
+      dimmed: isDescentSegmentDimmed(
+        conn.parentIds,
+        conn.uplineChildIds?.[i],
+        highlightedNodeIds,
+        highlightedEdgeKeys,
+      ),
+    })),
+    ...(conn.siblingBar
+      ? highlightActive
+        ? splitBar(conn.siblingBar, splitXs, isBarSubSegmentDimmed)
+        : [{ segment: conn.siblingBar, dimmed: sharedDimmed }]
+      : []),
+    ...conn.parentLink.map((segment) => ({ segment, dimmed: sharedDimmed })),
+  ];
+
   return (
     <g key={`pc-${idx}`}>
-      {conn.uplines.map((ul, i) => {
-        const uplineChildId = conn.uplineChildIds?.[i];
-        const uplineDimmed = isDescentSegmentDimmed(
-          conn.parentIds,
-          uplineChildId,
-          highlightedNodeIds,
-          highlightedEdgeKeys,
+      {[false, true].map((dimmed) => {
+        const chains = segmentsToPolylinePoints(
+          pieces
+            .filter((piece) => piece.dimmed === dimmed)
+            .map((piece) => piece.segment),
         );
-        const uplineColor = uplineDimmed ? dimColor(color) : color;
+        if (chains.length === 0) return null;
         return (
           <g
-            key={`pc-${idx}-up-wrap-${i}`}
-            {...(uplineDimmed ? { 'data-edge-dimmed': 'true' } : {})}
+            key={`pc-${idx}-${dimmed ? 'dim' : 'bright'}`}
+            {...(dimmed ? { 'data-edge-dimmed': 'true' } : {})}
           >
-            {renderLine(ul, uplineColor, `pc-${idx}-up-${i}`, {
-              strokeLinecap: 'round',
-            })}
+            {chains.map((points, i) => (
+              <polyline
+                key={`pc-${idx}-${dimmed ? 'dim' : 'bright'}-${i}`}
+                points={points}
+                fill="none"
+                stroke={dimmed ? dimColor(color) : color}
+                strokeWidth={EDGE_WIDTH}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            ))}
           </g>
         );
       })}
-      {highlightActive ? (
-        renderSplitBar(
-          conn.siblingBar,
-          splitXs,
-          isBarSubSegmentDimmed,
-          color,
-          `pc-${idx}-bar`,
-        )
-      ) : (
-        <g>
-          {renderLine(conn.siblingBar, sharedColor, `pc-${idx}-bar`, {
-            strokeLinecap: 'round',
-          })}
-        </g>
-      )}
-      <g {...(sharedDimmed ? { 'data-edge-dimmed': 'true' } : {})}>
-        {conn.parentLink.map((pl, i) =>
-          renderLine(pl, sharedColor, `pc-${idx}-pl-${i}`, {
-            strokeLinecap: 'round',
-          }),
-        )}
-      </g>
     </g>
   );
 }
 
 /**
- * Convert an array of line segments into connected polyline point strings.
- * Segments that share endpoints are merged into a single polyline.
- * Returns an array of point strings (one per connected chain).
+ * Convert line segments into connected polylines: segments that share an
+ * endpoint, in either direction, join one chain; points a chain runs
+ * straight through are dropped, and so are segments of no length. Returns
+ * one point string per chain.
  */
 function segmentsToPolylinePoints(segments: LineSegment[]): string[] {
-  if (segments.length === 0) return [];
+  type P = { x: number; y: number };
+  const same = (a: P, b: P) =>
+    Math.abs(a.x - b.x) < 1e-6 && Math.abs(a.y - b.y) < 1e-6;
+  const chains: P[][] = [];
 
-  const chains: { x: number; y: number }[][] = [];
+  // Joins chain `b` onto chain `a` where their ends meet; false when they don't.
+  const join = (a: P[], b: P[]): boolean => {
+    const [aFirst, aLast] = [a[0]!, a[a.length - 1]!];
+    const [bFirst, bLast] = [b[0]!, b[b.length - 1]!];
+    if (same(aLast, bFirst)) a.push(...b.slice(1));
+    else if (same(aLast, bLast)) a.push(...b.toReversed().slice(1));
+    else if (same(aFirst, bLast)) a.unshift(...b.slice(0, -1));
+    else if (same(aFirst, bFirst)) a.unshift(...b.slice(1).toReversed());
+    else return false;
+    return true;
+  };
 
   for (const seg of segments) {
-    // Skip degenerate segments (zero length)
     if (seg.x1 === seg.x2 && seg.y1 === seg.y2) continue;
+    const piece = [
+      { x: seg.x1, y: seg.y1 },
+      { x: seg.x2, y: seg.y2 },
+    ];
+    if (!chains.some((chain) => join(chain, piece))) chains.push(piece);
+  }
 
-    const start = { x: seg.x1, y: seg.y1 };
-    const end = { x: seg.x2, y: seg.y2 };
-
-    // Try to append to an existing chain
-    let merged = false;
-    for (const chain of chains) {
-      const last = chain[chain.length - 1]!;
-      if (last.x === start.x && last.y === start.y) {
-        chain.push(end);
-        merged = true;
-        break;
+  // Chains that came to meet as pieces were added join up too.
+  for (let i = 0; i < chains.length; i++) {
+    for (let j = chains.length - 1; j > i; j--) {
+      if (join(chains[i]!, chains[j]!)) {
+        chains.splice(j, 1);
+        j = chains.length;
       }
-    }
-
-    if (!merged) {
-      chains.push([start, end]);
     }
   }
 
-  return chains.map((chain) => chain.map((p) => `${p.x},${p.y}`).join(' '));
+  return chains.map((chain) => {
+    const kept = chain.filter((point, k) => {
+      if (k === 0 || k === chain.length - 1) return true;
+      const before = chain[k - 1]!;
+      const after = chain[k + 1]!;
+      const turn =
+        (point.x - before.x) * (after.y - point.y) -
+        (point.y - before.y) * (after.x - point.x);
+      return Math.abs(turn) > 1e-6;
+    });
+    return kept.map((p) => `${p.x},${p.y}`).join(' ');
+  });
+}
+
+/** Identifies a parent→child link in `highlightedEdgeKeys`. */
+export function edgeKey(parentId: string, childId: string): string {
+  return `${parentId}->${childId}`;
 }
 
 type PedigreeEdgeSvgProps = {

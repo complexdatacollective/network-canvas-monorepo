@@ -1,6 +1,7 @@
 'use client';
 'use no memo';
 
+import { DirectionProvider } from '@base-ui/react/direction-provider';
 import { Toast } from '@base-ui/react/toast';
 import type { Store } from '@reduxjs/toolkit';
 import { AnimatePresence, motion } from 'motion/react';
@@ -14,9 +15,9 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Provider } from 'react-redux';
+import { Provider, useSelector } from 'react-redux';
 
-import { useAppLocale, useLocaleLoadFailure } from '@codaco/app-i18n/react';
+import { AppMessage, useLocaleLoadFailure } from '@codaco/app-i18n/react';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { DndStoreProvider } from '@codaco/fresco-ui/dnd/dnd';
 import LocaleLoadFailureToast from '@codaco/fresco-ui/LocaleLoadFailureToast';
@@ -38,14 +39,21 @@ import { GeospatialOfflineIndicator } from './components/GeospatialOfflineIndica
 import Navigation, { TEXT_SCALE_OPTIONS } from './components/Navigation';
 import StageErrorBoundary from './components/StageErrorBoundary';
 import { CurrentStepProvider } from './contexts/CurrentStepContext';
+import {
+  type InterviewCompletion,
+  InterviewCompletionProvider,
+  useInterviewCompletion,
+} from './contexts/InterviewCompletionContext';
 import { StageMetadataProvider } from './contexts/StageMetadataContext';
 import { ContractProvider } from './contract/context';
 import type {
   AssetRequestHandler,
+  CompletedAction,
   FinishHandler,
   InterviewAnalyticsMetadata,
   InterviewerFlags,
   InterviewPayload,
+  ProtocolLocaleChangeHandler,
   StepChangeHandler,
   SyncHandler,
 } from './contract/types';
@@ -53,9 +61,22 @@ import useInterviewNavigation from './hooks/useInterviewNavigation';
 import useMediaQuery from './hooks/useMediaQuery';
 import type { InterviewCatalog } from './i18n/catalog';
 import { InterviewI18nProvider } from './i18n/InterviewI18nProvider';
-import type { RequestedLocale } from './i18n/locales';
+import { navigationMessages } from './i18n/navigationMessages';
+import { CompletedInterview } from './interfaces/FinishSession/FinishSession';
+import { InterfaceTextOverlay } from './localization/InterfaceTextOverlay';
+import {
+  ProtocolLocalizationProvider,
+  useProtocolLocale,
+} from './localization/ProtocolLocalizationProvider';
+import { getLocalePreference, getRecordedLocale } from './selectors/session';
 import { getLastAvailableAuthoredStageIndex } from './selectors/skip-logic';
-import { store, type RootState } from './store/store';
+import {
+  getInterfaceText,
+  getProtocolLocalization,
+  getStages,
+} from './store/modules/protocol';
+import { recordLocale, setLocalePreference } from './store/modules/session';
+import { store, useAppDispatch, type RootState } from './store/store';
 import { SyncFlushProvider } from './store/SyncFlushContext';
 import { WritesInFlightProvider } from './store/WritesInFlightContext';
 import {
@@ -102,32 +123,171 @@ function snapTextScale(scale: number | undefined): number {
   );
 }
 
-function Interview({
-  onExit,
-  hideNavigation = false,
-  navigationOrientation: orientationProp,
-  navigationClassnames,
-  allowStageNavigation,
-  allowUserScaling,
-  allowLanguageSelection,
-  initialTextScale,
-  onTextScaleChange,
-  initialStageOverrideIndex,
-  reviewMode,
-}: {
+type InterviewProps = {
   onExit?: () => void;
   hideNavigation?: boolean;
   navigationOrientation?: NavigationOrientation;
   navigationClassnames?: NavigationClassnames;
   allowStageNavigation?: boolean;
   allowUserScaling?: boolean;
-  allowLanguageSelection?: boolean;
   initialTextScale?: number;
   onTextScaleChange?: (scale: number) => void;
   initialStageOverrideIndex?: number;
   reviewMode?: boolean;
+};
+
+type TextScaleStyle = CSSProperties & { '--interview-text-scale': number };
+
+/**
+ * A finished interview shows its completed state; a review of one shows its
+ * stages, because reading them is what a review is for. A review of a
+ * protocol with no stage before its finish stage has nothing to show, so it
+ * shows the finish stage's text, read-only, without the Finish button.
+ *
+ * The participant's text size is held here, above both, so it carries from
+ * the interview into its completed state.
+ */
+function Interview(props: InterviewProps) {
+  const { initialTextScale, onTextScaleChange } = props;
+  const { completion } = useInterviewCompletion();
+  const stages = useSelector(getStages);
+  const [textScale, setTextScale] = useState(() =>
+    snapTextScale(initialTextScale),
+  );
+  const handleTextScaleChange = useCallback(
+    (scale: number) => {
+      setTextScale(scale);
+      onTextScaleChange?.(scale);
+    },
+    [onTextScaleChange],
+  );
+  const textScaleStyle: TextScaleStyle = {
+    '--interview-text-scale': textScale,
+  };
+
+  if (props.reviewMode === true) {
+    const hasReviewableStage =
+      stages.length > 0 && stages[0]?.type !== 'FinishSession';
+    if (!hasReviewableStage) {
+      // Nothing to review and no navigation: the host's exit is the only way
+      // out, so it is offered here in place of the completed-state actions.
+      const { onExit } = props;
+      return (
+        <CompletedShell
+          stageId={undefined}
+          focusOnMount={false}
+          notice={false}
+          textScaleStyle={textScaleStyle}
+          actions={
+            onExit
+              ? [
+                  {
+                    label: (
+                      <AppMessage message={navigationMessages.exitReview} />
+                    ),
+                    onAction: onExit,
+                  },
+                ]
+              : undefined
+          }
+        />
+      );
+    }
+  } else if (completion) {
+    return (
+      <CompletedShell
+        stageId={completion.stageId}
+        focusOnMount={completion.finishedHere}
+        notice
+        textScaleStyle={textScaleStyle}
+      />
+    );
+  }
+  return (
+    <ActiveInterview
+      {...props}
+      textScale={textScale}
+      onTextScaleChange={handleTextScaleChange}
+    />
+  );
+}
+
+/**
+ * A finished interview, opened again or just finished: the finish stage it
+ * ended at, in its completed state. There is no navigation, so there is no
+ * way back into the interview.
+ */
+function CompletedShell({
+  stageId,
+  focusOnMount,
+  notice,
+  textScaleStyle,
+  actions,
+}: {
+  stageId: string | null | undefined;
+  focusOnMount: boolean;
+  notice: boolean;
+  textScaleStyle: TextScaleStyle;
+  actions?: readonly CompletedAction[];
 }) {
-  const { locale, direction } = useAppLocale();
+  const { metadata: interviewLocale } = useProtocolLocale();
+  const stages = useSelector(getStages);
+  const finishStages = stages.filter(
+    (candidate) => candidate.type === 'FinishSession',
+  );
+  // The stage the host recorded, or, for an interview finished before finish
+  // stages were recorded, the last one: where a linear interview ends.
+  const stage =
+    finishStages.find((candidate) => candidate.id === stageId) ??
+    finishStages.at(-1);
+
+  return (
+    <ThemedRegion
+      theme="interview"
+      lang={interviewLocale.locale}
+      dir={interviewLocale.direction}
+      render={
+        <main
+          style={textScaleStyle}
+          className="shell-type-ramp relative flex size-full flex-1 overflow-hidden"
+        />
+      }
+    >
+      <DirectionProvider direction={interviewLocale.direction}>
+        <div
+          className="relative flex size-full flex-col items-center justify-center pt-[env(safe-area-inset-top)]"
+          id="stage"
+          data-interview-completed=""
+        >
+          <CompletedInterview
+            stage={stage}
+            focusOnMount={focusOnMount}
+            notice={notice}
+            actions={actions}
+          />
+        </div>
+        <LanguageUnavailableNotice />
+      </DirectionProvider>
+    </ThemedRegion>
+  );
+}
+
+function ActiveInterview({
+  onExit,
+  hideNavigation = false,
+  navigationOrientation: orientationProp,
+  navigationClassnames,
+  allowStageNavigation,
+  allowUserScaling,
+  textScale,
+  onTextScaleChange,
+  initialStageOverrideIndex,
+  reviewMode,
+}: InterviewProps & {
+  textScale: number;
+  onTextScaleChange: (scale: number) => void;
+}) {
+  const { metadata: interviewLocale } = useProtocolLocale();
   const {
     stage,
     displayedStep,
@@ -170,29 +330,24 @@ function Interview({
     orientationProp ?? (prefersHorizontalNav ? 'horizontal' : 'vertical');
   const isHorizontalNav = navigationOrientation === 'horizontal';
 
-  // Participant-chosen multiplier applied on top of the viewport ramp below.
-  // Owned here so it survives stage navigation; hosts opt in via
-  // `allowUserScaling` and may persist it across remounts (e.g. the
-  // Interviewer's lock screen) with `initialTextScale`/`onTextScaleChange`.
-  const [textScale, setTextScale] = useState(() =>
-    snapTextScale(initialTextScale),
-  );
-  const handleTextScaleChange = useCallback(
-    (scale: number) => {
-      setTextScale(scale);
-      onTextScaleChange?.(scale);
-    },
-    [onTextScaleChange],
-  );
-  const textScaleStyle: CSSProperties & { '--interview-text-scale': number } = {
+  // The participant-chosen multiplier, applied on top of the viewport ramp
+  // below, is owned by `Interview` so it survives stage navigation and carries
+  // into the completed state; hosts opt in via `allowUserScaling` and may
+  // persist it across remounts (e.g. the Interviewer's lock screen) with
+  // `initialTextScale`/`onTextScaleChange`.
+  const textScaleStyle: TextScaleStyle = {
     '--interview-text-scale': textScale,
   };
 
+  // The interview's language boundary. Everything the Shell renders (stage,
+  // navigation, dialogs and toasts alike) takes the interview language and
+  // lays out in its direction from here; no text inside marks its own, apart
+  // from the Language Chooser's language names, each written in itself.
   return (
     <ThemedRegion
       theme="interview"
-      lang={locale}
-      dir={direction}
+      lang={interviewLocale.locale}
+      dir={interviewLocale.direction}
       render={
         <main
           style={textScaleStyle}
@@ -215,94 +370,169 @@ function Interview({
         />
       }
     >
-      <DialogProvider>
-        <DndStoreProvider>
-          <StageMetadataProvider value={registerBeforeNext}>
-            <InterviewToastProvider
-              toastManager={toastManager}
-              forwardButtonRef={forwardButtonRef}
-              backButtonRef={backButtonRef}
-              orientation={navigationOrientation}
-            >
-              <AnimatePresence mode="wait" onExitComplete={handleExitComplete}>
-                {showStage && stage && (
-                  <motion.div
-                    key={displayedStep}
-                    data-stage-step={displayedStep}
-                    // pt insets the stage below the device's top safe area
-                    // (status bar/notch) so stage content never slides under
-                    // it in an installed PWA; env() is 0 everywhere else. The
-                    // navigation owns its own inset (via navigationClassnames)
-                    // so its background can still meet the screen edge.
-                    className="flex min-h-0 min-w-0 flex-1 pt-[env(safe-area-inset-top)]"
-                    initial="initial"
-                    animate="animate"
-                    exit="exit"
-                    variants={variants}
-                    transition={{ duration: 0.5 }}
-                  >
-                    <div
-                      className="relative flex size-full flex-col items-center justify-center"
-                      id="stage"
-                      key={stage.id}
+      <DirectionProvider direction={interviewLocale.direction}>
+        <DialogProvider>
+          <DndStoreProvider>
+            <StageMetadataProvider value={registerBeforeNext}>
+              <InterviewToastProvider
+                toastManager={toastManager}
+                forwardButtonRef={forwardButtonRef}
+                backButtonRef={backButtonRef}
+                orientation={navigationOrientation}
+              >
+                <AnimatePresence
+                  mode="wait"
+                  onExitComplete={handleExitComplete}
+                >
+                  {showStage && stage && (
+                    <motion.div
+                      key={displayedStep}
+                      data-stage-step={displayedStep}
+                      // pt insets the stage below the device's top safe area
+                      // (status bar/notch) so stage content never slides under
+                      // it in an installed PWA; env() is 0 everywhere else. The
+                      // navigation owns its own inset (via navigationClassnames)
+                      // so its background can still meet the screen edge.
+                      className="flex min-h-0 min-w-0 flex-1 pt-[env(safe-area-inset-top)]"
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      variants={variants}
+                      transition={{ duration: 0.5 }}
                     >
-                      {canRenderStage && (
-                        <GeospatialOfflineIndicator
-                          active={stage.type === 'Geospatial'}
-                        />
-                      )}
-                      <StageErrorBoundary>
-                        {canRenderStage && CurrentInterface && (
-                          <CurrentInterface
-                            key={stage.id}
-                            stage={stage}
-                            getNavigationHelpers={getNavigationHelpers}
+                      <div
+                        className="relative flex size-full flex-col items-center justify-center"
+                        id="stage"
+                        key={stage.id}
+                      >
+                        {canRenderStage && (
+                          <GeospatialOfflineIndicator
+                            notice={
+                              stage.type === 'Geospatial'
+                                ? stage.offlineNotice
+                                : undefined
+                            }
                           />
                         )}
-                      </StageErrorBoundary>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </InterviewToastProvider>
-          </StageMetadataProvider>
-          {!hideNavigation && (
-            <Navigation
-              moveBackward={moveBackward}
-              moveForward={moveForward}
-              goToStage={goToStage}
-              allowStageNavigation={allowStageNavigation}
-              disableMoveForward={disableMoveForward}
-              disableMoveBackward={disableMoveBackward}
-              pulseNext={pulseNext}
-              progress={progress}
-              orientation={navigationOrientation}
-              className={navigationClassnames?.[navigationOrientation]}
-              forwardButtonRef={forwardButtonRef}
-              backButtonRef={backButtonRef}
-              onExit={onExit}
-              reviewMode={reviewMode}
-              allowUserScaling={allowUserScaling}
-              allowLanguageSelection={allowLanguageSelection}
-              textScale={textScale}
-              onTextScaleChange={handleTextScaleChange}
-            />
-          )}
-          {/*
-           * A stable manager belongs to this Shell alone. The
-           * viewport's portal lands inside ThemedRegion (themed
-           * surface + portal-container context) regardless of what the
-           * host sets up. Hosts may still mount their own app-level
-           * Toast.Provider for non-interview toasts; the two are
-           * independent channels, as are other Shells on the same page.
-           */}
-          <Toast.Provider toastManager={toastManager}>
-            <InterviewToastViewport />
-          </Toast.Provider>
-          <LanguageUnavailableNotice />
-        </DndStoreProvider>
-      </DialogProvider>
+                        <StageErrorBoundary>
+                          {canRenderStage && CurrentInterface && (
+                            <CurrentInterface
+                              key={stage.id}
+                              stage={stage}
+                              getNavigationHelpers={getNavigationHelpers}
+                            />
+                          )}
+                        </StageErrorBoundary>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </InterviewToastProvider>
+            </StageMetadataProvider>
+            {!hideNavigation && (
+              <Navigation
+                moveBackward={moveBackward}
+                moveForward={moveForward}
+                goToStage={goToStage}
+                allowStageNavigation={allowStageNavigation}
+                disableMoveForward={disableMoveForward}
+                disableMoveBackward={disableMoveBackward}
+                pulseNext={pulseNext}
+                progress={progress}
+                orientation={navigationOrientation}
+                className={navigationClassnames?.[navigationOrientation]}
+                forwardButtonRef={forwardButtonRef}
+                backButtonRef={backButtonRef}
+                onExit={onExit}
+                reviewMode={reviewMode}
+                allowUserScaling={allowUserScaling}
+                textScale={textScale}
+                onTextScaleChange={onTextScaleChange}
+              />
+            )}
+            {/*
+             * A stable manager belongs to this Shell alone. The
+             * viewport's portal lands inside ThemedRegion (themed
+             * surface + portal-container context) regardless of what the
+             * host sets up. Hosts may still mount their own app-level
+             * Toast.Provider for non-interview toasts; the two are
+             * independent channels, as are other Shells on the same page.
+             */}
+            <Toast.Provider toastManager={toastManager}>
+              <InterviewToastViewport />
+            </Toast.Provider>
+            <LanguageUnavailableNotice />
+          </DndStoreProvider>
+        </DialogProvider>
+      </DirectionProvider>
     </ThemedRegion>
+  );
+}
+
+/**
+ * Connects both languages to the session: the interface language follows the
+ * participant's stated preference when it has that language, and the protocol
+ * translation is chosen, recorded, and changed through the session store.
+ */
+function InterviewLocalization({
+  requestedLocales,
+  statedLocale,
+  localeOptions,
+  catalog,
+  children,
+}: {
+  requestedLocales: readonly string[];
+  statedLocale: string | undefined;
+  localeOptions: InterviewPayload['session']['localeOptions'];
+  catalog: InterviewCatalog | undefined;
+  children: ReactNode;
+}) {
+  const dispatch = useAppDispatch();
+  const localization = useSelector(getProtocolLocalization);
+  const interfaceText = useSelector(getInterfaceText);
+  const localePreference = useSelector(getLocalePreference);
+  const recordedLocale = useSelector(getRecordedLocale);
+
+  // A language the host states replaces the held preference in the store, as
+  // a language chooser stage does, so nothing remounts and unsaved input
+  // stays. Only a change of the host's statement applies: the participant can
+  // still state another in between. A language the protocol does not declare
+  // is not a preference it can hold.
+  useEffect(() => {
+    if (statedLocale === undefined) return;
+    if (!localization.locales.includes(statedLocale)) return;
+    dispatch(setLocalePreference(statedLocale));
+  }, [dispatch, statedLocale, localization.locales]);
+
+  const handleLocalePreferenceChange = useCallback(
+    (locale: string) => dispatch(setLocalePreference(locale)),
+    [dispatch],
+  );
+  const handleLocaleRecorded = useCallback(
+    (locale: string) => dispatch(recordLocale(locale)),
+    [dispatch],
+  );
+
+  return (
+    <InterviewI18nProvider
+      requestedLocale={requestedLocales}
+      localePreference={localePreference}
+      catalog={catalog}
+    >
+      <ProtocolLocalizationProvider
+        localization={localization}
+        localeOptions={localeOptions}
+        requestedLocales={requestedLocales}
+        localePreference={localePreference}
+        recordedLocale={recordedLocale}
+        onLocalePreferenceChange={handleLocalePreferenceChange}
+        onLocaleRecorded={handleLocaleRecorded}
+      >
+        <InterfaceTextOverlay interfaceText={interfaceText}>
+          {children}
+        </InterfaceTextOverlay>
+      </ProtocolLocalizationProvider>
+    </InterviewI18nProvider>
   );
 }
 
@@ -362,38 +592,41 @@ function LoadingInterview() {
  */
 type ShellProps = {
   /**
-   * Requested language for the package's built-in controls and messages. A
-   * host may pass a device preference, its negotiated locale, or an ordered
-   * preference list. The package best-fits this against its own supported
-   * languages and falls back to English. It does not read browser/storage
-   * globals, inherit the host registry, or translate protocol-authored text.
+   * The browser's languages, most preferred first: `navigator.languages` in a
+   * browser host, the parsed `Accept-Language` header in a server-rendered one
+   * (serialised to the client so both choose alike). Until the participant
+   * states a preference, these choose both the protocol translation and the
+   * language of the interview's built-in text. The package reads no browser
+   * or storage globals itself.
    */
-  requestedLocale?: RequestedLocale;
+  requestedLocales: readonly string[];
   /**
-   * Optional controlled menu preference. Undefined uses package-local state;
-   * null follows requestedLocale; a string is matched against package locales.
-   * Pair with onLocaleChange to mirror a host's persisted explicit/automatic choice.
+   * A language the host states on the participant's behalf, as a language
+   * chooser stage would. Each time it changes it replaces the preference the
+   * session holds, in place: the step, the prompt and unsaved input stay, and
+   * the change is saved through `onProtocolLocaleChange`. A held preference
+   * outranks `requestedLocales`, so this is how a host changes the language
+   * once one is held without re-creating the interview. Architect's preview
+   * passes its toolbar's choice. Omit it to leave the preference to the
+   * participant.
    */
-  localePreference?: string | null;
-  /**
-   * Called when the menu selects an interface language. Hosts may persist
-   * the canonical tag; null clears the menu override and follows requestedLocale.
-   * Choosing a language never changes the payload or collected answers.
-   */
-  onLocaleChange?: (locale: string | null) => void;
+  statedLocale?: string;
   /**
    * The interface language's messages, from `loadInterviewCatalog` given the
-   * same `requestedLocale` and `localePreference`. Without it, a Shell opening
-   * in a language this page has not loaded shows its loading screen while that
-   * language downloads; a server host passes it so the interview renders, and
-   * hydrates, without waiting. Used only while it matches the negotiated
-   * language, so a later switch loads normally.
+   * same `requestedLocales` and the session's `localePreference`. Without it,
+   * a Shell opening in a language this page has not loaded shows its loading
+   * screen while that language downloads; a server host passes it so the
+   * interview renders, and hydrates, without waiting. Used only while it
+   * matches the negotiated language, so a later change loads normally.
    */
   catalog?: InterviewCatalog;
-  /** Show the interface-language chooser in the settings menu. Default true. */
-  allowLanguageSelection?: boolean;
   payload: InterviewPayload;
   onSync: SyncHandler;
+  /**
+   * Persists the session's `locale` and `localePreference`, which the general
+   * `onSync` route never writes.
+   */
+  onProtocolLocaleChange: ProtocolLocaleChangeHandler;
   onFinish: FinishHandler;
   onRequestAsset: AssetRequestHandler;
   currentStep?: number;
@@ -408,9 +641,24 @@ type ShellProps = {
   finishConfirmationDescription?: ReactNode;
   onExit?: () => void;
   /**
-   * Adapt the Shell for reviewing an existing interview: stop at the final
-   * authored stage, use review-specific exit messaging, and suppress interview
-   * analytics. The host remains responsible for supplying non-persisting sync
+   * The actions offered on the completed state of a finished interview, such
+   * as Interviewer's "Exit", in order; the first is the primary one. The
+   * completed state is shown when the payload's session is finished, and as
+   * soon as the participant finishes.
+   */
+  completedActions?: readonly CompletedAction[];
+  /**
+   * Open a finished interview as an unfinished one, at its stages and open to
+   * changes, instead of in its completed state, and keep recording a change of
+   * its language. For a host that lets a finished interview be edited: Fresco
+   * passes it when completed interviews are not frozen. The payload then has
+   * to carry the interview's answers, which the completed state never needs.
+   */
+  openFinishedAsActive?: boolean;
+  /**
+   * Adapt the Shell for reviewing an existing interview: show its stages even
+   * when it is finished, stop before its finish stage, use review-specific
+   * exit messaging, and suppress interview analytics. The host remains responsible for supplying non-persisting sync
    * and finish handlers.
    */
   reviewMode?: boolean;
@@ -434,8 +682,7 @@ type ShellProps = {
    * Let the participant adjust the interview's text size from a settings menu
    * in the Navigation. The chosen size multiplies the whole interview scale
    * (type, spacing, and touch targets together) and lasts for the current
-   * session. A settings menu is shown when language selection, scaling, or
-   * exiting is available.
+   * session. A settings menu is shown when scaling or exiting is available.
    */
   allowUserScaling?: boolean;
   /**
@@ -459,13 +706,12 @@ type ShellProps = {
 };
 
 const Shell = ({
-  requestedLocale,
-  localePreference,
-  onLocaleChange,
+  requestedLocales,
+  statedLocale,
   catalog,
-  allowLanguageSelection = true,
   payload,
   onSync,
+  onProtocolLocaleChange,
   onFinish,
   onRequestAsset,
   currentStep,
@@ -476,6 +722,8 @@ const Shell = ({
   disableAnalytics = false,
   finishConfirmationDescription,
   onExit,
+  completedActions,
+  openFinishedAsActive = false,
   reviewMode,
   hideNavigation,
   navigationOrientation,
@@ -494,6 +742,12 @@ const Shell = ({
   onSyncRef.current = onSync;
   const stableOnSync = useCallback<SyncHandler>(
     (...args) => onSyncRef.current(...args),
+    [],
+  );
+  const onProtocolLocaleChangeRef = useRef(onProtocolLocaleChange);
+  onProtocolLocaleChangeRef.current = onProtocolLocaleChange;
+  const stableOnProtocolLocaleChange = useCallback<ProtocolLocaleChangeHandler>(
+    (...args) => onProtocolLocaleChangeRef.current(...args),
     [],
   );
 
@@ -516,10 +770,19 @@ const Shell = ({
     () =>
       store(payload, {
         onSync: stableOnSync,
+        onProtocolLocaleChange: stableOnProtocolLocaleChange,
         isDevelopment: flags?.isDevelopment,
         tracker: trackerHolder,
+        openFinishedAsActive,
       }),
-    [payload, stableOnSync, flags?.isDevelopment, trackerHolder],
+    [
+      payload,
+      openFinishedAsActive,
+      stableOnSync,
+      stableOnProtocolLocaleChange,
+      flags?.isDevelopment,
+      trackerHolder,
+    ],
   );
 
   // A host that batches writes (see createDebouncedSyncHandler) may be holding
@@ -581,11 +844,35 @@ const Shell = ({
     trackerRef.current = next;
   }, []);
 
+  // A finished session opens in its completed state, at the finish stage the
+  // host recorded, unless the host opens it as an unfinished one.
+  const initialCompletion = useMemo<InterviewCompletion | null>(
+    () =>
+      payload.session.finishTime === null || openFinishedAsActive
+        ? null
+        : {
+            stageId: payload.session.finishStageId ?? null,
+            finishedHere: false,
+          },
+    [
+      payload.session.finishTime,
+      payload.session.finishStageId,
+      openFinishedAsActive,
+    ],
+  );
+
   const reviewEntry = useMemo(() => {
+    // A review stops before the finish stage, so a step at or past it enters
+    // at the last stage the review can show.
+    const finishIndex = payload.protocol.stages.findIndex(
+      (stage) => stage.type === 'FinishSession',
+    );
+    const reviewEnd =
+      finishIndex === -1 ? payload.protocol.stages.length : finishIndex;
     if (
       reviewMode !== true ||
       currentStep === undefined ||
-      currentStep < payload.protocol.stages.length
+      currentStep < reviewEnd
     ) {
       return {
         currentStep,
@@ -597,7 +884,7 @@ const Shell = ({
       payload.protocol.stages,
       payload.session.network,
     );
-    const hasAuthoredStage = payload.protocol.stages.length > 0;
+    const hasAuthoredStage = reviewEnd > 0;
 
     return {
       currentStep: lastAvailableStage ?? 0,
@@ -624,21 +911,21 @@ const Shell = ({
   // catalog rather than mismatch. A host that passes `catalog` skips both. A
   // catalog that cannot be loaded ends the wait in English, with a notice.
   return (
-    <Suspense fallback={<LoadingInterview />}>
-      <InterviewI18nProvider
-        requestedLocale={requestedLocale}
-        localePreference={localePreference}
-        onLocaleChange={onLocaleChange}
-        catalog={catalog}
-      >
-        <AnalyticsProvider
-          analytics={analytics}
-          posthogClient={posthogClient}
-          disableAnalytics={disableAnalytics || reviewMode === true}
-          payload={payload}
-          onTrackerChange={onTrackerChange}
-        >
-          <Provider store={reduxStore}>
+    <AnalyticsProvider
+      analytics={analytics}
+      posthogClient={posthogClient}
+      disableAnalytics={disableAnalytics || reviewMode === true}
+      payload={payload}
+      onTrackerChange={onTrackerChange}
+    >
+      <Provider store={reduxStore}>
+        <Suspense fallback={<LoadingInterview />}>
+          <InterviewLocalization
+            requestedLocales={requestedLocales}
+            statedLocale={statedLocale}
+            localeOptions={payload.session.localeOptions}
+            catalog={catalog}
+          >
             <SyncFlushProvider flush={reduxStore.flushSync}>
               <WritesInFlightProvider
                 writesSettled={reduxStore.writesSettled}
@@ -650,37 +937,45 @@ const Shell = ({
                   flags={flags}
                   finishConfirmationDescription={finishConfirmationDescription}
                 >
-                  <CurrentStepProvider
-                    currentStep={reviewEntry.currentStep}
-                    onStepChange={onStepChange}
+                  <InterviewCompletionProvider
+                    // A new payload is a new interview.
+                    key={payload.session.id}
+                    initialCompletion={initialCompletion}
+                    completedActions={completedActions}
+                    // A finished interview never records a language change.
+                    onComplete={reduxStore.markFinished}
                   >
-                    <Interview
-                      onExit={onExit}
-                      hideNavigation={hideNavigation}
-                      navigationOrientation={navigationOrientation}
-                      navigationClassnames={navigationClassnames}
-                      allowStageNavigation={
-                        allowStageNavigation &&
-                        (currentStep === undefined ||
-                          onStepChange !== undefined)
-                      }
-                      allowUserScaling={allowUserScaling}
-                      allowLanguageSelection={allowLanguageSelection}
-                      initialTextScale={initialTextScale}
-                      onTextScaleChange={onTextScaleChange}
-                      initialStageOverrideIndex={
-                        reviewEntry.initialStageOverrideIndex
-                      }
-                      reviewMode={reviewMode}
-                    />
-                  </CurrentStepProvider>
+                    <CurrentStepProvider
+                      currentStep={reviewEntry.currentStep}
+                      onStepChange={onStepChange}
+                    >
+                      <Interview
+                        onExit={onExit}
+                        hideNavigation={hideNavigation}
+                        navigationOrientation={navigationOrientation}
+                        navigationClassnames={navigationClassnames}
+                        allowStageNavigation={
+                          allowStageNavigation &&
+                          (currentStep === undefined ||
+                            onStepChange !== undefined)
+                        }
+                        allowUserScaling={allowUserScaling}
+                        initialTextScale={initialTextScale}
+                        onTextScaleChange={onTextScaleChange}
+                        initialStageOverrideIndex={
+                          reviewEntry.initialStageOverrideIndex
+                        }
+                        reviewMode={reviewMode}
+                      />
+                    </CurrentStepProvider>
+                  </InterviewCompletionProvider>
                 </ContractProvider>
               </WritesInFlightProvider>
             </SyncFlushProvider>
-          </Provider>
-        </AnalyticsProvider>
-      </InterviewI18nProvider>
-    </Suspense>
+          </InterviewLocalization>
+        </Suspense>
+      </Provider>
+    </AnalyticsProvider>
   );
 };
 

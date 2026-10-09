@@ -7,6 +7,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 
 import { withoutAbsentValues } from '../form/absentValues.ts';
+import OptionalRowList from '../form/arrayFields/OptionalRowList.tsx';
 import {
   RowDialog,
   RowList,
@@ -24,7 +25,7 @@ import BuilderSection from './BuilderSection.tsx';
 /** Every interface that asks questions keeps them here. */
 const PROMPTS_FIELD = 'prompts';
 
-const messages = defineMessages({
+export const promptsSectionMessages = defineMessages({
   atLeastOne: {
     id: 'protocolBuilder.promptsSection.atLeastOne',
     defaultMessage:
@@ -87,7 +88,9 @@ const messages = defineMessages({
   },
 });
 
-const AT_LEAST_ONE_PROMPT = createMessageError(messages.atLeastOne);
+const AT_LEAST_ONE_PROMPT = createMessageError(
+  promptsSectionMessages.atLeastOne,
+);
 
 export type PromptsSectionProps = Readonly<{
   /**
@@ -180,9 +183,13 @@ export type PromptsSectionProps = Readonly<{
    * geospatial stage's ask WHERE something is, and neither reads as the
    * generic "question the participant answers" with one word changed.
    *
-   * Deliberately only these four. The section's own heading, its field label
-   * and everything about the dialog stay shared, so a researcher moving
-   * between two interfaces is not learning two vocabularies for one control.
+   * Deliberately only these four for an interface whose prompts are THE
+   * prompts of its stage. The section's own heading, its field label and
+   * everything about the dialog stay shared, so a researcher moving between two
+   * interfaces is not learning two vocabularies for one control. The one
+   * exception is a stage that has a second kind of question beside its
+   * prompts, which names its list with `title`, `fieldLabel`, `addLabel`,
+   * `addTitle`, `editTitle` and `itemNoun` below.
    *
    * Each is formatted with NO VALUES. A descriptor carrying a placeholder —
    * `'Ask about {relative} in this order.'`, the obvious thing to write —
@@ -215,6 +222,33 @@ export type PromptsSectionProps = Readonly<{
   rowDescription?: MessageDescriptor;
   fieldHint?: MessageDescriptor;
   emptyState?: MessageDescriptor;
+  /**
+   * Where the stage keeps these prompts. Every interface that asks questions
+   * keeps them at `prompts`; a stage that asks another kind of question as well
+   * names its own list here.
+   */
+  name?: string;
+  /**
+   * The stage may go without any of these prompts.
+   *
+   * Emptying the list removes the key rather than leaving an empty array, and
+   * a stage holding none is not refused. Left out, a stage must ask something.
+   */
+  optional?: boolean;
+  /**
+   * What the section and its list call themselves, where the stage has more
+   * than one list of questions and the shared words would name them all alike.
+   *
+   * Named one at a time, like the sentences above, and for the same reason.
+   * Absent, the shared words stand: a stage with a single list of prompts has
+   * no need of a second vocabulary.
+   */
+  title?: MessageDescriptor;
+  fieldLabel?: MessageDescriptor;
+  addLabel?: MessageDescriptor;
+  addTitle?: MessageDescriptor;
+  editTitle?: MessageDescriptor;
+  itemNoun?: MessageDescriptor;
 }>;
 
 /**
@@ -238,11 +272,19 @@ export default function PromptsSection({
   expand,
   itemTemplate,
   collapseRow,
-  description = messages.description,
+  description = promptsSectionMessages.description,
   waitingDescription,
   rowDescription,
-  fieldHint = messages.fieldHint,
-  emptyState = messages.emptyState,
+  fieldHint = promptsSectionMessages.fieldHint,
+  emptyState = promptsSectionMessages.emptyState,
+  name = PROMPTS_FIELD,
+  optional = false,
+  title = promptsSectionMessages.title,
+  fieldLabel = promptsSectionMessages.fieldLabel,
+  addLabel = promptsSectionMessages.addLabel,
+  addTitle = promptsSectionMessages.addTitle,
+  editTitle = promptsSectionMessages.editTitle,
+  itemNoun = promptsSectionMessages.itemNoun,
 }: PromptsSectionProps) {
   const intl = useAppIntl();
   const subject = useStageValue('subject');
@@ -256,11 +298,11 @@ export default function PromptsSection({
     () => ({
       Preview: PromptPreview,
       Editor: PromptEditor,
-      addTitle: messages.addTitle,
-      editTitle: messages.editTitle,
+      addTitle,
+      editTitle,
       ...(rowDescription === undefined ? {} : { description: rowDescription }),
       formId: 'prompt-editor',
-      name: PROMPTS_FIELD,
+      name,
       ...(beforeSave === undefined ? {} : { beforeSave }),
       ...(expand === undefined ? {} : { expand }),
       // The family's collapse runs FIRST, for the reason `PageContentSection`
@@ -274,16 +316,19 @@ export default function PromptsSection({
     [
       PromptEditor,
       PromptPreview,
+      addTitle,
       beforeSave,
       collapseRow,
+      editTitle,
       expand,
+      name,
       rowDescription,
     ],
   );
 
   return (
     <BuilderSection
-      title={intl.formatMessage(messages.title)}
+      title={intl.formatMessage(title)}
       description={intl.formatMessage(
         waiting ? (waitingDescription ?? description) : description,
       )}
@@ -291,19 +336,19 @@ export default function PromptsSection({
     >
       <RowList config={rowList}>
         <Field<typeof ArrayField<RowValues>>
-          name={PROMPTS_FIELD}
-          label={intl.formatMessage(messages.fieldLabel)}
+          name={name}
+          label={intl.formatMessage(fieldLabel)}
           hint={intl.formatMessage(fieldHint)}
-          component={ArrayField}
+          component={optional ? OptionalRowList : ArrayField}
           getId={rowId}
-          addButtonLabel={intl.formatMessage(messages.addLabel)}
-          itemLabel={messages.itemNoun}
+          addButtonLabel={intl.formatMessage(addLabel)}
+          itemLabel={itemNoun}
           emptyStateMessage={intl.formatMessage(emptyState)}
           itemComponent={RowListItem}
           editorComponent={RowDialog}
           itemTemplate={rowTemplate(itemTemplate)}
           sortable
-          required={AT_LEAST_ONE_PROMPT}
+          {...(optional ? {} : { required: AT_LEAST_ONE_PROMPT })}
         />
       </RowList>
     </BuilderSection>

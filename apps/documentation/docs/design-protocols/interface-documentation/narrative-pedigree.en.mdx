@@ -17,11 +17,15 @@ Use it to show, at a glance, who in the family is affected by a condition, who m
 
 ## Choosing the source stage
 
-The Narrative Pedigree always reads from an earlier **Family Pedigree** stage in the same protocol. Select that stage as the source. The Narrative Pedigree then shows exactly the people that stage recorded — it will not pick up unrelated people added in later stages, even if they share the same node type.
+The Narrative Pedigree always reads from an earlier **Family Pedigree** stage in the same protocol. Select that stage as the source. Only Family Pedigree stages that come before this one are offered.
+
+The Narrative Pedigree draws the participant and everyone connected to them through the source stage's relationships: partners (current or not), parents of every kind, children, and their relatives in turn. Someone of the same person type who is not connected to the participant through those relationships is left out, even if another stage added them or tied them to the participant with a different kind of connection.
+
+While a Narrative Pedigree reads a Family Pedigree, Architect will not let you change that Family Pedigree's person type, because every condition the Narrative Pedigree draws is an attribute of that type. Point the Narrative Pedigree at another source, or remove it, first.
 
 <TipBox>
 
-Place the Narrative Pedigree **after** the Family Pedigree that feeds it, and after any step where participants nominate who is affected by each condition.
+Place the Narrative Pedigree **after** the Family Pedigree that feeds it. Who has each condition is collected by that stage's [nomination prompts](/en/design-protocols/interface-documentation/family-pedigree#nomination-prompts), which participants answer once their family is drawn.
 
 </TipBox>
 
@@ -31,14 +35,20 @@ Add one or more conditions to display. For each condition you set:
 
 - **Label** — the condition's name, shown in the key.
 - **Color** — the color used to draw that condition's status on the pedigree.
-- **Node variable** — a **boolean** variable that records whether each person is affected. This is normally collected in the Family Pedigree disease-nomination step. Only boolean variables can be selected, because "affected" is a yes/no value.
+- **Node attribute** — the **boolean** attribute that records whether each person is affected. Only attributes recorded by one of the source Family Pedigree's nomination prompts can be chosen, and each can be used by only one condition. If the list is empty, add a nomination prompt to the Family Pedigree asking who has the condition.
 - **Inheritance pattern** — how the condition is passed down. This drives every inference the interface makes, so it must be correct.
 
 Supported inheritance patterns are: autosomal dominant, autosomal recessive, X-linked dominant, X-linked recessive, Y-linked, mitochondrial, multifactorial, and unknown. For **multifactorial** and **unknown**, only the people explicitly nominated as affected are shown — no carrier or at-risk inference is made.
 
+## What the participant sees
+
+The family is drawn as the Family Pedigree laid it out, on the same canvas: the participant can drag to pan, zoom with the mouse wheel, by pinching, with the + and − keys, or with the zoom buttons, and use the button that fits the whole family on screen. A key beside the family lists the conditions and explains the symbols. The key has a heading, the conditions have a heading and an instruction, and the **Clear focus** and **Save snapshot** buttons have tooltips; you can change and translate all of these words (see [Words on the pedigree](#words-on-the-pedigree)).
+
+Each person is labelled as they were on the Family Pedigree. The participant is labelled "You", and everyone else by their name. A relative who was not named is labelled by how they are related to the participant, in the same words the Family Pedigree used ("Mother" or "Egg parent", for example). If your study encrypts the name attribute, the participant is asked for their passphrase, and relatives are labelled by how they are related until it is entered. A person recorded as adopted is drawn between brackets.
+
 ## How statuses are shown
 
-Each person is drawn with a shape for their **biological sex** (square for male, circle for female, and a diamond where the sex is not known), and a fill or marker for their **status** with respect to each condition.
+Each person's symbol takes the shape their person type gives them in the codebook, as on the Family Pedigree. The Family Pedigree's [Symbols choice](/en/design-protocols/interface-documentation/family-pedigree#how-each-persons-symbol-is-drawn) maps sex assigned at birth to the standard shapes: a square for male, a circle for female, and a diamond for everyone else. With no condition selected, each person is drawn as a plain symbol. Selecting a condition in the key draws each person's **status** for that condition on their symbol, in the condition's color.
 
 <KeyConcept title="Certain vs. possible statuses">
 
@@ -65,9 +75,9 @@ Anything the Narrative Pedigree marks as at-risk is inferred from the participan
 When at-risk statuses are shown, the interface works out possible statuses from the family structure and each condition's inheritance pattern. A few rules are worth knowing, because they shape what researchers and clinicians will see:
 
 - **Only biological connections transmit.** Only _biological_ and _donor_ relationships pass a condition on. Social, adoptive, surrogate, and partner relationships never do, so risk is never inferred across them.
-- **Unknown sex stays uncertain.** Sex-linked inheritance (X-linked, Y-linked, mitochondrial) depends on biological sex. Where a person's sex was not recorded, the interface leaves inheritance through that person uncertain rather than guessing. This is why capturing sex recorded at birth in the Family Pedigree matters.
+- **Sex assigned at birth decides sex-linked inheritance.** X-linked and Y-linked inheritance depend on it, and gender identity plays no part. A person recorded as intersex is always treated as uncertain, because neither one X chromosome nor two can be assumed. A person whose sex is not known, who preferred not to say, or who was not asked is placed by the gamete they gave a child — the egg or the sperm — when the Family Pedigree's [gamete rule](/en/design-protocols/interface-documentation/family-pedigree#which-parent-gave-the-egg-or-the-sperm) works it out from the child's other parent, and is otherwise treated as uncertain. The interface leaves inheritance through an uncertain person unresolved rather than guessing.
 - **X-linked risk follows the maternal line.** For X-linked recessive conditions, risk travels down the mother's X chromosome. Relatives connected only through an unaffected father — for example, a mother's half-sibling who shares only her father — carry none of that X and are correctly **not** marked at risk.
-- **Mitochondrial inheritance follows the egg.** A condition carried in mitochondrial DNA is traced down the maternal (egg) line. Where a child was conceived using a donor egg, the mitochondrial line follows that donor egg — so a child conceived through mitochondrial donation does not inherit the birth mother's mitochondrial condition, even though they inherit her nuclear genome.
+- **Mitochondrial inheritance follows the egg.** A condition carried in mitochondrial DNA is traced down the line of whoever gave the egg, as the Family Pedigree's [gamete rule](/en/design-protocols/interface-documentation/family-pedigree#which-parent-gave-the-egg-or-the-sperm) works it out from sex assigned at birth. Where a child was conceived with a donor egg, it follows the donor, not the person who carried the pregnancy. Mitochondrial donation, where one egg gives the nucleus and another the mitochondria, cannot be drawn in the Family Pedigree, which allows a child one genetic parent recorded female at birth; the Narrative Pedigree traces it correctly only in imported data that records two.
 
 <KeyConcept title="A filled symbol always means affected">
 
@@ -81,19 +91,32 @@ Throughout, the interface assumes conditions are fully penetrant (everyone who h
 
 ## Focusing on one person
 
-Selecting a condition from the key switches the pedigree to that condition's view. From there, focusing on a person highlights the relatives who contribute to _their_ inheritance of the selected condition, following the true source line for that pattern (for example, up the maternal line for an X-linked condition). A printable snapshot of the current view can be exported.
+Selecting a condition from the key switches the pedigree to that condition's view. From there, selecting a person focuses on them: the relatives who contribute to _their_ inheritance of the selected condition stay highlighted and everyone else is dimmed, following the true source line for that pattern (for example, up the maternal line for an X-linked condition). People cannot be focused on until a condition is selected. **Clear focus**, the Escape key, or a click on an empty part of the canvas clears the focus.
+
+The family can be used entirely from the keyboard. It is a single stop in the tab order; the arrow keys move between people by where they sit in the tree, and Enter or Space focuses on the person who has keyboard focus. Each person's status for the shown conditions is read out by screen readers, as is each change of condition or focus.
+
+**Save snapshot** saves a picture of the whole family on a white background, as it is drawn for the selected condition and focus, with the symbol key once a condition is selected. It is titled with the stage's label, the condition, and the person focused on.
+
+## Words on the pedigree
+
+The **Words on the pedigree** section of the stage editor holds the words participants read on the pedigree. Network Canvas fills in starting wording for each, in every language it has wording for, and you can change and translate it like any other text (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)):
+
+- the heading of the key, and what each symbol in it means. The entries for the possible statuses are there only while **Show possible (at-risk) statuses** is on, and they are removed when you switch it off,
+- the heading over the conditions and the instruction that asks the participant to select one,
+- the tooltips of **Clear focus** and **Save snapshot**,
+- the titles of saved snapshots, one for a snapshot of a condition and one for a snapshot focused on a person. They can show the stage's label, the condition and the person's name.
 
 ## Best practices
 
 <GoodPractice>
 
-Record who is affected using a **boolean** variable per condition (via the Family Pedigree disease-nomination step), and set each condition's inheritance pattern carefully — every inference depends on it.
+Record who is affected with one Family Pedigree nomination prompt per condition, and set each condition's inheritance pattern carefully — every inference depends on it.
 
 </GoodPractice>
 
 <GoodPractice>
 
-Capture **sex recorded at birth** for each person in the Family Pedigree. Sex-linked conditions cannot be traced without it, and missing sex is treated as uncertainty.
+Capture **sex assigned at birth** for each person in the Family Pedigree. Sex-linked conditions cannot be traced without it, and missing sex is treated as uncertainty.
 
 </GoodPractice>
 

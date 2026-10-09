@@ -1,7 +1,4 @@
 import { createSelector, createSlice } from '@reduxjs/toolkit';
-import { v4 } from 'uuid';
-
-import type { Stage } from '@codaco/protocol-validation';
 
 import type { ProtocolPayload } from '../../contract/types';
 
@@ -9,29 +6,17 @@ type ProtocolState = ProtocolPayload;
 
 const initialState = {} as ProtocolState;
 
-// FinishSession is a UI sentinel appended to every interview's stage list;
-// it is not part of the protocol schema, so it has no Stage variant. The
-// cast at the use site below bridges it into the Stage union expected
-// downstream — runtime consumers branch on `stage.type === 'FinishSession'`.
-const DefaultFinishStage = {
-  id: v4(),
-  type: 'FinishSession',
-  label: 'Finish Interview',
-};
-
 const protocolSlice = createSlice({
   name: 'protocol',
   initialState,
   reducers: {},
   selectors: {
-    getShouldEncryptNames: (state) =>
-      state.experiments?.encryptedVariables ?? false,
     getCodebook: (state) => state.codebook,
+    getProtocolLocalization: (state) => state.localization,
+    getInterfaceText: (state) => state.interfaceText,
+    // The protocol's stages, finish stages included: the interview adds no
+    // stage of its own.
     getStages: createSelector(
-      [(state: ProtocolState) => state.stages],
-      (stages) => [...(stages ?? []), DefaultFinishStage as Stage],
-    ),
-    getProtocolStages: createSelector(
       [(state: ProtocolState) => state.stages],
       (stages) => stages ?? [],
     ),
@@ -45,10 +30,10 @@ const protocolSlice = createSlice({
 
 // export selectors
 export const {
-  getShouldEncryptNames,
   getCodebook,
+  getProtocolLocalization,
+  getInterfaceText,
   getStages,
-  getProtocolStages,
   getAssetManifest,
 } = protocolSlice.selectors;
 

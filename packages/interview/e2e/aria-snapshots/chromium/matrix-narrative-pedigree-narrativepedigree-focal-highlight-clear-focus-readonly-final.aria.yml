@@ -6,23 +6,20 @@
     - paragraph: Select a condition to see who it affects.
     - button "Huntington's Disease" [pressed]
     - separator
-    - heading "What the symbols mean" [level=4]
     - text: Has this condition Will develop this condition Carries this condition Not known
     - button "Save snapshot"
   - slider "Resize the condition key panel"
-  - button "Focus on George": "Huntington's Disease: Affected"
-  - button "Focus on Nancy": "Huntington's Disease: Status unknown"
-  - button "Focus on Margaret": "Huntington's Disease: Status unknown"
-  - button "Focus on Rose": "Huntington's Disease: Status unknown"
-  - button "Focus on David": "Huntington's Disease: Status unknown"
-  - button "Focus on You": "Huntington's Disease: Status unknown"
+  - region "Your family":
+    - button "Focus on George": "Huntington's Disease: Affected"
+    - button "Focus on Nancy": "Huntington's Disease: Status unknown"
+    - button "Focus on Margaret": "Huntington's Disease: Status unknown"
+    - button "Focus on Rose": "Huntington's Disease: Status unknown"
+    - button "Focus on David": "Huntington's Disease: Status unknown"
+    - button "Focus on You": "Huntington's Disease: Status unknown"
   - toolbar "Zoom controls":
-    - group "Zoom controls":
-      - button "Zoom out"
-      - button "Zoom in"
-    - separator
-    - group "Viewport controls":
-      - button "Reset zoom"
+    - button "Zoom out"
+    - button "Zoom in"
+    - button "Show the whole family"
   - navigation:
     - button "Settings"
     - button "Previous Step"

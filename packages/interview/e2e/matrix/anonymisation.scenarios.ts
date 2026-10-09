@@ -10,6 +10,79 @@ import { AnonymisationFixture } from '../fixtures/anonymisation-fixture.js';
 import { expect } from '../fixtures/matrix-test.js';
 import type { InterfaceScenarios } from './types.js';
 
+const PASSPHRASE_MISMATCH =
+  'This passphrase does not match the one used earlier in this interview. Check it and try again.';
+
+const ByteArraySchema = z.array(z.number().int().min(0).max(255));
+
+/**
+ * The interview's encryption header exactly as the format writes it. Strict,
+ * so a header that grew or lost a field fails here.
+ */
+const EncryptionHeaderSchema = z.strictObject({
+  version: z.literal(1),
+  method: z.literal('AES-256-GCM'),
+  kdf: z.strictObject({
+    algorithm: z.literal('PBKDF2'),
+    hash: z.literal('SHA-256'),
+    iterations: z.literal(600_000),
+    salt: ByteArraySchema.length(16),
+  }),
+  check: z.strictObject({
+    iv: ByteArraySchema.length(12),
+    data: ByteArraySchema.nonempty(),
+  }),
+});
+
+/**
+ * A node holding encrypted answers in the current format. Each answer's
+ * metadata is its IV alone: the key is the interview's, described once by the
+ * header, so a per-value salt (the schema 8 format) fails the strict object.
+ */
+const CurrentFormatNodeSchema = z.object({
+  [entityAttributesProperty]: z.record(z.string(), z.unknown()),
+  [entitySecureAttributesMeta]: z.record(
+    z.string(),
+    z.strictObject({ iv: ByteArraySchema.length(12) }),
+  ),
+});
+
+/** A network whose single node holds encrypted answers. */
+const EncryptedNetworkSchema = z.object({
+  encryption: EncryptionHeaderSchema,
+  nodes: z.tuple([CurrentFormatNodeSchema]),
+});
+
+/**
+ * Checks that `network` holds one node whose only encrypted answer is a short
+ * name stored in the current format, and returns the network's header.
+ */
+function expectEncryptedName(network: unknown, plaintext: string) {
+  const {
+    encryption,
+    nodes: [node],
+  } = EncryptedNetworkSchema.parse(network);
+  expectEncryptedNameOn(node, plaintext);
+  return encryption;
+}
+
+/**
+ * Checks that `node`'s only encrypted answer is a short name stored in the
+ * current format.
+ */
+function expectEncryptedNameOn(node: unknown, plaintext: string) {
+  const parsed = CurrentFormatNodeSchema.parse(node);
+  const attributes = parsed[entityAttributesProperty];
+  const ciphertexts = Object.keys(parsed[entitySecureAttributesMeta]).map(
+    (variableId) => ByteArraySchema.parse(attributes[variableId]),
+  );
+  expect(ciphertexts).toHaveLength(1);
+  // A value is padded to whole 32-byte blocks before encryption, and GCM
+  // appends a 16-byte tag: a name shorter than one block is 48 bytes.
+  expect(ciphertexts[0]).toHaveLength(32 + 16);
+  expect(Object.values(attributes)).not.toContain(plaintext);
+}
+
 /**
  * The animated EncryptionBackground (EncryptedBackground.tsx:367-371, rendered
  * at Anonymisation.tsx:75) never settles and draws unseeded Math.random names
@@ -98,6 +171,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
         'passphraseFields.required',
         'confirmField.sameAs',
         'beforeNext.gating',
+        'validation.minLength.default',
       ],
       build: () => {
         const synth = new SyntheticInterview();
@@ -154,6 +228,15 @@ export const anonymisationScenarios: InterfaceScenarios = {
         await expect(anon.successAlert()).toHaveCount(0);
         await expect(anon.passphraseField()).toBeVisible();
 
+        // validation.minLength.default: the stage sets no minimum, so a
+        // passphrase being chosen must still be at least 8 characters.
+        await anon.fillPassphrase('seven77');
+        await anon.submit();
+        await expect(anon.passphraseError()).toContainText(
+          /enter at least 8 characters/i,
+        );
+        await expect(anon.successAlert()).toHaveCount(0);
+
         // A valid, matching passphrase releases the gate: the stage becomes
         // ready and advancement succeeds. Ending on the closing Information
         // stage keeps the final aria snapshot off the animated background.
@@ -170,19 +253,25 @@ export const anonymisationScenarios: InterfaceScenarios = {
 
     {
       id: 'min-max-length-validation',
-      covers: ['validation.minLength', 'validation.maxLength'],
+      covers: [
+        'validation.minLength',
+        'validation.minLength.belowDefault',
+        'validation.maxLength',
+      ],
       build: () => {
         const synth = new SyntheticInterview();
         synth.addInformationStage({
           title: 'Introduction',
           text: 'Before the anonymisation stage.',
         });
+        // The minimum is below the default of 8 on purpose: a researcher's own
+        // minimum replaces the default, even when it is lower.
         synth.addStage('Anonymisation', {
           explanationText: {
             title: 'Protect your data',
-            body: 'Create a passphrase between 8 and 20 characters.',
+            body: 'Create a passphrase between 4 and 20 characters.',
           },
-          validation: { minLength: 8, maxLength: 20 },
+          validation: { minLength: 4, maxLength: 20 },
         });
         synth.addInformationStage({
           title: 'Complete',
@@ -195,10 +284,10 @@ export const anonymisationScenarios: InterfaceScenarios = {
         const anon = new AnonymisationFixture(page);
         await interview.next(); // Introduction -> Anonymisation
 
-        await anon.fillPassphrase('short');
+        await anon.fillPassphrase('abc');
         await anon.submit();
         await expect(anon.passphraseError()).toContainText(
-          /enter at least 8 characters/i,
+          /enter at least 4 characters/i,
         );
         await expect(anon.successAlert()).toHaveCount(0);
 
@@ -209,8 +298,23 @@ export const anonymisationScenarios: InterfaceScenarios = {
         );
         await expect(anon.successAlert()).toHaveCount(0);
 
-        // The stated maximum is inclusive: exactly 20 characters is valid.
-        await anon.fillPassphrase('p'.repeat(20));
+        // The stated maximum is inclusive: exactly 20 characters passes the
+        // passphrase field. The confirmation differs, so the form is refused
+        // on sameAs alone; once that error is shown the whole form has been
+        // validated, and the passphrase field carries none.
+        await anon.fillMismatched('p'.repeat(20), 'q'.repeat(20));
+        await anon.submit();
+        await expect(anon.confirmError()).toContainText(/same as/i);
+        await expect(anon.passphraseField()).toHaveAttribute(
+          'aria-invalid',
+          'false',
+        );
+        await expect(anon.passphraseError()).toHaveCount(0);
+        await expect(anon.successAlert()).toHaveCount(0);
+
+        // validation.minLength.belowDefault: exactly the researcher's minimum
+        // of 4 is accepted, though it is shorter than the default of 8.
+        await anon.fillPassphrase('abcd');
         await anon.submit();
         await expect(anon.successAlert()).toBeVisible();
 
@@ -268,7 +372,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
         ).toBeVisible();
 
         // passphrase.persistOnRevisit: navigating back re-enters the stage in
-        // its success state (ui.passphrase persisted; the form is NOT re-shown).
+        // its success state (the key stays in force; the form is NOT re-shown).
         await page.getByTestId('previous-button').click();
         await expect(anon.successAlert()).toBeVisible();
         await expect(anon.passphraseField()).toHaveCount(0);
@@ -283,13 +387,12 @@ export const anonymisationScenarios: InterfaceScenarios = {
 
     {
       id: 'encrypted-downstream-write',
-      covers: ['experiments.encryptedVariables=true+encryptedVariable'],
+      covers: ['encryptedVariable.downstreamWrite'],
       visual: true,
       slow: true,
       captureMask: (page) => [page.locator('.transform-3d')],
       build: () => {
         const synth = new SyntheticInterview();
-        synth.setExperiments({ encryptedVariables: true });
         synth.addInformationStage({
           title: 'Introduction',
           text: 'Before the anonymisation stage.',
@@ -327,29 +430,13 @@ export const anonymisationScenarios: InterfaceScenarios = {
         // Visible label still decrypts for display (useNodeLabel).
         await expect(page.getByRole('option', { name: 'Alice' })).toBeVisible();
 
-        const network = await protocol.getNetworkState(interview.interviewId);
-        const node = network!.nodes[0]!;
-        const attrs = node[entityAttributesProperty];
-        const nameVarId = Object.keys(attrs)[0]!;
-        // Ciphertext is a number[], never the plaintext string.
-        expect(Array.isArray(attrs[nameVarId])).toBe(true);
-        expect(attrs[nameVarId]).not.toBe('Alice');
+        // The name is stored as ciphertext with only its IV beside it, and the
+        // network carries the header the first passphrase created.
+        expectEncryptedName(
+          await protocol.getNetworkState(interview.interviewId),
+          'Alice',
+        );
 
-        // Encrypted values move into _secureAttributes (not part of NcNode's
-        // public type) — narrow via schema parse instead of a type assertion.
-        const SecureNodeSchema = z.object({
-          _secureAttributes: z.record(
-            z.string(),
-            z.object({
-              iv: z.array(z.number()).length(12),
-              salt: z.array(z.number()).length(16),
-            }),
-          ),
-        });
-        const { _secureAttributes } = SecureNodeSchema.parse(node);
-        expect(_secureAttributes[nameVarId]).toBeDefined();
-
-        // Encryption completes asynchronously after the node first appears.
         // Wait for the successful quick-add submission to finish resetting
         // before the scenario's final accessibility snapshot is captured.
         await expect(page.getByTestId('quick-add-input')).toHaveValue('');
@@ -357,99 +444,16 @@ export const anonymisationScenarios: InterfaceScenarios = {
     },
 
     {
-      id: 'encrypted-off-not-decrypted',
-      covers: ['experiments.encryptedVariables=absent'],
-      // With the experiment off, useEncryption short-circuits to false, so the
-      // write is plaintext (no PBKDF2) — a fast round-trip, not crypto-heavy.
-      build: () => {
-        const synth = new SyntheticInterview();
-        // setExperiments is never called: getShouldEncryptNames stays false,
-        // so nothing is treated as encrypted and nothing is decrypted.
-        synth.addInformationStage({
-          title: 'Introduction',
-          text: 'Before the anonymisation stage.',
-        });
-        const person = synth.addNodeType();
-        const nameVar = person.addVariable({
-          name: 'name',
-          type: 'text',
-          encrypted: true,
-        });
-        synth.addStage('Anonymisation', {
-          explanationText: {
-            title: 'Protect your data',
-            body: 'This study encrypts participant names.',
-          },
-        });
-        const generator = synth.addStage('NameGeneratorQuickAdd', {
-          subject: { entity: 'node', type: person.id },
-          quickAdd: nameVar.id,
-        });
-        generator.addPrompt({ text: 'Add a person' });
-        synth.addInformationStage({
-          title: 'Complete',
-          text: 'After the anonymisation stage.',
-        });
-        return synth;
-      },
-      currentStep: 0,
-      run: async ({ page, interview, protocol }) => {
-        const anon = new AnonymisationFixture(page);
-        await interview.next(); // Introduction -> Anonymisation
-
-        await anon.fillPassphrase('unused-phrase');
-        await anon.submit();
-        await expect(anon.successAlert()).toBeVisible();
-        await interview.next(); // Anonymisation -> NameGeneratorQuickAdd
-
-        await page.getByTestId('quick-add-toggle').click();
-        await page.getByTestId('quick-add-input').fill('Alice');
-        await page.getByTestId('quick-add-input').press('Enter');
-
-        await expect
-          .poll(
-            async () =>
-              (await protocol.getNetworkState(interview.interviewId))?.nodes
-                .length ?? 0,
-          )
-          .toBe(1);
-
-        // experiments.encryptedVariables=absent is the master switch: with it
-        // off, NameGenerator's useEncryption short-circuits to false so the name
-        // is written as plaintext, and useNodeLabel likewise skips
-        // decryption. The two paths are aligned, so the label renders the stored
-        // plaintext directly — 'Alice' is visible, not undecryptable ciphertext.
-        await expect(page.getByRole('option', { name: 'Alice' })).toBeVisible();
-
-        const network = await protocol.getNetworkState(interview.interviewId);
-        const node = network!.nodes[0]!;
-        const attrs = node[entityAttributesProperty];
-        const nameVarId = Object.keys(attrs)[0]!;
-        // Stored as plaintext, not ciphertext: a plain string value and no
-        // secure-attribute metadata (contrast encrypted-downstream-write, which
-        // stores an array + entitySecureAttributesMeta with the experiment on).
-        expect(attrs[nameVarId]).toBe('Alice');
-        expect(node[entitySecureAttributesMeta]).toBeUndefined();
-
-        // End on the background-free closing Information stage.
-        await interview.next();
-        await expect(
-          page.getByRole('heading', { name: 'Complete' }),
-        ).toBeVisible();
-      },
-    },
-
-    {
       id: 'missing-and-wrong-passphrase-prompter',
       covers: [
         'encryptedVariable.resume.locked',
+        'encryptedVariable.resume.persistedFormat',
         'encryptedVariable.missingPassphrase.prompter',
         'encryptedVariable.wrongPassphrase.rejected',
       ],
       slow: true,
       build: () => {
         const synth = new SyntheticInterview();
-        synth.setExperiments({ encryptedVariables: true });
         synth.addInformationStage({
           title: 'Introduction',
           text: 'Before the anonymisation stage.',
@@ -488,45 +492,55 @@ export const anonymisationScenarios: InterfaceScenarios = {
 
         await stage.quickAdd.addNode('Alice');
         await expect(page.getByRole('option', { name: 'Alice' })).toBeVisible();
-        // The session must hold the ciphertext before it is resumed from.
-        await expect
-          .poll(async () => {
-            const network = await protocol.getNetworkState(
-              interview.interviewId,
-            );
-            const attributes = network?.nodes[0]?.[entityAttributesProperty];
-            return Object.values(attributes ?? {}).some(Array.isArray);
-          })
-          .toBe(true);
+        const header = expectEncryptedName(
+          await protocol.getNetworkState(interview.interviewId),
+          'Alice',
+        );
 
         // encryptedVariable.resume.locked: leaving and resuming remounts the
-        // interview from its session, so the passphrase is gone from memory.
-        // The answer stays encrypted; nothing shows it in the clear.
+        // interview from its session, so the key is gone from memory. The
+        // answer stays encrypted; nothing shows it in the clear.
         await interview.resume();
         await expect(page.getByRole('option', { name: '🔒' })).toBeVisible();
         await expect(page.getByText('Alice')).toHaveCount(0);
+
+        // encryptedVariable.resume.persistedFormat: the session the interview
+        // resumed from holds the answer in the current format, and the same
+        // header, so the passphrase chosen before leaving still derives the
+        // key.
+        const stored = await page.evaluate(
+          (id) => window.__test.getStoredSession(id),
+          interview.interviewId,
+        );
+        expect(expectEncryptedName(stored?.network, 'Alice')).toEqual(header);
 
         // encryptedVariable.missingPassphrase.prompter
         await expect.poll(() => stage.quickAdd.isDisabled()).toBe(true);
         await expect(anon.prompterButton()).toBeVisible();
         await expect(anon.prompterButton()).toContainText('🔑');
 
-        // encryptedVariable.wrongPassphrase.rejected: a passphrase that does
-        // not unlock the saved answer is turned away under the field, and is
-        // never put in force, so the answer stays locked rather than failing
-        // to decrypt.
+        // A passphrase was chosen in this interview, so the prompter asks for
+        // it rather than for a new one: one field, no confirmation.
         await anon.openPrompter();
+        await expect(anon.prompterDialog()).toBeVisible();
+        await expect(anon.confirmField()).toHaveCount(0);
+
+        // encryptedVariable.wrongPassphrase.rejected: a passphrase that does
+        // not unlock the saved answer is checked, turned away under the field,
+        // and never put in force, so the answer stays locked rather than
+        // failing to decrypt.
+        const releaseCheck = await anon.holdKeyDerivation();
         await anon.submitPrompterPassphrase('wrong-phrase');
-        await expect(anon.passphraseError()).toContainText(
-          'This passphrase does not match the one used earlier in this interview.',
-        );
+        await expect(anon.checkingStatus()).toBeVisible();
+        await expect(anon.prompterSubmitButton()).toBeDisabled();
+        await releaseCheck();
+        await expect(anon.passphraseError()).toHaveText(PASSPHRASE_MISMATCH);
+        await expect(anon.checkingStatus()).toHaveCount(0);
         await expect(anon.passphraseField()).toHaveAttribute(
           'aria-invalid',
           'true',
         );
-        await expect(
-          page.getByRole('dialog', { name: 'Enter your Passphrase' }),
-        ).toBeVisible();
+        await expect(anon.prompterDialog()).toBeVisible();
         // The open dialog hides the rest of the page from the accessibility
         // tree, so the list behind it is looked up hidden.
         await expect(
@@ -536,12 +550,339 @@ export const anonymisationScenarios: InterfaceScenarios = {
 
         // The original passphrase is accepted, and unlocks the answer.
         await anon.submitPrompterPassphrase('first-phrase');
-        await expect(
-          page.getByRole('dialog', { name: 'Enter your Passphrase' }),
-        ).toHaveCount(0);
+        await expect(anon.prompterDialog()).toHaveCount(0);
         await expect(page.getByRole('option', { name: 'Alice' })).toBeVisible();
         await expect(anon.prompterButton()).toHaveCount(0);
         await expect.poll(() => stage.quickAdd.isDisabled()).toBe(false);
+      },
+    },
+
+    {
+      id: 'resume-in-portrait-unlocks-through-prompter',
+      covers: ['encryptedVariable.missingPassphrase.horizontalPrompter'],
+      slow: true,
+      build: () => {
+        const synth = new SyntheticInterview();
+        synth.addInformationStage({
+          title: 'Introduction',
+          text: 'Before the anonymisation stage.',
+        });
+        const person = synth.addNodeType();
+        const nameVar = person.addVariable({
+          name: 'name',
+          type: 'text',
+          encrypted: true,
+        });
+        synth.addStage('Anonymisation', {
+          explanationText: {
+            title: 'Protect your data',
+            body: 'This study encrypts participant names.',
+          },
+        });
+        const generator = synth.addStage('NameGeneratorQuickAdd', {
+          subject: { entity: 'node', type: person.id },
+          quickAdd: nameVar.id,
+        });
+        generator.addPrompt({ text: 'Add a person (this will be encrypted)' });
+        return synth;
+      },
+      currentStep: 0,
+      run: async ({ page, interview, stage }) => {
+        const anon = new AnonymisationFixture(page);
+        await interview.next(); // Introduction -> Anonymisation
+
+        await anon.fillPassphrase('first-phrase');
+        await anon.submit();
+        await expect(anon.successAlert()).toBeVisible();
+        await interview.next(); // -> NameGeneratorQuickAdd (step 2)
+
+        await stage.quickAdd.addNode('Alice');
+        await expect(page.getByRole('option', { name: 'Alice' })).toBeVisible();
+
+        // The participant resumes on a phone held upright, where the
+        // navigation is a bar along the bottom of the screen rather than a
+        // rail down its side. The key is gone from memory.
+        const portrait = { width: 390, height: 844 };
+        await page.setViewportSize(portrait);
+        await interview.resume();
+        await expect(page.getByRole('option', { name: '🔒' })).toBeVisible();
+        await expect.poll(() => stage.quickAdd.isDisabled()).toBe(true);
+
+        const navigation = page.getByRole('navigation');
+        await expect
+          .poll(async () => {
+            const bar = await navigation.boundingBox();
+            return (
+              bar !== null &&
+              bar.width > bar.height &&
+              Math.round(bar.y + bar.height) === portrait.height
+            );
+          })
+          .toBe(true);
+
+        // encryptedVariable.missingPassphrase.horizontalPrompter: the prompter
+        // is in the bottom bar, wholly on screen and inside it.
+        const prompter = navigation.getByRole('button', {
+          name: 'Passphrase',
+          exact: true,
+        });
+        await expect(prompter).toContainText('🔑');
+        await expect(prompter).toBeInViewport({ ratio: 1 });
+        await expect
+          .poll(async () => {
+            const bar = await navigation.boundingBox();
+            const button = await prompter.boundingBox();
+            return (
+              bar !== null &&
+              button !== null &&
+              button.x >= bar.x &&
+              button.y >= bar.y &&
+              button.x + button.width <= bar.x + bar.width &&
+              button.y + button.height <= bar.y + bar.height
+            );
+          })
+          .toBe(true);
+
+        // A passphrase was chosen in this interview, so the prompter asks for
+        // it once, and entering it unlocks the answer.
+        await anon.openPrompter();
+        await expect(anon.prompterDialog()).toBeVisible();
+        await expect(anon.confirmField()).toHaveCount(0);
+        await anon.submitPrompterPassphrase('first-phrase');
+        await expect(anon.prompterDialog()).toHaveCount(0);
+        await expect(page.getByRole('option', { name: 'Alice' })).toBeVisible();
+        await expect(anon.prompterButton()).toHaveCount(0);
+        await expect.poll(() => stage.quickAdd.isDisabled()).toBe(false);
+      },
+    },
+
+    {
+      id: 'resume-asks-for-chosen-passphrase',
+      covers: [
+        'passphrase.resume.verifyMode',
+        'passphrase.resume.wrongRejectedBeforeAnyAnswer',
+        'passphrase.checkingStatus',
+        'beforeNext.submitsPassphrase',
+      ],
+      slow: true,
+      build: () => {
+        const synth = new SyntheticInterview();
+        synth.addInformationStage({
+          title: 'Introduction',
+          text: 'Before the anonymisation stage.',
+        });
+        synth.addStage('Anonymisation', {
+          explanationText: {
+            title: 'Protect your data',
+            body: 'Create a passphrase.',
+          },
+        });
+        synth.addInformationStage({
+          title: 'Complete',
+          text: 'After the anonymisation stage.',
+        });
+        return synth;
+      },
+      currentStep: 0,
+      run: async ({ page, interview, protocol }) => {
+        const anon = new AnonymisationFixture(page);
+        await interview.next(); // Introduction -> Anonymisation (step 1)
+
+        // Nothing has been chosen yet, so the stage asks for a passphrase to
+        // be chosen and confirmed.
+        await expect(anon.confirmField()).toBeVisible();
+        await expect(anon.chosenEarlierNotice()).toHaveCount(0);
+        await anon.fillPassphrase('first-phrase');
+        await anon.submit();
+        await expect(anon.successAlert()).toBeVisible();
+        const header = EncryptionHeaderSchema.parse(
+          (await protocol.getNetworkState(interview.interviewId))?.encryption,
+        );
+
+        // The participant leaves before answering anything that is encrypted
+        // and resumes on the same stage. The key is gone from memory; the
+        // header is all the session holds of the passphrase.
+        await interview.resume();
+        const stored = await page.evaluate(
+          (id) => window.__test.getStoredSession(id),
+          interview.interviewId,
+        );
+        expect(
+          EncryptionHeaderSchema.parse(stored?.network.encryption),
+        ).toEqual(header);
+        expect(stored?.network.nodes).toEqual([]);
+
+        // passphrase.resume.verifyMode: the stage asks for the passphrase
+        // chosen earlier, in one field, and says why.
+        await expect(anon.chosenEarlierNotice()).toBeVisible();
+        await expect(anon.passphraseField()).toBeVisible();
+        await expect(anon.confirmField()).toHaveCount(0);
+        await expect(anon.successAlert()).toHaveCount(0);
+
+        // passphrase.resume.wrongRejectedBeforeAnyAnswer: with no answer to
+        // fail to decrypt, a wrong passphrase is still checked against the
+        // header and refused. It is shorter than the 8 characters a chosen
+        // passphrase needs, and the refusal is the mismatch, not its length:
+        // length rules only apply where a passphrase is chosen.
+        // passphrase.checkingStatus: the check is announced while it runs,
+        // and the form cannot be submitted again meanwhile.
+        const releaseCheck = await anon.holdKeyDerivation();
+        await anon.passphraseField().fill('wrong');
+        await anon.submit();
+        await expect(anon.checkingStatus()).toBeVisible();
+        await expect(anon.submitButton()).toBeDisabled();
+        await releaseCheck();
+        await expect(anon.passphraseError()).toHaveText(PASSPHRASE_MISMATCH);
+        await expect(anon.checkingStatus()).toHaveCount(0);
+        await expect(anon.passphraseField()).toHaveAttribute(
+          'aria-invalid',
+          'true',
+        );
+        await expect(anon.successAlert()).toHaveCount(0);
+
+        // beforeNext.submitsPassphrase: Next checks the entered passphrase
+        // too, shows the same check under way, and stays on the stage when
+        // it is refused.
+        await anon.passphraseField().fill('still-wrong');
+        const releaseNextCheck = await anon.holdKeyDerivation();
+        await interview.nextButton.click();
+        await expect(anon.checkingStatus()).toBeVisible();
+        await releaseNextCheck();
+        await expect(anon.checkingStatus()).toHaveCount(0);
+        await expect(page).toHaveURL(/step=1/);
+        await expect(anon.passphraseError()).toHaveText(PASSPHRASE_MISMATCH);
+
+        // The passphrase chosen earlier, submitted through Next, is accepted
+        // and moves on. Re-entering it leaves the header as it was.
+        await anon.passphraseField().fill('first-phrase');
+        await interview.next();
+        await expect(
+          page.getByRole('heading', { name: 'Complete' }),
+        ).toBeVisible();
+        expect(
+          (await protocol.getNetworkState(interview.interviewId))?.encryption,
+        ).toEqual(header);
+
+        // The key is in force: on a revisit the stage shows its success state.
+        await page.getByTestId('previous-button').click();
+        await expect(anon.successAlert()).toBeVisible();
+        await interview.next();
+        await expect(
+          page.getByRole('heading', { name: 'Complete' }),
+        ).toBeVisible();
+      },
+    },
+
+    {
+      id: 'schema-8-answers-unavailable-new-passphrase',
+      covers: [
+        'encryptedVariable.schema8.unavailableWithoutPrompt',
+        'encryptedVariable.schema8.newPassphrase',
+        'encryptedVariable.schema8.newAnswerCurrentFormat',
+        'encryptedVariable.schema8.oldAnswerStaysUnavailable',
+      ],
+      chromiumOnly: true,
+      slow: true,
+      seedNetwork: true,
+      schema8Encryption: true,
+      build: () => {
+        const synth = new SyntheticInterview();
+        const person = synth.addNodeType();
+        const nameVar = person.addVariable({
+          name: 'name',
+          type: 'text',
+          encrypted: true,
+        });
+        const nicknameVar = person.addVariable({
+          name: 'nickname',
+          type: 'text',
+        });
+        // Adds only an unprotected answer, so nothing on this stage needs a
+        // passphrase except reading the protected one it already holds.
+        const earlier = synth.addStage('NameGeneratorQuickAdd', {
+          subject: { entity: 'node', type: person.id },
+          quickAdd: nicknameVar.id,
+        });
+        earlier.addPrompt({ text: 'People named before the update' });
+        synth.addManualNode(
+          earlier.id,
+          person.id,
+          'alice',
+          { [nameVar.id]: 'Alice', [nicknameVar.id]: 'Al' },
+          { promptIndices: [0] },
+        );
+        synth.addStage('Anonymisation', {
+          explanationText: {
+            title: 'Protect your data',
+            body: 'Create a passphrase.',
+          },
+        });
+        const later = synth.addStage('NameGeneratorQuickAdd', {
+          subject: { entity: 'node', type: person.id },
+          quickAdd: nameVar.id,
+        });
+        later.addPrompt({ text: 'Add a person (this will be encrypted)' });
+        return synth;
+      },
+      currentStep: 0,
+      run: async ({ page, interview, stage, protocol }) => {
+        const anon = new AnonymisationFixture(page);
+
+        // encryptedVariable.schema8.unavailableWithoutPrompt: an interview
+        // saved before the update loads with its protected answer shown as
+        // unavailable. No passphrase could read it, so none is asked for.
+        await expect(
+          page.getByRole('option', { name: 'Answer unavailable' }),
+        ).toBeVisible();
+        await expect(anon.prompterButton()).toHaveCount(0);
+        await expect(page.getByText('Alice')).toHaveCount(0);
+        const before = await protocol.getNetworkState(interview.interviewId);
+        expect(before).not.toHaveProperty('encryption');
+        const [storedAlice] = before?.nodes ?? [];
+        expect(
+          Object.keys(storedAlice?.[entitySecureAttributesMeta] ?? {}),
+        ).toHaveLength(1);
+        expect(
+          Object.values(storedAlice?.[entitySecureAttributesMeta] ?? {})[0],
+        ).toHaveProperty('salt');
+
+        // encryptedVariable.schema8.newPassphrase: the stage asks for a
+        // passphrase to be chosen, not for one chosen earlier.
+        await interview.next(); // -> Anonymisation (step 1)
+        await expect(anon.confirmField()).toBeVisible();
+        await expect(anon.chosenEarlierNotice()).toHaveCount(0);
+        await anon.fillPassphrase('fresh-phrase');
+        await anon.submit();
+        await expect(anon.successAlert()).toBeVisible();
+        const header = EncryptionHeaderSchema.parse(
+          (await protocol.getNetworkState(interview.interviewId))?.encryption,
+        );
+
+        // encryptedVariable.schema8.newAnswerCurrentFormat: a new answer is
+        // stored under the header the new passphrase created, with only its
+        // IV beside it.
+        await interview.next(); // -> NameGeneratorQuickAdd (step 2)
+        await expect(anon.prompterButton()).toHaveCount(0);
+        await stage.quickAdd.addNode('Bob');
+        await expect(page.getByRole('option', { name: 'Bob' })).toBeVisible();
+        await expect(page.getByTestId('quick-add-input')).toHaveValue('');
+        const after = await protocol.getNetworkState(interview.interviewId);
+        expect(EncryptionHeaderSchema.parse(after?.encryption)).toEqual(header);
+        expect(after?.nodes).toHaveLength(2);
+        expectEncryptedNameOn(after?.nodes[1], 'Bob');
+
+        // encryptedVariable.schema8.oldAnswerStaysUnavailable: the key now in
+        // force does not make the old answer readable, and it is left as it
+        // was stored.
+        expect(after?.nodes[0]).toEqual(storedAlice);
+        await page.getByTestId('previous-button').click();
+        await expect(anon.successAlert()).toBeVisible();
+        await page.getByTestId('previous-button').click();
+        await expect(
+          page.getByRole('option', { name: 'Answer unavailable' }),
+        ).toBeVisible();
+        await expect(page.getByText('Alice')).toHaveCount(0);
+        await expect(anon.prompterButton()).toHaveCount(0);
       },
     },
   ],

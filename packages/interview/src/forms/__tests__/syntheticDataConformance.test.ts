@@ -157,7 +157,7 @@ function collectFormScope(stageList: Stage[]): FormScope {
       continue;
     }
 
-    if (!('form' in stage)) continue;
+    if (!('form' in stage) || !stage.form) continue;
     const variables = stage.form.fields.map((field) => field.variable);
 
     if (stage.type === 'EgoForm') {
@@ -295,24 +295,24 @@ function formFields(variables: Variables): { variable: string }[] {
 }
 
 const FOUR_OPTIONS: VariableOptions = [
-  { label: 'Work', value: 'work' },
-  { label: 'Home', value: 'home' },
-  { label: 'School', value: 'school' },
-  { label: 'Sport', value: 'sport' },
+  { label: { en: 'Work' }, value: 'work' },
+  { label: { en: 'Home' }, value: 'home' },
+  { label: { en: 'School' }, value: 'school' },
+  { label: { en: 'Sport' }, value: 'sport' },
 ];
 
 const THREE_OPTIONS: VariableOptions = [
-  { label: 'Low', value: 1 },
-  { label: 'Mid', value: 2 },
-  { label: 'High', value: 3 },
+  { label: { en: 'Low' }, value: 1 },
+  { label: { en: 'Mid' }, value: 2 },
+  { label: { en: 'High' }, value: 3 },
 ];
 
 const FIVE_OPTIONS: VariableOptions = [
-  { label: 'Never', value: 1 },
-  { label: 'Rarely', value: 2 },
-  { label: 'Sometimes', value: 3 },
-  { label: 'Often', value: 4 },
-  { label: 'Always', value: 5 },
+  { label: { en: 'Never' }, value: 1 },
+  { label: { en: 'Rarely' }, value: 2 },
+  { label: { en: 'Sometimes' }, value: 3 },
+  { label: { en: 'Often' }, value: 4 },
+  { label: { en: 'Always' }, value: 5 },
 ];
 
 const MONTH_PARAMETERS = {
@@ -324,18 +324,20 @@ const MONTH_PARAMETERS = {
 /**
  * Every (variable type, validation rule) pair the ego entity may legally
  * declare, per the per-type `.pick()` lists in
- * `protocol-validation/src/schemas/8/variables/variable.ts`. Ego cannot declare
+ * `protocol-validation/src/schemas/9/variables/variable.ts`. Ego cannot declare
  * `unique`, which the node fixtures below cover instead.
  */
 const egoVariables: Variables = {
   egoName: {
     name: 'Name',
+    label: 'Name',
     type: 'text',
     component: 'Text',
     validation: { required: true, minLength: 3, maxLength: 12 },
   },
   egoAlias: {
     name: 'Alias',
+    label: 'Alias',
     type: 'text',
     component: 'Text',
     validation: { required: true, differentFrom: ref('egoName') },
@@ -345,18 +347,21 @@ const egoVariables: Variables = {
   // a seed happens to produce.
   egoInitials: {
     name: 'Initials',
+    label: 'Initials',
     type: 'text',
     component: 'Text',
     validation: { required: true, minLength: 2, maxLength: 4 },
   },
   egoCode: {
     name: 'Code',
+    label: 'Code',
     type: 'text',
     component: 'Text',
     validation: { required: true, minLength: 8, maxLength: 8 },
   },
   egoCodeConfirm: {
     name: 'Confirm code',
+    label: 'Confirm code',
     type: 'text',
     component: 'TextArea',
     validation: {
@@ -369,22 +374,26 @@ const egoVariables: Variables = {
 
   egoAge: {
     name: 'Age',
+    label: 'Age',
     type: 'number',
     component: 'Number',
     validation: { required: true, minValue: 18, maxValue: 65 },
   },
   egoAgeCopy: {
     name: 'Age again',
+    label: 'Age again',
     type: 'number',
     validation: { minValue: 18, maxValue: 65, sameAs: ref('egoAge') },
   },
   egoYearsAtAddress: {
     name: 'Years at address',
+    label: 'Years at address',
     type: 'number',
     validation: { minValue: 0, maxValue: 40, lessThanVariable: ref('egoAge') },
   },
   egoRetirementAge: {
     name: 'Retirement age',
+    label: 'Retirement age',
     type: 'number',
     validation: {
       minValue: 40,
@@ -394,6 +403,7 @@ const egoVariables: Variables = {
   },
   egoAgeAtLeast: {
     name: 'Age at least',
+    label: 'Age at least',
     type: 'number',
     validation: {
       minValue: 0,
@@ -403,6 +413,7 @@ const egoVariables: Variables = {
   },
   egoAgeAtMost: {
     name: 'Age at most',
+    label: 'Age at most',
     type: 'number',
     validation: {
       minValue: 18,
@@ -412,11 +423,13 @@ const egoVariables: Variables = {
   },
   egoOtherNumber: {
     name: 'Other number',
+    label: 'Other number',
     type: 'number',
     validation: { minValue: 1, maxValue: 3 },
   },
   egoLuckyNumber: {
     name: 'Lucky number',
+    label: 'Lucky number',
     type: 'number',
     validation: {
       minValue: 1,
@@ -430,30 +443,35 @@ const egoVariables: Variables = {
   // value bounds of its own. Every rule it does accept is below.
   egoCloseness: {
     name: 'Closeness',
+    label: 'Closeness',
     type: 'scalar',
     component: 'VisualAnalogScale',
     validation: { required: true },
   },
   egoTrust: {
     name: 'Trust',
+    label: 'Trust',
     type: 'scalar',
     component: 'VisualAnalogScale',
     validation: { greaterThanVariable: ref('egoCloseness') },
   },
   egoDoubt: {
     name: 'Doubt',
+    label: 'Doubt',
     type: 'scalar',
     component: 'VisualAnalogScale',
     validation: { lessThanVariable: ref('egoCloseness') },
   },
   egoHopeAtLeast: {
     name: 'Hope at least',
+    label: 'Hope at least',
     type: 'scalar',
     component: 'VisualAnalogScale',
     validation: { greaterThanOrEqualToVariable: ref('egoCloseness') },
   },
   egoHopeAtMost: {
     name: 'Hope at most',
+    label: 'Hope at most',
     type: 'scalar',
     component: 'VisualAnalogScale',
     validation: { lessThanOrEqualToVariable: ref('egoCloseness') },
@@ -461,6 +479,7 @@ const egoVariables: Variables = {
 
   egoBirthMonth: {
     name: 'Birth month',
+    label: 'Birth month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: MONTH_PARAMETERS,
@@ -468,6 +487,7 @@ const egoVariables: Variables = {
   },
   egoBirthMonthCopy: {
     name: 'Birth month again',
+    label: 'Birth month again',
     type: 'datetime',
     component: 'DatePicker',
     parameters: MONTH_PARAMETERS,
@@ -475,6 +495,7 @@ const egoVariables: Variables = {
   },
   egoOtherMonth: {
     name: 'Other month',
+    label: 'Other month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: MONTH_PARAMETERS,
@@ -482,6 +503,7 @@ const egoVariables: Variables = {
   },
   egoLaterMonth: {
     name: 'Later month',
+    label: 'Later month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: MONTH_PARAMETERS,
@@ -489,6 +511,7 @@ const egoVariables: Variables = {
   },
   egoEarlierMonth: {
     name: 'Earlier month',
+    label: 'Earlier month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: MONTH_PARAMETERS,
@@ -496,6 +519,7 @@ const egoVariables: Variables = {
   },
   egoMonthAtLeast: {
     name: 'Month at least',
+    label: 'Month at least',
     type: 'datetime',
     component: 'DatePicker',
     parameters: MONTH_PARAMETERS,
@@ -503,6 +527,7 @@ const egoVariables: Variables = {
   },
   egoMonthAtMost: {
     name: 'Month at most',
+    label: 'Month at most',
     type: 'datetime',
     component: 'DatePicker',
     parameters: MONTH_PARAMETERS,
@@ -510,6 +535,7 @@ const egoVariables: Variables = {
   },
   egoStartYear: {
     name: 'Start year',
+    label: 'Start year',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'year', min: '1990-01-01', max: '2005-12-31' },
@@ -518,6 +544,7 @@ const egoVariables: Variables = {
 
   egoLastVisit: {
     name: 'Last visit',
+    label: 'Last visit',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: { before: 90, after: 0 },
@@ -525,6 +552,7 @@ const egoVariables: Variables = {
   },
   egoLastVisitCopy: {
     name: 'Last visit again',
+    label: 'Last visit again',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: { before: 90, after: 0 },
@@ -532,6 +560,7 @@ const egoVariables: Variables = {
   },
   egoOtherVisit: {
     name: 'Other visit',
+    label: 'Other visit',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: { before: 90, after: 0 },
@@ -539,6 +568,7 @@ const egoVariables: Variables = {
   },
   egoFirstVisit: {
     name: 'First visit',
+    label: 'First visit',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: { before: 365, after: 0 },
@@ -546,6 +576,7 @@ const egoVariables: Variables = {
   },
   egoNextVisit: {
     name: 'Next visit',
+    label: 'Next visit',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: { before: 90, after: 30 },
@@ -553,6 +584,7 @@ const egoVariables: Variables = {
   },
   egoVisitAtLeast: {
     name: 'Visit at least',
+    label: 'Visit at least',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: { before: 90, after: 30 },
@@ -560,6 +592,7 @@ const egoVariables: Variables = {
   },
   egoVisitAtMost: {
     name: 'Visit at most',
+    label: 'Visit at most',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: { before: 120, after: 0 },
@@ -568,36 +601,42 @@ const egoVariables: Variables = {
 
   egoConsent: {
     name: 'Consent',
+    label: 'Consent',
     type: 'boolean',
     component: 'Boolean',
     validation: { required: true },
   },
   egoConsentCopy: {
     name: 'Consent again',
+    label: 'Consent again',
     type: 'boolean',
     component: 'Boolean',
     validation: { sameAs: ref('egoConsent') },
   },
   egoRefused: {
     name: 'Refused',
+    label: 'Refused',
     type: 'boolean',
     component: 'Boolean',
     validation: { differentFrom: ref('egoConsent') },
   },
   egoNotify: {
     name: 'Notify',
+    label: 'Notify',
     type: 'boolean',
     component: 'Toggle',
     validation: { required: true },
   },
   egoNotifyCopy: {
     name: 'Notify again',
+    label: 'Notify again',
     type: 'boolean',
     component: 'Toggle',
     validation: { sameAs: ref('egoNotify') },
   },
   egoOptOut: {
     name: 'Opt out',
+    label: 'Opt out',
     type: 'boolean',
     component: 'Toggle',
     validation: { differentFrom: ref('egoNotify') },
@@ -605,6 +644,7 @@ const egoVariables: Variables = {
 
   egoBand: {
     name: 'Band',
+    label: 'Band',
     type: 'ordinal',
     component: 'RadioGroup',
     options: THREE_OPTIONS,
@@ -612,6 +652,7 @@ const egoVariables: Variables = {
   },
   egoBandCopy: {
     name: 'Band again',
+    label: 'Band again',
     type: 'ordinal',
     component: 'RadioGroup',
     options: THREE_OPTIONS,
@@ -619,6 +660,7 @@ const egoVariables: Variables = {
   },
   egoOtherBand: {
     name: 'Other band',
+    label: 'Other band',
     type: 'ordinal',
     component: 'RadioGroup',
     options: THREE_OPTIONS,
@@ -626,6 +668,7 @@ const egoVariables: Variables = {
   },
   egoFrequency: {
     name: 'Frequency',
+    label: 'Frequency',
     type: 'ordinal',
     component: 'LikertScale',
     options: FIVE_OPTIONS,
@@ -634,6 +677,7 @@ const egoVariables: Variables = {
 
   egoContexts: {
     name: 'Contexts',
+    label: 'Contexts',
     type: 'categorical',
     component: 'CheckboxGroup',
     options: FOUR_OPTIONS,
@@ -641,6 +685,7 @@ const egoVariables: Variables = {
   },
   egoContextsCopy: {
     name: 'Contexts again',
+    label: 'Contexts again',
     type: 'categorical',
     component: 'CheckboxGroup',
     options: FOUR_OPTIONS,
@@ -648,6 +693,7 @@ const egoVariables: Variables = {
   },
   egoOtherContexts: {
     name: 'Other contexts',
+    label: 'Other contexts',
     type: 'categorical',
     component: 'ToggleButtonGroup',
     options: FOUR_OPTIONS,
@@ -662,42 +708,49 @@ const egoVariables: Variables = {
 const personVariables: Variables = {
   personName: {
     name: 'Person name',
+    label: 'Person name',
     type: 'text',
     component: 'Text',
     validation: { required: true, minLength: 2, maxLength: 20 },
   },
   personTag: {
     name: 'Person tag',
+    label: 'Person tag',
     type: 'text',
     component: 'Text',
     validation: { required: true, minLength: 2, maxLength: 4 },
   },
   personCode: {
     name: 'Person code',
+    label: 'Person code',
     type: 'text',
     component: 'Text',
     validation: { required: true, unique: true, minLength: 6, maxLength: 6 },
   },
   personCodeCopy: {
     name: 'Person code again',
+    label: 'Person code again',
     type: 'text',
     component: 'Text',
     validation: { minLength: 6, maxLength: 6, sameAs: ref('personCode') },
   },
   personNickname: {
     name: 'Person nickname',
+    label: 'Person nickname',
     type: 'text',
     component: 'Text',
     validation: { required: true, differentFrom: ref('personName') },
   },
   personAge: {
     name: 'Person age',
+    label: 'Person age',
     type: 'number',
     component: 'Number',
     validation: { required: true, unique: true, minValue: 18, maxValue: 80 },
   },
   personYearsKnown: {
     name: 'Years known',
+    label: 'Years known',
     type: 'number',
     validation: {
       minValue: 0,
@@ -707,18 +760,21 @@ const personVariables: Variables = {
   },
   personCloseness: {
     name: 'Person closeness',
+    label: 'Person closeness',
     type: 'scalar',
     component: 'VisualAnalogScale',
     validation: { required: true },
   },
   personRegard: {
     name: 'Person regard',
+    label: 'Person regard',
     type: 'scalar',
     component: 'VisualAnalogScale',
     validation: { greaterThanVariable: ref('personCloseness') },
   },
   personMet: {
     name: 'Met on',
+    label: 'Met on',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'month', min: '2000-01-01', max: '2024-12-31' },
@@ -726,6 +782,7 @@ const personVariables: Variables = {
   },
   personLastSeen: {
     name: 'Last seen',
+    label: 'Last seen',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: { before: 90, after: 0 },
@@ -740,6 +797,7 @@ const personVariables: Variables = {
   // this fixture is what most real protocols exercise.
   personDefaultVisit: {
     name: 'Person default visit',
+    label: 'Person default visit',
     type: 'datetime',
     component: 'RelativeDatePicker',
     parameters: {},
@@ -747,6 +805,7 @@ const personVariables: Variables = {
   },
   personContexts: {
     name: 'Person contexts',
+    label: 'Person contexts',
     type: 'categorical',
     component: 'CheckboxGroup',
     options: FOUR_OPTIONS,
@@ -759,13 +818,22 @@ const personVariables: Variables = {
   },
   personBand: {
     name: 'Person band',
+    label: 'Person band',
     type: 'ordinal',
     component: 'RadioGroup',
     options: THREE_OPTIONS,
     validation: { required: true },
   },
-  personLayout: { name: 'Person layout', type: 'layout' },
-  personPlace: { name: 'Person place', type: 'location' },
+  personLayout: {
+    name: 'Person layout',
+    label: 'Person layout',
+    type: 'layout',
+  },
+  personPlace: {
+    name: 'Person place',
+    label: 'Person place',
+    type: 'location',
+  },
 };
 
 /**
@@ -776,18 +844,21 @@ const personVariables: Variables = {
 const tokenVariables: Variables = {
   tokenFlag: {
     name: 'Token flag',
+    label: 'Token flag',
     type: 'boolean',
     component: 'Boolean',
     validation: { required: true, unique: true },
   },
   tokenSwitch: {
     name: 'Token switch',
+    label: 'Token switch',
     type: 'boolean',
     component: 'Toggle',
     validation: { required: true, unique: true },
   },
   tokenRank: {
     name: 'Token rank',
+    label: 'Token rank',
     type: 'ordinal',
     component: 'RadioGroup',
     options: FOUR_OPTIONS,
@@ -795,6 +866,7 @@ const tokenVariables: Variables = {
   },
   tokenRankCopy: {
     name: 'Token rank again',
+    label: 'Token rank again',
     type: 'ordinal',
     component: 'RadioGroup',
     options: FOUR_OPTIONS,
@@ -802,6 +874,7 @@ const tokenVariables: Variables = {
   },
   tokenOtherRank: {
     name: 'Token other rank',
+    label: 'Token other rank',
     type: 'ordinal',
     component: 'RadioGroup',
     options: FOUR_OPTIONS,
@@ -812,36 +885,42 @@ const tokenVariables: Variables = {
 const friendVariables: Variables = {
   edgeLabel: {
     name: 'Edge label',
+    label: 'Edge label',
     type: 'text',
     component: 'Text',
     validation: { required: true, unique: true, minLength: 4, maxLength: 8 },
   },
   edgeNote: {
     name: 'Edge note',
+    label: 'Edge note',
     type: 'text',
     component: 'TextArea',
     validation: { required: true, differentFrom: ref('edgeLabel') },
   },
   edgeStrength: {
     name: 'Edge strength',
+    label: 'Edge strength',
     type: 'number',
     component: 'Number',
     validation: { required: true, minValue: 1, maxValue: 5 },
   },
   edgeWeight: {
     name: 'Edge weight',
+    label: 'Edge weight',
     type: 'scalar',
     component: 'VisualAnalogScale',
     validation: { required: true },
   },
   edgeWeightFloor: {
     name: 'Edge weight floor',
+    label: 'Edge weight floor',
     type: 'scalar',
     component: 'VisualAnalogScale',
     validation: { lessThanOrEqualToVariable: ref('edgeWeight') },
   },
   edgeSince: {
     name: 'Edge since',
+    label: 'Edge since',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'year', min: '2000-01-01', max: '2024-12-31' },
@@ -849,6 +928,7 @@ const friendVariables: Variables = {
   },
   edgeSinceCopy: {
     name: 'Edge since again',
+    label: 'Edge since again',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'year', min: '2000-01-01', max: '2024-12-31' },
@@ -856,12 +936,14 @@ const friendVariables: Variables = {
   },
   edgeIsClose: {
     name: 'Edge is close',
+    label: 'Edge is close',
     type: 'boolean',
     component: 'Boolean',
     validation: { required: true },
   },
   edgeKind: {
     name: 'Edge kind',
+    label: 'Edge kind',
     type: 'categorical',
     component: 'CheckboxGroup',
     options: THREE_OPTIONS,
@@ -874,12 +956,14 @@ const codebook: Codebook = {
   node: {
     person: {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: personVariables,
     },
     token: {
       name: 'Token',
+      label: { en: 'Token' },
       color: 'node-color-seq-2',
       shape: { default: 'square' },
       variables: tokenVariables,
@@ -888,6 +972,7 @@ const codebook: Codebook = {
   edge: {
     friend: {
       name: 'Friend',
+      label: { en: 'Friend' },
       color: 'edge-color-seq-1',
       variables: friendVariables,
     },
@@ -906,31 +991,49 @@ const stages = [
   {
     id: 'stage-ego',
     type: 'EgoForm',
-    label: 'About you',
+    label: { en: 'About you' },
     form: { fields: formFields(egoVariables) },
   },
   {
     id: 'stage-people',
     type: 'NameGenerator',
-    label: 'People',
+    minNodesNotice: {
+      en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+    },
+    maxNodesNotice: {
+      en: 'You have completed this task. Click the next arrow to continue.',
+    },
+    label: { en: 'People' },
     subject: { entity: 'node', type: 'person' },
-    prompts: [{ id: 'p1', text: 'Name people' }],
-    form: { title: 'About this person', fields: formFields(personVariables) },
+    prompts: [{ id: 'p1', text: { en: 'Name people' } }],
+    form: {
+      title: { en: 'About this person' },
+      fields: formFields(personVariables),
+    },
     behaviours: { minNodes: 6, maxNodes: 6 },
   },
   {
     id: 'stage-tokens',
     type: 'NameGenerator',
-    label: 'Tokens',
+    minNodesNotice: {
+      en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+    },
+    maxNodesNotice: {
+      en: 'You have completed this task. Click the next arrow to continue.',
+    },
+    label: { en: 'Tokens' },
     subject: { entity: 'node', type: 'token' },
-    prompts: [{ id: 'p2', text: 'Name tokens' }],
-    form: { title: 'About this token', fields: formFields(tokenVariables) },
+    prompts: [{ id: 'p2', text: { en: 'Name tokens' } }],
+    form: {
+      title: { en: 'About this token' },
+      fields: formFields(tokenVariables),
+    },
     behaviours: { minNodes: 2, maxNodes: 2 },
   },
   {
     id: 'stage-sociogram',
     type: 'Sociogram',
-    label: 'Connections',
+    label: { en: 'Connections' },
     subject: { entity: 'node', type: 'person' },
     // Two edge-creating prompts over the same six people: each prompt draws
     // its own per-pair probability and rolls every pair against it, so a
@@ -941,13 +1044,13 @@ const stages = [
     prompts: [
       {
         id: 'p3',
-        text: 'Connect people',
+        text: { en: 'Connect people' },
         layout: { layoutVariable: 'personLayout' },
         edges: { create: 'friend' },
       },
       {
         id: 'p3b',
-        text: 'Connect people again',
+        text: { en: 'Connect people again' },
         layout: { layoutVariable: 'personLayout' },
         edges: { create: 'friend' },
       },
@@ -956,7 +1059,7 @@ const stages = [
   {
     id: 'stage-connections',
     type: 'AlterEdgeForm',
-    label: 'About connections',
+    label: { en: 'About connections' },
     subject: { entity: 'edge', type: 'friend' },
     form: { fields: formFields(friendVariables) },
   },
@@ -1075,6 +1178,7 @@ describe('synthetic data conformance', () => {
 const hazardVariables: Variables = {
   binBand: {
     name: 'Bin band',
+    label: 'Bin band',
     type: 'ordinal',
     component: 'RadioGroup',
     options: THREE_OPTIONS,
@@ -1082,6 +1186,7 @@ const hazardVariables: Variables = {
   },
   binRank: {
     name: 'Bin rank',
+    label: 'Bin rank',
     type: 'ordinal',
     component: 'RadioGroup',
     options: THREE_OPTIONS,
@@ -1089,6 +1194,7 @@ const hazardVariables: Variables = {
   },
   binContexts: {
     name: 'Bin contexts',
+    label: 'Bin contexts',
     type: 'categorical',
     component: 'CheckboxGroup',
     options: FOUR_OPTIONS,
@@ -1100,6 +1206,7 @@ const hazardCodebook: Codebook = {
   node: {
     binned: {
       name: 'Binned',
+      label: { en: 'Binned' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: hazardVariables,
@@ -1110,10 +1217,19 @@ const hazardCodebook: Codebook = {
 const hazardFormStage = {
   id: 'stage-binned',
   type: 'NameGenerator',
-  label: 'Binned people',
+  minNodesNotice: {
+    en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+  },
+  maxNodesNotice: {
+    en: 'You have completed this task. Click the next arrow to continue.',
+  },
+  label: { en: 'Binned people' },
   subject: { entity: 'node', type: 'binned' },
-  prompts: [{ id: 'p1', text: 'Name people' }],
-  form: { title: 'About this person', fields: formFields(hazardVariables) },
+  prompts: [{ id: 'p1', text: { en: 'Name people' } }],
+  form: {
+    title: { en: 'About this person' },
+    fields: formFields(hazardVariables),
+  },
   behaviours: { minNodes: 8, maxNodes: 8 },
 };
 
@@ -1124,16 +1240,16 @@ const hazardFormAndBinStages = [
   {
     id: 'stage-ordinal-bin',
     type: 'OrdinalBin',
-    label: 'Ordinal bin',
+    label: { en: 'Ordinal bin' },
     subject: { entity: 'node', type: 'binned' },
-    prompts: [{ id: 'p2', text: 'Sort', variable: 'binRank' }],
+    prompts: [{ id: 'p2', text: { en: 'Sort' }, variable: 'binRank' }],
   },
   {
     id: 'stage-categorical-bin',
     type: 'CategoricalBin',
-    label: 'Categorical bin',
+    label: { en: 'Categorical bin' },
     subject: { entity: 'node', type: 'binned' },
-    prompts: [{ id: 'p3', text: 'Sort', variable: 'binContexts' }],
+    prompts: [{ id: 'p3', text: { en: 'Sort' }, variable: 'binContexts' }],
   },
 ] as unknown as Stage[];
 
@@ -1245,6 +1361,7 @@ describe('a variable used by both a form and a binning stage', () => {
 const crossResolutionVariables: Variables = {
   xrMonth: {
     name: 'Start month',
+    label: 'Start month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'month', min: '2000-01-01', max: '2010-12-31' },
@@ -1254,6 +1371,7 @@ const crossResolutionVariables: Variables = {
   // to reach past the first of the month, not merely into it.
   xrDayAfterMonth: {
     name: 'Day after month',
+    label: 'Day after month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'full', min: '2000-01-01', max: '2010-12-31' },
@@ -1263,6 +1381,7 @@ const crossResolutionVariables: Variables = {
   // needs a window opening before the counterpart's.
   xrDayBeforeMonth: {
     name: 'Day before month',
+    label: 'Day before month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'full', min: '1995-01-01', max: '2010-12-31' },
@@ -1270,6 +1389,7 @@ const crossResolutionVariables: Variables = {
   },
   xrDayAtLeastMonth: {
     name: 'Day at least month',
+    label: 'Day at least month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'full', min: '2000-01-01', max: '2010-12-31' },
@@ -1277,6 +1397,7 @@ const crossResolutionVariables: Variables = {
   },
   xrDayAtMostMonth: {
     name: 'Day at most month',
+    label: 'Day at most month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'full', min: '1995-01-01', max: '2010-12-31' },
@@ -1288,6 +1409,7 @@ const crossResolutionVariables: Variables = {
   // the first of June — before the day it must follow.
   xrDay: {
     name: 'Anchor day',
+    label: 'Anchor day',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'full', min: '2000-01-01', max: '2009-12-31' },
@@ -1295,6 +1417,7 @@ const crossResolutionVariables: Variables = {
   },
   xrMonthAfterDay: {
     name: 'Month after day',
+    label: 'Month after day',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'month', min: '2000-01-01', max: '2010-12-31' },
@@ -1304,6 +1427,7 @@ const crossResolutionVariables: Variables = {
   // `2009-06 >= 2009-06-17` is false, the month having started first.
   xrMonthAtLeastDay: {
     name: 'Month at least day',
+    label: 'Month at least day',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'month', min: '2000-01-01', max: '2010-12-31' },
@@ -1311,6 +1435,7 @@ const crossResolutionVariables: Variables = {
   },
   xrMonthBeforeDay: {
     name: 'Month before day',
+    label: 'Month before day',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'month', min: '1995-01-01', max: '2009-12-31' },
@@ -1320,6 +1445,7 @@ const crossResolutionVariables: Variables = {
   // Two steps apart: a year reads as its own first of January.
   xrYear: {
     name: 'Anchor year',
+    label: 'Anchor year',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'year', min: '2000-01-01', max: '2009-12-31' },
@@ -1327,6 +1453,7 @@ const crossResolutionVariables: Variables = {
   },
   xrDayAfterYear: {
     name: 'Day after year',
+    label: 'Day after year',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'full', min: '2000-01-01', max: '2010-12-31' },
@@ -1334,6 +1461,7 @@ const crossResolutionVariables: Variables = {
   },
   xrYearBeforeDay: {
     name: 'Year before day',
+    label: 'Year before day',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'year', min: '1995-01-01', max: '2009-12-31' },
@@ -1348,6 +1476,7 @@ const crossResolutionVariables: Variables = {
   // the first place — which is propagation's job, not the fold's.
   xrTightMonth: {
     name: 'Tight month',
+    label: 'Tight month',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'month', min: '2010-01-01', max: '2010-12-31' },
@@ -1355,6 +1484,7 @@ const crossResolutionVariables: Variables = {
   },
   xrTightDay: {
     name: 'Tight day',
+    label: 'Tight day',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'full', min: '2010-01-01', max: '2010-12-01' },
@@ -1370,7 +1500,7 @@ const crossResolutionStages = [
   {
     id: 'stage-cross-resolution',
     type: 'EgoForm',
-    label: 'Dates',
+    label: { en: 'Dates' },
     form: { fields: formFields(crossResolutionVariables) },
   },
 ] as unknown as Stage[];
@@ -1503,6 +1633,7 @@ describe('date comparators across picker resolutions', () => {
 const coarseBoundVariables: Variables = {
   coarseFullDate: {
     name: 'Coarse full date',
+    label: 'Coarse full date',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'full', min: '2020', max: '2022-06' },
@@ -1510,6 +1641,7 @@ const coarseBoundVariables: Variables = {
   },
   coarseMonthDate: {
     name: 'Coarse month date',
+    label: 'Coarse month date',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'month', min: '2020', max: '2021' },
@@ -1525,7 +1657,7 @@ const coarseBoundStages = [
   {
     id: 'stage-coarse-bound',
     type: 'EgoForm',
-    label: 'Coarse dates',
+    label: { en: 'Coarse dates' },
     form: { fields: formFields(coarseBoundVariables) },
   },
 ] as unknown as Stage[];
@@ -1611,12 +1743,14 @@ describe('a DatePicker bound coarser than its own picker resolution', () => {
 const rosterDateVariables: Variables = {
   rosterYear: {
     name: 'Started',
+    label: 'Started',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'year', min: '2000-01-01', max: '2030-12-31' },
   },
   rosterDay: {
     name: 'Finished',
+    label: 'Finished',
     type: 'datetime',
     component: 'DatePicker',
     parameters: { type: 'full', min: '2000-01-01', max: '2030-12-31' },
@@ -1628,6 +1762,7 @@ const rosterDateCodebook: Codebook = {
   node: {
     rosterPerson: {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: rosterDateVariables,
@@ -1639,11 +1774,20 @@ const rosterDateStages = [
   {
     id: 'stage-roster-dates',
     type: 'NameGeneratorRoster',
-    label: 'People',
+    externalDataError: { en: 'External data could not be loaded.' },
+    allAddedNotice: { en: 'There is nothing left to add from this list.' },
+    minNodesNotice: {
+      en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+    },
+    maxNodesNotice: {
+      en: 'You have completed this task. Click the next arrow to continue.',
+    },
+    panelTitle: { en: 'Available to add' },
+    label: { en: 'People' },
     subject: { entity: 'node', type: 'rosterPerson' },
-    prompts: [{ id: 'p1', text: 'Pick people' }],
+    prompts: [{ id: 'p1', text: { en: 'Pick people' } }],
     form: {
-      title: 'About this person',
+      title: { en: 'About this person' },
       fields: formFields(rosterDateVariables),
     },
     behaviours: { minNodes: 3, maxNodes: 3 },
@@ -1684,12 +1828,14 @@ function rosterDateRows(): NcNode[] {
 const rosterPinVariables: Variables = {
   pinnedAge: {
     name: 'Pinned age',
+    label: 'Pinned age',
     type: 'number',
     component: 'Number',
     validation: { required: true, minValue: 0, maxValue: 1 },
   },
   drawnRetired: {
     name: 'Drawn retired',
+    label: 'Drawn retired',
     type: 'number',
     component: 'Number',
     validation: {
@@ -1705,6 +1851,7 @@ const rosterPinCodebook: Codebook = {
   node: {
     rosterPinned: {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: rosterPinVariables,
@@ -1716,11 +1863,20 @@ const rosterPinStages = [
   {
     id: 'stage-roster-pins',
     type: 'NameGeneratorRoster',
-    label: 'People',
+    externalDataError: { en: 'External data could not be loaded.' },
+    allAddedNotice: { en: 'There is nothing left to add from this list.' },
+    minNodesNotice: {
+      en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+    },
+    maxNodesNotice: {
+      en: 'You have completed this task. Click the next arrow to continue.',
+    },
+    panelTitle: { en: 'Available to add' },
+    label: { en: 'People' },
     subject: { entity: 'node', type: 'rosterPinned' },
-    prompts: [{ id: 'p1', text: 'Pick people' }],
+    prompts: [{ id: 'p1', text: { en: 'Pick people' } }],
     form: {
-      title: 'About this person',
+      title: { en: 'About this person' },
       fields: formFields(rosterPinVariables),
     },
     behaviours: { minNodes: 2, maxNodes: 2 },
@@ -1810,6 +1966,7 @@ describe('a roster pinning one end of a comparator', () => {
 const narrowVariables: Variables = {
   narrowPair: {
     name: 'Narrow pair',
+    label: 'Narrow pair',
     type: 'number',
     component: 'Number',
     validation: {
@@ -1821,12 +1978,14 @@ const narrowVariables: Variables = {
   },
   narrowGrid: {
     name: 'Narrow grid',
+    label: 'Narrow grid',
     type: 'number',
     component: 'Number',
     validation: { required: true, minValue: 0.001, maxValue: 0.099 },
   },
   narrowOther: {
     name: 'Narrow other',
+    label: 'Narrow other',
     type: 'number',
     component: 'Number',
     validation: {
@@ -1842,6 +2001,7 @@ const narrowCodebook: Codebook = {
   node: {
     narrow: {
       name: 'Narrow',
+      label: { en: 'Narrow' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: narrowVariables,
@@ -1853,10 +2013,19 @@ const narrowStages = [
   {
     id: 'stage-narrow',
     type: 'NameGenerator',
-    label: 'Narrow people',
+    minNodesNotice: {
+      en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+    },
+    maxNodesNotice: {
+      en: 'You have completed this task. Click the next arrow to continue.',
+    },
+    label: { en: 'Narrow people' },
     subject: { entity: 'node', type: 'narrow' },
-    prompts: [{ id: 'p1', text: 'Name people' }],
-    form: { title: 'About this person', fields: formFields(narrowVariables) },
+    prompts: [{ id: 'p1', text: { en: 'Name people' } }],
+    form: {
+      title: { en: 'About this person' },
+      fields: formFields(narrowVariables),
+    },
     behaviours: { minNodes: 2, maxNodes: 2 },
   },
 ] as unknown as Stage[];

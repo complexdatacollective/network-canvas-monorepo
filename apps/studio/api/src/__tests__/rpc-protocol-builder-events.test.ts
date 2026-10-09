@@ -13,6 +13,7 @@ import { testDb } from './support/database.ts';
 import {
   ADA,
   callerOf,
+  enUS,
   GRACE,
   holdingEvents,
   latch,
@@ -56,8 +57,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         kind: 'stage',
         document: Redacted.make({
           type: 'Information',
-          label: 'Watched write',
-          title: 'Watched write',
+          label: enUS('Watched write'),
+          title: enUS('Watched write'),
           items: [],
         }),
       }),
@@ -214,8 +215,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         kind: 'stage',
         document: Redacted.make({
           type: 'Information',
-          label: 'Past the bound',
-          title: 'Past the bound',
+          label: enUS('Past the bound'),
+          title: enUS('Past the bound'),
           items: [],
         }),
       }),
@@ -269,7 +270,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             sectionId,
             document: Redacted.make({
               ...Redacted.value(held.document),
-              label: 'Written as the tab closed',
+              label: enUS('Written as the tab closed'),
             }),
             revision: held.revision,
           }),
@@ -324,8 +325,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             kind: 'stage',
             document: Redacted.make({
               type: 'Information',
-              label: 'Created as the tab closed',
-              title: 'Created as the tab closed',
+              label: enUS('Created as the tab closed'),
+              title: enUS('Created as the tab closed'),
               items: [],
             }),
           }),
@@ -450,7 +451,11 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
                 string,
                 unknown
               >),
-              [variableId]: { name: variableId, type: 'text' },
+              [variableId]: {
+                name: variableId,
+                label: 'Interrupted',
+                type: 'text',
+              },
             },
           }),
           revision: held.revision,

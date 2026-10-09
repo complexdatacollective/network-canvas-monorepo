@@ -28,6 +28,8 @@ function makeSession(overrides: Partial<SessionState> = {}): SessionState {
     exportTime: null,
     lastUpdated: new Date().toISOString(),
     network: { ego: { _uid: 'ego-1', [Symbol()]: {} }, nodes: [], edges: [] },
+    localePreference: null,
+    locale: null,
 
     ...overrides,
   } as SessionState;
@@ -116,6 +118,17 @@ describe('syncMiddleware', () => {
 
     store.dispatch(mutateSession({ promptIndex: 5 }));
     await settle();
+
+    expect(onSyncMock).not.toHaveBeenCalled();
+  });
+
+  it('does not sync when only the locale fields change', async () => {
+    const store = createTestStore(middleware);
+
+    store.dispatch(mutateSession({ locale: 'es' }));
+    store.dispatch(mutateSession({ locale: 'fr', localePreference: 'fr' }));
+    await settle();
+    await flush();
 
     expect(onSyncMock).not.toHaveBeenCalled();
   });
@@ -431,7 +444,7 @@ describe('syncMiddleware flush', () => {
 
     store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:00.000Z' }));
 
-    await expect(flush()).resolves.toBeUndefined();
+    await expect(flush()).resolves.toBe(true);
 
     // Count only the flush's own writes — the background chain is correctly
     // still going, and it is the flush that must be bounded: a participant
@@ -487,12 +500,12 @@ describe('syncMiddleware flush', () => {
     expect(offeredWhenFlushResolved).toBe(true);
   });
 
-  it('resolves rather than rejecting when the final sync fails', async () => {
+  it('resolves, saying it was not stored, rather than rejecting when the final sync fails', async () => {
     onSyncMock.mockRejectedValue(new Error('Vault locked'));
     const store = createTestStore(middleware);
     store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
 
-    await expect(flush()).resolves.toBeUndefined();
+    await expect(flush()).resolves.toBe(false);
     expect(onSyncMock).toHaveBeenCalled();
   });
 
@@ -501,6 +514,29 @@ describe('syncMiddleware flush', () => {
 
     await flush();
 
+    expect(onSyncMock).not.toHaveBeenCalled();
+  });
+
+  it('writes a refused session again when flushed, and says when it is then stored', async () => {
+    const store = createTestStore(middleware);
+    onSyncMock.mockRejectedValueOnce(new Error('offline'));
+    store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
+    await settle();
+    expect(onSyncMock).toHaveBeenCalledTimes(1);
+
+    await expect(flush()).resolves.toBe(true);
+    expect(onSyncMock).toHaveBeenCalledTimes(2);
+    expect(onSyncMock).toHaveBeenLastCalledWith(
+      'interview-1',
+      expect.objectContaining({ lastUpdated: '2026-01-01T00:00:01.000Z' }),
+      { immediate: true, unloading: false },
+    );
+  });
+
+  it('says a session with nothing to write is stored', async () => {
+    createTestStore(middleware);
+
+    await expect(flush()).resolves.toBe(true);
     expect(onSyncMock).not.toHaveBeenCalled();
   });
 });

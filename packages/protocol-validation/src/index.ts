@@ -1,4 +1,4 @@
-import { asEntityAttributeReference } from './schemas/8/entity-attribute-reference.ts';
+import { asEntityAttributeReference } from './schemas/9/entity-attribute-reference.ts';
 import { getAssetMimeType } from './utils/asset-mime-type.ts';
 import {
   type AssetReferenceHit,
@@ -37,22 +37,69 @@ import {
   type ProtocolFileErrorKind,
 } from './utils/protocolFileErrorKind.ts';
 import {
+  findCollidingAttributeNames,
   getVariableNamesFromNetwork,
+  isUsableExternalAttributeName,
   type Network,
   validateNames,
 } from './utils/validateExternalData.ts';
 import validateProtocol, {
+  FINISH_STAGE_TEXT_MISSING,
   formatProtocolValidationIssues,
   ProtocolValidationError,
   type ProtocolValidationIssue,
   type ProtocolValidationResult,
+  type ValidateProtocolOptions,
 } from './validation/validate-protocol.ts';
 
-export { parseAcceptLanguage } from './localization/parseAcceptLanguage.ts';
+export {
+  analyzeProtocolLocalization,
+  type ProtocolLocalizationWarning,
+} from './localization/analyzeProtocolLocalization.ts';
+export {
+  getLocaleMetadata,
+  type LocaleMetadata,
+  sortByLanguageName,
+} from './localization/localeMetadata.ts';
+export {
+  normalizeLocalePreferences,
+  parseAcceptLanguage,
+  selectProtocolLocale,
+} from './localization/localePreferences.ts';
+export {
+  canonicalizeLocale,
+  isUndeterminedLocale,
+  type LocaleTag,
+  type LocalizationDeclaration,
+} from './localization/localeTag.ts';
+export { isBlankMessage, isBlankText } from './localization/blankText.ts';
+// Localized messages whose translations may use the arguments their setting
+// declares, and the versions an editor shows each one as.
+export {
+  composeMessage,
+  findMessageArgumentProblem,
+  type MessageArgument,
+  type MessageArguments,
+  type MessagePart,
+  type MessageVariant,
+  messageVariants,
+  pluralCategoriesOf,
+  pluralCountExamples,
+} from './localization/messageArguments.ts';
+export { escapeMarkdownText } from './localization/markdownText.ts';
+export {
+  escapeMessageText,
+  messageText,
+} from './localization/messageSyntax.ts';
+export {
+  type ResolvedLocalizedString,
+  resolveLocalizedString,
+} from './localization/resolveLocalizedString.ts';
 export {
   MigrationChain,
   type ProtocolMigration as Migration,
   protocolMigrations,
+  type SessionMigrationStep,
 } from './migration/index.ts';
 export * from './migration/errors.ts';
 export {
@@ -61,37 +108,132 @@ export {
   type MigrationInfo,
   type MigrationNote,
   migrateProtocol,
+  migrateProtocolWithSessions,
+  type ProtocolWithSessionMigrator,
   ProtocolMigrator,
   protocolMigrator,
 } from './migration/migrate-protocol.ts';
+export type {
+  MigratedSession,
+  PersistedSession,
+  SessionDocument,
+  SessionMigrationResult,
+  SessionMigrator,
+} from './migration/session.ts';
 
 // Export schema types and constants (Protocol, Codebook, etc)
 export * from './schemas/index.ts';
 // Interface-owned value sets that are part of the current schema's contract.
-// They live in the schema version directory and are copied — never shared —
-// when a new version directory is created, so a host always reads the set the
-// version it targets defines.
+// They live in the schema version directory, so a host always reads the set
+// the version it targets defines.
 export {
-  BIOLOGICAL_SEX_OPTIONS,
-  BIOLOGICAL_SEX_VALUES,
-  type BiologicalSex,
   FRAMING_IDS,
+  FRAMING_SETTINGS,
   type FramingId,
-  GAMETE_ROLE_OPTIONS,
-  GAMETE_ROLES,
-  type GameteRole,
-  RELATIONSHIP_TYPE_OPTIONS,
-  RELATIONSHIP_TYPES,
-  type RelationshipType,
-} from './schemas/8/family-pedigree-values.ts';
+  type FramingSetting,
+  PEDIGREE_COMPLETENESS_SCOPES,
+  PEDIGREE_DEFAULT_GENDER_IDENTITIES,
+  PEDIGREE_GENDER_WORDS,
+  PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  PEDIGREE_RELATIONSHIP_KINDS,
+  PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT,
+  PEDIGREE_RELATIVES_NOT_RECORDED,
+  PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+  PEDIGREE_TWIN_KINDS,
+  type PedigreeCompletenessScope,
+  type PedigreeDefaultGenderIdentityValue,
+  type PedigreeGenderWords,
+  type PedigreeParentKind,
+  type PedigreeRelationshipKind,
+  type PedigreeTwinKind,
+  type PedigreeRelationshipToParticipant,
+  type PedigreeRelativesNotRecorded,
+  type PedigreeSexAssignedAtBirth,
+} from './schemas/9/family-pedigree-values.ts';
+export {
+  type LocalizedString,
+  type LocalizedStringFormat,
+} from './schemas/9/localized-string.ts';
+// What the Family Pedigree's localized messages may use, for an editor of
+// them.
+export {
+  type FamilyPedigreeWording,
+  PEDIGREE_PERSON_ARGUMENTS,
+  PEDIGREE_WORDING_ARGUMENTS,
+} from './schemas/9/stages/family-pedigree.ts';
+// The arguments a name generator's minimum notice may use.
+export { NODE_COUNT_ARGUMENTS } from './schemas/9/stages/name-generator.ts';
+export { familyPedigreeWordingIn } from './schemas/9/stage-wording/family-pedigree.ts';
+// The Family Pedigree option labels Network Canvas supplies, written into a
+// protocol by Architect.
+export {
+  hasSuppliedOptionLabels,
+  isSuppliedOptionLabelSet,
+  SUPPLIED_PEDIGREE_OPTION_LABELS,
+  type SuppliedOptionLabelSet,
+  suppliedOptionLabel,
+  suppliedOptionLabels,
+  suppliedOptionLabelsAfterLanguageChange,
+} from './schemas/9/family-pedigree-option-labels.ts';
+// How text Network Canvas supplies follows a change to a protocol's languages.
+export { type LanguageChange } from './schemas/9/supplied-text.ts';
+// The arguments of the Narrative Pedigree's snapshot titles, which the stage
+// editor offers the same placeholders as the schema declares.
+export {
+  SNAPSHOT_CONDITION_ARGUMENTS,
+  SNAPSHOT_INHERITANCE_ARGUMENTS,
+} from './schemas/9/stages/narrative-pedigree.ts';
+// The stage settings whose wording Network Canvas supplies, written into a
+// stage by Architect when it is made and when a language is added.
+export {
+  inapplicableStageSettings,
+  isSuppliedEnglishMessage,
+  missingSuppliedStageText,
+  type SuppliedStageText,
+  suppliedStageText,
+  suppliedStageSettingApplies,
+  suppliedStageTextAfterLanguageChange,
+} from './schemas/9/supplied-stage-text.ts';
+// The interview's shared words a protocol holds in its own languages, written
+// and removed by the migration and Architect as the protocol uses them.
+export {
+  INTERFACE_TEXT_MESSAGES,
+  type InterfaceText,
+  interfaceTextAfterLanguageChange,
+  type InterfaceTextUpdate,
+  withInterfaceText,
+} from './schemas/9/interface-text.ts';
+// The finish stage text Network Canvas supplies, written into a protocol by
+// the v8 → v9 migration and by Architect.
+export {
+  createDefaultFinishSessionStage,
+  DEFAULT_FINISH_SESSION_TEXT,
+  defaultFinishSessionFields,
+  defaultFinishSessionText,
+  type FinishSessionText,
+  hasDefaultFinishSessionText,
+  defaultFinishSessionTextAfterLanguageChange,
+} from './schemas/9/finish-session-defaults.ts';
+export {
+  findFinishStageTextProblems,
+  type FinishStageTextField,
+  type FinishStageTextProblem,
+} from './schemas/9/finish-stage-text.ts';
+export {
+  findTimelineStructureProblems,
+  isFinishSessionStage,
+  type TimelineStructureProblem,
+} from './schemas/9/timeline-structure.ts';
 export {
   INHERITANCE_PATTERNS,
   type InheritancePattern,
-} from './schemas/8/narrative-pedigree-values.ts';
+} from './schemas/9/narrative-pedigree-values.ts';
 export {
   findValidationContradictions,
   type ValidationContradiction,
-} from './schemas/8/variables/validation-contradictions.ts';
+} from './schemas/9/variables/validation-contradictions.ts';
 export {
   collectVariableRoleHits,
   findVariableRoleConflicts,
@@ -109,15 +251,28 @@ export {
   isExclusiveVariantContainer,
   schemaRefusesContainer,
   VARIANT_ROW_SEGMENT,
-} from './schemas/8/exclusive-variant-containers.ts';
+} from './schemas/9/exclusive-variant-containers.ts';
 // `findExclusiveVariableConflicts` stays internal: it exists to feed the
 // protocol schema's own refinement, and a host that wants to know whether a
 // protocol is admissible should call `validateProtocol`.
 export {
+  collectLocalizedStrings,
+  type LocalizedStringHit,
+} from './utils/collectLocalizedStrings.ts';
+export { readRosterCsv } from './utils/readRosterCsv.ts';
+export {
+  findRosterCharacterProblems,
+  type RosterCharacterProblem,
+  type RosterCharacterReport,
+  type RosterFormat,
+} from './utils/rosterCharacters.ts';
+export {
   type ExclusiveVariableSlot,
   findExclusiveVariableSlots,
   findInterfaceOwnedOptionBindings,
+  findStageManagedOptionBindings,
   type InterfaceOwnedOptionBinding,
+  type StageManagedOptionBinding,
 } from './utils/findExclusiveVariableConflicts.ts';
 export {
   asEntityAttributeReference,
@@ -136,12 +291,15 @@ export {
   type ExtractedAssets,
   extractProtocol,
   extractProtocolFromZip,
+  FINISH_STAGE_TEXT_MISSING,
+  findCollidingAttributeNames,
   formatProtocolValidationIssues,
   getAssetMimeType,
   getProtocolFileErrorKind,
   getVariableNamesFromNetwork,
   hashProtocol,
   isProtocolFileFault,
+  isUsableExternalAttributeName,
   loadNetcanvasArchive,
   MalformedNetcanvasError,
   type MalformedNetcanvasReason,
@@ -156,6 +314,7 @@ export {
   type ProtocolValidationIssue,
   type ProtocolValidationResult,
   type StageReferenceHit,
+  type ValidateProtocolOptions,
   validateNames,
   validateProtocol,
 };

@@ -6,7 +6,6 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { useEffect } from 'react';
 import { Provider } from 'react-redux';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -28,18 +27,18 @@ import {
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
-import { setPassphrase, setPassphraseInvalid } from '../../../store/modules/ui';
 import { interviewToastManager } from '../../../toast/interviewToastManager';
 import type { StageProps } from '../../../types';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import {
   createEncryptionStore,
-  makeEncryptedPerson,
+  encryptionFor,
+  outOfBoundsHeader,
+  unlockWith,
 } from '../../Anonymisation/__tests__/encryptionFixtures';
-import { isNumberArray } from '../../Anonymisation/decryptionScope';
-import {
-  decryptData,
-  generateSecureAttributes,
-} from '../../Anonymisation/utils';
+import { readEncryptedAttribute } from '../../Anonymisation/decryptionScope';
+import { decryptValue } from '../../Anonymisation/encryptionFormat';
+import { generateSecureAttributes } from '../../Anonymisation/utils';
 import CategoricalBin from '../CategoricalBin';
 import { getCatBinDropTargetId } from '../components/CategoricalBinItem';
 
@@ -92,15 +91,17 @@ const PROMPT_ID = 'prompt-1';
 const OTHER_BIN_INDEX = 1;
 
 const variables: Record<string, Variable> = {
-  name: { name: 'name', type: 'text', component: 'Text' },
+  name: { name: 'name', label: 'name', type: 'text', component: 'Text' },
   category: {
     name: 'Category',
+    label: 'Category',
     type: 'categorical',
     component: 'CheckboxGroup',
-    options: [{ label: 'Family', value: 1 }],
+    options: [{ label: { en: 'Family' }, value: 1 }],
   },
   otherReason: {
     name: 'Other reason',
+    label: 'Other reason',
     type: 'text',
     component: 'Text',
     encrypted: true,
@@ -110,16 +111,16 @@ const variables: Record<string, Variable> = {
 const stage: StageProps<'CategoricalBin'>['stage'] = {
   id: STAGE_ID,
   type: 'CategoricalBin',
-  label: 'Categorise people',
+  label: { en: 'Categorise people' },
   subject: { entity: 'node', type: 'person' },
   prompts: [
     {
       id: PROMPT_ID,
-      text: 'Which category?',
+      text: { en: 'Which category?' },
       variable: asEntityAttributeReference('category'),
       otherVariable: asEntityAttributeReference('otherReason'),
-      otherVariablePrompt: 'Please specify',
-      otherOptionLabel: 'Other',
+      otherVariablePrompt: { en: 'Please specify' },
+      otherOptionLabel: { en: 'Other' },
     },
   ],
 };
@@ -142,50 +143,53 @@ function CaptureDndStore({
   return null;
 }
 
-function renderCategoricalBin(
-  passphrase?: string,
-  {
-    subject = person,
-    others = [],
-    stageVariables = variables,
-    encryptionEnabled = true,
-  }: {
-    subject?: NcNode;
-    others?: NcNode[];
-    stageVariables?: Record<string, Variable>;
-    encryptionEnabled?: boolean;
-  } = {},
-) {
+async function renderCategoricalBin({
+  unlocked = false,
+  refused = false,
+  subject = person,
+  others = [],
+  stageVariables = variables,
+}: {
+  unlocked?: boolean;
+  /** Stores a header no passphrase can open, as a damaged copy might. */
+  refused?: boolean;
+  subject?: NcNode;
+  others?: NcNode[];
+  stageVariables?: Record<string, Variable>;
+} = {}) {
+  const { header } = await encryptionFor('pw');
   const store = createEncryptionStore(
     [subject, ...others],
     [stage],
     stageVariables,
-    { encryptionEnabled },
+    { header: refused ? outOfBoundsHeader(header) : header },
   );
-  if (passphrase) store.dispatch(setPassphrase(passphrase));
+  if (unlocked) await unlockWith(store, 'pw');
 
   let dndStore: StoreApi<DndStore> | undefined;
   render(
     <InterviewI18nProvider requestedLocale="en">
       <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-          <DialogProvider>
-            <DndStoreProvider>
-              <CaptureDndStore
-                onStore={(captured) => {
-                  dndStore = captured;
-                }}
-              />
-              <CategoricalBin
-                stage={stage}
-                getNavigationHelpers={() => ({
-                  moveForward: () => {},
-                  moveBackward: () => {},
-                })}
-              />
-            </DndStoreProvider>
-          </DialogProvider>
-        </CurrentStepProvider>
+        <TestProtocolLocalization>
+          <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+            <DialogProvider>
+              <DndStoreProvider>
+                <CaptureDndStore
+                  onStore={(captured) => {
+                    dndStore = captured;
+                  }}
+                />
+                <CategoricalBin
+                  stage={stage}
+                  getNavigationHelpers={() => ({
+                    moveForward: () => {},
+                    moveBackward: () => {},
+                  })}
+                />
+              </DndStoreProvider>
+            </DialogProvider>
+          </CurrentStepProvider>
+        </TestProtocolLocalization>
       </Provider>
     </InterviewI18nProvider>,
   );
@@ -220,7 +224,7 @@ function renderCategoricalBin(
 describe('CategoricalBin asking for an encrypted "other" answer', () => {
   it('asks for the passphrase instead of taking an answer it could not save', async () => {
     const toast = vi.spyOn(interviewToastManager, 'add');
-    const { store, dropIntoOther } = renderCategoricalBin();
+    const { store, dropIntoOther } = await renderCategoricalBin();
     const before = store.getState().session.network;
 
     await dropIntoOther();
@@ -237,189 +241,108 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
     expect(store.getState().session.network).toBe(before);
   });
 
-  it('saves the answer encrypted once the passphrase is in force', async () => {
-    const { store, dropIntoOther } = renderCategoricalBin('pw');
-
-    await dropIntoOther();
-    fireEvent.change(await screen.findByRole('textbox'), {
-      target: { value: 'Cousin' },
+  it('says the answer cannot be saved, without asking for a passphrase, when none can open the interview', async () => {
+    const toast = vi.spyOn(interviewToastManager, 'add');
+    const { store, dropIntoOther } = await renderCategoricalBin({
+      refused: true,
     });
-    fireEvent.click(screen.getByTestId('dialog-submit'));
-
-    await waitFor(() =>
-      expect(
-        isNumberArray(
-          store.getState().session.network.nodes[0]?.[entityAttributesProperty]
-            .otherReason,
-        ),
-      ).toBe(true),
-    );
-    const [saved] = store.getState().session.network.nodes;
-    const data = saved?.[entityAttributesProperty].otherReason;
-    const secureAttributes = saved?.[entitySecureAttributesMeta]?.otherReason;
-    if (!isNumberArray(data)) throw new Error('Expected a stored ciphertext');
-    if (!secureAttributes)
-      throw new Error('Expected secure-attribute metadata');
-    await expect(decryptData({ secureAttributes, data }, 'pw')).resolves.toBe(
-      'Cousin',
-    );
-  });
-
-  it('keeps the answer being entered, and says it was not saved, when the passphrase stops working', async () => {
-    const { store, dropIntoOther } = renderCategoricalBin('pw');
     const before = store.getState().session.network;
 
     await dropIntoOther();
-    fireEvent.change(await screen.findByRole('textbox'), {
-      target: { value: 'Cousin' },
-    });
-    act(() => {
-      store.dispatch(setPassphraseInvalid(true));
-    });
-    fireEvent.click(screen.getByTestId('dialog-submit'));
 
-    expect(
-      await screen.findByText(
-        'Your answers have not been saved. Enter your passphrase, then try again.',
-      ),
-    ).toBeVisible();
-    expect(screen.getByRole('textbox')).toHaveValue('Cousin');
+    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: expect.stringContaining(
+          'cannot be shown or saved in this interview',
+        ),
+      }),
+    );
+    expect(screen.queryByRole('textbox')).toBeNull();
     expect(store.getState().session.network).toBe(before);
   });
 
-  it('takes the passphrase again from inside the dialog, then saves the kept answer', async () => {
-    const { store, dropIntoOther } = renderCategoricalBin('pw');
-    const user = userEvent.setup();
+  it('saves the answer encrypted once the passphrase is in force', async () => {
+    const { store, dropIntoOther } = await renderCategoricalBin({
+      unlocked: true,
+    });
 
     await dropIntoOther();
-    const answer = await screen.findByRole('textbox', {
-      name: /Please specify/,
+    fireEvent.change(await screen.findByRole('textbox'), {
+      target: { value: 'Cousin' },
     });
-    expect(
-      screen.queryByRole('button', { name: 'Enter your Passphrase' }),
-    ).toBeNull();
-    await user.type(answer, 'Cousin');
-    act(() => {
-      store.dispatch(setPassphraseInvalid(true));
+    fireEvent.click(screen.getByTestId('dialog-submit'));
+
+    const stored = await waitFor(() => {
+      const [saved] = store.getState().session.network.nodes;
+      const attribute = saved
+        ? readEncryptedAttribute(saved, 'otherReason', variables)
+        : undefined;
+      if (attribute?.status !== 'encrypted') {
+        throw new Error('Expected the answer to be stored encrypted');
+      }
+      return attribute.value;
     });
-    await user.click(screen.getByTestId('dialog-submit'));
-    expect(
-      await screen.findByText(/Your answers have not been saved/),
-    ).toBeVisible();
-
-    await user.click(
-      within(screen.getByRole('dialog', { name: 'Specify other' })).getByRole(
-        'button',
-        { name: 'Enter your Passphrase' },
-      ),
-    );
-    const prompt = await screen.findByRole('dialog', {
-      name: 'Enter your Passphrase',
-    });
-    await user.type(
-      within(prompt).getByLabelText(/^Passphrase/, { selector: 'input' }),
-      'pw',
-    );
-    await user.click(
-      within(prompt).getByRole('button', { name: 'Submit passphrase' }),
-    );
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('dialog', { name: 'Enter your Passphrase' }),
-      ).toBeNull(),
-    );
-
-    expect(screen.getByRole('textbox', { name: /Please specify/ })).toHaveValue(
-      'Cousin',
-    );
-    await user.click(screen.getByTestId('dialog-submit'));
-
-    await waitFor(() =>
-      expect(
-        isNumberArray(
-          store.getState().session.network.nodes[0]?.[entityAttributesProperty]
-            .otherReason,
-        ),
-      ).toBe(true),
-    );
-    const [saved] = store.getState().session.network.nodes;
-    const data = saved?.[entityAttributesProperty].otherReason;
-    const secureAttributes = saved?.[entitySecureAttributesMeta]?.otherReason;
-    if (!isNumberArray(data)) throw new Error('Expected a stored ciphertext');
-    if (!secureAttributes)
-      throw new Error('Expected secure-attribute metadata');
-    await expect(decryptData({ secureAttributes, data }, 'pw')).resolves.toBe(
-      'Cousin',
-    );
+    expect(stored.nodeId).toBe(person[entityPrimaryKeyProperty]);
+    const { key } = await encryptionFor('pw');
+    await expect(decryptValue(key, stored, stored)).resolves.toBe('Cousin');
   });
-});
 
-describe('CategoricalBin showing a person whose name is encrypted', () => {
-  it('shows their decrypted name in the "other" dialog', async () => {
-    const { dropIntoOther } = renderCategoricalBin('pw', {
-      subject: await makeEncryptedPerson('n1', 'Alice', 'pw'),
-      stageVariables: {
-        ...variables,
-        name: {
-          name: 'name',
-          type: 'text',
-          component: 'Text',
-          encrypted: true,
-        },
+  it('shows the person by their decrypted name while asking', async () => {
+    const namedVariables: Record<string, Variable> = {
+      ...variables,
+      name: {
+        name: 'name',
+        label: 'name',
+        type: 'text',
+        component: 'Text',
+        encrypted: true,
       },
+    };
+    const { encryptedAttributes, secureAttributes } =
+      await generateSecureAttributes(
+        { name: 'Alice' },
+        namedVariables,
+        (await encryptionFor('pw')).key,
+        person[entityPrimaryKeyProperty],
+      );
+    const { dropIntoOther } = await renderCategoricalBin({
+      unlocked: true,
+      subject: {
+        ...person,
+        [entityAttributesProperty]: encryptedAttributes,
+        [entitySecureAttributesMeta]: secureAttributes,
+      },
+      stageVariables: namedVariables,
     });
 
     await dropIntoOther();
 
-    const dialog = await screen.findByRole('dialog', { name: 'Specify other' });
+    const dialog = await screen.findByRole('dialog');
     expect(await within(dialog).findByText('Alice')).toBeVisible();
     expect(within(dialog).queryByText('Person')).toBeNull();
   });
 });
 
-describe('CategoricalBin with the encrypted-variables experiment off', () => {
-  it('takes and saves the "other" answer as plaintext without asking for a passphrase', async () => {
-    const { store, dropIntoOther } = renderCategoricalBin(undefined, {
-      encryptionEnabled: false,
-    });
-
-    await dropIntoOther();
-    fireEvent.change(await screen.findByRole('textbox'), {
-      target: { value: 'Cousin' },
-    });
-    fireEvent.click(screen.getByTestId('dialog-submit'));
-
-    await waitFor(() =>
-      expect(
-        store.getState().session.network.nodes[0]?.[entityAttributesProperty]
-          .otherReason,
-      ).toBe('Cousin'),
-    );
-    expect(
-      store.getState().session.network.nodes[0]?.[entitySecureAttributesMeta],
-    ).toBeUndefined();
-    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
-  });
-});
-
-const uniqueVariables: Record<string, Variable> = {
-  ...variables,
-  otherReason: {
-    name: 'Other reason',
-    type: 'text',
-    component: 'Text',
-    encrypted: true,
-    validation: { unique: true },
-  },
-};
-
 describe('CategoricalBin validating an encrypted "other" answer', () => {
   it('rejects an answer another person already gave', async () => {
+    const uniqueVariables: Record<string, Variable> = {
+      ...variables,
+      otherReason: {
+        name: 'Other reason',
+        label: 'Other reason',
+        type: 'text',
+        component: 'Text',
+        encrypted: true,
+        validation: { unique: true },
+      },
+    };
     const { encryptedAttributes, secureAttributes } =
       await generateSecureAttributes(
         { otherReason: 'Neighbour' },
         uniqueVariables,
-        'pw',
+        (await encryptionFor('pw')).key,
+        'n2',
       );
     const neighbour: NcNode = {
       [entityPrimaryKeyProperty]: 'n2',
@@ -428,95 +351,15 @@ describe('CategoricalBin validating an encrypted "other" answer', () => {
       [entitySecureAttributesMeta]: secureAttributes,
     };
     decryption.ready = false;
-    const { store, dropIntoOther } = renderCategoricalBin('pw', {
+    const { store, dropIntoOther } = await renderCategoricalBin({
+      unlocked: true,
       others: [neighbour],
       stageVariables: uniqueVariables,
     });
 
+    // The question reads the stored answers when it is asked.
     await dropIntoOther();
-    const input = await screen.findByRole('textbox');
     await waitFor(() => expect(decryption.ready).toBe(true));
-    fireEvent.change(input, { target: { value: 'Neighbour' } });
-    fireEvent.click(screen.getByTestId('dialog-submit'));
-
-    await waitFor(() => expect(input).toHaveAttribute('aria-invalid', 'true'));
-    expect(
-      store.getState().session.network.nodes[0]?.[entityAttributesProperty]
-        .otherReason,
-    ).toBeUndefined();
-  });
-
-  it("compares with the dropped person's own protected answer, whatever protects the others'", async () => {
-    const differentFromVariables: Record<string, Variable> = {
-      ...variables,
-      nickname: {
-        name: 'Nickname',
-        type: 'text',
-        component: 'Text',
-        encrypted: true,
-      },
-      otherReason: {
-        name: 'Other reason',
-        type: 'text',
-        component: 'Text',
-        encrypted: true,
-        validation: { differentFrom: asEntityAttributeReference('nickname') },
-      },
-    };
-    const withNickname = async (
-      id: string,
-      name: string,
-      nickname: string,
-      passphrase: string,
-    ): Promise<NcNode> => {
-      const { encryptedAttributes, secureAttributes } =
-        await generateSecureAttributes(
-          { name, nickname },
-          differentFromVariables,
-          passphrase,
-        );
-      return {
-        [entityPrimaryKeyProperty]: id,
-        type: 'person',
-        [entityAttributesProperty]: encryptedAttributes,
-        [entitySecureAttributesMeta]: secureAttributes,
-      };
-    };
-    const { store, dropIntoOther } = renderCategoricalBin('pw', {
-      subject: await withNickname('n1', 'Alice', 'Ally', 'pw'),
-      // Saved under another passphrase, and read by no rule of this answer.
-      others: [await withNickname('n2', 'Bob', 'Bobby', 'an older passphrase')],
-      stageVariables: differentFromVariables,
-    });
-
-    await dropIntoOther();
-    const input = await screen.findByRole('textbox');
-    fireEvent.change(input, { target: { value: 'Ally' } });
-    fireEvent.click(screen.getByTestId('dialog-submit'));
-
-    await waitFor(() => expect(input).toHaveAttribute('aria-invalid', 'true'));
-    expect(screen.queryByText(/problem decrypting the data/)).toBeNull();
-    expect(screen.queryByText(/Your answers have not been saved/)).toBeNull();
-    expect(store.getState().ui.passphraseInvalid).toBe(false);
-    expect(
-      store.getState().session.network.nodes[0]?.[entityAttributesProperty]
-        .otherReason,
-    ).toBeUndefined();
-  });
-
-  it('rejects a duplicate answer without a passphrase while the experiment is off', async () => {
-    const neighbour: NcNode = {
-      [entityPrimaryKeyProperty]: 'n2',
-      type: 'person',
-      [entityAttributesProperty]: { otherReason: 'Neighbour' },
-    };
-    const { store, dropIntoOther } = renderCategoricalBin(undefined, {
-      others: [neighbour],
-      stageVariables: uniqueVariables,
-      encryptionEnabled: false,
-    });
-
-    await dropIntoOther();
     const input = await screen.findByRole('textbox');
     fireEvent.change(input, { target: { value: 'Neighbour' } });
     fireEvent.click(screen.getByTestId('dialog-submit'));
@@ -526,79 +369,80 @@ describe('CategoricalBin validating an encrypted "other" answer', () => {
       store.getState().session.network.nodes[0]?.[entityAttributesProperty]
         .otherReason,
     ).toBeUndefined();
-    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
   });
-});
 
-describe('CategoricalBin comparing a plaintext "other" answer with a protected one', () => {
-  it('takes the passphrase the check needs from inside the dialog, then saves the kept answer', async () => {
-    // The answer is not protected, but must differ from the dropped person's
-    // nickname, which is.
+  it('takes the passphrase inside the dialog when the answer is checked against a protected one', async () => {
+    // The answer is not encrypted, but must differ from the person's name,
+    // which is.
     const comparedVariables: Record<string, Variable> = {
       ...variables,
-      nickname: {
-        name: 'Nickname',
+      name: {
+        name: 'name',
+        label: 'name',
         type: 'text',
         component: 'Text',
         encrypted: true,
       },
       otherReason: {
         name: 'Other reason',
+        label: 'Other reason',
         type: 'text',
         component: 'Text',
-        validation: { differentFrom: asEntityAttributeReference('nickname') },
+        validation: { differentFrom: asEntityAttributeReference('name') },
       },
     };
     const { encryptedAttributes, secureAttributes } =
       await generateSecureAttributes(
-        { name: 'Alice', nickname: 'Ally' },
+        { name: 'Alice' },
         comparedVariables,
-        'pw',
+        (await encryptionFor('pw')).key,
+        person[entityPrimaryKeyProperty],
       );
-    const { store, dropIntoOther } = renderCategoricalBin(undefined, {
+    const { store, dropIntoOther } = await renderCategoricalBin({
       subject: {
-        [entityPrimaryKeyProperty]: 'n1',
-        type: 'person',
+        ...person,
         [entityAttributesProperty]: encryptedAttributes,
         [entitySecureAttributesMeta]: secureAttributes,
       },
       stageVariables: comparedVariables,
     });
-    const user = userEvent.setup();
 
     await dropIntoOther();
-    await user.type(
-      await screen.findByRole('textbox', { name: /Please specify/ }),
-      'Cousin',
-    );
-    await user.click(screen.getByTestId('dialog-submit'));
-    expect(
-      await screen.findByText(/Your answers have not been saved/),
-    ).toBeVisible();
-
-    await user.click(
-      within(screen.getByRole('dialog', { name: 'Specify other' })).getByRole(
-        'button',
-        { name: 'Enter your Passphrase' },
+    const dialog = await screen.findByRole('dialog');
+    const input = within(dialog).getByRole('textbox');
+    const submit = within(dialog).getByTestId('dialog-submit');
+    fireEvent.change(input, { target: { value: 'Alice' } });
+    fireEvent.click(submit);
+    await waitFor(() =>
+      expect(input).toHaveAccessibleDescription(
+        /Your answers have not been saved/,
       ),
     );
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Passphrase' }));
     const prompt = await screen.findByRole('dialog', {
-      name: 'Enter your Passphrase',
+      name: 'Passphrase',
     });
-    await user.type(
+    fireEvent.change(
       within(prompt).getByLabelText(/^Passphrase/, { selector: 'input' }),
-      'pw',
+      { target: { value: 'pw' } },
     );
-    await user.click(
-      within(prompt).getByRole('button', { name: 'Submit passphrase' }),
-    );
+    fireEvent.click(within(prompt).getByRole('button', { name: 'Continue' }));
+    await waitFor(() => expect(prompt).not.toBeInTheDocument());
+    expect(
+      within(dialog).queryByRole('button', { name: 'Passphrase' }),
+    ).toBeNull();
+
+    // Now compared with the name as the participant gave it.
+    fireEvent.click(submit);
     await waitFor(() =>
-      expect(
-        screen.queryByRole('dialog', { name: 'Enter your Passphrase' }),
-      ).toBeNull(),
+      expect(input).toHaveAccessibleDescription(
+        /Your answer must be different/,
+      ),
     );
 
-    await user.click(screen.getByTestId('dialog-submit'));
+    fireEvent.change(input, { target: { value: 'Cousin' } });
+    fireEvent.click(submit);
     await waitFor(() =>
       expect(
         store.getState().session.network.nodes[0]?.[entityAttributesProperty]

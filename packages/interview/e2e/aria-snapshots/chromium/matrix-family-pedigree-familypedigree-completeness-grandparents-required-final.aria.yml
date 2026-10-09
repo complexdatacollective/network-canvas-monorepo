@@ -1,0 +1,35 @@
+- main:
+  - status:
+    - heading "Add the members of your family." [level=2]
+  - region "Your family":
+    - button "Julie"
+    - button "Rob"
+    - button "You"
+  - toolbar "Family tree tools":
+    - group "What clicking a person does":
+      - button "Add and edit" [pressed]
+      - button "Connect"
+      - button "Disconnect"
+    - separator
+    - button "Zoom out"
+    - button "Zoom in"
+    - button "Show the whole family"
+    - separator
+    - button /Family tree \d+% complete\. Show what’s still needed\./ [expanded]
+    - dialog:
+      - region /Family tree \d+% complete\. Show what’s still needed\./:
+        - list:
+          - listitem:
+            - button "Add biological parents for “Julie”"
+          - listitem:
+            - button "Add biological parents for “Rob”"
+          - listitem:
+            - button "Add biological brothers and sisters for “Rob”, or say they have none"
+            - button "“Rob” has no biological siblings"
+  - text: Details saved.
+  - navigation:
+    - button "Settings"
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  type VersionedProtocol,
-  validateProtocol,
-} from '@codaco/protocol-validation';
+import { validateProtocol } from '@codaco/protocol-validation';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import {
   validateSection,
@@ -34,8 +31,38 @@ describe('validateSection', () => {
   it('rejects an unknown settings key', () => {
     const result = validateSection('settings', {
       name: 'P',
-      schemaVersion: 8,
+      schemaVersion: 9,
+      localization: { defaultLocale: 'en', locales: ['en'] },
       unknown: true,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts the localization declaration in settings', () => {
+    const result = validateSection('settings', {
+      name: 'P',
+      schemaVersion: 9,
+      localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
+    });
+    expect(result).toEqual({ success: true });
+  });
+
+  it('accepts the experiments setting in settings', () => {
+    const result = validateSection('settings', {
+      name: 'P',
+      schemaVersion: 9,
+      localization: { defaultLocale: 'en', locales: ['en'] },
+      experiments: {},
+    });
+    expect(result).toEqual({ success: true });
+  });
+
+  it('rejects the encrypted attributes experiment, which is no longer one', () => {
+    const result = validateSection('settings', {
+      name: 'P',
+      schemaVersion: 9,
+      localization: { defaultLocale: 'en', locales: ['en'] },
+      experiments: { encryptedVariables: true },
     });
     expect(result.success).toBe(false);
   });
@@ -54,13 +81,18 @@ describe('validation layering', () => {
       ...protocol.codebook.node,
       colleague: {
         name: 'Colleague',
+        label: { en: 'Colleague' },
         color: 'node-color-seq-2',
         shape: { default: 'circle' },
         variables: {
-          personName: { name: 'OtherName', type: 'text' },
+          personName: {
+            name: 'OtherName',
+            label: 'Other name',
+            type: 'text',
+          },
         },
       },
-    } as typeof protocol.codebook.node;
+    };
 
     const sections = sectionizeProtocol(protocol);
     for (const [id, doc] of Object.entries(sections)) {
@@ -68,7 +100,7 @@ describe('validation layering', () => {
     }
 
     const assembled = assembleProtocolSections(sections);
-    const result = await validateProtocol(assembled as VersionedProtocol);
+    const result = await validateProtocol(assembled);
     expect(result.success).toBe(false);
   });
 });

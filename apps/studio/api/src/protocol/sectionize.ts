@@ -1,6 +1,8 @@
 import {
+  createDefaultFinishSessionStage,
   CURRENT_SCHEMA_VERSION,
   type CurrentProtocol,
+  withInterfaceText,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -8,14 +10,35 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 /** @public */
 export class SectionizeError extends Error {}
 
-// Branded reference fields make the literal uncastable directly.
+/**
+ * The id of the finish stage a new protocol starts with. Fixed rather than
+ * minted, as the schema 8 migration's is: a stage id only has to be unique
+ * within its own protocol.
+ */
+export const NEW_PROTOCOL_FINISH_STAGE_ID = 'finish';
+
+// Nothing asks the researcher for a language yet, so a new protocol declares
+// English, as a protocol migrated from schema 8 does. Every interview has to
+// end at a finish stage, so a new protocol starts with the one Network Canvas
+// supplies, and the stages a researcher adds go in front of it. Its interface
+// text is the wording Network Canvas supplies for what the interview shows.
 export function emptyProtocol(name: string): CurrentProtocol {
-  return {
+  const localization: CurrentProtocol['localization'] = {
+    defaultLocale: 'en',
+    locales: ['en'],
+  };
+  return withInterfaceText({
     name,
     schemaVersion: CURRENT_SCHEMA_VERSION,
+    localization,
     codebook: {},
-    stages: [],
-  } as unknown as CurrentProtocol;
+    stages: [
+      createDefaultFinishSessionStage({
+        id: NEW_PROTOCOL_FINISH_STAGE_ID,
+        localization,
+      }),
+    ],
+  });
 }
 
 export function sectionizeProtocol(
@@ -26,12 +49,16 @@ export function sectionizeProtocol(
   const settings: SectionDoc = {
     name: protocol.name,
     schemaVersion: protocol.schemaVersion,
+    localization: protocol.localization,
   };
   if (protocol.description !== undefined) {
     settings.description = protocol.description;
   }
   if (protocol.experiments !== undefined) {
     settings.experiments = protocol.experiments;
+  }
+  if (protocol.interfaceText !== undefined) {
+    settings.interfaceText = protocol.interfaceText;
   }
   if (protocol.lastModified !== undefined) {
     settings.lastModified = protocol.lastModified;

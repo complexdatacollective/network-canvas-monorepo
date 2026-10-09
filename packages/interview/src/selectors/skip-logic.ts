@@ -16,6 +16,7 @@ import { getNetwork, getStageIndex } from './session';
 
 type RoutableStage = {
   id: string;
+  type?: string;
   skipLogic?: SkipLogic;
 };
 
@@ -60,8 +61,6 @@ const AVAILABLE: AvailableStage = { kind: 'available' };
  * destination. Rules on those bypassed stages are deliberately not evaluated;
  * the destination itself remains reachable and is evaluated normally, which
  * allows destinations to chain when they are also hidden.
- *
- * `stages` includes the synthetic FinishSession entry as its final item.
  */
 export const buildStageAvailabilityMap = (
   stages: readonly RoutableStage[],
@@ -70,9 +69,6 @@ export const buildStageAvailabilityMap = (
   const availability = Object.fromEntries(
     stages.map((_, index) => [index, AVAILABLE]),
   ) as Record<number, StageAvailability>;
-  const finishIndex = stages.length - 1;
-  const protocolStages = stages.slice(0, finishIndex);
-
   for (let stageIndex = 0; stageIndex < stages.length; stageIndex += 1) {
     if (availability[stageIndex]?.kind === 'bypassed') {
       continue;
@@ -95,7 +91,7 @@ export const buildStageAvailabilityMap = (
 
     const destinationIndex = resolveSkipLogicDestinationIndex(
       destination,
-      protocolStages,
+      stages,
       stageIndex,
     );
 
@@ -125,21 +121,19 @@ export const buildStageAvailabilityMap = (
 };
 
 /**
- * Select the final authored stage on the active route for a saved network.
- * The synthetic entry lets finish destinations bypass authored stages using
- * the same route calculation as the live interview. Returns undefined when
- * the active route contains no authored stage.
+ * Select the last stage on the active route before the interview ends, for a
+ * saved network: the stage a review of a finished interview stops at. Finish
+ * stages are not reviewed, because finishing is not something a review can
+ * do. Returns undefined when the active route reaches no other stage.
  */
 export const getLastAvailableAuthoredStageIndex = (
   stages: readonly RoutableStage[],
   network: NcNetwork,
 ): number | undefined => {
-  const availability = buildStageAvailabilityMap(
-    [...stages, { id: '__finish__' }],
-    network,
-  );
+  const availability = buildStageAvailabilityMap(stages, network);
 
   for (let index = stages.length - 1; index >= 0; index -= 1) {
+    if (stages[index]?.type === 'FinishSession') continue;
     if (availability[index]?.kind === 'available') return index;
   }
 

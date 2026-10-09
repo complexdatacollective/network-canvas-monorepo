@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { getEntityAttributeReferenceDescriptor } from '../../schemas/8/entity-attribute-reference.ts';
+import { getEntityAttributeReferenceDescriptor } from '../../schemas/9/entity-attribute-reference.ts';
 import { CurrentProtocolSchema } from '../../schemas/index.ts';
 
 // Count every meta-tagged node reachable by the same traversal the extractor uses.
@@ -39,35 +39,43 @@ const countTagged = (
 };
 
 // Update this number deliberately when adding/removing a tagged field.
-// Merged total: main's NetworkComposer reference fields, plus this branch's
-// pedigree fields — biologicalSexVariable (NodeConfigSchema), gameteRoleVariable
-// (EdgeConfigSchema), and NarrativePedigree diseases[].variable — plus the two
-// node shape-mapping `variable` fields (discrete and breakpoints arms), plus
+// Merged total: main's NetworkComposer reference fields, plus the pedigree's
+// person attributes (name, gender identity, sex assigned at birth, ego) and
+// relationship attributes (kind, gestational carrier, current partner) and
+// completeness attribute (relatives not recorded) and each nomination
+// prompt's boolean `variable` — and NarrativePedigree diseases[].attribute,
+// plus the two node shape-mapping `variable` fields (discrete and breakpoints arms), plus
 // #1392's four existence-unchecked sites: the shared sort rule `property`
 // (SortRuleSchema, reached by every prompt-level sort order and the roster's
 // stage-level one) and the roster's three data-source column fields
 // (cardOptions.additionalProperties[].variable,
 // sortOptions.sortableProperties[].variable, searchOptions.matchProperties[]).
 // The value is verified against the runtime count computed below.
-const EXPECTED_TAGGED_FIELD_COUNT = 40;
+const EXPECTED_TAGGED_FIELD_COUNT = 41;
 
 // Every slot an interface owns outright, and every slot whose OPTION SET it
-// owns. Both drive protocol-level rules and Architect's pickers/option
-// editors, so adding a structural slot without listing it here — or listing
-// one that no longer exists — fails.
+// owns, and every slot whose option LIST a stage manages. All drive
+// protocol-level rules and Architect's pickers/option editors, so adding a
+// structural slot without listing it here — or listing one that no longer
+// exists — fails.
 const EXPECTED_EXCLUSIVE_SLOTS = [
-  'familyPedigree.edgeConfig.gameteRoleVariable',
-  'familyPedigree.edgeConfig.isActiveVariable',
-  'familyPedigree.edgeConfig.isGestationalCarrierVariable',
-  'familyPedigree.edgeConfig.relationshipTypeVariable',
-  'familyPedigree.nodeConfig.egoVariable',
-  'familyPedigree.nodeConfig.relationshipVariable',
+  'familyPedigree.completeness.relativesNotRecordedAttribute',
+  'familyPedigree.edgeConfiguration.currentPartnerAttribute',
+  'familyPedigree.edgeConfiguration.gestationalCarrierAttribute',
+  'familyPedigree.edgeConfiguration.kindAttribute',
+  'familyPedigree.nodeConfiguration.egoAttribute',
+  'familyPedigree.nodeConfiguration.relationshipToParticipantAttribute',
 ];
 
 const EXPECTED_OWNED_OPTION_SETS = [
-  'biologicalSex',
-  'gameteRole',
-  'relationshipType',
+  'pedigreeRelationship',
+  'pedigreeRelationshipToParticipant',
+  'pedigreeRelativesNotRecorded',
+  'pedigreeSexAssignedAtBirth',
+];
+
+const EXPECTED_STAGE_MANAGED_OPTION_OWNERS = [
+  'the kinship words each option takes',
 ];
 
 // The descriptors themselves, by the same traversal as countTagged.
@@ -148,5 +156,25 @@ describe('entity-attribute reference coverage', () => {
       .map((descriptor) => descriptor.ownedOptions)
       .filter((set) => set !== undefined);
     expect([...new Set(sets)].toSorted()).toEqual(EXPECTED_OWNED_OPTION_SETS);
+  });
+
+  it('declares exactly the expected stage-managed option lists', () => {
+    const owners = collectDescriptors(CurrentProtocolSchema)
+      .map((descriptor) => descriptor.stageManagedOptions?.owner)
+      .filter((owner): owner is string => owner !== undefined);
+    expect([...new Set(owners)].toSorted()).toEqual(
+      EXPECTED_STAGE_MANAGED_OPTION_OWNERS,
+    );
+  });
+
+  // Managing a variable's options is not owning the variable: other stages
+  // stay free to write it, so no stage-managed slot may also be exclusive, and
+  // none may claim an interface-owned fixed option set.
+  it('keeps stage-managed options independent of exclusivity and fixed sets', () => {
+    for (const descriptor of collectDescriptors(CurrentProtocolSchema)) {
+      if (!descriptor.stageManagedOptions) continue;
+      expect(descriptor.exclusive).toBeUndefined();
+      expect(descriptor.ownedOptions).toBeUndefined();
+    }
   });
 });

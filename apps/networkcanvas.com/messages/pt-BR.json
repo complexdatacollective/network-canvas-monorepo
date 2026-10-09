@@ -233,8 +233,10 @@
       "DyadCensus": "Censo de díades",
       "EgoForm": "Formulário do ego",
       "FamilyPedigree": "Heredograma familiar",
+      "FinishSession": "Tela de conclusão",
       "Geospatial": "Interface geoespacial",
       "Information": "Informação",
+      "LanguageChooser": "Seleção de idioma",
       "NameGenerator": "Gerador de nomes (com formulários)",
       "NameGeneratorQuickAdd": "Gerador de nomes (adição rápida)",
       "NameGeneratorRoster": "Gerador de nomes a partir de lista",
@@ -275,8 +277,6 @@
       },
       "loading": "Preparando a pré-visualização…",
       "finishConfirmation": "Esta é uma pré-visualização, então nada é salvo. Concluir encerra esta execução do protocolo, e você pode iniciá-la novamente depois.",
-      "finishedHeading": "Pré-visualização concluída",
-      "finishedDescription": "A entrevista foi concluída exatamente como seria para uma pessoa participante. Nada foi salvo.",
       "restart": "Iniciar a pré-visualização novamente",
       "backToProtocol": "Voltar ao protocolo",
       "errorHeading": "Não é possível pré-visualizar este protocolo",
@@ -336,7 +336,7 @@
       "bestFor": "Ideal para",
       "downloadVersion": "Baixar a versão {version}",
       "platformAccessibleName": "{platform} para {app}",
-      "schemaVersionInfo": "O Architect Classic e o Interviewer Classic são compatíveis com protocolos do esquema 7. As versões do Architect, do Interviewer e do Fresco que funcionam no navegador usam o esquema 8, que inclui as funcionalidades mais recentes. A atualização de um protocolo é irreversível, então mantenha o arquivo original do esquema 7 se você ainda precisar dos aplicativos Classic.",
+      "schemaVersionInfo": "O Architect Classic e o Interviewer Classic são compatíveis com protocolos do esquema 7. As versões do Architect, do Interviewer e do Fresco que funcionam no navegador usam o esquema 9, que inclui as funcionalidades mais recentes. A atualização de um protocolo é irreversível, então mantenha o arquivo original do esquema 7 se você ainda precisar dos aplicativos Classic.",
       "schemaVersionLink": "Saiba mais sobre as versões de esquema"
     },
     "platforms": {

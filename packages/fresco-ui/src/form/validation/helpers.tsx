@@ -1,8 +1,8 @@
 import { z } from 'zod/mini';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import {
   createAppIntl,
-  defineMessages,
   formatMessageError,
   type IntlShape,
 } from '@codaco/app-i18n/messages';
@@ -21,15 +21,6 @@ import {
   validationPropKeys,
   validations,
 } from './functions';
-
-const messages = defineMessages({
-  unexpectedError: {
-    id: 'frescoUi.validation.unexpectedError',
-    defaultMessage: 'An error occurred while validating.',
-    description:
-      'Error shown when a validation rule itself throws unexpectedly.',
-  },
-});
 
 let defaultHelperIntl: IntlShape | undefined;
 
@@ -137,6 +128,7 @@ export function messageRuleValidation(
 export function makeValidationFunction(
   props: Record<string, unknown>,
   intl?: IntlShape,
+  valueLocale?: string,
 ) {
   const validationContext = props.validationContext as
     | ValidationContext
@@ -153,17 +145,19 @@ export function makeValidationFunction(
               network: await validationContext.resolveNetwork(),
             };
           } catch (error) {
-            // A rejection carrying a message error (see `createMessageError`)
-            // says why the network is unavailable, and that reason is shown.
+            // A host that can say why the network is unavailable rejects with
+            // a message error, which the field shows, in the participant's
+            // language, in place of the generic failure.
             const reason =
-              error instanceof Error
-                ? formatMessageError(error.message, helperIntl(intl))
+              error instanceof Error &&
+              formatMessageError(error.message, helperIntl(intl)) !== undefined
+                ? error.message
                 : undefined;
             ctx.addIssue({
               code: 'custom',
               message:
                 reason ??
-                helperIntl(intl).formatMessage(messages.unexpectedError),
+                helperIntl(intl).formatMessage(commonMessages.genericError),
             });
             return;
           }
@@ -187,6 +181,7 @@ export function makeValidationFunction(
               parameter as ValidationParameter,
               context,
               intl,
+              valueLocale,
             )(formValues);
 
             const result = await validationFn.safeParseAsync(fieldValue);
@@ -205,7 +200,9 @@ export function makeValidationFunction(
             console.error('Error while validating:', error);
             ctx.addIssue({
               code: 'custom',
-              message: helperIntl(intl).formatMessage(messages.unexpectedError),
+              message: helperIntl(intl).formatMessage(
+                commonMessages.genericError,
+              ),
             });
           }
         }
@@ -241,7 +238,7 @@ export function makeValidationFunction(
               ctx.addIssue({
                 code: 'custom',
                 message: helperIntl(intl).formatMessage(
-                  messages.unexpectedError,
+                  commonMessages.genericError,
                 ),
               });
             }
@@ -260,6 +257,7 @@ export function makeValidationFunction(
 export function makeValidationHints(
   props: Record<string, unknown>,
   intl?: IntlShape,
+  valueLocale?: string,
 ) {
   const validationContext = props.validationContext as
     | ValidationContext
@@ -295,6 +293,7 @@ export function makeValidationHints(
           | { regex: string; hint: string },
         validationContext,
         intl,
+        valueLocale,
       )({});
 
       // Extract hint from the schema's metadata via global registry

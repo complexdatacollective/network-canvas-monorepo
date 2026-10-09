@@ -138,7 +138,10 @@ async function renameInformation(
     protocolId: host.protocolId,
     requestId: nextRequestId(),
     sectionId: INFORMATION,
-    document: Redacted.make({ ...Redacted.value(held.document), label }),
+    document: Redacted.make({
+      ...Redacted.value(held.document),
+      label: { 'en-US': label },
+    }),
     revision: held.revision,
   });
 }
@@ -150,7 +153,7 @@ const RACES: readonly Race[] = [
     cause: (host) => renameInformation(host, 'Renamed by Grace'),
     event: `revision:${INFORMATION}`,
     cached: (cache) => labelOf(cache, INFORMATION),
-    newer: 'Renamed by Grace',
+    newer: { 'en-US': 'Renamed by Grace' },
   },
   {
     name: 'the deletion of the section being read',
@@ -200,6 +203,7 @@ const RACES: readonly Race[] = [
         kind: 'codebookNode',
         document: Redacted.make({
           name: 'Place',
+          label: { 'en-US': 'Place' },
           color: 'node-color-seq-3',
           shape: { default: 'circle' },
           variables: {},
@@ -274,7 +278,9 @@ describe('an event arriving around an answer that is still in flight', () => {
     // Past the channel's first reconnect delay.
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    expect(labelOf(cache, INFORMATION)).toBe('While the stream was down');
+    expect(labelOf(cache, INFORMATION)).toEqual({
+      'en-US': 'While the stream was down',
+    });
     expect(revisions()).toBe(2);
   });
 });
@@ -312,7 +318,7 @@ function Capture({ onCache }: Readonly<{ onCache: (cache: Cache) => void }>) {
 /** Reads a section and the node types, so both queries have an observer. */
 function Reader() {
   const label = useSection(INFORMATION, (section) =>
-    String(section.document.label),
+    JSON.stringify(section.document.label),
   );
   const types = useEntityTypes('node');
   return (

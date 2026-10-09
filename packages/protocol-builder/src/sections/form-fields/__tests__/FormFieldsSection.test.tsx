@@ -1,6 +1,6 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
 import { Effect } from 'effect';
-import { type ComponentProps, useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -56,6 +56,9 @@ vi.mock('../../fields/RichTextField.tsx', () => ({
     />
   ),
 }));
+
+/** Copy in the fixture protocol's only language, as schema 9 holds it. */
+const en = (text: string) => ({ 'en-US': text });
 
 /**
  * A row's open editor: the queries scoped to it, and the element itself.
@@ -187,8 +190,10 @@ const COLLECTS_A_POSITION = {
   type: 'AlterForm',
   fields: {
     ...loadFixtureStage('alter-form-1').fields,
-    label: 'Where everyone sits',
-    form: { fields: [{ variable: 'layout', prompt: 'Where do they sit?' }] },
+    label: en('Where everyone sits'),
+    form: {
+      fields: [{ variable: 'layout', prompt: en('Where do they sit?') }],
+    },
   },
 } as const;
 
@@ -257,12 +262,12 @@ describe('the fields a form collects', () => {
     const fields = fieldsOf(await harness.submit());
     expect(fields[0]).toEqual({
       variable: 'relationship_to_ego',
-      prompt: 'How do you know this person?',
+      prompt: en('How do you know this person?'),
     });
     // The field the researcher did not touch is still exactly as it was.
     expect(fields[1]).toEqual({
       variable: 'flagged',
-      prompt: 'Does this person have this attribute?',
+      prompt: en('Does this person have this attribute?'),
     });
   });
 
@@ -288,7 +293,89 @@ describe('the fields a form collects', () => {
     expect(fieldsOf(await harness.submit()).at(-1)).toEqual({
       id: expect.any(String) as unknown as string,
       variable: 'age',
-      prompt: 'How old are they?',
+      prompt: en('How old are they?'),
+    });
+  });
+
+  it('refuses to save a stage holding a field whose question is only spaces', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        id: 'alter-form-1',
+        type: 'AlterForm',
+        fields: {
+          ...loadFixtureStage('alter-form-1').fields,
+          form: {
+            fields: [
+              { variable: 'relationship_to_ego', prompt: { en: '   ' } },
+            ],
+          },
+        },
+      },
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      screen.getByText(
+        'Every field needs both an attribute and a question. Open the incomplete field and finish it.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  describe('a question of nothing but spaces', () => {
+    const REFUSAL = 'Write the question this field asks.';
+
+    it('is refused when a new field is added, and the dialog stays open', async () => {
+      const harness = renderStageEditor({
+        stageId: 'alter-form-1',
+        sections: <FormFieldsSection subject="node" />,
+      });
+
+      const dialog = await openField(harness, 'Create new form field');
+      await chooseAttributeById(harness.user, attributePicker(dialog), 'age');
+      await harness.user.type(
+        dialog.getByRole('textbox', { name: 'Question text' }),
+        '   ',
+      );
+      await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+
+      expect(await dialog.findByText(REFUSAL)).toBeVisible();
+      expect(screen.getAllByRole('dialog')).toHaveLength(1);
+
+      await harness.user.click(dialog.getByRole('button', { name: 'Cancel' }));
+      await harness.user.click(
+        await screen.findByRole('button', { name: 'Discard changes' }),
+      );
+      await waitFor(() =>
+        expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+      );
+      expect(fieldsOf(await harness.submit())).toHaveLength(2);
+    });
+
+    it('is refused when a field is rewritten, and the field keeps its question', async () => {
+      const harness = renderStageEditor({
+        stageId: 'alter-form-1',
+        sections: <FormFieldsSection subject="node" />,
+      });
+
+      const asSeeded = fieldsOf(await harness.submit())[0];
+      const dialog = await openField(harness, 'Edit field');
+      const question = dialog.getByRole('textbox', { name: 'Question text' });
+      await harness.user.clear(question);
+      await harness.user.type(question, '   ');
+      await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+
+      expect(await dialog.findByText(REFUSAL)).toBeVisible();
+      expect(screen.getAllByRole('dialog')).toHaveLength(1);
+
+      await harness.user.click(dialog.getByRole('button', { name: 'Cancel' }));
+      await harness.user.click(
+        await screen.findByRole('button', { name: 'Discard changes' }),
+      );
+      await waitFor(() =>
+        expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+      );
+      expect(fieldsOf(await harness.submit())[0]).toEqual(asSeeded);
     });
   });
 
@@ -330,15 +417,15 @@ describe('the fields a form collects', () => {
         id: 'repeats-an-attribute',
         type: 'AlterForm',
         fields: {
-          label: 'Alter form',
+          label: en('Alter form'),
           subject: { entity: 'node', type: 'person' },
           form: {
             fields: [
               {
                 variable: 'relationship_to_ego',
-                prompt: 'How do you know them?',
+                prompt: en('How do you know them?'),
               },
-              { variable: 'relationship_to_ego', prompt: 'And how else?' },
+              { variable: 'relationship_to_ego', prompt: en('And how else?') },
             ],
           },
         },
@@ -473,7 +560,7 @@ describe('the fields a form collects', () => {
     await harness.user.type(title, 'Add someone you know');
     const request = await harness.submit();
     expect(request?.stageDocument.form).toMatchObject({
-      title: 'Add someone you know',
+      title: en('Add someone you know'),
     });
   });
 
@@ -501,7 +588,7 @@ describe('the fields a form collects', () => {
     ]);
     expect(fields[1]).toEqual({
       variable: 'relationship_to_ego',
-      prompt: "What is this person's relationship to you?",
+      prompt: en("What is this person's relationship to you?"),
     });
   });
 
@@ -520,17 +607,29 @@ describe('the fields a form collects', () => {
       node: {
         person: {
           name: 'person',
+          label: en('person'),
           color: 'node-color-seq-1',
           icon: 'add-a-person',
           shape: { default: 'circle' },
           variables: {
             relationship_to_ego: {
               name: 'relationship_to_ego',
+              label: 'relationship_to_ego',
               type: 'text',
               component: 'Text',
             },
-            flagged: { name: 'flagged', type: 'boolean', component: 'Boolean' },
-            nickname: { name: 'nickname', type: 'text', component: 'Text' },
+            flagged: {
+              name: 'flagged',
+              label: 'flagged',
+              type: 'boolean',
+              component: 'Boolean',
+            },
+            nickname: {
+              name: 'nickname',
+              label: 'nickname',
+              type: 'text',
+              component: 'Text',
+            },
           },
         },
       },
@@ -548,6 +647,7 @@ describe('the fields a form collects', () => {
     expect(await harness.submit()).not.toBeNull();
     expect(asRecord(personVariables(harness).nickname)).toEqual({
       name: 'nickname',
+      label: 'nickname',
       type: 'text',
       component: 'Text',
     });
@@ -573,7 +673,7 @@ describe('the fields a form collects', () => {
     expect(fieldsOf(await harness.submit()).at(-1)).toEqual({
       id: expect.any(String) as unknown as string,
       variable: created?.[0],
-      prompt: 'What do people call them?',
+      prompt: en('What do people call them?'),
     });
   });
 
@@ -596,7 +696,7 @@ describe('the fields a form collects', () => {
         // researcher could finish yet.
         fields: {
           ...loadFixtureStage('alter-form-1').fields,
-          label: 'New alter form',
+          label: en('New alter form'),
           form: { fields: [] },
         },
       },
@@ -610,7 +710,7 @@ describe('the fields a form collects', () => {
     expect(fieldsOf(await harness.submit()).at(-1)).toEqual({
       id: expect.any(String) as unknown as string,
       variable: created?.[0],
-      prompt: 'What do people call them?',
+      prompt: en('What do people call them?'),
     });
   });
 
@@ -682,7 +782,7 @@ describe('the fields a form collects', () => {
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
     );
     expect(fieldsOf(await harness.submit())).toEqual([
-      { variable: 'relationship_to_ego', prompt: 'Where do they sit?' },
+      { variable: 'relationship_to_ego', prompt: en('Where do they sit?') },
     ]);
   });
 });
@@ -785,7 +885,7 @@ describe('a codebook write a field needs, refused', () => {
    * before anything is asked of the codebook, and says what is wrong with the
    * name while the researcher is still looking at it.
    */
-  it('refuses a name the codebook cannot store before asking for it', async () => {
+  it('refuses a name that would write an export column another attribute writes before asking for it', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
       sections: <FormFieldsSection subject="node" />,
@@ -800,11 +900,13 @@ describe('a codebook write a field needs, refused', () => {
       within(pickerWindow).getByRole('searchbox', {
         name: 'Find or create an attribute',
       }),
-      'first name',
+      'contactType_call',
     );
 
+    // `contactType` is a categorical attribute with an option `call`, which
+    // the export writes to a column of exactly this name.
     const refused = within(pickerWindow).getByRole('option', {
-      name: 'Cannot create attribute named “first name”: only letters, numbers and the symbols ._-: can be used in a name',
+      name: 'Cannot create attribute named “contactType_call”: The export already has a column called “contactType_call” for option “call” of the attribute “contactType”. Choose a different name.',
     });
     expect(refused).toHaveAttribute('aria-disabled', 'true');
 
@@ -817,16 +919,17 @@ describe('a codebook write a field needs, refused', () => {
       within(pickerWindow).getByRole('searchbox', {
         name: 'Find or create an attribute',
       }),
-    ).toHaveValue('first name');
+    ).toHaveValue('contactType_call');
     expect(
       Object.values(personVariables(harness)).some(
-        (variable) => Reflect.get(asRecord(variable), 'name') === 'first name',
+        (variable) =>
+          Reflect.get(asRecord(variable), 'name') === 'contactType_call',
       ),
     ).toBe(false);
     expect(screen.queryByText('the variable draft is invalid')).toBeNull();
   });
 
-  it('control: a name made of the symbols the rule allows is created', async () => {
+  it('control: a name that clashes with no export column is created', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
       sections: <FormFieldsSection subject="node" />,
@@ -893,16 +996,16 @@ const STAMPING_NAME_GENERATOR = {
   id: 'stamps-an-attribute-it-also-asks-about',
   type: 'NameGenerator' as const,
   fields: {
-    label: 'Name generator',
+    label: en('Name generator'),
     subject: { entity: 'node', type: 'person' },
     form: {
-      title: 'Add a person',
-      fields: [{ variable: 'name', prompt: "What is this person's name?" }],
+      title: en('Add a person'),
+      fields: [{ variable: 'name', prompt: en("What is this person's name?") }],
     },
     prompts: [
       {
         id: 'name-generator-prompt-1',
-        text: 'Who are the people you know?',
+        text: en('Who are the people you know?'),
         additionalAttributes: [{ variable: 'flagged', value: true }],
       },
     ],
@@ -989,7 +1092,7 @@ const UNSTAMPED_NAME_GENERATOR = {
     prompts: [
       {
         id: 'name-generator-prompt-1',
-        text: 'Who are the people you know?',
+        text: en('Who are the people you know?'),
       },
     ],
   },
@@ -1249,192 +1352,60 @@ describe('an attribute the open stage’s DRAFT writes unvalidated', () => {
 });
 
 /**
- * A Family Pedigree keeps its family-member form at `nodeConfig.form` and
- * names the node type it collects into at `nodeConfig.type` — which the schema
- * says in its own terms, as
- * `withStageSubjectResolution({ from: 'stagePath', path: ['nodeConfig', 'type'] })`.
- * The same section serves it, pointed at both.
+ * A form the researcher may switch off: a Family Pedigree's additional person
+ * fields. The schema accepts a pedigree with no `form` at all, but not one
+ * holding an empty list, so switching the capability off removes the whole
+ * `form`, and while it is on the form still needs a field.
  */
-/**
- * `unknown` rather than a list, because the protocol is not typed by the time
- * it reaches this section: what an import or a migration left at
- * `nodeConfig.form` is whatever it is, and a seed that could only be a list
- * could not ask the section what it says about the rest.
- */
-const pedigreeHoldingForm = (form: unknown) => {
+const pedigreeHoldingForm = (fields: unknown) => {
   const pedigree = loadFixtureStage('family-pedigree-1');
   return {
     id: pedigree.id,
     type: pedigree.type,
-    fields: {
-      ...pedigree.fields,
-      nodeConfig: { ...asRecord(pedigree.fields.nodeConfig), form },
-    },
+    fields: { ...pedigree.fields, form: { fields } },
   };
 };
 
-const pedigreeForm = (
-  request: Awaited<ReturnType<ReturnType<typeof renderStageEditor>['submit']>>,
-): unknown => asRecord(request?.stageDocument.nodeConfig).form;
-
-/**
- * The pedigree's family-member form, and nothing else.
- *
- * Deliberately alone. A section pointed at a nested path owns that path and
- * only that path: the other five things a pedigree keeps on its node
- * configuration are edited by sections this test does not mount, and a save
- * from here must leave them exactly where it found them. This file used to
- * mount a stand-in for them, because a mounted field replaced its whole
- * top-level key.
- */
-const familyMemberForm = (
-  props: Partial<ComponentProps<typeof FormFieldsSection>> = {},
-) => (
-  <FormFieldsSection
-    subject="node"
-    fieldsPath="nodeConfig.form"
-    subjectTypePath="nodeConfig.type"
-    {...props}
-  />
-);
-
-const FAMILY_MEMBER_FORM: SectionCapability = {
-  fields: ['nodeConfig.form'],
+const PERSON_FORM: SectionCapability = {
+  fields: ['form'],
   confirmClear: {
-    title: fixtureMessage('Ask nothing about each family member?'),
+    title: fixtureMessage('Ask nothing more about each family member?'),
     description: fixtureMessage(
-      'The questions this pedigree asks about each family member will be forgotten.',
+      'The extra questions this pedigree asks about each family member will be forgotten.',
     ),
-    confirmLabel: fixtureMessage('Ask nothing'),
+    confirmLabel: fixtureMessage('Ask nothing more'),
   },
 };
 
-describe('a form the stage keeps somewhere other than `form.fields`', () => {
-  it('reads and writes the list at `fieldsPath`', async () => {
+const personForm = (
+  <FormFieldsSection subject="node" capability={PERSON_FORM} />
+);
+
+describe('a form the researcher may switch off', () => {
+  it('opens switched off on a stage with no form, and saves it without one', async () => {
     const harness = renderStageEditor({
-      stage: pedigreeHoldingForm([
-        { variable: 'fm_name', prompt: 'What is their name?' },
-      ]),
-      sections: familyMemberForm(),
+      stageId: 'family-pedigree-1',
+      sections: personForm,
     });
 
-    // The seeded field is on screen, so the list was read from `nodeConfig.form`
-    // rather than from an absent `form.fields`.
-    expect(
-      await screen.findByText('What is their name?', { exact: false }),
-    ).toBeInTheDocument();
-
-    const dialog = await openField(harness, 'Edit field');
-    const question = dialog.getByRole('textbox', { name: 'Question text' });
-    await harness.user.clear(question);
-    await harness.user.type(question, 'What do people call them?');
-    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
-    );
-
-    // A bare array, which is the shape `FormFieldArraySchema` describes — the
-    // rewritten field went back where the seeded one came from, and nothing was
-    // written to `form.fields`.
-    expect(pedigreeForm(await harness.submit())).toEqual([
-      { variable: 'fm_name', prompt: 'What do people call them?' },
-    ]);
-  });
-
-  it('draws its picker from the type named at `subjectTypePath`', async () => {
-    const harness = renderStageEditor({
-      stage: pedigreeHoldingForm([]),
-      sections: familyMemberForm({ optional: true }),
-    });
-
-    const dialog = await openField(harness, 'Create new form field');
-    const offered = await offeredAttributes(
-      harness.user,
-      attributePicker(dialog),
-    );
-
-    // A family member's attributes, not a person's: `nodeConfig.type` is the
-    // only place this interface says which codebook the form collects into,
-    // and a section that went looking for `subject` would have found nothing.
-    expect(offered).toContain('fm_name');
-    expect(offered).not.toContain('relationship_to_ego');
-    expect(offered).not.toContain('name');
-    // Derived from the tree the participant draws, in this very stage, so the
-    // whole-protocol role map refuses them here.
-    expect(offered).not.toContain('is_ego');
-    expect(offered).not.toContain('fm_relationship_to_ego');
-    expect(offered).not.toContain('biologicalSex');
-  });
-
-  it('accepts a form emptied down to nothing when it is optional', async () => {
-    const harness = renderStageEditor({
-      stage: pedigreeHoldingForm([
-        { variable: 'fm_name', prompt: 'What is their name?' },
-      ]),
-      sections: familyMemberForm({ optional: true }),
-    });
-
-    // Twice: the row's own control asks, and the confirmation says what goes.
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Delete field' }),
-    );
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Delete field' }),
-    );
     await waitFor(() =>
       expect(
-        screen.queryByRole('button', { name: 'Edit field' }),
-      ).not.toBeInTheDocument(),
+        harness
+          .outline()
+          .find((section) => section.title === 'Form configuration')?.state,
+      ).toBe('Switched off'),
     );
-
-    // `FormFieldArraySchema.optional()` rather than `FormSchema.fields.min(1)`:
-    // a pedigree that asks nothing about each family member is a real protocol,
-    // so "add at least one field" must not be applied to it.
-    expect(pedigreeForm(await harness.submit())).toEqual([]);
-    expect(
-      screen.queryByText('You must create at least one item.'),
-    ).not.toBeInTheDocument();
-  });
-
-  it('leaves the rest of the node configuration to the sections that own it', async () => {
-    const seeded = pedigreeHoldingForm([
-      { variable: 'fm_name', prompt: 'What is their name?' },
-    ]);
-    const harness = renderStageEditor({
-      stage: seeded,
-      sections: familyMemberForm(),
-    });
-
-    const dialog = await openField(harness, 'Edit field');
-    const question = dialog.getByRole('textbox', { name: 'Question text' });
-    await harness.user.clear(question);
-    await harness.user.type(question, 'What do people call them?');
-    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
-    );
-
-    // Nothing here edits the node type or the four variable slots, and a save
-    // that dropped them would leave the pedigree unable to draw a tree — the
-    // same loss as deleting a top-level key no section renders, one level down.
-    // Only the form moved.
-    expect(
-      asRecord((await harness.submit())?.stageDocument.nodeConfig),
-    ).toEqual({
-      ...asRecord(seeded.fields.nodeConfig),
-      form: [{ variable: 'fm_name', prompt: 'What do people call them?' }],
-    });
+    const request = await harness.submit();
+    expect(request).not.toBeNull();
+    expect(Object.hasOwn(request?.stageDocument ?? {}, 'form')).toBe(false);
   });
 
   it('asks in the owning interface’s words before switching the form off', async () => {
     const harness = renderStageEditor({
       stage: pedigreeHoldingForm([
-        { variable: 'fm_name', prompt: 'What is their name?' },
+        { variable: 'fm_name', prompt: en('What is their name?') },
       ]),
-      sections: familyMemberForm({
-        optional: true,
-        capability: FAMILY_MEMBER_FORM,
-      }),
+      sections: personForm,
     });
 
     // Seeded with a form, so the capability opens switched on.
@@ -1445,10 +1416,10 @@ describe('a form the stage keeps somewhere other than `form.fields`', () => {
 
     await harness.user.click(toggle);
     expect(
-      await screen.findByText('Ask nothing about each family member?'),
+      await screen.findByText('Ask nothing more about each family member?'),
     ).toBeInTheDocument();
     await harness.user.click(
-      screen.getByRole('button', { name: 'Ask nothing' }),
+      screen.getByRole('button', { name: 'Ask nothing more' }),
     );
 
     await waitFor(() =>
@@ -1459,12 +1430,26 @@ describe('a form the stage keeps somewhere other than `form.fields`', () => {
       ).toBe('Switched off'),
     );
 
-    // Absent, which is how the schema spells "this pedigree asks nothing about
-    // each family member" — not an empty list left behind by a closed section.
+    // Absent, which is how the schema spells "this pedigree asks nothing more
+    // about each family member" — not an empty list left behind.
     const request = await harness.submit();
+    expect(Object.hasOwn(request?.stageDocument ?? {}, 'form')).toBe(false);
+  });
+
+  it('asks for a first field while it is switched on', async () => {
+    const harness = renderStageEditor({
+      stageId: 'family-pedigree-1',
+      sections: personForm,
+    });
+
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Form configuration' }),
+    );
+
+    expect(await harness.submit()).toBeNull();
     expect(
-      Object.hasOwn(asRecord(request?.stageDocument.nodeConfig), 'form'),
-    ).toBe(false);
+      await screen.findByText('You must create at least one item.'),
+    ).toBeInTheDocument();
   });
 });
 
@@ -1575,7 +1560,12 @@ const collectNotesInATextArea = (
         ...personDocument(harness),
         variables: {
           ...personVariables(harness),
-          notes: { name: 'notes', type: 'text', component: 'TextArea' },
+          notes: {
+            name: 'notes',
+            label: 'notes',
+            type: 'text',
+            component: 'TextArea',
+          },
         },
       },
     },
@@ -1621,6 +1611,7 @@ const seedContactSetting = (
           ...personVariables(harness),
           [SEEDED_CONTACT_SETTING]: {
             name: 'contact_setting',
+            label: 'contact_setting',
             type: 'categorical',
             // One of the two controls the schema lets a categorical be
             // collected with. A control belonging to another type — `RadioGroup`
@@ -1629,8 +1620,8 @@ const seedContactSetting = (
             // the person's attributes rather than complain about this one.
             component: 'CheckboxGroup',
             options: [
-              { label: 'At home', value: 'home' },
-              { label: 'At work', value: 'work' },
+              { label: en('At home'), value: 'home' },
+              { label: en('At work'), value: 'work' },
             ],
           },
         },
@@ -1668,6 +1659,7 @@ const seedDateAttribute = (
           ...personVariables(harness),
           [SEEDED_MET_ON]: {
             name: 'met_on',
+            label: 'met_on',
             type: 'datetime',
             component: 'DatePicker',
             ...(parameters === undefined ? {} : { parameters }),
@@ -1729,14 +1721,14 @@ describe('the codebook an attribute a form field collects lives in', () => {
     expect(created[1]).toMatchObject({
       type: 'categorical',
       options: [
-        { label: 'At home', value: 'home' },
-        { label: 'At work', value: 'work' },
+        { label: en('At home'), value: 'home' },
+        { label: en('At work'), value: 'work' },
       ],
     });
 
     expect(fieldsOf(await harness.submit()).at(-1)).toMatchObject({
       variable: created[0],
-      prompt: 'Where do you usually meet?',
+      prompt: en('Where do you usually meet?'),
     });
   });
 
@@ -1788,7 +1780,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
     expect(fieldsOf(await harness.submit()).at(-1)).toEqual({
       id: expect.any(String) as unknown as string,
       variable: variableId,
-      prompt: 'Where do you usually meet?',
+      prompt: en('Where do you usually meet?'),
     });
   });
 
@@ -1820,7 +1812,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
 
     expect(fieldsOf(await harness.submit())[0]).toEqual({
       variable: 'relationship_to_ego',
-      prompt: 'How do you know them?',
+      prompt: en('How do you know them?'),
     });
     expect(harness.host.store.read(person)).toEqual(before);
   });
@@ -1928,6 +1920,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
             ...personVariables(harness),
             [SEEDED_CONTACT_SETTING]: {
               name: 'contact_setting',
+              label: 'contact_setting',
               type: 'categorical',
               //  is one of the two a categorical may be
               // collected with; a control belonging to another kind makes the
@@ -1935,8 +1928,8 @@ describe('the codebook an attribute a form field collects lives in', () => {
               component: 'CheckboxGroup',
               readOnly: true,
               options: [
-                { label: 'At home', value: 'home' },
-                { label: 'At work', value: 'work' },
+                { label: en('At home'), value: 'home' },
+                { label: en('At work'), value: 'work' },
               ],
             },
           },
@@ -2074,9 +2067,9 @@ describe('the codebook an attribute a form field collects lives in', () => {
       ).toHaveLength(3),
     );
     expect(asRecord(personVariables(harness)[variableId]).options).toEqual([
-      { label: 'At home', value: 'home' },
-      { label: 'At work', value: 'work' },
-      { label: 'Somewhere else', value: 'elsewhere' },
+      { label: en('At home'), value: 'home' },
+      { label: en('At work'), value: 'work' },
+      { label: en('Somewhere else'), value: 'elsewhere' },
     ]);
   });
 
@@ -2112,6 +2105,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
                 ...asRecord(current.variables),
                 [COLLABORATORS_ATTRIBUTE]: {
                   name: 'metThrough',
+                  label: 'metThrough',
                   type: 'text',
                   component: 'Text',
                 },
@@ -2369,11 +2363,12 @@ describe('the codebook an attribute a form field collects lives in', () => {
 
     expect(asRecord(personVariables(harness).flagged)).toEqual({
       name: 'flagged',
+      label: 'flagged',
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'Yes, definitely', value: true },
-        { label: 'No, not at all', value: false },
+        { label: en('Yes, definitely'), value: true },
+        { label: en('No, not at all'), value: false },
       ],
     });
   });
@@ -2411,6 +2406,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
 
     expect(asRecord(personVariables(harness).flagged)).toEqual({
       name: 'flagged',
+      label: 'flagged',
       type: 'boolean',
       component: 'Toggle',
     });
@@ -2452,8 +2448,8 @@ describe('the codebook an attribute a form field collects lives in', () => {
     expect(created).toMatchObject({
       type: 'ordinal',
       options: [
-        { label: 'At home', value: 'home' },
-        { label: 'At work', value: 'work' },
+        { label: en('At home'), value: 'home' },
+        { label: en('At work'), value: 'work' },
       ],
     });
   });
@@ -2845,8 +2841,8 @@ describe('a row whose codebook section goes', () => {
  * A protocol whose codebook happens to hold the id the picker's create option
  * is spelled with.
  *
- * Attribute record keys are the researcher's, not this package's:
- * `VariableNameSchema` accepts letters, digits and `._:-`, and the uuids this
+ * Attribute record keys are ids, and not always this package's:
+ * `CodebookIdSchema` accepts letters, digits and `._:-`, and the uuids this
  * section mints are only what IT creates — an imported protocol, or one
  * written by hand, may key an attribute anything that regex allows. So the
  * create option's value has to be something no attribute can ever be called,
@@ -2867,6 +2863,7 @@ describe('an attribute id that collides with the create option', () => {
             ...personVariables(harness),
             [COLLIDING_ID]: {
               name: 'nickname',
+              label: 'nickname',
               type: 'text',
               component: 'Text',
             },
@@ -2944,7 +2941,7 @@ describe('an attribute id that collides with the create option', () => {
     expect(fieldsOf(await harness.submit()).at(-1)).toEqual({
       id: expect.any(String) as unknown as string,
       variable: COLLIDING_ID,
-      prompt: 'What do people call them?',
+      prompt: en('What do people call them?'),
     });
     expect(Object.keys(personVariables(harness))).toHaveLength(before);
   });
@@ -3022,6 +3019,7 @@ describe('an attribute that stops being collectable under an open row', () => {
             ...personVariables(harness),
             relationship_to_ego: {
               name: 'relationship_to_ego',
+              label: 'relationship_to_ego',
               type: 'layout',
             },
           },
@@ -3063,9 +3061,12 @@ describe('an attribute that stops being collectable under an open row', () => {
     expect(fieldsOf(await harness.submit())).toEqual([
       {
         variable: 'name',
-        prompt: "What is this person's relationship to you?",
+        prompt: en("What is this person's relationship to you?"),
       },
-      { variable: 'flagged', prompt: 'Does this person have this attribute?' },
+      {
+        variable: 'flagged',
+        prompt: en('Does this person have this attribute?'),
+      },
     ]);
   });
 });
@@ -3089,7 +3090,10 @@ describe('a form whose list holds something that is not a field', () => {
       ...loadFixtureStage('alter-form-1').fields,
       form: {
         fields: [
-          { variable: 'relationship_to_ego', prompt: 'How do you know them?' },
+          {
+            variable: 'relationship_to_ego',
+            prompt: en('How do you know them?'),
+          },
           null,
         ],
       },
@@ -3113,37 +3117,10 @@ describe('a form whose list holds something that is not a field', () => {
  * Worse than a single unshowable entry, and from the same protocols: the
  * shared list has no entries at all to turn into rows, so the researcher is
  * looking at a form that reports itself finished while the schema refuses the
- * stage. `FormFieldArraySchema.optional()` spells "this pedigree asks nothing
- * about each family member" as an ABSENT value and only that, so `undefined`
- * is the one thing here that means absence — a string or an object left at
- * `nodeConfig.form` is malformed, and gets the sentence a `null` row gets.
+ * stage. A string or an object left where the list belongs is malformed, and
+ * gets the sentence a `null` row gets.
  */
 describe('a form whose list is not a list', () => {
-  it('says so when an optional form holds a string', async () => {
-    const harness = renderStageEditor({
-      stage: pedigreeHoldingForm('fm_name'),
-      sections: familyMemberForm({ optional: true }),
-    });
-
-    expect(await harness.submit()).toBeNull();
-    expect(screen.getByText(NOT_A_FIELD)).toBeInTheDocument();
-  });
-
-  it('says so when an optional form holds an object', async () => {
-    const harness = renderStageEditor({
-      // The `form.fields` shape the three form stages use, written one level
-      // too high — which is what a hand-edit or a half-applied migration
-      // leaves behind here.
-      stage: pedigreeHoldingForm({
-        fields: [{ variable: 'fm_name', prompt: 'What is their name?' }],
-      }),
-      sections: familyMemberForm({ optional: true }),
-    });
-
-    expect(await harness.submit()).toBeNull();
-    expect(screen.getByText(NOT_A_FIELD)).toBeInTheDocument();
-  });
-
   it('says so of a required form too, rather than asking for a first field', async () => {
     const harness = renderStageEditor({
       stage: {
@@ -3165,22 +3142,6 @@ describe('a form whose list is not a list', () => {
     expect(
       screen.queryByText('You must create at least one item.'),
     ).not.toBeInTheDocument();
-  });
-
-  it('still accepts an optional form that holds nothing at all', async () => {
-    // The fixture pedigree asks nothing about each family member: its
-    // `nodeConfig` has no `form` key, which is the shape the schema calls
-    // absent.
-    const pedigree = loadFixtureStage('family-pedigree-1');
-    const harness = renderStageEditor({
-      stage: pedigree,
-      sections: familyMemberForm({ optional: true }),
-    });
-
-    const request = await harness.submit();
-    expect(request).not.toBeNull();
-    expect(pedigreeForm(request)).toBeUndefined();
-    expect(screen.queryByText(NOT_A_FIELD)).not.toBeInTheDocument();
   });
 });
 
@@ -3220,13 +3181,13 @@ describe('a stored field the schema refuses for its own shape', () => {
   /** A field of the fixture's own form, plus a key no form field has. */
   const CARRIES_AN_UNKNOWN_KEY = {
     variable: 'flagged',
-    prompt: 'Does this person have this attribute?',
+    prompt: en('Does this person have this attribute?'),
     notAThing: 'left behind by a half-applied migration',
   };
 
   const RELATIONSHIP = {
     variable: 'relationship_to_ego',
-    prompt: 'What is this person’s relationship to you?',
+    prompt: en('What is this person’s relationship to you?'),
   };
 
   it('names the fault on this section rather than on the stage', async () => {
@@ -3405,8 +3366,8 @@ describe('the answers a boolean a field is inventing offers', () => {
       type: 'boolean',
       component: 'Boolean',
       options: [
-        { label: 'Nearby', value: true },
-        { label: 'Further away', value: false },
+        { label: en('Nearby'), value: true },
+        { label: en('Further away'), value: false },
       ],
     });
   });
@@ -3451,8 +3412,8 @@ describe('the answers a boolean a field is inventing offers', () => {
     });
     expect(created[1]).toMatchObject({
       options: [
-        { label: 'Nearby', value: true },
-        { label: 'Further away', value: false, negative: true },
+        { label: en('Nearby'), value: true },
+        { label: en('Further away'), value: false, negative: true },
       ],
     });
   });
@@ -3606,7 +3567,7 @@ describe('rules for the attribute a field is inventing', () => {
     expect(fieldsOf(await harness.submit()).at(-1)).toEqual({
       id: expect.any(String) as unknown as string,
       variable: created?.[0],
-      prompt: 'What do people call them?',
+      prompt: en('What do people call them?'),
     });
   });
 
@@ -3682,6 +3643,7 @@ describe('rules for the attribute a field is inventing', () => {
     // The row saved, and what it wrote is the rule a number answer does take.
     expect(inventedNickname(harness)?.[1]).toEqual({
       name: 'nickname',
+      label: 'nickname',
       type: 'number',
       component: 'Number',
       validation: { required: true },
@@ -3733,6 +3695,7 @@ describe('rules for the attribute a field is inventing', () => {
 
     expect(inventedNickname(harness)?.[1]).toEqual({
       name: 'nickname',
+      label: 'nickname',
       type: 'text',
       component: 'Text',
       validation: { sameAs: 'composerName' },
@@ -3929,8 +3892,8 @@ describe('rules for the attribute a field is inventing', () => {
       component: 'CheckboxGroup',
       validation: { required: true },
       options: [
-        { label: 'At home', value: 'home' },
-        { label: 'At work', value: 'work' },
+        { label: en('At home'), value: 'home' },
+        { label: en('At work'), value: 'work' },
       ],
     });
   });
@@ -4027,17 +3990,18 @@ describe('inventing an attribute whose control takes settings', () => {
     const created = savedAttribute(harness, 'closeness');
     expect(created?.[1]).toEqual({
       name: 'closeness',
+      label: 'closeness',
       type: 'scalar',
       component: 'VisualAnalogScale',
       parameters: {
-        minLabel: 'Not at all close',
-        maxLabel: 'As close as can be',
+        minLabel: en('Not at all close'),
+        maxLabel: en('As close as can be'),
       },
     });
     expect(fieldsOf(await harness.submit()).at(-1)).toEqual({
       id: expect.any(String) as unknown as string,
       variable: created?.[0],
-      prompt: 'How close are you?',
+      prompt: en('How close are you?'),
     });
   });
 
@@ -4097,6 +4061,7 @@ describe('inventing an attribute whose control takes settings', () => {
 
     expect(savedAttribute(harness, 'last_contact')?.[1]).toEqual({
       name: 'last_contact',
+      label: 'last_contact',
       type: 'datetime',
       component: 'RelativeDatePicker',
       parameters: { before: 30, after: 7 },
@@ -4504,6 +4469,7 @@ describe('the live preview beside a form field’s settings', () => {
             ...personVariables(harness),
             [FOLLOW_UP]: {
               name: 'follow_up',
+              label: 'follow_up',
               type: 'boolean',
               component: 'Boolean',
             },
@@ -4569,7 +4535,7 @@ describe('the live preview beside a form field’s settings', () => {
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
     );
     expect(fieldsOf(await harness.submit())).not.toContainEqual(
-      expect.objectContaining({ prompt: QUESTION }),
+      expect.objectContaining({ prompt: en(QUESTION) }),
     );
   });
 
@@ -4662,7 +4628,7 @@ describe('the live preview beside a form field’s settings', () => {
     // would not see it.
     const saved = fieldsOf(await harness.submit()).at(-1) ?? {};
     expect(Object.keys(saved).toSorted()).toEqual(['id', 'prompt', 'variable']);
-    expect(saved).toMatchObject({ variable: FOLLOW_UP, prompt: QUESTION });
+    expect(saved).toMatchObject({ variable: FOLLOW_UP, prompt: en(QUESTION) });
   });
 
   /**

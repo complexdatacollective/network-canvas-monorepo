@@ -1,4 +1,5 @@
 import {
+  Suspense,
   useCallback,
   useEffect,
   useEffectEvent,
@@ -8,11 +9,15 @@ import {
 } from 'react';
 import { useLocation, useRoute, useSearch } from 'wouter';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
+import {
+  defineMessages,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
 import {
   AppI18nProvider,
   AppMessage,
   useAppIntl,
+  useAppLocale,
   useLocaleCatalog,
 } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
@@ -22,9 +27,11 @@ import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
+  type CompletedAction,
   createDebouncedSyncHandler,
   type FinishHandler,
   type InterviewPayload,
+  type ProtocolLocaleChangeHandler,
   type SessionPayload,
   Shell,
   type StepChangeHandler,
@@ -32,10 +39,12 @@ import {
   getLastAvailableAuthoredStageIndex,
 } from '@codaco/interview';
 import { loadInterviewCatalog } from '@codaco/interview/catalog';
-import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
-import { InterviewComplete } from '~/components/InterviewComplete';
-import { useInterviewerLocale } from '~/i18n/InterviewerI18nProvider';
+import {
+  getLocaleMetadata,
+  type LocalizationDeclaration,
+} from '@codaco/protocol-validation';
 import { interviewerLocales } from '~/i18n/locales';
+import { browserLanguages } from '~/i18n/preference';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import { POSTHOG_APP_KEY, POSTHOG_APP_NAME } from '~/lib/analytics/config';
 import { APP_VERSION } from '~/lib/appVersion';
@@ -49,15 +58,31 @@ import {
   getSession,
   getSettings,
   markSessionFinished,
+  setSessionLocale,
   updateSession,
   updateSettings,
 } from '~/lib/db/api';
+import type { SessionWriteBasis } from '~/lib/db/sessions';
 import type { StoredSession } from '~/lib/db/types';
 import { getInstallationId } from '~/lib/installationId';
+import {
+  canRunStoredProtocol,
+  getStoredProtocolMigrationFailure,
+  useStoredProtocolMigrationFailure,
+} from '~/lib/protocol/storedProtocolMigrationFailures';
 import { useHistoryBackGuard } from '~/lib/pwa/useHistoryBackGuard';
 import { interviewerCatalogSource } from '~/locales/catalogs';
 
 const messages = defineMessages({
+  // The id is older than this file: the message moved here from the
+  // completion screen this host used to show, and kept its id so its
+  // translations still apply.
+  exit: {
+    id: 'interviewer.interviewComplete.exit',
+    defaultMessage: 'Exit',
+    description:
+      'Participant completion-screen action handing control back to the researcher, with authentication if required.',
+  },
   finishConfirmationDescription: {
     id: 'interviewer.interview.finishConfirmationDescription',
     defaultMessage:
@@ -75,6 +100,13 @@ const messages = defineMessages({
     defaultMessage:
       'The protocol this interview uses could not be updated to work with this version of the app, so this interview cannot be continued. Its responses remain available on the data screen. To start new interviews, repair the protocol in Architect and import it again.',
     description: 'Visible copy in Interviewer Interview.',
+  },
+  interviewsOfProtocolCouldNotBeUpdated: {
+    id: 'interviewer.interview.interviewsOfProtocolCouldNotBeUpdated',
+    defaultMessage:
+      'Some interviews recorded with this protocol could not be updated to work with this version of the app, so this interview cannot be continued yet. The protocol and all its interviews have been kept exactly as they were, and the app will try again each time it starts. Its responses remain available on the data screen.',
+    description:
+      'Visible copy in Interviewer Interview, shown when the interviews recorded with this interview’s protocol could not be updated to work with this version of the app, so the protocol was left as it was. A later version of the app may be able to update them.',
   },
   returnHome: {
     id: 'interviewer.interview.returnHome',
@@ -154,16 +186,28 @@ const SYNC_BATCH_MS = 0;
 type LoadState =
   | { kind: 'loading' }
   | { kind: 'missing' }
-  | { kind: 'incompatible' }
+  | { kind: 'incompatible'; protocolHash: string }
   | { kind: 'unreadable' }
   | {
       kind: 'ready';
       sessionId: string;
       payload: InterviewPayload;
       resolver: (id: string) => Promise<string>;
-      readOnly: boolean;
+      // An explicit review request: the Shell shows the stages, read-only.
+      reviewMode: boolean;
+      // Whether anything the interview does is saved. Not in a review, and not
+      // for a session already finished when it loaded, which the Shell shows
+      // in its completed state.
+      writable: boolean;
       initialStageOverrideIndex?: number;
     };
+
+// What this route writes for one interview: see `writeStatesRef`.
+type SessionWriteState = {
+  basis: SessionWriteBasis;
+  synced: Pick<StoredSession, 'network' | 'stageMetadata'>;
+  currentStep: number;
+};
 
 const loadFailureCopy = {
   incompatible: {
@@ -181,11 +225,19 @@ const loadFailureCopy = {
 };
 
 const discardSessionChanges: SyncHandler = () => Promise.resolve();
+const discardLocaleChange: ProtocolLocaleChangeHandler = () =>
+  Promise.resolve();
 const discardFinish: FinishHandler = () => Promise.resolve();
+// The per-session write chain in `setSessionLocale` keeps one interview's
+// locale writes in order.
+const saveLocaleChange: ProtocolLocaleChangeHandler = (id, change) =>
+  setSessionLocale(id, change);
 
 export function InterviewRoute({ sessionId }: { sessionId: string }) {
   const intl = useAppIntl();
-  const { preference, setPreference } = useInterviewerLocale();
+  // Read once per mount: the interview matches these again each time it
+  // loads, until the participant chooses a language.
+  const [requestedLocales] = useState(browserLanguages);
   const [loadState, setLoadState] = useState<LoadState>({ kind: 'loading' });
   // This route re-renders rather than remounting when sessionId changes, so a
   // ready state can still belong to the previous interview while the next one
@@ -196,6 +248,9 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     loadState.kind === 'ready' && loadState.sessionId !== sessionId
       ? { kind: 'loading' }
       : loadState;
+  const migrationFailure = useStoredProtocolMigrationFailure(
+    state.kind === 'incompatible' ? state.protocolHash : '',
+  );
   const [, navigate] = useLocation();
   const search = useSearch();
   const reviewRequested = new URLSearchParams(search).get('mode') === 'review';
@@ -215,13 +270,29 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   );
   const isLiveRoute =
     interviewRouteMatches && interviewRouteParams.sessionId === sessionId;
-  const [finished, setFinished] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [allowStageNavigation, setAllowStageNavigation] = useState(false);
-  // SessionPayload from @codaco/interview's onSync does not carry the current
-  // step. Mirror it into a ref so handleSync sees the latest value rather
-  // than the stale closure value.
-  const currentStepRef = useRef(0);
+  // Every write from this route is the session's whole state — network, stage
+  // metadata and resume position — computed against the protocol it loaded
+  // (`basis`). If another tab updates the app and migrates that protocol
+  // while this interview is open, a whole-state write is stored under the
+  // protocol it was made against and the next launch carries it across the
+  // migration, so nothing is lost; a partial one could not be applied to the
+  // migrated data at all (see `updateSession`). The step change carries no
+  // network of its own, so it writes the state most recently handed to
+  // storage (`synced`): it is set as each sync write is queued, and writes to
+  // one session land in the order they were queued, so a step change never
+  // puts back an older network. The sync snapshot does not carry the current
+  // step, so the step is kept here too.
+  //
+  // Kept per interview, not in one slot for whichever is showing. This route
+  // re-renders rather than remounting when the id changes, and the previous
+  // interview's sync handler can still write after the next one has loaded —
+  // a write already queued, or the flush its Shell makes as it unmounts. With
+  // one slot that write would be made against the next interview's protocol
+  // and step, and would leave the previous interview's network for the next
+  // interview's step change to write into it.
+  const writeStatesRef = useRef(new Map<string, SessionWriteState>());
 
   // A history-back (browser button or a swipe gesture the CSS/wheel guards
   // can't intercept, e.g. iPadOS edge swipe) would leave the interview WITHOUT
@@ -275,13 +346,16 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   });
 
   // The interview's messages load while the session below is unlocked and
-  // decrypted, rather than once the Shell mounts. A failure here is retried by
-  // the Shell itself.
+  // decrypted, rather than once the Shell mounts, and with them Interviewer's
+  // own messages in that language for the finish dialog's description. A
+  // failure here is retried by the Shell itself.
   useEffect(() => {
-    loadInterviewCatalog(intl.locale, preference).catch(() => undefined);
-  }, [intl.locale, preference]);
+    loadInterviewCatalog(requestedLocales)
+      .then(({ locale }) => interviewerCatalogSource.load(locale))
+      .catch(() => undefined);
+  }, [requestedLocales]);
 
-  // Gated exit shared by the Shell exit button and the completion screen.
+  // Gated exit shared by the Shell exit button and the completed state's Exit.
   const handleExit = useCallback(async () => {
     const settings = await getSettings();
     if (settings.requireUnlockOnExit) {
@@ -331,15 +405,23 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       }
       // The launch-time sweep migrates stored protocols before routes render,
       // so a row still below the runtime's schema version is one that could
-      // not be migrated. Refuse to run rather than hand the runtime a document
-      // it cannot execute.
-      if (protocol.schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION) {
-        if (active) setLoadState({ kind: 'incompatible' });
+      // not be migrated, and a row it reported a failure for was held back
+      // with its interviews. Refuse to run rather than hand the runtime a
+      // document it cannot execute or a session it cannot read.
+      if (
+        !canRunStoredProtocol(
+          protocol,
+          getStoredProtocolMigrationFailure(protocol.hash),
+        )
+      ) {
+        if (active) {
+          setLoadState({ kind: 'incompatible', protocolHash: protocol.hash });
+        }
         return;
       }
       const assets = await buildResolvedAssets(session.protocolHash);
       const payload: InterviewPayload = {
-        session: hydrateSession(session),
+        session: hydrateSession(session, protocol.protocol.localization),
         protocol: {
           ...protocol.protocol,
           id: protocol.id,
@@ -349,7 +431,8 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         },
       };
       if (!active) return;
-      const readOnly = reviewRequested || session.finishedAt !== null;
+      const writable = !reviewRequested && session.finishedAt === null;
+      const readOnly = !writable;
       const lastAvailableStage = getLastAvailableAuthoredStageIndex(
         protocol.protocol.stages,
         session.network,
@@ -365,19 +448,27 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
           ? (lastAvailableStage ?? 0)
           : session.currentStep;
       setCurrentStep(initialStep);
-      currentStepRef.current = initialStep;
+      writeStatesRef.current.set(sessionId, {
+        basis: { protocolHash: protocol.hash },
+        synced: {
+          network: session.network,
+          stageMetadata: session.stageMetadata,
+        },
+        currentStep: initialStep,
+      });
       setAllowStageNavigation(settings.allowStageNavigation);
       setLoadState({
         kind: 'ready',
         sessionId,
         payload,
         resolver: makeAssetResolver(session.protocolHash, protocol.importedAt),
-        readOnly,
+        reviewMode: reviewRequested,
+        writable,
         initialStageOverrideIndex: shouldOverrideUnavailableStage
           ? 0
           : undefined,
       });
-      if (!readOnly) {
+      if (writable) {
         void updateSettings({
           lastActiveSessionId: session.id,
           lastActiveProtocolHash: session.protocolHash,
@@ -405,7 +496,8 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     isLiveRoute,
   ]);
 
-  const readOnly = state.kind === 'ready' && state.readOnly;
+  const reviewMode = state.kind === 'ready' && state.reviewMode;
+  const readOnly = state.kind === 'ready' && !state.writable;
 
   const analytics = useMemo(
     () => ({
@@ -441,41 +533,76 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
             `Sync for interview ${id} reached the handler for ${ownerId}`,
           );
         }
-        await updateSession(id, {
+        const writeState = writeStatesRef.current.get(id);
+        if (!writeState) {
+          throw new Error(`Sync for interview ${id} arrived before it loaded`);
+        }
+        writeState.synced = {
           network: session.network,
-          currentStep: currentStepRef.current,
           stageMetadata: session.stageMetadata,
-        });
+        };
+        await updateSession(
+          id,
+          {
+            network: session.network,
+            currentStep: writeState.currentStep,
+            stageMetadata: session.stageMetadata,
+          },
+          writeState.basis,
+        );
       },
       { waitMs: SYNC_BATCH_MS },
     );
   }, [sessionId]);
 
-  const handleFinish = useCallback(async (id: string) => {
-    await markSessionFinished(id);
-    setFinished(true);
-  }, []);
+  // Once this resolves the Shell shows its completed state in place; the
+  // route stays where it is. The finish confirmation cannot be dismissed while
+  // this runs, so the signal aborts only when the interview is torn down, and
+  // then nothing is written: a stored finish must always be one the Shell went
+  // on to show as completed. The write itself checks the signal again before
+  // it commits, so a teardown while it waits or encrypts still writes nothing.
+  const handleFinish = useCallback<FinishHandler>(
+    async (id, finish, signal) => {
+      signal.throwIfAborted();
+      await markSessionFinished(id, finish, signal);
+    },
+    [],
+  );
+
+  // The one action on a finished interview's completed state: hand the device
+  // back through the same gated exit as the Shell's own exit button.
+  const completedActions = useMemo<readonly CompletedAction[]>(
+    () => [
+      {
+        label: <InterviewLanguageMessage message={messages.exit} />,
+        onAction: () => void handleExit(),
+      },
+    ],
+    [handleExit],
+  );
 
   const handleStepChange = useCallback<StepChangeHandler>(
     (step, meta) => {
-      currentStepRef.current = step;
       setCurrentStep(step);
+      const writeState = writeStatesRef.current.get(sessionId);
+      if (!writeState) return;
+      writeState.currentStep = step;
       if (readOnly) return;
       // Persist the participant-facing progress alongside the step so the
-      // dashboard shows exactly what the participant saw, without re-deriving it
-      // (and without needing to know about the engine's appended finish stage).
-      void updateSession(sessionId, {
-        currentStep: step,
-        progress: meta.progress,
-        resumeStageOverrideIndex: undefined,
-      });
+      // dashboard shows exactly what the participant saw, without re-deriving it.
+      void updateSession(
+        sessionId,
+        {
+          ...writeState.synced,
+          currentStep: step,
+          progress: meta.progress,
+          resumeStageOverrideIndex: undefined,
+        },
+        writeState.basis,
+      );
     },
     [readOnly, sessionId],
   );
-
-  if (finished) {
-    return <InterviewComplete onExit={() => void handleExit()} />;
-  }
 
   if (state.kind === 'loading') {
     return (
@@ -494,7 +621,11 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     return (
       <LoadFailure
         heading={intl.formatMessage(copy.heading)}
-        body={intl.formatMessage(copy.body)}
+        body={intl.formatMessage(
+          state.kind === 'incompatible' && migrationFailure === 'sessions'
+            ? messages.interviewsOfProtocolCouldNotBeUpdated
+            : copy.body,
+        )}
         onReturnHome={() => {
           // Not gated (don't trap the user on an error screen), but clear the
           // entry authorization so a transient load failure can't leave a
@@ -512,7 +643,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         aria-hidden
         className="bg-background pointer-events-none fixed inset-0 z-[-1]"
       />
-      {readOnly && (
+      {reviewMode && (
         <Alert
           variant="info"
           appearance="soft"
@@ -528,13 +659,14 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         </Alert>
       )}
       <Shell
-        requestedLocale={intl.locale}
-        localePreference={preference}
-        onLocaleChange={setPreference}
+        requestedLocales={requestedLocales}
         payload={state.payload}
         currentStep={currentStep}
         onStepChange={handleStepChange}
         onSync={readOnly ? discardSessionChanges : handleSync}
+        onProtocolLocaleChange={
+          readOnly ? discardLocaleChange : saveLocaleChange
+        }
         onFinish={readOnly ? discardFinish : handleFinish}
         onRequestAsset={state.resolver}
         analytics={analytics}
@@ -544,15 +676,23 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         // resolved (it lags the opt-in state at unlock and on a later opt-in,
         // and is null for good when disabled at build time or failed to load).
         disableAnalytics={readOnly || !analyticsEnabled || !posthogClient}
-        reviewMode={readOnly}
+        reviewMode={reviewMode}
+        completedActions={reviewMode ? undefined : completedActions}
         initialStageOverrideIndex={state.initialStageOverrideIndex}
-        finishConfirmationDescription={<InterviewFinishDescription />}
+        finishConfirmationDescription={
+          <InterviewLanguageMessage
+            message={messages.finishConfirmationDescription}
+          />
+        }
         onExit={() => void handleExit()}
         allowStageNavigation={allowStageNavigation}
         allowUserScaling
         initialTextScale={initialTextScale}
         onTextScaleChange={handleTextScaleChange}
         navigationClassnames={NAVIGATION_SAFE_AREA_CLASSNAMES}
+        // Redux DevTools and the action logger connect only in a development
+        // build.
+        flags={{ isDevelopment: import.meta.env.DEV }}
       />
     </div>
   );
@@ -586,13 +726,27 @@ function LoadFailure({
   );
 }
 
-// This queued host-specific message renders beneath Shell's package-owned
-// provider. Subscribe to the host preference explicitly so an already-open
-// confirmation follows changes without importing host catalogs into Shell.
-// The host reports the locale it is rendering, whose catalog has therefore
-// already loaded, so this reads it from the shared source without suspending.
-function InterviewFinishDescription() {
-  const { locale } = useInterviewerLocale();
+// Host messages that render inside the Shell (the finish dialog's explanation,
+// the completed state's Exit) take the interview's interface language from the
+// Shell's provider; the interview never uses Interviewer's own language.
+// Interviewer's catalog for that language is loaded when the interview is (see
+// the route), so this normally renders at once; the boundary keeps a late
+// catalog from suspending the whole interview behind the Shell's loading
+// screen.
+function InterviewLanguageMessage({ message }: { message: MessageDescriptor }) {
+  return (
+    <Suspense fallback={null}>
+      <InterviewLanguageMessageText message={message} />
+    </Suspense>
+  );
+}
+
+function InterviewLanguageMessageText({
+  message,
+}: {
+  message: MessageDescriptor;
+}) {
+  const { locale } = useAppLocale();
   const catalog = useLocaleCatalog(interviewerCatalogSource, locale);
   const direction =
     interviewerLocales.find((entry) => entry.locale === catalog.locale)
@@ -605,21 +759,32 @@ function InterviewFinishDescription() {
       manageDocument={false}
     >
       <span lang={catalog.locale} dir={direction}>
-        <AppMessage message={messages.finishConfirmationDescription} />
+        <AppMessage message={message} />
       </span>
     </AppI18nProvider>
   );
 }
 
-function hydrateSession(stored: StoredSession): SessionPayload {
+function hydrateSession(
+  stored: StoredSession,
+  localization: LocalizationDeclaration,
+): SessionPayload {
   return {
     id: stored.id,
     startTime: stored.startedAt,
     finishTime: stored.finishedAt,
+    // Null for a session finished before finish stages were recorded; the
+    // Shell then shows the protocol's last finish stage.
+    finishStageId: stored.finishStageId ?? null,
     exportTime: stored.exportedAt,
     lastUpdated: stored.lastUpdatedAt,
     network: stored.network,
     promptIndex: 0,
     stageMetadata: stored.stageMetadata,
+    localePreference: stored.localePreference,
+    locale: stored.locale,
+    localeOptions: localization.locales.map((locale) =>
+      getLocaleMetadata(locale),
+    ),
   };
 }

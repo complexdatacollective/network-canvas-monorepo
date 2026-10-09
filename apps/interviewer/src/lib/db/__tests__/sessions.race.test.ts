@@ -38,8 +38,13 @@ vi.mock('../recordCrypto', async (importOriginal) => {
 // Import AFTER the mock so sessions.ts binds the wrapped encryptSession.
 const { db } = await import('../db');
 const { setSessionDek } = await import('../sessionKey');
-const { createSession, getSession, updateSession } =
-  await import('../sessions');
+const {
+  createSession,
+  getSession,
+  SessionProtocolChangedError,
+  setSessionLocale,
+  updateSession,
+} = await import('../sessions');
 
 async function makeDek(): Promise<CryptoKey> {
   return crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, [
@@ -84,7 +89,11 @@ describe('updateSession against concurrent writers', () => {
     setSessionDek(null);
   });
 
-  it('commits the freshest protocolHash when a migration repointed it mid-write', async () => {
+  // The launch migration (possibly in another tab) can move a session to its
+  // migrated protocol while this tab's write is between its read and its
+  // commit. A write naming only part of the session's protocol-bound state
+  // cannot be applied to the migrated data, so it is refused.
+  it('refuses a partial write when a migration moved the session mid-write, and leaves the migrated row alone', async () => {
     const created = await createSession({
       protocolHash: 'old-hash',
       protocolName: 'Study',
@@ -93,17 +102,141 @@ describe('updateSession against concurrent writers', () => {
     });
 
     const pause = pauseNextEncrypt();
-    const pending = updateSession(created.id, { currentStep: 3 });
+    const pending = updateSession(
+      created.id,
+      { currentStep: 3 },
+      { protocolHash: 'old-hash' },
+    );
     await pause.reached;
-    // The sweep (another tab) repoints the session while the update is
-    // suspended between its read and its commit.
     await db.sessions.update(created.id, { protocolHash: 'new-hash' });
+    const migrated = await db.sessions.get(created.id);
     pause.release();
-    await pending;
+
+    await expect(pending).rejects.toBeInstanceOf(SessionProtocolChangedError);
+    expect(await db.sessions.get(created.id)).toEqual(migrated);
+  });
+
+  it('refuses a partial write computed against a protocol the session had already left', async () => {
+    const created = await createSession({
+      protocolHash: 'old-hash',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork: network,
+    });
+    await db.sessions.update(created.id, { protocolHash: 'new-hash' });
+    const migrated = await db.sessions.get(created.id);
+
+    for (const patch of [
+      { currentStep: 3 },
+      { progress: 50 },
+      { resumeStageOverrideIndex: undefined },
+      { network },
+    ]) {
+      await expect(
+        updateSession(created.id, patch, { protocolHash: 'old-hash' }),
+      ).rejects.toBeInstanceOf(SessionProtocolChangedError);
+    }
+    expect(await db.sessions.get(created.id)).toEqual(migrated);
+  });
+
+  // A write of the session's whole state is complete in the old protocol's
+  // schema, so it is kept under the hash it was computed against, and the
+  // next launch carries it across the migration again.
+  it('stores a whole-state write under the protocol it was computed against when the session has moved', async () => {
+    const created = await createSession({
+      protocolHash: 'old-hash',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork: network,
+    });
+    await db.sessions.update(created.id, { protocolHash: 'new-hash' });
+    const answered: NcNetwork = {
+      ...network,
+      nodes: [
+        {
+          [entityPrimaryKeyProperty]: 'node-1',
+          type: 'person',
+          [entityAttributesProperty]: {},
+        },
+      ],
+    };
+
+    await updateSession(
+      created.id,
+      { network: answered, stageMetadata: undefined, currentStep: 2 },
+      { protocolHash: 'old-hash' },
+    );
+
+    expect((await db.sessions.get(created.id))?.protocolHash).toBe('old-hash');
+    const back = await getSession(created.id);
+    expect(back?.network).toEqual(answered);
+    expect(back?.currentStep).toBe(2);
+  });
+
+  it('applies a write naming nothing protocol-bound whichever protocol the session belongs to', async () => {
+    const created = await createSession({
+      protocolHash: 'old-hash',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork: network,
+    });
+    await db.sessions.update(created.id, { protocolHash: 'new-hash' });
+
+    await updateSession(
+      created.id,
+      { exportedAt: '2026-01-05T00:00:00.000Z' },
+      { protocolHash: 'old-hash' },
+    );
 
     const row = await db.sessions.get(created.id);
     expect(row?.protocolHash).toBe('new-hash');
+    expect(row?.exportedAt).toBe('2026-01-05T00:00:00.000Z');
+  });
+
+  it('applies a write computed against the protocol the session belongs to as before', async () => {
+    const created = await createSession({
+      protocolHash: 'hash',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork: network,
+    });
+
+    await updateSession(
+      created.id,
+      { currentStep: 3, progress: 40 },
+      { protocolHash: 'hash' },
+    );
+
+    const row = await db.sessions.get(created.id);
+    expect(row?.protocolHash).toBe('hash');
     expect(row?.currentStep).toBe(3);
+    expect(row?.progress).toBe(40);
+  });
+
+  // The runtime's sync treats a refused write as unsaved and keeps the
+  // answers to offer again, so a failure has to reach it.
+  it('rejects when the write cannot be stored', async () => {
+    const created = await createSession({
+      protocolHash: 'hash',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork: network,
+    });
+    const before = await db.sessions.get(created.id);
+    const cause = new Error('IndexedDB write failed');
+    const put = vi.spyOn(db.sessions, 'put').mockRejectedValueOnce(cause);
+    try {
+      await expect(
+        updateSession(
+          created.id,
+          { network, stageMetadata: undefined, currentStep: 3 },
+          { protocolHash: 'hash' },
+        ),
+      ).rejects.toBe(cause);
+    } finally {
+      put.mockRestore();
+    }
+    expect(await db.sessions.get(created.id)).toEqual(before);
   });
 
   it('does not resurrect a session deleted mid-write', async () => {
@@ -115,7 +248,11 @@ describe('updateSession against concurrent writers', () => {
     });
 
     const pause = pauseNextEncrypt();
-    const pending = updateSession(created.id, { currentStep: 3 });
+    const pending = updateSession(
+      created.id,
+      { currentStep: 3 },
+      { protocolHash: 'old-hash' },
+    );
     await pause.reached;
     await db.sessions.delete(created.id);
     pause.release();
@@ -140,18 +277,22 @@ describe('updateSession against concurrent writers', () => {
     });
 
     const pause = pauseNextEncrypt();
-    const pending = updateSession(created.id, {
-      network: {
-        ...network,
-        nodes: [
-          {
-            [entityPrimaryKeyProperty]: 'node-1',
-            type: 'person',
-            [entityAttributesProperty]: {},
-          },
-        ],
+    const pending = updateSession(
+      created.id,
+      {
+        network: {
+          ...network,
+          nodes: [
+            {
+              [entityPrimaryKeyProperty]: 'node-1',
+              type: 'person',
+              [entityAttributesProperty]: {},
+            },
+          ],
+        },
       },
-    });
+      { protocolHash: 'hash' },
+    );
     await pause.reached;
 
     // The hydration read, issued while the write is suspended between its
@@ -174,5 +315,199 @@ describe('updateSession against concurrent writers', () => {
 
     const session = await read;
     expect(session?.network.nodes).toHaveLength(1);
+  });
+});
+
+describe('setSessionLocale', () => {
+  beforeEach(async () => {
+    await db.sessions.clear();
+    setSessionDek(await makeDek());
+  });
+  afterEach(async () => {
+    encryptPause = null;
+    await db.sessions.clear();
+    setSessionDek(null);
+  });
+
+  async function createStudySession() {
+    return createSession({
+      protocolHash: 'hash',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork: network,
+    });
+  }
+
+  it('starts a new session with no recorded language', async () => {
+    const created = await createStudySession();
+
+    expect(created).toMatchObject({ localePreference: null, locale: null });
+    expect(await db.sessions.get(created.id)).toMatchObject({
+      localePreference: null,
+      locale: null,
+    });
+  });
+
+  it('stores both the chosen and the shown language', async () => {
+    const created = await createStudySession();
+
+    await setSessionLocale(created.id, {
+      locale: 'fr',
+      localePreference: 'fr',
+    });
+    expect(await getSession(created.id)).toMatchObject({
+      localePreference: 'fr',
+      locale: 'fr',
+    });
+
+    // Returning to automatic matching clears the choice but still records
+    // the language the interview then showed.
+    await setSessionLocale(created.id, {
+      locale: 'es',
+      localePreference: null,
+    });
+    expect(await getSession(created.id)).toMatchObject({
+      localePreference: null,
+      locale: 'es',
+    });
+  });
+
+  it('leaves the interview’s last-updated time alone', async () => {
+    const created = await createStudySession();
+    const before = (await db.sessions.get(created.id))?.lastUpdatedAt;
+    expect(before).toEqual(expect.any(String));
+
+    // Without fake timers a fast write can land in the same millisecond, so
+    // pin the clock past the creation time.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date(Date.parse(before ?? '') + 60_000));
+      await setSessionLocale(created.id, {
+        locale: 'fr',
+        localePreference: 'fr',
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(await db.sessions.get(created.id)).toMatchObject({
+      locale: 'fr',
+      localePreference: 'fr',
+      lastUpdatedAt: before,
+    });
+  });
+
+  it('applies changes in the order they were made', async () => {
+    const created = await createStudySession();
+
+    await Promise.all([
+      setSessionLocale(created.id, { locale: 'fr', localePreference: 'fr' }),
+      setSessionLocale(created.id, { locale: 'ar', localePreference: 'ar' }),
+      setSessionLocale(created.id, { locale: 'es', localePreference: null }),
+    ]);
+
+    expect(await db.sessions.get(created.id)).toMatchObject({
+      localePreference: null,
+      locale: 'es',
+    });
+  });
+
+  it('waits behind an in-flight updateSession for the same session', async () => {
+    const created = await createStudySession();
+
+    const pause = pauseNextEncrypt();
+    const pending = updateSession(
+      created.id,
+      { currentStep: 2 },
+      { protocolHash: 'hash' },
+    );
+    await pause.reached;
+
+    let settled = false;
+    const localeWrite = setSessionLocale(created.id, {
+      locale: 'fr',
+      localePreference: 'fr',
+    }).then(() => {
+      settled = true;
+    });
+
+    // No event fires when a wrongly-unqueued write completes, so a macrotask
+    // turn is the oracle.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(settled).toBe(false);
+    expect(await db.sessions.get(created.id)).toMatchObject({ locale: null });
+
+    pause.release();
+    await pending;
+    await localeWrite;
+
+    expect(await db.sessions.get(created.id)).toMatchObject({
+      currentStep: 2,
+      localePreference: 'fr',
+      locale: 'fr',
+    });
+  });
+
+  it('is not overwritten by an updateSession that read the row before another tab stored a language', async () => {
+    const created = await createStudySession();
+
+    const pause = pauseNextEncrypt();
+    const pending = updateSession(
+      created.id,
+      { currentStep: 3 },
+      { protocolHash: 'hash' },
+    );
+    await pause.reached;
+    // Another tab's write lands between this update's read and its commit.
+    await db.sessions.update(created.id, {
+      localePreference: 'fr',
+      locale: 'fr',
+    });
+    pause.release();
+    await pending;
+
+    expect(await db.sessions.get(created.id)).toMatchObject({
+      currentStep: 3,
+      localePreference: 'fr',
+      locale: 'fr',
+    });
+  });
+
+  // The runtime retries a language write it could not confirm, so the same
+  // change can arrive twice; and it treats a refused write as unsaved, so a
+  // failure must reach it.
+  it('stores the same change made twice exactly as once', async () => {
+    const created = await createStudySession();
+    const change = { locale: 'fr', localePreference: 'fr' } as const;
+
+    await setSessionLocale(created.id, change);
+    const once = await db.sessions.get(created.id);
+    await setSessionLocale(created.id, change);
+
+    expect(await db.sessions.get(created.id)).toEqual(once);
+  });
+
+  it('rejects when the language cannot be stored', async () => {
+    const created = await createStudySession();
+    const cause = new Error('IndexedDB write failed');
+    const update = vi.spyOn(db.sessions, 'update').mockRejectedValueOnce(cause);
+    try {
+      await expect(
+        setSessionLocale(created.id, { locale: 'fr', localePreference: 'fr' }),
+      ).rejects.toBe(cause);
+    } finally {
+      update.mockRestore();
+    }
+    expect(await db.sessions.get(created.id)).toMatchObject({ locale: null });
+  });
+
+  it('does not recreate a deleted session', async () => {
+    const created = await createStudySession();
+    await db.sessions.delete(created.id);
+
+    await expect(
+      setSessionLocale(created.id, { locale: 'fr', localePreference: 'fr' }),
+    ).resolves.toBeUndefined();
+    expect(await db.sessions.get(created.id)).toBeUndefined();
   });
 });

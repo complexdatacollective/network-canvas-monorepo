@@ -1,5 +1,3 @@
-import { AppMessage } from '@codaco/app-i18n/react';
-import Icon from '@codaco/fresco-ui/Icon';
 // Interfaces are imported eagerly (not via React.lazy) so they render
 // synchronously in the same React commit as the stage's motion.div wrapper.
 // Lazy loading caused variant propagation to fail on first load: the parent's
@@ -7,8 +5,6 @@ import Icon from '@codaco/fresco-ui/Icon';
 // was still being fetched, so descendants like Prompts never received the
 // "initial" variant and skipped their enter animation entirely.
 /* eslint-disable react/display-name */
-import Surface from '@codaco/fresco-ui/layout/Surface';
-import Heading from '@codaco/fresco-ui/typography/Heading';
 import type { StageType } from '@codaco/protocol-validation';
 
 import AlterEdgeForm from './AlterEdgeForm/AlterEdgeForm';
@@ -18,10 +14,10 @@ import CategoricalBin from './CategoricalBin/CategoricalBin';
 import DyadCensus from './DyadCensus/DyadCensus';
 import EgoForm from './EgoForm/EgoForm';
 import FamilyPedigree from './FamilyPedigree/FamilyPedigree';
-import FinishSession from './FinishSession';
+import FinishSession from './FinishSession/FinishSession';
 import Geospatial from './Geospatial/Geospatial';
 import Information from './Information/Information';
-import { interfaceMessages } from './messages';
+import LanguageChooser from './LanguageChooser/LanguageChooser';
 import NameGenerator from './NameGenerator/NameGenerator';
 import NameGeneratorQuickAdd from './NameGenerator/NameGeneratorQuickAdd';
 import NameGeneratorRoster from './NameGeneratorRoster';
@@ -33,21 +29,7 @@ import OrdinalBin from './OrdinalBin/OrdinalBin';
 import Sociogram from './Sociogram/Sociogram';
 import TieStrengthCensus from './TieStrengthCensus/TieStrengthCensus';
 
-const NotFoundInterface = ({ interfaceType }: { interfaceType: string }) => (
-  <Surface>
-    <Icon name="warning" />
-    <Heading level="h2" className="mt-4">
-      <AppMessage
-        message={interfaceMessages.missingInterface}
-        values={{ interfaceType }}
-      />
-    </Heading>
-  </Surface>
-);
-
-type InterfaceType = StageType | 'FinishSession';
-
-const getInterface = (interfaceType: InterfaceType) => {
+const getInterface = (interfaceType: StageType) => {
   switch (interfaceType) {
     case 'NameGenerator':
       return NameGenerator;
@@ -89,8 +71,14 @@ const getInterface = (interfaceType: InterfaceType) => {
       return FamilyPedigree;
     case 'NarrativePedigree':
       return NarrativePedigree;
+    case 'LanguageChooser':
+      return LanguageChooser;
     default:
-      return () => <NotFoundInterface interfaceType={interfaceType} />;
+      // Unreachable for a validated protocol: the switch covers every stage
+      // type. The task error boundary reports the failure.
+      throw new Error(
+        `No interface for stage type "${String(interfaceType)}".`,
+      );
   }
 };
 

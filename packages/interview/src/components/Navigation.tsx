@@ -1,7 +1,9 @@
 'use client';
 
+import { useDirection } from '@base-ui/react/direction-provider';
 import { Drawer } from '@base-ui/react/drawer';
 import {
+  ALargeSmall,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -25,7 +27,6 @@ import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Button, IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import LocaleSelect from '@codaco/fresco-ui/form/fields/LocaleSelect';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import {
   Popover,
@@ -36,14 +37,14 @@ import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 
-import { useInterviewLocale } from '../i18n/InterviewI18nProvider';
-import { interviewLocales } from '../i18n/locales';
 import { navigationMessages as messages } from '../i18n/navigationMessages';
 import type { UnavailableStage } from '../selectors/skip-logic';
 import type { NavigationOrientation } from '../Shell';
 import { useSyncFlush } from '../store/SyncFlushContext';
 import PassphrasePrompter from './PassphrasePrompter';
 import StagesMenu, { STAGES_MENU_LIST_ID } from './StagesMenu';
+
+const describeExitError = () => <AppMessage message={messages.exitFailed} />;
 
 const variants = {
   initial: {
@@ -57,11 +58,22 @@ const variants = {
   },
 };
 
+type ContainerCustom = Readonly<{
+  orientation: 'vertical' | 'horizontal';
+  isRtl: boolean;
+}>;
+
+// A vertical rail slides in from the screen edge it sits against: the left in
+// a left-to-right interview, the right in a right-to-left one.
+const offscreen = ({ orientation, isRtl }: ContainerCustom) => ({
+  x: orientation === 'vertical' ? (isRtl ? '100%' : '-100%') : 0,
+  y: orientation === 'horizontal' ? '100%' : 0,
+});
+
 const containerVariants = {
-  initial: (orientation: 'vertical' | 'horizontal') => ({
+  initial: (custom: ContainerCustom) => ({
     opacity: 0,
-    x: orientation === 'vertical' ? '-100%' : 0,
-    y: orientation === 'horizontal' ? '100%' : 0,
+    ...offscreen(custom),
   }),
   animate: () => ({
     opacity: 1,
@@ -74,10 +86,9 @@ const containerVariants = {
       damping: 20,
     },
   }),
-  exit: (orientation: 'vertical' | 'horizontal') => ({
+  exit: (custom: ContainerCustom) => ({
     opacity: 0,
-    x: orientation === 'vertical' ? '-100%' : 0,
-    y: orientation === 'horizontal' ? '100%' : 0,
+    ...offscreen(custom),
     transition: { when: 'afterChildren' },
   }),
 };
@@ -189,7 +200,6 @@ type NavigationProps = {
   reviewMode?: boolean;
   allowStageNavigation?: boolean;
   allowUserScaling?: boolean;
-  allowLanguageSelection?: boolean;
   textScale?: number;
   onTextScaleChange?: (scale: number) => void;
   className?: string;
@@ -213,18 +223,24 @@ const Navigation = ({
   reviewMode,
   allowStageNavigation,
   allowUserScaling,
-  allowLanguageSelection,
   textScale = 1,
   onTextScaleChange,
   className,
   goToStage,
 }: NavigationProps) => {
   const intl = useAppIntl();
-  const language = useInterviewLocale();
-  const languageSelectionEnabled =
-    !!allowLanguageSelection && language !== null;
-  const BackIcon = orientation === 'vertical' ? ChevronUp : ChevronLeft;
-  const ForwardIcon = orientation === 'vertical' ? ChevronDown : ChevronRight;
+  // The Shell lays the navigation out in the interview's direction, so in a
+  // right-to-left interview Back sits on the right and points right.
+  const direction = useDirection();
+  const isRtl = direction === 'rtl';
+  const BackIcon =
+    orientation === 'vertical' ? ChevronUp : isRtl ? ChevronRight : ChevronLeft;
+  const ForwardIcon =
+    orientation === 'vertical'
+      ? ChevronDown
+      : isRtl
+        ? ChevronLeft
+        : ChevronRight;
 
   const shouldReduceMotion = useReducedMotion();
 
@@ -236,8 +252,7 @@ const Navigation = ({
 
   // The settings popover hosts the exit action and the text-size control; with
   // neither available there is nothing to show, so the trigger is omitted.
-  const showSettingsPopover =
-    !!onExit || userScalingEnabled || languageSelectionEnabled;
+  const showSettingsPopover = !!onExit || userScalingEnabled;
 
   const matchedTextScaleIndex = TEXT_SCALE_OPTIONS.findIndex(
     (scale) => scale === textScale,
@@ -252,7 +267,6 @@ const Navigation = ({
     (TEXT_SCALE_OPTIONS[textScaleIndex] ?? 1) * 100,
   );
   const textSizeLabelId = useId();
-  const languageLabelId = useId();
   const textSizeControlRef = useRef<HTMLDivElement>(null);
   const [textScaleInputValue, setTextScaleInputValue] = useState(
     String(textScalePercent),
@@ -311,7 +325,7 @@ const Navigation = ({
       title: (
         <AppMessage
           message={
-            reviewMode ? messages.exitReviewTitle : messages.exitInterviewTitle
+            reviewMode ? messages.exitReviewTitle : messages.exitInterview
           }
         />
       ),
@@ -340,14 +354,19 @@ const Navigation = ({
       // Shell controls, so wait out the full flush here; it never rejects
       // and typically resolves in milliseconds. It runs while the
       // confirmation is still open, so nothing more can be asked of the
-      // interview between the flush and the hand-over. When an answer still
-      // being saved is refused, or the participant cancels while it is
-      // saved, the interview stays open, so they see why and can try again.
-      // Cancelling is safe while the flush runs: the answers it saves belong
-      // to the interview either way, and the hand-over is what it stops.
+      // interview between the flush and the hand-over. When the host refuses
+      // an answer or the interview language, the confirmation stays open
+      // with an error, so the participant sees why and can try again; when
+      // they cancel while it is saved, the interview stays open. Cancelling
+      // is safe while the flush runs: the answers it saves belong to the
+      // interview either way, and the hand-over is what it stops.
       abortable: true,
+      describeError: describeExitError,
       onConfirm: async (signal) => {
-        if ((await flushPendingSync()) && !signal.aborted) onExit();
+        const stored = await flushPendingSync();
+        if (signal.aborted) return;
+        if (!stored) throw new Error('The interview could not be saved');
+        onExit();
       },
     });
   }, [confirm, onExit, reviewMode, flushPendingSync]);
@@ -383,7 +402,7 @@ const Navigation = ({
         shadow="xs"
         noContainer
         variants={containerVariants}
-        custom={orientation}
+        custom={{ orientation, isRtl } satisfies ContainerCustom}
         initial="initial"
         animate="animate"
         exit="exit"
@@ -414,45 +433,31 @@ const Navigation = ({
                 }
               />
               <PopoverContent
-                side={orientation === 'vertical' ? 'right' : 'top'}
+                side={
+                  orientation === 'vertical'
+                    ? isRtl
+                      ? 'left'
+                      : 'right'
+                    : 'top'
+                }
                 align="start"
                 className="w-72 max-w-full"
                 aria-label={intl.formatMessage(messages.interviewSettings)}
               >
                 <div className="flex flex-col gap-2">
-                  {languageSelectionEnabled && (
-                    <div className="flex min-w-0 flex-col gap-1.5 px-2 py-1.5">
-                      <label
-                        id={languageLabelId}
-                        htmlFor={`${languageLabelId}-select`}
-                        className="text-sm font-semibold"
-                      >
-                        <AppMessage message={messages.interfaceLanguage} />
-                      </label>
-                      <LocaleSelect
-                        id={`${languageLabelId}-select`}
-                        options={interviewLocales}
-                        value={language.preference}
-                        onChange={language.setPreference}
-                        automaticLabel={intl.formatMessage(
-                          messages.automaticLanguage,
-                        )}
-                        aria-labelledby={languageLabelId}
-                        size="sm"
-                        className="w-full"
-                      />
-                    </div>
-                  )}
                   {userScalingEnabled && (
                     <fieldset className="m-0 flex min-w-0 flex-col gap-1.5 border-0 p-0">
                       <legend
                         id={textSizeLabelId}
-                        className="px-2 py-1.5 text-sm font-semibold"
+                        className="flex items-center gap-2 px-2 py-1.5 text-sm font-semibold"
                       >
-                        <AppMessage
-                          message={messages.textSize}
-                          values={{ hidden: renderHiddenChunks }}
-                        />
+                        <ALargeSmall aria-hidden className="size-5 shrink-0" />
+                        <span className="sr-only">
+                          <AppMessage
+                            message={messages.textSize}
+                            values={{ hidden: renderHiddenChunks }}
+                          />
+                        </span>
                       </legend>
                       <div ref={textSizeControlRef} className="w-full">
                         <InputField
@@ -506,7 +511,7 @@ const Navigation = ({
                           }}
                           // oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- Unit symbol; the live output formats the complete percentage for the active locale.
                           suffixComponent={<span aria-hidden="true">%</span>}
-                          className="w-full! [&_input]:text-right"
+                          className="w-full! [&_input]:text-end"
                         />
                         <output
                           aria-live="polite"
@@ -521,10 +526,9 @@ const Navigation = ({
                       </div>
                     </fieldset>
                   )}
-                  {(userScalingEnabled || languageSelectionEnabled) &&
-                    onExit && (
-                      <hr className="mx-auto my-1 h-px w-full rounded border-0 bg-current/20" />
-                    )}
+                  {userScalingEnabled && onExit && (
+                    <hr className="mx-auto my-1 h-px w-full rounded border-0 bg-current/20" />
+                  )}
                   {onExit && (
                     <Button
                       color="dynamic"
@@ -644,7 +648,9 @@ const Navigation = ({
               void goToStage?.(target, confirmUnavailable);
             }
           }}
-          swipeDirection={orientation === 'vertical' ? 'left' : 'down'}
+          swipeDirection={
+            orientation === 'vertical' ? (isRtl ? 'right' : 'left') : 'down'
+          }
         >
           <Drawer.Portal container={portalContainer ?? undefined}>
             <Drawer.Backdrop className="bg-overlay publish-colors fixed inset-0 backdrop-blur-xs transition-opacity duration-300 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none" />
@@ -652,7 +658,7 @@ const Navigation = ({
               className={cx(
                 'fixed',
                 orientation === 'vertical'
-                  ? 'inset-y-0 left-0'
+                  ? 'inset-y-0 inset-s-0'
                   : 'inset-x-0 bottom-0',
               )}
             >
@@ -665,7 +671,7 @@ const Navigation = ({
                   'bg-surface elevation-medium flex flex-col overflow-hidden transition-transform duration-300 ease-out',
                   'data-swiping:duration-0 motion-reduce:transition-none',
                   orientation === 'vertical'
-                    ? 'h-full w-[min(34rem,92vw)] transform-[translateX(var(--drawer-swipe-movement-x,0px))] data-ending-style:transform-[translateX(-100%)] data-starting-style:transform-[translateX(-100%)]'
+                    ? 'h-full w-[min(34rem,92vw)] transform-[translateX(var(--drawer-swipe-movement-x,0px))] data-ending-style:transform-[translateX(-100%)] data-starting-style:transform-[translateX(-100%)] rtl:data-ending-style:transform-[translateX(100%)] rtl:data-starting-style:transform-[translateX(100%)]'
                     : 'max-h-[85vh] w-full transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-ending-style:transform-[translateY(100%)] data-starting-style:transform-[translateY(100%)]',
                 )}
               >

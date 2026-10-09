@@ -44,7 +44,8 @@ vi.mock('@mapbox/search-js-react', () => ({
 
 // Make the debounce synchronous so a typed query reaches `suggest` without
 // fake timers fighting userEvent's own scheduling.
-vi.mock('es-toolkit', () => ({
+vi.mock('es-toolkit', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('es-toolkit')>()),
   debounce: (fn: (...args: unknown[]) => unknown) => {
     const wrapped = (...args: unknown[]) => fn(...args);
     wrapped.cancel = vi.fn();
@@ -56,6 +57,7 @@ import type { Map as MapboxMap } from 'mapbox-gl/esm';
 
 import { interviewCatalogSource } from '../../../i18n/catalog';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import GeospatialSearch from '../GeospatialSearch';
 
 // jsdom has neither, and fresco-ui's Collection/ScrollArea construct both on
@@ -76,6 +78,15 @@ class MockWorker {
 const flyTo = vi.fn();
 const mockMap = { flyTo } as unknown as MapboxMap;
 
+/** The stage's own search wording, which the protocol holds in English only. */
+const WORDING = {
+  searchLabel: { en: 'Search' },
+  searchNoMatch: { en: 'Nothing matched your search term.' },
+  searchFailed: {
+    en: 'Search could not be completed. Try again in a moment.',
+  },
+};
+
 /**
  * Renders the search beside a control that follows it in the tab order, the
  * way `Geospatial.tsx` puts the zoom toolbar after the search panel.
@@ -83,10 +94,10 @@ const mockMap = { flyTo } as unknown as MapboxMap;
 const setup = () => {
   const user = userEvent.setup();
   const view = render(
-    <>
-      <GeospatialSearch accessToken="test-token" map={mockMap} />
+    <TestProtocolLocalization>
+      <GeospatialSearch accessToken="test-token" map={mockMap} {...WORDING} />
       <button type="button">Zoom In</button>
-    </>,
+    </TestProtocolLocalization>,
   );
 
   return {
@@ -137,7 +148,13 @@ describe('GeospatialSearch', () => {
   describe('live built-in locale', () => {
     const localizedTree = (locale: string) => (
       <InterviewI18nProvider requestedLocale={locale}>
-        <GeospatialSearch accessToken="test-token" map={mockMap} />
+        <TestProtocolLocalization>
+          <GeospatialSearch
+            accessToken="test-token"
+            map={mockMap}
+            {...WORDING}
+          />
+        </TestProtocolLocalization>
       </InterviewI18nProvider>
     );
 
@@ -185,7 +202,7 @@ describe('GeospatialSearch', () => {
       expect(flyTo).toHaveBeenCalledTimes(1);
     });
 
-    it('relocalizes a completed failure while retaining the existing query and search outcome', async () => {
+    it('keeps the stage’s own failure wording while retaining the existing query and search outcome', async () => {
       mockSuggest.mockRejectedValue(new Error('offline'));
       const user = userEvent.setup();
       const view = render(localizedTree('en'));
@@ -202,16 +219,18 @@ describe('GeospatialSearch', () => {
       );
       const searchCount = mockSuggest.mock.calls.length;
 
+      // The stage's words belong to the protocol, not the browser's language,
+      // so a change of language leaves them as the stage holds them.
       view.rerender(localizedTree('es'));
       expect(screen.getByRole('combobox')).toBe(input);
       expect(input).toHaveValue('Sidetrack');
-      expect(input).toHaveAttribute('placeholder', 'Busca un lugar...');
+      expect(input).toHaveAttribute('placeholder', 'Search');
       expect(status.textContent).toBe(
-        'No se pudo completar la búsqueda. Vuelve a intentarlo en un momento.',
+        'Search could not be completed. Try again in a moment.',
       );
       expect(
         screen.getByRole('listbox', { name: 'Sugerencias de búsqueda' }),
-      ).toHaveTextContent('No se pudo completar la búsqueda.');
+      ).toHaveTextContent('Search could not be completed.');
       expect(mockSuggest).toHaveBeenCalledTimes(searchCount);
       expect(flyTo).not.toHaveBeenCalled();
     });
@@ -395,7 +414,7 @@ describe('GeospatialSearch', () => {
 
       await waitFor(() =>
         expect(status()).toHaveTextContent(
-          'That place could not be loaded. Try another search.',
+          'Search could not be completed. Try again in a moment.',
         ),
       );
       expect(flyTo).not.toHaveBeenCalled();
@@ -417,7 +436,7 @@ describe('GeospatialSearch', () => {
 
       await waitFor(() =>
         expect(status()).toHaveTextContent(
-          'That place could not be loaded. Try another search.',
+          'Search could not be completed. Try again in a moment.',
         ),
       );
       expect(flyTo).not.toHaveBeenCalled();
@@ -448,7 +467,9 @@ describe('GeospatialSearch', () => {
       expect(empty).toHaveTextContent(
         'Search could not be completed. Try again in a moment.',
       );
-      expect(status()).not.toHaveTextContent('Nothing matched your search.');
+      expect(status()).not.toHaveTextContent(
+        'Nothing matched your search term.',
+      );
       consoleError.mockRestore();
     });
 
@@ -459,9 +480,9 @@ describe('GeospatialSearch', () => {
       await openAndSearch(user, toggle, 'zzzqqq');
 
       const empty = await screen.findByTestId('geospatial-search-empty');
-      expect(empty).toHaveTextContent('Nothing matched your search.');
+      expect(empty).toHaveTextContent('Nothing matched your search term.');
       await waitFor(() =>
-        expect(status()).toHaveTextContent('Nothing matched your search.'),
+        expect(status()).toHaveTextContent('Nothing matched your search term.'),
       );
     });
   });

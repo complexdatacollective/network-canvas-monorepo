@@ -1,11 +1,14 @@
 import { type Locator, type Page } from '@playwright/test';
 
+import type { CurrentProtocol } from '@codaco/protocol-validation';
+
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import {
   readAnnouncements,
   recordAnnouncements,
 } from '../helpers/announcements.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
+import { defaultLanguageText } from '../helpers/localized-text.js';
 import { readProtocolJson, settleAfterRefusal } from '../helpers/read-store.js';
 import { acknowledgeRefusal } from '../helpers/refusal.js';
 import { Timeline } from '../pageobjects/timeline.js';
@@ -49,35 +52,14 @@ const anyNodeOfFirstType = (protocol: {
   };
 };
 
-// Narrow one element of the protocol JSON's `stages` array with a real
-// runtime guard (mirroring `isRow` in helpers/read-store.ts) rather than an
-// `as` cast, so a drifted/malformed stage throws here instead of silently
-// producing a mis-typed object the assertions would then trust.
-function toStage(value: unknown): Stage {
-  if (
-    typeof value === 'object' &&
-    value !== null &&
-    'id' in value &&
-    typeof value.id === 'string' &&
-    'label' in value &&
-    typeof value.label === 'string' &&
-    'type' in value &&
-    typeof value.type === 'string'
-  ) {
-    return { id: value.id, label: value.label, type: value.type };
-  }
-  throw new Error('protocol stage missing a string id, label, or type');
-}
-
-// `readProtocolJson` returns `Record<string, unknown>`; extract its stages as
-// a typed array via `toStage` (no `as`). Each `unknown` element is narrowed
-// runtime-side, so callers get a real `Stage[]`.
-function stagesOf(protocol: Record<string, unknown>): Stage[] {
-  const stages = protocol.stages;
-  if (!Array.isArray(stages)) {
-    throw new Error('protocol JSON has no stages array');
-  }
-  return stages.map((value: unknown) => toStage(value));
+// The timeline names each stage by its label in the protocol's default
+// language, so that is the label the specs locate rows by.
+function stagesOf(protocol: CurrentProtocol): Stage[] {
+  return protocol.stages.map(({ id, label, type }) => ({
+    id,
+    label: defaultLanguageText(protocol, label),
+    type,
+  }));
 }
 
 // The persisting edit this route offers `settleAfterRefusal`: ProtocolInfoCard
@@ -107,7 +89,9 @@ test('shows the skip-logic icon without a destination note', async ({
   await seed(protocol, { name: 'All Interfaces', assets });
   await gotoProtocol(architectPage);
 
-  const row = new Timeline(architectPage).stageRowByLabel(firstStage.label);
+  const row = new Timeline(architectPage).stageRowByLabel(
+    defaultLanguageText(protocol, firstStage.label),
+  );
   await expect(row.getByRole('img', { name: 'Has skip logic' })).toBeVisible();
   await expect(row.getByText(/^If skipped:/)).toHaveCount(0);
 });
@@ -185,7 +169,10 @@ test('keeps the timeline tab order insertion-point-then-stage', async ({
   // asserted directly: the point that inserts before a stage comes immediately
   // before that stage's own controls, for every stage.
   await tabUntilFocused(architectPage, timeline.insertButtons().first());
-  for (const label of [first.label, second.label]) {
+  for (const label of [
+    defaultLanguageText(protocol, first.label),
+    defaultLanguageText(protocol, second.label),
+  ]) {
     await architectPage.keyboard.press('Tab');
     await expect(timeline.openControl(label)).toBeFocused();
     await architectPage.keyboard.press('Tab');
@@ -373,6 +360,108 @@ test('blocks deleting a FamilyPedigree stage referenced by NarrativePedigree', a
   const after = stagesOf(await readProtocolJson(architectPage));
   expect(after.some((stage) => stage.id === familyPedigree.id)).toBe(true);
   expect(after.length).toBe(before.length);
+});
+
+test('refuses to delete the stage that ends the interview', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await gotoProtocol(architectPage);
+
+  const before = stagesOf(await readProtocolJson(architectPage));
+  const finish = before.at(-1);
+  if (finish?.type !== 'FinishSession') {
+    throw new Error('fixture does not end at a FinishSession stage');
+  }
+
+  await new Timeline(architectPage).deleteStage(finish.label);
+  const guardDialog = architectPage.getByRole('dialog', {
+    name: 'Cannot delete stage',
+  });
+  await expect(guardDialog).toContainText(
+    'This stage ends the interview, and every protocol needs one',
+  );
+  await acknowledgeRefusal(guardDialog);
+  await settleAfterRefusal(architectPage, editDescription(architectPage));
+  const after = stagesOf(await readProtocolJson(architectPage));
+  expect(after.map(({ id }) => id)).toEqual(before.map(({ id }) => id));
+});
+
+// The finish stage stays where it is: it cannot be moved itself, and no stage
+// can be moved past it.
+test('refuses to move the stage that ends the interview', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await gotoProtocol(architectPage);
+
+  const before = stagesOf(await readProtocolJson(architectPage));
+  const finish = before.at(-1);
+  const beforeFinish = before.at(-2);
+  if (finish?.type !== 'FinishSession' || !beforeFinish) {
+    throw new Error('fixture does not end at a FinishSession stage');
+  }
+
+  const timeline = new Timeline(architectPage);
+  const guardDialog = architectPage.getByRole('dialog', {
+    name: 'Cannot move stage',
+  });
+
+  await timeline.openControl(finish.label).focus();
+  await timeline.openControl(finish.label).press('ArrowUp');
+  await expect(guardDialog).toContainText(
+    'The stage that ends the interview has to stay at the end of the protocol.',
+  );
+  await acknowledgeRefusal(guardDialog);
+
+  await timeline.openControl(beforeFinish.label).focus();
+  await timeline.openControl(beforeFinish.label).press('ArrowDown');
+  await acknowledgeRefusal(guardDialog);
+
+  await settleAfterRefusal(architectPage, editDescription(architectPage));
+  const after = stagesOf(await readProtocolJson(architectPage));
+  expect(after.map(({ id }) => id)).toEqual(before.map(({ id }) => id));
+});
+
+// No add control places a stage after the finish stage: the last insertion
+// point sits above it, and the trailing add control inserts before it.
+test('adds new stages before the stage that ends the interview', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await gotoProtocol(architectPage);
+
+  const stages = stagesOf(await readProtocolJson(architectPage));
+  const finish = stages.at(-1);
+  if (finish?.type !== 'FinishSession') {
+    throw new Error('fixture does not end at a FinishSession stage');
+  }
+  const finishIndex = stages.length - 1;
+
+  const timeline = new Timeline(architectPage);
+  await expect(timeline.insertButtons()).toHaveCount(stages.length);
+  await expect(timeline.insertButtons().last()).toHaveAccessibleName(
+    `Add stage here, before stage ${stages.length}: ${finish.label}`,
+  );
+
+  await timeline.addNewStageButton().click();
+  await architectPage
+    .getByRole('searchbox', { name: 'Search interfaces' })
+    .fill('Information');
+  await architectPage
+    .getByRole('button', { name: 'Information', exact: true })
+    .click();
+  await architectPage.waitForURL(
+    new RegExp(
+      `/protocol/stage/new\\?type=Information&insertAtIndex=${finishIndex}$`,
+    ),
+  );
 });
 
 test('deletes a leaf stage after confirming the destructive dialog', async ({
@@ -616,7 +705,9 @@ test('blocks a keyboard reorder that would strand a skip destination', async ({
 
   const before = stagesOf(await readProtocolJson(architectPage));
   const timeline = new Timeline(architectPage);
-  const openControl = timeline.openControl(destination.label);
+  const openControl = timeline.openControl(
+    defaultLanguageText(protocol, destination.label),
+  );
   await openControl.focus();
   await openControl.press('ArrowUp');
 
@@ -799,19 +890,27 @@ test('returns focus to the delete control when the confirm is cancelled', async 
   await expect(deleteControl).toBeFocused();
 });
 
-test('falls back to the add control when the last stage is deleted', async ({
+test('moves focus to the finish stage when the only other stage is deleted', async ({
   architectPage,
   seed,
 }) => {
   const { protocol, assets } = loadAllInterfacesFixture();
   const [only] = protocol.stages;
-  if (!only) throw new Error('fixture has no stages');
-  await seed({ ...protocol, stages: [only] }, { name: 'Single stage', assets });
+  const finish = protocol.stages.at(-1);
+  if (!only || finish?.type !== 'FinishSession') {
+    throw new Error('fixture has no stages, or does not end at a finish stage');
+  }
+  await seed(
+    { ...protocol, stages: [only, finish] },
+    { name: 'Single stage', assets },
+  );
   await gotoProtocol(architectPage);
   await recordAnnouncements(architectPage);
 
   const timeline = new Timeline(architectPage);
-  const deleteControl = timeline.deleteControl(only.label);
+  const deleteControl = timeline.deleteControl(
+    defaultLanguageText(protocol, only.label),
+  );
   await deleteControl.focus();
   await deleteControl.press('Enter');
   await architectPage
@@ -819,11 +918,15 @@ test('falls back to the add control when the last stage is deleted', async ({
     .getByRole('button', { name: 'Delete stage' })
     .click();
 
-  await expect(timeline.rows()).toHaveCount(0);
-  // No neighbouring stage survives, so the list's own add control is the only
-  // place left to put focus.
-  await expect(timeline.addNewStageButton()).toBeFocused();
+  await expect(timeline.rows()).toHaveCount(1);
+  // The finish stage cannot be deleted, so a protocol always keeps a stage to
+  // put focus on.
+  await expect(
+    architectPage.getByRole('button', {
+      name: `Edit stage 1: ${defaultLanguageText(protocol, finish.label)},`,
+    }),
+  ).toBeFocused();
   await expect
     .poll(() => readAnnouncements(architectPage))
-    .toContain('Deleted stage 1. No stages remain.');
+    .toContain('Deleted stage 1. 1 stage remains.');
 });

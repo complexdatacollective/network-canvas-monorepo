@@ -39,8 +39,10 @@ import { categoricalBinStageEditor } from './editors/categorical-bin/Categorical
 import { dyadCensusStageEditor } from './editors/dyad-census/DyadCensusStageEditor.ts';
 import { egoFormStageEditor } from './editors/ego-form/EgoFormStageEditor.ts';
 import { familyPedigreeStageEditor } from './editors/family-pedigree/FamilyPedigreeStageEditor.ts';
+import { finishSessionStageEditor } from './editors/finish-session/FinishSessionStageEditor.ts';
 import { geospatialStageEditor } from './editors/geospatial/GeospatialStageEditor.ts';
 import { informationStageEditor } from './editors/information/InformationStageEditor.ts';
+import { languageChooserStageEditor } from './editors/language-chooser/LanguageChooserStageEditor.ts';
 import { nameGeneratorQuickAddStageEditor } from './editors/name-generator-quick-add/NameGeneratorQuickAddStageEditor.ts';
 import { nameGeneratorRosterStageEditor } from './editors/name-generator-roster/NameGeneratorRosterStageEditor.ts';
 import { nameGeneratorStageEditor } from './editors/name-generator/NameGeneratorStageEditor.ts';
@@ -132,8 +134,10 @@ const REGISTRY_PARTS = [
   dyadCensusStageEditor,
   egoFormStageEditor,
   familyPedigreeStageEditor,
+  finishSessionStageEditor,
   geospatialStageEditor,
   informationStageEditor,
+  languageChooserStageEditor,
   nameGeneratorQuickAddStageEditor,
   nameGeneratorRosterStageEditor,
   nameGeneratorStageEditor,

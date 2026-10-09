@@ -83,7 +83,8 @@ const makeFakeLock = () => {
 
 const protocol: CurrentProtocol = {
   name: 'Test Protocol',
-  schemaVersion: 8,
+  schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   stages: [],
   codebook: {},
 };
@@ -95,13 +96,24 @@ const savedProtocol: CurrentProtocol = {
   name: 'Test Protocol, edited elsewhere',
 };
 
-const stage = { id: 'stage-1', type: 'Information', label: 'A' } as Stage;
+const stage: Stage = {
+  id: 'stage-1',
+  type: 'Information',
+  label: { en: 'A' },
+  title: { en: 'A' },
+  items: [],
+};
 
-const editedStage = { ...stage, label: 'A, edited' } as Stage;
+const editedStage: Stage = { ...stage, label: { en: 'A, edited' } };
 
 /** What the stage editor's chrome publishes while it is open and untouched. */
 const openPristineStageDraft = () => {
-  publishStageDraft(stage, { label: 'A' }, { label: 'A' }, true);
+  publishStageDraft(
+    stage,
+    { label: { en: 'A' } },
+    { label: { en: 'A' } },
+    true,
+  );
 };
 
 const createTestStore = () =>
@@ -128,7 +140,12 @@ const makeRefresh = () =>
 // A stage editor with a real edit in it, exactly as its own chrome publishes
 // one: the document on screen, against the document it opened on.
 const openDirtyStageDraft = () => {
-  publishStageDraft(editedStage, { label: 'A' }, { label: 'A, edited' }, true);
+  publishStageDraft(
+    editedStage,
+    { label: { en: 'A' } },
+    { label: { en: 'A, edited' } },
+    true,
+  );
 };
 
 // A nested editor — a new-variable window, an entity-type dialog, an array-row
@@ -459,7 +476,12 @@ describe('useProtocolTabLock', () => {
       fake.fireExclusivity(false);
     });
     act(() => {
-      publishStageDraft(stage, { label: 'A' }, { label: 'A' }, false);
+      publishStageDraft(
+        stage,
+        { label: { en: 'A' } },
+        { label: { en: 'A' } },
+        false,
+      );
     });
 
     await act(async () => {

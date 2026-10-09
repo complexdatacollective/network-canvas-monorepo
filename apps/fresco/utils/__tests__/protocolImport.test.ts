@@ -13,7 +13,7 @@ const protocolWith = (
 ): CurrentProtocol =>
   ({
     name: 'Archive read fixture',
-    schemaVersion: 8,
+    schemaVersion: 9,
     codebook: { node: {}, edge: {}, ego: {} },
     stages: [],
     assetManifest,

@@ -29,32 +29,31 @@ const forMatching = (canonical: string, declared: readonly string[]): string =>
 const NO_FIT = 'no fit';
 
 /**
- * A stored preference is matched the same way browser preferences are, with
- * best fit — so an explicit choice survives the app dropping the exact tag it
- * was made in ('en-US' lands on a declared 'en-GB', which shares nothing with
- * it by truncation).
+ * One preference — a stored choice or a single browser/header entry — is
+ * matched against the declared locales on its own, with best fit, so an
+ * explicit choice survives the app dropping the exact tag it was made in
+ * ('en-US' lands on a declared 'en-GB', which shares nothing with it by
+ * truncation).
  *
- * The sentinel default is what keeps that from swallowing the other case.
+ * Preferences are never handed to `match` as a list: best fit over a whole list
+ * lets a later exact match beat an earlier regional one, so ['es-MX', 'en']
+ * would resolve to 'en' when 'es' is declared. Matching one tag at a time
+ * keeps the first acceptable preference winning.
+ *
+ * The sentinel default is what keeps a missed fit from passing as a hit.
  * `match` signals "nothing fitted" by returning the default it was given, so
  * passing the app default here would make a real fit indistinguishable from a
  * fallback — and a stored tag for a locale that has since been withdrawn has
  * to fall through to browser negotiation rather than silently winning as the
  * default.
  */
-const matchStored = (
-  stored: string,
+const matchPreference = (
+  matchingTag: string,
   declared: readonly string[],
 ): string | undefined => {
-  const canonical = canonicalizeAppLocale(stored);
-  if (canonical === undefined) return undefined;
-  const fitted = match(
-    [forMatching(canonical, declared)],
-    [...declared],
-    NO_FIT,
-    {
-      algorithm: 'best fit',
-    },
-  );
+  const fitted = match([matchingTag], [...declared], NO_FIT, {
+    algorithm: 'best fit',
+  });
   return declared.includes(fitted) ? fitted : undefined;
 };
 
@@ -65,10 +64,11 @@ export type ResolvedAppLocale = Readonly<{
 
 /**
  * The app locale negotiation chain: stored preference → requested
- * (browser/header) best-fit → default. The result is always a declared
- * locale; the helper fails closed to `defaultLocale`. `source` is
- * 'negotiated' whenever a non-empty requested list decided (even when the
- * best fit is the default locale).
+ * (browser/header) preferences, in order, each best-fit on its own → default.
+ * The result is always a declared locale; the helper fails closed to
+ * `defaultLocale`. `source` is 'negotiated' whenever a non-empty requested
+ * list decided (even when no preference fits and `defaultLocale` is
+ * returned, or when the fit is the default locale itself).
  */
 export function resolveAppLocale(input: {
   stored?: string | null;
@@ -84,27 +84,31 @@ export function resolveAppLocale(input: {
   }
 
   if (input.stored != null) {
-    const stored = matchStored(input.stored, declared);
+    const canonical = canonicalizeAppLocale(input.stored);
+    const stored =
+      canonical === undefined
+        ? undefined
+        : matchPreference(forMatching(canonical, declared), declared);
     if (stored !== undefined) return { locale: stored, source: 'stored' };
   }
 
-  const requested: string[] = [];
+  const requested = new Set<string>();
   for (const value of input.requested) {
     const canonical = canonicalizeAppLocale(value);
-    if (canonical === undefined) continue;
-    const tag = forMatching(canonical, declared);
-    if (!requested.includes(tag)) requested.push(tag);
+    if (canonical !== undefined) {
+      requested.add(forMatching(canonical, declared));
+    }
   }
 
-  if (requested.length > 0) {
-    const negotiated = match(requested, declared, input.defaultLocale, {
-      algorithm: 'best fit',
-    });
-    return {
-      locale: declared.includes(negotiated) ? negotiated : input.defaultLocale,
-      source: 'negotiated',
-    };
+  if (requested.size === 0) {
+    return { locale: input.defaultLocale, source: 'default' };
   }
 
-  return { locale: input.defaultLocale, source: 'default' };
+  for (const tag of requested) {
+    const negotiated = matchPreference(tag, declared);
+    if (negotiated !== undefined) {
+      return { locale: negotiated, source: 'negotiated' };
+    }
+  }
+  return { locale: input.defaultLocale, source: 'negotiated' };
 }

@@ -25,7 +25,8 @@ function makeProtocol(hash: string): CurrentProtocol {
   return {
     name: `Protocol ${hash}`,
     description: 'desc',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     stages: [],
     codebook: { node: {}, edge: {}, ego: {} },
     assetManifest: {

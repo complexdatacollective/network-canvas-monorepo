@@ -30,6 +30,7 @@ import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 
 import ControlsColumn from './ControlsColumn';
 import UsageColumn from './UsageColumn';
+import VariableLabelDialog from './VariableLabelDialog';
 const messages = defineMessages({
   unknown: {
     id: 'architect.codebook.variables.unknown',
@@ -150,19 +151,21 @@ const ActionsHeader = () => {
 };
 
 /**
- * The actions cell is the one renderer that has to close over a value the
- * parent owns (`handleDelete`), so it is built by a module-scope factory the
- * parent's `columns` memo calls: the component type then changes only when
- * that callback does, instead of on every render.
+ * The actions cell is the one renderer that has to close over values the
+ * parent owns (`handleDelete`, `onEditLabel`), so it is built by a module-scope
+ * factory the parent's `columns` memo calls: the component type then changes
+ * only when those callbacks do, instead of on every render.
  */
 const createActionsCell =
-  (onDelete: (id: string) => void) =>
+  (onDelete: (id: string) => void, onEditLabel: (id: string) => void) =>
   ({ row }: CellContext<DataTableFeatures, Variable>) => (
     <div className="flex justify-end">
       <ControlsColumn
         onDelete={onDelete}
+        onEditLabel={onEditLabel}
         inUse={row.original.inUse}
         id={row.original.id}
+        name={row.original.name}
       />
     </div>
   );
@@ -174,6 +177,7 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'name', desc: false },
   ]);
+  const [labelVariable, setLabelVariable] = useState<string>();
   const caseInsensitiveSort = useMemo<SortFn<DataTableFeatures, Variable>>(
     () => (rowA, rowB, columnId) =>
       normalizeSortValue(rowA.getValue(columnId)).localeCompare(
@@ -257,7 +261,7 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
         id: 'actions',
         header: ActionsHeader,
         enableSorting: false,
-        cell: createActionsCell(handleDelete),
+        cell: createActionsCell(handleDelete, setLabelVariable),
       },
     ],
     [caseInsensitiveSort, handleDelete],
@@ -281,6 +285,10 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
         table={table}
         showPagination={false}
         emptyText={intl.formatMessage(messages.noAttributes)}
+      />
+      <VariableLabelDialog
+        variable={labelVariable}
+        onClose={() => setLabelVariable(undefined)}
       />
     </div>
   );

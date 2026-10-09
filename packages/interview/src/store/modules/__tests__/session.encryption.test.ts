@@ -4,51 +4,55 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   entitySecureAttributesMeta,
+  type NcNode,
 } from '@codaco/shared-consts';
 
 import {
   createEncryptionStore,
   encryptedVariables,
+  encryptionFor,
   makeEncryptedPerson,
-  makePlainPerson,
   NODE_TYPE,
+  unlockWith,
 } from '../../../interfaces/Anonymisation/__tests__/encryptionFixtures';
 import {
+  decryptInScope,
   getDecryptionScope,
-  getEncryptedValue,
-  isNumberArray,
-  readCachedPlaintext,
+  readCachedOutcome,
+  readEncryptedAttribute,
 } from '../../../interfaces/Anonymisation/decryptionScope';
-import { decryptData } from '../../../interfaces/Anonymisation/utils';
-import { addNode, addNodesAndEdges, updateNode } from '../session';
-import { setPassphrase, setPassphraseInvalid } from '../ui';
+import { decryptValue } from '../../../interfaces/Anonymisation/encryptionFormat';
+import { addNode, updateNode } from '../session';
 
 const mixedPatch = { set: { name: 'Bob', age: 41 }, unset: [] };
 
-type EncryptionStore = ReturnType<typeof createEncryptionStore>;
+async function lockedStore(nodes: NcNode[] = []) {
+  const { header } = await encryptionFor('pw');
+  return createEncryptionStore(nodes, undefined, undefined, { header });
+}
 
-const passphraseChanges: {
-  change: string;
-  apply: (store: EncryptionStore) => void;
-}[] = [
-  {
-    change: 'is replaced',
-    apply: (store) => {
-      store.dispatch(setPassphrase('another passphrase'));
-    },
-  },
-  {
-    change: 'is found not to work',
-    apply: (store) => {
-      store.dispatch(setPassphraseInvalid(true));
-    },
-  },
-];
+async function unlockedStore(nodes: NcNode[] = []) {
+  const store = await lockedStore(nodes);
+  await unlockWith(store, 'pw');
+  const scope = getDecryptionScope(store.getState);
+  if (!scope) throw new Error('expected a decryption scope');
+  return { store, scope };
+}
+
+function storedName(node: NcNode | undefined) {
+  const stored = node
+    ? readEncryptedAttribute(node, 'name', encryptedVariables)
+    : undefined;
+  if (stored?.status !== 'encrypted') {
+    throw new Error('expected an encrypted name');
+  }
+  return stored.value;
+}
 
 describe('encrypted writes', () => {
-  it('refuses a patch mixing encrypted and plain values when no passphrase is in force, and applies none of it', async () => {
+  it('refuses a patch mixing encrypted and plain values while the interview is locked, and applies none of it', async () => {
     const node = await makeEncryptedPerson('n1', 'Alice', 'pw');
-    const store = createEncryptionStore([node]);
+    const store = await lockedStore([node]);
     const before = store.getState().session.network;
 
     const result = await store.dispatch(
@@ -62,25 +66,8 @@ describe('encrypted writes', () => {
     expect(store.getState().session.network).toBe(before);
   });
 
-  it('refuses an encrypted update while the passphrase in force is known to be invalid', async () => {
-    const node = await makeEncryptedPerson('n1', 'Alice', 'pw');
-    const store = createEncryptionStore([node]);
-    store.dispatch(setPassphrase('pw'));
-    store.dispatch(setPassphraseInvalid(true));
-    const before = store.getState().session.network;
-
-    const result = await store.dispatch(
-      updateNode({ nodeId: 'n1', attributePatch: mixedPatch, currentStep: 0 }),
-    );
-
-    expect(updateNode.rejected.match(result)).toBe(true);
-    expect(store.getState().session.network).toBe(before);
-  });
-
-  it('refuses to add an encrypted node while the passphrase in force is known to be invalid', async () => {
-    const store = createEncryptionStore([]);
-    store.dispatch(setPassphrase('pw'));
-    store.dispatch(setPassphraseInvalid(true));
+  it('refuses to add an encrypted node while the interview is locked', async () => {
+    const store = await lockedStore();
 
     const result = await store.dispatch(
       addNode({
@@ -95,10 +82,9 @@ describe('encrypted writes', () => {
     expect(store.getState().session.network.nodes).toEqual([]);
   });
 
-  it('applies a mixed patch atomically once a passphrase is in force', async () => {
+  it('applies a mixed patch atomically once the interview is unlocked, storing only an IV beside the value', async () => {
     const node = await makeEncryptedPerson('n1', 'Alice', 'pw');
-    const store = createEncryptionStore([node]);
-    store.dispatch(setPassphrase('pw'));
+    const { store, scope } = await unlockedStore([node]);
 
     const result = await store.dispatch(
       updateNode({ nodeId: 'n1', attributePatch: mixedPatch, currentStep: 0 }),
@@ -106,213 +92,89 @@ describe('encrypted writes', () => {
     expect(updateNode.fulfilled.match(result)).toBe(true);
 
     const [updated] = store.getState().session.network.nodes;
-    const stored = updated?.[entityAttributesProperty];
+    expect(updated?.[entityAttributesProperty].age).toBe(41);
     const secure = updated?.[entitySecureAttributesMeta]?.name;
-    expect(stored?.age).toBe(41);
-    expect(isNumberArray(stored?.name)).toBe(true);
-    expect(secure).toBeDefined();
-    if (!isNumberArray(stored?.name))
-      throw new Error('Expected a stored ciphertext');
-    if (!secure) throw new Error('Expected secure-attribute metadata');
+    expect(secure && Object.keys(secure)).toEqual(['iv']);
+    expect(secure?.iv).toHaveLength(12);
+
+    const value = storedName(updated);
+    expect(value.data).toHaveLength(32 + 16);
+    await expect(decryptValue(scope.key, value, value)).resolves.toBe('Bob');
+  });
+
+  it('binds an added node’s encrypted values to the id it is stored under', async () => {
+    const { store, scope } = await unlockedStore();
+
+    await store.dispatch(
+      addNode({
+        type: NODE_TYPE,
+        attributeData: { name: 'Given id' },
+        modelData: { [entityPrimaryKeyProperty]: 'chosen-id' },
+        useEncryption: true,
+        currentStep: 0,
+      }),
+    );
+    await store.dispatch(
+      addNode({
+        type: NODE_TYPE,
+        attributeData: { name: 'Generated id' },
+        useEncryption: true,
+        currentStep: 0,
+      }),
+    );
+
+    const [given, generated] = store.getState().session.network.nodes;
+    expect(given?.[entityPrimaryKeyProperty]).toBe('chosen-id');
+
+    const givenValue = storedName(given);
+    expect(givenValue.nodeId).toBe('chosen-id');
+    await expect(decryptValue(scope.key, givenValue, givenValue)).resolves.toBe(
+      'Given id',
+    );
+
+    const generatedValue = storedName(generated);
+    expect(generatedValue.nodeId).toBe(generated?.[entityPrimaryKeyProperty]);
     await expect(
-      decryptData({ secureAttributes: secure, data: stored.name }, 'pw'),
-    ).resolves.toBe('Bob');
-  });
-});
-
-// Each write is dispatched, and so starts encrypting with the passphrase then
-// in force, before the passphrase changes.
-describe.each(passphraseChanges)(
-  'encrypted writes while their passphrase $change',
-  ({ apply }) => {
-    it('refuses an update and applies none of it', async () => {
-      const node = await makeEncryptedPerson('n1', 'Alice', 'pw');
-      const store = createEncryptionStore([node]);
-      store.dispatch(setPassphrase('pw'));
-      const before = store.getState().session.network;
-
-      const pending = store.dispatch(
-        updateNode({
-          nodeId: 'n1',
-          attributePatch: mixedPatch,
-          currentStep: 0,
-        }),
-      );
-      apply(store);
-      const result = await pending;
-
-      if (!updateNode.rejected.match(result)) {
-        throw new Error('expected the update to be refused');
-      }
-      expect(result.error.name).toBe('PassphraseRequiredError');
-      expect(store.getState().session.network).toBe(before);
-    });
-
-    it('refuses to add a node', async () => {
-      const store = createEncryptionStore([]);
-      store.dispatch(setPassphrase('pw'));
-      const before = store.getState().session.network;
-
-      const pending = store.dispatch(
-        addNode({
-          type: NODE_TYPE,
-          attributeData: { name: 'Bob' },
-          useEncryption: true,
-          currentStep: 0,
-        }),
-      );
-      apply(store);
-      const result = await pending;
-
-      if (!addNode.rejected.match(result)) {
-        throw new Error('expected the node to be refused');
-      }
-      expect(result.error.name).toBe('PassphraseRequiredError');
-      expect(store.getState().session.network).toBe(before);
-    });
-
-    it('refuses to add a batch of nodes, and applies none of it', async () => {
-      const store = createEncryptionStore([]);
-      store.dispatch(setPassphrase('pw'));
-      const before = store.getState().session.network;
-
-      const pending = store.dispatch(
-        addNodesAndEdges({
-          nodes: [
-            {
-              type: NODE_TYPE,
-              attributeData: { name: 'Bob' },
-              modelData: { [entityPrimaryKeyProperty]: 'bob' },
-              useEncryption: true,
-            },
-            {
-              type: NODE_TYPE,
-              attributeData: { age: 30 },
-              modelData: { [entityPrimaryKeyProperty]: 'carol' },
-            },
-          ],
-          edges: [],
-          currentStep: 0,
-        }),
-      );
-      apply(store);
-      const result = await pending;
-
-      if (!addNodesAndEdges.rejected.match(result)) {
-        throw new Error('expected the batch to be refused');
-      }
-      expect(result.error.name).toBe('PassphraseRequiredError');
-      expect(store.getState().session.network).toBe(before);
-    });
-  },
-);
-
-describe('writes with the encrypted-variables experiment off', () => {
-  it('stores an answer to a variable marked encrypted as plaintext without a passphrase', async () => {
-    const store = createEncryptionStore(
-      [makePlainPerson('n1', 'Alice')],
-      undefined,
-      undefined,
-      { encryptionEnabled: false },
-    );
-
-    const result = await store.dispatch(
-      updateNode({ nodeId: 'n1', attributePatch: mixedPatch, currentStep: 0 }),
-    );
-
-    expect(updateNode.fulfilled.match(result)).toBe(true);
-    const [updated] = store.getState().session.network.nodes;
-    expect(updated?.[entityAttributesProperty]).toEqual({
-      name: 'Bob',
-      age: 41,
-    });
-    expect(updated?.[entitySecureAttributesMeta]).toBeUndefined();
-  });
-
-  it('does not refuse a write while a passphrase is flagged invalid', async () => {
-    const store = createEncryptionStore(
-      [makePlainPerson('n1', 'Alice')],
-      undefined,
-      undefined,
-      { encryptionEnabled: false },
-    );
-    store.dispatch(setPassphrase('pw'));
-    store.dispatch(setPassphraseInvalid(true));
-
-    const result = await store.dispatch(
-      updateNode({ nodeId: 'n1', attributePatch: mixedPatch, currentStep: 0 }),
-    );
-
-    expect(updateNode.fulfilled.match(result)).toBe(true);
-    expect(
-      store.getState().session.network.nodes[0]?.[entityAttributesProperty],
-    ).toEqual({ name: 'Bob', age: 41 });
+      decryptValue(scope.key, generatedValue, generatedValue),
+    ).resolves.toBe('Generated id');
   });
 });
 
 describe('plaintext of encrypted writes', () => {
-  it('is available to the passphrase scope that wrote it without decrypting again', async () => {
+  it('is available to the scope that wrote it without decrypting again', async () => {
     const node = await makeEncryptedPerson('n1', 'Alice', 'pw');
-    const store = createEncryptionStore([node]);
-    store.dispatch(setPassphrase('pw'));
-    const scope = getDecryptionScope(store, 'pw');
-    if (!scope) throw new Error('expected a decryption scope');
+    const { store, scope } = await unlockedStore([node]);
 
     await store.dispatch(
       updateNode({ nodeId: 'n1', attributePatch: mixedPatch, currentStep: 0 }),
     );
 
     const [updated] = store.getState().session.network.nodes;
-    const written = updated
-      ? getEncryptedValue(updated, 'name', encryptedVariables, true)
-      : undefined;
-    expect(written).toBeDefined();
-    if (!written) throw new Error('Expected an encrypted value to be written');
-    expect(readCachedPlaintext(scope, written)).toBe('Bob');
+    expect(readCachedOutcome(scope, storedName(updated))).toEqual({
+      readable: true,
+      plaintext: 'Bob',
+    });
   });
 
-  it('is discarded with the passphrase that wrote it', async () => {
-    const store = createEncryptionStore([]);
-    store.dispatch(setPassphrase('pw'));
-    const scope = getDecryptionScope(store, 'pw');
-    if (!scope) throw new Error('expected a decryption scope');
+  it('is never served for a ciphertext copied to another node or variable', async () => {
+    const node = await makeEncryptedPerson('n1', 'Alice', 'pw');
+    const { store, scope } = await unlockedStore([node]);
 
     await store.dispatch(
-      addNode({
-        type: NODE_TYPE,
-        attributeData: { name: 'Bob' },
-        useEncryption: true,
-        currentStep: 0,
-      }),
+      updateNode({ nodeId: 'n1', attributePatch: mixedPatch, currentStep: 0 }),
     );
-    expect(scope.plaintexts.size).toBe(1);
+    const [updated] = store.getState().session.network.nodes;
+    const written = storedName(updated);
 
-    store.dispatch(setPassphrase(''));
-    expect(scope.plaintexts.size).toBe(0);
-    expect(getDecryptionScope(store, 'pw')).toBeUndefined();
-  });
-
-  it('is kept for the passphrase entered again, and discarded with it', async () => {
-    const store = createEncryptionStore([]);
-    store.dispatch(setPassphrase('pw'));
-    const scope = getDecryptionScope(store, 'pw');
-    if (!scope) throw new Error('expected a decryption scope');
-    await store.dispatch(
-      addNode({
-        type: NODE_TYPE,
-        attributeData: { name: 'Bob' },
-        useEncryption: true,
-        currentStep: 0,
-      }),
-    );
-
-    store.dispatch(setPassphrase('pw'));
-    const enteredAgain = getDecryptionScope(store, 'pw');
-
-    expect(enteredAgain).not.toBe(scope);
-    expect(enteredAgain?.plaintexts.size).toBe(1);
-    store.dispatch(setPassphrase('another passphrase'));
-    expect(enteredAgain?.plaintexts.size).toBe(0);
-    expect(getDecryptionScope(store, 'pw')).toBeUndefined();
+    const copiedToNode = { ...written, nodeId: 'n2' };
+    const copiedToVariable = { ...written, variableId: 'nickname' };
+    expect(readCachedOutcome(scope, copiedToNode)).toBeUndefined();
+    expect(readCachedOutcome(scope, copiedToVariable)).toBeUndefined();
+    await expect(decryptInScope(scope, copiedToNode)).resolves.toEqual({
+      readable: false,
+    });
+    await expect(decryptInScope(scope, copiedToVariable)).resolves.toEqual({
+      readable: false,
+    });
   });
 });

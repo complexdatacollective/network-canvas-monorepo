@@ -7,12 +7,16 @@ import { chaseup, layerConstraints } from './utils';
  *
  * When align=true, adjusts depths so parent group members plot on the same line.
  *
- * @param parents - parents[i] = array of parent connections for person i
+ * @param parents - parents[i] = array of parent connections for person i;
+ *   these set each person's depth
  * @param align - whether to align parent group depths
+ * @param alsoAligned - alsoAligned[i] = further parents of person i who join
+ *   its parent group for alignment without setting its depth
  */
 export function kindepth(
   parents: ParentConnection[][],
   align = false,
+  alsoAligned: ParentConnection[][] = [],
 ): number[] {
   const n = parents.length;
   if (n === 1) return [0];
@@ -92,9 +96,10 @@ export function kindepth(
   const groups: number[][] = [];
 
   for (let i = 0; i < n; i++) {
-    if (parents[i]!.length < 2) continue;
+    const groupParents = [...parents[i]!, ...(alsoAligned[i] ?? [])];
+    if (groupParents.length < 2) continue;
     const [anchor, ...rest] = [
-      ...new Set(parents[i]!.map((p) => p.parentIndex)),
+      ...new Set(groupParents.map((p) => p.parentIndex)),
     ].toSorted((a, b) => depth[a]! - depth[b]! || a - b);
     const memberIndices = [
       anchor!,
@@ -118,8 +123,12 @@ export function kindepth(
 
   const ngroups = groups.length;
   const done: boolean[] = Array.from({ length: ngroups }, () => false);
+  const aligned = (group: number[]) =>
+    group.every((m) => depth[m] === depth[group[0]!]);
 
-  for (;;) {
+  // Each pass moves someone strictly deeper or gives up on a group, so this
+  // bound is never reached in practice; it only guarantees termination.
+  for (let pass = 0; pass < n * (ngroups + 1); pass++) {
     // Find groups where members have different depths
     const groupsToFix: number[] = [];
     for (let i = 0; i < ngroups; i++) {
@@ -205,12 +214,17 @@ export function kindepth(
         }
 
         pushChildrenBelowParents();
+      } else {
+        // bad cannot join good's row; leave this group as it is.
+        done[who] = true;
       }
     }
 
-    // Mark groups involving 'bad' as done
+    // A group is finished once its members share a row. One that 'bad' also
+    // belongs to but that is still unaligned (a donor shared by two families,
+    // say) is aligned on a later pass, so its other members follow bad.
     for (let i = 0; i < ngroups; i++) {
-      if (groups[i]!.includes(bad)) {
+      if (groups[i]!.includes(bad) && aligned(groups[i]!)) {
         done[i] = true;
       }
     }

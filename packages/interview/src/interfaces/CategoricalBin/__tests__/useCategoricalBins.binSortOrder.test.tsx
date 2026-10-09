@@ -14,6 +14,7 @@ import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import { useCategoricalBins } from '../useCategoricalBins';
 
 const NODE_TYPE = 'person';
@@ -52,22 +53,33 @@ function makeWrapper() {
       protocol: {
         id: 'p',
         hash: 'h',
-        schemaVersion: 8,
+        schemaVersion: 9,
+        localization: { defaultLocale: 'en', locales: ['en'] },
         codebook: {
           node: {
             [NODE_TYPE]: {
               name: NODE_TYPE,
+              label: { en: 'Person' },
               variables: {
                 [CAT_VAR]: {
                   name: CAT_VAR,
+                  label: 'Category',
                   type: 'categorical',
                   options: [
-                    { label: 'A', value: 'a' },
-                    { label: 'B', value: 'b' },
+                    { label: { en: 'A' }, value: 'a' },
+                    { label: { en: 'B' }, value: 'b' },
                   ],
                 },
-                [NAME_VAR]: { name: NAME_VAR, type: 'text' },
-                [AGE_VAR]: { name: AGE_VAR, type: 'number' },
+                [NAME_VAR]: {
+                  name: NAME_VAR,
+                  label: 'Name',
+                  type: 'text',
+                },
+                [AGE_VAR]: {
+                  name: AGE_VAR,
+                  label: 'Age',
+                  type: 'number',
+                },
               },
             },
           },
@@ -76,11 +88,12 @@ function makeWrapper() {
           {
             id: 'stage1',
             type: 'CategoricalBin',
+            label: { en: 'Categorise' },
             subject: { entity: 'node', type: NODE_TYPE },
             prompts: [
               {
                 id: 'prompt1',
-                text: 'sort me',
+                text: { en: 'sort me' },
                 variable: CAT_VAR,
                 bucketSortOrder: [{ property: NAME_VAR, direction: 'asc' }],
                 binSortOrder: [{ property: AGE_VAR, direction: 'desc' }],
@@ -95,11 +108,13 @@ function makeWrapper() {
 
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-          {children}
-        </CurrentStepProvider>
-      </Provider>
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+            {children}
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>
     );
   };
 }

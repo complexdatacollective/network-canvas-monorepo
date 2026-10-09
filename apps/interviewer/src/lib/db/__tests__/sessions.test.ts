@@ -26,6 +26,8 @@ const baseSession: StoredSession = {
     nodes: [],
     edges: [],
   },
+  localePreference: null,
+  locale: null,
 };
 
 describe('deriveProgressPercent', () => {

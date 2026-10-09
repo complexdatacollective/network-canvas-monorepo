@@ -2107,6 +2107,42 @@
     "defaultMessage": "Protocol imported successfully",
     "description": "Researcher-facing hooks / useProtocolImport: Protocol imported successfully"
   },
+  "fresco.interview.metadata.pageDescription": {
+    "defaultMessage": "Interview",
+    "description": "Short page description (search-engine and link-preview metadata) for the participant-facing interview pages. A single word naming the activity."
+  },
+  "fresco.interview.metadata.pageTitle": {
+    "defaultMessage": "Network Canvas Fresco - Interview",
+    "description": "Browser tab title for the participant-facing interview pages. Keep \"Network Canvas Fresco\" unchanged in all languages."
+  },
+  "fresco.interview.page.protocolUnreadable": {
+    "defaultMessage": "This interview could not be loaded, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.",
+    "description": "Participant-facing explanation shown when the protocol an interview uses could not be read, so the interview was not started."
+  },
+  "fresco.interview.page.sessionUnreadable": {
+    "defaultMessage": "The answers saved for this interview could not be read, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.",
+    "description": "Participant-facing explanation shown when the answers saved for an interview could not be read, so the interview was not started."
+  },
+  "fresco.interview.page.unreadableTitle": {
+    "defaultMessage": "This interview could not be opened",
+    "description": "Participant-facing heading shown instead of an interview whose stored protocol or answers could not be read."
+  },
+  "fresco.interview.smallScreenOverlay.heading": {
+    "defaultMessage": "Screen size too small",
+    "description": "Heading of a notice shown to a participant whose screen is too small to complete the interview."
+  },
+  "fresco.interview.smallScreenOverlay.imageAlt": {
+    "defaultMessage": "Illustration: the screen size is too small",
+    "description": "Alternative text for an illustration shown on a participant-facing notice, which tells the participant their screen is too small to complete the interview."
+  },
+  "fresco.interview.smallScreenOverlay.instruction": {
+    "defaultMessage": "To complete this interview, please use a device with a larger screen, or maximize your browser window.",
+    "description": "Participant-facing instruction under the \"Screen size too small\" heading: use a larger screen or make the browser window bigger."
+  },
+  "fresco.interview.smallScreenOverlay.phoneNote": {
+    "defaultMessage": "<strong>Note:</strong> it is not possible to complete this interview using a mobile phone.",
+    "description": "Participant-facing note under the screen-size instruction. The tagged lead-in word (\"Note:\") is shown in bold; the rest says that a mobile phone cannot be used for the interview."
+  },
   "fresco.interviews.ExportCSVInterviewURLs.anErrorOccurredWhileExportingIncompleteInterview": {
     "defaultMessage": "An error occurred while exporting incomplete interview URLs",
     "description": "Researcher-facing interviews / ExportCSVInterviewURLs: An error occurred while exporting incomplete interview URLs"
@@ -2206,6 +2242,30 @@
   "fresco.notfound.pageNotFound": {
     "defaultMessage": "Page not found.",
     "description": "Researcher-facing notfound: Page not found."
+  },
+  "fresco.onboard.error.message": {
+    "defaultMessage": "There was a problem during onboarding. Please contact the person who recruited you to this study for assistance.",
+    "description": "Message under the \"Something went wrong during onboarding\" heading, telling the participant to ask the person who recruited them for help."
+  },
+  "fresco.onboard.error.title": {
+    "defaultMessage": "Something went wrong during onboarding",
+    "description": "Heading of the page shown to a participant when starting their interview from a study link failed unexpectedly."
+  },
+  "fresco.onboard.invalidLink.message": {
+    "defaultMessage": "The study this link points to is not available. Please contact the person who recruited you to this study for assistance.",
+    "description": "Message under the \"This interview link is no longer valid\" heading, telling the participant to ask the person who recruited them for help."
+  },
+  "fresco.onboard.invalidLink.title": {
+    "defaultMessage": "This interview link is no longer valid",
+    "description": "Heading of the page shown to a participant who opened an interview link for a study that no longer exists."
+  },
+  "fresco.onboard.noAnonymousRecruitment.message": {
+    "defaultMessage": "Anonymous recruitment is disabled for this study. Researchers may optionally enable anonymous recruitment from the dashboard.",
+    "description": "Message under the \"Anonymous recruitment disabled\" heading. Written for the researcher who runs the study: anonymous recruitment is a study setting they can turn on from the Fresco dashboard."
+  },
+  "fresco.onboard.noAnonymousRecruitment.title": {
+    "defaultMessage": "Anonymous recruitment disabled",
+    "description": "Heading of the page shown when someone opens a study link that does not name a participant, but the study only admits named participants."
   },
   "fresco.page.dashboard": {
     "defaultMessage": "Dashboard",
@@ -2462,6 +2522,14 @@
   "fresco.protocols.page.uploadAndManageYourInterviewProtocols": {
     "defaultMessage": "Upload and manage your interview protocols.",
     "description": "Researcher-facing protocols / page: Upload and manage your interview protocols."
+  },
+  "fresco.root.metadata.pageDescription": {
+    "defaultMessage": "Fresco.",
+    "description": "Default page description (search-engine and link-preview metadata) for Fresco pages that set none of their own. Keep \"Fresco\" unchanged in all languages."
+  },
+  "fresco.root.metadata.pageTitle": {
+    "defaultMessage": "Network Canvas Fresco",
+    "description": "Default browser tab title for Fresco pages that set no title of their own. Keep \"Network Canvas Fresco\" unchanged in all languages."
   },
   "fresco.settings.ApiTokensSection.aPITokens": {
     "defaultMessage": "API Tokens",

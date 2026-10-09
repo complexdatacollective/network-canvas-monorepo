@@ -1042,7 +1042,7 @@ export function createNodesForStage(
   const scope = { entity: 'node', type: nodeType } as const;
   const variableIds = Object.keys(nodeTypeDef.variables ?? {});
   // A creating stage fills only what that stage collects. A shared node type
-  // may also carry pedigree semantics or variables collected much later; giving
+  // may also carry variables collected much later; giving
   // those to a name generator would create a network no interview path can
   // produce. A roster (or an incomplete fixture with no declared collection
   // surface) keeps the conservative whole-type fallback because its rows decide
@@ -1050,7 +1050,7 @@ export function createNodesForStage(
   const stageWrites = declaresNodeCollection(stage, prompt)
     ? withRuleTiedVariables(
         nodeTypeDef.variables,
-        nodeVariablesWrittenOnCreation(stage, [stage], prompt),
+        nodeVariablesWrittenOnCreation(stage, prompt),
       )
     : new Set(variableIds);
   const constraints: EntityConstraints =

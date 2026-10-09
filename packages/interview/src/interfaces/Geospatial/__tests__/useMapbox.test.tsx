@@ -1,4 +1,5 @@
 import { act, render } from '@testing-library/react';
+import type { ReactElement, ReactNode } from 'react';
 import {
   afterEach,
   beforeAll,
@@ -73,6 +74,7 @@ const { mapInstance, mapEvents, MapConstructor } = vi.hoisted(() => {
     remove: vi.fn(),
     getCanvas: vi.fn<() => HTMLCanvasElement>(),
     getContainer: vi.fn<() => HTMLElement>(),
+    setLanguage: vi.fn(),
   };
 
   const events = {
@@ -131,6 +133,7 @@ vi.mock('react-redux', () => ({
 
 import { interviewCatalogSource } from '../../../i18n/catalog';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 // The hook under test (imported after mocks are declared)
 import {
   type ExtendedMapOptions,
@@ -202,6 +205,24 @@ it('resolves every supported sequence family', () => {
   expect(resolveProtocolThemeVariable('cat-color-seq-6')).toBe('--cat-6');
 });
 
+const ENGLISH_ONLY = { defaultLocale: 'en', locales: ['en'] };
+
+// `locale` is the participant's stated protocol language; the interface
+// language is set separately by the Shell and is not what the map labels follow.
+function withProtocolLocale(
+  locale: string,
+  localization = {
+    defaultLocale: 'en',
+    locales: ['en', 'hu', 'pt-BR', 'pt-PT', 'zh-TW', 'sw', 'fil'],
+  },
+) {
+  return (
+    <TestProtocolLocalization localization={localization} locale={locale}>
+      <TestHarness mapOptions={baseMapOptions} />
+    </TestProtocolLocalization>
+  );
+}
+
 const ignoreSelection = () => {
   // no-op: these tests do not pick an area
 };
@@ -225,6 +246,15 @@ function TestHarness({
   return <div data-testid="map" ref={mapContainerRef} />;
 }
 
+// useMapbox reads the protocol language, so the harness needs one.
+function EnglishHarness(props: Parameters<typeof TestHarness>[0]) {
+  return (
+    <TestProtocolLocalization localization={ENGLISH_ONLY}>
+      <TestHarness {...props} />
+    </TestProtocolLocalization>
+  );
+}
+
 beforeEach(() => {
   observerInstances = [];
   rafCallbacks = [];
@@ -236,6 +266,7 @@ beforeEach(() => {
   mapInstance.setFilter.mockClear();
   mapInstance.resize.mockClear();
   mapInstance.remove.mockClear();
+  mapInstance.setLanguage.mockClear();
   MapConstructor.mockClear();
   cancelRaf.mockClear();
   vi.stubGlobal('ResizeObserver', MockResizeObserver);
@@ -260,7 +291,7 @@ beforeAll(async () => {
 
 describe('useMapbox resize handling', () => {
   it('observes the map container once the map is initialised', () => {
-    render(<TestHarness mapOptions={baseMapOptions} />);
+    render(withProtocolLocale('en', ENGLISH_ONLY));
 
     expect(MapConstructor).toHaveBeenCalledTimes(1);
     expect(observerInstances).toHaveLength(1);
@@ -268,7 +299,7 @@ describe('useMapbox resize handling', () => {
   });
 
   it('resizes the map (on the next frame) when the container resizes', () => {
-    render(<TestHarness mapOptions={baseMapOptions} />);
+    render(withProtocolLocale('en', ENGLISH_ONLY));
 
     act(() => {
       triggerResize();
@@ -284,7 +315,7 @@ describe('useMapbox resize handling', () => {
   });
 
   it('coalesces multiple resize callbacks into a single resize per frame', () => {
-    render(<TestHarness mapOptions={baseMapOptions} />);
+    render(withProtocolLocale('en', ENGLISH_ONLY));
 
     act(() => {
       triggerResize();
@@ -299,7 +330,7 @@ describe('useMapbox resize handling', () => {
   });
 
   it('disconnects the observer and cancels a pending frame on cleanup', () => {
-    const { unmount } = render(<TestHarness mapOptions={baseMapOptions} />);
+    const { unmount } = render(withProtocolLocale('en', ENGLISH_ONLY));
 
     // Schedule a frame without flushing it, so cleanup has something to cancel.
     act(() => {
@@ -319,7 +350,9 @@ describe('useMapbox built-in locale changes', () => {
   it('updates the existing map canvas when the Shell language changes without recreating or removing the map', () => {
     const tree = (locale: string) => (
       <InterviewI18nProvider requestedLocale={locale}>
-        <TestHarness mapOptions={baseMapOptions} />
+        <TestProtocolLocalization localization={ENGLISH_ONLY}>
+          <TestHarness mapOptions={baseMapOptions} />
+        </TestProtocolLocalization>
       </InterviewI18nProvider>
     );
     const { rerender } = render(tree('en'));
@@ -351,8 +384,222 @@ describe('useMapbox highlighted area', () => {
   const highlights = (value: string) =>
     ['selection', ['==', 'id', value]] as const;
 
-  it('stops highlighting a saved location once it can no longer be read', () => {
+  it('stops highlighting once no readable location is saved for the person shown', () => {
     const { rerender } = render(
+      <EnglishHarness
+        mapOptions={baseMapOptions}
+        initialSelectionValue="tract-a"
+      />,
+    );
+    act(() => {
+      mapEvents.fire('load');
+    });
+    expect(mapInstance.setFilter).toHaveBeenLastCalledWith(
+      ...highlights('tract-a'),
+    );
+
+    rerender(<EnglishHarness mapOptions={baseMapOptions} />);
+
+    expect(mapInstance.setFilter).toHaveBeenLastCalledWith(...highlights(''));
+  });
+
+  it('never restores an earlier location while tiles are still loading', () => {
+    // Mapbox reports its style as not loaded while any tile is loading.
+    mapInstance.isStyleLoaded.mockReturnValue(false);
+    const { rerender } = render(
+      <EnglishHarness
+        mapOptions={baseMapOptions}
+        initialSelectionValue="tract-a"
+      />,
+    );
+    act(() => {
+      mapEvents.fire('load');
+      mapEvents.fire('styledata');
+    });
+    expect(mapInstance.setFilter).toHaveBeenLastCalledWith(
+      ...highlights('tract-a'),
+    );
+
+    rerender(<EnglishHarness mapOptions={baseMapOptions} />);
+    expect(mapInstance.setFilter).toHaveBeenLastCalledWith(...highlights(''));
+
+    act(() => {
+      mapEvents.fire('styledata');
+    });
+    expect(mapInstance.setFilter).toHaveBeenLastCalledWith(...highlights(''));
+  });
+
+  it('highlights a picked area only once the pick is saved', () => {
+    const onSelectionChange = vi.fn();
+    const { rerender } = render(
+      <EnglishHarness
+        mapOptions={baseMapOptions}
+        onSelectionChange={onSelectionChange}
+      />,
+    );
+    act(() => {
+      mapEvents.fire('load');
+    });
+
+    act(() => {
+      mapEvents.fire('click', 'layerToSelect', {
+        features: [{ properties: { id: 'tract-b' } }],
+      });
+    });
+
+    expect(onSelectionChange).toHaveBeenCalledWith('tract-b');
+    expect(mapInstance.setFilter).not.toHaveBeenCalledWith(
+      ...highlights('tract-b'),
+    );
+
+    rerender(
+      <EnglishHarness
+        mapOptions={baseMapOptions}
+        initialSelectionValue="tract-b"
+        onSelectionChange={onSelectionChange}
+      />,
+    );
+
+    expect(mapInstance.setFilter).toHaveBeenLastCalledWith(
+      ...highlights('tract-b'),
+    );
+  });
+
+  it('highlights the saved location again once the map is rebuilt', () => {
+    const { rerender } = render(
+      <EnglishHarness
+        mapOptions={baseMapOptions}
+        initialSelectionValue="tract-a"
+      />,
+    );
+    act(() => {
+      mapEvents.fire('load');
+    });
+
+    rerender(
+      <EnglishHarness
+        mapOptions={{ ...baseMapOptions, targetFeatureProperty: 'name' }}
+        initialSelectionValue="tract-a"
+      />,
+    );
+    expect(MapConstructor).toHaveBeenCalledTimes(2);
+
+    act(() => {
+      mapEvents.fire('load');
+    });
+    expect(mapInstance.setFilter).toHaveBeenLastCalledWith('selection', [
+      '==',
+      'name',
+      'tract-a',
+    ]);
+  });
+});
+
+describe('useMapbox protocol language', () => {
+  const constructedWith = () =>
+    MapConstructor.mock.calls[0]?.[0] as unknown as { language?: string };
+
+  it('labels the map in the protocol language from the first tiles', () => {
+    render(withProtocolLocale('hu'));
+
+    expect(constructedWith().language).toBe('hu');
+  });
+
+  it('cuts a regional protocol language to the language Mapbox lists', () => {
+    render(withProtocolLocale('pt-BR'));
+
+    expect(constructedWith().language).toBe('pt');
+  });
+
+  it('keeps the script of a Chinese protocol language', () => {
+    render(withProtocolLocale('zh-TW'));
+
+    expect(constructedWith().language).toBe('zh-Hant');
+  });
+
+  it('sets no language when Mapbox has none, so labels show local names', () => {
+    render(withProtocolLocale('sw'));
+
+    expect(constructedWith()).not.toHaveProperty('language');
+  });
+
+  it('follows the protocol language, not the interface language', () => {
+    render(
+      <InterviewI18nProvider requestedLocale="es">
+        {withProtocolLocale('hu')}
+      </InterviewI18nProvider>,
+    );
+
+    expect(constructedWith().language).toBe('hu');
+  });
+
+  it('changes the live map language without recreating the map', () => {
+    const { rerender } = render(withProtocolLocale('en'));
+    expect(constructedWith().language).toBe('en');
+    expect(mapInstance.setLanguage).not.toHaveBeenCalled();
+
+    rerender(withProtocolLocale('hu'));
+
+    expect(mapInstance.setLanguage).toHaveBeenCalledTimes(1);
+    expect(mapInstance.setLanguage).toHaveBeenLastCalledWith('hu');
+    expect(MapConstructor).toHaveBeenCalledTimes(1);
+    expect(mapInstance.remove).not.toHaveBeenCalled();
+  });
+
+  it('removes the map language when the new protocol language has no labels', () => {
+    const { rerender } = render(withProtocolLocale('hu'));
+
+    rerender(withProtocolLocale('sw'));
+
+    expect(mapInstance.setLanguage).toHaveBeenLastCalledWith(undefined);
+    expect(MapConstructor).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not touch the map when another protocol language maps to the same Mapbox language', () => {
+    const { rerender } = render(withProtocolLocale('pt-BR'));
+    expect(constructedWith().language).toBe('pt');
+
+    rerender(withProtocolLocale('pt-PT'));
+
+    expect(mapInstance.setLanguage).not.toHaveBeenCalled();
+    expect(MapConstructor).toHaveBeenCalledTimes(1);
+  });
+
+  it('labels the map in Tagalog for a Filipino protocol language', () => {
+    // A protocol's locales are canonical, so Tagalog arrives as `fil`; Mapbox
+    // spells it `tl`.
+    render(withProtocolLocale('fil'));
+
+    expect(constructedWith().language).toBe('tl');
+  });
+});
+
+// Rendered as an interface is inside the Shell, in an English-only protocol;
+// a rerender keeps the wrapper.
+function InEnglish({ children }: { children: ReactNode }) {
+  return (
+    <TestProtocolLocalization localization={ENGLISH_ONLY}>
+      {children}
+    </TestProtocolLocalization>
+  );
+}
+const renderInEnglish = (ui: ReactElement) =>
+  render(ui, { wrapper: InEnglish });
+
+describe('useMapbox highlighted area', () => {
+  // The layer colours are resolved through a canvas, which jsdom lacks.
+  beforeEach(() => {
+    const getContext = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockReturnValue(null);
+    return () => getContext.mockRestore();
+  });
+
+  const highlights = (value: string) =>
+    ['selection', ['==', 'id', value]] as const;
+
+  it('stops highlighting a saved location once it can no longer be read', () => {
+    const { rerender } = renderInEnglish(
       <TestHarness
         mapOptions={baseMapOptions}
         initialSelectionValue="tract-a"
@@ -373,7 +620,7 @@ describe('useMapbox highlighted area', () => {
   it('follows the saved location while tiles are still loading', () => {
     // Mapbox reports its style as not loaded while any tile is loading.
     mapInstance.isStyleLoaded.mockReturnValue(false);
-    const { rerender } = render(
+    const { rerender } = renderInEnglish(
       <TestHarness
         mapOptions={baseMapOptions}
         initialSelectionValue="tract-a"
@@ -398,7 +645,7 @@ describe('useMapbox highlighted area', () => {
 
   it('highlights a picked area only once the pick is saved', () => {
     const onSelectionChange = vi.fn();
-    const { rerender } = render(
+    const { rerender } = renderInEnglish(
       <TestHarness
         mapOptions={baseMapOptions}
         onSelectionChange={onSelectionChange}
@@ -433,7 +680,7 @@ describe('useMapbox highlighted area', () => {
   });
 
   it('highlights the saved location again once the map is rebuilt', () => {
-    const { rerender } = render(
+    const { rerender } = renderInEnglish(
       <TestHarness
         mapOptions={baseMapOptions}
         initialSelectionValue="tract-a"

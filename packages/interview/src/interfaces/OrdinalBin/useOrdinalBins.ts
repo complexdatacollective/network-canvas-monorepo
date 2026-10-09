@@ -12,6 +12,7 @@ import {
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import useSortedNodeList from '../../hooks/useSortedNodeList';
 import { useStageSelector } from '../../hooks/useStageSelector';
+import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { makeGetCodebookVariableById } from '../../selectors/protocol';
 import { getNetworkNodesForType } from '../../selectors/session';
 
@@ -45,6 +46,7 @@ export function useOrdinalBins() {
     prompt: { variable: activePromptVariable, bucketSortOrder },
   } = usePrompts<OrdinalBinPrompts>();
 
+  const resolve = useResolveLocalizedString();
   const getVariableDefinition = useStageSelector(makeGetCodebookVariableById);
   const variableDefinition = getVariableDefinition(activePromptVariable);
 
@@ -66,7 +68,7 @@ export function useOrdinalBins() {
     });
 
     return {
-      label: option.label,
+      label: resolve(option.label).text,
       value: option.value,
       nodes,
     };

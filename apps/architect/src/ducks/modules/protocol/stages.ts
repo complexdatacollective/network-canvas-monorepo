@@ -1,6 +1,11 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-import type { SkipLogicDestination, Stage } from '@codaco/protocol-validation';
+import {
+  findTimelineStructureProblems,
+  isFinishSessionStage,
+  type SkipLogicDestination,
+  type Stage,
+} from '@codaco/protocol-validation';
 import { createAppAsyncThunk } from '~/ducks/createAppAsyncThunk';
 import { getProtocol, getStage } from '~/selectors/protocol';
 import prune from '~/utils/prune';
@@ -25,11 +30,58 @@ const initialStage = {
   label: '',
 };
 
-type StageDependencyCandidate = Pick<Stage, 'id' | 'label' | 'type'> & {
+type StageDependencyCandidate = Pick<Stage, 'id' | 'type'> & {
   sourceStageId?: string;
   skipLogic?: {
     destination?: SkipLogicDestination;
   };
+};
+
+/**
+ * Whether deleting this stage would leave the interview with no finish stage
+ * to end at. The last finish stage of a protocol cannot be deleted; a protocol
+ * that somehow holds more than one may lose the others.
+ */
+export const isLastFinishStage = (
+  stages: readonly Pick<Stage, 'id' | 'type'>[],
+  stageId: string,
+) => {
+  const finishStageIds = stages.flatMap((stage) =>
+    stage.type === 'FinishSession' ? [stage.id] : [],
+  );
+  return finishStageIds.length === 1 && finishStageIds[0] === stageId;
+};
+
+/**
+ * Whether an order moves a finish stage from where it is. The stage that ends
+ * the interview stays where it is: it cannot be moved, and no stage can be
+ * moved past it, which would move it too.
+ */
+export const movesFinishStage = (
+  committedStages: readonly Pick<Stage, 'id' | 'type'>[],
+  proposedStages: readonly Pick<Stage, 'id' | 'type'>[],
+) =>
+  committedStages.some(
+    (stage, index) =>
+      stage.type === 'FinishSession' &&
+      proposedStages.findIndex(({ id }) => id === stage.id) !== index,
+  );
+
+/**
+ * Where a stage being created is inserted: never after a finish stage, where
+ * no participant could reach it. A position at or past the first finish stage
+ * puts it just before that stage. A finish stage itself goes at the end; a
+ * protocol that already has one gets no second (see `commitStage`).
+ */
+export const creationIndex = (
+  stages: readonly Pick<Stage, 'type'>[],
+  stage: Pick<Stage, 'type'>,
+  index: number | undefined,
+) => {
+  if (isFinishSessionStage(stage)) return stages.length;
+  const requested = index ?? stages.length;
+  const firstFinish = stages.findIndex(isFinishSessionStage);
+  return firstFinish === -1 ? requested : Math.min(requested, firstFinish);
 };
 
 export const getFamilyPedigreeDependentStages = <
@@ -109,6 +161,10 @@ const deleteStageAsync = createAppAsyncThunk(
       return stageId;
     }
 
+    if (isLastFinishStage(allStages, stageId)) {
+      return stageId;
+    }
+
     // A NarrativePedigree renders a FamilyPedigree's finalised network via
     // sourceStageId; deleting that source leaves the dependent stage invalid.
     if (stage?.type === 'FamilyPedigree') {
@@ -164,6 +220,17 @@ const stagesSlice = createSlice({
         return;
       }
 
+      // The interview ends at its finish stage: a move of the finish stage,
+      // or one that would leave a stage after it or the interview ending
+      // anywhere else, is refused.
+      if (
+        movesFinishStage(state, reorderedStages) ||
+        findTimelineStructureProblems(reorderedStages).length >
+          findTimelineStructureProblems(state).length
+      ) {
+        return;
+      }
+
       const movedStage = state[oldIndex];
       if (!movedStage) {
         return;
@@ -181,6 +248,10 @@ const stagesSlice = createSlice({
           return;
         }
 
+        if (isLastFinishStage(state, stageId)) {
+          return;
+        }
+
         return state.filter((stage) => stage.id !== stageId);
       })
       // The ONLY way a stage is created or edited. It always saves the whole
@@ -190,8 +261,12 @@ const stagesSlice = createSlice({
         const { stageId, stage, index } = action.payload;
 
         if (!stageId) {
+          // A protocol has exactly one finish stage.
+          if (isFinishSessionStage(stage) && state.some(isFinishSessionStage)) {
+            return;
+          }
           state.splice(
-            index ?? state.length,
+            creationIndex(state, stage, index),
             0,
             prune({ ...initialStage, ...stage }),
           );

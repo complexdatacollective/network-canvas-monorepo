@@ -1,5 +1,6 @@
 import { act, screen, within } from '@testing-library/react';
 
+import { escapeMessageText } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -8,6 +9,7 @@ import { mountedAs } from '../../__tests__/formEditorHarness.tsx';
 import { networkComposerStageEditor } from '../NetworkComposerStageEditor.ts';
 import { composerConnections } from '../sections/composerConnections.tsx';
 import { composerNodes } from '../sections/composerNodes.tsx';
+import { composerWording } from '../sections/composerWording.tsx';
 
 /**
  * The editor as the harness mounts it.
@@ -22,12 +24,14 @@ export const composerEditor = mountedAs(
 
 const Nodes = composerNodes();
 const Connections = composerConnections();
+const Wording = composerWording();
 
 /** Every section a network composer composes that is not one of the shared six. */
 const composerSections = (
   <>
     <Nodes />
     <Connections />
+    <Wording />
   </>
 );
 
@@ -77,11 +81,29 @@ export const composerHolding = (fields: SectionDoc) => ({
   stage: {
     type: 'NetworkComposer' as const,
     fields: {
-      label: 'Network Composer',
+      label: { 'en-US': 'Network Composer' },
       subject: { entity: 'node', type: 'person' },
       quickAdd: 'composerName',
       layoutVariable: 'layout',
       background: { concentricCircles: 4 },
+      // The wording Network Canvas supplies, which every composer holds.
+      addNamePlaceholder: { 'en-US': 'Type a name, then press Enter' },
+      overtakenEditNotice: {
+        'en-US':
+          'Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost.',
+      },
+      tooltips: {
+        addPerson: { 'en-US': 'Add node' },
+        automaticLayout: { 'en-US': 'Automatic layout' },
+        // The connection tool's words, which only connection types ask for.
+        ...(Array.isArray(fields.edges) && fields.edges.length > 0
+          ? { drawConnection: { 'en-US': 'Draw edge' } }
+          : {}),
+      },
+      // A grouped composer holds the heading of its groups, which only grouping asks for.
+      ...(fields.convexHullVariable === undefined
+        ? {}
+        : { groupsHeading: { 'en-US': 'Groups' } }),
       ...fields,
     },
   },
@@ -277,7 +299,9 @@ export const collectInAnAlterForm = (
         ...fields,
         ...variableIds.map((variable) => ({
           variable,
-          prompt: `What is this person's ${variable}?`,
+          prompt: {
+            'en-US': escapeMessageText(`What is this person's ${variable}?`),
+          },
         })),
       ],
     },
@@ -332,7 +356,7 @@ export const composerInAnotherStage = (
   const second: SectionDoc = {
     ...composer,
     id,
-    label: 'Second composer',
+    label: { 'en-US': 'Second composer' },
     edges: [],
     nodeForm: { fields: [...fields] },
   };

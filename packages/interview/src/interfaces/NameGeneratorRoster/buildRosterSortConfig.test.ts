@@ -12,17 +12,26 @@ const firstNameVariableId = 'var-first';
 const levelVariableId = 'var-level';
 
 const nodeVariables: Record<string, Variable> = {
-  [nameVariableId]: { name: 'name', type: 'text' },
-  [ageVariableId]: { name: 'age', type: 'number' },
-  [lastNameVariableId]: { name: 'lastName', type: 'text' },
-  [firstNameVariableId]: { name: 'firstName', type: 'text' },
+  [nameVariableId]: { name: 'name', label: 'Name', type: 'text' },
+  [ageVariableId]: { name: 'age', label: 'Age', type: 'number' },
+  [lastNameVariableId]: {
+    name: 'lastName',
+    label: 'Last name',
+    type: 'text',
+  },
+  [firstNameVariableId]: {
+    name: 'firstName',
+    label: 'First name',
+    type: 'text',
+  },
   [levelVariableId]: {
     name: 'level',
+    label: 'Level',
     type: 'ordinal',
     options: [
-      { label: 'Low', value: 'low' },
-      { label: 'Medium', value: 'medium' },
-      { label: 'High', value: 'high' },
+      { label: { en: 'Low' }, value: 'low' },
+      { label: { en: 'Medium' }, value: 'medium' },
+      { label: { en: 'High' }, value: 'high' },
     ],
   },
 };

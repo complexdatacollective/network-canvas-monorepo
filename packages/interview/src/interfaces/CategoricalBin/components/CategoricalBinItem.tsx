@@ -25,6 +25,7 @@ import NodeList from '../../../components/NodeList';
 import { usePrompts } from '../../../components/Prompts/usePrompts';
 import { useCelebrate } from '../../../hooks/useCelebrate';
 import { useStageSelector } from '../../../hooks/useStageSelector';
+import { useContentFormat } from '../../../localization/useContentFormat';
 import { getCurrentStageId } from '../../../selectors/session';
 import { interfaceMessages } from '../../messages';
 import BinSummary from './BinSummary';
@@ -145,6 +146,8 @@ export const useSummaryFits = (
 
 const CategoricalBinItem = (props: CategoricalBinItemProps) => {
   const intl = useAppIntl();
+  // The count sits beside the bin's label, so in the protocol's digits.
+  const contentFormat = useContentFormat();
   const {
     index,
     label,
@@ -256,7 +259,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
             <RenderMarkdown>{label}</RenderMarkdown>
           </Heading>
           <span className="ml-auto text-sm opacity-60">
-            {intl.formatNumber(nodes.length)}
+            {contentFormat.formatNumber(nodes.length)}
           </span>
         </button>
         <div

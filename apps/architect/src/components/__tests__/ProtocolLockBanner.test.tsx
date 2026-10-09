@@ -34,17 +34,24 @@ vi.mock('wouter', () => ({
 
 const protocol: CurrentProtocol = {
   name: 'Test Protocol',
-  schemaVersion: 8,
+  schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   stages: [],
   codebook: {},
 };
 
-const stage = { id: 'stage-1', type: 'Information', label: 'A' } as Stage;
+const stage: Stage = {
+  id: 'stage-1',
+  type: 'Information',
+  label: { en: 'A' },
+  title: { en: 'A' },
+  items: [],
+};
 
 // What the form holds after the researcher has typed into it. Genuinely
 // different from the document the editor opened on, so the beacon reports
 // dirty.
-const editedStage = { ...stage, label: 'A, edited' } as Stage;
+const editedStage: Stage = { ...stage, label: { en: 'A, edited' } };
 
 const createTestStore = () =>
   configureStore({
@@ -125,8 +132,8 @@ describe('ProtocolLockBanner', () => {
     // "Discard Changes" is offered about.
     publishStageDraft(
       editedStage,
-      { label: 'A' },
-      { label: 'A, edited' },
+      { label: { en: 'A' } },
+      { label: { en: 'A, edited' } },
       true,
     );
     store.dispatch(setProtocolLockState('open-elsewhere'));
@@ -157,8 +164,8 @@ describe('ProtocolLockBanner', () => {
     mockLocation.mockReturnValue('/protocol/stage/stage-1');
     publishStageDraft(
       editedStage,
-      { label: 'A' },
-      { label: 'A, edited' },
+      { label: { en: 'A' } },
+      { label: { en: 'A, edited' } },
       true,
     );
     store.dispatch(setProtocolLockState('reclaim-blocked'));

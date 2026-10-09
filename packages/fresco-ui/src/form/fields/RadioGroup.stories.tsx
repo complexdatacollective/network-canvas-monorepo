@@ -243,3 +243,67 @@ export const PreservesNumericValueType: Story = {
     await expect(typeDisplay).toHaveTextContent('number');
   },
 };
+
+/**
+ * Option values are whatever the researcher typed: spaces, punctuation and any
+ * script. Each option must still be a labelled radio with a valid id.
+ */
+export const UnrestrictedOptionValues: Story = {
+  args: {
+    'name': 'unrestricted-values',
+    'options': [
+      { value: 'close friend', label: 'close friend' },
+      { value: '朋友', label: '朋友' },
+      { value: 'école "A" [1]', label: 'école "A" [1]' },
+    ],
+    'aria-label': 'Relationship',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    for (const element of canvasElement.querySelectorAll('[id]')) {
+      await expect(element.id).not.toMatch(/\s/);
+    }
+
+    for (const name of ['close friend', '朋友', 'école "A" [1]']) {
+      await userEvent.click(canvas.getByText(name));
+      await expect(canvas.getByRole('radio', { name })).toBeChecked();
+    }
+  },
+};
+
+/**
+ * Protocol copy arrives as `PresentationalText`: each label still renders as
+ * Markdown, on an element carrying the text's own `lang` and `dir`, so an
+ * Arabic option lays out right-to-left inside a left-to-right page. A plain
+ * string label keeps the page's language.
+ */
+export const LocalizedLabels: Story = {
+  args: {
+    'name': 'localized',
+    'aria-label': 'Relationship',
+    'options': [
+      { value: 'friend', label: { text: '**صديق**', lang: 'ar', dir: 'rtl' } },
+      { value: 'family', label: { text: 'عائلة', lang: 'ar', dir: 'rtl' } },
+      { value: 'work', label: { text: 'Compañero', lang: 'es', dir: 'ltr' } },
+      { value: 'other', label: 'Other' },
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const friend = canvas.getByText('صديق');
+    await expect(friend.tagName).toBe('STRONG');
+    await expect(friend.closest('[lang]')).toHaveAttribute('lang', 'ar');
+    await expect(getComputedStyle(friend).direction).toBe('rtl');
+    await expect(
+      canvas.getByText('Compañero').closest('[lang]'),
+    ).toHaveAttribute('lang', 'es');
+    await expect(canvas.getByText('Other').closest('[lang]')).toBe(
+      document.documentElement,
+    );
+
+    await userEvent.click(canvas.getByText('عائلة'));
+    await expect(canvas.getByRole('radio', { name: 'عائلة' })).toBeChecked();
+  },
+};

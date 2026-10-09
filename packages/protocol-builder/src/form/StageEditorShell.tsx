@@ -1,8 +1,10 @@
 import { Redacted } from 'effect';
 import { LayoutGroup } from 'motion/react';
 import {
+  type Dispatch,
   type ReactNode,
   type RefObject,
+  type SetStateAction,
   useCallback,
   useContext,
   useEffect,
@@ -31,14 +33,19 @@ import { focusFirstError } from '@codaco/fresco-ui/form/utils/focusFirstError';
 import { getValue } from '@codaco/fresco-ui/form/utils/objectPath';
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import { stageSchema } from '@codaco/protocol-validation';
+import {
+  type LocalizationDeclaration,
+  stageSchema,
+} from '@codaco/protocol-validation';
 import { applyCommands, type Command } from '@codaco/studio-sync/apply';
 
+import { useProtocolLocalization } from '../localization/ProtocolLocalization.tsx';
 import type {
   StageEditorActions,
   StageSection,
 } from '../stage-editor-contract.ts';
 import {
+  savedStageFields,
   stageDocument,
   type StageFormDraft,
   type StageIdentity,
@@ -54,6 +61,7 @@ import {
   type SectionValidationIssue,
 } from './outlineStore.ts';
 import { READ_ONLY_MESSAGE } from './readOnlyRefusal.ts';
+import { rewriteFormStore } from './rewriteFormStore.ts';
 import {
   type OwnCommandsResult,
   StageEditorFormContext,
@@ -188,9 +196,9 @@ function StageDocument({
   children: (
     document: StageFormDraft,
     working: RefObject<StageFormDraft>,
-    setDocument: (fields: StageFormDraft) => void,
+    setDocument: Dispatch<SetStateAction<StageFormDraft>>,
     saved: StageFormDraft,
-    setSaved: (fields: StageFormDraft) => void,
+    setSaved: Dispatch<SetStateAction<StageFormDraft>>,
   ) => ReactNode;
 }>) {
   const working = useRef<StageFormDraft>(committedFields);
@@ -222,9 +230,9 @@ function StageEditorFormBody({
     identity: StageIdentity;
     document: StageFormDraft;
     working: RefObject<StageFormDraft>;
-    setDocument: (fields: StageFormDraft) => void;
+    setDocument: Dispatch<SetStateAction<StageFormDraft>>;
     saved: StageFormDraft;
-    setSaved: (fields: StageFormDraft) => void;
+    setSaved: Dispatch<SetStateAction<StageFormDraft>>;
     lostMessage: string | undefined;
     discardDraft: (message: string) => void;
   }>) {
@@ -238,6 +246,7 @@ function StageEditorFormBody({
   const writeRefusal =
     access === 'readOnly' ? READ_ONLY_MESSAGE : NOT_READY_MESSAGE;
   const intl = useAppIntl();
+  const localization = useProtocolLocalization();
   const storeApi = useContext(FormStoreContext);
   const formRef = useRef<HTMLFormElement>(null);
   const fieldScope = useFormFieldScope();
@@ -326,6 +335,23 @@ function StageEditorFormBody({
     [clearRefusedWrite, liveDraft, readOnly, reportRefusedWrite, writeRefusal],
   );
 
+  /**
+   * Carries a change the host made to the stored stage into every copy of it
+   * the editor holds. Not refused while read-only: it writes nothing the
+   * protocol does not already hold.
+   */
+  const mapDocuments = useCallback(
+    (rewrite: (fields: StageFormDraft) => StageFormDraft) => {
+      if (storeApi !== undefined) {
+        rewriteFormStore(storeApi, liveDraft(), rewrite);
+      }
+      working.current = rewrite(working.current);
+      setDocument(rewrite);
+      setSaved(rewrite);
+    },
+    [liveDraft, setDocument, setSaved, storeApi],
+  );
+
   const handleSubmit = useCallback<FormSubmitHandler>(
     async (values) => {
       // The store and the sections resolved against it stand or fall together
@@ -338,12 +364,19 @@ function StageEditorFormBody({
         return { success: false, formErrors: [writeRefusal] };
       }
 
-      const fields = documentFromSubmission({
-        currentFields: working.current,
-        submittedValues: values as Record<string, FieldValue>,
-        mountedPaths: mountedPathsOf(storeApi),
-        dormantFields: dormantFieldsOf(storeApi),
-      });
+      // As the stage will be saved: holding exactly the wording settings that
+      // apply to it (see `stageDocument`), so the schema judges what is
+      // saved, and the draft the form goes on editing is what was stored.
+      const fields = savedStageFields(
+        identity,
+        documentFromSubmission({
+          currentFields: working.current,
+          submittedValues: values as Record<string, FieldValue>,
+          mountedPaths: mountedPathsOf(storeApi),
+          dormantFields: dormantFieldsOf(storeApi),
+        }),
+        localization,
+      );
       working.current = fields;
 
       // The schema's reading of the stage. Anchored problems go to the
@@ -355,7 +388,11 @@ function StageEditorFormBody({
       // section's problems named by that section, then the rules about the
       // stage as a whole. The unattributed ones are deliberately not here;
       // they are what a host's own issue surfacing is for.
-      const { sections: anchored, whole } = stageProblems(identity, fields);
+      const { sections: anchored, whole } = stageProblems(
+        identity,
+        fields,
+        localization,
+      );
       outline.setValidationIssues(anchored);
       if (anchored.length > 0 || whole.length > 0) {
         const said = [...sectionProblems(sections.getSnapshot()), ...whole];
@@ -400,6 +437,7 @@ function StageEditorFormBody({
       clearRefusedWrite,
       discardDraft,
       identity,
+      localization,
       outline,
       readOnly,
       save,
@@ -477,6 +515,7 @@ function StageEditorFormBody({
             savedFields: saved,
             liveDraft,
             applyOwnCommands,
+            mapDocuments,
             reportRefusedWrite,
             identity,
             creation,
@@ -490,6 +529,7 @@ function StageEditorFormBody({
       formId,
       identity,
       liveDraft,
+      mapDocuments,
       outline,
       readOnly,
       reportRefusedWrite,
@@ -619,8 +659,11 @@ function sectionProblems(sections: readonly StageSection[]): string[] {
 function stageProblems(
   identity: StageIdentity,
   fields: StageFormDraft,
+  localization: LocalizationDeclaration | undefined,
 ): Readonly<{ sections: SectionValidationIssue[]; whole: string[] }> {
-  const result = stageSchema.safeParse(stageDocument(identity, fields));
+  const result = stageSchema.safeParse(
+    stageDocument(identity, fields, localization),
+  );
   if (result.success) return { sections: [], whole: [] };
   const sections: SectionValidationIssue[] = [];
   const whole: string[] = [];

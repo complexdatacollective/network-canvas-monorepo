@@ -20,6 +20,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { messageText } from '../../../../packages/protocol-validation/src/localization/messageSyntax.ts';
 import {
   attempt,
   check,
@@ -421,11 +422,36 @@ try {
               `select "finishTime" from "Interview" where id = '${result.interviewId}';`,
             );
           }
+          if (!finishedAt)
+            return {
+              pass: false,
+              detail: 'no finishTime was recorded within 60s of finishing',
+            };
+          // The protocol is migrated from schema 8, which appends the default
+          // finish stage, and that stage's outcome is "completed".
+          const finish = psql(
+            `select "finishOutcome" || '|' || coalesce("finishStageId", '') from "Interview" where id = '${result.interviewId}';`,
+          );
+          const [outcome = '', stageId = ''] = finish.split('|');
+          if (outcome !== 'completed' || stageId === '')
+            return {
+              pass: false,
+              detail: `finishTime recorded (${finishedAt}), but the finish was stored as outcome "${outcome}" at stage "${stageId}" rather than "completed" at the finish stage`,
+            };
+          // Finishing leaves the participant on the interview's completed state
+          // rather than navigating anywhere.
+          const notice = page.getByText(
+            'This interview is finished, and its answers can no longer be changed.',
+          );
+          const shown = await notice
+            .waitFor({ state: 'visible', timeout: 15_000 })
+            .then(() => true)
+            .catch(() => false);
           return {
-            pass: Boolean(finishedAt),
-            detail: finishedAt
-              ? `finishTime recorded: ${finishedAt}`
-              : 'no finishTime was recorded within 60s of finishing',
+            pass: shown,
+            detail: shown
+              ? `finishTime recorded: ${finishedAt}, outcome ${outcome} at stage ${stageId}; the completed state is shown`
+              : `finishTime recorded (${finishedAt}), but the completed state's notice was not shown on ${page.url()}`,
           };
         }),
       );
@@ -490,6 +516,17 @@ writeFileSync(
 report(result);
 
 /**
+ * The text an option label shows in the protocol's default language. A
+ * schema-8 label is that text; from schema 9 a label holds one ICU message per
+ * language.
+ */
+function labelText(label, localization) {
+  if (typeof label === 'string') return label;
+  const message = label?.[localization?.defaultLocale];
+  return typeof message === 'string' ? messageText(message) : undefined;
+}
+
+/**
  * Every answer the walk gave, as it must appear in exported data.
  *
  * The bin answers are included as the VALUES the codebook gives their options,
@@ -498,7 +535,7 @@ report(result);
  * produce an export this check was happy with.
  */
 function expectedAnswers() {
-  const codebook = JSON.parse(
+  const document = JSON.parse(
     readFileSync(
       join(
         repoRoot,
@@ -506,10 +543,11 @@ function expectedAnswers() {
       ),
       'utf8',
     ),
-  ).codebook.node.person.variables;
+  );
+  const codebook = document.codebook.node.person.variables;
   const valueOf = (variable, label) => {
     const option = codebook[variable].options.find(
-      (entry) => entry.label === label,
+      (entry) => labelText(entry.label, document.localization) === label,
     );
     if (!option)
       throw new Error(

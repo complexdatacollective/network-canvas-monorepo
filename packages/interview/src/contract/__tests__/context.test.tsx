@@ -1,4 +1,4 @@
-import { render, renderHook, screen } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -32,9 +32,14 @@ describe('ContractProvider', () => {
       wrapper: wrap({ onFinish, onRequestAsset }),
     });
 
-    void result.current.onFinish('interview-1', new AbortController().signal);
+    void result.current.onFinish(
+      'interview-1',
+      { stageId: 'finish', outcome: 'completed' },
+      new AbortController().signal,
+    );
     expect(onFinish).toHaveBeenCalledWith(
       'interview-1',
+      { stageId: 'finish', outcome: 'completed' },
       expect.any(AbortSignal),
     );
 
@@ -64,19 +69,11 @@ describe('ContractProvider', () => {
     expect(result.current.isDevelopment).toBe(true);
   });
 
-  it('provides neutral default finish confirmation copy', () => {
-    function Description() {
-      return <p>{useFinishConfirmationDescription()}</p>;
-    }
-    render(<Description />, {
+  it('provides no default finish confirmation copy', () => {
+    const { result } = renderHook(() => useFinishConfirmationDescription(), {
       wrapper: wrap({ onFinish: vi.fn(), onRequestAsset: vi.fn() }),
     });
-    expect(
-      screen.getByText(
-        'Finish this interview only when you are satisfied with your responses.',
-        { exact: true },
-      ),
-    ).toBeVisible();
+    expect(result.current).toBeUndefined();
   });
 
   it('honours host-specific finish confirmation copy', () => {

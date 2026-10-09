@@ -12,9 +12,9 @@ const PROTOCOL_ROUTES = [
   '/protocol',
   '/protocol/codebook',
   '/protocol/assets',
+  '/protocol/localization',
   '/protocol/summary',
   '/protocol/stage/new?type=Information',
-  '/protocol/experiments',
 ];
 
 async function settle(page: Page) {
@@ -291,20 +291,6 @@ test('a second tab on the same protocol can look through every page, changes not
     expect(await editingControls(secondTab), tab).toEqual([]);
   }
 
-  // Experiments has no link; it is reached by address.
-  await secondTab.evaluate(() => {
-    history.pushState(null, '', '/protocol/experiments');
-  });
-  await expect(
-    secondTab.getByRole('button', { name: 'Go Back' }),
-  ).toBeVisible();
-  expect(await editingControls(secondTab)).toEqual([]);
-
-  // Experiments has no project navigation of its own; leave it the way it
-  // offers.
-  await secondTab.getByRole('button', { name: 'Go Back' }).click();
-  await expect(secondTab).toHaveURL(/\/protocol$/);
-
   await main.getByRole('link', { name: /^Codebook/ }).click();
   await expect(secondTab).toHaveURL(/\/protocol\/codebook$/);
   const createNodeType = secondTab.getByRole('button', {
@@ -355,9 +341,11 @@ test('a stage editor open read-only becomes editable in place when the other tab
   await secondTab.waitForURL(/\/protocol$/);
   const saved = await readProtocolJson(
     secondTab,
-    (row) => row.stages[0]?.label === 'Renamed after the reclaim',
+    (row) => row.stages[0]?.label['en-US'] === 'Renamed after the reclaim',
   );
-  expect(saved.stages[0]?.label).toBe('Renamed after the reclaim');
+  expect(saved.stages[0]?.label).toEqual({
+    'en-US': 'Renamed after the reclaim',
+  });
 
   // Back on the stage list, this tab holds the protocol: the same control that
   // read "View stage" while it could not edit now says "Edit stage".

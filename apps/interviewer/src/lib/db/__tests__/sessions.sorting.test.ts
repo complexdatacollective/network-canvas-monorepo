@@ -16,6 +16,8 @@ function session(id: string, name: string): StoredSessionRow {
     finishedAt: null,
     exportedAt: null,
     currentStep: 0,
+    localePreference: null,
+    locale: null,
   };
 }
 

@@ -13,6 +13,7 @@ import type { CatalogMessages, CatalogSource } from '../locales.ts';
 import { defineMessages } from '../messages.ts';
 import {
   AppI18nProvider,
+  AppIntlOverlay,
   AppMessage,
   useAppIntl,
   useAppLocale,
@@ -375,6 +376,51 @@ describe('useAppLocale without a provider', () => {
       return null;
     }
     expect(() => render(<Bare />)).toThrow(/AppI18nProvider/);
+  });
+});
+
+const greetingOverride = (message: { id?: string }) =>
+  message.id === 'demo.greeting' ? 'Kia ora' : undefined;
+
+describe('AppIntlOverlay', () => {
+  it('shows its text for the messages it answers for, and the catalog’s for the rest', () => {
+    const { container } = render(
+      <AppI18nProvider
+        locale="en-GB"
+        locales={registry}
+        messages={{ 'demo.greeting': 'Good day {name}' }}
+      >
+        <AppIntlOverlay override={greetingOverride}>
+          <Greeting name="Ada" />
+          <Count count={2} />
+          <span>
+            <AppMessage message={messages.greeting} values={{ name: 'Ada' }} />
+          </span>
+        </AppIntlOverlay>
+      </AppI18nProvider>,
+    );
+    expect(within(container).getAllByText('Kia ora')).toHaveLength(2);
+    expect(within(container).getByText('2 results')).toBeDefined();
+  });
+
+  it('overlays the English defaults without a provider', () => {
+    const { container } = render(
+      <AppIntlOverlay override={greetingOverride}>
+        <Greeting name="Ada" />
+      </AppIntlOverlay>,
+    );
+    expect(within(container).getByText('Kia ora')).toBeDefined();
+  });
+
+  it('does not reach into a provider mounted beneath it', () => {
+    const { container } = render(
+      <AppIntlOverlay override={greetingOverride}>
+        <AppI18nProvider locale="en" locales={registry}>
+          <Greeting name="Ada" />
+        </AppI18nProvider>
+      </AppIntlOverlay>,
+    );
+    expect(within(container).getByText('Hello Ada')).toBeDefined();
   });
 });
 

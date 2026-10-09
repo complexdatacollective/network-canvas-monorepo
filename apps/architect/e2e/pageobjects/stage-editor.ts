@@ -1,6 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
-import { typeInlineRun } from './rich-text.js';
+import { decodeCharacterReferences, typeInlineRun } from './rich-text.js';
 
 // Verified against real source (not just the task brief's guesses):
 // - `createNew`'s URL/query params match exactly how NewStageScreen.tsx
@@ -132,10 +132,12 @@ export class StageEditor {
     // backslash escape the canonical sample protocol contains (`\-`, an
     // escaped hyphen from its own serializer era) must be typed as a plain
     // hyphen — typing the backslash literally makes the serializer escape it
-    // again (`\\\-`), which no longer parses to the same text. HTML entities
-    // (`&quot;`, `&lt;`…) are typed literally on purpose: both sides parse
-    // them to the same characters (verified by the build spike).
-    for (const block of parseMarkdownBlocks(markdown.replaceAll('\\-', '-'))) {
+    // again (`\\\-`), which no longer parses to the same text. HTML character
+    // references (`&quot;`, `&lt;`…) are typed as the characters they name
+    // for the same reason: typed literally, the editor stores them as the
+    // literal text `\&lt;`, which is not the `<` the canonical file holds.
+    const typed = decodeCharacterReferences(markdown.replaceAll('\\-', '-'));
+    for (const block of parseMarkdownBlocks(typed)) {
       if (needsBlockBreak) {
         await this.page.keyboard.press('Enter');
       }

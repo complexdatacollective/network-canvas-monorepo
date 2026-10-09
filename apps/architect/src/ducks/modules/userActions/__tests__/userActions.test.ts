@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  createDefaultFinishSessionStage,
   type CurrentProtocol,
+  DEFAULT_FINISH_SESSION_TEXT,
   ProtocolValidationError,
 } from '@codaco/protocol-validation';
 import { messageFields } from '~/test/messageText';
@@ -86,8 +88,12 @@ vi.mock('../../app', () => ({
 }));
 
 // Imported after mocks so the thunks pick up the mocked collaborators.
-const { openBundledTemplate, openLibraryProtocol, openLocalNetcanvas } =
-  await import('../userActions');
+const {
+  createNetcanvas,
+  openBundledTemplate,
+  openLibraryProtocol,
+  openLocalNetcanvas,
+} = await import('../userActions');
 const { APP_SCHEMA_VERSION } = await import('~/config');
 const { takeProtocolUpgrades } = await import('~/utils/protocolUpgradeQueue');
 
@@ -102,18 +108,19 @@ const dispatch = vi.fn((action: unknown) => {
 
 const runThunk = (
   thunk:
+    | ReturnType<typeof createNetcanvas>
     | ReturnType<typeof openBundledTemplate>
     | ReturnType<typeof openLibraryProtocol>,
 ) => thunk(dispatch, () => ({}) as never, undefined);
 
-const makeProtocol = (): CurrentProtocol =>
-  ({
-    name: 'My Study',
-    schemaVersion: APP_SCHEMA_VERSION,
-    stages: [],
-    codebook: { node: {}, edge: {}, ego: {} },
-    assetManifest: {},
-  }) as CurrentProtocol;
+const makeProtocol = (): CurrentProtocol => ({
+  name: 'My Study',
+  schemaVersion: APP_SCHEMA_VERSION,
+  localization: { defaultLocale: 'en', locales: ['en'] },
+  stages: [],
+  codebook: { node: {}, edge: {}, ego: {} },
+  assetManifest: {},
+});
 
 describe('userActions', () => {
   beforeEach(() => {
@@ -133,6 +140,164 @@ describe('userActions', () => {
     dispatch.mockClear();
     // The upgrade queue is module state shared across the suite.
     takeProtocolUpgrades();
+  });
+
+  describe('createNetcanvas', () => {
+    it('declares the chosen languages and default language', async () => {
+      await runThunk(
+        createNetcanvas({
+          name: 'Étude',
+          localization: { defaultLocale: 'fr', locales: ['en', 'fr'] },
+        }),
+      );
+
+      expect(putStoredProtocol).toHaveBeenCalledWith(
+        expect.objectContaining({
+          protocol: expect.objectContaining({
+            localization: { defaultLocale: 'fr', locales: ['en', 'fr'] },
+          }),
+        }),
+      );
+    });
+  });
+
+  describe('a new protocol', () => {
+    it('starts with one finish stage, with the supplied closing text in each language that has it', async () => {
+      await runThunk(
+        createNetcanvas({
+          name: 'Étude',
+          localization: { defaultLocale: 'fr', locales: ['fr', 'en', 'ja'] },
+        }),
+      );
+
+      const [[{ protocol }]] = putStoredProtocol.mock.calls as [
+        [{ protocol: CurrentProtocol }],
+      ];
+      expect(protocol.stages).toEqual([
+        {
+          id: expect.any(String),
+          type: 'FinishSession',
+          label: {
+            fr: DEFAULT_FINISH_SESSION_TEXT.fr.label,
+            en: DEFAULT_FINISH_SESSION_TEXT.en.label,
+          },
+          title: {
+            fr: DEFAULT_FINISH_SESSION_TEXT.fr.title,
+            en: DEFAULT_FINISH_SESSION_TEXT.en.title,
+          },
+          content: {
+            fr: DEFAULT_FINISH_SESSION_TEXT.fr.content,
+            en: DEFAULT_FINISH_SESSION_TEXT.en.content,
+          },
+          // The screen's own words, which Network Canvas also supplies.
+          finishLabel: { fr: 'Terminer', en: 'Finish' },
+          finishConfirmation: {
+            fr: 'Voulez-vous vraiment terminer l’entretien ?',
+            en: 'Are you sure you want to finish the interview?',
+          },
+          finishedNotice: {
+            fr: 'Cet entretien est terminé et ses réponses ne peuvent plus être modifiées.',
+            en: 'This interview is finished, and its answers can no longer be changed.',
+          },
+          finishFailed: {
+            fr: 'L’entretien n’a pas pu être terminé. Veuillez réessayer. Si le problème persiste, contactez l’équipe responsable de l’étude.',
+            en: 'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
+          },
+          outcome: 'completed',
+        },
+      ]);
+    });
+  });
+
+  // Network Canvas supplies no closing text in Japanese, so the finish stage
+  // starts with none rather than with English recorded as Japanese. The
+  // protocol is written and reopened like any other; only downloading it is
+  // refused until the text is written (`bundleProtocol`).
+  describe('a new protocol in a language with no supplied closing text', () => {
+    it('is created with an empty finish stage, saved, and reopened', async () => {
+      const actual = await vi.importActual<
+        typeof import('@codaco/protocol-validation')
+      >('@codaco/protocol-validation');
+      validateProtocol.mockImplementation(actual.validateProtocol);
+      const localization = { defaultLocale: 'ja', locales: ['ja'] };
+
+      await runThunk(createNetcanvas({ name: '研究', localization }));
+
+      const [[{ protocol }]] = putStoredProtocol.mock.calls as [
+        [{ protocol: CurrentProtocol }],
+      ];
+      expect(protocol.stages).toEqual([
+        {
+          id: expect.any(String),
+          type: 'FinishSession',
+          label: {},
+          title: {},
+          content: {},
+          // The screen's own words are required, so they are English under
+          // Japanese until the researcher translates them.
+          finishLabel: { ja: 'Finish' },
+          finishConfirmation: {
+            ja: 'Are you sure you want to finish the interview?',
+          },
+          finishedNotice: {
+            ja: 'This interview is finished, and its answers can no longer be changed.',
+          },
+          finishFailed: {
+            ja: 'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
+          },
+          outcome: 'completed',
+        },
+      ]);
+
+      // Reopened from the library as a row whose validity is not yet proven,
+      // so it goes through validation again.
+      getStoredProtocol.mockResolvedValue({
+        id: 'ja',
+        name: protocol.name,
+        schemaVersion: protocol.schemaVersion,
+        protocol,
+        createdAt: 0,
+        updatedAt: 0,
+      });
+      setActiveProtocol.mockReset();
+
+      const result = await runThunk(openLibraryProtocol({ id: 'ja' }));
+
+      expect(result.payload).toEqual({ status: 'opened' });
+      expect(setActiveProtocol).toHaveBeenCalledWith(protocol);
+      expect(validateProtocol).toHaveBeenLastCalledWith(protocol, {
+        draft: true,
+      });
+    });
+  });
+
+  // A protocol has exactly one finish stage, so one that arrives with a
+  // second is refused rather than opened.
+  describe('opening a protocol with two finish stages', () => {
+    it('refuses it, naming the rule', async () => {
+      const actual = await vi.importActual<
+        typeof import('@codaco/protocol-validation')
+      >('@codaco/protocol-validation');
+      validateProtocol.mockImplementation(actual.validateProtocol);
+      const localization = { defaultLocale: 'en', locales: ['en'] };
+      const protocol: CurrentProtocol = {
+        ...makeProtocol(),
+        stages: [
+          createDefaultFinishSessionStage({ id: 'finish', localization }),
+          createDefaultFinishSessionStage({ id: 'finish-2', localization }),
+        ],
+      };
+
+      const result = await runThunk(openBundledTemplate({ protocol }));
+
+      expect(result.payload).toEqual({
+        status: 'validation-error',
+        message: expect.stringContaining(
+          'A protocol has exactly one finish stage',
+        ),
+      });
+      expect(setActiveProtocol).not.toHaveBeenCalled();
+    });
   });
 
   describe('import validation-failure analytics redaction (#766)', () => {
@@ -288,10 +453,10 @@ describe('userActions', () => {
         openBundledTemplate({ protocol, name: 'Renamed Template' }),
       );
 
-      expect(validateProtocol).toHaveBeenCalledWith({
-        ...protocol,
-        name: 'Renamed Template',
-      });
+      expect(validateProtocol).toHaveBeenCalledWith(
+        { ...protocol, name: 'Renamed Template' },
+        { draft: true },
+      );
     });
 
     it('guards the whole open in setImportInProgress(true)/finally(false)', async () => {

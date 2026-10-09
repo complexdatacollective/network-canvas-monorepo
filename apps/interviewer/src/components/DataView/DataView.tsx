@@ -117,10 +117,9 @@ const bannerVariants = {
 
 export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
   const intl = useAppIntl();
-  // Total interview steps (including the engine's appended finish stage) by
-  // protocol hash, for the progress column's "step X of Y" label. Derived via
-  // getInterviewProgress so the host never hard-codes the +1 for the finish
-  // stage.
+  // Total interview steps by protocol hash, for the progress column's "step X
+  // of Y" label. Derived via getInterviewProgress so the host counts steps the
+  // way the interview does.
   const { protocolTotalSteps, protocolStages } = useMemo(() => {
     const totalSteps = new Map<string, number>();
     const stagesByHash = new Map<

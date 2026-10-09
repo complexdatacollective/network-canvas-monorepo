@@ -15,7 +15,12 @@ describe('getInterviewFilterOptions', () => {
   // and never offers types read out of data that did not parse.
   it('offers the types of every codebook it can read, and none from one it cannot', async () => {
     findMany.mockResolvedValue([
-      { name: 'Readable', codebook: { edge: { friend: { name: 'Friend' } } } },
+      {
+        name: 'Readable',
+        codebook: {
+          edge: { friend: { name: 'Friend', label: { en: 'Friend' } } },
+        },
+      },
       { name: 'Damaged', codebook: { edge: { rival: 'not an entity type' } } },
       { name: 'Missing', codebook: null },
     ]);

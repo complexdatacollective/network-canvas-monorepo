@@ -11,8 +11,19 @@ import type { StoreApi } from 'zustand';
 
 import { type DndStore, DndStoreProvider } from '@codaco/fresco-ui/dnd/dnd';
 import { useDndStoreApi } from '@codaco/fresco-ui/dnd/DndStoreProvider';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+} from '@codaco/shared-consts';
 
+import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import NodeDrawer from '../NodeDrawer';
+
+// A drawn person reads the session store; what these tests own is the drawer
+// around them.
+vi.mock('../../interfaces/Sociogram/DrawerNode', () => ({
+  default: () => null,
+}));
 
 const elementsFromPoint = vi.fn<(x: number, y: number) => Element[]>();
 
@@ -76,6 +87,26 @@ function renderDrawer(props: Partial<React.ComponentProps<typeof NodeDrawer>>) {
 }
 
 describe('NodeDrawer', () => {
+  it('shows the count in the digits of the language the protocol is read in', () => {
+    render(
+      <DndStoreProvider>
+        <TestProtocolLocalization
+          localization={{ defaultLocale: 'ar-EG', locales: ['ar-EG'] }}
+        >
+          <NodeDrawer
+            nodes={['a', 'b', 'c'].map((id) => ({
+              [entityPrimaryKeyProperty]: id,
+              [entityAttributesProperty]: {},
+              type: 'person',
+            }))}
+          />
+        </TestProtocolLocalization>
+      </DndStoreProvider>,
+    );
+
+    expect(screen.getByText('٣')).toBeInTheDocument();
+  });
+
   it('disables the toggle while empty when it is not a drop target', () => {
     renderDrawer({});
     const tab = screen.getByRole('button', { name: /expand drawer/i });

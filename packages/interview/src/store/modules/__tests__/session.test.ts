@@ -12,6 +12,12 @@ import {
 } from '@codaco/shared-consts';
 
 import { createInitialNetwork } from '../../../contract/network';
+import {
+  encryptionFor,
+  unlockWith,
+} from '../../../interfaces/Anonymisation/__tests__/encryptionFixtures';
+import { isNumberArray } from '../../../interfaces/Anonymisation/decryptionScope';
+import { decryptValue } from '../../../interfaces/Anonymisation/encryptionFormat';
 import type { AppDispatch } from '../../store';
 import sessionReducer, {
   addEdge,
@@ -24,6 +30,7 @@ import sessionReducer, {
   updateEgo,
   updateNode,
 } from '../session';
+import ui from '../ui';
 
 /**
  * Minimal store setup for testing session thunks.
@@ -42,7 +49,7 @@ function createTestStore(options: {
     nodeTypeName,
     codebookVariables,
   );
-  const uiState = { passphrase: null };
+  const uiState = { encryptionKeyId: null };
 
   type SessionState = ReturnType<typeof createTestSessionState>;
   type ProtocolState = ReturnType<typeof createTestProtocolState>;
@@ -73,6 +80,8 @@ function createTestStore(options: {
       finishTime: null,
       exportTime: null,
       lastUpdated: new Date().toISOString(),
+      localePreference: null,
+      locale: null,
       network: createInitialNetwork(),
       currentStep: 0,
       promptIndex: 0,
@@ -351,7 +360,7 @@ function createTestStoreWithEgo(options: {
 
   const sessionState = createTestSessionState();
   const protocolState = createTestProtocolState(egoVariables);
-  const uiState = { passphrase: null };
+  const uiState = { encryptionKeyId: null };
 
   type SessionState = ReturnType<typeof createTestSessionState>;
   type ProtocolState = ReturnType<typeof createTestProtocolState>;
@@ -379,6 +388,8 @@ function createTestStoreWithEgo(options: {
       finishTime: null,
       exportTime: null,
       lastUpdated: new Date().toISOString(),
+      localePreference: null,
+      locale: null,
       network: createInitialNetwork(),
       currentStep: 0,
       promptIndex: 0,
@@ -420,7 +431,7 @@ function createTestStoreWithEdge(options: {
 
   const sessionState = createTestSessionState();
   const protocolState = createTestProtocolState(edgeTypeId, edgeVariables);
-  const uiState = { passphrase: null };
+  const uiState = { encryptionKeyId: null };
 
   type SessionState = ReturnType<typeof createTestSessionState>;
   type ProtocolState = ReturnType<typeof createTestProtocolState>;
@@ -448,6 +459,8 @@ function createTestStoreWithEdge(options: {
       finishTime: null,
       exportTime: null,
       lastUpdated: new Date().toISOString(),
+      localePreference: null,
+      locale: null,
       network,
       currentStep: 0,
       promptIndex: 0,
@@ -473,7 +486,7 @@ function createTestStoreWithEdge(options: {
   }
 }
 
-function createMutationStore(encryptedVariables = false) {
+function createMutationStore() {
   const network = createInitialNetwork();
   network.nodes = [
     {
@@ -484,7 +497,7 @@ function createMutationStore(encryptedVariables = false) {
         nodeRemove: [1, 2, 3],
       },
       [entitySecureAttributesMeta]: {
-        nodeRemove: { iv: [1], salt: [2] },
+        nodeRemove: { iv: [1] },
       },
     },
   ];
@@ -511,11 +524,12 @@ function createMutationStore(encryptedVariables = false) {
     finishTime: null,
     exportTime: null,
     lastUpdated: new Date().toISOString(),
+    localePreference: null,
+    locale: null,
     network,
     promptIndex: 0,
   };
   const protocolState = {
-    experiments: { encryptedVariables },
     codebook: {
       node: {
         person: {
@@ -558,20 +572,17 @@ function createMutationStore(encryptedVariables = false) {
       },
     ],
   };
-  const uiState = { passphrase: encryptedVariables ? 'passphrase' : null };
-
   const store = configureStore({
     reducer: {
       session: sessionReducer,
       protocol: (
         state: typeof protocolState = protocolState,
       ): typeof protocolState => state,
-      ui: (state: typeof uiState = uiState): typeof uiState => state,
+      ui,
     },
     preloadedState: {
       session: sessionState,
       protocol: protocolState,
-      ui: uiState,
     },
   });
 
@@ -670,7 +681,8 @@ describe('attribute patch reducers', () => {
   });
 
   it('encrypts node values without mutating the patch', async () => {
-    const store = createMutationStore(true);
+    const store = createMutationStore();
+    await unlockWith(store, 'pw');
     const patch = { set: { nodeRemove: 'secret' }, unset: [] };
 
     const result = await store.dispatch(
@@ -683,13 +695,20 @@ describe('attribute patch reducers', () => {
 
     expect(result.type).toBe('NETWORK/UPDATE_NODE/fulfilled');
     const node = store.getState().session.network.nodes[0];
-    expect(node?.[entityAttributesProperty].nodeRemove).toEqual(
-      expect.arrayContaining([expect.any(Number)]),
-    );
-    expect(node?.[entitySecureAttributesMeta]?.nodeRemove).toEqual({
-      iv: expect.any(Array),
-      salt: expect.any(Array),
-    });
+    const data = node?.[entityAttributesProperty].nodeRemove;
+    const secure = node?.[entitySecureAttributesMeta]?.nodeRemove;
+    expect(secure).toEqual({ iv: expect.any(Array) });
+    if (!secure || !isNumberArray(data)) {
+      throw new Error('Expected the value to be stored encrypted');
+    }
+    const { key } = await encryptionFor('pw');
+    await expect(
+      decryptValue(
+        key,
+        { iv: secure.iv, data },
+        { nodeId: 'node-1', variableId: 'nodeRemove' },
+      ),
+    ).resolves.toBe('secret');
     expect(patch).toStrictEqual({
       set: { nodeRemove: 'secret' },
       unset: [],
@@ -936,6 +955,8 @@ function createTestStoreWithPrompts(options: {
     finishTime: null,
     exportTime: null,
     lastUpdated: new Date().toISOString(),
+    localePreference: null,
+    locale: null,
     network,
     promptIndex,
   };
@@ -1171,6 +1192,8 @@ function createTestStoreWithMetadata(stageMetadata: StageMetadata) {
     finishTime: null,
     exportTime: null,
     lastUpdated: new Date().toISOString(),
+    localePreference: null,
+    locale: null,
     network,
     promptIndex: 0,
     stageMetadata,
@@ -1202,18 +1225,15 @@ describe('deleteNode', () => {
     expect(result).toEqual([[0, 'node-2', 'node-3', false]]);
   });
 
-  it('leaves non-census (FamilyPedigree) stage metadata untouched', () => {
-    const familyPedigreeMetadata = {
-      isNetworkCommitted: true,
-      nodes: [{ id: 'node-1', label: 'Ego', isEgo: true }],
-    };
+  it('leaves non-census (NetworkComposer) stage metadata untouched', () => {
+    const composerMetadata = { automaticLayout: false };
 
-    const store = createTestStoreWithMetadata({ 1: familyPedigreeMetadata });
+    const store = createTestStoreWithMetadata({ 1: composerMetadata });
 
     store.dispatch(deleteNode('node-1'));
 
     const result = store.getState().session.stageMetadata?.[1];
-    expect(result).toEqual(familyPedigreeMetadata);
+    expect(result).toEqual(composerMetadata);
   });
 });
 

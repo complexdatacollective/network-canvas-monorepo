@@ -60,8 +60,11 @@ describe('what a quick-add name generator records', () => {
     const field = await findPicker();
     await waitFor(() => expect(within(field).getByText('name')).toBeVisible());
     // The stage's name, the type it nominates and what it asks belong to
-    // sections this mount does not include.
-    await harness.roundTrip({ unowned: ['subject', 'prompts'] });
+    // sections this mount does not include, and so does the line beside the
+    // field, which the messages section owns.
+    await harness.roundTrip({
+      unowned: ['subject', 'prompts', 'quickAddHint'],
+    });
   });
 
   /**
@@ -99,10 +102,15 @@ describe('what a quick-add name generator records', () => {
         // single-box rule above already refuses on type alone.
         type: 'NameGeneratorQuickAdd',
         fields: {
-          label: 'Quick add',
+          label: { 'en-US': 'Quick add' },
           subject: { entity: 'node', type: 'family_member' },
           quickAdd: 'fm_name',
-          prompts: [{ id: 'prompt-1', text: 'Quickly add people you know' }],
+          prompts: [
+            {
+              id: 'prompt-1',
+              text: { 'en-US': 'Quickly add people you know' },
+            },
+          ],
         },
       },
       sections: quickAdd,
@@ -128,9 +136,14 @@ describe('what a quick-add name generator records', () => {
         id: 'quick-add-with-no-attribute',
         type: 'NameGeneratorQuickAdd',
         fields: {
-          label: 'Quick add',
+          label: { 'en-US': 'Quick add' },
           subject: { entity: 'node', type: 'person' },
-          prompts: [{ id: 'prompt-1', text: 'Quickly add people you know' }],
+          prompts: [
+            {
+              id: 'prompt-1',
+              text: { 'en-US': 'Quickly add people you know' },
+            },
+          ],
         },
       },
       sections: quickAdd,
@@ -197,6 +210,7 @@ describe('what a quick-add name generator records', () => {
     // with the rule on, where the researcher can take it off deliberately.
     expect(created[1]).toEqual({
       name: 'nickname',
+      label: 'nickname',
       type: 'text',
       validation: { required: true },
     });
@@ -225,10 +239,12 @@ describe('what a quick-add name generator records', () => {
         id: 'quick-add-family-members',
         type: 'NameGeneratorQuickAdd',
         fields: {
-          label: 'Quick add',
+          label: { 'en-US': 'Quick add' },
           subject: { entity: 'node', type: 'family_member' },
           quickAdd: 'fm_name',
-          prompts: [{ id: 'prompt-1', text: 'Add your relatives' }],
+          prompts: [
+            { id: 'prompt-1', text: { 'en-US': 'Add your relatives' } },
+          ],
         },
       },
       sections: quickAdd,
@@ -259,12 +275,23 @@ describe('what a quick-add name generator records', () => {
       node: {
         person: {
           name: 'person',
+          label: { 'en-US': 'person' },
           color: 'node-color-seq-1',
           icon: 'add-a-person',
           shape: { default: 'circle' },
           variables: {
-            name: { name: 'name', type: 'text', component: 'Text' },
-            alias: { name: 'alias', type: 'text', component: 'Text' },
+            name: {
+              name: 'name',
+              label: 'name',
+              type: 'text',
+              component: 'Text',
+            },
+            alias: {
+              name: 'alias',
+              label: 'alias',
+              type: 'text',
+              component: 'Text',
+            },
           },
         },
       },
@@ -441,10 +468,15 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
         id: 'quick-add-without-rules',
         type: 'NameGeneratorQuickAdd',
         fields: {
-          label: 'Quick add',
+          label: { 'en-US': 'Quick add' },
           subject: { entity: 'node', type: 'person' },
           quickAdd: 'relationship_to_ego',
-          prompts: [{ id: 'prompt-1', text: 'Quickly add people you know' }],
+          prompts: [
+            {
+              id: 'prompt-1',
+              text: { 'en-US': 'Quickly add people you know' },
+            },
+          ],
         },
       },
       sections: quickAdd,

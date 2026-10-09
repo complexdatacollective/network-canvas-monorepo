@@ -26,13 +26,18 @@ export {
 
 export type {
   AssetRequestHandler,
+  CompletedAction,
   FinishHandler,
   InterviewAnalyticsMetadata,
   InterviewerFlags,
   InterviewPayload,
+  ProtocolLocaleChange,
+  ProtocolLocaleChangeHandler,
   ProtocolPayload,
   ResolvedAsset,
+  SessionFinish,
   SessionPayload,
+  SessionSnapshot,
   StepChangeHandler,
   StepChangeMeta,
   SyncHandler,

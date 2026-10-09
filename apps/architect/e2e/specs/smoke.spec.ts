@@ -28,7 +28,7 @@ test('seeds a protocol and lands in the editor', async ({
   // ...and the durable store agrees with what was rendered.
   const protocol = await readProtocolJson(architectPage);
   expect(protocol.name).toBe('Smoke Protocol');
-  expect(protocol.stages).toHaveLength(0);
+  expect(protocol.stages.map(({ type }) => type)).toEqual(['FinishSession']);
 });
 
 test('reads a seeded stage back from the store', async ({
@@ -45,11 +45,12 @@ test('reads a seeded stage back from the store', async ({
     stages: [
       {
         id: 'info-1',
-        label: 'Info',
+        label: { en: 'Info' },
         type: 'Information',
-        title: 'Info',
+        title: { en: 'Info' },
         items: [],
       },
+      ...emptyProtocol().stages,
     ],
   };
   await seed(protocol);
@@ -60,5 +61,5 @@ test('reads a seeded stage back from the store', async ({
 
   const stage = await readStageJson(architectPage, 0);
   expect(stage.id).toBe('info-1');
-  expect(stage.label).toBe('Info');
+  expect(stage.label).toEqual({ en: 'Info' });
 });

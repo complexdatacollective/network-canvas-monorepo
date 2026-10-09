@@ -4,7 +4,11 @@ import {
   isStageSkipped,
   resolveSkipLogicDestinationIndex,
 } from '@codaco/network-query';
-import type { Stage, StructuralCodebook } from '@codaco/protocol-validation';
+import {
+  isFinishSessionStage,
+  type Stage,
+  type StructuralCodebook,
+} from '@codaco/protocol-validation';
 import type { NcNetwork, NcNode } from '@codaco/shared-consts';
 
 import { reservePromptFixedValues } from './generateNetwork/attributes.ts';
@@ -28,11 +32,6 @@ import type {
   GenerationContext,
   NetworkDraft,
 } from './generateNetwork/context.ts';
-import { materializeFamilyPedigree } from './generateNetwork/familyPedigree/materializeFamilyPedigree.ts';
-import { resolveFamilyPedigreeGenerationOptions } from './generateNetwork/familyPedigree/referencePopulation.ts';
-import { reserveFamilyPedigreeFixedValues } from './generateNetwork/familyPedigree/reservations.ts';
-import { familyPedigreeSeed } from './generateNetwork/familyPedigree/seed.ts';
-import type { FamilyPedigreeGenerationOptions } from './generateNetwork/familyPedigree/types.ts';
 import { buildCurrentNetwork } from './generateNetwork/filtering.ts';
 import { markStageInProgress } from './generateNetwork/inProgress.ts';
 import {
@@ -88,8 +87,6 @@ export type GenerateNetworkParams = {
   inProgressStageIndex?: number;
   /** Overrides for generation tuning constants. See {@link GenerationConfig}. */
   config?: Partial<GenerationConfig>;
-  /** Family-specific demographic, scenario, and disease-generation settings. */
-  familyPedigree?: FamilyPedigreeGenerationOptions;
 };
 
 export type GenerateNetworkResult = {
@@ -111,24 +108,9 @@ export function generateNetwork(
     respectSkipLogicAndFiltering = false,
     inProgressStageIndex,
     config,
-    familyPedigree,
   } = params;
 
-  const baseConfig = resolveGenerationConfig(config);
-  const resolvedFamilyPedigree = resolveFamilyPedigreeGenerationOptions(
-    familyPedigree,
-    Math.max(
-      baseConfig.familyPedigreeNodeCount.min,
-      baseConfig.familyPedigreeNodeCount.max,
-    ),
-  );
-  const resolvedConfig = {
-    ...baseConfig,
-    familyPedigreeNodeCount: {
-      min: 7,
-      max: resolvedFamilyPedigree.maxNodes,
-    },
-  };
+  const resolvedConfig = resolveGenerationConfig(config);
 
   const feasibilityStages = reachableStagesForFeasibility(
     codebook,
@@ -169,7 +151,6 @@ export function generateNetwork(
     resolvedConfig,
     externalData,
     respectSkipLogicAndFiltering,
-    resolvedFamilyPedigree,
   );
   if (conflicts.length > 0) {
     throw new SyntheticDataConstraintError(conflicts);
@@ -228,9 +209,6 @@ export function generateNetwork(
     ctx,
     countPromptFixedValues(stages, resolvedConfig, externalData),
   );
-  // A pedigree's ego flag and its edges' relationship values are fixed by its
-  // stage rather than by a prompt, and are held back here for the same reason.
-  reserveFamilyPedigreeFixedValues(ctx, stages);
   // Roster rows are values the run is handed rather than ones it issues, so the
   // draws that come before their stage are steered off them here too. Each
   // stage's hold is given back once the stage has run.
@@ -326,18 +304,6 @@ export function generateNetwork(
         case 'AlterEdgeForm':
           handleAlterEdgeForm(ctx, draft, stage);
           break;
-        case 'FamilyPedigree':
-          materializeFamilyPedigree(
-            ctx,
-            draft,
-            stage,
-            i,
-            stages,
-            feasibilityStages,
-            familyPedigreeSeed(runSeed, stage.id),
-            resolvedFamilyPedigree,
-          );
-          break;
         case 'Geospatial':
           handleGeospatial(ctx, draft, stage);
           break;
@@ -366,8 +332,13 @@ export function generateNetwork(
     markStageInProgress(ctx, draft, inProgressStage);
   }
 
+  // A completed interview rests on the finish stage it ended at, where a
+  // participant's finished interview is recorded. A list without one (only a
+  // fragment of a protocol, as tests pass) rests on its last stage.
   if (!droppedOut) {
-    currentStep = totalStages;
+    const finishIndex = stages.findLastIndex(isFinishSessionStage);
+    currentStep =
+      finishIndex === -1 ? Math.max(totalStages - 1, 0) : finishIndex;
   }
 
   return {

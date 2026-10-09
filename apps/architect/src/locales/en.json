@@ -367,6 +367,10 @@
     "defaultMessage": "Delete attribute",
     "description": "Researcher-facing explanatory text in components / Codebook / ControlsColumn."
   },
+  "architect.chrome.codebook.controlsColumn.editAttributeLabel": {
+    "defaultMessage": "Edit attribute label: {name}",
+    "description": "Accessible name and tooltip of the button that opens the editor for the words participants are shown for an attribute, in each of the protocol’s languages. name is the attribute’s name."
+  },
   "architect.chrome.codebook.controlsColumn.inUseCannotBeDeleted": {
     "defaultMessage": "In use — cannot be deleted",
     "description": "Researcher-facing explanatory text in components / Codebook / ControlsColumn."
@@ -620,8 +624,8 @@
     "description": "Actionable codebook write or deletion refusal. Any name or id is preserved authored data."
   },
   "architect.codebook.error.invalidName": {
-    "defaultMessage": "Attribute name contains no valid characters",
-    "description": "Actionable codebook write or deletion refusal. Any name or id is preserved authored data."
+    "defaultMessage": "An attribute name can’t contain tabs, line breaks or other control characters.",
+    "description": "Actionable codebook write refusal for an attribute name that contains an invisible control character. Any script, spaces and punctuation are allowed in an attribute name."
   },
   "architect.codebook.error.missingAttribute": {
     "defaultMessage": "Attribute \"{id}\" does not exist",
@@ -682,6 +686,18 @@
   "architect.codebook.usageColumn.notInUse": {
     "defaultMessage": "not in use",
     "description": "Visible text in components / Codebook / UsageColumn."
+  },
+  "architect.codebook.variableLabelDialog.label": {
+    "defaultMessage": "Attribute label",
+    "description": "Label of the field holding the readable label of an attribute, as opposed to the attribute name the exported data uses."
+  },
+  "architect.codebook.variableLabelDialog.labelHint": {
+    "defaultMessage": "A readable label for the attribute “{name}”. It is not translated.",
+    "description": "Hint under the attribute label field. name is the attribute’s name, which the exported data uses."
+  },
+  "architect.codebook.variableLabelDialog.title": {
+    "defaultMessage": "Edit attribute label",
+    "description": "Title of the dialog that edits the readable label of an attribute (a codebook variable)."
   },
   "architect.codebook.variableList.name": {
     "defaultMessage": "Name",
@@ -959,17 +975,29 @@
     "defaultMessage": "Technical details (English)",
     "description": "Introduces technical error details in the application error dialog. The error message itself is a diagnostic."
   },
-  "architect.fieldValidation.invalidName": {
-    "defaultMessage": "Not a valid {name}. Only letters, numbers and the symbols ._-: are supported",
-    "description": "Error for a technical name containing unsupported characters. Name identifies the field."
+  "architect.exportColumnConflict.layoutColumn": {
+    "defaultMessage": "{clashesWith, select, reserved {A layout attribute is exported as one column for each coordinate, and the column “{column}” is a built-in column in exported data. Choose a different name.} option {A layout attribute is exported as one column for each coordinate, and the column “{column}” is already used by the option “{siblingOption}” of the attribute “{sibling}”. Choose a different name.} other {A layout attribute is exported as one column for each coordinate, and the column “{column}” is already used by the attribute “{sibling}”. Choose a different name.}}",
+    "description": "Validation error below the field where a researcher names a layout attribute, which stores a position on a canvas: exported data (CSV and GraphML files) has one column for each coordinate, and one of them would have the same name as another column. Text inside curly quotes is a name the researcher typed or a fixed column name; keep it exactly as given."
   },
-  "architect.fieldValidation.name": {
-    "defaultMessage": "attribute name",
-    "description": "Default subject name used by the technical-name validation error."
+  "architect.exportColumnConflict.layoutColumnWritten": {
+    "defaultMessage": "{clashesWith, select, option {In exported data, a position of this layout attribute and the option “{siblingOption}” of the attribute “{sibling}” would become the same column, “{writtenColumn}”. Choose a different name.} layout {In exported data, a position of this layout attribute and a position of the layout attribute “{sibling}” would become the same column, “{writtenColumn}”. Choose a different name.} other {In exported data, a position of this layout attribute and the attribute “{sibling}” would become the same column, “{writtenColumn}”. Choose a different name.}}",
+    "description": "Validation error below the field where a researcher names a layout attribute, which stores a position on a canvas and is exported as one column for each coordinate: one of those columns is different from another column but would be written as the same column name. Exported files change some characters in a column name: GraphML files replace spaces and most punctuation with “_”, and CSV files put an apostrophe before a name that starts with =, +, - or @. writtenColumn is the column name as it would be written. Text inside curly quotes is a name or column name; keep it exactly as given."
   },
-  "architect.fieldValidation.nameHint": {
-    "defaultMessage": "Use only letters, numbers and the symbols ._-:",
-    "description": "Hint for researcher-authored technical names that must be valid XML names."
+  "architect.exportColumnConflict.nameColumn": {
+    "defaultMessage": "{clashesWith, select, reserved {Exported data already includes a built-in column named “{reservedColumn}”, so an attribute can’t use this name.} option {Exported data already includes the column “{siblingColumn}” for the option “{siblingOption}” of the attribute “{sibling}”, so an attribute can’t use this name.} layout {Exported data already includes the column “{siblingColumn}” for the position of the layout attribute “{sibling}”, so an attribute can’t use this name.} other {Exported data already includes the column “{siblingColumn}” for the attribute “{sibling}”, so an attribute can’t use this name.}}",
+    "description": "Validation error below the field where a researcher names an attribute: exported data (CSV and GraphML files) would get two columns with the same name. Text inside curly quotes is a name the researcher typed or a fixed column name; keep it exactly as given. A layout attribute stores a position on a canvas, which is exported as one column for each coordinate."
+  },
+  "architect.exportColumnConflict.nameColumnWritten": {
+    "defaultMessage": "{clashesWith, select, option {In exported data, this name and the option “{siblingOption}” of the attribute “{sibling}” would become the same column, “{writtenColumn}”. Choose a different name.} layout {In exported data, this name and a position of the layout attribute “{sibling}” would become the same column, “{writtenColumn}”. Choose a different name.} other {In exported data, this name and the attribute “{sibling}” would become the same column, “{writtenColumn}”. Choose a different name.}}",
+    "description": "Validation error below the field where a researcher names an attribute: the name is different from another attribute’s, but exported data would write both as the same column name. Exported files change some characters in a column name: GraphML files replace spaces and most punctuation with “_”, and CSV files put an apostrophe before a name that starts with =, +, - or @. writtenColumn is the column name as it would be written. Text inside curly quotes is a name, value or column name; keep it exactly as given. A layout attribute stores a position on a canvas, which is exported as one column for each coordinate."
+  },
+  "architect.exportColumnConflict.optionColumn": {
+    "defaultMessage": "{clashesWith, select, reserved {The option “{optionValue}” would be exported to a column named “{column}”, which is a built-in column in exported data. Change the option’s value or the attribute’s name.} option {The option “{optionValue}” would be exported to the column “{column}”, which the option “{siblingOption}” of the attribute “{sibling}” already uses. Change the option’s value or the attribute’s name.} layout {The option “{optionValue}” would be exported to the column “{column}”, which the layout attribute “{sibling}” already uses for its position. Change the option’s value or the attribute’s name.} other {The option “{optionValue}” would be exported to the column “{column}”, which the attribute “{sibling}” already uses. Change the option’s value or the attribute’s name.}}",
+    "description": "Validation error below the list of options of a categorical attribute: exported data (CSV and GraphML files) has a column for each option, and this option’s column would have the same name as another column. Text inside curly quotes is a name or value the researcher typed or a fixed column name; keep it exactly as given. A layout attribute stores a position on a canvas, which is exported as one column for each coordinate."
+  },
+  "architect.exportColumnConflict.optionColumnWritten": {
+    "defaultMessage": "{clashesWith, select, option {In exported data, the option “{optionValue}” and the option “{siblingOption}” of the attribute “{sibling}” would become the same column, “{writtenColumn}”. Change the option’s value or the attribute’s name.} layout {In exported data, the option “{optionValue}” and a position of the layout attribute “{sibling}” would become the same column, “{writtenColumn}”. Change the option’s value or the attribute’s name.} other {In exported data, the option “{optionValue}” and the attribute “{sibling}” would become the same column, “{writtenColumn}”. Change the option’s value or the attribute’s name.}}",
+    "description": "Validation error below the list of options of a categorical attribute: exported data has a column for each option, and this option’s column is different from another column but would be written as the same column name. Exported files change some characters in a column name: GraphML files replace spaces and most punctuation with “_”, and CSV files put an apostrophe before a name that starts with =, +, - or @. writtenColumn is the column name as it would be written. Text inside curly quotes is a name, value or column name; keep it exactly as given. A layout attribute stores a position on a canvas, which is exported as one column for each coordinate."
   },
   "architect.fieldValidation.required": {
     "defaultMessage": "This field is required.",
@@ -1011,14 +1039,6 @@
     "defaultMessage": "Untitled stage",
     "description": "Researcher-facing Architect control or feedback."
   },
-  "architect.final.components.TypeEditor.TypeEditor.edgeName": {
-    "defaultMessage": "edge type name",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.final.components.TypeEditor.TypeEditor.nodeName": {
-    "defaultMessage": "node type name",
-    "description": "Researcher-facing Architect control or feedback."
-  },
   "architect.final.components.VariablePill.required": {
     "defaultMessage": "You must enter an attribute name",
     "description": "Researcher-facing Architect control or feedback."
@@ -1034,6 +1054,26 @@
   "architect.final.utils.downloadActiveProtocol.unresolvedAssets": {
     "defaultMessage": "These resources could not be read, so your protocol was not downloaded: {assetList}. Add the files again in Resources, then download it.",
     "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.finishStageText.cannotBeDownloadedYet": {
+    "defaultMessage": "This protocol can’t be downloaded yet",
+    "description": "Title of the notice on the stage list, and of the dialog shown when a download is refused, while the stage that ends the interview has no heading or text in the protocol’s default language."
+  },
+  "architect.finishStageText.editFinishStage": {
+    "defaultMessage": "Edit the stage that ends the interview",
+    "description": "Link in the notice about the missing heading or text. It opens the editor for the stage that ends the interview."
+  },
+  "architect.finishStageText.missingHeading": {
+    "defaultMessage": "The stage that ends the interview has no heading in {language}. The protocol can’t be downloaded until it’s added.",
+    "description": "Shown while the stage that ends the interview has text but no heading in the protocol’s default language. language is the name of that language, for example “Japanese”."
+  },
+  "architect.finishStageText.missingHeadingAndText": {
+    "defaultMessage": "The stage that ends the interview has no heading or text in {language}. The protocol can’t be downloaded until they’re added.",
+    "description": "Shown while the stage that ends the interview has neither a heading nor text in the protocol’s default language. language is the name of that language, for example “Japanese”."
+  },
+  "architect.finishStageText.missingText": {
+    "defaultMessage": "The stage that ends the interview has no text in {language}. The protocol can’t be downloaded until it’s added.",
+    "description": "Shown while the stage that ends the interview has a heading but no text in the protocol’s default language. language is the name of that language, for example “Japanese”."
   },
   "architect.form.arrayFields.option.areYouSureYouWantTo": {
     "defaultMessage": "Are you sure you want to remove this option?",
@@ -1062,10 +1102,6 @@
   "architect.form.arrayFields.option.noValue": {
     "defaultMessage": "No value",
     "description": "Visible text in components / Form / arrayFields / Option."
-  },
-  "architect.form.arrayFields.option.optionValue": {
-    "defaultMessage": "option value",
-    "description": "Subject of the invalid option-value identifier guidance."
   },
   "architect.form.arrayFields.option.removeOption": {
     "defaultMessage": "Remove option",
@@ -1559,6 +1595,10 @@
     "defaultMessage": "Display Media",
     "description": "Capability filter and badge on an interface card; the value remains a stable internal key."
   },
+  "architect.interface.capability.utilities": {
+    "defaultMessage": "Utilities",
+    "description": "Capability filter and badge on an interface card, for stages that set up the interview (such as choosing its language or setting a passphrase) rather than collect or display network data."
+  },
   "architect.interface.description.AlterEdgeForm": {
     "defaultMessage": "An edge interpreter interface that captures attribute data via a form.",
     "description": "Description of the interview interface in the New Stage chooser."
@@ -1584,7 +1624,7 @@
     "description": "Description of the interview interface in the New Stage chooser."
   },
   "architect.interface.description.FamilyPedigree": {
-    "defaultMessage": "An interface for collecting family pedigrees, allowing for the capture of complex family relationships and attributes as well as hereditary disease information.",
+    "defaultMessage": "An interface where participants draw their family: they select a person and add that person’s parents, siblings, partners or children, describing each new person as they go.",
     "description": "Description of the interview interface in the New Stage chooser."
   },
   "architect.interface.description.Geospatial": {
@@ -1593,6 +1633,10 @@
   },
   "architect.interface.description.Information": {
     "defaultMessage": "A general purpose screen that can be used to present information to participants using a variety of text and media resources.",
+    "description": "Description of the interview interface in the New Stage chooser."
+  },
+  "architect.interface.description.LanguageChooser": {
+    "defaultMessage": "A screen where participants choose the language for the rest of the interview, from the languages your protocol offers.",
     "description": "Description of the interview interface in the New Stage chooser."
   },
   "architect.interface.description.NameGenerator": {
@@ -1667,6 +1711,366 @@
     "defaultMessage": "{stages, plural, one {# stage} other {# stages}} · {nodes, plural, one {# node type} other {# node types}} · {edges, plural, one {# edge type} other {# edge types}}",
     "description": "Researcher-facing Architect control or feedback."
   },
+  "architect.localization.languageActions.addDescription": {
+    "defaultMessage": "Participants can take the interview in any of the protocol’s languages. Until you translate a text into a new language, participants who use it see the closest translation available instead.",
+    "description": "Explanation in the dialog that adds languages to a protocol."
+  },
+  "architect.localization.languageActions.addSubmit": {
+    "defaultMessage": "Add languages",
+    "description": "Submit button of the dialog that adds languages."
+  },
+  "architect.localization.languageActions.addTitle": {
+    "defaultMessage": "Add languages",
+    "description": "Title of the dialog that adds languages to a protocol."
+  },
+  "architect.localization.languageActions.changeDescription": {
+    "defaultMessage": "Use this when the text recorded as {language} is really written in another language, for example in a protocol upgraded from an older version. Every {language} translation is recorded as the language you choose instead. Nothing is translated or deleted.",
+    "description": "Explanation in the dialog that records the text of one protocol language as another language. language is the name of the language being changed."
+  },
+  "architect.localization.languageActions.changeSubmit": {
+    "defaultMessage": "Change language",
+    "description": "Submit button of the dialog that records the text of a protocol language as another language."
+  },
+  "architect.localization.languageActions.changeTitle": {
+    "defaultMessage": "Change {language} to a different language",
+    "description": "Title of the dialog that records the text of one protocol language as another language. language is the name of the language being changed."
+  },
+  "architect.localization.languageActions.chooseALanguage": {
+    "defaultMessage": "Choose a language",
+    "description": "Placeholder of the list of languages that the text of a protocol language can be recorded as."
+  },
+  "architect.localization.languageActions.chooseAtLeastOne": {
+    "defaultMessage": "Choose at least one language.",
+    "description": "Error when a dialog that asks for languages is submitted with none chosen."
+  },
+  "architect.localization.languageActions.chooseLanguages": {
+    "defaultMessage": "Choose languages",
+    "description": "Placeholder of a list of languages to choose several from."
+  },
+  "architect.localization.languageActions.chooseOne": {
+    "defaultMessage": "Choose a language.",
+    "description": "Error when the dialog that records the text of a protocol language as another language is submitted without a language."
+  },
+  "architect.localization.languageActions.languageLabel": {
+    "defaultMessage": "Language",
+    "description": "Label of the list of languages in the dialog that records the text of a protocol language as another language."
+  },
+  "architect.localization.languageActions.languageOption": {
+    "defaultMessage": "{name} ({tag})",
+    "description": "One entry in a list of languages. name is the language name in the interface language; tag is its language code, such as \"de\" or \"pt-BR\"."
+  },
+  "architect.localization.languageActions.languagePlural": {
+    "defaultMessage": "languages",
+    "description": "Plural noun in the summary of chosen languages, as in \"3 languages selected\"."
+  },
+  "architect.localization.languageActions.languageSingular": {
+    "defaultMessage": "language",
+    "description": "Singular noun in the summary of chosen languages, as in \"1 language selected\"."
+  },
+  "architect.localization.languageActions.languagesLabel": {
+    "defaultMessage": "Languages",
+    "description": "Label of the searchable list of languages to add."
+  },
+  "architect.localization.languageActions.noLanguagesFound": {
+    "defaultMessage": "No language matches your search.",
+    "description": "Shown when a language search finds nothing."
+  },
+  "architect.localization.languageActions.removeConfirm": {
+    "defaultMessage": "Remove language",
+    "description": "Confirm button that removes a language from a protocol."
+  },
+  "architect.localization.languageActions.removeDescription": {
+    "defaultMessage": "{count, plural, =0 {There are no {language} translations yet, so no text will be deleted.} one {The # translation written in {language} will be deleted.} other {All # translations written in {language} will be deleted.}} Participants will no longer be able to choose this language.",
+    "description": "Confirmation before a language is removed. count is how many translations are deleted; language is the language name."
+  },
+  "architect.localization.languageActions.removeTitle": {
+    "defaultMessage": "Remove {language}?",
+    "description": "Title of the confirmation before a language is removed from a protocol."
+  },
+  "architect.localization.languageActions.searchLanguages": {
+    "defaultMessage": "Search languages",
+    "description": "Placeholder of the search box in the list of languages."
+  },
+  "architect.localization.languageList.addLanguages": {
+    "defaultMessage": "Add languages",
+    "description": "Button that opens the dialog for adding languages."
+  },
+  "architect.localization.languageList.changeLanguage": {
+    "defaultMessage": "Change {language} to a different language",
+    "description": "Accessible name and tooltip of the edit button in a protocol language’s row. It opens a dialog that records the text of that language as another language, for text recorded under the wrong one. language is the language name."
+  },
+  "architect.localization.languageList.coverage": {
+    "defaultMessage": "{translated, number} of {total, number} texts translated",
+    "description": "How much of a protocol is translated into one language."
+  },
+  "architect.localization.languageList.coverageLabel": {
+    "defaultMessage": "{language} translation progress",
+    "description": "Accessible name of the progress bar of one language."
+  },
+  "architect.localization.languageList.defaultBadge": {
+    "defaultMessage": "Default",
+    "description": "Badge marking the default language of a protocol."
+  },
+  "architect.localization.languageList.defaultLanguage": {
+    "defaultMessage": "Default language",
+    "description": "Label of the list above the protocol languages that chooses which of them is the default."
+  },
+  "architect.localization.languageList.defaultLanguageHint": {
+    "defaultMessage": "Participants see text in this language when it has no translation in a language they use.",
+    "description": "Hint under the list that chooses the protocol’s default language, saying what the default language does."
+  },
+  "architect.localization.languageList.defaultNote": {
+    "defaultMessage": "To remove the default language, make another language the default first.",
+    "description": "Tooltip and accessible description of the unavailable delete button of the default language, saying why it cannot be removed."
+  },
+  "architect.localization.languageList.description": {
+    "defaultMessage": "Participants can take the interview in any of these languages. They see each text in the first of the following languages that has a translation of it:",
+    "description": "Introduction to the list of protocol languages, shown when the protocol has more than one. Its second sentence introduces a numbered list, under it, of the languages a participant may see a text in, in the order they are tried. The list of protocol languages is in alphabetical order; its order has no effect on which language participants see."
+  },
+  "architect.localization.languageList.descriptionSingle": {
+    "defaultMessage": "Participants take the interview in this language. Add more languages to let them choose one.",
+    "description": "Explanation of the list of protocol languages, shown when the protocol has only one language."
+  },
+  "architect.localization.languageList.missingBadge": {
+    "defaultMessage": "Missing translations",
+    "description": "Badge on a protocol language that some texts have not been translated into yet."
+  },
+  "architect.localization.languageList.noText": {
+    "defaultMessage": "There is no text to translate yet.",
+    "description": "Shown instead of translation progress in an empty protocol."
+  },
+  "architect.localization.languageList.openTable": {
+    "defaultMessage": "Open translation table",
+    "description": "Link under the list of protocol languages to the translation table, which shows every participant-facing text beside its translation into each language."
+  },
+  "architect.localization.languageList.removeLanguage": {
+    "defaultMessage": "Remove {language}",
+    "description": "Accessible name of the delete button at the end of a protocol language’s row, which removes that language from the protocol. language is the language name."
+  },
+  "architect.localization.languageList.strandedNote": {
+    "defaultMessage": "{count, plural, one {# text exists only in {language}. Translate it into another language before removing {language}.} other {# texts exist only in {language}. Translate them into another language before removing {language}.}}",
+    "description": "Tooltip and accessible description of the unavailable delete button of a language, saying why it cannot be removed: some text has no other translation."
+  },
+  "architect.localization.languageList.title": {
+    "defaultMessage": "Protocol languages",
+    "description": "Heading of the list of languages a protocol is written in."
+  },
+  "architect.localization.localizationAlert.dismissMissing": {
+    "defaultMessage": "Dismiss the note about missing translations",
+    "description": "Accessible name of the button that hides the note about missing translations on the stage list. The note comes back if more translations go missing."
+  },
+  "architect.localization.localizationAlert.missingDescription": {
+    "defaultMessage": "Some text isn’t translated into {languages} yet. Participants see it in another language instead.",
+    "description": "Notice shown while some of the protocol’s text has no translation in one or more of its languages. languages is the list of those languages, already joined in the reader’s language, for example “French, German and Tibetan”."
+  },
+  "architect.localization.localizationAlert.missingTitle": {
+    "defaultMessage": "Not everything is translated yet",
+    "description": "Title of the informational notice on the stage list shown while some of the protocol’s text has no translation in one or more of its languages."
+  },
+  "architect.localization.localizationAlert.showMissing": {
+    "defaultMessage": "Show missing translations",
+    "description": "Link in the note about missing translations on the stage list. It opens the translation table showing only the texts with a translation missing."
+  },
+  "architect.localization.textPlaces.edgeType": {
+    "defaultMessage": "Edge type",
+    "description": "Kind of codebook entry that holds a group of texts in the translation table, before the entry’s name: an edge type."
+  },
+  "architect.localization.textPlaces.ego": {
+    "defaultMessage": "Ego",
+    "description": "Heading of the group of texts in the translation table that belong to the ego (the participant) in the codebook."
+  },
+  "architect.localization.textPlaces.interface": {
+    "defaultMessage": "Interview text",
+    "description": "Heading of the group of texts in the translation table that the interview itself shows, such as its buttons and messages, rather than text written for a stage or codebook entry."
+  },
+  "architect.localization.textPlaces.nodeType": {
+    "defaultMessage": "Node type",
+    "description": "Kind of codebook entry that holds a group of texts in the translation table, before the entry’s name: a node type."
+  },
+  "architect.localization.textPlaces.protocol": {
+    "defaultMessage": "Protocol",
+    "description": "Heading of the group of texts in the translation table that belong to the protocol itself rather than to a stage or codebook entry."
+  },
+  "architect.localization.textPlaces.stagePosition": {
+    "defaultMessage": "Stage {position, number}",
+    "description": "Names the stage that holds a group of texts in the translation table, before the stage’s name. position is the stage’s place in the protocol, counting from 1."
+  },
+  "architect.localization.textPlaces.unnamed": {
+    "defaultMessage": "Untitled",
+    "description": "Shown in the translation table in place of the name of a stage or type that has no name."
+  },
+  "architect.localization.translationFallback.any": {
+    "defaultMessage": "Any other language that has the text.",
+    "description": "Last item of the numbered list of the languages a participant may see a text in."
+  },
+  "architect.localization.translationFallback.browser": {
+    "defaultMessage": "Another language their browser or device lists.",
+    "description": "Third item of the numbered list of the languages a participant may see a text in."
+  },
+  "architect.localization.translationFallback.default": {
+    "defaultMessage": "The protocol’s default language.",
+    "description": "Fourth item of the numbered list of the languages a participant may see a text in."
+  },
+  "architect.localization.translationFallback.own": {
+    "defaultMessage": "Their own language: the one they chose, or the one their browser or device is set to.",
+    "description": "First item of the numbered list of the languages a participant may see a text in."
+  },
+  "architect.localization.translationFallback.readMore": {
+    "defaultMessage": "Read more in <link>Translating your protocol</link>.",
+    "description": "Link to the documentation guide about translating a protocol. The text inside <link> is the guide’s title."
+  },
+  "architect.localization.translationFallback.related": {
+    "defaultMessage": "A closely related language, such as Brazilian Portuguese for a participant using European Portuguese.",
+    "description": "Second item of the numbered list of the languages a participant may see a text in."
+  },
+  "architect.localization.translationTable.about": {
+    "defaultMessage": "Every text participants see, beside its translation into each language. Empty cells show the text participants see instead.",
+    "description": "Opening paragraph of the help for the translation table, which explains what the table shows."
+  },
+  "architect.localization.translationTable.allTexts": {
+    "defaultMessage": "All texts",
+    "description": "Option in the menu above the translation table that shows every text the protocol has."
+  },
+  "architect.localization.translationTable.allTranslated": {
+    "defaultMessage": "Every text is translated into the languages shown.",
+    "description": "Shown in the translation table when only texts with missing translations are shown and there are none."
+  },
+  "architect.localization.translationTable.allTranslatedInto": {
+    "defaultMessage": "Every text is translated into {language}.",
+    "description": "Shown in the translation table when only texts with no translation into one language are shown and there are none. language is the language’s name, such as “French”."
+  },
+  "architect.localization.translationTable.caption": {
+    "defaultMessage": "Every text participants see, with its translation into each of the protocol’s languages",
+    "description": "Caption of the translation table, read by screen readers. Each row is one text, each column one language."
+  },
+  "architect.localization.translationTable.defaultLanguage": {
+    "defaultMessage": "Default",
+    "description": "Badge beside the name of the protocol’s default language, in the heading of its column in the translation table."
+  },
+  "architect.localization.translationTable.filter": {
+    "defaultMessage": "Texts to show",
+    "description": "Accessible name of the menu above the translation table that chooses whether it shows every text or only the texts with a translation missing."
+  },
+  "architect.localization.translationTable.groupHeading": {
+    "defaultMessage": "<muted>{place}</muted> · <title>{name}</title>",
+    "description": "Heading of a group of rows in the translation table, naming the codebook entry that holds their texts. place is the kind of entry, such as “Node type”; name is its name, which links to it. Keep the tags around the same parts."
+  },
+  "architect.localization.translationTable.groupHeadingDetail": {
+    "defaultMessage": "<muted>{place}</muted> · <title>{name}</title> · <muted>{detail}</muted>",
+    "description": "Heading of a group of rows in the translation table, naming the stage that holds their texts. place is the stage’s position, such as “Stage 4”; name is the stage’s name, which links to it; detail is the kind of stage, such as “Name Generator”. Keep the tags around the same parts."
+  },
+  "architect.localization.translationTable.help": {
+    "defaultMessage": "Help",
+    "description": "Button in the toolbar of the translation table that opens a short explanation of the table and how to edit it."
+  },
+  "architect.localization.translationTable.keyboardHelp": {
+    "defaultMessage": "Changes are saved when you leave a cell, and Escape undoes a change until then. The up and down arrow keys move between rows from the first or last line of a cell. Ctrl+Enter, or ⌘+Enter on a Mac, saves and moves to the next row, as Enter does in a text of one line. In formatted text, Tab moves to the formatting buttons and then to the next cell, except in a list, where it indents the item.",
+    "description": "Help text for the translation table, explaining how editing its cells works. Ctrl, Enter, ⌘ and Tab are the names of keys; use the names printed on keyboards in your language. Formatted text is text with bold, italics, headings or lists, which is edited with a row of formatting buttons above it."
+  },
+  "architect.localization.translationTable.languages": {
+    "defaultMessage": "Languages ({shown, number} of {total, number})",
+    "description": "Button above the translation table that opens a menu for showing and hiding language columns. shown is how many languages are shown, total how many the protocol has."
+  },
+  "architect.localization.translationTable.languagesMenu": {
+    "defaultMessage": "Show languages",
+    "description": "Heading of the menu that shows and hides the language columns of the translation table."
+  },
+  "architect.localization.translationTable.lastLanguage": {
+    "defaultMessage": "One language is always shown.",
+    "description": "Note in the menu of language columns when only one language is shown, which therefore cannot be hidden."
+  },
+  "architect.localization.translationTable.messageRefused": {
+    "defaultMessage": "Your change was not saved. {reason}",
+    "description": "Screen-reader announcement after leaving a translation table cell whose text, written in several versions, could not be saved. reason is the sentence saying what is wrong, such as that some versions are empty."
+  },
+  "architect.localization.translationTable.missingAny": {
+    "defaultMessage": "Missing in any shown language",
+    "description": "Option in the menu above the translation table that shows only the texts with no translation into one or more of the languages whose columns are shown."
+  },
+  "architect.localization.translationTable.missingLanguage": {
+    "defaultMessage": "Missing {language}",
+    "description": "Option in the menu above the translation table, one per language, that shows only the texts with no translation into that language. language is the language’s name, such as “French”."
+  },
+  "architect.localization.translationTable.noMatches": {
+    "defaultMessage": "No texts match your search.",
+    "description": "Shown in the translation table when no text matches the search."
+  },
+  "architect.localization.translationTable.noTexts": {
+    "defaultMessage": "This protocol has no text for participants yet.",
+    "description": "Shown in the translation table when the protocol has no participant-facing text at all."
+  },
+  "architect.localization.translationTable.noTranslation": {
+    "defaultMessage": "Not translated into any language.",
+    "description": "Shown in an empty cell of the translation table when the text has no translation in any of the protocol’s languages."
+  },
+  "architect.localization.translationTable.notTranslated": {
+    "defaultMessage": "Not translated yet. Participants see the {language} text.",
+    "description": "Screen-reader description of an empty cell of the translation table, when participants see a closely related language instead, such as Brazilian Portuguese for European Portuguese. language is that language."
+  },
+  "architect.localization.translationTable.notTranslatedUnlessBrowserLists": {
+    "defaultMessage": "Not translated yet. Participants see the {language} text, unless their browser also lists a language that has it.",
+    "description": "Screen-reader description of an empty cell of the translation table. Participants see the text in another language their web browser lists, when the text has a translation in one, and otherwise in language: the protocol’s default language, or failing that another of its languages."
+  },
+  "architect.localization.translationTable.onlyTranslation": {
+    "defaultMessage": "This text exists only in {language}. Translate it into another language before clearing it.",
+    "description": "Shown in a cell of the translation table when its translation is emptied but is the only translation the text has, which cannot be removed. language is the language of the cell."
+  },
+  "architect.localization.translationTable.onlyTranslationKept": {
+    "defaultMessage": "The {language} translation was kept, because this text exists only in {language}.",
+    "description": "Screen-reader announcement after an emptied translation is restored, because it is the only translation the text has. language is the language of the translation."
+  },
+  "architect.localization.translationTable.progress": {
+    "defaultMessage": "{translated, number} of {total, number} translated",
+    "description": "Read by screen readers in the heading of a language’s column in the translation table: how many of the protocol’s texts have a translation into it."
+  },
+  "architect.localization.translationTable.progressCount": {
+    "defaultMessage": "{translated, number} of {total, number}",
+    "description": "Shown beside a language’s name and progress bar in the heading of its column in the translation table: how many of the protocol’s texts have a translation into it. Keep it as short as possible, since it shares one line with the language’s name."
+  },
+  "architect.localization.translationTable.progressLabel": {
+    "defaultMessage": "{language} translation progress",
+    "description": "Accessible name of the progress bar in the heading of a language’s column in the translation table."
+  },
+  "architect.localization.translationTable.saveFailed": {
+    "defaultMessage": "This translation could not be saved, because the text or its language has been removed from the protocol.",
+    "description": "Screen-reader announcement when a translation typed into the translation table cannot be saved."
+  },
+  "architect.localization.translationTable.search": {
+    "defaultMessage": "Search texts and translations",
+    "description": "Label and placeholder of the search field above the translation table. It finds texts by where they are or by their translations into the languages shown."
+  },
+  "architect.localization.translationTable.shownCount": {
+    "defaultMessage": "Showing {shown, number} of {total, plural, one {# text} other {# texts}}",
+    "description": "Above the translation table: how many texts the search and filter leave in the table, out of every text the protocol has."
+  },
+  "architect.localization.translationTable.shownIn": {
+    "defaultMessage": "Shown in {language}",
+    "description": "Tag in an empty cell of the translation table, under the text participants see instead of the missing translation. language is the language of that text."
+  },
+  "architect.localization.translationTable.shownInUnlessBrowserLists": {
+    "defaultMessage": "Shown in {language}*",
+    "description": "Tag in an empty cell of the translation table, under the text participants see instead of the missing translation, when they may see another language instead. The asterisk refers to a note below the table explaining that the participant’s browser can list a language that has the text. language is the language of the text shown."
+  },
+  "architect.localization.translationTable.textColumn": {
+    "defaultMessage": "Text",
+    "description": "Heading of the first column of the translation table, which names each text by where it is in the protocol."
+  },
+  "architect.localization.translationTable.unlessBrowserLists": {
+    "defaultMessage": "* Unless the participant’s browser also lists another language that has the text.",
+    "description": "Note under the translation table, explaining the asterisk on the tag that says which language participants see where a translation is missing. Begins with the same asterisk."
+  },
+  "architect.localization.translationTableDialog.redo": {
+    "defaultMessage": "Redo",
+    "description": "Accessible name of the button in the toolbar of the translation table that redoes the last change undone."
+  },
+  "architect.localization.translationTableDialog.title": {
+    "defaultMessage": "Translation table",
+    "description": "Title of the dialog, opened from the Languages page, that shows every participant-facing text of a protocol beside its translation into each language."
+  },
+  "architect.localization.translationTableDialog.undo": {
+    "defaultMessage": "Undo",
+    "description": "Accessible name of the button in the toolbar of the translation table that undoes the last change to the protocol."
+  },
   "architect.nestedDraftReclaimDialog.backToTheEditor": {
     "defaultMessage": "Back to the Editor",
     "description": "The label text in components / NestedDraftReclaimDialog."
@@ -1679,9 +2083,25 @@
     "defaultMessage": "Create Protocol",
     "description": "Visible text in components / NewProtocolDialog."
   },
+  "architect.newProtocolDialog.defaultLanguage": {
+    "defaultMessage": "Default language",
+    "description": "Label for the choice of which of the languages chosen for a new protocol is its default language."
+  },
+  "architect.newProtocolDialog.defaultLanguageHint": {
+    "defaultMessage": "Participants start the interview in the default language when their browser lists none of the protocol’s languages.",
+    "description": "Hint for the default language of a new protocol."
+  },
   "architect.newProtocolDialog.enterANameForYourProtocol": {
     "defaultMessage": "Enter a name for your protocol...",
     "description": "The placeholder text in components / NewProtocolDialog."
+  },
+  "architect.newProtocolDialog.protocolLanguages": {
+    "defaultMessage": "Protocol languages",
+    "description": "Label for the choice of the languages a new protocol is written in."
+  },
+  "architect.newProtocolDialog.protocolLanguagesHint": {
+    "defaultMessage": "The languages participants can take the interview in. You can change them later on the Languages page.",
+    "description": "Hint for the new protocol languages. \"Languages page\" is the protocol tab where languages are managed."
   },
   "architect.newProtocolDialog.protocolName": {
     "defaultMessage": "Protocol Name",
@@ -1767,10 +2187,6 @@
     "defaultMessage": "Requires a minimum of two options. If you need fewer options, consider using a boolean attribute.",
     "description": "Validation for an ordinal or categorical attribute option list."
   },
-  "architect.optionValidation.optionValue": {
-    "defaultMessage": "option value",
-    "description": "Validation for an ordinal or categorical attribute option list."
-  },
   "architect.optionValidation.uniqueLabels": {
     "defaultMessage": "Every option needs a unique label.",
     "description": "Validation for an ordinal or categorical attribute option list."
@@ -1799,29 +2215,13 @@
     "defaultMessage": "Overview of the ego, node and edge types, their attributes, and network assets defined in your protocol. Create, edit, and delete types and attributes here. Unused entities can be deleted.",
     "description": "The description text in components / pages / CodebookPage."
   },
-  "architect.pages.experimentsPage.enableSupportForEncryptedAttributesIn": {
-    "defaultMessage": "Enable support for encrypted attributes in the codebook. This allows sensitive data to be collected securely.",
-    "description": "Visible text in components / pages / ExperimentsPage."
+  "architect.pages.localizationPage.description": {
+    "defaultMessage": "Choose the languages participants can take the interview in, and see which text still needs translating.",
+    "description": "Description of the page that manages protocol languages."
   },
-  "architect.pages.experimentsPage.encryptedAttributes": {
-    "defaultMessage": "Encrypted Attributes",
-    "description": "Visible text in components / pages / ExperimentsPage."
-  },
-  "architect.pages.experimentsPage.experimentalFeatures": {
-    "defaultMessage": "Experimental Features",
-    "description": "Visible text in components / pages / ExperimentsPage."
-  },
-  "architect.pages.experimentsPage.experimentsActions": {
-    "defaultMessage": "Experiments actions",
-    "description": "The 'aria-label' text in components / pages / ExperimentsPage."
-  },
-  "architect.pages.experimentsPage.goBack": {
-    "defaultMessage": "Go Back",
-    "description": "Visible text in components / pages / ExperimentsPage."
-  },
-  "architect.pages.experimentsPage.theseFeaturesAreExperimentalAndMay": {
-    "defaultMessage": "These features are experimental and may not be fully supported.",
-    "description": "Visible text in components / pages / ExperimentsPage."
+  "architect.pages.localizationPage.title": {
+    "defaultMessage": "Languages",
+    "description": "Title of the page that manages the languages of a protocol."
   },
   "architect.pages.summaryPage.belowIsAComprehensiveSummaryOf": {
     "defaultMessage": "Below is a comprehensive summary of your protocol configuration, including all stages, codebook, and assets.",
@@ -1895,10 +2295,6 @@
     "defaultMessage": "Loading preview…",
     "description": "Visible text in components / PreviewHost / PreviewHost."
   },
-  "architect.previewHost.previewHost.previewFinished": {
-    "defaultMessage": "Preview finished",
-    "description": "Visible text in components / PreviewHost / PreviewHost."
-  },
   "architect.previewHost.previewHost.returnToArchitectAndClickPreview": {
     "defaultMessage": "Return to Architect and click Preview again to start a new one.",
     "description": "Visible text in components / PreviewHost / PreviewHost."
@@ -1911,16 +2307,8 @@
     "defaultMessage": "Start the preview again",
     "description": "Visible text in components / PreviewHost / PreviewHost."
   },
-  "architect.previewHost.previewHost.startingAgainRerunsTheProtocolAs": {
-    "defaultMessage": "Starting again reruns the protocol as it was when this preview opened. To preview changes you have made in Architect since then, start a new preview from there.",
-    "description": "Visible text in components / PreviewHost / PreviewHost."
-  },
   "architect.previewHost.previewHost.syntheticDataCouldnTBeGeneratedBecause": {
     "defaultMessage": "Synthetic data couldn't be generated because these validation rules can't all be satisfied. Return to Architect, update the protocol, and preview it again.",
-    "description": "Visible text in components / PreviewHost / PreviewHost."
-  },
-  "architect.previewHost.previewHost.theInterviewFinishedJustAsIt": {
-    "defaultMessage": "The interview finished, just as it would for a participant. Nothing was saved — preview responses are never stored.",
     "description": "Visible text in components / PreviewHost / PreviewHost."
   },
   "architect.previewHost.previewHost.thePreviewCouldnTBeLoadedThe": {
@@ -1934,6 +2322,10 @@
   "architect.previewHost.previewHost.thisProtocolCanTBePreviewed": {
     "defaultMessage": "This protocol can't be previewed",
     "description": "Visible text in components / PreviewHost / PreviewHost."
+  },
+  "architect.previewHost.previewToolbar.previewLanguage": {
+    "defaultMessage": "Preview language",
+    "description": "Label of the menu above an Architect preview that chooses which of the protocol’s languages the interview is shown in. The choice lasts while the preview window is open and is never saved."
   },
   "architect.projectNav.breadcrumb.breadcrumb": {
     "defaultMessage": "Breadcrumb",
@@ -2043,6 +2435,10 @@
     "defaultMessage": "Codebook",
     "description": "Presentation label or description in components/ProjectNav/ProjectNav.tsx. Identifiers are not translated."
   },
+  "architect.projectNav.projectNav.config.languages": {
+    "defaultMessage": "Languages",
+    "description": "Project navigation tab for the languages a protocol is written in and their translations."
+  },
   "architect.projectNav.projectNav.config.resources": {
     "defaultMessage": "Resources",
     "description": "Presentation label or description in components/ProjectNav/ProjectNav.tsx. Identifiers are not translated."
@@ -2058,6 +2454,10 @@
   "architect.projectNav.projectNav.readOnly": {
     "defaultMessage": "Read only",
     "description": "Visible text in components / ProjectNav / ProjectNav."
+  },
+  "architect.projectNav.projectNav.translationsWarning": {
+    "defaultMessage": "has missing translations",
+    "description": "Screen-reader warning on the Languages tab when some text is not translated into every language of the protocol."
   },
   "architect.projectNav.stageEditorNav.editingActions": {
     "defaultMessage": "Editing actions",
@@ -2191,6 +2591,10 @@
     "defaultMessage": "Ego",
     "description": "Visible text in lib / ProtocolSummary / components / Contents."
   },
+  "architect.protocolSummary.contents.interfaceText": {
+    "defaultMessage": "Interview text",
+    "description": "Entry in the printable protocol summary’s contents that links to the section listing the words the interview itself shows, such as its buttons and messages, rather than text written for a stage or codebook entry."
+  },
   "architect.protocolSummary.contents.nodeTypes": {
     "defaultMessage": "Node types",
     "description": "Visible text in lib / ProtocolSummary / components / Contents."
@@ -2207,6 +2611,10 @@
     "defaultMessage": "Document Created: {now}",
     "description": "Visible text in lib / ProtocolSummary / components / Cover."
   },
+  "architect.protocolSummary.cover.languages": {
+    "defaultMessage": "Languages",
+    "description": "Heading on the cover of the printable protocol summary, above the list of the languages the protocol is written in. Shown only for a protocol with more than one language."
+  },
   "architect.protocolSummary.cover.protocolSummaryDocument": {
     "defaultMessage": "Protocol Summary Document",
     "description": "Visible text in lib / ProtocolSummary / components / Cover."
@@ -2215,6 +2623,10 @@
     "defaultMessage": "Ego",
     "description": "Visible text in lib / ProtocolSummary / components / Entity."
   },
+  "architect.protocolSummary.interfaceText.title": {
+    "defaultMessage": "Interview text",
+    "description": "Heading of the printable protocol summary section that lists the words the interview itself shows, such as its buttons and messages, rather than text written for a stage or codebook entry."
+  },
   "architect.protocolSummary.protocolCard.lastModified": {
     "defaultMessage": "Last Modified: {value1}",
     "description": "Visible text in lib / ProtocolSummary / components / ProtocolCard."
@@ -2222,6 +2634,10 @@
   "architect.protocolSummary.protocolCard.schemaVersion": {
     "defaultMessage": "Schema Version: {schemaVersion}",
     "description": "Visible text in lib / ProtocolSummary / components / ProtocolCard."
+  },
+  "architect.protocolSummary.stage.anonymisation.defaultMinimumPassphraseLength": {
+    "defaultMessage": "{count, number} (default)",
+    "description": "Value of the minimum passphrase length row in the printed protocol summary when the stage sets no minimum of its own, so the interview applies its default. count is that default length in characters."
   },
   "architect.protocolSummary.stage.anonymisation.explanationText": {
     "defaultMessage": "Explanation Text",
@@ -2238,6 +2654,190 @@
   "architect.protocolSummary.stage.dataSource.dataSource": {
     "defaultMessage": "DataSource",
     "description": "The title text in lib / ProtocolSummary / components / Stage / DataSource."
+  },
+  "architect.protocolSummary.stage.familyPedigree.completenessEnforcement": {
+    "defaultMessage": "When the family is incomplete",
+    "description": "Label for whether a participant may continue while the required relatives are not all recorded, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.completenessEnforcementRecommended": {
+    "defaultMessage": "Participants are shown what is missing but may continue.",
+    "description": "Printable protocol summary text for a completeness requirement that shows the participant what is missing but lets them continue."
+  },
+  "architect.protocolSummary.stage.familyPedigree.completenessEnforcementRequired": {
+    "defaultMessage": "Participants cannot continue until the required relatives and details are recorded.",
+    "description": "Printable protocol summary text for a completeness requirement that stops the participant continuing until the required relatives, and the required details about each person, are recorded."
+  },
+  "architect.protocolSummary.stage.familyPedigree.completenessScope": {
+    "defaultMessage": "Relatives to record",
+    "description": "Label for how much of the family a participant must record before continuing, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.currentPartner": {
+    "defaultMessage": "Current partner",
+    "description": "Label for the boolean attribute marking a partnership as current, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.framing": {
+    "defaultMessage": "Words for family members",
+    "description": "Label for the setting choosing the words used to describe family members, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.framingGamete": {
+    "defaultMessage": "Egg parent and sperm parent",
+    "description": "Printable protocol summary text for the wording setting that describes biological parents by the egg or sperm they gave, without gendered words."
+  },
+  "architect.protocolSummary.stage.familyPedigree.framingGendered": {
+    "defaultMessage": "Everyday kinship words (mother, father, sister, brother)",
+    "description": "Printable protocol summary text for the wording setting that uses the usual kinship words. It is what the stage uses when no wording is chosen."
+  },
+  "architect.protocolSummary.stage.familyPedigree.framingParticipantPreference": {
+    "defaultMessage": "The participant chooses between the two",
+    "description": "Printable protocol summary text for the wording setting that lets the participant choose between everyday kinship words and egg parent and sperm parent words."
+  },
+  "architect.protocolSummary.stage.familyPedigree.genderIdentity": {
+    "defaultMessage": "Gender identity",
+    "description": "Label for the attribute that holds each family member’s gender identity, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.genderIdentityNotAsked": {
+    "defaultMessage": "Not asked. Words such as mother or brother follow sex assigned at birth.",
+    "description": "Value shown beside the gender identity label in the printable protocol summary when the Family Pedigree stage does not ask about gender identity, saying what the kinship words (mother, brother, parent) follow instead."
+  },
+  "architect.protocolSummary.stage.familyPedigree.genderIdentityTerm": {
+    "defaultMessage": "{option}: {words}",
+    "description": "One line of the printable protocol summary’s list of gender identity words. option is a gender identity option’s own label, as the researcher wrote it, and words is the name of the kinship words it takes."
+  },
+  "architect.protocolSummary.stage.familyPedigree.genderIdentityTerms": {
+    "defaultMessage": "Gender identity words",
+    "description": "Label for the list saying which kinship words each gender identity option takes, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.genderWordsFeminine": {
+    "defaultMessage": "Feminine words (mother, sister)",
+    "description": "Printable protocol summary name of the kinship words used for women, with examples."
+  },
+  "architect.protocolSummary.stage.familyPedigree.genderWordsMasculine": {
+    "defaultMessage": "Masculine words (father, brother)",
+    "description": "Printable protocol summary name of the kinship words used for men, with examples."
+  },
+  "architect.protocolSummary.stage.familyPedigree.genderWordsNeutral": {
+    "defaultMessage": "Neutral words (parent, sibling)",
+    "description": "Printable protocol summary name of the kinship words that do not depend on gender, with examples."
+  },
+  "architect.protocolSummary.stage.familyPedigree.genderWordsUnknown": {
+    "defaultMessage": "Not known (neutral words; biological mother or father for a biological parent)",
+    "description": "Printable protocol summary name of the kinship words for an option meaning the person’s gender is not known. Every relative gets neutral words, such as parent or sibling, except a biological parent whose sex assigned at birth is known, who is called biological mother or biological father."
+  },
+  "architect.protocolSummary.stage.familyPedigree.gestationalCarrier": {
+    "defaultMessage": "Gestational carrier",
+    "description": "Label for the boolean attribute marking the parent who carried a pregnancy, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.name": {
+    "defaultMessage": "Name",
+    "description": "Label for the text attribute that holds each family member’s name, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.nameQuestion": {
+    "defaultMessage": "Name question",
+    "description": "Label for the question asking each family member’s name, as participants read it, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.nameQuestionHint": {
+    "defaultMessage": "Name question guidance",
+    "description": "Label for the guidance shown beneath the question asking each family member’s name, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.nominationLimit": {
+    "defaultMessage": "Who can be selected",
+    "description": "Label, in the printable protocol summary, for the limit a nomination prompt places on who can be selected by sex assigned at birth."
+  },
+  "architect.protocolSummary.stage.familyPedigree.nominationLimitFemale": {
+    "defaultMessage": "Anyone except people assigned male at birth",
+    "description": "Printable protocol summary text for a nomination prompt that leaves out only the people whose sex assigned at birth is male. Everyone else can still be selected."
+  },
+  "architect.protocolSummary.stage.familyPedigree.nominationLimitMale": {
+    "defaultMessage": "Anyone except people assigned female at birth",
+    "description": "Printable protocol summary text for a nomination prompt that leaves out only the people whose sex assigned at birth is female. Everyone else can still be selected."
+  },
+  "architect.protocolSummary.stage.familyPedigree.nominationPrompts": {
+    "defaultMessage": "Nomination prompts",
+    "description": "Heading of the list, in the printable protocol summary, of the questions a Family Pedigree asks about the whole family once it is drawn."
+  },
+  "architect.protocolSummary.stage.familyPedigree.participantMarker": {
+    "defaultMessage": "Participant marker",
+    "description": "Label for the boolean attribute that marks which family member is the participant, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.relationshipEdgeType": {
+    "defaultMessage": "Relationship edge type",
+    "description": "Label for the kind of connection family relationships are recorded as, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.relationshipKind": {
+    "defaultMessage": "Relationship kind",
+    "description": "Label for the attribute recording whether a relationship is a partnership or a kind of parenthood, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.relationshipToParticipant": {
+    "defaultMessage": "Relationship to the participant",
+    "description": "Label for the categorical attribute in which the interview records each family member’s relationship to the participant (parent, sibling, cousin and so on), in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.relativesNotRecorded": {
+    "defaultMessage": "Relatives not recorded",
+    "description": "Label for the attribute recording that a family member has no siblings or children, or that the participant does not know, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.scopeFirstDegree": {
+    "defaultMessage": "Parents, siblings and children",
+    "description": "Printable protocol summary name of the completeness choice requiring the participant’s parents, siblings and children."
+  },
+  "architect.protocolSummary.stage.familyPedigree.scopeGrandparents": {
+    "defaultMessage": "Three generations",
+    "description": "Printable protocol summary name of the completeness choice requiring three generations: the participant, their parents and grandparents, with aunts and uncles on both sides."
+  },
+  "architect.protocolSummary.stage.familyPedigree.scopeParents": {
+    "defaultMessage": "Both biological parents",
+    "description": "Printable protocol summary name of the completeness choice requiring the participant’s two biological parents."
+  },
+  "architect.protocolSummary.stage.familyPedigree.scopeSecondDegree": {
+    "defaultMessage": "All second-degree relatives",
+    "description": "Printable protocol summary name of the completeness choice requiring every second-degree relative, adding nieces, nephews and grandchildren."
+  },
+  "architect.protocolSummary.stage.familyPedigree.scopeThirdDegree": {
+    "defaultMessage": "Three generations, to first cousins",
+    "description": "Printable protocol summary name of the completeness choice requiring three generations including first cousins."
+  },
+  "architect.protocolSummary.stage.familyPedigree.sexAssignedAtBirth": {
+    "defaultMessage": "Sex assigned at birth",
+    "description": "Label for the attribute that holds each family member’s sex assigned at birth, in the printable protocol summary."
+  },
+  "architect.protocolSummary.stage.familyPedigree.title": {
+    "defaultMessage": "Family Pedigree",
+    "description": "Heading of the printable protocol summary section describing how a Family Pedigree stage records each family member and each relationship."
+  },
+  "architect.protocolSummary.stage.familyPedigree.trackerChildren": {
+    "defaultMessage": "List item: children",
+    "description": "Label, in the printable protocol summary, for the words of the entry in the Family Pedigree’s list of what is still needed that asks for a person’s children."
+  },
+  "architect.protocolSummary.stage.familyPedigree.trackerChildrenQuestion": {
+    "defaultMessage": "Question about children",
+    "description": "Label, in the printable protocol summary, for the side panel’s question asking about a person’s children."
+  },
+  "architect.protocolSummary.stage.familyPedigree.trackerDetails": {
+    "defaultMessage": "List item: missing details",
+    "description": "Label, in the printable protocol summary, for the words of the entry in the Family Pedigree’s list of what is still needed that asks for details still missing about a person."
+  },
+  "architect.protocolSummary.stage.familyPedigree.trackerNoChildren": {
+    "defaultMessage": "Button: no children",
+    "description": "Label, in the printable protocol summary, for the words of the button that answers that a person has no children."
+  },
+  "architect.protocolSummary.stage.familyPedigree.trackerNoSiblings": {
+    "defaultMessage": "Button: no brothers or sisters",
+    "description": "Label, in the printable protocol summary, for the words of the button that answers that a person has no brothers or sisters."
+  },
+  "architect.protocolSummary.stage.familyPedigree.trackerParents": {
+    "defaultMessage": "List item: missing parents",
+    "description": "Label, in the printable protocol summary, for the words of the entry in the Family Pedigree’s list of what is still needed that asks for a person’s missing parents."
+  },
+  "architect.protocolSummary.stage.familyPedigree.trackerRecommendedNote": {
+    "defaultMessage": "Note under the list",
+    "description": "Label, in the printable protocol summary, for the note shown under the Family Pedigree’s list of what is still needed when participants may continue without completing it."
+  },
+  "architect.protocolSummary.stage.familyPedigree.trackerSiblings": {
+    "defaultMessage": "List item: brothers and sisters",
+    "description": "Label, in the printable protocol summary, for the words of the entry in the Family Pedigree’s list of what is still needed that asks for a person’s brothers and sisters."
+  },
+  "architect.protocolSummary.stage.familyPedigree.trackerSiblingsQuestion": {
+    "defaultMessage": "Question about brothers and sisters",
+    "description": "Label, in the printable protocol summary, for the side panel’s question asking about a person’s brothers and sisters."
   },
   "architect.protocolSummary.stage.form.form": {
     "defaultMessage": "Form",
@@ -2275,9 +2875,9 @@
     "defaultMessage": "Name Generation Step Instructions",
     "description": "Visible text in lib / ProtocolSummary / components / Stage / NameGenerationStep."
   },
-  "architect.protocolSummary.stage.nominationPrompts.nominationPrompts": {
-    "defaultMessage": "Nomination Prompts",
-    "description": "The title text in lib / ProtocolSummary / components / Stage / NominationPrompts. A Family Pedigree stage asks these after the family is built; each records a condition or trait as a boolean attribute of the family members the participant picks."
+  "architect.protocolSummary.stage.narrativePedigree.atRiskStatusesShown": {
+    "defaultMessage": "{shown, select, true {Shown} other {Not shown}}",
+    "description": "Value, in the printable protocol summary, saying whether a Narrative Pedigree stage draws the possible (at-risk) statuses it infers, beside the label \"Show possible (at-risk) statuses\"."
   },
   "architect.protocolSummary.stage.pageHeading.pageHeading": {
     "defaultMessage": "Page Heading",
@@ -2311,6 +2911,10 @@
     "defaultMessage": "Type",
     "description": "Visible text in lib / ProtocolSummary / components / Stage / QuickAdd."
   },
+  "architect.protocolSummary.stage.rosterPanel.rosterPanel": {
+    "defaultMessage": "Roster panel",
+    "description": "The title text in lib / ProtocolSummary / components / Stage / RosterPanel: the panel listing the people a roster name generator offers."
+  },
   "architect.protocolSummary.stage.scaffoldingStep.scaffoldingStepInstructions": {
     "defaultMessage": "Scaffolding Step Instructions",
     "description": "Visible text in lib / ProtocolSummary / components / Stage / ScaffoldingStep."
@@ -2322,6 +2926,18 @@
   "architect.protocolSummary.stage.stage.skipLogic": {
     "defaultMessage": "Skip Logic",
     "description": "The title text in lib / ProtocolSummary / components / Stage / Stage."
+  },
+  "architect.protocolSummary.translations.defaultLanguage": {
+    "defaultMessage": "Default",
+    "description": "Badge beside the protocol’s default language in the printable protocol summary: in the list of the protocol’s languages on its cover, and beside each text, which the summary lists in every protocol language."
+  },
+  "architect.protocolSummary.translations.notTranslated": {
+    "defaultMessage": "Not translated yet. Participants see the {language} text.",
+    "description": "Shown in the printable protocol summary beside a language that a text has no translation in, when participants using that language are certain to see it in another language instead: a closely related language, such as Brazilian Portuguese for European Portuguese, or the only language the text is written in. language is that language’s name."
+  },
+  "architect.protocolSummary.translations.notTranslatedUnlessBrowserLists": {
+    "defaultMessage": "Not translated yet. Participants see the {language} text, unless their browser also lists a language that has it.",
+    "description": "Shown in the printable protocol summary beside a language that a text has no translation in, nor in a closely related language. Participants using that language see the text in another language their web browser lists, when the text has a translation in one, and otherwise in language: the protocol’s default language, or failing that another of its languages."
   },
   "architect.protocolSummary.variables.name": {
     "defaultMessage": "Name",
@@ -2379,9 +2995,33 @@
     "defaultMessage": "Check that it is a supported file type, and try again.",
     "description": "Generic resource-import guidance for unexpected exception messages."
   },
+  "architect.resourceImport.charactersInAttributeName": {
+    "defaultMessage": "An attribute name in node {node} contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}",
+    "description": "Error shown when an attribute name in a JSON network file added as a resource contains a character Network Canvas can’t store. node is the node’s position in the file’s list of nodes, counting from 1. character is the character’s Unicode code point, such as U+0007, and stays as written. It is usually an invisible control character pasted in from another program, which an exported file could not hold. others is how many more places in the file have the same problem; when it is 0 nothing more is said."
+  },
+  "architect.resourceImport.charactersInAttributeValue": {
+    "defaultMessage": "The “{attribute}” attribute of node {node} contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}",
+    "description": "Error shown when an attribute value in a JSON network file added as a resource contains a character Network Canvas can’t store. attribute is the attribute’s name as the file writes it; node is the node’s position in the file’s list of nodes, counting from 1. character is the character’s Unicode code point, such as U+0007, and stays as written. It is usually an invisible control character pasted in from another program, which an exported file could not hold. others is how many more places in the file have the same problem; when it is 0 nothing more is said."
+  },
+  "architect.resourceImport.charactersInCell": {
+    "defaultMessage": "Row {row} of the “{column}” column contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}",
+    "description": "Error shown when a cell of a CSV network file added as a resource contains a character Network Canvas can’t store. row is the row number a spreadsheet shows, where the header is row 1; column is the researcher’s own column header. character is the character’s Unicode code point, such as U+0007, and stays as written. It is usually an invisible control character pasted in from another program, which an exported file could not hold. others is how many more places in the file have the same problem; when it is 0 nothing more is said."
+  },
+  "architect.resourceImport.charactersInColumnName": {
+    "defaultMessage": "The header of column {column} contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}",
+    "description": "Error shown when the header of a column in a CSV network file added as a resource contains a character Network Canvas can’t store. column is the column’s position, counting from 1 at the left. character is the character’s Unicode code point, such as U+0007, and stays as written. It is usually an invisible control character pasted in from another program, which an exported file could not hold. others is how many more places in the file have the same problem; when it is 0 nothing more is said."
+  },
+  "architect.resourceImport.charactersInLine": {
+    "defaultMessage": "Line {line} of this file contains a character that can’t be used ({character}). Delete it from the file, then import the file again.{others, plural, =0 {} one { The same problem appears in # other place in the file.} other { The same problem appears in # other places in the file.}}",
+    "description": "Error shown when a network file (CSV or JSON) added as a resource contains a character Network Canvas can’t store, somewhere that can only be pointed to by its line. line is the line number a text editor shows, counting from 1. character is the character’s Unicode code point, such as U+0007, and stays as written. It is usually an invisible control character pasted in from another program, which an exported file could not hold. others is how many more places in the file have the same problem; when it is 0 nothing more is said."
+  },
   "architect.resourceImport.columns": {
     "defaultMessage": "Some rows have a different number of columns. Make each row match the column headers, then import the file again.",
     "description": "Researcher-facing Architect control or feedback."
+  },
+  "architect.resourceImport.duplicateColumns": {
+    "defaultMessage": "Two column headers in this file are the same name written in two different ways, such as an accented letter typed as one character in one and as two in the other. Rename or remove one of them, then import the file again.",
+    "description": "Error shown when a network file (CSV or JSON) is added as a resource and two of its column headers look identical but are stored differently: the same accented letter is typed as a single character in one header and as a plain letter followed by a separate accent mark in the other. Network Canvas would treat them as one attribute and lose one column’s values. Headers that differ only in capital letters are not affected."
   },
   "architect.resourceImport.empty": {
     "defaultMessage": "This network file doesn't contain any nodes or edges.",
@@ -2392,8 +3032,8 @@
     "description": "Researcher-facing Architect control or feedback."
   },
   "architect.resourceImport.names": {
-    "defaultMessage": "Some attribute names in this file are invalid. Use only letters, numbers, and the symbols ._-: in column headers, then import the file again.",
-    "description": "Researcher-facing Architect control or feedback."
+    "defaultMessage": "Some column headers in this file can’t be used as attribute names. A header can’t be empty, can’t start or end with a space, and can’t contain tabs, line breaks or other control characters. Fix the headers, then import the file again.",
+    "description": "Error shown when a network file (CSV or JSON) is added as a resource and one of its attribute names, taken from the column headers, is not allowed. Any script, spaces and punctuation are allowed inside a name."
   },
   "architect.resourceImport.replacementType": {
     "defaultMessage": "This file is a different kind of resource from the one it would replace. Choose a file of the same kind, and try again.",
@@ -2454,6 +3094,14 @@
   "architect.skipDestination.untitled": {
     "defaultMessage": "Untitled stage",
     "description": "Display of a skip-logic destination, preserving the authored stage label."
+  },
+  "architect.stageEditor.languages.description": {
+    "defaultMessage": "{count, plural, =1 {This protocol is written in one language, so participants will see it as their only choice. Add languages to give them more to choose from.} other {Participants choose from every language this protocol is written in.}} Changes here apply to the whole protocol, as they do on the Languages page.",
+    "description": "Description of the stage editor section listing the languages a participant can choose between. count is how many languages the protocol has. The Languages page is the page of the same name in the project navigation."
+  },
+  "architect.stageEditor.languages.title": {
+    "defaultMessage": "Languages",
+    "description": "Heading of the stage editor section listing the languages a participant can choose between on a language chooser stage."
   },
   "architect.stageEditor.sectionOutline.completeStatus": {
     "defaultMessage": "Finished",
@@ -2895,6 +3543,22 @@
     "defaultMessage": "Moved stage {fromPosition, number} to position {toPosition, number} of {total, number}.",
     "description": "Live announcement after a timeline operation succeeds."
   },
+  "architect.timeline.finishStageGuards.cannotDeleteStage": {
+    "defaultMessage": "Cannot delete stage",
+    "description": "Title of the notice shown when a researcher tries to delete the stage that ends the interview."
+  },
+  "architect.timeline.finishStageGuards.cannotMoveStage": {
+    "defaultMessage": "Cannot move stage",
+    "description": "Title of the notice shown when a move would put a stage after the stage that ends the interview."
+  },
+  "architect.timeline.finishStageGuards.finishStageCannotBeDeleted": {
+    "defaultMessage": "This stage ends the interview, and every protocol needs one, so it cannot be deleted. You can change its text and outcome instead.",
+    "description": "Explanation shown when a researcher tries to delete the stage that ends the interview (the finish screen)."
+  },
+  "architect.timeline.finishStageGuards.finishStageStaysLast": {
+    "defaultMessage": "The stage that ends the interview has to stay at the end of the protocol. No participant could reach a stage placed after it.",
+    "description": "Explanation shown when a researcher tries to move the stage that ends the interview, or to move another stage after it."
+  },
   "architect.timeline.insertButton.addStageHere": {
     "defaultMessage": "Add stage here",
     "description": "Visible text in components / Timeline / InsertButton."
@@ -3069,7 +3733,7 @@
   },
   "architect.typeEditor.typeEditor.thisNameIdentifiesTheTypeIn": {
     "defaultMessage": "{entity, select, node {This name identifies the node type in the codebook and in your data exports. Some examples might be \"Person\", \"Place\", or \"Organization\".} other {This name identifies the edge type in the codebook and in your data exports. Some examples might be \"Friends\" or \"Colleagues\".}}",
-    "description": "Hint below the entity type name field. The entity selector chooses a complete explanation and suggested names for a node type or an edge type; example names are interface guidance, not authored data. The field accepts only the letters A–Z and a–z, digits and the symbols . _ - : — so each translated example must contain no spaces and no accented or non-Latin letters. Where no example in your language fits, keep the English name and add a translation in parentheses after the closing quote."
+    "description": "Hint below the entity type name field. The entity selector chooses a complete explanation and suggested names for a node type or an edge type; example names are interface guidance, not authored data. A type name can be any text: spaces and any script are allowed. Translate the example names naturally, as a researcher working in the target language would name a kind of person, place, organization or relationship, even if that makes them several words long."
   },
   "architect.typeEditor.typeEditor.typeColor": {
     "defaultMessage": "Type color",
@@ -3078,6 +3742,14 @@
   "architect.typeEditor.typeEditor.typeIdentity": {
     "defaultMessage": "Type identity",
     "description": "The title text in components / TypeEditor / TypeEditor."
+  },
+  "architect.typeEditor.typeEditor.typeLabel": {
+    "defaultMessage": "{entity, select, node {Node type label} other {Edge type label}}",
+    "description": "Label of the field holding the words participants are shown for this node or edge type, as opposed to the type name the researcher and the exported data use. entity is node or edge."
+  },
+  "architect.typeEditor.typeEditor.typeLabelHint": {
+    "defaultMessage": "{entity, select, node {The words participants are shown for this node type.} other {The words participants are shown for this edge type.}}",
+    "description": "Hint under the node or edge type label field, which sits below the type name field. When the protocol has several languages, a language menu above the field chooses which translation is being written. entity is node or edge."
   },
   "architect.typeEditor.typeEditor.typeName": {
     "defaultMessage": "{entity, select, node {Node} other {Edge}} type name",
@@ -3131,6 +3803,10 @@
     "defaultMessage": "Change redone. Moved to Codebook to show the result.",
     "description": "Researcher-facing explanatory text in hooks / useProtocolUndoRedo."
   },
+  "architect.utility.hooks.useProtocolUndoRedo.changeRedoneMovedToLanguages": {
+    "defaultMessage": "Change redone. Moved to Languages to show the result.",
+    "description": "Screen-reader announcement after a redo moved the researcher to the Languages page. \"Languages\" is the name of that page in the project navigation."
+  },
   "architect.utility.hooks.useProtocolUndoRedo.changeRedoneMovedToResourcesTo": {
     "defaultMessage": "Change redone. Moved to Resources to show the result.",
     "description": "Researcher-facing explanatory text in hooks / useProtocolUndoRedo."
@@ -3146,6 +3822,10 @@
   "architect.utility.hooks.useProtocolUndoRedo.changeUndoneMovedToCodebookTo": {
     "defaultMessage": "Change undone. Moved to Codebook to show the result.",
     "description": "Researcher-facing explanatory text in hooks / useProtocolUndoRedo."
+  },
+  "architect.utility.hooks.useProtocolUndoRedo.changeUndoneMovedToLanguages": {
+    "defaultMessage": "Change undone. Moved to Languages to show the result.",
+    "description": "Screen-reader announcement after an undo moved the researcher to the Languages page. \"Languages\" is the name of that page in the project navigation."
   },
   "architect.utility.hooks.useProtocolUndoRedo.changeUndoneMovedToResourcesTo": {
     "defaultMessage": "Change undone. Moved to Resources to show the result.",
@@ -3243,10 +3923,6 @@
     "defaultMessage": "Protocol changed while upgrading",
     "description": "The title text in utils / storedProtocolAdmission."
   },
-  "architect.validation.attributeName": {
-    "defaultMessage": "attribute name",
-    "description": "Default subject in the invalid identifier guidance."
-  },
   "architect.validation.dateIsNotValidValue1": {
     "defaultMessage": "Date is not valid ({value1})",
     "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
@@ -3279,9 +3955,9 @@
     "defaultMessage": "{min, plural, one {Must be # character or more} other {Must be # characters or more}}",
     "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
   },
-  "architect.validation.notAValidNameOnly": {
-    "defaultMessage": "Not a valid {name}. Only letters, numbers and the symbols ._-: are supported",
-    "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
+  "architect.validation.nameHasControlCharacters": {
+    "defaultMessage": "This can’t contain tabs, line breaks or other control characters",
+    "description": "Validation error shown below a field where a researcher types the name of a node type, edge type, attribute or option value. Any script, spaces and punctuation are allowed in these names; only invisible control characters (such as a tab or a line break) are refused."
   },
   "architect.validation.notAValidRegularExpression": {
     "defaultMessage": "Not a valid regular expression.",

@@ -55,7 +55,7 @@ export const usePrompts = <
   );
 
   // Sort rules (sortOrder / bucketSortOrder / binSortOrder) are left raw here.
-  // Each leaf sorter (useSortedNodeList / getSortedNodeList) resolves them via
+  // Each leaf sorter (useSortedNodeList / useNodeSorter) resolves them via
   // processProtocolSortRule exactly once, against the codebook, at the point of
   // use — matching how Sociogram consumes `sortOrder`. Pre-processing here as
   // well caused the rules to be processed twice, clobbering non-text types.

@@ -1,12 +1,13 @@
 'use client';
 
+import { useDirection } from '@base-ui/react/direction-provider';
 import {
   AnimatePresence,
   motion,
   type Transition,
   useWillChange,
 } from 'motion/react';
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useId, useState } from 'react';
 
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import {
@@ -40,45 +41,36 @@ export default function PassphrasePrompter({
   className,
 }: PassphrasePrompterProps) {
   const intl = useAppIntl();
-  const { showPassphrasePrompter, passphraseInvalid } = usePassphrase();
-  const [showPassphraseOverlay, setShowPassphraseOverlay] = useState(false);
+  const isRtl = useDirection() === 'rtl';
+  const { showPassphrasePrompter, passphraseChosen, encryptionUnavailable } =
+    usePassphrase();
+  // No passphrase can open a refused header, so none is offered, whatever
+  // raised the prompter.
+  const offerPassphrase = showPassphrasePrompter && !encryptionUnavailable;
+  // Whether the open dialog chooses the interview's passphrase or asks for
+  // it, fixed when it opens so that it does not change while it closes.
+  const [overlay, setOverlay] = useState({ show: false, choosing: false });
   const [showTooltip, setShowTooltip] = useState(false);
   const descriptionId = useId();
 
   const willChange = useWillChange();
 
-  const closeOverlay = useCallback(() => setShowPassphraseOverlay(false), []);
-
-  useEffect(() => {
-    let timeout: ReturnType<typeof setTimeout> | null = null;
-    if (passphraseInvalid) {
-      timeout = setTimeout(() => {
-        setShowTooltip(true);
-      }, 500);
-    }
-
-    return () => {
-      if (timeout) {
-        clearTimeout(timeout);
-      }
-    };
-  }, [passphraseInvalid]);
-
-  const promptMessage = passphraseInvalid
-    ? messages.decryptRetry
-    : messages.passphraseNeeded;
+  const closeOverlay = useCallback(
+    () => setOverlay((current) => ({ ...current, show: false })),
+    [],
+  );
 
   return (
     <>
       <TooltipProvider>
         <Tooltip open={showTooltip} onOpenChange={setShowTooltip}>
           <AnimatePresence>
-            {showPassphrasePrompter && (
+            {offerPassphrase && (
               <TooltipTrigger
                 render={
                   <motion.button
                     type="button"
-                    aria-label={intl.formatMessage(messages.enterPassphrase)}
+                    aria-label={intl.formatMessage(messages.passphrase)}
                     aria-describedby={descriptionId}
                     key="lock"
                     layout
@@ -102,17 +94,19 @@ export default function PassphrasePrompter({
                     exit={{ scale: 0, opacity: 0 }}
                     transition={transition}
                     style={{ willChange }}
-                    onClick={() => setShowPassphraseOverlay(true)}
+                    onClick={() =>
+                      setOverlay({ show: true, choosing: !passphraseChosen })
+                    }
                   >
                     <motion.span className="animate-shake scale-90 text-4xl transition-transform group-hover:scale-100">
                       {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- Decorative status glyph; the button has a localized accessible name. */}
-                      {passphraseInvalid ? '⚠️' : '🔑'}
+                      {'🔑'}
                     </motion.span>
-                    {/* The tooltip opens only on hover or after a failed
-                        attempt, so screen readers get the same explanation as
-                        the button's description. */}
+                    {/* The tooltip opens only on hover or focus, so screen
+                        readers get the same explanation as the button's
+                        description. */}
                     <span id={descriptionId} hidden>
-                      <AppMessage message={promptMessage} />
+                      <AppMessage message={messages.protectedAnswersLocked} />
                     </span>
                   </motion.button>
                 }
@@ -123,15 +117,18 @@ export default function PassphrasePrompter({
               technology does not meet the same text twice. */}
           <TooltipContent
             aria-hidden="true"
-            side={orientation === 'vertical' ? 'right' : 'top'}
+            side={
+              orientation === 'vertical' ? (isRtl ? 'left' : 'right') : 'top'
+            }
             className="max-w-[min(var(--available-width),var(--container-md))]"
           >
-            <AppMessage message={promptMessage} />
+            <AppMessage message={messages.protectedAnswersLocked} />
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
       <PassphraseOverlay
-        show={showPassphraseOverlay}
+        show={overlay.show}
+        choosing={overlay.choosing}
         onAccepted={closeOverlay}
         onClose={closeOverlay}
       />

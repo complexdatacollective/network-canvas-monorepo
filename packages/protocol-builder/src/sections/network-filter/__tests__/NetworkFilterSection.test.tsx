@@ -5,6 +5,13 @@ import type { Codebook } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import {
+  alreadyProtecting,
+  answeredRule,
+  collaboratorSets,
+  personRule,
+  personVariable,
+} from '../../../editors/anonymisation/__tests__/anonymisationFixtures.tsx';
 import { ruleSetIssues, ruleSetTargets } from '../../../rules/ruleSet.ts';
 import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import {
@@ -475,12 +482,87 @@ describe('a rule this filter cannot be about', () => {
     // is the kind that may ask about the ego, and reporting it there would
     // send the researcher to fix a rule the schema accepts.
     const codebook: Codebook = {
-      ego: { variables: { ego_name: { name: 'ego_name', type: 'text' } } },
+      ego: {
+        variables: {
+          ego_name: {
+            name: 'ego_name',
+            label: 'Name',
+            type: 'text',
+          },
+        },
+      },
     };
 
     expect(ruleSetIssues(egoFilter, codebook, ruleSetTargets('query'))).toEqual(
       [],
     );
+  });
+});
+
+/**
+ * A stage filter reads the interview, and rules are checked without the
+ * participant's passphrase, so the schema refuses one comparing an encrypted
+ * attribute. A rule that already holds one says so on its row and keeps the
+ * stage from saving, in the field's own words rather than only the schema's.
+ * Whether the attribute was answered survives encryption, so a rule asking
+ * only that saves.
+ */
+const ENCRYPTED_ROW_PROBLEM =
+  'This rule compares the answers to an encrypted attribute. Rules are checked without the participant’s passphrase, so they can only check whether an encrypted attribute is answered. Edit or delete the rule.';
+
+describe('a rule on an encrypted attribute', () => {
+  it('saves a rule that only asks whether it is answered', async () => {
+    const filter = { rules: [answeredRule('rule-a', 'name')] };
+    const harness = renderStageEditor({
+      stage: alterForm({ filter }),
+      sections: nodeFilterSection,
+      adapter: alreadyProtecting('name'),
+    });
+
+    await screen.findByRole('button', { name: /^Edit rule:/ });
+    expect(screen.queryByText(/encrypted/)).toBeNull();
+    expect((await harness.submit())?.stageDocument.filter).toEqual(filter);
+  });
+
+  /**
+   * Encrypting an attribute is refused while a SAVED rule compares it, but the
+   * check cannot see a rule in a stage that is still being edited. The rule
+   * set re-reads the codebook while it is open, so that rule is marked the
+   * moment the attribute is encrypted, and the stage cannot be saved with it.
+   */
+  it('marks a rule it holds once the attribute is encrypted while it is open', async () => {
+    const harness = renderStageEditor({
+      stage: alterForm({ filter: { rules: [personRule('rule-a', 'name')] } }),
+      sections: nodeFilterSection,
+    });
+    await screen.findByRole('button', { name: /^Edit rule:/ });
+    expect(screen.queryByText(ENCRYPTED_ROW_PROBLEM)).toBeNull();
+
+    collaboratorSets(harness, 'person', 'name', {
+      ...personVariable(harness, 'name'),
+      encrypted: true,
+    });
+
+    expect(await screen.findByText(ENCRYPTED_ROW_PROBLEM)).toBeInTheDocument();
+    expect(await harness.submit()).toBeNull();
+  });
+
+  it('marks the rule on its own row and refuses the stage', async () => {
+    const harness = renderStageEditor({
+      stage: alterForm({ filter: { rules: [personRule('rule-a', 'name')] } }),
+      sections: nodeFilterSection,
+      adapter: alreadyProtecting('name'),
+    });
+
+    expect(await screen.findByText(ENCRYPTED_ROW_PROBLEM)).toBeInTheDocument();
+
+    expect(await harness.submit()).toBeNull();
+
+    expect(
+      await screen.findByText(
+        'Rule 1 cannot be used as it stands. Open it to fix it, or delete it.',
+      ),
+    ).toBeInTheDocument();
   });
 });
 

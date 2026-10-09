@@ -100,6 +100,7 @@ function hostWithSpareType(): InMemoryHost {
       ...sectionsFromProtocol(FIXTURE),
       [SPARE]: {
         name: 'Spare',
+        label: { 'en-US': 'Spare' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {},
@@ -203,7 +204,7 @@ const CALLS: readonly Call[] = [
         sectionId: INFORMATION,
         document: Redacted.make({
           ...host.store.read(INFORMATION).document,
-          label: 'Renamed by the enumeration',
+          label: { 'en-US': 'Renamed by the enumeration' },
         }),
         revision: host.store.read(INFORMATION).revision,
       }),
@@ -266,6 +267,7 @@ const CALLS: readonly Call[] = [
         kind: 'codebookNode',
         document: Redacted.make({
           name: 'Place',
+          label: { 'en-US': 'Place' },
           color: 'node-color-seq-3',
           shape: { default: 'circle' },
           variables: {},
@@ -280,7 +282,11 @@ const CALLS: readonly Call[] = [
         protocolId: host.protocolId,
         requestId: nextRequestId(),
         kind: 'codebookEdge',
-        document: Redacted.make({ name: 'Knows', color: 'edge-color-seq-1' }),
+        document: Redacted.make({
+          name: 'Knows',
+          label: { 'en-US': 'Knows' },
+          color: 'edge-color-seq-1',
+        }),
       }),
   },
   {
@@ -294,7 +300,12 @@ const CALLS: readonly Call[] = [
         kind: 'codebookEgo',
         document: Redacted.make({
           variables: {
-            ego_age: { name: 'ego_age', type: 'number', component: 'Number' },
+            ego_age: {
+              name: 'ego_age',
+              label: 'Age',
+              type: 'number',
+              component: 'Number',
+            },
           },
         }),
       }),

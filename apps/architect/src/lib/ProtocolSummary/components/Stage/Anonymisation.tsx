@@ -4,7 +4,8 @@ import { type IntlShape, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import Markdown from '~/components/Markdown';
+import type { LocalizedString } from '@codaco/protocol-validation';
+import { effectivePassphraseMinLength } from '@codaco/shared-consts';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
 import DualLink from '../DualLink';
@@ -12,8 +13,19 @@ import EntityBadge from '../EntityBadge';
 import { SummaryValue } from '../helpers';
 import MiniTable from '../MiniTable';
 import SummaryContext from '../SummaryContext';
+import {
+  SummaryMarkdown,
+  SummaryText,
+  useMultilingualSummary,
+} from '../SummaryText';
 import SectionFrame from './SectionFrame';
 const messages = defineMessages({
+  defaultMinimumPassphraseLength: {
+    id: 'architect.protocolSummary.stage.anonymisation.defaultMinimumPassphraseLength',
+    defaultMessage: '{count, number} (default)',
+    description:
+      'Value of the minimum passphrase length row in the printed protocol summary when the stage sets no minimum of its own, so the interview applies its default. count is that default length in characters.',
+  },
   explanationText: {
     id: 'architect.protocolSummary.stage.anonymisation.explanationText',
     defaultMessage: 'Explanation Text',
@@ -43,8 +55,8 @@ const finalMessages = defineMessages({
 
 type AnonymisationProps = {
   explanationText?: {
-    title: string;
-    body: string;
+    title: LocalizedString;
+    body: LocalizedString;
   } | null;
   validation?: {
     minLength?: number;
@@ -92,20 +104,24 @@ const getEncryptedVariables = (codebook: {
   return encrypted;
 };
 const validationRows = (
-  validation: {
-    minLength?: number;
-    maxLength?: number;
-  },
+  validation: AnonymisationProps['validation'],
   intl: IntlShape,
 ) => {
-  const rows: [string, React.ReactNode][] = [];
-  if (validation.minLength !== undefined) {
-    rows.push([
+  // Always present: a stage that sets no minimum still holds participants to
+  // the interview's default, which a printed summary has to state.
+  const rows: [string, React.ReactNode][] = [
+    [
       intl.formatMessage(finalMessages.minimumPassphrase),
-      <SummaryValue key="minLength" value={validation.minLength} />,
-    ]);
-  }
-  if (validation.maxLength !== undefined) {
+      validation?.minLength === undefined ? (
+        intl.formatMessage(messages.defaultMinimumPassphraseLength, {
+          count: effectivePassphraseMinLength(validation ?? undefined),
+        })
+      ) : (
+        <SummaryValue key="minLength" value={validation.minLength} />
+      ),
+    ],
+  ];
+  if (validation?.maxLength !== undefined) {
     rows.push([
       intl.formatMessage(finalMessages.maximumPassphrase),
       <SummaryValue key="maxLength" value={validation.maxLength} />,
@@ -119,27 +135,41 @@ const Anonymisation = ({
 }: AnonymisationProps) => {
   const intl = useAppIntl();
   const { protocol } = useContext(SummaryContext);
+  const multilingual = useMultilingualSummary();
   const encryptedVariables = getEncryptedVariables(protocol.codebook);
   const hasExplanation = !!explanationText;
-  const hasValidation =
-    validation &&
-    (validation.minLength !== undefined || validation.maxLength !== undefined);
   const hasEncryptedVariables = encryptedVariables.length > 0;
-  if (!hasExplanation && !hasValidation && !hasEncryptedVariables) {
-    return null;
-  }
   return (
     <>
       {hasExplanation && (
         <SectionFrame title={intl.formatMessage(messages.explanationText)}>
-          <Heading level="h1">{explanationText.title}</Heading>
-          <Markdown label={explanationText.body} />
+          {multilingual ? (
+            <MiniTable
+              rotated
+              wide
+              rows={[
+                [
+                  intl.formatMessage(summaryMessages.title),
+                  <SummaryText key="title" value={explanationText.title} />,
+                ],
+                [
+                  intl.formatMessage(summaryMessages.text),
+                  <SummaryMarkdown key="text" value={explanationText.body} />,
+                ],
+              ]}
+            />
+          ) : (
+            <>
+              <Heading level="h1">
+                <SummaryText value={explanationText.title} />
+              </Heading>
+              <SummaryMarkdown value={explanationText.body} />
+            </>
+          )}
         </SectionFrame>
       )}
 
-      {hasValidation && (
-        <MiniTable rotated rows={validationRows(validation, intl)} />
-      )}
+      <MiniTable rotated rows={validationRows(validation, intl)} />
 
       {hasEncryptedVariables && (
         <>

@@ -69,12 +69,18 @@ export type FullCollectionStore<T> = CollectionStore<T> & {
   sortDirection: SortDirection;
   sortType: SortType;
   sortRules: SortRule[];
+  /**
+   * The language text is ordered in. Undefined leaves it to the runtime's own
+   * locale.
+   */
+  sortLocale: string | undefined;
 
   // Sort actions
   setSortProperty: (property: SortProperty | null) => void;
   setSortDirection: (direction: SortDirection) => void;
   setSortType: (type: SortType) => void;
   setSortRules: (rules: SortRule[]) => void;
+  setSortLocale: (locale: string | undefined) => void;
   updateSortState: (updates: Partial<SortState>) => void;
 
   // Filter state (already in FilterState)
@@ -102,6 +108,7 @@ export type FullCollectionStore<T> = CollectionStore<T> & {
  * Internal state for re-sorting
  */
 type InternalSortState<T> = {
+  sortLocale: string | undefined;
   _originalItems: T[];
   _keyExtractor: KeyExtractor<T> | null;
   _textValueExtractor: TextValueExtractor<T> | null;
@@ -133,6 +140,7 @@ const defaultInitState = <T>(): FullCollectionStateWithInternal<T> => ({
   disallowEmptySelection: false,
   // Sort state
   ...defaultSortState,
+  sortLocale: undefined,
   // Filter state
   ...defaultFilterState,
   // Internal state for re-sorting
@@ -228,6 +236,7 @@ function filterAndSort<T>(
   sortRules: SortRule[],
   filterMatchingKeys: Set<Key> | null,
   filterScores: Map<Key, number> | null,
+  sortLocale: string | undefined,
 ): T[] {
   const filtered =
     filterMatchingKeys !== null
@@ -249,6 +258,7 @@ function filterAndSort<T>(
     const sorter = createCollectionSorter<T & Record<string, unknown>>(
       sortRules,
       prefixFns,
+      sortLocale,
     );
     return sorter(filtered as (T & Record<string, unknown>)[]) as T[];
   }
@@ -306,6 +316,7 @@ export const createCollectionStore = <T>(
           state.sortRules,
           state.filterMatchingKeys,
           state.filterScores,
+          state.sortLocale,
         );
 
         const { itemsMap, orderedKeys } = buildNodes(
@@ -443,6 +454,10 @@ export const createCollectionStore = <T>(
         set({ sortRules: rules });
       },
 
+      setSortLocale: (locale: string | undefined) => {
+        set({ sortLocale: locale });
+      },
+
       updateSortState: (updates: Partial<SortState>) => {
         set(updates);
       },
@@ -466,6 +481,7 @@ export const createCollectionStore = <T>(
           _keyExtractor,
           _textValueExtractor,
           sortRules,
+          sortLocale,
           filterMatchingKeys,
           filterScores,
         } = state;
@@ -485,6 +501,7 @@ export const createCollectionStore = <T>(
           sortRules,
           filterMatchingKeys,
           filterScores,
+          sortLocale,
         );
 
         const { itemsMap, orderedKeys } = buildNodes(
@@ -521,6 +538,8 @@ export const createCollectionStore = <T>(
  */
 export type CollectionSeed = {
   sortRules?: SortRule[];
+  /** The language text is ordered in; see `SortProps.sortLocale`. */
+  sortLocale?: string;
   disabledKeys?: Iterable<Key>;
   selectionMode?: SelectionMode;
   selectedKeys?: Iterable<Key>;
@@ -539,6 +558,7 @@ export const createSeededCollectionStore = <T>(
   textValueExtractor: TextValueExtractor<T>,
   {
     sortRules = [],
+    sortLocale,
     disabledKeys = [],
     selectionMode = 'none',
     selectedKeys,
@@ -547,6 +567,7 @@ export const createSeededCollectionStore = <T>(
   const seed = createCollectionStore<T>();
   const state = seed.getState();
   state.updateSortState(sortStateForRules(sortRules));
+  state.setSortLocale(sortLocale);
   state.setDisabledKeys(new Set(disabledKeys));
   state.setSelectionMode(selectionMode);
   if (selectedKeys) state.setSelectedKeys(new Selection(selectedKeys));

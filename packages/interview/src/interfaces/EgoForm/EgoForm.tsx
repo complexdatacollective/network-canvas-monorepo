@@ -10,11 +10,13 @@ import {
   useState,
 } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { AppMessage } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import { shouldShowFieldError } from '@codaco/fresco-ui/form/hooks/useField';
+import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import { useFormMeta } from '@codaco/fresco-ui/form/hooks/useFormState';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import FormStoreProvider, {
@@ -27,10 +29,7 @@ import type {
   FormSubmitHandler,
 } from '@codaco/fresco-ui/form/store/types';
 import Surface, { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
-import {
-  ALLOWED_MARKDOWN_SECTION_TAGS,
-  RenderMarkdown,
-} from '@codaco/fresco-ui/RenderMarkdown';
+import { ALLOWED_MARKDOWN_SECTION_TAGS } from '@codaco/fresco-ui/RenderMarkdown';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 
@@ -43,7 +42,8 @@ import useBeforeNext from '../../hooks/useBeforeNext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useScrolledToBottom } from '../../hooks/useScrolledToBottom';
 import { useStageSelector } from '../../hooks/useStageSelector';
-import { runtimeMessages } from '../../i18n/runtimeMessages';
+import { LocalizedMarkdown } from '../../localization/LocalizedMarkdown';
+import { LocalizedText } from '../../localization/LocalizedText';
 import { getEgoAttributes } from '../../selectors/session';
 import { updateEgo } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
@@ -147,7 +147,7 @@ const EgoFormInner = (props: EgoFormProps) => {
               value: true,
             },
             cancel: {
-              label: <AppMessage message={interfaceMessages.keepChanges} />,
+              label: <AppMessage message={commonMessages.cancel} />,
               value: false,
             },
           },
@@ -209,7 +209,7 @@ const EgoFormInner = (props: EgoFormProps) => {
       if (!patchResult.success) {
         return {
           success: false,
-          formErrors: [createMessageError(runtimeMessages.submissionFailed)],
+          formErrors: [createMessageError(formMessages.submitFailed)],
         };
       }
 
@@ -280,10 +280,16 @@ const EgoFormInner = (props: EgoFormProps) => {
       >
         <div className="interface mx-auto max-w-[80ch] flex-col">
           <Surface spacing="lg" shadow="lg">
-            <Heading level="h1">{introductionPanel.title}</Heading>
-            <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
-              {introductionPanel.text}
-            </RenderMarkdown>
+            <LocalizedText
+              value={introductionPanel.title}
+              render={<Heading level="h1" />}
+            />
+            {introductionPanel.text && (
+              <LocalizedMarkdown
+                value={introductionPanel.text}
+                allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+              />
+            )}
           </Surface>
           <Surface spacing="lg" shadow="lg">
             <FormWithoutProvider onSubmit={handleSubmitForm}>
@@ -329,9 +335,9 @@ const EgoFormInner = (props: EgoFormProps) => {
               >
                 <ChevronDown size="24" />
               </motion.div>
-              <Heading level="label" margin="none">
+              <span className="sr-only">
                 <AppMessage message={interfaceMessages.scrollForQuestions} />
-              </Heading>
+              </span>
               <motion.div
                 aria-hidden="true"
                 animate={{

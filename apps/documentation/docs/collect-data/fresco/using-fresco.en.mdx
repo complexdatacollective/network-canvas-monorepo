@@ -1,6 +1,6 @@
 ---
 title: Using Fresco
-date: 19th June 2026
+date: 7th October 2026
 navOrder: 2
 ---
 
@@ -229,7 +229,7 @@ You can now share this URL with participants to allow them to self-enroll in the
 
 You may want to limit the number of interviews that a participant can complete for a given protocol. For this reason, Fresco includes this as an option you can enable on the settings page.
 
-If you enable this option, each participant will only be able to submit a single completed interview for each protocol (although they may have multiple incomplete interviews). Once a participant has completed an interview, attempting to start a new interview or to resume any other in-progress interview will be prevented. This applies to both unique participant URLs and anonymous participant URLs.
+If you enable this option, each participant will only be able to submit a single completed interview for each protocol (although they may have multiple incomplete interviews). Once a participant has completed an interview, attempting to start a new interview or to resume any other in-progress interview will instead show the finished interview's completed state, with your [Finish Screen](/en/design-protocols/interface-documentation/finish-screen)'s heading and text and a notice that the interview is finished. This applies to both unique participant URLs and anonymous participant URLs.
 
 To enable this feature:
 
@@ -238,7 +238,7 @@ To enable this feature:
 
 <TipBox danger>
 
-We prioritized privacy and security when designing this feature, meaning that we do not conduct sophisticated tracking of participants. Instead, we use the participant identifier (if available) and a cookie to determine when a participant has submitted an interview.
+We prioritized privacy and security when designing this feature, meaning that we do not conduct sophisticated tracking of participants. Instead, we use the participant identifier (if available) and a cookie to determine when a participant has submitted an interview. The cookie holds the id of the finished interview, and scripts running in the page can't read it. A participant whose cookie names a finished interview of the same protocol is sent back to that interview's completed state.
 
 This means that if you enable anonymous recruitment and a participant clears their cookies, they will be able to submit another interview.
 
@@ -248,7 +248,7 @@ If you require more robust tracking, you should consider using unique participan
 
 ### Freeze completed interviews
 
-By default, Fresco freezes completed interviews: once a participant finishes an interview, the submitted data can no longer be altered. If a participant returns to the URL of an interview they have already finished and makes further changes, those changes are silently rejected, protecting your finished data from accidental or intentional changes after submission.
+By default, Fresco freezes completed interviews: once a participant finishes an interview, the submitted data can no longer be altered. A participant who returns to the URL of an interview they have already finished sees its completed state: your Finish Screen's heading and text, and a notice that the interview is finished and its answers can no longer be changed. There is no way to move through the interview from there, and no button, so participants close the window. Any change that is somehow still sent is silently rejected, protecting your finished data from accidental or intentional changes after submission.
 
 If you would prefer that a re-opened interview keep syncing further changes back to your data, you can turn this setting off.
 
@@ -279,6 +279,8 @@ To disable the warning:
 Once you have sent out URLs to participants and they begin to complete interviews, you can monitor the progress of those interviews using the interviews page in the dashboard and the main dashboard activity feed.
 
 The **interviews page** provides an overview of all interviews in the study. Each row corresponds to one interview, with columns for the **Participant Identifier**, **Protocol Name**, **Started** date, **Updated** date, **Progress**, **Network** (the number of nodes and edges captured so far), and **Export Status**. From this page you can also export data from the interviews.
+
+**Progress** is the stage the participant has reached out of the protocol's stages. Your protocol's [Finish Screen](/en/design-protocols/interface-documentation/finish-screen) counts as a stage, so a participant is at 100% only once they have finished the interview.
 
 ### Finding and filtering interviews
 
@@ -369,16 +371,20 @@ If you would rather retrieve interview data automatically than download files fr
 
 ## Changing the interface language
 
-Fresco's researcher interface is available in **English**, **English (UK)**, and **Español** (Spanish). You can also choose **Automatic**, which follows the language preferences set in your browser and uses English when none of them is available. Automatic is shown with the language it currently resolves to, for example **Automatic (English)**.
+Fresco's researcher interface is available in **English**, **English (UK)**, **Español** (Spanish), **Deutsch** (German), **Français** (French), **Italiano** (Italian), **Nederlands** (Dutch), **Português (Brasil)** (Brazilian Portuguese), **简体中文** (Simplified Chinese) and **繁體中文** (Traditional Chinese). You can also choose **Automatic**, which follows the language preferences set in your browser and uses English when none of them is available. Automatic is shown with the language it currently resolves to, for example **Automatic (English)**.
 
 To change the language, click the globe button in the dashboard's top bar and choose a language from the list. On small screens, open the navigation menu and use the language entry there instead. The same globe button appears in the header of the sign-in and setup screens, so you can choose a language before you sign in.
 
 The new language applies immediately. While you are signed in, your choice is saved to your account, so it follows you when you sign in on another device. A language chosen on the sign-in screen is remembered only in that browser: it is not copied to your account when you sign in, and once you are signed in, a language saved to your account takes its place. A language chosen during setup is the exception, because it carries over to the account created by the setup wizard. If Fresco cannot save your choice, the language stays in use for the rest of your visit, and the language list offers to try saving it again.
 
-Changing the interface language translates Fresco's own interface, including messages, dialogs, and validation. It does not translate anything written in your protocol, such as prompts, stage names, and response options, and it does not change collected interview data.
+Changing the interface language translates Fresco's own interface, including messages, dialogs, and validation. It does not translate anything written in your protocol, such as prompts, stage names, and response options, and it does not change collected interview data. It doesn't change the language of interviews either.
 
 ### Language in interviews
 
-The built-in interview controls, such as navigation, help, validation messages, and dialogs, are available in the same languages. An interview starts in the interface language Fresco would use in that browser: for a participant on their own device, that is normally the language their browser prefers, matched to one of the available languages, with English as the fallback. If a language has been chosen in Fresco in that browser (for example, on the sign-in screen), or a researcher is signed in to the dashboard in it, that choice is used instead.
+An interview's language comes from the participant's browser, not from Fresco's dashboard. When an interview opens, it uses the first of the browser's preferred languages that your protocol is written in (a close regional match counts, so a browser set to Mexican Spanish gets your Spanish), or your protocol's default language if there is none. A text that isn't translated into that language is shown in the best available other translation: in another of the browser's preferred languages that has it, or else the default language, or else any language of your protocol that has it. See [The default language and which translation participants see](/en/design-protocols/translating-your-protocol#the-default-language-and-which-translation-participants-see). A language chosen in the dashboard or on the sign-in screen, or the language of a researcher signed in to the dashboard, doesn't affect it.
 
-Participants can change the language during the interview from the **Interface language** option in the interview's **Settings** menu. This choice applies only to that visit to the interview. It does not change any researcher account's language preference, and it does not change protocol text or the answers already given.
+The interview's own built-in words, such as the labels of its navigation, are available in the same languages as the dashboard. They are shown in the interview's language when Fresco has it, otherwise in the first of the browser's languages that Fresco has, and otherwise in English. The buttons and messages that every stage shares, such as Back, Continue and validation messages, are not built in: your protocol holds them as its interview text, and they are shown in the language of your protocol's text, like the rest of it (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)).
+
+The only way for a participant to change the language during an interview is a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage in your protocol. Fresco saves their choice with the interview, so it is used again when the interview is resumed, even on another device. It doesn't change any researcher account's language preference, and it doesn't change the answers already given.
+
+To write a protocol in more than one language, see [Translating Your Protocol](/en/design-protocols/translating-your-protocol). Exported data records the language each interview was shown in: see [Interview language](/en/analyze-data/data-export#interview-language).

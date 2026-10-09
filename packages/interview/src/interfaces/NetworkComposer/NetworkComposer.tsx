@@ -30,6 +30,11 @@ import { useValidationNetwork } from '../../forms/useValidationNetwork';
 import { rejectedWriteMessage } from '../../forms/writeSubmissionResult';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../hooks/useStageSelector';
+import { runtimeMessages } from '../../i18n/runtimeMessages';
+import {
+  useOptionalLocalizedText,
+  useResolveLocalizedString,
+} from '../../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
@@ -47,7 +52,6 @@ import { updateStageMetadata } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
-import { isAttributeEncrypted } from '../Anonymisation/isAttributeEncrypted';
 import type { PassphraseNoticeStatus } from '../Anonymisation/PassphraseNotice';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { useProtectedFormValues } from '../Anonymisation/useProtectedFormValues';
@@ -57,7 +61,7 @@ import ComposerDrawer from './ComposerDrawer';
 import { nextGridPosition } from './gridPlacement';
 import type { ActiveGroup, GroupVariable } from './GroupPicker';
 import Inspector from './Inspector';
-import ToolPalette from './ToolPalette';
+import ToolPalette, { type ComposerToolWords } from './ToolPalette';
 import { useComposerActions } from './useComposerActions';
 import { useComposerStore, createComposerStore } from './useComposerStore';
 import { createUndoStore } from './useUndoStore';
@@ -81,6 +85,7 @@ type DrawerEditor = {
   form: ComposerForm | undefined;
   subject: Subject;
   attributes: NcNode[typeof entityAttributesProperty];
+  unavailable?: readonly string[];
   passphraseStatus?: PassphraseNoticeStatus;
 };
 
@@ -92,6 +97,19 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const dispatch = useAppDispatch();
   const { currentStep } = useCurrentStep();
   const shouldReduceMotion = useReducedMotion();
+  const resolve = useResolveLocalizedString();
+  const drawConnectionText = useOptionalLocalizedText(
+    stage.tooltips.drawConnection,
+  );
+  const groupsText = useOptionalLocalizedText(stage.groupsHeading);
+  // The stage's own words for its tools (`stage-wording/network-composer.ts`).
+  const toolWords: ComposerToolWords = {
+    addNamePlaceholder: resolve(stage.addNamePlaceholder).text,
+    addPerson: resolve(stage.tooltips.addPerson).text,
+    automaticLayout: resolve(stage.tooltips.automaticLayout).text,
+    drawConnection: drawConnectionText,
+    groups: groupsText,
+  };
 
   const layoutVariable = stage.layoutVariable;
 
@@ -156,8 +174,10 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   );
 
   const codebook = useSelector(getCodebook);
-  const nodeLabel =
-    codebook?.node?.[stage.subject.type]?.name ?? stage.subject.type;
+  const nodeTypeDefinition = codebook?.node?.[stage.subject.type];
+  const nodeLabel = nodeTypeDefinition
+    ? resolve(nodeTypeDefinition.label).text
+    : stage.subject.type;
 
   // Derive the quick-add target variable's validation props directly from its
   // codebook definition — AddNodeInput renders its own input and only ever
@@ -192,11 +212,11 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     stage.nodeForm?.fields ?? [],
   );
   const baseValidationContext = useStageSelector(getValidationContext);
-  const quickAddValidationNetwork = useValidationNetwork(
+  // A new person, so the rules read only the others' stored answers.
+  const { context: quickAddValidationNetwork } = useValidationNetwork(
     baseValidationContext,
     baseValidationContext.stageSubject,
     [stage.quickAdd],
-    // A new person, so the rules read only the others' stored answers.
     undefined,
   );
   const quickAddValidationContext: ValidationContext | undefined =
@@ -210,21 +230,16 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
       : undefined;
 
   // Names added here, and values edited in the drawer, are stored encrypted
-  // when their variables are marked encrypted, which needs a working
-  // passphrase.
-  const { passphrase, passphraseInvalid, requirePassphrase, isEnabled } =
-    usePassphrase();
-  const quickAddEncrypted = isAttributeEncrypted(
-    isEnabled,
-    stageVariables,
-    stage.quickAdd,
-  );
+  // when their variables are marked encrypted, which needs the interview's
+  // key to be in force.
+  const quickAddEncrypted = !!stageVariables[stage.quickAdd]?.encrypted;
   const writesEncrypted =
     quickAddEncrypted ||
-    (stage.nodeForm?.fields ?? []).some((field) =>
-      isAttributeEncrypted(isEnabled, stageVariables, field.variable),
+    (stage.nodeForm?.fields ?? []).some(
+      (field) => !!stageVariables[field.variable]?.encrypted,
     );
-  const addNodeLocked = quickAddEncrypted && (!passphrase || passphraseInvalid);
+  const { unlocked, requirePassphrase } = usePassphrase();
+  const addNodeLocked = quickAddEncrypted && !unlocked;
   const { showToast } = useInterviewToast();
 
   useEffect(() => {
@@ -292,10 +307,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     hullVariableId !== undefined && hullVariable && hullOptions
       ? {
           id: hullVariableId,
-          label: hullVariable.name ?? hullVariableId,
           options: hullOptions.map((option) => ({
             value: String(option.value),
-            label: option.label ?? String(option.value),
+            label: resolve(option.label).text,
           })),
         }
       : null;
@@ -492,7 +506,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     const edgeCbEntry = codebook?.edge?.[edgeType];
     return {
       edgeType,
-      label: edgeCbEntry?.name ?? edgeType,
+      label: edgeCbEntry ? resolve(edgeCbEntry.label).text : edgeType,
       color: edgeCbEntry?.color,
     };
   });
@@ -511,7 +525,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
       ? { variable: currentTool.variable, value: currentTool.value }
       : null;
   // The active group's variable can only be the stage's single hull variable.
-  const activeGroupLabel =
+  const activeGroupLabel: string =
     activeGroup !== null
       ? (groupVariable?.options.find(
           (option) => option.value === activeGroup.value,
@@ -639,13 +653,13 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   // no form to edit (it then shows an empty state).
   const currentEditor: DrawerEditor | null = (() => {
     if (selectedNode !== null) {
-      const attributes =
-        selectedNodeValues.status === 'ready'
-          ? selectedNodeValues.values
-          : NO_ATTRIBUTES;
+      const ready =
+        selectedNodeValues.status === 'ready' ? selectedNodeValues : undefined;
+      const attributes = ready?.values ?? NO_ATTRIBUTES;
       const rawName = attributes[stage.quickAdd];
-      const title =
-        typeof rawName === 'string' && rawName.trim() !== ''
+      const title = ready?.unavailable.includes(stage.quickAdd)
+        ? intl.formatMessage(runtimeMessages.answerUnavailable)
+        : typeof rawName === 'string' && rawName.trim() !== ''
           ? rawName
           : nodeLabel;
       return {
@@ -655,14 +669,18 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         form: stage.nodeForm,
         subject: stage.subject,
         attributes,
+        unavailable: ready?.unavailable,
         passphraseStatus: selectedNodePassphraseStatus,
       };
     }
     if (selectedEdge !== null) {
+      const edgeTypeDefinition = codebook?.edge?.[selectedEdge.type];
       return {
         kind: 'edge',
         entityId: selectedEdge[entityPrimaryKeyProperty],
-        title: codebook?.edge?.[selectedEdge.type]?.name ?? selectedEdge.type,
+        title: edgeTypeDefinition
+          ? resolve(edgeTypeDefinition.label).text
+          : selectedEdge.type,
         form: selectedEdgeFormEntry?.form,
         subject: { entity: 'edge', type: selectedEdge.type },
         attributes: selectedEdge[entityAttributesProperty],
@@ -696,6 +714,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         composerStore={composerStore}
         undoStore={undoStore}
         edges={edgeEntries}
+        words={toolWords}
         nodeLabel={nodeLabel}
         quickAddTargetVariable={stage.quickAdd}
         onAddNode={handleAddNode}
@@ -804,6 +823,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
             form={editor.form}
             subject={editor.subject}
             attributes={editor.attributes}
+            unavailable={editor.unavailable}
             passphraseStatus={editor.passphraseStatus}
             onSave={(id, data) =>
               editor.kind === 'node'
@@ -819,6 +839,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
               composerStore.getState().deselectDeleted();
             }}
             guardDraft={composerStore.getState().guardDraft}
+            overtakenEditNotice={resolve(stage.overtakenEditNotice).text}
           />
         )}
       </ComposerDrawer>

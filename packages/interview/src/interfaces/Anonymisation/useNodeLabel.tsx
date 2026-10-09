@@ -3,28 +3,34 @@
 import { useCallback, useEffect, useMemo, useReducer } from 'react';
 import { useSelector } from 'react-redux';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { NcNode } from '@codaco/shared-consts';
 
+import { runtimeMessages } from '../../i18n/runtimeMessages';
+import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { makeGetCodebookForNodeType } from '../../selectors/protocol';
-import { getShouldEncryptNames } from '../../store/modules/protocol';
 import {
   decryptInScope,
   type OutcomeOf,
   readCachedOutcome,
 } from './decryptionScope';
 import { nodeLabelText, readNodeLabelSource } from './nodeLabel';
-import { useCachedOutcomes, useDecryptionScope } from './useDecryptionScope';
+import { useDecryptionScope } from './useDecryptionScope';
 import { usePassphrase } from './usePassphrase';
+import { useReportUnreadable } from './useReportUnreadable';
 
 /**
  * A function giving the label a node shows, reading its encrypted answers'
- * outcomes with `outcomeOf`. Everything that shows, announces or matches a
- * node by its label reads it here, so they never disagree. `source` saves
- * reading the node's label source again when the caller already has it.
+ * outcomes with `outcomeOf`. Everything that shows or matches a node by its
+ * label reads it here, so they never disagree. `source` saves reading the
+ * node's label source again when the caller already has it.
  */
 export function useNodeLabeller(outcomeOf: OutcomeOf) {
+  const intl = useAppIntl();
   const getCodebookForNodeType = useSelector(makeGetCodebookForNodeType);
-  const encryptionEnabled = useSelector(getShouldEncryptNames);
+  const resolve = useResolveLocalizedString();
+  const { encryptionUnavailable } = usePassphrase();
+  const unavailable = intl.formatMessage(runtimeMessages.answerUnavailable);
 
   return useCallback(
     (
@@ -32,14 +38,23 @@ export function useNodeLabeller(outcomeOf: OutcomeOf) {
       source = readNodeLabelSource(
         node,
         getCodebookForNodeType(node.type)?.variables ?? {},
-        encryptionEnabled,
       ),
-    ) =>
-      nodeLabelText(node, source, {
-        typeLabel: getCodebookForNodeType(node.type)?.name,
+    ) => {
+      const codebook = getCodebookForNodeType(node.type);
+      return nodeLabelText(node, source, {
+        typeLabel: codebook ? resolve(codebook.label).text : '',
+        unavailable,
         outcomeOf,
-      }),
-    [getCodebookForNodeType, encryptionEnabled, outcomeOf],
+        encryptionUnavailable,
+      });
+    },
+    [
+      getCodebookForNodeType,
+      resolve,
+      unavailable,
+      outcomeOf,
+      encryptionUnavailable,
+    ],
   );
 }
 
@@ -47,8 +62,8 @@ export function useNodeLabel(node: NcNode | undefined) {
   const getCodebookForNodeType = useSelector(makeGetCodebookForNodeType);
   const codebook = node ? getCodebookForNodeType(node.type) : undefined;
   const scope = useDecryptionScope();
-  const { requirePassphrase, setPassphraseInvalid, isEnabled } =
-    usePassphrase();
+  const { requirePassphrase } = usePassphrase();
+  const reportUnreadable = useReportUnreadable();
 
   // Read synchronously, so every label that needs no decrypting is available
   // on the FIRST committed render. Resolving plain labels through the async
@@ -58,16 +73,18 @@ export function useNodeLabel(node: NcNode | undefined) {
   // the wrong name.
   const source = useMemo(
     () =>
-      node
-        ? readNodeLabelSource(node, codebook?.variables ?? {}, isEnabled)
-        : undefined,
-    [node, codebook, isEnabled],
+      node ? readNodeLabelSource(node, codebook?.variables ?? {}) : undefined,
+    [node, codebook],
   );
   const encrypted = source?.status === 'encrypted' ? source.value : undefined;
 
   const [, rerender] = useReducer((count: number) => count + 1, 0);
 
   useEffect(() => {
+    if (source?.status === 'unreadable') {
+      reportUnreadable(source.reason);
+      return;
+    }
     if (!encrypted) return;
 
     if (!scope) {
@@ -77,30 +94,28 @@ export function useNodeLabel(node: NcNode | undefined) {
 
     const cached = readCachedOutcome(scope, encrypted);
     if (cached) {
-      if (!cached.readable) setPassphraseInvalid(true);
+      if (!cached.readable) reportUnreadable('decryption-failed');
       return;
     }
 
     let current = true;
-    decryptInScope(scope, encrypted).then(
-      () => {
-        if (current) rerender();
-      },
-      () => {
-        if (!current) return;
-        setPassphraseInvalid(true);
-        rerender();
-      },
-    );
+    void decryptInScope(scope, encrypted).then((result) => {
+      if (!result.readable) reportUnreadable('decryption-failed');
+      if (current) rerender();
+    });
     return () => {
       current = false;
     };
-  }, [encrypted, scope, requirePassphrase, setPassphraseInvalid]);
+  }, [source, encrypted, scope, requirePassphrase, reportUnreadable]);
 
-  // Plaintext is read from the passphrase's decryption scope on every render
-  // rather than copied into component state, so it disappears from the label
-  // the moment that passphrase stops being in force.
-  const labelNode = useNodeLabeller(useCachedOutcomes());
+  // Plaintext is read from the key's decryption scope on every render rather
+  // than copied into component state, so it disappears from the label the
+  // moment that key stops being in force.
+  const outcomeOf = useCallback<OutcomeOf>(
+    (value) => (scope ? readCachedOutcome(scope, value) : undefined),
+    [scope],
+  );
+  const labelNode = useNodeLabeller(outcomeOf);
 
   if (!node || !source) return undefined;
   return labelNode(node, source);

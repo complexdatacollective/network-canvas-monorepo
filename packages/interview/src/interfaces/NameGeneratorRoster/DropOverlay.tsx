@@ -1,5 +1,6 @@
 'use client';
 
+import { ArrowDownToLine } from 'lucide-react';
 import { motion } from 'motion/react';
 
 import { type DndStore, useDndStore } from '@codaco/fresco-ui/dnd/dnd';
@@ -59,7 +60,8 @@ const DropOverlay = ({
       <motion.div variants={iconVariants} animate={isOver ? 'over' : 'initial'}>
         <UINode label="" color={nodeColor} shape={nodeShape} />
       </motion.div>
-      <h2>{message}</h2>
+      <ArrowDownToLine aria-hidden className="mt-4 size-8" />
+      <span className="sr-only">{message}</span>
     </motion.div>
   );
 };

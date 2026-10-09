@@ -8,7 +8,9 @@ import { formatAssetType } from '~/components/Assets/assetMetadataMessages';
 
 import DualLink from './DualLink';
 import EntityBadge from './EntityBadge';
+import { heldInterfaceText, INTERFACE_TEXT_ANCHOR } from './InterfaceText';
 import SummaryContext from './SummaryContext';
+import { DefaultLanguageText } from './SummaryText';
 const messages = defineMessages({
   numberedStage: {
     id: 'architect.presentation.numberedStage',
@@ -52,6 +54,12 @@ const messages = defineMessages({
     description:
       'Visible text in lib / ProtocolSummary / components / Contents.',
   },
+  interfaceText: {
+    id: 'architect.protocolSummary.contents.interfaceText',
+    defaultMessage: 'Interview text',
+    description:
+      'Entry in the printable protocol summary’s contents that links to the section listing the words the interview itself shows, such as its buttons and messages, rather than text written for a stage or codebook entry.',
+  },
   assets: {
     id: 'architect.protocolSummary.contents.assets',
     defaultMessage: 'Assets',
@@ -75,6 +83,8 @@ const Contents = () => {
     toPairs(protocol.assetManifest ?? {}),
     ([, asset]) => (asset as Asset).type,
   );
+  const showsInterfaceText =
+    heldInterfaceText(protocol.interfaceText).length > 0;
   return (
     <div>
       <Heading level="h1">{intl.formatMessage(messages.contents)}</Heading>
@@ -90,7 +100,7 @@ const Contents = () => {
                   <DualLink to={`#stage-${id}`}>
                     {intl.formatMessage(messages.numberedStage, {
                       position: index + 1,
-                      label,
+                      label: <DefaultLanguageText value={label} />,
                     })}
                   </DualLink>
                 </li>
@@ -157,6 +167,13 @@ const Contents = () => {
                   ))}
               </ul>
             </>
+          )}
+          {showsInterfaceText && (
+            <li className={`list-none ${headingClass}`}>
+              <DualLink to={`#${INTERFACE_TEXT_ANCHOR}`}>
+                {intl.formatMessage(messages.interfaceText)}
+              </DualLink>
+            </li>
           )}
         </ol>
       </div>

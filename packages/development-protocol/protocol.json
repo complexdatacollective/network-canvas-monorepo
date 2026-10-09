@@ -1,16 +1,31 @@
 {
   "name": "Development Protocol",
-  "experiments": {
-    "encryptedVariables": true
-  },
+  "experiments": {},
   "stages": [
     {
+      "id": "language-chooser",
+      "type": "LanguageChooser",
+      "label": {
+        "en-US": "Language",
+        "es": "Idioma"
+      }
+    },
+    {
       "id": "anonymisation-interface",
-      "label": "Anonymisation Interface",
+      "label": {
+        "en-US": "Anonymisation Interface",
+        "es": "Interfaz de anonimización"
+      },
       "type": "Anonymisation",
       "explanationText": {
-        "title": "This interview uses enhanced privacy protection",
-        "body": "This interview allows you to encrypt the names of the people you mention so that they cannot be seen by anyone but you - even the researchers running this study. \n\nTo use this feature, enter a passphrase below, and click the button."
+        "title": {
+          "en-US": "This interview uses enhanced privacy protection",
+          "es": "Esta entrevista usa una protección de privacidad reforzada"
+        },
+        "body": {
+          "en-US": "This interview allows you to encrypt the names of the people you mention so that they cannot be seen by anyone but you - even the researchers running this study. \n\nTo use this feature, enter a passphrase below, and click the button.",
+          "es": "Esta entrevista te permite cifrar los nombres de las personas que menciones para que nadie más que tú pueda verlos, ni siquiera el equipo de investigación que realiza este estudio. \n\nPara usar esta función, introduce una frase de contraseña abajo y haz clic en el botón."
+        }
       },
       "validation": {
         "minLength": 4,
@@ -21,67 +36,119 @@
       "id": "ego-form-1",
       "interviewScript": "This is a **markdown field** that contains notes for the interviewer that are printed with the codebook, and can be reviewed during the interview.\n\nFor now it will only support rich text, but not images or audio.",
       "type": "EgoForm",
-      "label": "Ego Form",
+      "label": {
+        "en-US": "Ego Form",
+        "es": "Formulario de ego"
+      },
       "form": {
         "fields": [
           {
             "variable": "3377af3f-3c79-41da-9b0b-6570fb519b93",
-            "prompt": "What is your name?"
+            "prompt": {
+              "en-US": "What is your name?",
+              "es": "¿Cómo te llamas?"
+            }
           },
           {
             "variable": "b4956387-cada-412f-9e97-fe352c3cc44e",
-            "prompt": "Tell us about **yourself** maybe"
+            "prompt": {
+              "en-US": "Tell us about **yourself** maybe",
+              "es": "Cuéntanos sobre **ti**, quizás"
+            }
           },
           {
             "variable": "f3eb5f0b-84ad-43f0-8db5-9f83cd3a56de",
-            "prompt": "What is your age?"
+            "prompt": {
+              "en-US": "What is your age?",
+              "es": "¿Qué edad tienes?"
+            }
           },
           {
             "variable": "683ad529-66c6-4c84-8e31-a31452d6b5e9",
-            "prompt": "How much do you like likert scales?"
+            "prompt": {
+              "en-US": "How much do you like likert scales?",
+              "es": "¿Cuánto te gustan las escalas Likert?"
+            }
           },
           {
             "variable": "f3537457-41a2-4fbf-a1f8-9235b3c1edc6",
-            "prompt": "Which of these things do you like?"
+            "prompt": {
+              "en-US": "Which of these things do you like?",
+              "es": "¿Cuáles de estas cosas te gustan?"
+            }
           },
           {
             "variable": "7c647977-f2d1-426f-b0c5-6d44c795c554",
-            "prompt": "Which of these other things do you like?"
+            "prompt": {
+              "en-US": "Which of these other things do you like?",
+              "es": "¿Cuáles de estas otras cosas te gustan?"
+            }
           },
           {
             "variable": "67fefac9-561f-454a-8f78-81bd9470efaa",
-            "prompt": "Is the switch below not turned on?"
+            "prompt": {
+              "en-US": "Is the switch below not turned on?",
+              "es": "¿El interruptor de abajo no está encendido?"
+            }
           },
           {
             "variable": "300a798f-d11b-4195-91ee-3221bc586c0a",
-            "prompt": "Do you like scales"
+            "prompt": {
+              "en-US": "Do you like scales",
+              "es": "¿Te gustan las escalas?"
+            }
           },
           {
             "variable": "03c54247-aa12-497a-b8f8-c4cb69048455",
-            "prompt": "Pick somewhere on the line"
+            "prompt": {
+              "en-US": "Pick somewhere on the line",
+              "es": "Elige un punto de la línea"
+            }
           },
           {
             "variable": "23a10bcb-bd71-46a1-a36d-4ab80cb5a1d1",
-            "prompt": "What is your date of birth?"
+            "prompt": {
+              "en-US": "What is your date of birth?",
+              "es": "¿Cuál es tu fecha de nacimiento?"
+            }
           },
           {
             "variable": "9c47f32e-b72f-4b1b-93a2-e29766dc3012",
-            "prompt": "Pick your *favourite* day in the last 60 days"
+            "prompt": {
+              "en-US": "Pick your *favourite* day in the last 60 days",
+              "es": "Elige tu día *favorito* de los últimos 60 días"
+            }
           },
           {
             "variable": "cc7d7fdb-c6e8-4c67-a3f3-e76c56511c41",
-            "prompt": "Pick your favourite day that is _after_ than the day above\n"
+            "prompt": {
+              "en-US": "Pick your favourite day that is _after_ than the day above\n",
+              "es": "Elige tu día favorito que sea _posterior_ al día de arriba\n"
+            }
           }
         ]
       },
       "introductionPanel": {
-        "title": "Introduction to the ego form",
-        "text": "There are multiple ways to describe **you**."
+        "title": {
+          "en-US": "Introduction to the ego form",
+          "es": "Introducción al formulario de ego"
+        },
+        "text": {
+          "en-US": "There are multiple ways to describe **you**.",
+          "es": "Hay muchas maneras de describirte **a ti**."
+        }
       }
     },
     {
       "id": "quick-add-ng-encryption",
-      "label": "Quick Add NG with Encryption",
+      "quickAddHint": {
+        "en-US": "Press Enter when you are finished.",
+        "es": "Pulsa Intro cuando hayas terminado."
+      },
+      "label": {
+        "en-US": "Quick Add NG with Encryption",
+        "es": "GN de adición rápida con cifrado"
+      },
       "type": "NameGeneratorQuickAdd",
       "subject": {
         "entity": "node",
@@ -91,13 +158,19 @@
       "prompts": [
         {
           "id": "quick-add-ng-encryption",
-          "text": "This is a quick add name generator with encryption"
+          "text": {
+            "en-US": "This is a quick add name generator with encryption",
+            "es": "Este es un generador de nombres de adición rápida con cifrado"
+          }
         }
       ]
     },
     {
       "id": "one-to-many-dyad-census",
-      "label": "One to Many Dyad Census",
+      "label": {
+        "en-US": "One to Many Dyad Census",
+        "es": "Censo de díadas de uno a muchos"
+      },
       "type": "OneToManyDyadCensus",
       "behaviours": {
         "removeAfterConsideration": true
@@ -109,7 +182,10 @@
       "prompts": [
         {
           "id": "friends",
-          "text": "Tap on all the people who would consider this person a friend",
+          "text": {
+            "en-US": "Tap on all the people who would consider this person a friend",
+            "es": "Toca a todas las personas que considerarían a esta persona un amigo"
+          },
           "createEdge": "friend_edge_type",
           "bucketSortOrder": [
             {
@@ -126,19 +202,31 @@
         },
         {
           "id": "professional",
-          "text": "Tap on all the people who work with this person.",
+          "text": {
+            "en-US": "Tap on all the people who work with this person.",
+            "es": "Toca a todas las personas que trabajan con esta persona."
+          },
           "createEdge": "professional_edge_type"
         }
       ]
     },
     {
-      "label": "Ego name contains",
+      "label": {
+        "en-US": "Ego name contains",
+        "es": "El nombre de ego contiene"
+      },
       "type": "Information",
-      "title": "Ego name contains Josh",
+      "title": {
+        "en-US": "Ego name contains Josh",
+        "es": "El nombre de ego contiene Josh"
+      },
       "items": [
         {
           "id": "08964cf2-4c7b-4ecd-a6ef-9d68c2b13bf4",
-          "content": "Hello fellow Josh!\n",
+          "content": {
+            "en-US": "Hello fellow Josh!\n",
+            "es": "¡Hola, colega Josh!\n"
+          },
           "type": "text"
         }
       ],
@@ -162,23 +250,42 @@
     },
     {
       "id": "namegen1",
+      "externalDataError": {
+        "en-US": "External data could not be loaded.",
+        "es": "No se pudieron cargar los datos externos."
+      },
       "interviewScript": "This is an example of interview script on a name generator.",
       "type": "NameGenerator",
-      "label": "NG with external data",
+      "label": {
+        "en-US": "NG with external data",
+        "es": "GN con datos externos"
+      },
       "form": {
-        "title": "Add A Person",
+        "title": {
+          "en-US": "Add A Person",
+          "es": "Añadir una persona"
+        },
         "fields": [
           {
             "variable": "name_variable",
-            "prompt": "What is this person's name?"
+            "prompt": {
+              "en-US": "What is this person's name?",
+              "es": "¿Cómo se llama esta persona?"
+            }
           },
           {
             "variable": "0e75ec18-2cb1-4606-9f18-034d28b07c19",
-            "prompt": "What is this person's *nickname*?"
+            "prompt": {
+              "en-US": "What is this person's *nickname*?",
+              "es": "¿Cuál es el *apodo* de esta persona?"
+            }
           },
           {
             "variable": "c5fee926-855d-4419-b5bb-54e89010cea6",
-            "prompt": "What is this person's age?"
+            "prompt": {
+              "en-US": "What is this person's age?",
+              "es": "¿Qué edad tiene esta persona?"
+            }
           }
         ]
       },
@@ -189,12 +296,18 @@
       "panels": [
         {
           "id": "cab85e8a-0a9e-4d5f-9242-930b5d9ce3e4",
-          "title": "Already mentioned",
+          "title": {
+            "en-US": "Already mentioned",
+            "es": "Ya mencionados"
+          },
           "dataSource": "existing"
         },
         {
           "id": "another-unique-id",
-          "title": "External data not using UUIDs",
+          "title": {
+            "en-US": "External data not using UUIDs",
+            "es": "Datos externos sin UUID"
+          },
           "dataSource": "previousInterview-json",
           "filter": {
             "join": "OR",
@@ -216,7 +329,10 @@
       "prompts": [
         {
           "id": "6cl",
-          "text": "Who would _you_ consider to be a **close friend**?",
+          "text": {
+            "en-US": "Who would _you_ consider to be a **close friend**?",
+            "es": "¿A quién considerarías _tú_ un **amigo cercano**?"
+          },
           "additionalAttributes": [
             {
               "variable": "ae44b6ba-ad49-4ecf-bf38-b65decfce000",
@@ -230,7 +346,10 @@
         },
         {
           "id": "6su",
-          "text": "This is a particularly long prompt, which will be discouraged in the Architect interface but might still be desired by a researcher. What does this look like rendered?",
+          "text": {
+            "en-US": "This is a particularly long prompt, which will be discouraged in the Architect interface but might still be desired by a researcher. What does this look like rendered?",
+            "es": "Esta es una instrucción especialmente larga, que la interfaz de Architect desaconsejará, pero que un investigador podría querer de todos modos. ¿Cómo se ve al mostrarse?"
+          },
           "additionalAttributes": [
             {
               "variable": "94e2dee9-1c25-4b64-b8bb-4946465c3c07",
@@ -240,32 +359,57 @@
         },
         {
           "id": "2we",
-          "text": "Prompt with no additional attributes"
+          "text": {
+            "en-US": "Prompt with no additional attributes",
+            "es": "Instrucción sin atributos adicionales"
+          }
         },
         {
           "id": "2wj",
-          "text": "Second prompt with no additional attributes"
+          "text": {
+            "en-US": "Second prompt with no additional attributes",
+            "es": "Segunda instrucción sin atributos adicionales"
+          }
         }
       ]
     },
     {
       "id": "namegen1a",
+      "externalDataError": {
+        "en-US": "External data could not be loaded.",
+        "es": "No se pudieron cargar los datos externos."
+      },
       "type": "NameGenerator",
-      "label": "NG CSV File",
+      "label": {
+        "en-US": "NG CSV File",
+        "es": "GN con archivo CSV"
+      },
       "form": {
-        "title": "Add A Person",
+        "title": {
+          "en-US": "Add A Person",
+          "es": "Añadir una persona"
+        },
         "fields": [
           {
             "variable": "name_variable",
-            "prompt": "What is this person's name?"
+            "prompt": {
+              "en-US": "What is this person's name?",
+              "es": "¿Cómo se llama esta persona?"
+            }
           },
           {
             "variable": "0e75ec18-2cb1-4606-9f18-034d28b07c19",
-            "prompt": "What is this person's nickname?"
+            "prompt": {
+              "en-US": "What is this person's nickname?",
+              "es": "¿Cuál es el apodo de esta persona?"
+            }
           },
           {
             "variable": "c5fee926-855d-4419-b5bb-54e89010cea6",
-            "prompt": "What is this person's age?"
+            "prompt": {
+              "en-US": "What is this person's age?",
+              "es": "¿Qué edad tiene esta persona?"
+            }
           }
         ]
       },
@@ -276,21 +420,42 @@
       "panels": [
         {
           "id": "another-unique-id-123",
-          "title": "External data from CSV",
+          "title": {
+            "en-US": "External data from CSV",
+            "es": "Datos externos de un CSV"
+          },
           "dataSource": "previousInterview-csv"
         }
       ],
       "prompts": [
         {
           "id": "2wedwee",
-          "text": "NameGen with CSV external data"
+          "text": {
+            "en-US": "NameGen with CSV external data",
+            "es": "Generador de nombres con datos externos CSV"
+          }
         }
       ]
     },
     {
       "id": "namegen2",
+      "minNodesNotice": {
+        "en-US": "{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}",
+        "es": "{count, plural, one {Debes crear al menos # elemento antes de continuar.} other {Debes crear al menos # elementos antes de continuar.}}"
+      },
+      "maxNodesNotice": {
+        "en-US": "You have completed this task. Click the next arrow to continue.",
+        "es": "Has completado esta tarea. Pulsa la flecha de avance para continuar."
+      },
+      "quickAddHint": {
+        "en-US": "Press Enter when you are finished.",
+        "es": "Pulsa Intro cuando hayas terminado."
+      },
       "type": "NameGeneratorQuickAdd",
-      "label": "NG Quick add",
+      "label": {
+        "en-US": "NG Quick add",
+        "es": "GN de adición rápida"
+      },
       "quickAdd": "venue_name_variable",
       "subject": {
         "entity": "node",
@@ -299,7 +464,10 @@
       "panels": [
         {
           "id": "cab85e8a-0a9e-4d5f-9242-930b5d9ce3e4",
-          "title": "Other Venues",
+          "title": {
+            "en-US": "Other Venues",
+            "es": "Otros lugares"
+          },
           "dataSource": "existing"
         }
       ],
@@ -310,7 +478,10 @@
       "prompts": [
         {
           "id": "6cl",
-          "text": "This name generator creates venue nodes using the quick add form",
+          "text": {
+            "en-US": "This name generator creates venue nodes using the quick add form",
+            "es": "Este generador de nombres crea nodos de lugares con el formulario de adición rápida"
+          },
           "additionalAttributes": [
             {
               "variable": "55f1fbbe-2fe5-42a7-88fb-9a8e5e659d2f",
@@ -320,31 +491,49 @@
         },
         {
           "id": "6su",
-          "text": "Another venue prompt"
+          "text": {
+            "en-US": "Another venue prompt",
+            "es": "Otra instrucción de lugares"
+          }
         }
       ]
     },
     {
       "id": "dyadcensus",
       "type": "DyadCensus",
-      "label": "Dyad Census",
+      "label": {
+        "en-US": "Dyad Census",
+        "es": "Censo de díadas"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
       },
       "introductionPanel": {
-        "title": "Introduction to the Dyad Census",
-        "text": "This section will go through all possible node pairs and ask you how they are connected."
+        "title": {
+          "en-US": "Introduction to the Dyad Census",
+          "es": "Introducción al censo de díadas"
+        },
+        "text": {
+          "en-US": "This section will go through all possible node pairs and ask you how they are connected.",
+          "es": "Esta sección recorrerá todos los pares de nodos posibles y te preguntará cómo están conectados."
+        }
       },
       "prompts": [
         {
           "id": "friends",
-          "text": "Are these people friends?",
+          "text": {
+            "en-US": "Are these people friends?",
+            "es": "¿Son amigas estas personas?"
+          },
           "createEdge": "friend_edge_type"
         },
         {
           "id": "professional",
-          "text": "Do these people work together?",
+          "text": {
+            "en-US": "Do these people work together?",
+            "es": "¿Trabajan juntas estas personas?"
+          },
           "createEdge": "professional_edge_type"
         }
       ]
@@ -352,36 +541,60 @@
     {
       "id": "tie-strength-census",
       "type": "TieStrengthCensus",
-      "label": "Tie-Strength Census",
+      "label": {
+        "en-US": "Tie-Strength Census",
+        "es": "Censo de intensidad de vínculos"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
       },
       "introductionPanel": {
-        "title": "Introduction to the Tie-Strength Census",
-        "text": "This interface both creates an edge and assigns an ordinal value to it."
+        "title": {
+          "en-US": "Introduction to the Tie-Strength Census",
+          "es": "Introducción al censo de intensidad de vínculos"
+        },
+        "text": {
+          "en-US": "This interface both creates an edge and assigns an ordinal value to it.",
+          "es": "Esta interfaz crea un vínculo y además le asigna un valor ordinal."
+        }
       },
       "prompts": [
         {
           "id": "friendship-strength",
-          "text": "Thinking about each pair of people, please choose the option that best describes **how close they are to one another**.",
+          "text": {
+            "en-US": "Thinking about each pair of people, please choose the option that best describes **how close they are to one another**.",
+            "es": "Pensando en cada par de personas, elige la opción que mejor describa **lo cercanas que son entre sí**."
+          },
           "createEdge": "friend_edge_type",
           "edgeVariable": "e343a91f-628d-4175-870c-75429857399e",
-          "negativeLabel": "Don't know each other"
+          "negativeLabel": {
+            "en-US": "Don't know each other",
+            "es": "No se conocen"
+          }
         },
         {
           "id": "professional-strength",
-          "text": "How often do these people work together on important projects?",
+          "text": {
+            "en-US": "How often do these people work together on important projects?",
+            "es": "¿Con qué frecuencia trabajan juntas estas personas en proyectos importantes?"
+          },
           "createEdge": "professional_edge_type",
           "edgeVariable": "f984jk23-628d-4175-870c-ejd8e7al8vc3",
-          "negativeLabel": "Do not work together"
+          "negativeLabel": {
+            "en-US": "Do not work together",
+            "es": "No trabajan juntas"
+          }
         }
       ]
     },
     {
       "id": "ordinalBin1",
       "type": "OrdinalBin",
-      "label": "Contact Freq for close ties",
+      "label": {
+        "en-US": "Contact Freq for close ties",
+        "es": "Frecuencia de contacto para vínculos cercanos"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
@@ -404,7 +617,10 @@
       "prompts": [
         {
           "id": "contactFreq",
-          "text": "Contact frequency ordinal variable for close ties only",
+          "text": {
+            "en-US": "Contact frequency ordinal variable for close ties only",
+            "es": "Variable ordinal de frecuencia de contacto solo para vínculos cercanos"
+          },
           "variable": "1096204b-48fe-444c-b642-4ab211f7f57c",
           "color": "ord-color-seq-1",
           "bucketSortOrder": [
@@ -426,7 +642,10 @@
         },
         {
           "id": "discussFreq",
-          "text": "Discussion Frequency variable, with a much longer prompt than the previous prompt. Please also note that this prompt uses the color override to style these bins differently than the main prompt.",
+          "text": {
+            "en-US": "Discussion Frequency variable, with a much longer prompt than the previous prompt. Please also note that this prompt uses the color override to style these bins differently than the main prompt.",
+            "es": "Variable de frecuencia de conversación, con una instrucción mucho más larga que la anterior. Ten en cuenta también que esta instrucción usa la sustitución de color para dar a estos contenedores un estilo distinto al de la instrucción principal."
+          },
           "variable": "23c5a7b9-b553-4ff1-b515-6a81999773d2",
           "color": "ord-color-seq-2"
         }
@@ -435,7 +654,10 @@
     {
       "id": "ordinalBin2",
       "type": "OrdinalBin",
-      "label": "Contact Freq.",
+      "label": {
+        "en-US": "Contact Freq.",
+        "es": "Frec. de contacto"
+      },
       "subject": {
         "entity": "node",
         "type": "venue_node_type"
@@ -443,7 +665,10 @@
       "prompts": [
         {
           "id": "visitFreq",
-          "text": "Showing an ordinalbin interface with a node type other than person.",
+          "text": {
+            "en-US": "Showing an ordinalbin interface with a node type other than person.",
+            "es": "Se muestra una interfaz de contenedores ordinales con un tipo de nodo distinto de persona."
+          },
           "variable": "venueVisitFreqVariable",
           "color": "ord-color-seq-7"
         }
@@ -451,8 +676,27 @@
     },
     {
       "id": "namegenroster2a",
+      "minNodesNotice": {
+        "en-US": "{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}",
+        "es": "{count, plural, one {Debes crear al menos # elemento antes de continuar.} other {Debes crear al menos # elementos antes de continuar.}}"
+      },
+      "maxNodesNotice": {
+        "en-US": "You have completed this task. Click the next arrow to continue.",
+        "es": "Has completado esta tarea. Pulsa la flecha de avance para continuar."
+      },
+      "externalDataError": {
+        "en-US": "External data could not be loaded.",
+        "es": "No se pudieron cargar los datos externos."
+      },
+      "allAddedNotice": {
+        "en-US": "There is nothing left to add from this list.",
+        "es": "No queda nada que añadir de esta lista."
+      },
       "type": "NameGeneratorRoster",
-      "label": "NG HIV Services",
+      "label": {
+        "en-US": "NG HIV Services",
+        "es": "GN de servicios de VIH"
+      },
       "subject": {
         "entity": "node",
         "type": "venue_node_type"
@@ -462,30 +706,58 @@
         "maxNodes": 8
       },
       "dataSource": "HIVServices-csv",
+      "panelTitle": {
+        "en-US": "Available to add",
+        "es": "Disponibles para añadir"
+      },
       "prompts": [
         {
           "id": "7tk",
-          "text": "HIV Venue CSV data, with no sort options or additional attributes."
+          "text": {
+            "en-US": "HIV Venue CSV data, with no sort options or additional attributes.",
+            "es": "Datos CSV de lugares de VIH, sin opciones de orden ni atributos adicionales."
+          }
         }
       ]
     },
     {
       "id": "namegenroster2",
+      "externalDataError": {
+        "en-US": "External data could not be loaded.",
+        "es": "No se pudieron cargar los datos externos."
+      },
+      "allAddedNotice": {
+        "en-US": "There is nothing left to add from this list.",
+        "es": "No queda nada que añadir de esta lista."
+      },
       "type": "NameGeneratorRoster",
-      "label": "NG Classmates",
+      "label": {
+        "en-US": "NG Classmates",
+        "es": "GN de compañeros de clase"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
       },
       "dataSource": "previousInterview-json",
+      "panelTitle": {
+        "en-US": "Available to add",
+        "es": "Disponibles para añadir"
+      },
       "cardOptions": {
         "additionalProperties": [
           {
-            "label": "Name",
+            "label": {
+              "en-US": "Name",
+              "es": "Nombre"
+            },
             "variable": "last_name"
           },
           {
-            "label": "Age",
+            "label": {
+              "en-US": "Age",
+              "es": "Edad"
+            },
             "variable": "age"
           }
         ]
@@ -499,11 +771,17 @@
         ],
         "sortableProperties": [
           {
-            "label": "Nickname",
+            "label": {
+              "en-US": "Nickname",
+              "es": "Apodo"
+            },
             "variable": "nickname"
           },
           {
-            "label": "Age",
+            "label": {
+              "en-US": "Age",
+              "es": "Edad"
+            },
             "variable": "age"
           }
         ]
@@ -511,7 +789,10 @@
       "prompts": [
         {
           "id": "7cl",
-          "text": "previous interview JSON",
+          "text": {
+            "en-US": "previous interview JSON",
+            "es": "JSON de la entrevista anterior"
+          },
           "additionalAttributes": [
             {
               "variable": "ae44b6ba-ad49-4ecf-bf38-b65decfce000",
@@ -524,45 +805,78 @@
     {
       "id": "namegen4",
       "type": "NameGenerator",
-      "label": "NG Inputs",
+      "label": {
+        "en-US": "NG Inputs",
+        "es": "GN de campos"
+      },
       "form": {
-        "title": "Test for form input controls",
+        "title": {
+          "en-US": "Test for form input controls",
+          "es": "Prueba de los controles de los formularios"
+        },
         "fields": [
           {
             "variable": "2377af3f-3c79-41da-9b0b-6570fb519b93",
-            "prompt": "What is this person's _name_?"
+            "prompt": {
+              "en-US": "What is this person's _name_?",
+              "es": "¿Cuál es el _nombre_ de esta persona?"
+            }
           },
           {
             "variable": "e3eb5f0b-84ad-43f0-8db5-9f83cd3a56de",
-            "prompt": "What is this person's _age_?"
+            "prompt": {
+              "en-US": "What is this person's _age_?",
+              "es": "¿Cuál es la _edad_ de esta persona?"
+            }
           },
           {
             "variable": "583ad529-66c6-4c84-8e31-a31452d6b5e9",
-            "prompt": "How much do you like **likert scales**?"
+            "prompt": {
+              "en-US": "How much do you like **likert scales**?",
+              "es": "¿Cuánto te gustan las **escalas Likert**?"
+            }
           },
           {
             "variable": "e3537457-41a2-4fbf-a1f8-9235b3c1edc6",
-            "prompt": "Which of *these things* do you like?"
+            "prompt": {
+              "en-US": "Which of *these things* do you like?",
+              "es": "¿Cuáles de *estas cosas* te gustan?"
+            }
           },
           {
             "variable": "6c647977-f2d1-426f-b0c5-6d44c795c554",
-            "prompt": "Which of these **other** things do you like?"
+            "prompt": {
+              "en-US": "Which of these **other** things do you like?",
+              "es": "¿Cuáles de estas **otras** cosas te gustan?"
+            }
           },
           {
             "variable": "57fefac9-561f-454a-8f78-81bd9470efaa",
-            "prompt": "Is the switch below not turned _on_?"
+            "prompt": {
+              "en-US": "Is the switch below not turned _on_?",
+              "es": "¿El interruptor de abajo no está _encendido_?"
+            }
           },
           {
             "variable": "683ad529-66c6-4c84-8e31-a31452dsf74k",
-            "prompt": "This is a variable whose **value** you must choose!"
+            "prompt": {
+              "en-US": "This is a variable whose **value** you must choose!",
+              "es": "¡Esta es una variable cuyo **valor** debes elegir!"
+            }
           },
           {
             "variable": "e4e0df51-4b53-4e16-9249-8587537370e9",
-            "prompt": "Do you like **likert scales**?"
+            "prompt": {
+              "en-US": "Do you like **likert scales**?",
+              "es": "¿Te gustan las **escalas Likert**?"
+            }
           },
           {
             "variable": "720224a3-e2d3-4729-968a-29d3f3e4fca6",
-            "prompt": "How _far away_ is the moon?"
+            "prompt": {
+              "en-US": "How _far away_ is the moon?",
+              "es": "¿A qué _distancia_ está la luna?"
+            }
           }
         ]
       },
@@ -573,14 +887,30 @@
       "prompts": [
         {
           "id": "6cl",
-          "text": "This name generator is designed to test input types"
+          "text": {
+            "en-US": "This name generator is designed to test input types",
+            "es": "Este generador de nombres está pensado para probar los tipos de campo"
+          }
         }
       ]
     },
     {
       "id": "sociogram",
+      "tooltips": {
+        "pauseLayout": {
+          "en-US": "Pause automatic layout",
+          "es": "Pausar la disposición automática"
+        },
+        "resumeLayout": {
+          "en-US": "Resume automatic layout",
+          "es": "Reanudar la disposición automática"
+        }
+      },
       "type": "Sociogram",
-      "label": "Sociogram",
+      "label": {
+        "en-US": "Sociogram",
+        "es": "Sociograma"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
@@ -595,7 +925,10 @@
       "prompts": [
         {
           "id": "closeness1",
-          "text": "This interface uses the concentric circles background and excludes John and William",
+          "text": {
+            "en-US": "This interface uses the concentric circles background and excludes John and William",
+            "es": "Esta interfaz usa el fondo de círculos concéntricos y excluye a John y a William"
+          },
           "sortOrder": [
             {
               "property": "*",
@@ -615,7 +948,10 @@
         },
         {
           "id": "edgeType2",
-          "text": "Creates a second edge type",
+          "text": {
+            "en-US": "Creates a second edge type",
+            "es": "Crea un segundo tipo de vínculo"
+          },
           "layout": {
             "layoutVariable": "layout_variable"
           },
@@ -635,7 +971,10 @@
         },
         {
           "id": "closeness2",
-          "text": "Toggle variable",
+          "text": {
+            "en-US": "Toggle variable",
+            "es": "Variable de interruptor"
+          },
           "layout": {
             "layoutVariable": "layout_variable"
           },
@@ -655,7 +994,10 @@
         },
         {
           "id": "closeness3",
-          "text": "This prompt shows 3 concentric circles and creates friend edges.",
+          "text": {
+            "en-US": "This prompt shows 3 concentric circles and creates friend edges.",
+            "es": "Esta instrucción muestra 3 círculos concéntricos y crea vínculos de amistad."
+          },
           "layout": {
             "layoutVariable": "layout_variable"
           },
@@ -664,37 +1006,15 @@
             "create": "friend_edge_type"
           }
         }
-      ],
-      "filter": {
-        "join": "AND",
-        "rules": [
-          {
-            "type": "node",
-            "options": {
-              "type": "person_node_type",
-              "operator": "NOT",
-              "attribute": "name_variable",
-              "value": "John"
-            },
-            "id": "6091efec-3ef1-4680-810f-d68f69441384"
-          },
-          {
-            "type": "node",
-            "options": {
-              "type": "person_node_type",
-              "operator": "NOT",
-              "attribute": "name_variable",
-              "value": "William"
-            },
-            "id": "69593513-dbb9-48b8-a588-92d74d416bf7"
-          }
-        ]
-      }
+      ]
     },
     {
       "id": "sociogram2",
       "type": "Sociogram",
-      "label": "Sociogram with background image",
+      "label": {
+        "en-US": "Sociogram with background image",
+        "es": "Sociograma con imagen de fondo"
+      },
       "subject": {
         "entity": "node",
         "type": "venue_node_type"
@@ -706,7 +1026,10 @@
       "prompts": [
         {
           "id": "23423",
-          "text": "This interface uses a background image. Nodes are placed in reverse nomination order.",
+          "text": {
+            "en-US": "This interface uses a background image. Nodes are placed in reverse nomination order.",
+            "es": "Esta interfaz usa una imagen de fondo. Los nodos se colocan en orden inverso de nominación."
+          },
           "sortOrder": [
             {
               "property": "*",
@@ -721,21 +1044,50 @@
     },
     {
       "id": "namegenroster1",
+      "externalDataError": {
+        "en-US": "External data could not be loaded.",
+        "es": "No se pudieron cargar los datos externos."
+      },
+      "allAddedNotice": {
+        "en-US": "There is nothing left to add from this list.",
+        "es": "No queda nada que añadir de esta lista."
+      },
+      "searchLabel": {
+        "en-US": "Search",
+        "es": "Buscar"
+      },
+      "searchNoMatch": {
+        "en-US": "Nothing matched your search term.",
+        "es": "No hay resultados que coincidan con tu búsqueda."
+      },
       "type": "NameGeneratorRoster",
-      "label": "NG Classmates",
+      "label": {
+        "en-US": "NG Classmates",
+        "es": "GN de compañeros de clase"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
       },
       "dataSource": "previousInterview-json",
+      "panelTitle": {
+        "en-US": "Available to add",
+        "es": "Disponibles para añadir"
+      },
       "cardOptions": {
         "additionalProperties": [
           {
-            "label": "Name",
+            "label": {
+              "en-US": "Name",
+              "es": "Nombre"
+            },
             "variable": "last_name"
           },
           {
-            "label": "Age",
+            "label": {
+              "en-US": "Age",
+              "es": "Edad"
+            },
             "variable": "age"
           }
         ]
@@ -747,7 +1099,10 @@
       "prompts": [
         {
           "id": "7cl1",
-          "text": "Which classmates would you also think of as friends?",
+          "text": {
+            "en-US": "Which classmates would you also think of as friends?",
+            "es": "¿A qué compañeros de clase considerarías también amigos?"
+          },
           "additionalAttributes": [
             {
               "variable": "ae44b6ba-ad49-4ecf-bf38-b65decfce000",
@@ -757,7 +1112,10 @@
         },
         {
           "id": "31f7ee2e-6ff8-4881-9db4-ee1fc369dc5f",
-          "text": "Which of these classmates would help you with homework?\n",
+          "text": {
+            "en-US": "Which of these classmates would help you with homework?\n",
+            "es": "¿Cuáles de estos compañeros de clase te ayudarían con las tareas?\n"
+          },
           "additionalAttributes": [
             {
               "variable": "e1dda563-f6f6-47b7-91cb-31b4c2fdb73a",
@@ -769,21 +1127,50 @@
     },
     {
       "id": "namegenroster3",
+      "externalDataError": {
+        "en-US": "External data could not be loaded.",
+        "es": "No se pudieron cargar los datos externos."
+      },
+      "allAddedNotice": {
+        "en-US": "There is nothing left to add from this list.",
+        "es": "No queda nada que añadir de esta lista."
+      },
+      "searchLabel": {
+        "en-US": "Search",
+        "es": "Buscar"
+      },
+      "searchNoMatch": {
+        "en-US": "Nothing matched your search term.",
+        "es": "No hay resultados que coincidan con tu búsqueda."
+      },
       "type": "NameGeneratorRoster",
-      "label": "Roster Autocomplete HIV",
+      "label": {
+        "en-US": "Roster Autocomplete HIV",
+        "es": "Lista de autocompletado de VIH"
+      },
       "subject": {
         "entity": "node",
         "type": "venue_node_type"
       },
       "dataSource": "HIVServices",
+      "panelTitle": {
+        "en-US": "Available to add",
+        "es": "Disponibles para añadir"
+      },
       "cardOptions": {
         "additionalProperties": [
           {
-            "label": "Address",
+            "label": {
+              "en-US": "Address",
+              "es": "Dirección"
+            },
             "variable": "67132d2b-c371-4c57-a5eb-6520083f9d22"
           },
           {
-            "label": "Subsidiary/Program/Project",
+            "label": {
+              "en-US": "Subsidiary/Program/Project",
+              "es": "Filial/Programa/Proyecto"
+            },
             "variable": "8ee3a187-d4be-458e-8abb-71efcc071949"
           }
         ]
@@ -799,7 +1186,10 @@
       "prompts": [
         {
           "id": "7su",
-          "text": "Which of these venues have you visited in the previous 6 months?",
+          "text": {
+            "en-US": "Which of these venues have you visited in the previous 6 months?",
+            "es": "¿Cuáles de estos lugares has visitado en los últimos 6 meses?"
+          },
           "additionalAttributes": [
             {
               "variable": "55f1fbbe-2fe5-42a7-88fb-9a8e5e659d2f",
@@ -812,7 +1202,10 @@
     {
       "id": "catBin1",
       "type": "CategoricalBin",
-      "label": "Contact Types",
+      "label": {
+        "en-US": "Contact Types",
+        "es": "Tipos de contacto"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
@@ -821,24 +1214,42 @@
         {
           "variable": "e343a91f-628d-4175-870c-957beffa0152",
           "id": "cat2",
-          "text": "Categorical bin excluding nodes called \"William\""
+          "text": {
+            "en-US": "Categorical bin excluding nodes called \"William\"",
+            "es": "Contenedor categórico que excluye los nodos llamados \"William\""
+          }
         },
         {
           "variable": "e343a91f-628d-4175-870c-957beffa0153",
           "id": "cat3",
-          "text": "Three with other",
+          "text": {
+            "en-US": "Three with other",
+            "es": "Tres con otro"
+          },
           "otherVariable": "979c9ad7-74cb-402d-8574-3f0a91c9174d",
-          "otherVariablePrompt": "What were you thinking of instead?",
-          "otherOptionLabel": "Not Listed"
+          "otherVariablePrompt": {
+            "en-US": "What were you thinking of instead?",
+            "es": "¿En qué estabas pensando en su lugar?"
+          },
+          "otherOptionLabel": {
+            "en-US": "Not Listed",
+            "es": "No aparece"
+          }
         },
         {
           "id": "cat4",
-          "text": "Four",
+          "text": {
+            "en-US": "Four",
+            "es": "Cuatro"
+          },
           "variable": "e343a91f-628d-4175-870c-957beffa0154"
         },
         {
           "id": "contactType",
-          "text": "What is the most frequent type of contact you have?",
+          "text": {
+            "en-US": "What is the most frequent type of contact you have?",
+            "es": "¿Cuál es el tipo de contacto más frecuente que tienes?"
+          },
           "variable": "e343a91f-628d-4175-870c-957beffa0151",
           "bucketSortOrder": [
             {
@@ -863,30 +1274,21 @@
         },
         {
           "id": "discussType",
-          "text": "Discussion type variable, with a much longer prompt than the previous prompt. Please also note that this prompt uses the max number of bins.",
+          "text": {
+            "en-US": "Discussion type variable, with a much longer prompt than the previous prompt. Please also note that this prompt uses the max number of bins.",
+            "es": "Variable de tipo de conversación, con una instrucción mucho más larga que la anterior. Ten en cuenta también que esta instrucción usa el número máximo de contenedores."
+          },
           "variable": "4ccba4e2-a246-46ee-a3ff-1c70fb4c449c"
         }
-      ],
-      "filter": {
-        "join": "AND",
-        "rules": [
-          {
-            "type": "node",
-            "options": {
-              "type": "person_node_type",
-              "operator": "NOT",
-              "attribute": "name_variable",
-              "value": "William"
-            },
-            "id": "e7cbcb30-5d01-4c23-ae76-4ac0d6e1c7f2"
-          }
-        ]
-      }
+      ]
     },
     {
       "id": "alter-form-1",
       "type": "AlterForm",
-      "label": "Alter Form",
+      "label": {
+        "en-US": "Alter Form",
+        "es": "Formulario de alter"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
@@ -895,21 +1297,36 @@
         "fields": [
           {
             "variable": "246c4d84-ebd7-41a6-8c1a-ef83938227ba",
-            "prompt": "What is this person's life story?"
+            "prompt": {
+              "en-US": "What is this person's life story?",
+              "es": "¿Cuál es la historia de vida de esta persona?"
+            }
           },
           {
             "variable": "9b56bc6d-6b20-4e38-9aab-4057e78e1130",
-            "prompt": "Choose a date"
+            "prompt": {
+              "en-US": "Choose a date",
+              "es": "Elige una fecha"
+            }
           },
           {
             "variable": "490db003-3289-4969-b426-919cefb4cdf0",
-            "prompt": "Do you want to do another likert?"
+            "prompt": {
+              "en-US": "Do you want to do another likert?",
+              "es": "¿Quieres hacer otra escala Likert?"
+            }
           }
         ]
       },
       "introductionPanel": {
-        "title": "Introduction to the alter form",
-        "text": "This is some **markdown** that \n* explains this interface and \n* is *marked down*. \n\nBelow this might be as much additional text as the researcher desires. The container that this content is in should dynamically expand to accommodate that."
+        "title": {
+          "en-US": "Introduction to the alter form",
+          "es": "Introducción al formulario de alter"
+        },
+        "text": {
+          "en-US": "This is some **markdown** that \n* explains this interface and \n* is *marked down*. \n\nBelow this might be as much additional text as the researcher desires. The container that this content is in should dynamically expand to accommodate that.",
+          "es": "Esto es un poco de **markdown** que \n* explica esta interfaz y \n* está *en markdown*. \n\nDebajo puede haber tanto texto adicional como quiera el investigador. El contenedor de este contenido debería ampliarse de forma dinámica para acomodarlo."
+        }
       },
       "skipLogic": {
         "action": "SKIP",
@@ -933,7 +1350,10 @@
     {
       "id": "alter-edge-form-1",
       "type": "AlterEdgeForm",
-      "label": "Alter Edge Form (friends)",
+      "label": {
+        "en-US": "Alter Edge Form (friends)",
+        "es": "Formulario de vínculos de alter (amigos)"
+      },
       "subject": {
         "entity": "edge",
         "type": "friend_edge_type"
@@ -942,21 +1362,36 @@
         "fields": [
           {
             "variable": "e343a91f-628d-4175-870c-957beffa0002",
-            "prompt": "Two item categorical variable"
+            "prompt": {
+              "en-US": "Two item categorical variable",
+              "es": "Variable categórica de dos elementos"
+            }
           },
           {
             "variable": "e343a91f-628d-4175-870c-957beffa0003",
-            "prompt": "_Three_ item categorical variable"
+            "prompt": {
+              "en-US": "_Three_ item categorical variable",
+              "es": "Variable categórica de _tres_ elementos"
+            }
           },
           {
             "variable": "e343a91f-628d-4175-870c-957beffa0004",
-            "prompt": "Four item categorical variable"
+            "prompt": {
+              "en-US": "Four item categorical variable",
+              "es": "Variable categórica de cuatro elementos"
+            }
           }
         ]
       },
       "introductionPanel": {
-        "title": "Introduction to the alter edge form",
-        "text": "This per alter edge form shows friend edges, but filters\n\n\n- Any edges where either node also also has a professional edge\n- Any nodes where contact frequency is over two years ago, or last two years\n\n"
+        "title": {
+          "en-US": "Introduction to the alter edge form",
+          "es": "Introducción al formulario de vínculos de alter"
+        },
+        "text": {
+          "en-US": "This per alter edge form shows friend edges, but filters\n\n\n- Any edges where either node also also has a professional edge\n- Any nodes where contact frequency is over two years ago, or last two years\n\n",
+          "es": "Este formulario de vínculos por alter muestra los vínculos de amistad, pero filtra\n\n\n- Los vínculos en los que cualquiera de los nodos también tiene un vínculo profesional\n- Los nodos cuya frecuencia de contacto es de hace más de dos años, o de los últimos dos años\n\n"
+        }
       },
       "filter": {
         "join": "AND",
@@ -985,7 +1420,10 @@
     {
       "id": "alter-edge-form-2",
       "type": "AlterEdgeForm",
-      "label": "Alter Edge Form (professional)",
+      "label": {
+        "en-US": "Alter Edge Form (professional)",
+        "es": "Formulario de vínculos de alter (profesional)"
+      },
       "subject": {
         "entity": "edge",
         "type": "professional_edge_type"
@@ -994,19 +1432,65 @@
         "fields": [
           {
             "variable": "d343a91f-628d-4175-870c-957beffa0002",
-            "prompt": "Two item categorical variable"
+            "prompt": {
+              "en-US": "Two item categorical variable",
+              "es": "Variable categórica de dos elementos"
+            }
           }
         ]
       },
       "introductionPanel": {
-        "title": "An alternative alter edge interface",
-        "text": "This interface acts on professional edges."
+        "title": {
+          "en-US": "An alternative alter edge interface",
+          "es": "Una interfaz alternativa de vínculos de alter"
+        },
+        "text": {
+          "en-US": "This interface acts on professional edges.",
+          "es": "Esta interfaz actúa sobre los vínculos profesionales."
+        }
       }
     },
     {
       "id": "narrative1",
+      "attributesHeading": {
+        "en-US": "Attributes",
+        "es": "Atributos"
+      },
+      "linksHeading": {
+        "en-US": "Links",
+        "es": "Conexiones"
+      },
+      "groupsHeading": {
+        "en-US": "Groups",
+        "es": "Grupos"
+      },
+      "tooltips": {
+        "enableDrawing": {
+          "en-US": "Enable drawing",
+          "es": "Activar el dibujo"
+        },
+        "disableDrawing": {
+          "en-US": "Disable drawing",
+          "es": "Desactivar el dibujo"
+        },
+        "freezeAnnotations": {
+          "en-US": "Freeze annotations",
+          "es": "Bloquear las anotaciones"
+        },
+        "unfreezeAnnotations": {
+          "en-US": "Unfreeze annotations",
+          "es": "Desbloquear las anotaciones"
+        },
+        "resetAnnotations": {
+          "en-US": "Reset annotations",
+          "es": "Restablecer las anotaciones"
+        }
+      },
       "type": "Narrative",
-      "label": "Narrative",
+      "label": {
+        "en-US": "Narrative",
+        "es": "Narrativa"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
@@ -1014,26 +1498,52 @@
       "presets": [
         {
           "id": "preset1",
-          "label": "My preset",
+          "label": {
+            "en-US": "My preset",
+            "es": "Mi ajuste predefinido"
+          },
           "layoutVariable": "layout_variable",
           "groupVariable": "e343a91f-628d-4175-870c-957beffa0154",
           "edges": {
             "display": ["friend_edge_type", "professional_edge_type"]
           },
           "highlight": [
-            "03b03617-46ae-41cb-9462-9acd8a17edd6",
-            "ae44b6ba-ad49-4ecf-bf38-b65decfce000"
+            {
+              "variable": "03b03617-46ae-41cb-9462-9acd8a17edd6",
+              "label": {
+                "en-US": "has_given_advice",
+                "es": "ha dado consejos"
+              }
+            },
+            {
+              "variable": "ae44b6ba-ad49-4ecf-bf38-b65decfce000",
+              "label": {
+                "en-US": "close_friend",
+                "es": "amigo cercano"
+              }
+            }
           ]
         },
         {
           "id": "preset2",
-          "label": "Another preset (with more text than will fit)",
+          "label": {
+            "en-US": "Another preset (with more text than will fit)",
+            "es": "Otro ajuste predefinido (con más texto del que cabe)"
+          },
           "layoutVariable": "e13ca72d-aefe-4f48-841d-09f020e0e987",
           "groupVariable": "e343a91f-628d-4175-870c-957beffa0154",
           "edges": {
             "display": ["professional_edge_type"]
           },
-          "highlight": ["03b03617-46ae-41cb-9462-9acd8a17edd6"]
+          "highlight": [
+            {
+              "variable": "03b03617-46ae-41cb-9462-9acd8a17edd6",
+              "label": {
+                "en-US": "has_given_advice",
+                "es": "ha dado consejos"
+              }
+            }
+          ]
         }
       ],
       "background": {
@@ -1047,9 +1557,15 @@
     },
     {
       "id": "rubberduck",
-      "label": "Audio test",
+      "label": {
+        "en-US": "Audio test",
+        "es": "Prueba de audio"
+      },
       "type": "Information",
-      "title": "Title for the screen",
+      "title": {
+        "en-US": "Title for the screen",
+        "es": "Título de la pantalla"
+      },
       "items": [
         {
           "id": "a",
@@ -1073,14 +1589,23 @@
     },
     {
       "id": "info-sound",
-      "label": "InfoSound",
+      "label": {
+        "en-US": "InfoSound",
+        "es": "Información con sonido"
+      },
       "type": "Information",
-      "title": "This interface has a video with sound.",
+      "title": {
+        "en-US": "This interface has a video with sound.",
+        "es": "Esta interfaz tiene un vídeo con sonido."
+      },
       "items": [
         {
           "id": "65192318-0ef0-454d-91b7-bbaf51380069",
           "type": "text",
-          "content": "The video below has sound. Some arbitrary text content that can _contain_ **formatting**."
+          "content": {
+            "en-US": "The video below has sound. Some arbitrary text content that can _contain_ **formatting**.",
+            "es": "El vídeo de abajo tiene sonido. Un texto cualquiera que puede _contener_ **formato**."
+          }
         },
         {
           "id": "27eee84a-52c0-440d-951c-5ac35bc75168",
@@ -1092,27 +1617,45 @@
     },
     {
       "id": "markdown",
-      "label": "Markdown",
+      "label": {
+        "en-US": "Markdown",
+        "es": "Markdown"
+      },
       "type": "Information",
-      "title": "Testing markdown",
+      "title": {
+        "en-US": "Testing markdown",
+        "es": "Prueba de markdown"
+      },
       "items": [
         {
           "id": "d3e52e4b-0d22-42e3-a82f-7a150daf7b6b",
           "type": "text",
-          "content": "# h1 Heading 8-)\n## h2 Heading\n### h3 Heading\n#### h4 Heading\n##### h5 Heading\n###### h6 Heading\n\n## Emphasis\n\n**This is bold text**\n\n__This is bold text__\n\n*This is italic text* \n\n_This is italic text_ \n# Emoji \n:blush: :heartpulse: :wave:"
+          "content": {
+            "en-US": "# h1 Heading 8-)\n## h2 Heading\n### h3 Heading\n#### h4 Heading\n##### h5 Heading\n###### h6 Heading\n\n## Emphasis\n\n**This is bold text**\n\n__This is bold text__\n\n*This is italic text* \n\n_This is italic text_ \n# Emoji \n:blush: :heartpulse: :wave:",
+            "es": "# Encabezado h1 8-)\n## Encabezado h2\n### Encabezado h3\n#### Encabezado h4\n##### Encabezado h5\n###### Encabezado h6\n\n## Énfasis\n\n**Este texto está en negrita**\n\n__Este texto está en negrita__\n\n*Este texto está en cursiva* \n\n_Este texto está en cursiva_ \n# Emoji \n:blush: :heartpulse: :wave:"
+          }
         }
       ]
     },
     {
       "id": "skippable screen",
-      "label": "Skip or Show",
+      "label": {
+        "en-US": "Skip or Show",
+        "es": "Omitir o mostrar"
+      },
       "type": "Information",
-      "title": "To skip or not to skip...",
+      "title": {
+        "en-US": "To skip or not to skip...",
+        "es": "Omitir o no omitir..."
+      },
       "items": [
         {
           "id": "ffaf2249-00e7-4fdb-99fc-5757a24f5605",
           "type": "text",
-          "content": "...that is the question."
+          "content": {
+            "en-US": "...that is the question.",
+            "es": "...esa es la cuestión."
+          }
         }
       ],
       "skipLogic": {
@@ -1120,16 +1663,6 @@
         "filter": {
           "join": "OR",
           "rules": [
-            {
-              "type": "node",
-              "id": "15218241538622",
-              "options": {
-                "type": "person_node_type",
-                "attribute": "name_variable",
-                "operator": "EXACTLY",
-                "value": "Dee"
-              }
-            },
             {
               "type": "ego",
               "id": "15218241553253",
@@ -1145,8 +1678,29 @@
     },
     {
       "id": "network-composer-dev",
+      "addNamePlaceholder": {
+        "en-US": "Type a name, then press Enter",
+        "es": "Escribe un nombre y pulsa Intro"
+      },
+      "overtakenEditNotice": {
+        "en-US": "Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost.",
+        "es": "Deshacer o rehacer cambió una respuesta mientras la editabas, así que tu cambio no se ha guardado. Para conservarlo, vuelve a cambiar esa respuesta. Si continúas, se perderá tu cambio."
+      },
+      "tooltips": {
+        "addPerson": {
+          "en-US": "Add node",
+          "es": "Añadir un elemento"
+        },
+        "automaticLayout": {
+          "en-US": "Automatic layout",
+          "es": "Disposición automática"
+        }
+      },
       "type": "NetworkComposer",
-      "label": "Network Composer",
+      "label": {
+        "en-US": "Network Composer",
+        "es": "Compositor de redes"
+      },
       "subject": {
         "entity": "node",
         "type": "person_node_type"
@@ -1159,8 +1713,23 @@
     },
     {
       "id": "geospatial-dev",
+      "offlineNotice": {
+        "en-US": "You are offline — the map will not load until you reconnect.",
+        "es": "No tienes conexión. El mapa no se cargará hasta que vuelvas a conectarte."
+      },
+      "mapUnavailable": {
+        "en-US": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.",
+        "es": "Esto puede ocurrir si tu navegador o dispositivo no admite las funciones que necesita el mapa (por ejemplo, WebGL). Prueba con otro navegador o dispositivo, o contacta con la persona que organiza el estudio. Es posible que puedas continuar la entrevista pulsando la flecha de avance."
+      },
+      "outsideAreasLabel": {
+        "en-US": "Outside Selectable Areas",
+        "es": "Fuera de las áreas seleccionables"
+      },
       "type": "Geospatial",
-      "label": "Geospatial",
+      "label": {
+        "en-US": "Geospatial",
+        "es": "Geoespacial"
+      },
       "subject": {
         "entity": "node",
         "type": "venue_node_type"
@@ -1168,7 +1737,7 @@
       "mapOptions": {
         "tokenAssetId": "mapbox_token",
         "style": "mapbox://styles/mapbox/standard",
-        "center": [-74.0, 40.7],
+        "center": [-74, 40.7],
         "initialZoom": 10,
         "dataSourceAssetId": "geo_data",
         "color": "ord-color-seq-6",
@@ -1177,66 +1746,511 @@
       "prompts": [
         {
           "id": "geospatial-prompt-dev",
-          "text": "Where is this place located?",
+          "text": {
+            "en-US": "Where is this place located?",
+            "es": "¿Dónde está este lugar?"
+          },
           "variable": "7316d500-6c1e-4188-a531-b2ef587721e0"
         }
       ]
     },
     {
       "id": "family-pedigree-dev",
+      "wording": {
+        "alsoParentOfLabel": {
+          "en-US": "Are they also the parent of…",
+          "es": "¿También es progenitor de…?"
+        },
+        "biologicalParentBoth": {
+          "en-US": "{firstIsYou, select, true {Both you and “{second}”} other {Both “{first}” and “{second}”}}",
+          "es": "{firstIsYou, select, true {Tanto tú como «{second}»} other {Tanto «{first}» como «{second}»}}"
+        },
+        "biologicalParentHint": {
+          "en-US": "A parent who is not a biological parent is added as a step or social parent.",
+          "es": "Un progenitor que no sea biológico se añade como padrastro, madrastra o progenitor social."
+        },
+        "biologicalParentLabel": {
+          "en-US": "Who is the child’s biological parent?",
+          "es": "¿Quién es el progenitor biológico del hijo/a?"
+        },
+        "carriedSiblingsPregnancyLabel": {
+          "en-US": "{single, select, true {{isYou, select, true {Was this parent pregnant with you?} other {Was this parent pregnant with “{name}”?}}} other {Was this parent pregnant with each of the {count} people chosen above who have nobody recorded as having carried them?}}",
+          "es": "{single, select, true {{isYou, select, true {¿Fue este progenitor quien te gestó?} other {¿Fue este progenitor quien gestó a «{name}»?}}} other {¿Fue este progenitor quien gestó a cada una de las {count} personas elegidas arriba que aún no tienen a nadie registrado como gestante?}}"
+        },
+        "carrierLabel": {
+          "en-US": "Who carried the pregnancy?",
+          "es": "¿Quién llevó el embarazo?"
+        },
+        "carrierUnknown": {
+          "en-US": "Someone else, or I don’t know",
+          "es": "Otra persona, o no lo sé"
+        },
+        "childKindAdoptive": {
+          "en-US": "An adopted child",
+          "es": "Un hijo/a adoptivo/a"
+        },
+        "childKindBiological": {
+          "en-US": "A biological child",
+          "es": "Un hijo/a biológico/a"
+        },
+        "childKindSocial": {
+          "en-US": "A step-child or other child they raise",
+          "es": "Un hijastro/a u otro hijo/a que crían"
+        },
+        "childKindLabel": {
+          "en-US": "Is this child…",
+          "es": "Este hijo/a es…"
+        },
+        "connectHint": {
+          "en-US": "Select a person, then select another to connect them.",
+          "es": "Selecciona una persona y luego otra para conectarlas."
+        },
+        "connectParent": {
+          "en-US": "{parentIsYou, select, true {You are a parent of “{child}”} other {{childIsYou, select, true {“{parent}” is your parent} other {“{parent}” is a parent of “{child}”}}}}",
+          "es": "{parentIsYou, select, true {Eres progenitor de «{child}»} other {{childIsYou, select, true {«{parent}» es tu progenitor} other {«{parent}» es progenitor de «{child}»}}}}"
+        },
+        "connectPartners": {
+          "en-US": "{current, select, true {{firstIsYou, select, true {You and “{second}” are partners} other {“{first}” and “{second}” are partners}}} other {{firstIsYou, select, true {You and “{second}” were partners} other {“{first}” and “{second}” were partners}}}}",
+          "es": "{current, select, true {{firstIsYou, select, true {«{second}» es tu pareja} other {«{first}» y «{second}» son pareja}}} other {{firstIsYou, select, true {«{second}» fue tu pareja} other {«{first}» y «{second}» fueron pareja}}}}"
+        },
+        "connectQuestion": {
+          "en-US": "{firstIsYou, select, true {How are you and “{second}” related?} other {How are “{first}” and “{second}” related?}}",
+          "es": "{firstIsYou, select, true {¿Qué relación tienes con «{second}»?} other {¿Qué relación hay entre «{first}» y «{second}»?}}"
+        },
+        "disconnectConfirmDescription": {
+          "en-US": "Both people stay in your family tree. Only the connection between them is removed.",
+          "es": "Ambas personas siguen en tu árbol familiar. Solo se quita la conexión entre ellas."
+        },
+        "disconnectConfirmTitle": {
+          "en-US": "{firstIsYou, select, true {Remove the connection between you and “{second}”?} other {Remove the connection between “{first}” and “{second}”?}}",
+          "es": "{firstIsYou, select, true {¿Quitar la conexión entre tú y «{second}»?} other {¿Quitar la conexión entre «{first}» y «{second}»?}}"
+        },
+        "disconnectHint": {
+          "en-US": "Select a person, then select someone they are connected to, to remove that connection.",
+          "es": "Selecciona una persona y luego alguien con quien esté conectada para quitar esa conexión."
+        },
+        "disconnectWouldCutOff": {
+          "en-US": "{count, plural, one {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.} other {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.}}",
+          "es": "{count, plural, one {Si quitas esta conexión, {names} quedaría fuera de tu árbol familiar. Primero conecta a esa persona con otra persona de tu familia.} other {Si quitas esta conexión, {names} quedarían fuera de tu árbol familiar. Primero conecta a esas personas con otra persona de tu familia.}}"
+        },
+        "dontKnow": {
+          "en-US": "Don’t know",
+          "es": "No lo sé"
+        },
+        "panelTitle": {
+          "en-US": "{relation, select, edit {{isYou, select, true {About you} other {About {name}}}} parent {{isYou, select, true {Add your parent} other {Add a parent of {name}}}} sibling {{isYou, select, true {Add your sibling} other {Add a sibling of {name}}}} partner {{isYou, select, true {Add your partner} other {Add a partner of {name}}}} other {{isYou, select, true {Add your child} other {Add a child of {name}}}}}",
+          "es": "{relation, select, edit {{isYou, select, true {Sobre ti} other {Sobre {name}}}} parent {{isYou, select, true {Añadir tu progenitor} other {Añadir un progenitor de {name}}}} sibling {{isYou, select, true {Añadir tu hermano/a} other {Añadir un hermano/a de {name}}}} partner {{isYou, select, true {Añadir tu pareja} other {Añadir una pareja de {name}}}} other {{isYou, select, true {Añadir tu hijo/a} other {Añadir un hijo/a de {name}}}}}"
+        },
+        "genderIdentityLabel": {
+          "en-US": "Gender identity",
+          "es": "Identidad de género"
+        },
+        "generatedLabelOf": {
+          "en-US": "{relation, select, partner {{isYou, select, true {{term} (your partner)} other {{term} (partner of {name})}}} formerPartner {{isYou, select, true {{term} (your former partner)} other {{term} (former partner of {name})}}} parent {{isYou, select, true {{term} (your parent)} other {{term} (parent of {name})}}} sibling {{isYou, select, true {{term} (your sibling)} other {{term} (sibling of {name})}}} owner {{owner}’s {term}} other {{isYou, select, true {{term} (your child)} other {{term} (child of {name})}}}}",
+          "es": "{relation, select, partner {{isYou, select, true {{term} (tu pareja)} other {{term} (pareja de {name})}}} formerPartner {{isYou, select, true {{term} (tu expareja)} other {{term} (expareja de {name})}}} parent {{isYou, select, true {{term} (tu progenitor)} other {{term} (progenitor de {name})}}} sibling {{isYou, select, true {{term} (tu hermano/a)} other {{term} (hermano/a de {name})}}} owner {{term} de {owner}} other {{isYou, select, true {{term} (tu hijo/a)} other {{term} (hijo/a de {name})}}}}"
+        },
+        "missingDetailsList": {
+          "en-US": "Some details are missing: {details}.",
+          "es": "Faltan algunos datos: {details}."
+        },
+        "otherParentLabel": {
+          "en-US": "Who is the child’s other parent?",
+          "es": "¿Quién es el otro progenitor del hijo/a?"
+        },
+        "otherParentNone": {
+          "en-US": "No other parent",
+          "es": "Ningún otro progenitor"
+        },
+        "otherParentUnknown": {
+          "en-US": "Someone not shown yet",
+          "es": "Alguien que aún no aparece"
+        },
+        "parentCarriedLabel": {
+          "en-US": "{named, select, true {{parentIsYou, select, true {Did you carry the pregnancy?} other {Did {parent} carry the pregnancy?}}} other {Did this parent carry the pregnancy?}}",
+          "es": "{named, select, true {{parentIsYou, select, true {¿Llevaste tú el embarazo?} other {¿Llevó {parent} el embarazo?}}} other {¿Fue este progenitor quien llevó el embarazo?}}"
+        },
+        "parentKindLabel": {
+          "en-US": "What kind of parent are they?",
+          "es": "¿Qué tipo de progenitor es?"
+        },
+        "parentLinkKindLabel": {
+          "en-US": "{parentIsYou, select, true {You are their…} other {{personIsYou, select, true {{parent} is your…} other {{parent} is their…}}}}",
+          "es": "{parentIsYou, select, true {Para esta persona, eres…} other {{personIsYou, select, true {Para ti, {parent} es…} other {Para esta persona, {parent} es…}}}}"
+        },
+        "parentPartnerLabel": {
+          "en-US": "Are they the partner of another parent?",
+          "es": "¿Es pareja de otro progenitor?"
+        },
+        "placeholderParentsNote": {
+          "en-US": "{framing, select, gamete {An egg parent and a sperm parent will be added for you to fill in later, so the family tree can show these siblings together.} other {A biological mother and a biological father will be added for you to fill in later, so the family tree can show these siblings together.}}",
+          "es": "{framing, select, gamete {Se añadirán un progenitor de óvulo y un progenitor de esperma para que los completes más tarde, de modo que el árbol familiar pueda mostrar juntos a estos hermanos.} other {Se añadirán una madre biológica y un padre biológico para que los completes más tarde, de modo que el árbol familiar pueda mostrar juntos a estos hermanos.}}"
+        },
+        "relativeTerm": {
+          "en-US": "{term, select, mother {Mother} father {Father} parent {Parent} eggParent {Egg parent} spermParent {Sperm parent} biologicalMother {Bio­logical mother} biologicalFather {Bio­logical father} adoptiveMother {Adoptive mother} adoptiveFather {Adoptive father} adoptiveParent {Adoptive parent} stepmother {Step­mother} stepfather {Step­father} stepparent {Step-parent} eggDonor {Egg donor} spermDonor {Sperm donor} donor {Donor} surrogate {Surro­gate} daughter {Daughter} son {Son} child {Child} stepdaughter {Step­daughter} stepson {Stepson} stepchild {Stepchild} donorConceivedChild {Donor-conceived child} surrogacyChild {Surro­gacy child} sister {Sister} brother {Brother} sibling {Sibling} halfSister {Half-sister} halfBrother {Half-brother} halfSibling {Half-sibling} adoptiveSister {Adoptive sister} adoptiveBrother {Adoptive brother} adoptiveSibling {Adoptive sibling} stepsister {Step­sister} stepbrother {Step­brother} stepsibling {Step-sibling} partner {Partner} formerPartner {Former partner} grandmother {Grand­mother} grandfather {Grand­father} grandparent {Grand­parent} maternalGrandmother {Maternal grand­mother} maternalGrandfather {Maternal grand­father} maternalGrandparent {Maternal grand­parent} paternalGrandmother {Paternal grand­mother} paternalGrandfather {Paternal grand­father} paternalGrandparent {Paternal grand­parent} greatGrandmother {Great-grand­mother} greatGrandfather {Great-grand­father} greatGrandparent {Great-grand­parent} stepGrandmother {Step-grand­mother} stepGrandfather {Step-grand­father} stepGrandparent {Step-grand­parent} granddaughter {Grand­daughter} grandson {Grandson} grandchild {Grand­child} greatGranddaughter {Great-grand­daughter} greatGrandson {Great-grandson} greatGrandchild {Great-grand­child} aunt {Aunt} uncle {Uncle} maternalAunt {Maternal aunt} maternalUncle {Maternal uncle} paternalAunt {Paternal aunt} paternalUncle {Paternal uncle} parentsSibling {Parent’s sibling} greatAunt {Great-aunt} greatUncle {Great-uncle} grandparentsSibling {Grand­parent’s sibling} niece {Niece} nephew {Nephew} siblingsChild {Sibling’s child} cousin {Cousin} motherInLaw {Mother-in-law} fatherInLaw {Father-in-law} parentInLaw {Parent-in-law} sisterInLaw {Sister-in-law} brotherInLaw {Brother-in-law} siblingInLaw {Sibling-in-law} daughterInLaw {Daugh­ter-in-law} sonInLaw {Son-in-law} childInLaw {Child-in-law} other {Relative}}",
+          "es": "{term, select, mother {Madre} father {Padre} parent {Progeni­tor} eggParent {Progeni­tor de óvulo} spermParent {Progeni­tor de esperma} biologicalMother {Madre bio­lógica} biologicalFather {Padre bio­lógico} adoptiveMother {Madre adoptiva} adoptiveFather {Padre adoptivo} adoptiveParent {Progeni­tor adoptivo} stepmother {Madrastra} stepfather {Padrastro} stepparent {Padrastro/madrastra} eggDonor {Donante de óvulos} spermDonor {Donante de esperma} donor {Donante} surrogate {Gestante subrogada} daughter {Hija} son {Hijo} child {Hijo/a} stepdaughter {Hijastra} stepson {Hijastro} stepchild {Hijastro/a} donorConceivedChild {Hijo/a por donación} surrogacyChild {Hijo/a por gestación subrogada} sister {Hermana} brother {Hermano} sibling {Hermano/a} halfSister {Media hermana} halfBrother {Medio hermano} halfSibling {Medio/a hermano/a} adoptiveSister {Hermana adoptiva} adoptiveBrother {Hermano adoptivo} adoptiveSibling {Hermano/a adoptivo/a} stepsister {Herma­nastra} stepbrother {Herma­nastro} stepsibling {Herma­nastro/a} partner {Pareja} formerPartner {Expareja} grandmother {Abuela} grandfather {Abuelo} grandparent {Abuelo/a} maternalGrandmother {Abuela materna} maternalGrandfather {Abuelo materno} maternalGrandparent {Abuelo/a materno/a} paternalGrandmother {Abuela paterna} paternalGrandfather {Abuelo paterno} paternalGrandparent {Abuelo/a paterno/a} greatGrandmother {Bisabuela} greatGrandfather {Bisabuelo} greatGrandparent {Bisabuelo/a} stepGrandmother {Abue­lastra} stepGrandfather {Abue­lastro} stepGrandparent {Abue­lastro/a} granddaughter {Nieta} grandson {Nieto} grandchild {Nieto/a} greatGranddaughter {Bisnieta} greatGrandson {Bisnieto} greatGrandchild {Bisnieto/a} aunt {Tía} uncle {Tío} maternalAunt {Tía materna} maternalUncle {Tío materno} paternalAunt {Tía paterna} paternalUncle {Tío paterno} parentsSibling {Tío/a} greatAunt {Tía abuela} greatUncle {Tío abuelo} grandparentsSibling {Tío/a abuelo/a} niece {Sobrina} nephew {Sobrino} siblingsChild {Sobrino/a} cousin {Primo/a} motherInLaw {Suegra} fatherInLaw {Suegro} parentInLaw {Suegro/a} sisterInLaw {Cuñada} brotherInLaw {Cuñado} siblingInLaw {Cuñado/a} daughterInLaw {Nuera} sonInLaw {Yerno} childInLaw {Yerno/nuera} other {Pariente}}"
+        },
+        "removeConfirmDescription": {
+          "en-US": "{hasOthers, select, true {They will be removed from your family tree, along with their connections to other people. {count, plural, one {{names} is connected to you only through them, so will be removed too.} other {{names} are connected to you only through them, so will be removed too.}}} other {They will be removed from your family tree, along with their connections to other people.}}",
+          "es": "{hasOthers, select, true {Se quitará de tu árbol familiar, junto con sus conexiones con otras personas. {count, plural, one {La única conexión entre {names} y tú pasa por esta persona, así que también se quitará.} other {La única conexión entre {names} y tú pasa por esta persona, así que también se quitarán.}}} other {Se quitará de tu árbol familiar, junto con sus conexiones con otras personas.}}"
+        },
+        "removeConfirmTitle": {
+          "en-US": "Remove {name}?",
+          "es": "¿Quitar a {name}?"
+        },
+        "sexAssignedAtBirthLabel": {
+          "en-US": "Sex assigned at birth",
+          "es": "Sexo asignado al nacer"
+        },
+        "sharedParentCountBoth": {
+          "en-US": "Both parents",
+          "es": "Ambos progenitores"
+        },
+        "sharedParentCountLabel": {
+          "en-US": "{isYou, select, true {Which parents do they share with you?} other {Which parents do they share with “{name}”?}}",
+          "es": "{isYou, select, true {¿Qué progenitores comparte contigo?} other {¿Qué progenitores comparte con «{name}»?}}"
+        },
+        "sharedParentEggOnly": {
+          "en-US": "{parent, select, egg {{framing, select, gamete {Only the egg parent} other {Only the biological mother}}} other {{framing, select, gamete {Only the sperm parent} other {Only the biological father}}}}",
+          "es": "{parent, select, egg {{framing, select, gamete {Solo el progenitor de óvulo} other {Solo la madre biológica}}} other {{framing, select, gamete {Solo el progenitor de esperma} other {Solo el padre biológico}}}}"
+        },
+        "siblingKindLabel": {
+          "en-US": "To the parents they share, are they…",
+          "es": "Para los progenitores que comparten, es…"
+        },
+        "stillTogetherLabel": {
+          "en-US": "{named, select, true {{personIsYou, select, true {Are you still together with {partner}?} other {{partnerIsYou, select, true {Are you still together?} other {Are they still together with {partner}?}}}}} other {Are they still together?}}",
+          "es": "{named, select, true {{personIsYou, select, true {¿Sigues siendo pareja de {partner}?} other {{partnerIsYou, select, true {¿Sigue siendo tu pareja?} other {¿Esta persona sigue siendo pareja de {partner}?}}}}} other {¿Siguen siendo pareja?}}"
+        },
+        "you": {
+          "en-US": "You",
+          "es": "Tú"
+        },
+        "save": {
+          "en-US": "Save",
+          "es": "Guardar"
+        },
+        "connectTool": {
+          "en-US": "Connect",
+          "es": "Conectar"
+        },
+        "disconnectTool": {
+          "en-US": "Disconnect",
+          "es": "Desconectar"
+        },
+        "pointerTool": {
+          "en-US": "Add and edit",
+          "es": "Añadir y editar"
+        },
+        "changeWouldCutOff": {
+          "en-US": "{count, plural, one {This would leave {names} outside your family tree, because it removes their only connection to you. Connect them to someone else in your family first.} other {This would leave {names} outside your family tree, because it removes their only connection to you. Connect them to someone else in your family first.}}",
+          "es": "{count, plural, one {Esto dejaría a {names} fuera de tu árbol familiar, porque elimina su única conexión contigo. Primero conecta a esa persona con otra persona de tu familia.} other {Esto dejaría a {names} fuera de tu árbol familiar, porque elimina su única conexión contigo. Primero conecta a esas personas con otra persona de tu familia.}}"
+        },
+        "childKindDonor": {
+          "en-US": "A child conceived with an egg or sperm they donated",
+          "es": "Un hijo o hija concebido con un óvulo o esperma que donaron"
+        },
+        "childKindSurrogate": {
+          "en-US": "A child they carried as a surrogate",
+          "es": "Un hijo o hija que gestaron como gestante subrogada"
+        },
+        "parentKindCarrier": {
+          "en-US": "{parentKind} (carried the pregnancy)",
+          "es": "{parentKind} (llevó el embarazo)"
+        },
+        "sharedDonorsLabel": {
+          "en-US": "{isYou, select, true {Do they share any of your donors?} other {Do they share any of “{name}”’s donors?}}",
+          "es": "{isYou, select, true {¿Comparte alguno de tus donantes?} other {¿Comparte alguno de los donantes de «{name}»?}}"
+        },
+        "siblingBiologicalParentLabel": {
+          "en-US": "Which of them is the sibling’s biological parent?",
+          "es": "¿Cuál de ellos es el progenitor biológico de este hermano o hermana?"
+        },
+        "siblingTwinFraternal": {
+          "en-US": "Yes, fraternal (non-identical) twins",
+          "es": "Sí, mellizos (no idénticos)"
+        },
+        "siblingTwinHint": {
+          "en-US": "Answer yes for triplets and other multiple births too.",
+          "es": "Responde que sí también en el caso de trillizos y otros partos múltiples."
+        },
+        "siblingTwinIdentical": {
+          "en-US": "Yes, identical twins",
+          "es": "Sí, gemelos idénticos"
+        },
+        "siblingTwinLabel": {
+          "en-US": "{isYou, select, true {Are they your twin?} other {Are they “{name}”’s twin?}}",
+          "es": "{isYou, select, true {¿Es tu gemelo o gemela?} other {¿Es gemelo o gemela de «{name}»?}}"
+        },
+        "siblingTwinNo": {
+          "en-US": "No",
+          "es": "No"
+        },
+        "siblingTwinUnknown": {
+          "en-US": "Yes, but I don’t know if they are identical",
+          "es": "Sí, pero no sé si son idénticos"
+        },
+        "twinsHint": {
+          "en-US": "Include triplets and other multiple births.",
+          "es": "Incluye también trillizos y otros partos múltiples."
+        },
+        "twinsLabel": {
+          "en-US": "{isYou, select, true {Which of your siblings, if any, are your twins?} other {Which of “{name}”’s siblings, if any, are their twins?}}",
+          "es": "{isYou, select, true {¿Cuáles de tus hermanos, si alguno, son tus gemelos o mellizos?} other {¿Cuáles de los hermanos de «{name}», si alguno, son sus gemelos o mellizos?}}"
+        },
+        "twinZygosityLabel": {
+          "en-US": "{who, select, personIsYou {Are you and “{twin}” identical twins?} twinIsYou {Are “{name}” and you identical twins?} other {Are “{name}” and “{twin}” identical twins?}}",
+          "es": "{who, select, personIsYou {¿Tú y «{twin}» son gemelos idénticos?} twinIsYou {¿«{name}» y tú son gemelos idénticos?} other {¿«{name}» y «{twin}» son gemelos idénticos?}}"
+        },
+        "unavailableAncestor": {
+          "en-US": "{who, select, parentIsYou {You cannot be a parent of “{child}”, who is already one of your ancestors.} childIsYou {“{parent}” cannot be your parent, because you are already one of their ancestors.} other {“{parent}” cannot be a parent of “{child}”, who is already one of their ancestors.}}",
+          "es": "{who, select, parentIsYou {No puedes ser progenitor/a de «{child}», que ya es uno de tus antepasados.} childIsYou {«{parent}» no puede ser tu progenitor/a, porque ya eres uno de sus antepasados.} other {«{parent}» no puede ser progenitor/a de «{child}», que ya es uno de sus antepasados.}}"
+        },
+        "unavailableBothSameSex": {
+          "en-US": "{firstIsYou, select, true {Some answers are unavailable because you and “{second}” are both recorded as “{sex}” at birth, so you cannot both be the child’s genetic parents. To choose one, first change one of your sexes at birth.} other {Some answers are unavailable because “{first}” and “{second}” are both recorded as “{sex}” at birth, so they cannot both be the child’s genetic parents. To choose one, first change the sex at birth of one of them.}}",
+          "es": "{firstIsYou, select, true {Algunas respuestas no están disponibles porque tú y «{second}» constáis como «{sex}» al nacer, así que no podéis ser ambos los progenitores genéticos del hijo/a. Para elegir una, primero cambia el sexo al nacer de uno de vosotros.} other {Algunas respuestas no están disponibles porque «{first}» y «{second}» constan como «{sex}» al nacer, así que no pueden ser ambos los progenitores genéticos del hijo/a. Para elegir una, primero cambia el sexo al nacer de uno de ellos.}}"
+        },
+        "unavailableCannotCarry": {
+          "en-US": "{who, select, you {Some answers are unavailable because you are recorded as “{sex}” at birth, so you cannot have carried a pregnancy. To choose one, first change your sex at birth.} this {Some answers are unavailable because this person is recorded as “{sex}” at birth, so they cannot have carried a pregnancy. To choose one, first change their sex at birth.} other {Some answers are unavailable because “{name}” is recorded as “{sex}” at birth, so they cannot have carried a pregnancy. To choose one, first change their sex at birth.}}",
+          "es": "{who, select, you {Algunas respuestas no están disponibles porque constas como «{sex}» al nacer, así que no puedes haber llevado un embarazo. Para elegir una, primero cambia tu sexo al nacer.} this {Algunas respuestas no están disponibles porque esta persona consta como «{sex}» al nacer, así que no puede haber llevado un embarazo. Para elegir una, primero cambia su sexo al nacer.} other {Algunas respuestas no están disponibles porque «{name}» consta como «{sex}» al nacer, así que no puede haber llevado un embarazo. Para elegir una, primero cambia su sexo al nacer.}}"
+        },
+        "unavailableCarried": {
+          "en-US": "{who, select, personIsYou {Some answers are unavailable because you are recorded as having carried “{child}”, which nobody recorded as “{sex}” at birth can have. To choose one, first change how you are connected to “{child}”.} childIsYou {Some answers are unavailable because this person is recorded as having carried you, which nobody recorded as “{sex}” at birth can have. To choose one, first change how they are connected to you.} other {Some answers are unavailable because this person is recorded as having carried “{child}”, which nobody recorded as “{sex}” at birth can have. To choose one, first change how they are connected to “{child}”.}}",
+          "es": "{who, select, personIsYou {Algunas respuestas no están disponibles porque consta que llevaste el embarazo de «{child}», algo que nadie registrado como «{sex}» al nacer puede haber hecho. Para elegir una, primero cambia tu conexión con «{child}».} childIsYou {Algunas respuestas no están disponibles porque consta que esta persona llevó tu embarazo, algo que nadie registrado como «{sex}» al nacer puede haber hecho. Para elegir una, primero cambia su conexión contigo.} other {Algunas respuestas no están disponibles porque consta que esta persona llevó el embarazo de «{child}», algo que nadie registrado como «{sex}» al nacer puede haber hecho. Para elegir una, primero cambia su conexión con «{child}».}}"
+        },
+        "unavailableCarrierChoice": {
+          "en-US": "{who, select, carrierIsYou {You are recorded as having carried “{child}”, and only one person carries a pregnancy.} childIsYou {“{carrier}” is recorded as having carried you, and only one person carries a pregnancy.} other {“{carrier}” is recorded as having carried “{child}”, and only one person carries a pregnancy.}}",
+          "es": "{who, select, carrierIsYou {Consta que llevaste el embarazo de «{child}», y solo una persona lleva cada embarazo.} childIsYou {Consta que «{carrier}» llevó tu embarazo, y solo una persona lleva cada embarazo.} other {Consta que «{carrier}» llevó el embarazo de «{child}», y solo una persona lleva cada embarazo.}}"
+        },
+        "unavailableCarrierRecorded": {
+          "en-US": "{who, select, carrierIsYou {Some answers are unavailable because you are recorded as having carried “{child}”, and only one person carries a pregnancy. To choose one, first change how you are connected to “{child}”.} childIsYou {Some answers are unavailable because “{carrier}” is recorded as having carried you, and only one person carries a pregnancy. To choose one, first change how “{carrier}” is connected to you.} other {Some answers are unavailable because “{carrier}” is recorded as having carried “{child}”, and only one person carries a pregnancy. To choose one, first change how “{carrier}” is connected to “{child}”.}}",
+          "es": "{who, select, carrierIsYou {Algunas respuestas no están disponibles porque consta que llevaste el embarazo de «{child}», y solo una persona lleva cada embarazo. Para elegir una, primero cambia tu conexión con «{child}».} childIsYou {Algunas respuestas no están disponibles porque consta que «{carrier}» llevó tu embarazo, y solo una persona lleva cada embarazo. Para elegir una, primero cambia la conexión de «{carrier}» contigo.} other {Algunas respuestas no están disponibles porque consta que «{carrier}» llevó el embarazo de «{child}», y solo una persona lleva cada embarazo. Para elegir una, primero cambia la conexión de «{carrier}» con «{child}».}}"
+        },
+        "unavailableGeneticParentsFull": {
+          "en-US": "{who, select, childIsYou {Some answers are unavailable because you already have two genetic parents recorded, “{first}” and “{second}”. To choose one, first change how one of them is connected to you.} includesYou {Some answers are unavailable because “{child}” already has two genetic parents recorded, you and “{second}”. To choose one, first change how one of you is connected to “{child}”.} other {Some answers are unavailable because “{child}” already has two genetic parents recorded, “{first}” and “{second}”. To choose one, first change how one of them is connected to “{child}”.}}",
+          "es": "{who, select, childIsYou {Algunas respuestas no están disponibles porque ya tienes dos progenitores genéticos registrados, «{first}» y «{second}». Para elegir una, primero cambia la conexión de uno de ellos contigo.} includesYou {Algunas respuestas no están disponibles porque «{child}» ya tiene dos progenitores genéticos registrados, tú y «{second}». Para elegir una, primero cambia la conexión de uno de vosotros con «{child}».} other {Algunas respuestas no están disponibles porque «{child}» ya tiene dos progenitores genéticos registrados, «{first}» y «{second}». Para elegir una, primero cambia la conexión de uno de ellos con «{child}».}}"
+        },
+        "unavailableIdenticalTwin": {
+          "en-US": "{who, select, personIsYou {Some answers are unavailable because identical twins have the same biological parents and donors, and you and “{twin}” do not. To choose one, first record the same biological parents and donors for both of you.} twinIsYou {Some answers are unavailable because identical twins have the same biological parents and donors, and “{name}” and you do not. To choose one, first record the same biological parents and donors for both of you.} other {Some answers are unavailable because identical twins have the same biological parents and donors, and “{name}” and “{twin}” do not. To choose one, first record the same biological parents and donors for both of them.}}",
+          "es": "{who, select, personIsYou {Algunas respuestas no están disponibles porque los gemelos idénticos tienen los mismos progenitores biológicos y donantes, y tú y «{twin}» no los tienen. Para elegir una, primero registra los mismos progenitores biológicos y donantes para ambos.} twinIsYou {Algunas respuestas no están disponibles porque los gemelos idénticos tienen los mismos progenitores biológicos y donantes, y «{name}» y tú no los tienen. Para elegir una, primero registra los mismos progenitores biológicos y donantes para ambos.} other {Algunas respuestas no están disponibles porque los gemelos idénticos tienen los mismos progenitores biológicos y donantes, y «{name}» y «{twin}» no los tienen. Para elegir una, primero registra los mismos progenitores biológicos y donantes para ambos.}}"
+        },
+        "unavailableIdenticalTwinNew": {
+          "en-US": "{isYou, select, true {Some answers are unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of yours. To choose one, choose all of your biological parents and donors above.} other {Some answers are unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of “{name}”’s. To choose one, choose all of their biological parents and donors above.}}",
+          "es": "{isYou, select, true {Algunas respuestas no están disponibles porque los gemelos idénticos tienen los mismos progenitores biológicos y donantes, y este hermano o hermana no tendría todos los tuyos. Para elegir una, elige arriba a todos tus progenitores biológicos y donantes.} other {Algunas respuestas no están disponibles porque los gemelos idénticos tienen los mismos progenitores biológicos y donantes, y este hermano o hermana no tendría todos los de «{name}». Para elegir una, elige arriba a todos sus progenitores biológicos y donantes.}}"
+        },
+        "unavailableSameSexGeneticParent": {
+          "en-US": "{who, select, coParentIsYou {Some answers are unavailable because you are recorded as “{sex}” at birth and are a genetic parent of “{child}”, who cannot have two genetic parents of the same sex at birth. To choose one, first change your sex at birth or how you are connected to “{child}”.} childIsYou {Some answers are unavailable because “{coParent}”, your genetic parent, is recorded as “{sex}” at birth, and you cannot have two genetic parents of the same sex at birth. To choose one, first change the sex at birth of “{coParent}” or how they are connected to you.} other {Some answers are unavailable because “{coParent}”, a genetic parent of “{child}”, is recorded as “{sex}” at birth, and “{child}” cannot have two genetic parents of the same sex at birth. To choose one, first change the sex at birth of “{coParent}” or how they are connected to “{child}”.}}",
+          "es": "{who, select, coParentIsYou {Algunas respuestas no están disponibles porque constas como «{sex}» al nacer y eres progenitor/a genético/a de «{child}», que no puede tener dos progenitores genéticos del mismo sexo al nacer. Para elegir una, primero cambia tu sexo al nacer o tu conexión con «{child}».} childIsYou {Algunas respuestas no están disponibles porque «{coParent}», tu progenitor/a genético/a, consta como «{sex}» al nacer, y no puedes tener dos progenitores genéticos del mismo sexo al nacer. Para elegir una, primero cambia el sexo al nacer de «{coParent}» o su conexión contigo.} other {Algunas respuestas no están disponibles porque «{coParent}», progenitor/a genético/a de «{child}», consta como «{sex}» al nacer, y «{child}» no puede tener dos progenitores genéticos del mismo sexo al nacer. Para elegir una, primero cambia el sexo al nacer de «{coParent}» o su conexión con «{child}».}}"
+        },
+        "zygosityFraternal": {
+          "en-US": "No, fraternal (non-identical)",
+          "es": "No, mellizos (no idénticos)"
+        },
+        "zygosityIdentical": {
+          "en-US": "Yes, identical",
+          "es": "Sí, idénticos"
+        },
+        "zygosityUnknown": {
+          "en-US": "I don’t know",
+          "es": "No lo sé"
+        }
+      },
       "type": "FamilyPedigree",
-      "label": "Family Pedigree",
-      "nodeConfig": {
-        "type": "family_member",
-        "nodeLabelVariable": "fm_name",
-        "egoVariable": "is_ego",
-        "relationshipVariable": "fm_relationship_to_ego",
-        "biologicalSexVariable": "biologicalSex"
+      "label": {
+        "en-US": "Family Pedigree",
+        "es": "Árbol genealógico familiar"
       },
-      "edgeConfig": {
+      "subject": {
+        "entity": "node",
+        "type": "family_member"
+      },
+      "prompt": {
+        "en-US": "Who is in your family?",
+        "es": "¿Quién forma parte de tu familia?"
+      },
+      "nodeConfiguration": {
+        "nameAttribute": "fm_name",
+        "nameField": {
+          "prompt": {
+            "en-US": "Name (optional)",
+            "es": "Nombre (opcional)"
+          },
+          "hint": {
+            "en-US": "A first name or nickname is fine. If you don’t know it, leave this blank and they will be shown by how they are related to you.",
+            "es": "Basta con un nombre o un apodo. Si no lo sabes, deja este campo vacío y se mostrará según su parentesco contigo."
+          }
+        },
+        "genderIdentity": {
+          "attribute": "genderIdentity",
+          "terms": [
+            {
+              "value": "woman",
+              "words": "feminine"
+            },
+            {
+              "value": "man",
+              "words": "masculine"
+            },
+            {
+              "value": "nonBinary",
+              "words": "neutral"
+            },
+            {
+              "value": "differentIdentity",
+              "words": "neutral"
+            },
+            {
+              "value": "unknown",
+              "words": "unknown"
+            },
+            {
+              "value": "preferNotToSay",
+              "words": "neutral"
+            }
+          ]
+        },
+        "sexAssignedAtBirthAttribute": "sexAssignedAtBirth",
+        "egoAttribute": "is_ego"
+      },
+      "edgeConfiguration": {
         "type": "family_edge",
-        "relationshipTypeVariable": "relationshipType",
-        "isActiveVariable": "isActive",
-        "isGestationalCarrierVariable": "isGestationalCarrier",
-        "gameteRoleVariable": "gameteRole"
+        "kindAttribute": "relationshipKind",
+        "gestationalCarrierAttribute": "isGestationalCarrier",
+        "currentPartnerAttribute": "isCurrentPartner"
       },
-      "framing": {
-        "mode": "fixed",
-        "value": "gamete"
-      },
-      "boundaries": {
-        "requireGrandparents": "off",
-        "requireChildrenContributors": "off"
-      },
-      "censusPrompt": "Who is in your family?"
+      "nominationPrompts": [
+        {
+          "id": "nom-conditionx",
+          "text": {
+            "en-US": "Who in your family has been diagnosed with **condition X**?",
+            "es": "¿Quién en tu familia ha recibido un diagnóstico de **la condición X**?"
+          },
+          "attribute": "hasConditionX"
+        }
+      ]
     },
     {
       "id": "narrative-pedigree-dev",
+      "keyHeading": {
+        "en-US": "Key",
+        "es": "Leyenda"
+      },
+      "tooltips": {
+        "clearFocus": {
+          "en-US": "Clear focus",
+          "es": "Quitar el foco"
+        },
+        "saveSnapshot": {
+          "en-US": "Save snapshot",
+          "es": "Guardar imagen"
+        }
+      },
+      "conditionText": {
+        "heading": {
+          "en-US": "Conditions",
+          "es": "Afecciones"
+        },
+        "instruction": {
+          "en-US": "Select a condition to see who it affects.",
+          "es": "Selecciona una afección para ver a quién afecta."
+        },
+        "notation": {
+          "affected": {
+            "en-US": "Has this condition",
+            "es": "Tiene esta afección"
+          },
+          "obligateAffected": {
+            "en-US": "Will develop this condition",
+            "es": "Desarrollará esta afección"
+          },
+          "obligateCarrier": {
+            "en-US": "Carries this condition",
+            "es": "Es portador/a de esta afección"
+          },
+          "unknown": {
+            "en-US": "Not known",
+            "es": "No se sabe"
+          }
+        },
+        "snapshotCondition": {
+          "en-US": "{title}: {condition}",
+          "es": "{title}: {condition}"
+        },
+        "snapshotInheritance": {
+          "en-US": "{title}: {condition} — inheritance for {name}",
+          "es": "{title}: {condition} — herencia de {name}"
+        }
+      },
       "type": "NarrativePedigree",
-      "label": "Narrative Pedigree",
+      "label": {
+        "en-US": "Narrative Pedigree",
+        "es": "Árbol genealógico narrativo"
+      },
       "sourceStageId": "family-pedigree-dev",
       "diseases": [
         {
           "id": "disease-conditionx",
-          "label": "Condition X",
+          "label": {
+            "en-US": "Condition X",
+            "es": "Condición X"
+          },
           "color": "node-color-seq-1",
-          "variable": "hasConditionX",
+          "attribute": "hasConditionX",
           "inheritancePattern": "autosomalDominant"
         }
       ]
+    },
+    {
+      "id": "finish",
+      "finishLabel": {
+        "en-US": "Finish",
+        "es": "Finalizar"
+      },
+      "finishConfirmation": {
+        "en-US": "Are you sure you want to finish the interview?",
+        "es": "¿Seguro que quieres finalizar la entrevista?"
+      },
+      "finishedNotice": {
+        "en-US": "This interview is finished, and its answers can no longer be changed.",
+        "es": "Esta entrevista ha finalizado y ya no se pueden cambiar sus respuestas."
+      },
+      "finishFailed": {
+        "en-US": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer.",
+        "es": "No se pudo finalizar la entrevista. Inténtalo de nuevo. Si el problema continúa, ponte en contacto con la persona que organiza el estudio."
+      },
+      "type": "FinishSession",
+      "label": {
+        "en-US": "Finish Interview",
+        "es": "Finalizar entrevista"
+      },
+      "title": {
+        "en-US": "Finish Interview",
+        "es": "Finalizar entrevista"
+      },
+      "content": {
+        "en-US": "You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now.",
+        "es": "Has llegado al final de la entrevista. Si estás conforme con la información que has introducido, puedes finalizar la entrevista ahora."
+      },
+      "outcome": "completed"
     }
   ],
   "codebook": {
     "node": {
       "person_node_type": {
         "name": "person",
+        "label": {
+          "en-US": "person",
+          "es": "persona"
+        },
         "color": "node-color-seq-1",
         "icon": "add-a-person",
-        "shape": { "default": "circle" },
+        "shape": {
+          "default": "circle"
+        },
         "variables": {
           "name_variable": {
             "encrypted": true,
             "name": "name",
+            "label": "name",
             "component": "Text",
             "type": "text",
             "validation": {
@@ -1246,10 +2260,12 @@
           },
           "0ff25001-a2b8-46de-82a9-53143aa00d10": {
             "name": "last_name",
+            "label": "last_name",
             "type": "text"
           },
           "c5fee926-855d-4419-b5bb-54e89010cea6": {
             "name": "age",
+            "label": "age",
             "type": "number",
             "component": "Number",
             "validation": {
@@ -1258,6 +2274,7 @@
           },
           "0e75ec18-2cb1-4606-9f18-034d28b07c19": {
             "name": "nickname",
+            "label": "nickname",
             "component": "Text",
             "type": "text",
             "validation": {
@@ -1266,49 +2283,70 @@
           },
           "ae44b6ba-ad49-4ecf-bf38-b65decfce000": {
             "name": "close_friend",
+            "label": "close_friend",
             "component": "Toggle",
             "type": "boolean"
           },
           "94e2dee9-1c25-4b64-b8bb-4946465c3c07": {
             "name": "support_friend",
+            "label": "support_friend",
             "type": "boolean"
           },
           "ec5b462e-a033-4cbc-8b73-82d90938ec82": {
             "name": "advice_friend",
+            "label": "advice_friend",
             "type": "boolean"
           },
           "03b03617-46ae-41cb-9462-9acd8a17edd6": {
             "name": "has_given_advice",
+            "label": "has_given_advice",
             "type": "boolean"
           },
           "1096204b-48fe-444c-b642-4ab211f7f57c": {
             "name": "contactFreq",
+            "label": "contactFreq",
             "type": "ordinal",
             "options": [
               {
-                "label": "Last 24 hours",
+                "label": {
+                  "en-US": "Last 24 hours",
+                  "es": "Últimas 24 horas"
+                },
                 "value": 4
               },
               {
-                "label": "Last week",
+                "label": {
+                  "en-US": "Last week",
+                  "es": "La última semana"
+                },
                 "value": 3
               },
               {
-                "label": "Last six months",
+                "label": {
+                  "en-US": "Last six months",
+                  "es": "Los últimos seis meses"
+                },
                 "value": 2
               },
               {
-                "label": "Last two years",
+                "label": {
+                  "en-US": "Last two years",
+                  "es": "Los últimos dos años"
+                },
                 "value": 1
               },
               {
-                "label": "_Over_ two years ago",
+                "label": {
+                  "en-US": "_Over_ two years ago",
+                  "es": "Hace _más_ de dos años"
+                },
                 "value": -1
               }
             ]
           },
           "23c5a7b9-b553-4ff1-b515-6a81999773d2": {
             "name": "discussFreq",
+            "label": "discussFreq",
             "type": "ordinal",
             "component": "RadioGroup",
             "validation": {
@@ -1316,53 +2354,80 @@
             },
             "options": [
               {
-                "label": "Three",
+                "label": {
+                  "en-US": "Three",
+                  "es": "Tres"
+                },
                 "value": 3
               },
               {
-                "label": "Two",
+                "label": {
+                  "en-US": "Two",
+                  "es": "Dos"
+                },
                 "value": 2
               },
               {
-                "label": "One",
+                "label": {
+                  "en-US": "One",
+                  "es": "Uno"
+                },
                 "value": 1
               },
               {
-                "label": "Missing Value",
+                "label": {
+                  "en-US": "Missing Value",
+                  "es": "Valor faltante"
+                },
                 "value": -1
               }
             ]
           },
           "e343a91f-628d-4175-870c-957beffa0152": {
             "name": "catvar2",
+            "label": "catvar2",
             "type": "categorical",
             "options": [
               {
-                "label": "One",
+                "label": {
+                  "en-US": "One",
+                  "es": "Uno"
+                },
                 "value": "one"
               },
               {
-                "label": "Two",
+                "label": {
+                  "en-US": "Two",
+                  "es": "Dos"
+                },
                 "value": "two"
               }
             ]
           },
           "e343a91f-628d-4175-870c-957beffa0153": {
             "name": "catvar3",
+            "label": "catvar3",
             "type": "categorical",
             "options": [
               {
-                "label": "One",
+                "label": {
+                  "en-US": "One",
+                  "es": "Uno"
+                },
                 "value": "one"
               },
               {
-                "label": "Two",
+                "label": {
+                  "en-US": "Two",
+                  "es": "Dos"
+                },
                 "value": "two"
               }
             ]
           },
           "e343a91f-628d-4175-870c-957beffa0154": {
             "name": "catvar4",
+            "label": "catvar4",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -1370,51 +2435,80 @@
             },
             "options": [
               {
-                "label": "One",
+                "label": {
+                  "en-US": "One",
+                  "es": "Uno"
+                },
                 "value": "one"
               },
               {
-                "label": "Two",
+                "label": {
+                  "en-US": "Two",
+                  "es": "Dos"
+                },
                 "value": "two"
               },
               {
-                "label": "***Three***",
+                "label": {
+                  "en-US": "***Three***",
+                  "es": "***Tres***"
+                },
                 "value": "three"
               },
               {
-                "label": "Four",
+                "label": {
+                  "en-US": "Four",
+                  "es": "Cuatro"
+                },
                 "value": "four"
               }
             ]
           },
           "e343a91f-628d-4175-870c-957beffa0151": {
             "name": "contactType",
+            "label": "contactType",
             "type": "categorical",
             "options": [
               {
-                "label": "In person",
+                "label": {
+                  "en-US": "In person",
+                  "es": "En persona"
+                },
                 "value": "person"
               },
               {
-                "label": "Phone call",
+                "label": {
+                  "en-US": "Phone call",
+                  "es": "Llamada telefónica"
+                },
                 "value": "call"
               },
               {
-                "label": "Text",
+                "label": {
+                  "en-US": "Text",
+                  "es": "Mensaje de texto"
+                },
                 "value": "text"
               },
               {
-                "label": "Email",
+                "label": {
+                  "en-US": "Email",
+                  "es": "Correo electrónico"
+                },
                 "value": "email"
               },
               {
-                "label": "Social media",
+                "label": {
+                  "en-US": "Social media",
+                  "es": "Redes sociales"
+                },
                 "value": "media"
               }
             ]
           },
           "4ccba4e2-a246-46ee-a3ff-1c70fb4c449c": {
             "name": "discussType",
+            "label": "discussType",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -1424,57 +2518,86 @@
             },
             "options": [
               {
-                "label": "Politics",
+                "label": {
+                  "en-US": "Politics",
+                  "es": "Política"
+                },
                 "value": "politics"
               },
               {
-                "label": "Weather",
+                "label": {
+                  "en-US": "Weather",
+                  "es": "El tiempo"
+                },
                 "value": "weather"
               },
               {
-                "label": "Work",
+                "label": {
+                  "en-US": "Work",
+                  "es": "Trabajo"
+                },
                 "value": "work"
               },
               {
-                "label": "Current events",
+                "label": {
+                  "en-US": "Current events",
+                  "es": "Actualidad"
+                },
                 "value": "current"
               },
               {
-                "label": "Entertainment",
+                "label": {
+                  "en-US": "Entertainment",
+                  "es": "Entretenimiento"
+                },
                 "value": "entertainment"
               },
               {
-                "label": "School",
+                "label": {
+                  "en-US": "School",
+                  "es": "Escuela"
+                },
                 "value": "school"
               },
               {
-                "label": "Friends",
+                "label": {
+                  "en-US": "Friends",
+                  "es": "Amigos"
+                },
                 "value": "friends"
               },
               {
-                "label": "Money",
+                "label": {
+                  "en-US": "Money",
+                  "es": "Dinero"
+                },
                 "value": "money"
               }
             ]
           },
           "layout_variable": {
             "name": "closenessLayout",
+            "label": "closenessLayout",
             "type": "layout"
           },
           "layout_variable_manual": {
             "name": "manualLayout",
+            "label": "manualLayout",
             "type": "layout"
           },
           "e13ca72d-aefe-4f48-841d-09f020e0e987": {
             "name": "anotherLayout",
+            "label": "anotherLayout",
             "type": "layout"
           },
           "d2d8091e-8170-42c1-9dc0-c0d54553b3e6": {
             "name": "talk_friend",
+            "label": "talk_friend",
             "type": "boolean"
           },
           "04298634-eb5f-450a-84dd-95d2708e10c1": {
             "name": "dataSource",
+            "label": "dataSource",
             "type": "text"
           },
           "490db003-3289-4969-b426-919cefb4cdf0": {
@@ -1482,32 +2605,45 @@
             "component": "LikertScale",
             "options": [
               {
-                "label": "Yes",
+                "label": {
+                  "en-US": "Yes",
+                  "es": "Sí"
+                },
                 "value": "yes"
               },
               {
                 "value": "maybe",
-                "label": "Maybe"
+                "label": {
+                  "en-US": "Maybe",
+                  "es": "Quizás"
+                }
               },
               {
-                "label": "No",
+                "label": {
+                  "en-US": "No",
+                  "es": "No"
+                },
                 "value": "no"
               }
             ],
-            "name": "likertScaleTwo"
+            "name": "likertScaleTwo",
+            "label": "likertScaleTwo"
           },
           "9b56bc6d-6b20-4e38-9aab-4057e78e1130": {
             "type": "datetime",
             "component": "DatePicker",
-            "name": "compactdate"
+            "name": "compactdate",
+            "label": "compactdate"
           },
           "246c4d84-ebd7-41a6-8c1a-ef83938227ba": {
             "type": "text",
             "component": "TextArea",
-            "name": "bio"
+            "name": "bio",
+            "label": "bio"
           },
           "979c9ad7-74cb-402d-8574-3f0a91c9174d": {
             "name": "other_variable",
+            "label": "other_variable",
             "type": "text",
             "validation": {
               "required": true
@@ -1515,32 +2651,43 @@
           },
           "e1dda563-f6f6-47b7-91cb-31b4c2fdb73a": {
             "name": "homework_friend",
+            "label": "homework_friend",
             "type": "boolean"
           }
         }
       },
       "dummy_node_type": {
         "name": "dummytype",
+        "label": {
+          "en-US": "dummytype",
+          "es": "tipo ficticio"
+        },
         "color": "node-color-seq-6",
-        "shape": { "default": "circle" },
+        "shape": {
+          "default": "circle"
+        },
         "variables": {
           "2377af3f-3c79-41da-9b0b-6570fb519b93": {
             "name": "label",
+            "label": "label",
             "component": "Text",
             "type": "text"
           },
           "e3eb5f0b-84ad-43f0-8db5-9f83cd3a56de": {
             "name": "numberVariable",
+            "label": "numberVariable",
             "component": "Number",
             "type": "number"
           },
           "57fefac9-561f-454a-8f78-81bd9470efaa": {
             "name": "booleanVariable",
+            "label": "booleanVariable",
             "component": "Toggle",
             "type": "boolean"
           },
           "683ad529-66c6-4c84-8e31-a31452dsf74k": {
             "name": "booleanVariable3",
+            "label": "booleanVariable3",
             "type": "boolean",
             "component": "Boolean",
             "validation": {
@@ -1548,25 +2695,34 @@
             },
             "options": [
               {
-                "label": "Yes",
+                "label": {
+                  "en-US": "Yes",
+                  "es": "Sí"
+                },
                 "value": true
               },
               {
-                "label": "No",
+                "label": {
+                  "en-US": "No",
+                  "es": "No"
+                },
                 "value": false
               }
             ]
           },
           "d7b5f733-bec1-49be-8c33-f3c772ca0653": {
             "name": "booleanVariable2",
+            "label": "booleanVariable2",
             "type": "boolean"
           },
           "3eaad411-0530-41ca-bb43-9fb6ea846d6e": {
             "name": "checkboxVariable",
+            "label": "checkboxVariable",
             "type": "boolean"
           },
           "583ad529-66c6-4c84-8e31-a31452d6b5e9": {
             "name": "ordinalVariable",
+            "label": "ordinalVariable",
             "type": "ordinal",
             "component": "RadioGroup",
             "validation": {
@@ -1574,29 +2730,45 @@
             },
             "options": [
               {
-                "label": "Value Four",
+                "label": {
+                  "en-US": "Value Four",
+                  "es": "Valor cuatro"
+                },
                 "value": 4
               },
               {
-                "label": "Value Three is quite long",
+                "label": {
+                  "en-US": "Value Three is quite long",
+                  "es": "El valor tres es bastante largo"
+                },
                 "value": 3
               },
               {
-                "label": "Value Two",
+                "label": {
+                  "en-US": "Value Two",
+                  "es": "Valor dos"
+                },
                 "value": 2
               },
               {
-                "label": "Value One is also long, with break",
+                "label": {
+                  "en-US": "Value One is also long, with break",
+                  "es": "El valor uno también es largo, con salto"
+                },
                 "value": 1
               },
               {
-                "label": "Missing Value",
+                "label": {
+                  "en-US": "Missing Value",
+                  "es": "Valor faltante"
+                },
                 "value": -1
               }
             ]
           },
           "e3537457-41a2-4fbf-a1f8-9235b3c1edc6": {
             "name": "categoricalVariable",
+            "label": "categoricalVariable",
             "type": "categorical",
             "component": "CheckboxGroup",
             "validation": {
@@ -1604,29 +2776,45 @@
             },
             "options": [
               {
-                "label": "Value A has additional text to go along with it",
+                "label": {
+                  "en-US": "Value A has additional text to go along with it",
+                  "es": "El valor A tiene texto adicional que lo acompaña"
+                },
                 "value": "Value_A"
               },
               {
-                "label": "Value B",
+                "label": {
+                  "en-US": "Value B",
+                  "es": "Valor B"
+                },
                 "value": "Value_B"
               },
               {
-                "label": "Value C is a label that has too much text - shorten it",
+                "label": {
+                  "en-US": "Value C is a label that has too much text - shorten it",
+                  "es": "El valor C es una etiqueta con demasiado texto - acórtala"
+                },
                 "value": "Value_C"
               },
               {
-                "label": "Value D",
+                "label": {
+                  "en-US": "Value D",
+                  "es": "Valor D"
+                },
                 "value": "Value_D"
               },
               {
-                "label": "Value E",
+                "label": {
+                  "en-US": "Value E",
+                  "es": "Valor E"
+                },
                 "value": "Value_E"
               }
             ]
           },
           "6c647977-f2d1-426f-b0c5-6d44c795c554": {
             "name": "categoricalVariable2",
+            "label": "categoricalVariable2",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -1635,43 +2823,73 @@
             },
             "options": [
               {
-                "label": "Friends",
+                "label": {
+                  "en-US": "Friends",
+                  "es": "Amigos"
+                },
                 "value": "Value_A"
               },
               {
-                "label": "Family",
+                "label": {
+                  "en-US": "Family",
+                  "es": "Familia"
+                },
                 "value": "Value_B"
               },
               {
-                "label": "Work",
+                "label": {
+                  "en-US": "Work",
+                  "es": "Trabajo"
+                },
                 "value": "Value_C"
               },
               {
-                "label": "Church",
+                "label": {
+                  "en-US": "Church",
+                  "es": "Iglesia"
+                },
                 "value": "Value_D"
               },
               {
-                "label": "Vikings",
+                "label": {
+                  "en-US": "Vikings",
+                  "es": "Vikingos"
+                },
                 "value": "Value_E"
               },
               {
-                "label": "German Course",
+                "label": {
+                  "en-US": "German Course",
+                  "es": "Curso de alemán"
+                },
                 "value": "Value_F"
               },
               {
-                "label": "Gardening Club",
+                "label": {
+                  "en-US": "Gardening Club",
+                  "es": "Club de jardinería"
+                },
                 "value": "Value_G"
               },
               {
-                "label": "Neighbors",
+                "label": {
+                  "en-US": "Neighbors",
+                  "es": "Vecinos"
+                },
                 "value": "Value_H"
               },
               {
-                "label": "Oxford Friends",
+                "label": {
+                  "en-US": "Oxford Friends",
+                  "es": "Amigos de Oxford"
+                },
                 "value": "Value_I"
               },
               {
-                "label": "Band",
+                "label": {
+                  "en-US": "Band",
+                  "es": "Banda"
+                },
                 "value": "Value_J"
               }
             ]
@@ -1681,53 +2899,83 @@
             "component": "LikertScale",
             "options": [
               {
-                "label": "Agree",
+                "label": {
+                  "en-US": "Agree",
+                  "es": "De acuerdo"
+                },
                 "value": "agree"
               },
               {
-                "label": "Somewhat Agree",
+                "label": {
+                  "en-US": "Somewhat Agree",
+                  "es": "Algo de acuerdo"
+                },
                 "value": "somewhat_agree"
               },
               {
                 "value": "neutral",
-                "label": "Neutral"
+                "label": {
+                  "en-US": "Neutral",
+                  "es": "Neutral"
+                }
               },
               {
-                "label": "Somewhat disagree",
+                "label": {
+                  "en-US": "Somewhat disagree",
+                  "es": "Algo en desacuerdo"
+                },
                 "value": "somewhat_disagree"
               },
               {
-                "label": "Disagree",
+                "label": {
+                  "en-US": "Disagree",
+                  "es": "En desacuerdo"
+                },
                 "value": "disagree"
               }
             ],
             "validation": {
               "required": true
             },
-            "name": "likertScale"
+            "name": "likertScale",
+            "label": "likertScale"
           },
           "720224a3-e2d3-4729-968a-29d3f3e4fca6": {
             "type": "scalar",
             "component": "VisualAnalogScale",
             "parameters": {
-              "minLabel": "Not very far",
-              "maxLabel": "Really quite far"
+              "minLabel": {
+                "en-US": "Not very far",
+                "es": "No muy lejos"
+              },
+              "maxLabel": {
+                "en-US": "Really quite far",
+                "es": "Realmente bastante lejos"
+              }
             },
             "validation": {
               "required": true
             },
-            "name": "visualAnalogScale"
+            "name": "visualAnalogScale",
+            "label": "visualAnalogScale"
           }
         }
       },
       "venue_node_type": {
         "name": "venue",
+        "label": {
+          "en-US": "venue",
+          "es": "lugar"
+        },
         "color": "node-color-seq-4",
         "icon": "add-a-place",
-        "shape": { "default": "circle" },
+        "shape": {
+          "default": "circle"
+        },
         "variables": {
           "venue_name_variable": {
             "name": "name",
+            "label": "name",
             "type": "text",
             "validation": {
               "required": true
@@ -1735,76 +2983,104 @@
           },
           "7316d500-6c1e-4188-a531-b2ef587721e0": {
             "name": "location",
+            "label": "location",
             "type": "location"
           },
           "venueVisitFreqVariable": {
             "name": "visitfreq",
+            "label": "visitfreq",
             "type": "ordinal",
             "options": [
               {
-                "label": "Every day",
+                "label": {
+                  "en-US": "Every day",
+                  "es": "Todos los días"
+                },
                 "value": 4
               },
               {
-                "label": "Every other day",
+                "label": {
+                  "en-US": "Every other day",
+                  "es": "Cada dos días"
+                },
                 "value": 3
               },
               {
-                "label": "Every week",
+                "label": {
+                  "en-US": "Every week",
+                  "es": "Cada semana"
+                },
                 "value": 2
               },
               {
-                "label": "Sometimes",
+                "label": {
+                  "en-US": "Sometimes",
+                  "es": "A veces"
+                },
                 "value": 1
               },
               {
-                "label": "Never",
+                "label": {
+                  "en-US": "Never",
+                  "es": "Nunca"
+                },
                 "value": -1
               }
             ]
           },
           "55f1fbbe-2fe5-42a7-88fb-9a8e5e659d2f": {
             "name": "primary_venue",
+            "label": "primary_venue",
             "type": "boolean"
           },
           "8a35cd77-7bc4-4c7e-b98a-673b6a21321f": {
             "name": "parentorg",
+            "label": "parentorg",
             "type": "text"
           },
           "8ee3a187-d4be-458e-8abb-71efcc071949": {
             "name": "subsidiary",
+            "label": "subsidiary",
             "type": "text"
           },
           "1e9ce62c-44c5-484d-9c26-0d20cc7d7238": {
             "name": "Abbreviated_Name",
+            "label": "Abbreviated_Name",
             "type": "text"
           },
           "18fbc928-d027-42de-bc96-ff5c09bf4944": {
             "name": "standardwordabbrev",
+            "label": "standardwordabbrev",
             "type": "text"
           },
           "67132d2b-c371-4c57-a5eb-6520083f9d22": {
             "name": "addr",
+            "label": "addr",
             "type": "text"
           },
           "bdc60147-fe7a-4c3c-a164-e5b370f6a281": {
             "name": "lat",
+            "label": "lat",
             "type": "number"
           },
           "931a7b23-e433-4e7e-8e13-48b72e5f0549": {
             "name": "long",
+            "label": "long",
             "type": "number"
           },
           "0a5f7952-a9a7-4e87-9353-2d17a59284ee": {
             "name": "rawaddr",
+            "label": "rawaddr",
             "type": "text"
           },
           "venue_layout_variable": {
             "name": "Layout",
+            "label": "Layout",
             "type": "layout"
           },
           "venue_layout_variable_manual": {
             "name": "Layout_Manual",
+            "label": "Layout_Manual",
             "type": "layout"
           }
         }
@@ -1813,10 +3089,13 @@
         "name": "family member",
         "color": "node-color-seq-2",
         "icon": "add-a-person",
-        "shape": { "default": "circle" },
+        "shape": {
+          "default": "circle"
+        },
         "variables": {
           "fm_name": {
             "name": "fm_name",
+            "label": "fm_name",
             "type": "text",
             "component": "Text",
             "validation": {
@@ -1825,44 +3104,111 @@
           },
           "is_ego": {
             "name": "is_ego",
+            "label": "is_ego",
             "type": "boolean",
             "component": "Toggle"
           },
-          "fm_relationship_to_ego": {
-            "name": "fm_relationship_to_ego",
-            "type": "text",
-            "component": "Text"
+          "genderIdentity": {
+            "name": "genderIdentity",
+            "type": "categorical",
+            "options": [
+              {
+                "value": "woman",
+                "label": {
+                  "en-US": "Woman",
+                  "es": "Mujer"
+                }
+              },
+              {
+                "value": "man",
+                "label": {
+                  "en-US": "Man",
+                  "es": "Hombre"
+                }
+              },
+              {
+                "value": "nonBinary",
+                "label": {
+                  "en-US": "Non-binary",
+                  "es": "No binario"
+                }
+              },
+              {
+                "value": "differentIdentity",
+                "label": {
+                  "en-US": "A different identity",
+                  "es": "Otra identidad"
+                }
+              },
+              {
+                "value": "unknown",
+                "label": {
+                  "en-US": "Don’t know",
+                  "es": "No lo sé"
+                }
+              },
+              {
+                "value": "preferNotToSay",
+                "label": {
+                  "en-US": "Prefer not to say",
+                  "es": "Prefiero no decirlo"
+                }
+              }
+            ],
+            "label": "genderIdentity"
           },
-          "biologicalSex": {
-            "name": "biologicalSex",
+          "sexAssignedAtBirth": {
+            "name": "sexAssignedAtBirth",
             "type": "categorical",
             "options": [
               {
                 "value": "female",
-                "label": "Female"
+                "label": {
+                  "en-US": "Female",
+                  "es": "Femenino"
+                }
               },
               {
                 "value": "male",
-                "label": "Male"
+                "label": {
+                  "en-US": "Male",
+                  "es": "Masculino"
+                }
               },
               {
                 "value": "intersex",
-                "label": "Intersex or a variation in sex characteristics"
+                "label": {
+                  "en-US": "Intersex",
+                  "es": "Intersexual"
+                }
               },
               {
                 "value": "unknown",
-                "label": "Don’t know"
+                "label": {
+                  "en-US": "Don’t know",
+                  "es": "No lo sé"
+                }
               },
               {
                 "value": "preferNotToSay",
-                "label": "Prefer not to say"
+                "label": {
+                  "en-US": "Prefer not to say",
+                  "es": "Prefiero no decirlo"
+                }
               }
-            ]
+            ],
+            "label": "sexAssignedAtBirth"
           },
           "hasConditionX": {
             "name": "hasConditionX",
-            "type": "boolean"
+            "label": "hasConditionX",
+            "type": "boolean",
+            "component": "Toggle"
           }
+        },
+        "label": {
+          "en-US": "family member",
+          "es": "familiar"
         }
       }
     },
@@ -1870,6 +3216,7 @@
       "variables": {
         "3377af3f-3c79-41da-9b0b-6570fb519b93": {
           "name": "name",
+          "label": "name",
           "type": "text",
           "component": "Text",
           "validation": {
@@ -1878,6 +3225,7 @@
         },
         "f3eb5f0b-84ad-43f0-8db5-9f83cd3a56de": {
           "name": "numberVariable",
+          "label": "numberVariable",
           "type": "number",
           "component": "Number",
           "validation": {
@@ -1886,19 +3234,23 @@
         },
         "67fefac9-561f-454a-8f78-81bd9470efaa": {
           "name": "booleanVariable",
+          "label": "booleanVariable",
           "component": "Toggle",
           "type": "boolean"
         },
         "e7b5f733-bec1-49be-8c33-f3c772ca0653": {
           "name": "booleanVariable2",
+          "label": "booleanVariable2",
           "type": "boolean"
         },
         "4eaad411-0530-41ca-bb43-9fb6ea846d6e": {
           "name": "checkboxVariable",
+          "label": "checkboxVariable",
           "type": "boolean"
         },
         "683ad529-66c6-4c84-8e31-a31452d6b5e9": {
           "name": "ordinalVariable",
+          "label": "ordinalVariable",
           "type": "ordinal",
           "component": "RadioGroup",
           "validation": {
@@ -1906,29 +3258,45 @@
           },
           "options": [
             {
-              "label": "Value Four",
+              "label": {
+                "en-US": "Value Four",
+                "es": "Valor cuatro"
+              },
               "value": 4
             },
             {
-              "label": "Value Three is quite long",
+              "label": {
+                "en-US": "Value Three is quite long",
+                "es": "El valor tres es bastante largo"
+              },
               "value": 3
             },
             {
-              "label": "Value Two",
+              "label": {
+                "en-US": "Value Two",
+                "es": "Valor dos"
+              },
               "value": 2
             },
             {
-              "label": "Value One is also long, _with break_",
+              "label": {
+                "en-US": "Value One is also long, _with break_",
+                "es": "El valor uno también es largo, _con salto_"
+              },
               "value": 1
             },
             {
-              "label": "Missing Value",
+              "label": {
+                "en-US": "Missing Value",
+                "es": "Valor faltante"
+              },
               "value": -1
             }
           ]
         },
         "f3537457-41a2-4fbf-a1f8-9235b3c1edc6": {
           "name": "categoricalVariable",
+          "label": "categoricalVariable",
           "type": "categorical",
           "component": "CheckboxGroup",
           "validation": {
@@ -1936,29 +3304,45 @@
           },
           "options": [
             {
-              "label": "Value A **has additional** text to go along with it",
+              "label": {
+                "en-US": "Value A **has additional** text to go along with it",
+                "es": "El valor A **tiene texto** adicional que lo acompaña"
+              },
               "value": "Value_A"
             },
             {
-              "label": "Value B",
+              "label": {
+                "en-US": "Value B",
+                "es": "Valor B"
+              },
               "value": "Value_B"
             },
             {
-              "label": "Value C is a label that has too much text - **shorten it**",
+              "label": {
+                "en-US": "Value C is a label that has too much text - **shorten it**",
+                "es": "El valor C es una etiqueta con demasiado texto - **acórtala**"
+              },
               "value": "Value_C"
             },
             {
-              "label": "Value D",
+              "label": {
+                "en-US": "Value D",
+                "es": "Valor D"
+              },
               "value": "Value_D"
             },
             {
-              "label": "Value E",
+              "label": {
+                "en-US": "Value E",
+                "es": "Valor E"
+              },
               "value": "Value_E"
             }
           ]
         },
         "7c647977-f2d1-426f-b0c5-6d44c795c554": {
           "name": "categoricalVariable2",
+          "label": "categoricalVariable2",
           "type": "categorical",
           "component": "ToggleButtonGroup",
           "validation": {
@@ -1967,43 +3351,73 @@
           },
           "options": [
             {
-              "label": "Friends",
+              "label": {
+                "en-US": "Friends",
+                "es": "Amigos"
+              },
               "value": "Value_A"
             },
             {
-              "label": "Family",
+              "label": {
+                "en-US": "Family",
+                "es": "Familia"
+              },
               "value": "Value_B"
             },
             {
-              "label": "Work",
+              "label": {
+                "en-US": "Work",
+                "es": "Trabajo"
+              },
               "value": "Value_C"
             },
             {
-              "label": "Church",
+              "label": {
+                "en-US": "Church",
+                "es": "Iglesia"
+              },
               "value": "Value_D"
             },
             {
-              "label": "Vikings",
+              "label": {
+                "en-US": "Vikings",
+                "es": "Vikingos"
+              },
               "value": "Value_E"
             },
             {
-              "label": "German Course",
+              "label": {
+                "en-US": "German Course",
+                "es": "Curso de alemán"
+              },
               "value": "Value_F"
             },
             {
-              "label": "_Gardening_ Club",
+              "label": {
+                "en-US": "_Gardening_ Club",
+                "es": "Club de _jardinería_"
+              },
               "value": "Value_G"
             },
             {
-              "label": "Neighbors",
+              "label": {
+                "en-US": "Neighbors",
+                "es": "Vecinos"
+              },
               "value": "Value_H"
             },
             {
-              "label": "Oxford Friends",
+              "label": {
+                "en-US": "Oxford Friends",
+                "es": "Amigos de Oxford"
+              },
               "value": "Value_I"
             },
             {
-              "label": "Band",
+              "label": {
+                "en-US": "Band",
+                "es": "Banda"
+              },
               "value": "Value_J"
             }
           ]
@@ -2011,35 +3425,53 @@
         "b4956387-cada-412f-9e97-fe352c3cc44e": {
           "type": "text",
           "component": "TextArea",
-          "name": "bio"
+          "name": "bio",
+          "label": "bio"
         },
         "300a798f-d11b-4195-91ee-3221bc586c0a": {
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
             {
-              "label": "0",
+              "label": {
+                "en-US": "0",
+                "es": "0"
+              },
               "value": 0
             },
             {
-              "label": "Sometimes",
+              "label": {
+                "en-US": "Sometimes",
+                "es": "A veces"
+              },
               "value": "sometimes"
             },
             {
-              "label": "_Lots_",
+              "label": {
+                "en-US": "_Lots_",
+                "es": "_Mucho_"
+              },
               "value": "lots"
             }
           ],
-          "name": "Choose_from_a_scale"
+          "name": "Choose_from_a_scale",
+          "label": "Choose_from_a_scale"
         },
         "03c54247-aa12-497a-b8f8-c4cb69048455": {
           "type": "scalar",
           "component": "VisualAnalogScale",
           "parameters": {
-            "minLabel": "Here",
-            "maxLabel": "There"
+            "minLabel": {
+              "en-US": "Here",
+              "es": "Aquí"
+            },
+            "maxLabel": {
+              "en-US": "There",
+              "es": "Allí"
+            }
           },
-          "name": "vas_scale"
+          "name": "vas_scale",
+          "label": "vas_scale"
         },
         "23a10bcb-bd71-46a1-a36d-4ab80cb5a1d1": {
           "type": "datetime",
@@ -2051,7 +3483,8 @@
           "validation": {
             "required": true
           },
-          "name": "dob"
+          "name": "dob",
+          "label": "dob"
         },
         "9c47f32e-b72f-4b1b-93a2-e29766dc3012": {
           "type": "datetime",
@@ -2060,6 +3493,7 @@
             "before": 60
           },
           "name": "favourite_day",
+          "label": "favourite_day",
           "validation": {
             "differentFrom": "23a10bcb-bd71-46a1-a36d-4ab80cb5a1d1"
           }
@@ -2073,63 +3507,95 @@
           "validation": {
             "greaterThanVariable": "9c47f32e-b72f-4b1b-93a2-e29766dc3012"
           },
-          "name": "favourite_day_later"
+          "name": "favourite_day_later",
+          "label": "favourite_day_later"
         }
       }
     },
     "edge": {
       "friend_edge_type": {
         "name": "friend",
+        "label": {
+          "en-US": "friend",
+          "es": "amigo"
+        },
         "color": "edge-color-seq-1",
         "variables": {
           "e343a91f-628d-4175-870c-75429857399e": {
             "name": "friendship-strength",
+            "label": "friendship-strength",
             "type": "ordinal",
             "options": [
               {
-                "label": "Very close",
+                "label": {
+                  "en-US": "Very close",
+                  "es": "Muy cercanos"
+                },
                 "value": 3
               },
               {
-                "label": "Sort of close",
+                "label": {
+                  "en-US": "Sort of close",
+                  "es": "Algo cercanos"
+                },
                 "value": 2
               },
               {
-                "label": "Not very close",
+                "label": {
+                  "en-US": "Not very close",
+                  "es": "No muy cercanos"
+                },
                 "value": 1
               }
             ]
           },
           "e343a91f-628d-4175-870c-957beffa0002": {
             "name": "catvar2",
+            "label": "catvar2",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
               {
-                "label": "One",
+                "label": {
+                  "en-US": "One",
+                  "es": "Uno"
+                },
                 "value": "one"
               },
               {
-                "label": "Two",
+                "label": {
+                  "en-US": "Two",
+                  "es": "Dos"
+                },
                 "value": "two"
               }
             ]
           },
           "e343a91f-628d-4175-870c-957beffa0003": {
             "name": "catvar3",
+            "label": "catvar3",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
               {
-                "label": "One",
+                "label": {
+                  "en-US": "One",
+                  "es": "Uno"
+                },
                 "value": "one"
               },
               {
-                "label": "Two",
+                "label": {
+                  "en-US": "Two",
+                  "es": "Dos"
+                },
                 "value": "two"
               },
               {
-                "label": "Three",
+                "label": {
+                  "en-US": "Three",
+                  "es": "Tres"
+                },
                 "value": "three"
               }
             ],
@@ -2139,23 +3605,36 @@
           },
           "e343a91f-628d-4175-870c-957beffa0004": {
             "name": "catvar4",
+            "label": "catvar4",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
               {
-                "label": "One",
+                "label": {
+                  "en-US": "One",
+                  "es": "Uno"
+                },
                 "value": "one"
               },
               {
-                "label": "Two",
+                "label": {
+                  "en-US": "Two",
+                  "es": "Dos"
+                },
                 "value": "two"
               },
               {
-                "label": "Three",
+                "label": {
+                  "en-US": "Three",
+                  "es": "Tres"
+                },
                 "value": "three"
               },
               {
-                "label": "Four",
+                "label": {
+                  "en-US": "Four",
+                  "es": "Cuatro"
+                },
                 "value": "four"
               }
             ]
@@ -2164,45 +3643,72 @@
       },
       "professional_edge_type": {
         "name": "professional",
+        "label": {
+          "en-US": "professional",
+          "es": "profesional"
+        },
         "color": "edge-color-seq-2",
         "variables": {
           "f984jk23-628d-4175-870c-ejd8e7al8vc3": {
             "name": "professional-strength",
+            "label": "professional-strength",
             "type": "ordinal",
             "options": [
               {
-                "label": "Constantly",
+                "label": {
+                  "en-US": "Constantly",
+                  "es": "Constantemente"
+                },
                 "value": 5
               },
               {
-                "label": "Very often",
+                "label": {
+                  "en-US": "Very often",
+                  "es": "Muy a menudo"
+                },
                 "value": 4
               },
               {
-                "label": "Somewhat often",
+                "label": {
+                  "en-US": "Somewhat often",
+                  "es": "Bastante a menudo"
+                },
                 "value": 3
               },
               {
-                "label": "Rarely",
+                "label": {
+                  "en-US": "Rarely",
+                  "es": "Rara vez"
+                },
                 "value": 2
               },
               {
-                "label": "Almost never",
+                "label": {
+                  "en-US": "Almost never",
+                  "es": "Casi nunca"
+                },
                 "value": 1
               }
             ]
           },
           "d343a91f-628d-4175-870c-957beffa0002": {
             "name": "catvar2",
+            "label": "catvar2",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
               {
-                "label": "One",
+                "label": {
+                  "en-US": "One",
+                  "es": "Uno"
+                },
                 "value": "one"
               },
               {
-                "label": "Two",
+                "label": {
+                  "en-US": "Two",
+                  "es": "Dos"
+                },
                 "value": "two"
               }
             ]
@@ -2211,64 +3717,100 @@
       },
       "visits_edge_type": {
         "name": "visits",
+        "label": {
+          "en-US": "visits",
+          "es": "visitas"
+        },
         "color": "edge-color-seq-3"
       },
       "family_edge": {
         "name": "family_edge",
         "color": "edge-color-seq-1",
         "variables": {
-          "relationshipType": {
-            "name": "relationshipType",
+          "relationshipKind": {
+            "name": "relationshipKind",
             "type": "categorical",
             "options": [
               {
+                "value": "partner",
+                "label": {
+                  "en-US": "Partner",
+                  "es": "Pareja"
+                }
+              },
+              {
                 "value": "biological",
-                "label": "Biological"
-              },
-              {
-                "value": "social",
-                "label": "Social"
-              },
-              {
-                "value": "donor",
-                "label": "Donor"
-              },
-              {
-                "value": "surrogate",
-                "label": "Surrogate"
+                "label": {
+                  "en-US": "Biological parent",
+                  "es": "Progenitor biológico"
+                }
               },
               {
                 "value": "adoptive",
-                "label": "Adoptive"
+                "label": {
+                  "en-US": "Adoptive parent",
+                  "es": "Progenitor adoptivo"
+                }
               },
               {
-                "value": "partner",
-                "label": "Partner"
+                "value": "social",
+                "label": {
+                  "en-US": "Step or social parent",
+                  "es": "Padrastro, madrastra o progenitor social"
+                }
+              },
+              {
+                "value": "donor",
+                "label": {
+                  "en-US": "Donor",
+                  "es": "Donante"
+                }
+              },
+              {
+                "value": "surrogate",
+                "label": {
+                  "en-US": "Surrogate",
+                  "es": "Gestante subrogada"
+                }
+              },
+              {
+                "value": "identicalTwin",
+                "label": {
+                  "en-US": "Identical twin",
+                  "es": "Gemelo idéntico"
+                }
+              },
+              {
+                "value": "fraternalTwin",
+                "label": {
+                  "en-US": "Fraternal twin",
+                  "es": "Mellizo"
+                }
+              },
+              {
+                "value": "unknownZygosityTwin",
+                "label": {
+                  "en-US": "Twin, not known if identical",
+                  "es": "Gemelo, sin saber si idéntico"
+                }
               }
-            ]
-          },
-          "isActive": {
-            "name": "isActive",
-            "type": "boolean"
+            ],
+            "label": "relationshipKind"
           },
           "isGestationalCarrier": {
             "name": "isGestationalCarrier",
+            "label": "isGestationalCarrier",
             "type": "boolean"
           },
-          "gameteRole": {
-            "name": "gameteRole",
-            "type": "categorical",
-            "options": [
-              {
-                "value": "egg",
-                "label": "Egg"
-              },
-              {
-                "value": "sperm",
-                "label": "Sperm"
-              }
-            ]
+          "isCurrentPartner": {
+            "name": "isCurrentPartner",
+            "type": "boolean",
+            "label": "isCurrentPartner"
           }
+        },
+        "label": {
+          "en-US": "family_edge",
+          "es": "vínculo familiar"
         }
       }
     }
@@ -2332,5 +3874,175 @@
   },
   "description": "The Network Canvas development protocol is designed for our team to test new features. It is not intended for general use.",
   "lastModified": "2022-09-09T13:58:16.838Z",
-  "schemaVersion": 8
+  "schemaVersion": 9,
+  "localization": {
+    "defaultLocale": "en-US",
+    "locales": ["en-US", "es"]
+  },
+  "interfaceText": {
+    "interview": {
+      "exitInterview": {
+        "en-US": "Exit interview",
+        "es": "Salir de la entrevista"
+      },
+      "exitInterviewDescription": {
+        "en-US": "Your answers so far will be saved and you can continue later.",
+        "es": "Tus respuestas hasta ahora se guardarán y podrás continuar más adelante."
+      },
+      "stageError": {
+        "en-US": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button.",
+        "es": "Se produjo un error en el programa de la entrevista y no se pudo mostrar esta tarea. Algunas tareas, como los mapas, necesitan conexión a internet, así que comprueba tu conexión y después prueba a actualizar la página. Si el problema persiste, ponte en contacto con la persona que organiza el estudio y envíale la información de diagnóstico, que puedes copiar con el botón de abajo. Es posible que puedas continuar la entrevista pulsando la flecha de avance."
+      },
+      "itemUnavailable": {
+        "en-US": "This item could not be displayed.",
+        "es": "No se pudo mostrar este elemento."
+      },
+      "back": {
+        "en-US": "Back",
+        "es": "Volver"
+      },
+      "continue": {
+        "en-US": "Continue",
+        "es": "Continuar"
+      },
+      "cancel": {
+        "en-US": "Cancel",
+        "es": "Cancelar"
+      },
+      "done": {
+        "en-US": "Done",
+        "es": "Listo"
+      },
+      "delete": {
+        "en-US": "Delete",
+        "es": "Eliminar"
+      },
+      "genericError": {
+        "en-US": "Something went wrong.",
+        "es": "Se ha producido un error."
+      }
+    },
+    "passphrase": {
+      "passphrase": {
+        "en-US": "Passphrase",
+        "es": "Frase de contraseña"
+      },
+      "choosePassphraseHelp": {
+        "en-US": "Some answers on this screen are protected by a passphrase. Keep it safe: you will need it to see or change these answers later, and it cannot be recovered if it is forgotten.",
+        "es": "Algunas respuestas de esta pantalla están protegidas por una frase de contraseña. Guárdala en un lugar seguro: la necesitarás para ver o cambiar estas respuestas más adelante, y no se puede recuperar si la olvidas."
+      },
+      "passphraseIncorrect": {
+        "en-US": "This passphrase does not match the one used earlier in this interview. Check it and try again.",
+        "es": "Esta frase de contraseña no coincide con la que se usó antes en esta entrevista. Compruébala e inténtalo de nuevo."
+      },
+      "protectedAnswersLocked": {
+        "en-US": "Some answers here are protected by your passphrase. Enter your passphrase to see and change them.",
+        "es": "Algunas respuestas de aquí están protegidas por tu frase de contraseña. Introduce tu frase de contraseña para verlas y cambiarlas."
+      },
+      "protectedAnswersNotSaved": {
+        "en-US": "Your answers have not been saved. Enter your passphrase, then try again.",
+        "es": "Tus respuestas no se han guardado. Introduce tu frase de contraseña y vuelve a intentarlo."
+      },
+      "protectedAnswersUnavailable": {
+        "en-US": "Answers protected by a passphrase cannot be shown or saved in this interview. Please let the person who recruited you to this study know.",
+        "es": "Las respuestas protegidas por una frase de contraseña no se pueden mostrar ni guardar en esta entrevista. Avisa a la persona que te invitó a participar en este estudio."
+      },
+      "answerUnavailable": {
+        "en-US": "Answer unavailable",
+        "es": "Respuesta no disponible"
+      },
+      "answerUnavailableKept": {
+        "en-US": "This answer was saved earlier but cannot be shown here. Entering a new answer will replace it, so leave the field empty to keep the earlier answer.",
+        "es": "Esta respuesta se guardó antes, pero no se puede mostrar aquí. Si introduces una nueva respuesta, sustituirá a esta; deja el campo vacío para conservar la respuesta anterior."
+      },
+      "confirmPassphrase": {
+        "en-US": "Confirm Passphrase",
+        "es": "Confirmar frase de contraseña"
+      },
+      "passphraseAccepted": {
+        "en-US": "Passphrase accepted! Click \"Next\" to continue.",
+        "es": "¡Frase de contraseña aceptada! Pulsa la flecha de avance para continuar."
+      }
+    },
+    "forms": {
+      "discardChanges": {
+        "en-US": "Discard changes",
+        "es": "Descartar cambios"
+      },
+      "discardChangesTitle": {
+        "en-US": "Discard changes?",
+        "es": "¿Descartar los cambios?"
+      },
+      "discardChangesDescription": {
+        "en-US": "This form contains invalid data, so it cannot be saved. If you continue it will be reset, and your changes will be lost. Do you want to discard your changes?",
+        "es": "Este formulario contiene datos que no son válidos y no se puede guardar. Si continúas, se restablecerá y se perderán los cambios. ¿Quieres descartar los cambios?"
+      },
+      "yes": {
+        "en-US": "Yes",
+        "es": "Sí"
+      },
+      "no": {
+        "en-US": "No",
+        "es": "No"
+      },
+      "submitFailed": {
+        "en-US": "An error occurred while submitting the form.",
+        "es": "Se ha producido un error al enviar el formulario."
+      }
+    },
+    "validation": {
+      "required": {
+        "en-US": "You must answer this question before continuing.",
+        "es": "Debes responder a esta pregunta antes de continuar."
+      },
+      "minLength": {
+        "en-US": "{min, plural, one {Enter at least # character.} other {Enter at least # characters.}}",
+        "es": "{min, plural, one {Introduce al menos # carácter.} other {Introduce al menos # caracteres.}}"
+      },
+      "maxLength": {
+        "en-US": "{max, plural, one {Enter at most # character.} other {Enter at most # characters.}}",
+        "es": "{max, plural, one {Introduce como máximo # carácter.} other {Introduce como máximo # caracteres.}}"
+      },
+      "minValue": {
+        "en-US": "Enter a value greater than or equal to {min}.",
+        "es": "Introduce un valor mayor o igual que {min}."
+      },
+      "maxValue": {
+        "en-US": "Enter a value less than or equal to {max}.",
+        "es": "Introduce un valor menor o igual que {max}."
+      },
+      "minDate": {
+        "en-US": "Must be on or after {min}.",
+        "es": "Debe ser igual o posterior a {min}."
+      },
+      "maxDate": {
+        "en-US": "Must be on or before {max}.",
+        "es": "Debe ser igual o anterior a {max}."
+      },
+      "minSelected": {
+        "en-US": "{count, plural, one {Select at least # value.} other {Select at least # values.}}",
+        "es": "{count, plural, one {Selecciona al menos # valor.} other {Selecciona al menos # valores.}}"
+      },
+      "maxSelected": {
+        "en-US": "{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}",
+        "es": "{count, plural, one {Selecciona como máximo # valor.} other {Selecciona como máximo # valores.}}"
+      },
+      "unique": {
+        "en-US": "Must be unique.",
+        "es": "Debe ser una respuesta única."
+      },
+      "differentFrom": {
+        "en-US": "{hasLabel, select, true {Your answer must be different from your answer to ''{label}''.} other {Your answer must be different from your earlier answer.}}",
+        "es": "{hasLabel, select, true {Tu respuesta debe ser distinta de tu respuesta a «{label}».} other {Tu respuesta debe ser distinta de la anterior.}}"
+      },
+      "sameAs": {
+        "en-US": "{hasLabel, select, true {Your answer must be the same as your answer to ''{label}''.} other {Your answer must be the same as your earlier answer.}}",
+        "es": "{hasLabel, select, true {Tu respuesta debe ser igual a tu respuesta a «{label}».} other {Tu respuesta debe ser igual a la anterior.}}"
+      },
+      "greaterThan": {
+        "en-US": "{hasLabel, select, true {Your answer must be greater than your answer to ''{label}''.} other {Your answer must be greater than your earlier answer.}}",
+        "es": "{hasLabel, select, true {Tu respuesta debe ser mayor que tu respuesta a «{label}».} other {Tu respuesta debe ser mayor que la anterior.}}"
+      }
+    }
+  }
 }

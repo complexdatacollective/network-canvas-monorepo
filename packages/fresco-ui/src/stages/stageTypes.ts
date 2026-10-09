@@ -3,11 +3,13 @@ import {
   ChartNoAxesColumnIncreasing,
   Dna,
   FileUser,
+  Flag,
   GitCompare,
   GitFork,
   IdCard,
   Info,
   KeyRound,
+  Languages,
   LayoutGrid,
   type LucideIcon,
   MapPinned,
@@ -49,6 +51,8 @@ export const STAGE_TYPE_COLORS: Record<StageType, PaletteColor> = {
   Geospatial: 'sea-serpent',
   Information: 'platinum-dark',
   Anonymisation: 'cyber-grape',
+  LanguageChooser: 'charcoal',
+  FinishSession: 'navy-taupe',
 };
 
 /**
@@ -77,6 +81,8 @@ export const STAGE_TYPE_ICONS: Record<StageType, LucideIcon> = {
   Geospatial: MapPinned,
   Information: Info,
   Anonymisation: KeyRound,
+  LanguageChooser: Languages,
+  FinishSession: Flag,
 };
 
 /**

@@ -496,6 +496,70 @@ describe('describeRule', () => {
   });
 
   /**
+   * An encrypted answer is stored as ciphertext only the participant's
+   * passphrase opens, and rules are checked without it — so the protocol
+   * schema refuses a rule comparing one wherever the rule reads interview
+   * answers. Only a panel over an imported file may compare one; any rule set
+   * may ask whether it was answered.
+   */
+  describe('an attribute the participant’s passphrase protects', () => {
+    const encryptedRule = {
+      id: 'rule-11',
+      type: 'node',
+      options: {
+        type: 'person',
+        attribute: 'secret',
+        operator: 'EXACTLY',
+        value: 'Ada',
+      },
+    };
+
+    it('reports the rule unless the rule set allows it', () => {
+      const description = describeRule({ rule: encryptedRule, codebook });
+
+      // Still the attribute the codebook has, not one it lost.
+      expect(description.attribute).toMatchObject({
+        id: 'secret',
+        label: 'Secret',
+        missing: false,
+      });
+      expect(description.problems).toEqual([
+        {
+          code: 'encryptedAttribute',
+          message:
+            'This rule compares the answers to an encrypted attribute. Rules are checked without the participant’s passphrase, so they can only check whether an encrypted attribute is answered. Edit or delete the rule.',
+        },
+      ]);
+    });
+
+    it.each(['EXISTS', 'NOT_EXISTS'])(
+      'reports nothing for a rule that only asks whether it is answered: %s',
+      (operator) => {
+        expect(
+          describeRule({
+            rule: {
+              id: 'rule-12',
+              type: 'node',
+              options: { type: 'person', attribute: 'secret', operator },
+            },
+            codebook,
+          }).problems,
+        ).toEqual([]);
+      },
+    );
+
+    it('reports nothing in a rule set that may read encrypted attributes', () => {
+      expect(
+        describeRule({
+          rule: encryptedRule,
+          codebook,
+          allowEncryptedAttributes: true,
+        }).problems,
+      ).toEqual([]);
+    });
+  });
+
+  /**
    * An operator can survive a retype while the operand it was entered for
    * cannot: both `number` and `categorical` accept `EXACTLY`, but a number
    * answers with a number and a categorical answers with a list of the options
@@ -731,11 +795,12 @@ describe('describeRule', () => {
       node: {
         person: {
           name: '',
+          label: { en: '' },
           color: 'node-color-seq-2',
           shape: { default: 'square' },
         },
       },
-      edge: { friend: { name: '' } },
+      edge: { friend: { name: '', label: { en: '' } } },
     });
 
     it('names a node type by its id', () => {
@@ -835,15 +900,17 @@ describe('describeRule', () => {
           node: {
             person: {
               name: 'Person',
+              label: { en: 'Person' },
               color: 'node-color-seq-2',
               shape: { default: 'square' },
               variables: {
                 consent: {
                   name: 'Consent',
+                  label: 'Consent',
                   type: 'categorical',
                   options: [
-                    { label: 'Consented', value: 'true' },
-                    { label: 'Declined', value: 'false' },
+                    { label: { en: 'Consented' }, value: 'true' },
+                    { label: { en: 'Declined' }, value: 'false' },
                   ],
                 },
               },
@@ -880,11 +947,13 @@ describe('a problem beside an operator that negates its comparison', () => {
     node: {
       person: {
         name: 'Person',
+        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
           met: {
             name: 'Met on',
+            label: 'Met on',
             type: 'datetime',
             component: 'DatePicker',
             parameters: { type: 'year' },
@@ -941,11 +1010,13 @@ describe('a problem beside an operator that negates its comparison', () => {
       node: {
         person: {
           name: 'Person',
+          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
             met: {
               name: 'Met on',
+              label: 'Met on',
               type: 'datetime',
               component: 'DatePicker',
               parameters: {

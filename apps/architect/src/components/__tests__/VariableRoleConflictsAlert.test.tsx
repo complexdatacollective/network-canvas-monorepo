@@ -14,14 +14,16 @@ const codebook = {
   node: {
     person: {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-1',
       variables: {
         category: {
           name: 'Category',
+          label: 'Category',
           type: 'categorical',
           options: [
-            { label: 'Friend', value: 'friend' },
-            { label: 'Family', value: 'family' },
+            { label: { en: 'Friend' }, value: 'friend' },
+            { label: { en: 'Family' }, value: 'family' },
           ],
         },
       },
@@ -32,28 +34,32 @@ const codebook = {
 const alterFormStage = {
   id: 'af1',
   type: 'AlterForm',
-  label: 'Alter form',
+  label: { en: 'Alter form' },
   subject: { entity: 'node', type: 'person' },
-  introductionPanel: { title: 'T', text: 'X' },
-  form: { fields: [{ variable: 'category', prompt: 'Answer' }] },
+  introductionPanel: { title: { en: 'T' }, text: { en: 'X' } },
+  form: { fields: [{ variable: 'category', prompt: { en: 'Answer' } }] },
 };
 
 const categoricalBinStage = {
   id: 'cb1',
   type: 'CategoricalBin',
-  label: 'Sort into bins',
+  label: { en: 'Sort into bins' },
   subject: { entity: 'node', type: 'person' },
-  prompts: [{ id: 'p1', text: 'Sort', variable: 'category' }],
+  prompts: [{ id: 'p1', text: { en: 'Sort' }, variable: 'category' }],
 };
+
+const localization = { defaultLocale: 'en', locales: ['en'] };
 
 const conflictProtocol = {
   name: 'Test protocol',
+  localization,
   codebook,
   stages: [alterFormStage, categoricalBinStage],
 };
 
 const cleanProtocol = {
   name: 'Test protocol',
+  localization,
   codebook,
   stages: [alterFormStage],
 };
@@ -98,8 +104,8 @@ describe('<VariableRoleConflictsAlert />', () => {
     const twoPromptBinStage = {
       ...categoricalBinStage,
       prompts: [
-        { id: 'p1', text: 'Sort', variable: 'category' },
-        { id: 'p2', text: 'Sort again', variable: 'category' },
+        { id: 'p1', text: { en: 'Sort' }, variable: 'category' },
+        { id: 'p2', text: { en: 'Sort again' }, variable: 'category' },
       ],
     };
     const store = createTestStore({

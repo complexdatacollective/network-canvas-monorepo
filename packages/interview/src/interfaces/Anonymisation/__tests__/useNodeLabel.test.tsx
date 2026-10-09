@@ -1,55 +1,43 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import type { NcNode } from '@codaco/shared-consts';
+import type { Variable } from '@codaco/protocol-validation';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  entitySecureAttributesMeta,
+  type NcNode,
+} from '@codaco/shared-consts';
 
-import { setPassphrase } from '../../../store/modules/ui';
+import { encryptionUnlocked } from '../../../store/modules/ui';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
+import { installEncryptionKey } from '../unlockEncryption';
 import { useNodeLabel } from '../useNodeLabel';
 import {
   createEncryptionStore,
+  encryptionFor,
   makeEncryptedPerson,
-  makePlainPerson,
+  NODE_TYPE,
+  unlockWith,
 } from './encryptionFixtures';
 
-// While set, every decryption waits for `release`, so a label can be caught
-// decrypting and a decryption can settle after the passphrase is re-entered.
-const decryption = vi.hoisted(() => ({
-  held: undefined as Promise<void> | undefined,
-}));
-vi.mock('../utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../utils')>();
-  return {
-    ...actual,
-    decryptData: async (...args: Parameters<typeof actual.decryptData>) => {
-      await decryption.held;
-      return actual.decryptData(...args);
-    },
-  };
-});
-
-function holdDecryption() {
-  let release = () => {};
-  decryption.held = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  return () => {
-    decryption.held = undefined;
-    release();
-  };
-}
-
-afterEach(() => {
-  decryption.held = undefined;
-});
+const UNAVAILABLE = 'Answer unavailable';
 
 type EncryptionStore = ReturnType<typeof createEncryptionStore>;
+
+async function lockedStore(nodes: NcNode[]) {
+  const { header } = await encryptionFor('pw');
+  return createEncryptionStore(nodes, undefined, undefined, { header });
+}
 
 function renderLabel(store: EncryptionStore, node: NcNode) {
   const seen: (string | undefined)[] = [];
   const wrapper = ({ children }: { children: ReactNode }) => (
-    <Provider store={store}>{children}</Provider>
+    <Provider store={store}>
+      <TestProtocolLocalization>{children}</TestProtocolLocalization>
+    </Provider>
   );
   const rendered = renderHook(
     () => {
@@ -69,83 +57,56 @@ const settle = () =>
     await new Promise((resolve) => setTimeout(resolve, 50));
   });
 
+async function installKeyOf(store: EncryptionStore, passphrase: string) {
+  const { key } = await encryptionFor(passphrase);
+  act(() => {
+    installEncryptionKey(store, key);
+  });
+}
+
 describe('useNodeLabel with encrypted labels', () => {
-  it('shows the decrypted label once the passphrase is in force', async () => {
+  it('shows the decrypted label once the key is in force', async () => {
     const node = await makeEncryptedPerson('n1', 'Alice', 'pw');
-    const store = createEncryptionStore([node]);
-    store.dispatch(setPassphrase('pw'));
+    const store = await lockedStore([node]);
+    await unlockWith(store, 'pw');
 
     const { result } = renderLabel(store, node);
 
     await waitFor(() => expect(result.current).toBe('Alice'));
   });
 
-  it('shows the lock, never a placeholder, while the label is decrypting', async () => {
-    const node = await makeEncryptedPerson('n1', 'Alice', 'pw');
-    const store = createEncryptionStore([node]);
-    store.dispatch(setPassphrase('pw'));
-    const release = holdDecryption();
-
-    const { result, seen } = renderLabel(store, node);
-    await settle();
-    expect(result.current).toBe('🔒');
-
-    release();
-    await waitFor(() => expect(result.current).toBe('Alice'));
-    expect(seen).not.toContain(undefined);
-  });
-
-  it('shows a decryption that fails after the passphrase is entered again as failed', async () => {
-    const node = await makeEncryptedPerson('n1', 'Alice', 'pw');
-    const store = createEncryptionStore([node]);
-    const release = holdDecryption();
-    store.dispatch(setPassphrase('wrong'));
-
-    const { result } = renderLabel(store, node);
-    await settle();
-    expect(result.current).toBe('🔒');
-
-    // Entered again while the first attempt is under way: the new entry
-    // joins that attempt rather than starting another.
-    act(() => {
-      store.dispatch(setPassphrase('wrong'));
-    });
-    await settle();
-    release();
-
-    await waitFor(() => expect(result.current).toBe('⚠️'));
-  });
-
-  it('never serves plaintext decrypted by an earlier interview to one without a passphrase', async () => {
+  it('never serves plaintext decrypted by an earlier interview to one without the key', async () => {
     const node = await makeEncryptedPerson('n1', 'Alice', 'pw');
 
-    const unlocked = createEncryptionStore([node]);
-    unlocked.dispatch(setPassphrase('pw'));
+    const unlocked = await lockedStore([node]);
+    await unlockWith(unlocked, 'pw');
     const first = renderLabel(unlocked, node);
     await waitFor(() => expect(first.result.current).toBe('Alice'));
     first.unmount();
 
-    // The same interview mounted again (e.g. resumed): a new store, no
-    // passphrase in memory, the same stored node.
-    const resumed = renderLabel(createEncryptionStore([node]), node);
-    await waitFor(() => expect(resumed.result.current).toBe('🔒'));
+    // The same interview mounted again (e.g. resumed): a new store, no key in
+    // memory, the same stored node.
+    const resumed = await lockedStore([node]);
+    const second = renderLabel(resumed, node);
+    await waitFor(() => expect(second.result.current).toBe('🔒'));
     await settle();
 
-    expect(resumed.result.current).toBe('🔒');
-    expect(resumed.seen).not.toContain('Alice');
+    expect(second.result.current).toBe('🔒');
+    expect(second.seen).not.toContain('Alice');
+    expect(resumed.getState().ui.showPassphrasePrompter).toBe(true);
   });
 
-  it('locks the label again when the passphrase is cleared', async () => {
+  it('locks the label again when the key stops being in force', async () => {
     const node = await makeEncryptedPerson('n1', 'Alice', 'pw');
-    const store = createEncryptionStore([node]);
-    store.dispatch(setPassphrase('pw'));
+    const store = await lockedStore([node]);
+    await unlockWith(store, 'pw');
 
     const { result, seen } = renderLabel(store, node);
     await waitFor(() => expect(result.current).toBe('Alice'));
 
     const seenBeforeClearing = seen.length;
     act(() => {
-      store.dispatch(setPassphrase(''));
+      store.dispatch(encryptionUnlocked('another-scope'));
     });
     await waitFor(() => expect(result.current).toBe('🔒'));
     await settle();
@@ -154,82 +115,105 @@ describe('useNodeLabel with encrypted labels', () => {
     expect(seen.slice(seenBeforeClearing)).not.toContain('Alice');
   });
 
-  it('does not show plaintext decrypted under one passphrase once another replaces it', async () => {
+  it('does not show plaintext decrypted under one key once another replaces it', async () => {
     const node = await makeEncryptedPerson('n1', 'Alice', 'pw');
-    const store = createEncryptionStore([node]);
-    store.dispatch(setPassphrase('pw'));
+    const store = await lockedStore([node]);
+    await unlockWith(store, 'pw');
 
     const { result, seen } = renderLabel(store, node);
     await waitFor(() => expect(result.current).toBe('Alice'));
 
     const seenBeforeReplacing = seen.length;
-    act(() => {
-      store.dispatch(setPassphrase('wrong'));
-    });
-    await waitFor(() => expect(result.current).toBe('⚠️'));
+    await installKeyOf(store, 'another passphrase');
+    await waitFor(() => expect(result.current).toBe(UNAVAILABLE));
 
     expect(seen.slice(seenBeforeReplacing)).not.toContain('Alice');
   });
 
-  it('does not keep a failed decryption once a working passphrase is entered', async () => {
-    const node = await makeEncryptedPerson('n1', 'Alice', 'pw');
-    const store = createEncryptionStore([node]);
-    store.dispatch(setPassphrase('wrong'));
+  it('shows a label the key cannot decrypt as unavailable, without asking for the passphrase again', async () => {
+    const alice = await makeEncryptedPerson('n1', 'Alice', 'pw');
+    // Alice's stored name, copied onto someone else: it is bound to Alice.
+    const moved: NcNode = { ...alice, [entityPrimaryKeyProperty]: 'n2' };
+    const store = await lockedStore([alice, moved]);
+    await unlockWith(store, 'pw');
+    const keyId = store.getState().ui.encryptionKeyId;
 
-    const { result } = renderLabel(store, node);
-    await waitFor(() => expect(result.current).toBe('⚠️'));
-    expect(store.getState().ui.passphraseInvalid).toBe(true);
-
-    act(() => {
-      store.dispatch(setPassphrase('pw'));
-    });
-    await waitFor(() => expect(result.current).toBe('Alice'));
-  });
-
-  it('never shows a failed decryption to an interview that later unlocks with the right passphrase', async () => {
-    const node = await makeEncryptedPerson('n1', 'Alice', 'pw');
-
-    const failed = createEncryptionStore([node]);
-    failed.dispatch(setPassphrase('wrong'));
-    const first = renderLabel(failed, node);
-    await waitFor(() => expect(first.result.current).toBe('⚠️'));
-    first.unmount();
-
-    const unlocked = createEncryptionStore([node]);
-    unlocked.dispatch(setPassphrase('pw'));
-    const second = renderLabel(unlocked, node);
-    await waitFor(() => expect(second.result.current).toBe('Alice'));
-    expect(second.seen).not.toContain('⚠️');
-  });
-});
-
-describe('useNodeLabel with the encrypted-variables experiment off', () => {
-  it('shows a plaintext label without asking for a passphrase', async () => {
-    const node = makePlainPerson('n1', 'Alice');
-    const store = createEncryptionStore([node], undefined, undefined, {
-      encryptionEnabled: false,
-    });
-
-    const { result, seen } = renderLabel(store, node);
+    const { result, seen } = renderLabel(store, moved);
+    await waitFor(() => expect(result.current).toBe(UNAVAILABLE));
+    const rendersOnceSettled = seen.length;
     await settle();
 
-    expect(result.current).toBe('Alice');
-    expect(seen).not.toContain('🔒');
+    expect(result.current).toBe(UNAVAILABLE);
+    expect(seen).not.toContain('Alice');
+    expect(seen.length).toBe(rendersOnceSettled);
+    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
+    expect(store.getState().ui.encryptionKeyId).toBe(keyId);
+  });
+
+  it('shows a schema 8 label as unavailable, without asking for a passphrase', async () => {
+    const legacy: NcNode = {
+      [entityPrimaryKeyProperty]: 'legacy-1',
+      type: NODE_TYPE,
+      [entityAttributesProperty]: { name: [9, 8, 7, 6] },
+      [entitySecureAttributesMeta]: {
+        name: { iv: Array.from({ length: 12 }, () => 1), salt: [2, 3, 4] },
+      },
+    };
+    const store = createEncryptionStore([legacy]);
+
+    const { result } = renderLabel(store, legacy);
+    await settle();
+
+    expect(result.current).toBe(UNAVAILABLE);
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);
   });
 
-  it('never decrypts a stored ciphertext, even with its passphrase in force', async () => {
+  it('does not keep an unreadable outcome once the right key is put in force', async () => {
     const node = await makeEncryptedPerson('n1', 'Alice', 'pw');
-    const store = createEncryptionStore([node], undefined, undefined, {
-      encryptionEnabled: false,
+    const store = await lockedStore([node]);
+    await installKeyOf(store, 'another passphrase');
+
+    const { result } = renderLabel(store, node);
+    await waitFor(() => expect(result.current).toBe(UNAVAILABLE));
+
+    await installKeyOf(store, 'pw');
+    await waitFor(() => expect(result.current).toBe('Alice'));
+  });
+
+  it('decrypts a name its record says is encrypted, though the codebook no longer marks it', async () => {
+    // As a protocol re-imported without its encryption declares the name.
+    const unmarkedVariables: Record<string, Variable> = {
+      name: { name: 'name', label: 'name', type: 'text', component: 'Text' },
+      age: { name: 'age', label: 'age', type: 'number', component: 'Number' },
+    };
+    const node = await makeEncryptedPerson('n1', 'Alice', 'pw');
+    const { header } = await encryptionFor('pw');
+    const store = createEncryptionStore([node], undefined, unmarkedVariables, {
+      header,
     });
-    store.dispatch(setPassphrase('pw'));
 
     const { result, seen } = renderLabel(store, node);
-    await settle();
+    await waitFor(() => expect(result.current).toBe('🔒'));
+    expect(store.getState().ui.showPassphrasePrompter).toBe(true);
 
-    expect(seen).not.toContain('Alice');
-    expect(result.current).toBe('Person');
-    expect(store.getState().ui.passphraseInvalid).toBe(false);
+    await unlockWith(store, 'pw');
+    await waitFor(() => expect(result.current).toBe('Alice'));
+    expect(seen).not.toContain('Person');
+  });
+
+  it('never shows an unreadable outcome to an interview that later unlocks with the right key', async () => {
+    const node = await makeEncryptedPerson('n1', 'Alice', 'pw');
+
+    const failed = await lockedStore([node]);
+    await installKeyOf(failed, 'another passphrase');
+    const first = renderLabel(failed, node);
+    await waitFor(() => expect(first.result.current).toBe(UNAVAILABLE));
+    first.unmount();
+
+    const unlocked = await lockedStore([node]);
+    await unlockWith(unlocked, 'pw');
+    const second = renderLabel(unlocked, node);
+    await waitFor(() => expect(second.result.current).toBe('Alice'));
+    expect(second.seen).not.toContain(UNAVAILABLE);
   });
 });

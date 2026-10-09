@@ -44,7 +44,7 @@ const openStage = (fields: Record<string, unknown>) => ({
 
 const binningPeople = (prompt: Record<string, unknown>) =>
   openStage({
-    label: 'Categorical Bin',
+    label: { 'en-US': 'Categorical Bin' },
     subject: { entity: 'node', type: 'person' },
     prompts: [prompt],
   });
@@ -88,9 +88,11 @@ describe('the questions a categorical bin asks', () => {
   it('reads only the TYPE of a subject that says it is a connection', async () => {
     const harness = renderStageEditor(
       openStage({
-        label: 'Categorical Bin',
+        label: { 'en-US': 'Categorical Bin' },
         subject: { entity: 'edge', type: 'knows' },
-        prompts: [{ id: 'prompt-a', text: 'What kind of contact?' }],
+        prompts: [
+          { id: 'prompt-a', text: { 'en-US': 'What kind of contact?' } },
+        ],
       }),
     );
     // An attribute the connection type has and nothing else claims, so what
@@ -103,10 +105,11 @@ describe('the questions a categorical bin asks', () => {
           variables: {
             contactStyle: {
               name: 'contactStyle',
+              label: 'contactStyle',
               type: 'categorical',
               options: [
-                { label: 'In person', value: 'person' },
-                { label: 'Online', value: 'online' },
+                { label: { 'en-US': 'In person' }, value: 'person' },
+                { label: { 'en-US': 'Online' }, value: 'online' },
               ],
             },
           },
@@ -184,7 +187,7 @@ describe('the questions a categorical bin asks', () => {
     const added = prompts(request?.stageDocument ?? {}).at(-1);
     expect(added).toEqual({
       id: expect.any(String) as unknown as string,
-      text: 'Who most?',
+      text: { 'en-US': 'Who most?' },
       variable: 'contactType',
     });
     for (const key of [
@@ -239,11 +242,11 @@ describe('the questions a categorical bin asks', () => {
     const harness = renderStageEditor(
       binningPeople({
         id: 'prompt-a',
-        text: 'What kind of contact?',
+        text: { 'en-US': 'What kind of contact?' },
         variable: 'contactType',
         otherVariable: 'relationship_to_ego',
-        otherOptionLabel: 'Other',
-        otherVariablePrompt: 'Which?',
+        otherOptionLabel: { 'en-US': 'Other' },
+        otherVariablePrompt: { 'en-US': 'Which?' },
       }),
     );
 
@@ -286,11 +289,11 @@ describe('the questions a categorical bin asks', () => {
     const harness = renderStageEditor(
       binningPeople({
         id: 'prompt-a',
-        text: 'What kind of contact?',
+        text: { 'en-US': 'What kind of contact?' },
         variable: 'contactType',
         otherVariable: 'relationship_to_ego',
-        otherOptionLabel: 'Other',
-        otherVariablePrompt: 'Which?',
+        otherOptionLabel: { 'en-US': 'Other' },
+        otherVariablePrompt: { 'en-US': 'Which?' },
       }),
     );
 
@@ -315,7 +318,7 @@ describe('the questions a categorical bin asks', () => {
     const request = await harness.submit();
     expect(prompts(request?.stageDocument ?? {}).at(0)).toEqual({
       id: 'prompt-a',
-      text: 'What kind of contact?',
+      text: { 'en-US': 'What kind of contact?' },
       variable: 'contactType',
     });
   });
@@ -355,11 +358,11 @@ describe('the attribute the follow-up bin’s answers are stored in', () => {
     const harness = renderStageEditor(
       binningPeople({
         id: 'prompt-a',
-        text: 'What kind of contact?',
+        text: { 'en-US': 'What kind of contact?' },
         variable: 'contactType',
         otherVariable: 'relationship_to_ego',
-        otherOptionLabel: 'Other',
-        otherVariablePrompt: 'Which?',
+        otherOptionLabel: { 'en-US': 'Other' },
+        otherVariablePrompt: { 'en-US': 'Which?' },
       }),
     );
     await openFollowUp(harness);
@@ -390,11 +393,11 @@ describe('the attribute the follow-up bin’s answers are stored in', () => {
     const harness = renderStageEditor(
       binningPeople({
         id: 'prompt-a',
-        text: 'What kind of contact?',
+        text: { 'en-US': 'What kind of contact?' },
         variable: 'contactType',
         otherVariable: 'relationship_to_ego',
-        otherOptionLabel: 'Other',
-        otherVariablePrompt: 'Which?',
+        otherOptionLabel: { 'en-US': 'Other' },
+        otherVariablePrompt: { 'en-US': 'Which?' },
       }),
     );
     await openFollowUp(harness);
@@ -421,11 +424,11 @@ describe('the attribute the follow-up bin’s answers are stored in', () => {
     const harness = renderStageEditor(
       binningPeople({
         id: 'prompt-a',
-        text: 'What kind of contact?',
+        text: { 'en-US': 'What kind of contact?' },
         variable: 'contactType',
         otherVariable: 'relationship_to_ego',
-        otherOptionLabel: 'Other',
-        otherVariablePrompt: 'Which?',
+        otherOptionLabel: { 'en-US': 'Other' },
+        otherVariablePrompt: { 'en-US': 'Which?' },
       }),
     );
     await openFollowUp(harness);
@@ -464,7 +467,7 @@ describe('a categorical bin prompt whose attributes are not the kind it needs', 
     const harness = renderStageEditor(
       binningPeople({
         id: 'prompt-a',
-        text: 'What kind of contact?',
+        text: { 'en-US': 'What kind of contact?' },
         // Ordinal: its values run in an order this interface does not draw.
         variable: 'contactFreq',
       }),
@@ -494,12 +497,12 @@ describe('a categorical bin prompt whose attributes are not the kind it needs', 
     const harness = renderStageEditor(
       binningPeople({
         id: 'prompt-a',
-        text: 'What kind of contact?',
+        text: { 'en-US': 'What kind of contact?' },
         variable: 'contactType',
         // A number, which the follow-up input cannot collect free text into.
         otherVariable: 'age',
-        otherOptionLabel: 'Other',
-        otherVariablePrompt: 'Which?',
+        otherOptionLabel: { 'en-US': 'Other' },
+        otherVariablePrompt: { 'en-US': 'Which?' },
       }),
     );
 
@@ -529,18 +532,18 @@ describe('a categorical bin with more bins than fit on one screen', () => {
   async function warnsWith(count: number, followUpBin: boolean) {
     const harness = renderStageEditor(
       openStage({
-        label: 'Categorical Bin',
+        label: { 'en-US': 'Categorical Bin' },
         subject: { entity: 'node', type: 'person' },
         prompts: [
           {
             id: 'prompt-a',
-            text: 'What kind of contact?',
+            text: { 'en-US': 'What kind of contact?' },
             variable: 'contactType',
             ...(followUpBin
               ? {
                   otherVariable: 'relationship_to_ego',
-                  otherOptionLabel: 'Other',
-                  otherVariablePrompt: 'Which?',
+                  otherOptionLabel: { 'en-US': 'Other' },
+                  otherVariablePrompt: { 'en-US': 'Which?' },
                 }
               : {}),
           },
@@ -557,9 +560,10 @@ describe('a categorical bin with more bins than fit on one screen', () => {
             ...person.variables,
             contactType: {
               name: 'contactType',
+              label: 'contactType',
               type: 'categorical',
               options: Array.from({ length: count }, (_unused, index) => ({
-                label: `Option ${index + 1}`,
+                label: { 'en-US': `Option ${index + 1}` },
                 value: `option_${index + 1}`,
               })),
             },
@@ -604,20 +608,17 @@ describe('a categorical bin with more bins than fit on one screen', () => {
 /**
  * A prompt binned by an attribute whose values another interface owns.
  *
- * The interview and the genetics engine branch on those exact values, so the
- * list belongs to that interface however the attribute is reached — but
- * binning family members by their sex is legitimate authoring, so the
- * attribute stays on offer and only its values are fixed.
+ * The interview branches on those exact values, so the list belongs to that
+ * interface however the attribute is reached — but binning family members by
+ * their sex assigned at birth is legitimate authoring, so the attribute stays
+ * on offer and only its values are fixed.
  */
 describe('a prompt whose attribute’s values an interface owns', () => {
   /** The canonical set the pedigree schema fixes, written out. */
-  const BIOLOGICAL_SEX_OPTIONS = [
+  const SEX_ASSIGNED_AT_BIRTH_OPTIONS = [
     { value: 'female', label: 'Female' },
     { value: 'male', label: 'Male' },
-    {
-      value: 'intersex',
-      label: 'Intersex or a variation in sex characteristics',
-    },
+    { value: 'intersex', label: 'Intersex' },
     { value: 'unknown', label: 'Don’t know' },
     { value: 'preferNotToSay', label: 'Prefer not to say' },
   ] as const;
@@ -640,14 +641,14 @@ describe('a prompt whose attribute’s values an interface owns', () => {
   it('shows the values the prompt will offer, not only the reason they are fixed', async () => {
     const harness = renderStageEditor(
       openStage({
-        label: 'Categorical Bin',
+        label: { 'en-US': 'Categorical Bin' },
         // The type the pedigree describes, which is where the claim is made.
         subject: { entity: 'node', type: 'family_member' },
         prompts: [
           {
             id: 'prompt-a',
-            text: 'Which of these are they?',
-            variable: 'biologicalSex',
+            text: { 'en-US': 'Which of these are they?' },
+            variable: 'sexAssignedAtBirth',
           },
         ],
       }),
@@ -662,10 +663,66 @@ describe('a prompt whose attribute’s values an interface owns', () => {
     // theirs to change.
     const locked = await screen.findByRole('table', { name: LOCKED_VALUES });
     expect(lockedRows(locked)).toEqual(
-      BIOLOGICAL_SEX_OPTIONS.map(({ label, value }) => [label, value]),
+      SEX_ASSIGNED_AT_BIRTH_OPTIONS.map(({ label, value }) => [label, value]),
     );
     // And still read-only: the list is shown INSTEAD of the control that would
     // edit it, rather than beside it.
+    expect(
+      screen.queryByRole('button', { name: 'Create new option' }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * A prompt binned by an attribute whose OPTIONS a stage manages.
+ *
+ * The Family Pedigree decides which kinship words each gender identity option
+ * takes, so the options are its to change. A categorical bin may still assign
+ * the attribute (the attribute stays on offer, and writing it is not
+ * restricted), but the bins are shown rather than edited, under a note naming
+ * the stage that manages them.
+ */
+describe('a prompt whose attribute’s options a stage manages', () => {
+  const MANAGED_NOTE =
+    'These options are managed by the “Family Pedigree” stage, which decides the kinship words each one takes. Edit them there.';
+
+  it('offers the attribute, and shows its options read-only under a note naming the stage', async () => {
+    const harness = renderStageEditor(
+      openStage({
+        label: 'Categorical Bin',
+        subject: { entity: 'node', type: 'family_member' },
+        prompts: [
+          {
+            id: 'prompt-a',
+            text: 'Which of these are they?',
+            variable: 'genderIdentity',
+          },
+        ],
+      }),
+    );
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+
+    const managed = await screen.findByRole('table', { name: MANAGED_NOTE });
+    expect(
+      within(managed)
+        .getAllByRole('row')
+        .map((row) =>
+          within(row)
+            .queryAllByRole('cell')
+            .map((cell) => cell.textContent ?? ''),
+        )
+        .filter((cells) => cells.length > 0),
+    ).toEqual([
+      ['Woman', 'woman'],
+      ['Man', 'man'],
+      ['Non-binary', 'nonBinary'],
+      ['A different identity', 'differentIdentity'],
+      ['Don’t know', 'unknown'],
+      ['Prefer not to say', 'preferNotToSay'],
+    ]);
     expect(
       screen.queryByRole('button', { name: 'Create new option' }),
     ).not.toBeInTheDocument();
@@ -684,11 +741,11 @@ describe('the rules the follow-up attribute’s answers have to satisfy', () => 
     const harness = renderStageEditor(
       binningPeople({
         id: 'prompt-a',
-        text: 'What kind of contact?',
+        text: { 'en-US': 'What kind of contact?' },
         variable: 'contactType',
         otherVariable: 'relationship_to_ego',
-        otherOptionLabel: 'Other',
-        otherVariablePrompt: 'Which?',
+        otherOptionLabel: { 'en-US': 'Other' },
+        otherVariablePrompt: { 'en-US': 'Which?' },
       }),
     );
 

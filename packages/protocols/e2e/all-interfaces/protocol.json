@@ -1,12 +1,15 @@
 {
   "name": "All Interfaces (e2e)",
-  "description": "Schema-8 protocol covering all 19 interface types, used by the Architect e2e suite.",
+  "description": "Schema-9 protocol covering all 20 interface types, used by the Architect e2e suite.",
   "lastModified": "2026-07-13T00:00:00.000Z",
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "codebook": {
     "node": {
       "person": {
         "name": "person",
+        "label": {
+          "en-US": "person"
+        },
         "color": "node-color-seq-1",
         "icon": "add-a-person",
         "shape": {
@@ -15,6 +18,7 @@
         "variables": {
           "name": {
             "name": "name",
+            "label": "name",
             "type": "text",
             "component": "Text",
             "validation": {
@@ -23,70 +27,91 @@
           },
           "relationship_to_ego": {
             "name": "relationship_to_ego",
+            "label": "relationship_to_ego",
             "type": "text",
             "component": "Text"
           },
           "composerName": {
             "name": "composerName",
+            "label": "composerName",
             "type": "text",
             "component": "Text"
           },
           "layout": {
             "name": "layout",
+            "label": "layout",
             "type": "layout"
           },
           "location": {
             "name": "location",
+            "label": "location",
             "type": "location"
           },
           "contactFreq": {
             "name": "contactFreq",
+            "label": "contactFreq",
             "type": "ordinal",
             "options": [
               {
-                "label": "Weekly",
+                "label": {
+                  "en-US": "Weekly"
+                },
                 "value": 3
               },
               {
-                "label": "Monthly",
+                "label": {
+                  "en-US": "Monthly"
+                },
                 "value": 2
               },
               {
-                "label": "Rarely",
+                "label": {
+                  "en-US": "Rarely"
+                },
                 "value": 1
               }
             ]
           },
           "contactType": {
             "name": "contactType",
+            "label": "contactType",
             "type": "categorical",
             "options": [
               {
-                "label": "In person",
+                "label": {
+                  "en-US": "In person"
+                },
                 "value": "in_person"
               },
               {
-                "label": "Phone or video call",
+                "label": {
+                  "en-US": "Phone or video call"
+                },
                 "value": "call"
               },
               {
-                "label": "Text or messaging",
+                "label": {
+                  "en-US": "Text or messaging"
+                },
                 "value": "text"
               }
             ]
           },
           "flagged": {
             "name": "flagged",
+            "label": "flagged",
             "type": "boolean",
             "component": "Boolean"
           },
           "highlighted": {
             "name": "highlighted",
+            "label": "highlighted",
             "type": "boolean",
             "component": "Boolean"
           },
           "age": {
             "name": "age",
+            "label": "age",
             "type": "number"
           }
         }
@@ -101,6 +126,7 @@
         "variables": {
           "fm_name": {
             "name": "fm_name",
+            "label": "fm_name",
             "type": "text",
             "component": "Text",
             "validation": {
@@ -109,44 +135,98 @@
           },
           "is_ego": {
             "name": "is_ego",
+            "label": "is_ego",
             "type": "boolean",
             "component": "Toggle"
           },
-          "fm_relationship_to_ego": {
-            "name": "fm_relationship_to_ego",
-            "type": "text",
-            "component": "Text"
+          "genderIdentity": {
+            "name": "genderIdentity",
+            "type": "categorical",
+            "options": [
+              {
+                "value": "woman",
+                "label": {
+                  "en-US": "Woman"
+                }
+              },
+              {
+                "value": "man",
+                "label": {
+                  "en-US": "Man"
+                }
+              },
+              {
+                "value": "nonBinary",
+                "label": {
+                  "en-US": "Non-binary"
+                }
+              },
+              {
+                "value": "differentIdentity",
+                "label": {
+                  "en-US": "A different identity"
+                }
+              },
+              {
+                "value": "unknown",
+                "label": {
+                  "en-US": "Don’t know"
+                }
+              },
+              {
+                "value": "preferNotToSay",
+                "label": {
+                  "en-US": "Prefer not to say"
+                }
+              }
+            ],
+            "label": "genderIdentity"
           },
-          "biologicalSex": {
-            "name": "biologicalSex",
+          "sexAssignedAtBirth": {
+            "name": "sexAssignedAtBirth",
             "type": "categorical",
             "options": [
               {
                 "value": "female",
-                "label": "Female"
+                "label": {
+                  "en-US": "Female"
+                }
               },
               {
                 "value": "male",
-                "label": "Male"
+                "label": {
+                  "en-US": "Male"
+                }
               },
               {
                 "value": "intersex",
-                "label": "Intersex or a variation in sex characteristics"
+                "label": {
+                  "en-US": "Intersex"
+                }
               },
               {
                 "value": "unknown",
-                "label": "Don’t know"
+                "label": {
+                  "en-US": "Don’t know"
+                }
               },
               {
                 "value": "preferNotToSay",
-                "label": "Prefer not to say"
+                "label": {
+                  "en-US": "Prefer not to say"
+                }
               }
-            ]
+            ],
+            "label": "sexAssignedAtBirth"
           },
           "hasConditionX": {
             "name": "hasConditionX",
+            "label": "hasConditionX",
             "type": "boolean"
           }
+        },
+        "label": {
+          "en-US": "family member"
         }
       }
     },
@@ -154,6 +234,7 @@
       "variables": {
         "ego_name": {
           "name": "ego_name",
+          "label": "ego_name",
           "type": "text",
           "component": "Text"
         }
@@ -164,84 +245,117 @@
         "name": "family_edge",
         "color": "edge-color-seq-1",
         "variables": {
-          "relationshipType": {
-            "name": "relationshipType",
+          "relationshipKind": {
+            "name": "relationshipKind",
             "type": "categorical",
             "options": [
               {
+                "value": "partner",
+                "label": {
+                  "en-US": "Partner"
+                }
+              },
+              {
                 "value": "biological",
-                "label": "Biological"
-              },
-              {
-                "value": "social",
-                "label": "Social"
-              },
-              {
-                "value": "donor",
-                "label": "Donor"
-              },
-              {
-                "value": "surrogate",
-                "label": "Surrogate"
+                "label": {
+                  "en-US": "Biological parent"
+                }
               },
               {
                 "value": "adoptive",
-                "label": "Adoptive"
+                "label": {
+                  "en-US": "Adoptive parent"
+                }
               },
               {
-                "value": "partner",
-                "label": "Partner"
+                "value": "social",
+                "label": {
+                  "en-US": "Step or social parent"
+                }
+              },
+              {
+                "value": "donor",
+                "label": {
+                  "en-US": "Donor"
+                }
+              },
+              {
+                "value": "surrogate",
+                "label": {
+                  "en-US": "Surrogate"
+                }
+              },
+              {
+                "value": "identicalTwin",
+                "label": {
+                  "en-US": "Identical twin"
+                }
+              },
+              {
+                "value": "fraternalTwin",
+                "label": {
+                  "en-US": "Fraternal twin"
+                }
+              },
+              {
+                "value": "unknownZygosityTwin",
+                "label": {
+                  "en-US": "Twin, not known if identical"
+                }
               }
-            ]
-          },
-          "isActive": {
-            "name": "isActive",
-            "type": "boolean"
+            ],
+            "label": "relationshipKind"
           },
           "isGestationalCarrier": {
             "name": "isGestationalCarrier",
+            "label": "isGestationalCarrier",
             "type": "boolean"
           },
-          "gameteRole": {
-            "name": "gameteRole",
-            "type": "categorical",
-            "options": [
-              {
-                "value": "egg",
-                "label": "Egg"
-              },
-              {
-                "value": "sperm",
-                "label": "Sperm"
-              }
-            ]
+          "isCurrentPartner": {
+            "name": "isCurrentPartner",
+            "type": "boolean",
+            "label": "isCurrentPartner"
           }
+        },
+        "label": {
+          "en-US": "family_edge"
         }
       },
       "knows": {
         "name": "knows",
+        "label": {
+          "en-US": "knows"
+        },
         "color": "edge-color-seq-2",
         "variables": {
           "closeness": {
             "name": "closeness",
+            "label": "closeness",
             "type": "ordinal",
             "options": [
               {
-                "label": "Very close",
+                "label": {
+                  "en-US": "Very close"
+                },
                 "value": 3
               },
               {
-                "label": "Somewhat close",
+                "label": {
+                  "en-US": "Somewhat close"
+                },
                 "value": 2
               },
               {
-                "label": "Not close",
+                "label": {
+                  "en-US": "Not close"
+                },
                 "value": 1
               }
             ]
           },
           "edgeNotes": {
             "name": "edgeNotes",
+            "label": "edgeNotes",
             "type": "text",
             "component": "TextArea"
           }
@@ -253,10 +367,16 @@
     {
       "id": "anonymisation-1",
       "type": "Anonymisation",
-      "label": "Anonymisation",
+      "label": {
+        "en-US": "Anonymisation"
+      },
       "explanationText": {
-        "title": "This interview uses enhanced privacy protection",
-        "body": "This interview allows you to encrypt the names of people you mention so they cannot be seen by anyone but you. To use this feature, enter a passphrase below."
+        "title": {
+          "en-US": "This interview uses enhanced privacy protection"
+        },
+        "body": {
+          "en-US": "This interview allows you to encrypt the names of people you mention so they cannot be seen by anyone but you. To use this feature, enter a passphrase below."
+        }
       },
       "validation": {
         "minLength": 4,
@@ -266,61 +386,88 @@
     {
       "id": "ego-form-1",
       "type": "EgoForm",
-      "label": "Ego Form",
+      "label": {
+        "en-US": "Ego Form"
+      },
       "form": {
         "fields": [
           {
             "variable": "ego_name",
-            "prompt": "What is your name?"
+            "prompt": {
+              "en-US": "What is your name?"
+            }
           }
         ]
       },
       "introductionPanel": {
-        "title": "Introduction",
-        "text": "There are a few questions about you before we begin."
+        "title": {
+          "en-US": "Introduction"
+        },
+        "text": {
+          "en-US": "There are a few questions about you before we begin."
+        }
       }
     },
     {
       "id": "information-1",
       "type": "Information",
-      "label": "Information",
-      "title": "Welcome",
+      "label": {
+        "en-US": "Information"
+      },
+      "title": {
+        "en-US": "Welcome"
+      },
       "items": [
         {
           "id": "info-item-1",
           "type": "text",
-          "content": "Welcome to this interview."
+          "content": {
+            "en-US": "Welcome to this interview."
+          }
         }
       ]
     },
     {
       "id": "name-generator-1",
       "type": "NameGenerator",
-      "label": "Name Generator",
+      "label": {
+        "en-US": "Name Generator"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
       },
       "form": {
-        "title": "Add a person",
+        "title": {
+          "en-US": "Add a person"
+        },
         "fields": [
           {
             "variable": "name",
-            "prompt": "What is this person's name?"
+            "prompt": {
+              "en-US": "What is this person's name?"
+            }
           }
         ]
       },
       "prompts": [
         {
           "id": "name-generator-prompt-1",
-          "text": "Who are the people you know?"
+          "text": {
+            "en-US": "Who are the people you know?"
+          }
         }
       ]
     },
     {
       "id": "name-generator-quick-add-1",
+      "quickAddHint": {
+        "en-US": "Press Enter when you are finished."
+      },
       "type": "NameGeneratorQuickAdd",
-      "label": "Name Generator Quick Add",
+      "label": {
+        "en-US": "Name Generator Quick Add"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -329,23 +476,50 @@
       "prompts": [
         {
           "id": "name-generator-quick-add-prompt-1",
-          "text": "Quickly add people you know"
+          "text": {
+            "en-US": "Quickly add people you know"
+          }
         }
       ]
     },
     {
       "id": "name-generator-roster-1",
+      "minNodesNotice": {
+        "en-US": "{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}"
+      },
+      "maxNodesNotice": {
+        "en-US": "You have completed this task. Click the next arrow to continue."
+      },
+      "externalDataError": {
+        "en-US": "External data could not be loaded."
+      },
+      "allAddedNotice": {
+        "en-US": "There is nothing left to add from this list."
+      },
+      "searchLabel": {
+        "en-US": "Search"
+      },
+      "searchNoMatch": {
+        "en-US": "Nothing matched your search term."
+      },
       "type": "NameGeneratorRoster",
-      "label": "Name Generator Roster",
+      "label": {
+        "en-US": "Name Generator Roster"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
       },
       "dataSource": "roster_data",
+      "panelTitle": {
+        "en-US": "Available to add"
+      },
       "cardOptions": {
         "additionalProperties": [
           {
-            "label": "Age",
+            "label": {
+              "en-US": "Age"
+            },
             "variable": "age"
           }
         ]
@@ -359,7 +533,9 @@
         ],
         "sortableProperties": [
           {
-            "label": "Age",
+            "label": {
+              "en-US": "Age"
+            },
             "variable": "age"
           }
         ]
@@ -371,7 +547,9 @@
       "prompts": [
         {
           "id": "name-generator-roster-prompt-1",
-          "text": "Select people from the roster"
+          "text": {
+            "en-US": "Select people from the roster"
+          }
         }
       ],
       "behaviours": {
@@ -381,8 +559,18 @@
     },
     {
       "id": "sociogram-1",
+      "tooltips": {
+        "pauseLayout": {
+          "en-US": "Pause automatic layout"
+        },
+        "resumeLayout": {
+          "en-US": "Resume automatic layout"
+        }
+      },
       "type": "Sociogram",
-      "label": "Sociogram",
+      "label": {
+        "en-US": "Sociogram"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -397,7 +585,9 @@
       "prompts": [
         {
           "id": "sociogram-prompt-1",
-          "text": "Place the people who know each other close together",
+          "text": {
+            "en-US": "Place the people who know each other close together"
+          },
           "layout": {
             "layoutVariable": "layout"
           },
@@ -411,7 +601,9 @@
         },
         {
           "id": "sociogram-prompt-2",
-          "text": "Highlight the people you feel closest to",
+          "text": {
+            "en-US": "Highlight the people you feel closest to"
+          },
           "layout": {
             "layoutVariable": "layout"
           },
@@ -428,19 +620,27 @@
     {
       "id": "dyad-census-1",
       "type": "DyadCensus",
-      "label": "Dyad Census",
+      "label": {
+        "en-US": "Dyad Census"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
       },
       "introductionPanel": {
-        "title": "Introduction to the Dyad Census",
-        "text": "This section will go through all possible node pairs and ask you how they are connected."
+        "title": {
+          "en-US": "Introduction to the Dyad Census"
+        },
+        "text": {
+          "en-US": "This section will go through all possible node pairs and ask you how they are connected."
+        }
       },
       "prompts": [
         {
           "id": "dyad-census-prompt-1",
-          "text": "Do these two people know each other?",
+          "text": {
+            "en-US": "Do these two people know each other?"
+          },
           "createEdge": "knows"
         }
       ]
@@ -448,7 +648,9 @@
     {
       "id": "one-to-many-dyad-census-1",
       "type": "OneToManyDyadCensus",
-      "label": "One to Many Dyad Census",
+      "label": {
+        "en-US": "One to Many Dyad Census"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -459,7 +661,9 @@
       "prompts": [
         {
           "id": "one-to-many-dyad-census-prompt-1",
-          "text": "Tap on all the people who this person knows",
+          "text": {
+            "en-US": "Tap on all the people who this person knows"
+          },
           "createEdge": "knows"
         }
       ]
@@ -467,29 +671,41 @@
     {
       "id": "tie-strength-census-1",
       "type": "TieStrengthCensus",
-      "label": "Tie-Strength Census",
+      "label": {
+        "en-US": "Tie-Strength Census"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
       },
       "introductionPanel": {
-        "title": "Introduction to the Tie-Strength Census",
-        "text": "This interface both creates an edge and assigns an ordinal value to it."
+        "title": {
+          "en-US": "Introduction to the Tie-Strength Census"
+        },
+        "text": {
+          "en-US": "This interface both creates an edge and assigns an ordinal value to it."
+        }
       },
       "prompts": [
         {
           "id": "tie-strength-census-prompt-1",
-          "text": "How close are these two people?",
+          "text": {
+            "en-US": "How close are these two people?"
+          },
           "createEdge": "knows",
           "edgeVariable": "closeness",
-          "negativeLabel": "Don't know each other"
+          "negativeLabel": {
+            "en-US": "Don't know each other"
+          }
         }
       ]
     },
     {
       "id": "ordinal-bin-1",
       "type": "OrdinalBin",
-      "label": "Ordinal Bin",
+      "label": {
+        "en-US": "Ordinal Bin"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -497,7 +713,9 @@
       "prompts": [
         {
           "id": "ordinal-bin-prompt-1",
-          "text": "How often do you have contact with this person?",
+          "text": {
+            "en-US": "How often do you have contact with this person?"
+          },
           "variable": "contactFreq",
           "color": "ord-color-seq-1"
         }
@@ -506,7 +724,9 @@
     {
       "id": "categorical-bin-1",
       "type": "CategoricalBin",
-      "label": "Categorical Bin",
+      "label": {
+        "en-US": "Categorical Bin"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -514,7 +734,9 @@
       "prompts": [
         {
           "id": "categorical-bin-prompt-1",
-          "text": "What type of contact do you have most with this person?",
+          "text": {
+            "en-US": "What type of contact do you have most with this person?"
+          },
           "variable": "contactType"
         }
       ]
@@ -522,7 +744,9 @@
     {
       "id": "alter-form-1",
       "type": "AlterForm",
-      "label": "Alter Form",
+      "label": {
+        "en-US": "Alter Form"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -531,23 +755,33 @@
         "fields": [
           {
             "variable": "relationship_to_ego",
-            "prompt": "What is this person's relationship to you?"
+            "prompt": {
+              "en-US": "What is this person's relationship to you?"
+            }
           },
           {
             "variable": "flagged",
-            "prompt": "Does this person have this attribute?"
+            "prompt": {
+              "en-US": "Does this person have this attribute?"
+            }
           }
         ]
       },
       "introductionPanel": {
-        "title": "Introduction to the alter form",
-        "text": "A few more questions about each person."
+        "title": {
+          "en-US": "Introduction to the alter form"
+        },
+        "text": {
+          "en-US": "A few more questions about each person."
+        }
       }
     },
     {
       "id": "alter-edge-form-1",
       "type": "AlterEdgeForm",
-      "label": "Alter Edge Form",
+      "label": {
+        "en-US": "Alter Edge Form"
+      },
       "subject": {
         "entity": "edge",
         "type": "knows"
@@ -556,19 +790,53 @@
         "fields": [
           {
             "variable": "edgeNotes",
-            "prompt": "Add any notes about this relationship"
+            "prompt": {
+              "en-US": "Add any notes about this relationship"
+            }
           }
         ]
       },
       "introductionPanel": {
-        "title": "Introduction to the alter edge form",
-        "text": "A few questions about each relationship."
+        "title": {
+          "en-US": "Introduction to the alter edge form"
+        },
+        "text": {
+          "en-US": "A few questions about each relationship."
+        }
       }
     },
     {
       "id": "narrative-1",
+      "attributesHeading": {
+        "en-US": "Attributes"
+      },
+      "linksHeading": {
+        "en-US": "Links"
+      },
+      "groupsHeading": {
+        "en-US": "Groups"
+      },
+      "tooltips": {
+        "enableDrawing": {
+          "en-US": "Enable drawing"
+        },
+        "disableDrawing": {
+          "en-US": "Disable drawing"
+        },
+        "freezeAnnotations": {
+          "en-US": "Freeze annotations"
+        },
+        "unfreezeAnnotations": {
+          "en-US": "Unfreeze annotations"
+        },
+        "resetAnnotations": {
+          "en-US": "Reset annotations"
+        }
+      },
       "type": "Narrative",
-      "label": "Narrative",
+      "label": {
+        "en-US": "Narrative"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -576,13 +844,22 @@
       "presets": [
         {
           "id": "narrative-preset-1",
-          "label": "Default layout",
+          "label": {
+            "en-US": "Default layout"
+          },
           "layoutVariable": "layout",
           "groupVariable": "contactType",
           "edges": {
             "display": ["knows"]
           },
-          "highlight": ["flagged"]
+          "highlight": [
+            {
+              "variable": "flagged",
+              "label": {
+                "en-US": "Flagged"
+              }
+            }
+          ]
         }
       ],
       "background": {
@@ -596,58 +873,377 @@
     },
     {
       "id": "family-pedigree-1",
+      "wording": {
+        "alsoParentOfLabel": {
+          "en-US": "Are they also the parent of…"
+        },
+        "biologicalParentBoth": {
+          "en-US": "{firstIsYou, select, true {Both you and “{second}”} other {Both “{first}” and “{second}”}}"
+        },
+        "biologicalParentHint": {
+          "en-US": "A parent who is not a biological parent is added as a step or social parent."
+        },
+        "biologicalParentLabel": {
+          "en-US": "Who is the child’s biological parent?"
+        },
+        "carriedSiblingsPregnancyLabel": {
+          "en-US": "{single, select, true {{isYou, select, true {Was this parent pregnant with you?} other {Was this parent pregnant with “{name}”?}}} other {Was this parent pregnant with each of the {count} people chosen above who have nobody recorded as having carried them?}}"
+        },
+        "carrierLabel": {
+          "en-US": "Who carried the pregnancy?"
+        },
+        "carrierUnknown": {
+          "en-US": "Someone else, or I don’t know"
+        },
+        "childKindAdoptive": {
+          "en-US": "An adopted child"
+        },
+        "childKindBiological": {
+          "en-US": "A biological child"
+        },
+        "childKindSocial": {
+          "en-US": "A step-child or other child they raise"
+        },
+        "childKindLabel": {
+          "en-US": "Is this child…"
+        },
+        "connectHint": {
+          "en-US": "Select a person, then select another to connect them."
+        },
+        "connectParent": {
+          "en-US": "{parentIsYou, select, true {You are a parent of “{child}”} other {{childIsYou, select, true {“{parent}” is your parent} other {“{parent}” is a parent of “{child}”}}}}"
+        },
+        "connectPartners": {
+          "en-US": "{current, select, true {{firstIsYou, select, true {You and “{second}” are partners} other {“{first}” and “{second}” are partners}}} other {{firstIsYou, select, true {You and “{second}” were partners} other {“{first}” and “{second}” were partners}}}}"
+        },
+        "connectQuestion": {
+          "en-US": "{firstIsYou, select, true {How are you and “{second}” related?} other {How are “{first}” and “{second}” related?}}"
+        },
+        "disconnectConfirmDescription": {
+          "en-US": "Both people stay in your family tree. Only the connection between them is removed."
+        },
+        "disconnectConfirmTitle": {
+          "en-US": "{firstIsYou, select, true {Remove the connection between you and “{second}”?} other {Remove the connection between “{first}” and “{second}”?}}"
+        },
+        "disconnectHint": {
+          "en-US": "Select a person, then select someone they are connected to, to remove that connection."
+        },
+        "disconnectWouldCutOff": {
+          "en-US": "{count, plural, one {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.} other {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.}}"
+        },
+        "dontKnow": {
+          "en-US": "Don’t know"
+        },
+        "panelTitle": {
+          "en-US": "{relation, select, edit {{isYou, select, true {About you} other {About {name}}}} parent {{isYou, select, true {Add your parent} other {Add a parent of {name}}}} sibling {{isYou, select, true {Add your sibling} other {Add a sibling of {name}}}} partner {{isYou, select, true {Add your partner} other {Add a partner of {name}}}} other {{isYou, select, true {Add your child} other {Add a child of {name}}}}}"
+        },
+        "genderIdentityLabel": {
+          "en-US": "Gender identity"
+        },
+        "generatedLabelOf": {
+          "en-US": "{relation, select, partner {{isYou, select, true {{term} (your partner)} other {{term} (partner of {name})}}} formerPartner {{isYou, select, true {{term} (your former partner)} other {{term} (former partner of {name})}}} parent {{isYou, select, true {{term} (your parent)} other {{term} (parent of {name})}}} sibling {{isYou, select, true {{term} (your sibling)} other {{term} (sibling of {name})}}} owner {{owner}’s {term}} other {{isYou, select, true {{term} (your child)} other {{term} (child of {name})}}}}"
+        },
+        "missingDetailsList": {
+          "en-US": "Some details are missing: {details}."
+        },
+        "otherParentLabel": {
+          "en-US": "Who is the child’s other parent?"
+        },
+        "otherParentNone": {
+          "en-US": "No other parent"
+        },
+        "otherParentUnknown": {
+          "en-US": "Someone not shown yet"
+        },
+        "parentCarriedLabel": {
+          "en-US": "{named, select, true {{parentIsYou, select, true {Did you carry the pregnancy?} other {Did {parent} carry the pregnancy?}}} other {Did this parent carry the pregnancy?}}"
+        },
+        "parentKindLabel": {
+          "en-US": "What kind of parent are they?"
+        },
+        "parentLinkKindLabel": {
+          "en-US": "{parentIsYou, select, true {You are their…} other {{personIsYou, select, true {{parent} is your…} other {{parent} is their…}}}}"
+        },
+        "parentPartnerLabel": {
+          "en-US": "Are they the partner of another parent?"
+        },
+        "placeholderParentsNote": {
+          "en-US": "{framing, select, gamete {An egg parent and a sperm parent will be added for you to fill in later, so the family tree can show these siblings together.} other {A biological mother and a biological father will be added for you to fill in later, so the family tree can show these siblings together.}}"
+        },
+        "relativeTerm": {
+          "en-US": "{term, select, mother {Mother} father {Father} parent {Parent} eggParent {Egg parent} spermParent {Sperm parent} biologicalMother {Bio­logical mother} biologicalFather {Bio­logical father} adoptiveMother {Adoptive mother} adoptiveFather {Adoptive father} adoptiveParent {Adoptive parent} stepmother {Step­mother} stepfather {Step­father} stepparent {Step-parent} eggDonor {Egg donor} spermDonor {Sperm donor} donor {Donor} surrogate {Surro­gate} daughter {Daughter} son {Son} child {Child} stepdaughter {Step­daughter} stepson {Stepson} stepchild {Stepchild} donorConceivedChild {Donor-conceived child} surrogacyChild {Surro­gacy child} sister {Sister} brother {Brother} sibling {Sibling} halfSister {Half-sister} halfBrother {Half-brother} halfSibling {Half-sibling} adoptiveSister {Adoptive sister} adoptiveBrother {Adoptive brother} adoptiveSibling {Adoptive sibling} stepsister {Step­sister} stepbrother {Step­brother} stepsibling {Step-sibling} partner {Partner} formerPartner {Former partner} grandmother {Grand­mother} grandfather {Grand­father} grandparent {Grand­parent} maternalGrandmother {Maternal grand­mother} maternalGrandfather {Maternal grand­father} maternalGrandparent {Maternal grand­parent} paternalGrandmother {Paternal grand­mother} paternalGrandfather {Paternal grand­father} paternalGrandparent {Paternal grand­parent} greatGrandmother {Great-grand­mother} greatGrandfather {Great-grand­father} greatGrandparent {Great-grand­parent} stepGrandmother {Step-grand­mother} stepGrandfather {Step-grand­father} stepGrandparent {Step-grand­parent} granddaughter {Grand­daughter} grandson {Grandson} grandchild {Grand­child} greatGranddaughter {Great-grand­daughter} greatGrandson {Great-grandson} greatGrandchild {Great-grand­child} aunt {Aunt} uncle {Uncle} maternalAunt {Maternal aunt} maternalUncle {Maternal uncle} paternalAunt {Paternal aunt} paternalUncle {Paternal uncle} parentsSibling {Parent’s sibling} greatAunt {Great-aunt} greatUncle {Great-uncle} grandparentsSibling {Grand­parent’s sibling} niece {Niece} nephew {Nephew} siblingsChild {Sibling’s child} cousin {Cousin} motherInLaw {Mother-in-law} fatherInLaw {Father-in-law} parentInLaw {Parent-in-law} sisterInLaw {Sister-in-law} brotherInLaw {Brother-in-law} siblingInLaw {Sibling-in-law} daughterInLaw {Daugh­ter-in-law} sonInLaw {Son-in-law} childInLaw {Child-in-law} other {Relative}}"
+        },
+        "removeConfirmDescription": {
+          "en-US": "{hasOthers, select, true {They will be removed from your family tree, along with their connections to other people. {count, plural, one {{names} is connected to you only through them, so will be removed too.} other {{names} are connected to you only through them, so will be removed too.}}} other {They will be removed from your family tree, along with their connections to other people.}}"
+        },
+        "removeConfirmTitle": {
+          "en-US": "Remove {name}?"
+        },
+        "sexAssignedAtBirthLabel": {
+          "en-US": "Sex assigned at birth"
+        },
+        "sharedParentCountBoth": {
+          "en-US": "Both parents"
+        },
+        "sharedParentCountLabel": {
+          "en-US": "{isYou, select, true {Which parents do they share with you?} other {Which parents do they share with “{name}”?}}"
+        },
+        "sharedParentEggOnly": {
+          "en-US": "{parent, select, egg {{framing, select, gamete {Only the egg parent} other {Only the biological mother}}} other {{framing, select, gamete {Only the sperm parent} other {Only the biological father}}}}"
+        },
+        "siblingKindLabel": {
+          "en-US": "To the parents they share, are they…"
+        },
+        "stillTogetherLabel": {
+          "en-US": "{named, select, true {{personIsYou, select, true {Are you still together with {partner}?} other {{partnerIsYou, select, true {Are you still together?} other {Are they still together with {partner}?}}}}} other {Are they still together?}}"
+        },
+        "you": {
+          "en-US": "You"
+        },
+        "save": {
+          "en-US": "Save"
+        },
+        "connectTool": {
+          "en-US": "Connect"
+        },
+        "disconnectTool": {
+          "en-US": "Disconnect"
+        },
+        "pointerTool": {
+          "en-US": "Add and edit"
+        },
+        "changeWouldCutOff": {
+          "en-US": "{count, plural, one {This would leave {names} outside your family tree, because it removes their only connection to you. Connect them to someone else in your family first.} other {This would leave {names} outside your family tree, because it removes their only connection to you. Connect them to someone else in your family first.}}"
+        },
+        "childKindDonor": {
+          "en-US": "A child conceived with an egg or sperm they donated"
+        },
+        "childKindSurrogate": {
+          "en-US": "A child they carried as a surrogate"
+        },
+        "parentKindCarrier": {
+          "en-US": "{parentKind} (carried the pregnancy)"
+        },
+        "sharedDonorsLabel": {
+          "en-US": "{isYou, select, true {Do they share any of your donors?} other {Do they share any of “{name}”’s donors?}}"
+        },
+        "siblingBiologicalParentLabel": {
+          "en-US": "Which of them is the sibling’s biological parent?"
+        },
+        "siblingTwinFraternal": {
+          "en-US": "Yes, fraternal (non-identical) twins"
+        },
+        "siblingTwinHint": {
+          "en-US": "Answer yes for triplets and other multiple births too."
+        },
+        "siblingTwinIdentical": {
+          "en-US": "Yes, identical twins"
+        },
+        "siblingTwinLabel": {
+          "en-US": "{isYou, select, true {Are they your twin?} other {Are they “{name}”’s twin?}}"
+        },
+        "siblingTwinNo": {
+          "en-US": "No"
+        },
+        "siblingTwinUnknown": {
+          "en-US": "Yes, but I don’t know if they are identical"
+        },
+        "twinsHint": {
+          "en-US": "Include triplets and other multiple births."
+        },
+        "twinsLabel": {
+          "en-US": "{isYou, select, true {Which of your siblings, if any, are your twins?} other {Which of “{name}”’s siblings, if any, are their twins?}}"
+        },
+        "twinZygosityLabel": {
+          "en-US": "{who, select, personIsYou {Are you and “{twin}” identical twins?} twinIsYou {Are “{name}” and you identical twins?} other {Are “{name}” and “{twin}” identical twins?}}"
+        },
+        "unavailableAncestor": {
+          "en-US": "{who, select, parentIsYou {You cannot be a parent of “{child}”, who is already one of your ancestors.} childIsYou {“{parent}” cannot be your parent, because you are already one of their ancestors.} other {“{parent}” cannot be a parent of “{child}”, who is already one of their ancestors.}}"
+        },
+        "unavailableBothSameSex": {
+          "en-US": "{firstIsYou, select, true {Some answers are unavailable because you and “{second}” are both recorded as “{sex}” at birth, so you cannot both be the child’s genetic parents. To choose one, first change one of your sexes at birth.} other {Some answers are unavailable because “{first}” and “{second}” are both recorded as “{sex}” at birth, so they cannot both be the child’s genetic parents. To choose one, first change the sex at birth of one of them.}}"
+        },
+        "unavailableCannotCarry": {
+          "en-US": "{who, select, you {Some answers are unavailable because you are recorded as “{sex}” at birth, so you cannot have carried a pregnancy. To choose one, first change your sex at birth.} this {Some answers are unavailable because this person is recorded as “{sex}” at birth, so they cannot have carried a pregnancy. To choose one, first change their sex at birth.} other {Some answers are unavailable because “{name}” is recorded as “{sex}” at birth, so they cannot have carried a pregnancy. To choose one, first change their sex at birth.}}"
+        },
+        "unavailableCarried": {
+          "en-US": "{who, select, personIsYou {Some answers are unavailable because you are recorded as having carried “{child}”, which nobody recorded as “{sex}” at birth can have. To choose one, first change how you are connected to “{child}”.} childIsYou {Some answers are unavailable because this person is recorded as having carried you, which nobody recorded as “{sex}” at birth can have. To choose one, first change how they are connected to you.} other {Some answers are unavailable because this person is recorded as having carried “{child}”, which nobody recorded as “{sex}” at birth can have. To choose one, first change how they are connected to “{child}”.}}"
+        },
+        "unavailableCarrierChoice": {
+          "en-US": "{who, select, carrierIsYou {You are recorded as having carried “{child}”, and only one person carries a pregnancy.} childIsYou {“{carrier}” is recorded as having carried you, and only one person carries a pregnancy.} other {“{carrier}” is recorded as having carried “{child}”, and only one person carries a pregnancy.}}"
+        },
+        "unavailableCarrierRecorded": {
+          "en-US": "{who, select, carrierIsYou {Some answers are unavailable because you are recorded as having carried “{child}”, and only one person carries a pregnancy. To choose one, first change how you are connected to “{child}”.} childIsYou {Some answers are unavailable because “{carrier}” is recorded as having carried you, and only one person carries a pregnancy. To choose one, first change how “{carrier}” is connected to you.} other {Some answers are unavailable because “{carrier}” is recorded as having carried “{child}”, and only one person carries a pregnancy. To choose one, first change how “{carrier}” is connected to “{child}”.}}"
+        },
+        "unavailableGeneticParentsFull": {
+          "en-US": "{who, select, childIsYou {Some answers are unavailable because you already have two genetic parents recorded, “{first}” and “{second}”. To choose one, first change how one of them is connected to you.} includesYou {Some answers are unavailable because “{child}” already has two genetic parents recorded, you and “{second}”. To choose one, first change how one of you is connected to “{child}”.} other {Some answers are unavailable because “{child}” already has two genetic parents recorded, “{first}” and “{second}”. To choose one, first change how one of them is connected to “{child}”.}}"
+        },
+        "unavailableIdenticalTwin": {
+          "en-US": "{who, select, personIsYou {Some answers are unavailable because identical twins have the same biological parents and donors, and you and “{twin}” do not. To choose one, first record the same biological parents and donors for both of you.} twinIsYou {Some answers are unavailable because identical twins have the same biological parents and donors, and “{name}” and you do not. To choose one, first record the same biological parents and donors for both of you.} other {Some answers are unavailable because identical twins have the same biological parents and donors, and “{name}” and “{twin}” do not. To choose one, first record the same biological parents and donors for both of them.}}"
+        },
+        "unavailableIdenticalTwinNew": {
+          "en-US": "{isYou, select, true {Some answers are unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of yours. To choose one, choose all of your biological parents and donors above.} other {Some answers are unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of “{name}”’s. To choose one, choose all of their biological parents and donors above.}}"
+        },
+        "unavailableSameSexGeneticParent": {
+          "en-US": "{who, select, coParentIsYou {Some answers are unavailable because you are recorded as “{sex}” at birth and are a genetic parent of “{child}”, who cannot have two genetic parents of the same sex at birth. To choose one, first change your sex at birth or how you are connected to “{child}”.} childIsYou {Some answers are unavailable because “{coParent}”, your genetic parent, is recorded as “{sex}” at birth, and you cannot have two genetic parents of the same sex at birth. To choose one, first change the sex at birth of “{coParent}” or how they are connected to you.} other {Some answers are unavailable because “{coParent}”, a genetic parent of “{child}”, is recorded as “{sex}” at birth, and “{child}” cannot have two genetic parents of the same sex at birth. To choose one, first change the sex at birth of “{coParent}” or how they are connected to “{child}”.}}"
+        },
+        "zygosityFraternal": {
+          "en-US": "No, fraternal (non-identical)"
+        },
+        "zygosityIdentical": {
+          "en-US": "Yes, identical"
+        },
+        "zygosityUnknown": {
+          "en-US": "I don’t know"
+        }
+      },
       "type": "FamilyPedigree",
-      "label": "Family Pedigree",
-      "nodeConfig": {
-        "type": "family_member",
-        "nodeLabelVariable": "fm_name",
-        "egoVariable": "is_ego",
-        "relationshipVariable": "fm_relationship_to_ego",
-        "biologicalSexVariable": "biologicalSex"
+      "label": {
+        "en-US": "Family Pedigree"
       },
-      "edgeConfig": {
+      "subject": {
+        "entity": "node",
+        "type": "family_member"
+      },
+      "prompt": {
+        "en-US": "Who is in your family?"
+      },
+      "nodeConfiguration": {
+        "nameAttribute": "fm_name",
+        "nameField": {
+          "prompt": {
+            "en-US": "Name (optional)"
+          },
+          "hint": {
+            "en-US": "A first name or nickname is fine. If you don’t know it, leave this blank and they will be shown by how they are related to you."
+          }
+        },
+        "genderIdentity": {
+          "attribute": "genderIdentity",
+          "terms": [
+            {
+              "value": "woman",
+              "words": "feminine"
+            },
+            {
+              "value": "man",
+              "words": "masculine"
+            },
+            {
+              "value": "nonBinary",
+              "words": "neutral"
+            },
+            {
+              "value": "differentIdentity",
+              "words": "neutral"
+            },
+            {
+              "value": "unknown",
+              "words": "unknown"
+            },
+            {
+              "value": "preferNotToSay",
+              "words": "neutral"
+            }
+          ]
+        },
+        "sexAssignedAtBirthAttribute": "sexAssignedAtBirth",
+        "egoAttribute": "is_ego"
+      },
+      "edgeConfiguration": {
         "type": "family_edge",
-        "relationshipTypeVariable": "relationshipType",
-        "isActiveVariable": "isActive",
-        "isGestationalCarrierVariable": "isGestationalCarrier",
-        "gameteRoleVariable": "gameteRole"
+        "kindAttribute": "relationshipKind",
+        "gestationalCarrierAttribute": "isGestationalCarrier",
+        "currentPartnerAttribute": "isCurrentPartner"
       },
-      "framing": {
-        "mode": "fixed",
-        "value": "gamete"
-      },
-      "boundaries": {
-        "requireGrandparents": "off",
-        "requireChildrenContributors": "off"
-      },
-      "censusPrompt": "Who is in your family?",
       "nominationPrompts": [
         {
           "id": "nomination-1",
-          "text": "Who in your family has been diagnosed with condition X?",
-          "variable": "hasConditionX"
+          "text": {
+            "en-US": "Who in your family has been diagnosed with condition X?"
+          },
+          "attribute": "hasConditionX"
         }
       ]
     },
     {
       "id": "narrative-pedigree-1",
+      "keyHeading": {
+        "en-US": "Key"
+      },
+      "tooltips": {
+        "clearFocus": {
+          "en-US": "Clear focus"
+        },
+        "saveSnapshot": {
+          "en-US": "Save snapshot"
+        }
+      },
+      "conditionText": {
+        "heading": {
+          "en-US": "Conditions"
+        },
+        "instruction": {
+          "en-US": "Select a condition to see who it affects."
+        },
+        "notation": {
+          "affected": {
+            "en-US": "Has this condition"
+          },
+          "obligateAffected": {
+            "en-US": "Will develop this condition"
+          },
+          "obligateCarrier": {
+            "en-US": "Carries this condition"
+          },
+          "unknown": {
+            "en-US": "Not known"
+          }
+        },
+        "snapshotCondition": {
+          "en-US": "{title}: {condition}"
+        },
+        "snapshotInheritance": {
+          "en-US": "{title}: {condition} — inheritance for {name}"
+        }
+      },
       "type": "NarrativePedigree",
-      "label": "Narrative Pedigree",
+      "label": {
+        "en-US": "Narrative Pedigree"
+      },
       "sourceStageId": "family-pedigree-1",
       "diseases": [
         {
           "id": "disease-1",
-          "label": "Condition X",
+          "label": {
+            "en-US": "Condition X"
+          },
           "color": "node-color-seq-1",
-          "variable": "hasConditionX",
+          "attribute": "hasConditionX",
           "inheritancePattern": "autosomalDominant"
         }
       ]
     },
     {
       "id": "network-composer-1",
+      "addNamePlaceholder": {
+        "en-US": "Type a name, then press Enter"
+      },
+      "overtakenEditNotice": {
+        "en-US": "Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost."
+      },
+      "tooltips": {
+        "addPerson": {
+          "en-US": "Add node"
+        },
+        "automaticLayout": {
+          "en-US": "Automatic layout"
+        }
+      },
       "type": "NetworkComposer",
-      "label": "Network Composer",
+      "label": {
+        "en-US": "Network Composer"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -660,8 +1256,19 @@
     },
     {
       "id": "geospatial-1",
+      "offlineNotice": {
+        "en-US": "You are offline — the map will not load until you reconnect."
+      },
+      "mapUnavailable": {
+        "en-US": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow."
+      },
+      "outsideAreasLabel": {
+        "en-US": "Outside Selectable Areas"
+      },
       "type": "Geospatial",
-      "label": "Geospatial",
+      "label": {
+        "en-US": "Geospatial"
+      },
       "subject": {
         "entity": "node",
         "type": "person"
@@ -669,7 +1276,7 @@
       "mapOptions": {
         "tokenAssetId": "mapbox_token",
         "style": "mapbox://styles/mapbox/standard",
-        "center": [-74.0, 40.7],
+        "center": [-74, 40.7],
         "initialZoom": 10,
         "dataSourceAssetId": "geo_data",
         "color": "ord-color-seq-6",
@@ -678,10 +1285,45 @@
       "prompts": [
         {
           "id": "geospatial-prompt-1",
-          "text": "Where do you live?",
+          "text": {
+            "en-US": "Where do you live?"
+          },
           "variable": "location"
         }
       ]
+    },
+    {
+      "id": "language-chooser-1",
+      "type": "LanguageChooser",
+      "label": {
+        "en-US": "Language Chooser"
+      }
+    },
+    {
+      "id": "finish",
+      "finishLabel": {
+        "en-US": "Finish"
+      },
+      "finishConfirmation": {
+        "en-US": "Are you sure you want to finish the interview?"
+      },
+      "finishedNotice": {
+        "en-US": "This interview is finished, and its answers can no longer be changed."
+      },
+      "finishFailed": {
+        "en-US": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
+      },
+      "type": "FinishSession",
+      "label": {
+        "en-US": "Finish Interview"
+      },
+      "title": {
+        "en-US": "Finish Interview"
+      },
+      "content": {
+        "en-US": "You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
+      },
+      "outcome": "completed"
     }
   ],
   "assetManifest": {
@@ -699,6 +1341,113 @@
       "name": "Roster",
       "type": "network",
       "source": "roster.json"
+    }
+  },
+  "localization": {
+    "defaultLocale": "en-US",
+    "locales": ["en-US"]
+  },
+  "interfaceText": {
+    "interview": {
+      "exitInterview": {
+        "en-US": "Exit interview"
+      },
+      "exitInterviewDescription": {
+        "en-US": "Your answers so far will be saved and you can continue later."
+      },
+      "stageError": {
+        "en-US": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
+      },
+      "itemUnavailable": {
+        "en-US": "This item could not be displayed."
+      },
+      "back": {
+        "en-US": "Back"
+      },
+      "continue": {
+        "en-US": "Continue"
+      },
+      "cancel": {
+        "en-US": "Cancel"
+      },
+      "done": {
+        "en-US": "Done"
+      },
+      "delete": {
+        "en-US": "Delete"
+      },
+      "genericError": {
+        "en-US": "Something went wrong."
+      }
+    },
+    "passphrase": {
+      "passphrase": {
+        "en-US": "Passphrase"
+      },
+      "choosePassphraseHelp": {
+        "en-US": "Some answers on this screen are protected by a passphrase. Keep it safe: you will need it to see or change these answers later, and it cannot be recovered if it is forgotten."
+      },
+      "passphraseIncorrect": {
+        "en-US": "This passphrase does not match the one used earlier in this interview. Check it and try again."
+      },
+      "protectedAnswersLocked": {
+        "en-US": "Some answers here are protected by your passphrase. Enter your passphrase to see and change them."
+      },
+      "protectedAnswersNotSaved": {
+        "en-US": "Your answers have not been saved. Enter your passphrase, then try again."
+      },
+      "protectedAnswersUnavailable": {
+        "en-US": "Answers protected by a passphrase cannot be shown or saved in this interview. Please let the person who recruited you to this study know."
+      },
+      "answerUnavailable": {
+        "en-US": "Answer unavailable"
+      },
+      "answerUnavailableKept": {
+        "en-US": "This answer was saved earlier but cannot be shown here. Entering a new answer will replace it, so leave the field empty to keep the earlier answer."
+      },
+      "confirmPassphrase": {
+        "en-US": "Confirm Passphrase"
+      },
+      "passphraseAccepted": {
+        "en-US": "Passphrase accepted! Click \"Next\" to continue."
+      }
+    },
+    "forms": {
+      "discardChanges": {
+        "en-US": "Discard changes"
+      },
+      "discardChangesTitle": {
+        "en-US": "Discard changes?"
+      },
+      "discardChangesDescription": {
+        "en-US": "This form contains invalid data, so it cannot be saved. If you continue it will be reset, and your changes will be lost. Do you want to discard your changes?"
+      },
+      "yes": {
+        "en-US": "Yes"
+      },
+      "no": {
+        "en-US": "No"
+      },
+      "submitFailed": {
+        "en-US": "An error occurred while submitting the form."
+      }
+    },
+    "validation": {
+      "required": {
+        "en-US": "You must answer this question before continuing."
+      },
+      "minLength": {
+        "en-US": "{min, plural, one {Enter at least # character.} other {Enter at least # characters.}}"
+      },
+      "maxLength": {
+        "en-US": "{max, plural, one {Enter at most # character.} other {Enter at most # characters.}}"
+      },
+      "unique": {
+        "en-US": "Must be unique."
+      },
+      "sameAs": {
+        "en-US": "{hasLabel, select, true {Your answer must be the same as your answer to ''{label}''.} other {Your answer must be the same as your earlier answer.}}"
+      }
     }
   }
 }

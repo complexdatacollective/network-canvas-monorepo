@@ -18,7 +18,7 @@ function makeWrapper(tracker: Tracker, stages: Array<{ type: string }>) {
       protocol: {
         id: 'p',
         hash: 'h',
-        schemaVersion: 8,
+        schemaVersion: 9,
         codebook: {},
         stages,
       } as never,

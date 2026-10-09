@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
-import type { Protocol } from '../../index.ts';
+import { CURRENT_SCHEMA_VERSION, type Protocol } from '../../index.ts';
 import migrationV7toV8 from '../migration.ts';
-import ProtocolSchemaV8 from '../schema.ts';
+import { V8OutputSchema } from './v8-output-schema.ts';
+
+// The schema 9 output wraps participant copy in English.
+const en = (text: string) => ({ en: text });
 
 /**
  * Comprehensive tests for V7 to V8 migration
@@ -41,7 +44,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       // displayVariable should be removed from node definition
       expect(parsed.codebook.node?.person).not.toHaveProperty(
@@ -82,7 +85,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       // displayVariable should be removed from edge definition
       expect(parsed.codebook.edge?.knows).not.toHaveProperty('displayVariable');
@@ -125,7 +128,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       // All displayVariable properties should be removed
       expect(parsed.codebook.node?.person).not.toHaveProperty(
@@ -182,7 +185,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       const isActive = parsed.codebook.node?.person?.variables?.isActive;
       const hasPets = parsed.codebook.node?.person?.variables?.hasPets;
@@ -195,8 +198,8 @@ describe('Migration V7 to V8', () => {
       expect(hasPets).toHaveProperty('options');
       if (hasPets && 'options' in hasPets) {
         expect(hasPets.options).toEqual([
-          { label: 'Yes', value: true },
-          { label: 'No', value: false },
+          { label: en('Yes'), value: true },
+          { label: en('No'), value: false },
         ]);
       }
     });
@@ -230,7 +233,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       expect(
         parsed.codebook.edge?.knows?.variables?.isReciprocal,
@@ -272,7 +275,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       expect(parsed.codebook.ego?.variables?.employed).not.toHaveProperty(
         'options',
@@ -312,7 +315,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       // Boolean (not Toggle) should keep options
       expect(
@@ -352,7 +355,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       expect(
         parsed.data?.codebook.node?.person?.variables?.hasChildren,
@@ -397,7 +400,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       expect(
         parsed.data?.codebook.node?.person?.variables?.hasChildren,
@@ -436,7 +439,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       const category = parsed.codebook.node?.person?.variables?.category;
       // Categorical variables should keep options
@@ -578,7 +581,7 @@ describe('Migration V7 to V8', () => {
         }),
         { name: 'Test Protocol' },
       );
-      expect(() => ProtocolSchemaV8.parse(migratedRaw)).not.toThrow();
+      expect(() => V8OutputSchema.parse(migratedRaw)).not.toThrow();
     });
 
     it('does not wrap when a different entity shares the attribute id as categorical', () => {
@@ -706,7 +709,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       const stage = parsed.stages[0];
       if (stage && 'panels' in stage) {
@@ -760,7 +763,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       const stage = parsed.stages[0];
       if (stage && 'skipLogic' in stage) {
@@ -827,7 +830,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       const stage = parsed.stages[0];
       if (stage && 'filter' in stage) {
@@ -934,7 +937,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       const nameGenStage = parsed.stages[0];
       if (nameGenStage && 'panels' in nameGenStage) {
@@ -1038,7 +1041,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       const stage = parsed.stages[0];
       if (stage && 'filter' in stage && 'skipLogic' in stage) {
@@ -1077,6 +1080,21 @@ describe('Migration V7 to V8', () => {
 
       expect(migrated).toHaveProperty('experiments');
       expect(migrated.experiments).toEqual({});
+    });
+
+    it('keeps the experiments a host carries into a version 7 document', () => {
+      const v7Protocol = {
+        schemaVersion: 7 as const,
+        codebook: { node: {}, edge: {}, ego: {} },
+        stages: [],
+        experiments: { encryptedVariables: true },
+      } as Protocol<7>;
+
+      const migrated = migrationV7toV8.migrate(v7Protocol, {
+        name: 'Test Protocol',
+      });
+
+      expect(migrated.experiments).toEqual({ encryptedVariables: true });
     });
 
     it('preserves other top-level fields while adding experiments', () => {
@@ -1287,7 +1305,7 @@ describe('Migration V7 to V8', () => {
       });
 
       // Validate against V8 schema
-      const result = ProtocolSchemaV8.safeParse(migratedRaw);
+      const result = V8OutputSchema.safeParse(migratedRaw);
 
       expect(result.success).toBe(true);
     });
@@ -1311,7 +1329,7 @@ describe('Migration V7 to V8', () => {
       expect(migrated.experiments).toEqual({});
 
       // Validate against V8 schema
-      const result = ProtocolSchemaV8.safeParse(migrated);
+      const result = V8OutputSchema.safeParse(migrated);
       expect(result.success).toBe(true);
     });
   });
@@ -1343,7 +1361,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       expect(parsed.codebook.node?.person?.icon).toBe('add-a-person');
       expect(parsed.codebook.node?.person).not.toHaveProperty('iconVariant');
@@ -1374,7 +1392,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       expect(parsed.codebook.node?.person).not.toHaveProperty('iconVariant');
       expect(parsed.codebook.node?.person?.name).toBe('Person');
@@ -1411,7 +1429,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       expect(parsed.codebook.node?.person?.shape).toEqual({
         default: 'circle',
@@ -1447,7 +1465,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7WithNodeColors(colors), {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(
         parsed.success,
         JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
@@ -1505,7 +1523,7 @@ describe('Migration V7 to V8', () => {
       } as Protocol<7>;
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
-      }) as {
+      }) as unknown as {
         codebook: { edge: Record<string, { color: string }> };
         stages: { prompts: { color: string }[] }[];
       };
@@ -1521,9 +1539,9 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(
         v7WithNodeColors({ person: 'node-color-seq-11' }),
         { name: 'Test Protocol' },
-      ) as { codebook: { node: Record<string, { color: string }> } };
+      ) as unknown as { codebook: { node: Record<string, { color: string }> } };
       expect(migratedRaw.codebook.node.person?.color).toBe('node-color-seq-11');
-      expect(ProtocolSchemaV8.safeParse(migratedRaw).success).toBe(false);
+      expect(V8OutputSchema.safeParse(migratedRaw).success).toBe(false);
     });
 
     it('leaves a colour that is not a palette position for the schema to reject', () => {
@@ -1533,9 +1551,9 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(
         v7WithNodeColors({ person: '#ff0000' }),
         { name: 'Test Protocol' },
-      ) as { codebook: { node: Record<string, { color: string }> } };
+      ) as unknown as { codebook: { node: Record<string, { color: string }> } };
       expect(migratedRaw.codebook.node.person?.color).toBe('#ff0000');
-      expect(ProtocolSchemaV8.safeParse(migratedRaw).success).toBe(false);
+      expect(V8OutputSchema.safeParse(migratedRaw).success).toBe(false);
     });
   });
 
@@ -1587,7 +1605,7 @@ describe('Migration V7 to V8', () => {
       p: Protocol<7>,
       expectedType: 'Sociogram' | 'Narrative',
     ) => {
-      const parsed = ProtocolSchemaV8.parse(
+      const parsed = V8OutputSchema.parse(
         migrationV7toV8.migrate(p, { name: 'Test Protocol' }),
       );
       const stage = parsed.stages[0];
@@ -1659,7 +1677,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       const stage = parsed.stages[0];
       if (stage && 'items' in stage) {
@@ -1687,7 +1705,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       expect(parsed.assetManifest?.['video-asset-1']).not.toHaveProperty(
         'loop',
@@ -1728,7 +1746,7 @@ describe('Migration V7 to V8', () => {
       }) as Protocol<7>;
 
     const migrateScalar = (validation: Record<string, unknown>) =>
-      ProtocolSchemaV8.parse(
+      V8OutputSchema.parse(
         migrationV7toV8.migrate(scalarProtocol(validation), {
           name: 'Test Protocol',
         }),
@@ -1805,7 +1823,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       const age = parsed.codebook.node?.person?.variables?.age;
       expect(age).toHaveProperty('validation.required', true);
@@ -1840,7 +1858,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       expect(parsed.codebook.node?.person?.variables?.nickname).toHaveProperty(
         'validation.required',
@@ -1879,7 +1897,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       expect(parsed.codebook.edge?.knows?.variables?.contexts).toHaveProperty(
         'validation.required',
@@ -1910,7 +1928,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       expect(parsed.codebook.ego?.variables?.householdSize).toHaveProperty(
         'validation.required',
@@ -1945,7 +1963,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       expect(parsed.codebook.node?.person?.variables?.age).toHaveProperty(
         'validation.required',
@@ -1986,7 +2004,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       const variables = parsed.codebook.node?.person?.variables;
       expect(variables?.age).not.toHaveProperty('validation.required');
@@ -2015,7 +2033,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       expect(parsed.codebook.node?.person?.variables?.name).not.toHaveProperty(
         'validation',
@@ -2055,7 +2073,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       const nickname = parsed.codebook.node?.person?.variables?.nickname;
       expect(nickname).not.toHaveProperty('validation.required');
@@ -2086,7 +2104,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       const ssn = parsed.codebook.ego?.variables?.ssn;
       expect(ssn).toHaveProperty('validation');
@@ -2121,7 +2139,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       expect(parsed.codebook.node?.person?.variables?.name).toHaveProperty(
         'validation.unique',
@@ -2165,7 +2183,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       const rating = parsed.codebook.node?.person?.variables?.rating;
       expect(rating).not.toHaveProperty('validation.minSelected');
@@ -2208,7 +2226,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       const rating = parsed.codebook.node?.person?.variables?.rating;
       expect(rating).not.toHaveProperty('validation.minSelected');
@@ -2245,7 +2263,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       const tags = parsed.codebook.node?.person?.variables?.tags;
       expect(tags).toHaveProperty('validation.minSelected', 1);
@@ -2291,20 +2309,20 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       const pick = parsed.codebook.node?.person?.variables?.pick;
       const rank = parsed.codebook.node?.person?.variables?.rank;
       if (pick && 'options' in pick) {
         expect(pick.options).toEqual([
-          { label: 'Yes', value: 'true' },
-          { label: 'No', value: 'false' },
+          { label: en('Yes'), value: 'true' },
+          { label: en('No'), value: 'false' },
         ]);
       }
       if (rank && 'options' in rank) {
         expect(rank.options).toEqual([
-          { label: 'Yes', value: 'true' },
-          { label: 'No', value: 'false' },
+          { label: en('Yes'), value: 'true' },
+          { label: en('No'), value: 'false' },
         ]);
       }
     });
@@ -2339,13 +2357,13 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       const hasPets = parsed.codebook.node?.person?.variables?.hasPets;
       if (hasPets && 'options' in hasPets) {
         expect(hasPets.options).toEqual([
-          { label: 'Yes', value: true },
-          { label: 'No', value: false },
+          { label: en('Yes'), value: true },
+          { label: en('No'), value: false },
         ]);
       }
     });
@@ -2399,22 +2417,25 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      expect(V8OutputSchema.safeParse(migratedRaw).success).toBe(true);
 
+      // Read from the version 8 document: migrating it on to 9 unmarks every
+      // attribute, since this migration leaves the experiments empty.
       // Node text variable keeps encrypted.
-      expect(
-        parsed.codebook.node?.person?.variables?.secretName,
-      ).toHaveProperty('encrypted', true);
+      expect(migratedRaw).toHaveProperty(
+        'codebook.node.person.variables.secretName.encrypted',
+        true,
+      );
       // Non-text node variable loses encrypted.
-      expect(
-        parsed.codebook.node?.person?.variables?.secretAge,
-      ).not.toHaveProperty('encrypted');
+      expect(migratedRaw).not.toHaveProperty(
+        'codebook.node.person.variables.secretAge.encrypted',
+      );
       // Edge and ego variables lose encrypted regardless of type.
-      expect(
-        parsed.codebook.edge?.knows?.variables?.edgeSecret,
-      ).not.toHaveProperty('encrypted');
-      expect(parsed.codebook.ego?.variables?.egoSecret).not.toHaveProperty(
-        'encrypted',
+      expect(migratedRaw).not.toHaveProperty(
+        'codebook.edge.knows.variables.edgeSecret.encrypted',
+      );
+      expect(migratedRaw).not.toHaveProperty(
+        'codebook.ego.variables.egoSecret.encrypted',
       );
     });
   });
@@ -2487,7 +2508,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
 
       const [ego, alter, alterEdge] = parsed.stages;
       if (ego && 'form' in ego) expect(ego.form).not.toHaveProperty('title');
@@ -2542,12 +2563,12 @@ describe('Migration V7 to V8', () => {
         }),
         { name: 'Test Protocol' },
       );
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).toHaveProperty(
           'otherVariablePrompt',
-          'Something else',
+          en('Something else'),
         );
       }
     });
@@ -2557,14 +2578,17 @@ describe('Migration V7 to V8', () => {
         buildBinProtocol({ otherVariable: 'other' }),
         { name: 'Test Protocol' },
       );
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).toHaveProperty(
           'otherVariablePrompt',
-          'Please specify',
+          en('Please specify'),
         );
-        expect(stage.prompts[0]).toHaveProperty('otherOptionLabel', 'Other');
+        expect(stage.prompts[0]).toHaveProperty(
+          'otherOptionLabel',
+          en('Other'),
+        );
       }
     });
 
@@ -2576,12 +2600,12 @@ describe('Migration V7 to V8', () => {
         }),
         { name: 'Test Protocol' },
       );
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).toHaveProperty(
           'otherOptionLabel',
-          'Which other category?',
+          en('Which other category?'),
         );
       }
     });
@@ -2595,10 +2619,13 @@ describe('Migration V7 to V8', () => {
         }),
         { name: 'Test Protocol' },
       );
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
-        expect(stage.prompts[0]).toHaveProperty('otherOptionLabel', 'My label');
+        expect(stage.prompts[0]).toHaveProperty(
+          'otherOptionLabel',
+          en('My label'),
+        );
       }
     });
 
@@ -2611,12 +2638,12 @@ describe('Migration V7 to V8', () => {
         }),
         { name: 'Test Protocol' },
       );
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).toHaveProperty(
           'otherVariablePrompt',
-          'My prompt',
+          en('My prompt'),
         );
       }
     });
@@ -2625,7 +2652,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(buildBinProtocol({}), {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).not.toHaveProperty('otherVariablePrompt');
@@ -2640,7 +2667,7 @@ describe('Migration V7 to V8', () => {
         }),
         { name: 'Test Protocol' },
       );
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).not.toHaveProperty('otherOptionLabel');
@@ -2653,7 +2680,7 @@ describe('Migration V7 to V8', () => {
         buildBinProtocol({ otherOptionLabel: 'Other' }),
         { name: 'Test Protocol' },
       );
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).not.toHaveProperty('otherOptionLabel');
@@ -2669,7 +2696,7 @@ describe('Migration V7 to V8', () => {
         }),
         { name: 'Test Protocol' },
       );
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).not.toHaveProperty('otherVariable');
@@ -2687,13 +2714,16 @@ describe('Migration V7 to V8', () => {
         }),
         { name: 'Test Protocol' },
       );
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
-        expect(stage.prompts[0]).toHaveProperty('otherOptionLabel', 'Other');
+        expect(stage.prompts[0]).toHaveProperty(
+          'otherOptionLabel',
+          en('Other'),
+        );
         expect(stage.prompts[0]).toHaveProperty(
           'otherVariablePrompt',
-          'Please specify',
+          en('Please specify'),
         );
       }
     });
@@ -2707,7 +2737,7 @@ describe('Migration V7 to V8', () => {
         }),
         { name: 'Test Protocol' },
       );
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).not.toHaveProperty('otherVariable');
@@ -2769,7 +2799,7 @@ describe('Migration V7 to V8', () => {
         ]),
         { name: 'Test Protocol' },
       );
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       expect(stage && 'prompts' in stage && stage.prompts[0]).toHaveProperty(
         'additionalAttributes',
@@ -2820,7 +2850,7 @@ describe('Migration V7 to V8', () => {
         buildOrdinalProtocol({ color: 'coral' }),
         { name: 'Test Protocol' },
       );
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).toHaveProperty('color', 'ord-color-seq-1');
@@ -2832,7 +2862,7 @@ describe('Migration V7 to V8', () => {
         buildOrdinalProtocol({ color: 'ord-color-seq-3' }),
         { name: 'Test Protocol' },
       );
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).toHaveProperty('color', 'ord-color-seq-3');
@@ -2854,7 +2884,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).toHaveProperty('color', 'ord-color-seq-1');
@@ -2918,12 +2948,12 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(buildTscProtocol(''), {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).toHaveProperty(
           'negativeLabel',
-          'No relationship',
+          en('No relationship'),
         );
       }
     });
@@ -2932,12 +2962,12 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(buildTscProtocol(undefined), {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).toHaveProperty(
           'negativeLabel',
-          'No relationship',
+          en('No relationship'),
         );
       }
     });
@@ -2946,10 +2976,10 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(buildTscProtocol('Distant'), {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
-        expect(stage.prompts[0]).toHaveProperty('negativeLabel', 'Distant');
+        expect(stage.prompts[0]).toHaveProperty('negativeLabel', en('Distant'));
       }
     });
   });
@@ -2974,17 +3004,17 @@ describe('Migration V7 to V8', () => {
         buildInfoProtocol({ label: 'Welcome Screen' }),
         { name: 'Test Protocol' },
       );
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
-      expect(parsed.stages[0]).toHaveProperty('title', 'Welcome Screen');
+      const parsed = V8OutputSchema.parse(migratedRaw);
+      expect(parsed.stages[0]).toHaveProperty('title', en('Welcome Screen'));
     });
 
     it("backfills 'Information' when there is no usable label", () => {
       const migratedRaw = migrationV7toV8.migrate(buildInfoProtocol({}), {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
-      expect(parsed.stages[0]).toHaveProperty('title', 'Information');
-      expect(parsed.stages[0]).toHaveProperty('label', 'Stage 1');
+      const parsed = V8OutputSchema.parse(migratedRaw);
+      expect(parsed.stages[0]).toHaveProperty('title', en('Information'));
+      expect(parsed.stages[0]).toHaveProperty('label', en('Stage 1'));
     });
 
     it('leaves an authored title untouched', () => {
@@ -2992,8 +3022,8 @@ describe('Migration V7 to V8', () => {
         buildInfoProtocol({ label: 'Welcome Screen', title: 'Hello!' }),
         { name: 'Test Protocol' },
       );
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
-      expect(parsed.stages[0]).toHaveProperty('title', 'Hello!');
+      const parsed = V8OutputSchema.parse(migratedRaw);
+      expect(parsed.stages[0]).toHaveProperty('title', en('Hello!'));
     });
   });
 
@@ -3032,10 +3062,10 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(buildNgFormProtocol({}), {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'form' in stage) {
-        expect(stage.form).toHaveProperty('title', 'Add Person');
+        expect(stage.form).toHaveProperty('title', en('Add Person'));
       }
     });
 
@@ -3044,10 +3074,10 @@ describe('Migration V7 to V8', () => {
         buildNgFormProtocol({ title: '' }),
         { name: 'Test Protocol' },
       );
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'form' in stage) {
-        expect(stage.form).toHaveProperty('title', 'Add Person');
+        expect(stage.form).toHaveProperty('title', en('Add Person'));
       }
     });
 
@@ -3056,10 +3086,10 @@ describe('Migration V7 to V8', () => {
         buildNgFormProtocol({ title: 'Add a friend' }),
         { name: 'Test Protocol' },
       );
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'form' in stage) {
-        expect(stage.form).toHaveProperty('title', 'Add a friend');
+        expect(stage.form).toHaveProperty('title', en('Add a friend'));
       }
     });
   });
@@ -3129,7 +3159,7 @@ describe('Migration V7 to V8', () => {
         buildCanvasProtocol(type, stage),
         { name: 'Test Protocol' },
       );
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const parsedStage = parsed.stages[0];
       if (!parsedStage || !('background' in parsedStage)) {
         throw new Error('stage has no background');
@@ -3265,7 +3295,7 @@ describe('Migration V7 to V8', () => {
       const behaviours = getBehaviours(migratedRaw);
       expect(behaviours).not.toHaveProperty('maxNodes');
       expect(behaviours).toHaveProperty('minNodes', 1);
-      expect(() => ProtocolSchemaV8.parse(migratedRaw)).not.toThrow();
+      expect(() => V8OutputSchema.parse(migratedRaw)).not.toThrow();
     });
 
     it('removes maxNodes when maxNodes < minNodes', () => {
@@ -3370,7 +3400,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).not.toHaveProperty('highlight');
@@ -3420,7 +3450,7 @@ describe('Migration V7 to V8', () => {
         }),
         { name: 'Test Protocol' },
       );
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).toHaveProperty(
@@ -3435,7 +3465,7 @@ describe('Migration V7 to V8', () => {
         buildSociogramProtocol({ highlight: { allowHighlighting: true } }),
         { name: 'Test Protocol' },
       );
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).toHaveProperty(
@@ -3450,7 +3480,7 @@ describe('Migration V7 to V8', () => {
         buildSociogramProtocol({ edges: {} }),
         { name: 'Test Protocol' },
       );
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).not.toHaveProperty('edges');
@@ -3462,7 +3492,7 @@ describe('Migration V7 to V8', () => {
         buildSociogramProtocol({ edges: { display: ['knows'] } }),
         { name: 'Test Protocol' },
       );
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).toHaveProperty('edges.display', ['knows']);
@@ -3474,7 +3504,7 @@ describe('Migration V7 to V8', () => {
         buildSociogramProtocol({ edges: { display: [] } }),
         { name: 'Test Protocol' },
       );
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
         expect(stage.prompts[0]).not.toHaveProperty('edges');
@@ -3507,7 +3537,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'items' in stage) {
         expect(stage.items[0]).toHaveProperty('size', 'MEDIUM');
@@ -3538,7 +3568,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'items' in stage) {
         expect(stage.items[0]).not.toHaveProperty('size');
@@ -3569,7 +3599,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'items' in stage) {
         expect(stage.items[0]).not.toHaveProperty('size');
@@ -3614,7 +3644,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage) {
         expect(stage).not.toHaveProperty('filter');
@@ -3660,7 +3690,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'panels' in stage) {
         expect(stage.panels?.[0]).not.toHaveProperty('filter');
@@ -3699,7 +3729,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage) {
         expect(stage).not.toHaveProperty('skipLogic');
@@ -3749,7 +3779,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.parse(migratedRaw);
+      const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'filter' in stage) {
         expect(stage.filter?.rules).toHaveLength(1);
@@ -3814,7 +3844,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      expect(() => ProtocolSchemaV8.parse(migratedRaw)).not.toThrow();
+      expect(() => V8OutputSchema.parse(migratedRaw)).not.toThrow();
       const stage = (
         migratedRaw as unknown as {
           stages: { prompts?: { text?: unknown }[] }[];
@@ -3857,7 +3887,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      expect(() => ProtocolSchemaV8.parse(migratedRaw)).not.toThrow();
+      expect(() => V8OutputSchema.parse(migratedRaw)).not.toThrow();
       const stage = (
         migratedRaw as unknown as {
           stages: { form?: { fields?: { prompt?: unknown }[] } }[];
@@ -3939,7 +3969,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      expect(() => ProtocolSchemaV8.parse(migratedRaw)).not.toThrow();
+      expect(() => V8OutputSchema.parse(migratedRaw)).not.toThrow();
       const stage = (
         migratedRaw as unknown as {
           stages: { introductionPanel?: { title?: unknown; text?: unknown } }[];
@@ -3967,7 +3997,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      expect(() => ProtocolSchemaV8.parse(migratedRaw)).not.toThrow();
+      expect(() => V8OutputSchema.parse(migratedRaw)).not.toThrow();
       const stage = (
         migratedRaw as unknown as {
           stages: { items?: { content?: unknown }[] }[];
@@ -3997,7 +4027,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      expect(() => ProtocolSchemaV8.parse(migratedRaw)).not.toThrow();
+      expect(() => V8OutputSchema.parse(migratedRaw)).not.toThrow();
       const stage = (
         migratedRaw as unknown as {
           stages: { items?: { id?: unknown }[] }[];
@@ -4036,7 +4066,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      expect(() => ProtocolSchemaV8.parse(migratedRaw)).not.toThrow();
+      expect(() => V8OutputSchema.parse(migratedRaw)).not.toThrow();
       const stage = (
         migratedRaw as unknown as {
           stages: { presets?: { label?: unknown }[] }[];
@@ -4080,7 +4110,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      expect(() => ProtocolSchemaV8.parse(migratedRaw)).not.toThrow();
+      expect(() => V8OutputSchema.parse(migratedRaw)).not.toThrow();
       const stage = (
         migratedRaw as unknown as {
           stages: { panels?: { title?: unknown }[] }[];
@@ -4127,7 +4157,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      expect(() => ProtocolSchemaV8.parse(migratedRaw)).not.toThrow();
+      expect(() => V8OutputSchema.parse(migratedRaw)).not.toThrow();
       const stage = (
         migratedRaw as unknown as {
           stages: Record<string, unknown>[];
@@ -4259,7 +4289,7 @@ describe('Migration V7 to V8', () => {
         }),
         { name: 'Test Protocol' },
       );
-      expect(ProtocolSchemaV8.safeParse(migratedRaw).success).toBe(true);
+      expect(V8OutputSchema.safeParse(migratedRaw).success).toBe(true);
     });
   });
 
@@ -4314,7 +4344,7 @@ describe('Migration V7 to V8', () => {
         { name: 'Test Protocol' },
       ) as unknown as { stages: { filter?: { join?: string } }[] };
       expect(migrated.stages[0]?.filter?.join).toBe('OR');
-      expect(ProtocolSchemaV8.safeParse(migrated).success).toBe(true);
+      expect(V8OutputSchema.safeParse(migrated).success).toBe(true);
     });
 
     it('backfills join:OR on a multi-rule skipLogic filter with no join', () => {
@@ -4334,7 +4364,7 @@ describe('Migration V7 to V8', () => {
         stages: { skipLogic?: { filter?: { join?: string } } }[];
       };
       expect(migrated.stages[0]?.skipLogic?.filter?.join).toBe('OR');
-      expect(ProtocolSchemaV8.safeParse(migrated).success).toBe(true);
+      expect(V8OutputSchema.safeParse(migrated).success).toBe(true);
     });
 
     it('backfills join:OR on a multi-rule panel filter with no join', () => {
@@ -4363,7 +4393,7 @@ describe('Migration V7 to V8', () => {
         stages: { panels?: { filter?: { join?: string } }[] }[];
       };
       expect(migrated.stages[0]?.panels?.[0]?.filter?.join).toBe('OR');
-      expect(ProtocolSchemaV8.safeParse(migrated).success).toBe(true);
+      expect(V8OutputSchema.safeParse(migrated).success).toBe(true);
     });
 
     it('leaves a single-rule filter join undefined', () => {
@@ -4389,7 +4419,7 @@ describe('Migration V7 to V8', () => {
         { name: 'Test Protocol' },
       ) as unknown as { stages: { filter?: { join?: string } }[] };
       expect(migrated.stages[0]?.filter?.join).toBeUndefined();
-      expect(ProtocolSchemaV8.safeParse(migrated).success).toBe(true);
+      expect(V8OutputSchema.safeParse(migrated).success).toBe(true);
     });
   });
 
@@ -4438,7 +4468,7 @@ describe('Migration V7 to V8', () => {
       const fields = migrated.stages[0]?.form?.fields;
       expect(fields).toHaveLength(1);
       expect(fields?.[0]?.variable).toBe('name');
-      expect(ProtocolSchemaV8.safeParse(migrated).success).toBe(true);
+      expect(V8OutputSchema.safeParse(migrated).success).toBe(true);
     });
   });
 
@@ -4488,7 +4518,7 @@ describe('Migration V7 to V8', () => {
         { name: 'Test Protocol' },
       ) as unknown as { stages: { id?: string }[] };
       expect(migrated.stages.map((s) => s.id)).toEqual(['keep']);
-      expect(ProtocolSchemaV8.safeParse(migrated).success).toBe(true);
+      expect(V8OutputSchema.safeParse(migrated).success).toBe(true);
     });
 
     it('drops an AlterForm emptied by non-renderable field removal', () => {
@@ -4504,7 +4534,7 @@ describe('Migration V7 to V8', () => {
         { name: 'Test Protocol' },
       ) as unknown as { stages: { id?: string }[] };
       expect(migrated.stages.map((s) => s.id)).toEqual(['keep']);
-      expect(ProtocolSchemaV8.safeParse(migrated).success).toBe(true);
+      expect(V8OutputSchema.safeParse(migrated).success).toBe(true);
     });
 
     const buildWithSkipTo = (stageId: string) =>
@@ -4567,7 +4597,7 @@ describe('Migration V7 to V8', () => {
 
       expect(migrated.stages.map((s) => s.id)).toEqual(['src', 'keep']);
       expect(migrated.stages[0]?.skipLogic?.destination).toBeUndefined();
-      expect(ProtocolSchemaV8.safeParse(migrated).success).toBe(true);
+      expect(V8OutputSchema.safeParse(migrated).success).toBe(true);
     });
 
     it('preserves a skip destination pointing at a surviving stage', () => {
@@ -4579,7 +4609,7 @@ describe('Migration V7 to V8', () => {
         type: 'stage',
         stageId: 'keep',
       });
-      expect(ProtocolSchemaV8.safeParse(migrated).success).toBe(true);
+      expect(V8OutputSchema.safeParse(migrated).success).toBe(true);
     });
   });
 
@@ -4633,7 +4663,7 @@ describe('Migration V7 to V8', () => {
           parameters: { min: '2020', max: '2021-06-15' },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).toHaveProperty('parameters.min', '2020');
@@ -4657,7 +4687,7 @@ describe('Migration V7 to V8', () => {
           parameters: { min: 'not-a-date' },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).not.toHaveProperty('parameters.min');
@@ -4680,7 +4710,7 @@ describe('Migration V7 to V8', () => {
           parameters: { type: 'year', min: '2020garbage' },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).not.toHaveProperty('parameters.min');
@@ -4707,7 +4737,7 @@ describe('Migration V7 to V8', () => {
           parameters: { min: '0001-01-01' },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).not.toHaveProperty('parameters.max');
@@ -4728,7 +4758,7 @@ describe('Migration V7 to V8', () => {
           parameters: { type: 'week', min: '2020-01-01' },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).not.toHaveProperty('parameters.type');
@@ -4752,7 +4782,7 @@ describe('Migration V7 to V8', () => {
           parameters: { min: '2020-01-01', anchor: '2020-01-01' },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).not.toHaveProperty('parameters.anchor');
@@ -4768,7 +4798,7 @@ describe('Migration V7 to V8', () => {
           parameters: { min: '2020-01-01', foo: 1 },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).not.toHaveProperty('parameters.foo');
@@ -4784,7 +4814,7 @@ describe('Migration V7 to V8', () => {
           parameters: { type: 'month', min: '2020-01', max: '2020-06' },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).toHaveProperty('parameters', {
@@ -4807,7 +4837,7 @@ describe('Migration V7 to V8', () => {
           parameters: { anchor: '2020-01-01', before: 30 },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).toHaveProperty('parameters.anchor', '2020-01-01');
@@ -4823,7 +4853,7 @@ describe('Migration V7 to V8', () => {
           parameters: { anchor: '0000-12-31', before: 30 },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).not.toHaveProperty('parameters.anchor');
@@ -4845,7 +4875,7 @@ describe('Migration V7 to V8', () => {
           parameters: { anchor: '0099-12-31', before: 30 },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).toHaveProperty('parameters.anchor', '0001-01-01');
@@ -4867,7 +4897,7 @@ describe('Migration V7 to V8', () => {
           parameters: { anchor: '2020-01-01', after: 1.5 },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).not.toHaveProperty('parameters.before');
@@ -4885,7 +4915,7 @@ describe('Migration V7 to V8', () => {
           parameters: { anchor: '2020-01-01', min: '2019-01-01' },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).not.toHaveProperty('parameters.min');
@@ -4910,7 +4940,7 @@ describe('Migration V7 to V8', () => {
           parameters: { anchor: '2020-01-01', after: -3 },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).toHaveProperty('parameters.anchor', '0050-01-01');
@@ -4927,7 +4957,7 @@ describe('Migration V7 to V8', () => {
           parameters: { type: 'year', min: '2020-05-03' },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).toHaveProperty('parameters.min', '2020');
@@ -4949,7 +4979,7 @@ describe('Migration V7 to V8', () => {
           parameters: { anchor: '0050-01-01', before: -2 },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).toHaveProperty('parameters.min', '2020');
@@ -4973,7 +5003,7 @@ describe('Migration V7 to V8', () => {
           parameters: { type: 'year', min: '2020-05-03', before: -2 },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).toHaveProperty('parameters.min', '2020');
@@ -5025,7 +5055,7 @@ describe('Migration V7 to V8', () => {
           parameters: { min: '0099-12-31' },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).toHaveProperty('parameters.min', '0099-12-31');
@@ -5040,7 +5070,7 @@ describe('Migration V7 to V8', () => {
           parameters: { min: '0099-02-30' },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).not.toHaveProperty('parameters.min');
@@ -5061,7 +5091,7 @@ describe('Migration V7 to V8', () => {
           parameters: { type: 'year', min: '0099', max: '2020' },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).not.toHaveProperty('parameters.min');
@@ -5077,7 +5107,7 @@ describe('Migration V7 to V8', () => {
           parameters: { type: 'month', min: '0099-05-03' },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).not.toHaveProperty('parameters.min');
@@ -5105,7 +5135,7 @@ describe('Migration V7 to V8', () => {
           validation: { maxSelected: 0 },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).not.toHaveProperty('validation.maxLength');
@@ -5169,7 +5199,7 @@ describe('Migration V7 to V8', () => {
         },
         stages: [],
       };
-      const parsed = ProtocolSchemaV8.parse(
+      const parsed = V8OutputSchema.parse(
         migrationV7toV8.migrate(v7Protocol as unknown as Protocol<7>, {
           name: 'Test Protocol',
         }),
@@ -5230,7 +5260,7 @@ describe('Migration V7 to V8', () => {
           validation: { minSelected: 1, maxSelected: 2.7 },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(
         parsed.success,
         JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
@@ -5267,7 +5297,7 @@ describe('Migration V7 to V8', () => {
           validation: { minSelected: 1, maxSelected: 2.7 },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(
         parsed.success,
         JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
@@ -5289,7 +5319,7 @@ describe('Migration V7 to V8', () => {
           validation: { minValue: 1.5 },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).not.toHaveProperty('validation.minValue');
@@ -5328,7 +5358,7 @@ describe('Migration V7 to V8', () => {
           validation: { minSelected: 0, maxSelected: 0 },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
 
       expect(
         parsed.success,
@@ -5351,7 +5381,7 @@ describe('Migration V7 to V8', () => {
           validation: { minValue: 10, maxValue: 2, required: true },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).not.toHaveProperty('validation.minValue');
@@ -5368,7 +5398,7 @@ describe('Migration V7 to V8', () => {
         },
         b: { name: 'b', type: 'text' },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).not.toHaveProperty('validation.sameAs');
@@ -5388,7 +5418,7 @@ describe('Migration V7 to V8', () => {
           validation: { greaterThanVariable: 'a' },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).not.toHaveProperty('validation.greaterThanVariable');
@@ -5405,7 +5435,7 @@ describe('Migration V7 to V8', () => {
         },
         b: { name: 'b', type: 'number' },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).toHaveProperty('validation.sameAs', 'b');
@@ -5430,7 +5460,7 @@ describe('Migration V7 to V8', () => {
         },
         b: { name: 'b', type: 'number', validation: { minValue: 10 } },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(
         parsed.success,
         JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
@@ -5470,7 +5500,7 @@ describe('Migration V7 to V8', () => {
         },
         c: { name: 'c', type: 'number', validation: { sameAs: 'a' } },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(
         parsed.success,
         JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
@@ -5507,7 +5537,7 @@ describe('Migration V7 to V8', () => {
           ],
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).not.toHaveProperty('validation.sameAs');
@@ -5522,7 +5552,7 @@ describe('Migration V7 to V8', () => {
         },
         b: { name: 'b', type: 'number' },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).not.toHaveProperty('validation.sameAs');
@@ -5542,7 +5572,7 @@ describe('Migration V7 to V8', () => {
           validation: { greaterThanVariable: 'a', maxValue: 100 },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).toHaveProperty('validation.minValue', 0);
@@ -5580,7 +5610,7 @@ describe('Migration V7 to V8', () => {
           validation: { differentFrom: 'a', required: true },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).not.toHaveProperty('validation.differentFrom');
@@ -5618,7 +5648,7 @@ describe('Migration V7 to V8', () => {
           validation: { differentFrom: 'a' },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).not.toHaveProperty('validation.differentFrom');
@@ -5660,7 +5690,7 @@ describe('Migration V7 to V8', () => {
           validation: { minValue: 0, maxValue: 10 },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(
         parsed.success,
         JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
@@ -5695,7 +5725,7 @@ describe('Migration V7 to V8', () => {
         },
         b: { name: 'b', type: 'number' },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).not.toHaveProperty('validation.sameAs');
@@ -5724,7 +5754,7 @@ describe('Migration V7 to V8', () => {
         };
       }
       const migratedRaw = migrateVariables(variables);
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const parsedVariables = parsed.data?.codebook.ego?.variables ?? {};
       expect(Object.keys(parsedVariables)).toHaveLength(101);
@@ -5748,12 +5778,13 @@ describe('Migration V7 to V8', () => {
         };
         expected[`v${index}`] = {
           name: `v${index}`,
+          label: `v${index}`,
           type: 'number',
           validation: { required: true },
         };
       }
       const migratedRaw = migrateVariables(variables);
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       expect(parsed.data?.codebook.ego?.variables).toEqual(expected);
     });
@@ -5772,7 +5803,7 @@ describe('Migration V7 to V8', () => {
           validation: { minSelected: 5, maxSelected: 1, required: true },
         },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const variables = parsed.data?.codebook.ego?.variables;
       expect(variables?.a).not.toHaveProperty('validation.minSelected');
@@ -5807,7 +5838,7 @@ describe('Migration V7 to V8', () => {
         };
       }
       const migratedRaw = migrateVariables(variables);
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(parsed.success).toBe(true);
       const parsedVariables = parsed.data?.codebook.ego?.variables;
       expect(parsedVariables?.a).not.toHaveProperty('validation.sameAs');
@@ -5819,6 +5850,7 @@ describe('Migration V7 to V8', () => {
       for (let index = 0; index < 50; index++) {
         expect(parsedVariables?.[`v${index}`]).toEqual({
           name: `v${index}`,
+          label: `v${index}`,
           type: 'number',
           validation: { required: true },
         });
@@ -5870,7 +5902,7 @@ describe('Migration V7 to V8', () => {
         },
         y: { name: 'y', type: 'number' },
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(
         parsed.success,
         JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
@@ -6037,7 +6069,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(
         parsed.success,
         JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
@@ -6139,7 +6171,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(
         parsed.success,
         JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
@@ -6205,7 +6237,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(
         parsed.success,
         JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
@@ -6230,8 +6262,8 @@ describe('Migration V7 to V8', () => {
         throw new Error('expected rating options');
       }
       expect(rating.options).toEqual([
-        { label: 'Half', value: '0.5' },
-        { label: 'One', value: 1 },
+        { label: en('Half'), value: '0.5' },
+        { label: en('One'), value: 1 },
       ]);
     });
 
@@ -6252,8 +6284,8 @@ describe('Migration V7 to V8', () => {
         throw new Error('expected rating options');
       }
       expect(rating.options).toEqual([
-        { label: '7', value: 'seven' },
-        { label: 'Eight', value: 'eight' },
+        { label: en('7'), value: 'seven' },
+        { label: en('Eight'), value: 'eight' },
       ]);
     });
 
@@ -6273,7 +6305,7 @@ describe('Migration V7 to V8', () => {
       if (!employed || !('options' in employed)) {
         throw new Error('expected employed options');
       }
-      expect(employed.options).toEqual([{ label: 'No', value: false }]);
+      expect(employed.options).toEqual([{ label: en('No'), value: false }]);
     });
 
     it('removes boolean options entirely when no well-formed entry remains', () => {
@@ -6319,7 +6351,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(
         parsed.success,
         JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
@@ -6422,7 +6454,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(protocol as Protocol<7>, {
         name: 'alter-form-test',
       });
-      const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+      const parsed = V8OutputSchema.safeParse(migratedRaw);
       expect(
         parsed.success,
         JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
@@ -6443,14 +6475,14 @@ describe('Migration V7 to V8', () => {
         migrateAndParse(alterFormTestProtocol())?.filter(
           (field) => field.variable === NAME,
         ),
-      ).toEqual([{ variable: NAME, prompt: 'sdfsdf\n' }]);
+      ).toEqual([{ variable: NAME, prompt: en('sdfsdf\n') }]);
     });
 
     it('leaves every other field untouched and in order', () => {
       expect(migrateAndParse(alterFormTestProtocol())).toEqual([
-        { variable: NAME, prompt: 'sdfsdf\n' },
-        { variable: SCALE, prompt: 'sadasd\n' },
-        { variable: CATEGORICAL, prompt: 'asd\n' },
+        { variable: NAME, prompt: en('sdfsdf\n') },
+        { variable: SCALE, prompt: en('sadasd\n') },
+        { variable: CATEGORICAL, prompt: en('asd\n') },
       ]);
     });
 
@@ -6463,8 +6495,8 @@ describe('Migration V7 to V8', () => {
         { variable: NAME, prompt: 'third\n' },
       ];
       expect(migrateAndParse(protocol)).toEqual([
-        { variable: NAME, prompt: 'first\n' },
-        { variable: SCALE, prompt: 'sadasd\n' },
+        { variable: NAME, prompt: en('first\n') },
+        { variable: SCALE, prompt: en('sadasd\n') },
       ]);
     });
 
@@ -6491,8 +6523,8 @@ describe('Migration V7 to V8', () => {
         id: 'b46363c0-6a6f-11ed-ad78-2704db7eea26',
       } as unknown as (typeof protocol.stages)[1];
       expect(migrateAndParse(protocol)).toEqual([
-        { variable: NAME, prompt: 'Their name?' },
-        { variable: SCALE, prompt: 'How close?' },
+        { variable: NAME, prompt: en('Their name?') },
+        { variable: SCALE, prompt: en('How close?') },
       ]);
     });
 
@@ -6502,7 +6534,7 @@ describe('Migration V7 to V8', () => {
       const migrated = migrateProtocol(alterFormTestProtocol(), undefined, {
         name: 'alter-form-test',
       });
-      expect(migrated.schemaVersion).toBe(8);
+      expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     });
   });
 });

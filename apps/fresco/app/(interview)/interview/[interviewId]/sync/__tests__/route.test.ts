@@ -42,6 +42,12 @@ vi.mock('~/lib/posthog-server', () => ({
   flushPostHog: vi.fn(),
 }));
 
+import {
+  networkWithEncryptionHeader,
+  schema8EncryptedNetwork,
+} from '~/lib/__tests__/encryptedNetworks';
+import { parseStoredInterviewSession } from '~/lib/db/storedInterviewSession';
+
 import { POST } from '../route';
 
 const legacyNetwork = {
@@ -244,6 +250,51 @@ describe('interview sync route', () => {
     });
     expect(updateManyMock).not.toHaveBeenCalled();
   });
+  describe('encrypted interviews', () => {
+    // The next page load reads the row with exactly this call, and refuses to
+    // start the interview when the parse fails.
+    const loadStoredNetwork = (stored: unknown) => {
+      const parsed = parseStoredInterviewSession({
+        network: stored,
+        stageMetadata: null,
+      });
+      if (!parsed.success) throw new Error('The stored network did not parse');
+      return parsed.data.network;
+    };
+
+    it.each([
+      {
+        label: 'the encryption header and IV-only values',
+        network: networkWithEncryptionHeader,
+      },
+      {
+        label: 'schema 8 values without a header',
+        network: schema8EncryptedNetwork,
+      },
+    ])(
+      'keeps $label unchanged from a sync to the next load',
+      async ({ network }) => {
+        const readRow = installInterviewRow({
+          syncRevision: 0,
+          network: networkNamed('initial'),
+        });
+
+        const response = await post(makeRequest(network, { syncRevision: 1 }));
+
+        await expect(response.json()).resolves.toEqual({
+          success: true,
+          applied: true,
+          syncRevision: 1,
+        });
+        expect(readRow()?.network).toStrictEqual(network);
+
+        // What a jsonb column hands back.
+        const stored: unknown = JSON.parse(JSON.stringify(readRow()?.network));
+        expect(loadStoredNetwork(stored)).toStrictEqual(network);
+      },
+    );
+  });
+
   describe('write ordering', () => {
     it('discards a write that lands after a newer one instead of rolling the interview back', async () => {
       const readRow = installInterviewRow({

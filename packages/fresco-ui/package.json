@@ -56,6 +56,7 @@
     "./Pips": "./src/Pips.tsx",
     "./Popover": "./src/Popover.tsx",
     "./PortalContainer": "./src/PortalContainer.tsx",
+    "./PresentationalText": "./src/PresentationalText.ts",
     "./ProgressBar": "./src/ProgressBar.tsx",
     "./ProtocolCard": "./src/ProtocolCard.tsx",
     "./RenderMarkdown": "./src/RenderMarkdown.tsx",
@@ -111,6 +112,7 @@
     "./form/Field/UnconnectedField": "./src/form/Field/UnconnectedField.tsx",
     "./form/Field/fieldElements": "./src/form/Field/fieldElements.ts",
     "./form/Field/types": "./src/form/Field/types.ts",
+    "./form/ContentLocale": "./src/form/ContentLocale.tsx",
     "./form/FieldErrors": "./src/form/FieldErrors.tsx",
     "./form/FieldsDisabled": "./src/form/FieldsDisabled.tsx",
     "./form/FieldGroup": "./src/form/FieldGroup.tsx",
@@ -159,6 +161,7 @@
     "./form/utils/getInputState": "./src/form/utils/getInputState.ts",
     "./form/utils/objectPath": "./src/form/utils/objectPath.ts",
     "./form/utils/ymd": "./src/form/utils/ymd.ts",
+    "./form/validation/functions": "./src/form/validation/functions.ts",
     "./form/validation/helpers": "./src/form/validation/helpers.tsx",
     "./form/validation/utils/isUnanswered": "./src/form/validation/utils/isUnanswered.ts",
     "./hooks/useFitText": "./src/hooks/useFitText.ts",
@@ -364,6 +367,10 @@
       "./PortalContainer": {
         "types": "./dist/PortalContainer.d.ts",
         "default": "./dist/PortalContainer.js"
+      },
+      "./PresentationalText": {
+        "types": "./dist/PresentationalText.d.ts",
+        "default": "./dist/PresentationalText.js"
       },
       "./ProgressBar": {
         "types": "./dist/ProgressBar.d.ts",
@@ -585,6 +592,10 @@
         "types": "./dist/form/Field/types.d.ts",
         "default": "./dist/form/Field/types.js"
       },
+      "./form/ContentLocale": {
+        "types": "./dist/form/ContentLocale.d.ts",
+        "default": "./dist/form/ContentLocale.js"
+      },
       "./form/FieldErrors": {
         "types": "./dist/form/FieldErrors.d.ts",
         "default": "./dist/form/FieldErrors.js"
@@ -776,6 +787,10 @@
       "./form/utils/ymd": {
         "types": "./dist/form/utils/ymd.d.ts",
         "default": "./dist/form/utils/ymd.js"
+      },
+      "./form/validation/functions": {
+        "types": "./dist/form/validation/functions.d.ts",
+        "default": "./dist/form/validation/functions.js"
       },
       "./form/validation/helpers": {
         "types": "./dist/form/validation/helpers.d.ts",

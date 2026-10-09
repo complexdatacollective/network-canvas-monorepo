@@ -3,7 +3,7 @@ import { v4 as uuid } from 'uuid';
 import { createInitialNetwork } from '../../../src/contract/network';
 import type {
   ProtocolPayload,
-  SessionPayload,
+  SessionSnapshot,
 } from '../../../src/contract/types';
 import {
   getFinishCalls,
@@ -18,7 +18,7 @@ const STORAGE_KEY = '__e2e_test_state';
 type InterviewEntry = {
   protocolId: string;
   participantId: string;
-  session: SessionPayload;
+  session: SessionSnapshot & { finishStageId?: string | null };
 };
 
 type SerializableState = {
@@ -113,8 +113,10 @@ export function setAssetUrl(assetId: string, url: string): void {
 }
 
 export type SessionSeed = {
-  network?: SessionPayload['network'];
-  stageMetadata?: SessionPayload['stageMetadata'];
+  network?: SessionSnapshot['network'];
+  stageMetadata?: SessionSnapshot['stageMetadata'];
+  /** Open the interview as already finished, at this finish stage. */
+  finishedAt?: { stageId: string | null };
 };
 
 export function createInterview(
@@ -127,13 +129,16 @@ export function createInterview(
   // Shell owns its state in Redux — getNetworkState reads from that live
   // store, not from this snapshot. The step is NOT part of the session:
   // the host derives it from the URL (?step=) and passes it as a Shell prop.
-  const session: SessionPayload = {
+  const session: InterviewEntry['session'] = {
     id,
     startTime: new Date().toISOString(),
-    finishTime: null,
+    finishTime: seed?.finishedAt ? new Date().toISOString() : null,
+    ...(seed?.finishedAt ? { finishStageId: seed.finishedAt.stageId } : {}),
     exportTime: null,
     lastUpdated: new Date().toISOString(),
     network: seed?.network ?? createInitialNetwork(),
+    localePreference: null,
+    locale: null,
     ...(seed?.stageMetadata != null
       ? { stageMetadata: seed.stageMetadata }
       : {}),
@@ -146,8 +151,14 @@ export function createInterview(
 
 // Reads live state from the running Shell's Redux store. Shell exposes it on
 // window.__interviewStore when flags.isE2E is true.
-function getNetworkState(): SessionPayload['network'] | undefined {
+function getNetworkState(): SessionSnapshot['network'] | undefined {
   return window.__interviewStore?.getState().session.network;
+}
+
+// Reads the session as the host last persisted it (sessionStorage), not the
+// running interview's live state: what a resumed interview mounts from.
+function getStoredSession(interviewId: string): SessionSnapshot | undefined {
+  return restoreState().interviews.get(interviewId)?.session;
 }
 
 // Bumped by remountInterview; App keys Shell on it.
@@ -160,8 +171,8 @@ export function getMountGeneration(): number {
 /**
  * Unmounts the running interview and mounts it again from the session it
  * holds now, as a host does when a participant leaves and later resumes:
- * answers are kept, and nothing that lived only in memory — the passphrase
- * among it — survives. (A page reload cannot stand in for this: onSync is a
+ * answers are kept, and nothing that lived only in memory — the encryption
+ * key among it — survives. (A page reload cannot stand in for this: onSync is a
  * no-op here, so a reload would discard the answers too.)
  */
 function remountInterview(interviewId: string): void {
@@ -187,14 +198,17 @@ export function getAllowStageNavigation(): boolean {
   return allowStageNavigation;
 }
 
-let requestedLocale: string | readonly string[] | null = null;
+// Stands in for `navigator.languages`, which a real browser host passes. Empty
+// by default so every suite runs in the protocol's default language and
+// English built-in text, whatever locale the browser is launched with.
+let requestedLocales: readonly string[] = [];
 
-export function getRequestedLocale() {
-  return requestedLocale;
+export function getRequestedLocales(): readonly string[] {
+  return requestedLocales;
 }
 
-function setRequestedLocale(locale: string | readonly string[] | null) {
-  requestedLocale = locale;
+function setRequestedLocales(locales: readonly string[]) {
+  requestedLocales = locales;
   notifySubscribers();
 }
 
@@ -206,7 +220,7 @@ function setAllowStageNavigation(enabled: boolean): void {
 function reset(): void {
   state = createEmptyState();
   allowStageNavigation = false;
-  requestedLocale = null;
+  requestedLocales = [];
   mountGeneration = 0;
   resetFinishInstrumentation();
   sessionStorage.removeItem(STORAGE_KEY);
@@ -224,6 +238,7 @@ export function installTestHooks(): void {
     setAssetUrl,
     createInterview,
     getNetworkState,
+    getStoredSession,
     remountInterview,
     reset,
     setFinishBehavior,
@@ -231,6 +246,6 @@ export function installTestHooks(): void {
     rejectManualFinish,
     getFinishCalls,
     setAllowStageNavigation,
-    setRequestedLocale,
+    setRequestedLocales,
   };
 }

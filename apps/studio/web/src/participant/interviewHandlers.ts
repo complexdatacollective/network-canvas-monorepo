@@ -3,7 +3,8 @@ import { Redacted } from 'effect';
 import {
   createDebouncedSyncHandler,
   type FinishHandler,
-  type SessionPayload,
+  type SessionFinish,
+  type SessionSnapshot,
   type SyncHandler,
 } from '@codaco/interview/contract';
 import { SessionOutOfDate } from '@codaco/studio-contract/schema/participant';
@@ -33,7 +34,7 @@ type Args = {
    * revision: `pageRevisionBase()` in a browser.
    */
   readonly numberSavesFrom?: bigint;
-  readonly session: SessionPayload;
+  readonly session: SessionSnapshot;
   readonly stageIds: readonly string[];
   readonly getCurrentStep: () => number;
   readonly onNotice: (kind: ParticipantNoticeKind) => void;
@@ -84,7 +85,7 @@ export function createParticipantHandlers({
     return kind === 'rateLimited' ? undefined : kind;
   };
 
-  const payloadFor = (snapshot: SessionPayload): SyncPayload => {
+  const payloadFor = (snapshot: SessionSnapshot): SyncPayload => {
     issued += 1n;
     const stageIndex = getCurrentStep();
     return {
@@ -134,7 +135,7 @@ export function createParticipantHandlers({
   // holds. Whoever wrote what was in the way, the server ends with this page's
   // newest answers; when it was this page's own, the resend repeats them.
   const send = async (
-    snapshot: SessionPayload,
+    snapshot: SessionSnapshot,
     { unloading }: { readonly unloading: boolean },
   ): Promise<void> => {
     let next = snapshot;
@@ -175,18 +176,24 @@ export function createParticipantHandlers({
     return debouncedSync(id, snapshot, options);
   };
 
-  const finish = (signal: AbortSignal) =>
+  const finish = ({ stageId, outcome }: SessionFinish, signal: AbortSignal) =>
     participantCall(
       'participant.finish',
-      { holderEpoch, revision: String(held) },
+      { holderEpoch, revision: String(held), stageId, outcome },
       signal,
     );
 
   // The finish dialog cannot be cancelled while this runs, but tearing it down
   // (the interview unmounting) aborts `signal`: the request in flight is
-  // abandoned, and nothing after it runs, so an abandoned finish never shows
-  // the finished notice or finishes again after a resend.
-  const onFinish: FinishHandler = async (_id, signal) => {
+  // abandoned, and nothing after it runs, so an abandoned finish never counts
+  // as finished or finishes again after a resend.
+  //
+  // A finish resolves without a notice: the Shell then shows the interview's
+  // completed state in place, with the finish stage's own closing text. That
+  // includes a finish the server already holds (an earlier attempt whose
+  // answer was lost), since the interview is finished either way. Only a
+  // refusal replaces the interview with a notice.
+  const onFinish: FinishHandler = async (_id, sessionFinish, signal) => {
     try {
       // The runtime flushes only answers it holds unsaved, so a stage save
       // still waiting out the debounce (reaching the finish stage changes no
@@ -196,21 +203,25 @@ export function createParticipantHandlers({
         signal.throwIfAborted();
       }
       try {
-        await finish(signal);
+        await finish(sessionFinish, signal);
       } catch (error) {
         if (!(error instanceof SessionOutOfDate)) throw error;
         await send(offered, ORDINARY);
         signal.throwIfAborted();
-        await finish(signal);
+        await finish(sessionFinish, signal);
       }
     } catch (error) {
       const kind = noticeOf(error);
+      if (kind === 'finished') {
+        stopped = true;
+        return;
+      }
       if (kind === undefined) throw error;
       stop(kind);
-      if (kind === 'finished') return;
       throw error;
     }
-    stop('finished');
+    // Nothing more is saved: the session is finished.
+    stopped = true;
   };
 
   const saveStep = (): void => {

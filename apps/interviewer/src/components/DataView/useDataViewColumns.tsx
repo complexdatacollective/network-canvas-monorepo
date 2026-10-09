@@ -148,8 +148,8 @@ export function useDataViewColumns({
   mutationsBusy,
   onMarkUnfinished,
 }: {
-  // Total interview steps (including the appended finish stage) by protocol
-  // hash, for the progress column's step label.
+  // Total interview steps by protocol hash, for the progress column's step
+  // label.
   protocolTotalSteps: Map<string, number>;
   isSelected: (id: string) => boolean;
   toggleRowSelected: (id: string) => void;

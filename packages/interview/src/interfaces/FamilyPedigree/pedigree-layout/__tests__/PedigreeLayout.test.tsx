@@ -1,47 +1,16 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
 
-import { entityAttributesProperty } from '@codaco/shared-consts';
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
-
-import type { VariableConfig } from '../../store';
 import PedigreeLayout from '../components/PedigreeLayout';
-
-const variableConfig: VariableConfig = {
-  nodeType: 'person',
-  edgeType: 'family',
-  nodeLabelVariable: 'name',
-  egoVariable: 'isEgo',
-  relationshipVariable: 'relationship',
-  relationshipTypeVariable: 'rel',
-  isActiveVariable: 'active',
-  isGestationalCarrierVariable: 'gc',
-  gameteRoleVariable: 'gameteRole',
-  biologicalSexVariable: 'biologicalSex',
-};
+import type { PedigreeEdgeType, PedigreeLink } from '../types';
 
 const DIMS = {
   nodeWidth: 100,
   nodeHeight: 100,
 };
 
-function makeNodes(
-  entries: {
-    id: string;
-    isEgo?: boolean;
-  }[],
-): Map<string, NcNode> {
-  const map = new Map<string, NcNode>();
-  for (const { id, isEgo } of entries) {
-    map.set(id, {
-      _uid: id,
-      type: 'person',
-      [entityAttributesProperty]: {
-        [variableConfig.egoVariable]: isEgo ?? false,
-      },
-    });
-  }
-  return map;
+function makeNodes(entries: { id: string; isEgo?: boolean }[]): string[] {
+  return entries.map(({ id }) => id);
 }
 
 function makeEdges(
@@ -49,27 +18,21 @@ function makeEdges(
     from: string;
     to: string;
     relationshipType: string;
-    isActive: boolean;
+    isActive?: boolean;
+    isGestationalCarrier?: boolean;
   }[],
-): Map<string, NcEdge> {
-  const map = new Map<string, NcEdge>();
-  entries.forEach((e, i) => {
-    map.set(`e${i}`, {
-      _uid: `e${i}`,
-      type: 'family',
-      from: e.from,
-      to: e.to,
-      [entityAttributesProperty]: {
-        [variableConfig.relationshipTypeVariable]: [e.relationshipType],
-        [variableConfig.isActiveVariable]: e.isActive,
-      },
-    });
-  });
-  return map;
+): PedigreeLink[] {
+  return entries.map((e) => ({
+    source: e.from,
+    target: e.to,
+    kind: e.relationshipType as PedigreeEdgeType,
+    isActive: e.isActive ?? true,
+    isGestationalCarrier: e.isGestationalCarrier ?? false,
+  }));
 }
 
-const renderNode = (node: NcNode & { id: string }) => (
-  <div data-testid={`node-${node.id}`}>{node.id}</div>
+const renderNode = (nodeId: string) => (
+  <div data-testid={`node-${nodeId}`}>{nodeId}</div>
 );
 
 describe('PedigreeLayout', () => {
@@ -77,9 +40,8 @@ describe('PedigreeLayout', () => {
     const nodes = makeNodes([{ id: 'ego', isEgo: true }]);
     const { container } = render(
       <PedigreeLayout
-        nodes={nodes}
-        edges={new Map()}
-        variableConfig={variableConfig}
+        nodeIds={nodes}
+        links={[]}
         {...DIMS}
         nodeWidth={0}
         renderNode={renderNode}
@@ -92,9 +54,8 @@ describe('PedigreeLayout', () => {
     const nodes = makeNodes([{ id: 'ego', isEgo: true }]);
     const { container } = render(
       <PedigreeLayout
-        nodes={nodes}
-        edges={new Map()}
-        variableConfig={variableConfig}
+        nodeIds={nodes}
+        links={[]}
         {...DIMS}
         nodeHeight={0}
         renderNode={renderNode}
@@ -106,9 +67,8 @@ describe('PedigreeLayout', () => {
   test('renders nothing when nodes map is empty', () => {
     const { container } = render(
       <PedigreeLayout
-        nodes={new Map()}
-        edges={new Map()}
-        variableConfig={variableConfig}
+        nodeIds={[]}
+        links={[]}
         {...DIMS}
         renderNode={renderNode}
       />,
@@ -145,9 +105,8 @@ describe('PedigreeLayout', () => {
 
     render(
       <PedigreeLayout
-        nodes={nodes}
-        edges={edges}
-        variableConfig={variableConfig}
+        nodeIds={nodes}
+        links={edges}
         {...DIMS}
         renderNode={renderNode}
       />,
@@ -187,9 +146,8 @@ describe('PedigreeLayout', () => {
 
     render(
       <PedigreeLayout
-        nodes={nodes}
-        edges={edges}
-        variableConfig={variableConfig}
+        nodeIds={nodes}
+        links={edges}
         {...DIMS}
         renderNode={renderNode}
       />,
@@ -231,9 +189,8 @@ describe('PedigreeLayout', () => {
 
     const { container } = render(
       <PedigreeLayout
-        nodes={nodes}
-        edges={edges}
-        variableConfig={variableConfig}
+        nodeIds={nodes}
+        links={edges}
         {...DIMS}
         renderNode={renderNode}
       />,
@@ -277,9 +234,8 @@ describe('PedigreeLayout', () => {
 
     const { container } = render(
       <PedigreeLayout
-        nodes={nodes}
-        edges={edges}
-        variableConfig={variableConfig}
+        nodeIds={nodes}
+        links={edges}
         {...DIMS}
         renderNode={renderNode}
       />,
@@ -341,9 +297,8 @@ describe('PedigreeLayout', () => {
 
     const { container } = render(
       <PedigreeLayout
-        nodes={nodes}
-        edges={edges}
-        variableConfig={variableConfig}
+        nodeIds={nodes}
+        links={edges}
         {...DIMS}
         renderNode={renderNode}
       />,
@@ -353,7 +308,7 @@ describe('PedigreeLayout', () => {
     expect(svg).not.toBeNull();
   });
 
-  test('calls renderNode with node id and data', () => {
+  test('calls renderNode with each node id', () => {
     const nodes = makeNodes([{ id: 'ego', isEgo: true }, { id: 'partner' }]);
     const edges = makeEdges([
       {
@@ -366,20 +321,18 @@ describe('PedigreeLayout', () => {
 
     render(
       <PedigreeLayout
-        nodes={nodes}
-        edges={edges}
-        variableConfig={variableConfig}
+        nodeIds={nodes}
+        links={edges}
         {...DIMS}
-        renderNode={(node) => (
-          <div data-testid={`rendered-${node.id}`}>
-            {`${node.id}-${node[entityAttributesProperty][variableConfig.egoVariable] === true ? 'true' : 'false'}`}
-          </div>
+        renderNode={(nodeId) => (
+          <div data-testid={`rendered-${nodeId}`}>{`${nodeId}-rendered`}</div>
         )}
       />,
     );
 
     const rendered = screen.getByTestId('rendered-ego');
-    expect(rendered.textContent).toBe('ego-true');
+    expect(rendered.textContent).toBe('ego-rendered');
+    expect(screen.getByTestId('rendered-partner')).toBeTruthy();
   });
 
   test('parent generation is above child generation', () => {
@@ -411,9 +364,8 @@ describe('PedigreeLayout', () => {
 
     render(
       <PedigreeLayout
-        nodes={nodes}
-        edges={edges}
-        variableConfig={variableConfig}
+        nodeIds={nodes}
+        links={edges}
         {...DIMS}
         renderNode={renderNode}
       />,
@@ -461,9 +413,8 @@ describe('PedigreeLayout', () => {
     test('no data-edge-dimmed attributes when highlightedNodeIds is undefined', () => {
       const { container } = render(
         <PedigreeLayout
-          nodes={familyNodes()}
-          edges={familyEdges()}
-          variableConfig={variableConfig}
+          nodeIds={familyNodes()}
+          links={familyEdges()}
           {...DIMS}
           renderNode={renderNode}
         />,
@@ -477,9 +428,8 @@ describe('PedigreeLayout', () => {
       const highlightedNodeIds = new Set(['father', 'mother', 'ego']);
       const { container } = render(
         <PedigreeLayout
-          nodes={familyNodes()}
-          edges={familyEdges()}
-          variableConfig={variableConfig}
+          nodeIds={familyNodes()}
+          links={familyEdges()}
           {...DIMS}
           renderNode={renderNode}
           highlightedNodeIds={highlightedNodeIds}
@@ -495,9 +445,8 @@ describe('PedigreeLayout', () => {
       const highlightedNodeIds = new Set(['mother', 'ego']);
       const { container } = render(
         <PedigreeLayout
-          nodes={familyNodes()}
-          edges={familyEdges()}
-          variableConfig={variableConfig}
+          nodeIds={familyNodes()}
+          links={familyEdges()}
           {...DIMS}
           renderNode={renderNode}
           highlightedNodeIds={highlightedNodeIds}
@@ -513,9 +462,8 @@ describe('PedigreeLayout', () => {
       const highlightedNodeIds = new Set(['ego']);
       const { container } = render(
         <PedigreeLayout
-          nodes={familyNodes()}
-          edges={familyEdges()}
-          variableConfig={variableConfig}
+          nodeIds={familyNodes()}
+          links={familyEdges()}
           {...DIMS}
           renderNode={renderNode}
           highlightedNodeIds={highlightedNodeIds}
@@ -525,5 +473,33 @@ describe('PedigreeLayout', () => {
       const dimmedEls = container.querySelectorAll('[data-edge-dimmed="true"]');
       expect(dimmedEls.length).toBeGreaterThan(0);
     });
+  });
+});
+
+describe('PedigreeLayout reading order', () => {
+  test('renders people generation by generation, left to right', () => {
+    const nodeIds = makeNodes([
+      { id: 'child' },
+      { id: 'mother' },
+      { id: 'father' },
+    ]);
+    const links = makeEdges([
+      { from: 'father', to: 'mother', relationshipType: 'partner' },
+      { from: 'father', to: 'child', relationshipType: 'biological' },
+      { from: 'mother', to: 'child', relationshipType: 'biological' },
+    ]);
+    render(
+      <PedigreeLayout
+        nodeIds={nodeIds}
+        links={links}
+        {...DIMS}
+        renderNode={renderNode}
+      />,
+    );
+    const order = screen
+      .getAllByTestId(/^node-/)
+      .map((element) => element.textContent);
+    expect(order.at(-1)).toBe('child');
+    expect(order.slice(0, 2).sort()).toEqual(['father', 'mother']);
   });
 });

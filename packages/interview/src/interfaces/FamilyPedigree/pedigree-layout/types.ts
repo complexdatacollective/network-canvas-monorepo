@@ -1,9 +1,44 @@
-import type { RelationshipType } from '@codaco/protocol-validation';
+import type { PedigreeTwinKind } from '@codaco/protocol-validation';
+
+/**
+ * The kind of a family link as the layout reads it: a partnership, or the kind
+ * of parent the link's source is to its target.
+ */
+export type PedigreeEdgeType =
+  | 'biological'
+  | 'social'
+  | 'adoptive'
+  | 'donor'
+  | 'surrogate'
+  | 'partner';
+
+/**
+ * One family link handed to the layout. Parent links run from the parent
+ * (`source`) to the child (`target`); partner and twin links may run either
+ * way.
+ */
+export type PedigreeLink = {
+  source: string;
+  target: string;
+  kind: PedigreeEdgeType | PedigreeTwinKind;
+  /** Partner links only: false draws the partnership as separated. */
+  isActive?: boolean;
+  /** Parent links only: this parent carried the pregnancy. */
+  isGestationalCarrier?: boolean;
+};
 
 export type ParentConnection = {
   parentIndex: number;
-  edgeType: RelationshipType;
+  /** How the link is drawn, which the adapter may change from the kind
+   * recorded (a carrier anchoring a child's line of descent is drawn as a
+   * biological parent; an adopted child's birth parent, as a donor). */
+  edgeType: PedigreeEdgeType;
   isGestationalCarrier?: boolean;
+  /** Whether the parent gave the child a gamete, as recorded, whatever line
+   * the link is drawn with. Genetic decisions (consanguinity, who counts as
+   * a relative) read this, never the drawn type. The adapter always sets it;
+   * when absent, the drawn type is taken to be the recorded one. */
+  isGenetic?: boolean;
 };
 
 export type PartnerConnection = {
@@ -91,9 +126,10 @@ export type ParentGroupConnector = {
 
 export type ParentChildConnector = {
   type: 'parent-child';
-  edgeType: RelationshipType;
+  edgeType: PedigreeEdgeType;
   uplines: LineSegment[];
-  siblingBar: LineSegment;
+  /** Absent when the line runs to a single child, who has no bar. */
+  siblingBar?: LineSegment;
   parentLink: LineSegment[];
   parentIds?: string[];
   uplineChildIds?: (string | undefined)[];
@@ -101,8 +137,11 @@ export type ParentChildConnector = {
 
 export type AuxiliaryConnector = {
   type: 'auxiliary';
-  edgeType: RelationshipType;
-  segment: LineSegment;
+  edgeType: PedigreeEdgeType;
+  /** The line's course, from the parent's centre to its end on the child's
+   * top edge (continuing to their centre, under their symbol) or on the
+   * sibling bar it joins. */
+  points: Point[];
   endpointIds?: [string | undefined, string | undefined];
 };
 

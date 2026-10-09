@@ -2,6 +2,7 @@ import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  createDefaultFinishSessionStage,
   type CurrentProtocol,
   ProtocolValidationError,
 } from '@codaco/protocol-validation';
@@ -53,15 +54,15 @@ import { protocolLibraryListenerMiddleware } from '../protocolLibraryListener';
 import { protocolValidationListenerMiddleware } from '../protocolValidationListener';
 import createTimeline, { timelineActions } from '../timeline';
 
-const makeProtocol = (description?: string): CurrentProtocol =>
-  ({
-    name: 'Study',
-    description,
-    schemaVersion: 8,
-    stages: [],
-    codebook: { node: {}, edge: {}, ego: {} },
-    assetManifest: {},
-  }) as CurrentProtocol;
+const makeProtocol = (description?: string): CurrentProtocol => ({
+  name: 'Study',
+  description,
+  schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
+  stages: [],
+  codebook: { node: {}, edge: {}, ego: {} },
+  assetManifest: {},
+});
 
 const reducer = combineReducers({
   app,
@@ -157,6 +158,36 @@ describe('validated protocol commit persistence', () => {
 
     expect(validateProtocol).toHaveBeenCalledTimes(1);
     expect(putStoredProtocol).toHaveBeenCalledTimes(1);
+  });
+
+  // A new protocol in a language Network Canvas supplies no closing text for
+  // starts with an empty finish stage. Editing it must still commit and save:
+  // only downloading it waits for the text.
+  it('writes a commit to a protocol whose finish stage has no text yet', async () => {
+    const actual = await vi.importActual<
+      typeof import('@codaco/protocol-validation')
+    >('@codaco/protocol-validation');
+    const store = makeStore();
+    const localization = { defaultLocale: 'ja', locales: ['ja'] };
+    store.dispatch(setActiveProtocolId('p1'));
+    store.dispatch(
+      setActiveProtocol({
+        ...makeProtocol(),
+        localization,
+        stages: [createDefaultFinishSessionStage({ id: 'end', localization })],
+      }),
+    );
+    await waitForEffects();
+    putStoredProtocol.mockClear();
+    validateProtocol.mockImplementation(actual.validateProtocol);
+
+    store.dispatch(updateProtocolDescription({ description: 'edited' }));
+    await waitForEffects();
+
+    expect(validateProtocol).toHaveBeenCalledTimes(1);
+    expect(putStoredProtocol).toHaveBeenCalledTimes(1);
+    expect(takeProtocolValidationDialogEvents()).toEqual([]);
+    expect(store.getState().activeProtocol.present?.description).toBe('edited');
   });
 
   it('fails closed when protocol validation rejects unexpectedly', async () => {
@@ -273,19 +304,33 @@ describe('validated protocol commit persistence', () => {
       {
         id: 'anon',
         type: 'Anonymisation',
-        label: 'Anonymisation',
-        explanationText: { title: 'Privacy', body: 'Choose a passphrase.' },
+        label: { en: 'Anonymisation' },
+        explanationText: {
+          title: { en: 'Privacy' },
+          body: { en: 'Choose a passphrase.' },
+        },
       },
     ];
     protocol.codebook = {
       node: {
         person: {
           name: 'Person',
+          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            first: { name: 'first', type: 'text', encrypted: true },
-            second: { name: 'second', type: 'text', encrypted: true },
+            first: {
+              name: 'first',
+              label: 'first',
+              type: 'text',
+              encrypted: true,
+            },
+            second: {
+              name: 'second',
+              label: 'second',
+              type: 'text',
+              encrypted: true,
+            },
           },
         },
       },

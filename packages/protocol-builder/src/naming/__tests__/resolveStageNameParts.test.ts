@@ -88,7 +88,6 @@ describe('buildListQualifier', () => {
 describe('resolveStageQualifier', () => {
   const resolvers = {
     resolveAssetType: () => null,
-    resolveVariableName: () => null,
   };
 
   it('classifies name-generator panels by data source', () => {
@@ -168,34 +167,11 @@ describe('resolveStageQualifier', () => {
       resolveStageQualifier(
         {
           type: 'Information',
-          items: [{ id: 'i1', type: 'text', content: 'hello' }],
+          items: [{ id: 'i1', type: 'text', content: { en: 'hello' } }],
         },
         r,
       ),
     ).toBeNull();
-  });
-
-  it('lists Family Pedigree nominated attribute names via the codebook', () => {
-    const r = {
-      ...resolvers,
-      resolveVariableName: (id: string) =>
-        id === 'v1' ? 'Diabetes' : 'Asthma',
-    };
-    expect(
-      resolveStageQualifier(
-        { type: 'FamilyPedigree', nominationPrompts: [{ variable: 'v1' }] },
-        r,
-      )?.full,
-    ).toBe('with Diabetes Nomination');
-    expect(
-      resolveStageQualifier(
-        {
-          type: 'FamilyPedigree',
-          nominationPrompts: [{ variable: 'v1' }, { variable: 'v2' }],
-        },
-        r,
-      )?.full,
-    ).toBe('with Diabetes & Asthma Nominations');
   });
 
   it('returns null for stage types without qualifiers', () => {

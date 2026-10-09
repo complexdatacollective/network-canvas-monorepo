@@ -47,18 +47,31 @@ type EdgeEntry = {
   color?: string;
 };
 
+/**
+ * The words the stage holds for its tools. The connection and groups tools
+ * appear only when the stage has edge types and groups, and so have words.
+ */
+export type ComposerToolWords = Readonly<{
+  addNamePlaceholder: string;
+  addPerson: string;
+  automaticLayout: string;
+  drawConnection?: string;
+  groups?: string;
+}>;
+
 type ToolPaletteProps = {
   composerStore: ComposerStoreApi;
   undoStore: UndoStoreApi;
   edges: EdgeEntry[];
+  words: ComposerToolWords;
   /** Protocol label for the node entity, shown in the add-node field. */
   nodeLabel: string;
   /** Codebook variable the quick-add name is written to. */
   quickAddTargetVariable: string;
   onAddNode: (name: string) => Promise<boolean>;
   /**
-   * The name would be stored encrypted and no working passphrase is in force,
-   * so the add-node field opens on an explanation instead.
+   * The name would be stored encrypted and the interview's key is not in
+   * force, so the add-node field opens on an explanation instead.
    */
   addNodeLocked: boolean;
   /** Validation props derived from quickAddTargetVariable's codebook definition. */
@@ -107,6 +120,7 @@ export default function ToolPalette({
   composerStore,
   undoStore,
   edges,
+  words,
   nodeLabel,
   quickAddTargetVariable,
   onAddNode,
@@ -141,14 +155,7 @@ export default function ToolPalette({
     if (!addingName) setActiveTool(tool);
   };
 
-  // The lock decides what the add-node popover opens on. A field already
-  // shown is held until the popover next opens, so a name being typed when the
-  // passphrase stops working is kept; adding it is then refused, with the
-  // reason shown.
   const addNodeOpen = activeTool.kind === 'addNode';
-  const [nameFieldHeld, setNameFieldHeld] = useState(false);
-  if (addNodeOpen && !addNodeLocked && !nameFieldHeld) setNameFieldHeld(true);
-  const showNameField = !addNodeLocked || nameFieldHeld;
 
   const activeEdgeType =
     activeTool.kind === 'edge' ? activeTool.edgeType : undefined;
@@ -184,6 +191,7 @@ export default function ToolPalette({
       >
         <ToolbarIconButton
           aria-label={intl.formatMessage(interfaceMessages.select)}
+          tooltip={false}
           icon={<SelectIcon />}
           pressed={activeTool.kind === 'select'}
           onPressedChange={() => chooseTool({ kind: 'select' })}
@@ -195,38 +203,38 @@ export default function ToolPalette({
           open={addNodeOpen}
           onOpenChange={(open) => {
             if (addingName) return;
-            if (open) setNameFieldHeld(false);
             setActiveTool(open ? { kind: 'addNode' } : { kind: 'select' });
           }}
           trigger={
             <ToolbarIconButton
-              aria-label={intl.formatMessage(interfaceMessages.addNode)}
+              aria-label={words.addPerson}
               aria-pressed={activeTool.kind === 'addNode'}
               icon={<AddNodeIcon />}
             />
           }
         >
-          {showNameField ? (
+          {addNodeLocked ? (
+            <PassphraseNotice status="locked" className="w-72" />
+          ) : (
             <AddNodeInput
               entityLabel={nodeLabel}
+              placeholder={words.addNamePlaceholder}
               targetVariable={quickAddTargetVariable}
               onCreate={onAddNode}
               onAddingChange={setAddingName}
               validationContext={quickAddValidationContext}
               {...quickAddValidationProps}
             />
-          ) : (
-            <PassphraseNotice status="locked" className="w-72" />
           )}
         </ToolbarPopover>
 
         {/* One edge button opens a menu instead of crowding the toolbar with
             identical link icons. */}
-        {edges.length > 0 ? (
+        {edges.length > 0 && words.drawConnection !== undefined ? (
           <ToolbarMenu
             trigger={
               <ToolbarIconButton
-                aria-label={intl.formatMessage(interfaceMessages.drawEdge)}
+                aria-label={words.drawConnection}
                 aria-pressed={activeTool.kind === 'edge'}
                 icon={<EdgeIcon />}
                 className={edgeButtonClass}
@@ -253,13 +261,13 @@ export default function ToolPalette({
         ) : null}
 
         {/* A single Groups button opens the active group value picker. */}
-        {groupVariable !== null ? (
+        {groupVariable !== null && words.groups !== undefined ? (
           <ToolbarPopover
             open={groupsOpen}
             onOpenChange={setGroupsOpen}
             trigger={
               <ToolbarIconButton
-                aria-label={intl.formatMessage(interfaceMessages.groups)}
+                aria-label={words.groups}
                 aria-pressed={activeTool.kind === 'group'}
                 icon={<GroupsIcon />}
                 className={groupButtonClass}
@@ -285,7 +293,7 @@ export default function ToolPalette({
         aria-label={intl.formatMessage(interfaceMessages.layoutTools)}
       >
         <ToolbarIconButton
-          aria-label={intl.formatMessage(interfaceMessages.automaticLayout)}
+          aria-label={words.automaticLayout}
           icon={<AutoLayoutIcon />}
           pressed={automaticLayout}
           onPressedChange={onToggleAutomaticLayout}
@@ -299,12 +307,14 @@ export default function ToolPalette({
       >
         <ToolbarIconButton
           aria-label={intl.formatMessage(interfaceMessages.undo)}
+          tooltip={false}
           icon={<UndoIcon />}
           disabled={!canUndo}
           onClick={() => void undoStore.getState().undo()}
         />
         <ToolbarIconButton
           aria-label={intl.formatMessage(interfaceMessages.redo)}
+          tooltip={false}
           icon={<RedoIcon />}
           disabled={!canRedo}
           onClick={() => void undoStore.getState().redo()}

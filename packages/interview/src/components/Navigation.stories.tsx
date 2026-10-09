@@ -4,7 +4,6 @@ import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 
-import { expectMaskedPassphraseField } from '../storybook-support/expectMaskedPassphraseField';
 import StoryInterviewShell from '../storybook-support/StoryInterviewShell';
 import { TEXT_SCALE_OPTIONS } from './Navigation';
 
@@ -203,7 +202,7 @@ const exitAndAssertConfirmation = async (canvasElement: HTMLElement) => {
   );
 
   const dialog = await canvas.findByRole('dialog', {
-    name: /exit this interview/i,
+    name: /exit interview/i,
   });
   const scoped = within(dialog);
 
@@ -327,18 +326,20 @@ export const TextSize: Story = {
     await expect(decrease).toBeEnabled();
     await expect(increase).toBeEnabled();
 
-    // Language is the first setting. Tab reaches the native number field;
-    // arrow-key stepping then proves scaling works without a pointer.
+    // Text size is the first setting, so opening the popover focuses its
+    // native number field (the steppers are out of the tab order), and Tab
+    // moves on to the exit action. Arrow-key stepping then proves scaling
+    // works without a pointer.
     //
     // Waited for rather than read once: the popover moves focus itself, a
     // frame or more after it opens, and until it does focus is still on the
     // trigger.
-    await waitFor(() =>
-      expect(
-        within(popover).getByRole('combobox', { name: /interface language/i }),
-      ).toHaveFocus(),
-    );
+    await waitFor(() => expect(input).toHaveFocus());
     await userEvent.tab();
+    await expect(
+      within(popover).getByRole('button', { name: /exit interview/i }),
+    ).toHaveFocus();
+    await userEvent.tab({ shift: true });
     await expect(input).toHaveFocus();
     await userEvent.keyboard('{ArrowUp}{ArrowUp}');
     await expect(input).toHaveValue(120);
@@ -446,19 +447,7 @@ function buildEncryptedNamePayload(): string {
     text: 'Thank you for taking part.',
   });
 
-  const payload = si.getInterviewPayload({ currentStep: 1 });
-
-  // This schema still gates encryption behind the protocol's
-  // `encryptedVariables` experiment. It is switched on in the payload itself,
-  // not through the synthetic builder, so nothing here depends on the
-  // experiment once encrypted attributes no longer need it.
-  return SuperJSON.stringify({
-    ...payload,
-    protocol: {
-      ...payload.protocol,
-      experiments: { encryptedVariables: true },
-    },
-  });
+  return SuperJSON.stringify(si.getInterviewPayload({ currentStep: 1 }));
 }
 
 let encryptedNamePayload: string | undefined;
@@ -496,7 +485,7 @@ const expectBarFits = async (navigation: HTMLElement) => {
   const navRect = await settledRect(navigation);
   const buttons = [
     nav.getByRole('button', { name: /settings/i }),
-    ...nav.queryAllByRole('button', { name: /enter your passphrase/i }),
+    ...nav.queryAllByRole('button', { name: 'Passphrase' }),
     nav.getByRole('button', { name: /previous step/i }),
     nav.getByRole('button', { name: /next step/i }),
   ];
@@ -564,7 +553,7 @@ const expectBarFitsAtEveryTextSize = async (
 };
 
 const PASSPHRASE_NEEDED =
-  'Your passphrase is needed to show data on this screen. Click here to enter it.';
+  'Some answers here are protected by your passphrase. Enter your passphrase to see and change them.';
 
 const enterPassphraseAndAddPerson = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
@@ -573,7 +562,7 @@ const enterPassphraseAndAddPerson = async (canvasElement: HTMLElement) => {
 
   const prompter = await nav.findByRole(
     'button',
-    { name: /enter your passphrase/i },
+    { name: 'Passphrase' },
     { timeout: 10_000 },
   );
   await expect(prompter).toHaveAccessibleDescription(PASSPHRASE_NEEDED);
@@ -611,28 +600,34 @@ const enterPassphraseAndAddPerson = async (canvasElement: HTMLElement) => {
 
   await userEvent.keyboard('{Enter}');
 
+  // No passphrase has been chosen in this interview yet, so the prompter asks
+  // for one to be chosen and confirmed. Both passphrase dialogs share a
+  // title; the confirmation field below is what marks this one as choosing.
   const passphraseDialog = await canvas.findByRole('dialog', {
-    name: /enter your passphrase/i,
+    name: 'Passphrase',
   });
-  // Where the field falls back to a password input it has no ARIA role, so it
-  // is found by its label, which also carries a visual required marker.
   const passphraseField = within(passphraseDialog).getByLabelText(
-    /^Passphrase/,
-    { selector: 'input' },
+    /^passphrase/i,
+    {
+      selector: 'input',
+    },
   );
-  await expectMaskedPassphraseField(passphraseField);
   await waitFor(() => expect(passphraseField).toHaveFocus());
   await userEvent.type(passphraseField, 'correct horse battery');
-  await userEvent.click(
-    within(passphraseDialog).getByRole('button', {
-      name: /submit passphrase/i,
+  await userEvent.type(
+    within(passphraseDialog).getByLabelText(/^confirm passphrase/i, {
+      selector: 'input',
     }),
+    'correct horse battery',
+  );
+  await userEvent.click(
+    within(passphraseDialog).getByRole('button', { name: 'Continue' }),
   );
 
   await waitFor(() => expect(passphraseDialog).not.toBeInTheDocument());
   await waitFor(() =>
     expect(
-      nav.queryByRole('button', { name: /enter your passphrase/i }),
+      nav.queryByRole('button', { name: 'Passphrase' }),
     ).not.toBeInTheDocument(),
   );
   await waitFor(() => expect(addPerson).toBeEnabled());
@@ -650,7 +645,7 @@ const enterPassphraseAndAddPerson = async (canvasElement: HTMLElement) => {
     'Alice',
   );
   await userEvent.click(
-    within(personDialog).getByRole('button', { name: /finished/i }),
+    within(personDialog).getByRole('button', { name: /done/i }),
   );
 
   // The name is encrypted on write and decrypted again for its label.

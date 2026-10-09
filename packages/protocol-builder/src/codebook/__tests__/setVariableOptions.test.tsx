@@ -12,10 +12,9 @@ import { sectionIdForCodebookSubject } from '../editing.ts';
 import { useSetVariableOptions } from '../useCodebookVariableEdits.ts';
 
 /**
- * The type the family pedigree describes, whose `biologicalSex` values that
- * interface owns: the genetics engine and the interview both branch on the
- * exact strings, so the list is not the researcher's however the attribute is
- * reached.
+ * The type the family pedigree describes, whose `sexAssignedAtBirth` values
+ * that interface owns: the interview branches on the exact strings, so the
+ * list is not the researcher's however the attribute is reached.
  */
 const FAMILY_MEMBER: CodebookSubject = {
   entity: 'node',
@@ -24,15 +23,15 @@ const FAMILY_MEMBER: CodebookSubject = {
 
 /** The canonical set, plus one value the pedigree does not know. */
 const WITH_AN_EXTRA_VALUE = [
-  { value: 'female', label: 'Female' },
-  { value: 'male', label: 'Male' },
+  { value: 'female', label: { 'en-US': 'Female' } },
+  { value: 'male', label: { 'en-US': 'Male' } },
   {
     value: 'intersex',
-    label: 'Intersex or a variation in sex characteristics',
+    label: { 'en-US': 'Intersex' },
   },
-  { value: 'unknown', label: 'Don’t know' },
-  { value: 'preferNotToSay', label: 'Prefer not to say' },
-  { value: 'other', label: 'Something else' },
+  { value: 'unknown', label: { 'en-US': 'Don’t know' } },
+  { value: 'preferNotToSay', label: { 'en-US': 'Prefer not to say' } },
+  { value: 'other', label: { 'en-US': 'Something else' } },
 ];
 
 /**
@@ -87,13 +86,14 @@ const write = async (
   variableId: string,
   options: unknown,
   subject: CodebookSubject = FAMILY_MEMBER,
+  stageId: 'family-pedigree-1' | 'name-generator-1' = 'family-pedigree-1',
 ): Promise<{
   harness: ReturnType<typeof renderStageEditor>;
   outcome: () => string;
   before: unknown;
 }> => {
   const harness = renderStageEditor({
-    stageId: 'family-pedigree-1',
+    stageId,
     sections: (
       <WriteOptions
         subject={subject}
@@ -120,7 +120,7 @@ describe('writing the answers an attribute offers', () => {
    */
   it('refuses a list an interface owns, and writes nothing', async () => {
     const { harness, outcome, before } = await write(
-      'biologicalSex',
+      'sexAssignedAtBirth',
       WITH_AN_EXTRA_VALUE,
     );
 
@@ -134,15 +134,12 @@ describe('writing the answers an attribute offers', () => {
 
   /** An unchanged list is not a revision anybody has to merge. */
   it('writes nothing when the list already matches', async () => {
-    const { harness, outcome, before } = await write('biologicalSex', [
-      { value: 'female', label: 'Female' },
-      { value: 'male', label: 'Male' },
-      {
-        value: 'intersex',
-        label: 'Intersex or a variation in sex characteristics',
-      },
-      { value: 'unknown', label: 'Don’t know' },
-      { value: 'preferNotToSay', label: 'Prefer not to say' },
+    const { harness, outcome, before } = await write('sexAssignedAtBirth', [
+      { value: 'female', label: { 'en-US': 'Female' } },
+      { value: 'male', label: { 'en-US': 'Male' } },
+      { value: 'intersex', label: { 'en-US': 'Intersex' } },
+      { value: 'unknown', label: { 'en-US': 'Don’t know' } },
+      { value: 'preferNotToSay', label: { 'en-US': 'Prefer not to say' } },
     ]);
 
     await waitFor(() => expect(outcome()).toBe('unchanged'));
@@ -152,8 +149,8 @@ describe('writing the answers an attribute offers', () => {
   /** And an attribute a collaborator deleted is said to be gone. */
   it('refuses an attribute the codebook no longer holds', async () => {
     const { harness, outcome, before } = await write('neverExisted', [
-      { value: 'one', label: 'One' },
-      { value: 'two', label: 'Two' },
+      { value: 'one', label: { 'en-US': 'One' } },
+      { value: 'two', label: { 'en-US': 'Two' } },
     ]);
 
     await waitFor(() =>
@@ -168,7 +165,7 @@ describe('writing the answers an attribute offers', () => {
     const knows: CodebookSubject = { entity: 'edge', type: 'knows' };
     const { harness, outcome, before } = await write(
       'closeness',
-      [{ value: 1, label: 'Some' }],
+      [{ value: 1, label: { 'en-US': 'Some' } }],
       knows,
     );
 
@@ -180,5 +177,65 @@ describe('writing the answers an attribute offers', () => {
     expect(harness.host.store.read(sectionIdForCodebookSubject(knows))).toEqual(
       before,
     );
+  });
+
+  /**
+   * The pedigree manages the gender identity options, because the words each
+   * takes live on the stage. Another stage's editor may not write them, and a
+   * refused write changes nothing.
+   */
+  describe('a list a stage manages', () => {
+    const WITH_A_NEW_OPTION = [
+      { value: 'woman', label: { 'en-US': 'Woman' } },
+      { value: 'man', label: { 'en-US': 'Man' } },
+      { value: 'agender', label: { 'en-US': 'Agender' } },
+    ];
+
+    it('is refused from another stage’s editor, naming the stage that manages it', async () => {
+      const { harness, outcome, before } = await write(
+        'genderIdentity',
+        WITH_A_NEW_OPTION,
+        FAMILY_MEMBER,
+        'name-generator-1',
+      );
+
+      await waitFor(() =>
+        expect(outcome()).toBe(
+          'refused: These options are managed by the “Family Pedigree” stage, which decides the kinship words each one takes. Edit them there.',
+        ),
+      );
+      expect(harness.host.store.read(familyMemberSection)).toEqual(before);
+    });
+
+    it('is written from the editor of the stage that manages it', async () => {
+      const { harness, outcome } = await write(
+        'genderIdentity',
+        WITH_A_NEW_OPTION,
+      );
+
+      await waitFor(() => expect(outcome()).toBe('written'));
+      const variables = harness.protocolSections()[familyMemberSection]
+        ?.variables as Record<string, { options?: unknown }> | undefined;
+      expect(variables?.genderIdentity?.options).toEqual(WITH_A_NEW_OPTION);
+    });
+
+    it('leaves another attribute of the same type editable', async () => {
+      const { outcome } = await write(
+        'sexAssignedAtBirth',
+        [
+          { value: 'female', label: { 'en-US': 'Female' } },
+          { value: 'male', label: { 'en-US': 'Male' } },
+          { value: 'intersex', label: { 'en-US': 'Intersex' } },
+          { value: 'unknown', label: { 'en-US': 'Don’t know' } },
+          { value: 'preferNotToSay', label: { 'en-US': 'Prefer not to say' } },
+        ],
+        FAMILY_MEMBER,
+        'name-generator-1',
+      );
+
+      // Not managed by the stage (it has its own interface-owned set), so the
+      // managed-options refusal is not the answer: this list is unchanged.
+      await waitFor(() => expect(outcome()).toBe('unchanged'));
+    });
   });
 });

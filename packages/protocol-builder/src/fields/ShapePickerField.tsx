@@ -95,7 +95,8 @@ export default function ShapePickerField({
       onBlur={onBlur}
       onFocus={onFocus}
       className={cx(
-        'flex flex-wrap gap-3 rounded border-2',
+        'flex gap-3 rounded border-2',
+        small ? 'flex-nowrap' : 'flex-wrap',
         !small && 'bg-input text-input-contrast p-4',
         ariaInvalid === true && 'border-destructive',
         disabled && 'opacity-50',

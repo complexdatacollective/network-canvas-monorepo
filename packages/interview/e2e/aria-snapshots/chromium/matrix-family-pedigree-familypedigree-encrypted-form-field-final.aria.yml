@@ -1,0 +1,73 @@
+- main:
+  - status:
+    - heading "Add the members of your family." [level=2]
+  - text: Bea added to your family.
+  - region "Interview notifications"
+  - dialog "About Bea":
+    - heading "About Bea" [level=2]
+    - button "Close"
+    - text: Name (optional) A first name or nickname is fine. If you don’t know it, leave this blank and they will be shown by how they are related to you.
+    - textbox "Name (optional)": Bea
+    - text: Gender identity Required
+    - radiogroup "Gender identity":
+      - radio "Woman" [checked]
+      - text: Woman
+      - radio "Man"
+      - text: Man
+      - radio "Non-binary"
+      - text: Non-binary
+      - radio "A different identity"
+      - text: A different identity
+      - radio "Don’t know"
+      - text: Don’t know
+      - radio "Prefer not to say"
+      - text: Prefer not to say
+    - text: Sex assigned at birth Required
+    - radiogroup "Sex assigned at birth":
+      - radio "Female" [checked]
+      - text: Female
+      - radio "Male"
+      - text: Male
+      - radio "Intersex"
+      - text: Intersex
+      - radio "Don’t know"
+      - text: Don’t know
+      - radio "Prefer not to say"
+      - text: Prefer not to say
+    - text: Julie is their…
+    - radiogroup "Julie is their…":
+      - radio "Biological parent" [checked]
+      - text: Biological parent
+      - radio "Adoptive parent"
+      - text: Adoptive parent
+      - radio "Step or social parent"
+      - text: Step or social parent
+      - radio "Egg or sperm donor"
+      - text: Egg or sperm donor
+      - radio "Surrogate"
+      - text: Surrogate
+    - text: Did Julie carry the pregnancy?
+    - radiogroup "Did Julie carry the pregnancy?":
+      - radio "Yes"
+      - radio "No" [checked]
+    - text: Rob is their… Some answers are unavailable because “Rob” is recorded as “Male” at birth, so they cannot have carried a pregnancy. To choose one, first change their sex at birth.
+    - radiogroup "Rob is their…":
+      - radio "Biological parent" [checked]
+      - text: Biological parent
+      - radio "Adoptive parent"
+      - text: Adoptive parent
+      - radio "Step or social parent"
+      - text: Step or social parent
+      - radio "Egg or sperm donor"
+      - text: Egg or sperm donor
+      - radio "Surrogate" [disabled]
+      - text: Surrogate
+    - text: Which of “Bea”’s siblings, if any, are their twins? Include triplets and other multiple births.
+    - group "Which of “Bea”’s siblings, if any, are their twins?":
+      - checkbox "You"
+      - text: You
+    - text: Nickname
+    - textbox "Nickname": Bee
+    - button "Delete"
+    - button "Cancel"
+    - button "Save"

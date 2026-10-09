@@ -10,33 +10,41 @@ import SummaryContext from '../../SummaryContext';
 import SkipLogic from '../SkipLogic';
 
 const protocol = {
-  schemaVersion: 8,
+  schemaVersion: 9,
   name: 'Skip destination protocol',
+  localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
   codebook: { node: {}, edge: {}, ego: {} },
   assetManifest: {},
   stages: [
     {
       id: 'source',
       type: 'Information',
-      label: 'Source',
-      title: 'Source',
+      label: { en: 'Source', fr: 'Source' },
+      title: { en: 'Source', fr: 'Source' },
       items: [],
     },
     {
       id: 'debrief',
       type: 'Information',
-      label: 'Debrief',
-      title: 'Debrief',
+      label: { en: 'Debrief', fr: 'Bilan' },
+      title: { en: 'Debrief', fr: 'Bilan' },
       items: [],
     },
   ],
 } satisfies CurrentProtocol;
 
 describe('Protocol Summary skip logic', () => {
-  const renderSkipLogic = (destination?: SkipLogicDestination) =>
+  const renderSkipLogic = (
+    destination?: SkipLogicDestination,
+    localization: CurrentProtocol['localization'] = protocol.localization,
+  ) =>
     render(
       <SummaryContext.Provider
-        value={{ protocol, protocolName: protocol.name, index: [] }}
+        value={{
+          protocol: { ...protocol, localization },
+          protocolName: protocol.name,
+          index: [],
+        }}
       >
         <SkipLogic
           skipLogic={{
@@ -48,11 +56,23 @@ describe('Protocol Summary skip logic', () => {
       </SummaryContext.Provider>,
     );
 
+  const destinationRow = () => screen.getByText('Destination').closest('tr');
+
   it('includes the resolved destination stage', () => {
     renderSkipLogic({ type: 'stage', stageId: 'debrief' });
 
-    expect(screen.getByText('Destination')).toBeInTheDocument();
-    expect(screen.getByText('Stage 2 — Debrief')).toBeInTheDocument();
+    expect(destinationRow()).toHaveTextContent('Stage 2 — Debrief');
+    expect(screen.getByText('Debrief')).toHaveAttribute('lang', 'en');
+  });
+
+  it('names the destination stage in the default language', () => {
+    renderSkipLogic(
+      { type: 'stage', stageId: 'debrief' },
+      { defaultLocale: 'fr', locales: ['en', 'fr'] },
+    );
+
+    expect(destinationRow()).toHaveTextContent('Stage 2 — Bilan');
+    expect(screen.getByText('Bilan')).toHaveAttribute('lang', 'fr');
   });
 
   it('shows the next available stage for legacy skip logic', () => {

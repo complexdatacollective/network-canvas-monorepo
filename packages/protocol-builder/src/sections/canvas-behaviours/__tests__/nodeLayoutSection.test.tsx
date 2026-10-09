@@ -6,6 +6,9 @@ import { nodeLayout } from '../nodeLayout.tsx';
 
 const NodeLayout = nodeLayout();
 
+/** Copy in the fixture protocol's only language, as schema 9 holds it. */
+const en = (text: string) => ({ 'en-US': text });
+
 const openLayout = () => ({
   stageId: 'sociogram-1' as const,
   sections: <NodeLayout />,
@@ -18,7 +21,7 @@ describe('how a canvas arranges its nodes when the stage opens', () => {
     // Everything else about a sociogram belongs to sections this mount does
     // not include.
     await harness.roundTrip({
-      unowned: ['subject', 'prompts', 'background'],
+      unowned: ['subject', 'prompts', 'background', 'tooltips'],
     });
   });
 
@@ -47,14 +50,14 @@ describe('how a canvas arranges its nodes when the stage opens', () => {
       stage: {
         type: 'Sociogram' as const,
         fields: {
-          label: 'Sociogram',
+          label: en('Sociogram'),
           subject: { entity: 'node', type: 'person' },
           background: { concentricCircles: 4 },
           behaviours: { automaticLayout: true, freeDraw: true },
           prompts: [
             {
               id: 'sociogram-prompt-1',
-              text: 'Place the people you know',
+              text: en('Place the people you know'),
               layout: { layoutVariable: 'layout' },
             },
           ],

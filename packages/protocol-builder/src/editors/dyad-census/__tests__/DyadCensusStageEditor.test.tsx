@@ -71,11 +71,15 @@ describe('the dyad census editor', () => {
       stage: {
         type: 'DyadCensus',
         fields: {
-          label: 'Dyad Census',
+          label: { 'en-US': 'Dyad Census' },
           subject: { entity: 'node', type: 'person' },
-          introductionPanel: { title: '', text: 'Something to read.' },
+          introductionPanel: { text: { 'en-US': 'Something to read.' } },
           prompts: [
-            { id: 'prompt-a', text: 'First question', createEdge: 'knows' },
+            {
+              id: 'prompt-a',
+              text: { 'en-US': 'First question' },
+              createEdge: 'knows',
+            },
           ],
         },
       },
@@ -134,7 +138,13 @@ describe('the dyad census editor', () => {
     await screen.findByRole('radio', { name: 'knows' });
 
     harness.receiveCodebookUpdate({
-      edge: { worksWith: { name: 'worksWith', color: 'edge-color-seq-2' } },
+      edge: {
+        worksWith: {
+          name: 'worksWith',
+          label: { 'en-US': 'worksWith' },
+          color: 'edge-color-seq-2',
+        },
+      },
     });
 
     expect(
@@ -249,14 +259,17 @@ describe('creating a dyad census stage', () => {
     const request = await harness.submit();
     expect(request?.stageDocument).toMatchObject({
       type: 'DyadCensus',
-      label: 'Person Dyad Census',
+      label: { 'en-US': 'Person Dyad Census' },
       subject: { entity: 'node', type: 'person' },
-      introductionPanel: { title: 'Pairs', text: 'Two at a time.' },
+      introductionPanel: {
+        title: { 'en-US': 'Pairs' },
+        text: { 'en-US': 'Two at a time.' },
+      },
     });
     expect(prompts(request?.stageDocument ?? {})).toEqual([
       {
         id: expect.any(String) as unknown as string,
-        text: 'Do they know?',
+        text: { 'en-US': 'Do they know?' },
         createEdge: 'knows',
       },
     ]);
@@ -275,10 +288,14 @@ describe('creating a dyad census stage', () => {
         type: 'DyadCensus',
         position: DYAD_CENSUS_INDEX,
         fields: {
-          label: 'Who knows who',
+          label: { 'en-US': 'Who knows who' },
           subject: { entity: 'node', type: 'person' },
           prompts: [
-            { id: 'prompt-a', text: 'Do they know?', createEdge: 'knows' },
+            {
+              id: 'prompt-a',
+              text: { 'en-US': 'Do they know?' },
+              createEdge: 'knows',
+            },
           ],
         },
       },

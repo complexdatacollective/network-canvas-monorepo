@@ -14,6 +14,7 @@ import RuleList from '../rules/RuleList.tsx';
 import {
   asRuleSetValue,
   joinOptions,
+  ruleSetAllowsEncryptedAttributes,
   type RuleSetValue,
   type RuleSetVariant,
   ruleSetTargets,
@@ -203,6 +204,7 @@ function RuleSetControl({
         codebook={codebook}
         ruleTypes={ruleTypes}
         allowedTargets={allowedTargets}
+        allowEncryptedAttributes={ruleSetAllowsEncryptedAttributes(variant)}
         addButtonLabel={addRuleLabel}
         onChange={updateRules}
         hasError={ariaInvalid === true}

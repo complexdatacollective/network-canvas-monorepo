@@ -6,44 +6,23 @@
     - paragraph: Select a condition to see who it affects.
     - button "Cystic Fibrosis"
     - separator
-    - heading "What the symbols mean" [level=4]
     - text: Has this condition Will develop this condition Carries this condition Not known
     - button "Save snapshot"
   - slider "Resize the condition key panel"
-  - button "Focus on Albert" [disabled]:
-    - text: "Cystic Fibrosis: Status unknown"
-    - button "Albert" [disabled]
-  - button "Focus on Mabel" [disabled]:
-    - text: "Cystic Fibrosis: Status unknown"
-    - button "Mabel" [disabled]
-  - button "Focus on Iris" [disabled]:
-    - text: "Cystic Fibrosis: Status unknown"
-    - button "Iris" [disabled]
-  - button "Focus on Frank" [disabled]:
-    - text: "Cystic Fibrosis: Status unknown"
-    - button "Frank" [disabled]
-  - button "Focus on Ernest" [disabled]:
-    - text: "Cystic Fibrosis: Status unknown"
-    - button "Ernest" [disabled]
-  - button "Focus on Vera" [disabled]:
-    - text: "Cystic Fibrosis: Status unknown"
-    - button "Vera" [disabled]
-  - button "Focus on Diane" [disabled]:
-    - text: "Cystic Fibrosis: Obligate carrier"
-    - button "Diane" [disabled]
-  - button "Focus on Roy" [disabled]:
-    - text: "Cystic Fibrosis: Obligate carrier"
-    - button "Roy" [disabled]
-  - button "Focus on You" [disabled]:
-    - text: "Cystic Fibrosis: Affected"
-    - button "You" [disabled]
+  - region "Your family":
+    - button "Focus on Albert" [disabled]: "Cystic Fibrosis: Status unknown Albert"
+    - button "Focus on Mabel" [disabled]: "Cystic Fibrosis: Status unknown Mabel"
+    - button "Focus on Frank" [disabled]: "Cystic Fibrosis: Status unknown Frank"
+    - button "Focus on Iris" [disabled]: "Cystic Fibrosis: Status unknown Iris"
+    - button "Focus on Ernest" [disabled]: "Cystic Fibrosis: Status unknown Ernest"
+    - button "Focus on Vera" [disabled]: "Cystic Fibrosis: Status unknown Vera"
+    - button "Focus on Diane" [disabled]: "Cystic Fibrosis: Obligate carrier Diane"
+    - button "Focus on Roy" [disabled]: "Cystic Fibrosis: Obligate carrier Roy"
+    - button "Focus on You" [disabled]: "Cystic Fibrosis: Affected You"
   - toolbar "Zoom controls":
-    - group "Zoom controls":
-      - button "Zoom out"
-      - button "Zoom in"
-    - separator
-    - group "Viewport controls":
-      - button "Reset zoom"
+    - button "Zoom out"
+    - button "Zoom in"
+    - button "Show the whole family"
   - navigation:
     - button "Settings"
     - button "Previous Step"

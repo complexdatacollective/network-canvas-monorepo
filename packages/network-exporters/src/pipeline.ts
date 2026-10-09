@@ -4,7 +4,13 @@ import type { ExportEvent } from './events';
 import { stageMessages } from './events';
 import type { InterviewExportInput } from './input';
 import type { ExportOptions } from './options';
-import type { ExportFailure, ExportReturn, ExportSuccess } from './output';
+import {
+  type ExportFailure,
+  type ExportReturn,
+  type ExportSuccess,
+  type ExportWarning,
+  uniqueExportWarnings,
+} from './output';
 import { InterviewRepository } from './services/InterviewRepository';
 import { Output } from './services/Output';
 import { generateOutputFilesEffect } from './session/generateOutputFiles';
@@ -40,6 +46,10 @@ export const exportPipeline = (
     yield* Effect.sleep(0);
 
     const failuresRef = yield* Ref.make<ExportFailure[]>([]);
+    // Filled while the output writes the files: a warning about a file's
+    // contents exists only once that file has been produced. A warning about
+    // the protocol is reported by every interview of it, and kept once.
+    const warnings: ExportWarning[] = [];
 
     const {
       grouped,
@@ -57,6 +67,7 @@ export const exportPipeline = (
         exportOptions,
         grouped,
         progressQueue,
+        (warning) => warnings.push(warning),
       ).pipe(Effect.withSpan('export.generateFiles'));
 
     yield* Ref.update(failuresRef, (curr) => [...curr, ...generationFailures]);
@@ -111,6 +122,7 @@ export const exportPipeline = (
       status: finalFailures.length > 0 ? 'partial' : 'success',
       successfulExports,
       failedExports: finalFailures,
+      warnings: uniqueExportWarnings(warnings),
       output: outputResult,
     };
 

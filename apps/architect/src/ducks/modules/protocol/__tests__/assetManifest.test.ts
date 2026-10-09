@@ -38,8 +38,8 @@ const mockedSaveAssetWithFallback = vi.mocked(saveAssetWithFallback);
 const openStage: Stage = {
   id: 'stage-1',
   type: 'Information',
-  label: 'A',
-  title: 'A',
+  label: { en: 'A' },
+  title: { en: 'A' },
   items: [],
 };
 

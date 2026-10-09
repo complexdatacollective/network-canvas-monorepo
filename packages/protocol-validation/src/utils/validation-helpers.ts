@@ -6,7 +6,7 @@ import type {
   FilterRule,
   StageSubject,
   Variable,
-} from '../schemas/8/schema.ts';
+} from '../schemas/9/schema.ts';
 
 /**
  * Check if an entity (node/edge type) exists in the codebook
@@ -96,8 +96,8 @@ export const findDuplicateId = <T extends { id: string }>(
 
 /**
  * A `superRefine` callback that flags duplicate `id`s in an array of content
- * items. Shared by the Information stage and the FamilyPedigree intro screen,
- * which validate their own (separate) item schemas with the same rule.
+ * items. Shared by every content-item collection that validates its own item
+ * schema with the same rule.
  * `label` names the collection in the error message.
  */
 export const duplicateIdRefinement =
@@ -217,27 +217,32 @@ export const filterRuleAttributeExists = (
 };
 
 /**
+ * The codebook definition of a filter rule's attribute. Undefined if the rule
+ * names no attribute or the variable doesn't exist.
+ */
+export const getFilterRuleVariable = (
+  rule: FilterRule,
+  codebook: Codebook,
+): Variable | undefined => {
+  if (!('attribute' in rule.options) || !rule.options.attribute)
+    return undefined;
+
+  if (rule.type === 'ego') {
+    return codebook.ego?.variables?.[rule.options.attribute];
+  }
+
+  const entity = codebook[rule.type]?.[rule.options.type || ''];
+  return entity?.variables?.[rule.options.attribute];
+};
+
+/**
  * Get the variable type for a filter rule's attribute
  * Returns undefined if attribute is not specified or variable doesn't exist
  */
 export const getFilterRuleVariableType = (
   rule: FilterRule,
   codebook: Codebook,
-): string | undefined => {
-  if (!('attribute' in rule.options) || !rule.options.attribute)
-    return undefined;
-
-  let variable: Variable | undefined;
-
-  if (rule.type === 'ego') {
-    variable = codebook.ego?.variables?.[rule.options.attribute];
-  } else {
-    const entity = codebook[rule.type]?.[rule.options.type || ''];
-    variable = entity?.variables?.[rule.options.attribute];
-  }
-
-  return variable?.type;
-};
+): string | undefined => getFilterRuleVariable(rule, codebook)?.type;
 
 /**
  * Create validation error message with context

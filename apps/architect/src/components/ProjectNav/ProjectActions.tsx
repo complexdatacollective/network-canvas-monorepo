@@ -196,6 +196,7 @@ const ProjectActions = ({
   const returnsToTimeline = [
     '/protocol/assets',
     '/protocol/codebook',
+    '/protocol/localization',
     '/protocol/summary',
   ].includes(location);
   const returnDestination = returnsToTimeline ? '/protocol' : '/';

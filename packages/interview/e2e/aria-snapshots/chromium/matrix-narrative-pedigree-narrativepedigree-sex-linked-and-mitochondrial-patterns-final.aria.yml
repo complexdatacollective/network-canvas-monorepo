@@ -9,30 +9,27 @@
     - button "Hearing Loss"
     - button "Mitochondrial Myopathy" [pressed]
     - separator
-    - heading "What the symbols mean" [level=4]
     - text: Has this condition Will develop this condition Carries this condition May develop this condition May carry this condition Not known
     - button "Save snapshot"
   - slider "Resize the condition key panel"
-  - button "Focus on Walter": "Mitochondrial Myopathy: Status unknown"
-  - button "Focus on Edith": "Mitochondrial Myopathy: Status unknown"
-  - button "Focus on Gerald": "Mitochondrial Myopathy: Status unknown"
-  - button "Focus on Agnes": "Mitochondrial Myopathy: Affected"
-  - button "Focus on Herbert": "Mitochondrial Myopathy: Status unknown"
-  - button "Focus on Iris": "Mitochondrial Myopathy: At risk (affected)"
-  - button "Focus on Frank": "Mitochondrial Myopathy: Status unknown"
-  - button "Focus on Alan": "Mitochondrial Myopathy: At risk (affected)"
-  - button "Focus on Bruce": "Mitochondrial Myopathy: At risk (affected)"
-  - button "Focus on Diane": "Mitochondrial Myopathy: At risk (affected)"
-  - button "Focus on You": "Mitochondrial Myopathy: At risk (affected)"
-  - button "Focus on Helen": "Mitochondrial Myopathy: At risk (affected)"
-  - toolbar "Zoom controls":
-    - group "Zoom controls":
-      - button "Zoom out"
-      - button "Zoom in"
-    - separator
-    - group "Viewport controls":
-      - button "Reset zoom"
+  - region "Your family":
+    - button "Focus on Agnes": "Mitochondrial Myopathy: Affected"
+    - button "Focus on Herbert": "Mitochondrial Myopathy: Status unknown"
+    - button "Focus on Iris": "Mitochondrial Myopathy: At risk (affected)"
+    - button "Focus on Frank": "Mitochondrial Myopathy: Status unknown"
+    - button "Focus on Walter": "Mitochondrial Myopathy: Status unknown"
+    - button "Focus on Edith": "Mitochondrial Myopathy: Status unknown"
+    - button "Focus on Alan": "Mitochondrial Myopathy: At risk (affected)"
+    - button "Focus on Bruce": "Mitochondrial Myopathy: At risk (affected)"
+    - button "Focus on Diane": "Mitochondrial Myopathy: At risk (affected)"
+    - button "Focus on Gerald": "Mitochondrial Myopathy: Status unknown"
+    - button "Focus on You" [pressed]: "Mitochondrial Myopathy: At risk (affected)"
+    - button "Focus on Helen": "Mitochondrial Myopathy: At risk (affected)"
   - button "Clear focus"
+  - toolbar "Zoom controls":
+    - button "Zoom out"
+    - button "Zoom in"
+    - button "Show the whole family"
   - navigation:
     - button "Settings"
     - button "Previous Step"

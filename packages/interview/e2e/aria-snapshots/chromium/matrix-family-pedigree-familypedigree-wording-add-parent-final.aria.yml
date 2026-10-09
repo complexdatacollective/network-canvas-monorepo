@@ -1,0 +1,67 @@
+- main:
+  - status:
+    - heading "Add the members of your family." [level=2]
+  - region "Interview notifications"
+  - dialog "Add your parent":
+    - heading "Add your parent" [level=2]
+    - button "Close"
+    - text: Name (optional) A first name or nickname is fine. If you don’t know it, leave this blank and they will be shown by how they are related to you.
+    - textbox "Name (optional)"
+    - text: Gender identity Required
+    - radiogroup "Gender identity":
+      - radio "Woman"
+      - text: Woman
+      - radio "Man"
+      - text: Man
+      - radio "Non-binary"
+      - text: Non-binary
+      - radio "A different identity"
+      - text: A different identity
+      - radio "Don’t know"
+      - text: Don’t know
+      - radio "Prefer not to say"
+      - text: Prefer not to say
+    - text: Sex assigned at birth Required
+    - radiogroup "Sex assigned at birth":
+      - radio "Female" [checked]
+      - text: Female
+      - radio "Male"
+      - text: Male
+      - radio "Intersex"
+      - text: Intersex
+      - radio "Don’t know"
+      - text: Don’t know
+      - radio "Prefer not to say"
+      - text: Prefer not to say
+    - text: Kind of new parent - matrix check Required You have Julie and Rob as genetic parents - matrix check Julie carried you on record - matrix check
+    - radiogroup "Kind of new parent - matrix check":
+      - radio "Biological parent" [disabled]
+      - text: Biological parent
+      - radio "Adoptive parent"
+      - text: Adoptive parent
+      - radio "Step or social parent" [checked]
+      - text: Step or social parent
+      - radio "Egg or sperm donor" [disabled]
+      - text: Egg or sperm donor
+      - radio "Surrogate" [disabled]
+      - text: Surrogate
+    - text: Partner of a parent - matrix check
+    - radiogroup "Partner of a parent - matrix check":
+      - radio "Julie"
+      - text: Julie
+      - radio "Rob"
+      - text: Rob
+      - radio "No" [checked]
+      - text: "No"
+    - text: Also parent of these - matrix check
+    - group "Also parent of these - matrix check":
+      - checkbox "Bea" [checked]
+      - text: Bea
+      - checkbox "Bo"
+      - text: Bo
+    - text: Did this parent carry Bea - matrix check
+    - radiogroup "Did this parent carry Bea - matrix check":
+      - radio "Yes"
+      - radio "No"
+    - button "Cancel"
+    - button "Save"

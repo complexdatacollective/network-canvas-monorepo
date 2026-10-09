@@ -69,6 +69,9 @@ import {
 import { testCipher } from './support/secrets.ts';
 import { startStudioServer } from './support/serve.ts';
 
+// The sample protocol declares en-US as its only language.
+const enUS = (text: string) => ({ 'en-US': text });
+
 const env = readEnv();
 
 const TEAM_ID = 'protocol-builder-ws-team';
@@ -291,8 +294,8 @@ describe.skipIf(!testDb || !env.auth)(
             kind: 'stage',
             document: Redacted.make({
               type: 'Information',
-              label,
-              title: label,
+              label: enUS(label),
+              title: enUS(label),
               items: [],
             }),
           }),
@@ -410,8 +413,8 @@ describe.skipIf(!testDb || !env.auth)(
           kind: 'stage',
           document: Redacted.make({
             type: 'Information',
-            label: 'Made over the socket',
-            title: 'Made over the socket',
+            label: enUS('Made over the socket'),
+            title: enUS('Made over the socket'),
             items: [],
           }),
         }),
@@ -550,7 +553,7 @@ describe.skipIf(!testDb || !env.auth)(
           sectionId,
           document: Redacted.make({
             ...Redacted.value(resumed.document),
-            label: 'Renamed after the reconnect',
+            label: enUS('Renamed after the reconnect'),
           }),
           revision: resumed.revision,
         }),
@@ -561,8 +564,8 @@ describe.skipIf(!testDb || !env.auth)(
       const read = await second.run(
         second.client('GetSection', { protocolId, sectionId }),
       );
-      expect(Redacted.value(read.document).label).toBe(
-        'Renamed after the reconnect',
+      expect(Redacted.value(read.document).label).toEqual(
+        enUS('Renamed after the reconnect'),
       );
       await second.run(second.client('ReleaseLock', { protocolId, sectionId }));
       await watched.stop();
@@ -943,7 +946,7 @@ describe.skipIf(!testDb || !env.auth)(
             sectionId,
             document: Redacted.make({
               ...Redacted.value(acquired.value.document),
-              label: 'Written',
+              label: enUS('Written'),
             }),
             revision: acquired.value.revision,
           }),
@@ -982,7 +985,7 @@ describe.skipIf(!testDb || !env.auth)(
       { lock: 'readOnly', holder: ADA.userId },
       'NotLockHolder',
       'ok',
-      'Written',
+      enUS('Written'),
       'SectionNotFound',
       'ok',
     ];

@@ -53,6 +53,8 @@ const session: StoredSession = {
   network,
   stageMetadata: { '0': { automaticLayout: true } },
   isSynthetic: false,
+  localePreference: null,
+  locale: null,
 };
 
 const legacyNetwork = {
@@ -92,24 +94,6 @@ const networkWithPassThroughAttributes = {
   ],
 };
 
-const legacyStageMetadata = {
-  familyPedigree: {
-    isNetworkCommitted: true,
-    edges: [
-      {
-        id: 'edge-1',
-        from: 'n1',
-        to: 'n2',
-        attributes: {
-          unanswered: null,
-          ownUndefined: undefined,
-          answered: false,
-        },
-      },
-    ],
-  },
-};
-
 function makeSessionRow(networkValue: unknown): StoredSessionRow {
   return {
     ...session,
@@ -135,6 +119,8 @@ async function makeEncryptedSessionRow(
     currentStep: session.currentStep,
     progress: session.progress,
     isSynthetic: session.isSynthetic,
+    localePreference: session.localePreference,
+    locale: session.locale,
     _enc: {
       network: await encryptJson(networkValue, dek, aad),
       ...(stageMetadataValue === undefined
@@ -148,14 +134,15 @@ const protocol: StoredProtocol = {
   id: 'h1',
   hash: 'h1',
   name: 'Study',
-  schemaVersion: 8,
+  schemaVersion: 9,
   importedAt: '2026-01-01T00:00:00.000Z',
   description: 'A study',
   codebook: { node: {}, edge: {}, ego: {} },
   // Minimal but structurally valid CurrentProtocol shape for a round-trip.
   protocol: {
     name: 'Study',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     stages: [],
     codebook: { node: {}, edge: {}, ego: {} },
   } as StoredProtocol['protocol'],
@@ -240,22 +227,6 @@ describe('recordCrypto — encrypted mode', () => {
     });
   });
 
-  it('normalizes nullish encrypted Family Pedigree metadata attributes', async () => {
-    const dek = await makeDek();
-    setSessionDek(dek);
-    const row = await makeEncryptedSessionRow(
-      legacyNetwork,
-      dek,
-      legacyStageMetadata,
-    );
-
-    const back = await decryptSession(row);
-
-    expect(back.stageMetadata?.familyPedigree).toMatchObject({
-      edges: [{ attributes: { answered: false } }],
-    });
-  });
-
   it('rejects invalid defined values in encrypted networks', async () => {
     const dek = await makeDek();
     setSessionDek(dek);
@@ -274,19 +245,7 @@ describe('recordCrypto — encrypted mode', () => {
   });
 
   it('rejects invalid plaintext and encrypted stage metadata', async () => {
-    const invalidStageMetadata = {
-      familyPedigree: {
-        isNetworkCommitted: true,
-        edges: [
-          {
-            id: 'edge-1',
-            from: 'n1',
-            to: 'n2',
-            attributes: { invalid: { nested: 'value' } },
-          },
-        ],
-      },
-    };
+    const invalidStageMetadata = { stage: { automaticLayout: 'yes' } };
     const plaintextRow = {
       ...makeSessionRow(network),
       stageMetadata: invalidStageMetadata,
@@ -414,19 +373,6 @@ describe('recordCrypto — none mode (passthrough)', () => {
     expect(back.network.nodes[0]?.attributes).toEqual({
       'name': 'Ada',
       'profile page': 'https://example.com/people/ada',
-    });
-  });
-
-  it('normalizes nullish plaintext Family Pedigree metadata attributes', async () => {
-    const row = {
-      ...makeSessionRow(legacyNetwork),
-      stageMetadata: legacyStageMetadata,
-    };
-
-    const back = await decryptSession(row);
-
-    expect(back.stageMetadata?.familyPedigree).toMatchObject({
-      edges: [{ attributes: { answered: false } }],
     });
   });
 

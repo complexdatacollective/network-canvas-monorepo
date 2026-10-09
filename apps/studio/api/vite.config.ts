@@ -48,6 +48,13 @@ export default defineConfig({
       // packages as symlinks and never installs their dependencies, so the
       // import must be inlined here or the container fails at boot.
       'jszip',
+      // The same for protocol-validation's locale matcher (schema 9). Vite
+      // externalizes any dependency it can resolve from this package, and the
+      // repository root lists the matcher as a devDependency (the
+      // networkcanvas.com locale edge function bundles it from there), so
+      // without this entry the bundle imports a package the image never
+      // installs and `serve` dies at boot with ERR_MODULE_NOT_FOUND.
+      '@formatjs/intl-localematcher',
     ],
   },
 });

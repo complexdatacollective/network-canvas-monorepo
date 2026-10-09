@@ -6,9 +6,16 @@ import {
   entitySecureAttributesMeta,
 } from '@codaco/shared-consts';
 
+import { AnonymisationFixture } from '../fixtures/anonymisation-fixture.js';
 import { expect } from '../fixtures/matrix-test.js';
 import { DEV_PROTOCOL_ASSETS_DIR } from '../helpers/protocol-paths.js';
 import type { InterfaceScenarios, ScenarioDefinition } from './types.js';
+
+// A researcher's own words for the hint and the load error, each distinct from
+// the text Network Canvas supplies, so an assertion on one proves the stage's
+// own setting is what the participant sees.
+const QUICK_ADD_HINT = 'Type a name, then press Enter - matrix check';
+const EXTERNAL_DATA_ERROR = 'That list could not load - matrix check';
 
 export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
   interfaceType: 'NameGeneratorQuickAdd',
@@ -86,7 +93,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
       let nameVarId = '';
       return {
         id: 'quick-add-optional-empty-value',
-        covers: [],
+        covers: ['quickAddHint'],
         build: () => {
           const synth = new SyntheticInterview();
           const person = synth.addNodeType({ name: 'Person' });
@@ -99,6 +106,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
             label: 'Add contacts',
             subject: { entity: 'node', type: person.id },
             quickAdd: nameVar.id,
+            wording: { quickAddHint: QUICK_ADD_HINT },
           });
           stage.addPrompt({ text: 'Who do you know?' });
           return synth;
@@ -106,7 +114,19 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         run: async ({ page, protocol, interview }) => {
           const toggle = page.getByTestId('quick-add-toggle');
           const input = page.getByTestId('quick-add-input');
+          await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
           await toggle.click();
+
+          // Left alone with nothing submitted, the input shows the stage's own
+          // hint (after the five seconds the interface waits), not Network
+          // Canvas's.
+          await expect(input).toBeVisible();
+          await page.clock.fastForward('00:06');
+          await expect(page.getByText(QUICK_ADD_HINT)).toBeVisible();
+          await expect(
+            page.getByText('Press Enter when you are finished.'),
+          ).toHaveCount(0);
+
           await input.fill('');
           await input.press('Enter');
 
@@ -322,6 +342,8 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         'behaviours.minNodes',
         'behaviours.maxNodes',
         'behaviours.maxNodes-panel-drag',
+        'minNodesNotice',
+        'maxNodesNotice',
       ],
       currentStep: 1,
       seedNetwork: true,
@@ -386,7 +408,11 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
 
     {
       id: 'external-panels-load-error-titles',
-      covers: ['panels[].dataSource=assetId', 'panels[].title'],
+      covers: [
+        'panels[].dataSource=assetId',
+        'panels[].title',
+        'externalDataError',
+      ],
       visual: true,
       build: () => {
         const synth = new SyntheticInterview();
@@ -406,6 +432,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
           label: 'Import contacts',
           subject: { entity: 'node', type: person.id },
           quickAdd: nameVar.id,
+          wording: { externalDataError: EXTERNAL_DATA_ERROR },
         });
         stage.addPrompt({ text: 'Add people from previous rounds' });
         stage.addPanel({
@@ -447,9 +474,10 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         // the error copy is rendered inside the collapsed body.
         await expect(errorPanel).toBeAttached();
         await expect(errorPanel).toBeHidden();
+        await expect(errorPanel.getByText(EXTERNAL_DATA_ERROR)).toBeAttached();
         await expect(
           errorPanel.getByText('External data could not be loaded.'),
-        ).toBeAttached();
+        ).toHaveCount(0);
 
         // Keyboard-drag Barry into the main list: creates a real node.
         const barry = loadedPanel.getByRole('option', { name: 'Barry' });
@@ -623,7 +651,6 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
           component: 'Text',
           encrypted: true,
         });
-        synth.setExperiments({ encryptedVariables: true });
         const stage = synth.addStage('NameGeneratorQuickAdd', {
           label: 'Confidential contacts',
           subject: { entity: 'node', type: person.id },
@@ -633,17 +660,17 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         return synth;
       },
       run: async ({ page, stage, protocol, interview }) => {
+        const anon = new AnonymisationFixture(page);
         // Before a passphrase is set, quick-add is disabled.
         expect(await stage.quickAdd.isDisabled()).toBe(true);
 
-        const lockButton = page.getByRole('button').filter({ hasText: '🔑' });
-        await expect(lockButton).toBeVisible();
-        await lockButton.click();
-
-        await page
-          .getByRole('textbox', { name: 'Passphrase' })
-          .fill('correct horse battery');
-        await page.getByRole('button', { name: 'Submit passphrase' }).click();
+        // No Anonymisation stage came first, so nothing has been chosen yet:
+        // the 🔑 prompter asks for a passphrase to be chosen and confirmed.
+        await expect(anon.prompterButton()).toBeVisible();
+        await anon.openPrompter();
+        await expect(anon.prompterDialog()).toBeVisible();
+        await anon.choosePrompterPassphrase('correct horse battery');
+        await expect(anon.prompterDialog()).toHaveCount(0);
 
         await expect.poll(async () => stage.quickAdd.isDisabled()).toBe(false);
         await stage.quickAdd.addNode('Alice');
@@ -651,12 +678,18 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
 
         const network = await protocol.getNetworkState(interview.interviewId);
         expect(network?.nodes).toHaveLength(1);
-        const node = network!.nodes[0]!;
-        const attrValues = Object.values(node[entityAttributesProperty]);
+        // Choosing the passphrase created the interview's encryption header.
+        expect(network?.encryption?.version).toBe(1);
+        const node = network?.nodes[0];
+        const attrValues = Object.values(
+          node?.[entityAttributesProperty] ?? {},
+        );
         // Ciphertext is a number[], never the plaintext string.
         expect(attrValues.some((v) => Array.isArray(v))).toBe(true);
         expect(attrValues).not.toContain('Alice');
-        expect(node[entitySecureAttributesMeta]).toBeTruthy();
+        expect(Object.values(node?.[entitySecureAttributesMeta] ?? {})).toEqual(
+          [{ iv: expect.any(Array) }],
+        );
       },
     },
   ],

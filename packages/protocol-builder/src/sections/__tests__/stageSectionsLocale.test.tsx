@@ -28,6 +28,13 @@ import {
 } from './rowFixtures.tsx';
 
 /**
+ * Copy in the fixture protocol's only language, as schema 9 holds it. The
+ * words are Spanish because this file reads the editor in Spanish; the
+ * protocol's language is a separate thing.
+ */
+const inProtocolLanguage = (text: string) => ({ 'en-US': text });
+
+/**
  * The six areas the shared stage-editor sections add, read in Spanish.
  *
  * The rest of this directory's suite mounts no provider, so every section
@@ -158,18 +165,20 @@ describe('the shared stage sections, read in Spanish', () => {
  */
 const pageOfBlocks = contentBlocks()();
 
-const introScreenOfBlocks = contentBlocks({ variant: 'introScreen' })();
-
 /** A page holding one passage of prose and one picture. */
 const mediaPage = () => ({
   stage: {
     id: 'information-media-es',
     type: 'Information' as const,
     fields: {
-      label: 'Information',
-      title: 'Bienvenida',
+      label: inProtocolLanguage('Information'),
+      title: inProtocolLanguage('Bienvenida'),
       items: [
-        { id: 'block-text', type: 'text', content: 'Lee esto.' },
+        {
+          id: 'block-text',
+          type: 'text',
+          content: inProtocolLanguage('Lee esto.'),
+        },
         { id: 'block-image', type: 'asset', content: 'welcome_image' },
       ],
     },
@@ -426,8 +435,8 @@ describe('a block a page cannot show, read in Spanish', () => {
       id: 'information-broken-es',
       type: 'Information' as const,
       fields: {
-        label: 'Information',
-        title: 'Bienvenida',
+        label: inProtocolLanguage('Information'),
+        title: inProtocolLanguage('Bienvenida'),
         items: [
           {
             id: 'block-missing',
@@ -516,7 +525,11 @@ describe('the page-content list, read in Spanish', () => {
       stage: {
         id: 'information-empty-es',
         type: 'Information' as const,
-        fields: { label: 'Information', title: 'Bienvenida', items: [] },
+        fields: {
+          label: inProtocolLanguage('Information'),
+          title: inProtocolLanguage('Bienvenida'),
+          items: [],
+        },
       },
       locale: 'es',
       sections: pageOfBlocks,
@@ -532,134 +545,6 @@ describe('the page-content list, read in Spanish', () => {
     expect(
       await screen.findByText(
         'Añade al menos un bloque. Una página sin contenido no muestra nada al participante.',
-      ),
-    ).toBeInTheDocument();
-  });
-});
-
-/**
- * The same section as the page above, saying the other set of words: an
- * introduction screen is a page shown BEFORE a task rather than the step of
- * the interview itself, and the two read differently rather than differing by
- * a noun.
- */
-describe('the introduction-screen variant, read in Spanish', () => {
-  const pedigreeWithAnIntroduction = () => ({
-    stage: {
-      id: 'family-pedigree-intro-es',
-      type: 'FamilyPedigree' as const,
-      fields: {
-        label: 'Family Pedigree',
-        framing: { mode: 'fixed', value: 'gamete' },
-        boundaries: {
-          requireGrandparents: 'off',
-          requireChildrenContributors: 'off',
-        },
-        introScreen: {
-          items: [{ id: 'intro-text', type: 'text', content: 'Lee esto.' }],
-        },
-      },
-    },
-    locale: 'es',
-    sections: introScreenOfBlocks,
-  });
-
-  it('names the section, its list and the dialogs that fill it', async () => {
-    const harness = renderStageEditor(pedigreeWithAnIntroduction());
-
-    expect(
-      await screen.findByRole('switch', { name: 'Pantalla de introducción' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'Muestra al participante una pantalla de texto y medios antes de que empiece esta tarea.',
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByText('Bloques de introducción')).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'El participante los recorre en este orden antes de empezar la tarea. Arrástralos para reordenarlos.',
-      ),
-    ).toBeInTheDocument();
-    // The row noun reaches the shared list as a descriptor, so this is where
-    // an English noun inside a Spanish sentence would appear.
-    expect(
-      await screen.findByRole('button', {
-        name: 'Editar bloque de introducción',
-      }),
-    ).toBeInTheDocument();
-
-    expectNoLocaleLeaks(
-      'the introduction screen at rest',
-      researcherWords(harness),
-    );
-
-    await harness.user.click(
-      screen.getByRole('button', {
-        name: 'Crear nuevo bloque de introducción',
-      }),
-    );
-    expect(
-      await screen.findByText('Crear bloque de introducción'),
-    ).toBeInTheDocument();
-    await harness.user.keyboard('{Escape}');
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Editar bloque de introducción' }),
-    );
-    expect(
-      await screen.findByText('Editar bloque de introducción'),
-    ).toBeInTheDocument();
-  });
-
-  it('asks in Spanish before throwing the whole introduction away', async () => {
-    const harness = renderStageEditor(pedigreeWithAnIntroduction());
-
-    const capability = await screen.findByRole('switch', {
-      name: 'Pantalla de introducción',
-    });
-    await harness.user.click(capability);
-
-    expect(
-      await screen.findByText('Esto eliminará la pantalla de introducción'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'Esto eliminará todos los bloques de la pantalla de introducción, y el participante empezará la tarea directamente. ¿Quieres continuar?',
-      ),
-    ).toBeInTheDocument();
-    const confirm = screen.getByRole('button', {
-      name: 'Eliminar la pantalla de introducción',
-    });
-    // The cancel verb comes from the shared common.* catalog rather than from
-    // this package, so this fails if the common layer stopped reaching the
-    // merge.
-    expect(
-      screen.getByRole('button', { name: 'Cancelar' }),
-    ).toBeInTheDocument();
-    expectNoLocaleLeaks(
-      'the clear-the-introduction confirmation',
-      researcherWords(harness),
-    );
-
-    // Switched off, then on again: what a researcher who has just discarded
-    // their introduction and reached for the Add button reads.
-    await harness.user.click(confirm);
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('button', {
-          name: 'Editar bloque de introducción',
-        }),
-      ).toBeNull(),
-    );
-    await harness.user.click(
-      screen.getByRole('switch', { name: 'Pantalla de introducción' }),
-    );
-
-    expect(
-      await screen.findByText(
-        'Todavía no hay bloques. Crea uno para explicar esta tarea antes de que el participante la empiece.',
       ),
     ).toBeInTheDocument();
   });
@@ -706,7 +591,7 @@ describe('the prompts section, read in Spanish', () => {
         id: 'name-generator-empty-es',
         type: 'NameGenerator' as const,
         fields: {
-          label: 'Name Generator',
+          label: inProtocolLanguage('Name Generator'),
           subject: { entity: 'node', type: 'person' },
           prompts: [],
         },
@@ -781,14 +666,16 @@ describe('a prompt’s sort rules, read in Spanish', () => {
       id: 'sociogram-sort-es',
       type: 'Sociogram' as const,
       fields: {
-        label: 'Sociograma',
+        label: inProtocolLanguage('Sociograma'),
         subject: { entity: 'node', type: 'person' },
         background: { concentricCircles: 4, skewedTowardCenter: true },
         behaviours: { automaticLayout: true },
         prompts: [
           {
             id: 'sociogram-prompt-1',
-            text: 'Coloca juntas a las personas que se conocen',
+            text: inProtocolLanguage(
+              'Coloca juntas a las personas que se conocen',
+            ),
             layout: { layoutVariable: 'layout' },
             sortOrder: [{ property: ORPHANED_PROPERTY, direction: 'asc' }],
           },

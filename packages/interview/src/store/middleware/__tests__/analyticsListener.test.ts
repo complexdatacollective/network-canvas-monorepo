@@ -1,9 +1,13 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it, vi } from 'vitest';
 
-import { entityAttributesProperty } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+} from '@codaco/shared-consts';
 
 import type { Tracker } from '../../../analytics/tracker';
+import { unlockEncryption } from '../../../interfaces/Anonymisation/unlockEncryption';
 import protocol from '../../modules/protocol';
 import session, {
   addEdge,
@@ -15,7 +19,7 @@ import session, {
   removeNodeFromPrompt,
   restoreNode,
 } from '../../modules/session';
-import ui, { setPassphrase, setPassphraseInvalid } from '../../modules/ui';
+import ui from '../../modules/ui';
 import { createAnalyticsListenerMiddleware } from '../analyticsListener';
 
 function makeTracker() {
@@ -45,7 +49,7 @@ function buildStore(
       protocol: {
         id: 'p',
         hash: 'h',
-        schemaVersion: 8,
+        schemaVersion: 9,
         codebook: {
           node: {
             venue: { name: 'Venue', color: 'green', variables: {} },
@@ -112,12 +116,12 @@ describe('analyticsListener — global entity events', () => {
     ]);
   });
 
-  it('emits node_added when undo or redo restores a removed node', () => {
+  it('emits node_added when undo or redo puts a removed node back', () => {
     const tracker = makeTracker();
     const store = buildStore(tracker);
     store.dispatch(
       restoreNode({
-        _uid: 'node-1',
+        [entityPrimaryKeyProperty]: 'node-1',
         type: 'person',
         [entityAttributesProperty]: {},
       }),
@@ -237,22 +241,23 @@ describe('analyticsListener — global entity events', () => {
 });
 
 describe('analyticsListener — anonymisation', () => {
-  it('emits passphrase_set on setPassphrase (no value sent)', () => {
+  it('emits passphrase_set and passphrase_validation_failed without the passphrase', async () => {
     const tracker = makeTracker();
     const store = buildStore(tracker);
-    store.dispatch(setPassphrase('DO_NOT_LEAK'));
+
+    await expect(unlockEncryption(store, 'DO_NOT_LEAK-1')).resolves.toBe(
+      'chosen',
+    );
     expect(tracker.track).toHaveBeenCalledWith('passphrase_set');
+
+    tracker.track.mockClear();
+    await expect(unlockEncryption(store, 'DO_NOT_LEAK-2')).resolves.toBe(
+      'incorrect',
+    );
+    expect(tracker.track).toHaveBeenCalledWith('passphrase_validation_failed');
+    expect(tracker.track).not.toHaveBeenCalledWith('passphrase_set');
+
     const allArgs = JSON.stringify(tracker.track.mock.calls);
     expect(allArgs).not.toContain('DO_NOT_LEAK');
-  });
-
-  it('emits passphrase_validation_failed on setPassphraseInvalid(true) only', () => {
-    const tracker = makeTracker();
-    const store = buildStore(tracker);
-    store.dispatch(setPassphraseInvalid(true));
-    expect(tracker.track).toHaveBeenCalledWith('passphrase_validation_failed');
-    tracker.track.mockClear();
-    store.dispatch(setPassphraseInvalid(false));
-    expect(tracker.track).not.toHaveBeenCalled();
   });
 });

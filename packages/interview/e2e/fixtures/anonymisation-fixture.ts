@@ -2,15 +2,22 @@ import type { Locator, Page } from '@playwright/test';
 
 import { FormFixture } from './stage-fixture.js';
 
+const RELEASE_KEY_DERIVATION_EVENT = 'e2e:release-key-derivation';
+
+const SUCCESS_MESSAGE = 'Passphrase accepted! Click "Next" to continue.';
+
 /**
- * Fixture for Anonymisation stages.
+ * Fixture for Anonymisation stages and the passphrase prompter.
  *
- * The stage renders an inline passphrase form (two PasswordFields plus a
- * "Continue" submit) over an animated EncryptionBackground; once a passphrase
- * is set the form is replaced by a success alert. When a later stage needs to
- * decrypt an encrypted variable without a passphrase in memory, the shared
- * PassphrasePrompter (🔑/⚠️ button + overlay) appears in the navigation, in
- * both the vertical rail and the horizontal bar.
+ * The stage renders an inline passphrase form over an animated
+ * EncryptionBackground. In an interview without a passphrase it asks for one
+ * to be chosen (Passphrase + Confirm Passphrase, with length rules); once one
+ * has been chosen, a remounted interview asks for it again (one Passphrase
+ * field and a line saying it was chosen earlier). Once the key is in force the
+ * form is replaced by a success alert. When a later stage needs the key and it
+ * is not in force, the shared PassphrasePrompter (🔑 button + dialog) appears
+ * in the navigation, in both the vertical rail and the horizontal bar, in the
+ * same choose or verify mode.
  *
  * Locators cite packages/interview/src/interfaces/Anonymisation/Anonymisation.tsx
  * and packages/interview/src/components/PassphrasePrompter.tsx.
@@ -28,16 +35,15 @@ export class AnonymisationFixture {
   }
 
   /**
-   * Passphrase field — `Field name="passphrase"`. Rendered both by the stage's
-   * own form (Anonymisation.tsx:131-140) and by the PassphrasePrompter overlay
-   * (PassphrasePrompter.tsx:195-202), which is why the prompter has no separate
-   * accessor: the field name is the same, so this locates whichever is present.
+   * Passphrase field — `Field name="passphrase"`, rendered both by the stage's
+   * own form and by the PassphrasePrompter dialog, which is why the prompter
+   * has no separate accessor: this locates whichever is present.
    */
   passphraseField(): Locator {
     return this.form.field('passphrase').locator('input');
   }
 
-  /** Confirm field — Field name="passphrase-2" (Anonymisation.tsx:141-150). */
+  /** Confirm field — `Field name="passphrase-2"`, only while choosing. */
   confirmField(): Locator {
     return this.form.field('passphrase-2').locator('input');
   }
@@ -55,10 +61,10 @@ export class AnonymisationFixture {
   }
 
   /**
-   * Submit button — SubmitButton with visible text "Continue"
-   * (Anonymisation.tsx:151-159). Matched by its type + visible text rather
-   * than its accessible name, because the aria-label="Submit" overrides the
-   * "Continue" text for accessible-name lookups.
+   * The stage's submit button, with visible text "Continue". Matched by its
+   * type + visible text rather than its accessible name, because the
+   * aria-label="Submit" overrides the "Continue" text for accessible-name
+   * lookups.
    */
   submitButton(): Locator {
     return this.page.locator('button[type="submit"]', { hasText: 'Continue' });
@@ -68,25 +74,46 @@ export class AnonymisationFixture {
     await this.submitButton().click();
   }
 
-  /** Success alert — Alert variant="success" (Anonymisation.tsx:112-117). */
+  /**
+   * The success alert shown once the interview's key is in force. The stage
+   * says the same thing however the key came into force: chosen on the stage,
+   * entered again on it, or entered before the stage was reached.
+   */
   successAlert(): Locator {
-    return this.page.getByText('Passphrase set successfully!');
+    return this.page.getByText(SUCCESS_MESSAGE);
   }
 
-  /** Field-level error for the passphrase field (FieldErrors.tsx:26). */
+  /**
+   * The line the stage shows above the entering form when a passphrase was
+   * chosen earlier in this interview and has to be entered again.
+   */
+  chosenEarlierNotice(): Locator {
+    return this.page.getByText(
+      'Some answers on this screen are protected by a passphrase. Keep it safe: you will need it to see or change these answers later, and it cannot be recovered if it is forgotten.',
+    );
+  }
+
+  /** The live status line shown while an entered passphrase is checked. */
+  checkingStatus(): Locator {
+    return this.page
+      .getByRole('status')
+      .filter({ hasText: 'Checking your passphrase…' });
+  }
+
+  /** Field-level error for the passphrase field. */
   passphraseError(): Locator {
     return this.page.getByTestId('passphrase-field-error');
   }
 
-  /** Field-level error for the confirm field (FieldErrors.tsx:26). */
+  /** Field-level error for the confirm field. */
   confirmError(): Locator {
     return this.page.getByTestId('passphrase-2-field-error');
   }
 
   /**
-   * Reveal the masked passphrase field — PasswordField.tsx:52-58 renders one
-   * "Show password" toggle per field, so target the first (the passphrase
-   * field's own toggle).
+   * Reveal the masked passphrase field — PasswordField renders one "Show
+   * password" toggle per field, so target the first (the passphrase field's
+   * own toggle).
    */
   async togglePasswordVisibility(): Promise<void> {
     await this.page
@@ -96,23 +123,70 @@ export class AnonymisationFixture {
   }
 
   /**
-   * The 🔑/⚠️ PassphrasePrompter button in the navigation
-   * (PassphrasePrompter.tsx:94-128). Only rendered when a passphrase is
-   * required and not currently set/valid.
+   * The 🔑 PassphrasePrompter button in the navigation. Only rendered while
+   * a screen needs the interview's key and it is not in force.
    */
   prompterButton(): Locator {
-    return this.page.getByRole('button').filter({ hasText: /🔑|⚠️/ });
+    return this.page.getByRole('button', {
+      name: 'Passphrase',
+      exact: true,
+    });
+  }
+
+  /**
+   * The prompter dialog. Its title is "Passphrase" whether the interview has
+   * one yet or not.
+   */
+  prompterDialog(): Locator {
+    return this.page.getByRole('dialog', { name: 'Passphrase', exact: true });
+  }
+
+  prompterSubmitButton(): Locator {
+    return this.page.getByRole('button', { name: 'Continue' });
   }
 
   async openPrompter(): Promise<void> {
     await this.prompterButton().click();
-    await this.page
-      .getByRole('dialog', { name: 'Enter your Passphrase' })
-      .waitFor({ state: 'visible' });
+    await this.page.getByRole('dialog').waitFor({ state: 'visible' });
   }
 
+  /** Enter a passphrase in the prompter's verify mode and submit it. */
   async submitPrompterPassphrase(value: string): Promise<void> {
     await this.passphraseField().fill(value);
-    await this.page.getByRole('button', { name: 'Submit passphrase' }).click();
+    await this.prompterSubmitButton().click();
+  }
+
+  /** Choose a passphrase in the prompter's choose mode and submit it. */
+  async choosePrompterPassphrase(value: string): Promise<void> {
+    await this.fillPassphrase(value);
+    await this.prompterSubmitButton().click();
+  }
+
+  /**
+   * Holds every key derivation the page starts until the returned function is
+   * called, so the "checking" state that otherwise lasts only as long as one
+   * PBKDF2 derivation can be observed deterministically.
+   */
+  async holdKeyDerivation(): Promise<() => Promise<void>> {
+    await this.page.evaluate((eventName) => {
+      const subtle = crypto.subtle;
+      const deriveKey = subtle.deriveKey;
+      const released = new Promise<void>((resolve) => {
+        window.addEventListener(eventName, () => resolve(), { once: true });
+      });
+      Object.defineProperty(subtle, 'deriveKey', {
+        configurable: true,
+        value: async (...args: unknown[]) => {
+          await released;
+          return Reflect.apply(deriveKey, subtle, args);
+        },
+      });
+    }, RELEASE_KEY_DERIVATION_EVENT);
+
+    return async () => {
+      await this.page.evaluate((eventName) => {
+        window.dispatchEvent(new Event(eventName));
+      }, RELEASE_KEY_DERIVATION_EVENT);
+    };
   }
 }

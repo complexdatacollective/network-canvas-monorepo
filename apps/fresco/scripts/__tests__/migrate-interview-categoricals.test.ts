@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type Codebook } from '@codaco/protocol-validation';
-import { type NcNetwork } from '@codaco/shared-consts';
+import { type NcNetwork, NcNetworkSchema } from '@codaco/shared-consts';
+import {
+  networkWithEncryptionHeader,
+  schema8EncryptedNetwork,
+} from '~/lib/__tests__/encryptedNetworks';
 import {
   migrateInterviewCategoricals,
   migrateNetworkCategoricals,
@@ -23,29 +27,33 @@ function makeCodebook(): Codebook {
     node: {
       person: {
         name: 'Person',
+        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
           [CAT_NODE]: {
             name: 'closeness',
+            label: 'Closeness',
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [
-              { label: 'Family', value: 'family' },
-              { label: 'Friend', value: 'friend' },
+              { label: { en: 'Family' }, value: 'family' },
+              { label: { en: 'Friend' }, value: 'friend' },
             ],
           },
           [ORD_NODE]: {
             name: 'frequency',
+            label: 'Frequency',
             type: 'ordinal',
             component: 'LikertScale',
             options: [
-              { label: 'Low', value: 1 },
-              { label: 'High', value: 2 },
+              { label: { en: 'Low' }, value: 1 },
+              { label: { en: 'High' }, value: 2 },
             ],
           },
           [TEXT_NODE]: {
             name: 'nickname',
+            label: 'Nickname',
             type: 'text',
             component: 'Text',
           },
@@ -55,15 +63,17 @@ function makeCodebook(): Codebook {
     edge: {
       friend: {
         name: 'Friend',
+        label: { en: 'Friend' },
         color: 'edge-color-seq-1',
         variables: {
           [CAT_EDGE]: {
             name: 'context',
+            label: 'Context',
             type: 'categorical',
             component: 'ToggleButtonGroup',
             options: [
-              { label: 'Work', value: 'work' },
-              { label: 'School', value: 'school' },
+              { label: { en: 'Work' }, value: 'work' },
+              { label: { en: 'School' }, value: 'school' },
             ],
           },
         },
@@ -73,11 +83,12 @@ function makeCodebook(): Codebook {
       variables: {
         [CAT_EGO]: {
           name: 'identity',
+          label: 'Identity',
           type: 'categorical',
           component: 'CheckboxGroup',
           options: [
-            { label: 'A', value: 'a' },
-            { label: 'B', value: 'b' },
+            { label: { en: 'A' }, value: 'a' },
+            { label: { en: 'B' }, value: 'b' },
           ],
         },
       },
@@ -188,6 +199,34 @@ describe('migrateNetworkCategoricals', () => {
     const result = migrateNetworkCategoricals(network, makeCodebook());
     expect(result.changed).toBe(false);
     expect(result.network.nodes[0]?.attributes).not.toHaveProperty(CAT_NODE);
+  });
+
+  it.each([
+    {
+      label: 'the encryption header and IV-only values',
+      encrypted: networkWithEncryptionHeader,
+    },
+    {
+      label: 'schema 8 values without a header',
+      encrypted: schema8EncryptedNetwork,
+    },
+  ])('keeps $label in a network it rewrites', ({ encrypted }) => {
+    const withCategorical = (value: string | string[]) => ({
+      ...encrypted,
+      nodes: encrypted.nodes.map((node) => ({
+        ...node,
+        attributes: { ...node.attributes, [CAT_NODE]: value },
+      })),
+    });
+
+    // The migration writes back what it parsed from the row.
+    const result = migrateNetworkCategoricals(
+      NcNetworkSchema.parse(withCategorical('family')),
+      makeCodebook(),
+    );
+
+    expect(result.changed).toBe(true);
+    expect(result.network).toStrictEqual(withCategorical(['family']));
   });
 
   it('reports no change when a network has no categorical scalars', () => {

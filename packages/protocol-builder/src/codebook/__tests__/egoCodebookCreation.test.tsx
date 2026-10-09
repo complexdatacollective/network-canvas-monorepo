@@ -40,7 +40,7 @@ const SUBJECT = { entity: 'ego' } as const;
 const ANA = { sessionId: 'session-ana', userId: 'ana', displayName: 'Ana' };
 
 const AGE = {
-  age: { name: 'age', type: 'number' },
+  age: { name: 'age', label: 'Age', type: 'number' },
 } as const;
 
 /** The protocol as it is before the researcher has asked the participant anything. */
@@ -210,7 +210,13 @@ function racedByACollaborator(host: InMemoryHost): ProtocolBuilderAdapter {
       requestId: 'ana-adds-the-first-attribute',
       kind: 'codebookEgo',
       document: Redacted.make({
-        variables: { pronouns: { name: 'pronouns', type: 'text' } },
+        variables: {
+          pronouns: {
+            name: 'pronouns',
+            label: 'Pronouns',
+            type: 'text',
+          },
+        },
       }),
     });
   });

@@ -14,6 +14,8 @@ const {
   requireApiAuth,
   findProtocol,
   createInterview,
+  findInterviews,
+  updateInterview,
   generateNetwork,
   addEvent,
   captureException,
@@ -21,6 +23,8 @@ const {
   requireApiAuth: vi.fn(),
   findProtocol: vi.fn(),
   createInterview: vi.fn(),
+  findInterviews: vi.fn(),
+  updateInterview: vi.fn(),
   generateNetwork: vi.fn(),
   addEvent: vi.fn(),
   captureException: vi.fn(),
@@ -40,7 +44,11 @@ vi.mock('~/lib/activityFeed', () => ({ addEvent }));
 vi.mock('~/lib/db', () => ({
   prisma: {
     protocol: { findUnique: findProtocol },
-    interview: { create: createInterview },
+    interview: {
+      create: createInterview,
+      findMany: findInterviews,
+      update: updateInterview,
+    },
   },
 }));
 vi.mock('@codaco/protocol-utilities', async (importOriginal) => ({
@@ -69,7 +77,12 @@ const intl = (locale: string) =>
 beforeEach(() => {
   vi.resetAllMocks();
   requireApiAuth.mockResolvedValue({ user: { username: 'Researcher' } });
-  findProtocol.mockResolvedValue({ name: 'Fixture', stages: [], codebook: {} });
+  findProtocol.mockResolvedValue({
+    name: 'Fixture',
+    stages: [],
+    codebook: {},
+    localization: { defaultLocale: 'en', locales: ['en'] },
+  });
   createInterview.mockResolvedValue({ id: 'created-interview-1' });
   generateNetwork.mockReturnValue({
     network: {},
@@ -130,6 +143,7 @@ describe('synthetic generation failure transport', () => {
       name: 'Fixture',
       stages: [{ id: 'stage-1', type: 'NotAnInterface' }],
       codebook: {},
+      localization: { defaultLocale: 'en', locales: ['en'] },
     });
     const response = await POST(request());
     expect(response.status).toBe(500);
@@ -197,5 +211,91 @@ describe('synthetic generation failure transport', () => {
     expect(stream).toContain(`"message":${JSON.stringify(error.message)}`);
     expect(createInterview).toHaveBeenCalledOnce();
     expect(addEvent).not.toHaveBeenCalled();
+  });
+});
+
+describe('the finish recorded for generated interviews', () => {
+  const finishStage = {
+    id: 'end-ineligible',
+    type: 'FinishSession',
+    label: { en: 'Finish' },
+    title: { en: 'Finish' },
+    content: { en: 'Thank you.' },
+    finishLabel: { en: 'Finish' },
+    finishConfirmation: { en: 'Finish this interview?' },
+    finishedNotice: { en: 'This interview is finished.' },
+    finishFailed: { en: 'The interview could not be finished.' },
+    outcome: 'ineligible',
+  };
+  // Stored as a valid schema 9 design, which the route parses before it
+  // generates anything.
+  const protocolWithFinish = {
+    name: 'Fixture',
+    codebook: {},
+    localization: { defaultLocale: 'en', locales: ['en'] },
+    stages: [
+      {
+        id: 'info',
+        type: 'Information',
+        label: { en: 'Info' },
+        title: { en: 'Info' },
+        items: [],
+      },
+      finishStage,
+    ],
+  };
+
+  it('records the protocol’s finish stage and outcome on a completed interview, and none on one that dropped out', async () => {
+    findProtocol.mockResolvedValue(protocolWithFinish);
+    generateNetwork
+      .mockReturnValueOnce({ network: {}, currentStep: 1, droppedOut: false })
+      .mockReturnValueOnce({ network: {}, currentStep: 0, droppedOut: true });
+
+    await (await POST(request())).text();
+
+    const [completed, droppedOut] = createInterview.mock.calls.map(
+      ([args]) => (args as { data: Record<string, unknown> }).data,
+    );
+    expect(completed).toMatchObject({
+      finishStageId: 'end-ineligible',
+      finishOutcome: 'ineligible',
+    });
+    expect(completed?.finishTime).toBeInstanceOf(Date);
+    expect(droppedOut?.finishTime).toBeNull();
+    expect(droppedOut).not.toHaveProperty('finishStageId');
+    expect(droppedOut).not.toHaveProperty('finishOutcome');
+  });
+
+  it('records them when an interview that dropped out is completed to meet the minimum', async () => {
+    findProtocol.mockResolvedValue(protocolWithFinish);
+    generateNetwork.mockReturnValue({
+      network: {},
+      currentStep: 0,
+      droppedOut: true,
+    });
+    findInterviews.mockResolvedValue([
+      { id: 'created-interview-1', startTime: new Date() },
+    ]);
+
+    await (
+      await POST(
+        request(
+          JSON.stringify({
+            protocolId: 'protocol-1',
+            count: 2,
+            simulateDropOut: true,
+          }),
+        ),
+      )
+    ).text();
+
+    expect(updateInterview).toHaveBeenCalledOnce();
+    expect(updateInterview.mock.calls[0]?.[0]).toMatchObject({
+      where: { id: 'created-interview-1' },
+      data: {
+        finishStageId: 'end-ineligible',
+        finishOutcome: 'ineligible',
+      },
+    });
   });
 });

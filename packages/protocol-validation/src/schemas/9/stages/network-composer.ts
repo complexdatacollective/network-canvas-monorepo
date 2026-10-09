@@ -1,0 +1,210 @@
+import { z } from 'zod';
+
+import { findDuplicateValue } from '../../../utils/validation-helpers.ts';
+import {
+  EdgeStageSubjectSchema,
+  imageOrCirclesBackgroundSchema,
+  NodeStageSubjectSchema,
+  uniqueFormFieldVariables,
+} from '../common/index.ts';
+import { entityAttributeReference } from '../entity-attribute-reference.ts';
+import { localizedString, nonBlankText } from '../localized-string.ts';
+import { ComponentTypes } from '../variables/types.ts';
+import {
+  datePickerParametersSchema,
+  relativeDatePickerParametersSchema,
+} from '../variables/variable.ts';
+import { baseStageSchema } from './base.ts';
+
+// Every input control the form system can render except VisualAnalogScale,
+// whose parameters carry participant copy and so have their own branch below.
+// Layout/location variables have no participant-facing control, so they are
+// intentionally absent.
+const ComposerComponentSchema = z.enum([
+  ComponentTypes.Text,
+  ComponentTypes.TextArea,
+  ComponentTypes.Number,
+  ComponentTypes.RadioGroup,
+  ComponentTypes.CheckboxGroup,
+  ComponentTypes.Boolean,
+  ComponentTypes.Toggle,
+  ComponentTypes.ToggleButtonGroup,
+  ComponentTypes.LikertScale,
+  ComponentTypes.DatePicker,
+  ComponentTypes.RelativeDatePicker,
+]);
+
+// NetworkComposer attribute fields differ from the shared FormFieldSchema:
+// the input control (`component`) and its parameters live on the STAGE here,
+// not on the codebook variable, so the same variable can render with different
+// controls in different stages. The runtime side panel reads the control from
+// this field (see interview/src/selectors/forms.ts). `label` captions the
+// field in the drawer. It is required and not blank, like a shared form
+// field's `prompt`: the codebook variable's own label is plain text that is
+// never translated, so it cannot stand in for a caption the participant reads.
+const composerFormFieldShape = {
+  // Architect assigns a stable id (uuid) on creation so the editor's
+  // OrderedList / motion Reorder keying survives reorder + delete; it is
+  // persisted, so the schema must tolerate it.
+  id: z.string().optional(),
+  variable: entityAttributeReference({
+    subject: 'stageSubject',
+    usage: 'validatedAttribute',
+  }),
+  label: localizedString(nonBlankText(), 'markdown'),
+  hint: localizedString(z.string(), 'markdown').optional(),
+  showValidationHints: z.boolean().optional(),
+};
+
+// The scale's end labels are participant copy, so they need a typed path the
+// localization walker can find; any other parameter key stays as permissive as
+// every other control's parameters.
+const ComposerScaleFieldSchema = z.strictObject({
+  ...composerFormFieldShape,
+  component: z.literal(ComponentTypes.VisualAnalogScale),
+  parameters: z
+    .looseObject({
+      minLabel: localizedString(z.string(), 'markdown').optional(),
+      maxLabel: localizedString(z.string(), 'markdown').optional(),
+    })
+    .optional(),
+});
+
+const ComposerControlFieldSchema = z
+  .strictObject({
+    ...composerFormFieldShape,
+    component: ComposerComponentSchema,
+    parameters: z.record(z.string(), z.unknown()).optional(),
+  })
+  .superRefine((field, ctx) => {
+    // A DatePicker/RelativeDatePicker field's `parameters` must satisfy the
+    // same shape and refinement as the codebook variable's own DatePicker/
+    // RelativeDatePicker parameters (see variable.ts) — otherwise a stage
+    // field could carry an out-of-resolution or min>max window the codebook
+    // schema would reject anywhere else. Every other component's parameters
+    // keep the unrestricted record shape above: `field.parameters` there
+    // stays a loose `Record<string, unknown>` rather than narrowing per
+    // component, matching how interview's forms.ts consumes it.
+    const parametersSchema =
+      field.component === ComponentTypes.DatePicker
+        ? datePickerParametersSchema
+        : field.component === ComponentTypes.RelativeDatePicker
+          ? relativeDatePickerParametersSchema
+          : undefined;
+    if (!parametersSchema) return;
+    const result = parametersSchema.optional().safeParse(field.parameters);
+    if (result.success) return;
+    for (const issue of result.error.issues) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: issue.message,
+        path: ['parameters', ...issue.path],
+      });
+    }
+  });
+
+export const ComposerFormFieldSchema = z.discriminatedUnion('component', [
+  ComposerScaleFieldSchema,
+  ComposerControlFieldSchema,
+]);
+export type ComposerFormField = z.infer<typeof ComposerFormFieldSchema>;
+
+// Title-less, and (unlike TitlelessFormSchema) `fields` is optional / may be
+// empty — a stage can have no editable attributes, and the editor's `prune`
+// strips an empty fields array on save. The runtime renders "No attributes to
+// edit" for an empty/absent form.
+export const ComposerFormSchema = z.strictObject({
+  // `uniqueFormFieldVariables` is the SAME rule the shared form schemas apply
+  // (see its definition in `common/forms.ts` for why one form may not write a
+  // variable twice); a composer field is structurally a form field, so it uses
+  // the shared refinement rather than a second copy that could drift.
+  fields: z
+    .array(ComposerFormFieldSchema)
+    .superRefine(uniqueFormFieldVariables)
+    .optional(),
+});
+export type ComposerForm = z.infer<typeof ComposerFormSchema>;
+
+export const networkComposerStage = baseStageSchema.extend({
+  type: z.literal('NetworkComposer'),
+  subject: NodeStageSubjectSchema,
+  // The text variable populated by the inline quick-add name field when a node
+  // is added from the tool palette. The quick-add field now runs the variable's
+  // codebook validation (see interview's AddNodeInput), so it is a validated
+  // writer like any other form field.
+  quickAdd: entityAttributeReference({
+    subject: 'stageSubject',
+    usage: 'validatedAttribute',
+  }),
+  // The layout variable that stores each node's { x, y } position. The canvas
+  // merges positions into node attributes under this key, so any other type
+  // would have its collected value overwritten.
+  layoutVariable: entityAttributeReference({
+    subject: 'stageSubject',
+    requireType: ['layout'],
+    usage: 'unvalidatedAttribute',
+  }),
+  // Attribute form shown in the inspector when a node is selected.
+  nodeForm: ComposerFormSchema.optional(),
+  // The categorical variable whose values are drawn as convex hulls.
+  // Participants toggle a node's group membership (a value of this variable)
+  // via the Groups tool or by lasso-selecting nodes; membership also drives
+  // the automatic layout's group-cohesion force. Those interactions write
+  // directly to the node without applying the variable's validation rules.
+  convexHullVariable: entityAttributeReference({
+    subject: 'stageSubject',
+    requireType: ['categorical'],
+    usage: 'unvalidatedAttribute',
+  }).optional(),
+  background: imageOrCirclesBackgroundSchema,
+  // The interview's own words on this stage, which Network Canvas supplies
+  // (`stage-wording/network-composer.ts`). `groupsHeading` and
+  // `tooltips.drawConnection` are required only while the stage has groups and
+  // edge types, which the protocol checks (`missingRequiredStageSettings`).
+  addNamePlaceholder: localizedString(nonBlankText(), 'plain'),
+  overtakenEditNotice: localizedString(nonBlankText(), 'plain'),
+  groupsHeading: localizedString(nonBlankText(), 'plain').optional(),
+  tooltips: z.strictObject({
+    addPerson: localizedString(nonBlankText(), 'plain'),
+    automaticLayout: localizedString(nonBlankText(), 'plain'),
+    drawConnection: localizedString(nonBlankText(), 'plain').optional(),
+  }),
+  behaviours: z
+    .strictObject({
+      // Whether automatic (force-directed) layout is ON when the stage first
+      // opens. A flat boolean, matching the shared canvas behaviours used by the
+      // Sociogram and Narrative. Unlike those, NetworkComposer treats this only
+      // as the DEFAULT: participants turn automatic layout on and off during the
+      // interview via a toggle, and that live choice is persisted in stage
+      // metadata (see NetworkComposerStageMetadataSchema).
+      automaticLayout: z.boolean().optional(),
+    })
+    .optional(),
+  // Each entry is a drawable edge type. `subject` carries the edge type so an
+  // edge form's fields resolve their variable references against that edge type
+  // (via collectEntityAttributeReferences' stageSubjectOf), not the node subject.
+  // Optional: a stage may define no edge types, and the editor's `prune` strips
+  // an empty edges array on save (so it arrives undefined, not []).
+  edges: z
+    .array(
+      z.strictObject({
+        id: z.string(),
+        subject: EdgeStageSubjectSchema,
+        form: ComposerFormSchema.optional(),
+      }),
+    )
+    .superRefine((edges, ctx) => {
+      // Edge TYPE IDS, not names: compared exactly, never case-folded.
+      const duplicateType = findDuplicateValue(
+        edges.map((edge) => edge.subject.type),
+      );
+      if (duplicateType) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `Network Composer edges contain duplicate type "${duplicateType}"`,
+          path: [],
+        });
+      }
+    })
+    .optional(),
+});

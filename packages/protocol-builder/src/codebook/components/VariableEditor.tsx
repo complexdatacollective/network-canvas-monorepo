@@ -1,8 +1,8 @@
 import { Lock, Plus, Trash2 } from 'lucide-react';
 import {
-  type ComponentType,
   createElement,
   type FormEvent,
+  type ReactNode,
   useCallback,
   useEffect,
   useId,
@@ -33,16 +33,19 @@ import {
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
+  type LocalizedString,
   type VariableOption,
   type VariableType,
   VariableTypes,
 } from '@codaco/protocol-validation';
-import { toCanonicalText } from '@codaco/shared-consts';
+import { normalizeCodebookName, toCanonicalText } from '@codaco/shared-consts';
 import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 
-import OptionLabelField from '../../fields/OptionLabelField.tsx';
+import { LocalizedOptionLabelField } from '../../fields/LocalizedStringField.tsx';
 import { optionLabelIssues } from '../../form/arrayFields/cellRules.ts';
 import { useEditedCells } from '../../form/arrayFields/useEditedCells.ts';
+import { asLocalizedString } from '../../localization/localizedText.ts';
+import { useLocalizedText } from '../../localization/ProtocolLocalization.tsx';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 import {
   variableParametersMessages,
@@ -58,7 +61,12 @@ import {
   type CodebookDraftIssue,
   type CodebookSubject,
   type CodebookVariableDraft,
+  withSeededVariableLabel,
 } from '../editing.ts';
+import type {
+  OptionRowChoiceValue,
+  VariableEditorHostOptions,
+} from '../optionRowChoice.ts';
 import {
   type BooleanAnswer,
   type BooleanAnswerIssues,
@@ -82,6 +90,7 @@ import {
   validateParameters,
   type ParameterShape,
 } from '../variableParameters.ts';
+import { stageManagedOptionsNote } from '../variableRoles.ts';
 import { VARIABLE_TYPE_OPTIONS } from '../variableTypeLabels.ts';
 import { rulesSurvivingTypeChange } from '../variableValidation.ts';
 import type { CodebookWriteOutcome } from '../writes.ts';
@@ -133,6 +142,19 @@ const messages = defineMessages({
     description:
       'Guidance under the attribute name field. Exported data is the file a researcher analyses after the interviews.',
   },
+  labelLabel: {
+    id: 'protocolBuilder.codebookVariable.labelLabel',
+    defaultMessage: 'Attribute label',
+    description:
+      'Label of the field holding a readable label for this attribute (a codebook variable), as opposed to the attribute name the exported data uses.',
+  },
+  labelHint: {
+    id: 'protocolBuilder.codebookVariable.labelHint',
+    defaultMessage:
+      'A readable label for this attribute. It is not translated. Left empty, the attribute name is used.',
+    description:
+      'Guidance under the attribute label field. The attribute name is the field above it, holding the researcher’s own name for the attribute.',
+  },
   typeLabel: {
     id: 'protocolBuilder.codebookVariable.typeLabel',
     defaultMessage: 'Attribute type',
@@ -161,22 +183,16 @@ const messages = defineMessages({
   heldAnswersCaption: {
     id: 'protocolBuilder.codebookVariable.heldAnswersCaption',
     defaultMessage:
-      'A yes/no attribute is written here as two answers, and this one offers a different number of them. They are shown as they are, and saving leaves them unchanged.',
+      'A boolean attribute is written here as two answers, and this one offers a different number of them. They are shown as they are, and saving leaves them unchanged.',
     description:
-      'Caption over the read-only list of answers a yes/no attribute offers, shown when the attribute holds some number of answers other than the two this editor writes. It says that saving the attribute does not alter them.',
+      'Caption over the read-only list of answers a boolean (yes/no) attribute offers, shown when the attribute holds some number of answers other than the two this editor writes. It says that saving the attribute does not alter them.',
   },
   heldAnswerValuesCaption: {
     id: 'protocolBuilder.codebookVariable.heldAnswerValuesCaption',
     defaultMessage:
-      'A yes/no attribute is written here as two answers, one recording “true” and the other “false”. This one’s answers record something else, so they are shown as they are, and saving leaves them unchanged.',
+      'A boolean attribute is written here as two answers, one recording “true” and the other “false”. This one’s answers record something else, so they are shown as they are, and saving leaves them unchanged.',
     description:
-      'Caption over the read-only list of answers a yes/no attribute offers, shown when the attribute holds two answers that do not record one “true” and one “false” — both recording the same one, for instance. It says that saving the attribute does not alter them. “true” and “false” are the literal values the protocol stores and stay as they are.',
-  },
-  optionLabelField: {
-    id: 'protocolBuilder.codebookVariable.optionLabelField',
-    defaultMessage: 'Option {index} label',
-    description:
-      'Label of the field holding what a participant reads for one allowed answer. index is that answer’s position in the list, counting from one, and is passed as text because the researcher reads it as this row’s name.',
+      'Caption over the read-only list of answers a boolean (yes/no) attribute offers, shown when the attribute holds two answers that do not record one “true” and one “false” — both recording the same one, for instance. It says that saving the attribute does not alter them. “true” and “false” are the literal values the protocol stores and stay as they are.',
   },
   optionValueField: {
     id: 'protocolBuilder.codebookVariable.optionValueField',
@@ -223,11 +239,7 @@ const messages = defineMessages({
   },
 });
 
-const OptionLabelControl = OptionLabelField as ComponentType<
-  Record<string, unknown>
->;
-
-const VARIABLE_EDITOR_PROPERTIES = ['name', 'type'] as const;
+const VARIABLE_EDITOR_PROPERTIES = ['name', 'label', 'type'] as const;
 
 /**
  * What the answers surface REPLACES, which is `options` whatever it renders.
@@ -277,7 +289,8 @@ const TYPE_OWNED_PROPERTIES = [
 const PARAMETER_OWNED_PROPERTIES = ['parameters'] as const;
 
 type EditableOption = Readonly<{
-  label: string;
+  /** Absent until the option has words in at least one language. */
+  label?: LocalizedString;
   value: string | number;
 }>;
 
@@ -311,7 +324,8 @@ type VariableEditorCommonProps = Readonly<{
   ): Promise<CodebookWriteOutcome>;
   /**
    * Receives the stable record id after the save is accepted, and the
-   * researcher-facing name it was written under.
+   * researcher-facing name it was written under, with the choice made on each
+   * saved option's row when the host asked for one (`optionRowChoice`).
    *
    * The NAME as well as the id, because a caller that can no longer use what
    * was created has to say where it went, and the id is a record key the
@@ -319,10 +333,24 @@ type VariableEditorCommonProps = Readonly<{
    * than out of the codebook afterwards: what a caller is told is what it
    * asked the host to write.
    */
-  onComplete(variableId: string, variableName: string): void;
+  onComplete(
+    variableId: string,
+    variableName: string,
+    optionRowChoices?: readonly OptionRowChoiceValue[],
+  ): void;
   onDraftChange?(draft: CodebookVariableDraft): void;
   allowedVariableTypes?: readonly VariableType[];
   lockedOptions?: readonly VariableOption[] | null;
+  /**
+   * The stages that manage this attribute's options, by label, when the editor
+   * is opened from anywhere but a stage that does (see
+   * `useStageManagedOptionsLock`, which a host asks).
+   *
+   * The options are then shown read-only under a note naming those stages, and
+   * a save leaves them alone: they are the stage's to change, because it
+   * decides what each one means. Absent or empty, the options edit as usual.
+   */
+  managedByStages?: readonly string[] | null;
   readOnly?: boolean;
   title?: string;
   /**
@@ -348,7 +376,8 @@ type VariableEditorCommonProps = Readonly<{
   footerSlot?: HTMLElement | null;
   /** What Cancel does, for a dialog host. */
   onCancel?: () => void;
-}>;
+}> &
+  VariableEditorHostOptions;
 
 export type VariableEditorProps =
   | (VariableEditorCommonProps &
@@ -399,10 +428,13 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     onDraftChange,
     allowedVariableTypes,
     lockedOptions = null,
+    managedByStages = null,
     readOnly = false,
     chrome = 'page',
     footerSlot = null,
     onCancel,
+    typeFixed = false,
+    optionRowChoice,
   } = props;
   const intl = useAppIntl();
   const title =
@@ -434,11 +466,27 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   const { hasEdited, markEdited } = useEditedCells();
   const failureRef = useRef<HTMLDivElement>(null);
   const optionKeySequence = useRef(0);
-  const [optionKeys, setOptionKeys] = useState(() =>
-    readEditableOptions(seededDraft.options).map(
+  // The rows the editor opens with, and the host's choice on each of them: one
+  // reading, so a key and the choice filed under it cannot come from two.
+  const [openedRows] = useState(() => {
+    const openedOptions = readEditableOptions(seededDraft.options);
+    const keys = openedOptions.map(
       () => `initial-option-${optionKeySequence.current++}`,
-    ),
-  );
+    );
+    const choices: Record<string, string> = {};
+    if (optionRowChoice !== undefined) {
+      openedOptions.forEach((option, index) => {
+        const key = keys[index];
+        if (key !== undefined)
+          choices[key] = optionRowChoice.initialValue(option);
+      });
+    }
+    return { keys, choices };
+  });
+  const [optionKeys, setOptionKeys] = useState(openedRows.keys);
+  const [rowChoices, setRowChoices] = useState<
+    Readonly<Record<string, string>>
+  >(openedRows.choices);
   const options = readEditableOptions(draft.options);
   const selectedType = variableTypeFrom(draft.type);
   const currentAuthoritativeVariable =
@@ -457,25 +505,35 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   const parameterShape = parameterShapeFor(draft.type, draft.component);
   // Which list of answers this attribute holds, on the same terms.
   const optionsShape = optionsShapeFor(draft.type, draft.component);
+  // Whether a stage manages the options, which makes them its to write and
+  // not this editor's: they are shown, and a save leaves them as they are.
+  const stageManaged = managedByStages !== null && managedByStages.length > 0;
   const replaceProperties = variableEditorReplaceProperties(
     typeChanged,
     parameterShape,
+    stageManaged,
   );
+  // A label left empty is written from the name, as every other way of
+  // creating an attribute writes it.
+  const labelledDraft = withSeededVariableLabel(draft);
   const submittedDraft =
     props.mode === 'create'
       ? draftWithOwnedBlocks(
-          draft,
+          labelledDraft,
           seededDraft.options,
           parameterShape,
           optionsShape,
         )
-      : draftOwnedByVariableEditor(
-          draft,
-          seededDraft.options,
-          lockedOptions !== null,
-          typeChanged,
-          parameterShape,
-          optionsShape,
+      : withoutStageManagedOptions(
+          draftOwnedByVariableEditor(
+            labelledDraft,
+            seededDraft.options,
+            lockedOptions !== null,
+            typeChanged,
+            parameterShape,
+            optionsShape,
+          ),
+          stageManaged,
         );
   const hasOptions = optionsShape === 'choice';
   // Whether the two-answer fieldset is the right editor for what this
@@ -486,8 +544,35 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   const booleanAnswersEditable = heldAnswersReason === null;
   const booleanAnswers = readBooleanAnswers(draft.options);
   const heldBooleanAnswers = readHeldBooleanAnswers(draft.options);
-  const optionsLocked = lockedOptions !== null || draft.readOnly === true;
+  const optionsLocked =
+    lockedOptions !== null || draft.readOnly === true || stageManaged;
   const interactionDisabled = readOnly || busy;
+  const rowChoice =
+    optionRowChoice !== undefined && hasOptions && !optionsLocked
+      ? optionRowChoice
+      : undefined;
+  const choiceOnRow = (index: number): string =>
+    rowChoices[optionKeys[index] ?? ''] ?? rowChoice?.addedValue ?? '';
+  // What the host is handed on save: one entry per option as it will be
+  // written, so a removed option is not in it and an added one is.
+  const savedRowChoices: readonly OptionRowChoiceValue[] | undefined =
+    rowChoice === undefined
+      ? undefined
+      : options.map((option, index) => ({
+          value: option.value,
+          choice: choiceOnRow(index),
+        }));
+  // A choice changed with the options left as they were is still a change:
+  // the codebook is not written, but the host is handed the choices.
+  const rowChoicesChanged =
+    savedRowChoices !== undefined &&
+    canonicalize(savedRowChoices) !==
+      canonicalize(
+        readEditableOptions(seededDraft.options).map((option, index) => ({
+          value: option.value,
+          choice: openedRows.choices[openedRows.keys[index] ?? ''] ?? '',
+        })),
+      );
   const unchangedUpdate =
     props.mode === 'update' &&
     currentAuthoritativeVariable !== null &&
@@ -613,7 +698,20 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
       ]);
       return;
     }
-    if (unchangedUpdate) return;
+    if (unchangedUpdate) {
+      // Nothing for the codebook, but the host's own choices moved: handed
+      // over as a save would hand them, with no write in between.
+      if (rowChoicesChanged) {
+        onComplete(
+          variableId,
+          typeof submittedDraft.name === 'string' ? submittedDraft.name : '',
+          // Only for a host that asked: every other host is called as it
+          // always was.
+          ...(savedRowChoices === undefined ? [] : [savedRowChoices]),
+        );
+      }
+      return;
+    }
     // Judged here for the reason the parameters are, and one of its own: the
     // schema takes any string as a label, so nothing downstream refuses an
     // answer with no words on it.
@@ -715,7 +813,12 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
       if (outcome.status === 'applied') {
         onComplete(
           variableId,
-          typeof submittedDraft.name === 'string' ? submittedDraft.name : '',
+          typeof submittedDraft.name === 'string'
+            ? normalizeCodebookName(submittedDraft.name)
+            : '',
+          // Only for a host that asked: every other host is called as it
+          // always was.
+          ...(savedRowChoices === undefined ? [] : [savedRowChoices]),
         );
         return;
       }
@@ -740,6 +843,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   const labelCell = (index: number) => `${optionKeys[index] ?? index}-label`;
 
   const nameErrors = messagesAt(issues, 'name');
+  const labelErrors = messagesAt(issues, 'label');
   const typeErrors = messagesAt(issues, 'type');
   const optionErrors = messagesAt(issues, 'options');
   const answerIssues = booleanAnswerMessages(issues);
@@ -782,7 +886,9 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
         type="submit"
         form={formId}
         color="primary"
-        disabled={interactionDisabled || unchangedUpdate}
+        disabled={
+          interactionDisabled || (unchangedUpdate && !rowChoicesChanged)
+        }
         aria-busy={busy}
       >
         {intl.formatMessage(
@@ -878,18 +984,49 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
             showErrors={nameErrors.length > 0}
           />
           <UnconnectedField
-            name="variable-type"
-            label={intl.formatMessage(messages.typeLabel)}
-            component={NativeSelectField}
-            placeholder={intl.formatMessage(messages.typePlaceholder)}
-            options={typeOptions}
-            value={selectedType ?? ''}
-            onChange={handleTypeChange}
-            required
-            readOnly={interactionDisabled || optionsLocked}
-            errors={typeErrors}
-            showErrors={typeErrors.length > 0}
+            name="variable-label"
+            label={intl.formatMessage(messages.labelLabel)}
+            hint={intl.formatMessage(messages.labelHint)}
+            component={InputField}
+            placeholder={
+              typeof draft.name === 'string' ? draft.name : undefined
+            }
+            value={typeof draft.label === 'string' ? draft.label : ''}
+            onChange={(label) => replaceProperty('label', label ?? '')}
+            readOnly={interactionDisabled}
+            errors={labelErrors}
+            showErrors={labelErrors.length > 0}
           />
+          {typeFixed ? (
+            // Shown rather than offered: the host's attribute can only be
+            // this type, and a list with one entry in it reads as a choice.
+            <UnconnectedField
+              name="variable-type"
+              label={intl.formatMessage(messages.typeLabel)}
+              component={InputField}
+              value={
+                typeOptions.find(({ value }) => value === selectedType)
+                  ?.label ?? ''
+              }
+              readOnly
+              errors={typeErrors}
+              showErrors={typeErrors.length > 0}
+            />
+          ) : (
+            <UnconnectedField
+              name="variable-type"
+              label={intl.formatMessage(messages.typeLabel)}
+              component={NativeSelectField}
+              placeholder={intl.formatMessage(messages.typePlaceholder)}
+              options={typeOptions}
+              value={selectedType ?? ''}
+              onChange={handleTypeChange}
+              required
+              readOnly={interactionDisabled || optionsLocked}
+              errors={typeErrors}
+              showErrors={typeErrors.length > 0}
+            />
+          )}
 
           {hasOptions && (
             <fieldset
@@ -911,7 +1048,11 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               {optionsLocked ? (
                 <LockedOptions
                   options={options}
-                  caption={intl.formatMessage(messages.lockedOptionsCaption)}
+                  caption={
+                    stageManaged
+                      ? stageManagedOptionsNote(managedByStages, intl)
+                      : intl.formatMessage(messages.lockedOptionsCaption)
+                  }
                 />
               ) : (
                 <div className="flex flex-col gap-4">
@@ -929,25 +1070,22 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                           <UnconnectedField
                             name={`option-${index + 1}-label`}
                             label={intl.formatMessage(
-                              messages.optionLabelField,
+                              variableValuesMessages.optionLabelField,
                               // The one-based position is passed as text, not as
                               // a number: the researcher reads it as this row's
                               // name, and a grouped thousands separator would
                               // make it a different name.
                               { index: String(index + 1) },
                             )}
-                            component={OptionLabelControl}
+                            component={LocalizedOptionLabelField}
                             value={option.label}
-                            onChange={(label: unknown) => {
-                              const written =
-                                typeof label === 'string' ? label : '';
-                              markEdited(
-                                labelCell(index),
-                                written,
-                                option.label,
-                              );
+                            onChange={(label: LocalizedString | undefined) => {
+                              markEdited(labelCell(index), label, option.label);
                               const next = [...options];
-                              next[index] = { ...option, label: written };
+                              next[index] =
+                                label === undefined
+                                  ? { value: option.value }
+                                  : { ...option, label };
                               replaceOptions(next);
                             }}
                             required
@@ -959,27 +1097,49 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                                 0
                             }
                           />
-                          <UnconnectedField
-                            name={`option-${index + 1}-value`}
-                            label={intl.formatMessage(
-                              messages.optionValueField,
-                              {
-                                index: String(index + 1),
-                              },
+                          <BesideEachOther beside={rowChoice !== undefined}>
+                            <UnconnectedField
+                              name={`option-${index + 1}-value`}
+                              label={intl.formatMessage(
+                                messages.optionValueField,
+                                {
+                                  index: String(index + 1),
+                                },
+                              )}
+                              component={InputField}
+                              value={String(option.value)}
+                              onChange={(value) => {
+                                const next = [...options];
+                                next[index] = {
+                                  ...option,
+                                  value: parseOptionValue(value ?? ''),
+                                };
+                                replaceOptions(next);
+                              }}
+                              required
+                              readOnly={interactionDisabled}
+                            />
+                            {rowChoice !== undefined && (
+                              <UnconnectedField
+                                name={`option-${index + 1}-choice`}
+                                label={rowChoice.label(String(index + 1))}
+                                component={NativeSelectField}
+                                options={[...rowChoice.choices]}
+                                value={choiceOnRow(index)}
+                                onChange={(next) => {
+                                  if (typeof next !== 'string') return;
+                                  const key = optionKeys[index];
+                                  if (key === undefined) return;
+                                  setRowChoices((current) => ({
+                                    ...current,
+                                    [key]: next,
+                                  }));
+                                }}
+                                required
+                                readOnly={interactionDisabled}
+                              />
                             )}
-                            component={InputField}
-                            value={String(option.value)}
-                            onChange={(value) => {
-                              const next = [...options];
-                              next[index] = {
-                                ...option,
-                                value: parseOptionValue(value ?? ''),
-                              };
-                              replaceOptions(next);
-                            }}
-                            required
-                            readOnly={interactionDisabled}
-                          />
+                          </BesideEachOther>
                         </div>
                         <IconButton
                           icon={<Trash2 aria-hidden="true" />}
@@ -1017,7 +1177,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                         ...current,
                         `new-option-${optionKeySequence.current++}`,
                       ]);
-                      replaceOptions([...options, { label: '', value: '' }]);
+                      replaceOptions([...options, { value: '' }]);
                     }}
                   >
                     {intl.formatMessage(variableValuesMessages.addOption)}
@@ -1136,6 +1296,19 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
       </EnclosingHeadingLevel>
     </Surface>
   );
+}
+
+/**
+ * An options list a stage manages is not this editor's to write, so a save of
+ * the rest of the attribute leaves it exactly as the host holds it.
+ */
+function withoutStageManagedOptions(
+  draft: CodebookVariableDraft,
+  stageManaged: boolean,
+): CodebookVariableDraft {
+  if (!stageManaged) return draft;
+  const { options: _options, ...rest } = draft;
+  return rest;
 }
 
 function draftWithLockedOptions(
@@ -1261,11 +1434,12 @@ function draftWithSeededResolution(
 function variableEditorReplaceProperties(
   includeTypeMetadata: boolean,
   parameterShape: ParameterShape | null,
+  stageManagedOptions: boolean,
 ): readonly string[] {
   return [
     ...new Set([
       ...VARIABLE_EDITOR_PROPERTIES,
-      ...OPTIONS_OWNED_PROPERTIES,
+      ...(stageManagedOptions ? [] : OPTIONS_OWNED_PROPERTIES),
       ...(includeTypeMetadata ? TYPE_OWNED_PROPERTIES : []),
       ...(parameterShape === null ? [] : PARAMETER_OWNED_PROPERTIES),
     ]),
@@ -1340,15 +1514,19 @@ function variableFromDocument(
 
 function readEditableOptions(value: unknown): EditableOption[] {
   if (!Array.isArray(value)) return [];
-  return value.map((option) => ({
-    label:
-      isRecord(option) && typeof option.label === 'string' ? option.label : '',
-    value:
-      isRecord(option) &&
-      (typeof option.value === 'string' || typeof option.value === 'number')
-        ? option.value
-        : '',
-  }));
+  return value.map((option) => {
+    const label = isRecord(option)
+      ? asLocalizedString(option.label)
+      : undefined;
+    return {
+      ...(label === undefined ? {} : { label }),
+      value:
+        isRecord(option) &&
+        (typeof option.value === 'string' || typeof option.value === 'number')
+          ? option.value
+          : '',
+    };
+  });
 }
 
 function parseOptionValue(value: string): string | number {
@@ -1456,6 +1634,23 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
+ * An option's value and the host's choice for it, side by side where the row
+ * has the room, and stacked where it does not. Without a host choice the value
+ * field is laid out exactly as it always was.
+ */
+function BesideEachOther({
+  beside,
+  children,
+}: Readonly<{ beside: boolean; children: ReactNode }>) {
+  if (!beside) return <>{children}</>;
+  return (
+    <div className="@container">
+      <div className="grid gap-x-4 @min-[32rem]:grid-cols-2">{children}</div>
+    </div>
+  );
+}
+
+/**
  * A list of answers as they stand, with the reason they cannot be edited here.
  *
  * Two things read it: an option list one kind of interview step owns, and the
@@ -1469,12 +1664,13 @@ function LockedOptions({
   caption,
 }: {
   options: readonly Readonly<{
-    label: string;
+    label?: LocalizedString;
     value: string | number | boolean;
   }>[];
   caption: string;
 }) {
   const intl = useAppIntl();
+  const localize = useLocalizedText();
   return (
     <div className="bg-surface-2 text-surface-2-contrast relative rounded p-4">
       <Lock aria-hidden="true" className="absolute top-4 right-4 size-4" />
@@ -1491,12 +1687,17 @@ function LockedOptions({
           </tr>
         </thead>
         <tbody>
-          {options.map((option, index) => (
-            <tr key={`${String(option.value)}-${index}`}>
-              <td className="py-1">{option.label}</td>
-              <td className="font-monospace py-1">{String(option.value)}</td>
-            </tr>
-          ))}
+          {options.map((option, index) => {
+            const label = localize(option.label);
+            return (
+              <tr key={`${String(option.value)}-${index}`}>
+                <td className="py-1" lang={label.lang} dir={label.dir}>
+                  {label.text}
+                </td>
+                <td className="font-monospace py-1">{String(option.value)}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

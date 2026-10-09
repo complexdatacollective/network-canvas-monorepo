@@ -17,14 +17,13 @@ import {
   vi,
 } from 'vitest';
 
+import { createAppIntl } from '@codaco/app-i18n/messages';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import {
-  type FinishHandler,
   getLastAvailableAuthoredStageIndex,
   InterviewI18nProvider,
-  type InterviewPayload,
 } from '@codaco/interview';
 import {
   DEFAULT_SYNTHETIC_SEED,
@@ -33,6 +32,7 @@ import {
 import {
   asEntityAttributeReference,
   type CurrentProtocol,
+  getLocaleMetadata,
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import { ArchitectI18nProvider } from '~/i18n/ArchitectI18nProvider';
@@ -44,7 +44,11 @@ import type { PreviewPayload } from '../messages';
 
 vi.unmock('@codaco/fresco-ui/dialogs/useDialog');
 
-const { shellMock } = vi.hoisted(() => ({ shellMock: vi.fn() }));
+type ShellProps = ComponentProps<typeof import('@codaco/interview').Shell>;
+
+const { shellMock } = vi.hoisted(() => ({
+  shellMock: vi.fn<(props: ShellProps) => void>(),
+}));
 vi.mock('@codaco/interview', async () => {
   const actual =
     await vi.importActual<typeof import('@codaco/interview')>(
@@ -52,14 +56,23 @@ vi.mock('@codaco/interview', async () => {
     );
   return {
     ...actual,
-    Shell: (props: ComponentProps<typeof actual.Shell>) => {
+    Shell: (props: ShellProps) => {
       shellMock(props);
       return (
         <div data-testid="shell-mounted">
-          <actual.InterviewI18nProvider requestedLocale={props.requestedLocale}>
+          <actual.InterviewI18nProvider
+            requestedLocale={props.requestedLocales}
+            localePreference={props.payload.session.localePreference}
+          >
             <span data-testid="shell-finish-description">
               {props.finishConfirmationDescription}
             </span>
+            {props.completedActions?.map((action, index) => (
+              // eslint-disable-next-line react/no-array-index-key
+              <button key={index} onClick={action.onAction}>
+                {action.label}
+              </button>
+            ))}
           </actual.InterviewI18nProvider>
         </div>
       );
@@ -97,15 +110,34 @@ function QueuePreviewConfirmation({
   );
 }
 
-function makeProtocol() {
+const ENGLISH_ONLY = { defaultLocale: 'en', locales: ['en'] };
+
+function makeProtocol(localization = ENGLISH_ONLY) {
+  const text = (value: string) =>
+    Object.fromEntries(localization.locales.map((locale) => [locale, value]));
   return {
     name: 'T',
     description: '',
-    schemaVersion: 8,
-    stages: [{ id: 's1', type: 'Information', label: 'A' }],
+    schemaVersion: 9,
+    localization,
+    stages: [
+      {
+        id: 's1',
+        type: 'Information',
+        label: text('A'),
+        title: text('A'),
+        items: [],
+      },
+    ],
     codebook: { node: {}, edge: {}, ego: {} },
     assetManifest: {},
   };
+}
+
+function lastShellProps(): ShellProps {
+  const props = shellMock.mock.calls.at(-1)?.[0];
+  if (!props) throw new Error('The Shell has not rendered.');
+  return props;
 }
 
 // A protocol whose validation rules cannot all be satisfied: minLength exceeds
@@ -115,14 +147,21 @@ function makeUnsatisfiableProtocol() {
   return {
     name: 'T',
     description: '',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: ENGLISH_ONLY,
     stages: [
       {
         id: 's1',
         type: 'NameGenerator',
-        label: 'NG',
+        minNodesNotice: {
+          en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+        },
+        maxNodesNotice: {
+          en: 'You have completed this task. Click the next arrow to continue.',
+        },
+        label: { en: 'NG' },
         subject: { entity: 'node', type: 'node-1' },
-        prompts: [{ id: 'p1', text: 'Add people' }],
+        prompts: [{ id: 'p1', text: { en: 'Add people' } }],
         behaviours: { minNodes: 1, maxNodes: 1 },
       },
     ],
@@ -130,9 +169,11 @@ function makeUnsatisfiableProtocol() {
       node: {
         'node-1': {
           name: 'Person',
+          label: { en: 'Person' },
           variables: {
             'var-code': {
               name: 'Code',
+              label: 'Code',
               type: 'text',
               validation: { minLength: 24, maxLength: 10 },
             },
@@ -152,8 +193,9 @@ function makeUnbuildableProtocol() {
   return {
     name: 'T',
     description: '',
-    schemaVersion: 8,
-    stages: [{ id: 'x', type: 'NotAStageType', label: 'X' }],
+    schemaVersion: 9,
+    localization: ENGLISH_ONLY,
+    stages: [{ id: 'x', type: 'NotAStageType', label: { en: 'X' } }],
     codebook: { node: {}, edge: {}, ego: {} },
     assetManifest: {},
   };
@@ -163,25 +205,26 @@ function makeConsentRouteProtocol(): CurrentProtocol {
   return {
     name: 'Consent route',
     description: '',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: ENGLISH_ONLY,
     stages: [
       {
         id: 'consent',
         type: 'EgoForm',
-        label: 'Consent',
+        label: { en: 'Consent' },
         introductionPanel: {
-          title: 'Consent',
-          text: 'Review the study information.',
+          title: { en: 'Consent' },
+          text: { en: 'Review the study information.' },
         },
         form: {
           fields: [
             {
               variable: asEntityAttributeReference('screening'),
-              prompt: 'Are you eligible?',
+              prompt: { en: 'Are you eligible?' },
             },
             {
               variable: asEntityAttributeReference('consent'),
-              prompt: 'Do you consent?',
+              prompt: { en: 'Do you consent?' },
             },
           ],
         },
@@ -189,8 +232,8 @@ function makeConsentRouteProtocol(): CurrentProtocol {
       {
         id: 'background',
         type: 'Information',
-        label: 'Background',
-        title: 'Background',
+        label: { en: 'Background' },
+        title: { en: 'Background' },
         items: [],
         skipLogic: {
           action: 'SKIP',
@@ -213,16 +256,22 @@ function makeConsentRouteProtocol(): CurrentProtocol {
       {
         id: 'people',
         type: 'NameGenerator',
-        label: 'People',
+        minNodesNotice: {
+          en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+        },
+        maxNodesNotice: {
+          en: 'You have completed this task. Click the next arrow to continue.',
+        },
+        label: { en: 'People' },
         subject: { entity: 'node', type: 'person' },
-        prompts: [{ id: 'people-prompt', text: 'Name people' }],
+        prompts: [{ id: 'people-prompt', text: { en: 'Name people' } }],
         behaviours: { minNodes: 4, maxNodes: 4 },
         form: {
-          title: 'About this person',
+          title: { en: 'About this person' },
           fields: [
             {
               variable: asEntityAttributeReference('name'),
-              prompt: 'What is their name?',
+              prompt: { en: 'What is their name?' },
             },
           ],
         },
@@ -230,13 +279,13 @@ function makeConsentRouteProtocol(): CurrentProtocol {
       {
         id: 'support',
         type: 'Sociogram',
-        label: 'Exchanges of support',
+        label: { en: 'Exchanges of support' },
         subject: { entity: 'node', type: 'person' },
         background: { concentricCircles: 3 },
         prompts: [
           {
             id: 'support-prompt',
-            text: 'Place people',
+            text: { en: 'Place people' },
             layout: {
               layoutVariable: asEntityAttributeReference('layout'),
             },
@@ -246,8 +295,8 @@ function makeConsentRouteProtocol(): CurrentProtocol {
       {
         id: 'following',
         type: 'Information',
-        label: 'Following stage',
-        title: 'Following stage',
+        label: { en: 'Following stage' },
+        title: { en: 'Following stage' },
         items: [],
       },
     ],
@@ -255,19 +304,32 @@ function makeConsentRouteProtocol(): CurrentProtocol {
       node: {
         person: {
           name: 'Person',
+          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            name: { name: 'Name', type: 'text' },
-            layout: { name: 'Layout', type: 'layout' },
+            name: { name: 'Name', label: 'Name', type: 'text' },
+            layout: {
+              name: 'Layout',
+              label: 'Layout',
+              type: 'layout',
+            },
           },
         },
       },
       edge: {},
       ego: {
         variables: {
-          screening: { name: 'Screening', type: 'boolean' },
-          consent: { name: 'Consent', type: 'boolean' },
+          screening: {
+            name: 'Screening',
+            label: 'Screening',
+            type: 'boolean',
+          },
+          consent: {
+            name: 'Consent',
+            label: 'Consent',
+            type: 'boolean',
+          },
         },
       },
     },
@@ -354,11 +416,7 @@ describe('PreviewHost', () => {
     postPayload(openerStub, makePayload());
 
     expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
-    const call = shellMock.mock.calls.at(-1)?.[0] as {
-      payload: InterviewPayload;
-      currentStep: number;
-      onStepChange: (step: number) => void;
-    };
+    const call = lastShellProps();
     expect(call.payload.protocol.name).toBe('T');
     expect(call.payload.session.network.nodes).toEqual([]);
     // Shell goes read-only if currentStep is provided without onStepChange — both must be wired.
@@ -371,9 +429,7 @@ describe('PreviewHost', () => {
     postPayload(openerStub, makePayload());
 
     await screen.findByTestId('shell-mounted');
-    const call = shellMock.mock.calls.at(-1)?.[0] as {
-      allowStageNavigation: boolean;
-    };
+    const call = lastShellProps();
     expect(call.allowStageNavigation).toBe(true);
   });
 
@@ -382,9 +438,7 @@ describe('PreviewHost', () => {
     postPayload(openerStub, makePayload());
 
     await screen.findByTestId('shell-mounted');
-    const call = shellMock.mock.calls.at(-1)?.[0] as {
-      flags?: { isDevelopment?: boolean };
-    };
+    const call = lastShellProps();
     expect(call.flags?.isDevelopment).toBe(true);
   });
 
@@ -393,7 +447,7 @@ describe('PreviewHost', () => {
     postPayload(openerStub, makePayload({ startStage: 3 }));
 
     await screen.findByTestId('shell-mounted');
-    const call = shellMock.mock.calls.at(-1)?.[0] as { currentStep: number };
+    const call = lastShellProps();
     expect(call.currentStep).toBe(3);
   });
 
@@ -418,10 +472,7 @@ describe('PreviewHost', () => {
     );
 
     await screen.findByTestId('shell-mounted');
-    const call = shellMock.mock.calls.at(-1)?.[0] as {
-      payload: InterviewPayload;
-      initialStageOverrideIndex?: number;
-    };
+    const call = lastShellProps();
     expect(call.initialStageOverrideIndex).toBe(0);
     expect(call.payload.protocol.stages[0]).toHaveProperty('skipLogic');
   });
@@ -431,9 +482,7 @@ describe('PreviewHost', () => {
     postPayload(openerStub, makePayload({ respectSkipLogic: false }));
 
     await screen.findByTestId('shell-mounted');
-    const call = shellMock.mock.calls.at(-1)?.[0] as {
-      initialStageOverrideIndex?: number;
-    };
+    const call = lastShellProps();
     expect(call.initialStageOverrideIndex).toBeUndefined();
   });
 
@@ -442,10 +491,7 @@ describe('PreviewHost', () => {
     postPayload(openerStub, makePayload({ useSyntheticData: true }));
 
     await screen.findByTestId('shell-mounted');
-    const call = shellMock.mock.calls.at(-1)?.[0] as {
-      payload: InterviewPayload;
-      currentStep: number;
-    };
+    const call = lastShellProps();
     expect(call.currentStep).toBe(0);
   });
 
@@ -454,34 +500,45 @@ describe('PreviewHost', () => {
     const protocol = {
       name: 'T',
       description: '',
-      schemaVersion: 8,
+      schemaVersion: 9,
+      localization: ENGLISH_ONLY,
       stages: [
         {
           id: 's1',
           type: 'NameGenerator',
-          label: 'NG',
+          minNodesNotice: {
+            en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+          },
+          maxNodesNotice: {
+            en: 'You have completed this task. Click the next arrow to continue.',
+          },
+          label: { en: 'NG' },
           subject: { entity: 'node', type: 'node-1' },
-          prompts: [{ id: 'p1', text: 'Add people' }],
+          prompts: [{ id: 'p1', text: { en: 'Add people' } }],
           behaviours: { minNodes: 4, maxNodes: 8 },
         },
         {
           id: 's2',
           type: 'OrdinalBin',
-          label: 'OB',
+          label: { en: 'OB' },
           subject: { entity: 'node', type: 'node-1' },
-          prompts: [{ id: 'p2', text: 'How close?', variable: 'var-ord' }],
+          prompts: [
+            { id: 'p2', text: { en: 'How close?' }, variable: 'var-ord' },
+          ],
         },
       ],
       codebook: {
         node: {
           'node-1': {
+            label: { en: 'Person' },
             variables: {
               'var-ord': {
                 name: 'Closeness',
+                label: 'Closeness',
                 type: 'ordinal',
                 options: [
-                  { label: 'Low', value: 1 },
-                  { label: 'High', value: 2 },
+                  { label: { en: 'Low' }, value: 1 },
+                  { label: { en: 'High' }, value: 2 },
                 ],
               },
             },
@@ -498,9 +555,7 @@ describe('PreviewHost', () => {
     );
 
     await screen.findByTestId('shell-mounted');
-    const call = shellMock.mock.calls.at(-1)?.[0] as {
-      payload: InterviewPayload;
-    };
+    const call = lastShellProps();
     const nodes = call.payload.session.network.nodes;
     expect(nodes.length).toBeGreaterThan(0);
     const unplaced = nodes.filter(
@@ -539,11 +594,7 @@ describe('PreviewHost', () => {
       );
 
       await screen.findByTestId('shell-mounted');
-      const call = shellMock.mock.calls.at(-1)?.[0] as {
-        payload: InterviewPayload;
-        currentStep?: number;
-        initialStageOverrideIndex?: number;
-      };
+      const call = lastShellProps();
 
       expect(call.currentStep).toBe(3);
       expect(
@@ -585,10 +636,7 @@ describe('PreviewHost', () => {
       );
 
       await screen.findByTestId('shell-mounted');
-      const call = shellMock.mock.calls.at(-1)?.[0] as {
-        payload: InterviewPayload;
-        initialStageOverrideIndex?: number;
-      };
+      const call = lastShellProps();
 
       expect(
         call.payload.session.network.ego[entityAttributesProperty].consent,
@@ -604,47 +652,6 @@ describe('PreviewHost', () => {
     } finally {
       randomSpy.mockRestore();
     }
-  });
-
-  it('seeds finalized stageMetadata for a synthetic FamilyPedigree', async () => {
-    render(<PreviewHost />);
-    const protocol = {
-      name: 'T',
-      description: '',
-      schemaVersion: 8,
-      stages: [
-        {
-          id: 'fp',
-          type: 'FamilyPedigree',
-          label: 'Family',
-          nodeConfig: { type: 'node-1' },
-          edgeConfig: { type: 'edge-1' },
-        },
-      ],
-      codebook: {
-        node: { 'node-1': { variables: {} } },
-        edge: { 'edge-1': { variables: {} } },
-        ego: {},
-      },
-      assetManifest: {},
-    };
-    postPayload(
-      openerStub,
-      makePayload({ protocol, startStage: 0, useSyntheticData: true }),
-    );
-
-    await screen.findByTestId('shell-mounted');
-    const call = shellMock.mock.calls.at(-1)?.[0] as {
-      payload: InterviewPayload;
-    };
-    const metadata = call.payload.session.stageMetadata?.['0'] as
-      | { isNetworkCommitted?: boolean; nodes?: unknown[]; edges?: unknown[] }
-      | undefined;
-    expect(metadata).toEqual(
-      expect.objectContaining({ isNetworkCommitted: true }),
-    );
-    expect(metadata?.nodes?.length).toBeGreaterThanOrEqual(7);
-    expect(metadata?.edges?.length).toBeGreaterThan(0);
   });
 
   it('shows an error fallback when payload processing throws', async () => {
@@ -916,28 +923,150 @@ describe('PreviewHost', () => {
     }
   });
 
+  describe('preview language', () => {
+    const ENGLISH_AND_FRENCH = { defaultLocale: 'en', locales: ['en', 'fr'] };
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    async function openPreview(
+      protocol: unknown,
+      browserLanguages: readonly string[] = ['en-US'],
+      startStage = 0,
+    ) {
+      vi.spyOn(navigator, 'languages', 'get').mockReturnValue(browserLanguages);
+      render(<PreviewHost />);
+      postPayload(openerStub, makePayload({ protocol, startStage }));
+      await screen.findByTestId('shell-mounted');
+      return screen.getByRole('combobox', { name: 'Preview language' });
+    }
+
+    it('lists every language the protocol declares, each named in itself', async () => {
+      const control = await openPreview(
+        makeProtocol({ defaultLocale: 'en', locales: ['en', 'fr', 'ar'] }),
+      );
+
+      const options = within(control).getAllByRole('option');
+      expect(options.map((option) => option.textContent)).toEqual(
+        ['en', 'fr', 'ar'].map((locale) => getLocaleMetadata(locale).label),
+      );
+      expect(options.map((option) => option.getAttribute('lang'))).toEqual([
+        'en',
+        'fr',
+        'ar',
+      ]);
+      expect(control).toBeEnabled();
+    });
+
+    it('lists the languages alphabetically by their own names, whatever order the protocol declares them in', async () => {
+      const control = await openPreview(
+        makeProtocol({ defaultLocale: 'fr', locales: ['fr', 'en', 'de'] }),
+      );
+
+      expect(
+        within(control)
+          .getAllByRole('option')
+          .map((option) => option.textContent),
+      ).toEqual(
+        ['de', 'en', 'fr'].map((locale) => getLocaleMetadata(locale).label),
+      );
+    });
+
+    it('starts on the language the interview chooses from the browser', async () => {
+      const control = await openPreview(makeProtocol(ENGLISH_AND_FRENCH), [
+        'fr-CA',
+        'en-US',
+      ]);
+
+      expect(control).toHaveValue('fr');
+      expect(lastShellProps().requestedLocales).toEqual(['fr-CA', 'en-US']);
+      expect(lastShellProps().payload.session.localePreference).toBeNull();
+    });
+
+    it('names the only language of a single-language protocol without offering a switch', async () => {
+      const control = await openPreview(makeProtocol());
+
+      expect(control).toHaveValue('en');
+      expect(control).toBeDisabled();
+      expect(within(control).getAllByRole('option')).toHaveLength(1);
+    });
+
+    it('states the chosen language to the interview ahead of the browser’s, without restarting it', async () => {
+      const control = await openPreview(makeProtocol(ENGLISH_AND_FRENCH));
+      const { payload } = lastShellProps();
+
+      fireEvent.change(control, { target: { value: 'fr' } });
+
+      expect(control).toHaveValue('fr');
+      expect(lastShellProps().requestedLocales).toEqual(['fr', 'en-US']);
+      expect(lastShellProps().payload).toBe(payload);
+      // Nothing is held for it to replace, so it is only requested: a
+      // language chooser stage still shows no language chosen.
+      expect(lastShellProps().statedLocale).toBeUndefined();
+    });
+
+    it('follows the language a language chooser stage states', async () => {
+      const control = await openPreview(makeProtocol(ENGLISH_AND_FRENCH));
+      const { onProtocolLocaleChange, payload } = lastShellProps();
+
+      await act(() =>
+        onProtocolLocaleChange(payload.session.id, {
+          locale: 'fr',
+          localePreference: 'fr',
+        }),
+      );
+
+      expect(control).toHaveValue('fr');
+    });
+
+    it('states the toolbar’s language to the interview in place once a chooser stage has stated one', async () => {
+      const control = await openPreview(
+        makeProtocol(ENGLISH_AND_FRENCH),
+        ['en-US'],
+        2,
+      );
+      const { onProtocolLocaleChange, payload } = lastShellProps();
+      await act(() =>
+        onProtocolLocaleChange(payload.session.id, {
+          locale: 'fr',
+          localePreference: 'fr',
+        }),
+      );
+
+      fireEvent.change(control, { target: { value: 'en' } });
+
+      // The interview keeps its store, and with it the prompt reached and any
+      // answer still in an unsubmitted form: the language is stated to it,
+      // which replaces the preference it holds, rather than re-created.
+      const shell = lastShellProps();
+      expect(control).toHaveValue('en');
+      expect(shell.payload).toBe(payload);
+      expect(shell.statedLocale).toBe('en');
+      expect(shell.currentStep).toBe(2);
+      expect(shell.requestedLocales).toEqual(['en', 'en-US']);
+    });
+  });
+
   /**
-   * Issue #1398: the Shell was handed a `noopFinish`, so confirming Finish
-   * Interview closed the dialog back onto the identical Finish screen — no
-   * completed state, no next action, and Finish repeatable forever.
+   * A finished preview shows the interview's own completed state, as a
+   * participant would see it, with starting the preview again as its one
+   * action.
    *
    * The Shell is mocked in this file, so these drive the contract's `onFinish`
-   * directly. What the real dialog does either side of that call (its copy,
-   * where focus lands once Base UI tears it down, and that Finish is gone
-   * afterwards) is `e2e/specs/preview-finish.spec.ts`.
+   * and `completedActions` directly. What the real Shell does with them (the
+   * completed state, where focus lands, and that Finish is gone afterwards) is
+   * `e2e/specs/preview-finish.spec.ts`.
    */
   describe('finishing the preview', () => {
-    const lastShellProps = () =>
-      shellMock.mock.calls.at(-1)?.[0] as {
-        onFinish: FinishHandler;
-        finishConfirmationDescription?: ReactNode;
-        payload: InterviewPayload;
-      };
-
     async function finishInterview() {
       const { onFinish, payload } = lastShellProps();
       await act(async () => {
-        await onFinish(payload.session.id, new AbortController().signal);
+        await onFinish(
+          payload.session.id,
+          { stageId: 'finish', outcome: 'completed' },
+          new AbortController().signal,
+        );
       });
       return payload.session.id;
     }
@@ -949,35 +1078,43 @@ describe('PreviewHost', () => {
       return finishInterview();
     }
 
-    it('replaces the interview with a completed state the finish cannot repeat', async () => {
+    it('records nothing on finishing, and leaves the interview to show its completed state', async () => {
       await mountFinishedPreview();
 
+      // The Shell stays: its completed state replaces the Finish screen, so a
+      // second confirmation is unreachable without a screen of Architect's own.
+      expect(screen.getByTestId('shell-mounted')).toBeInTheDocument();
       expect(
-        screen.getByRole('heading', { name: /preview finished/i }),
-      ).toBeInTheDocument();
-      // The Finish screen and its button live inside the Shell, so unmounting
-      // it is what makes a second confirmation unreachable.
-      expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
+        screen.queryByRole('heading', { name: /preview finished/i }),
+      ).not.toBeInTheDocument();
     });
 
-    it('moves focus to the completion heading and describes it with what happened to the responses', async () => {
-      await mountFinishedPreview();
-
-      const heading = screen.getByRole('heading', {
-        name: /preview finished/i,
-      });
-      // The Finish button the researcher activated unmounted with the Shell,
-      // so without this focus would be left on <body>.
-      expect(heading).toHaveFocus();
-
-      // A focused bare heading announces only its own text. The sentence that
-      // matters — that nothing was saved — has to reach the accessible
-      // description to be spoken with it.
-      const describedBy = heading.getAttribute('aria-describedby') ?? '';
-      expect(describedBy).not.toBe('');
-      expect(document.getElementById(describedBy)).toHaveTextContent(
-        /nothing was saved/i,
-      );
+    it('offers starting the preview again as the completed state’s action, in the interview’s language', async () => {
+      const languages = vi
+        .spyOn(navigator, 'languages', 'get')
+        .mockReturnValue(['es-MX']);
+      try {
+        render(<PreviewHost />);
+        postPayload(openerStub, makePayload());
+        await screen.findByTestId('shell-mounted');
+        expect(lastShellProps().completedActions).toHaveLength(1);
+        const spanish = createAppIntl({
+          locale: 'es',
+          messages: await architectCatalogSource.load('es'),
+        }).formatMessage({
+          id: 'architect.previewHost.previewHost.startThePreviewAgain',
+          defaultMessage: 'Start the preview again',
+          description:
+            'Visible text in components / PreviewHost / PreviewHost.',
+        });
+        expect(spanish).not.toBe('Start the preview again');
+        // The Shell changes language once its own Spanish catalog has loaded.
+        expect(
+          await screen.findByRole('button', { name: spanish }),
+        ).toBeInTheDocument();
+      } finally {
+        languages.mockRestore();
+      }
     });
 
     it('asks the finish confirmation to state that a preview is never saved', async () => {
@@ -993,11 +1130,11 @@ describe('PreviewHost', () => {
       );
     });
 
-    it('passes the active host locale into Shell and formats preview-specific copy inside its isolated catalog', async () => {
+    it('asks the interview for the browser’s languages, never Architect’s, and words the preview copy in the interview’s language', async () => {
       const languages = vi
         .spyOn(navigator, 'languages', 'get')
-        .mockReturnValue(['en-US']);
-      localStorage.removeItem(ARCHITECT_LOCALE_KEY);
+        .mockReturnValue(['es-MX', 'en-US']);
+      localStorage.setItem(ARCHITECT_LOCALE_KEY, 'en-GB');
       try {
         render(
           <ArchitectI18nProvider>
@@ -1007,21 +1144,26 @@ describe('PreviewHost', () => {
         postPayload(openerStub, makePayload());
         await screen.findByTestId('shell-mounted');
         const initialPayload = lastShellProps().payload;
-        expect(shellMock.mock.calls.at(-1)?.[0].requestedLocale).toBe('en');
+        expect(lastShellProps().requestedLocales).toEqual(['es-MX', 'en-US']);
+        expect(document.documentElement.lang).toBe('en-GB');
         const description = screen.getByTestId('shell-finish-description');
         expect(description).toHaveTextContent(
-          'This is a preview, so nothing is saved.',
+          'Esto es una vista previa, así que no se guarda nada. Al finalizar se cierra esta prueba del protocolo, y puedes iniciarla de nuevo después.',
         );
+
         act(() => {
-          localStorage.setItem(ARCHITECT_LOCALE_KEY, 'es');
+          localStorage.setItem(ARCHITECT_LOCALE_KEY, 'de');
           window.dispatchEvent(
             new StorageEvent('storage', {
               key: ARCHITECT_LOCALE_KEY,
-              newValue: 'es',
+              newValue: 'de',
             }),
           );
         });
-        expect(shellMock.mock.calls.at(-1)?.[0].requestedLocale).toBe('es');
+
+        // Architect keeps its current language until German has loaded.
+        await waitFor(() => expect(document.documentElement.lang).toBe('de'));
+        expect(lastShellProps().requestedLocales).toEqual(['es-MX', 'en-US']);
         expect(lastShellProps().payload).toBe(initialPayload);
         expect(screen.getByTestId('shell-finish-description')).toBe(
           description,
@@ -1029,10 +1171,9 @@ describe('PreviewHost', () => {
         // The Shell changes language once its own Spanish catalog has loaded.
         await waitFor(() =>
           expect(description).toHaveTextContent(
-            'Esto es una vista previa, así que no se guarda nada. Al finalizar se cierra esta prueba del protocolo, y puedes iniciarla de nuevo después.',
+            'Esto es una vista previa, así que no se guarda nada.',
           ),
         );
-        expect(document.documentElement.lang).toBe('es');
       } finally {
         languages.mockRestore();
         localStorage.removeItem(ARCHITECT_LOCALE_KEY);
@@ -1104,15 +1245,11 @@ describe('PreviewHost', () => {
       );
 
       // The restart re-runs the handshake rather than reviving the finished
-      // run, and shows neither the completed screen nor the spent interview
-      // while it waits.
+      // run, and does not show the finished interview while it waits.
       expect(openerStub.postMessage).toHaveBeenCalledWith(
         { type: 'preview:ready' },
         window.location.origin,
       );
-      expect(
-        screen.queryByRole('heading', { name: /preview finished/i }),
-      ).not.toBeInTheDocument();
       expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
 
       postPayload(openerStub, makePayload());
@@ -1125,9 +1262,6 @@ describe('PreviewHost', () => {
       postPayload(openerStub, makePayload());
       await screen.findByTestId('shell-mounted');
       await finishInterview();
-      expect(
-        screen.getByRole('heading', { name: /preview finished/i }),
-      ).toBeInTheDocument();
 
       Object.defineProperty(window, 'opener', {
         value: null,
@@ -1138,9 +1272,7 @@ describe('PreviewHost', () => {
       // "Start the preview again" needs an opener to hand the payload back, so
       // a completed run must not keep offering it after Architect has gone.
       expect(screen.getByText(/preview has ended/i)).toBeInTheDocument();
-      expect(
-        screen.queryByRole('heading', { name: /preview finished/i }),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
       expect(
         screen.queryByRole('button', { name: /start the preview again/i }),
       ).not.toBeInTheDocument();

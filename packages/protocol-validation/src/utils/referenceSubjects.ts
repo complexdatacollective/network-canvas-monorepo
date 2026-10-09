@@ -1,4 +1,4 @@
-import type { StageSubject } from '../schemas/8/common/subjects.ts';
+import type { StageSubject } from '../schemas/9/common/subjects.ts';
 
 type UnknownRecord = Record<string, unknown>;
 

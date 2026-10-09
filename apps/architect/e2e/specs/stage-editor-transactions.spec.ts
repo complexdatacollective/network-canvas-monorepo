@@ -56,7 +56,7 @@ const isRequired = (protocol: CurrentProtocol, name: string): boolean =>
 const formFieldsOf = (
   stage: CurrentProtocol['stages'][number] | undefined,
 ): readonly unknown[] | undefined =>
-  stage !== undefined && 'form' in stage ? stage.form.fields : undefined;
+  stage !== undefined && 'form' in stage ? stage.form?.fields : undefined;
 
 // Builds the shared starting point: one committed EgoForm stage carrying one
 // committed codebook attribute, which the cases below then edit from inside a
@@ -184,7 +184,7 @@ test('a rule set on a shared attribute survives discarding the stage that set it
   // shares.
   expect(validationOf(byName(after, 'age'))).toMatchObject({ required: true });
   // Reverted: the stage's own name is the researcher's unsaved typing.
-  expect(after.stages[0]?.label).toBe('About You');
+  expect(after.stages[0]?.label).toEqual({ en: 'About You' });
 });
 
 test('the attribute a discarded field created is kept in the codebook', async ({
@@ -238,7 +238,7 @@ test('the attribute a discarded field created is kept in the codebook', async ({
   expect(byName(after, 'orphanVar')).toBeDefined();
   // The STAGE went back to what it was: its committed name, and the one
   // question it was committed asking.
-  expect(after.stages[0]?.label).toBe('About You');
+  expect(after.stages[0]?.label).toEqual({ en: 'About You' });
   expect(formFieldsOf(after.stages[0])).toHaveLength(1);
 });
 

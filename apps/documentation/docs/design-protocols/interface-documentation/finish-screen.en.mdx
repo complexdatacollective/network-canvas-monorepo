@@ -1,0 +1,134 @@
+---
+title: Finish Screen
+navOrder: 24
+date: 8th October 2026
+---
+
+<InterfaceSummary type="FinishSession">
+
+<InterfaceMeta type="Utility" creates="Does not create entities" usesprompts="false">
+
+</InterfaceMeta>
+
+</InterfaceSummary>
+
+The Finish Screen is the last screen of an interview. Participants read a closing message and press **Finish**, which ends the interview and locks in their answers. Every protocol ends with one, and it also records how the interview ended, so that you can tell interviews apart in your data.
+
+A new protocol starts with a Finish Screen already in place. Protocols made before the Finish Screen existed get one added when they are upgraded to schema 9 (see [Schema version 9](/en/get-started/protocol-schema-information#schema-version-9)).
+
+## What participants see
+
+On the Finish Screen, participants read the heading and text you wrote and press **Finish**. They are asked to confirm, because their answers can't be changed once the interview is finished. If the interview can't be finished, they see a message saying so and can try again.
+
+After they confirm, the interview shows its **completed state**:
+
+- the Finish Screen's heading and text again.
+- a notice that the interview is finished and its answers can no longer be changed. Network Canvas supplies it, and you can change and translate it (see [Finishing the interview](#finishing-the-interview)).
+- no way to move through the interview. There are no navigation buttons and no way back to an earlier screen.
+
+Opening a finished interview again shows the completed state again, rather than the interview from the start.
+
+The app that runs the interview can add one action to the completed state:
+
+| App                 | Action added to the completed state      |
+| ------------------- | ---------------------------------------- |
+| Interviewer         | **Exit**, which returns to the dashboard |
+| Architect (Preview) | **Start the preview again**              |
+| Fresco              | None. Participants close the window      |
+
+In Interviewer, when you review an interview that has been finished, its stages are shown read-only. The Finish Screen is not part of the review, and it isn't listed in the stages menu.
+
+## Configuring the Finish Screen
+
+The stage editor has these sections:
+
+- **Stage name** is the name you see in the timeline and the stages menu. It is not shown to participants as the screen's heading.
+- **Closing screen** holds what participants read:
+  - **Heading** is the title of the screen. It can use bold and italic text, but nothing else.
+  - **Text** is the message below the heading. You can format it with Markdown, such as paragraphs, lists and links.
+- **Finishing the interview** holds the words participants read while they finish (see [Finishing the interview](#finishing-the-interview)).
+- **Outcome** has the choice **How the interview ended**. Participants never see it. It is saved with the interview and included in your exported data (see [Data](#data)). The choices are:
+  - **Completed**: the participant reached the normal end of the interview.
+  - **Ineligible**: the participant did not qualify for the study.
+  - **Ended early**: the interview ended early for another reason, such as a distress or safety stop.
+- Interviewer guidance works as it does on other stages.
+
+A Finish Screen can't have skip logic, because every route through the interview ends there.
+
+The Finish Screen has a fixed place at the end of the protocol:
+
+- You can't delete the last Finish Screen of your protocol. If you try, the timeline explains why and leaves it in place.
+- The timeline won't let you move a stage after the Finish Screen, or move the Finish Screen away from the end.
+- **Add new stage** puts new stages before the Finish Screen.
+- Finish Screen isn't offered on the **New Stage** screen, because your protocol already has one.
+
+### Finishing the interview
+
+The **Finishing the interview** section holds the words participants read while they finish, apart from the heading and text above:
+
+- **Finish button** is the words on the button that ends the interview.
+- **Confirmation question** is the question participants are asked after they press the button, before the interview ends.
+- **Finished notice** is shown under the closing text once the interview is finished, and again whenever the finished interview is opened.
+- **If finishing fails** is the message participants see when the interview could not be finished.
+
+Network Canvas supplies all four in each language it has wording for, so a new Finish Screen is ready to use. Like the rest of your protocol, they are text you can change. When your protocol has more than one language, translate them with the heading and text (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)).
+
+### Starting text
+
+A new protocol starts with a Finish Screen whose stage name and heading are "Finish Interview", and whose text reads "You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now." Network Canvas supplies this text in each language of your protocol that it has the text for. You can change all of it. The same goes for the words in **Finishing the interview**.
+
+When you add a language to your protocol, Architect also adds the supplied text in that language, as long as the Finish Screen's heading and text in your default language are still the supplied text. Each of the four finishing texts is filled in in the same way, as long as it is still the supplied wording. See [Adding languages](/en/design-protocols/translating-your-protocol#adding-languages). The same is true when you [change the language your text is recorded as](/en/design-protocols/translating-your-protocol#changing-the-language-your-text-is-recorded-as): unchanged supplied text becomes the supplied text in the language you chose. If you have changed the text, translate it yourself like the rest of your protocol (see [Translating Your Protocol](/en/design-protocols/translating-your-protocol)).
+
+### Previewing
+
+In Architect, Preview now ends in the interview's completed state, with a **Start the preview again** action, so you can see what participants see after they finish. Preview doesn't save anything, and the outcome isn't recorded.
+
+### Skip logic that ends the interview
+
+On any other stage, you can choose **End the interview** as the place to continue when that stage is skipped. This goes to the Finish Screen, the first one after the stage that owns the rule. See [Choosing where to continue](/en/design-protocols/key-concepts/skip-logic#choosing-where-to-continue).
+
+## Data
+
+The Finish Screen does not create nodes or edges, and it doesn't add anything to the participant's network. The outcome you chose is recorded with each interview that is finished there and is included in your exported data: the CSV ego file has a `networkCanvasFinishOutcome` column, and GraphML files have an `nc:finishOutcome` attribute. The value is `completed`, `ineligible` or `terminated`. See [How the interview ended](/en/analyze-data/data-export#how-the-interview-ended).
+
+The outcome is empty for interviews that were finished before your app recorded it, and for interviews that haven't been finished.
+
+### Best Practices
+
+<GoodPractice>
+
+Write closing text that tells participants what happens next: that their answers have been saved, whether they can close the window, and, if it applies, how they will receive any compensation or follow-up.
+
+</GoodPractice>
+
+<GoodPractice>
+
+Check the closing text and the words in **Finishing the interview** in every language of your protocol. If you have added languages after changing the text, translate it in each one (see [Finding missing translations](/en/design-protocols/translating-your-protocol#finding-missing-translations)).
+
+</GoodPractice>
+
+<GoodPractice>
+
+Leave the outcome as **Completed** unless you have a reason to change it. A protocol has one Finish Screen, so every interview that is finished at it is recorded with the outcome you choose here. Choose **Ineligible** or **Ended early** only for a protocol whose interviews all end that way, such as a short screening protocol that you use to record who didn't qualify.
+
+</GoodPractice>
+
+### Try to Avoid
+
+<BadPractice>
+
+Avoid asking participants for any further information on the Finish Screen. Pressing **Finish** locks in their answers, and the completed state allows no more input, so any question has to come on an earlier stage.
+
+</BadPractice>
+
+<BadPractice>
+
+Avoid writing closing text that tells participants to go back and check their answers. After they press **Finish** they can't go back, so tell them to do it before they finish, or leave it out.
+
+</BadPractice>
+
+<BadPractice>
+
+Avoid telling participants to press an **Exit** or **Close** button in the text. Which action, if any, the completed state offers depends on the app running the interview (see [What participants see](#what-participants-see)), and Fresco offers none.
+
+</BadPractice>

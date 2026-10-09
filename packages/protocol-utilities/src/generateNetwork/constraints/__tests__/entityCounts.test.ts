@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   asEntityAttributeReference,
-  RELATIONSHIP_TYPE_OPTIONS,
+  type LocalizedString,
   type Stage,
   type Variables,
 } from '@codaco/protocol-validation';
@@ -15,14 +15,9 @@ import {
 
 import { generateNetwork } from '../../../generateNetwork.ts';
 import { resolveGenerationConfig } from '../../config.ts';
-import { resolveFamilyPedigreeGenerationOptions } from '../../familyPedigree/referencePopulation.ts';
 import { buildEntityConstraints } from '../buildConstraints.ts';
 import {
-  edgeCountFor,
-  inheritedContributorAncestryCeiling,
   nodeCountFor,
-  pedigreeEdgeCeiling,
-  pedigreeNodeCeiling,
   type NodeConstraintsFor,
   worstCaseEntityCounts,
 } from '../entityCounts.ts';
@@ -30,53 +25,17 @@ import { SyntheticDataConstraintError } from '../error.ts';
 
 const config = resolveGenerationConfig({ today: '2026-07-27' });
 
+const en = (text: string): LocalizedString => ({ 'en-US': text });
+
 function nameGenerator(overrides: Record<string, unknown> = {}): Stage {
   return {
     id: 'stage-1',
     type: 'NameGenerator',
-    label: 'Name generator',
+    label: en('Name generator'),
     subject: { entity: 'node', type: 'person' },
-    prompts: [{ id: 'p1', text: 'Name people' }],
+    prompts: [{ id: 'p1', text: en('Name people') }],
     ...overrides,
   } as Stage;
-}
-
-function familyPedigree(overrides: Record<string, unknown> = {}): Stage {
-  const nodeConfigOverride = (overrides.nodeConfig ?? {}) as Record<
-    string,
-    unknown
-  >;
-  return {
-    id: 'stage-fp',
-    type: 'FamilyPedigree',
-    label: 'Pedigree',
-    edgeConfig: { type: 'kin' },
-    prompts: [],
-    ...overrides,
-    nodeConfig: {
-      type: 'relative',
-      nodeLabelVariable: 'name',
-      egoVariable: 'isEgo',
-      relationshipVariable: 'relationshipToEgo',
-      biologicalSexVariable: 'biologicalSex',
-      ...nodeConfigOverride,
-    },
-  } as unknown as Stage;
-}
-
-function alterEdgeForm(...variables: string[]): Stage {
-  return {
-    id: 'stage-edge-form',
-    type: 'AlterEdgeForm',
-    label: 'About this relationship',
-    subject: { entity: 'edge', type: 'kin' },
-    form: {
-      fields: variables.map((variable) => ({
-        variable,
-        prompt: 'Tell us about it',
-      })),
-    },
-  } as unknown as Stage;
 }
 
 function nodeAlterForm(nodeType: string, ...variables: string[]): Stage {
@@ -112,26 +71,6 @@ function filteredNodeAlterForm(
             operator: 'EXACTLY',
             value: 1,
           },
-        },
-      ],
-    },
-  } as unknown as Stage;
-}
-
-/** The same form, gated on a filter rule testing one edge variable. */
-function filteredAlterEdgeForm(
-  filtered: string,
-  ...variables: string[]
-): Stage {
-  return {
-    ...alterEdgeForm(...variables),
-    filter: {
-      join: 'AND',
-      rules: [
-        {
-          type: 'edge',
-          id: 'rule-1',
-          options: { type: 'kin', attribute: filtered, operator: 'EXISTS' },
         },
       ],
     },
@@ -256,727 +195,6 @@ describe('worstCaseEntityCounts', () => {
     expect(nodeCountFor(counts.node, 'person', ['age'])).toBe(5);
   });
 
-  it('shares pedigree rule closure with the per-variable count', () => {
-    const variables = {
-      name: { name: 'Name', type: 'text' },
-      isEgo: { name: 'Is ego', type: 'boolean' },
-      mirrorsEgo: {
-        name: 'Mirrors ego',
-        type: 'boolean',
-        validation: { sameAs: 'isEgo' },
-      },
-    };
-    const counts = worstCaseEntityCounts(
-      [familyPedigree()],
-      config,
-      undefined,
-      undefined,
-      undefined,
-      (type) => (type === 'relative' ? variables : undefined),
-    );
-
-    expect(nodeCountFor(counts.node, 'relative', ['mirrorsEgo'])).toBe(
-      config.familyPedigreeNodeCount.max,
-    );
-  });
-
-  it('counts FamilyPedigree nodes against its configured node type', () => {
-    const counts = worstCaseEntityCounts([familyPedigree()], config);
-    expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(
-      config.familyPedigreeNodeCount.max - 1,
-    );
-    expect(nodeCountFor(counts.node, 'relative', ['isEgo'])).toBe(
-      config.familyPedigreeNodeCount.max,
-    );
-  });
-
-  it('discounts an ego reused by a later compatible pedigree', () => {
-    const first = familyPedigree({
-      id: 'first-pedigree',
-      nodeConfig: { type: 'relative', egoVariable: 'isEgo' },
-    });
-    const second = familyPedigree({
-      id: 'second-pedigree',
-      nodeConfig: { type: 'relative', egoVariable: 'isEgo' },
-    });
-
-    const counts = worstCaseEntityCounts([first, second], config);
-
-    expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(
-      pedigreeNodeCeiling(config) * 2 - 2,
-    );
-  });
-
-  it('caps repeated pedigrees at the largest family the population can emit', () => {
-    const tightConfig = resolveGenerationConfig({
-      today: '2026-08-05',
-      familyPedigreeNodeCount: { min: 7, max: 9 },
-    });
-    const options = resolveFamilyPedigreeGenerationOptions(
-      {
-        population: {
-          id: 'childless',
-          label: 'Childless families',
-          sources: [],
-          completedFamilySize: [{ value: 0, weight: 1 }],
-          femaleAtBirthProbability: 0.5,
-          childlessPartnerProbability: 1,
-          scenarios: { adoption: 0, donorConception: 0, surrogacy: 0 },
-        },
-        scenario: 'none',
-        diseaseMode: 'none',
-        maxNodes: 9,
-      },
-      9,
-    );
-    const first = familyPedigree({ id: 'first-pedigree' });
-    const second = familyPedigree({ id: 'second-pedigree' });
-
-    const counts = worstCaseEntityCounts(
-      [first, second],
-      tightConfig,
-      undefined,
-      undefined,
-      options,
-    );
-
-    expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(14);
-  });
-
-  it('retains the full ceiling after an intervening ego-flag rewrite', () => {
-    const tightConfig = resolveGenerationConfig({
-      today: '2026-08-04',
-      familyPedigreeNodeCount: { min: 7, max: 7 },
-    });
-    const options = resolveFamilyPedigreeGenerationOptions(
-      { scenario: 'none', diseaseMode: 'none', maxNodes: 7 },
-      7,
-    );
-    const shared = {
-      nodeConfig: { type: 'relative', egoVariable: 'isEgo' },
-    };
-    const first = familyPedigree({ ...shared, id: 'first-pedigree' });
-    const rewriteEgo = nodeAlterForm('relative', 'isEgo');
-    const second = familyPedigree({ ...shared, id: 'second-pedigree' });
-    const third = familyPedigree({ ...shared, id: 'third-pedigree' });
-
-    const afterFirst = worstCaseEntityCounts(
-      [first, rewriteEgo, second],
-      tightConfig,
-      undefined,
-      undefined,
-      options,
-    );
-    expect(nodeCountFor(afterFirst.node, 'relative', ['name'])).toBe(12);
-
-    const beforeFirst = worstCaseEntityCounts(
-      [rewriteEgo, first, second],
-      tightConfig,
-      undefined,
-      undefined,
-      options,
-    );
-    expect(nodeCountFor(beforeFirst.node, 'relative', ['name'])).toBe(12);
-
-    const restoredBySecond = worstCaseEntityCounts(
-      [first, rewriteEgo, second, third],
-      tightConfig,
-      undefined,
-      undefined,
-      options,
-    );
-    expect(nodeCountFor(restoredBySecond.node, 'relative', ['name'])).toBe(18);
-  });
-
-  it('counts ancestry required for inherited contributor branches', () => {
-    const shared = {
-      nodeConfig: { type: 'relative', egoVariable: 'isEgo' },
-      edgeConfig: {
-        type: 'kin',
-        relationshipTypeVariable: 'relationshipType',
-      },
-    };
-    const first = familyPedigree({
-      ...shared,
-      id: 'first-pedigree',
-      boundaries: { requireChildrenContributors: 'off' },
-    });
-    const second = familyPedigree({
-      ...shared,
-      id: 'second-pedigree',
-      boundaries: { requireChildrenContributors: 'required' },
-    });
-
-    const counts = worstCaseEntityCounts([first, second], config);
-
-    expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(
-      pedigreeNodeCeiling(config) * 2 - 2 + 6,
-    );
-    expect(edgeCountFor(counts.edge, 'kin', ['relationshipType'])).toBe(
-      pedigreeEdgeCeiling(config) * 2 + 9,
-    );
-  });
-
-  it('skips contributor ancestry a tight earlier plan cannot introduce', () => {
-    const tightConfig = resolveGenerationConfig({
-      today: '2026-08-04',
-      familyPedigreeNodeCount: { min: 7, max: 7 },
-    });
-    const options = resolveFamilyPedigreeGenerationOptions(
-      { scenario: 'none', diseaseMode: 'none', maxNodes: 7 },
-      7,
-    );
-    const shared = {
-      nodeConfig: { type: 'relative', egoVariable: 'isEgo' },
-      edgeConfig: {
-        type: 'kin',
-        relationshipTypeVariable: 'relationshipType',
-      },
-    };
-    const first = familyPedigree({
-      ...shared,
-      id: 'first-pedigree',
-      boundaries: { requireChildrenContributors: 'off' },
-    });
-    const second = familyPedigree({
-      ...shared,
-      id: 'second-pedigree',
-      boundaries: { requireChildrenContributors: 'required' },
-    });
-    const stages = [first, second];
-
-    expect(inheritedContributorAncestryCeiling(1, stages, 7, options)).toEqual({
-      nodes: 0,
-      edges: 0,
-    });
-    const counts = worstCaseEntityCounts(
-      stages,
-      tightConfig,
-      undefined,
-      undefined,
-      options,
-    );
-    expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(12);
-  });
-
-  it('includes a forced disease sibling when deciding whether children fit', () => {
-    const options = resolveFamilyPedigreeGenerationOptions(
-      {
-        population: {
-          id: 'one-child-all-female',
-          label: 'One-child, all-female population',
-          sources: [],
-          completedFamilySize: [{ value: 1, weight: 1 }],
-          femaleAtBirthProbability: 1,
-          childlessPartnerProbability: 0,
-          scenarios: { adoption: 0, donorConception: 0, surrogacy: 0 },
-        },
-        scenario: 'none',
-        diseaseMode: 'visualization',
-        maxNodes: 9,
-      },
-      9,
-    );
-    const shared = {
-      nodeConfig: {
-        type: 'relative',
-        egoVariable: 'isEgo',
-        biologicalSexVariable: 'biologicalSex',
-      },
-      edgeConfig: {
-        type: 'kin',
-        relationshipTypeVariable: 'relationshipType',
-      },
-    };
-    const first = familyPedigree({
-      ...shared,
-      id: 'first-pedigree',
-      boundaries: { requireChildrenContributors: 'off' },
-    });
-    const narrative = {
-      id: 'narrative',
-      type: 'NarrativePedigree',
-      label: 'Condition',
-      sourceStageId: first.id,
-      diseases: [
-        {
-          id: 'condition',
-          label: 'Condition',
-          color: 'node-color-seq-1',
-          variable: 'condition',
-          inheritancePattern: 'xLinkedRecessive',
-        },
-      ],
-    } as unknown as Stage;
-    const second = familyPedigree({
-      ...shared,
-      id: 'second-pedigree',
-      boundaries: { requireChildrenContributors: 'required' },
-    });
-    const stages = [first, narrative, second];
-
-    expect(inheritedContributorAncestryCeiling(2, stages, 8, options)).toEqual({
-      nodes: 0,
-      edges: 0,
-    });
-  });
-
-  it('budgets X-linked siblings when a reused ego gets sex from another variable', () => {
-    const tightConfig = resolveGenerationConfig({
-      today: '2026-08-04',
-      familyPedigreeNodeCount: { min: 7, max: 7 },
-    });
-    const options = resolveFamilyPedigreeGenerationOptions(
-      {
-        population: {
-          id: 'all-male',
-          label: 'All male births',
-          sources: [],
-          completedFamilySize: [{ value: 0, weight: 1 }],
-          femaleAtBirthProbability: 0,
-          childlessPartnerProbability: 0,
-          scenarios: { adoption: 0, donorConception: 0, surrogacy: 0 },
-        },
-        scenario: 'none',
-        diseaseMode: 'visualization',
-        maxNodes: 7,
-      },
-      7,
-    );
-    const first = familyPedigree({
-      id: 'first-pedigree',
-      nodeConfig: {
-        type: 'relative',
-        egoVariable: 'isEgo',
-        biologicalSexVariable: 'firstSex',
-      },
-    });
-    const second = familyPedigree({
-      id: 'second-pedigree',
-      nodeConfig: {
-        type: 'relative',
-        egoVariable: 'isEgo',
-        biologicalSexVariable: 'secondSex',
-      },
-    });
-    const narrative = {
-      id: 'narrative',
-      type: 'NarrativePedigree',
-      label: 'Condition',
-      sourceStageId: second.id,
-      diseases: [
-        {
-          id: 'condition',
-          label: 'Condition',
-          color: 'node-color-seq-1',
-          variable: 'condition',
-          inheritancePattern: 'xLinkedRecessive',
-        },
-      ],
-    } as unknown as Stage;
-    const stages = [first, second, narrative];
-
-    const counts = worstCaseEntityCounts(
-      stages,
-      tightConfig,
-      undefined,
-      undefined,
-      options,
-    );
-    expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(13);
-  });
-
-  it('budgets X-linked siblings after an intervening sex-variable rewrite', () => {
-    const tightConfig = resolveGenerationConfig({
-      today: '2026-08-04',
-      familyPedigreeNodeCount: { min: 7, max: 7 },
-    });
-    const options = resolveFamilyPedigreeGenerationOptions(
-      {
-        population: {
-          id: 'all-male',
-          label: 'All male births',
-          sources: [],
-          completedFamilySize: [{ value: 0, weight: 1 }],
-          femaleAtBirthProbability: 0,
-          childlessPartnerProbability: 0,
-          scenarios: { adoption: 0, donorConception: 0, surrogacy: 0 },
-        },
-        scenario: 'none',
-        diseaseMode: 'visualization',
-        maxNodes: 7,
-      },
-      7,
-    );
-    const sharedNodeConfig = {
-      type: 'relative',
-      egoVariable: 'isEgo',
-      biologicalSexVariable: 'biologicalSex',
-    };
-    const first = familyPedigree({
-      id: 'first-pedigree',
-      nodeConfig: sharedNodeConfig,
-    });
-    const rewriteSex = {
-      id: 'rewrite-sex',
-      type: 'CategoricalBin',
-      label: 'Rewrite sex',
-      subject: { entity: 'node', type: 'relative' },
-      prompts: [
-        {
-          id: 'sex-bin',
-          text: 'Group by sex',
-          variable: 'biologicalSex',
-        },
-      ],
-    } as unknown as Stage;
-    const second = familyPedigree({
-      id: 'second-pedigree',
-      nodeConfig: sharedNodeConfig,
-    });
-    const narrative = {
-      id: 'narrative',
-      type: 'NarrativePedigree',
-      label: 'Condition',
-      sourceStageId: second.id,
-      diseases: [
-        {
-          id: 'condition',
-          label: 'Condition',
-          color: 'node-color-seq-1',
-          variable: 'condition',
-          inheritancePattern: 'xLinkedRecessive',
-        },
-      ],
-    } as unknown as Stage;
-
-    const afterFirst = worstCaseEntityCounts(
-      [first, rewriteSex, second, narrative],
-      tightConfig,
-      undefined,
-      undefined,
-      options,
-    );
-    expect(nodeCountFor(afterFirst.node, 'relative', ['name'])).toBe(13);
-
-    const beforeFirst = worstCaseEntityCounts(
-      [rewriteSex, first, second, narrative],
-      tightConfig,
-      undefined,
-      undefined,
-      options,
-    );
-    expect(nodeCountFor(beforeFirst.node, 'relative', ['name'])).toBe(12);
-  });
-
-  it('bounds every contributor branch introduced by an intervening pairing stage', () => {
-    const shared = {
-      nodeConfig: { type: 'relative', egoVariable: 'isEgo' },
-      edgeConfig: {
-        type: 'kin',
-        relationshipTypeVariable: 'relationshipType',
-      },
-    };
-    const first = familyPedigree({
-      ...shared,
-      id: 'first-pedigree',
-      boundaries: { requireChildrenContributors: 'off' },
-    });
-    const pairing = {
-      id: 'pair-relatives',
-      type: 'Sociogram',
-      label: 'Pair relatives',
-      subject: { entity: 'node', type: 'relative' },
-      prompts: [
-        {
-          id: 'pair-prompt',
-          text: 'Connect relatives',
-          edges: { create: 'kin' },
-        },
-      ],
-    } as unknown as Stage;
-    const second = familyPedigree({
-      ...shared,
-      id: 'second-pedigree',
-      boundaries: { requireChildrenContributors: 'required' },
-    });
-    const stages = [first, pairing, second];
-    const inheritedPopulation = pedigreeNodeCeiling(config);
-
-    expect(
-      inheritedContributorAncestryCeiling(2, stages, inheritedPopulation),
-    ).toEqual({
-      nodes: inheritedPopulation * 8,
-      edges: inheritedPopulation * 12,
-    });
-
-    const counts = worstCaseEntityCounts(stages, config);
-    expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(
-      inheritedPopulation * 10 - 2,
-    );
-  });
-
-  it('starts contributor scans after a reusable ego with different edge semantics', () => {
-    const sharedNodeConfig = {
-      type: 'relative',
-      egoVariable: 'isEgo',
-    };
-    const first = familyPedigree({
-      id: 'first-pedigree',
-      nodeConfig: sharedNodeConfig,
-      edgeConfig: {
-        type: 'legacy-kin',
-        relationshipTypeVariable: 'legacyRelationshipType',
-      },
-    });
-    const pairing = {
-      id: 'pair-relatives',
-      type: 'Sociogram',
-      label: 'Pair relatives',
-      subject: { entity: 'node', type: 'relative' },
-      prompts: [
-        {
-          id: 'pair-prompt',
-          text: 'Connect relatives',
-          edges: { create: 'kin' },
-        },
-      ],
-    } as unknown as Stage;
-    const second = familyPedigree({
-      id: 'second-pedigree',
-      nodeConfig: sharedNodeConfig,
-      edgeConfig: {
-        type: 'kin',
-        relationshipTypeVariable: 'relationshipType',
-      },
-      boundaries: { requireChildrenContributors: 'required' },
-    });
-    const stages = [first, pairing, second];
-    const inheritedPopulation = pedigreeNodeCeiling(config);
-
-    expect(
-      inheritedContributorAncestryCeiling(2, stages, inheritedPopulation),
-    ).toEqual({
-      nodes: inheritedPopulation * 8,
-      edges: inheritedPopulation * 12,
-    });
-  });
-
-  it('ignores graph writers that run before the first compatible pedigree', () => {
-    const shared = {
-      nodeConfig: { type: 'relative', egoVariable: 'isEgo' },
-      edgeConfig: {
-        type: 'kin',
-        relationshipTypeVariable: 'relationshipType',
-      },
-    };
-    const pairing = {
-      id: 'pair-before-pedigree',
-      type: 'Sociogram',
-      label: 'Pair relatives',
-      subject: { entity: 'node', type: 'relative' },
-      prompts: [
-        {
-          id: 'pair-prompt',
-          text: 'Connect relatives',
-          edges: { create: 'kin' },
-        },
-      ],
-    } as unknown as Stage;
-    const first = familyPedigree({
-      ...shared,
-      id: 'first-pedigree',
-      boundaries: { requireChildrenContributors: 'off' },
-    });
-    const second = familyPedigree({
-      ...shared,
-      id: 'second-pedigree',
-      boundaries: { requireChildrenContributors: 'required' },
-    });
-    const inheritedPopulation = pedigreeNodeCeiling(config);
-
-    expect(
-      inheritedContributorAncestryCeiling(
-        2,
-        [pairing, first, second],
-        inheritedPopulation,
-      ),
-    ).toEqual({ nodes: 6, edges: 9 });
-  });
-
-  it('does not discount pedigrees with different ego variables', () => {
-    const first = familyPedigree({
-      id: 'first-pedigree',
-      nodeConfig: { type: 'relative', egoVariable: 'isEgo' },
-    });
-    const second = familyPedigree({
-      id: 'second-pedigree',
-      nodeConfig: { type: 'relative', egoVariable: 'isDifferentEgo' },
-    });
-
-    const counts = worstCaseEntityCounts([first, second], config);
-
-    expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(
-      pedigreeNodeCeiling(config) * 2 - 2,
-    );
-  });
-
-  it('leaves pedigree edges uncounted when no stage names an attribute of their type', () => {
-    // This partial fixture configures no semantic edge variables, so the
-    // materializer leaves every pedigree edge attribute-free.
-    const counts = worstCaseEntityCounts([familyPedigree()], config);
-    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(0);
-  });
-
-  it('counts pedigree edges once a stage names an attribute of their type', () => {
-    const counts = worstCaseEntityCounts(
-      [familyPedigree(), alterEdgeForm('verified')],
-      config,
-    );
-    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(
-      pedigreeEdgeCeiling(config),
-    );
-  });
-
-  it('counts pedigree edges per variable, not per type', () => {
-    // `handleAlterEdgeForm` passes its field list to `generateEntityAttributes`
-    // as `only`, so a variable the form does not render is `undefined` on every
-    // pedigree edge even though a sibling variable of the same type is filled.
-    const counts = worstCaseEntityCounts(
-      [familyPedigree(), alterEdgeForm('note')],
-      config,
-    );
-    expect(edgeCountFor(counts.edge, 'kin', ['note'])).toBe(
-      pedigreeEdgeCeiling(config),
-    );
-    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(0);
-  });
-
-  it('counts an unnamed variable on edges another stage creates', () => {
-    // Only pedigree edges are exempted. A Sociogram generates the whole
-    // attribute set of every edge it creates, so `verified` is on all six of
-    // them whether or not a form ever mentions it.
-    const sociogram = {
-      id: 'stage-sociogram',
-      type: 'Sociogram',
-      label: 'Link them',
-      subject: { entity: 'node', type: 'person' },
-      prompts: [{ id: 'p1', text: 'Who knows who?', edges: { create: 'kin' } }],
-    } as unknown as Stage;
-
-    const counts = worstCaseEntityCounts(
-      [nameGenerator({ behaviours: { maxNodes: 4 } }), sociogram],
-      config,
-    );
-    // C(4, 2) = 6
-    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(6);
-  });
-
-  it('folds pedigree edges into a later pairing of the same node type', () => {
-    // The sociogram pairs every relative the pedigree built. The pedigree's
-    // parentage edges already occupy pairs in that complete graph, and
-    // `createEdgesForPairs` reuses whichever of them the sociogram meets.
-    const sociogram = {
-      id: 'stage-sociogram',
-      type: 'Sociogram',
-      label: 'Link them',
-      subject: { entity: 'node', type: 'relative' },
-      prompts: [{ id: 'p1', text: 'Who knows who?', edges: { create: 'kin' } }],
-    } as unknown as Stage;
-
-    const counts = worstCaseEntityCounts(
-      [familyPedigree(), sociogram, alterEdgeForm('note')],
-      config,
-    );
-    const nodes = pedigreeNodeCeiling(config);
-    const pairs = (nodes * (nodes - 1)) / 2;
-    expect(edgeCountFor(counts.edge, 'kin', ['note'])).toBe(pairs);
-    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(pairs);
-  });
-
-  it('keeps pedigree edges apart from a pairing that ran before them', () => {
-    // The sociogram runs before any relative exists, so it pairs nobody and its
-    // pair set cannot hold the pedigree's edges. Folding them in on the strength
-    // of the stage merely existing would report zero for nine real edges.
-    const sociogram = {
-      id: 'stage-sociogram',
-      type: 'Sociogram',
-      label: 'Link them',
-      subject: { entity: 'node', type: 'relative' },
-      prompts: [{ id: 'p1', text: 'Who knows who?', edges: { create: 'kin' } }],
-    } as unknown as Stage;
-
-    const counts = worstCaseEntityCounts(
-      [sociogram, familyPedigree(), alterEdgeForm('note')],
-      config,
-    );
-    expect(edgeCountFor(counts.edge, 'kin', ['note'])).toBe(
-      pedigreeEdgeCeiling(config),
-    );
-    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(0);
-  });
-
-  it('reads only edge-subject references, not a node type of the same name', () => {
-    // Node and edge codebooks are separate namespaces, so an attribute named on
-    // a node type says nothing about what fills an edge of the same name.
-    const alterForm = {
-      id: 'stage-node-form',
-      type: 'AlterForm',
-      label: 'About them',
-      subject: { entity: 'node', type: 'kin' },
-      form: { fields: [{ variable: 'verified', prompt: 'Verified?' }] },
-    } as unknown as Stage;
-
-    const counts = worstCaseEntityCounts([familyPedigree(), alterForm], config);
-    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(0);
-  });
-
-  it('reads a filter rule as a reader, not a naming site', () => {
-    // A filter tests a value the form does not render, and
-    // `handleAlterEdgeForm` passes only its field list to
-    // `generateEntityAttributes` — so the filtered variable stays undefined on
-    // every pedigree edge. The schema says as much on its own: an
-    // `entityAttributeReference({ subject: 'filterRule' })` resolves no
-    // subject, exactly as an ego filter rule names no ego scope.
-    const filtered = filteredAlterEdgeForm('verified', 'note');
-
-    const counts = worstCaseEntityCounts([familyPedigree(), filtered], config);
-    expect(edgeCountFor(counts.edge, 'kin', ['note'])).toBe(
-      pedigreeEdgeCeiling(config),
-    );
-    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(0);
-  });
-
-  it('counts a variable a filter tests and the form also renders', () => {
-    // Reading and writing one variable is writing it. The filter must not be
-    // able to take a form field's own variable back out of the count.
-    const counts = worstCaseEntityCounts(
-      [familyPedigree(), filteredAlterEdgeForm('verified', 'verified')],
-      config,
-    );
-    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(
-      pedigreeEdgeCeiling(config),
-    );
-  });
-
-  it('counts an inverted FamilyPedigree range as the generator draws it', () => {
-    // `randomInt` collapses an inverted range to its `min`, so the stage builds
-    // 20 nodes and 19 edges; reading `max` alone would report 10 and 9.
-    const inverted = resolveGenerationConfig({
-      today: '2026-07-27',
-      familyPedigreeNodeCount: { min: 20, max: 10 },
-    });
-
-    const counts = worstCaseEntityCounts(
-      [familyPedigree(), alterEdgeForm('verified')],
-      inverted,
-    );
-    expect(nodeCountFor(counts.node, 'relative', ['name'])).toBe(19);
-    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(
-      pedigreeEdgeCeiling(inverted),
-    );
-  });
-
   it('bounds an edge type by the pair count over its node type', () => {
     const stages = [
       nameGenerator({ behaviours: { maxNodes: 4 } }),
@@ -993,7 +211,7 @@ describe('worstCaseEntityCounts', () => {
 
     // C(4, 2) = 6
     const counts = worstCaseEntityCounts(stages, config);
-    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(6);
+    expect(counts.edge.get('knows') ?? 0).toBe(6);
   });
 
   it('bounds a NetworkComposer edge by the composer own node ceiling', () => {
@@ -1012,7 +230,7 @@ describe('worstCaseEntityCounts', () => {
       ],
       twoNodes,
     );
-    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(1);
+    expect(counts.edge.get('knows') ?? 0).toBe(1);
   });
 
   it('counts an inverted composer node range as the generator draws it', () => {
@@ -1027,7 +245,7 @@ describe('worstCaseEntityCounts', () => {
 
     const counts = worstCaseEntityCounts([networkComposer()], inverted);
     expect(nodeCountFor(counts.node, 'person', ['name'])).toBe(6);
-    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(15);
+    expect(counts.edge.get('knows') ?? 0).toBe(15);
   });
 
   it('sums the pairs of every composer creating one edge type', () => {
@@ -1043,7 +261,7 @@ describe('worstCaseEntityCounts', () => {
       threeNodes,
     );
     // C(3, 2) = 3 apiece.
-    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(6);
+    expect(counts.edge.get('knows') ?? 0).toBe(6);
   });
 
   it('leaves a census reading the whole node total, composer people included', () => {
@@ -1076,7 +294,7 @@ describe('worstCaseEntityCounts', () => {
     // C(7, 2) = 21 for the census over all seven people, and nothing more for
     // the composer: its own pair is one of those 21, and the census reuses
     // whichever edge the composer already left on it.
-    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(21);
+    expect(counts.edge.get('knows') ?? 0).toBe(21);
   });
 
   it('counts one census pair set however many prompts and stages ask for it', () => {
@@ -1113,7 +331,7 @@ describe('worstCaseEntityCounts', () => {
       config,
     );
     // C(4, 2) = 6, not 6 per prompt across the three of them.
-    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(6);
+    expect(counts.edge.get('knows') ?? 0).toBe(6);
   });
 
   it('sums the pair sets of two node types creating one edge type', () => {
@@ -1153,7 +371,7 @@ describe('worstCaseEntityCounts', () => {
       config,
     );
     // C(4, 2) = 6 plus C(3, 2) = 3.
-    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(9);
+    expect(counts.edge.get('knows') ?? 0).toBe(9);
   });
 
   it('counts a composer pairing one type twice only once', () => {
@@ -1177,7 +395,7 @@ describe('worstCaseEntityCounts', () => {
       threeNodes,
     );
     // C(3, 2) = 3, not 3 per definition.
-    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(3);
+    expect(counts.edge.get('knows') ?? 0).toBe(3);
   });
 
   it('counts nothing for a composer whose subject names no node type', () => {
@@ -1187,7 +405,7 @@ describe('worstCaseEntityCounts', () => {
       [networkComposer({ subject: { entity: 'edge', type: 'knows' } })],
       config,
     );
-    expect(counts.edge.base.size).toBe(0);
+    expect(counts.edge.size).toBe(0);
   });
 
   it('still counts a filtered census at its unfiltered pair count', () => {
@@ -1226,7 +444,7 @@ describe('worstCaseEntityCounts', () => {
       config,
     );
     // C(3, 2) = 3.
-    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(3);
+    expect(counts.edge.get('knows') ?? 0).toBe(3);
   });
 
   it('returns empty maps for a protocol with no entity-producing stages', () => {
@@ -1239,8 +457,7 @@ describe('worstCaseEntityCounts', () => {
 
     const counts = worstCaseEntityCounts([stage], config);
     expect(counts.node.size).toBe(0);
-    expect(counts.edge.base.size).toBe(0);
-    expect(counts.edge.pedigree.size).toBe(0);
+    expect(counts.edge.size).toBe(0);
   });
 });
 
@@ -1248,6 +465,11 @@ function rosterStage(overrides: Record<string, unknown> = {}): Stage {
   return {
     id: 'stage-roster',
     type: 'NameGeneratorRoster',
+    externalDataError: { en: 'External data could not be loaded.' },
+    allAddedNotice: { en: 'There is nothing left to add from this list.' },
+    maxNodesNotice: {
+      en: 'You have completed this task. Click the next arrow to continue.',
+    },
     label: 'Roster',
     subject: { entity: 'node', type: 'person' },
     dataSource: 'roster-asset',
@@ -1383,7 +605,7 @@ describe('worstCaseEntityCounts with roster rows', () => {
     const counts = worstCaseEntityCounts(stages, config, {
       'stage-roster': [rosterRow('a'), rosterRow('b')],
     });
-    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(1);
+    expect(counts.edge.get('knows') ?? 0).toBe(1);
   });
 });
 
@@ -1494,7 +716,7 @@ describe('worstCaseEntityCounts with roster rows carrying values', () => {
       'stage-roster': [rosterRow('a'), rosterRow('a'), rosterRow('b')],
     });
 
-    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(1);
+    expect(counts.edge.get('knows') ?? 0).toBe(1);
   });
 
   it('counts one row per primary key when two stages offer the same value', () => {
@@ -1538,7 +760,7 @@ describe('worstCaseEntityCounts with roster rows carrying values', () => {
     });
     // C(3, 2) = 3, over every row rather than the two `consented` can tell
     // apart.
-    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(3);
+    expect(counts.edge.get('knows') ?? 0).toBe(3);
   });
 });
 
@@ -1644,7 +866,12 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
   }
 
   const adult = personConstraints({
-    age: { name: 'Age', type: 'number', validation: { minValue: 18 } },
+    age: {
+      name: 'Age',
+      label: 'Age',
+      type: 'number',
+      validation: { minValue: 18 },
+    },
   });
 
   const census = {
@@ -1675,7 +902,7 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
     );
 
     expect(nodeCountFor(counts.node, 'person', ['age'])).toBe(3);
-    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(3);
+    expect(counts.edge.get('knows') ?? 0).toBe(3);
   });
 
   it('counts no node and no pair for rows the variable’s own bounds reject', () => {
@@ -1691,7 +918,7 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
     );
 
     expect(nodeCountFor(counts.node, 'person', ['age'])).toBe(0);
-    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(0);
+    expect(counts.edge.get('knows') ?? 0).toBe(0);
   });
 
   it('keeps counting rows whose values their own rules accept', () => {
@@ -1706,7 +933,7 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
     });
 
     expect(nodeCountFor(counts.node, 'person', ['age'])).toBe(3);
-    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(3);
+    expect(counts.edge.get('knows') ?? 0).toBe(3);
   });
 
   it('counts the rows the rules admit out of a mixed roster', () => {
@@ -1725,14 +952,15 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
     );
 
     expect(nodeCountFor(counts.node, 'person', ['age'])).toBe(2);
-    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(1);
+    expect(counts.edge.get('knows') ?? 0).toBe(1);
   });
 
   it('counts no node for a row breaking a rule between two of its own values', () => {
     const dated = personConstraints({
-      startYear: { name: 'Start', type: 'number' },
+      startYear: { name: 'Start', label: 'Start', type: 'number' },
       endYear: {
         name: 'End',
+        label: 'End',
         type: 'number',
         validation: {
           greaterThanVariable: asEntityAttributeReference('startYear'),
@@ -1761,9 +989,10 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
     // partner nothing under its own ceiling. That is the completability fold
     // `completionCheckFor` performs, and the draw passes the row over by it.
     const capped = personConstraints({
-      startYear: { name: 'Start', type: 'number' },
+      startYear: { name: 'Start', label: 'Start', type: 'number' },
       endYear: {
         name: 'End',
+        label: 'End',
         type: 'number',
         validation: {
           maxValue: 2000,
@@ -1795,9 +1024,14 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
    */
   describe('against the values a prompt fixes', () => {
     const exclusive = personConstraints({
-      consented: { name: 'Consented', type: 'boolean' },
+      consented: {
+        name: 'Consented',
+        label: 'Consented',
+        type: 'boolean',
+      },
       flag: {
         name: 'Flag',
+        label: 'Flag',
         type: 'boolean',
         validation: {
           differentFrom: asEntityAttributeReference('consented'),
@@ -1869,6 +1103,7 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
     const uniqueNickname = personConstraints({
       nickname: {
         name: 'Nickname',
+        label: 'Nickname',
         type: 'text',
         validation: { unique: true },
       },
@@ -1892,7 +1127,7 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
       );
 
       expect(nodeCountFor(counts.node, 'person', ['nickname'])).toBe(1);
-      expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(1);
+      expect(counts.edge.get('knows') ?? 0).toBe(1);
     });
 
     it('counts every shared row for a later node type', () => {
@@ -1916,7 +1151,9 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
         { 'roster-person': shared, 'roster-org': shared },
         constraintsFor({
           person: {},
-          organization: { flag: { name: 'Flag', type: 'boolean' } },
+          organization: {
+            flag: { name: 'Flag', label: 'Flag', type: 'boolean' },
+          },
         }),
       );
 
@@ -1937,7 +1174,12 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
       constraintsFor(
         {
           person: {
-            age: { name: 'Age', type: 'number', validation: { minValue: 18 } },
+            age: {
+              name: 'Age',
+              label: 'Age',
+              type: 'number',
+              validation: { minValue: 18 },
+            },
           },
         },
         new Set(['age']),
@@ -2142,7 +1384,6 @@ describe('generateNetwork with a filtered writer on existing nodes', () => {
     const counts = worstCaseEntityCounts(
       stages,
       config,
-      undefined,
       undefined,
       undefined,
       undefined,
@@ -2453,180 +1694,6 @@ describe('generateNetwork with a filtered pair-edge stage', () => {
   });
 });
 
-describe('generateNetwork with a unique variable on a pedigree edge type', () => {
-  const codebook = {
-    node: {
-      relative: {
-        name: 'Relative',
-        color: 'node-color-seq-1',
-        variables: {},
-      },
-    },
-    edge: {
-      kin: {
-        name: 'Kin',
-        color: 'edge-color-seq-1',
-        variables: {
-          verified: {
-            name: 'Verified',
-            type: 'boolean',
-            validation: { unique: true },
-          },
-          note: { name: 'Note', type: 'text' },
-        },
-      },
-    },
-  } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
-
-  it('generates, rather than refusing, when nothing fills the pedigree edges', () => {
-    const { network } = generateNetwork({
-      seed: 1,
-      codebook,
-      stages: [familyPedigree()],
-    });
-
-    expect(network.edges.length).toBeGreaterThan(2);
-    // The premise the count now rests on: these edges hold no value at all, so
-    // no two of them can hold the same one.
-    expect(
-      network.edges.every(
-        (edge) => edge[entityAttributesProperty].verified === undefined,
-      ),
-    ).toBe(true);
-  });
-
-  it('still refuses up front when a form on the same edge type fills that variable', () => {
-    // The form writes every existing edge of the type, pedigree-built ones
-    // included, and renders a field that validates what it wrote — so nine
-    // edges really do have to hold nine distinct booleans.
-    const generate = (): unknown =>
-      generateNetwork({
-        seed: 1,
-        codebook,
-        stages: [familyPedigree(), alterEdgeForm('verified')],
-      });
-
-    expect(generate).toThrow(SyntheticDataConstraintError);
-    // Named specifically, because an exemption that let these edges out of the
-    // count would not make this protocol generate — it would only move the
-    // refusal to the draw, where the form runs out of booleans partway through
-    // and the message says nothing about how many edges there were.
-    expect(generate).toThrow(/up to 96 edges of this type can be generated/);
-  });
-
-  it('generates when the form on that edge type fills a different variable', () => {
-    // `handleAlterEdgeForm` writes only the variables its form renders, so
-    // `verified` stays undefined on all pedigree edges however many of them the
-    // form touches.
-    const { network } = generateNetwork({
-      seed: 1,
-      codebook,
-      stages: [familyPedigree(), alterEdgeForm('note')],
-    });
-
-    expect(network.edges.length).toBeGreaterThan(2);
-    expect(
-      network.edges.every(
-        (edge) => edge[entityAttributesProperty].verified === undefined,
-      ),
-    ).toBe(true);
-    expect(
-      network.edges.every(
-        (edge) => edge[entityAttributesProperty].note !== undefined,
-      ),
-    ).toBe(true);
-  });
-
-  it('generates when a filter tests the unique variable the form does not fill', () => {
-    // Pedigree edges and a `unique` boolean the form never renders.
-    // Counting the filter's reference as a naming site would demand nine
-    // distinct booleans of edges that hold none.
-    const { network } = generateNetwork({
-      seed: 1,
-      codebook,
-      stages: [familyPedigree(), filteredAlterEdgeForm('verified', 'note')],
-    });
-
-    expect(network.edges.length).toBeGreaterThan(2);
-    expect(
-      network.edges.every(
-        (edge) => edge[entityAttributesProperty].verified === undefined,
-      ),
-    ).toBe(true);
-  });
-
-  it('still refuses when the form both filters on and renders that variable', () => {
-    // The guard on the exemption above: a filter cannot excuse a variable the
-    // same form writes to every pedigree edge.
-    expect(() =>
-      generateNetwork({
-        seed: 1,
-        codebook,
-        stages: [
-          familyPedigree(),
-          filteredAlterEdgeForm('verified', 'verified'),
-        ],
-      }),
-    ).toThrow(/up to 96 edges of this type can be generated/);
-  });
-
-  it('still refuses when the form fills a variable held equal to the unique one', () => {
-    // The group holds one value, so what any member of it spends the whole
-    // group spends: every edge carries `mirror`, so distinct values are
-    // needed however few of them carry `verified` itself.
-    const heldEqual = {
-      node: { relative: { name: 'Relative', color: 'nc-1', variables: {} } },
-      edge: {
-        kin: {
-          name: 'Kin',
-          color: 'edge-color-seq-1',
-          variables: {
-            verified: {
-              name: 'Verified',
-              type: 'boolean',
-              validation: { unique: true },
-            },
-            mirror: {
-              name: 'Mirror',
-              type: 'boolean',
-              validation: { sameAs: 'verified' },
-            },
-          },
-        },
-      },
-    } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
-
-    expect(() =>
-      generateNetwork({
-        seed: 1,
-        codebook: heldEqual,
-        stages: [familyPedigree(), alterEdgeForm('mirror')],
-      }),
-    ).toThrow(/up to 96 edges of this type can be generated/);
-  });
-
-  it('still refuses when another stage creates edges of the same type', () => {
-    // A Sociogram generates the whole attribute set of every edge it creates,
-    // so those edges hold `verified` whatever the form renders. Only the
-    // pedigree's own edges are ever exempted.
-    const sociogram = {
-      id: 'stage-sociogram',
-      type: 'Sociogram',
-      label: 'Link them',
-      subject: { entity: 'node', type: 'relative' },
-      prompts: [{ id: 'p1', text: 'Who knows who?', edges: { create: 'kin' } }],
-    } as unknown as Stage;
-
-    expect(() =>
-      generateNetwork({
-        seed: 1,
-        codebook,
-        stages: [familyPedigree(), sociogram, alterEdgeForm('note')],
-      }),
-    ).toThrow(SyntheticDataConstraintError);
-  });
-});
-
 /**
  * A pair set covers only the people standing when its stage runs, and a form
  * fills only the edges standing when its stage runs. These pin both readings,
@@ -2683,7 +1750,7 @@ describe('generateNetwork with stage order deciding what a stage can reach', () 
       config,
     );
     // C(2, 2) = 1, not the C(10, 2) = 45 the protocol's final tally reaches.
-    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(1);
+    expect(counts.edge.get('knows') ?? 0).toBe(1);
   });
 
   it('generates when a later name generator cannot reach an earlier census', () => {
@@ -2735,79 +1802,7 @@ describe('generateNetwork with stage order deciding what a stage can reach', () 
     // for an edge the composer really does create.
     const counts = worstCaseEntityCounts([census, networkComposer()], config);
     // C(8, 2) = 28 over the composer's own configured ceiling.
-    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(28);
-  });
-});
-
-/**
- * A FamilyPedigree edge is born empty and stays empty unless something writes
- * onto an edge it did not create — and a writer can only reach the edges that
- * exist when it runs.
- */
-describe('generateNetwork with a pedigree built after its edge form', () => {
-  const codebook = {
-    node: {
-      relative: { name: 'Relative', color: 'node-color-seq-1', variables: {} },
-    },
-    edge: {
-      kin: {
-        name: 'Kin',
-        color: 'edge-color-seq-1',
-        variables: {
-          verified: {
-            name: 'Verified',
-            type: 'boolean',
-            validation: { unique: true },
-          },
-        },
-      },
-    },
-  } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
-
-  it('counts no pedigree edge for a variable only an earlier stage names', () => {
-    const counts = worstCaseEntityCounts(
-      [alterEdgeForm('verified'), familyPedigree()],
-      config,
-    );
-    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(0);
-  });
-
-  it('generates, rather than refusing, when the form runs before the pedigree', () => {
-    // `handleAlterEdgeForm` walks the edges on the draft when it runs, and
-    // there are none: the pedigree has not been reached yet. Its edges are
-    // then created empty and nothing ever fills them.
-    const { network } = generateNetwork({
-      seed: 1,
-      codebook,
-      stages: [alterEdgeForm('verified'), familyPedigree()],
-    });
-
-    expect(network.edges.length).toBeGreaterThan(2);
-    expect(
-      network.edges.every(
-        (edge) => edge[entityAttributesProperty].verified === undefined,
-      ),
-    ).toBe(true);
-  });
-
-  it('still refuses for the pedigree the form can reach', () => {
-    // Two pedigrees straddling the form. The first one's edges exist by the
-    // time the form runs and really do have to hold nine distinct booleans; the
-    // second one's do not exist yet. Counting per pedigree rather than per
-    // protocol is what tells them apart.
-    const generate = (): unknown =>
-      generateNetwork({
-        seed: 1,
-        codebook,
-        stages: [
-          familyPedigree(),
-          alterEdgeForm('verified'),
-          familyPedigree({ id: 'stage-fp-late' }),
-        ],
-      });
-
-    expect(generate).toThrow(SyntheticDataConstraintError);
-    expect(generate).toThrow(/up to 96 edges of this type can be generated/);
+    expect(counts.edge.get('knows') ?? 0).toBe(28);
   });
 });
 
@@ -2861,7 +1856,7 @@ describe('generateNetwork with a census configured to create no edges', () => {
     });
 
     const counts = worstCaseEntityCounts(stages, never);
-    expect(edgeCountFor(counts.edge, 'knows', ['strength'])).toBe(0);
+    expect(counts.edge.get('knows') ?? 0).toBe(0);
   });
 
   it('generates, rather than refusing, and creates the nothing it counted', () => {
@@ -2899,41 +1894,6 @@ describe('generateNetwork with a census configured to create no edges', () => {
         config: { censusEdgeProbability: { min: 0.5, max: 0 } },
       }),
     ).toThrow(/up to 3 edges of this type can be generated/);
-  });
-
-  it('keeps counting the edges a zero-probability census only writes onto', () => {
-    // `handleTieStrengthCensus` fills its `edgeVariable` over reused edges as
-    // well as new ones, so a census that creates nothing still puts a value on
-    // every pedigree edge it meets. Those edges are counted where they were
-    // created, and dropping the census's own pairs must not drop them too.
-    const tieStrength = {
-      id: 'stage-tie',
-      type: 'TieStrengthCensus',
-      label: 'How close?',
-      subject: { entity: 'node', type: 'relative' },
-      prompts: [
-        {
-          id: 'p1',
-          text: 'How close are they?',
-          createEdge: 'kin',
-          edgeVariable: 'closeness',
-          negativeLabel: 'Not at all',
-        },
-      ],
-    } as unknown as Stage;
-
-    const never = resolveGenerationConfig({
-      today: '2026-07-27',
-      censusEdgeProbability: { min: 0, max: 0 },
-    });
-
-    const counts = worstCaseEntityCounts(
-      [familyPedigree(), tieStrength],
-      never,
-    );
-    expect(edgeCountFor(counts.edge, 'kin', ['closeness'])).toBe(
-      pedigreeEdgeCeiling(never),
-    );
   });
 });
 
@@ -3072,281 +2032,6 @@ describe('generateNetwork with two prompts sharing one edge type', () => {
         config: { censusEdgeProbability: { min: 1, max: 1 } },
       }),
     ).toThrow(/up to 3 edges of this type can be generated/);
-  });
-});
-
-/** A FamilyPedigree may write every semantic named by its edge config. */
-describe('worstCaseEntityCounts with a fully configured pedigree edge', () => {
-  const edgeConfig = {
-    type: 'kin',
-    relationshipTypeVariable: 'relationshipType',
-    isActiveVariable: 'verified',
-    isGestationalCarrierVariable: 'carrier',
-    gameteRoleVariable: 'gamete',
-  };
-
-  const configuredPedigree = familyPedigree({ edgeConfig });
-
-  /** A `unique` boolean on whichever edge variable the test is about. */
-  const uniqueBooleanOn = (
-    variableId: string,
-  ): Parameters<typeof generateNetwork>[0]['codebook'] =>
-    ({
-      node: {
-        relative: {
-          name: 'Relative',
-          color: 'node-color-seq-1',
-          variables: {},
-        },
-      },
-      edge: {
-        kin: {
-          name: 'Kin',
-          color: 'edge-color-seq-1',
-          variables: {
-            [variableId]: {
-              name: 'Verified',
-              type: 'boolean',
-              validation: { unique: true },
-            },
-          },
-        },
-      },
-    }) as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
-
-  it('counts its conservative edge ceiling for every semantic it may write', () => {
-    const counts = worstCaseEntityCounts([configuredPedigree], config);
-    const ceiling = pedigreeEdgeCeiling(config);
-    expect(edgeCountFor(counts.edge, 'kin', ['relationshipType'])).toBe(
-      ceiling,
-    );
-    expect(edgeCountFor(counts.edge, 'kin', ['verified'])).toBe(ceiling);
-    expect(edgeCountFor(counts.edge, 'kin', ['carrier'])).toBe(ceiling);
-    expect(edgeCountFor(counts.edge, 'kin', ['gamete'])).toBe(ceiling);
-  });
-
-  it('refuses a unique carrier flag because biological edges repeat true', () => {
-    expect(() =>
-      generateNetwork({
-        seed: 1,
-        codebook: uniqueBooleanOn('carrier'),
-        stages: [configuredPedigree],
-      }),
-    ).toThrow(SyntheticDataConstraintError);
-  });
-
-  it('refuses for a unique variable it writes onto every edge itself', () => {
-    // The other half of the same carve-out: the pedigree really does put its
-    // active flag on every edge, so a `unique` boolean there has multiple
-    // holders and two values, and no seed can satisfy it.
-    const generate = (): unknown =>
-      generateNetwork({
-        seed: 1,
-        codebook: uniqueBooleanOn('verified'),
-        stages: [configuredPedigree],
-      });
-
-    expect(generate).toThrow(SyntheticDataConstraintError);
-    expect(generate).toThrow(/up to 96 edges of this type can be generated/);
-  });
-
-  it('refuses a unique relationship type it writes on every edge', () => {
-    // Multiple edges hold values selected from the relationship-type space.
-    // Counting holders alone can accept a semantically forced duplicate, so the
-    // refusal has to come from counting what the pedigree fixes, the same way
-    // its ego flag is counted.
-    const codebook = {
-      node: {
-        relative: {
-          name: 'Relative',
-          color: 'node-color-seq-1',
-          variables: {},
-        },
-      },
-      edge: {
-        kin: {
-          name: 'Kin',
-          color: 'edge-color-seq-1',
-          variables: {
-            relationshipType: {
-              name: 'Relationship',
-              type: 'categorical',
-              options: RELATIONSHIP_TYPE_OPTIONS,
-              validation: { unique: true },
-            },
-            carrier: { name: 'Carrier', type: 'boolean' },
-          },
-        },
-      },
-    } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
-
-    const generate = (): unknown =>
-      generateNetwork({ seed: 1, codebook, stages: [configuredPedigree] });
-
-    expect(generate).toThrow(SyntheticDataConstraintError);
-    expect(generate).toThrow(
-      /a family pedigree fixes this to .* but unique allows one edge to hold a value/,
-    );
-  });
-
-  it('still refuses for a pedigree whose edges a later form does fill', () => {
-    // The ordering that decides which pedigrees a writer reaches is untouched:
-    // a form naming an unwritten variable after the first pedigree really does
-    // put a value on all of its edges, while the second pedigree runs
-    // after the form and leaves that variable undefined on its own.
-    const generate = (): unknown =>
-      generateNetwork({
-        seed: 1,
-        codebook: uniqueBooleanOn('carrier'),
-        stages: [
-          configuredPedigree,
-          alterEdgeForm('carrier'),
-          familyPedigree({ id: 'stage-fp-late', edgeConfig }),
-        ],
-      });
-
-    expect(generate).toThrow(SyntheticDataConstraintError);
-    expect(generate).toThrow(/up to 192 edges of this type can be generated/);
-  });
-
-  /**
-   * A pedigree's written edge value is the last word on its variable only while
-   * nothing runs after it that redraws the same variable on the same edges.
-   * `handleAlterEdgeForm` regenerates every field it renders over every
-   * existing edge of its type, so a form after the pedigree replaces the
-   * literal on all of them — and what those edges finish holding is drawn
-   * against the variable's rules like any other value.
-   */
-  describe('whose written value a later form redraws', () => {
-    const uniqueRelationshipType = {
-      node: {
-        relative: {
-          name: 'Relative',
-          color: 'node-color-seq-1',
-          variables: {},
-        },
-      },
-      edge: {
-        kin: {
-          name: 'Kin',
-          color: 'edge-color-seq-1',
-          variables: {
-            relationshipType: {
-              name: 'Relationship',
-              type: 'categorical',
-              options: [
-                ...RELATIONSHIP_TYPE_OPTIONS,
-                ...Array.from({ length: 30 }, (_, index) => ({
-                  value: `synthetic-${String(index)}`,
-                  label: `Synthetic ${String(index)}`,
-                })),
-              ],
-              validation: { unique: true },
-            },
-          },
-        },
-      },
-    } as unknown as Parameters<typeof generateNetwork>[0]['codebook'];
-
-    const compactPedigree = { familyPedigreeNodeCount: { min: 7, max: 7 } };
-
-    it('accepts it, and draws the distinct values the form has room for', () => {
-      for (let seed = 1; seed <= 25; seed++) {
-        const { network } = generateNetwork({
-          seed,
-          codebook: uniqueRelationshipType,
-          stages: [
-            familyPedigree({ edgeConfig }),
-            alterEdgeForm('relationshipType'),
-          ],
-          config: compactPedigree,
-        });
-
-        const values = network.edges.map(
-          (edge) => edge[entityAttributesProperty].relationshipType,
-        );
-
-        expect(values.length, `seed ${seed}`).toBe(network.edges.length);
-        expect(
-          new Set(values.map((value) => JSON.stringify(value))).size,
-          `seed ${seed}`,
-        ).toBe(values.length);
-      }
-    });
-
-    it('retains the fixed values where a respected filter excludes the pedigree edges', () => {
-      const generate = (): unknown =>
-        generateNetwork({
-          seed: 1,
-          codebook: uniqueRelationshipType,
-          stages: [
-            familyPedigree({ edgeConfig }),
-            filteredAlterEdgeForm('carrier', 'relationshipType'),
-          ],
-          respectSkipLogicAndFiltering: true,
-          config: compactPedigree,
-        });
-
-      expect(generate).toThrow(SyntheticDataConstraintError);
-      expect(generate).toThrow(
-        /a family pedigree fixes this to .* but unique allows one edge to hold a value/,
-      );
-    });
-
-    it('still redraws every edge when filtering is disabled', () => {
-      const { network } = generateNetwork({
-        seed: 1,
-        codebook: uniqueRelationshipType,
-        stages: [
-          familyPedigree({ edgeConfig }),
-          filteredAlterEdgeForm('carrier', 'relationshipType'),
-        ],
-        config: compactPedigree,
-      });
-
-      const values = network.edges.map(
-        (edge) => edge[entityAttributesProperty].relationshipType,
-      );
-      expect(values).toHaveLength(network.edges.length);
-      expect(new Set(values.map((value) => JSON.stringify(value))).size).toBe(
-        values.length,
-      );
-    });
-
-    it('still refuses where the form runs before the pedigree', () => {
-      // Edges created after a form never meet it, so the pins stand: both of
-      // them hold the literal the pedigree wrote.
-      const generate = (): unknown =>
-        generateNetwork({
-          seed: 1,
-          codebook: uniqueRelationshipType,
-          stages: [
-            alterEdgeForm('relationshipType'),
-            familyPedigree({ edgeConfig }),
-          ],
-          config: compactPedigree,
-        });
-
-      expect(generate).toThrow(SyntheticDataConstraintError);
-      expect(generate).toThrow(
-        /a family pedigree fixes this to .* but unique allows one edge to hold a value/,
-      );
-    });
-
-    it('still refuses where the later form renders a different variable', () => {
-      const generate = (): unknown =>
-        generateNetwork({
-          seed: 1,
-          codebook: uniqueRelationshipType,
-          stages: [familyPedigree({ edgeConfig }), alterEdgeForm('carrier')],
-          config: compactPedigree,
-        });
-
-      expect(generate).toThrow(SyntheticDataConstraintError);
-      expect(generate).toThrow(
-        /a family pedigree fixes this to .* but unique allows one edge to hold a value/,
-      );
-    });
   });
 });
 

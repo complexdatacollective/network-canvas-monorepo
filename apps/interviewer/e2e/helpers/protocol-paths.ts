@@ -8,3 +8,12 @@ export const LEAN_E2E_PROTOCOL_PATH = path.resolve(
 );
 
 export const LEAN_E2E_PROTOCOL_NAME = 'E2E Fixture';
+
+// The development protocol is kept unpacked (protocol.json plus assets/), and
+// the production build cannot install it from the deck.
+export const DEVELOPMENT_PROTOCOL_DIR = path.resolve(
+  import.meta.dirname,
+  '../../../../packages/protocols/development',
+);
+
+export const DEVELOPMENT_PROTOCOL_NAME = 'Development Protocol';

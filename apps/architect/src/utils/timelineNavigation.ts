@@ -12,6 +12,7 @@ const REVEALING_PAGES = new Set([
   '/protocol',
   '/protocol/assets',
   '/protocol/codebook',
+  '/protocol/localization',
 ]);
 
 // Committed stage edits collapse to the stage list rather than re-opening the
@@ -31,9 +32,6 @@ const revealingPageFor = (path: string): string => {
   if (path.startsWith(STAGE_EDITOR_PREFIX)) return '/protocol';
 
   // Everything else has no page that would reveal the change:
-  // - `/protocol/experiments` records real protocol mutations but renders its
-  //   own toolbar with no history controls, is reachable only by typing the
-  //   URL, and its toggles are invisible from the stage list.
   // - `/protocol/summary` is a report view that mutates nothing.
   // - A path-less entry (non-browser environments) records no page at all.
   return '';

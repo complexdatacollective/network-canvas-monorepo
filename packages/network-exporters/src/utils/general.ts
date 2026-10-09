@@ -4,31 +4,11 @@ import {
   caseProperty,
   type NcEntity,
   entityAttributesProperty,
-  entitySecureAttributesMeta,
   sessionProperty,
 } from '@codaco/shared-consts';
 
 import type { SessionWithResequencedIDs } from '../input';
 import type { ExportFormat } from '../options';
-
-const escapeFilePart = (part: string) => part.replace(/\W/g, '');
-
-export const makeFilename = (
-  prefix: string,
-  entityName: string | undefined,
-  exportFormat: string,
-  extension: string,
-) => {
-  let name = prefix;
-  if (extension !== `.${exportFormat}`) {
-    name += name ? '_' : '';
-    name += exportFormat;
-  }
-  if (entityName) {
-    name += `_${escapeFilePart(entityName)}`;
-  }
-  return `${name}${extension}`;
-};
 
 const EXTENSIONS = {
   graphml: '.graphml',
@@ -80,18 +60,19 @@ export const getEntityAttributes = (entity: NcEntity) =>
   entity[entityAttributesProperty];
 
 /**
- * Whether an entity's stored value for an attribute is ciphertext: the list of
- * bytes encryption stores, saved with its secure-attribute metadata. The
- * codebook's `encrypted` flag cannot say so, since it describes what the
- * protocol asks for now, which may differ from how this value was saved. Nor
- * can the metadata alone: an older runtime left it in place when a plaintext
- * answer replaced an encrypted one.
+ * Looks a researcher-authored key (a variable id or an entity type id) up in a
+ * record without reaching `Object.prototype`: `variables['constructor']` is a
+ * function, not a missing variable.
  */
-export const hasEncryptedValue = (entity: NcEntity, attributeId: string) => {
-  const value = entity[entityAttributesProperty][attributeId];
-  return (
-    entity[entitySecureAttributesMeta]?.[attributeId] !== undefined &&
-    Array.isArray(value) &&
-    value.every((item) => typeof item === 'number')
-  );
-};
+export function getOwn<Entries extends Readonly<Record<string, unknown>>>(
+  record: Entries | undefined,
+  key: string,
+): Entries[string] | undefined;
+export function getOwn(
+  record: Readonly<Record<string, unknown>> | undefined,
+  key: string,
+): unknown {
+  return record !== undefined && Object.hasOwn(record, key)
+    ? record[key]
+    : undefined;
+}

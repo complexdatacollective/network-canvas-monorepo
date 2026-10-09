@@ -22,6 +22,7 @@ const makeStore = () => {
     ...protocol.codebook.node,
     [UNUSED_NODE]: {
       name: 'Unused',
+      label: { 'en-US': 'Unused', 'es': 'Sin usar' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
     },

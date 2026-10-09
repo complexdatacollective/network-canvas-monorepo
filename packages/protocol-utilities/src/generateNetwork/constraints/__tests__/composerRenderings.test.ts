@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   asEntityAttributeReference,
   type ComponentType,
+  type LocalizedString,
   type Stage,
   type StructuralCodebook,
 } from '@codaco/protocol-validation';
@@ -32,7 +33,7 @@ function codebookWith(options: {
   nodeParameters?: DatePickerParameters;
   nodeValidation?: { unique?: boolean };
   booleanComponent?: 'Boolean' | 'Toggle';
-  booleanOptions?: { label: string; value: boolean }[];
+  booleanOptions?: { label: LocalizedString; value: boolean }[];
   booleanValidation?: { unique?: boolean };
 }): StructuralCodebook {
   return {
@@ -41,10 +42,20 @@ function codebookWith(options: {
         name: 'Person',
         color: 'node-color-seq-1',
         variables: {
-          name: { name: 'Name', type: 'text', component: 'Text' },
-          layout: { name: 'Layout', type: 'layout' },
+          name: {
+            name: 'Name',
+            label: 'Name',
+            type: 'text',
+            component: 'Text',
+          },
+          layout: {
+            name: 'Layout',
+            label: 'Layout',
+            type: 'layout',
+          },
           born: {
             name: 'Born',
+            label: 'Born',
             type: 'datetime',
             component: 'DatePicker',
             ...(options.nodeParameters !== undefined
@@ -56,6 +67,7 @@ function codebookWith(options: {
           },
           flag: {
             name: 'Flag',
+            label: 'Flag',
             type: 'boolean',
             component: options.booleanComponent ?? 'Boolean',
             ...(options.booleanOptions !== undefined
@@ -73,7 +85,12 @@ function codebookWith(options: {
         name: 'Knows',
         color: 'edge-color-seq-1',
         variables: {
-          since: { name: 'Since', type: 'datetime', component: 'DatePicker' },
+          since: {
+            name: 'Since',
+            label: 'Since',
+            type: 'datetime',
+            component: 'DatePicker',
+          },
         },
       },
     },
@@ -81,22 +98,33 @@ function codebookWith(options: {
 }
 
 function referencedField(field: ComposerField) {
-  return { ...field, variable: asEntityAttributeReference(field.variable) };
+  return {
+    ...field,
+    variable: asEntityAttributeReference(field.variable),
+    label: { 'en-US': field.variable },
+  };
 }
 
 function composerStage(options: {
   id?: string;
   nodeFields?: ComposerField[];
   edgeFields?: ComposerField[];
-}): Stage {
+}): Extract<Stage, { type: 'NetworkComposer' }> {
   return {
     id: options.id ?? 'composer-1',
     type: 'NetworkComposer',
-    label: 'Compose',
+    label: { 'en-US': 'Compose' },
     subject: { entity: 'node', type: 'person' },
     quickAdd: asEntityAttributeReference('name'),
     layoutVariable: asEntityAttributeReference('layout'),
     background: { concentricCircles: 1 },
+    addNamePlaceholder: { 'en-US': 'Type a name' },
+    overtakenEditNotice: { 'en-US': 'Your edit has not been saved.' },
+    tooltips: {
+      addPerson: { 'en-US': 'Add node' },
+      automaticLayout: { 'en-US': 'Automatic layout' },
+      drawConnection: { 'en-US': 'Draw edge' },
+    },
     ...(options.nodeFields !== undefined
       ? { nodeForm: { fields: options.nodeFields.map(referencedField) } }
       : {}),
@@ -112,18 +140,23 @@ function composerStage(options: {
   };
 }
 
-function alterFormStage(variable: string): Stage {
+function alterFormStage(
+  variable: string,
+): Extract<Stage, { type: 'AlterForm' }> {
   return {
     id: 'ordinary-form',
     type: 'AlterForm',
-    label: 'Edit person',
+    label: { 'en-US': 'Edit person' },
     subject: { entity: 'node', type: 'person' },
-    introductionPanel: { title: 'Introduction', text: 'Continue' },
+    introductionPanel: {
+      title: { 'en-US': 'Introduction' },
+      text: { 'en-US': 'Continue' },
+    },
     form: {
       fields: [
         {
           variable: asEntityAttributeReference(variable),
-          prompt: 'Enter a value',
+          prompt: { 'en-US': 'Enter a value' },
         },
       ],
     },
@@ -433,7 +466,7 @@ describe('NetworkComposer field renderings', () => {
     for (let seed = 0; seed < 20; seed++) {
       const { network } = generateNetwork({
         codebook: codebookWith({
-          booleanOptions: [{ label: 'Yes', value: true }],
+          booleanOptions: [{ label: { 'en-US': 'Yes' }, value: true }],
         }),
         stages: [
           alterFormStage('flag'),
@@ -569,7 +602,7 @@ describe('NetworkComposer field renderings', () => {
   it('draws only the values offered by a Boolean choice control', () => {
     const { network } = generateNetwork({
       codebook: codebookWith({
-        booleanOptions: [{ label: 'Yes', value: true }],
+        booleanOptions: [{ label: { 'en-US': 'Yes' }, value: true }],
       }),
       stages: [
         composerStage({
@@ -589,7 +622,7 @@ describe('NetworkComposer field renderings', () => {
     for (let seed = 0; seed < 20; seed++) {
       const { network } = generateNetwork({
         codebook: codebookWith({
-          booleanOptions: [{ label: 'Yes', value: true }],
+          booleanOptions: [{ label: { 'en-US': 'Yes' }, value: true }],
         }),
         stages: [
           composerStage({
@@ -609,7 +642,7 @@ describe('NetworkComposer field renderings', () => {
     const generate = () =>
       generateNetwork({
         codebook: codebookWith({
-          booleanOptions: [{ label: 'Yes', value: true }],
+          booleanOptions: [{ label: { 'en-US': 'Yes' }, value: true }],
           booleanValidation: { unique: true },
         }),
         stages: [

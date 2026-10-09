@@ -2,6 +2,8 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 
+import FinishStageTextAlert from './FinishStageTextAlert';
+import LocalizationAlert from './Localization/LocalizationAlert';
 import ProtocolInfoCard from './ProtocolInfoCard';
 import { routeFocusTargetProps } from './RouteFocus';
 import TestingMapboxTokenAlert from './TestingMapboxTokenAlert';
@@ -29,8 +31,10 @@ const Protocol = () => {
       <Heading level="h1" className="sr-only" {...routeFocusTargetProps}>
         {intl.formatMessage(messages.stages)}
       </Heading>
+      <FinishStageTextAlert />
       <TestingMapboxTokenAlert />
       <VariableRoleConflictsAlert />
+      <LocalizationAlert />
       <ProtocolInfoCard />
       <Timeline />
     </div>

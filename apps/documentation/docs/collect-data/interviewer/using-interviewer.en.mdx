@@ -3,6 +3,7 @@ title: Using Interviewer
 navOrder: 2
 wip: false
 toc: true
+date: 7th October 2026
 ---
 
 <SummaryCard duration="30 minutes">
@@ -52,7 +53,7 @@ Interviewer comes in two supported versions. Choose the one you are using below 
 
 <AppOnly axis="interviewer" app="current">
 
-**Interviewer** runs in your web browser — with nothing to install — and can be installed to a device you control as a Progressive Web App. It is built on the same web platform as Fresco 4.0. It supports **schema 8** (so it can run protocols built in [Architect](/en/design-protocols/getting-started)) and is compatible with your existing protocols, while adding an improved interview experience, data export, and on-device security. Because some schema-8 interfaces (such as [Geospatial](/en/design-protocols/interface-documentation/geospatial)) need an internet connection, fully offline collection isn't always possible. It's **recommended for new studies**.
+**Interviewer** runs in your web browser — with nothing to install — and can be installed to a device you control as a Progressive Web App. It is built on the same web platform as Fresco 4.0. It supports **schemas 8 and 9** (so it can run protocols built in [Architect](/en/design-protocols/getting-started)) and is compatible with your existing protocols, while adding an improved interview experience, data export, and on-device security. Because some schema-8 interfaces (such as [Geospatial](/en/design-protocols/interface-documentation/geospatial)) need an internet connection, fully offline collection isn't always possible. It's **recommended for new studies**.
 
 </AppOnly>
 
@@ -117,7 +118,7 @@ For extra protection, you can require re-authentication at interview boundaries 
 
 **About** reports basic information about the app and this device: the app version, how much of your storage is in use (shown as a usage bar — on desktop it also shows free disk space), and your installation ID, a unique per-device identifier. The version and installation ID are the details to quote when contacting us for support. This area also lets you re-show the one-click sample protocol card on the home screen if you previously dismissed it.
 
-**Language** holds the **App language** select, which sets the language of Interviewer and its built-in interview controls on this device. Choose a language, or **Automatic (browser)** to follow your browser's language preferences. See [Interface language](#interface-language) below.
+**Language** holds the **App language** select, which sets the language of Interviewer's own screens on this device. Choose a language, or **Automatic (browser)** to follow your browser's language preferences. See [Interface language](#interface-language) below.
 
 **Interview** has a single **Allow stage navigation** toggle, on by default. While it is on, tapping the progress bar during an interview opens a stages menu, from which you can jump directly to any stage. When it is off, the progress bar stops opening that menu; the up and down arrows still move one screen at a time, which on a stage with several prompts means one prompt rather than one whole stage. Jumping between stages is useful when piloting a protocol, but is usually turned off for real interviews.
 
@@ -134,22 +135,29 @@ For extra protection, you can require re-authentication at interview boundaries 
 
 ### Interface language
 
-Interviewer's interface — its menus, buttons and messages, and the built-in interview controls, help, validation messages and dialogs — is available in English, British English, and Spanish. Each language is listed in its own language: **English**, **English (UK)**, and **Español**. An **Automatic** option, the default, follows the language preferences set in your browser.
+Interviewer's interface — its menus, buttons and messages — is available in English, British English, Spanish, German, French, Italian, Dutch, Brazilian Portuguese, Simplified Chinese and Traditional Chinese. Each language is listed in its own language: **English**, **English (UK)**, **Español**, **Deutsch**, **Français**, **Italiano**, **Nederlands**, **Português (Brasil)**, **简体中文** and **繁體中文**. An **Automatic** option, the default, follows the language preferences set in your browser.
 
 You can change the language from any of these places:
 
 - The **globe button** in the dashboard's top bar, which opens a list of every language. The **Automatic** entry names the language your browser currently resolves to, and choosing any entry applies it at once.
 - The **App language** select on the welcome screen and on each step of the setup wizard.
 - **Settings → Language**.
-- The **Interface language** option in the interview settings menu (see [Key navigation elements](#key-navigation-elements)). Switching language mid-interview keeps the answers already entered, any open form, and your place in the interview.
 
 The choice is stored in the browser on each device, so every interview device keeps its own language. If the browser blocks device storage, the language you chose still applies for the current session but is not remembered: the globe button's list reports that it couldn't save, with a **Try again** button, and **Settings → Language** reports that the preference could not be saved. Every language remains available offline in the installed app.
 
 <TipBox>
 
-The interface language never changes your protocol or your data. Everything written in Architect — prompts, form labels, response options, and Information screens — appears exactly as the researcher wrote it, and collected data and exported values are unchanged. To run interviews in Spanish, author the protocol in Spanish.
+The interface language never changes your protocol, your interviews or your data. Everything written in Architect — prompts, form labels, response options, and Information screens — appears as the researcher wrote it, and collected data and exported values are unchanged.
 
 </TipBox>
+
+### Language in interviews
+
+A protocol can be written in more than one language (see [Translating Your Protocol](/en/design-protocols/translating-your-protocol)). An interview doesn't use the **App language**. When it opens, it uses the first of the device's or browser's preferred languages that the protocol is written in (a close regional match counts), or the protocol's default language if there is none. A text that isn't translated into that language is shown in the best available other translation: in another of the device's or browser's preferred languages that has it, or else the default language, or else any language of the protocol that has it. See [The default language and which translation participants see](/en/design-protocols/translating-your-protocol#the-default-language-and-which-translation-participants-see).
+
+The interview's own built-in words, such as the labels of its navigation, are shown in the interview's language when Interviewer has it, otherwise in the first of the device's or browser's languages that Interviewer has, and otherwise in English. The buttons and messages that every stage shares, such as Back, Continue and validation messages, are not built in: the protocol holds them as its interview text, and they are shown in the language of the protocol's text, like the rest of it (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)).
+
+The only way for a participant to change the language during an interview is a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage in the protocol. Interviewer saves their choice with the interview, so it is used again when the interview is resumed. Exported data records the language each interview was shown in: see [Interview language](/en/analyze-data/data-export#interview-language).
 
 </AppOnly>
 
@@ -190,7 +198,7 @@ Interviewer presents this as a dashboard. You switch between two views from the 
 
 - **Protocols** — your installed protocols, shown as a deck you can flip through, alongside a card for importing a new protocol.
 - **Data** — every collected session, ready to resume, review, or export (covered under [Resuming, exporting, and managing interview sessions](#resuming-exporting-and-managing-interview-sessions) below).
-- **Interface language** (the globe icon) — switches the interface language (see [Interface language](#interface-language) above).
+- **Interface language** (the globe icon) — switches the language of Interviewer's own screens (see [Interface language](#interface-language) above).
 - **Lock app** (the padlock icon) — locks Interviewer immediately. It appears only once you have set up an app lock.
 - **Settings** (the gear icon) — app preferences and diagnostics, grouped into About, Language, Interview, Data export, Privacy, Security, and Synthetic data (see [Settings](#settings) above).
 
@@ -208,7 +216,7 @@ There are two ways to import a protocol into the devices running Interviewer. Wh
 
 <AppOnly axis="interviewer" app="current">
 
-Protocols are imported into Interviewer from a `.netcanvas` file on the device. Each protocol is validated on import, and any protocol built against an older schema is migrated to schema 8 automatically, with a notification telling you the migration occurred.
+Protocols are imported into Interviewer from a `.netcanvas` file on the device. Each protocol is validated on import, and any protocol built against an older schema is migrated to the latest schema version automatically, with a notification telling you the migration occurred.
 
 ![The Import a protocol dialog in Interviewer](/assets/img/interviewer-guide/import-protocol.png)
 
@@ -417,7 +425,6 @@ device, which may help with engagement.
 Interviewer keeps the interview chrome deliberately minimal. The navigation adapts to the device — a rail down the side on wider, landscape displays, and a bar along the bottom on tall, portrait ones — and contains only a few controls:
 
 - A **settings** control (the gear icon) that opens a small menu containing:
-  - **Interface language**, which switches the language of the interview's built-in controls, help, and messages without losing the answers already entered, any open form, or the current position in the interview. The choice is remembered on the device, like the other language controls (see [Interface language](#interface-language)).
   - **Text size**, letting the participant enlarge or reduce the whole interview — useful on tablets.
   - **Exit interview**, which leaves the interview and returns to the dashboard after a confirmation.
 - An **up** arrow to move to the previous stage or prompt.
@@ -427,7 +434,7 @@ Between the up and down arrows, a **progress bar** fills as the participant move
 
 The settings menu holds only these participant-facing options; every other app setting lives in the dashboard **Settings** area, reached after exiting the interview.
 
-![The interview settings menu, with Interface language, Text size, and Exit interview](/assets/img/interviewer-guide/interview-settings.png)
+![The interview settings menu, with Text size and Exit interview](/assets/img/interviewer-guide/interview-settings.png)
 
 <TipBox danger={true}>
 
@@ -635,7 +642,17 @@ The Narrative interface also supports free-form annotation using the mouse, a fi
 
 ## The Finish Screen
 
+<AppOnly axis="interviewer" app="classic">
+
 Each interview protocol has a "finish" screen automatically inserted by Interviewer. This screen presents a single button that will exit the interview. Clicking this button will also set, or update, the "finished at" property of the interview session. This property is exported along with your interview data, and can be used to calculate interview duration.
+
+</AppOnly>
+
+<AppOnly axis="interviewer" app="current">
+
+Every protocol ends with a [Finish Screen](/en/design-protocols/interface-documentation/finish-screen), which shows the closing heading and text written by the protocol's designer, and a **Finish** button. Pressing **Finish** sets, or updates, the "finished at" property of the interview session. This property is exported along with your interview data, and can be used to calculate interview duration. Interviewer also stores which Finish Screen ended the interview, and the outcome the protocol's designer chose for it, with the session. The outcome is included in the exported data (see [How the interview ended](/en/analyze-data/data-export#how-the-interview-ended)).
+
+</AppOnly>
 
 <Screenshot axis="interviewer" name="finish" alt="The finish screen"></Screenshot>
 
@@ -645,7 +662,7 @@ Interviewer asks you to confirm before finishing, since responses can't be chang
 
 ![Confirming that you want to finish the interview](/assets/img/interviewer-guide/finish-confirm.png)
 
-After confirming, you arrive at a short completion screen, and from there return to the dashboard.
+After confirming, the interview shows its completed state: the Finish Screen's heading and text, and a notice that the interview is finished and its answers can no longer be changed. There is no navigation and no way back. The only action is **Exit**, which returns you to the dashboard. Opening a finished interview from the dashboard shows the completed state again.
 
 ![The interview-complete screen](/assets/img/interviewer-guide/interview-complete.png)
 
@@ -677,7 +694,7 @@ Every session you collect — whether in progress, finished, or already exported
 
 <Screenshot axis="interviewer" name="resume-section" alt="The Interviews list"></Screenshot>
 
-Select a session to resume an in-progress interview or review a finished one. You can also select several sessions at once to **export** or **delete** them in bulk. The data export process is covered below; export formats are configured in **Settings** rather than chosen at export time.
+Select a session to resume an in-progress interview or review a finished one. When you review a finished interview, its stages are shown read-only. The Finish Screen isn't part of the review, and it isn't listed in the stages menu. You can also select several sessions at once to **export** or **delete** them in bulk. The data export process is covered below; export formats are configured in **Settings** rather than chosen at export time.
 
 </AppOnly>
 

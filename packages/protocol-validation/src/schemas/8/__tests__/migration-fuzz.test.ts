@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Protocol } from '../../index.ts';
 import migrationV7toV8 from '../migration.ts';
-import ProtocolSchemaV8 from '../schema.ts';
+import { V8OutputSchema } from './v8-output-schema.ts';
 
 /**
  * Seeded property test: any v7 protocol within the generator's contract must
@@ -13,7 +13,7 @@ import ProtocolSchemaV8 from '../schema.ts';
  * `.int()` bounds, unsupported DatePicker keys, below-floor count values,
  * invalid parameter shapes — four separate review findings). This test closes
  * that class mechanically: it fuzzes v7 protocols through the migration and
- * asserts the output parses under `ProtocolSchemaV8`.
+ * asserts the output parses under `V8OutputSchema`.
  *
  * ## Generator contract
  *
@@ -56,6 +56,13 @@ import ProtocolSchemaV8 from '../schema.ts';
  *   the pre-existing `.min(2)` on `categoricalOptionsSchema` (also at
  *   merge-base 35c501846). No repair can invent participant-facing options,
  *   so the shape fails closed.
+ * - Categorical/ordinal `options` with fewer than two DISTINCT values, such
+ *   as two options sharing one value: schema 9 refuses duplicate values, and
+ *   the 8 to 9 migration removes each later option that repeats an earlier
+ *   value, which leaves one option for the `.min(2)` above to refuse. The
+ *   attribute only ever offered one answer, and no repair can invent a
+ *   second, so it fails closed like the case above. Duplicates on a variable
+ *   with a third option are in contract.
  * - Form fields over variables that define no `component`: the pre-existing
  *   schema check ("must define a component", merge-base 35c501846) rejects
  *   them; the migration notes record that such protocols crashed the v7
@@ -1001,7 +1008,12 @@ const MUTATIONS: Mutation[] = [
   {
     name: 'duplicateOptionValues',
     apply: (protocol, rng) => {
-      const ref = pick(rng, refsOfType('ordinal', 'categorical'));
+      // The 8 to 9 migration removes the later option, so a variable needs a
+      // third to keep the two `.min(2)` requires (see the exclusions above).
+      const refs = refsOfType('ordinal', 'categorical').filter(
+        (ref) => optionsOf(variableAt(buildTemplate(), ref)).length > 2,
+      );
+      const ref = pick(rng, refs);
       const options = optionsOf(variableAt(protocol, ref));
       const first = asRecordOrThrow(options[0], 'option');
       const second = asRecordOrThrow(options[1], 'option');
@@ -1326,7 +1338,7 @@ const runCase = (
     return result;
   }
   result.migrated = migrated;
-  const parsed = ProtocolSchemaV8.safeParse(migrated);
+  const parsed = V8OutputSchema.safeParse(migrated);
   if (!parsed.success) {
     result.issues = JSON.stringify(parsed.error.issues, null, 2);
   }

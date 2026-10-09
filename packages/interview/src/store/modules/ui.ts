@@ -1,26 +1,30 @@
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import {
+  createAction,
+  createSlice,
+  type PayloadAction,
+} from '@reduxjs/toolkit';
 
 import { transitionStage } from './session';
 
 type UIState = {
   FORM_IS_READY: boolean;
-  passphrase: string | null;
   /**
-   * Counts the passphrases entered, so that entering the one in force again
-   * can be told apart from it staying in force.
+   * Names the decryption scope holding the interview's encryption key, while
+   * one is in force. Only this opaque id is kept here: the key and the
+   * passphrase it came from are never put in Redux state.
    */
-  passphraseEntry: number;
+  encryptionKeyId: string | null;
   showPassphrasePrompter: boolean;
-  passphraseInvalid: boolean;
 };
 
-const initialState = {
+const initialState: UIState = {
   FORM_IS_READY: false,
-  passphrase: null,
-  passphraseEntry: 0,
+  encryptionKeyId: null,
   showPassphrasePrompter: false,
-  passphraseInvalid: false,
-} as UIState;
+};
+
+/** A passphrase was turned away because it does not open the interview. */
+export const passphraseRejected = createAction('ui/passphraseRejected');
 
 const uiSlice = createSlice({
   name: 'ui',
@@ -30,19 +34,13 @@ const uiSlice = createSlice({
       ...state,
       FORM_IS_READY: action.payload,
     }),
-    setPassphrase: (state, action: PayloadAction<string>) => ({
+    encryptionUnlocked: (state, action: PayloadAction<string>) => ({
       ...state,
-      passphraseInvalid: false,
-      passphrase: action.payload,
-      passphraseEntry: state.passphraseEntry + 1,
+      encryptionKeyId: action.payload,
     }),
     setShowPassphrasePrompter: (state, action: PayloadAction<boolean>) => ({
       ...state,
       showPassphrasePrompter: action.payload,
-    }),
-    setPassphraseInvalid: (state, action: PayloadAction<boolean>) => ({
-      ...state,
-      passphraseInvalid: action.payload,
     }),
   },
   extraReducers: (builder) => {
@@ -54,11 +52,8 @@ const uiSlice = createSlice({
   },
   selectors: {
     formIsReady: (state) => state.FORM_IS_READY,
-    getPassphrase: (state) => state.passphrase,
-    getPassphraseEntry: (state) => state.passphraseEntry,
-    showPassphrasePrompter: (state) =>
-      state.showPassphrasePrompter || state.passphraseInvalid,
-    getPassphraseInvalid: (state) => state.passphraseInvalid,
+    getEncryptionKeyId: (state) => state.encryptionKeyId,
+    showPassphrasePrompter: (state) => state.showPassphrasePrompter,
   },
 });
 
@@ -66,18 +61,9 @@ const uiSlice = createSlice({
 export default uiSlice.reducer;
 
 // Export the action creators
-export const {
-  setFormIsReady,
-  setPassphrase,
-  setShowPassphrasePrompter,
-  setPassphraseInvalid,
-} = uiSlice.actions;
+export const { setFormIsReady, encryptionUnlocked, setShowPassphrasePrompter } =
+  uiSlice.actions;
 
 // Export the selectors
-export const {
-  formIsReady,
-  getPassphrase,
-  getPassphraseEntry,
-  showPassphrasePrompter,
-  getPassphraseInvalid,
-} = uiSlice.selectors;
+export const { formIsReady, getEncryptionKeyId, showPassphrasePrompter } =
+  uiSlice.selectors;

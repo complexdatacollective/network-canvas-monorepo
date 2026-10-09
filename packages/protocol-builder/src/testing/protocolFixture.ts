@@ -5,6 +5,10 @@ import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import {
+  protocolLocalizationOf,
+  type ProtocolLocalization,
+} from '../localization/localizedText.ts';
 import { isStageType } from '../stage-types.ts';
 
 /**
@@ -58,6 +62,8 @@ const FIXTURE_STAGE_TYPES = {
   'narrative-pedigree-1': 'NarrativePedigree',
   'network-composer-1': 'NetworkComposer',
   'geospatial-1': 'Geospatial',
+  'language-chooser-1': 'LanguageChooser',
+  'finish': 'FinishSession',
 } as const satisfies Readonly<Record<string, StageType>>;
 
 type FixtureStageTypes = typeof FIXTURE_STAGE_TYPES;
@@ -205,6 +211,17 @@ export function fixtureProtocolSections(): Record<string, SectionDoc> {
   }
 
   return sections;
+}
+
+/** The languages the fixture protocol declares. */
+export function fixtureLocalization(): ProtocolLocalization {
+  const localization = protocolLocalizationOf(
+    fixtureProtocolSections()[sectionId({ kind: 'settings' })] ?? {},
+  );
+  if (localization === undefined) {
+    throw new TypeError('The fixture protocol declares no valid languages.');
+  }
+  return localization;
 }
 
 /** The fixture's asset manifest, for seeding a resource gateway from it. */

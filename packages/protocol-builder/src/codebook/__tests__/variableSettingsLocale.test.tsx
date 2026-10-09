@@ -44,8 +44,8 @@ describe('codebook copy produced outside React, read in Spanish', () => {
     expect(
       readAll(
         validateBooleanAnswers([
-          { label: 'Sí', value: true },
-          { label: '', value: false },
+          { label: { es: 'Sí' }, value: true },
+          { value: false },
         ]),
         esIntl,
       ),

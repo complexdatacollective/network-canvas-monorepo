@@ -189,7 +189,7 @@ const addJsExtensionsToDeclarationSpecifiers = (content: string) =>
 
 export default defineConfig({
   plugins: [
-    isLibraryBuild && appI18n({ build: 'library' }),
+    isLibraryBuild && appI18n(),
     interfaceImagesNoInlinePlugin(),
     inlineWorkerPlugin(),
     isLibraryBuild && clientDirective.plugin,

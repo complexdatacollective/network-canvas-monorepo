@@ -25,9 +25,9 @@ const openTitle = (stageId: string) =>
 
 describe('the stage title', () => {
   /**
-   * Which of nineteen interfaces is open, at a glance. The screenshot has to
+   * Which of twenty interfaces is open, at a glance. The screenshot has to
    * be the one captured from THIS interface: a title that had stopped reading
-   * the stage's type would show one real screenshot on all nineteen.
+   * the stage's type would show one real screenshot on all twenty.
    */
   it.each(fixtureStageIds())(
     'shows the interface screenshot for %s',
@@ -50,8 +50,8 @@ describe('the stage title', () => {
   );
 
   /**
-   * And the documentation link is this stage's interface too: nineteen
-   * distinct URLs, so a title that had settled on one fails eighteen.
+   * And the documentation link is this stage's interface too: twenty
+   * distinct URLs, so a title that had settled on one fails nineteen.
    */
   it.each(fixtureStageIds())(
     'points %s at its own documentation',

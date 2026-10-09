@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { icons } from 'lucide-react';
 import type { ComponentProps } from 'react';
 import { Provider } from 'react-redux';
-import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test';
+import { fn } from 'storybook/test';
 
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import {
@@ -15,7 +15,6 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
-import uiReducer from '../../../store/modules/ui';
 import NodeForm from './NodeForm';
 
 const customIconOptions = ['add-a-person', 'add-a-place'];
@@ -31,11 +30,13 @@ const buildMockProtocol = (icon: string) => ({
     node: {
       person: {
         name: 'Person',
+        label: { en: 'Person' },
         displayVariable: 'name',
         icon,
         variables: {
           name: {
             name: 'Name',
+            label: 'Name',
             type: 'text',
             component: 'Text',
             validation: {
@@ -46,6 +47,7 @@ const buildMockProtocol = (icon: string) => ({
           },
           age: {
             name: 'Age',
+            label: 'Age',
             type: 'number',
             component: 'Number',
             validation: {
@@ -55,13 +57,14 @@ const buildMockProtocol = (icon: string) => ({
           },
           gender: {
             name: 'Gender',
+            label: 'Gender',
             type: 'categorical',
             component: 'RadioGroup',
             options: [
-              { label: 'Male', value: 'male' },
-              { label: 'Female', value: 'female' },
-              { label: 'Non-binary', value: 'non_binary' },
-              { label: 'Prefer not to say', value: 'prefer_not_say' },
+              { label: { en: 'Male' }, value: 'male' },
+              { label: { en: 'Female' }, value: 'female' },
+              { label: { en: 'Non-binary' }, value: 'non_binary' },
+              { label: { en: 'Prefer not to say' }, value: 'prefer_not_say' },
             ],
             validation: {
               required: true,
@@ -69,19 +72,21 @@ const buildMockProtocol = (icon: string) => ({
           },
           occupation: {
             name: 'Occupation',
+            label: 'Occupation',
             type: 'text',
             component: 'Text',
           },
           favoriteColors: {
             name: 'Favorite Colors',
+            label: 'Favorite Colors',
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [
-              { label: 'Red', value: 'red' },
-              { label: 'Blue', value: 'blue' },
-              { label: 'Green', value: 'green' },
-              { label: 'Yellow', value: 'yellow' },
-              { label: 'Purple', value: 'purple' },
+              { label: { en: 'Red' }, value: 'red' },
+              { label: { en: 'Blue' }, value: 'blue' },
+              { label: { en: 'Green' }, value: 'green' },
+              { label: { en: 'Yellow' }, value: 'yellow' },
+              { label: { en: 'Purple' }, value: 'purple' },
             ],
             validation: {
               required: true,
@@ -91,11 +96,13 @@ const buildMockProtocol = (icon: string) => ({
           },
           birthDate: {
             name: 'Birth Date',
+            label: 'Birth Date',
             type: 'datetime',
             component: 'DatePicker',
           },
           happiness: {
             name: 'Happiness Level',
+            label: 'Happiness Level',
             type: 'scalar',
             component: 'Slider',
             parameters: {
@@ -105,11 +112,13 @@ const buildMockProtocol = (icon: string) => ({
           },
           isEmployed: {
             name: 'Currently Employed',
+            label: 'Currently Employed',
             type: 'boolean',
             component: 'Toggle',
           },
           bio: {
             name: 'Biography',
+            label: 'Biography',
             type: 'text',
             component: 'TextArea',
             validation: {
@@ -118,15 +127,16 @@ const buildMockProtocol = (icon: string) => ({
           },
           skills: {
             name: 'Skills',
+            label: 'Skills',
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [
-              { label: 'JavaScript', value: 'javascript' },
-              { label: 'Python', value: 'python' },
-              { label: 'Java', value: 'java' },
-              { label: 'C++', value: 'cpp' },
-              { label: 'Ruby', value: 'ruby' },
-              { label: 'Go', value: 'go' },
+              { label: { en: 'JavaScript' }, value: 'javascript' },
+              { label: { en: 'Python' }, value: 'python' },
+              { label: { en: 'Java' }, value: 'java' },
+              { label: { en: 'C++' }, value: 'cpp' },
+              { label: { en: 'Ruby' }, value: 'ruby' },
+              { label: { en: 'Go' }, value: 'go' },
             ],
             validation: {
               required: true,
@@ -136,13 +146,14 @@ const buildMockProtocol = (icon: string) => ({
           },
           communicationPreference: {
             name: 'Communication Preference',
+            label: 'Communication Preference',
             type: 'categorical',
             component: 'ToggleButtonGroup',
             options: [
-              { label: 'Email', value: 'email' },
-              { label: 'Phone', value: 'phone' },
-              { label: 'Text', value: 'text' },
-              { label: 'Video Call', value: 'video' },
+              { label: { en: 'Email' }, value: 'email' },
+              { label: { en: 'Phone' }, value: 'phone' },
+              { label: { en: 'Text' }, value: 'text' },
+              { label: { en: 'Video Call' }, value: 'video' },
             ],
             validation: {
               required: true,
@@ -155,7 +166,7 @@ const buildMockProtocol = (icon: string) => ({
   stages: [
     {
       type: 'NameGenerator',
-      label: 'Name Generator',
+      label: { en: 'Name Generator' },
       subject: {
         entity: 'node',
         type: 'person',
@@ -163,47 +174,47 @@ const buildMockProtocol = (icon: string) => ({
       prompts: [
         {
           id: 'prompt-1',
-          text: 'Name the people in your network',
+          text: { en: 'Name the people in your network' },
         },
       ],
       form: {
-        title: 'Add Person Details',
+        title: { en: 'Add Person Details' },
         fields: [
           {
             variable: asEntityAttributeReference('name'),
-            prompt: "What is this person's name?",
+            prompt: { en: "What is this person's name?" },
           },
           {
             variable: asEntityAttributeReference('age'),
-            prompt: 'How old is this person?',
+            prompt: { en: 'How old is this person?' },
           },
           {
             variable: asEntityAttributeReference('gender'),
-            prompt: 'What is their gender?',
+            prompt: { en: 'What is their gender?' },
           },
           {
             variable: asEntityAttributeReference('occupation'),
-            prompt: 'What is their occupation?',
+            prompt: { en: 'What is their occupation?' },
           },
           {
             variable: asEntityAttributeReference('favoriteColors'),
-            prompt: 'What are their favorite colors?',
+            prompt: { en: 'What are their favorite colors?' },
           },
           {
             variable: asEntityAttributeReference('birthDate'),
-            prompt: 'When were they born?',
+            prompt: { en: 'When were they born?' },
           },
           {
             variable: asEntityAttributeReference('happiness'),
-            prompt: 'How happy are they generally?',
+            prompt: { en: 'How happy are they generally?' },
           },
           {
             variable: asEntityAttributeReference('isEmployed'),
-            prompt: 'Are they currently employed?',
+            prompt: { en: 'Are they currently employed?' },
           },
           {
             variable: asEntityAttributeReference('bio'),
-            prompt: 'Tell us a bit about them',
+            prompt: { en: 'Tell us a bit about them' },
           },
         ],
       },
@@ -219,6 +230,8 @@ const mockSession = {
   finishTime: null,
   exportTime: null,
   lastUpdated: new Date().toISOString(),
+  localePreference: null,
+  locale: null,
   network: {
     nodes: [
       {
@@ -262,9 +275,6 @@ const createMockStore = (
     codebook: mockProtocol.codebook,
     stages: mockProtocol.stages, // This MUST be an array for the getStages selector
     assets: [], // Ensure assets is an array
-    experiments: {
-      encryptedVariables: false,
-    },
   };
 
   const mockSessionState = {
@@ -278,7 +288,7 @@ const createMockStore = (
       session: (state: unknown = mockSessionState): unknown => state,
       protocol: (state: unknown = mockProtocolState): unknown => state,
       form: (state: unknown = {}): unknown => state,
-      ui: uiReducer,
+      ui: (state: unknown = {}): unknown => state,
     },
     preloadedState: {
       protocol: mockProtocolState,
@@ -355,42 +365,42 @@ type Story = StoryObj<StoryArgs>;
 
 // Basic form with all field types
 const basicForm: TForm = {
-  title: 'Add Person to Your Network',
+  title: { en: 'Add Person to Your Network' },
   fields: [
     {
       variable: asEntityAttributeReference('name'),
-      prompt: 'What is their name?',
+      prompt: { en: 'What is their name?' },
     },
     {
       variable: asEntityAttributeReference('age'),
-      prompt: 'How old are they?',
+      prompt: { en: 'How old are they?' },
     },
     {
       variable: asEntityAttributeReference('gender'),
-      prompt: 'What is their gender?',
+      prompt: { en: 'What is their gender?' },
     },
     {
       variable: asEntityAttributeReference('occupation'),
-      prompt: 'What do they do for work?',
+      prompt: { en: 'What do they do for work?' },
     },
   ],
 };
 
 // Form with validation
 const validatedForm: TForm = {
-  title: 'Add Person (with validation)',
+  title: { en: 'Add Person (with validation)' },
   fields: [
     {
       variable: asEntityAttributeReference('name'),
-      prompt: 'Name (required)',
+      prompt: { en: 'Name (required)' },
     },
     {
       variable: asEntityAttributeReference('age'),
-      prompt: 'Age (18-100)',
+      prompt: { en: 'Age (18-100)' },
     },
     {
       variable: asEntityAttributeReference('favoriteColors'),
-      prompt: 'Select at least 2 favorite colors',
+      prompt: { en: 'Select at least 2 favorite colors' },
     },
   ],
 };
@@ -470,7 +480,7 @@ export const EmptyForm: Story = {
   args: {
     selectedNode: null,
     form: {
-      title: 'Quick Add',
+      title: { en: 'Quick Add' },
       fields: [],
     },
     disabled: false,
@@ -481,11 +491,11 @@ export const SingleFieldForm: Story = {
   args: {
     selectedNode: null,
     form: {
-      title: 'Add Name Only',
+      title: { en: 'Add Name Only' },
       fields: [
         {
           variable: asEntityAttributeReference('name'),
-          prompt: "Enter the person's name",
+          prompt: { en: "Enter the person's name" },
         },
       ],
     },
@@ -495,35 +505,35 @@ export const SingleFieldForm: Story = {
 
 // Form with multiple field types to demonstrate initialValues comprehensively
 const comprehensiveForm: TForm = {
-  title: 'Complete Profile',
+  title: { en: 'Complete Profile' },
   fields: [
     {
       variable: asEntityAttributeReference('name'),
-      prompt: 'What is their name?',
+      prompt: { en: 'What is their name?' },
     },
     {
       variable: asEntityAttributeReference('age'),
-      prompt: 'How old are they?',
+      prompt: { en: 'How old are they?' },
     },
     {
       variable: asEntityAttributeReference('gender'),
-      prompt: 'What is their gender?',
+      prompt: { en: 'What is their gender?' },
     },
     {
       variable: asEntityAttributeReference('occupation'),
-      prompt: 'What do they do for work?',
+      prompt: { en: 'What do they do for work?' },
     },
     {
       variable: asEntityAttributeReference('favoriteColors'),
-      prompt: 'What are their favorite colors?',
+      prompt: { en: 'What are their favorite colors?' },
     },
     {
       variable: asEntityAttributeReference('isEmployed'),
-      prompt: 'Are they currently employed?',
+      prompt: { en: 'Are they currently employed?' },
     },
     {
       variable: asEntityAttributeReference('bio'),
-      prompt: 'Tell us a bit about them',
+      prompt: { en: 'Tell us a bit about them' },
     },
   ],
 };
@@ -561,12 +571,13 @@ export const WithUniqueValidation: Story = {
   args: {
     selectedNode: null,
     form: {
-      title: 'Add Unique Person',
+      title: { en: 'Add Unique Person' },
       fields: [
         {
           variable: asEntityAttributeReference('name'),
-          prompt:
-            'Enter a unique name (Alice Smith and Bob Johnson already exist)',
+          prompt: {
+            en: 'Enter a unique name (Alice Smith and Bob Johnson already exist)',
+          },
         },
       ],
     },
@@ -584,15 +595,15 @@ export const WithUniqueValidation: Story = {
 
 // CheckboxGroup with validation
 const checkboxGroupForm: TForm = {
-  title: 'Select Your Skills',
+  title: { en: 'Select Your Skills' },
   fields: [
     {
       variable: asEntityAttributeReference('name'),
-      prompt: 'Your name',
+      prompt: { en: 'Your name' },
     },
     {
       variable: asEntityAttributeReference('skills'),
-      prompt: 'Select your programming skills (1-4 required)',
+      prompt: { en: 'Select your programming skills (1-4 required)' },
     },
   ],
 };
@@ -638,15 +649,15 @@ export const CheckboxGroupWithInitialValues: Story = {
 
 // ToggleButtonGroup with validation
 const toggleButtonGroupForm: TForm = {
-  title: 'Communication Preferences',
+  title: { en: 'Communication Preferences' },
   fields: [
     {
       variable: asEntityAttributeReference('name'),
-      prompt: 'Your name',
+      prompt: { en: 'Your name' },
     },
     {
       variable: asEntityAttributeReference('communicationPreference'),
-      prompt: 'How would you prefer to be contacted?',
+      prompt: { en: 'How would you prefer to be contacted?' },
     },
   ],
 };
@@ -687,91 +698,5 @@ export const ToggleButtonGroupWithInitialValue: Story = {
           'This story shows a ToggleButtonGroup with a pre-selected value. The form is pre-populated with "Email" as the selected communication preference.',
       },
     },
-  },
-};
-
-const STORY_PASSPHRASE = 'correct horse battery staple';
-const protectedProtocol = buildMockProtocol('add-a-person');
-const { person } = protectedProtocol.codebook.node;
-
-export const TakesThePassphraseInsideTheForm: Story = {
-  args: {
-    selectedNode: null,
-    form: basicForm,
-    disabled: false,
-  },
-  parameters: {
-    reduxState: {
-      protocol: {
-        id: 'test-protocol-id',
-        codebook: {
-          node: {
-            person: {
-              ...person,
-              variables: {
-                ...person.variables,
-                name: { ...person.variables.name, encrypted: true },
-              },
-            },
-          },
-        },
-        stages: protectedProtocol.stages,
-        assets: [],
-        experiments: { encryptedVariables: true },
-      },
-      ui: {
-        passphrase: STORY_PASSPHRASE,
-        passphraseEntry: 1,
-        passphraseInvalid: true,
-        showPassphrasePrompter: false,
-      },
-    },
-    docs: {
-      description: {
-        story:
-          "A form that saves answers protected by the passphrase, open while the passphrase in force has been found not to work. The navigation's prompter cannot be reached while the form is open, so the form offers the prompt itself: it opens over the form, and the form keeps what was entered.",
-      },
-    },
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(
-      await canvas.findByRole('button', { name: 'Add a person' }),
-    );
-    const form = await screen.findByRole('dialog', { name: basicForm.title });
-    const name = within(form).getByRole('textbox', { name: /their name/ });
-    await userEvent.type(name, 'Alice');
-
-    await userEvent.click(
-      within(form).getByRole('button', { name: 'Enter your Passphrase' }),
-    );
-    const prompt = await screen.findByRole('dialog', {
-      name: 'Enter your Passphrase',
-    });
-    // The label also carries a visual required marker.
-    const field = within(prompt).getByLabelText(/^Passphrase/, {
-      selector: 'input',
-    });
-    await waitFor(() => expect(field).toHaveFocus());
-    await userEvent.type(field, STORY_PASSPHRASE);
-    await userEvent.click(
-      within(prompt).getByRole('button', { name: 'Submit passphrase' }),
-    );
-
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('dialog', { name: 'Enter your Passphrase' }),
-      ).not.toBeInTheDocument(),
-    );
-    await expect(
-      within(form).queryByRole('button', { name: 'Enter your Passphrase' }),
-    ).not.toBeInTheDocument();
-    await expect(name).toHaveValue('Alice');
-    // Back on the save the passphrase was needed for.
-    await waitFor(() =>
-      expect(
-        within(form).getByRole('button', { name: 'Finished' }),
-      ).toHaveFocus(),
-    );
   },
 };

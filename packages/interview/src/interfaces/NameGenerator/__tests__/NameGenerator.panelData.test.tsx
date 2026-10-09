@@ -10,16 +10,19 @@ import {
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
-  entitySecureAttributesMeta,
   type NcNode,
 } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
-import { setPassphrase } from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
-import { createEncryptionStore } from '../../Anonymisation/__tests__/encryptionFixtures';
-import { isNumberArray } from '../../Anonymisation/decryptionScope';
-import { decryptData } from '../../Anonymisation/utils';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
+import {
+  createEncryptionStore,
+  encryptionFor,
+  unlockWith,
+} from '../../Anonymisation/__tests__/encryptionFixtures';
+import { readEncryptedAttribute } from '../../Anonymisation/decryptionScope';
+import { decryptValue } from '../../Anonymisation/encryptionFormat';
 
 // The main list's drop handler is the subject; everything else the stage
 // renders is stubbed.
@@ -54,11 +57,17 @@ const PASSPHRASE = 'name generator passphrase';
 const variables: Record<string, Variable> = {
   [NAME_VAR]: {
     name: 'name',
+    label: 'name',
     type: 'text',
     component: 'Text',
     encrypted: true,
   },
-  [NICKNAME_VAR]: { name: 'nickname', type: 'text', component: 'Text' },
+  [NICKNAME_VAR]: {
+    name: 'nickname',
+    label: 'nickname',
+    type: 'text',
+    component: 'Text',
+  },
 };
 
 // The stage's own form asks only for a value that is not encrypted, so the
@@ -66,37 +75,47 @@ const variables: Record<string, Variable> = {
 const stage: StageProps<'NameGenerator'>['stage'] = {
   id: 'ng1',
   type: 'NameGenerator',
-  label: 'Name Generator',
+  externalDataError: { en: 'External data could not be loaded.' },
+  label: { en: 'Name Generator' },
   subject: { entity: 'node', type: NODE_TYPE },
   form: {
-    title: 'Add a person',
+    title: { en: 'Add a person' },
     fields: [
       {
         variable: asEntityAttributeReference(NICKNAME_VAR),
-        prompt: 'Nickname',
+        prompt: { en: 'Nickname' },
       },
     ],
   },
-  panels: [{ id: 'panel-1', title: 'Roster', dataSource: 'roster-asset' }],
-  prompts: [{ id: 'p1', text: 'Name the people you know' }],
+  panels: [
+    { id: 'panel-1', title: { en: 'Roster' }, dataSource: 'roster-asset' },
+  ],
+  prompts: [{ id: 'p1', text: { en: 'Name the people you know' } }],
 };
 
-function makeStore(encryptionEnabled = true) {
-  const store = createEncryptionStore([], [stage], variables, {
-    encryptionEnabled,
-  });
-  if (encryptionEnabled) store.dispatch(setPassphrase(PASSPHRASE));
+const externalNode: NcNode = {
+  [entityPrimaryKeyProperty]: 'roster-row-1',
+  type: NODE_TYPE,
+  [entityAttributesProperty]: { [NAME_VAR]: 'Alice' },
+};
+
+async function makeStore({ unlocked }: { unlocked: boolean }) {
+  const { header } = await encryptionFor(PASSPHRASE);
+  const store = createEncryptionStore([], [stage], variables, { header });
+  if (unlocked) await unlockWith(store, PASSPHRASE);
   return store;
 }
 
-function renderStage(store: ReturnType<typeof makeStore>) {
+function renderStage(store: Awaited<ReturnType<typeof makeStore>>) {
   mainListDrops.length = 0;
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-          {children}
-        </CurrentStepProvider>
+        <TestProtocolLocalization>
+          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+            {children}
+          </CurrentStepProvider>
+        </TestProtocolLocalization>
       </Provider>
     );
   }
@@ -116,15 +135,10 @@ function renderStage(store: ReturnType<typeof makeStore>) {
 }
 
 describe('NameGenerator with an encrypted variable in panel data', () => {
-  it('stores a dropped external value as ciphertext with its metadata', async () => {
-    const store = makeStore();
+  it('stores a dropped external value as ciphertext bound to the id the person keeps', async () => {
+    const store = await makeStore({ unlocked: true });
     const drop = renderStage(store);
 
-    const externalNode: NcNode = {
-      [entityPrimaryKeyProperty]: 'roster-row-1',
-      type: NODE_TYPE,
-      [entityAttributesProperty]: { [NAME_VAR]: 'Alice' },
-    };
     act(() => {
       drop(externalNode);
     });
@@ -133,35 +147,32 @@ describe('NameGenerator with an encrypted variable in panel data', () => {
       expect(store.getState().session.network.nodes).toHaveLength(1);
     });
     const [node] = store.getState().session.network.nodes;
-    const value = node?.[entityAttributesProperty][NAME_VAR];
-    const secure = node?.[entitySecureAttributesMeta]?.[NAME_VAR];
-    if (!isNumberArray(value)) throw new Error('Expected a stored ciphertext');
-    if (!secure) throw new Error('Expected secure-attribute metadata');
-    expect(
-      await decryptData({ secureAttributes: secure, data: value }, PASSPHRASE),
-    ).toBe('Alice');
+    expect(node?.[entityPrimaryKeyProperty]).toBe('roster-row-1');
+    const stored = node
+      ? readEncryptedAttribute(node, NAME_VAR, variables)
+      : undefined;
+    if (stored?.status !== 'encrypted') {
+      throw new Error('Expected the name to be stored encrypted');
+    }
+    expect(stored.value.nodeId).toBe('roster-row-1');
+    const { key } = await encryptionFor(PASSPHRASE);
+    await expect(decryptValue(key, stored.value, stored.value)).resolves.toBe(
+      'Alice',
+    );
   });
-});
 
-describe('NameGenerator panel data while the encryptedVariables experiment is off', () => {
-  it('stores a dropped external value as plaintext without a passphrase', async () => {
-    const store = makeStore(false);
+  it('asks for the passphrase instead of storing a dropped encrypted value it could not save', async () => {
+    const store = await makeStore({ unlocked: false });
     const drop = renderStage(store);
-
-    act(() => {
-      drop({
-        [entityPrimaryKeyProperty]: 'roster-row-1',
-        type: NODE_TYPE,
-        [entityAttributesProperty]: { [NAME_VAR]: 'Alice' },
-      });
-    });
-
-    await waitFor(() => {
-      expect(store.getState().session.network.nodes).toHaveLength(1);
-    });
-    const [node] = store.getState().session.network.nodes;
-    expect(node?.[entityAttributesProperty][NAME_VAR]).toBe('Alice');
-    expect(node?.[entitySecureAttributesMeta]).toBeUndefined();
+    const before = store.getState().session.network;
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);
+
+    await act(async () => {
+      drop(externalNode);
+      await encryptionFor(PASSPHRASE);
+    });
+
+    expect(store.getState().ui.showPassphrasePrompter).toBe(true);
+    expect(store.getState().session.network).toBe(before);
   });
 });

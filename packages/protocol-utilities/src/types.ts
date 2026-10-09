@@ -1,20 +1,33 @@
 import type {
   ColorReference,
   ComponentType,
-  FamilyPedigreeBoundaries,
-  FamilyPedigreeEdgeConfigInput,
-  FamilyPedigreeFraming,
-  FamilyPedigreeIntroItem,
-  FamilyPedigreeNodeConfigInput,
-  FamilyPedigreeNominationPromptInput,
   EdgeColorReference,
   FilterOperator,
+  FinishOutcome,
   Item,
+  LocaleTag,
+  LocalizedString,
   NodeColorReference,
+  FramingSetting,
   OrdinalColorReference,
+  PedigreeCompletenessScope,
+  PedigreeGenderWords,
   StageType,
   VariableType,
 } from '@codaco/protocol-validation';
+
+/**
+ * Participant-facing text. A plain string is plain text in the protocol's
+ * default locale and is escaped into an ICU literal message on output; a
+ * locale map is emitted as written, so its values must already be ICU literal
+ * messages.
+ */
+export type TextInput = string | LocalizedString;
+
+export type LocalizationInput = {
+  defaultLocale: LocaleTag;
+  locales: readonly LocaleTag[];
+};
 
 /**
  * Structural (unbranded) filter input. The real `Filter` type brands
@@ -55,7 +68,7 @@ export type SkipLogicInput = {
  * union does not admit.
  */
 export type VariableOptionInput = {
-  label: string;
+  label: TextInput;
   value: string | number | boolean;
   negative?: boolean;
 };
@@ -63,6 +76,8 @@ export type VariableOptionInput = {
 export type VariableEntry = {
   id: string;
   name: string;
+  // Codebook label; the variable's name when omitted. Not translated.
+  label?: string;
   type: VariableType;
   component?: ComponentType;
   options?: VariableOptionInput[];
@@ -88,6 +103,7 @@ type ShapeMapping =
 export type NodeTypeEntry = {
   id: string;
   name: string;
+  label?: TextInput;
   color: NodeColorReference;
   icon: string;
   shape: { default: string; dynamic?: ShapeMapping };
@@ -97,19 +113,20 @@ export type NodeTypeEntry = {
 export type EdgeTypeEntry = {
   id: string;
   name: string;
+  label?: TextInput;
   color: EdgeColorReference;
   variables: Map<string, VariableEntry>;
 };
 
 export type NameGeneratorPromptEntry = {
   id: string;
-  text: string;
+  text: TextInput;
   additionalAttributes?: { variable: string; value: boolean }[];
 };
 
 export type SociogramPromptEntry = {
   id: string;
-  text: string;
+  text: TextInput;
   layout: {
     layoutVariable: string;
   };
@@ -131,13 +148,13 @@ type SortRule = {
 
 export type DyadCensusPromptEntry = {
   id: string;
-  text: string;
+  text: TextInput;
   createEdge: string;
 };
 
 export type OneToManyDyadCensusPromptEntry = {
   id: string;
-  text: string;
+  text: TextInput;
   createEdge: string;
   bucketSortOrder?: SortRule[];
   binSortOrder?: SortRule[];
@@ -145,7 +162,7 @@ export type OneToManyDyadCensusPromptEntry = {
 
 export type OrdinalBinPromptEntry = {
   id: string;
-  text: string;
+  text: TextInput;
   variable: string;
   bucketSortOrder?: SortRule[];
   binSortOrder?: SortRule[];
@@ -154,32 +171,26 @@ export type OrdinalBinPromptEntry = {
 
 export type CategoricalBinPromptEntry = {
   id: string;
-  text: string;
+  text: TextInput;
   variable: string;
   otherVariable?: string;
-  otherVariablePrompt?: string;
-  otherOptionLabel?: string;
+  otherVariablePrompt?: TextInput;
+  otherOptionLabel?: TextInput;
   bucketSortOrder?: SortRule[];
   binSortOrder?: SortRule[];
 };
 
 export type TieStrengthCensusPromptEntry = {
   id: string;
-  text: string;
+  text: TextInput;
   createEdge: string;
   edgeVariable: string;
-  negativeLabel: string;
-};
-
-export type DiseaseNominationStepEntry = {
-  id: string;
-  text: string;
-  variable: string;
+  negativeLabel: TextInput;
 };
 
 export type GeospatialPromptEntry = {
   id: string;
-  text: string;
+  text: TextInput;
   variable: string;
 };
 
@@ -195,7 +206,7 @@ type MapOptionsEntry = {
   allowSearch?: boolean;
 };
 
-type PromptEntry =
+export type PromptEntry =
   | NameGeneratorPromptEntry
   | SociogramPromptEntry
   | DyadCensusPromptEntry
@@ -207,19 +218,20 @@ type PromptEntry =
 
 export type PresetEntry = {
   id: string;
-  label: string;
+  label: TextInput;
   layoutVariable: string;
   edges?: {
     display: string[];
   };
   groupVariable?: string;
-  highlight?: string[];
+  highlight?: { variable: string; label: TextInput }[];
 };
 
 type FormFieldEntry = {
   variable: string;
-  component?: ComponentType;
-  prompt?: string;
+  prompt: TextInput;
+  hint?: TextInput;
+  showValidationHints?: boolean;
 };
 
 // Unlike the shared form fields' `prompt`, composer attribute fields caption
@@ -229,8 +241,8 @@ export type NetworkComposerFormFieldEntry = {
   variable: string;
   component: ComponentType;
   parameters?: Record<string, unknown>;
-  label?: string;
-  hint?: string;
+  label: TextInput;
+  hint?: TextInput;
   showValidationHints?: boolean;
 };
 
@@ -243,21 +255,40 @@ export type NetworkComposerEdgeEntry = {
 };
 
 type FormEntry = {
-  title: string;
+  title: TextInput;
   fields: FormFieldEntry[];
 };
 
 type PanelEntry = {
   id: string;
-  title: string;
+  title: TextInput;
   dataSource: string;
   filter?: FilterInput;
 };
 
+type TextItemInput = {
+  id: string;
+  type: 'text';
+  content: TextInput;
+  // A researcher note, never shown to participants, so it is not localized.
+  description?: string;
+};
+
+type AssetItemInput = {
+  id: string;
+  type: 'asset';
+  content: string;
+  description?: TextInput;
+};
+
+export type ItemInput =
+  | TextItemInput
+  | (AssetItemInput & { size?: Extract<Item, { type: 'asset' }>['size'] });
+
 export type StageEntry = {
   id: string;
   type: StageType;
-  label: string;
+  label: TextInput;
   interviewScript?: string;
   skipLogic?: SkipLogicInput;
   filter?: FilterInput;
@@ -280,22 +311,23 @@ export type StageEntry = {
     maxNodes?: number;
   };
   introductionPanel?: {
-    title: string;
-    text: string;
+    title: TextInput;
+    text: TextInput;
   };
-  title?: string;
-  items?: Item[];
+  title?: TextInput;
+  items?: ItemInput[];
   initialEdges: [number, number][];
   // NameGeneratorQuickAdd
   quickAdd?: string;
   // NameGeneratorRoster
   dataSource?: string;
+  panelTitle?: TextInput;
   cardOptions?: {
-    additionalProperties?: { label: string; variable: string }[];
+    additionalProperties?: { label: TextInput; variable: string }[];
   };
   sortOptions?: {
     sortOrder: SortRule[];
-    sortableProperties: { variable: string; label: string }[];
+    sortableProperties: { variable: string; label: TextInput }[];
   };
   searchOptions?: {
     fuzziness: number;
@@ -303,27 +335,28 @@ export type StageEntry = {
   };
   // Anonymisation
   explanationText?: {
-    title: string;
-    body: string;
+    title: TextInput;
+    body: TextInput;
   };
   validation?: { minLength?: number; maxLength?: number };
   // TieStrengthCensus (edge type reference on stage)
   edgeType?: { entity: 'edge'; type: string };
-  // FamilyPedigree-specific fields, derived from the protocol-validation schema
-  // so they cannot drift from it.
-  nodeConfig?: FamilyPedigreeNodeConfigInput;
-  edgeConfig?: FamilyPedigreeEdgeConfigInput;
-  framing?: FamilyPedigreeFraming;
+  // FamilyPedigree
+  prompt?: TextInput;
+  nodeConfiguration?: FamilyPedigreeNodeConfigurationEntry;
+  edgeConfiguration?: FamilyPedigreeEdgeConfigurationEntry;
+  completeness?: FamilyPedigreeCompletenessEntry;
+  framing?: FramingSetting;
+  nominationPrompts?: FamilyPedigreeNominationPromptEntry[];
   // NarrativePedigree-specific fields
   narrativePedigreeSourceStageId?: string;
   narrativePedigreeDiseases?: NarrativeDiseaseEntry[];
   narrativePedigreeShowAtRiskStatuses?: boolean;
-  boundaries?: FamilyPedigreeBoundaries;
-  introScreen?: {
-    items: FamilyPedigreeIntroItem[];
-  };
-  censusPrompt?: string;
-  nominationPrompts?: FamilyPedigreeNominationPromptInput[];
+  /** Stage settings holding participant-visible wording the researcher has
+   * written, by setting name (`tooltips.addPerson` for one inside a group; a
+   * Family Pedigree's may be named with or without its `wording.` group); a
+   * setting not named here takes the text Network Canvas supplies. */
+  wording?: Record<string, TextInput>;
   // Geospatial
   mapOptions?: MapOptionsEntry;
   // NetworkComposer
@@ -331,6 +364,77 @@ export type StageEntry = {
   nodeForm?: { fields: NetworkComposerFormFieldEntry[] };
   networkComposerEdges?: NetworkComposerEdgeEntry[];
   convexHullVariable?: string;
+  // FinishSession (its `title` is the shared `title` above)
+  content?: TextInput;
+  outcome?: FinishOutcome;
+};
+
+/** The person-node attribute ids a FamilyPedigree stage binds. */
+export type FamilyPedigreeNodeConfigurationEntry = {
+  nameAttribute: string;
+  /** Absent when the stage does not ask about gender identity. */
+  genderIdentity?: {
+    attribute: string;
+    terms: { value: string | number; words: PedigreeGenderWords }[];
+  };
+  sexAssignedAtBirthAttribute: string;
+  egoAttribute: string;
+  /** Present when the stage records each person's relationship to the
+   * participant. */
+  relationshipToParticipantAttribute?: string;
+  nameField?: FamilyPedigreeNameFieldEntry;
+};
+
+/** The question a FamilyPedigree stage asks each person's name with. Absent,
+ * the stage gets the wording Network Canvas supplies. */
+export type FamilyPedigreeNameFieldEntry = {
+  prompt: TextInput;
+  hint?: TextInput;
+};
+
+/** What a FamilyPedigree stage's tracker says about each kind of item. Each
+ * is a message (see `localizedMessage` in protocol-validation): a string is
+ * the default language's message as written, arguments and all. Any left out
+ * get the wording Network Canvas supplies. */
+export type FamilyPedigreeItemTextEntry = {
+  parents?: { listItem?: TextInput };
+  siblings?: {
+    listItem?: TextInput;
+    noneButton?: TextInput;
+    question?: TextInput;
+  };
+  children?: {
+    listItem?: TextInput;
+    noneButton?: TextInput;
+    question?: TextInput;
+  };
+  details?: { listItem?: TextInput };
+};
+
+/** A FamilyPedigree stage's completeness requirement. */
+export type FamilyPedigreeCompletenessEntry = {
+  scope: PedigreeCompletenessScope;
+  enforcement: 'required' | 'recommended';
+  relativesNotRecordedAttribute: string;
+  itemText?: FamilyPedigreeItemTextEntry;
+  recommendedNote?: TextInput;
+};
+
+/** A question asked of the drawn family, and the boolean person attribute
+ * recording who it applies to. */
+export type FamilyPedigreeNominationPromptEntry = {
+  id: string;
+  text: TextInput;
+  attribute: string;
+  onlyForSexAssignedAtBirth?: 'female' | 'male';
+};
+
+/** The family edge type and edge attribute ids a FamilyPedigree stage binds. */
+export type FamilyPedigreeEdgeConfigurationEntry = {
+  type: string;
+  kindAttribute: string;
+  gestationalCarrierAttribute: string;
+  currentPartnerAttribute: string;
 };
 
 export type NodeEntry = {
@@ -370,6 +474,7 @@ export type InitialNodesSpec = {
 
 export type AddNodeTypeInput = {
   name?: string;
+  label?: TextInput;
   color?: NodeColorReference;
   icon?: string;
   shape?: { default: string; dynamic?: ShapeMapping };
@@ -377,12 +482,14 @@ export type AddNodeTypeInput = {
 
 export type AddEdgeTypeInput = {
   name?: string;
+  label?: TextInput;
   color?: EdgeColorReference;
 };
 
 export type AddVariableInput = {
   id?: string;
   name?: string;
+  label?: string;
   type?: VariableType;
   component?: ComponentType;
   options?: VariableOptionInput[];
@@ -393,8 +500,8 @@ export type AddVariableInput = {
 
 export type FormFieldInput = {
   variable?: string;
-  prompt?: string;
-  hint?: string;
+  prompt?: TextInput;
+  hint?: TextInput;
   showValidationHints?: boolean;
   component: ComponentType;
   parameters?: Record<string, unknown>;
@@ -402,12 +509,12 @@ export type FormFieldInput = {
 };
 
 // Input for NetworkComposer attribute fields, which caption with `label`
-// (optional; the runtime falls back to the variable's name) instead of the
-// shared fields' `prompt`.
+// instead of the shared fields' `prompt`. Without one, the field is captioned
+// with its variable's name.
 export type NetworkComposerFormFieldInput = {
   variable?: string;
-  label?: string;
-  hint?: string;
+  label?: TextInput;
+  hint?: TextInput;
   showValidationHints?: boolean;
   component: ComponentType;
   parameters?: Record<string, unknown>;
@@ -415,7 +522,7 @@ export type NetworkComposerFormFieldInput = {
 };
 
 export type AddStageInput = {
-  label?: string;
+  label?: TextInput;
   interviewScript?: string;
   skipLogic?: SkipLogicInput;
   filter?: FilterInput;
@@ -436,23 +543,24 @@ export type AddStageInput = {
     maxNodes?: number;
   };
   form?: {
-    title?: string;
+    title?: TextInput;
     fields: FormFieldInput[];
   };
   introductionPanel?: {
-    title?: string;
-    text?: string;
+    title?: TextInput;
+    text?: TextInput;
   };
   // NameGeneratorQuickAdd
   quickAdd?: string;
   // NameGeneratorRoster
   dataSource?: string;
+  panelTitle?: TextInput;
   cardOptions?: {
-    additionalProperties?: { label: string; variable: string }[];
+    additionalProperties?: { label: TextInput; variable: string }[];
   };
   sortOptions?: {
     sortOrder?: SortRule[];
-    sortableProperties?: { variable: string; label: string }[];
+    sortableProperties?: { variable: string; label: TextInput }[];
   };
   searchOptions?: {
     fuzziness?: number;
@@ -460,28 +568,55 @@ export type AddStageInput = {
   };
   // Anonymisation
   explanationText?: {
-    title?: string;
-    body?: string;
+    title?: TextInput;
+    body?: TextInput;
   };
   validation?: { minLength?: number; maxLength?: number };
-  // FamilyPedigree
-  nodeConfig?: FamilyPedigreeNodeConfigInput;
-  // Derived from the schema's edge config, but the builder fills the non-core
-  // variables when omitted, so they are optional here.
-  edgeConfig?: Pick<
-    FamilyPedigreeEdgeConfigInput,
-    'type' | 'relationshipTypeVariable'
-  > &
-    Partial<
-      Omit<FamilyPedigreeEdgeConfigInput, 'type' | 'relationshipTypeVariable'>
-    >;
-  framing?: FamilyPedigreeFraming;
-  boundaries?: FamilyPedigreeBoundaries;
-  introScreen?: {
-    items: FamilyPedigreeIntroItem[];
-  };
-  censusPrompt?: string;
-  nominationPrompts?: FamilyPedigreeNominationPromptInput[];
+  // FamilyPedigree. The person node type is the stage `subject`; the family
+  // edge type is created when omitted. Every attribute the interface owns is
+  // created on those types.
+  prompt?: TextInput;
+  relationshipType?: string;
+  framing?: FramingSetting;
+  /** Whether the stage asks about gender identity. Defaults to true; when
+   * false, no gender identity variable is created, `genderIdentities` is
+   * ignored, and the gendered framing's words follow sex assigned at birth. */
+  askGenderIdentity?: boolean;
+  /** The validation of the name attribute in the codebook, such as
+   * `{ required: true, unique: true }`. Defaults to none. */
+  nameValidation?: Record<string, unknown>;
+  /** The options of the gender identity variable and the words each takes;
+   * an option with no `words` is left out of the stage's terms, so it takes
+   * neutral words. Defaults to the six options Architect seeds a new
+   * attribute with. */
+  genderIdentities?: {
+    value: string | number;
+    label: TextInput;
+    words?: PedigreeGenderWords;
+  }[];
+  /** Each creates a boolean person attribute, named `variableName` or
+   * `condition<n>`, recording who the prompt applies to. */
+  nominationPrompts?: {
+    text: TextInput;
+    variableName?: string;
+    onlyForSexAssignedAtBirth?: 'female' | 'male';
+  }[];
+  /** Creates a categorical person attribute holding each person's
+   * relationship to the participant, and binds it, when true. Its options
+   * are the interface's values, each labelled with its own value. */
+  recordRelationshipToParticipant?: boolean;
+  /** The name question's wording, when not what Network Canvas supplies. */
+  nameField?: FamilyPedigreeNameFieldEntry;
+  /** Creates the relatives-not-recorded attribute when set. */
+  completeness?: Omit<
+    FamilyPedigreeCompletenessEntry,
+    'relativesNotRecordedAttribute'
+  >;
+  /** Stage settings holding participant-visible wording the researcher has
+   * written, by setting name (for example `externalDataError`, or a dotted name
+   * such as `tooltips.addPerson` for a setting inside a group); a setting not
+   * named here takes the text Network Canvas supplies. */
+  wording?: Record<string, TextInput>;
   // Geospatial
   mapOptions?: MapOptionsEntry;
   // NarrativePedigree
@@ -501,7 +636,7 @@ export type AddNetworkComposerEdgeInput = {
 };
 
 export type AddPromptInput = {
-  text?: string;
+  text?: TextInput;
   additionalAttributes?: { variable: string; value: boolean }[];
   sortOrder?: SortRule[];
   layout?: {
@@ -517,19 +652,19 @@ export type AddPromptInput = {
 };
 
 export type AddDyadCensusPromptInput = {
-  text?: string;
+  text?: TextInput;
   createEdge?: boolean | string;
 };
 
 export type AddOneToManyDyadCensusPromptInput = {
-  text?: string;
+  text?: TextInput;
   createEdge?: boolean | string;
   bucketSortOrder?: SortRule[];
   binSortOrder?: SortRule[];
 };
 
 export type AddOrdinalBinPromptInput = {
-  text?: string;
+  text?: TextInput;
   variable?: string;
   bucketSortOrder?: SortRule[];
   binSortOrder?: SortRule[];
@@ -537,34 +672,29 @@ export type AddOrdinalBinPromptInput = {
 };
 
 export type AddCategoricalBinPromptInput = {
-  text?: string;
+  text?: TextInput;
   variable?: string;
   otherVariable?: string;
-  otherVariablePrompt?: string;
-  otherOptionLabel?: string;
+  otherVariablePrompt?: TextInput;
+  otherOptionLabel?: TextInput;
   bucketSortOrder?: SortRule[];
   binSortOrder?: SortRule[];
 };
 
 export type AddTieStrengthCensusPromptInput = {
-  text?: string;
+  text?: TextInput;
   createEdge?: boolean | string;
   edgeVariable?: string;
-  negativeLabel?: string;
-};
-
-export type AddDiseaseNominationStepInput = {
-  text?: string;
-  variable?: string;
+  negativeLabel?: TextInput;
 };
 
 export type AddGeospatialPromptInput = {
-  text?: string;
+  text?: TextInput;
   variable?: string;
 };
 
 export type AddPresetInput = {
-  label?: string;
+  label?: TextInput;
   layoutVariable?: string;
   edges?: {
     display?: string[];
@@ -575,9 +705,10 @@ export type AddPresetInput = {
 
 export type NarrativeDiseaseEntry = {
   id: string;
-  label: string;
+  label: TextInput;
   color: NodeColorReference;
-  variable: string;
+  /** The boolean person attribute marking who is affected. */
+  attribute: string;
   inheritancePattern: string;
 };
 

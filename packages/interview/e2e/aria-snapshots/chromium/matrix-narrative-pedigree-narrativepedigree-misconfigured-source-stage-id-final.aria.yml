@@ -1,5 +1,7 @@
 - main:
-  - paragraph: This stage references a family pedigree that could not be found.
+  - img "Error"
+  - paragraph: There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button.
+  - button "Copy Debug Info"
   - navigation:
     - button "Settings"
     - button "Previous Step"

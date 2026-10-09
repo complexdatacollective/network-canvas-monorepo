@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Protocol } from '../../index.ts';
 import migrationV7toV8 from '../migration.ts';
-import ProtocolSchemaV8 from '../schema.ts';
+import { V8OutputSchema } from './v8-output-schema.ts';
 
 /**
  * Thirteenth-wave Finding 4: the migration's contradiction-strip fixpoint used
@@ -26,19 +26,22 @@ import ProtocolSchemaV8 from '../schema.ts';
  */
 const { analyser } = vi.hoisted(() => ({ analyser: { calls: 0 } }));
 
-vi.mock('../variables/validation-contradictions.ts', async (importOriginal) => {
-  const actual =
-    await importOriginal<
-      typeof import('../variables/validation-contradictions.ts')
-    >();
-  return {
-    ...actual,
-    findValidationContradictions: (variables: Record<string, unknown>) => {
-      analyser.calls += 1;
-      return actual.findValidationContradictions(variables);
-    },
-  };
-});
+vi.mock(
+  '../../9/variables/validation-contradictions.ts',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('../../9/variables/validation-contradictions.ts')
+      >();
+    return {
+      ...actual,
+      findValidationContradictions: (variables: Record<string, unknown>) => {
+        analyser.calls += 1;
+        return actual.findValidationContradictions(variables);
+      },
+    };
+  },
+);
 
 const migrateVariables = (variables: Record<string, unknown>) => {
   const v7Protocol = {
@@ -72,7 +75,7 @@ describe('migration contradiction-repair batching', () => {
     // analyser too.
     expect(analyser.calls).toBe(2);
 
-    const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+    const parsed = V8OutputSchema.safeParse(migratedRaw);
     expect(parsed.success).toBe(true);
     const parsedVariables = parsed.data?.codebook.ego?.variables ?? {};
     expect(Object.keys(parsedVariables)).toHaveLength(200);
@@ -105,7 +108,7 @@ describe('migration contradiction-repair batching', () => {
     // fixpoint.
     expect(analyser.calls).toBe(2);
 
-    const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+    const parsed = V8OutputSchema.safeParse(migratedRaw);
     expect(parsed.success).toBe(true);
     const parsedVariables = parsed.data?.codebook.ego?.variables ?? {};
     for (let index = 0; index < 200; index++) {
@@ -149,7 +152,7 @@ describe('migration contradiction-repair batching', () => {
     const migratedRaw = migrateVariables(variables);
     expect(analyser.calls).toBe(11);
 
-    const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+    const parsed = V8OutputSchema.safeParse(migratedRaw);
     expect(parsed.success).toBe(true);
     const parsedVariables = parsed.data?.codebook.ego?.variables ?? {};
     for (let index = 0; index < 10; index++) {
@@ -210,7 +213,7 @@ describe('migration contradiction-repair batching', () => {
     // either differentFrom edge on the a-b-c path.
     expect(analyser.calls).toBe(2);
 
-    const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+    const parsed = V8OutputSchema.safeParse(migratedRaw);
     expect(parsed.success).toBe(true);
     const parsedVariables = parsed.data?.codebook.ego?.variables;
     expect(parsedVariables?.b).toHaveProperty('validation.differentFrom', 'a');
@@ -256,7 +259,7 @@ describe('migration contradiction-repair batching', () => {
     // deferred edge is no longer a contradiction once its group has split.
     expect(analyser.calls).toBe(2);
 
-    const parsed = ProtocolSchemaV8.safeParse(migratedRaw);
+    const parsed = V8OutputSchema.safeParse(migratedRaw);
     expect(parsed.success).toBe(true);
     const parsedVariables = parsed.data?.codebook.ego?.variables;
     expect(parsedVariables?.a).toHaveProperty(
@@ -268,6 +271,7 @@ describe('migration contradiction-repair batching', () => {
     for (let index = 0; index < 20; index++) {
       expect(parsedVariables?.[`v${index}`]).toEqual({
         name: `v${index}`,
+        label: `v${index}`,
         type: 'number',
         validation: { required: true },
       });

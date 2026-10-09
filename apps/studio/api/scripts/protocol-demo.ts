@@ -6,7 +6,13 @@ import { parseArgs } from 'node:util';
 import type { Effect } from 'effect';
 import { ManagedRuntime } from 'effect';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  type CurrentProtocol,
+  CurrentProtocolSchema,
+  type LocalizedString,
+  escapeMessageText,
+  messageText,
+} from '@codaco/protocol-validation';
 import { type SectionDoc, canonicalize } from '@codaco/studio-sync/apply';
 import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -19,7 +25,12 @@ import {
   unsafeMakeTeamAccess,
 } from '../src/db/tenant.ts';
 import { isLocalDatabase, readEnv } from '../src/env.ts';
-import type { FieldChange, ProtocolChange } from '../src/protocol/diff.ts';
+import {
+  type FieldChange,
+  type ProtocolChange,
+  displayLabel,
+  localizationOf,
+} from '../src/protocol/diff.ts';
 import { addStage, removeStage } from '../src/protocol/draft-structure.ts';
 import {
   createProtocol,
@@ -53,7 +64,9 @@ function loadProtocol(): { protocol: CurrentProtocol; source: string } {
     ? values.protocol
     : fileURLToPath(import.meta.resolve(DEFAULT_PROTOCOL));
   return {
-    protocol: JSON.parse(readFileSync(path, 'utf8')) as CurrentProtocol,
+    protocol: CurrentProtocolSchema.parse(
+      JSON.parse(readFileSync(path, 'utf8')),
+    ),
     source,
   };
 }
@@ -66,11 +79,16 @@ function step(n: number, title: string) {
   console.log(`\n${n}  ${title}\n${'─'.repeat(66)}`);
 }
 
-function stageOrderOf(doc: SectionDoc | undefined): string[] {
-  const value = doc?.stages;
-  return Array.isArray(value)
-    ? value.filter((entry): entry is string => typeof entry === 'string')
-    : [];
+function appendToEachTranslation(
+  text: LocalizedString,
+  suffix: string,
+): LocalizedString {
+  return Object.fromEntries(
+    Object.entries(text).map(([locale, message]) => [
+      locale,
+      escapeMessageText(`${messageText(message)}${suffix}`),
+    ]),
+  );
 }
 
 function formatPath(path: FieldChange['path']): string {
@@ -265,38 +283,26 @@ try {
 
   // ── 5 ──────────────────────────────────────────────────────────────────
   step(5, 'One prompt edited, then published again');
-  const stages = stageOrderOf(
-    created.sections[sectionId({ kind: 'stageOrder' })],
-  )
-    .map((stageId, index) => ({
-      stageId,
-      index,
-      doc: created.sections[sectionId({ kind: 'stage', stageId })],
-    }))
-    .find(({ doc }) => {
-      const prompts = doc?.prompts;
-      return (
-        Array.isArray(prompts) &&
-        typeof (prompts[0] as { text?: unknown } | undefined)?.text === 'string'
-      );
-    });
-
-  if (!stages?.doc) {
+  const index = protocol.stages.findIndex(
+    (stage) => 'prompts' in stage && stage.prompts.length > 0,
+  );
+  const edited = structuredClone(protocol.stages[index]);
+  const prompt =
+    edited !== undefined && 'prompts' in edited ? edited.prompts[0] : undefined;
+  if (edited === undefined || prompt === undefined) {
     console.error('  no stage in this protocol carries an editable prompt');
     process.exit(1);
   }
-
-  const edited = structuredClone(stages.doc);
-  const prompts = edited.prompts as { id?: unknown; text: string }[];
-  const promptId =
-    typeof prompts[0]?.id === 'string' ? prompts[0].id : '(unknown)';
-  prompts[0]!.text = `${prompts[0]!.text} [edited by the store demo]`;
+  prompt.text = appendToEachTranslation(
+    prompt.text,
+    ' [edited by the store demo]',
+  );
 
   // Live section edits belong to the sync engine's lease path, which has no
   // client here, so the edit is made structurally instead.
-  await inTeam(removeStage(TEAM_ID, { draftId, stageId: stages.stageId }));
+  await inTeam(removeStage(TEAM_ID, { draftId, stageId: edited.id }));
   const advanced = await inTeam(
-    addStage(TEAM_ID, { draftId, stage: edited, index: stages.index }),
+    addStage(TEAM_ID, { draftId, stage: edited, index }),
   );
   const head = await inTeam(getDraftSections(TEAM_ID, draftId));
   const pinnedHashes = new Set(Object.values(v1.sectionHashes));
@@ -312,7 +318,7 @@ try {
     process.exit(1);
   }
   console.log(
-    `  stage ${short(stages.stageId)} · prompt ${short(promptId)} · text changed`,
+    `  stage ${short(edited.id)} · prompt ${short(prompt.id)} · text changed`,
   );
   console.log(
     `  manifest seq ${created.headSeq} → ${advanced.manifestSeq} · hash ${short(advanced.manifestHash)}`,
@@ -333,11 +339,14 @@ try {
   const secondSections = await inTeam(
     getVersionSections(TEAM_ID, second.versionId),
   );
+  const localization = localizationOf(
+    secondSections.sections[sectionId({ kind: 'settings' })],
+  );
   for (const [id, doc] of Object.entries(secondSections.sections)) {
     const ref = parseSectionId(id);
-    if (ref.kind === 'stage' && typeof doc.label === 'string') {
-      labels.set(ref.stageId, doc.label);
-    }
+    if (ref.kind !== 'stage') continue;
+    const label = displayLabel(doc.label, localization);
+    if (label !== undefined) labels.set(ref.stageId, label);
   }
   console.log(
     `  ${changes.length} change record(s) from comparing two manifests:\n`,

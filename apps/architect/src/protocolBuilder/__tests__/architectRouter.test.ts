@@ -39,6 +39,7 @@ import {
 } from '@codaco/protocol-builder-core/contract/schemas';
 import {
   CurrentProtocolSchema,
+  type Experiments,
   type ExtractedAsset,
 } from '@codaco/protocol-validation';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
@@ -95,6 +96,10 @@ const nextRequestId = (): string => `write-${++writes}`;
 const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
 const EGO_FORM = sectionId({ kind: 'stage', stageId: 'ego-form-1' });
 const PERSON = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const SETTINGS = sectionId({ kind: 'settings' });
+
+/** The language the all-interfaces protocol is written in. */
+const FIXTURE_LANGUAGE = 'en-US';
 
 type TestClient = Readonly<{
   call: RpcAdapter<ProtocolBuilderRpcs>['rpcCall'];
@@ -126,13 +131,17 @@ async function safe(
 }
 
 const openProtocol = (
-  options: Readonly<{ withEgo?: boolean }> = {},
+  options: Readonly<{ withEgo?: boolean; experiments?: Experiments }> = {},
 ): OpenProtocol => {
   const store = configureStore({ reducer: rootReducer });
   store.dispatch(setActiveProtocolId(PROTOCOL_ID));
   // Parsed rather than cast: a fixture that stopped being a schema-8 protocol
   // would otherwise reach the router as one and fail somewhere less obvious.
-  const protocol = CurrentProtocolSchema.parse(allInterfaces);
+  const parsed = CurrentProtocolSchema.parse(allInterfaces);
+  const protocol =
+    options.experiments === undefined
+      ? parsed
+      : { ...parsed, experiments: options.experiments };
   const { ego: _ego, ...codebook } = protocol.codebook;
   store.dispatch(
     setActiveProtocol(
@@ -166,7 +175,7 @@ async function importResource(
 
 const stageLabel = (store: ArchitectStore, stageId: string): string =>
   getProtocol(store.getState())?.stages.find((stage) => stage.id === stageId)
-    ?.label ?? '';
+    ?.label[FIXTURE_LANGUAGE] ?? '';
 
 const stageIds = (store: ArchitectStore): string[] =>
   (getProtocol(store.getState())?.stages ?? []).map((stage) => stage.id);
@@ -267,7 +276,7 @@ describe("Architect's in-process protocol-builder host", () => {
       sectionId: INFORMATION,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: 'Renamed by the editor',
+        label: { [FIXTURE_LANGUAGE]: 'Renamed by the editor' },
       }),
       revision: held.revision,
     });
@@ -282,9 +291,9 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(revisions[0]?.event.sectionId).toBe(INFORMATION);
     expect(revisions[0]?.event.revision).toEqual(revision);
     const written = revisions[0]?.event.document;
-    expect(written && Redacted.value(written).label).toBe(
-      'Renamed by the editor',
-    );
+    expect(written && Redacted.value(written).label).toEqual({
+      [FIXTURE_LANGUAGE]: 'Renamed by the editor',
+    });
   });
 
   it('refuses a submit from an editor that never took the lock', async () => {
@@ -301,7 +310,7 @@ describe("Architect's in-process protocol-builder host", () => {
         sectionId: INFORMATION,
         document: Redacted.make({
           ...Redacted.value(before.document),
-          label: 'Renamed without the lock',
+          label: { [FIXTURE_LANGUAGE]: 'Renamed without the lock' },
         }),
         revision: before.revision,
       }),
@@ -329,7 +338,10 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       kind: 'stage',
-      document: Redacted.make({ ...withoutId, label: 'A created stage' }),
+      document: Redacted.make({
+        ...withoutId,
+        label: { [FIXTURE_LANGUAGE]: 'A created stage' },
+      }),
       position: 0,
     });
 
@@ -368,7 +380,7 @@ describe("Architect's in-process protocol-builder host", () => {
       sectionId: INFORMATION,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: 'Before the drop',
+        label: { [FIXTURE_LANGUAGE]: 'Before the drop' },
       }),
       revision: held.revision,
     });
@@ -390,7 +402,7 @@ describe("Architect's in-process protocol-builder host", () => {
       sectionId: EGO_FORM,
       document: Redacted.make({
         ...Redacted.value(second.document),
-        label: 'After the drop',
+        label: { [FIXTURE_LANGUAGE]: 'After the drop' },
       }),
       revision: second.revision,
     });
@@ -403,9 +415,9 @@ describe("Architect's in-process protocol-builder host", () => {
     const replayed = revisionsOf(resumed.seen);
     expect(replayed.map((entry) => entry.event.sectionId)).toEqual([EGO_FORM]);
     const replayedDocument = replayed[0]?.event.document;
-    expect(replayedDocument && Redacted.value(replayedDocument).label).toBe(
-      'After the drop',
-    );
+    expect(replayedDocument && Redacted.value(replayedDocument).label).toEqual({
+      [FIXTURE_LANGUAGE]: 'After the drop',
+    });
 
     const reached = replayed[0]?.cursor;
     expect(reached).toBeDefined();
@@ -427,7 +439,7 @@ describe("Architect's in-process protocol-builder host", () => {
       sectionId: INFORMATION,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: 'One step',
+        label: { [FIXTURE_LANGUAGE]: 'One step' },
       }),
       revision: held.revision,
     });
@@ -438,7 +450,10 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
       kind: 'stage',
-      document: Redacted.make({ ...withoutId, label: 'Also one step' }),
+      document: Redacted.make({
+        ...withoutId,
+        label: { [FIXTURE_LANGUAGE]: 'Also one step' },
+      }),
       position: 0,
     });
     expect(undoDepth(store)).toBe(2);
@@ -466,7 +481,12 @@ describe("Architect's in-process protocol-builder host", () => {
         ...committed,
         variables: {
           ...committed?.variables,
-          spare: { name: 'spare', type: 'text', component: 'Text' },
+          spare: {
+            name: 'spare',
+            label: 'Spare',
+            type: 'text',
+            component: 'Text',
+          },
         },
       }),
       revision: held.revision,
@@ -482,6 +502,43 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(result.changedSections).toEqual([PERSON]);
     expect(personVariables(store).spare).toBeUndefined();
     expect(personVariables(store).name).toBeDefined();
+  });
+
+  it('keeps the experiments setting through a settings write, and clears it when the write leaves it out', async () => {
+    const { store, client } = openProtocol({ experiments: {} });
+    const held = await client.call('AcquireLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: SETTINGS,
+    });
+    expect(Redacted.value(held.document)).toHaveProperty('experiments', {});
+
+    const renamed = await client.call('Submit', {
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      sectionId: SETTINGS,
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        name: 'Renamed',
+      }),
+      revision: held.revision,
+    });
+    expect(getProtocol(store.getState())).toMatchObject({
+      name: 'Renamed',
+      experiments: {},
+    });
+
+    // The section is written whole, so a write without the setting clears it.
+    const { experiments: _cleared, ...withoutExperiments } = Redacted.value(
+      held.document,
+    );
+    await client.call('Submit', {
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      sectionId: SETTINGS,
+      document: Redacted.make({ ...withoutExperiments, name: 'Renamed' }),
+      revision: renamed.revision,
+    });
+    expect(getProtocol(store.getState())?.experiments).toBeUndefined();
   });
 
   /**
@@ -560,7 +617,7 @@ describe("Architect's in-process protocol-builder host", () => {
       sectionId: INFORMATION,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: 'Written by the second client',
+        label: { [FIXTURE_LANGUAGE]: 'Written by the second client' },
       }),
       revision: held.revision,
     });
@@ -577,7 +634,7 @@ describe("Architect's in-process protocol-builder host", () => {
         document: Redacted.make({
           id: 'ego-form-1',
           type: 'EgoForm',
-          label: 'No lock here',
+          label: { [FIXTURE_LANGUAGE]: 'No lock here' },
         }),
         revision: held.revision,
       }),
@@ -694,7 +751,7 @@ describe("Architect's in-process protocol-builder host", () => {
         sectionId: INFORMATION,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: 'Promotes another edit’s file',
+          label: { [FIXTURE_LANGUAGE]: 'Promotes another edit’s file' },
         }),
         revision: held.revision,
         promote: { editId: OTHER_EDIT, resourceIds: [id] },
@@ -890,7 +947,7 @@ describe("Architect's in-process protocol-builder host", () => {
       sectionId: INFORMATION,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: 'Saved without a promotion',
+        label: { [FIXTURE_LANGUAGE]: 'Saved without a promotion' },
       }),
       revision: held.revision,
     };
@@ -906,8 +963,8 @@ describe("Architect's in-process protocol-builder host", () => {
       kind: 'stage' as const,
       document: Redacted.make({
         type: 'Information',
-        label: 'Made without a promotion',
-        title: 'Made without a promotion',
+        label: { [FIXTURE_LANGUAGE]: 'Made without a promotion' },
+        title: { [FIXTURE_LANGUAGE]: 'Made without a promotion' },
         items: [],
       }),
     };
@@ -943,7 +1000,7 @@ describe("Architect's in-process protocol-builder host", () => {
       sectionId: INFORMATION,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: 'Names the photograph',
+        label: { [FIXTURE_LANGUAGE]: 'Names the photograph' },
       }),
       revision: held.revision,
       promote: { editId: EDIT, resourceIds: [id] },
@@ -977,7 +1034,7 @@ describe("Architect's in-process protocol-builder host", () => {
         sectionId: INFORMATION,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: 'Renamed beside a bad promotion',
+          label: { [FIXTURE_LANGUAGE]: 'Renamed beside a bad promotion' },
         }),
         revision: held.revision,
         promote: { editId: EDIT, resourceIds: ['never-staged'] },
@@ -1018,7 +1075,7 @@ describe("Architect's in-process protocol-builder host", () => {
       sectionId: INFORMATION,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: 'Saved once',
+        label: { [FIXTURE_LANGUAGE]: 'Saved once' },
       }),
       revision: held.revision,
       promote,
@@ -1035,7 +1092,7 @@ describe("Architect's in-process protocol-builder host", () => {
       sectionId: INFORMATION,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: 'Saved once',
+        label: { [FIXTURE_LANGUAGE]: 'Saved once' },
       }),
       revision: held.revision,
       promote,
@@ -1063,8 +1120,8 @@ describe("Architect's in-process protocol-builder host", () => {
         kind: 'stage',
         document: Redacted.make({
           type: 'Information',
-          label: 'Refused',
-          title: 'Refused',
+          label: { [FIXTURE_LANGUAGE]: 'Refused' },
+          title: { [FIXTURE_LANGUAGE]: 'Refused' },
           items: [],
         }),
       }),
@@ -1100,7 +1157,7 @@ describe("Architect's in-process protocol-builder host", () => {
         sectionId: INFORMATION,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: 'Renamed beside a promotion',
+          label: { [FIXTURE_LANGUAGE]: 'Renamed beside a promotion' },
         }),
         revision: held.revision,
         promote: { editId: EDIT, resourceIds: [id] },
@@ -1140,7 +1197,7 @@ describe("Architect's in-process protocol-builder host", () => {
       kind: 'stage',
       document: Redacted.make({
         ...withoutId,
-        label: 'Carries the photograph',
+        label: { [FIXTURE_LANGUAGE]: 'Carries the photograph' },
       }),
       promote: { editId: EDIT, resourceIds: [id] },
     });
@@ -1168,8 +1225,8 @@ describe("Architect's in-process protocol-builder host", () => {
     const promote = { editId: EDIT, resourceIds: [id] as const };
     const document = Redacted.make({
       type: 'Information',
-      label: 'Made once',
-      title: 'Made once',
+      label: { [FIXTURE_LANGUAGE]: 'Made once' },
+      title: { [FIXTURE_LANGUAGE]: 'Made once' },
       items: [],
     });
     const requestId = nextRequestId();
@@ -1208,8 +1265,8 @@ describe("Architect's in-process protocol-builder host", () => {
         kind: 'stage',
         document: Redacted.make({
           type: 'Information',
-          label: 'Never made',
-          title: 'Never made',
+          label: { [FIXTURE_LANGUAGE]: 'Never made' },
+          title: { [FIXTURE_LANGUAGE]: 'Never made' },
           items: [],
         }),
         promote: { editId: EDIT, resourceIds: ['never-staged'] },
@@ -1369,6 +1426,144 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(stageIds(store)).toContain('geospatial-1');
   });
 
+  // The interview has to end at a finish stage, so its only one stays; the
+  // refusal names the stage order, the reference that is not taken out.
+  it('refuses to delete the stage that ends the interview', async () => {
+    const { store, client } = openProtocol();
+    const finishIndex = stageIds(store).indexOf('finish');
+    expect(finishIndex).toBe(stageIds(store).length - 1);
+
+    const { error, isSuccess } = await safe(
+      client.call('Delete', {
+        protocolId: PROTOCOL_ID,
+        sectionId: sectionId({ kind: 'stage', stageId: 'finish' }),
+      }),
+    );
+
+    expect(isSuccess).toBe(false);
+    expect(error).toEqual(
+      new ReferencesRemain({
+        remaining: [
+          {
+            sectionId: sectionId({ kind: 'stageOrder' }),
+            path: ['stages', finishIndex],
+          },
+        ],
+      }),
+    );
+    expect(stageIds(store)).toContain('finish');
+  });
+
+  // A protocol always ends at its one finish stage, so a submit never turns a
+  // stage into one or the finish stage into something else, and a create
+  // never adds a second one.
+  it.each([
+    {
+      direction: 'the finish stage into another kind of stage',
+      stageId: 'finish',
+      rewrite: (document: Readonly<Record<string, unknown>>) => ({
+        id: document.id,
+        type: 'Information',
+        label: { [FIXTURE_LANGUAGE]: 'No longer the end' },
+        title: { [FIXTURE_LANGUAGE]: 'No longer the end' },
+        items: [],
+      }),
+    },
+    {
+      direction: 'another stage into a second finish stage',
+      stageId: 'information-1',
+      rewrite: (document: Readonly<Record<string, unknown>>) => ({
+        id: document.id,
+        type: 'FinishSession',
+        label: { [FIXTURE_LANGUAGE]: 'A second end' },
+        title: { [FIXTURE_LANGUAGE]: 'A second end' },
+        content: { [FIXTURE_LANGUAGE]: 'Thank you.' },
+        finishLabel: { [FIXTURE_LANGUAGE]: 'Finish' },
+        finishConfirmation: { [FIXTURE_LANGUAGE]: 'Finish this interview?' },
+        finishedNotice: { [FIXTURE_LANGUAGE]: 'This interview is finished.' },
+        finishFailed: {
+          [FIXTURE_LANGUAGE]: 'The interview could not be finished.',
+        },
+        outcome: 'completed',
+      }),
+    },
+  ])(
+    'refuses a submit that changes $direction',
+    async ({ stageId, rewrite }) => {
+      const { store, client } = openProtocol();
+      const target = sectionId({ kind: 'stage', stageId });
+      const before = getProtocol(store.getState())?.stages;
+      const held = await client.call('AcquireLock', {
+        protocolId: PROTOCOL_ID,
+        sectionId: target,
+      });
+
+      const { error, isSuccess } = await safe(
+        client.call('Submit', {
+          protocolId: PROTOCOL_ID,
+          requestId: nextRequestId(),
+          sectionId: target,
+          document: Redacted.make(rewrite(Redacted.value(held.document))),
+          revision: held.revision,
+        }),
+      );
+
+      expect(isSuccess).toBe(false);
+      expect(error).toEqual(
+        new InvalidShape({
+          sectionId: target,
+          issues: [
+            {
+              path: ['type'],
+              message:
+                'A stage cannot be changed into the finish stage, or the finish stage into another kind of stage.',
+            },
+          ],
+        }),
+      );
+      expect(getProtocol(store.getState())?.stages).toEqual(before);
+    },
+  );
+
+  it('refuses to create a second finish stage', async () => {
+    const { store, client } = openProtocol();
+    const before = getProtocol(store.getState())?.stages;
+
+    const { error, isSuccess } = await safe(
+      client.call('Create', {
+        protocolId: PROTOCOL_ID,
+        requestId: nextRequestId(),
+        kind: 'stage',
+        document: Redacted.make({
+          type: 'FinishSession',
+          label: { [FIXTURE_LANGUAGE]: 'A second end' },
+          title: { [FIXTURE_LANGUAGE]: 'A second end' },
+          content: { [FIXTURE_LANGUAGE]: 'Thank you.' },
+          finishLabel: { [FIXTURE_LANGUAGE]: 'Finish' },
+          finishConfirmation: { [FIXTURE_LANGUAGE]: 'Finish this interview?' },
+          finishedNotice: { [FIXTURE_LANGUAGE]: 'This interview is finished.' },
+          finishFailed: {
+            [FIXTURE_LANGUAGE]: 'The interview could not be finished.',
+          },
+          outcome: 'completed',
+        }),
+      }),
+    );
+
+    expect(isSuccess).toBe(false);
+    expect(error).toBeInstanceOf(InvalidShape);
+    expect(error).toMatchObject({
+      issues: [
+        {
+          path: ['type'],
+          message:
+            'A protocol has exactly one finish stage, and this one already has it.',
+        },
+      ],
+    });
+    expect(getProtocol(store.getState())?.stages).toEqual(before);
+  });
+
   it('creates the ego codebook a protocol does not have yet', async () => {
     const { store, client } = openProtocol({ withEgo: false });
     expect(getProtocol(store.getState())?.codebook.ego).toBeUndefined();
@@ -1379,7 +1574,12 @@ describe("Architect's in-process protocol-builder host", () => {
       kind: 'codebookEgo',
       document: Redacted.make({
         variables: {
-          ego_age: { name: 'ego_age', type: 'number', component: 'Number' },
+          ego_age: {
+            name: 'ego_age',
+            label: 'Age',
+            type: 'number',
+            component: 'Number',
+          },
         },
       }),
     });
@@ -1400,6 +1600,7 @@ describe("Architect's in-process protocol-builder host", () => {
       kind: 'codebookEdge',
       document: Redacted.make({
         name: 'Edge',
+        label: { [FIXTURE_LANGUAGE]: 'Edge' },
         color: 'edge-color-seq-2',
         variables: {},
       }),
@@ -1411,7 +1612,14 @@ describe("Architect's in-process protocol-builder host", () => {
     const withScale = (options: readonly unknown[]) =>
       Redacted.make({
         ...Redacted.value(held.document),
-        variables: { f: { name: 'f', type: 'ordinal', options } },
+        variables: {
+          f: {
+            name: 'f',
+            label: 'F',
+            type: 'ordinal',
+            options,
+          },
+        },
       });
 
     const refused = await safe(
@@ -1431,8 +1639,8 @@ describe("Architect's in-process protocol-builder host", () => {
       requestId: nextRequestId(),
       sectionId: created.sectionId,
       document: withScale([
-        { label: 'Some', value: 1 },
-        { label: 'Lots', value: 2 },
+        { label: { [FIXTURE_LANGUAGE]: 'Some' }, value: 1 },
+        { label: { [FIXTURE_LANGUAGE]: 'Lots' }, value: 2 },
       ]),
       revision: held.revision,
     });
@@ -1482,7 +1690,7 @@ describe("Architect's in-process protocol-builder host", () => {
       sectionId: INFORMATION,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: 'Saved after the stream ended',
+        label: { [FIXTURE_LANGUAGE]: 'Saved after the stream ended' },
       }),
       revision: held.revision,
     });
@@ -1600,7 +1808,7 @@ describe("Architect's in-process protocol-builder host", () => {
       sectionId: INFORMATION,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: 'Names one of two secrets',
+        label: { [FIXTURE_LANGUAGE]: 'Names one of two secrets' },
       }),
       revision: held.revision,
       promote: { editId: EDIT, resourceIds: [named.data.descriptor.id] },
@@ -1666,7 +1874,7 @@ describe("Architect's in-process protocol-builder host", () => {
       kind: 'stage',
       document: Redacted.make({
         ...withoutId,
-        label: 'Added in the protocol opened next',
+        label: { [FIXTURE_LANGUAGE]: 'Added in the protocol opened next' },
       }),
     });
 
@@ -1763,7 +1971,7 @@ describe("Architect's in-process protocol-builder host", () => {
           sectionId: INFORMATION,
           document: Redacted.make({
             ...Redacted.value(held.document),
-            label: 'Saved by a demoted tab',
+            label: { [FIXTURE_LANGUAGE]: 'Saved by a demoted tab' },
           }),
           revision: held.revision,
         }),
@@ -1795,7 +2003,7 @@ describe("Architect's in-process protocol-builder host", () => {
           kind: 'stage',
           document: Redacted.make({
             ...withoutId,
-            label: 'Added by a demoted tab',
+            label: { [FIXTURE_LANGUAGE]: 'Added by a demoted tab' },
           }),
           position: 0,
         }),
@@ -1895,8 +2103,8 @@ describe("Architect's in-process protocol-builder host", () => {
           kind: 'stage',
           document: Redacted.make({
             type: 'Information',
-            label: 'Refused',
-            title: 'Refused',
+            label: { [FIXTURE_LANGUAGE]: 'Refused' },
+            title: { [FIXTURE_LANGUAGE]: 'Refused' },
             items: [],
           }),
         }),
@@ -2004,7 +2212,7 @@ describe("Architect's in-process protocol-builder host", () => {
         sectionId: INFORMATION,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: 'Written after a defect',
+          label: { [FIXTURE_LANGUAGE]: 'Written after a defect' },
         }),
         revision: held.revision,
       });

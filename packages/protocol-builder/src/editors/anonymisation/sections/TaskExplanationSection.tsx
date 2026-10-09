@@ -1,8 +1,11 @@
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
-import RichTextField from '../../../fields/RichTextField.tsx';
+import { localizedMaxLength } from '../../../fields/localizedMaxLength.ts';
+import {
+  LocalizedInputField,
+  LocalizedRichTextField,
+} from '../../../fields/LocalizedStringField.tsx';
 import { REQUIRED } from '../../../form/requiredField.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { anonymisationMessages } from './anonymisationMessages.ts';
@@ -34,9 +37,9 @@ export default function TaskExplanationSection() {
         anonymisationMessages.explanationDescription,
       )}
     >
-      <Field<typeof InputField>
+      <Field<typeof LocalizedInputField>
         name={TITLE_FIELD}
-        component={InputField}
+        component={LocalizedInputField}
         label={intl.formatMessage(
           anonymisationMessages.explanationHeadingLabel,
         )}
@@ -44,11 +47,11 @@ export default function TaskExplanationSection() {
           anonymisationMessages.explanationHeadingPlaceholder,
         )}
         required={REQUIRED}
-        maxLength={TITLE_LIMIT}
+        custom={localizedMaxLength(TITLE_LIMIT, intl)}
       />
-      <Field<typeof RichTextField>
+      <Field<typeof LocalizedRichTextField>
         name={BODY_FIELD}
-        component={RichTextField}
+        component={LocalizedRichTextField}
         label={intl.formatMessage(anonymisationMessages.explanationBodyLabel)}
         placeholder={intl.formatMessage(
           anonymisationMessages.explanationBodyPlaceholder,

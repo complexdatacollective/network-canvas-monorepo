@@ -133,6 +133,7 @@ function egoCodebook(parameters: {
       variables: {
         [variableId]: {
           name: 'Last seen',
+          label: 'Last seen',
           type: 'datetime',
           component: 'RelativeDatePicker',
           parameters,
@@ -147,13 +148,16 @@ const egoStages: Stage[] = [
   {
     id: 'stage-ego',
     type: 'EgoForm',
-    label: 'About you',
-    introductionPanel: { title: 'About you', text: 'A few questions.' },
+    label: { en: 'About you' },
+    introductionPanel: {
+      title: { en: 'About you' },
+      text: { en: 'A few questions.' },
+    },
     form: {
       fields: [
         {
           variable: asEntityAttributeReference(variableId),
-          prompt: 'When did you last see them?',
+          prompt: { en: 'When did you last see them?' },
         },
       ],
     },

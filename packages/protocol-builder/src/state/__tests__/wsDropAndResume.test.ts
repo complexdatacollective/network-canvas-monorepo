@@ -1,4 +1,4 @@
-import { Redacted } from 'effect';
+import { Redacted, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
@@ -19,6 +19,8 @@ const nextRequestId = (): string => `write-${++writes}`;
 const FIXTURE: Record<string, unknown> = allInterfaces;
 const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
 const EGO_FORM = sectionId({ kind: 'stage', stageId: 'ego-form-1' });
+
+const isEnglishLabel = Schema.is(Schema.Struct({ 'en-US': Schema.String }));
 
 const WRITER = {
   sessionId: 'writer-session',
@@ -59,13 +61,11 @@ describe('a protocol stream over a socket that drops mid-stream', () => {
       if (event.type !== 'revision') return;
       if (event.sectionId !== INFORMATION) return;
       revisions.push(event.revision.sequence);
-      labels.push(
-        String(
-          event.document === undefined
-            ? undefined
-            : Redacted.value(event.document).label,
-        ),
-      );
+      const label =
+        event.document === undefined
+          ? undefined
+          : Redacted.value(event.document).label;
+      if (isEnglishLabel(label)) labels.push(label['en-US']);
     };
     const channel = streamProtocolEvents(
       adapter,
@@ -84,7 +84,10 @@ describe('a protocol stream over a socket that drops mid-stream', () => {
         protocolId: host.protocolId,
         requestId: nextRequestId(),
         sectionId: INFORMATION,
-        document: Redacted.make({ ...Redacted.value(held.document), label }),
+        document: Redacted.make({
+          ...Redacted.value(held.document),
+          label: { 'en-US': label },
+        }),
         revision: held.revision,
       });
     };
@@ -133,14 +136,12 @@ describe('a protocol stream over a socket that drops mid-stream', () => {
       adapter,
       host.protocolId,
       (event) => {
-        if (event.type === 'revision')
-          labels.push(
-            String(
-              event.document === undefined
-                ? undefined
-                : Redacted.value(event.document).label,
-            ),
-          );
+        if (event.type !== 'revision') return;
+        const label =
+          event.document === undefined
+            ? undefined
+            : Redacted.value(event.document).label;
+        if (isEnglishLabel(label)) labels.push(label['en-US']);
       },
       controller.signal,
     );
@@ -157,7 +158,10 @@ describe('a protocol stream over a socket that drops mid-stream', () => {
         protocolId: host.protocolId,
         requestId: nextRequestId(),
         sectionId: EGO_FORM,
-        document: Redacted.make({ ...Redacted.value(other.document), label }),
+        document: Redacted.make({
+          ...Redacted.value(other.document),
+          label: { 'en-US': label },
+        }),
         revision: other.revision,
       });
     };
@@ -179,7 +183,7 @@ describe('a protocol stream over a socket that drops mid-stream', () => {
       sectionId: INFORMATION,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: 'Saved after the drop',
+        label: { 'en-US': 'Saved after the drop' },
       }),
       revision: held.revision,
     });

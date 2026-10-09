@@ -15,7 +15,8 @@ import { contentHash } from '@codaco/studio-sync/apply';
 import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
 
 import { blockedHolders } from './codebook/writes.ts';
-import { getInterfaceTemplate } from './interfaces/templates.ts';
+import { newStageFields } from './interfaces/templates.ts';
+import { useProtocolLocalization } from './localization/ProtocolLocalization.tsx';
 import { useStagedResources } from './resources/client.tsx';
 import {
   createStageIdentity,
@@ -151,6 +152,7 @@ function EditingStage({
   const formId = useFormId(requestedFormId);
   const section = useSectionMutation(sectionId);
   const staged = useStagedResources();
+  const localization = useProtocolLocalization();
   const { submit, access, holder } = section;
 
   const opened = useMemo(
@@ -164,7 +166,9 @@ function EditingStage({
 
   const save = useCallback(
     async (fields: StageFormDraft): Promise<StageSaveOutcome> => {
-      if (identity === undefined) {
+      // The stage is saved with the wording it should hold in the protocol's
+      // languages (see `stageDocument`), so the save waits for them.
+      if (identity === undefined || localization === undefined) {
         return { status: 'refused', message: NOT_READY_MESSAGE };
       }
       // Carried by the submit rather than committed before it: the section and
@@ -172,7 +176,10 @@ function EditingStage({
       // files staged for the next attempt instead of committing them for a
       // stage nobody saved.
       const promotion = staged.promotion();
-      const result = await submit(stageDocument(identity, fields), promotion);
+      const result = await submit(
+        stageDocument(identity, fields, localization),
+        promotion,
+      );
       if (result.status === 'written') {
         staged.promoted();
         onSaved?.(sectionId);
@@ -180,7 +187,7 @@ function EditingStage({
       }
       return refusalFromHost(result);
     },
-    [identity, onSaved, sectionId, staged, submit],
+    [identity, localization, onSaved, sectionId, staged, submit],
   );
 
   const edit = useMemo<StageEdit>(
@@ -230,9 +237,19 @@ function CreatingStage({
   // Settled once, so a create edits one stage under one id from its first
   // keystroke even though the host mints the id it finally lands under.
   const identity = useMemo(() => createStageIdentity(stageType), [stageType]);
+  // The form opens on these once and keeps them, and the wording a new stage
+  // starts with is written in the protocol's languages, so it waits for the
+  // settings that declare them, as an existing stage waits for its section.
+  const localization = useProtocolLocalization();
   const committedFields = useMemo(
-    () => Object.freeze({ ...getInterfaceTemplate(stageType), ...extraFields }),
-    [extraFields, stageType],
+    () =>
+      localization === undefined
+        ? undefined
+        : Object.freeze({
+            ...newStageFields(stageType, localization),
+            ...extraFields,
+          }),
+    [extraFields, localization, stageType],
   );
   const creation = useMemo(() => ({ position }), [position]);
 
@@ -243,8 +260,11 @@ function CreatingStage({
       // it, and there is no earlier revision of that stage to have promoted it
       // with. The section, its place in the stage order and the manifest
       // entries are one revision.
+      if (localization === undefined) {
+        return { status: 'refused', message: NOT_READY_MESSAGE };
+      }
       const promotion = staged.promotion();
-      const document = stageDocument(identity, fields);
+      const document = stageDocument(identity, fields, localization);
       // One id for this attempt to add the stage, so a transport that
       // re-sends the request after a lost answer — or a researcher pressing
       // Save again because they were told the add failed — is told which
@@ -291,7 +311,16 @@ function CreatingStage({
       onSaved?.(data.sectionId);
       return { status: 'saved', sectionId: data.sectionId };
     },
-    [addKey, adapter, identity, onSaved, position, protocolId, staged],
+    [
+      addKey,
+      adapter,
+      identity,
+      localization,
+      onSaved,
+      position,
+      protocolId,
+      staged,
+    ],
   );
 
   const edit = useMemo<StageEdit>(

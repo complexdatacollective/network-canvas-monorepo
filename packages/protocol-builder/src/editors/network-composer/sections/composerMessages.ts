@@ -337,4 +337,65 @@ export const composerMessages = defineMessages({
     description:
       'Shown in place of the list of questions about one kind of connection while it holds none.',
   },
+  wordingTitle: {
+    id: 'protocolBuilder.networkCanvas.composerWordingTitle',
+    defaultMessage: 'Words on the canvas',
+    description:
+      'Heading of the section holding the words a participant reads while building the network on a composer canvas. Also names the section in the editor outline and to assistive technology.',
+  },
+  wordingDescription: {
+    id: 'protocolBuilder.networkCanvas.composerWordingDescription',
+    defaultMessage:
+      'The name box, the warning shown when an undo or redo changed an answer being edited, and the labels of the canvas tools. These start with wording Network Canvas supplies, which you can change.',
+    description:
+      'Description of the words section of a composer canvas. A composer is the canvas where the participant builds their network.',
+  },
+  addNamePlaceholderLabel: {
+    id: 'protocolBuilder.networkCanvas.composerAddNamePlaceholderLabel',
+    defaultMessage: 'Name box placeholder',
+    description:
+      'Label of the setting holding the placeholder shown in the box for adding a member to the network, until a name is typed.',
+  },
+  overtakenEditNoticeLabel: {
+    id: 'protocolBuilder.networkCanvas.composerOvertakenEditNoticeLabel',
+    defaultMessage: 'Warning about an overtaken edit',
+    description:
+      'Label of the setting holding the warning a participant sees when an undo or redo has changed an answer they were editing, so their edit has not been saved.',
+  },
+  groupsHeadingLabel: {
+    id: 'protocolBuilder.networkCanvas.composerGroupsHeadingLabel',
+    defaultMessage: 'Groups heading',
+    description:
+      'Label of the setting holding the name of the groups tool and of the groups in the key.',
+  },
+  groupsHeadingHint: {
+    id: 'protocolBuilder.networkCanvas.composerGroupsHeadingHint',
+    defaultMessage: 'Shown only when the canvas groups members.',
+    description:
+      'Hint under the groups heading setting, saying when the setting is used.',
+  },
+  addNodeTooltipLabel: {
+    id: 'protocolBuilder.networkCanvas.composerAddNodeTooltipLabel',
+    defaultMessage: 'Add node tooltip',
+    description:
+      'Label of the setting holding the tooltip of the tool that adds a member to the network.',
+  },
+  automaticLayoutTooltipLabel: {
+    id: 'protocolBuilder.networkCanvas.composerAutomaticLayoutTooltipLabel',
+    defaultMessage: 'Automatic layout tooltip',
+    description:
+      'Label of the setting holding the tooltip of the automatic layout tool.',
+  },
+  drawConnectionTooltipLabel: {
+    id: 'protocolBuilder.networkCanvas.composerDrawConnectionTooltipLabel',
+    defaultMessage: 'Draw connection tooltip',
+    description:
+      'Label of the setting holding the tooltip of the tool that draws a connection between two members.',
+  },
+  drawConnectionTooltipHint: {
+    id: 'protocolBuilder.networkCanvas.composerDrawConnectionTooltipHint',
+    defaultMessage: 'Shown only when the canvas has connection types.',
+    description:
+      'Hint under the draw connection tooltip setting, saying when the setting is used.',
+  },
 });

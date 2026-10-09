@@ -5,8 +5,15 @@ import { describe, expect, it } from 'vitest';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import {
+  alreadyProtecting,
+  answeredRule,
+  personRule,
+} from '../../../editors/anonymisation/__tests__/anonymisationFixtures.tsx';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import NodePanelsSection from '../NodePanelsSection.tsx';
+
+const en = (text: string) => ({ 'en-US': text });
 
 const panels = <NodePanelsSection />;
 
@@ -46,13 +53,15 @@ const nameGeneratorWith = (configured: SectionDoc[]) => ({
   id: 'name-generator-with-panels',
   type: 'NameGenerator' as const,
   fields: {
-    label: 'Name Generator',
+    label: en('Name Generator'),
     subject: { entity: 'node', type: 'person' },
     form: {
-      title: 'Add a person',
-      fields: [{ variable: 'name', prompt: "What is this person's name?" }],
+      title: en('Add a person'),
+      fields: [{ variable: 'name', prompt: en("What is this person's name?") }],
     },
-    prompts: [{ id: 'prompt-1', text: 'Who are the people you know?' }],
+    prompts: [{ id: 'prompt-1', text: en('Who are the people you know?') }],
+    // A panel reading a data file needs the words for a file that did not load.
+    externalDataError: en('External data could not be loaded.'),
     panels: configured,
   },
 });
@@ -67,7 +76,7 @@ const openPanel = async (harness: Harness, name: string, index = 0) => {
 /** A panel narrowed by a rule only the interview's own network can answer. */
 const panelWithAnEdgeRule = {
   id: 'panel-1',
-  title: 'People you named earlier',
+  title: en('People you named earlier'),
   dataSource: 'existing',
   filter: {
     join: 'AND',
@@ -89,7 +98,7 @@ const panelWithAnEdgeRule = {
  */
 const panelWithAnEgoRule = {
   id: 'panel-1',
-  title: 'People you named earlier',
+  title: en('People you named earlier'),
   dataSource: 'existing',
   filter: {
     rules: [
@@ -158,14 +167,20 @@ const SCHEMA_REFUSAL = 'This stage is not finished, so it was not saved.';
 
 describe('the side panels a name generator shows', () => {
   it('shows the panels a stage arrives with, and saves them unchanged', async () => {
+    // No panel reads a data file, so the stage holds no words for one.
+    const { externalDataError: _unused, ...fields } = nameGeneratorWith([
+      {
+        id: 'panel-1',
+        title: en('People you named earlier'),
+        dataSource: 'existing',
+      },
+    ]).fields;
     const harness = renderStageEditor({
-      stage: nameGeneratorWith([
-        {
-          id: 'panel-1',
-          title: 'People you named earlier',
-          dataSource: 'existing',
-        },
-      ]),
+      stage: {
+        id: 'name-generator-with-panels',
+        type: 'NameGenerator',
+        fields,
+      },
       sections: panels,
     });
 
@@ -217,7 +232,7 @@ describe('the side panels a name generator shows', () => {
     expect(panelsOf(await harness.submit())).toEqual([
       {
         id: expect.any(String) as unknown as string,
-        title: 'People you named earlier',
+        title: en('People you named earlier'),
         dataSource: 'existing',
       },
     ]);
@@ -230,7 +245,7 @@ describe('the side panels a name generator shows', () => {
   it('numbers the source control after the panel being added', async () => {
     const harness = renderStageEditor({
       stage: nameGeneratorWith([
-        { id: 'panel-1', title: 'First panel', dataSource: 'existing' },
+        { id: 'panel-1', title: en('First panel'), dataSource: 'existing' },
       ]),
       sections: panels,
     });
@@ -254,12 +269,12 @@ describe('the side panels a name generator shows', () => {
       stage: nameGeneratorWith([
         {
           id: 'panel-1',
-          title: 'People you named earlier',
+          title: en('People you named earlier'),
           dataSource: 'existing',
         },
         {
           id: 'panel-2',
-          title: 'People from the roster',
+          title: en('People from the roster'),
           dataSource: 'existing',
         },
       ]),
@@ -317,7 +332,7 @@ describe('the side panels a name generator shows', () => {
   it('refuses a panel whose stored source is not network data', async () => {
     const harness = renderStageEditor({
       stage: nameGeneratorWith([
-        { id: 'panel-1', title: 'People nearby', dataSource: 'geo_data' },
+        { id: 'panel-1', title: en('People nearby'), dataSource: 'geo_data' },
       ]),
       sections: panels,
     });
@@ -363,7 +378,7 @@ describe('the side panels a name generator shows', () => {
     const saved = panelsOf(await harness.submit())[0];
     expect(saved).toEqual({
       id: 'panel-1',
-      title: 'People you named earlier',
+      title: en('People you named earlier'),
       dataSource: 'roster_data',
     });
   });
@@ -410,8 +425,8 @@ describe('the side panels a name generator shows', () => {
   it('offers no third panel once there are two', async () => {
     const harness = renderStageEditor({
       stage: nameGeneratorWith([
-        { id: 'panel-1', title: 'First panel', dataSource: 'existing' },
-        { id: 'panel-2', title: 'Second panel', dataSource: 'existing' },
+        { id: 'panel-1', title: en('First panel'), dataSource: 'existing' },
+        { id: 'panel-2', title: en('Second panel'), dataSource: 'existing' },
       ]),
       sections: panels,
     });
@@ -425,7 +440,7 @@ describe('the side panels a name generator shows', () => {
     harness.unmount();
     renderStageEditor({
       stage: nameGeneratorWith([
-        { id: 'panel-1', title: 'First panel', dataSource: 'existing' },
+        { id: 'panel-1', title: en('First panel'), dataSource: 'existing' },
       ]),
       sections: panels,
     });
@@ -450,9 +465,9 @@ describe('the side panels a name generator shows', () => {
   it('refuses a stage carrying more panels than it can show', async () => {
     const harness = renderStageEditor({
       stage: nameGeneratorWith([
-        { id: 'panel-1', title: 'First panel', dataSource: 'existing' },
-        { id: 'panel-2', title: 'Second panel', dataSource: 'existing' },
-        { id: 'panel-3', title: 'Third panel', dataSource: 'existing' },
+        { id: 'panel-1', title: en('First panel'), dataSource: 'existing' },
+        { id: 'panel-2', title: en('Second panel'), dataSource: 'existing' },
+        { id: 'panel-3', title: en('Third panel'), dataSource: 'existing' },
       ]),
       sections: panels,
     });
@@ -496,12 +511,14 @@ describe('the side panels a name generator shows', () => {
         id: 'name-generator-without-a-type',
         type: 'NameGenerator',
         fields: {
-          label: 'Name Generator',
+          label: en('Name Generator'),
           form: {
-            title: 'Add a person',
-            fields: [{ variable: 'name', prompt: 'What is their name?' }],
+            title: en('Add a person'),
+            fields: [{ variable: 'name', prompt: en('What is their name?') }],
           },
-          prompts: [{ id: 'prompt-1', text: 'Who are the people you know?' }],
+          prompts: [
+            { id: 'prompt-1', text: en('Who are the people you know?') },
+          ],
         },
       },
       sections: panels,
@@ -524,7 +541,7 @@ describe('the side panels a name generator shows', () => {
       stage: nameGeneratorWith([
         {
           id: 'panel-1',
-          title: 'People you named earlier',
+          title: en('People you named earlier'),
           dataSource: 'existing',
         },
       ]),
@@ -573,7 +590,7 @@ describe('the side panels a name generator shows', () => {
 
     expect(panelsOf(await harness.submit())[0]).toEqual({
       id: 'panel-1',
-      title: 'People you named earlier',
+      title: en('People you named earlier'),
       dataSource: 'existing',
     });
   });
@@ -605,7 +622,7 @@ describe('the side panels a name generator shows', () => {
 
     expect(panelsOf(await harness.submit())[0]).toEqual({
       ...panelWithAnEgoRule,
-      title: 'People you already know',
+      title: en('People you already know'),
     });
   });
 
@@ -617,10 +634,10 @@ describe('the side panels a name generator shows', () => {
   it('keeps both panels whole when they are reordered', async () => {
     const harness = renderStageEditor({
       stage: nameGeneratorWith([
-        { id: 'panel-1', title: 'First panel', dataSource: 'existing' },
+        { id: 'panel-1', title: en('First panel'), dataSource: 'existing' },
         {
           id: 'panel-2',
-          title: 'Second panel',
+          title: en('Second panel'),
           dataSource: 'existing',
           filter: {
             join: 'AND',
@@ -646,7 +663,7 @@ describe('the side panels a name generator shows', () => {
     const saved = panelsOf(await harness.submit());
     expect(saved.map((panel) => panel.id)).toEqual(['panel-2', 'panel-1']);
     expect(saved[0]).toMatchObject({
-      title: 'Second panel',
+      title: en('Second panel'),
       filter: { join: 'AND' },
     });
   });
@@ -696,7 +713,7 @@ describe('the side panels a name generator shows', () => {
   it('names a network imported in this edit in the panel summary', async () => {
     const harness = renderStageEditor({
       stage: nameGeneratorWith([
-        { id: 'panel-1', title: 'First panel', dataSource: 'existing' },
+        { id: 'panel-1', title: en('First panel'), dataSource: 'existing' },
       ]),
       sections: panels,
     });
@@ -724,7 +741,7 @@ describe('the side panels a name generator shows', () => {
   it('follows a codebook change made elsewhere', async () => {
     const harness = renderStageEditor({
       stage: nameGeneratorWith([
-        { id: 'panel-1', title: 'First panel', dataSource: 'existing' },
+        { id: 'panel-1', title: en('First panel'), dataSource: 'existing' },
       ]),
       sections: panels,
     });
@@ -792,7 +809,7 @@ describe('a panel filter emptied down to nothing', () => {
 
     expect(panelsOf(await harness.submit())[0]).toEqual({
       id: 'panel-1',
-      title: 'People you named earlier',
+      title: en('People you named earlier'),
       dataSource: 'existing',
     });
   });
@@ -845,6 +862,90 @@ describe('a panel filter emptied down to nothing', () => {
   });
 });
 
+/**
+ * Rules that read the interview are checked without the participant's
+ * passphrase, so the schema refuses one comparing an encrypted attribute
+ * there; whether it was answered survives encryption, so a rule asking only
+ * that is accepted. A panel over an imported file reads the file's own plain
+ * values instead, and the schema accepts the same comparison — refusing it
+ * would hold the panel's dialog shut over an edit nothing is wrong with.
+ */
+describe('a panel filter on an encrypted attribute', () => {
+  const panelReading = (dataSource: string) => ({
+    id: 'panel-1',
+    title: en('People you named earlier'),
+    dataSource,
+    filter: {
+      join: 'AND',
+      rules: [personRule('rule-1', 'relationship_to_ego')],
+    },
+  });
+
+  it('saves a panel over an imported file that holds one', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([panelReading('roster_data')]),
+      sections: panels,
+      adapter: alreadyProtecting('relationship_to_ego'),
+    });
+
+    const dialog = await openPanel(harness, 'Edit panel');
+    expect(dialog.queryByText(/encrypted/)).toBeNull();
+    const title = dialog.getByRole('textbox', { name: 'Panel title' });
+    await harness.user.clear(title);
+    await harness.user.type(title, 'People on the roster');
+    await saveTheRow(harness, dialog);
+
+    expect(panelsOf(await harness.submit())[0]).toEqual({
+      ...panelReading('roster_data'),
+      title: en('People on the roster'),
+    });
+  });
+
+  it('refuses the same panel over the interview’s own network', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([panelReading('existing')]),
+      sections: panels,
+      adapter: alreadyProtecting('relationship_to_ego'),
+    });
+
+    const dialog = await openPanel(harness, 'Edit panel');
+    expect(
+      dialog.getByText(
+        'This rule compares the answers to an encrypted attribute. Rules are checked without the participant’s passphrase, so they can only check whether an encrypted attribute is answered. Edit or delete the rule.',
+      ),
+    ).toBeInTheDocument();
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await dialog.findByText(
+        'Rule 1 cannot be used as it stands. Open it to fix it, or delete it.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('saves a panel over the interview’s own network that only asks whether it is answered', async () => {
+    const panel = {
+      ...panelReading('existing'),
+      filter: {
+        join: 'AND',
+        rules: [answeredRule('rule-1', 'relationship_to_ego')],
+      },
+    };
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([panel]),
+      sections: panels,
+      adapter: alreadyProtecting('relationship_to_ego'),
+    });
+
+    const dialog = await openPanel(harness, 'Edit panel');
+    expect(dialog.queryByText(/encrypted/)).toBeNull();
+    await saveTheRow(harness, dialog);
+
+    expect(panelsOf(await harness.submit())[0]).toEqual(panel);
+  });
+});
+
 /** Saves the row the dialog has open and waits for it to close. */
 const saveTheRow = async (
   harness: Harness,
@@ -872,11 +973,11 @@ const STILL_IN_USE =
   'This resource is still used elsewhere on this stage, so it was not discarded.';
 
 const ONE_PANEL = [
-  { id: 'panel-1', title: 'First panel', dataSource: 'existing' },
+  { id: 'panel-1', title: en('First panel'), dataSource: 'existing' },
 ];
 const TWO_PANELS = [
   ...ONE_PANEL,
-  { id: 'panel-2', title: 'Second panel', dataSource: 'existing' },
+  { id: 'panel-2', title: en('Second panel'), dataSource: 'existing' },
 ];
 
 /**

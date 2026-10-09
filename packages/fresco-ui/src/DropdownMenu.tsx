@@ -42,7 +42,11 @@ function DropdownMenu({
   const [mounted, setMounted] = React.useState(false);
 
   return (
-    <DropdownMenuContext.Provider value={{ mounted, setMounted }}>
+    // A controlled menu shows its content whenever it is open, including when
+    // opened by the caller rather than by its trigger.
+    <DropdownMenuContext.Provider
+      value={{ mounted: props.open ?? mounted, setMounted }}
+    >
       <Menu.Root
         {...props}
         open={props.open ?? mounted}
@@ -129,6 +133,9 @@ const DropdownMenuContent = React.forwardRef<
     align?: 'start' | 'center' | 'end';
     keepMounted?: boolean;
     showArrow?: boolean;
+    /** Positions the menu against this element instead of its trigger, for a
+     * menu opened by the caller. */
+    anchor?: React.ComponentPropsWithoutRef<typeof Menu.Positioner>['anchor'];
   }
 >(
   (
@@ -139,6 +146,7 @@ const DropdownMenuContent = React.forwardRef<
       align = 'center',
       keepMounted = true,
       showArrow = true,
+      anchor,
       children,
       ...props
     },
@@ -158,6 +166,7 @@ const DropdownMenuContent = React.forwardRef<
               sideOffset={sideOffset}
               side={side}
               align={align}
+              anchor={anchor}
               arrowPadding={POPOVER_ARROW_PADDING}
             >
               <Menu.Popup
@@ -238,7 +247,9 @@ const DropdownMenuRadioItem = React.forwardRef<
       keepMounted
       className={cx(
         proportionalLucideIconVariants(),
-        'flex items-center justify-center',
+        // Kept mounted so every item reserves the tick's space; only the
+        // checked item shows it.
+        'flex items-center justify-center data-unchecked:invisible',
       )}
     >
       {icon}

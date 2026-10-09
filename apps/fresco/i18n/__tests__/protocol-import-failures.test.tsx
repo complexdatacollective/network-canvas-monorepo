@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { Toaster } from '@codaco/fresco-ui/Toast';
+import { createDefaultFinishSessionStage } from '@codaco/protocol-validation';
 import { useProtocolImport } from '~/hooks/useProtocolImport';
 import { frescoLocales } from '~/i18n/locales';
 import { frescoCatalogSource } from '~/src/locales/catalogs';
@@ -86,11 +87,18 @@ describe('truthful protocol import failure messages', () => {
     async (operation) => {
       const file = await archiveFile(
         JSON.stringify({
-          schemaVersion: 8,
+          schemaVersion: 9,
           name: 'Fixture',
           lastModified: '2026-09-05T00:00:00.000Z',
-          stages: [],
+          // A schema-9 protocol ends at a finish stage.
+          stages: [
+            createDefaultFinishSessionStage({
+              id: 'finish',
+              localization: { defaultLocale: 'en', locales: ['en'] },
+            }),
+          ],
           codebook: { node: {}, edge: {}, ego: {} },
+          localization: { defaultLocale: 'en', locales: ['en'] },
           assetManifest: {},
         }),
       );

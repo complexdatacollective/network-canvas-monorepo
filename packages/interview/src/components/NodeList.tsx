@@ -23,7 +23,6 @@ import { readNodeLabelSource } from '../interfaces/Anonymisation/nodeLabel';
 import { useDecryptedOutcomes } from '../interfaces/Anonymisation/useDecryptionScope';
 import { useNodeLabeller } from '../interfaces/Anonymisation/useNodeLabel';
 import { makeGetCodebookVariablesForNodeType } from '../selectors/protocol';
-import { getShouldEncryptNames } from '../store/modules/protocol';
 import Node from './ConnectedNode';
 
 // Props that NodeList always provides internally — consumers can't override these
@@ -159,12 +158,11 @@ const NodeList = memo(
     const getCodebookVariablesForNodeType = useSelector(
       makeGetCodebookVariablesForNodeType,
     );
-    const encryptionEnabled = useSelector(getShouldEncryptNames);
 
-    // Typeahead and drag announcements use the label each node shows, read
-    // by the same function: the plaintext of an encrypted name once it is
-    // decrypted, and only the locked or failed label otherwise, so neither
-    // names a node by an answer it hides.
+    // Typeahead matches the label each node shows, read by the same function:
+    // the plaintext of an encrypted name once it is decrypted, and only the
+    // locked or unavailable label otherwise, so typing never finds a node by
+    // an answer it hides.
     const labelSources = useMemo(
       () =>
         new Map(
@@ -173,11 +171,10 @@ const NodeList = memo(
             readNodeLabelSource(
               node,
               getCodebookVariablesForNodeType(node.type),
-              encryptionEnabled,
             ),
           ]),
         ),
-      [displayItems, getCodebookVariablesForNodeType, encryptionEnabled],
+      [displayItems, getCodebookVariablesForNodeType],
     );
     const encryptedLabels = useMemo(
       () =>
@@ -190,8 +187,8 @@ const NodeList = memo(
 
     // The collection reads each node's typeahead text only when its items
     // change, so they are handed over anew whenever a label changes: as each
-    // name decrypts, and when the passphrase stops being in force.
-    const labels = useMemo(() => {
+    // name decrypts, and when the key stops being in force.
+    const typeahead = useMemo(() => {
       const texts = new Map(
         displayItems.map((node) => [
           node[entityPrimaryKeyProperty],
@@ -202,6 +199,7 @@ const NodeList = memo(
         items: [...displayItems],
         textOf: (node: NcNode) =>
           texts.get(node[entityPrimaryKeyProperty]) ?? labelNode(node),
+        // A drag names the person by the label their card shows.
         ofKey: (key: Key) => texts.get(String(key)),
       };
     }, [displayItems, labelSources, labelNode]);
@@ -224,7 +222,7 @@ const NodeList = memo(
         );
         return node ? { ...node, itemType } : { itemType };
       },
-      getItemAnnouncedName: labels.ofKey,
+      getItemAnnouncedName: typeahead.ofKey,
     });
 
     // Styling classes including drop state styling via data attributes
@@ -275,9 +273,9 @@ const NodeList = memo(
             {...collectionProps}
             key={displayAnimationKey}
             id={id ?? 'node-list'}
-            items={labels.items}
+            items={typeahead.items}
             keyExtractor={keyExtractor}
-            textValueExtractor={labels.textOf}
+            textValueExtractor={typeahead.textOf}
             layout={layout}
             renderItem={renderItemOverride ?? defaultRenderItem}
             dragAndDropHooks={dragAndDropHooks}

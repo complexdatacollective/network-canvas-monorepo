@@ -3,6 +3,7 @@ import path from 'node:path';
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
+import { AnonymisationFixture } from '../fixtures/anonymisation-fixture.js';
 import { expect } from '../fixtures/matrix-test.js';
 import { NameGeneratorRosterFixture } from '../fixtures/name-generator-roster-fixture.js';
 import { DEV_PROTOCOL_ASSETS_DIR } from '../helpers/protocol-paths.js';
@@ -37,6 +38,14 @@ const rosterEmptyAsset = (assetId: string): SyntheticAssetSpec => ({
   source: 'roster-empty.json',
   localPath: path.join(DATA_DIR, 'roster-empty.json'),
 });
+
+// A researcher's own words for the roster's messages, each distinct from the
+// text Network Canvas supplies, so an assertion on one proves the stage's own
+// setting is what the participant sees.
+const EXTERNAL_DATA_ERROR = 'The roster could not load - matrix check';
+const ALL_ADDED_NOTICE = 'Everyone is on your list - matrix check';
+const SEARCH_LABEL = 'Find a classmate - matrix check';
+const SEARCH_NO_MATCH = 'No classmate by that name - matrix check';
 
 // Refs captured in build() and read in run() (module-scope because each
 // scenario is a plain object literal, per the run-scenario contract).
@@ -115,10 +124,13 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
           caraCard.getByText('Denver', { exact: true }),
         ).toBeVisible();
 
-        // Ben Brown's location is '' in roster-small.json — DataCard's
-        // formatValue renders empty/undefined values as '—' (DataCard.tsx:18).
+        // Ben Brown's location is '' in roster-small.json. DataCard renders an
+        // empty value as the interview's "No value" message
+        // (interview.interfaces.emptyValue).
         const benCard = roster.getRosterNode('Ben Brown');
-        await expect(benCard.getByText('—', { exact: true })).toBeVisible();
+        await expect(
+          benCard.getByText('No value', { exact: true }),
+        ).toBeVisible();
 
         // Stage label/interviewScript are authoring/navigation metadata, never
         // rendered as participant-visible copy.
@@ -319,7 +331,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
 
     {
       id: 'roster-dataSource-missing-asset-error',
-      covers: ['dataSource=error'],
+      covers: ['dataSource=error', 'externalDataError'],
       build: () => {
         const synth = new SyntheticInterview();
         const personType = synth.addNodeType({ name: 'Person' });
@@ -344,6 +356,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
           label: 'Broken roster',
           subject: { entity: 'node', type: personType.id },
           dataSource: 'rosterBroken',
+          wording: { externalDataError: EXTERNAL_DATA_ERROR },
         });
         stage.addPrompt({ text: 'Please add anyone you recognise.' });
 
@@ -362,9 +375,10 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         await expect(
           page.getByRole('heading', { name: 'Something went wrong' }),
         ).toBeVisible();
+        await expect(page.getByText(EXTERNAL_DATA_ERROR)).toBeVisible();
         await expect(
           page.getByText('External data could not be loaded.'),
-        ).toBeVisible();
+        ).toHaveCount(0);
 
         const state = await protocol.getNetworkState(interview.interviewId);
         expect(state?.nodes).toEqual([]);
@@ -543,7 +557,12 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
 
     {
       id: 'roster-search-presence-and-fuzziness',
-      covers: ['searchOptions', 'searchOptions.fuzziness'],
+      covers: [
+        'panelTitle',
+        'searchOptions',
+        'searchOptions.fuzziness',
+        'searchLabel',
+      ],
       build: () => {
         const synth = new SyntheticInterview();
         const personType = synth.addNodeType({ name: 'Person' });
@@ -556,16 +575,19 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
           source: 'roster-small.json',
         });
 
-        // Stage A: search enabled with fuzziness.
+        // Stage A: search enabled with fuzziness, under a heading of the
+        // protocol's own.
         synth
           .addStage('NameGeneratorRoster', {
             label: 'Search enabled',
+            panelTitle: 'People from your class',
             subject: { entity: 'node', type: personType.id },
             dataSource: 'jsonRoster',
             searchOptions: {
               fuzziness: 0.4,
               matchProperties: ['name', 'location'],
             },
+            wording: { searchLabel: SEARCH_LABEL },
           })
           .addPrompt({ text: 'Please add anyone you recognise.' });
 
@@ -583,6 +605,21 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
       assets: [rosterSmallAsset('jsonRoster')],
       run: async ({ page, interview }) => {
         const roster = new NameGeneratorRosterFixture(page);
+
+        // Stage A's panel is headed by the stage's own title, not the one
+        // Network Canvas supplies.
+        await expect(
+          page.getByRole('heading', { name: 'People from your class' }),
+        ).toBeVisible();
+        await expect(
+          page.getByRole('heading', { name: 'Available to add' }),
+        ).toHaveCount(0);
+
+        // The search box carries the stage's own label as its placeholder.
+        await expect(roster.filterInput).toHaveAttribute(
+          'placeholder',
+          SEARCH_LABEL,
+        );
 
         // Stage A: a name query narrows the roster (some, not all, match).
         await expect(roster.sourceListbox.getByRole('option')).toHaveCount(6);
@@ -606,7 +643,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
 
     {
       id: 'roster-search-matchProperties-scoping',
-      covers: ['searchOptions.matchProperties'],
+      covers: ['searchOptions.matchProperties', 'searchNoMatch'],
       build: () => {
         const synth = new SyntheticInterview();
         const personType = synth.addNodeType({ name: 'Person' });
@@ -626,6 +663,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
             subject: { entity: 'node', type: personType.id },
             dataSource: 'jsonRoster',
             searchOptions: { fuzziness: 0.2, matchProperties: ['location'] },
+            wording: { searchNoMatch: SEARCH_NO_MATCH },
           })
           .addPrompt({ text: 'Please add anyone you recognise.' });
 
@@ -639,16 +677,17 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         // finds nothing.
         await expect(roster.sourceListbox.getByRole('option')).toHaveCount(6);
         await roster.search('Drew');
-        await expect(roster.emptyState).toBeVisible();
+        await expect(page.getByText(SEARCH_NO_MATCH)).toBeVisible();
+        await expect(roster.emptyState).toHaveCount(0);
         // The other half of the pair below: a genuine search miss must still
         // say so, and must not be reported as an exhausted roster.
-        await expect(roster.exhaustedState).toHaveCount(0);
+        await expect(roster.nothingLeftState).toHaveCount(0);
       },
     },
 
     {
       id: 'roster-exhausted-empty-state',
-      covers: ['exhausted-roster-empty-state'],
+      covers: ['exhausted-roster-empty-state', 'allAddedNotice'],
       build: () => {
         const synth = new SyntheticInterview();
         const personType = synth.addNodeType({ name: 'Person' });
@@ -679,6 +718,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
               fuzziness: 0.4,
               matchProperties: ['name', 'location'],
             },
+            wording: { allAddedNotice: ALL_ADDED_NOTICE },
           })
           .addPrompt({ text: 'Please add anyone you recognise.' });
 
@@ -690,6 +730,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
             label: 'Empty roster',
             subject: { entity: 'node', type: personType.id },
             dataSource: 'emptyRoster',
+            wording: { allAddedNotice: ALL_ADDED_NOTICE },
           })
           .addPrompt({ text: 'Please add anyone you recognise.' });
 
@@ -708,26 +749,29 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
        */
       run: async ({ page, interview }) => {
         const roster = new NameGeneratorRosterFixture(page);
+        // The stage's own notice, which replaces Network Canvas's on both stages.
+        const nothingLeft = page.getByText(ALL_ADDED_NOTICE);
 
         await expect(roster.sourceListbox.getByRole('option')).toHaveCount(2);
         await roster.addNode('Cara Chen');
         await roster.addNode('Amy Adams');
 
-        await expect(roster.exhaustedState).toBeVisible();
+        await expect(nothingLeft).toBeVisible();
+        await expect(roster.nothingLeftState).toHaveCount(0);
         await expect(roster.emptyState).toHaveCount(0);
-        await expect(roster.emptyListState).toHaveCount(0);
 
         // Removing one puts the roster back to a normal, non-empty state — the
         // message is a report on the panel, not a latch.
         await roster.removeNode('Amy Adams');
-        await expect(roster.exhaustedState).toHaveCount(0);
+        await expect(nothingLeft).toHaveCount(0);
         await expect(roster.sourceListbox.getByRole('option')).toHaveCount(1);
 
         await interview.next();
 
-        // Stage B: an empty file is not an exhausted roster and not a search.
-        await expect(roster.emptyListState).toBeVisible();
-        await expect(roster.exhaustedState).toHaveCount(0);
+        // Stage B: an empty file says there is nothing to add, and is not a
+        // search (an empty file and an exhausted roster now share their words).
+        await expect(nothingLeft).toBeVisible();
+        await expect(roster.sourceListbox.getByRole('option')).toHaveCount(0);
         await expect(roster.emptyState).toHaveCount(0);
         await expect(roster.filterInput).toHaveCount(0);
       },
@@ -735,7 +779,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
 
     {
       id: 'roster-behaviours-min-nodes',
-      covers: ['behaviours.minNodes'],
+      covers: ['behaviours.minNodes', 'minNodesNotice'],
       build: () => {
         const synth = new SyntheticInterview();
         const personType = synth.addNodeType({ name: 'Person' });
@@ -785,7 +829,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
 
     {
       id: 'roster-behaviours-max-nodes',
-      covers: ['behaviours.maxNodes'],
+      covers: ['behaviours.maxNodes', 'maxNodesNotice'],
       visual: true,
       build: () => {
         const synth = new SyntheticInterview();
@@ -1004,7 +1048,6 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
           type: 'text',
           encrypted: true,
         });
-        synth.setExperiments({ encryptedVariables: true });
 
         synth.addAsset({
           id: 'jsonRoster',
@@ -1028,22 +1071,20 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         const firstOption = roster.sourceListbox.getByRole('option').first();
 
         // The encrypted "name" variable gates the roster: every card is
-        // disabled until a passphrase is provided
-        // (NameGeneratorRoster.tsx:254-267, `!passphrase && useEncryption`).
+        // disabled until the interview's key is in force
+        // (NameGeneratorRoster.tsx, `useEncryption && !unlocked`).
         await expect(firstOption).toHaveAttribute('aria-disabled', 'true');
 
-        // The 🔑 prompter opens a dialog to collect the passphrase.
-        const lockButton = page.getByRole('button').filter({ hasText: '🔑' });
-        await expect(lockButton).toBeVisible();
-        await lockButton.click();
-
-        await page
-          .getByRole('textbox', { name: 'Passphrase' })
-          .fill('correct horse battery staple');
-        await page.getByRole('button', { name: 'Submit passphrase' }).click();
+        // The 🔑 prompter opens a dialog in which, with no passphrase chosen
+        // in this interview yet, one is chosen and confirmed.
+        const anon = new AnonymisationFixture(page);
+        await expect(anon.prompterButton()).toBeVisible();
+        await anon.openPrompter();
+        await expect(anon.prompterDialog()).toBeVisible();
+        await anon.choosePrompterPassphrase('correct horse battery staple');
 
         // The passphrase is accepted: the prompter (🔑) is dismissed.
-        await expect(lockButton).toBeHidden();
+        await expect(anon.prompterButton()).toBeHidden();
 
         // With a valid passphrase the roster cards re-enable: the disabledKeys
         // fix in useSelectionState clears the stale disabled Set once
@@ -1104,7 +1145,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         expect(labels).toContain('Bob Jones');
         // ...and the value-less row falls back to a stable placeholder rather
         // than exposing its content-hash _uid.
-        expect(labels).toContain('Unnamed Person 3');
+        expect(labels).toContain('Person 3');
       },
     },
   ],

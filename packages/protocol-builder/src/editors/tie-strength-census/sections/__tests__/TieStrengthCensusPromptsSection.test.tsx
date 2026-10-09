@@ -367,9 +367,9 @@ describe('the questions a tie-strength census asks about a pair', () => {
         harness.hostCodebook().edge?.knows?.variables?.closeness,
       ).toMatchObject({
         options: [
-          { label: 'Inseparable', value: 3 },
-          { label: 'Somewhat close', value: 2 },
-          { label: 'Not close', value: 1 },
+          { label: { 'en-US': 'Inseparable' }, value: 3 },
+          { label: { 'en-US': 'Somewhat close' }, value: 2 },
+          { label: { 'en-US': 'Not close' }, value: 1 },
         ],
       }),
     );
@@ -470,10 +470,10 @@ describe('the questions a tie-strength census asks about a pair', () => {
     expect(rows[0]?.id).toBe('tie-strength-census-prompt-1');
     expect(rows[1]).toEqual({
       id: expect.any(String) as unknown as string,
-      text: 'How much trust?',
+      text: { 'en-US': 'How much trust?' },
       createEdge: 'knows',
       edgeVariable: 'closeness',
-      negativeLabel: 'Not at all',
+      negativeLabel: { 'en-US': 'Not at all' },
     });
   });
 
@@ -672,7 +672,12 @@ describe('a tie-strength prompt whose scale has gone', () => {
 
     harness.receiveCodebookUpdate({
       edge: {
-        knows: { name: 'knows', color: 'edge-color-seq-1', variables: {} },
+        knows: {
+          name: 'knows',
+          label: { 'en-US': 'knows' },
+          color: 'edge-color-seq-1',
+          variables: {},
+        },
       },
     });
     expect(
@@ -716,14 +721,13 @@ const variablesOf = (section: Readonly<SectionDoc> | undefined): SectionDoc =>
 /**
  * The protocol's Family Pedigree, recording its relationships as the
  * connection type this census asks about, and taking this prompt's scale as
- * the attribute that says whether a relationship is current.
+ * the attribute that says whether a partnership is current.
  *
  * A pedigree slot is claimed OUTRIGHT: the interface derives that attribute
  * from the tree the participant draws, so a second writer would go on
- * overwriting it. Nothing says what KIND of attribute a slot may claim —
- * `edgeConfig.isActiveVariable` declares no `requireType` — so a protocol can
- * hand an ordinal scale to the pedigree and leave a census prompt pointing at
- * the same attribute.
+ * overwriting it. The claim is made whatever the attribute's type, so a
+ * protocol that hands an ordinal scale to the pedigree and leaves a census
+ * prompt pointing at the same attribute is refused here too.
  *
  * The pedigree's own attributes travel with it onto the connection type it now
  * records, so the slots it keeps name attributes that exist.
@@ -731,11 +735,11 @@ const variablesOf = (section: Readonly<SectionDoc> | undefined): SectionDoc =>
 function pedigreeClaimsTheScale(harness: StageEditorHarness): void {
   const sections = harness.protocolSections();
   const pedigree = sections[PEDIGREE_SECTION];
-  const edgeConfig = isRecord(pedigree?.edgeConfig)
-    ? pedigree.edgeConfig
+  const edgeConfiguration = isRecord(pedigree?.edgeConfiguration)
+    ? pedigree.edgeConfiguration
     : undefined;
   const censusEdge = sections[CENSUS_EDGE_SECTION];
-  if (pedigree === undefined || edgeConfig === undefined) {
+  if (pedigree === undefined || edgeConfiguration === undefined) {
     throw new Error(
       'the fixture protocol has no "family-pedigree-1" stage with an edge configuration, so nothing here can claim the scale.',
     );
@@ -745,7 +749,7 @@ function pedigreeClaimsTheScale(harness: StageEditorHarness): void {
       `the fixture protocol has no "${CENSUS_EDGE}" edge type, which is the one this census's prompt asks about.`,
     );
   }
-  if (edgeConfig.type === CENSUS_EDGE) {
+  if (edgeConfiguration.type === CENSUS_EDGE) {
     throw new Error(
       `the fixture pedigree already records "${CENSUS_EDGE}" connections, so pointing it there proves nothing.`,
     );
@@ -765,10 +769,10 @@ function pedigreeClaimsTheScale(harness: StageEditorHarness): void {
   act(() => {
     harness.host.store.applyAsCollaborator(PEDIGREE_SECTION, {
       ...pedigree,
-      edgeConfig: {
-        ...edgeConfig,
+      edgeConfiguration: {
+        ...edgeConfiguration,
         type: CENSUS_EDGE,
-        isActiveVariable: SCALE_VARIABLE,
+        currentPartnerAttribute: SCALE_VARIABLE,
       },
     });
   });
@@ -805,7 +809,7 @@ describe('a tie-strength prompt whose scale a pedigree sets', () => {
 
     expect(
       await screen.findByText(
-        'This attribute is set by the Family Pedigree interface, which records whether a relationship is current, so it cannot be used here. Choose a different attribute.',
+        'This attribute is set by the Family Pedigree interface, which records whether a partnership is current, so it cannot be used here. Choose a different attribute.',
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole('dialog')).toBeInTheDocument();

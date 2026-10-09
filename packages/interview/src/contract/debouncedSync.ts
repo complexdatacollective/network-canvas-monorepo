@@ -1,4 +1,4 @@
-import type { SessionPayload, SyncHandler, SyncOptions } from './types';
+import type { SessionSnapshot, SyncHandler, SyncOptions } from './types';
 
 /**
  * Wrap a `SyncHandler` so ordinary changes are batched instead of written one
@@ -48,7 +48,7 @@ export function createDebouncedSyncHandler(
   type Waiter = { resolve: () => void; reject: (error: unknown) => void };
   type Pending = {
     id: string;
-    session: SessionPayload;
+    session: SessionSnapshot;
     options: SyncOptions;
   };
 

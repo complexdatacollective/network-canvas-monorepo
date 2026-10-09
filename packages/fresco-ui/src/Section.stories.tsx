@@ -9,6 +9,8 @@ import Form from './form/Form';
 import SubmitButton from './form/SubmitButton';
 import Section from './Section';
 import { withDialogProvider } from './storybook-support/withDialogProvider';
+import Paragraph from './typography/Paragraph';
+import { OrderedList } from './typography/UnorderedList';
 
 const meta = {
   title: 'Components/Section',
@@ -45,7 +47,8 @@ Props: \`title\`, \`description?\`, \`toggleable?\`, \`defaultOpen?\` and \`onOp
     },
     description: {
       control: 'text',
-      description: 'Supporting text shown beneath the heading.',
+      description:
+        'Supporting text shown beneath the heading, which also describes the section. A string is one paragraph; elements, such as paragraphs and a list, are laid out as given.',
     },
     toggleable: {
       control: 'boolean',
@@ -266,6 +269,41 @@ export const AlwaysOpen: Story = {
     toggleable: false,
   },
   render: (args) => <SectionPreview {...args} />,
+};
+
+export const BlockDescription: Story = {
+  args: {
+    title: 'Interview languages',
+    description: (
+      <>
+        <Paragraph>
+          Participants can take the interview in any of these languages. Each
+          text is shown in the first of the following that has a translation of
+          it:
+        </Paragraph>
+        <OrderedList>
+          <li>The language the participant chose.</li>
+          <li>Another language their browser lists.</li>
+          <li>The protocol’s default language.</li>
+        </OrderedList>
+      </>
+    ),
+    toggleable: false,
+  },
+  render: (args) => <SectionPreview {...args} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const section = canvas.getByRole('region', {
+      name: 'Interview languages',
+    });
+    const steps = within(section).getByRole('list');
+
+    await expect(steps.tagName).toBe('OL');
+    await expect(steps.closest('p')).toBeNull();
+    await expect(section).toHaveAccessibleDescription(
+      expect.stringContaining('The protocol’s default language.'),
+    );
+  },
 };
 
 export const InitiallyCollapsed: Story = {

@@ -17,6 +17,27 @@
 // pagination-order ties cannot masquerade as changes; datetimes in FILE NAMES
 // are masked so archive members pair up across runs.
 //
+// An upgrade from a release that predates protocol languages also changes
+// exports in ways that follow exactly from that upgrade, and those are
+// reconciled rather than reported: the interview's recorded language (null or
+// a language tag) in the interview API, the ego CSV and GraphML; a protocol's
+// schemaVersion moving to 9; codebook text held as { en: <message> }; the
+// labels the migration gives entity types and attributes from their names;
+// empty optional text it leaves out; and the GraphML protocol and codebook
+// hashes of a protocol it rewrote. Each is undone in the current file only
+// where it matches what the migration produces from the baseline file, and is
+// listed under "reconciled", so anything else in those files is still a
+// difference.
+//
+// An upgrade from a release that predates finish outcomes adds where each
+// interview ended — the interview API's finishStageId and finishOutcome and the
+// ego CSV's networkCanvasFinishOutcome column — and leaves them empty for every
+// interview that already existed, because nothing recorded where those
+// interviews ended. Only that empty value is reconciled: an outcome appearing
+// on an interview finished before the upgrade would be invented data, and stays
+// a difference. GraphML writes nc:finishOutcome only when there is an outcome,
+// so it has nothing to reconcile.
+//
 // Usage: node diff-exports.mjs <baselineDir> <currentDir> --work <dir> [--out <file>]
 import { spawnSync } from 'node:child_process';
 import {
@@ -30,7 +51,22 @@ import {
 } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 
+import { escapeMessageText } from '../../../../packages/protocol-validation/src/localization/messageSyntax.ts';
+import {
+  ncFinishOutcomeProperty,
+  ncInterviewLocaleProperty,
+} from '../../../../packages/shared-consts/src/export-process.ts';
+
 const DIFF_EXCERPT_LINES = 60;
+
+// The first schema whose protocols declare languages; the migration to it
+// writes text as messages in English.
+const SCHEMA_WITH_LANGUAGES = 9;
+const MIGRATED_LOCALE = 'en';
+const LANGUAGE_TAG = /^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/;
+// Attribute values are matched whole: the normalizer's own <VOLATILE> mask
+// puts a ">" inside one.
+const GRAPH_START_TAG = /<graph\b(?:[^>"]|"[^"]*")*>/g;
 
 const DATE_IN_NAME =
   /\d{4}-\d{2}-\d{2}(?:[T_ -]?\d{2}[:.-]?\d{2}[:.-]?\d{2})?/g;
@@ -143,6 +179,327 @@ function normalizeContent(name, text) {
   return text;
 }
 
+const isRecord = (value) =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const isLanguageTag = (value) =>
+  typeof value === 'string' && LANGUAGE_TAG.test(value);
+
+const unquote = (cell) => cell.replace(/^"|"$/g, '');
+
+const isMigratedMessage = (value, text) =>
+  typeof text === 'string' &&
+  isRecord(value) &&
+  Object.keys(value).length === 1 &&
+  value[MIGRATED_LOCALE] === escapeMessageText(text);
+
+// The label the migration gives a type or attribute that had none.
+const labelFromName = (definition, key) =>
+  typeof definition.name === 'string' && definition.name !== ''
+    ? definition.name
+    : key;
+
+/**
+ * The current codebook with what the schema-9 migration does to the baseline
+ * codebook undone: text wrapped as an English message, labels
+ * derived from names or keys, and empty text that a field no longer accepts.
+ * `key` is the value's key in its parent, which a derived label falls back to.
+ */
+function undoLanguageMigration(baseline, current, key, tally) {
+  if (typeof baseline === 'string' && isMigratedMessage(current, baseline)) {
+    tally.wrapped += 1;
+    return baseline;
+  }
+  if (
+    Array.isArray(baseline) &&
+    Array.isArray(current) &&
+    baseline.length === current.length
+  ) {
+    return current.map((item, index) =>
+      undoLanguageMigration(baseline[index], item, undefined, tally),
+    );
+  }
+  if (!isRecord(baseline) || !isRecord(current)) return current;
+  const restored = {};
+  for (const [field, value] of Object.entries(current)) {
+    if (!(field in baseline)) {
+      if (
+        field === 'label' &&
+        isMigratedMessage(value, labelFromName(baseline, key))
+      ) {
+        tally.labelsAdded += 1;
+        continue;
+      }
+      restored[field] = value;
+      continue;
+    }
+    restored[field] = undoLanguageMigration(
+      baseline[field],
+      value,
+      field,
+      tally,
+    );
+  }
+  for (const [field, value] of Object.entries(baseline)) {
+    if (!(field in current) && value === '') {
+      tally.emptyLeftOut += 1;
+      restored[field] = value;
+    }
+  }
+  return restored;
+}
+
+const upgradedProtocol = (baseline, current) => {
+  const before = baseline?.data?.protocol;
+  const after = current?.data?.protocol;
+  return isRecord(before) &&
+    isRecord(after) &&
+    typeof before.schemaVersion === 'number' &&
+    before.schemaVersion < SCHEMA_WITH_LANGUAGES &&
+    after.schemaVersion === SCHEMA_WITH_LANGUAGES
+    ? { before, after }
+    : null;
+};
+
+// The fields an upgrade adds to an interview as null, because nothing
+// recorded them before it: where an interview finished before the upgrade
+// ended. Only a null is reconciled — see the header.
+const FINISH_FIELDS = ['finishStageId', 'finishOutcome'];
+
+/**
+ * `item` with every finish field the baseline item lacks and the upgrade added
+ * as null removed, and the removals counted in `tally`.
+ */
+function withoutAddedFinishFields(baselineItem, item, tally) {
+  const restored = { ...item };
+  for (const field of FINISH_FIELDS) {
+    if (field in item && !(field in baselineItem) && item[field] === null) {
+      delete restored[field];
+      tally[field] = (tally[field] ?? 0) + 1;
+    }
+  }
+  return restored;
+}
+
+const finishFieldDifferences = (tally, noun) =>
+  FINISH_FIELDS.filter((field) => tally[field]).map(
+    (field) => `${noun(tally[field])} ${field} added as null`,
+  );
+
+/**
+ * The interview collection: each interview gains the finish fields as null.
+ * Interviews are paired with the baseline's by id, so one that exists on only
+ * one side is compared as it stands.
+ */
+function reconcileInterviewCollection(baseline, current) {
+  const baselineById = new Map(
+    baseline.data.filter(isRecord).map((item) => [item.id, item]),
+  );
+  const tally = {};
+  const data = current.data.map((item) => {
+    const baselineItem = isRecord(item) ? baselineById.get(item.id) : undefined;
+    return baselineItem
+      ? withoutAddedFinishFields(baselineItem, item, tally)
+      : item;
+  });
+  const differences = finishFieldDifferences(
+    tally,
+    (count) => `${count} interview(s):`,
+  );
+  if (differences.length === 0) return null;
+  return {
+    text: `${JSON.stringify(normalizeJsonDeep({ ...current, data }), null, 2)}\n`,
+    differences,
+  };
+}
+
+function reconcileInterviewJson(baselineText, currentText) {
+  let baseline;
+  let current;
+  try {
+    baseline = JSON.parse(baselineText);
+    current = JSON.parse(currentText);
+  } catch {
+    return null;
+  }
+  if (Array.isArray(baseline?.data) && Array.isArray(current?.data))
+    return reconcileInterviewCollection(baseline, current);
+  if (!isRecord(baseline?.data) || !isRecord(current?.data)) return null;
+  const differences = [];
+  const finishTally = {};
+  const data = withoutAddedFinishFields(
+    baseline.data,
+    current.data,
+    finishTally,
+  );
+  differences.push(...finishFieldDifferences(finishTally, () => 'interview'));
+  for (const field of ['locale', 'localePreference']) {
+    const value = data[field];
+    if (
+      field in data &&
+      !(field in baseline.data) &&
+      (value === null || isLanguageTag(value))
+    ) {
+      delete data[field];
+      differences.push(
+        `interview ${field} recorded as ${JSON.stringify(value)}`,
+      );
+    }
+  }
+  const upgrade = upgradedProtocol(baseline, current);
+  if (upgrade) {
+    const tally = { wrapped: 0, labelsAdded: 0, emptyLeftOut: 0 };
+    data.protocol = {
+      ...upgrade.after,
+      schemaVersion: upgrade.before.schemaVersion,
+      codebook: undoLanguageMigration(
+        upgrade.before.codebook,
+        upgrade.after.codebook,
+        undefined,
+        tally,
+      ),
+    };
+    differences.push(
+      `protocol schemaVersion ${upgrade.before.schemaVersion} -> ${SCHEMA_WITH_LANGUAGES}`,
+      `codebook: ${tally.wrapped} text value(s) held as { ${MIGRATED_LOCALE}: <message> }, ${tally.labelsAdded} label(s) derived from a name or key, ${tally.emptyLeftOut} empty text value(s) left out`,
+    );
+  }
+  if (differences.length === 0) return null;
+  return {
+    text: `${JSON.stringify(normalizeJsonDeep({ ...current, data }), null, 2)}\n`,
+    differences,
+  };
+}
+
+// Columns an upgrade adds to the ego CSV, with the values each may hold in
+// it: the interview's recorded language, empty until it is recorded; and its
+// finish outcome, empty for every interview finished before the upgrade (see
+// the header).
+const ADDED_CSV_COLUMNS = [
+  { name: ncInterviewLocaleProperty, accepts: isLanguageTag },
+  { name: ncFinishOutcomeProperty, accepts: () => false },
+];
+
+function reconcileCsv(baselineText, currentText) {
+  const baselineHeader = splitCsvRow(
+    baselineText.split('\n')[0]?.replace(/\r$/, '') ?? '',
+  ).map(unquote);
+  const lines = currentText.split('\n');
+  const header = splitCsvRow(lines[0]?.replace(/\r$/, '') ?? '').map(unquote);
+  const added = ADDED_CSV_COLUMNS.flatMap(({ name, accepts }) => {
+    const column = header.indexOf(name);
+    return column === -1 || baselineHeader.includes(name)
+      ? []
+      : [{ name, accepts, column, values: new Set() }];
+  });
+  if (added.length === 0) return null;
+  // Removed right to left, so each index still points at its own column.
+  const removalOrder = added.toSorted((a, b) => b.column - a.column);
+  const rows = [];
+  for (const [index, line] of lines.entries()) {
+    if (line === '') {
+      rows.push(line);
+      continue;
+    }
+    const ending = line.endsWith('\r') ? '\r' : '';
+    let cells = splitCsvRow(line.slice(0, line.length - ending.length));
+    // A row that does not split into the header's columns cannot have its
+    // columns removed safely, so the file is compared as it stands.
+    if (cells.length !== header.length) return null;
+    if (index > 0) {
+      for (const { accepts, column, values } of added) {
+        const value = unquote(cells[column]);
+        if (value !== '' && !accepts(value)) return null;
+        if (value !== '') values.add(value);
+      }
+    }
+    for (const { column } of removalOrder) cells = cells.toSpliced(column, 1);
+    rows.push(`${cells.join(',')}${ending}`);
+  }
+  return {
+    text: rows.join('\n'),
+    differences: added.map(
+      ({ name, values }) =>
+        `the ${name} column (${values.size === 0 ? 'empty in every row' : [...values].join(', ')})`,
+    ),
+  };
+}
+
+const attributePattern = (name) => new RegExp(`(\\s${name}=")([^"]*)(")`);
+
+const attributeOf = (tag, name) => attributePattern(name).exec(tag)?.[2];
+
+const decodeXml = (text) =>
+  text
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, '&');
+
+/**
+ * `upgradedProtocols` names the protocols the upgrade migrated to schema 9.
+ * The migration rewrites their stages and codebook, so the protocol hash and
+ * codebook hash every GraphML graph carries change with it; the codebook
+ * itself is still compared, through the interview API snapshots.
+ */
+function reconcileGraphml(baselineText, currentText, upgradedProtocols) {
+  const baselineTags = baselineText.match(GRAPH_START_TAG) ?? [];
+  const currentTags = currentText.match(GRAPH_START_TAG) ?? [];
+  if (currentTags.length === 0 || baselineTags.length !== currentTags.length)
+    return null;
+  const differences = new Set();
+  let index = 0;
+  const text = currentText.replace(GRAPH_START_TAG, (tag) => {
+    const baselineTag = baselineTags[index];
+    index += 1;
+    let reconciled = tag;
+    const locale = attributeOf(tag, 'nc:interviewLocale');
+    if (
+      isLanguageTag(locale) &&
+      attributeOf(baselineTag, 'nc:interviewLocale') === undefined
+    ) {
+      reconciled = reconciled.replace(
+        attributePattern('nc:interviewLocale'),
+        '',
+      );
+      differences.add(`nc:interviewLocale recorded as "${locale}"`);
+    }
+    const protocolName = attributeOf(tag, 'nc:protocolName');
+    if (
+      protocolName !== undefined &&
+      upgradedProtocols.has(decodeXml(protocolName))
+    ) {
+      for (const name of ['nc:protocolUID', 'nc:codebookHash']) {
+        const before = attributeOf(baselineTag, name);
+        const after = attributeOf(reconciled, name);
+        if (before === undefined || after === undefined || before === after)
+          continue;
+        reconciled = reconciled.replace(
+          attributePattern(name),
+          (_, start, _value, end) => `${start}${before}${end}`,
+        );
+        differences.add(
+          `${name} of "${decodeXml(protocolName)}", which the upgrade migrated to schema ${SCHEMA_WITH_LANGUAGES}`,
+        );
+      }
+    }
+    return reconciled;
+  });
+  return differences.size === 0
+    ? null
+    : { text, differences: [...differences] };
+}
+
+function reconcile(name, baselineText, currentText, upgradedProtocols) {
+  if (name.endsWith('.json'))
+    return reconcileInterviewJson(baselineText, currentText);
+  if (name.endsWith('.csv')) return reconcileCsv(baselineText, currentText);
+  if (name.endsWith('.graphml'))
+    return reconcileGraphml(baselineText, currentText, upgradedProtocols);
+  return null;
+}
+
 function listFiles(dir) {
   const files = [];
   const walk = (current) => {
@@ -221,16 +578,46 @@ function main() {
     onlyInCurrent: current.names.filter((name) => !baselineSet.has(name)),
     identical: [],
     changed: [],
+    reconciled: [],
   };
 
-  for (const name of baseline.names.filter((n) => currentSet.has(n))) {
+  const shared = baseline.names.filter((n) => currentSet.has(n));
+  const read = (side, name) =>
+    readFileSync(join(side.normalizedDir, name), 'utf8');
+  const upgradedProtocols = new Set();
+  for (const name of shared.filter((n) => n.endsWith('.json'))) {
+    try {
+      const upgrade = upgradedProtocol(
+        JSON.parse(read(baseline, name)),
+        JSON.parse(read(current, name)),
+      );
+      if (typeof upgrade?.after.name === 'string')
+        upgradedProtocols.add(upgrade.after.name);
+    } catch {
+      // Not valid JSON: it names no protocol, and is compared as it stands.
+    }
+  }
+
+  for (const name of shared) {
+    const reconciled = reconcile(
+      name,
+      read(baseline, name),
+      read(current, name),
+      upgradedProtocols,
+    );
+    let currentPath = join(current.normalizedDir, name);
+    if (reconciled) {
+      currentPath = join(workRoot, 'current', 'reconciled', name);
+      mkdirSync(join(currentPath, '..'), { recursive: true });
+      writeFileSync(currentPath, reconciled.text);
+      summary.reconciled.push({
+        file: name,
+        differences: reconciled.differences,
+      });
+    }
     const result = spawnSync(
       'diff',
-      [
-        '-u',
-        join(baseline.normalizedDir, name),
-        join(current.normalizedDir, name),
-      ],
+      ['-u', join(baseline.normalizedDir, name), currentPath],
       { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
     );
     if (result.status === 0) {

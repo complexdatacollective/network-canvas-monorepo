@@ -116,7 +116,7 @@ export function describeProtocolFileErrorMessage(error: unknown): {
   };
 }
 
-import type { ValidationContradiction } from './schemas/8/variables/validation-contradictions.ts';
+import type { ValidationContradiction } from './schemas/9/variables/validation-contradictions.ts';
 
 export {
   formatMigrationNotes,
@@ -309,18 +309,6 @@ export const validationRuleMessages = defineMessages({
   component: {
     id: 'protocolValidation.rule.component',
     defaultMessage: 'Input control',
-    description:
-      'Researcher-facing label for a protocol validation rule or generation constraint. The protocol identifier remains unchanged.',
-  },
-  inheritancePattern: {
-    id: 'protocolValidation.rule.inheritancePattern',
-    defaultMessage: 'Inheritance pattern',
-    description:
-      'Researcher-facing label for a protocol validation rule or generation constraint. The protocol identifier remains unchanged.',
-  },
-  edgeConfig: {
-    id: 'protocolValidation.rule.edgeConfig',
-    defaultMessage: 'Link configuration',
     description:
       'Researcher-facing label for a protocol validation rule or generation constraint. The protocol identifier remains unchanged.',
   },

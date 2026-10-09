@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
-import { expect, waitFor } from 'storybook/test';
+import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
-import type { VariableOption } from '@codaco/protocol-validation';
 
+import EncryptedStoryInterviewShell from '../../storybook-support/EncryptedStoryInterviewShell';
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
 const CATEGORY_LABELS = [
@@ -85,7 +85,9 @@ function buildOptions(
   longLabels: boolean,
   labelSet: LabelSet,
 ) {
-  const options: VariableOption[] = [];
+  // Plain-string labels: SyntheticInterview writes them in the protocol's
+  // declared default language.
+  const options: { label: string; value: number }[] = [];
 
   if (hasMissingValue) {
     options.push({ label: 'N/A', value: -1 });
@@ -491,5 +493,204 @@ export const OtherBinRequiresAReason: Story = {
           'The "Other" reason variable has a codebook `required` rule, so an empty submission is rejected. Turn `otherReasonRequired` off to allow an empty response.',
       },
     },
+  },
+};
+
+function buildProtectedOtherInterview() {
+  const interview = new SyntheticInterview();
+  const person = interview.addNodeType({ name: 'Person' });
+  const name = person.addVariable({ name: 'name', type: 'text' });
+  const otherReason = person.addVariable({
+    name: 'Other Reason',
+    type: 'text',
+    component: 'Text',
+    encrypted: true,
+  });
+  const category = person.addVariable({
+    name: 'Category',
+    type: 'categorical',
+    // Plain labels are written in the protocol's default language.
+    options: CATEGORY_LABELS.slice(0, 2).map((label, index) => ({
+      label,
+      value: index + 1,
+    })),
+  });
+
+  const stage = interview.addStage('CategoricalBin', {
+    label: 'Categorise People',
+    subject: { entity: 'node', type: person.id },
+  });
+  stage.addPrompt({
+    variable: category.id,
+    text: 'Which category does each person belong to?',
+    otherVariable: otherReason.id,
+    otherVariablePrompt: 'Please specify the other category:',
+    otherOptionLabel: 'Other',
+  });
+  interview.addManualNode(stage.id, person.id, 'alice', {
+    [name.id]: 'Alice',
+  });
+  interview.unsetNodeAttribute(0, category.id);
+  interview.unsetNodeAttribute(0, otherReason.id);
+
+  interview.addInformationStage({
+    title: 'Complete',
+    text: 'After the main stage.',
+  });
+
+  return { interview, encryptedVariableIds: [otherReason.id] };
+}
+
+export const ProtectedOtherReasonRefused: Story = {
+  render: () => (
+    <EncryptedStoryInterviewShell
+      build={buildProtectedOtherInterview}
+      passphrase="correct horse battery staple"
+      currentStep={0}
+      headerIterations={1_000_000_000}
+    />
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'The "Other" reason is protected, but the record this interview keeps to check a passphrase has been damaged (here, an impossible key-stretching count), so no passphrase can open it. Dropping a person into "Other" says why the reason cannot be saved, without asking for a passphrase, and leaves them where they were.',
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const alice = await canvas.findByRole(
+      'button',
+      { name: 'Alice' },
+      { timeout: 10_000 },
+    );
+
+    alice.focus();
+    await userEvent.keyboard('{Control>}d{/Control}');
+    // Past Family and Work, to Other.
+    await userEvent.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}{Enter}');
+
+    await expect(
+      await screen.findByText(/cannot be shown or saved in this interview/),
+    ).toBeInTheDocument();
+    await expect(
+      screen.queryByText('Please specify the other category:'),
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.getByRole('button', { name: 'Category Other, 0 items' }),
+    ).toBeInTheDocument();
+    await expect(
+      canvas.queryByRole('button', { name: 'Passphrase' }),
+    ).not.toBeInTheDocument();
+  },
+};
+
+const PASSPHRASE = 'correct horse battery staple';
+
+function buildOtherComparedWithProtectedInterview() {
+  const interview = new SyntheticInterview();
+  const person = interview.addNodeType({ name: 'Person' });
+  const name = person.addVariable({
+    name: 'name',
+    type: 'text',
+    encrypted: true,
+  });
+  const otherReason = person.addVariable({
+    name: 'Other Reason',
+    type: 'text',
+    component: 'Text',
+    validation: { differentFrom: name.id },
+  });
+  const category = person.addVariable({
+    name: 'Category',
+    type: 'categorical',
+    // Plain labels are written in the protocol's default language.
+    options: CATEGORY_LABELS.slice(0, 2).map((label, index) => ({
+      label,
+      value: index + 1,
+    })),
+  });
+
+  const stage = interview.addStage('CategoricalBin', {
+    label: 'Categorise People',
+    subject: { entity: 'node', type: person.id },
+  });
+  stage.addPrompt({
+    variable: category.id,
+    text: 'Which category does each person belong to?',
+    otherVariable: otherReason.id,
+    otherVariablePrompt: 'Please specify the other category:',
+    otherOptionLabel: 'Other',
+  });
+  interview.addManualNode(stage.id, person.id, 'alice', {
+    [name.id]: 'Alice',
+  });
+  interview.unsetNodeAttribute(0, category.id);
+  interview.unsetNodeAttribute(0, otherReason.id);
+
+  return { interview, encryptedVariableIds: [name.id] };
+}
+
+export const OtherReasonComparedWithProtected: Story = {
+  render: () => (
+    <EncryptedStoryInterviewShell
+      build={buildOtherComparedWithProtectedInterview}
+      passphrase={PASSPHRASE}
+      currentStep={0}
+    />
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'The "Other" reason must differ from the person\'s name, which is protected and has not been unlocked. The dialog asking for the reason covers the navigation\'s passphrase prompt, so it offers the passphrase itself; once entered, focus returns to Submit and the reason is checked against the name as the participant gave it.',
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const person = await canvas.findByRole(
+      'button',
+      { name: '🔒' },
+      { timeout: 10_000 },
+    );
+
+    person.focus();
+    await userEvent.keyboard('{Control>}d{/Control}');
+    // Past Family and Work, to Other.
+    await userEvent.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}{Enter}');
+
+    const dialog = within(await screen.findByRole('dialog'));
+    await userEvent.click(dialog.getByRole('button', { name: 'Passphrase' }));
+    const prompt = await screen.findByRole('dialog', {
+      name: 'Passphrase',
+    });
+    await userEvent.type(
+      within(prompt).getByLabelText(/^Passphrase/, { selector: 'input' }),
+      PASSPHRASE,
+    );
+    await userEvent.click(
+      within(prompt).getByRole('button', { name: 'Continue' }),
+    );
+    await waitFor(() => expect(prompt).not.toBeInTheDocument(), {
+      timeout: 10_000,
+    });
+    await expect(
+      dialog.queryByRole('button', { name: 'Passphrase' }),
+    ).not.toBeInTheDocument();
+    const submit = dialog.getByRole('button', { name: 'Submit' });
+    await expect(submit).toHaveFocus();
+
+    const reason = dialog.getByRole('textbox', {
+      name: /Please specify the other category/,
+    });
+    await userEvent.type(reason, 'Alice');
+    await userEvent.click(submit);
+    await waitFor(() =>
+      expect(reason).toHaveAccessibleDescription(
+        /Your answer must be different/,
+      ),
+    );
   },
 };

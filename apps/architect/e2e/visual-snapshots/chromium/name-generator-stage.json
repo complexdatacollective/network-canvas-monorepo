@@ -3,18 +3,26 @@
     "fields": [
       {
         "id": "id-1",
-        "prompt": "What is your name?",
+        "prompt": {
+          "en": "What is your name?"
+        },
         "variable": "id-2"
       }
     ],
-    "title": "Add a person"
+    "title": {
+      "en": "Add a person"
+    }
   },
   "id": "id-3",
-  "label": "Friends",
+  "label": {
+    "en": "Friends"
+  },
   "prompts": [
     {
       "id": "id-4",
-      "text": "Name someone you know"
+      "text": {
+        "en": "Name someone you know"
+      }
     }
   ],
   "subject": {

@@ -1,5 +1,10 @@
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
-import type { StageType } from '@codaco/protocol-validation';
+import type {
+  LocalizationDeclaration,
+  StageType,
+} from '@codaco/protocol-validation';
+
+import { withMissingSuppliedStageText } from '../stageDocument.ts';
 
 /**
  * What a NEW stage of each interface type starts life holding.
@@ -12,11 +17,10 @@ import type { StageType } from '@codaco/protocol-validation';
  * OneToManyDyadCensus that keeps considered alters).
  *
  * Only interfaces with such a default appear here. Everything else resolves to
- * `{}`, which is why `getInterfaceTemplate` answers for every stage type
- * rather than only the ones listed.
+ * `{}`, which is why `getInterfaceTemplate` answers for every stage type rather than only the ones listed.
  *
  * A TEMPLATE IS NOT A HEAD START ON A SAVEABLE STAGE, and no interface's is.
- * Every one of the nineteen needs something the schema requires and only a
+ * Every one of the twenty needs something the schema requires and only a
  * researcher can supply — the node or edge type it works with, its prompts,
  * the fields of its form, the words of its introduction panel — so the
  * sections of the editor are what fill a stage in, not this. The three form
@@ -62,22 +66,8 @@ const INTERFACE_TEMPLATES: Partial<
     },
     background: DEFAULT_CIRCLES_BACKGROUND,
   },
-  FamilyPedigree: {
-    framing: { mode: 'fixed', value: 'gamete' },
-    boundaries: {
-      requireGrandparents: 'off',
-      requireChildrenContributors: 'off',
-    },
-    introScreen: {
-      items: [
-        {
-          id: 'intro-text',
-          type: 'text',
-          content:
-            "Building a pedigree means asking about the people you're biologically related to — the people whose egg and sperm you came from — not necessarily the people who raised you. A pedigree maps genetic relationships, so we focus on biological parents. Don't worry — you'll be able to include non-biological parents later.",
-        },
-      ],
-    },
+  FinishSession: {
+    outcome: 'completed',
   },
   NarrativePedigree: {
     sourceStageId: '',
@@ -88,8 +78,27 @@ const INTERFACE_TEMPLATES: Partial<
 
 /**
  * The configuration a new stage of `interfaceType` starts from, or `{}` when
- * that interface has no authored defaults.
+ * that interface has no authored defaults. It is also what a change of
+ * subject puts back.
  */
 export const getInterfaceTemplate = (
   interfaceType: StageType,
-): Record<string, FieldValue> => INTERFACE_TEMPLATES[interfaceType] ?? {};
+): Record<string, FieldValue> => ({ ...INTERFACE_TEMPLATES[interfaceType] });
+
+/**
+ * The fields a new stage opens with: the interface's template, plus the
+ * wording Network Canvas supplies for its settings, such as a roster's panel
+ * title, in each of the protocol's languages that has it (see
+ * `missingSuppliedStageText`). Unlike a template value the supplied wording depends
+ * on the protocol, and it is prose about the stage rather than about its
+ * subject, so a change of subject keeps it.
+ */
+export const newStageFields = (
+  interfaceType: StageType,
+  localization: LocalizationDeclaration,
+): Record<string, FieldValue> =>
+  withMissingSuppliedStageText(
+    getInterfaceTemplate(interfaceType),
+    interfaceType,
+    localization,
+  );

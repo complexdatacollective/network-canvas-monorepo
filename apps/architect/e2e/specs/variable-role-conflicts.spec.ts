@@ -4,6 +4,7 @@ import {
 } from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
+import { emptyProtocol } from '../fixtures/seed.js';
 import { readStageJson } from '../helpers/read-store.js';
 import {
   dismissAttributeWindow,
@@ -17,8 +18,8 @@ import { Timeline } from '../pageobjects/timeline.js';
 // role conflicts are scoped by subject (roleMapKey), so a mismatched entity
 // or type would silently drop out of the role map instead of conflicting.
 const categoricalOptions = [
-  { label: 'Option A', value: 'a' },
-  { label: 'Option B', value: 'b' },
+  { label: { en: 'Option A' }, value: 'a' },
+  { label: { en: 'Option B' }, value: 'b' },
 ];
 
 // Builds a protocol with a form+bin cross-class conflict on `sharedVar` (an
@@ -30,9 +31,10 @@ const categoricalOptions = [
 // gets its own stage (rather than sharing one AlterForm/CategoricalBin stage
 // with two fields/prompts) so every array field section holds exactly one row
 // — no need to disambiguate rows by index or preview text.
-// Variable "name"s (not just their codebook keys) must satisfy
-// VariableNameSchema's `/^[a-zA-Z0-9._:-]+$/` — no spaces — since that field
-// is what the alert/picker render as the visible label.
+// Variable "name"s are what the alert/picker render as the visible label, so
+// they are kept short and plain here. A name may be any text a
+// `CodebookNameSchema` accepts, spaces and any script included; only the
+// codebook keys are held to `CodebookIdSchema`'s `/^[a-zA-Z0-9._:-]+$/`.
 // Passed through CurrentProtocolSchema.parse (like
 // helpers/load-fixture.ts's loadAllInterfacesFixture) rather than typed
 // directly as CurrentProtocol: entityAttributeReference's branded string
@@ -43,16 +45,19 @@ const categoricalOptions = [
 function conflictProtocol(): CurrentProtocol {
   return CurrentProtocolSchema.parse({
     name: 'Variable Role Conflicts E2E',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {
       node: {
         person: {
           name: 'Person',
+          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
             sharedVar: {
               name: 'sharedVar',
+              label: 'sharedVar',
               type: 'categorical',
               // Referenced by an AlterForm field below — schema.ts's
               // logic refinements reject a form-field variable with no
@@ -63,17 +68,20 @@ function conflictProtocol(): CurrentProtocol {
             },
             formOnlyVar: {
               name: 'formOnlyVar',
+              label: 'formOnlyVar',
               type: 'categorical',
               component: 'CheckboxGroup',
               options: categoricalOptions,
             },
             binOnlyVar: {
               name: 'binOnlyVar',
+              label: 'binOnlyVar',
               type: 'categorical',
               options: categoricalOptions,
             },
             cleanVar: {
               name: 'cleanVar',
+              label: 'cleanVar',
               type: 'categorical',
               options: categoricalOptions,
             },
@@ -85,40 +93,45 @@ function conflictProtocol(): CurrentProtocol {
       {
         id: 'shared-field-form',
         type: 'AlterForm',
-        label: 'Person Details',
+        label: { en: 'Person Details' },
         subject: { entity: 'node', type: 'person' },
         form: {
-          fields: [{ variable: 'sharedVar', prompt: 'Shared field prompt' }],
+          fields: [
+            { variable: 'sharedVar', prompt: { en: 'Shared field prompt' } },
+          ],
         },
         introductionPanel: {
-          title: 'Person details',
-          text: 'A few questions about this person.',
+          title: { en: 'Person details' },
+          text: { en: 'A few questions about this person.' },
         },
       },
       {
         id: 'form-only-form',
         type: 'AlterForm',
-        label: 'Extra Person Form',
+        label: { en: 'Extra Person Form' },
         subject: { entity: 'node', type: 'person' },
         form: {
           fields: [
-            { variable: 'formOnlyVar', prompt: 'Form only field prompt' },
+            {
+              variable: 'formOnlyVar',
+              prompt: { en: 'Form only field prompt' },
+            },
           ],
         },
         introductionPanel: {
-          title: 'Extra form',
-          text: 'A few more questions about this person.',
+          title: { en: 'Extra form' },
+          text: { en: 'A few more questions about this person.' },
         },
       },
       {
         id: 'shared-bin',
         type: 'CategoricalBin',
-        label: 'Contact Category',
+        label: { en: 'Contact Category' },
         subject: { entity: 'node', type: 'person' },
         prompts: [
           {
             id: 'shared-bin-prompt',
-            text: 'Shared bin prompt',
+            text: { en: 'Shared bin prompt' },
             variable: 'sharedVar',
           },
         ],
@@ -126,16 +139,17 @@ function conflictProtocol(): CurrentProtocol {
       {
         id: 'bin-only-bin',
         type: 'CategoricalBin',
-        label: 'Extra Category Bin',
+        label: { en: 'Extra Category Bin' },
         subject: { entity: 'node', type: 'person' },
         prompts: [
           {
             id: 'bin-only-prompt',
-            text: 'Bin only prompt',
+            text: { en: 'Bin only prompt' },
             variable: 'binOnlyVar',
           },
         ],
       },
+      ...emptyProtocol().stages,
     ],
   });
 }

@@ -5,7 +5,7 @@
     - heading "Yes" [level=4]
   - button "Category No, 0 items":
     - heading "No" [level=4]
-  - button "Collapse drawer" [expanded]: 2 unplaced
+  - button "2 unplaced Collapse drawer" [expanded]
   - button "Placed"
   - button "Unplaced"
   - navigation:

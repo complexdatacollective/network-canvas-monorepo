@@ -1,9 +1,23 @@
 import { describe, expect, it } from 'vitest';
 
-import { stageSchema } from '@codaco/protocol-validation';
+import {
+  familyPedigreeWordingIn,
+  stageSchema,
+} from '@codaco/protocol-validation';
 
 import { STAGE_TYPES } from '../../stage-types.ts';
-import { getInterfaceTemplate } from '../templates.ts';
+import { getInterfaceTemplate, newStageFields } from '../templates.ts';
+
+/**
+ * The words a Family Pedigree holds only while a configuration asks for them:
+ * the wording question and its control, and the gender identity question.
+ */
+const CONFIGURATION_WORDS = [
+  'framingChoiceDescription',
+  'framingChoiceTitle',
+  'framingControlLabel',
+  'genderIdentityLabel',
+];
 
 describe('getInterfaceTemplate', () => {
   it('answers with a template object for every stage type', () => {
@@ -68,27 +82,30 @@ describe('getInterfaceTemplate', () => {
     }
   });
 
-  it('seeds the pedigree interfaces with their framing, boundaries and intro copy', () => {
-    const familyPedigree = getInterfaceTemplate('FamilyPedigree');
-    expect(familyPedigree.framing).toEqual({ mode: 'fixed', value: 'gamete' });
-    expect(familyPedigree.boundaries).toEqual({
-      requireGrandparents: 'off',
-      requireChildrenContributors: 'off',
-    });
-    // The intro screen is a content list, so assert its shape rather than
-    // restating the researcher-facing copy here.
-    expect(familyPedigree.introScreen).toMatchObject({
-      items: [{ id: 'intro-text', type: 'text' }],
-    });
-    const introItems = (
-      familyPedigree.introScreen as { items: { content: string }[] }
-    ).items;
-    expect(introItems[0]?.content.trim()).not.toBe('');
+  /**
+   * The prompt is the researcher's wording to the participant, so a new
+   * pedigree stage starts without one and cannot be saved until it has one.
+   */
+  it('leaves the family pedigree prompt for the researcher to write', () => {
+    expect(getInterfaceTemplate('FamilyPedigree')).not.toHaveProperty('prompt');
+    expect(getInterfaceTemplate('FamilyPedigree')).toEqual({});
+  });
 
+  /**
+   * A narrative pedigree starts reading no pedigree and drawing no disease,
+   * with the probabilistic markers off until a researcher asks for them.
+   */
+  it('starts a narrative pedigree with no source, no diseases, and the at-risk markers off', () => {
     expect(getInterfaceTemplate('NarrativePedigree')).toEqual({
       sourceStageId: '',
       diseases: [],
       showAtRiskStatuses: false,
+    });
+  });
+
+  it('starts a finish screen as completed', () => {
+    expect(getInterfaceTemplate('FinishSession')).toEqual({
+      outcome: 'completed',
     });
   });
 });
@@ -107,7 +124,7 @@ describe('getInterfaceTemplate', () => {
  *
  * Written down because the alternative is discovering the same fact one
  * interface at a time, which is how `AlterForm`'s empty template came to look
- * like a defect rather than like the eighteen beside it. If a template ever
+ * like a defect rather than like the nineteen beside it. If a template ever
  * does start covering one of these, this list is what says so.
  */
 const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
@@ -117,16 +134,23 @@ const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
   CategoricalBin: ['prompts', 'subject'],
   DyadCensus: ['introductionPanel', 'prompts', 'subject'],
   EgoForm: ['form', 'introductionPanel'],
-  FamilyPedigree: ['censusPrompt', 'edgeConfig', 'nodeConfig'],
+  FamilyPedigree: [
+    'edgeConfiguration',
+    'nodeConfiguration',
+    'prompt',
+    'subject',
+  ],
+  // Its closing text is supplied when Architect adds it to a protocol, in
+  // each of the protocol's languages; the template holds only the outcome.
+  FinishSession: ['content', 'title'],
   Geospatial: ['mapOptions', 'prompts', 'subject'],
   Information: ['items', 'title'],
+  // Its choices are the protocol's own languages, so a name is all it needs.
+  LanguageChooser: [],
   NameGenerator: ['form', 'prompts', 'subject'],
   NameGeneratorQuickAdd: ['prompts', 'quickAdd', 'subject'],
   NameGeneratorRoster: ['dataSource', 'prompts', 'subject'],
   Narrative: ['presets', 'subject'],
-  // Its template DOES set `diseases: []`, and the schema wants at least one —
-  // so this key is present and still refused, which is a different thing from
-  // the absences above and worth being able to tell apart.
   NarrativePedigree: ['diseases'],
   NetworkComposer: ['layoutVariable', 'quickAdd', 'subject'],
   OneToManyDyadCensus: ['prompts', 'subject'],
@@ -135,18 +159,22 @@ const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
   TieStrengthCensus: ['introductionPanel', 'prompts', 'subject'],
 };
 
+/** An English protocol, which every supplied wording is written in. */
+const ENGLISH = { defaultLocale: 'en', locales: ['en'] };
+
 /**
- * A new stage of `type`, exactly as a stage editor mounts one, plus a name.
+ * A new stage of `type` in an English protocol, exactly as a stage editor
+ * mounts one, plus a name.
  *
- * `CreatingStage` mounts its form on `{ ...getInterfaceTemplate(type) }` and
+ * `CreatingStage` mounts its form on `newStageFields(type, localization)` and
  * submits it through `stageDocument`, which stamps the identity — so this is
  * that composition with nothing in between.
  */
 const newStage = (type: (typeof STAGE_TYPES)[number]) => ({
-  ...getInterfaceTemplate(type),
+  ...newStageFields(type, ENGLISH),
   type,
   id: 'stage-1',
-  label: 'A new stage',
+  label: { en: 'A new stage' },
 });
 
 /** The top-level properties the schema refuses, in a stable order. */
@@ -166,13 +194,140 @@ const refusedProperties = (
 
 describe('a new stage given nothing but a name', () => {
   /**
-   * A new stage holds its interface's template under its own type, and
-   * nothing else: the template is the only thing a create seeds the form
-   * with, so what a researcher's new stage holds is what this map says.
+   * A new stage holds its interface's template under its own type, and,
+   * where Network Canvas supplies the wording of a setting, that wording:
+   * nothing else seeds the form, so what a researcher's new stage holds is
+   * what the template map says, plus a roster's panel title, a family
+   * pedigree's name question and a finish screen's finishing words. A
+   * pedigree's list wording arrives with its completeness requirement, which a
+   * new stage does not have. The messages a stage shows a participant are
+   * supplied too, where the stage's configuration needs them: a quick-add
+   * line always, a roster's messages for its data file, and a map's messages
+   * always.
    */
   it.each(STAGE_TYPES)('is the %s template under its stage type', (type) => {
     const { id: _id, label: _label, ...seeded } = newStage(type);
-    expect(seeded).toEqual({ ...getInterfaceTemplate(type), type });
+    expect(seeded).toEqual({
+      ...getInterfaceTemplate(type),
+      ...(type === 'NameGeneratorRoster'
+        ? {
+            panelTitle: { en: 'Available to add' },
+            externalDataError: { en: 'External data could not be loaded.' },
+            allAddedNotice: {
+              en: 'There is nothing left to add from this list.',
+            },
+          }
+        : {}),
+      ...(type === 'NameGeneratorQuickAdd'
+        ? { quickAddHint: { en: 'Press Enter when you are finished.' } }
+        : {}),
+      ...(type === 'Geospatial'
+        ? {
+            offlineNotice: {
+              en: 'You are offline — the map will not load until you reconnect.',
+            },
+            mapUnavailable: {
+              en: 'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
+            },
+            outsideAreasLabel: { en: 'Outside Selectable Areas' },
+          }
+        : {}),
+      ...(type === 'FinishSession'
+        ? {
+            finishLabel: { en: 'Finish' },
+            finishConfirmation: {
+              en: 'Are you sure you want to finish the interview?',
+            },
+            finishedNotice: {
+              en: 'This interview is finished, and its answers can no longer be changed.',
+            },
+            finishFailed: {
+              en: 'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
+            },
+          }
+        : {}),
+      ...(type === 'FamilyPedigree'
+        ? {
+            nodeConfiguration: {
+              nameField: {
+                prompt: { en: 'Name (optional)' },
+                hint: { en: expect.stringContaining('first name') },
+              },
+            },
+            // The words a new stage starts with: all but those a configuration
+            // asks for, which a new stage does not yet have.
+            wording: Object.fromEntries(
+              Object.entries(familyPedigreeWordingIn(['en'])).filter(
+                ([key]) => !CONFIGURATION_WORDS.includes(key),
+              ),
+            ),
+          }
+        : {}),
+      ...(type === 'NetworkComposer'
+        ? {
+            addNamePlaceholder: { en: 'Type a name, then press Enter' },
+            overtakenEditNotice: {
+              en: 'Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost.',
+            },
+            tooltips: {
+              addPerson: { en: 'Add node' },
+              automaticLayout: { en: 'Automatic layout' },
+            },
+          }
+        : {}),
+      // The template turns automatic layout on, so its tooltips are asked; no
+      // preset highlights, shows edges or groups, and drawing is off.
+      ...(type === 'Narrative'
+        ? {
+            tooltips: {
+              pauseLayout: { en: 'Pause automatic layout' },
+              resumeLayout: { en: 'Resume automatic layout' },
+            },
+          }
+        : {}),
+      ...(type === 'NarrativePedigree'
+        ? {
+            keyHeading: { en: 'Key' },
+            tooltips: {
+              clearFocus: { en: 'Clear focus' },
+              saveSnapshot: { en: 'Save snapshot' },
+            },
+            conditionText: {
+              heading: { en: 'Conditions' },
+              instruction: {
+                en: 'Select a condition to see who it affects.',
+              },
+              notation: {
+                affected: { en: 'Has this condition' },
+                obligateAffected: { en: 'Will develop this condition' },
+                obligateCarrier: { en: 'Carries this condition' },
+                unknown: { en: 'Not known' },
+              },
+              snapshotCondition: { en: '{title}: {condition}' },
+              snapshotInheritance: {
+                en: '{title}: {condition} — inheritance for {name}',
+              },
+            },
+          }
+        : {}),
+      type,
+    });
+  });
+
+  /**
+   * The wording is supplied in the protocol's languages, and a panel title is
+   * required, so a default language Network Canvas has no wording for holds
+   * the English text, for the researcher to translate.
+   */
+  it('writes a roster’s panel title in the protocol’s languages, in English in a default language with no supplied wording', () => {
+    expect(
+      newStageFields('NameGeneratorRoster', {
+        defaultLocale: 'hu',
+        locales: ['hu', 'fr', 'ja'],
+      }),
+    ).toMatchObject({
+      panelTitle: { hu: 'Available to add', fr: 'Éléments disponibles' },
+    });
   });
 
   it.each(STAGE_TYPES)('still needs the listed properties on %s', (type) => {
@@ -181,15 +336,19 @@ describe('a new stage given nothing but a name', () => {
 
   /**
    * Stated once, plainly, because it is what a reader of the list above would
-   * otherwise have to work out by scanning it. The day an interface can be
-   * saved straight from its template, this fails and someone reads the list.
+   * otherwise have to work out by scanning it. The day another interface can
+   * be saved straight from its template, this fails and someone reads the
+   * list. The language chooser is the exception: it has nothing to configure
+   * beyond its name. (A finish screen is never made from its template:
+   * Architect adds it to a new protocol with the closing text Network Canvas
+   * supplies.)
    */
-  it('is not a saveable stage for any interface', () => {
+  it('is a saveable stage only for the language chooser', () => {
     const saveable = STAGE_TYPES.filter(
       (type) => stageSchema.safeParse(newStage(type)).success,
     );
 
-    expect(saveable).toEqual([]);
+    expect(saveable).toEqual(['LanguageChooser']);
   });
 
   /**

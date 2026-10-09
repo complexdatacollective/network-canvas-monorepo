@@ -5,6 +5,9 @@ import type { Form } from '@codaco/protocol-validation';
 import type { NcNode } from '@codaco/shared-consts';
 
 import type { StageProps } from '../../../types';
+import type { usePassphrase } from '../../Anonymisation/usePassphrase';
+
+type Passphrase = ReturnType<typeof usePassphrase>;
 
 // The main list is the subject: capture the props it is handed. Everything
 // else the stage renders is stubbed, so the test says nothing about the
@@ -26,9 +29,9 @@ vi.mock('../components/QuickNodeForm', () => ({ default: () => null }));
 
 vi.mock('../../../components/Prompts/usePrompts', () => ({
   usePrompts: () => ({
-    prompt: { id: 'p1', text: 'Prompt' },
+    prompt: { id: 'p1', text: { en: 'Prompt' } },
     promptIndex: 0,
-    prompts: [{ id: 'p1', text: 'Prompt' }],
+    prompts: [{ id: 'p1', text: { en: 'Prompt' } }],
   }),
 }));
 vi.mock('../../../contexts/CurrentStepContext', () => ({
@@ -44,22 +47,30 @@ vi.mock('../../../hooks/useStageSelector', () => ({
     typeof selector === 'function' ? [] : {},
 }));
 vi.mock('../../../store/store', () => ({ useAppDispatch: () => vi.fn() }));
-vi.mock('../../Anonymisation/usePassphrase', () => ({
-  usePassphrase: () => ({
-    requirePassphrase: vi.fn(),
-    passphrase: null,
-    isEnabled: false,
-  }),
-}));
+vi.mock('../../Anonymisation/usePassphrase', async () => {
+  const { runtimeMessages } = await import('../../../i18n/runtimeMessages');
+  return {
+    usePassphrase: (): Passphrase => ({
+      unlocked: false,
+      passphraseChosen: true,
+      encryptionUnavailable: false,
+      lockedNotice: runtimeMessages.protectedAnswersLocked,
+      unlock: vi.fn<Passphrase['unlock']>(),
+      submitPassphrase: vi.fn<Passphrase['submitPassphrase']>(),
+      requirePassphrase: vi.fn<Passphrase['requirePassphrase']>(),
+      showPassphrasePrompter: false,
+    }),
+  };
+});
 
 const { default: NameGenerator } = await import('../NameGenerator');
 
 const stage = (overrides: Record<string, unknown>) =>
   ({
     id: 'stage-1',
-    label: 'Stage',
+    label: { en: 'Stage' },
     subject: { entity: 'node' as const, type: 'person' },
-    prompts: [{ id: 'p1', text: 'Prompt' }],
+    prompts: [{ id: 'p1', text: { en: 'Prompt' } }],
     ...overrides,
   }) as unknown as StageProps<'NameGenerator'>['stage'];
 
@@ -91,7 +102,7 @@ describe('NameGenerator main list tap affordance', () => {
     const props = renderStage(
       stage({
         type: 'NameGenerator',
-        form: { title: 'Edit', fields: [] } as unknown as Form,
+        form: { title: { en: 'Edit' }, fields: [] } as unknown as Form,
       }),
     );
 

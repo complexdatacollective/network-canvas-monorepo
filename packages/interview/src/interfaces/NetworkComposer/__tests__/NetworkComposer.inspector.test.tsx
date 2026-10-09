@@ -1,4 +1,4 @@
-import { configureStore } from '@reduxjs/toolkit';
+import { configureStore, type Middleware } from '@reduxjs/toolkit';
 import {
   act,
   fireEvent,
@@ -21,11 +21,17 @@ import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { ContractProvider } from '../../../contract/context';
 import type { AttributePatch } from '../../../store/entityAttributePatch';
 import protocol from '../../../store/modules/protocol';
-import session from '../../../store/modules/session';
+import session, { updateNode } from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
-import type { RegisterBeforeNext, StageProps } from '../../../types';
+import type {
+  BeforeNextFunction,
+  RegisterBeforeNext,
+  StageProps,
+} from '../../../types';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import Inspector, { type InspectorProps } from '../Inspector';
 import NetworkComposer from '../NetworkComposer';
+import { composerWords, OVERTAKEN_EDIT_NOTICE } from './composerWords';
 
 beforeAll(() => {
   if (typeof window.ResizeObserver === 'undefined') {
@@ -52,10 +58,14 @@ beforeAll(() => {
       this.callback = cb;
     }
 
+    // Reported once the observing component has mounted, as a browser does:
+    // the drawer's form errors start an animation when they come into view.
     observe(target: Element) {
-      this.callback(
-        [{ isIntersecting: true, target } as IntersectionObserverEntry],
-        this as unknown as IntersectionObserver,
+      queueMicrotask(() =>
+        this.callback(
+          [{ isIntersecting: true, target } as IntersectionObserverEntry],
+          this as unknown as IntersectionObserver,
+        ),
       );
     }
 
@@ -84,7 +94,8 @@ const nodeForm = {
   fields: [
     {
       variable: NODE_NAME_VAR,
-      prompt: 'Full name',
+      component: 'Text',
+      label: { en: 'Full name' },
     },
   ],
 };
@@ -93,7 +104,8 @@ const edgeForm = {
   fields: [
     {
       variable: EDGE_STRENGTH_VAR,
-      prompt: 'Strength',
+      component: 'Text',
+      label: { en: 'Strength' },
     },
   ],
 };
@@ -101,7 +113,8 @@ const edgeForm = {
 const stage = {
   id: 'nc1',
   type: 'NetworkComposer' as const,
-  label: 'Network Composer',
+  ...composerWords(),
+  label: { en: 'Network Composer' },
   subject: { entity: 'node' as const, type: NODE_TYPE },
   layoutVariable: LAYOUT_VAR,
   quickAdd: QUICK_ADD_VAR,
@@ -122,17 +135,24 @@ const codebook = {
   node: {
     [NODE_TYPE]: {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' as const },
       variables: {
         [QUICK_ADD_VAR]: {
           name: 'name',
+          label: 'Name',
           type: 'text' as const,
           component: 'Text' as const,
         },
-        [LAYOUT_VAR]: { name: 'position', type: 'layout' as const },
+        [LAYOUT_VAR]: {
+          name: 'position',
+          label: 'Position',
+          type: 'layout' as const,
+        },
         [NODE_NAME_VAR]: {
           name: 'Full name',
+          label: 'Full name',
           type: 'text' as const,
           component: 'Text' as const,
         },
@@ -142,10 +162,12 @@ const codebook = {
   edge: {
     [EDGE_TYPE]: {
       name: 'Knows',
+      label: { en: 'Knows' },
       color: 'edge-color-seq-1',
       variables: {
         [EDGE_STRENGTH_VAR]: {
           name: 'Strength',
+          label: 'Strength',
           type: 'text' as const,
           component: 'Text' as const,
         },
@@ -200,6 +222,7 @@ function makeStore(
   includeEdges = false,
   stageForStore: object = stage,
   codebookForStore: object = codebook,
+  extraMiddleware: Middleware[] = [],
 ) {
   return configureStore({
     reducer: { session, protocol, ui },
@@ -216,12 +239,14 @@ function makeStore(
       protocol: {
         id: 'p',
         hash: 'h',
-        schemaVersion: 8,
+        schemaVersion: 9,
+        localization: { defaultLocale: 'en', locales: ['en'] },
         codebook: codebookForStore,
         stages: [stageForStore],
       } as never,
     },
-    middleware: (g) => g({ serializableCheck: false }),
+    middleware: (g) =>
+      g({ serializableCheck: false }).concat(...extraMiddleware),
   });
 }
 
@@ -229,7 +254,19 @@ function renderInterface(
   store: ReturnType<typeof makeStore>,
   stageForProps: object = stage,
 ) {
-  const registerBeforeNext: RegisterBeforeNext = vi.fn();
+  const handlers = new Map<string, BeforeNextFunction>();
+  const registerBeforeNext: RegisterBeforeNext = (
+    keyOrFn: string | BeforeNextFunction | null,
+    maybeFn?: BeforeNextFunction | null,
+  ) => {
+    const key = typeof keyOrFn === 'string' ? keyOrFn : '__default__';
+    const fn = typeof keyOrFn === 'string' ? (maybeFn ?? null) : keyOrFn;
+    if (fn === null) {
+      handlers.delete(key);
+    } else {
+      handlers.set(key, fn);
+    }
+  };
 
   const props: StageProps<'NetworkComposer'> = {
     stage: stageForProps as StageProps<'NetworkComposer'>['stage'],
@@ -250,7 +287,7 @@ function renderInterface(
           <DialogProvider>
             <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
               <StageMetadataContext.Provider value={registerBeforeNext}>
-                {children}
+                <TestProtocolLocalization>{children}</TestProtocolLocalization>
               </StageMetadataContext.Provider>
             </CurrentStepProvider>
           </DialogProvider>
@@ -260,6 +297,15 @@ function renderInterface(
   }
 
   render(<NetworkComposer {...props} />, { wrapper: Wrapper });
+
+  // What pressing Next asks of the stage: whether it may be left.
+  const leave = async () => {
+    for (const handler of handlers.values()) {
+      if ((await handler('forwards', 'step')) === false) return false;
+    }
+    return true;
+  };
+  return { leave };
 }
 
 /**
@@ -340,7 +386,13 @@ describe('NetworkComposer inspector — node', () => {
     const prototypeStage = {
       ...stage,
       nodeForm: {
-        fields: [{ prompt: 'Prototype value', variable: PROTOTYPE_VAR }],
+        fields: [
+          {
+            variable: PROTOTYPE_VAR,
+            component: 'Text',
+            label: { en: 'Prototype value' },
+          },
+        ],
       },
     };
     const prototypeCodebook = {
@@ -354,6 +406,7 @@ describe('NetworkComposer inspector — node', () => {
             [PROTOTYPE_VAR]: {
               component: 'Text',
               name: 'Prototype value',
+              label: 'Prototype value',
               type: 'text',
             },
           },
@@ -503,7 +556,7 @@ describe('NetworkComposer inspector — undo and redo changing what the drawer s
     nodeForm: {
       fields: [
         ...nodeForm.fields,
-        { variable: NICKNAME_VAR, prompt: 'Nickname' },
+        { variable: NICKNAME_VAR, prompt: { en: 'Nickname' } },
       ],
     },
   };
@@ -513,7 +566,7 @@ describe('NetworkComposer inspector — undo and redo changing what the drawer s
     nodeForm: {
       fields: [
         ...twoQuestionStage.nodeForm.fields,
-        { variable: GROUP_VAR, prompt: 'Team' },
+        { variable: GROUP_VAR, prompt: { en: 'Team' } },
       ],
     },
   };
@@ -527,16 +580,18 @@ describe('NetworkComposer inspector — undo and redo changing what the drawer s
           ...personType.variables,
           [NICKNAME_VAR]: {
             name: 'Nickname',
+            label: 'Nickname',
             type: 'text' as const,
             component: 'Text' as const,
           },
           [GROUP_VAR]: {
             name: 'Team',
+            label: 'Team',
             type: 'categorical' as const,
             component: 'CheckboxGroup' as const,
             options: [
-              { value: 'red', label: 'Team Red' },
-              { value: 'blue', label: 'Team Blue' },
+              { value: 'red', label: { en: 'Team Red' } },
+              { value: 'blue', label: { en: 'Team Blue' } },
             ],
           },
         },
@@ -704,7 +759,7 @@ describe('NetworkComposer inspector — undo and redo changing what the drawer s
       await screen.findByText(/undo or redo changed an answer/i),
     ).toBeTruthy();
     act(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'Keep changes' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     });
     await waitFor(() =>
       expect(screen.queryByText(/undo or redo changed an answer/i)).toBeNull(),
@@ -757,33 +812,39 @@ describe('NetworkComposer inspector — undo and redo changing what the drawer s
     const builds: (() => AttributePatch | null)[] = [];
     const inspector = (attributes: Record<string, string>) => (
       <Provider store={store}>
-        <ContractProvider
-          onFinish={vi.fn()}
-          onRequestAsset={vi.fn()}
-          flags={{ isE2E: false, isDevelopment: false }}
-        >
-          <DialogProvider>
-            <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-              <StageMetadataContext.Provider value={vi.fn()}>
-                <Inspector
-                  entityId={NODE_A_ID}
-                  // The fixture's loose stage shape, as the interface is given.
-                  form={
-                    twoQuestionStage.nodeForm as unknown as InspectorProps['form']
-                  }
-                  subject={{ entity: 'node', type: NODE_TYPE }}
-                  attributes={attributes}
-                  // The save is asked for, but made only when the test says.
-                  onSave={async (_id, build) => {
-                    builds.push(build);
-                  }}
-                  onDelete={vi.fn()}
-                  guardDraft={() => () => undefined}
-                />
-              </StageMetadataContext.Provider>
-            </CurrentStepProvider>
-          </DialogProvider>
-        </ContractProvider>
+        <TestProtocolLocalization>
+          <ContractProvider
+            onFinish={vi.fn()}
+            onRequestAsset={vi.fn()}
+            flags={{ isE2E: false, isDevelopment: false }}
+          >
+            <DialogProvider>
+              <CurrentStepProvider
+                currentStep={0}
+                onStepChange={() => undefined}
+              >
+                <StageMetadataContext.Provider value={vi.fn()}>
+                  <Inspector
+                    entityId={NODE_A_ID}
+                    overtakenEditNotice={OVERTAKEN_EDIT_NOTICE}
+                    // The fixture's loose stage shape, as the interface is given.
+                    form={
+                      twoQuestionStage.nodeForm as unknown as InspectorProps['form']
+                    }
+                    subject={{ entity: 'node', type: NODE_TYPE }}
+                    attributes={attributes}
+                    // The save is asked for, but made only when the test says.
+                    onSave={async (_id, build) => {
+                      builds.push(build);
+                    }}
+                    onDelete={vi.fn()}
+                    guardDraft={() => () => undefined}
+                  />
+                </StageMetadataContext.Provider>
+              </CurrentStepProvider>
+            </DialogProvider>
+          </ContractProvider>
+        </TestProtocolLocalization>
       </Provider>
     );
     const { rerender } = render(inspector({ [NODE_NAME_VAR]: 'Alice Smith' }));
@@ -901,8 +962,284 @@ describe('NetworkComposer inspector — edge', () => {
   });
 });
 
+describe('NetworkComposer inspector — leaving an edit', () => {
+  const storedName = (store: ReturnType<typeof makeStore>, nodeId: string) =>
+    store
+      .getState()
+      .session.network.nodes.find(
+        (n) => n[entityPrimaryKeyProperty] === nodeId,
+      )?.[entityAttributesProperty]?.[NODE_NAME_VAR];
+
+  const requiredNameCodebook = {
+    ...codebook,
+    node: {
+      [NODE_TYPE]: {
+        ...codebook.node[NODE_TYPE],
+        variables: {
+          ...codebook.node[NODE_TYPE].variables,
+          [NODE_NAME_VAR]: {
+            ...codebook.node[NODE_TYPE].variables[NODE_NAME_VAR],
+            validation: { required: true },
+          },
+        },
+      },
+    },
+  };
+
+  async function openAlice(store: ReturnType<typeof makeStore>) {
+    const { leave } = renderInterface(store);
+    act(() => {
+      tapNode(screen.getByRole('button', { name: /alice/i }));
+    });
+    const nameInput = await screen.findByLabelText(/full name/i);
+    await waitFor(() => expect(nameInput).toHaveValue('Alice Smith'));
+    return { leave, nameInput };
+  }
+
+  it('leaves the stage without asking or saving when nothing was changed', async () => {
+    const store = makeStore();
+    const before = store.getState().session.network;
+    const { leave } = await openAlice(store);
+
+    await expect(leave()).resolves.toBe(true);
+    expect(
+      screen.queryByRole('dialog', { name: 'Discard changes?' }),
+    ).toBeNull();
+    expect(store.getState().session.network).toBe(before);
+  });
+
+  it('saves an edit made too recently for the autosave when the stage is left', async () => {
+    const store = makeStore();
+    const { leave, nameInput } = await openAlice(store);
+
+    fireEvent.change(nameInput, { target: { value: 'Alice Updated' } });
+    let left: Promise<boolean> | undefined;
+    act(() => {
+      left = leave();
+    });
+
+    await expect(left).resolves.toBe(true);
+    expect(
+      screen.queryByRole('dialog', { name: 'Discard changes?' }),
+    ).toBeNull();
+    expect(storedName(store, NODE_A_ID)).toBe('Alice Updated');
+  });
+
+  it('asks before leaving the stage with an invalid edit, and stays when it is kept', async () => {
+    const store = makeStore(false, stage, requiredNameCodebook);
+    const before = store.getState().session.network;
+    const { leave, nameInput } = await openAlice(store);
+
+    fireEvent.change(nameInput, { target: { value: '' } });
+    let left: Promise<boolean> | undefined;
+    act(() => {
+      left = leave();
+    });
+
+    const warning = await screen.findByRole('dialog', {
+      name: 'Discard changes?',
+    });
+    expect(warning).toHaveTextContent(/invalid data/);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    await expect(left).resolves.toBe(false);
+    expect(nameInput).toHaveValue('');
+    expect(store.getState().session.network).toBe(before);
+  });
+
+  const discardDialog = { name: 'Discard changes?' };
+
+  const moves: [string, () => void][] = [
+    [
+      'tapping another person',
+      () => tapNode(screen.getByRole('button', { name: /bob/i })),
+    ],
+    [
+      'tapping the background',
+      () => {
+        const canvas = screen.getByRole('application');
+        const at = { button: 0, clientX: 5, clientY: 5, pointerId: 1 };
+        fireEvent.pointerDown(canvas, at);
+        fireEvent.pointerUp(canvas, at);
+      },
+    ],
+    [
+      'closing the drawer',
+      () => fireEvent.click(screen.getByRole('button', { name: 'Close' })),
+    ],
+    [
+      'choosing another tool',
+      () => fireEvent.click(screen.getByRole('button', { name: /add node/i })),
+    ],
+  ];
+
+  it.each(moves)(
+    'saves an edit made too recently for the autosave before %s',
+    async (_, move) => {
+      const store = makeStore();
+      const { nameInput } = await openAlice(store);
+
+      fireEvent.change(nameInput, { target: { value: 'Alice Updated' } });
+      act(move);
+
+      await waitFor(() =>
+        expect(storedName(store, NODE_A_ID)).toBe('Alice Updated'),
+      );
+      await waitFor(() =>
+        expect(screen.queryByDisplayValue('Alice Updated')).toBeNull(),
+      );
+      expect(screen.queryByRole('dialog', discardDialog)).toBeNull();
+    },
+  );
+
+  it.each(moves)(
+    'asks before %s away from an invalid edit, and stays when it is kept',
+    async (_, move) => {
+      const store = makeStore(false, stage, requiredNameCodebook);
+      const before = store.getState().session.network;
+      const { nameInput } = await openAlice(store);
+
+      fireEvent.change(nameInput, { target: { value: '' } });
+      act(move);
+
+      expect(
+        await screen.findByRole('dialog', discardDialog),
+      ).toHaveTextContent(/invalid data/);
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      await waitFor(() =>
+        expect(screen.queryByRole('dialog', discardDialog)).toBeNull(),
+      );
+      expect(screen.getAllByRole('textbox')).toEqual([
+        screen.getByLabelText(/full name/i),
+      ]);
+      expect(screen.getByLabelText(/full name/i)).toHaveValue('');
+      expect(store.getState().session.network).toBe(before);
+    },
+  );
+
+  it('moves on once the participant agrees to discard an invalid edit', async () => {
+    const store = makeStore(false, stage, requiredNameCodebook);
+    const before = store.getState().session.network;
+    const { nameInput } = await openAlice(store);
+
+    fireEvent.change(nameInput, { target: { value: '' } });
+    act(() => {
+      tapNode(screen.getByRole('button', { name: /bob/i }));
+    });
+    await screen.findByRole('dialog', discardDialog);
+    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }));
+
+    expect(await screen.findByDisplayValue('Bob Jones')).toBeTruthy();
+    expect(store.getState().session.network).toBe(before);
+  });
+
+  const deletes: [string, () => void][] = [
+    [
+      'from the drawer',
+      () => fireEvent.click(screen.getByRole('button', { name: 'Delete' })),
+    ],
+    [
+      'with the Delete key',
+      () =>
+        fireEvent.keyDown(screen.getByTestId('network-composer'), {
+          key: 'Delete',
+        }),
+    ],
+  ];
+
+  it.each(deletes)(
+    'deletes the person %s without asking about an invalid edit',
+    async (_, remove) => {
+      const store = makeStore(false, stage, requiredNameCodebook);
+      const { nameInput } = await openAlice(store);
+
+      fireEvent.change(nameInput, { target: { value: '' } });
+      act(remove);
+
+      await waitFor(() =>
+        expect(store.getState().session.network.nodes).toHaveLength(1),
+      );
+      act(() => {
+        tapNode(screen.getByRole('button', { name: /bob/i }));
+      });
+      expect(await screen.findByDisplayValue('Bob Jones')).toBeTruthy();
+      expect(screen.queryByRole('dialog', discardDialog)).toBeNull();
+    },
+  );
+
+  it('asks before moving off an edit the store refused, and saves it once the store takes it', async () => {
+    const refusing = { on: true };
+    const refuseNodeUpdates: Middleware = () => (next) => (action) => {
+      if (refusing.on && updateNode.fulfilled.match(action)) {
+        throw new Error('Refused');
+      }
+      return next(action);
+    };
+    const store = makeStore(false, stage, codebook, [refuseNodeUpdates]);
+    const { nameInput } = await openAlice(store);
+
+    fireEvent.change(nameInput, { target: { value: 'Alice Updated' } });
+    expect(
+      await screen.findByText(
+        'An error occurred while submitting the form.',
+        {},
+        { timeout: 2000 },
+      ),
+    ).toBeTruthy();
+
+    act(() => {
+      tapNode(screen.getByRole('button', { name: /bob/i }));
+    });
+    expect(await screen.findByRole('dialog', discardDialog)).toHaveTextContent(
+      'An error occurred while submitting the form.',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', discardDialog)).toBeNull(),
+    );
+    expect(screen.getByLabelText(/full name/i)).toHaveValue('Alice Updated');
+    expect(storedName(store, NODE_A_ID)).toBe('Alice Smith');
+
+    refusing.on = false;
+    act(() => {
+      tapNode(screen.getByRole('button', { name: /bob/i }));
+    });
+    expect(await screen.findByDisplayValue('Bob Jones')).toBeTruthy();
+    expect(storedName(store, NODE_A_ID)).toBe('Alice Updated');
+  });
+
+  it('keeps the answer an undo puts back when the drawer then closes', async () => {
+    const store = makeStore();
+    const { nameInput } = await openAlice(store);
+
+    fireEvent.change(nameInput, { target: { value: 'Alice Updated' } });
+    await waitFor(
+      () => expect(storedName(store, NODE_A_ID)).toBe('Alice Updated'),
+      { timeout: 2000 },
+    );
+    await act(async () => {
+      fireEvent.keyDown(screen.getByTestId('network-composer'), {
+        key: 'z',
+        metaKey: true,
+      });
+    });
+    await waitFor(() =>
+      expect(storedName(store, NODE_A_ID)).toBe('Alice Smith'),
+    );
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    });
+    await waitFor(() =>
+      expect(screen.queryByTestId('inspector-panel')).toBeNull(),
+    );
+    expect(storedName(store, NODE_A_ID)).toBe('Alice Smith');
+  });
+});
+
 describe('NetworkComposer inspector — no attributes', () => {
-  it('opens the drawer with an empty state when the node has no form', async () => {
+  it('opens the drawer with only its Delete action when the node has no form', async () => {
     const stageNoForm = { ...stage, nodeForm: undefined };
     const store = makeStore(false, stageNoForm);
     renderInterface(store, stageNoForm);
@@ -912,8 +1249,10 @@ describe('NetworkComposer inspector — no attributes', () => {
       tapNode(nodeA);
     });
 
-    expect(await screen.findByText(/no attributes to edit/i)).toBeTruthy();
-    // A node with a form would render its field; here there is none.
+    expect(await screen.findByRole('button', { name: 'Delete' })).toBeTruthy();
+    // A node with a form would render its field; here there is none, and no
+    // sentence stands in for it.
     expect(screen.queryByLabelText(/full name/i)).toBeNull();
+    expect(screen.queryByText(/no attributes to edit/i)).toBeNull();
   });
 });

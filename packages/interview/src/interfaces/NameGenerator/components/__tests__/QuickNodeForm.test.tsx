@@ -8,7 +8,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import {
@@ -20,23 +20,30 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   entitySecureAttributesMeta,
+  type NcEncryptionHeader,
   type NcNode,
 } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../../contract/types';
 import { writeSubmissionResult } from '../../../../forms/writeSubmissionResult';
-import { runtimeMessages } from '../../../../i18n/runtimeMessages';
 import protocol from '../../../../store/modules/protocol';
 import session, {
   addNode as addSessionNode,
   type SessionState,
 } from '../../../../store/modules/session';
-import ui, { setPassphrase } from '../../../../store/modules/ui';
+import ui from '../../../../store/modules/ui';
 import { WritesInFlightProvider } from '../../../../store/WritesInFlightContext';
 import type { StageProps } from '../../../../types';
+import { TestProtocolLocalization } from '../../../__tests__/TestProtocolLocalization';
+import {
+  encryptionFor,
+  unlockWith,
+} from '../../../Anonymisation/__tests__/encryptionFixtures';
 import { generateSecureAttributes } from '../../../Anonymisation/utils';
 import QuickNodeForm from '../QuickNodeForm';
+
+const HINT = { en: 'Press Enter when you are finished.' };
 
 vi.mock('../../../../hooks/useCelebrate', () => ({
   useCelebrate: () => vi.fn(),
@@ -84,12 +91,14 @@ function buildCodebook(
     node: {
       [NODE_TYPE]: {
         name: 'Person',
+        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         icon: 'add-a-person',
         variables: {
           [TARGET_VARIABLE]: {
             name: 'Name',
+            label: 'Name',
             type: 'text',
             ...(omitComponent ? {} : { component: 'Text' }),
             ...(validation ? { validation } : {}),
@@ -97,6 +106,7 @@ function buildCodebook(
           },
           [SIBLING_VARIABLE]: {
             name: 'Flag',
+            label: 'Flag',
             type: 'boolean',
             component: 'Toggle',
           },
@@ -114,13 +124,14 @@ function buildStage(fixedSiblingValue?: boolean): QuickAddStage {
   return {
     id: STAGE_ID,
     type: 'NameGeneratorQuickAdd',
-    label: 'Add people',
+    quickAddHint: { en: 'Press Enter when you are finished.' },
+    label: { en: 'Add people' },
     subject: { entity: 'node', type: NODE_TYPE },
     quickAdd: asEntityAttributeReference(TARGET_VARIABLE),
     prompts: [
       {
         id: PROMPT_ID,
-        text: 'Name the people in your network',
+        text: { en: 'Name the people in your network' },
         ...(fixedSiblingValue === undefined
           ? {}
           : {
@@ -136,13 +147,18 @@ function buildStage(fixedSiblingValue?: boolean): QuickAddStage {
   };
 }
 
-function buildSession(existingNodes: NcNode[] = []): SessionState {
+function buildSession(
+  existingNodes: NcNode[] = [],
+  encryption?: NcEncryptionHeader,
+): SessionState {
   return {
     id: 'session',
     startTime: '2024-01-01T00:00:00.000Z',
     finishTime: null,
     exportTime: null,
     lastUpdated: '2024-01-01T00:00:00.000Z',
+    localePreference: null,
+    locale: null,
     network: {
       ego: {
         [entityPrimaryKeyProperty]: 'ego',
@@ -150,6 +166,7 @@ function buildSession(existingNodes: NcNode[] = []): SessionState {
       },
       nodes: existingNodes,
       edges: [],
+      ...(encryption ? { encryption } : {}),
     },
   };
 }
@@ -159,7 +176,6 @@ function buildProtocol(
   omitComponent = false,
   fixedSiblingValue?: boolean,
   encrypted = false,
-  encryptionEnabled = encrypted,
 ): ProtocolPayload {
   return {
     id: 'protocol',
@@ -167,14 +183,14 @@ function buildProtocol(
     importedAt: '2024-01-01T00:00:00.000Z',
     assets: [],
     name: 'Test protocol',
-    schemaVersion: 8,
-    experiments: { encryptedVariables: encryptionEnabled },
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: buildCodebook(validation, omitComponent, encrypted),
     stages: [buildStage(fixedSiblingValue)],
   };
 }
 
-function renderQuickNodeForm({
+async function renderQuickNodeForm({
   validation,
   omitComponent,
   fixedSiblingValue,
@@ -193,10 +209,11 @@ function renderQuickNodeForm({
   ) => Promise<FormSubmissionResult>;
   trackWrite?: (stored: Promise<boolean>) => void;
 }) {
+  const encryption = encrypted ? await encryptionFor(PASSPHRASE) : undefined;
   const store = configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
-      session: buildSession(existingNodes),
+      session: buildSession(existingNodes, encryption?.header),
       protocol: buildProtocol(
         validation,
         omitComponent,
@@ -207,22 +224,25 @@ function renderQuickNodeForm({
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({ serializableCheck: false }),
   });
-  if (encrypted) store.dispatch(setPassphrase(PASSPHRASE));
+  if (encrypted) await unlockWith(store, PASSPHRASE);
 
   render(
     <Provider store={store}>
-      <WritesInFlightProvider
-        writesSettled={() => undefined}
-        trackWrite={trackWrite}
-      >
-        <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-          <QuickNodeForm
-            disabled={false}
-            targetVariable={TARGET_VARIABLE}
-            addNode={addNode}
-          />
-        </CurrentStepProvider>
-      </WritesInFlightProvider>
+      <TestProtocolLocalization>
+        <WritesInFlightProvider
+          writesSettled={() => undefined}
+          trackWrite={trackWrite}
+        >
+          <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+            <QuickNodeForm
+              hint={HINT}
+              disabled={false}
+              targetVariable={TARGET_VARIABLE}
+              addNode={addNode}
+            />
+          </CurrentStepProvider>
+        </WritesInFlightProvider>
+      </TestProtocolLocalization>
     </Provider>,
   );
 
@@ -239,7 +259,7 @@ const saved = async (): Promise<FormSubmissionResult> => ({ success: true });
 describe('QuickNodeForm honours codebook validation', () => {
   it('honours optional requiredness alongside the other codebook rules', async () => {
     const addNode = vi.fn(saved);
-    renderQuickNodeForm({
+    await renderQuickNodeForm({
       validation: { required: false, maxLength: 10 },
       addNode,
     });
@@ -263,7 +283,7 @@ describe('QuickNodeForm honours codebook validation', () => {
 
   it('accepts an empty entry when the codebook has no validation rules', async () => {
     const addNode = vi.fn(saved);
-    renderQuickNodeForm({ validation: undefined, addNode });
+    await renderQuickNodeForm({ validation: undefined, addNode });
 
     const input = await openField();
 
@@ -274,7 +294,7 @@ describe('QuickNodeForm honours codebook validation', () => {
   });
 
   it('clears a successful value when adding the node updates the live validation context before submission finishes', async () => {
-    let store: ReturnType<typeof renderQuickNodeForm>['store'];
+    let store: Awaited<ReturnType<typeof renderQuickNodeForm>>['store'];
     const addNode = vi.fn(
       async (attributes: NcNode[typeof entityAttributesProperty]) =>
         writeSubmissionResult(
@@ -287,7 +307,7 @@ describe('QuickNodeForm honours codebook validation', () => {
           ),
         ),
     );
-    ({ store } = renderQuickNodeForm({
+    ({ store } = await renderQuickNodeForm({
       validation: undefined,
       addNode,
     }));
@@ -314,7 +334,7 @@ describe('QuickNodeForm honours codebook validation', () => {
       [entityAttributesProperty]: { [TARGET_VARIABLE]: 'Alice' },
     };
     const addNode = vi.fn(saved);
-    renderQuickNodeForm({
+    await renderQuickNodeForm({
       validation: { unique: true },
       existingNodes: [existingNode],
       addNode,
@@ -342,7 +362,7 @@ describe('QuickNodeForm honours codebook validation', () => {
 
   it('still enforces validation for a component-less target variable (e.g. one created via Architect\'s "Create New Variable" dialog, which never sets `component`), without crashing', async () => {
     const addNode = vi.fn(saved);
-    renderQuickNodeForm({
+    await renderQuickNodeForm({
       validation: { required: true },
       omitComponent: true,
       addNode,
@@ -368,7 +388,7 @@ describe('QuickNodeForm honours codebook validation', () => {
 
   it('compares the target against prompt-fixed sibling attributes on the new node', async () => {
     const addNode = vi.fn(saved);
-    renderQuickNodeForm({
+    await renderQuickNodeForm({
       validation: {
         sameAs: asEntityAttributeReference(SIBLING_VARIABLE),
       },
@@ -393,7 +413,8 @@ describe('QuickNodeForm with an encrypted target variable', () => {
         { [TARGET_VARIABLE]: 'Alice' },
         buildCodebook(undefined, false, true).node?.[NODE_TYPE]?.variables ??
           {},
-        PASSPHRASE,
+        (await encryptionFor(PASSPHRASE)).key,
+        'existing-node',
       );
     const existingNode: NcNode = {
       [entityPrimaryKeyProperty]: 'existing-node',
@@ -403,7 +424,7 @@ describe('QuickNodeForm with an encrypted target variable', () => {
     };
     const addNode = vi.fn(saved);
     decryption.ready = false;
-    renderQuickNodeForm({
+    await renderQuickNodeForm({
       validation: { unique: true },
       existingNodes: [existingNode],
       encrypted: true,
@@ -442,6 +463,12 @@ describe('QuickNodeForm while a name is being added', () => {
     };
   }
 
+  function submitName(input: HTMLElement) {
+    const form = input.closest('form');
+    if (!form) throw new Error('Expected the field to be in a form');
+    fireEvent.submit(form);
+  }
+
   it.each([
     ['stored once the person is added', { success: true }, true],
     [
@@ -454,14 +481,14 @@ describe('QuickNodeForm while a name is being added', () => {
     async (_outcome, result, stored) => {
       const tracked: Promise<boolean>[] = [];
       const { addNode, finish } = heldAdd();
-      renderQuickNodeForm({
+      await renderQuickNodeForm({
         addNode,
         trackWrite: (write) => tracked.push(write),
       });
 
       const input = await openField();
       await userEvent.type(input, 'Bob');
-      fireEvent.submit(input.closest('form')!);
+      submitName(input);
       expect(tracked).toHaveLength(1);
 
       await waitFor(() => expect(addNode).toHaveBeenCalled());
@@ -470,10 +497,34 @@ describe('QuickNodeForm while a name is being added', () => {
     },
   );
 
+  it('counts each name on its own, so one that could not be added after one that was is not saved', async () => {
+    const tracked: Promise<boolean>[] = [];
+    const { addNode, finish } = heldAdd();
+    await renderQuickNodeForm({
+      addNode,
+      trackWrite: (write) => tracked.push(write),
+    });
+
+    const input = await openField();
+    await userEvent.type(input, 'Bob');
+    submitName(input);
+    await waitFor(() => expect(addNode).toHaveBeenCalledTimes(1));
+    await act(async () => finish({ success: true }));
+    expect(await tracked[0]).toBe(true);
+
+    await waitFor(() => expect(input).not.toBeDisabled());
+    await userEvent.type(input, 'Carol');
+    submitName(input);
+    await waitFor(() => expect(addNode).toHaveBeenCalledTimes(2));
+    await act(async () => finish({ success: false }));
+    expect(tracked).toHaveLength(2);
+    expect(await tracked[1]).toBe(false);
+  });
+
   it('counts a name it refuses as not saved', async () => {
     const tracked: Promise<boolean>[] = [];
     const addNode = vi.fn(saved);
-    renderQuickNodeForm({
+    await renderQuickNodeForm({
       validation: { unique: true },
       existingNodes: [plainNode('Alice')],
       addNode,
@@ -482,7 +533,7 @@ describe('QuickNodeForm while a name is being added', () => {
 
     const input = await openField();
     await userEvent.type(input, 'Alice');
-    fireEvent.submit(input.closest('form')!);
+    submitName(input);
     expect(tracked).toHaveLength(1);
 
     expect(await tracked[0]).toBe(false);
@@ -491,95 +542,15 @@ describe('QuickNodeForm while a name is being added', () => {
 
   it('keeps the field open, and the name, while the name is being added', async () => {
     const { addNode, finish } = heldAdd();
-    renderQuickNodeForm({ addNode });
+    await renderQuickNodeForm({ addNode });
 
     const input = await openField();
     await userEvent.type(input, 'Bob');
-    fireEvent.submit(input.closest('form')!);
+    submitName(input);
     await waitFor(() => expect(addNode).toHaveBeenCalled());
     fireEvent.click(screen.getByTestId('quick-add-toggle'));
 
     await act(async () => finish({ success: false }));
     expect(screen.getByTestId('quick-add-input')).toHaveValue('Bob');
-  });
-});
-
-// A refused add's reason is shown with Motion's viewport features, which use
-// IntersectionObserver; jsdom has none.
-class StubObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
-
-describe('QuickNodeForm adding to the session', () => {
-  beforeAll(() => {
-    vi.stubGlobal('IntersectionObserver', StubObserver);
-  });
-
-  const notSaved = runtimeMessages.protectedAnswersNotSaved.defaultMessage;
-
-  // Protected answers are refused when the passphrase they were being
-  // encrypted with is replaced before encryption finishes.
-  function renderAddingToSession() {
-    const tracked: Promise<boolean>[] = [];
-    const passphrase = { replacedWhileAdding: false };
-    let store: ReturnType<typeof renderQuickNodeForm>['store'];
-    ({ store } = renderQuickNodeForm({
-      encrypted: true,
-      addNode: async (attributes) => {
-        const adding = store.dispatch(
-          addSessionNode({
-            type: NODE_TYPE,
-            attributeData: attributes,
-            currentStep: 0,
-            useEncryption: true,
-          }),
-        );
-        if (passphrase.replacedWhileAdding) {
-          store.dispatch(setPassphrase('another passphrase'));
-        }
-        return writeSubmissionResult(await adding);
-      },
-      trackWrite: (write) => tracked.push(write),
-    }));
-    return { store, tracked, passphrase };
-  }
-
-  async function addName(input: HTMLElement, name: string) {
-    await userEvent.type(input, name);
-    fireEvent.submit(input.closest('form')!);
-    await waitFor(() => expect(input).not.toBeDisabled());
-  }
-
-  it('keeps a name the session could not store, and says why', async () => {
-    const { store, tracked, passphrase } = renderAddingToSession();
-    passphrase.replacedWhileAdding = true;
-
-    const input = await openField();
-    await addName(input, 'Alice');
-
-    expect(input).toHaveValue('Alice');
-    expect(await screen.findByText(notSaved)).toBeInTheDocument();
-    expect(store.getState().session.network.nodes).toHaveLength(0);
-    expect(await tracked[0]).toBe(false);
-  });
-
-  it('keeps the next name, and says why, when the session cannot store it after storing one', async () => {
-    const { store, tracked, passphrase } = renderAddingToSession();
-
-    const input = await openField();
-    await addName(input, 'Alice');
-    expect(input).toHaveValue('');
-    expect(store.getState().session.network.nodes).toHaveLength(1);
-    expect(await tracked[0]).toBe(true);
-
-    passphrase.replacedWhileAdding = true;
-    await addName(input, 'Bob');
-
-    expect(input).toHaveValue('Bob');
-    expect(await screen.findByText(notSaved)).toBeInTheDocument();
-    expect(store.getState().session.network.nodes).toHaveLength(1);
-    expect(await tracked[1]).toBe(false);
   });
 });

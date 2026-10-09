@@ -52,6 +52,40 @@ describe('readProtocolArchive', () => {
     }
   });
 
+  it('shows a localized label in the protocol default language as plain text', async () => {
+    const file = join(directory, 'localized.netcanvas');
+    await writeArchive(file, {
+      schemaVersion: 9,
+      localization: { defaultLocale: 'es', locales: ['en', 'es'] },
+      stages: [
+        {
+          type: 'Information',
+          label: { en: 'Welcome', es: "Qui'en  '{'es'}'" },
+        },
+        { type: 'Information', label: { en: 'Only English' } },
+      ],
+    });
+
+    const { stages } = await readProtocolArchive(file);
+
+    expect(stages.map(({ label }) => label)).toEqual([
+      "Qui'en {es}",
+      'Only English',
+    ]);
+  });
+
+  it('rejects a localized label in a protocol that declares no languages', async () => {
+    const file = join(directory, 'undeclared.netcanvas');
+    await writeArchive(file, {
+      schemaVersion: 9,
+      stages: [{ type: 'Information', label: { en: 'Welcome' } }],
+    });
+
+    await expect(readProtocolArchive(file)).rejects.toThrow(
+      /^undeclared\.netcanvas: protocol\.json: stages\.0\.label: /,
+    );
+  });
+
   it('rejects a stage type this build does not know', async () => {
     const file = join(directory, 'future.netcanvas');
     await writeArchive(file, {

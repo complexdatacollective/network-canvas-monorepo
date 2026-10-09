@@ -9,7 +9,12 @@ import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
  * variables that type does not have. The list is the one Architect has always
  * used, so a protocol edited in either tool loses and keeps the same things:
  * the stage's identity and name, the notes for the interviewer, and the task
- * introduction, which is prose about the task rather than about the type.
+ * introduction and a roster's panel title, which are prose about the task
+ * rather than about the type. The words a stage shows participants
+ * (`minNodesNotice`, `searchLabel`, a Family Pedigree's `wording` and the
+ * rest) are prose the same way, and Network Canvas seeds them on every new
+ * stage: a seeded message is not configuration, so choosing a type must not
+ * ask to discard it.
  */
 export const SUBJECT_INDEPENDENT_FIELDS: readonly string[] = Object.freeze([
   'id',
@@ -17,8 +22,60 @@ export const SUBJECT_INDEPENDENT_FIELDS: readonly string[] = Object.freeze([
   'label',
   'interviewScript',
   'introductionPanel',
+  'panelTitle',
   'subject',
+  'allAddedNotice',
+  'externalDataError',
+  'maxNodesNotice',
+  'minNodesNotice',
+  'quickAddHint',
+  'searchFailed',
+  'searchLabel',
+  'searchNoMatch',
+  'offlineNotice',
+  'mapUnavailable',
+  'outsideAreasLabel',
+  // The words a canvas shows its participant: its name box and tooltips, and
+  // the headings of its panels. Prose about the canvas, which a subject change
+  // keeps, the same as the task's introduction.
+  'addNamePlaceholder',
+  'overtakenEditNotice',
+  'groupsHeading',
+  'attributesHeading',
+  'linksHeading',
+  'tooltips',
+  'keyHeading',
+  'conditionText',
+  'wording',
 ]);
+
+/**
+ * Prose a stage keeps INSIDE a key that otherwise describes the subject, by
+ * that key: the Family Pedigree's name question sits beside the attributes
+ * its `nodeConfiguration` binds. It is about the task, like the keys above,
+ * so a subject change keeps it while the attributes around it go.
+ */
+export const SUBJECT_INDEPENDENT_PARTS: Readonly<
+  Record<string, readonly string[]>
+> = Object.freeze({ nodeConfiguration: ['nameField'] });
+
+const isRecord = (value: unknown): value is Record<string, FieldValue> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** The subject-independent parts `held` has under `key`, if any. */
+const keptPartsOf = (
+  key: string,
+  held: unknown,
+): Record<string, FieldValue> | undefined => {
+  const parts = SUBJECT_INDEPENDENT_PARTS[key];
+  if (parts === undefined || !isRecord(held)) return undefined;
+  const kept = Object.fromEntries(
+    parts.flatMap((part) =>
+      held[part] === undefined ? [] : [[part, held[part]]],
+    ),
+  );
+  return Object.keys(kept).length === 0 ? undefined : kept;
+};
 
 /**
  * What each subject-dependent key becomes: the interface's own default for it,
@@ -50,14 +107,40 @@ export type SubjectReset = Readonly<{
  *
  * The caller supplies the first three; see `useResetStageOnSubjectChange`,
  * which is where a parked path is reduced to the stage key it belongs to.
+ * `heldAt` reads what the stage holds at a key, so that the parts of it a
+ * subject change keeps (`SUBJECT_INDEPENDENT_PARTS`) are carried into its
+ * reset value.
  */
 export function subjectDependentResets(
   presentKeys: Iterable<string>,
   template: Readonly<Record<string, FieldValue>>,
+  heldAt: (key: string) => unknown = () => undefined,
 ): SubjectReset[] {
   const keys = new Set<string>([...presentKeys, ...Object.keys(template)]);
   return [...keys]
     .filter((key) => !SUBJECT_INDEPENDENT_FIELDS.includes(key))
     .toSorted()
-    .map((key) => ({ key, value: template[key] }));
+    .map((key) => {
+      const kept = keptPartsOf(key, heldAt(key));
+      if (kept === undefined) return { key, value: template[key] };
+      const fallback = template[key];
+      return {
+        key,
+        value: { ...(isRecord(fallback) ? fallback : {}), ...kept },
+      };
+    });
+}
+
+/**
+ * The paths a subject change would lose under `key`: the key itself, or,
+ * where it holds subject-independent parts (`SUBJECT_INDEPENDENT_PARTS`),
+ * each of its other parts.
+ */
+export function subjectDependentPaths(key: string, held: unknown): string[] {
+  const parts = SUBJECT_INDEPENDENT_PARTS[key];
+  if (parts === undefined) return [key];
+  if (!isRecord(held)) return [];
+  return Object.keys(held)
+    .filter((part) => !parts.includes(part))
+    .map((part) => `${key}.${part}`);
 }

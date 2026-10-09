@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import developmentProtocol from '@codaco/protocols/development';
 
 import { loadBundledSampleProtocol } from '../bundledSampleProtocol';
@@ -38,17 +39,22 @@ const developmentProtocolWithRawColors = (): unknown => {
     return stage;
   };
 
-  const narrative = findStage('NarrativePedigree');
-  if (!Array.isArray(narrative.diseases) || !isRecord(narrative.diseases[0])) {
-    throw new Error('Narrative Pedigree fixture has no disease');
-  }
-  narrative.diseases[0].color = '#cc0000';
-
   const geospatial = findStage('Geospatial');
   if (!isRecord(geospatial.mapOptions)) {
     throw new Error('Geospatial fixture has no map options');
   }
   geospatial.mapOptions.color = '#3399ff';
+
+  const nodeTypes = isRecord(document.codebook)
+    ? document.codebook.node
+    : undefined;
+  const firstNodeType = isRecord(nodeTypes)
+    ? Object.values(nodeTypes).find(isRecord)
+    : undefined;
+  if (!firstNodeType) {
+    throw new Error('Development protocol fixture has no node types');
+  }
+  firstNodeType.color = '#cc0000';
 
   return document;
 };
@@ -66,7 +72,7 @@ describe('bundled sample protocol', () => {
     const bundled = await loadBundledSampleProtocol();
     const doc = bundled.document as { schemaVersion: number; name: string };
 
-    expect(doc.schemaVersion).toBe(8);
+    expect(doc.schemaVersion).toBe(COMPATIBLE_PROTOCOL_SCHEMA_VERSION);
     expect(bundled.name).toBe('Sample Protocol');
     // Sample protocol ships media assets; they must be resolved to Blobs.
     expect(bundled.assets.length).toBeGreaterThan(0);
@@ -95,7 +101,7 @@ describe('bundled sample protocol', () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.migrated).toBe(false); // already schema 8
+      expect(result.migrated).toBe(false); // already at the current schema
     }
     expect(saveProtocol).toHaveBeenCalledTimes(1);
     expect(throwingFetch).not.toHaveBeenCalled();
@@ -107,7 +113,7 @@ describe('bundled sample protocol', () => {
       name: 'Invalid Protocol',
       assets: [],
       document: {
-        schemaVersion: 8,
+        schemaVersion: 9,
         name: 'Invalid Protocol',
         codebook: {},
         stages: 'not an array',

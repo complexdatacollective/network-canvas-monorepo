@@ -6,15 +6,20 @@ import { isEqual, omit } from 'es-toolkit';
 import { ensureError } from '@codaco/shared-consts';
 
 import type {
-  SessionPayload,
+  SessionSnapshot,
   SyncHandler,
   SyncOptions,
 } from '../../contract/types';
 
-type SyncMiddlewareState = { session: SessionPayload };
+type SyncMiddlewareState = { session: SessionSnapshot };
 
-const sessionChanged = (a: SessionPayload, b: SessionPayload) =>
-  !isEqual(omit(a, ['promptIndex']), omit(b, ['promptIndex']));
+// The locale fields are persisted through `ProtocolLocaleChangeHandler`
+// (see `localeChangeMiddleware`), so a change to them alone is not a write for
+// this route.
+const NOT_SYNCED = ['promptIndex', 'locale', 'localePreference'] as const;
+
+const sessionChanged = (a: SessionSnapshot, b: SessionSnapshot) =>
+  !isEqual(omit(a, NOT_SYNCED), omit(b, NOT_SYNCED));
 
 // How many times `flush` will write again when the session keeps moving under
 // it. Bounded because the caller is entitled to proceed: someone answering
@@ -50,9 +55,9 @@ export const createSyncMiddleware = ({
   onSync: SyncHandler;
 }): {
   middleware: Middleware<Record<string, never>, SyncMiddlewareState>;
-  flush: (options?: { unloading?: boolean }) => Promise<void>;
+  flush: (options?: { unloading?: boolean }) => Promise<boolean>;
 } => {
-  let lastSyncedState = {} as SessionPayload;
+  let lastSyncedState = {} as SessionSnapshot;
   let storeRef: { getState: () => SyncMiddlewareState } | null = null;
   // Several offers can be outstanding at once, and a host that coalesces them
   // resolves them together. An earlier one must not then report its older
@@ -64,7 +69,7 @@ export const createSyncMiddleware = ({
   // `lastSyncedState`, which is the newest one known to be durable — the gap
   // between them is what stops a completing write from re-offering state some
   // other write already has in hand.
-  let lastOfferedState = {} as SessionPayload;
+  let lastOfferedState = {} as SessionSnapshot;
 
   // Being durable is not enough on its own to skip a write: a write already on
   // the wire may be carrying something else, and when it lands it overwrites
@@ -73,16 +78,18 @@ export const createSyncMiddleware = ({
   // what is stored and is about to stop equalling it. So there is work to do
   // whenever the live session differs from what is durable OR from what was
   // last handed to the host.
-  const needsWrite = (session: SessionPayload) =>
+  const needsWrite = (session: SessionSnapshot) =>
     sessionChanged(session, lastSyncedState) ||
     sessionChanged(session, lastOfferedState);
 
-  const write = (options: SyncOptions): Promise<void> => {
-    if (!storeRef) return Promise.resolve();
+  // Resolves to whether the session it was asked to write is stored: written
+  // now, already durable, or overtaken by a newer write that landed.
+  const write = (options: SyncOptions): Promise<boolean> => {
+    if (!storeRef) return Promise.resolve(true);
     const session = storeRef.getState().session;
     // A failed write leaves the high-water mark behind, so its snapshot still
     // reads as needing a write here and is written again.
-    if (!needsWrite(session)) return Promise.resolve();
+    if (!needsWrite(session)) return Promise.resolve(true);
     const sequence = nextSequence;
     nextSequence += 1;
     lastOfferedState = session;
@@ -92,7 +99,7 @@ export const createSyncMiddleware = ({
         // Only advance the high-water mark once the write actually resolves,
         // so a failed write is not treated as synced, and only if nothing
         // newer has already landed.
-        if (sequence <= syncedSequence) return;
+        if (sequence <= syncedSequence) return true;
         syncedSequence = sequence;
         lastSyncedState = session;
 
@@ -108,11 +115,13 @@ export const createSyncMiddleware = ({
         if (live && sessionChanged(live, lastOfferedState)) {
           void write(ORDINARY);
         }
+        return true;
       })
       .catch((e) => {
         const error = ensureError(e);
         // eslint-disable-next-line no-console
         console.error('❌ Error syncing data:', error);
+        return false;
       });
   };
 
@@ -120,25 +129,33 @@ export const createSyncMiddleware = ({
    * Write everything outstanding now. Callers that end the session — finishing,
    * exiting, the document being hidden — must await this before handing control
    * on, because a write attempted afterwards may be refused or never run at all.
+   *
+   * Resolves to whether the session as it stood for the last write has been
+   * stored. A refused write is logged rather than thrown, so this is how the
+   * caller learns of it and can stay rather than hand over answers the host
+   * never received.
    */
-  const flush = async ({ unloading = false } = {}): Promise<void> => {
+  const flush = async ({ unloading = false } = {}): Promise<boolean> => {
     const options: SyncOptions = { immediate: true, unloading };
+    let stored = true;
     for (let pass = 0; pass < FLUSH_MAX_PASSES; pass += 1) {
       const before = storeRef?.getState().session;
 
       // A host holding changes back only learns it must stop when it sees
       // `immediate`, and it queues this behind whatever it is already writing —
       // so awaiting this one write is both the fastest way to cancel its delay
-      // and enough to know everything before it has landed.
-      await write(options);
+      // and enough to know everything before it has landed. Each pass writes
+      // the whole session, so the last one decides what is stored.
+      stored = await write(options);
 
       // Nothing moved while we wrote, so there is nothing another pass could
       // add. Reference equality asks exactly that question — comparing against
       // lastSyncedState would also be true after a *failed* write and would
       // burn the remaining passes re-failing.
       const after = storeRef?.getState().session;
-      if (!before || !after || before === after) return;
+      if (!before || !after || before === after) return stored;
     }
+    return stored;
   };
 
   const middleware: Middleware<Record<string, never>, SyncMiddlewareState> = (

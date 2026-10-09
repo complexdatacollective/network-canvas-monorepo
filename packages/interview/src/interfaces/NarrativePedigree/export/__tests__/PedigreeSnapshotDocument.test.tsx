@@ -2,41 +2,20 @@ import { render } from '@testing-library/react';
 import { createRef } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import {
-  entityAttributesProperty,
-  type NcEdge,
-  type NcNode,
-} from '@codaco/shared-consts';
-
-import type { VariableConfig } from '../../../FamilyPedigree/store';
+import type { PedigreeLink } from '../../../FamilyPedigree/pedigree-layout/types';
 import { PedigreeSnapshotDocument } from '../PedigreeSnapshotDocument';
 
-const variableConfig: VariableConfig = {
-  nodeType: 'person',
-  edgeType: 'family',
-  nodeLabelVariable: 'name',
-  egoVariable: 'isEgo',
-  relationshipVariable: 'relationship',
-  relationshipTypeVariable: 'rel',
-  isActiveVariable: 'active',
-  isGestationalCarrierVariable: 'gc',
-  gameteRoleVariable: 'gameteRole',
-  biologicalSexVariable: 'biologicalSex',
-};
+const nodeIds = ['mum', 'dad', 'ego', 'sister'];
+const links: PedigreeLink[] = [
+  { source: 'mum', target: 'dad', kind: 'partner', isActive: true },
+  { source: 'mum', target: 'ego', kind: 'biological' },
+  { source: 'dad', target: 'ego', kind: 'biological' },
+  { source: 'mum', target: 'sister', kind: 'biological' },
+  { source: 'dad', target: 'sister', kind: 'biological' },
+];
 
-const nodes = new Map<string, NcNode>([
-  [
-    'ego',
-    {
-      _uid: 'ego',
-      type: 'person',
-      [entityAttributesProperty]: { isEgo: true },
-    },
-  ],
-]);
-
-const renderNode = (node: NcNode & { id: string }) => (
-  <div data-testid={`node-${node.id}`}>{node.id}</div>
+const renderNode = (nodeId: string) => (
+  <div data-testid={`node-${nodeId}`}>{nodeId}</div>
 );
 
 function renderDocument() {
@@ -45,16 +24,24 @@ function renderDocument() {
     <PedigreeSnapshotDocument
       ref={ref}
       title="Test snapshot"
-      nodes={nodes}
-      edges={new Map<string, NcEdge>()}
-      variableConfig={variableConfig}
+      nodeIds={nodeIds}
+      links={links}
+      nodeNames={new Map()}
+      edgeColor="var(--edge-1)"
       nodeWidth={100}
       nodeHeight={100}
       renderNode={renderNode}
-      glyphColour="#e53e3e"
+      glyphColour="var(--node-1)"
       keyShape="circle"
       showAtRiskStatuses
       showKey={false}
+      keyHeading="Key"
+      notationWords={{
+        affected: 'Has this condition',
+        obligateAffected: 'Will develop this condition',
+        obligateCarrier: 'Carries this condition',
+        unknown: 'Not known',
+      }}
     />,
   );
   return ref.current;
@@ -73,5 +60,18 @@ describe('PedigreeSnapshotDocument', () => {
   it('sets dark label ink for the printable document', () => {
     const root = renderDocument();
     expect(root?.style.getPropertyValue('--np-label-color')).toBe('#111827');
+  });
+
+  it('lays out the whole family at natural size, untransformed', () => {
+    const root = renderDocument();
+    for (const id of nodeIds) {
+      expect(root?.querySelector(`[data-testid="node-${id}"]`)).not.toBeNull();
+    }
+    // Nothing in the document carries the canvas's pan and zoom transform.
+    const transformed = [...(root?.querySelectorAll('*') ?? [])].filter(
+      (element) =>
+        element instanceof HTMLElement && element.style.transform !== '',
+    );
+    expect(transformed).toEqual([]);
   });
 });

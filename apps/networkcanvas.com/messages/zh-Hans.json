@@ -233,8 +233,10 @@
       "DyadCensus": "二元组普查",
       "EgoForm": "自我表单",
       "FamilyPedigree": "家族谱系",
+      "FinishSession": "完成屏幕",
       "Geospatial": "地理空间界面",
       "Information": "信息",
+      "LanguageChooser": "语言选择",
       "NameGenerator": "姓名生成器（使用表单）",
       "NameGeneratorQuickAdd": "姓名生成器（快速添加）",
       "NameGeneratorRoster": "名册数据姓名生成器",
@@ -275,8 +277,6 @@
       },
       "loading": "正在准备预览…",
       "finishConfirmation": "这是预览，因此不会保存任何内容。完成将结束本次协议运行，之后您可以重新开始。",
-      "finishedHeading": "预览已完成",
-      "finishedDescription": "访谈已按参与者实际体验的方式完成。未保存任何内容。",
       "restart": "重新开始预览",
       "backToProtocol": "返回协议",
       "errorHeading": "无法预览此协议",
@@ -336,7 +336,7 @@
       "bestFor": "最适合",
       "downloadVersion": "下载 {version} 版",
       "platformAccessibleName": "适用于 {platform} 的 {app}",
-      "schemaVersionInfo": "Architect Classic 和 Interviewer Classic 支持架构 7 协议。基于浏览器的 Architect、Interviewer 和 Fresco 使用架构 8，其中包含最新功能。协议升级是单向的，因此如果您仍需使用 Classic 应用，请保留原始的架构 7 文件。",
+      "schemaVersionInfo": "Architect Classic 和 Interviewer Classic 支持架构 7 协议。基于浏览器的 Architect、Interviewer 和 Fresco 使用架构 9，其中包含最新功能。协议升级是单向的，因此如果您仍需使用 Classic 应用，请保留原始的架构 7 文件。",
       "schemaVersionLink": "了解架构版本"
     },
     "platforms": {

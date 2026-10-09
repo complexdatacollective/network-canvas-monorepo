@@ -5,18 +5,24 @@ import {
   configureStore,
   type Middleware,
 } from '@reduxjs/toolkit';
+import { omit } from 'es-toolkit';
 import { useDispatch } from 'react-redux';
 
 import { NULL_TRACKER, type Tracker } from '../analytics/tracker';
-import type { InterviewPayload, SyncHandler } from '../contract/types';
+import type {
+  InterviewPayload,
+  ProtocolLocaleChangeHandler,
+  SyncHandler,
+} from '../contract/types';
 import { createAnalyticsListenerMiddleware } from './middleware/analyticsListener';
-import { createLoggerMiddleware } from './middleware/logger';
+import { createLocaleChangeMiddleware } from './middleware/localeChangeMiddleware';
+import { createInterviewLogger } from './middleware/logger';
 import { createSyncMiddleware } from './middleware/syncMiddleware';
 import { createWritesInFlightMiddleware } from './middleware/writesInFlight';
 import protocol from './modules/protocol';
 import session from './modules/session';
 import ui from './modules/ui';
-import { createSecretRedactors } from './redactSecrets';
+import { createEncryptedValueRedaction } from './redactEncryptedValues';
 
 const rootReducer = combineReducers({
   session,
@@ -26,9 +32,12 @@ const rootReducer = combineReducers({
 
 type StoreOptions = {
   onSync: SyncHandler;
+  onProtocolLocaleChange: ProtocolLocaleChangeHandler;
   isDevelopment?: boolean;
   extraMiddleware?: Middleware[];
   tracker?: Tracker;
+  /** The Shell's `openFinishedAsActive`. */
+  openFinishedAsActive?: boolean;
 };
 
 export const store = (
@@ -39,6 +48,14 @@ export const store = (
     onSync: options.onSync,
   });
   const {
+    middleware: localeChangeMiddleware,
+    settled: localeChangesSettled,
+    markFinished,
+  } = createLocaleChangeMiddleware({
+    onProtocolLocaleChange: options.onProtocolLocaleChange,
+    openFinishedAsActive: options.openFinishedAsActive,
+  });
+  const {
     middleware: writesInFlightMiddleware,
     writesSettled,
     trackWrite,
@@ -46,18 +63,25 @@ export const store = (
   // A write still protecting its answers is stored before they are handed to
   // the host, and the result says whether every write under way was stored,
   // so finishing or closing can stay when one was refused. While the page
-  // unloads there is no time to wait for them.
+  // unloads there is no time to wait for them. Exports read the recorded
+  // locale, so this waits for the locale write as well as the session write.
+  // A session or locale the host refused to store counts as a refused write.
   const flushSync = async (flushOptions?: { unloading?: boolean }) => {
     const settling = flushOptions?.unloading ? undefined : writesSettled();
     const stored = (await settling) ?? true;
-    await flush(flushOptions);
-    return stored;
+    const [synced, localeStored] = await Promise.all([
+      flush(flushOptions),
+      localeChangesSettled(),
+    ]);
+    return stored && synced && localeStored;
   };
   const tracker = options.tracker ?? NULL_TRACKER;
   const analyticsMiddleware = createAnalyticsListenerMiddleware({
     tracker,
   }).middleware;
-  const redactors = createSecretRedactors(protocolPayload);
+  // The protocol, and so which variables are encrypted, never changes during
+  // an interview.
+  const redaction = createEncryptedValueRedaction(protocolPayload.codebook);
 
   // Object.assign rather than a cast so the store's inferred type (dispatch
   // thunk overloads included) survives alongside the added functions.
@@ -70,27 +94,28 @@ export const store = (
             ignoredActions: ['dialogs/addDialog', 'dialogs/open/pending'],
           },
         }).concat(
-          ...(options.isDevelopment ? [createLoggerMiddleware(redactors)] : []),
+          ...(options.isDevelopment ? [createInterviewLogger(redaction)] : []),
           writesInFlightMiddleware,
           syncMiddleware,
+          localeChangeMiddleware,
           analyticsMiddleware,
           ...(options.extraMiddleware ?? []),
         ),
-      preloadedState: {
-        session: sessionPayload,
-        protocol: protocolPayload,
-      },
-      // Redux Toolkit turns DevTools on unless told otherwise, which would
-      // show a production interview's passphrase to anyone running the
-      // extension.
+      // Anyone with the extension could otherwise read an interview's state
+      // and actions in a production build.
       devTools: options.isDevelopment
         ? {
-            actionSanitizer: redactors.redactAction,
-            stateSanitizer: redactors.redactState,
+            actionSanitizer: redaction.action,
+            stateSanitizer: redaction.state,
           }
         : false,
+      preloadedState: {
+        session: omit(sessionPayload, ['localeOptions']),
+        protocol: protocolPayload,
+      },
     }),
-    { flushSync, writesSettled, trackWrite },
+    // `markFinished` is called once the host has recorded the finish.
+    { flushSync, writesSettled, trackWrite, markFinished },
   );
 };
 

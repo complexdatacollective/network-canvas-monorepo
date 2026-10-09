@@ -36,23 +36,26 @@ vi.mock('nuqs', async (importOriginal) => ({
   ...(await importOriginal<typeof Nuqs>()),
   useQueryState: () => [0, vi.fn()],
 }));
+// The layout also exports its page metadata, which reads the request on the
+// server; none of that runs when the layout renders.
+vi.mock('~/i18n/server', () => ({ getServerIntl: vi.fn() }));
 vi.mock('~/app/(interview)/_components/EndSessionRecording', () => ({
   default: () => null,
 }));
 // This test checks the real Fresco host seam. It does not assert the mocked
-// Shell's runtime behavior: real package negotiation and temporary menu choices
-// require the separate Shell tests and compiled Fresco browser workflow.
+// Shell's runtime behavior: protocol language negotiation belongs to the
+// package's own Shell tests.
 vi.mock('@codaco/interview', () => ({
   Shell: (props: {
-    requestedLocale?: string;
+    requestedLocales: readonly string[];
     payload: InterviewPayload;
-    onLocaleChange?: unknown;
+    onProtocolLocaleChange: unknown;
   }) => {
     shell(props);
     return (
       <div
         data-testid="shell-request"
-        data-requested-locale={props.requestedLocale}
+        data-requested-locales={props.requestedLocales.join(' ')}
       >
         <h2>{props.payload.protocol.name}</h2>
         <pre>{JSON.stringify(props.payload.session.network)}</pre>
@@ -73,6 +76,12 @@ const payload: InterviewPayload = {
       nodes: [],
       edges: [],
     },
+    localePreference: null,
+    locale: null,
+    localeOptions: [
+      { locale: 'en', label: 'English', direction: 'ltr' },
+      { locale: 'fr-CA', label: 'français (Canada)', direction: 'ltr' },
+    ],
   },
   protocol: {
     id: 'locale-host-protocol',
@@ -81,13 +90,14 @@ const payload: InterviewPayload = {
     name: 'Protocol **authored** name',
     schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
     codebook: { ego: { variables: {} }, node: {}, edge: {} },
+    localization: { defaultLocale: 'en', locales: ['en', 'fr-CA'] },
     assets: [],
     stages: [
       {
         id: 'authored',
         type: 'Information',
-        label: 'Original stage label',
-        title: 'Pregunta original',
+        label: { 'en': 'Original stage label', 'fr-CA': 'Étape originale' },
+        title: { 'en': 'Original question', 'fr-CA': 'Question originale' },
         items: [],
       },
     ],
@@ -115,6 +125,9 @@ function ParticipantChrome() {
     <button type="button">{intl.formatMessage(commonMessages.continue)}</button>
   );
 }
+// What the page negotiated from the request's Accept-Language header.
+const serializedRequest = ['fr-CA', 'en'];
+
 function Host({
   initial = spanish,
   messages = es,
@@ -132,8 +145,10 @@ function Host({
           assetUrls={{}}
           initialStep={0}
           initialSyncRevision={0}
+          requestedLocales={serializedRequest}
           installationId="test-installation"
           disableAnalytics
+          view="active"
           catalog={interviewCatalog}
         />
       </ParticipantLayout>
@@ -150,46 +165,48 @@ beforeEach(() => {
   });
 });
 
-describe('Fresco passes its resolved host request to the interview package', () => {
-  it('crosses the participant content boundary and follows account or automatic changes without rewriting the payload', async () => {
+describe('Fresco hands the interview the request’s languages, never its own', () => {
+  it('passes the serialized request through unchanged by the Fresco interface language or the browser', async () => {
     const view = render(<Host />);
     expect(screen.getByTestId('shell-request')).toHaveAttribute(
-      'data-requested-locale',
-      'es',
+      'data-requested-locales',
+      'fr-CA en',
     );
+    // Participant chrome outside the interview follows the Fresco language;
+    // the wrapper declares none of its own.
     expect(
-      screen.getByRole('button', { name: 'Continue' }).closest('[lang]'),
-    ).toHaveAttribute('lang', 'en');
+      screen
+        .getByRole('button', { name: 'Continuar' })
+        .closest('[data-theme-interview]'),
+    ).not.toHaveAttribute('lang');
     expect(shell).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        requestedLocale: 'es',
+        requestedLocales: serializedRequest,
         catalog: interviewCatalog,
         payload,
+        onProtocolLocaleChange: expect.any(Function),
       }),
     );
-    // Omitting this callback keeps a participant menu choice out of the
-    // researcher preference persistence path.
-    expect(shell.mock.lastCall?.[0]).not.toHaveProperty('onLocaleChange');
-    expect(shell.mock.lastCall?.[0]).not.toHaveProperty('localePreference');
-    expect(updateLocale).not.toHaveBeenCalled();
+    const props = shell.mock.lastCall?.[0];
+    expect(props).not.toHaveProperty('requestedLocale');
+    expect(props).not.toHaveProperty('onLocaleChange');
+    expect(props).not.toHaveProperty('localePreference');
+    expect(props).not.toHaveProperty('allowLanguageSelection');
 
     fireEvent.click(
       screen.getByRole('combobox', { name: /^Idioma de la interfaz/ }),
     );
     fireEvent.click(await screen.findByRole('option', { name: /^Automático/ }));
-    expect(screen.getByTestId('shell-request')).toHaveAttribute(
-      'data-requested-locale',
-      'en-GB',
-    );
     await waitFor(() =>
       expect(updateLocale).toHaveBeenCalledWith(null, 'alice'),
+    );
+    expect(screen.getByTestId('shell-request')).toHaveAttribute(
+      'data-requested-locales',
+      'fr-CA en',
     );
     expect(
       screen.getByRole('heading', { name: 'Protocol **authored** name' }),
     ).toBeInTheDocument();
-    expect(shell).toHaveBeenLastCalledWith(
-      expect.objectContaining({ payload }),
-    );
 
     view.rerender(
       <Host
@@ -203,32 +220,32 @@ describe('Fresco passes its resolved host request to the interview package', () 
       />,
     );
     expect(screen.getByTestId('shell-request')).toHaveAttribute(
-      'data-requested-locale',
-      'en',
+      'data-requested-locales',
+      'fr-CA en',
     );
     expect(shell).toHaveBeenLastCalledWith(
-      expect.objectContaining({ requestedLocale: 'en', payload }),
+      expect.objectContaining({ requestedLocales: serializedRequest, payload }),
     );
     expect(updateLocale).toHaveBeenCalledTimes(1);
     expect(payload).toEqual(originalPayload);
   });
 
-  it('hydrates the serialized Spanish request despite a British browser preference', async () => {
+  it('hydrates the serialized request despite different browser languages', async () => {
     const container = document.createElement('div');
     container.innerHTML = renderToString(<Host />);
     document.body.append(container);
-    expect(container.querySelector('[data-requested-locale]')).toHaveAttribute(
-      'data-requested-locale',
-      'es',
+    expect(container.querySelector('[data-requested-locales]')).toHaveAttribute(
+      'data-requested-locales',
+      'fr-CA en',
     );
     const onRecoverableError = vi.fn();
     const root = hydrateRoot(container, <Host />, { onRecoverableError });
     await act(async () => {
       await Promise.resolve();
     });
-    expect(container.querySelector('[data-requested-locale]')).toHaveAttribute(
-      'data-requested-locale',
-      'es',
+    expect(container.querySelector('[data-requested-locales]')).toHaveAttribute(
+      'data-requested-locales',
+      'fr-CA en',
     );
     expect(onRecoverableError).not.toHaveBeenCalled();
     expect(updateLocale).not.toHaveBeenCalled();

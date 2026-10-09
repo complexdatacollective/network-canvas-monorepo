@@ -1,6 +1,5 @@
-import { get, includes, toNumber } from 'es-toolkit/compat';
+import { includes, toNumber } from 'es-toolkit/compat';
 
-import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import {
   type Codebook,
   type StageSubject,
@@ -12,6 +11,23 @@ import {
   entityAttributesProperty,
   type NcNode,
 } from '@codaco/shared-consts';
+
+/**
+ * Attribute and variable keys here are researcher-chosen text, so they are read
+ * as own properties only, and never as lodash paths: a key containing a dot or
+ * a bracket is a key, not a path, and `constructor` or `__proto__` must not
+ * resolve to anything on `Object.prototype`.
+ */
+const getOwn = <T>(
+  record: Readonly<Record<string, T>> | undefined,
+  key: string,
+): T | undefined =>
+  record !== undefined && Object.hasOwn(record, key) ? record[key] : undefined;
+
+const getCodebookVariable = (
+  codebookDefinition: ReturnType<typeof getCodebookDefinition>,
+  variableId: string,
+) => getOwn(codebookDefinition?.variables, variableId);
 
 /**
  * Try to determine the type of an attribute based on data across all nodes
@@ -28,10 +44,7 @@ const deriveAttributeTypeFromData = (
   nodeList: NcNode[],
 ) =>
   nodeList.reduce((previousType, node) => {
-    const currentValue = get(
-      node,
-      `[${entityAttributesProperty}][${attributeKey}]`,
-    ) as FieldValue | null;
+    const currentValue = getOwn(node[entityAttributesProperty], attributeKey);
 
     // if the value is null or undefined, defer to the previous type
     if (!currentValue || previousType === VariableTypes.text) {
@@ -78,7 +91,10 @@ const getAttributeTypes = (
         protocolCodebook,
         stageSubject,
       )!;
-      const codebookType = codebookDefinition.variables?.[attributeKey]?.type;
+      const codebookType = getCodebookVariable(
+        codebookDefinition,
+        attributeKey,
+      )?.type;
 
       if (codebookType && includes(VariableTypes, codebookType)) {
         return {
@@ -91,7 +107,10 @@ const getAttributeTypes = (
       if (attributeKey.includes('_')) {
         const uuid = attributeKey.substring(0, attributeKey.indexOf('_'));
         const option = attributeKey.substring(attributeKey.indexOf('_'));
-        const optionCodebookType = codebookDefinition.variables?.[uuid]?.type;
+        const optionCodebookType = getCodebookVariable(
+          codebookDefinition,
+          uuid,
+        )?.type;
         if (optionCodebookType && includes(VariableTypes, optionCodebookType)) {
           if (option === '_x' || option === '_y') {
             return {
@@ -146,13 +165,37 @@ const getUniqueAttributeKeys = (
     );
     const variables = Object.keys(node[entityAttributesProperty]);
     const nonCodebookVariables = variables.filter(
-      (attributeKey) => !get(codebookDefinition, `variables[${attributeKey}]`),
+      (attributeKey) => !getCodebookVariable(codebookDefinition, attributeKey),
     );
     const novelVariables = nonCodebookVariables.filter(
       (attributeKey) => !attributeKeys.includes(attributeKey),
     );
     return [...attributeKeys, ...novelVariables];
   }, []);
+
+/**
+ * The codebook's own option value for the text found in a `<variable>_<option>`
+ * column header. The header only has the option as text, so reading it back
+ * through JSON.parse would turn an option named `null` or `"x"` into something
+ * else; the codebook knows whether the value is a string, number or boolean.
+ * Compared in NFC so a header spelled decomposed still finds the option.
+ */
+const resolveCategoricalOption = (
+  variable: ReturnType<typeof getCodebookVariable>,
+  optionText: string,
+) => {
+  if (variable?.type !== 'categorical') {
+    return optionText;
+  }
+
+  const target = optionText.normalize('NFC');
+
+  return (
+    variable.options.find(
+      (option) => String(option.value).normalize('NFC') === target,
+    )?.value ?? optionText
+  );
+};
 
 const getNodeListUsingTypes = (
   nodeList: NcNode[],
@@ -177,10 +220,16 @@ const getNodeListUsingTypes = (
           return consolidatedAttributes;
         }
 
-        let codebookType = codebookDefinition?.variables?.[attributeKey]?.type;
+        let codebookType = getCodebookVariable(
+          codebookDefinition,
+          attributeKey,
+        )?.type;
 
         if (!Object.values(VariableTypes).includes(codebookType!)) {
-          codebookType = derivedAttributeTypes[attributeKey] as VariableType;
+          codebookType = getOwn(
+            derivedAttributeTypes,
+            attributeKey,
+          ) as VariableType;
         }
 
         switch (codebookType) {
@@ -244,26 +293,15 @@ const getNodeListUsingTypes = (
             // eslint-disable-next-line @typescript-eslint/no-base-to-string
             if (String(attributeValue).toLowerCase() === 'true') {
               const uuid = attributeKey.substring(0, attributeKey.indexOf('_'));
-              const option = attributeKey.substring(
-                attributeKey.indexOf('_') + 1,
+              const option = resolveCategoricalOption(
+                getCodebookVariable(codebookDefinition, uuid),
+                attributeKey.substring(attributeKey.indexOf('_') + 1),
               );
-              const previousOptions =
-                (consolidatedAttributes[uuid] as (string | number)[]) || [];
-              try {
-                const parsedOption = JSON.parse(option);
-                return {
-                  ...consolidatedAttributes,
-                  [uuid]: [...previousOptions, parsedOption] as (
-                    | string
-                    | number
-                  )[],
-                };
-              } catch {
-                return {
-                  ...consolidatedAttributes,
-                  [uuid]: [...previousOptions, option] as (string | number)[],
-                };
-              }
+              const previous = getOwn(consolidatedAttributes, uuid);
+              return {
+                ...consolidatedAttributes,
+                [uuid]: [...(Array.isArray(previous) ? previous : []), option],
+              };
             }
             return consolidatedAttributes;
           }

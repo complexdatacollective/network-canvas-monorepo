@@ -1,13 +1,25 @@
+import SuperJSON from 'superjson';
 import { describe, expect, it } from 'vitest';
 
+import { createInitialNetwork } from '@codaco/interview/contract';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
+import {
+  networkWithEncryptionHeader,
+  schema8EncryptedNetwork,
+} from '~/lib/__tests__/encryptedNetworks';
 import type { GetInterviewByIdQuery } from '~/queries/interviews';
 
-import { mapInterviewPayload } from '../mapInterviewPayload';
+import {
+  mapInterviewForViewer,
+  mapInterviewPayload,
+} from '../mapInterviewPayload';
 
 type Source = NonNullable<GetInterviewByIdQuery>;
 type StoredProtocol = Partial<
-  Pick<Source['protocol'], 'stages' | 'codebook' | 'experiments'>
+  Pick<
+    Source['protocol'],
+    'stages' | 'codebook' | 'localization' | 'interfaceText' | 'experiments'
+  >
 >;
 
 /**
@@ -36,6 +48,10 @@ function makeSource(
     stageMetadata: null,
     isSynthetic: false,
     syncRevision: 7,
+    localePreference: null,
+    locale: null,
+    finishStageId: null,
+    finishOutcome: null,
     protocol: {
       id: 'protocol-1',
       hash: 'abc123',
@@ -45,6 +61,8 @@ function makeSource(
       importedAt: new Date('2026-01-01T00:00:00.000Z'),
       stages: [],
       codebook: { node: {}, edge: {} },
+      localization: { defaultLocale: 'en', locales: ['en'] },
+      interfaceText: null,
       experiments: {},
       originalFileKey: null,
       originalFileUrl: null,
@@ -82,6 +100,83 @@ describe('mapInterviewPayload', () => {
     );
 
     expect(initialSyncRevision).toBe(7);
+  });
+
+  it('offers every declared locale, with its text direction', () => {
+    const source = makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION);
+    const { payload } = mapReady({
+      ...source,
+      protocol: {
+        ...source.protocol,
+        localization: { defaultLocale: 'fr', locales: ['fr', 'en', 'ar'] },
+      },
+    });
+
+    expect(payload.session.localeOptions).toEqual([
+      expect.objectContaining({ locale: 'fr', direction: 'ltr' }),
+      expect.objectContaining({ locale: 'en', direction: 'ltr' }),
+      expect.objectContaining({ locale: 'ar', direction: 'rtl' }),
+    ]);
+    expect(payload.protocol.localization).toEqual({
+      defaultLocale: 'fr',
+      locales: ['fr', 'en', 'ar'],
+    });
+  });
+
+  it('hands the interview the shared wording the protocol holds', () => {
+    const interfaceText = {
+      validation: { required: { en: 'Please answer this first.' } },
+    };
+    const source = makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION);
+    const { payload } = mapReady({
+      ...source,
+      protocol: { ...source.protocol, interfaceText },
+    });
+
+    expect(payload.protocol.interfaceText).toEqual(interfaceText);
+  });
+
+  it('hands the interview no shared wording for a protocol that holds none', () => {
+    const { payload } = mapReady(
+      makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION),
+    );
+
+    expect(payload.protocol.interfaceText).toBeUndefined();
+  });
+
+  it('carries the stored locale fields into the session', () => {
+    const source = makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION);
+    const { payload } = mapReady({
+      ...source,
+      localePreference: 'fr',
+      locale: 'en',
+    });
+
+    expect(payload.session.localePreference).toBe('fr');
+    expect(payload.session.locale).toBe('en');
+  });
+
+  it('carries a finished interview’s finish stage into the session', () => {
+    const source = makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION);
+    const { payload } = mapReady({
+      ...source,
+      finishTime: new Date('2026-01-03T00:00:00.000Z'),
+      finishStageId: 'finish-ineligible',
+      finishOutcome: 'ineligible',
+    });
+
+    expect(payload.session.finishTime).toBe('2026-01-03T00:00:00.000Z');
+    expect(payload.session.finishStageId).toBe('finish-ineligible');
+  });
+
+  it('leaves the finish stage null for an interview finished before one was recorded', () => {
+    const source = makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION);
+    const { payload } = mapReady({
+      ...source,
+      finishTime: new Date('2026-01-03T00:00:00.000Z'),
+    });
+
+    expect(payload.session.finishStageId).toBeNull();
   });
 
   it('refuses a protocol row stored below the compatible version rather than mislabelling it', () => {
@@ -184,6 +279,24 @@ describe('mapInterviewPayload', () => {
       ['stages', { stages: [{ id: 'stage-1', type: 'NotAnInterface' }] }],
       ['codebook', { codebook: { node: { person: 'not an entity type' } } }],
       ['experiments', { experiments: { notAnExperiment: true } }],
+      // Text written only in French, with a language declaration that does
+      // not parse: no stand-in declaration (English, say) could describe it,
+      // and the interview would fail on the first string it resolved.
+      [
+        'languages',
+        {
+          stages: [
+            {
+              id: 'intro',
+              type: 'Information',
+              label: { fr: 'Introduction' },
+              title: { fr: 'Bienvenue' },
+              items: [],
+            },
+          ],
+          localization: { defaultLocale: 'fr' },
+        },
+      ],
     ])(
       'refuses to start from %s it cannot read, rather than from an empty stand-in',
       (_field, storedProtocol) => {
@@ -209,7 +322,8 @@ describe('mapInterviewPayload', () => {
 
     it('hands the client the protocol it read', () => {
       const codebook = { node: {}, edge: {}, ego: { variables: {} } };
-      const experiments = { encryptedVariables: true };
+      // Schema 9 declares no experiments; the setting is kept, empty.
+      const experiments = {};
 
       const { payload } = mapReady(
         makeSource(
@@ -236,4 +350,248 @@ describe('mapInterviewPayload', () => {
       expect(payload.protocol.experiments).toEqual({});
     });
   });
+
+  it.each([
+    {
+      label: 'the encryption header and IV-only values',
+      stored: networkWithEncryptionHeader,
+    },
+    {
+      label: 'schema 8 values without a header',
+      stored: schema8EncryptedNetwork,
+    },
+  ])('hands the interview a network with $label unchanged', ({ stored }) => {
+    const { payload } = mapReady(
+      makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION, { network: stored }),
+    );
+
+    expect(payload.session.network).toStrictEqual(stored);
+  });
+});
+
+/**
+ * A finished interview holding answers in every place a payload could carry
+ * them: a node, an edge, the ego, and stage metadata. Each value is a marker no
+ * other part of the payload contains, so finding one in a serialised payload
+ * means the answer was sent.
+ */
+function makeFinishedSource(): NonNullable<GetInterviewByIdQuery> {
+  const source = makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION);
+  return {
+    ...source,
+    // Resources whose entries a completed view must not carry either: an API
+    // key's value, and the URL that opens a file.
+    protocol: {
+      ...source.protocol,
+      // The original upload, which the asset route serves without
+      // authentication: no view may carry where it is stored.
+      originalFileKey: 'ORIGINAL_FILE_KEY_SECRET',
+      originalFileUrl:
+        'https://files.example/ORIGINAL_FILE_URL_SECRET.netcanvas',
+      assets: [
+        {
+          key: 'asset-key-1',
+          assetId: 'mapbox',
+          name: 'Mapbox key',
+          type: 'apikey',
+          url: '',
+          size: 0,
+          value: 'APIKEY_SECRET',
+        },
+        {
+          key: 'asset-key-2',
+          assetId: 'roster',
+          name: 'Roster',
+          type: 'network',
+          url: 'https://files.example/ASSET_URL_SECRET.csv',
+          size: 10,
+          value: null,
+        },
+      ],
+    },
+    finishTime: new Date('2026-01-03T00:00:00.000Z'),
+    finishStageId: 'finish-completed',
+    finishOutcome: 'completed',
+    localePreference: 'fr',
+    locale: 'fr',
+    network: {
+      nodes: [
+        {
+          _uid: 'node-answer-1',
+          type: 'person',
+          attributes: { name: 'NODE_ANSWER' },
+        },
+        {
+          _uid: 'node-answer-2',
+          type: 'person',
+          attributes: { name: 'SECOND_NODE_ANSWER' },
+        },
+      ],
+      edges: [
+        {
+          _uid: 'edge-answer',
+          type: 'friend',
+          from: 'node-answer-1',
+          to: 'node-answer-2',
+          attributes: { closeness: 'EDGE_ANSWER' },
+        },
+      ],
+      ego: { _uid: 'ego-1', attributes: { age: 'EGO_ANSWER' } },
+    },
+    stageMetadata: {
+      'dyad-stage': [[0, 'node-answer-1', 'node-answer-2', true]],
+    },
+  };
+}
+
+function viewReady(
+  source: Source,
+  viewer: Parameters<typeof mapInterviewForViewer>[1],
+) {
+  const result = mapInterviewForViewer(source, viewer);
+  if (!result.success) throw new Error('Expected a readable interview');
+  return result;
+}
+
+const ANSWER_MARKERS = [
+  'node-answer-1',
+  'node-answer-2',
+  'NODE_ANSWER',
+  'edge-answer',
+  'EDGE_ANSWER',
+  'EGO_ANSWER',
+  'dyad-stage',
+  'stageMetadata',
+  'APIKEY_SECRET',
+  'ASSET_URL_SECRET',
+  'ORIGINAL_FILE_KEY_SECRET',
+  'ORIGINAL_FILE_URL_SECRET',
+];
+
+const ORIGINAL_FILE_MARKERS = [
+  'ORIGINAL_FILE_KEY_SECRET',
+  'ORIGINAL_FILE_URL_SECRET',
+  'originalFileKey',
+  'originalFileUrl',
+];
+
+describe('mapInterviewForViewer', () => {
+  // The protocol's original upload is never part of an interview, finished or
+  // not, for any viewer: its storage key and URL open the whole .netcanvas
+  // archive without authentication.
+  it.each([
+    { finished: false, researcher: false, freezeCompletedInterviews: true },
+    { finished: false, researcher: true, freezeCompletedInterviews: false },
+    { finished: true, researcher: false, freezeCompletedInterviews: false },
+    { finished: true, researcher: true, freezeCompletedInterviews: true },
+    { finished: true, researcher: true, freezeCompletedInterviews: false },
+  ])(
+    'never sends where the original upload is stored (finished=$finished, researcher=$researcher, freezing=$freezeCompletedInterviews)',
+    ({ finished, ...viewer }) => {
+      const finishedSource = makeFinishedSource();
+      const source = finished
+        ? finishedSource
+        : {
+            ...finishedSource,
+            finishTime: null,
+            finishStageId: null,
+            finishOutcome: null,
+          };
+      const sent = JSON.stringify(
+        SuperJSON.serialize(viewReady(source, viewer)),
+      );
+      for (const marker of ORIGINAL_FILE_MARKERS) {
+        expect(sent).not.toContain(marker);
+      }
+    },
+  );
+
+  it.each([
+    { researcher: false, freezeCompletedInterviews: true },
+    { researcher: false, freezeCompletedInterviews: false },
+    { researcher: true, freezeCompletedInterviews: true },
+  ])(
+    'sends a finished interview with no answers when researcher=$researcher and freezing=$freezeCompletedInterviews',
+    (viewer) => {
+      const result = viewReady(makeFinishedSource(), viewer);
+
+      // Serialised as the page hands it to the browser.
+      const sent = JSON.stringify(SuperJSON.serialize(result));
+      for (const marker of ANSWER_MARKERS) {
+        expect(sent).not.toContain(marker);
+      }
+      // The empty network a new interview starts with, under an ego id of its
+      // own.
+      expect(result.payload.session.network).toStrictEqual({
+        ...createInitialNetwork(),
+        ego: { _uid: expect.any(String), attributes: {} },
+      });
+      expect(result.payload.session.network.ego._uid).not.toBe('ego-1');
+      expect(result.payload.session).not.toHaveProperty('stageMetadata');
+      expect(result.view).toBe('completed');
+      expect(result.payload.protocol.assets).toEqual([]);
+      expect(result.assetUrls).toEqual({});
+      // What the completed view needs is still there.
+      expect(result.payload.session).toMatchObject({
+        finishTime: '2026-01-03T00:00:00.000Z',
+        finishStageId: 'finish-completed',
+        localePreference: 'fr',
+        locale: 'fr',
+      });
+    },
+  );
+
+  it('sends a researcher the whole finished interview to change while freezing is off', () => {
+    const source = makeFinishedSource();
+    const result = viewReady(source, {
+      researcher: true,
+      freezeCompletedInterviews: false,
+    });
+
+    expect(result.view).toBe('editable-finished');
+    expect(result.payload.session.network).toStrictEqual(source.network);
+    // The interview runs, so its resources are there.
+    expect(result.payload.protocol.assets).toHaveLength(2);
+    expect(result.assetUrls).toEqual({
+      roster: 'https://files.example/ASSET_URL_SECRET.csv',
+    });
+    expect(result.payload.session.stageMetadata).toStrictEqual(
+      source.stageMetadata,
+    );
+  });
+
+  it.each([
+    { researcher: false, freezeCompletedInterviews: true },
+    { researcher: false, freezeCompletedInterviews: false },
+    { researcher: true, freezeCompletedInterviews: true },
+    { researcher: true, freezeCompletedInterviews: false },
+  ])(
+    'sends an unfinished interview whole when researcher=$researcher and freezing=$freezeCompletedInterviews',
+    (viewer) => {
+      const source = { ...makeFinishedSource(), finishTime: null };
+      const result = viewReady(source, viewer);
+
+      expect(result.view).toBe('active');
+      expect(result.payload.session.network).toStrictEqual(source.network);
+      expect(result.payload.session.stageMetadata).toStrictEqual(
+        source.stageMetadata,
+      );
+    },
+  );
+
+  it.each([
+    { researcher: false, freezeCompletedInterviews: true },
+    { researcher: true, freezeCompletedInterviews: false },
+  ])(
+    'opens no view of a finished interview whose answers cannot be read when researcher=$researcher and freezing=$freezeCompletedInterviews',
+    (viewer) => {
+      const result = mapInterviewForViewer(
+        { ...makeFinishedSource(), network: { nodes: 'unreadable' } },
+        viewer,
+      );
+
+      expect(result).toMatchObject({ success: false, unreadable: 'session' });
+      expect(result).not.toHaveProperty('payload');
+    },
+  );
 });

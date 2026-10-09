@@ -2,6 +2,11 @@ import { and, eq } from 'drizzle-orm';
 import { Effect, Redacted, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
+import {
+  escapeMessageText,
+  type LocalizationDeclaration,
+  type LocalizedString,
+} from '@codaco/protocol-validation';
 import type { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import type {
@@ -24,10 +29,13 @@ import { requireProtocol } from '../rpc/team-scope.ts';
 import { SecretsCipher } from '../secrets/services.ts';
 import { roleGrantsTeamAdministration } from '../team/roles.ts';
 import { lockActor } from '../team/store.ts';
+import { localizationOf } from './diff.ts';
 import {
   addStage,
   type DraftRevisionConflict,
-  type DraftStructureError,
+  DraftStructureError,
+  loadDoc,
+  lockDraftHead,
   moveStage,
 } from './draft-structure.ts';
 import { PROTOCOL_TABLES } from './schema.ts';
@@ -231,6 +239,20 @@ export const createAuditedProtocol: (
   );
 });
 
+/**
+ * The placeholder a new screen is named with, in the draft's default language
+ * only. It is not a translation: the other declared languages stay missing, so
+ * a participant reading one falls back as for any untranslated text, and the
+ * researcher sees the screen still needs translating.
+ */
+export function untitledScreenText(
+  localization: LocalizationDeclaration,
+): LocalizedString {
+  return {
+    [localization.defaultLocale]: escapeMessageText('Untitled screen'),
+  };
+}
+
 export const addAuditedInformationStage: (
   access: TeamAccess,
   input: { protocolId: string; draftId: string; stageId: string },
@@ -267,13 +289,28 @@ export const addAuditedInformationStage: (
         protocolId: input.protocolId,
         draftId: input.draftId,
       });
+      // The head lock first, so the languages read here are the ones the
+      // stage is committed against.
+      const head = yield* lockDraftHead(access.teamId, input.draftId);
+      const settingsHash = head.sectionHashes[sectionId({ kind: 'settings' })];
+      const localization = localizationOf(
+        settingsHash === undefined
+          ? undefined
+          : yield* loadDoc(access.teamId, settingsHash),
+      );
+      if (localization === undefined) {
+        return yield* new DraftStructureError({
+          reason: `draft ${input.draftId} declares no valid localization`,
+        });
+      }
+      const untitled = untitledScreenText(localization);
       const result = yield* addStage(access.teamId, {
         draftId: input.draftId,
         stage: {
           id: input.stageId,
           type: 'Information',
-          label: 'Untitled screen',
-          title: 'Untitled screen',
+          label: untitled,
+          title: untitled,
           items: [],
         },
       });

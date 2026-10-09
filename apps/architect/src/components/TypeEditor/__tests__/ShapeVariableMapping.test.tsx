@@ -1,5 +1,7 @@
+import { configureStore } from '@reduxjs/toolkit';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { useContext, type ContextType } from 'react';
+import { Provider } from 'react-redux';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
@@ -78,6 +80,17 @@ import ShapeVariableMapping, {
 
 type StoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
 
+const protocolStore = () =>
+  configureStore({
+    reducer: {
+      activeProtocol: (
+        state = {
+          present: { localization: { defaultLocale: 'en', locales: ['en'] } },
+        },
+      ) => state,
+    },
+  });
+
 type ShapeDynamic = {
   variable: string;
   type: string;
@@ -102,14 +115,16 @@ it('formats a threshold value in the active locale without rounding or changing 
     thresholds: [{ value: 12345.678901234, shape: 'square' }],
   } as ShapeMappingDraft;
   render(
-    <ArchitectI18nProvider>
-      <Form onSubmit={() => ({ success: true })}>
-        <ShapeVariableMapping
-          variables={THRESHOLD_VARIABLES}
-          initialMapping={initialMapping}
-        />
-      </Form>
-    </ArchitectI18nProvider>,
+    <Provider store={protocolStore()}>
+      <ArchitectI18nProvider>
+        <Form onSubmit={() => ({ success: true })}>
+          <ShapeVariableMapping
+            variables={THRESHOLD_VARIABLES}
+            initialMapping={initialMapping}
+          />
+        </Form>
+      </ArchitectI18nProvider>
+    </Provider>,
   );
   expect
     .soft(screen.queryByLabelText('Shape at threshold 12,345.678901234'))
@@ -148,13 +163,15 @@ const setup = ({
   };
 
   render(
-    <Form onSubmit={() => ({ success: true })}>
-      <CaptureStore />
-      <ShapeVariableMapping
-        variables={variables}
-        initialMapping={initialMapping}
-      />
-    </Form>,
+    <Provider store={protocolStore()}>
+      <Form onSubmit={() => ({ success: true })}>
+        <CaptureStore />
+        <ShapeVariableMapping
+          variables={variables}
+          initialMapping={initialMapping}
+        />
+      </Form>
+    </Provider>,
   );
 
   const getDynamic = () =>

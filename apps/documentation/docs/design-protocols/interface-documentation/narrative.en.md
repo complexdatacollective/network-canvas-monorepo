@@ -26,7 +26,7 @@ Everything you configure on the Narrative lives in one or more **presets**. A pr
 | **Links** (optional)      | One or more edge types to draw between the nodes.                                                                                                                                                                |
 | **Attributes** (optional) | One or more boolean variables. Nodes whose value is true are highlighted while the preset is active.                                                                                                             |
 
-Each preset has a label that identifies it in the interface. During the interview, a floating preset switcher lets the researcher or participant step between presets and toggle the groups, links, and highlighted attributes on and off. Where a preset lists several highlight attributes, they choose which one to show at a time. Nothing done here is written back to the data — the Narrative only ever reads.
+Each preset has a label that identifies it in the interface. During the interview, a floating preset switcher lets the researcher or participant step between presets and toggle the groups, links, and highlighted attributes on and off. Where a preset lists several highlight attributes, they choose which one to show at a time, from a list that shows the label you gave each attribute. Nothing done here is written back to the data — the Narrative only ever reads.
 
 ![An example Narrative preset, with highlighted nodes, edges between them, and colored group hulls](/assets/img/interface-documentation/narrative/narrative-example.png)
 
@@ -38,7 +38,7 @@ A Narrative needs at least one preset. For each preset you set:
 - **Layout Variable** — the variable used to position the nodes for this preset.
 - **Group Variable** (optional) — a categorical variable used to draw convex hulls around the nodes that share each value.
 - **Display Edges** (optional) — one or more edge types to draw.
-- **Highlight Node Attributes** (optional) — one or more boolean variables; nodes whose value is true are highlighted while the preset is active.
+- **Highlight Node Attributes** (optional) — one or more boolean variables; nodes whose value is true are highlighted while the preset is active. Each variable you choose also needs a label, which participants see in the preset switcher. The label starts as the variable's name, and you can translate it like any other text (see [Translating Your Protocol](/en/design-protocols/translating-your-protocol#labels-for-highlighted-attributes-on-a-narrative-stage)).
 
 The group, edge, and highlight options each pick from the variables already in your codebook, so define the variables a preset needs before you build it.
 
@@ -53,6 +53,18 @@ Three stage-level behaviors change how participants can interact with the canvas
 - **Automatic layout** applies a force-directed layout that gently refines the stored node positions and draws grouped nodes together into their hulls. With it off, the positions from the layout variable are shown as they were laid out.
 - **Allow repositioning** lets the participant drag nodes around the canvas.
 - **Free-draw** turns on annotation tools, so the participant or researcher can draw freehand over the network with a mouse, finger, or stylus.
+
+<AppOnly app="current">
+
+### Words on the canvas
+
+The **Words on the canvas** section of the stage editor holds the headings of the panels and the tooltips of the tools. Network Canvas fills in starting wording for each, in every language it has wording for, and you can change and translate it like any other text (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)). A setting is in the section only while the part of the stage it belongs to is switched on, and it is removed when you switch that part off.
+
+- **Attributes**, **Links** and **Groups** headings, which are there when a preset highlights attributes, shows links or groups nodes.
+- **Drawing tooltips** for enabling and disabling drawing and for freezing, unfreezing and resetting annotations, which are there when **Free-draw** is on.
+- **Layout tooltips** for pausing and resuming the automatic layout, which are there when **Automatic layout** is on.
+
+</AppOnly>
 
 ## Designing presets around your research questions
 

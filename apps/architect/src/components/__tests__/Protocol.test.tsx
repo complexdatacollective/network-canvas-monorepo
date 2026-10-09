@@ -43,7 +43,8 @@ const mockProtocolDescription = 'test description';
 const mockProtocol: CurrentProtocol = {
   name: mockProtocolName,
   description: mockProtocolDescription,
-  schemaVersion: 8,
+  schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
   stages: [],
   codebook: {
     node: {},

@@ -5,13 +5,13 @@
  * 1. SCHEMA support (per interface): whether a stage type can carry a
  *    stage-level `skipLogic` / `filter` at all is a schema question, and it is
  *    NOT uniform — `skipLogic` lives on `baseStageSchema` so every authorable
- *    stage accepts it, but `filter` is declared only by the ten stage schemas
- *    listed below. `stage-config-schema-support.test.ts` builds each interface's
+ *    stage but the finish stage accepts it, but `filter` is declared only by
+ *    the ten stage schemas listed below. `stage-config-schema-support.test.ts` builds each interface's
  *    stage config and re-parses it against the `stageSchema` union with each key
  *    injected, asserting acceptance exactly matches the schema — so every claim
- *    here is proven schema-valid per interface, and a bogus claim (e.g. the
- *    former `FinishSession:skipLogic`, on a non-authorable engine-appended
- *    stage) fails the test.
+ *    here is proven schema-valid per interface, and a bogus claim (e.g. a
+ *    `FinishSession:skipLogic`, which the finish stage schema refuses) fails
+ *    the test.
  * 2. RUNTIME behaviour (shared, type-agnostic): the Shell's skip decision
  *    (`getSkipMap` in src/selectors/skip-logic.ts) reads `stage.skipLogic` by
  *    index and never inspects `stage.type`, and stage `filter` is applied by

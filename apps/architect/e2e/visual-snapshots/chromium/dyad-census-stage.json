@@ -1,15 +1,23 @@
 {
   "id": "id-1",
   "introductionPanel": {
-    "text": "We would like to ask you about the people you know.",
-    "title": "Do They Know Each Other?"
+    "text": {
+      "en": "We would like to ask you about the people you know."
+    },
+    "title": {
+      "en": "Do They Know Each Other?"
+    }
   },
-  "label": "Do They Know Each Other?",
+  "label": {
+    "en": "Do They Know Each Other?"
+  },
   "prompts": [
     {
       "createEdge": "id-2",
       "id": "id-3",
-      "text": "Do they know each other?"
+      "text": {
+        "en": "Do they know each other?"
+      }
     }
   ],
   "subject": {

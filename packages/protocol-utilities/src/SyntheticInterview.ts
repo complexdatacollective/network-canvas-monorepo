@@ -3,11 +3,27 @@ import { invariant } from 'es-toolkit';
 import {
   type ComponentType,
   CURRENT_SCHEMA_VERSION,
-  type Item,
+  defaultFinishSessionFields,
+  DEFAULT_FINISH_SESSION_TEXT,
+  PEDIGREE_DEFAULT_GENDER_IDENTITIES,
+  type PedigreeDefaultGenderIdentityValue,
+  PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT,
+  PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+  escapeMarkdownText,
+  escapeMessageText,
+  type FinishOutcome,
+  type Experiments,
+  type LocalizedString,
+  messageText,
+  missingSuppliedStageText,
+  suppliedStageText,
   type Stage,
   type StageType,
   type StructuralCodebook,
   type VariableType,
+  withInterfaceText,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -65,7 +81,6 @@ import {
 } from './generateNetwork/nodes.ts';
 import type {
   AddCategoricalBinPromptInput,
-  AddDiseaseNominationStepInput,
   AddDyadCensusPromptInput,
   AddEdgeTypeInput,
   AddGeospatialPromptInput,
@@ -79,7 +94,6 @@ import type {
   AddTieStrengthCensusPromptInput,
   AddVariableInput,
   CategoricalBinPromptEntry,
-  DiseaseNominationStepEntry,
   DyadCensusPromptEntry,
   EdgeEntry,
   EdgeTypeEntry,
@@ -87,6 +101,8 @@ import type {
   FormFieldInput,
   GeospatialPromptEntry,
   GetSessionInput,
+  ItemInput,
+  LocalizationInput,
   NameGeneratorPromptEntry,
   NetworkComposerEdgeEntry,
   NetworkComposerFormFieldEntry,
@@ -96,9 +112,11 @@ import type {
   OneToManyDyadCensusPromptEntry,
   OrdinalBinPromptEntry,
   PresetEntry,
+  PromptEntry,
   SkipLogicInput,
   SociogramPromptEntry,
   StageEntry,
+  TextInput,
   TieStrengthCensusPromptEntry,
   VariableEntry,
 } from './types.ts';
@@ -181,15 +199,15 @@ type StageHandleBase = {
 type AddFormFieldOpts = {
   component: ComponentType;
   variable?: string;
-  prompt?: string;
-  hint?: string;
+  prompt?: TextInput;
+  hint?: TextInput;
   showValidationHints?: boolean;
   parameters?: Record<string, unknown>;
   validation?: Record<string, unknown>;
 };
 
 type AddPanelOpts = {
-  title?: string;
+  title?: TextInput;
   dataSource?: string;
   filter?: FilterInput;
 };
@@ -253,8 +271,46 @@ type AlterEdgeFormHandle = StageHandleBase & {
 
 type AnonymisationHandle = StageHandleBase;
 
+/** English labels for the default gender identity options; a synthetic
+ * protocol has no translation to draw on. */
+const DEFAULT_GENDER_IDENTITY_LABELS: Record<
+  PedigreeDefaultGenderIdentityValue,
+  string
+> = {
+  woman: 'Woman',
+  man: 'Man',
+  nonBinary: 'Non-binary',
+  differentIdentity: 'A different identity',
+  unknown: 'Don’t know',
+  preferNotToSay: 'Prefer not to say',
+};
+
 type FamilyPedigreeHandle = StageHandleBase & {
-  addDiseaseNominationStep: (opts?: AddDiseaseNominationStepInput) => void;
+  /** The person node type id (the stage's `subject.type`). */
+  personType: string;
+  /** The family edge type id (`edgeConfiguration.type`). */
+  edgeType: string;
+  /** Person attribute ids, bound by `nodeConfiguration`. */
+  name: string;
+  /** Undefined when the stage was added with `askGenderIdentity: false`. */
+  genderIdentity: string | undefined;
+  sexAssignedAtBirth: string;
+  ego: string;
+  /** Edge attribute ids, bound by `edgeConfiguration`. */
+  kind: string;
+  gestationalCarrier: string;
+  currentPartner: string;
+  /** The relatives-not-recorded attribute id, when the stage has a
+   * completeness requirement. */
+  relativesNotRecorded: string | undefined;
+  /** The relationship-to-participant attribute id, when the stage was added
+   * with `recordRelationshipToParticipant`. */
+  relationshipToParticipant: string | undefined;
+  /** The boolean person attribute id each nomination prompt sets, in the
+   * order the prompts were given. */
+  nominations: string[];
+  /** Appends a researcher-defined person field to the stage's `form`. */
+  addFormField: (opts: AddFormFieldOpts) => void;
 };
 
 type GeospatialHandle = StageHandleBase & {
@@ -262,6 +318,8 @@ type GeospatialHandle = StageHandleBase & {
 };
 
 type NarrativePedigreeHandle = StageHandleBase;
+type LanguageChooserHandle = StageHandleBase;
+type FinishSessionHandle = StageHandleBase;
 type NetworkComposerHandle = StageHandleBase & {
   // Each call appends an entry to the stage's `edges[]`, returning the edge
   // type id so callers can seed edges of that type via `addEdges`.
@@ -287,8 +345,10 @@ type StageHandleMap = {
   Anonymisation: AnonymisationHandle;
   FamilyPedigree: FamilyPedigreeHandle;
   Geospatial: GeospatialHandle;
-  NarrativePedigree: NarrativePedigreeHandle;
   NetworkComposer: NetworkComposerHandle;
+  NarrativePedigree: NarrativePedigreeHandle;
+  LanguageChooser: LanguageChooserHandle;
+  FinishSession: FinishSessionHandle;
 };
 
 // Stage types that have no subject (node/edge)
@@ -297,6 +357,8 @@ const SUBJECTLESS_STAGES = new Set<StageType>([
   'Information',
   'Anonymisation',
   'NarrativePedigree',
+  'LanguageChooser',
+  'FinishSession',
 ]);
 
 // Stage types where the subject is an edge, not a node
@@ -304,6 +366,32 @@ const EDGE_SUBJECT_STAGES = new Set<StageType>(['AlterEdgeForm']);
 
 /** Shared default for deterministic synthetic interview fixtures. */
 export const DEFAULT_SYNTHETIC_SEED = 42;
+
+const DEFAULT_LOCALIZATION: LocalizationInput = {
+  defaultLocale: 'en-US',
+  locales: ['en-US'],
+};
+
+/** Set `value` at `path` inside `config`, copying each group on the way so a
+ * group shared with another stage is never changed. */
+function setAtPath(
+  config: Record<string, unknown>,
+  path: readonly string[],
+  value: unknown,
+): void {
+  let container = config;
+  for (const key of path.slice(0, -1)) {
+    const child = container[key];
+    const copy: Record<string, unknown> =
+      typeof child === 'object' && child !== null
+        ? { ...(child as Record<string, unknown>) }
+        : {};
+    container[key] = copy;
+    container = copy;
+  }
+  const last = path.at(-1);
+  if (last !== undefined) container[last] = value;
+}
 
 export class SyntheticInterview {
   private seed: number;
@@ -319,7 +407,8 @@ export class SyntheticInterview {
   private nodeTypeCounter = 0;
   private edgeTypeCounter = 0;
   private ordinalPromptCounter = 0;
-  private experiments: { encryptedVariables?: boolean } | null = null;
+  private experiments: Experiments | undefined;
+  private localization: LocalizationInput = DEFAULT_LOCALIZATION;
 
   constructor(seed = DEFAULT_SYNTHETIC_SEED) {
     this.seed = seed;
@@ -341,6 +430,7 @@ export class SyntheticInterview {
     const entry: NodeTypeEntry = {
       id,
       name: opts?.name ?? `Person ${this.nodeTypeCounter}`,
+      label: opts?.label,
       color: opts?.color ?? NODE_COLORS[colorIndex]!,
       icon: opts?.icon ?? 'add-a-person',
       shape: opts?.shape ?? { default: 'circle' },
@@ -379,6 +469,7 @@ export class SyntheticInterview {
     const entry: EdgeTypeEntry = {
       id,
       name: opts?.name ?? `Edge ${this.edgeTypeCounter}`,
+      label: opts?.label,
       color: opts?.color ?? EDGE_COLORS[colorIndex]!,
       variables: new Map(),
     };
@@ -419,6 +510,10 @@ export class SyntheticInterview {
       if (opts?.encrypted) {
         existing.encrypted = true;
       }
+      // Likewise validation: redeclaring "name" with a rule must keep the rule.
+      if (opts?.validation) {
+        existing.validation = opts.validation;
+      }
       return { id: existing.id };
     }
 
@@ -428,6 +523,7 @@ export class SyntheticInterview {
     const entry: VariableEntry = {
       id: varId,
       name,
+      label: opts?.label,
       type,
       component: opts?.component,
       options,
@@ -468,6 +564,7 @@ export class SyntheticInterview {
     const entry: VariableEntry = {
       id: varId,
       name,
+      label: opts?.label,
       type,
       component: opts?.component,
       options,
@@ -497,6 +594,7 @@ export class SyntheticInterview {
     const entry: VariableEntry = {
       id: varId,
       name: opts?.name ?? this.defaultVariableName(type),
+      label: opts?.label,
       type,
       component: opts?.component,
       options,
@@ -581,6 +679,7 @@ export class SyntheticInterview {
               }
             : undefined,
       initialEdges: opts?.initialEdges ?? [],
+      ...(opts?.wording && { wording: opts.wording }),
     };
 
     // Handle form fields for NameGenerator (node-based)
@@ -629,6 +728,7 @@ export class SyntheticInterview {
     // NameGeneratorRoster
     if (type === 'NameGeneratorRoster') {
       entry.dataSource = opts?.dataSource ?? 'externalData';
+      entry.panelTitle = opts?.panelTitle ?? 'Available to add';
       if (opts?.cardOptions) {
         entry.cardOptions = {
           additionalProperties: opts.cardOptions.additionalProperties,
@@ -663,76 +763,117 @@ export class SyntheticInterview {
       }
     }
 
-    // FamilyPedigree
+    // FamilyPedigree: the person type is the subject, and the interface owns
+    // one variable per slot on it and on the family edge type.
     if (type === 'FamilyPedigree') {
-      if (opts?.nodeConfig) {
-        entry.nodeConfig = {
-          ...opts.nodeConfig,
-          form: opts.nodeConfig.form ?? [],
+      if (subject?.entity !== 'node') {
+        throw new Error('FamilyPedigree stages require a node subject');
+      }
+      const personType = subject.type;
+      const personVariable = (
+        name: string,
+        varOpts: Omit<AddVariableInput, 'name'>,
+      ) => this.addVariableToNodeType(personType, { name, ...varOpts }).id;
+
+      const genderIdentities =
+        opts?.genderIdentities ??
+        PEDIGREE_DEFAULT_GENDER_IDENTITIES.map(({ value, words }) => ({
+          value,
+          label: DEFAULT_GENDER_IDENTITY_LABELS[value],
+          words,
+        }));
+
+      entry.nodeConfiguration = {
+        nameAttribute: personVariable('name', {
+          type: 'text',
+          ...(opts?.nameValidation ? { validation: opts.nameValidation } : {}),
+        }),
+        ...(opts?.askGenderIdentity === false
+          ? {}
+          : {
+              genderIdentity: {
+                attribute: personVariable('genderIdentity', {
+                  type: 'categorical',
+                  options: genderIdentities.map(({ value, label }) => ({
+                    value,
+                    label,
+                  })),
+                }),
+                terms: genderIdentities.flatMap(({ value, words }) =>
+                  words === undefined ? [] : [{ value, words }],
+                ),
+              },
+            }),
+        sexAssignedAtBirthAttribute: personVariable('sexAssignedAtBirth', {
+          type: 'categorical',
+          options: PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+        }),
+        egoAttribute: personVariable('isEgo', { type: 'boolean' }),
+        ...(opts?.nameField ? { nameField: opts.nameField } : {}),
+        ...(opts?.recordRelationshipToParticipant
+          ? {
+              relationshipToParticipantAttribute: personVariable(
+                'relationshipToParticipant',
+                {
+                  type: 'categorical',
+                  options: PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT.map(
+                    (value) => ({ value, label: value }),
+                  ),
+                },
+              ),
+            }
+          : {}),
+      };
+
+      const edgeTypeId =
+        opts?.relationshipType ?? this.addEdgeType({ name: 'Family' }).id;
+      const edgeVariable = (
+        name: string,
+        varOpts: Omit<AddVariableInput, 'name'>,
+      ) => this.addVariableToEdgeType(edgeTypeId, { name, ...varOpts }).id;
+
+      entry.edgeConfiguration = {
+        type: edgeTypeId,
+        kindAttribute: edgeVariable('kind', {
+          type: 'categorical',
+          options: PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+        }),
+        gestationalCarrierAttribute: edgeVariable('gestationalCarrier', {
+          type: 'boolean',
+        }),
+        currentPartnerAttribute: edgeVariable('currentPartner', {
+          type: 'boolean',
+        }),
+      };
+
+      if (opts?.framing) entry.framing = opts.framing;
+      if (opts?.nominationPrompts) {
+        entry.nominationPrompts = opts.nominationPrompts.map(
+          ({ text, variableName, onlyForSexAssignedAtBirth }, index) => ({
+            id: `nomination-${index + 1}`,
+            text,
+            attribute: personVariable(variableName ?? `condition${index + 1}`, {
+              type: 'boolean',
+            }),
+            ...(onlyForSexAssignedAtBirth && { onlyForSexAssignedAtBirth }),
+          }),
+        );
+      }
+      if (opts?.completeness) {
+        entry.completeness = {
+          ...opts.completeness,
+          relativesNotRecordedAttribute: personVariable(
+            'relativesNotRecorded',
+            {
+              type: 'categorical',
+              options: PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
+            },
+          ),
         };
-      } else if (subject) {
-        const nodeLabelVar = this.nextId('label-var');
-        const egoVar = this.nextId('ego-var');
-        const relToEgoVar = this.nextId('rel-to-ego-var');
-        const bioSexVar = this.nextId('biological-sex-var');
-        entry.nodeConfig = {
-          type: subject.type,
-          nodeLabelVariable: nodeLabelVar,
-          egoVariable: egoVar,
-          relationshipVariable: relToEgoVar,
-          biologicalSexVariable: bioSexVar,
-          form: [],
-        };
       }
 
-      if (opts?.edgeConfig) {
-        const isActiveVar =
-          opts.edgeConfig.isActiveVariable ?? this.nextId('is-active-var');
-        const isGestCarrierVar =
-          opts.edgeConfig.isGestationalCarrierVariable ??
-          this.nextId('is-gest-carrier-var');
-        const gameteRoleVar =
-          opts.edgeConfig.gameteRoleVariable ?? this.nextId('gamete-role-var');
-        entry.edgeConfig = {
-          type: opts.edgeConfig.type,
-          relationshipTypeVariable: opts.edgeConfig.relationshipTypeVariable,
-          isActiveVariable: isActiveVar,
-          isGestationalCarrierVariable: isGestCarrierVar,
-          gameteRoleVariable: gameteRoleVar,
-        };
-      } else {
-        let edgeTypeId: string;
-        if (this.edgeTypes.size > 0) {
-          edgeTypeId = this.edgeTypes.keys().next().value!;
-        } else {
-          edgeTypeId = this.addEdgeType({ name: 'Family' }).id;
-        }
-        entry.edgeConfig = {
-          type: edgeTypeId,
-          relationshipTypeVariable: this.nextId('rel-type-var'),
-          isActiveVariable: this.nextId('is-active-var'),
-          isGestationalCarrierVariable: this.nextId('is-gest-carrier-var'),
-          gameteRoleVariable: this.nextId('gamete-role-var'),
-        };
-      }
-
-      entry.censusPrompt =
-        opts?.censusPrompt ??
-        this.valueGen.generatePromptText('FamilyPedigree');
-
-      entry.nominationPrompts = opts?.nominationPrompts ?? [];
-
-      if (opts?.framing) {
-        entry.framing = opts.framing;
-      }
-
-      if (opts?.boundaries) {
-        entry.boundaries = opts.boundaries;
-      }
-
-      if (opts?.introScreen) {
-        entry.introScreen = opts.introScreen;
-      }
+      entry.prompt =
+        opts?.prompt ?? this.valueGen.generatePromptText('FamilyPedigree');
     }
 
     // Geospatial
@@ -864,12 +1005,12 @@ export class SyntheticInterview {
   }
 
   addInformationStage(opts?: {
-    title?: string;
-    text?: string;
-    label?: string;
+    title?: TextInput;
+    text?: TextInput;
+    label?: TextInput;
     interviewScript?: string;
     skipLogic?: SkipLogicInput;
-    items?: Item[];
+    items?: ItemInput[];
   }): InformationHandle {
     const stageId = this.nextId('stage');
     const title = opts?.title ?? 'Information';
@@ -893,6 +1034,37 @@ export class SyntheticInterview {
       initialEdges: [],
     };
 
+    this.stages.push(entry);
+    return { id: stageId, stageEntry: entry };
+  }
+
+  /**
+   * End the interview with a finish stage carrying this text. A protocol
+   * whose last stage is not a finish stage gets one from `getProtocol`, with
+   * the supplied default text, so most fixtures never need to call this.
+   */
+  addFinishSessionStage(opts?: {
+    title?: TextInput;
+    content?: TextInput;
+    label?: TextInput;
+    outcome?: FinishOutcome;
+    interviewScript?: string;
+  }): FinishSessionHandle {
+    const stageId = this.nextId('stage');
+    const title = opts?.title ?? DEFAULT_FINISH_SESSION_TEXT.en.title;
+    const entry: StageEntry = {
+      id: stageId,
+      type: 'FinishSession',
+      label: opts?.label ?? title,
+      interviewScript: opts?.interviewScript,
+      title,
+      content: opts?.content ?? DEFAULT_FINISH_SESSION_TEXT.en.content,
+      outcome: opts?.outcome ?? 'completed',
+      prompts: [],
+      presets: [],
+      panels: [],
+      initialEdges: [],
+    };
     this.stages.push(entry);
     return { id: stageId, stageEntry: entry };
   }
@@ -1084,19 +1256,48 @@ export class SyntheticInterview {
       case 'Anonymisation':
         return base as StageHandleMap[T];
 
-      case 'FamilyPedigree':
+      case 'FamilyPedigree': {
+        const person = entry.nodeConfiguration;
+        const relationship = entry.edgeConfiguration;
+        invariant(
+          person !== undefined && relationship !== undefined,
+          'FamilyPedigree stage is missing its bound attributes',
+        );
         return {
           ...base,
-          addDiseaseNominationStep: (opts?: AddDiseaseNominationStepInput) => {
-            const step: DiseaseNominationStepEntry = {
-              id: this.nextId('disease-nom'),
-              text: opts?.text ?? 'Which family members have this condition?',
-              variable: opts?.variable ?? this.nextId('disease-var'),
-            };
-            entry.nominationPrompts ??= [];
-            entry.nominationPrompts.push(step);
+          personType: entry.subject!.type,
+          edgeType: relationship.type,
+          name: person.nameAttribute,
+          genderIdentity: person.genderIdentity?.attribute,
+          sexAssignedAtBirth: person.sexAssignedAtBirthAttribute,
+          ego: person.egoAttribute,
+          kind: relationship.kindAttribute,
+          gestationalCarrier: relationship.gestationalCarrierAttribute,
+          currentPartner: relationship.currentPartnerAttribute,
+          relativesNotRecorded:
+            entry.completeness?.relativesNotRecordedAttribute,
+          relationshipToParticipant: person.relationshipToParticipantAttribute,
+          nominations: (entry.nominationPrompts ?? []).map(
+            (prompt) => prompt.attribute,
+          ),
+          addFormField: (opts: AddFormFieldOpts) => {
+            const field = this.resolveFormField(
+              {
+                component: opts.component,
+                variable: opts.variable,
+                prompt: opts.prompt,
+                hint: opts.hint,
+                showValidationHints: opts.showValidationHints,
+                parameters: opts.parameters,
+                validation: opts.validation,
+              },
+              entry.subject!.type,
+            );
+            entry.form ??= { title: 'Add a person', fields: [] };
+            entry.form.fields.push(field);
           },
         } as StageHandleMap[T];
+      }
 
       case 'Geospatial':
         return {
@@ -1108,6 +1309,8 @@ export class SyntheticInterview {
         } as StageHandleMap[T];
 
       case 'NarrativePedigree':
+      case 'LanguageChooser':
+      case 'FinishSession':
         return base as StageHandleMap[T];
       case 'NetworkComposer':
         return {
@@ -1159,6 +1362,18 @@ export class SyntheticInterview {
     return undefined;
   }
 
+  /**
+   * The name a variable auto-created for a field takes from the field's
+   * caption: the caption itself, or its default-locale text when it is a
+   * locale map.
+   */
+  private variableNameFrom(caption: TextInput | undefined): string | undefined {
+    if (caption === undefined || typeof caption === 'string') return caption;
+    const message =
+      caption[this.localization.defaultLocale] ?? Object.values(caption)[0];
+    return message === undefined ? undefined : messageText(message);
+  }
+
   private defaultVariableName(type: VariableType): string {
     const names: Record<string, string> = {
       text: 'textValue',
@@ -1180,7 +1395,7 @@ export class SyntheticInterview {
       // Auto-create variable from component type
       const ref = this.addVariableToNodeType(nodeTypeId, {
         component: input.component,
-        name: input.prompt,
+        name: this.variableNameFrom(input.prompt),
         validation: input.validation,
         parameters: input.parameters,
       });
@@ -1208,7 +1423,7 @@ export class SyntheticInterview {
     if (!variableId) {
       const ref = this.addVariableToEdgeType(edgeTypeId, {
         component: input.component,
-        name: input.prompt,
+        name: this.variableNameFrom(input.prompt),
         validation: input.validation,
         parameters: input.parameters,
       });
@@ -1238,7 +1453,7 @@ export class SyntheticInterview {
     if (!variableId) {
       const ref = this.addVariableToNodeType(nodeTypeId, {
         component: input.component,
-        name: input.label,
+        name: this.variableNameFrom(input.label),
         validation: input.validation,
       });
       variableId = ref.id;
@@ -1249,7 +1464,7 @@ export class SyntheticInterview {
       variable: variableId,
       component: input.component,
       ...(input.parameters ? { parameters: input.parameters } : {}),
-      label: input.label ?? variable?.name ?? 'Field',
+      label: input.label ?? escapeMarkdownText(variable?.name ?? variableId),
       ...(input.hint !== undefined ? { hint: input.hint } : {}),
       ...(input.showValidationHints !== undefined
         ? { showValidationHints: input.showValidationHints }
@@ -1265,7 +1480,7 @@ export class SyntheticInterview {
     if (!variableId) {
       const ref = this.addVariableToEdgeType(edgeTypeId, {
         component: input.component,
-        name: input.label,
+        name: this.variableNameFrom(input.label),
         validation: input.validation,
       });
       variableId = ref.id;
@@ -1276,7 +1491,7 @@ export class SyntheticInterview {
       variable: variableId,
       component: input.component,
       ...(input.parameters ? { parameters: input.parameters } : {}),
-      label: input.label ?? variable?.name ?? 'Field',
+      label: input.label ?? escapeMarkdownText(variable?.name ?? variableId),
       ...(input.hint !== undefined ? { hint: input.hint } : {}),
       ...(input.showValidationHints !== undefined
         ? { showValidationHints: input.showValidationHints }
@@ -1289,7 +1504,7 @@ export class SyntheticInterview {
     if (!variableId) {
       const ref = this.addEgoVariable({
         component: input.component,
-        name: input.prompt,
+        name: this.variableNameFrom(input.prompt),
         validation: input.validation,
         parameters: input.parameters,
       });
@@ -1420,16 +1635,21 @@ export class SyntheticInterview {
     }
 
     // Resolve highlight
-    let highlight: string[] | undefined;
+    let highlightIds: string[] | undefined;
     if (opts?.highlight === true) {
       const ref = this.addVariableToNodeType(nodeTypeId, {
         type: 'boolean',
         name: 'Highlighted',
       });
-      highlight = [ref.id];
+      highlightIds = [ref.id];
     } else if (Array.isArray(opts?.highlight)) {
-      highlight = opts.highlight;
+      highlightIds = opts.highlight;
     }
+    const variables = this.nodeTypes.get(nodeTypeId)?.variables;
+    const highlight = highlightIds?.map((variable) => ({
+      variable,
+      label: variables?.get(variable)?.name ?? variable,
+    }));
 
     // Resolve edges
     let edges: PresetEntry['edges'];
@@ -1648,16 +1868,25 @@ export class SyntheticInterview {
   getProtocol() {
     const codebook = this.buildCodebook();
     const stages = this.stages.map((s) => this.buildStageConfig(s));
+    if (this.stages.at(-1)?.type !== 'FinishSession') {
+      stages.push(this.defaultFinishStage());
+    }
 
-    return {
+    // With the interview's shared words a protocol shows, as Architect writes
+    // them.
+    return withInterfaceText({
       id: `protocol-${this.seed}`,
       schemaVersion: CURRENT_SCHEMA_VERSION,
+      localization: {
+        defaultLocale: this.localization.defaultLocale,
+        locales: [...this.localization.locales],
+      },
       codebook,
       // Stage configs are built dynamically and satisfy the Stage schema
       // at runtime, but TypeScript can't verify this statically.
       stages: stages as Stage[],
       assets: this.assets as unknown[],
-    };
+    });
   }
 
   getNetwork(): NcNetwork {
@@ -1906,7 +2135,9 @@ export class SyntheticInterview {
         importedAt: now,
         isPreview: false,
         isPending: false,
-        experiments: this.experiments,
+        ...(this.experiments === undefined
+          ? {}
+          : { experiments: this.experiments }),
       },
     };
   }
@@ -2056,11 +2287,6 @@ export class SyntheticInterview {
             stage.subject.type,
             field.variable,
           );
-        }
-      }
-      if (stage.type === 'FamilyPedigree' && stage.nodeConfig !== undefined) {
-        for (const field of stage.nodeConfig.form ?? []) {
-          addOrdinaryField('node', stage.nodeConfig.type, field.variable);
         }
       }
     }
@@ -2336,24 +2562,70 @@ export class SyntheticInterview {
     };
   }
 
+  /**
+   * Participant-facing text in protocol form: a plain string becomes the
+   * default locale's ICU literal message, and a locale map is kept as written.
+   */
+  private localized(text: TextInput): LocalizedString {
+    return typeof text === 'string'
+      ? { [this.localization.defaultLocale]: escapeMessageText(text) }
+      : text;
+  }
+
+  /** A message with arguments (see `localizedMessage`): a string is the
+   * default locale's ICU message as written, so its arguments stay
+   * arguments. */
+  private message(text: TextInput): LocalizedString {
+    return typeof text === 'string'
+      ? { [this.localization.defaultLocale]: text }
+      : text;
+  }
+
+  // A scale's end labels are participant copy; every other parameter is
+  // configuration and passes through unchanged.
+  private localizedParameters(
+    parameters: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const result = { ...parameters };
+    for (const key of ['minLabel', 'maxLabel']) {
+      const value = parameters[key];
+      if (typeof value === 'string') result[key] = this.localized(value);
+    }
+    return result;
+  }
+
+  private buildVariable(entry: VariableEntry): Record<string, unknown> {
+    const variable: Record<string, unknown> = {
+      name: entry.name,
+      label: entry.label ?? entry.name,
+      type: entry.type,
+    };
+    if (entry.component) variable.component = entry.component;
+    if (entry.options) {
+      variable.options = entry.options.map((option) => ({
+        ...option,
+        label: this.localized(option.label),
+      }));
+    }
+    if (entry.validation) variable.validation = entry.validation;
+    if (entry.parameters) {
+      variable.parameters = this.localizedParameters(entry.parameters);
+    }
+    return variable;
+  }
+
   private buildCodebook() {
     const node: Record<string, unknown> = {};
     for (const [id, entry] of this.nodeTypes) {
       const variables: Record<string, unknown> = {};
       for (const [varId, varEntry] of entry.variables) {
-        const variable: Record<string, unknown> = {
-          name: varEntry.name,
-          type: varEntry.type,
-        };
-        if (varEntry.component) variable.component = varEntry.component;
-        if (varEntry.options) variable.options = varEntry.options;
-        if (varEntry.validation) variable.validation = varEntry.validation;
-        if (varEntry.parameters) variable.parameters = varEntry.parameters;
+        const variable = this.buildVariable(varEntry);
         if (varEntry.encrypted) variable.encrypted = varEntry.encrypted;
         variables[varId] = variable;
       }
       node[id] = {
         name: entry.name,
+        label: this.localized(entry.label ?? entry.name),
         color: entry.color,
         icon: entry.icon,
         shape: entry.shape,
@@ -2365,21 +2637,14 @@ export class SyntheticInterview {
     for (const [id, entry] of this.edgeTypes) {
       const edgeEntry: Record<string, unknown> = {
         name: entry.name,
+        label: this.localized(entry.label ?? entry.name),
         color: entry.color,
       };
       // Serialize edge type variables if any exist
       if (entry.variables.size > 0) {
         const variables: Record<string, unknown> = {};
         for (const [varId, varEntry] of entry.variables) {
-          const variable: Record<string, unknown> = {
-            name: varEntry.name,
-            type: varEntry.type,
-          };
-          if (varEntry.component) variable.component = varEntry.component;
-          if (varEntry.options) variable.options = varEntry.options;
-          if (varEntry.validation) variable.validation = varEntry.validation;
-          if (varEntry.parameters) variable.parameters = varEntry.parameters;
-          variables[varId] = variable;
+          variables[varId] = this.buildVariable(varEntry);
         }
         edgeEntry.variables = variables;
       }
@@ -2391,15 +2656,7 @@ export class SyntheticInterview {
     if (this.egoVariables.size > 0) {
       const variables: Record<string, unknown> = {};
       for (const [varId, varEntry] of this.egoVariables) {
-        const variable: Record<string, unknown> = {
-          name: varEntry.name,
-          type: varEntry.type,
-        };
-        if (varEntry.component) variable.component = varEntry.component;
-        if (varEntry.options) variable.options = varEntry.options;
-        if (varEntry.validation) variable.validation = varEntry.validation;
-        if (varEntry.parameters) variable.parameters = varEntry.parameters;
-        variables[varId] = variable;
+        variables[varId] = this.buildVariable(varEntry);
       }
       ego = { variables };
     }
@@ -2407,11 +2664,94 @@ export class SyntheticInterview {
     return { node, edge, ego };
   }
 
+  private buildPrompt(prompt: PromptEntry): Record<string, unknown> {
+    const built: Record<string, unknown> = {
+      ...prompt,
+      text: this.localized(prompt.text),
+    };
+    if ('otherVariablePrompt' in prompt && prompt.otherVariablePrompt) {
+      built.otherVariablePrompt = this.localized(prompt.otherVariablePrompt);
+    }
+    if ('otherOptionLabel' in prompt && prompt.otherOptionLabel) {
+      built.otherOptionLabel = this.localized(prompt.otherOptionLabel);
+    }
+    if ('negativeLabel' in prompt) {
+      built.negativeLabel = this.localized(prompt.negativeLabel);
+    }
+    return built;
+  }
+
+  private buildItem(item: ItemInput): Record<string, unknown> {
+    if (item.type === 'text') {
+      return { ...item, content: this.localized(item.content) };
+    }
+    return item.description === undefined
+      ? item
+      : { ...item, description: this.localized(item.description) };
+  }
+
+  private buildComposerField(
+    field: NetworkComposerFormFieldEntry,
+  ): Record<string, unknown> {
+    return {
+      ...field,
+      ...(field.parameters
+        ? { parameters: this.localizedParameters(field.parameters) }
+        : {}),
+      label: this.localized(field.label),
+      ...(field.hint !== undefined ? { hint: this.localized(field.hint) } : {}),
+    };
+  }
+
+  /**
+   * The finish stage a protocol built without one ends at: the supplied text
+   * in each of the protocol's languages that has it, and English text under
+   * the default language when that language has none, so the fixture stays
+   * valid whatever languages it declares.
+   */
+  private defaultFinishStage(): Record<string, unknown> {
+    const taken = new Set(this.stages.map((stage) => stage.id));
+    let id = 'finish';
+    for (let suffix = 2; taken.has(id); suffix += 1) id = `finish-${suffix}`;
+    const fields = defaultFinishSessionFields(this.localization.locales);
+    const { defaultLocale } = this.localization;
+    for (const field of ['label', 'title', 'content'] as const) {
+      if (fields[field][defaultLocale] === undefined) {
+        fields[field] = {
+          ...fields[field],
+          [defaultLocale]: DEFAULT_FINISH_SESSION_TEXT.en[field],
+        };
+      }
+    }
+    return this.withSuppliedText(
+      { id, type: 'FinishSession', ...fields, outcome: 'completed' },
+      'FinishSession',
+    );
+  }
+
+  /**
+   * `config` with the stage's own wording it lacks, as Architect writes it
+   * into a new stage and a new completeness requirement: what Network Canvas
+   * supplies in the protocol's languages.
+   */
+  private withSuppliedText(
+    config: Record<string, unknown>,
+    type: string,
+  ): Record<string, unknown> {
+    for (const { path, value } of missingSuppliedStageText(
+      { ...config, type },
+      this.localization,
+    )) {
+      setAtPath(config, path, value);
+    }
+    return config;
+  }
+
   private buildStageConfig(stage: StageEntry): unknown {
     const config: Record<string, unknown> = {
       id: stage.id,
       type: stage.type,
-      label: stage.label,
+      label: this.localized(stage.label),
     };
 
     if (stage.interviewScript !== undefined) {
@@ -2426,33 +2766,49 @@ export class SyntheticInterview {
       config.filter = stage.filter;
     }
 
-    // FamilyPedigree references its entity types via nodeConfig/edgeConfig;
-    // its strict schema rejects a stage-level subject.
-    if (stage.subject && stage.type !== 'FamilyPedigree') {
+    if (stage.subject) {
       config.subject = stage.subject;
     }
 
     if (stage.form) {
-      // TitlelessFormSchema: AlterForm/AlterEdgeForm/EgoForm forms must not
+      const fields = stage.form.fields.map((field) => ({
+        ...field,
+        prompt: this.localized(field.prompt),
+        ...(field.hint !== undefined
+          ? { hint: this.localized(field.hint) }
+          : {}),
+      }));
+      // TitlelessFormSchema: AlterForm/AlterEdgeForm/EgoForm/FamilyPedigree forms must not
       // carry a title; every other form stage keeps it.
       config.form =
         stage.type === 'AlterForm' ||
         stage.type === 'AlterEdgeForm' ||
-        stage.type === 'EgoForm'
-          ? { fields: stage.form.fields }
-          : stage.form;
+        stage.type === 'EgoForm' ||
+        stage.type === 'FamilyPedigree'
+          ? { fields }
+          : { title: this.localized(stage.form.title), fields };
     }
 
     if (stage.prompts.length > 0) {
-      config.prompts = stage.prompts;
+      config.prompts = stage.prompts.map((prompt) => this.buildPrompt(prompt));
     }
 
     if (stage.presets.length > 0) {
-      config.presets = stage.presets;
+      config.presets = stage.presets.map((preset) => ({
+        ...preset,
+        label: this.localized(preset.label),
+        highlight: preset.highlight?.map((highlight) => ({
+          ...highlight,
+          label: this.localized(highlight.label),
+        })),
+      }));
     }
 
     if (stage.panels.length > 0) {
-      config.panels = stage.panels;
+      config.panels = stage.panels.map((panel) => ({
+        ...panel,
+        title: this.localized(panel.title),
+      }));
     }
 
     if (stage.background) {
@@ -2464,15 +2820,26 @@ export class SyntheticInterview {
     }
 
     if (stage.introductionPanel) {
-      config.introductionPanel = stage.introductionPanel;
+      config.introductionPanel = {
+        title: this.localized(stage.introductionPanel.title),
+        text: this.localized(stage.introductionPanel.text),
+      };
+    }
+
+    if (stage.content !== undefined) {
+      config.content = this.localized(stage.content);
+    }
+
+    if (stage.outcome !== undefined) {
+      config.outcome = stage.outcome;
     }
 
     if (stage.title !== undefined) {
-      config.title = stage.title;
+      config.title = this.localized(stage.title);
     }
 
     if (stage.items) {
-      config.items = stage.items;
+      config.items = stage.items.map((item) => this.buildItem(item));
     }
 
     // NameGeneratorQuickAdd
@@ -2484,11 +2851,30 @@ export class SyntheticInterview {
     if (stage.dataSource) {
       config.dataSource = stage.dataSource;
     }
+    if (stage.panelTitle !== undefined) {
+      config.panelTitle = this.localized(stage.panelTitle);
+    }
     if (stage.cardOptions) {
-      config.cardOptions = stage.cardOptions;
+      const properties = stage.cardOptions.additionalProperties;
+      config.cardOptions = properties
+        ? {
+            additionalProperties: properties.map((property) => ({
+              ...property,
+              label: this.localized(property.label),
+            })),
+          }
+        : {};
     }
     if (stage.sortOptions) {
-      config.sortOptions = stage.sortOptions;
+      config.sortOptions = {
+        sortOrder: stage.sortOptions.sortOrder,
+        sortableProperties: stage.sortOptions.sortableProperties.map(
+          (property) => ({
+            ...property,
+            label: this.localized(property.label),
+          }),
+        ),
+      };
     }
     if (stage.searchOptions) {
       config.searchOptions = stage.searchOptions;
@@ -2496,7 +2882,10 @@ export class SyntheticInterview {
 
     // Anonymisation
     if (stage.explanationText) {
-      config.explanationText = stage.explanationText;
+      config.explanationText = {
+        title: this.localized(stage.explanationText.title),
+        body: this.localized(stage.explanationText.body),
+      };
     }
     if (stage.validation) {
       config.validation = stage.validation;
@@ -2504,14 +2893,53 @@ export class SyntheticInterview {
 
     // FamilyPedigree
     if (stage.type === 'FamilyPedigree') {
-      if (stage.nodeConfig) config.nodeConfig = stage.nodeConfig;
-      if (stage.edgeConfig) config.edgeConfig = stage.edgeConfig;
-      if (stage.censusPrompt) config.censusPrompt = stage.censusPrompt;
-      if (stage.nominationPrompts?.length)
-        config.nominationPrompts = stage.nominationPrompts;
+      if (stage.prompt !== undefined) {
+        config.prompt = this.localized(stage.prompt);
+      }
+      if (stage.nodeConfiguration) {
+        const { nameField, ...attributes } = stage.nodeConfiguration;
+        config.nodeConfiguration = {
+          ...attributes,
+          ...(nameField && {
+            nameField: {
+              prompt: this.localized(nameField.prompt),
+              ...(nameField.hint !== undefined && {
+                hint: this.localized(nameField.hint),
+              }),
+            },
+          }),
+        };
+      }
+      config.edgeConfiguration = stage.edgeConfiguration;
+      if (stage.completeness) {
+        const { itemText, recommendedNote, ...requirement } =
+          stage.completeness;
+        config.completeness = {
+          ...requirement,
+          ...(itemText && {
+            itemText: Object.fromEntries(
+              Object.entries(itemText).map(([kind, wording]) => [
+                kind,
+                Object.fromEntries(
+                  Object.entries(wording ?? {}).flatMap(([key, text]) =>
+                    text === undefined ? [] : [[key, this.message(text)]],
+                  ),
+                ),
+              ]),
+            ),
+          }),
+          ...(recommendedNote !== undefined && {
+            recommendedNote: this.localized(recommendedNote),
+          }),
+        };
+      }
       if (stage.framing) config.framing = stage.framing;
-      if (stage.boundaries) config.boundaries = stage.boundaries;
-      if (stage.introScreen) config.introScreen = stage.introScreen;
+      if (stage.nominationPrompts) {
+        config.nominationPrompts = stage.nominationPrompts.map((prompt) => ({
+          ...prompt,
+          text: this.localized(prompt.text),
+        }));
+      }
     }
 
     // Geospatial
@@ -2525,9 +2953,9 @@ export class SyntheticInterview {
         config.sourceStageId = stage.narrativePedigreeSourceStageId;
       }
       if (stage.narrativePedigreeDiseases) {
-        config.diseases = stage.narrativePedigreeDiseases.map((d) => ({
-          ...d,
-          variable: d.variable,
+        config.diseases = stage.narrativePedigreeDiseases.map((disease) => ({
+          ...disease,
+          label: this.localized(disease.label),
         }));
       }
       config.showAtRiskStatuses =
@@ -2537,15 +2965,51 @@ export class SyntheticInterview {
     // NetworkComposer (quickAdd is serialized by the shared block above)
     if (stage.type === 'NetworkComposer') {
       if (stage.layoutVariable) config.layoutVariable = stage.layoutVariable;
-      if (stage.nodeForm) config.nodeForm = stage.nodeForm;
+      if (stage.nodeForm) {
+        config.nodeForm = {
+          fields: stage.nodeForm.fields.map((field) =>
+            this.buildComposerField(field),
+          ),
+        };
+      }
       if (stage.convexHullVariable)
         config.convexHullVariable = stage.convexHullVariable;
       if (stage.networkComposerEdges) {
-        config.edges = stage.networkComposerEdges;
+        config.edges = stage.networkComposerEdges.map((edge) => ({
+          ...edge,
+          ...(edge.form
+            ? {
+                form: {
+                  fields: edge.form.fields.map((field) =>
+                    this.buildComposerField(field),
+                  ),
+                },
+              }
+            : {}),
+        }));
       }
     }
 
-    return config;
+    // The researcher's own wording, before Network Canvas's fills what is
+    // left. A dotted name (`tooltips.addPerson`) is a setting inside a group,
+    // and a name the stage keeps in its `wording` group (as the Family
+    // Pedigree keeps `wording.panelTitle`) may leave the group out.
+    const supplied = new Set(
+      suppliedStageText(stage.type, this.localization).map(({ path }) =>
+        path.join('.'),
+      ),
+    );
+    for (const [setting, text] of Object.entries(stage.wording ?? {})) {
+      const inWording =
+        !supplied.has(setting) && supplied.has(`wording.${setting}`);
+      setAtPath(
+        config,
+        [...(inWording ? ['wording'] : []), ...setting.split('.')],
+        this.localized(text),
+      );
+    }
+
+    return this.withSuppliedText(config, stage.type);
   }
 
   // --- Node/edge manipulation after creation ---
@@ -2692,9 +3156,18 @@ export class SyntheticInterview {
   }
 
   /**
+   * Set the protocol's languages, emitted by getProtocol(). Plain-string text
+   * is written in `defaultLocale` whenever the protocol is built, so this may
+   * be called before or after the stages are added.
+   */
+  setLocalization(localization: LocalizationInput): void {
+    this.localization = localization;
+  }
+
+  /**
    * Set protocol-level experiments, emitted by getInterviewPayload().
    */
-  setExperiments(experiments: { encryptedVariables?: boolean }): void {
+  setExperiments(experiments: Experiments): void {
     this.experiments = experiments;
   }
 

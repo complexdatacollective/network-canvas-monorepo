@@ -97,7 +97,7 @@ describe('the narrative stage editor', () => {
 
     const saved = await harness.submit();
     expect(saved?.stageDocument).toMatchObject({
-      label: 'Story',
+      label: { 'en-US': 'Story' },
       subject: { entity: 'node', type: 'person' },
       background: { concentricCircles: 4 },
     });
@@ -116,7 +116,7 @@ describe('the narrative stage editor', () => {
    */
   it('offers automatic layout as a switch in the behaviours section', async () => {
     const harness = openFixture();
-    await waitFor(() => expect(harness.outline()).toHaveLength(7));
+    await waitFor(() => expect(harness.outline()).toHaveLength(8));
 
     expect(
       screen.queryByRole('listbox', { name: 'Layout mode' }),
@@ -167,11 +167,15 @@ describe('the narrative stage editor', () => {
       stage: {
         type: 'Narrative',
         fields: {
-          label: 'Story',
+          label: { 'en-US': 'Story' },
           subject: { entity: 'node', type: 'person' },
           behaviours: { automaticLayout: true },
           presets: [
-            { id: 'preset-1', label: 'Default', layoutVariable: 'layout' },
+            {
+              id: 'preset-1',
+              label: { 'en-US': 'Default' },
+              layoutVariable: 'layout',
+            },
           ],
         },
       },

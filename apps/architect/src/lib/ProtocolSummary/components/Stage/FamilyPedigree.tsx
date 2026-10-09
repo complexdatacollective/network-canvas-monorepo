@@ -1,0 +1,754 @@
+import { type ReactNode, useContext } from 'react';
+
+import {
+  defineMessages,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
+import { UnorderedList } from '@codaco/fresco-ui/typography/UnorderedList';
+import { PARTICIPANT_WORDING_GROUPS } from '@codaco/protocol-builder/editors/family-pedigree/participantWordingSettings';
+import { familyPedigreeMessages as builderMessages } from '@codaco/protocol-builder/editors/family-pedigree/pedigreeMessages';
+import type {
+  FramingSetting,
+  LocalizedString,
+  MessageArguments,
+  PedigreeCompletenessScope,
+  PedigreeGenderWords,
+} from '@codaco/protocol-validation';
+import { PEDIGREE_PERSON_ARGUMENTS } from '@codaco/protocol-validation';
+import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
+
+import EntityBadge from '../EntityBadge';
+import MiniTable from '../MiniTable';
+import SummaryContext from '../SummaryContext';
+import {
+  SummaryMarkdown,
+  SummaryMessage,
+  SummaryText,
+  useDefaultLanguageText,
+} from '../SummaryText';
+import Variable from '../Variable';
+import SectionFrame from './SectionFrame';
+
+const messages = defineMessages({
+  title: {
+    id: 'architect.protocolSummary.stage.familyPedigree.title',
+    defaultMessage: 'Family Pedigree',
+    description:
+      'Heading of the printable protocol summary section describing how a Family Pedigree stage records each family member and each relationship.',
+  },
+  name: {
+    id: 'architect.protocolSummary.stage.familyPedigree.name',
+    defaultMessage: 'Name',
+    description:
+      'Label for the text attribute that holds each family member’s name, in the printable protocol summary.',
+  },
+  nameQuestion: {
+    id: 'architect.protocolSummary.stage.familyPedigree.nameQuestion',
+    defaultMessage: 'Name question',
+    description:
+      'Label for the question asking each family member’s name, as participants read it, in the printable protocol summary.',
+  },
+  nameQuestionHint: {
+    id: 'architect.protocolSummary.stage.familyPedigree.nameQuestionHint',
+    defaultMessage: 'Name question guidance',
+    description:
+      'Label for the guidance shown beneath the question asking each family member’s name, in the printable protocol summary.',
+  },
+  trackerParents: {
+    id: 'architect.protocolSummary.stage.familyPedigree.trackerParents',
+    defaultMessage: 'List item: missing parents',
+    description:
+      'Label, in the printable protocol summary, for the words of the entry in the Family Pedigree’s list of what is still needed that asks for a person’s missing parents.',
+  },
+  trackerSiblings: {
+    id: 'architect.protocolSummary.stage.familyPedigree.trackerSiblings',
+    defaultMessage: 'List item: brothers and sisters',
+    description:
+      'Label, in the printable protocol summary, for the words of the entry in the Family Pedigree’s list of what is still needed that asks for a person’s brothers and sisters.',
+  },
+  trackerNoSiblings: {
+    id: 'architect.protocolSummary.stage.familyPedigree.trackerNoSiblings',
+    defaultMessage: 'Button: no brothers or sisters',
+    description:
+      'Label, in the printable protocol summary, for the words of the button that answers that a person has no brothers or sisters.',
+  },
+  trackerSiblingsQuestion: {
+    id: 'architect.protocolSummary.stage.familyPedigree.trackerSiblingsQuestion',
+    defaultMessage: 'Question about brothers and sisters',
+    description:
+      'Label, in the printable protocol summary, for the side panel’s question asking about a person’s brothers and sisters.',
+  },
+  trackerChildren: {
+    id: 'architect.protocolSummary.stage.familyPedigree.trackerChildren',
+    defaultMessage: 'List item: children',
+    description:
+      'Label, in the printable protocol summary, for the words of the entry in the Family Pedigree’s list of what is still needed that asks for a person’s children.',
+  },
+  trackerNoChildren: {
+    id: 'architect.protocolSummary.stage.familyPedigree.trackerNoChildren',
+    defaultMessage: 'Button: no children',
+    description:
+      'Label, in the printable protocol summary, for the words of the button that answers that a person has no children.',
+  },
+  trackerChildrenQuestion: {
+    id: 'architect.protocolSummary.stage.familyPedigree.trackerChildrenQuestion',
+    defaultMessage: 'Question about children',
+    description:
+      'Label, in the printable protocol summary, for the side panel’s question asking about a person’s children.',
+  },
+  trackerDetails: {
+    id: 'architect.protocolSummary.stage.familyPedigree.trackerDetails',
+    defaultMessage: 'List item: missing details',
+    description:
+      'Label, in the printable protocol summary, for the words of the entry in the Family Pedigree’s list of what is still needed that asks for details still missing about a person.',
+  },
+  trackerRecommendedNote: {
+    id: 'architect.protocolSummary.stage.familyPedigree.trackerRecommendedNote',
+    defaultMessage: 'Note under the list',
+    description:
+      'Label, in the printable protocol summary, for the note shown under the Family Pedigree’s list of what is still needed when participants may continue without completing it.',
+  },
+  genderIdentity: {
+    id: 'architect.protocolSummary.stage.familyPedigree.genderIdentity',
+    defaultMessage: 'Gender identity',
+    description:
+      'Label for the attribute that holds each family member’s gender identity, in the printable protocol summary.',
+  },
+  genderIdentityNotAsked: {
+    id: 'architect.protocolSummary.stage.familyPedigree.genderIdentityNotAsked',
+    defaultMessage:
+      'Not asked. Words such as mother or brother follow sex assigned at birth.',
+    description:
+      'Value shown beside the gender identity label in the printable protocol summary when the Family Pedigree stage does not ask about gender identity, saying what the kinship words (mother, brother, parent) follow instead.',
+  },
+  genderIdentityTerms: {
+    id: 'architect.protocolSummary.stage.familyPedigree.genderIdentityTerms',
+    defaultMessage: 'Gender identity words',
+    description:
+      'Label for the list saying which kinship words each gender identity option takes, in the printable protocol summary.',
+  },
+  genderIdentityTerm: {
+    id: 'architect.protocolSummary.stage.familyPedigree.genderIdentityTerm',
+    defaultMessage: '{option}: {words}',
+    description:
+      'One line of the printable protocol summary’s list of gender identity words. option is a gender identity option’s own label, as the researcher wrote it, and words is the name of the kinship words it takes.',
+  },
+  genderWordsFeminine: {
+    id: 'architect.protocolSummary.stage.familyPedigree.genderWordsFeminine',
+    defaultMessage: 'Feminine words (mother, sister)',
+    description:
+      'Printable protocol summary name of the kinship words used for women, with examples.',
+  },
+  genderWordsMasculine: {
+    id: 'architect.protocolSummary.stage.familyPedigree.genderWordsMasculine',
+    defaultMessage: 'Masculine words (father, brother)',
+    description:
+      'Printable protocol summary name of the kinship words used for men, with examples.',
+  },
+  genderWordsNeutral: {
+    id: 'architect.protocolSummary.stage.familyPedigree.genderWordsNeutral',
+    defaultMessage: 'Neutral words (parent, sibling)',
+    description:
+      'Printable protocol summary name of the kinship words that do not depend on gender, with examples.',
+  },
+  genderWordsUnknown: {
+    id: 'architect.protocolSummary.stage.familyPedigree.genderWordsUnknown',
+    defaultMessage:
+      'Not known (neutral words; biological mother or father for a biological parent)',
+    description:
+      'Printable protocol summary name of the kinship words for an option meaning the person’s gender is not known. Every relative gets neutral words, such as parent or sibling, except a biological parent whose sex assigned at birth is known, who is called biological mother or biological father.',
+  },
+  sexAssignedAtBirth: {
+    id: 'architect.protocolSummary.stage.familyPedigree.sexAssignedAtBirth',
+    defaultMessage: 'Sex assigned at birth',
+    description:
+      'Label for the attribute that holds each family member’s sex assigned at birth, in the printable protocol summary.',
+  },
+  participantMarker: {
+    id: 'architect.protocolSummary.stage.familyPedigree.participantMarker',
+    defaultMessage: 'Participant marker',
+    description:
+      'Label for the boolean attribute that marks which family member is the participant, in the printable protocol summary.',
+  },
+  relationshipToParticipant: {
+    id: 'architect.protocolSummary.stage.familyPedigree.relationshipToParticipant',
+    defaultMessage: 'Relationship to the participant',
+    description:
+      'Label for the categorical attribute in which the interview records each family member’s relationship to the participant (parent, sibling, cousin and so on), in the printable protocol summary.',
+  },
+  relationshipEdgeType: {
+    id: 'architect.protocolSummary.stage.familyPedigree.relationshipEdgeType',
+    defaultMessage: 'Relationship edge type',
+    description:
+      'Label for the kind of connection family relationships are recorded as, in the printable protocol summary.',
+  },
+  relationshipKind: {
+    id: 'architect.protocolSummary.stage.familyPedigree.relationshipKind',
+    defaultMessage: 'Relationship kind',
+    description:
+      'Label for the attribute recording whether a relationship is a partnership or a kind of parenthood, in the printable protocol summary.',
+  },
+  gestationalCarrier: {
+    id: 'architect.protocolSummary.stage.familyPedigree.gestationalCarrier',
+    defaultMessage: 'Gestational carrier',
+    description:
+      'Label for the boolean attribute marking the parent who carried a pregnancy, in the printable protocol summary.',
+  },
+  currentPartner: {
+    id: 'architect.protocolSummary.stage.familyPedigree.currentPartner',
+    defaultMessage: 'Current partner',
+    description:
+      'Label for the boolean attribute marking a partnership as current, in the printable protocol summary.',
+  },
+  completenessScope: {
+    id: 'architect.protocolSummary.stage.familyPedigree.completenessScope',
+    defaultMessage: 'Relatives to record',
+    description:
+      'Label for how much of the family a participant must record before continuing, in the printable protocol summary.',
+  },
+  completenessEnforcement: {
+    id: 'architect.protocolSummary.stage.familyPedigree.completenessEnforcement',
+    defaultMessage: 'When the family is incomplete',
+    description:
+      'Label for whether a participant may continue while the required relatives are not all recorded, in the printable protocol summary.',
+  },
+  completenessEnforcementRequired: {
+    id: 'architect.protocolSummary.stage.familyPedigree.completenessEnforcementRequired',
+    defaultMessage:
+      'Participants cannot continue until the required relatives and details are recorded.',
+    description:
+      'Printable protocol summary text for a completeness requirement that stops the participant continuing until the required relatives, and the required details about each person, are recorded.',
+  },
+  completenessEnforcementRecommended: {
+    id: 'architect.protocolSummary.stage.familyPedigree.completenessEnforcementRecommended',
+    defaultMessage: 'Participants are shown what is missing but may continue.',
+    description:
+      'Printable protocol summary text for a completeness requirement that shows the participant what is missing but lets them continue.',
+  },
+  relativesNotRecorded: {
+    id: 'architect.protocolSummary.stage.familyPedigree.relativesNotRecorded',
+    defaultMessage: 'Relatives not recorded',
+    description:
+      'Label for the attribute recording that a family member has no siblings or children, or that the participant does not know, in the printable protocol summary.',
+  },
+  framing: {
+    id: 'architect.protocolSummary.stage.familyPedigree.framing',
+    defaultMessage: 'Words for family members',
+    description:
+      'Label for the setting choosing the words used to describe family members, in the printable protocol summary.',
+  },
+  framingGendered: {
+    id: 'architect.protocolSummary.stage.familyPedigree.framingGendered',
+    defaultMessage: 'Everyday kinship words (mother, father, sister, brother)',
+    description:
+      'Printable protocol summary text for the wording setting that uses the usual kinship words. It is what the stage uses when no wording is chosen.',
+  },
+  framingGamete: {
+    id: 'architect.protocolSummary.stage.familyPedigree.framingGamete',
+    defaultMessage: 'Egg parent and sperm parent',
+    description:
+      'Printable protocol summary text for the wording setting that describes biological parents by the egg or sperm they gave, without gendered words.',
+  },
+  framingParticipantPreference: {
+    id: 'architect.protocolSummary.stage.familyPedigree.framingParticipantPreference',
+    defaultMessage: 'The participant chooses between the two',
+    description:
+      'Printable protocol summary text for the wording setting that lets the participant choose between everyday kinship words and egg parent and sperm parent words.',
+  },
+  nominationPrompts: {
+    id: 'architect.protocolSummary.stage.familyPedigree.nominationPrompts',
+    defaultMessage: 'Nomination prompts',
+    description:
+      'Heading of the list, in the printable protocol summary, of the questions a Family Pedigree asks about the whole family once it is drawn.',
+  },
+  nominationLimit: {
+    id: 'architect.protocolSummary.stage.familyPedigree.nominationLimit',
+    defaultMessage: 'Who can be selected',
+    description:
+      'Label, in the printable protocol summary, for the limit a nomination prompt places on who can be selected by sex assigned at birth.',
+  },
+  nominationLimitFemale: {
+    id: 'architect.protocolSummary.stage.familyPedigree.nominationLimitFemale',
+    defaultMessage: 'Anyone except people assigned male at birth',
+    description:
+      'Printable protocol summary text for a nomination prompt that leaves out only the people whose sex assigned at birth is male. Everyone else can still be selected.',
+  },
+  nominationLimitMale: {
+    id: 'architect.protocolSummary.stage.familyPedigree.nominationLimitMale',
+    defaultMessage: 'Anyone except people assigned female at birth',
+    description:
+      'Printable protocol summary text for a nomination prompt that leaves out only the people whose sex assigned at birth is female. Everyone else can still be selected.',
+  },
+  scopeParents: {
+    id: 'architect.protocolSummary.stage.familyPedigree.scopeParents',
+    defaultMessage: 'Both biological parents',
+    description:
+      'Printable protocol summary name of the completeness choice requiring the participant’s two biological parents.',
+  },
+  scopeFirstDegree: {
+    id: 'architect.protocolSummary.stage.familyPedigree.scopeFirstDegree',
+    defaultMessage: 'Parents, siblings and children',
+    description:
+      'Printable protocol summary name of the completeness choice requiring the participant’s parents, siblings and children.',
+  },
+  scopeGrandparents: {
+    id: 'architect.protocolSummary.stage.familyPedigree.scopeGrandparents',
+    defaultMessage: 'Three generations',
+    description:
+      'Printable protocol summary name of the completeness choice requiring three generations: the participant, their parents and grandparents, with aunts and uncles on both sides.',
+  },
+  scopeSecondDegree: {
+    id: 'architect.protocolSummary.stage.familyPedigree.scopeSecondDegree',
+    defaultMessage: 'All second-degree relatives',
+    description:
+      'Printable protocol summary name of the completeness choice requiring every second-degree relative, adding nieces, nephews and grandchildren.',
+  },
+  scopeThirdDegree: {
+    id: 'architect.protocolSummary.stage.familyPedigree.scopeThirdDegree',
+    defaultMessage: 'Three generations, to first cousins',
+    description:
+      'Printable protocol summary name of the completeness choice requiring three generations including first cousins.',
+  },
+});
+
+const SCOPE_MESSAGES: Record<PedigreeCompletenessScope, MessageDescriptor> = {
+  parents: messages.scopeParents,
+  firstDegree: messages.scopeFirstDegree,
+  grandparents: messages.scopeGrandparents,
+  secondDegree: messages.scopeSecondDegree,
+  thirdDegree: messages.scopeThirdDegree,
+};
+
+const FRAMING_MESSAGES: Record<FramingSetting, MessageDescriptor> = {
+  gendered: messages.framingGendered,
+  gamete: messages.framingGamete,
+  participantPreference: messages.framingParticipantPreference,
+};
+
+const NOMINATION_LIMIT_MESSAGES: Record<
+  NonNullable<NominationPrompt['onlyForSexAssignedAtBirth']>,
+  MessageDescriptor
+> = {
+  female: messages.nominationLimitFemale,
+  male: messages.nominationLimitMale,
+};
+
+const GENDER_WORDS_MESSAGES: Record<PedigreeGenderWords, MessageDescriptor> = {
+  feminine: messages.genderWordsFeminine,
+  masculine: messages.genderWordsMasculine,
+  neutral: messages.genderWordsNeutral,
+  unknown: messages.genderWordsUnknown,
+};
+
+const isGenderWords = (value: string): value is PedigreeGenderWords =>
+  Object.hasOwn(GENDER_WORDS_MESSAGES, value);
+
+export type FamilyPedigreeNodeConfiguration = {
+  nameAttribute?: string;
+  nameField?: { prompt?: LocalizedString; hint?: LocalizedString };
+  /** Absent when the stage does not ask about gender identity. */
+  genderIdentity?: {
+    attribute?: string;
+    terms?: { value: string | number; words: string }[];
+  };
+  sexAssignedAtBirthAttribute?: string;
+  egoAttribute?: string;
+  relationshipToParticipantAttribute?: string;
+};
+
+export type FamilyPedigreeEdgeConfiguration = {
+  type?: string;
+  kindAttribute?: string;
+  gestationalCarrierAttribute?: string;
+  currentPartnerAttribute?: string;
+};
+
+export type FamilyPedigreeCompleteness = {
+  scope?: PedigreeCompletenessScope;
+  enforcement?: 'required' | 'recommended';
+  relativesNotRecordedAttribute?: string;
+  itemText?: {
+    parents?: { listItem?: LocalizedString };
+    siblings?: PersonItemText;
+    children?: PersonItemText;
+    details?: { listItem?: LocalizedString };
+  };
+  recommendedNote?: LocalizedString;
+};
+
+type PersonItemText = {
+  listItem?: LocalizedString;
+  noneButton?: LocalizedString;
+  question?: LocalizedString;
+};
+
+type NominationPrompt = {
+  id: string;
+  text: LocalizedString;
+  attribute: string;
+  onlyForSexAssignedAtBirth?: 'female' | 'male';
+};
+
+type FamilyPedigreeProps = {
+  /** The node type of the people, whose attribute holds gender identity. */
+  personType: string | null;
+  prompt: LocalizedString | null;
+  nodeConfiguration: FamilyPedigreeNodeConfiguration | null;
+  edgeConfiguration: FamilyPedigreeEdgeConfiguration | null;
+  completeness: FamilyPedigreeCompleteness | null;
+  /** Absent when the stage stores no wording, which means everyday words. */
+  framing: FramingSetting | null;
+  /** The participant-facing words the stage holds, by key. */
+  wording: Record<string, LocalizedString | undefined> | null;
+  nominationPrompts: NominationPrompt[] | null;
+};
+
+/** One row naming a bound attribute, or none while the slot is unbound. */
+const variableRow = (
+  label: string,
+  key: string,
+  variableId: string | undefined,
+): [string, ReactNode][] =>
+  variableId ? [[label, <Variable key={key} id={variableId} />]] : [];
+
+/** One row of participant-facing wording, or none while it is unset. */
+const textRow = (
+  label: string,
+  key: string,
+  value: LocalizedString | undefined,
+  messageArguments?: MessageArguments,
+): [string, ReactNode][] => {
+  if (value === undefined) return [];
+  return [
+    [
+      label,
+      messageArguments === undefined ? (
+        <SummaryText key={key} value={value} />
+      ) : (
+        <SummaryMessage
+          key={key}
+          value={value}
+          messageArguments={messageArguments}
+        />
+      ),
+    ],
+  ];
+};
+
+/**
+ * What a Family Pedigree stage shows the participant, and the attributes it
+ * records about each person and each relationship. The person type itself is
+ * the stage's subject, shown in the stage heading.
+ */
+const FamilyPedigree = ({
+  personType,
+  prompt,
+  nodeConfiguration,
+  edgeConfiguration,
+  completeness,
+  framing,
+  wording,
+  nominationPrompts,
+}: FamilyPedigreeProps) => {
+  const intl = useAppIntl();
+  const { protocol } = useContext(SummaryContext);
+  const defaultLanguageText = useDefaultLanguageText();
+  if (
+    prompt === null &&
+    nodeConfiguration === null &&
+    edgeConfiguration === null &&
+    completeness === null &&
+    framing === null &&
+    wording === null &&
+    nominationPrompts === null
+  ) {
+    return null;
+  }
+
+  // Every option of the gender identity attribute with the words it takes, so
+  // an option the stage does not list reads as the neutral words it gets.
+  const genderIdentity = nodeConfiguration?.genderIdentity;
+  const itemText = completeness?.itemText;
+  const genderVariable =
+    personType === null || !genderIdentity?.attribute
+      ? undefined
+      : protocol.codebook?.node?.[personType]?.variables?.[
+          genderIdentity.attribute
+        ];
+  const genderOptions =
+    genderVariable?.type === 'categorical' ? genderVariable.options : undefined;
+  const genderTerms = genderIdentity?.terms;
+  const genderWordsFor = (value: string | number): PedigreeGenderWords => {
+    const words = genderTerms?.find((term) => term.value === value)?.words;
+    return words !== undefined && isGenderWords(words) ? words : 'neutral';
+  };
+  const genderTermLines: { value: string | number; label: string }[] =
+    genderOptions !== undefined
+      ? genderOptions.map(({ value, label }) => ({
+          value,
+          label: getMarkdownLabelText(
+            defaultLanguageText(label)?.text ?? String(value),
+          ),
+        }))
+      : (genderTerms ?? []).map(({ value }) => ({
+          value,
+          label: String(value),
+        }));
+
+  const rows: [string, ReactNode][] = [
+    ...(prompt
+      ? ([
+          [
+            intl.formatMessage(summaryMessages.prompt),
+            <SummaryMarkdown key="prompt" value={prompt} />,
+          ],
+        ] as [string, ReactNode][])
+      : []),
+    ...variableRow(
+      intl.formatMessage(messages.name),
+      'name',
+      nodeConfiguration?.nameAttribute,
+    ),
+    ...textRow(
+      intl.formatMessage(messages.nameQuestion),
+      'name-question',
+      nodeConfiguration?.nameField?.prompt,
+    ),
+    ...textRow(
+      intl.formatMessage(messages.nameQuestionHint),
+      'name-question-hint',
+      nodeConfiguration?.nameField?.hint,
+    ),
+    ...(nodeConfiguration !== null && genderIdentity === undefined
+      ? ([
+          [
+            intl.formatMessage(messages.genderIdentity),
+            intl.formatMessage(messages.genderIdentityNotAsked),
+          ],
+        ] as [string, ReactNode][])
+      : variableRow(
+          intl.formatMessage(messages.genderIdentity),
+          'gender-identity',
+          genderIdentity?.attribute,
+        )),
+    ...(genderTermLines.length > 0
+      ? ([
+          [
+            intl.formatMessage(messages.genderIdentityTerms),
+            <ul key="gender-identity-terms" className="m-0 list-none p-0">
+              {genderTermLines.map(({ value, label }) => (
+                <li key={String(value)}>
+                  {intl.formatMessage(messages.genderIdentityTerm, {
+                    option: label,
+                    words: intl.formatMessage(
+                      GENDER_WORDS_MESSAGES[genderWordsFor(value)],
+                    ),
+                  })}
+                </li>
+              ))}
+            </ul>,
+          ],
+        ] as [string, ReactNode][])
+      : []),
+    ...variableRow(
+      intl.formatMessage(messages.sexAssignedAtBirth),
+      'sex-assigned-at-birth',
+      nodeConfiguration?.sexAssignedAtBirthAttribute,
+    ),
+    ...variableRow(
+      intl.formatMessage(messages.participantMarker),
+      'participant-marker',
+      nodeConfiguration?.egoAttribute,
+    ),
+    ...variableRow(
+      intl.formatMessage(messages.relationshipToParticipant),
+      'relationship-to-participant',
+      nodeConfiguration?.relationshipToParticipantAttribute,
+    ),
+    ...(edgeConfiguration?.type
+      ? ([
+          [
+            intl.formatMessage(messages.relationshipEdgeType),
+            <EntityBadge
+              key="relationship-type"
+              small
+              iconSize="tiny"
+              type={edgeConfiguration.type}
+              entity="edge"
+              link
+            />,
+          ],
+        ] as [string, ReactNode][])
+      : []),
+    ...variableRow(
+      intl.formatMessage(messages.relationshipKind),
+      'relationship-kind',
+      edgeConfiguration?.kindAttribute,
+    ),
+    ...variableRow(
+      intl.formatMessage(messages.gestationalCarrier),
+      'gestational-carrier',
+      edgeConfiguration?.gestationalCarrierAttribute,
+    ),
+    ...variableRow(
+      intl.formatMessage(messages.currentPartner),
+      'current-partner',
+      edgeConfiguration?.currentPartnerAttribute,
+    ),
+    ...(completeness?.scope
+      ? ([
+          [
+            intl.formatMessage(messages.completenessScope),
+            intl.formatMessage(SCOPE_MESSAGES[completeness.scope]),
+          ],
+        ] as [string, ReactNode][])
+      : []),
+    ...(completeness?.enforcement
+      ? ([
+          [
+            intl.formatMessage(messages.completenessEnforcement),
+            intl.formatMessage(
+              completeness.enforcement === 'required'
+                ? messages.completenessEnforcementRequired
+                : messages.completenessEnforcementRecommended,
+            ),
+          ],
+        ] as [string, ReactNode][])
+      : []),
+    ...variableRow(
+      intl.formatMessage(messages.relativesNotRecorded),
+      'relatives-not-recorded',
+      completeness?.relativesNotRecordedAttribute,
+    ),
+    ...textRow(
+      intl.formatMessage(messages.trackerParents),
+      'tracker-parents',
+      itemText?.parents?.listItem,
+      PEDIGREE_PERSON_ARGUMENTS,
+    ),
+    ...textRow(
+      intl.formatMessage(messages.trackerSiblings),
+      'tracker-siblings',
+      itemText?.siblings?.listItem,
+      PEDIGREE_PERSON_ARGUMENTS,
+    ),
+    ...textRow(
+      intl.formatMessage(messages.trackerNoSiblings),
+      'tracker-no-siblings',
+      itemText?.siblings?.noneButton,
+      PEDIGREE_PERSON_ARGUMENTS,
+    ),
+    ...textRow(
+      intl.formatMessage(messages.trackerSiblingsQuestion),
+      'tracker-siblings-question',
+      itemText?.siblings?.question,
+      PEDIGREE_PERSON_ARGUMENTS,
+    ),
+    ...textRow(
+      intl.formatMessage(messages.trackerChildren),
+      'tracker-children',
+      itemText?.children?.listItem,
+      PEDIGREE_PERSON_ARGUMENTS,
+    ),
+    ...textRow(
+      intl.formatMessage(messages.trackerNoChildren),
+      'tracker-no-children',
+      itemText?.children?.noneButton,
+      PEDIGREE_PERSON_ARGUMENTS,
+    ),
+    ...textRow(
+      intl.formatMessage(messages.trackerChildrenQuestion),
+      'tracker-children-question',
+      itemText?.children?.question,
+      PEDIGREE_PERSON_ARGUMENTS,
+    ),
+    ...textRow(
+      intl.formatMessage(messages.trackerDetails),
+      'tracker-details',
+      itemText?.details?.listItem,
+      PEDIGREE_PERSON_ARGUMENTS,
+    ),
+    // Shown to participants only when they may continue regardless.
+    ...(completeness?.enforcement === 'recommended'
+      ? textRow(
+          intl.formatMessage(messages.trackerRecommendedNote),
+          'tracker-recommended-note',
+          completeness.recommendedNote,
+        )
+      : []),
+    // Always said, because a stage that stores no wording uses the everyday
+    // words: the summary states what participants will read, not only what
+    // the researcher chose.
+    [
+      intl.formatMessage(messages.framing),
+      intl.formatMessage(FRAMING_MESSAGES[framing ?? 'gendered']),
+    ],
+  ];
+
+  // Every participant-facing word the stage holds, in the order participants
+  // meet it. A word the stage does not hold has no row.
+  const wordingRows: [string, ReactNode][] = PARTICIPANT_WORDING_GROUPS.flatMap(
+    (group) =>
+      group.settings.flatMap((setting) =>
+        textRow(
+          intl.formatMessage(setting.label),
+          `wording-${setting.key}`,
+          wording?.[setting.key],
+          setting.arguments,
+        ),
+      ),
+  );
+
+  return (
+    <>
+      <SectionFrame title={intl.formatMessage(messages.title)}>
+        <MiniTable rotated wide rows={rows} />
+      </SectionFrame>
+      {wordingRows.length > 0 && (
+        <SectionFrame title={intl.formatMessage(builderMessages.wordingTitle)}>
+          <MiniTable rotated wide rows={wordingRows} />
+        </SectionFrame>
+      )}
+      {nominationPrompts !== null && nominationPrompts.length > 0 && (
+        <SectionFrame title={intl.formatMessage(messages.nominationPrompts)}>
+          <UnorderedList>
+            {nominationPrompts.map(
+              ({ id, text, attribute, onlyForSexAssignedAtBirth }) => (
+                <li className="my-5" key={id}>
+                  <div className="break-inside-avoid">
+                    <SummaryMarkdown value={text} />
+                    <MiniTable
+                      rotated
+                      rows={[
+                        [
+                          intl.formatMessage(summaryMessages.attribute),
+                          <Variable key="attribute" id={attribute} />,
+                        ],
+                        ...(onlyForSexAssignedAtBirth
+                          ? [
+                              [
+                                intl.formatMessage(messages.nominationLimit),
+                                intl.formatMessage(
+                                  NOMINATION_LIMIT_MESSAGES[
+                                    onlyForSexAssignedAtBirth
+                                  ],
+                                ),
+                              ],
+                            ]
+                          : []),
+                      ]}
+                    />
+                  </div>
+                </li>
+              ),
+            )}
+          </UnorderedList>
+        </SectionFrame>
+      )}
+    </>
+  );
+};
+
+export default FamilyPedigree;

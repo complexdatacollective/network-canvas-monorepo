@@ -157,10 +157,13 @@ function countedProcedures() {
   return { counts, wrap };
 }
 
+/** Copy in the protocol's language, as schema 9 holds it. */
+const en = (text: string) => ({ en: text });
+
 /** The `fields` an Information stage holding a background image opens with. */
 const withBackgroundImage = (id: string): SectionDoc => ({
-  label: 'Welcome',
-  title: 'Welcome',
+  label: en('Welcome'),
+  title: en('Welcome'),
   items: [],
   backgroundImage: id,
 });
@@ -995,8 +998,8 @@ function itemPicker(index: number, label: string) {
 }
 
 const ASSET_ITEMS: SectionDoc = {
-  label: 'Welcome',
-  title: 'Welcome',
+  label: en('Welcome'),
+  title: en('Welcome'),
   items: [
     { id: 'item-1', type: 'asset', content: '' },
     { id: 'item-2', type: 'asset', content: '' },
@@ -1335,8 +1338,8 @@ describe('a picker the researcher backs out of', () => {
     const { fieldValue } = renderResourceEditor({
       resources: [networkSeed],
       fields: {
-        label: 'Roster',
-        title: 'Roster',
+        label: en('Roster'),
+        title: en('Roster'),
         items: [],
         dataSource: 'existing',
       },

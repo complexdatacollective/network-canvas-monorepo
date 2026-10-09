@@ -24,7 +24,14 @@ const createTestStore = (lockState: ProtocolLockState = 'owned') =>
   configureStore({
     reducer: {
       activeProtocol: (
-        state = { past: [], present: { name: 'Test' }, future: [] },
+        state = {
+          past: [],
+          present: {
+            name: 'Test',
+            localization: { defaultLocale: 'en', locales: ['en'] },
+          },
+          future: [],
+        },
       ) => state,
       app: (state = { protocolLockState: lockState }) => state,
     },

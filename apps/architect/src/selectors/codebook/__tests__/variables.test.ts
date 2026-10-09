@@ -67,7 +67,7 @@ const mockCodebookWithoutUse = {
 
 const mockProtocolWithoutUse = {
   present: {
-    schemaVersion: 8,
+    schemaVersion: 9,
     name: 'test-protocol',
     codebook: mockCodebookWithoutUse,
     stages: [],

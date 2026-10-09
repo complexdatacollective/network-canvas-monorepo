@@ -95,7 +95,11 @@ afterEach(() => {
 function makeInterviewerSync() {
   return createDebouncedSyncHandler(
     async (id, session) => {
-      await updateSession(id, { network: session.network });
+      await updateSession(
+        id,
+        { network: session.network },
+        { protocolHash: 'h1' },
+      );
     },
     { waitMs: 0 },
   );
@@ -133,7 +137,11 @@ describe('locking with a session write outstanding', () => {
     // A write held open inside its mutation, then a lock — the shape a tab
     // frozen mid-write and locked on return leaves behind.
     const release = holdNextSessionRead();
-    const writing = updateSession(session.id, { network: makeNetwork(['n1']) });
+    const writing = updateSession(
+      session.id,
+      { network: makeNetwork(['n1']) },
+      { protocolHash: 'h1' },
+    );
     await settle();
     await userEvent.click(screen.getByText('lock'));
     await settle();
@@ -169,7 +177,11 @@ describe('locking with a session write outstanding', () => {
 
     // A write held open — the same state that makes an idle lock wait.
     const release = holdNextSessionRead();
-    const writing = updateSession(session.id, { network: makeNetwork(['n1']) });
+    const writing = updateSession(
+      session.id,
+      { network: makeNetwork(['n1']) },
+      { protocolHash: 'h1' },
+    );
     await settle();
 
     // Another tab has replaced the vault, so this tab's key is stale. Waiting
@@ -207,7 +219,11 @@ describe('locking with a session write outstanding', () => {
 
     // A lock starts draining and stays there, held by the write above.
     const release = holdNextSessionRead();
-    const writing = updateSession(session.id, { network: makeNetwork(['n1']) });
+    const writing = updateSession(
+      session.id,
+      { network: makeNetwork(['n1']) },
+      { protocolHash: 'h1' },
+    );
     await settle();
     await userEvent.click(screen.getByText('lock'));
     await settle();

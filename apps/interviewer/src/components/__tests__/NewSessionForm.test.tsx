@@ -1,12 +1,14 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { interviewerProductionLocales } from '~/i18n/locales';
 import type { ProtocolWithCounts, StoredSession } from '~/lib/db/types';
+import { recordStoredProtocolMigrationFailures } from '~/lib/protocol/storedProtocolMigrationFailures';
 import { interviewerCatalogSource } from '~/locales/catalogs';
 
 const openDialog = vi.fn();
@@ -48,7 +50,7 @@ function makeProtocol(stageTypes: string[]): ProtocolWithCounts {
   const protocol = {
     name: 'Test',
     description: '',
-    schemaVersion: 8,
+    schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
     codebook: {},
     stages,
   } as unknown as CurrentProtocol;
@@ -56,7 +58,7 @@ function makeProtocol(stageTypes: string[]): ProtocolWithCounts {
     id: 'test',
     hash: 'hash',
     name: 'Test',
-    schemaVersion: 8,
+    schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
     importedAt: '2026-07-01T00:00:00.000Z',
     description: '',
     codebook: {},
@@ -151,6 +153,67 @@ describe('NewSessionForm offline warning', () => {
       screen.queryByRole('button', { name: 'Start interview' }),
     ).not.toBeInTheDocument();
     expect(createSession).not.toHaveBeenCalled();
+  });
+
+  it('refuses to start an interview on a current protocol held back with its interviews', () => {
+    const protocol = makeProtocol([]);
+    act(() => {
+      recordStoredProtocolMigrationFailures([
+        {
+          name: protocol.name,
+          hash: protocol.hash,
+          reason: 'one interview could not be migrated',
+          kind: 'sessions',
+          sessions: [{ id: 'late', reason: 'invalid' }],
+        },
+      ]);
+    });
+    try {
+      render(<Harness protocol={protocol} />);
+
+      expect(
+        screen.getByText(
+          /Some interviews recorded with this protocol could not be updated/,
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByLabelText(/Case ID/)).not.toBeInTheDocument();
+    } finally {
+      act(() => recordStoredProtocolMigrationFailures([]));
+    }
+  });
+
+  it('tells apart a protocol whose interviews could not be updated', () => {
+    const protocol = { ...makeProtocol([]), schemaVersion: 8 };
+    const { unmount } = render(<Harness protocol={protocol} />);
+    expect(
+      screen.getByText(/Repair the protocol in Architect/),
+    ).toBeInTheDocument();
+    unmount();
+
+    act(() => {
+      recordStoredProtocolMigrationFailures([
+        {
+          name: protocol.name,
+          hash: protocol.hash,
+          reason: 'one interview could not be migrated',
+          kind: 'sessions',
+          sessions: [{ id: 's1', reason: 'invalid' }],
+        },
+      ]);
+    });
+    render(<Harness protocol={protocol} />);
+
+    expect(
+      screen.getByText(
+        /Some interviews recorded with this protocol could not be updated/,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/try again each time it starts/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Repair the protocol/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Case ID/)).not.toBeInTheDocument();
+    act(() => recordStoredProtocolMigrationFailures([]));
   });
 });
 

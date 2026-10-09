@@ -2,13 +2,20 @@
 
 import type { IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { messages as booleanFieldMessages } from '@codaco/fresco-ui/form/fields/Boolean';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { VariableValue } from '@codaco/shared-consts';
 
+import { type ContentFormat } from '../../localization/contentFormat';
+import { useContentFormat } from '../../localization/useContentFormat';
 import { interfaceMessages } from '../messages';
 
-type DataCardDetails = Record<string, VariableValue | undefined>;
+export type DataCardDetail = {
+  id: string;
+  label: string;
+  value: VariableValue | undefined;
+};
 
 type DataCardProps = Omit<
   React.ComponentPropsWithRef<'article'>,
@@ -16,24 +23,44 @@ type DataCardProps = Omit<
 > & {
   /** The card title — derived from the node's name heuristic or fallback */
   label: string;
-  /** Label → value pairs to render below the title */
-  details?: DataCardDetails;
+  /** Label and value pairs to render below the title, in order */
+  details?: readonly DataCardDetail[];
 };
 
+const isEmptyValue = (value: VariableValue | undefined): boolean =>
+  value === null ||
+  value === undefined ||
+  value === '' ||
+  (Array.isArray(value) && value.length === 0);
+
+/**
+ * A roster value as text for the participant. Words (yes, no, an empty value)
+ * are in the interface language; numbers, coordinates and lists follow the
+ * protocol language, since they sit among the protocol's own text.
+ */
 const formatValue = (
   value: VariableValue | undefined,
   intl: IntlShape,
+  format: ContentFormat,
 ): string => {
-  if (value === null || value === undefined || value === '') return '—';
+  // A dash stands for "no value". Its words are for screen readers only and
+  // come from DataCard, where they can be rendered beside the glyph.
+  const empty = () => '—';
+
+  if (value === null || value === undefined || value === '') return empty();
 
   if (typeof value === 'boolean')
     return intl.formatMessage(
-      value ? interfaceMessages.yes : interfaceMessages.no,
+      value ? booleanFieldMessages.yes : booleanFieldMessages.no,
     );
 
+  if (typeof value === 'number') return format.formatNumber(value);
+
   if (Array.isArray(value)) {
-    if (value.length === 0) return '—';
-    return value.map((item) => formatValue(item, intl)).join(', ');
+    if (value.length === 0) return empty();
+    return format.formatList(
+      value.map((item) => formatValue(item, intl, format)),
+    );
   }
 
   if (
@@ -43,16 +70,22 @@ const formatValue = (
     typeof value.x === 'number' &&
     typeof value.y === 'number'
   ) {
-    return `${value.y.toFixed(4)}, ${value.x.toFixed(4)}`;
+    return format.formatList([
+      format.formatCoordinate(value.y),
+      format.formatCoordinate(value.x),
+    ]);
   }
 
   if (typeof value === 'object') {
-    return Object.entries(value)
-      .map(([k, v]) => `${k}: ${String(v)}`)
-      .join(', ');
+    return format.formatList(
+      Object.entries(value).map(
+        ([k, v]) =>
+          `${k}: ${typeof v === 'number' ? format.formatNumber(v) : String(v)}`,
+      ),
+    );
   }
 
-  return String(value);
+  return value;
 };
 
 /**
@@ -71,7 +104,8 @@ const DataCard = ({
   ...articleProps
 }: DataCardProps) => {
   const intl = useAppIntl();
-  const hasDetails = details && Object.keys(details).length > 0;
+  const format = useContentFormat();
+  const hasDetails = details && details.length > 0;
 
   return (
     <article
@@ -93,8 +127,8 @@ const DataCard = ({
 
       {hasDetails && (
         <dl className="bg-platinum-dark grid grow grid-cols-[fit-content(33%)_minmax(0,1fr)] items-baseline gap-x-6 gap-y-4 px-6 py-2">
-          {Object.entries(details).map(([detailLabel, value]) => (
-            <div key={detailLabel} className="contents">
+          {details.map(({ id, label: detailLabel, value }) => (
+            <div key={id} className="contents">
               <Heading
                 level="label"
                 variant="all-caps"
@@ -105,7 +139,17 @@ const DataCard = ({
                 {detailLabel}
               </Heading>
               <dd className="text-sm leading-tight font-medium wrap-break-word">
-                {formatValue(value, intl)}
+                {isEmptyValue(value) ? (
+                  <>
+                    {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- Decorative dash for an empty value; the words follow for screen readers. */}
+                    <span aria-hidden="true">—</span>
+                    <span className="sr-only">
+                      {intl.formatMessage(interfaceMessages.emptyValue)}
+                    </span>
+                  </>
+                ) : (
+                  formatValue(value, intl, format)
+                )}
               </dd>
             </div>
           ))}

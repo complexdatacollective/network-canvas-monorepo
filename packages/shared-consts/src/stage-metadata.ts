@@ -1,66 +1,5 @@
 import { z } from 'zod';
 
-import { EntityAttributesSchema, VariableValueSchema } from './network.ts';
-
-/**
- * A deliberate copy of `FRAMING_IDS`, whose canonical definition is
- * `packages/protocol-validation/src/schemas/8/family-pedigree-values.ts`.
- *
- * It is copied rather than imported for two reasons. This package must never
- * depend on `@codaco/protocol-validation` — the dependency runs the other way.
- * And this schema describes *persisted session metadata*, which has its own
- * compatibility story: a stored session must keep parsing even if a future
- * protocol schema version revises its framing set, so the two are allowed to
- * diverge and must not be wired together.
- */
-const SESSION_FRAMING_IDS = ['gamete', 'gendered'] as const;
-
-const FamilyPedigreeMetadataFields = {
-  isNetworkCommitted: z.boolean(),
-  // Version 1 records edge ids from the shared Redux network. Older pedigree
-  // snapshots omitted this marker and may contain interface-local edge ids.
-  edgeIdVersion: z.optional(z.literal(1)),
-  selectedFraming: z.optional(z.enum([...SESSION_FRAMING_IDS])),
-  noChildrenAffirmed: z.optional(z.boolean()),
-  nodes: z.optional(
-    z.array(
-      z.object({
-        id: z.string(),
-        label: z.string(),
-        isEgo: z.boolean(),
-      }),
-    ),
-  ),
-};
-
-const FamilyPedigreeStageMetadataSchema = z.object({
-  ...FamilyPedigreeMetadataFields,
-  edges: z.optional(
-    z.array(
-      z.object({
-        id: z.string(),
-        from: z.string(),
-        to: z.string(),
-        attributes: EntityAttributesSchema,
-      }),
-    ),
-  ),
-});
-
-const StrictFamilyPedigreeStageMetadataSchema = z.object({
-  ...FamilyPedigreeMetadataFields,
-  edges: z.optional(
-    z.array(
-      z.object({
-        id: z.string(),
-        from: z.string(),
-        to: z.string(),
-        attributes: z.record(z.string(), VariableValueSchema),
-      }),
-    ),
-  ),
-});
-
 const DyadCensusMetadataItemSchema = z.tuple([
   z.number(), // prompt index
   z.string(), // entity a
@@ -81,12 +20,40 @@ const NetworkComposerStageMetadataSchema = z.object({
   automaticLayout: z.boolean(),
 });
 
+// FamilyPedigree persists the framing a participant chose, when the stage lets
+// them choose (`framing: 'participantPreference'`), so they are asked once.
+// The values are schema 9's FRAMING_IDS, which this package cannot import.
+// It also records who holds a label it saved as their name because the
+// participant left them unnamed: node ID to an opaque fingerprint of the name
+// attribute value it wrote, never the label's text (which would copy names
+// out of an encrypted attribute). On a return visit a person whose stored
+// value still matches is treated as unnamed and given a fresh label; a name
+// written since, here or on another stage, no longer matches and is kept.
+// It also records, by node ID, the stand-ins it generated: unnamed people it
+// added to hold a missing genetic parent's place, who give way (and may be
+// removed) when a genetic parent is recorded there. Only people listed here
+// are ever treated as stand-ins; anyone the participant names or describes
+// is taken off the list, as someone in their own right.
+// Any may be absent, but not all: an entry holding none is not one.
+const FamilyPedigreeStageMetadataSchema = z
+  .object({
+    framing: z.enum(['gendered', 'gamete']).optional(),
+    generatedLabels: z.record(z.string(), z.string()).optional(),
+    standIns: z.array(z.string()).optional(),
+  })
+  .refine(
+    (entry) =>
+      entry.framing !== undefined ||
+      entry.generatedLabels !== undefined ||
+      entry.standIns !== undefined,
+  );
+
 export const StageMetadataSchema = z.record(
   z.string(), // stage ID
   z.union([
-    FamilyPedigreeStageMetadataSchema,
     DyadCensusStageMetadataSchema,
     NetworkComposerStageMetadataSchema,
+    FamilyPedigreeStageMetadataSchema,
   ]),
 );
 
@@ -102,9 +69,7 @@ export const isNetworkComposerStageMetadata = (
   NetworkComposerStageMetadataSchema.safeParse(value).success;
 
 // Validate-and-narrow a persisted metadata entry to the FamilyPedigree shape.
-// The metadata union now also includes the DyadCensus tuple-array and the
-// NetworkComposer object, so callers must narrow before reading pedigree fields.
 export const isFamilyPedigreeStageMetadata = (
   value: unknown,
-): value is z.output<typeof StrictFamilyPedigreeStageMetadataSchema> =>
-  StrictFamilyPedigreeStageMetadataSchema.safeParse(value).success;
+): value is z.infer<typeof FamilyPedigreeStageMetadataSchema> =>
+  FamilyPedigreeStageMetadataSchema.safeParse(value).success;

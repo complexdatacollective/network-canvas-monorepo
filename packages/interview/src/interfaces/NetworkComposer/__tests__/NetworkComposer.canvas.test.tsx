@@ -4,10 +4,13 @@ import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { composerWords } from './composerWords';
+
 vi.mock('../../../hooks/useAssetUrl', () => ({
   useAssetUrl: vi.fn(),
 }));
 
+import { asEntityAttributeReference } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -21,6 +24,7 @@ import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type { RegisterBeforeNext, StageProps } from '../../../types';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import NetworkComposer from '../NetworkComposer';
 
 // jsdom does not implement ResizeObserver; provide a no-op stub.
@@ -72,11 +76,17 @@ const defaultBackground: TestBackground = {
 const stage = {
   id: 'nc1',
   type: 'NetworkComposer' as const,
-  label: 'Network Composer',
+  ...composerWords(),
+  label: { en: 'Network Composer' },
   subject: { entity: 'node' as const, type: NODE_TYPE },
-  layoutVariable: LAYOUT_VAR,
-  quickAdd: QUICK_ADD_VAR,
-  edges: [{ subject: { entity: 'edge' as const, type: EDGE_TYPE } }],
+  layoutVariable: asEntityAttributeReference(LAYOUT_VAR),
+  quickAdd: asEntityAttributeReference(QUICK_ADD_VAR),
+  edges: [
+    {
+      id: 'edge-config',
+      subject: { entity: 'edge' as const, type: EDGE_TYPE },
+    },
+  ],
   background: defaultBackground,
 };
 
@@ -84,17 +94,27 @@ const codebook = {
   node: {
     [NODE_TYPE]: {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' as const },
       variables: {
-        [QUICK_ADD_VAR]: { name: 'name', type: 'text' as const },
-        [LAYOUT_VAR]: { name: 'position', type: 'layout' as const },
+        [QUICK_ADD_VAR]: {
+          name: 'name',
+          label: 'Name',
+          type: 'text' as const,
+        },
+        [LAYOUT_VAR]: {
+          name: 'position',
+          label: 'Position',
+          type: 'layout' as const,
+        },
       },
     },
   },
   edge: {
     [EDGE_TYPE]: {
       name: 'Knows',
+      label: { en: 'Knows' },
       color: 'edge-color-seq-1',
       variables: {},
     },
@@ -135,7 +155,8 @@ function renderInterface(stageOverride: typeof stage = stage) {
       protocol: {
         id: 'p',
         hash: 'h',
-        schemaVersion: 8,
+        schemaVersion: 9,
+        localization: { defaultLocale: 'en', locales: ['en'] },
         codebook,
         stages: [stageOverride],
       } as never,
@@ -161,7 +182,7 @@ function renderInterface(stageOverride: typeof stage = stage) {
         >
           <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
             <StageMetadataContext.Provider value={registerBeforeNext}>
-              {children}
+              <TestProtocolLocalization>{children}</TestProtocolLocalization>
             </StageMetadataContext.Provider>
           </CurrentStepProvider>
         </ContractProvider>

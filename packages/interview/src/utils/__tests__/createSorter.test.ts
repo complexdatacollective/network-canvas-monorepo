@@ -1237,7 +1237,7 @@ describe('processProtocolSortRule', () => {
 
   it('is idempotent: re-processing an already-processed rule does not clobber its type', () => {
     const codebookVariables: EntityDefinition['variables'] = {
-      age: { type: 'number', name: 'age' },
+      age: { type: 'number', name: 'age', label: 'Age' },
     };
     const process = processProtocolSortRule(codebookVariables);
 
@@ -1260,6 +1260,38 @@ describe('processProtocolSortRule', () => {
     expect(twice).toEqual(once);
   });
 
+  describe('looks the property up as a variable key, not as a path', () => {
+    const codebookVariables: EntityDefinition['variables'] = {
+      'name': { type: 'text', name: 'name', label: 'Name' },
+      'a.b': { type: 'number', name: 'a.b', label: 'a.b' },
+    };
+
+    it('finds a variable whose key contains a dot', () => {
+      const result = processProtocolSortRule(codebookVariables)({
+        property: 'a.b',
+        direction: 'asc',
+      });
+
+      expect(result).toEqual({
+        property: [entityAttributesProperty, 'a.b'],
+        direction: 'asc',
+        type: 'number',
+      });
+    });
+
+    it.each(['name.type', 'constructor', 'toString', '__proto__'])(
+      'does not find a variable for %s',
+      (property) => {
+        const result = processProtocolSortRule(codebookVariables)({
+          property,
+          direction: 'asc',
+        });
+
+        expect(result).toEqual({ property, direction: 'asc', type: 'string' });
+      },
+    );
+  });
+
   describe('manages property path', () => {
     it('adds entityAttributes property to the property path', () => {
       const rule = {
@@ -1268,7 +1300,7 @@ describe('processProtocolSortRule', () => {
       } as SortRule;
 
       const codebookVariables: EntityDefinition['variables'] = {
-        name: { type: 'text', name: 'name' },
+        name: { type: 'text', name: 'name', label: 'Name' },
       };
       const result = processProtocolSortRule(codebookVariables)(rule);
       expect(result.property).toEqual([entityAttributesProperty, 'name']);
@@ -1281,7 +1313,7 @@ describe('processProtocolSortRule', () => {
       } as SortRule;
 
       const codebookVariables: EntityDefinition['variables'] = {
-        type: { type: 'text', name: 'type' },
+        type: { type: 'text', name: 'type', label: 'Type' },
       };
       const result = processProtocolSortRule(codebookVariables)(rule);
       expect(result.property).toEqual('type');
@@ -1290,40 +1322,42 @@ describe('processProtocolSortRule', () => {
 
   describe('adds a type property to the rule based on the codebook variable type', () => {
     const codebookVariables: EntityDefinition['variables'] = {
-      name: { type: 'text', name: 'name' },
-      age: { type: 'number', name: 'age' },
-      date: { type: 'datetime', name: 'date' },
-      isAlive: { type: 'boolean', name: 'isAlive' },
+      name: { type: 'text', name: 'name', label: 'Name' },
+      age: { type: 'number', name: 'age', label: 'Age' },
+      date: { type: 'datetime', name: 'date', label: 'Date' },
+      isAlive: { type: 'boolean', name: 'isAlive', label: 'Is alive' },
       category: {
         type: 'categorical',
         name: 'category',
+        label: 'Category',
         options: [
           {
-            label: 'One',
+            label: { en: 'One' },
             value: 'one',
           },
           {
-            label: 'Two',
+            label: { en: 'Two' },
             value: 'two',
           },
         ],
       },
       order: {
         name: 'order',
+        label: 'Order',
         type: 'ordinal',
         options: [
           {
-            label: 'One',
+            label: { en: 'One' },
             value: 'one',
           },
           {
-            label: 'Two',
+            label: { en: 'Two' },
             value: 'two',
           },
         ],
       },
-      scale: { type: 'scalar', name: 'scale' },
-      layout: { type: 'layout', name: 'layout' },
+      scale: { type: 'scalar', name: 'scale', label: 'Scale' },
+      layout: { type: 'layout', name: 'layout', label: 'Layout' },
     };
 
     it('ignores fifo (*) rules', () => {
@@ -1612,29 +1646,31 @@ describe('processProtocolSortRule', () => {
       name_variable: {
         type: 'text',
         name: 'name_variable',
+        label: 'Name variable',
       },
       venueVisitFreqVariable: {
         name: 'visitfreq',
+        label: 'Visitfreq',
         type: 'ordinal',
         options: [
           {
-            label: 'Every day',
+            label: { en: 'Every day' },
             value: 4,
           },
           {
-            label: 'Every other day',
+            label: { en: 'Every other day' },
             value: 3,
           },
           {
-            label: 'Every week',
+            label: { en: 'Every week' },
             value: 2,
           },
           {
-            label: 'Sometimes',
+            label: { en: 'Sometimes' },
             value: 1,
           },
           {
-            label: 'Never',
+            label: { en: 'Never' },
             value: -1,
           },
         ],
@@ -1657,5 +1693,19 @@ describe('processProtocolSortRule', () => {
       'Benjamin',
       'Charlie',
     ]);
+  });
+});
+
+describe('alphabetical order follows the locale it is given', () => {
+  const items = [{ name: 'z' }, { name: 'ö' }, { name: 'a' }];
+  const rules = [
+    { property: 'name', direction: 'asc' as const, type: 'string' as const },
+  ];
+  const order = (locale: string) =>
+    createSorter<{ name: string }>(rules, locale)(items).map((i) => i.name);
+
+  it('puts ö after z in Swedish and between a and z in German', () => {
+    expect(order('sv')).toEqual(['a', 'z', 'ö']);
+    expect(order('de')).toEqual(['a', 'ö', 'z']);
   });
 });

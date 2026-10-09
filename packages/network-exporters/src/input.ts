@@ -1,4 +1,4 @@
-import type { Codebook } from '@codaco/protocol-validation';
+import type { Codebook, FinishOutcome } from '@codaco/protocol-validation';
 import type {
   NcEdge,
   NcNetwork,
@@ -7,6 +7,8 @@ import type {
   codebookHashProperty,
   edgeExportIDProperty,
   egoProperty,
+  finishOutcomeProperty,
+  interviewLocaleProperty,
   ncSourceUUID,
   ncTargetUUID,
   nodeExportIDProperty,
@@ -32,6 +34,8 @@ export type SessionVariables = {
   [protocolProperty]: string;
   [protocolName]: string;
   [codebookHashProperty]: string;
+  [interviewLocaleProperty]: string | null;
+  [finishOutcomeProperty]: FinishOutcome | null;
   [sessionExportTimeProperty]: string;
   [sessionStartTimeProperty]: string | undefined;
   [sessionFinishTimeProperty]: string | undefined;
@@ -82,4 +86,15 @@ export type InterviewExportInput = {
   finishTime: Date | null;
   network: NcNetwork;
   protocolHash: string;
+  /**
+   * The language the participant was last shown, as a BCP 47 tag, or `null`
+   * when the runtime never reported one.
+   */
+  locale: string | null;
+  /**
+   * How the interview ended: the outcome of the finish stage it ended at, or
+   * `null` for an interview that is not finished, or was finished before
+   * finish outcomes were recorded.
+   */
+  finishOutcome: FinishOutcome | null;
 };

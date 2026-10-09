@@ -299,6 +299,70 @@ describe('VariableValidationEditor', () => {
     );
   });
 
+  /**
+   * Guidance a host supplies for a rule is read on that rule's row, and not on
+   * its neighbours, whether the rule is switched on or off: what applies while
+   * a rule is off is what a host usually has to say.
+   */
+  it('says a host’s guidance beneath the rule it names, switched on or off', () => {
+    const ruleHints = { minLength: 'Defaults to 8 if no minimum is set.' };
+    const { rerender } = render(
+      <VariableValidationEditor
+        entity="node"
+        variableType="text"
+        currentVariableId="nickname"
+        allVariables={variables}
+        value={{}}
+        onChange={() => undefined}
+        ruleHints={ruleHints}
+      />,
+    );
+
+    expect(
+      screen.getByRole('switch', { name: 'Minimum text length' }),
+    ).toHaveAccessibleDescription('Defaults to 8 if no minimum is set.');
+    expect(
+      screen.getByRole('switch', { name: 'Maximum text length' }),
+    ).toHaveAccessibleDescription('');
+
+    rerender(
+      <VariableValidationEditor
+        entity="node"
+        variableType="text"
+        currentVariableId="nickname"
+        allVariables={variables}
+        value={{ minLength: 4 }}
+        onChange={() => undefined}
+        ruleHints={ruleHints}
+      />,
+    );
+
+    expect(
+      screen.getByRole('spinbutton', { name: 'Minimum text length' }),
+    ).toHaveAccessibleDescription('Defaults to 8 if no minimum is set.');
+  });
+
+  /** The editor knows something a host cannot: that the rule cannot be met. */
+  it('keeps its own explanation of a rule over a host’s guidance for it', () => {
+    render(
+      <VariableValidationEditor
+        entity="node"
+        variableType="text"
+        currentVariableId="nickname"
+        allVariables={variables}
+        value={{}}
+        onChange={() => undefined}
+        ruleHints={{ differentFrom: 'Guidance the host wrote.' }}
+      />,
+    );
+
+    expect(
+      screen.getByRole('switch', { name: 'Different from another attribute' }),
+    ).toHaveAccessibleDescription(
+      'No other attribute of this type exists to compare against.',
+    );
+  });
+
   /** A pair of bounds nothing can satisfy is stated on the row that made it. */
   it('states a contradiction on the rule that carries it', () => {
     render(

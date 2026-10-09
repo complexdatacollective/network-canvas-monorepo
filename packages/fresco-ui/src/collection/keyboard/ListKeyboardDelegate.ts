@@ -97,6 +97,8 @@ export class ListKeyboardDelegate implements KeyboardDelegate {
  * way a vertical list reads Up/Down.
  */
 export class RowKeyboardDelegate extends ListKeyboardDelegate {
+  readonly horizontalFollowsOrder = true;
+
   override getKeyBelow(): Key | null {
     return null;
   }

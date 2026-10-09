@@ -2,6 +2,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import Form from '@codaco/fresco-ui/form/Form';
 import { findDanglingIdReferences } from '@codaco/fresco-ui/utils/ariaIdReferences';
 
 vi.mock('../../hooks/useCelebrate', () => ({
@@ -18,7 +19,6 @@ vi.mock('../../selectors/session', () => ({
 }));
 
 vi.mock('../../selectors/name-generator', () => ({
-  getCanAddMultipleNodes: 'getCanAddMultipleNodes',
   getNodeIconName: 'getNodeIconName',
 }));
 
@@ -28,13 +28,15 @@ vi.mock('../../hooks/useStageSelector', () => ({
       case 'getNodeColorSelector':
         return 'node-color-seq-1';
       case 'getNodeTypeDefinition':
-        return { name: 'Person', shape: { default: 'circle' } };
+        return {
+          name: 'Person',
+          label: { en: 'Person' },
+          shape: { default: 'circle' },
+        };
       case 'getPromptAdditionalAttributes':
         return {};
       case 'getNodeIconName':
         return 'add-a-person';
-      case 'getCanAddMultipleNodes':
-        return true;
       default:
         return undefined;
     }
@@ -43,6 +45,10 @@ vi.mock('../../hooks/useStageSelector', () => ({
 
 import QuickAddField from '../NameGenerator/components/QuickAddField';
 import AddNodeInput from '../NetworkComposer/AddNodeInput';
+import { TestProtocolLocalization } from './TestProtocolLocalization';
+
+/** The stage's own line beside the quick-add field. */
+const QUICK_ADD_HINT = { en: 'Press Enter when you are finished.' };
 
 /**
  * Both of these components spread `useField`'s `fieldProps` onto markup of
@@ -65,12 +71,16 @@ afterEach(() => {
 describe('QuickAddField ARIA references', () => {
   it('resolves every ARIA reference on the quick-add input', async () => {
     const { container } = render(
-      <QuickAddField
-        name="name"
-        placeholder="Type a label and press enter..."
-        disabled={false}
-        onAdd={() => ({ success: true })}
-      />,
+      <TestProtocolLocalization>
+        <Form onSubmit={() => ({ success: true })}>
+          <QuickAddField
+            hint={QUICK_ADD_HINT}
+            name="name"
+            placeholder="Type a label and press enter..."
+            disabled={false}
+          />
+        </Form>
+      </TestProtocolLocalization>,
     );
 
     await userEvent.click(screen.getByTestId('quick-add-toggle'));
@@ -83,13 +93,17 @@ describe('QuickAddField ARIA references', () => {
     // `required` is what used to add a `${id}-required` IDREF: BaseField
     // renders that marker, and this component does not.
     const { container } = render(
-      <QuickAddField
-        name="name"
-        placeholder="Type a label and press enter..."
-        disabled={false}
-        onAdd={() => ({ success: true })}
-        required
-      />,
+      <TestProtocolLocalization>
+        <Form onSubmit={() => ({ success: true })}>
+          <QuickAddField
+            hint={QUICK_ADD_HINT}
+            name="name"
+            placeholder="Type a label and press enter..."
+            disabled={false}
+            required
+          />
+        </Form>
+      </TestProtocolLocalization>,
     );
 
     await userEvent.click(screen.getByTestId('quick-add-toggle'));
@@ -100,12 +114,16 @@ describe('QuickAddField ARIA references', () => {
 
   it('names the quick-add input after the entity being added', async () => {
     render(
-      <QuickAddField
-        name="name"
-        placeholder="Type a label and press enter..."
-        disabled={false}
-        onAdd={() => ({ success: true })}
-      />,
+      <TestProtocolLocalization>
+        <Form onSubmit={() => ({ success: true })}>
+          <QuickAddField
+            hint={QUICK_ADD_HINT}
+            name="name"
+            placeholder="Type a label and press enter..."
+            disabled={false}
+          />
+        </Form>
+      </TestProtocolLocalization>,
     );
 
     await userEvent.click(screen.getByTestId('quick-add-toggle'));
@@ -123,6 +141,7 @@ describe('AddNodeInput ARIA references', () => {
     const { container } = render(
       <AddNodeInput
         entityLabel="Person"
+        placeholder="Type a name, then press Enter"
         targetVariable="name"
         onCreate={async () => true}
       />,
@@ -135,6 +154,7 @@ describe('AddNodeInput ARIA references', () => {
     const { container } = render(
       <AddNodeInput
         entityLabel="Person"
+        placeholder="Type a name, then press Enter"
         targetVariable="name"
         onCreate={async () => true}
         required
@@ -148,6 +168,7 @@ describe('AddNodeInput ARIA references', () => {
     render(
       <AddNodeInput
         entityLabel="Person"
+        placeholder="Type a name, then press Enter"
         targetVariable="name"
         onCreate={async () => true}
       />,

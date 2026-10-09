@@ -265,6 +265,8 @@ export async function insertProtocol(
         // it at the Prisma JSON boundary.
         stages: protocol.stages as Prisma.InputJsonValue,
         codebook: protocol.codebook,
+        localization: protocol.localization,
+        interfaceText: protocol.interfaceText ?? Prisma.JsonNull,
         description: protocol.description,
         originalFileKey: originalFile.key,
         originalFileUrl: originalFile.url,

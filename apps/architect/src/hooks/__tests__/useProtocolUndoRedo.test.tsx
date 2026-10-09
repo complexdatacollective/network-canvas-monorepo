@@ -85,6 +85,10 @@ describe('useProtocolUndoRedo', () => {
       '/protocol/codebook',
       'Change undone. Moved to Codebook to show the result.',
     ],
+    [
+      '/protocol/localization',
+      'Change undone. Moved to Languages to show the result.',
+    ],
   ])('announces an undo that moved to %s', (navigatedTo, message) => {
     undoOutcome.mockReturnValue({ applied: true, navigatedTo });
     const { result } = renderProtocolUndoRedo();
@@ -104,6 +108,10 @@ describe('useProtocolUndoRedo', () => {
     [
       '/protocol/codebook',
       'Change redone. Moved to Codebook to show the result.',
+    ],
+    [
+      '/protocol/localization',
+      'Change redone. Moved to Languages to show the result.',
     ],
   ])('announces a redo that moved to %s', (navigatedTo, message) => {
     redoOutcome.mockReturnValue({ applied: true, navigatedTo });

@@ -351,10 +351,13 @@ class NameGeneratorFixture {
   }
 
   /**
-   * Submit the node form by clicking the Finished button.
+   * Submit the node form by clicking the Done button.
    */
   async submitForm(): Promise<void> {
-    const submitButton = this.page.getByRole('button', { name: 'Finished' });
+    const submitButton = this.page.getByRole('button', {
+      name: 'Done',
+      exact: true,
+    });
     await submitButton.click();
     await this.page.getByRole('dialog').waitFor({ state: 'hidden' });
   }
@@ -480,19 +483,23 @@ class OrdinalBinFixture {
 
   /**
    * Get the drawer toggle button.
-   * The button has aria-label "Collapse drawer" or "Expand drawer".
+   * Its accessible name is "<count> unplaced" followed by "Collapse drawer" or
+   * "Expand drawer".
    */
   get drawerToggle(): Locator {
     return this.page.getByRole('button', { name: /drawer/i });
   }
 
   /**
-   * Get the number of unplaced nodes from the drawer toggle text.
+   * Get the number of unplaced nodes from the drawer toggle.
    */
   async getUnplacedCount(): Promise<number> {
-    const text = await this.drawerToggle.textContent();
-    const match = /(\d+)\s*unplaced/.exec(text ?? '');
-    return match ? Number.parseInt(match[1] ?? '0', 10) : 0;
+    // The toggle shows the number beside screen-reader-only words, so reading
+    // its text content would join the two; read the visible number alone.
+    const text = await this.drawerToggle
+      .locator('span[aria-hidden="true"]')
+      .textContent();
+    return Number.parseInt(text ?? '0', 10);
   }
 
   /**
@@ -520,7 +527,8 @@ class OrdinalBinFixture {
    * Get a node in the drawer by its label.
    */
   getNodeInDrawer(label: string): Locator {
-    return this.page.getByRole('button', { name: label }).first();
+    // Exact, because the drawer's own toggle is named "<count> unplaced ...".
+    return this.page.getByRole('button', { name: label, exact: true }).first();
   }
 
   /**
@@ -582,19 +590,23 @@ class CategoricalBinFixture {
 
   /**
    * Get the drawer toggle button showing uncategorized count.
-   * The button has aria-label "Collapse drawer" or "Expand drawer".
+   * Its accessible name is "<count> unplaced" followed by "Collapse drawer" or
+   * "Expand drawer".
    */
   get drawerToggle(): Locator {
     return this.page.getByRole('button', { name: /drawer/i });
   }
 
   /**
-   * Get the number of uncategorized nodes from the drawer toggle text.
+   * Get the number of uncategorized nodes from the drawer toggle.
    */
   async getUnplacedCount(): Promise<number> {
-    const text = await this.drawerToggle.textContent();
-    const match = /(\d+)\s*unplaced/.exec(text ?? '');
-    return match ? Number.parseInt(match[1] ?? '0', 10) : 0;
+    // The toggle shows the number beside screen-reader-only words, so reading
+    // its text content would join the two; read the visible number alone.
+    const text = await this.drawerToggle
+      .locator('span[aria-hidden="true"]')
+      .textContent();
+    return Number.parseInt(text ?? '0', 10);
   }
 
   /**
@@ -668,7 +680,8 @@ class CategoricalBinFixture {
    * Get a node in the drawer by its label.
    */
   getNodeInDrawer(label: string): Locator {
-    return this.page.getByRole('button', { name: label }).first();
+    // Exact, because the drawer's own toggle is named "<count> unplaced ...".
+    return this.page.getByRole('button', { name: label, exact: true }).first();
   }
 
   /**
@@ -1382,26 +1395,6 @@ class SlidesFormFixture {
 }
 
 /**
- * Placeholder fixture for FamilyPedigree stages.
- *
- * Multi-step wizard (15 steps) for building family tree data.
- * Creates multiple node types and edge types for family relationships.
- *
- * TODO: Implement interaction methods:
- * - getWizardStep() — get current wizard step
- * - advanceWizard() — advance to next wizard step
- * - getPedigreeView() — get the pedigree visualization locator
- * - getNodeCount() — count non-ego nodes in pedigree
- */
-class FamilyPedigreeFixture {
-  readonly page: Page;
-
-  constructor(page: Page) {
-    this.page = page;
-  }
-}
-
-/**
  * Stage fixture for e2e tests.
  *
  * Handles stage-specific elements and interactions.
@@ -1423,7 +1416,6 @@ export class StageFixture {
   readonly narrative: NarrativeFixture;
   readonly anonymisation: AnonymisationFixture;
   readonly slidesForm: SlidesFormFixture;
-  readonly familyPedigree: FamilyPedigreeFixture;
 
   constructor(page: Page) {
     this.page = page;
@@ -1442,7 +1434,6 @@ export class StageFixture {
     this.narrative = new NarrativeFixture(page);
     this.anonymisation = new AnonymisationFixture(page);
     this.slidesForm = new SlidesFormFixture(page);
-    this.familyPedigree = new FamilyPedigreeFixture(page);
   }
 
   /**

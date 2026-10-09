@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
+import type { Codebook } from '@codaco/protocol-validation';
 import {
   egoProperty,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  entitySecureAttributesMeta,
   ncUUIDProperty,
   nodeExportIDProperty,
+  protocolName,
 } from '@codaco/shared-consts';
 
 import type { SessionWithResequencedIDs } from '../../../input';
@@ -18,6 +21,7 @@ const makeNetwork = (
   ({
     nodes,
     edges: [],
+    sessionVariables: { [protocolName]: 'Protocol' },
   }) as unknown as SessionWithResequencedIDs;
 
 describe('attributeListRows', () => {
@@ -33,7 +37,12 @@ describe('attributeListRows', () => {
     ]);
 
     const rows = Array.from(
-      attributeListRows(network, mockCodebook, mockExportOptions),
+      attributeListRows(
+        network,
+        mockCodebook,
+        mockExportOptions,
+        () => undefined,
+      ),
     );
 
     expect(rows).toHaveLength(2);
@@ -58,7 +67,12 @@ describe('attributeListRows', () => {
     ]);
 
     const rows = Array.from(
-      attributeListRows(network, mockCodebook, mockExportOptions),
+      attributeListRows(
+        network,
+        mockCodebook,
+        mockExportOptions,
+        () => undefined,
+      ),
     );
 
     // The cell is both prefixed (formula neutralized) and quoted (contains a comma).
@@ -68,10 +82,54 @@ describe('attributeListRows', () => {
     expect(rows[1]).not.toContain(',=HYPERLINK');
   });
 
+  it('guards a header that could run as a formula, as it does the answers', () => {
+    const codebook = {
+      node: {
+        'mock-node-type': {
+          name: 'person',
+          label: { en: 'Person' },
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            'v-total': { name: '=total', label: 'Total', type: 'text' },
+            'v-score': {
+              name: '-score, adjusted',
+              label: 'Score adjusted',
+              type: 'text',
+            },
+          },
+        },
+      },
+    } satisfies Codebook;
+    const network = makeNetwork([
+      {
+        [nodeExportIDProperty]: 1,
+        [egoProperty]: 'ego-1',
+        [entityPrimaryKeyProperty]: 'uid-1',
+        type: 'mock-node-type',
+        [entityAttributesProperty]: { 'v-total': '=1+1', 'v-score': '-2' },
+      } as SessionWithResequencedIDs['nodes'][number],
+    ]);
+
+    const [header, row] = Array.from(
+      attributeListRows(network, codebook, mockExportOptions, () => undefined),
+    );
+
+    expect(header).toBe(
+      `${nodeExportIDProperty},${egoProperty},${ncUUIDProperty},'=total,"'-score, adjusted"\r\n`,
+    );
+    expect(row).toBe("1,ego-1,uid-1,'=1+1,'-2\r\n");
+  });
+
   it('yields only the header for an empty network', () => {
     const network = makeNetwork([]);
     const rows = Array.from(
-      attributeListRows(network, mockCodebook, mockExportOptions),
+      attributeListRows(
+        network,
+        mockCodebook,
+        mockExportOptions,
+        () => undefined,
+      ),
     );
     expect(rows).toHaveLength(1);
   });
@@ -88,7 +146,12 @@ describe('attributeListRows', () => {
     ]);
 
     const rows = Array.from(
-      attributeListRows(network, mockCodebook, mockExportOptions),
+      attributeListRows(
+        network,
+        mockCodebook,
+        mockExportOptions,
+        () => undefined,
+      ),
     );
 
     expect(rows[0]).toContain('unusedBool');
@@ -106,10 +169,74 @@ describe('attributeListRows', () => {
     ]);
 
     const rows = Array.from(
-      attributeListRows(network, mockCodebook, mockExportOptions),
+      attributeListRows(
+        network,
+        mockCodebook,
+        mockExportOptions,
+        () => undefined,
+      ),
     );
 
     expect(rows[0]).toContain('externalAttribute');
     expect(rows[1]).toContain('external value');
   });
+
+  it.each([
+    { label: 'metadata without a salt', metadata: { iv: [15, 243, 77, 120] } },
+    {
+      label: 'schema 8 metadata with a salt',
+      metadata: { iv: [15, 243, 77, 120], salt: [44, 130, 213, 61] },
+    },
+  ])(
+    'writes the marker in place of an encrypted value, with $label',
+    ({ metadata }) => {
+      const codebook = {
+        node: {
+          'mock-node-type': {
+            name: 'person',
+            label: { en: 'Person' },
+            color: 'node-color-seq-1',
+            shape: { default: 'circle' },
+            variables: {
+              'v-name': {
+                name: 'name',
+                label: 'Name',
+                type: 'text',
+                encrypted: true,
+              },
+              'v-city': { name: 'city', label: 'City', type: 'text' },
+            },
+          },
+        },
+      } satisfies Codebook;
+      const ciphertext = [201, 17, 93, 4, 250, 66, 128, 7, 33, 180, 2, 99];
+      const network = makeNetwork([
+        {
+          [nodeExportIDProperty]: 1,
+          [egoProperty]: 'ego-1',
+          [entityPrimaryKeyProperty]: 'uid-1',
+          type: 'mock-node-type',
+          [entityAttributesProperty]: {
+            'v-name': ciphertext,
+            'v-city': 'Lisbon',
+          },
+          [entitySecureAttributesMeta]: { 'v-name': metadata },
+        },
+      ]);
+
+      const [header, row] = Array.from(
+        attributeListRows(
+          network,
+          codebook,
+          mockExportOptions,
+          () => undefined,
+        ),
+      );
+
+      expect(header).toBe(
+        `${nodeExportIDProperty},${egoProperty},${ncUUIDProperty},name,city\r\n`,
+      );
+      expect(row).toBe('1,ego-1,uid-1,ENCRYPTED,Lisbon\r\n');
+    },
+  );
 });

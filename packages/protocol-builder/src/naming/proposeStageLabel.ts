@@ -4,10 +4,9 @@ import type {
   Panel,
   StageSubject,
   StageType,
-  Variable,
-  Variables,
 } from '@codaco/protocol-validation';
 
+import { resolveTranslation } from '../localization/localizedText.ts';
 import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
 import { generateStageLabel, STAGE_TYPE_NAMES } from './generateStageLabel.ts';
 import {
@@ -38,7 +37,6 @@ export type StageLabelDraft = Readonly<{
   type: StageType;
   subject?: StageSubject | undefined;
   items?: readonly Item[] | undefined;
-  nominationPrompts?: readonly Readonly<{ variable: string }>[] | undefined;
   panels?: readonly StageLabelPanel[] | undefined;
 }>;
 
@@ -51,6 +49,7 @@ export type StageLabelDraft = Readonly<{
  *
  * Always answers with a name, and always in English: it seeds a STORED value
  * rather than being copy — see `STAGE_TYPE_NAMES` in `generateStageLabel.ts`.
+ * The answer is plain text, written as the name's default-language translation.
  */
 export function proposeStageLabel(
   stage: StageLabelDraft,
@@ -59,20 +58,14 @@ export function proposeStageLabel(
   const subjectName = resolveStageSubjectName(stage.subject, (entity, type) =>
     entityName(context.codebook, entity, type),
   );
-  const variablesById = allVariablesById(context.codebook);
   const qualifier = resolveStageQualifier(
     {
       type: stage.type,
       ...(stage.panels === undefined ? {} : { panels: [...stage.panels] }),
       ...(stage.items === undefined ? {} : { items: [...stage.items] }),
-      ...(stage.nominationPrompts === undefined
-        ? {}
-        : { nominationPrompts: [...stage.nominationPrompts] }),
     },
     {
       resolveAssetType: (assetId) => context.assets[assetId]?.type ?? null,
-      resolveVariableName: (variableId) =>
-        variablesById[variableId]?.name ?? null,
     },
   );
   return generateStageLabel({
@@ -93,35 +86,22 @@ function entityName(
 }
 
 /**
- * Every attribute in the codebook by its record key: a nomination prompt names
- * one by key alone, so the lookup cannot be scoped to one entity.
+ * The names already taken, so a proposal is unique in the interview. Compared
+ * in the default language, the one a proposal is written in.
  */
-function allVariablesById(
-  codebook: Readonly<Codebook>,
-): Readonly<Record<string, Variable>> {
-  const flattened: Record<string, Variable> = {};
-  const add = (variables: Readonly<Variables> | undefined) => {
-    for (const [id, variable] of Object.entries(variables ?? {})) {
-      flattened[id] = variable;
-    }
-  };
-  for (const definition of Object.values(codebook.node ?? {})) {
-    add(definition.variables);
-  }
-  for (const definition of Object.values(codebook.edge ?? {})) {
-    add(definition.variables);
-  }
-  add(codebook.ego?.variables);
-  return flattened;
-}
-
-/** The names already taken, so a proposal is unique in the interview. */
 function existingStageLabels(
   context: ProtocolBuilderProtocolContext,
   stageId: string | undefined,
 ): string[] {
   return context.orderedStages
     .filter((stage) => stage.id !== stageId)
-    .map((stage) => stage.label)
+    .map(
+      (stage) =>
+        resolveTranslation(
+          stage.label,
+          context.localization,
+          context.localization?.defaultLocale,
+        ).text,
+    )
     .filter((label) => label !== '');
 }

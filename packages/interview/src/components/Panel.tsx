@@ -9,8 +9,9 @@ import Surface, {
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 
-type PanelProps = React.HTMLAttributes<HTMLDivElement> & {
-  title: string;
+type PanelProps = Omit<React.HTMLAttributes<HTMLDivElement>, 'title'> & {
+  /** The header text, and the button that collapses the panel. Omit for a panel with no header. */
+  title?: string;
   minimize?: boolean;
   panelNumber: number;
   noCollapse?: boolean;
@@ -82,15 +83,17 @@ const Panel = ({
       noContainer
       data-testid={testId}
     >
-      <button
-        type="button"
-        className={headingClassNames({ spacing: 'sm' })}
-        onClick={toggleCollapsed}
-      >
-        <Heading level="h3" margin="none">
-          {title}
-        </Heading>
-      </button>
+      {title !== undefined && (
+        <button
+          type="button"
+          className={headingClassNames({ spacing: 'sm' })}
+          onClick={toggleCollapsed}
+        >
+          <Heading level="h3" margin="none">
+            {title}
+          </Heading>
+        </button>
+      )}
       <div className={panelContentClasses}>{children}</div>
     </Surface>
   );

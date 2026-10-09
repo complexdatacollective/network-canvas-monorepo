@@ -1,12 +1,13 @@
 import { act, render as renderUI, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { commonCatalogLoaders } from '@codaco/app-i18n/common';
 import { createCatalogSource } from '@codaco/app-i18n/locales';
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import { frescoUiCatalogLoaders } from '@codaco/fresco-ui/locales';
+import { getLocaleMetadata } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -19,8 +20,8 @@ import Shell from '../Shell';
 vi.mock('../hooks/useMediaQuery', () => ({ default: () => false }));
 
 vi.mock('../interfaces', () => {
-  function AuthoredStage({ stage }: { stage: { title: string } }) {
-    return <h1>{stage.title}</h1>;
+  function AuthoredStage({ stage }: { stage: { title: { en: string } } }) {
+    return <h1>{stage.title.en}</h1>;
   }
   return { default: () => AuthoredStage };
 });
@@ -88,6 +89,8 @@ function WithoutMotion({ children }: { children: ReactNode }) {
 
 const render = (ui: ReactNode) => renderUI(ui, { wrapper: WithoutMotion });
 
+// The protocol is English only, so the interview region is marked English
+// whatever language the interface's own words load in.
 const payload = {
   session: {
     id: 'catalog-loading-session',
@@ -95,6 +98,9 @@ const payload = {
     finishTime: null,
     exportTime: null,
     lastUpdated: '2026-01-01T00:00:00.000Z',
+    localePreference: null,
+    locale: null,
+    localeOptions: [getLocaleMetadata('en')],
     network: {
       ego: {
         [entityPrimaryKeyProperty]: 'ego-1',
@@ -109,15 +115,16 @@ const payload = {
     hash: 'catalog-loading-hash',
     importedAt: '2026-01-01T00:00:00.000Z',
     name: 'Catalog loading protocol',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: { ego: { variables: {} }, node: {}, edge: {} },
     assets: [],
     stages: [
       {
         id: 'authored-screen',
         type: 'Information',
-        label: 'Authored screen',
-        title: 'Authored screen title',
+        label: { en: 'Authored screen' },
+        title: { en: 'Authored screen title' },
         items: [],
       },
     ],
@@ -126,6 +133,7 @@ const payload = {
 
 const handlers = {
   onSync: () => Promise.resolve(),
+  onProtocolLocaleChange: () => Promise.resolve(),
   onFinish: () => Promise.resolve(),
   onRequestAsset: () => Promise.resolve(''),
   analytics: { installationId: 'test', hostApp: 'test' },
@@ -160,7 +168,7 @@ describe('Shell catalog loading', () => {
           <Shell
             {...handlers}
             payload={payload}
-            requestedLocale="de"
+            requestedLocales={['de']}
             disableAnalytics
           />,
         );
@@ -180,7 +188,7 @@ describe('Shell catalog loading', () => {
         await screen.findByRole('button', { name: 'Nächster Schritt' }),
       ).toBeVisible();
       const region = screen.getByRole('main');
-      expect(region).toHaveAttribute('lang', 'de');
+      expect(region).toHaveAttribute('lang', 'en');
       expect(region).not.toHaveAttribute('aria-busy');
       expect(
         screen.getByRole('heading', { name: 'Authored screen title' }),
@@ -202,7 +210,7 @@ describe('Shell catalog loading', () => {
         <Shell
           {...handlers}
           payload={payload}
-          requestedLocale="it"
+          requestedLocales={['it']}
           disableAnalytics
         />,
       );
@@ -243,14 +251,14 @@ describe('Shell catalog loading', () => {
       <Shell
         {...handlers}
         payload={payload}
-        requestedLocale="nl-BE"
+        requestedLocales={['nl-BE']}
         catalog={catalog}
         disableAnalytics
       />,
     );
 
     const region = screen.getByRole('main');
-    expect(region).toHaveAttribute('lang', 'nl');
+    expect(region).toHaveAttribute('lang', 'en');
     expect(region).not.toHaveAttribute('aria-busy');
     const next = screen.getByRole('button', { name: 'Volgende stap' });
     await settle();
@@ -258,46 +266,47 @@ describe('Shell catalog loading', () => {
     expect(neverLoadsDutch).not.toHaveBeenCalled();
   });
 
-  it('keeps the current language while a newly chosen one loads, with the menu already showing the choice', async () => {
+  it('keeps the current language while a newly requested one loads', async () => {
     await interviewCatalogSource.load('es');
-    render(
-      <Shell
-        {...handlers}
-        payload={payload}
-        requestedLocale="es"
-        disableAnalytics
-      />,
-    );
+    function Host() {
+      const [requested, setRequested] = useState<readonly string[]>(['es']);
+      return (
+        <>
+          <button type="button" onClick={() => setRequested(['fr'])}>
+            Change browser languages
+          </button>
+          <Shell
+            {...handlers}
+            payload={payload}
+            requestedLocales={requested}
+            disableAnalytics
+          />
+        </>
+      );
+    }
+    render(<Host />);
     const user = userEvent.setup();
     const heading = screen.getByRole('heading', {
       name: 'Authored screen title',
     });
-    await user.click(screen.getByRole('button', { name: 'Configuración' }));
-    await user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Idioma de la interfaz' }),
-      'fr',
+    await user.click(
+      screen.getByRole('button', { name: 'Change browser languages' }),
     );
     await settle();
 
     const region = screen.getByRole('main');
-    expect(region).toHaveAttribute('lang', 'es');
+    expect(region).toHaveAttribute('lang', 'en');
     expect(region).not.toHaveAttribute('aria-busy');
     expect(
       screen.getByRole('button', { name: 'Siguiente paso' }),
     ).toBeVisible();
-    expect(
-      screen.getByRole('combobox', { name: 'Idioma de la interfaz' }),
-    ).toHaveValue('fr');
 
     gates.fr.open();
     expect(
       await screen.findByRole('button', { name: 'Étape suivante' }),
     ).toBeVisible();
     expect(screen.getByRole('main')).toBe(region);
-    expect(region).toHaveAttribute('lang', 'fr');
-    expect(
-      screen.getByRole('combobox', { name: 'Langue de l’interface' }),
-    ).toHaveValue('fr');
+    expect(region).toHaveAttribute('lang', 'en');
     expect(screen.getByRole('heading', { name: 'Authored screen title' })).toBe(
       heading,
     );

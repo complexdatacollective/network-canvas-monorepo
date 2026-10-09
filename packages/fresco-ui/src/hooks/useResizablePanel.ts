@@ -7,7 +7,6 @@ import useSafeLocalStorage from './useSafeLocalStorage';
 
 type Breakpoint = {
   value: number;
-  label: string;
 };
 
 type UseResizablePanelOptions = {

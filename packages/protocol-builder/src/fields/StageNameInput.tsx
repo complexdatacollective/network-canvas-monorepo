@@ -39,6 +39,9 @@ type HeadingInputProps = {
    * submission below finds nothing to click.
    */
   'form'?: string;
+  /** The language the name is written in, for spelling and voice. */
+  'lang'?: string;
+  'dir'?: 'ltr' | 'rtl';
   'value'?: string;
   'onChange'?: (value: string) => void;
   /** Blur hook for auto-naming; the form's own blur handling is on the container. */
@@ -73,6 +76,8 @@ const StageNameInput = ({
   id,
   name,
   form,
+  lang,
+  dir,
   value = '',
   onChange,
   onFieldBlur,
@@ -125,7 +130,11 @@ const StageNameInput = ({
      * `minmax(0,1fr)` stops the column widening to the replica's min-content
      * width, which one long unbroken word would push past the container.
      */
-    <div className="grid w-full grid-cols-[minmax(0,1fr)]">
+    <div
+      lang={lang}
+      dir={dir}
+      className="grid w-full grid-cols-[minmax(0,1fr)]"
+    >
       <div aria-hidden="true" className={cx(sharedTextLayout, 'invisible')}>
         {/*
          * The trailing space holds the height of a line ending in whitespace,

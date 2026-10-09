@@ -13,6 +13,7 @@ import {
   Unauthorized,
 } from '../schema/errors.ts';
 import {
+  FinishUnrecognised,
   LinkUnavailable,
   SessionEnded,
   SessionOutOfDate,
@@ -277,6 +278,13 @@ const SAMPLES = new Map<string, ErrorSample>([
     {
       make: () => new SessionOutOfDate({ revision: '4' }),
       isInstance: (value) => value instanceof SessionOutOfDate,
+    },
+  ],
+  [
+    'FinishUnrecognised',
+    {
+      make: () => new FinishUnrecognised({}),
+      isInstance: (value) => value instanceof FinishUnrecognised,
     },
   ],
   [

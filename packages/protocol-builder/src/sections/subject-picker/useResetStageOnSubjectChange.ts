@@ -6,6 +6,7 @@ import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
 import type { Command } from '@codaco/studio-sync/apply';
 
+import { isFieldValue } from '../../form/fieldValue.ts';
 import {
   type StageFormStoreApi,
   useStageEditorForm,
@@ -21,6 +22,7 @@ import type { StageFormDraft } from '../../stageDocument.ts';
 import { useOnResearcherChange } from '../researcherChange.ts';
 import {
   SUBJECT_INDEPENDENT_FIELDS,
+  subjectDependentPaths,
   subjectDependentResets,
 } from './subjectReset.ts';
 
@@ -31,22 +33,6 @@ import {
  * hold is a defect in the template rather than something to swallow: writing
  * `undefined` instead would silently drop a default the interface depends on.
  */
-const isFieldValueArrayItem = (
-  value: unknown,
-): value is string | number | boolean | Record<string, unknown> =>
-  typeof value === 'string' ||
-  typeof value === 'number' ||
-  typeof value === 'boolean' ||
-  (typeof value === 'object' && value !== null && !Array.isArray(value));
-
-const isFieldValue = (value: unknown): value is FieldValue =>
-  value === undefined ||
-  typeof value === 'string' ||
-  typeof value === 'number' ||
-  typeof value === 'boolean' ||
-  (Array.isArray(value) && value.every(isFieldValueArrayItem)) ||
-  (typeof value === 'object' && value !== null && !Array.isArray(value));
-
 function asFieldValue(value: unknown): FieldValue {
   if (!isFieldValue(value)) {
     throw new TypeError('An interface template holds a value a form cannot.');
@@ -132,11 +118,18 @@ export function useSubjectChangeDiscards(): () => boolean {
   return useCallback(() => {
     const template = getInterfaceTemplate(identity.type);
     return hasAnyValue(
-      heldStageKeys(storeApi, committedFields).filter(
-        (key) =>
-          !SUBJECT_INDEPENDENT_FIELDS.includes(key) &&
-          !survivesTheReset(storeApi, committedFields, key, template),
-      ),
+      heldStageKeys(storeApi, committedFields)
+        .filter(
+          (key) =>
+            !SUBJECT_INDEPENDENT_FIELDS.includes(key) &&
+            !survivesTheReset(storeApi, committedFields, key, template),
+        )
+        .flatMap((key) =>
+          subjectDependentPaths(
+            key,
+            stageAnswerAt(storeApi.getState(), committedFields, key),
+          ),
+        ),
     );
   }, [committedFields, hasAnyValue, identity.type, storeApi]);
 }
@@ -168,6 +161,10 @@ export function useResetStageOnSubjectChange(): void {
     const resets = subjectDependentResets(
       heldStageKeys(storeApi, committedFields),
       template,
+      (key) => stageAnswerAt(storeApi.getState(), committedFields, key),
+    );
+    const resetValues = Object.fromEntries(
+      resets.map((reset) => [reset.key, reset.value]),
     );
 
     // The document first, and in one batch, so nothing reading the stage
@@ -213,7 +210,7 @@ export function useResetStageOnSubjectChange(): void {
         }
         storeApi
           .getState()
-          .setFieldValue(name, asFieldValue(get(template, name)));
+          .setFieldValue(name, asFieldValue(get(resetValues, name)));
       }
     }
   });

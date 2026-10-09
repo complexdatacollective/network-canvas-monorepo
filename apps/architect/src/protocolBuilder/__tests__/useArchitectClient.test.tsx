@@ -30,6 +30,9 @@ const PROTOCOL_ID = 'library-row-1';
 const EDIT = 'edit-1';
 const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
 
+/** The language the all-interfaces protocol is written in. */
+const FIXTURE_LANGUAGE = 'en-US';
+
 const openStore = (): ArchitectStore => {
   const store = configureStore({ reducer: rootReducer });
   store.dispatch(setActiveProtocolId(PROTOCOL_ID));
@@ -40,7 +43,7 @@ const openStore = (): ArchitectStore => {
 const stageLabel = (store: ArchitectStore): string | undefined =>
   getProtocol(store.getState())?.stages.find(
     (stage) => stage.id === 'information-1',
-  )?.label;
+  )?.label[FIXTURE_LANGUAGE];
 
 describe('useArchitectClient', () => {
   it('keeps one working client through StrictMode, and disposes it on unmount', async () => {
@@ -62,7 +65,7 @@ describe('useArchitectClient', () => {
       sectionId: INFORMATION,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: 'Edited under StrictMode',
+        label: { [FIXTURE_LANGUAGE]: 'Edited under StrictMode' },
       }),
       revision: held.revision,
     });
@@ -106,7 +109,7 @@ describe('useArchitectClient', () => {
       sectionId: INFORMATION,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: 'Written to the second store',
+        label: { [FIXTURE_LANGUAGE]: 'Written to the second store' },
       }),
       revision: held.revision,
     });
@@ -153,7 +156,7 @@ describe('useArchitectClient', () => {
       sectionId: INFORMATION,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: 'Names the photograph',
+        label: { [FIXTURE_LANGUAGE]: 'Names the photograph' },
       }),
       revision: held.revision,
       promote: { editId: EDIT, resourceIds: [resourceId] },

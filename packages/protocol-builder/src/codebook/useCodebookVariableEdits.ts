@@ -9,7 +9,10 @@ import {
   VARIABLE_TYPE_COMPONENTS,
   type VariableType,
 } from '@codaco/protocol-validation';
-import { VariableNameSchema } from '@codaco/shared-consts';
+import {
+  CodebookNameSchema,
+  normalizeCodebookName,
+} from '@codaco/shared-consts';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import {
@@ -25,15 +28,18 @@ import {
   documentWithUpdatedVariable,
   type CodebookDraftIssue,
   DuplicateVariableNameError,
+  ExportColumnConflictError,
   InvalidCodebookDraftError,
   MissingVariableError,
   sectionIdForCodebookSubject,
 } from './editing.ts';
+import { useStageManagedOptionsLock } from './useStageManagedOptionsLock.ts';
 import { optionsShapeFor } from './variableOptions.ts';
 import { parametersForShape, parameterShapeFor } from './variableParameters.ts';
 import {
   buildInterfaceOwnedOptionMap,
   interfaceOwnedOptionsIssue,
+  stageManagedOptionsRefusal,
 } from './variableRoles.ts';
 import {
   useCodebookSectionWrite,
@@ -175,9 +181,9 @@ const messages = defineMessages({
   nameInvalid: {
     id: 'protocolBuilder.codebookEditing.newVariableNameInvalid',
     defaultMessage:
-      'Not a valid attribute name. Only letters, numbers and the symbols ._-: are supported',
+      'An attribute name cannot contain line breaks, tabs or other control characters.',
     description:
-      'Refusal shown under the name field of a stage editor when the name typed for a new attribute holds characters the export formats cannot carry. The listed symbols are literal characters and must not be translated. Said in the same words as the row-cell rule that judges an attribute name as it is typed.',
+      'Refusal shown under the name field of a stage editor when the name typed for a new attribute holds a character that cannot be stored in a name, such as a line break or a tab. Names may otherwise be written in any language or script, with spaces and punctuation.',
   },
 });
 
@@ -252,7 +258,13 @@ const draftIssueMessage = (
     if (controlIsNotOffered(draft)) {
       return intl.formatMessage(messages.unsupportedControl);
     }
-    if (!VariableNameSchema.safeParse(draft.name).success) {
+    if (
+      !CodebookNameSchema.safeParse(
+        typeof draft.name === 'string'
+          ? normalizeCodebookName(draft.name)
+          : draft.name,
+      ).success
+    ) {
       return intl.formatMessage(messages.nameInvalid);
     }
   }
@@ -276,6 +288,9 @@ const refusalMessage = (
 ): string => {
   if (error instanceof DuplicateVariableNameError) {
     return intl.formatMessage(messages.nameTaken);
+  }
+  if (error instanceof ExportColumnConflictError) {
+    return readRefusal(error.refusal, intl);
   }
   if (error instanceof MissingVariableError) {
     return intl.formatMessage(messages.missingVariable);
@@ -580,10 +595,16 @@ export type SetVariableOptions = (
  * refused the same write for the same reason
  * (`sections/useVariableOptionsCommit.ts`'s interface-owned refusal), and
  * until now the package carried the refusal with nothing calling it.
+ *
+ * A list a STAGE manages — the pedigree's gender identity options, whose kin
+ * words live on the stage — is refused from anywhere but the editor of a stage
+ * that manages it (`useStageManagedOptionsLock`). The option editors show such
+ * a list read-only; this is the backstop behind them.
  */
 export function useSetVariableOptions(): SetVariableOptions {
   const write = useCodebookSectionWrite();
   const protocolContext = useProtocolContext();
+  const stageManagedLock = useStageManagedOptionsLock();
   const intl = useAppIntl();
 
   return useCallback(
@@ -613,6 +634,18 @@ export function useSetVariableOptions(): SetVariableOptions {
       );
       if (ownedIssue !== undefined) {
         return { status: 'refused', message: ownedIssue };
+      }
+
+      // A list a STAGE manages is refused outside that stage's editor. The
+      // option editors show it read-only there, so this is the backstop for a
+      // write that reaches here some other way — a row opened on one attribute
+      // and re-pointed at a managed one, say.
+      const managedBy = stageManagedLock(subject, variableId);
+      if (managedBy !== undefined) {
+        return {
+          status: 'refused',
+          message: stageManagedOptionsRefusal(managedBy),
+        };
       }
 
       let refusal: string | undefined;
@@ -659,7 +692,7 @@ export function useSetVariableOptions(): SetVariableOptions {
         message: refusal ?? rowRefusal(outcome, intl),
       };
     },
-    [intl, protocolContext, write],
+    [intl, protocolContext, stageManagedLock, write],
   );
 }
 
@@ -678,7 +711,9 @@ export function useSetVariableOptions(): SetVariableOptions {
  * so a change of case or of Unicode form is not a duplicate of itself). The
  * control asks the same rule as the researcher types; this is the answer that
  * counts, because the name can be taken by a collaborator inside the round
- * trip.
+ * trip. The write refuses in the same way a name that would make the export
+ * put two things in one column — and a categorical or layout attribute's
+ * columns are all named after it, so renaming one is judged on every column.
  *
  * A name that already matches is not written: an unchanged save must not put a
  * revision on the codebook section that a collaborator has to merge.
@@ -691,7 +726,7 @@ export function useRenameCodebookVariable(
   const intl = useAppIntl();
 
   return useCallback(
-    async (variableId, name) => {
+    async (variableId, typed) => {
       if (subject === undefined) {
         return {
           status: 'refused',
@@ -699,6 +734,7 @@ export function useRenameCodebookVariable(
           held: false,
         };
       }
+      const name = normalizeCodebookName(typed);
       // The only reading of the cache here, and only to skip a write with
       // nothing to say. A cache that has not arrived yet is not an answer, so
       // it goes on and asks the host.

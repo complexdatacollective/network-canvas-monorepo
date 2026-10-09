@@ -11,19 +11,21 @@ import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import PasswordField from '@codaco/fresco-ui/form/fields/PasswordField';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
+import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import FormStoreProvider, {
   FormStoreContext,
 } from '@codaco/fresco-ui/form/store/formStoreProvider';
-import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
+import type {
+  FormSubmissionResult,
+  FormSubmitHandler,
+} from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Surface, { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
-import {
-  ALLOWED_MARKDOWN_SECTION_TAGS,
-  RenderMarkdown,
-} from '@codaco/fresco-ui/RenderMarkdown';
+import { ALLOWED_MARKDOWN_SECTION_TAGS } from '@codaco/fresco-ui/RenderMarkdown';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import EncryptionBackground from '../../components/EncryptedBackground';
 import { submitRegisteredForm } from '../../forms/submitRegisteredForm';
@@ -31,8 +33,12 @@ import useBeforeNext from '../../hooks/useBeforeNext';
 import { useCelebrate } from '../../hooks/useCelebrate';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
+import { LocalizedMarkdown } from '../../localization/LocalizedMarkdown';
+import { LocalizedText } from '../../localization/LocalizedText';
 import type { StageProps } from '../../types';
 import { interfaceMessages } from '../messages';
+import PassphraseCheckStatus from './PassphraseCheckStatus';
+import { passphraseLengthRules } from './passphraseRules';
 import { usePassphrase } from './usePassphrase';
 
 type AnonymisationProps = StageProps<'Anonymisation'>;
@@ -45,25 +51,36 @@ function AnonymisationInner(props: AnonymisationProps) {
   const {
     stage: { explanationText, validation },
   } = props;
-  const minLength = validation?.minLength;
-  const maxLength = validation?.maxLength;
-  const { passphrase, submitPassphrase } = usePassphrase();
+  const { unlocked, passphraseChosen, encryptionUnavailable, unlock } =
+    usePassphrase();
+  // Once a passphrase has been chosen in this interview, this stage only asks
+  // for it again: it is checked, not chosen, so it needs no confirmation and
+  // the length rules do not apply to it.
+  const choosing = !passphraseChosen;
+  const lengthRules = choosing ? passphraseLengthRules(validation) : {};
   const celebrate = useCelebrate(alertRef);
+  const checking = useRef<Promise<FormSubmissionResult> | null>(null);
 
   const validateForm = useFormStore((state) => state.validateForm);
   const formStore = useContext(FormStoreContext);
 
   useEffect(() => {
-    if (passphrase) {
+    if (unlocked) {
       celebrate();
     }
-  }, [passphrase, celebrate]);
+  }, [unlocked, celebrate]);
+
+  // From an effect rather than after the check, so that a check still under
+  // way when the participant leaves cannot mark the next stage ready.
+  useEffect(() => {
+    if (unlocked || encryptionUnavailable) updateReady(true);
+  }, [unlocked, encryptionUnavailable, updateReady]);
 
   useBeforeNext(async (direction) => {
     if (direction === 'backwards') {
       return true;
     }
-    if (passphrase) {
+    if (unlocked || encryptionUnavailable) {
       return true;
     }
 
@@ -83,19 +100,21 @@ function AnonymisationInner(props: AnonymisationProps) {
 
     // Leaving waits for the passphrase to be checked, so a rejected one keeps
     // the participant here with the error rather than moving on without it.
-    return submitRegisteredForm(formStore);
+    // The form shows the check under way as it does for its own submit.
+    return submitRegisteredForm(formStore, { showSubmitting: true });
   });
 
-  const handleSetPassphrase: FormSubmitHandler = useCallback(
-    async ({ passphrase: candidate }) => {
+  const checkPassphrase = useCallback(
+    async (candidate: unknown): Promise<FormSubmissionResult> => {
       if (typeof candidate !== 'string') {
         return {
           success: false,
-          formErrors: [createMessageError(runtimeMessages.submissionFailed)],
+          formErrors: [createMessageError(formMessages.submitFailed)],
         };
       }
 
-      if (!(await submitPassphrase(candidate))) {
+      const outcome = await unlock(candidate);
+      if (outcome === 'incorrect') {
         return {
           success: false,
           fieldErrors: {
@@ -105,16 +124,37 @@ function AnonymisationInner(props: AnonymisationProps) {
           },
         };
       }
-
-      updateReady(true);
+      if (outcome === 'unavailable') {
+        return {
+          success: false,
+          formErrors: [
+            createMessageError(runtimeMessages.protectedAnswersUnavailable),
+          ],
+        };
+      }
       return { success: true };
     },
-    [submitPassphrase, updateReady],
+    [unlock],
+  );
+
+  // The form's submit and the Next button can both ask for the check; while
+  // one is under way, the other waits for its result instead of deriving the
+  // key a second time.
+  const handleSetPassphrase: FormSubmitHandler = useCallback(
+    ({ passphrase: candidate }) => {
+      if (checking.current) return checking.current;
+      const attempt = checkPassphrase(candidate).finally(() => {
+        checking.current = null;
+      });
+      checking.current = attempt;
+      return attempt;
+    },
+    [checkPassphrase],
   );
 
   return (
     <>
-      <EncryptionBackground thresholdPosition={passphrase ? 20 : 100} />
+      <EncryptionBackground thresholdPosition={unlocked ? 20 : 100} />
       <ScrollArea className="m-0 size-full">
         <div className="interface mx-auto min-h-full max-w-[80ch] flex-col">
           <MotionSurface
@@ -138,13 +178,27 @@ function AnonymisationInner(props: AnonymisationProps) {
               delay: 0.2,
             }}
           >
-            <Heading level="h1">{explanationText.title}</Heading>
-            <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
-              {explanationText.body}
-            </RenderMarkdown>
+            <LocalizedText
+              value={explanationText.title}
+              render={<Heading level="h1" />}
+            />
+            <LocalizedMarkdown
+              value={explanationText.body}
+              allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+            />
 
             <AnimatePresence mode="popLayout">
-              {passphrase ? (
+              {encryptionUnavailable ? (
+                <motion.div key="unavailable">
+                  <Alert variant="warning">
+                    <AlertDescription>
+                      <AppMessage
+                        message={runtimeMessages.protectedAnswersUnavailable}
+                      />
+                    </AlertDescription>
+                  </Alert>
+                </motion.div>
+              ) : unlocked ? (
                 <motion.div
                   key="success"
                   initial={{ opacity: 0, scale: 0.9 }}
@@ -153,7 +207,9 @@ function AnonymisationInner(props: AnonymisationProps) {
                 >
                   <Alert ref={alertRef} variant="success">
                     <AlertDescription>
-                      <AppMessage message={interfaceMessages.passphraseSet} />
+                      <AppMessage
+                        message={interfaceMessages.passphraseAccepted}
+                      />
                     </AlertDescription>
                   </Alert>
                 </motion.div>
@@ -169,34 +225,35 @@ function AnonymisationInner(props: AnonymisationProps) {
                       onSubmit={handleSetPassphrase}
                       ref={formRef}
                     >
+                      {!choosing && (
+                        <Paragraph>
+                          <AppMessage
+                            message={runtimeMessages.choosePassphraseHelp}
+                          />
+                        </Paragraph>
+                      )}
                       <Field
                         component={PasswordField}
                         name="passphrase"
-                        placeholder={intl.formatMessage(
-                          runtimeMessages.passphrasePlaceholder,
-                        )}
                         label={intl.formatMessage(runtimeMessages.passphrase)}
                         required
                         autoFocus
                         suppressPasswordManager
-                        {...(minLength !== undefined && { minLength })}
-                        {...(maxLength !== undefined && { maxLength })}
+                        {...lengthRules}
                       />
-                      <Field
-                        component={PasswordField}
-                        name="passphrase-2"
-                        placeholder={intl.formatMessage(
-                          interfaceMessages.reenterPassphrase,
-                        )}
-                        label={intl.formatMessage(
-                          interfaceMessages.confirmPassphrase,
-                        )}
-                        required
-                        sameAs="passphrase"
-                        suppressPasswordManager
-                        {...(minLength !== undefined && { minLength })}
-                        {...(maxLength !== undefined && { maxLength })}
-                      />
+                      {choosing && (
+                        <Field
+                          component={PasswordField}
+                          name="passphrase-2"
+                          label={intl.formatMessage(
+                            interfaceMessages.confirmPassphrase,
+                          )}
+                          required
+                          sameAs="passphrase"
+                          suppressPasswordManager
+                          {...lengthRules}
+                        />
+                      )}
                       <SubmitButton
                         key="submit"
                         aria-label={intl.formatMessage(
@@ -208,6 +265,7 @@ function AnonymisationInner(props: AnonymisationProps) {
                       >
                         <AppMessage message={commonMessages.continue} />
                       </SubmitButton>
+                      <PassphraseCheckStatus className="mt-4" />
                     </FormWithoutProvider>
                   </Surface>
                 </motion.div>

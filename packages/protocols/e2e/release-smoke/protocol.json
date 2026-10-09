@@ -1,42 +1,59 @@
 {
   "name": "Release Smoke",
   "description": "Purpose-built protocol for the Interviewer release smoke test. Six stages exercise every interview data-model write path (ego, node, layout, two edge-creation paths, categorical attribute) in a walk short enough to conduct entirely offline. Interfaces are imported eagerly in the engine bundle, so broader stage-type coverage belongs to the e2e and Storybook suites, not this gate.",
-  "schemaVersion": 8,
+  "schemaVersion": 9,
+  "localization": { "defaultLocale": "en-US", "locales": ["en-US"] },
   "lastModified": "2026-08-28T00:00:00.000Z",
   "codebook": {
     "node": {
       "person": {
         "name": "Person",
+        "label": { "en-US": "Person" },
         "color": "node-color-seq-1",
         "shape": { "default": "circle" },
         "variables": {
           "name": {
             "name": "name",
+            "label": "name",
             "type": "text",
             "component": "Text",
             "validation": { "required": true }
           },
-          "layout": { "name": "layout", "type": "layout" },
+          "layout": {
+            "name": "layout",
+            "label": "layout",
+            "type": "layout"
+          },
           "context": {
             "name": "context",
+            "label": "context",
             "type": "categorical",
             "options": [
-              { "label": "Work", "value": "work" },
-              { "label": "Social", "value": "social" },
-              { "label": "Family", "value": "family" }
+              { "label": { "en-US": "Work" }, "value": "work" },
+              { "label": { "en-US": "Social" }, "value": "social" },
+              { "label": { "en-US": "Family" }, "value": "family" }
             ]
           }
         }
       }
     },
     "edge": {
-      "knows": { "name": "Knows", "color": "edge-color-seq-1" },
-      "friends": { "name": "Friends", "color": "edge-color-seq-2" }
+      "knows": {
+        "name": "Knows",
+        "label": { "en-US": "Knows" },
+        "color": "edge-color-seq-1"
+      },
+      "friends": {
+        "name": "Friends",
+        "label": { "en-US": "Friends" },
+        "color": "edge-color-seq-2"
+      }
     },
     "ego": {
       "variables": {
         "ego_name": {
           "name": "ego_name",
+          "label": "ego_name",
           "type": "text",
           "component": "Text",
           "validation": { "required": true }
@@ -48,47 +65,67 @@
     {
       "id": "stage-info",
       "type": "Information",
-      "label": "Welcome",
-      "title": "Welcome",
+      "label": { "en-US": "Welcome" },
+      "title": { "en-US": "Welcome" },
       "items": [
         {
           "id": "item-1",
           "type": "text",
-          "content": "# Release smoke\n\nThis short interview exercises every data write path."
+          "content": {
+            "en-US": "# Release smoke\n\nThis short interview exercises every data write path."
+          }
         }
       ]
     },
     {
       "id": "stage-ego",
       "type": "EgoForm",
-      "label": "About you",
+      "label": { "en-US": "About you" },
       "introductionPanel": {
-        "title": "Introduction",
-        "text": "Tell us about **you**."
+        "title": { "en-US": "Introduction" },
+        "text": { "en-US": "Tell us about **you**." }
       },
       "form": {
-        "fields": [{ "variable": "ego_name", "prompt": "What is your name?" }]
+        "fields": [
+          {
+            "variable": "ego_name",
+            "prompt": { "en-US": "What is your name?" }
+          }
+        ]
       }
     },
     {
       "id": "stage-ng",
+      "minNodesNotice": {
+        "en-US": "{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}"
+      },
+      "maxNodesNotice": {
+        "en-US": "You have completed this task. Click the next arrow to continue."
+      },
+      "quickAddHint": {
+        "en-US": "Press Enter when you are finished."
+      },
       "type": "NameGeneratorQuickAdd",
-      "label": "Name people",
+      "label": { "en-US": "Name people" },
       "subject": { "entity": "node", "type": "person" },
       "quickAdd": "name",
       "behaviours": { "minNodes": 1, "maxNodes": 8 },
-      "prompts": [{ "id": "p1", "text": "Who are the people you know?" }]
+      "prompts": [
+        { "id": "p1", "text": { "en-US": "Who are the people you know?" } }
+      ]
     },
     {
       "id": "stage-socio",
       "type": "Sociogram",
-      "label": "Place and connect",
+      "label": { "en-US": "Place and connect" },
       "subject": { "entity": "node", "type": "person" },
       "background": { "concentricCircles": 4, "skewedTowardCenter": true },
       "prompts": [
         {
           "id": "p1",
-          "text": "Drag to place everyone; link people who know each other.",
+          "text": {
+            "en-US": "Drag to place everyone; link people who know each other."
+          },
           "layout": { "layoutVariable": "layout" },
           "edges": { "create": "knows", "display": ["knows"] }
         }
@@ -97,16 +134,18 @@
     {
       "id": "stage-dyad",
       "type": "DyadCensus",
-      "label": "Friendships",
+      "label": { "en-US": "Friendships" },
       "subject": { "entity": "node", "type": "person" },
       "introductionPanel": {
-        "title": "Friendships",
-        "text": "You will be asked about each pair of people you named."
+        "title": { "en-US": "Friendships" },
+        "text": {
+          "en-US": "You will be asked about each pair of people you named."
+        }
       },
       "prompts": [
         {
           "id": "p1",
-          "text": "Are these two people friends?",
+          "text": { "en-US": "Are these two people friends?" },
           "createEdge": "friends"
         }
       ]
@@ -114,15 +153,100 @@
     {
       "id": "stage-catbin",
       "type": "CategoricalBin",
-      "label": "Context",
+      "label": { "en-US": "Context" },
       "subject": { "entity": "node", "type": "person" },
       "prompts": [
         {
           "id": "p1",
-          "text": "How do you know each person?",
+          "text": { "en-US": "How do you know each person?" },
           "variable": "context"
         }
       ]
+    },
+    {
+      "id": "finish",
+      "finishLabel": {
+        "en-US": "Finish"
+      },
+      "finishConfirmation": {
+        "en-US": "Are you sure you want to finish the interview?"
+      },
+      "finishedNotice": {
+        "en-US": "This interview is finished, and its answers can no longer be changed."
+      },
+      "finishFailed": {
+        "en-US": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
+      },
+      "type": "FinishSession",
+      "label": {
+        "en-US": "Finish Interview"
+      },
+      "title": {
+        "en-US": "Finish Interview"
+      },
+      "content": {
+        "en-US": "You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
+      },
+      "outcome": "completed"
     }
-  ]
+  ],
+  "interfaceText": {
+    "interview": {
+      "exitInterview": {
+        "en-US": "Exit interview"
+      },
+      "exitInterviewDescription": {
+        "en-US": "Your answers so far will be saved and you can continue later."
+      },
+      "stageError": {
+        "en-US": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
+      },
+      "itemUnavailable": {
+        "en-US": "This item could not be displayed."
+      },
+      "back": {
+        "en-US": "Back"
+      },
+      "continue": {
+        "en-US": "Continue"
+      },
+      "cancel": {
+        "en-US": "Cancel"
+      },
+      "done": {
+        "en-US": "Done"
+      },
+      "delete": {
+        "en-US": "Delete"
+      },
+      "genericError": {
+        "en-US": "Something went wrong."
+      }
+    },
+    "forms": {
+      "discardChanges": {
+        "en-US": "Discard changes"
+      },
+      "discardChangesTitle": {
+        "en-US": "Discard changes?"
+      },
+      "discardChangesDescription": {
+        "en-US": "This form contains invalid data, so it cannot be saved. If you continue it will be reset, and your changes will be lost. Do you want to discard your changes?"
+      },
+      "yes": {
+        "en-US": "Yes"
+      },
+      "no": {
+        "en-US": "No"
+      },
+      "submitFailed": {
+        "en-US": "An error occurred while submitting the form."
+      }
+    },
+    "validation": {
+      "required": {
+        "en-US": "You must answer this question before continuing."
+      }
+    }
+  }
 }

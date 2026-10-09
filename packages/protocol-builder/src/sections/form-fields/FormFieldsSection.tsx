@@ -17,7 +17,6 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import FormErrors from '@codaco/fresco-ui/form/FormErrors';
@@ -26,7 +25,10 @@ import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Section from '@codaco/fresco-ui/Section';
-import { duplicateFormFieldIndices } from '@codaco/protocol-validation';
+import {
+  duplicateFormFieldIndices,
+  isBlankMessage,
+} from '@codaco/protocol-validation';
 
 import {
   useCreateCodebookVariable,
@@ -58,7 +60,10 @@ import {
   variableDisplayName,
   variableTypeForComponent,
 } from '../../codebook/variableValidation.ts';
-import RichTextField from '../../fields/RichTextField.tsx';
+import {
+  LocalizedInputField,
+  LocalizedRichTextField,
+} from '../../fields/LocalizedStringField.tsx';
 import VariablePickerField, {
   type CreateOptionOutcome,
   type VariablePickerOption,
@@ -84,6 +89,8 @@ import {
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import { protocolAuthoringLinks } from '../../interfaces/documentation.ts';
+import { asLocalizedString } from '../../localization/localizedText.ts';
+import { useLocalizedText } from '../../localization/ProtocolLocalization.tsx';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { variablesForSubject } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
@@ -97,7 +104,7 @@ import AttributeValueFields, {
   ATTRIBUTE_OPTIONS_FIELD,
 } from '../AttributeValueFields.tsx';
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
-import { useSubjectVariableNames } from '../canvas/codebookChoices.ts';
+import { useSubjectVariableScope } from '../canvas/codebookChoices.ts';
 import {
   allControlGroups,
   controlsForType,
@@ -114,14 +121,8 @@ import {
   useInventingAttribute,
 } from './inventedAttribute.ts';
 
-/**
- * Where an interface that holds a whole form keeps it.
- *
- * The default rather than the rule: FamilyPedigree's family-member form is the
- * same list of the same fields hung off its node configuration
- * (`nodeConfig.form`), which is why the path is a prop.
- */
-const DEFAULT_FIELDS_PATH = 'form.fields';
+/** Where every interface that holds a whole form keeps its fields. */
+const FIELDS_PATH = 'form.fields';
 const TITLE = 'form.title';
 
 const INPUT_CONTROL = '_component';
@@ -144,7 +145,7 @@ const renderInputControlsLink = (chunks: ReactNode) => (
   </NativeLink>
 );
 
-const messages = defineMessages({
+export const formFieldsMessages = defineMessages({
   atLeastOne: {
     id: 'protocolBuilder.formFields.atLeastOne',
     defaultMessage: 'You must create at least one item.',
@@ -414,15 +415,15 @@ const messages = defineMessages({
   },
 });
 
-const AT_LEAST_ONE_FIELD = createMessageError(messages.atLeastOne);
+const AT_LEAST_ONE_FIELD = createMessageError(formFieldsMessages.atLeastOne);
 
-const INCOMPLETE_FIELD = createMessageError(messages.incompleteField);
+const INCOMPLETE_FIELD = createMessageError(formFieldsMessages.incompleteField);
 
-const MALFORMED_FIELD = createMessageError(messages.malformedField);
+const MALFORMED_FIELD = createMessageError(formFieldsMessages.malformedField);
 
-const DUPLICATE_FIELD = createMessageError(messages.duplicateField);
+const DUPLICATE_FIELD = createMessageError(formFieldsMessages.duplicateField);
 
-const NO_INPUT_CONTROL = createMessageError(messages.noInputControl);
+const NO_INPUT_CONTROL = createMessageError(formFieldsMessages.noInputControl);
 
 /** Stable identity: `options` is a memo dependency of the picker below. */
 const NO_OPTIONS: VariablePickerOption[] = [];
@@ -455,11 +456,10 @@ const asString = (value: unknown): string | undefined =>
  * cannot render, so the rows go with it and no row can be finished.
  *
  * A value that is not a list at all is the same answer, and only `undefined`
- * is absence — which is what `FormFieldArraySchema.optional()` accepts and all
- * it accepts. A string or an object left at an optional form's path would
- * otherwise pass every rule here while the schema refuses the stage, and with
- * no entries to draw rows from the researcher would be looking at an empty
- * form for the reason their save keeps failing.
+ * is absence. A string or an object left at the form's path would otherwise
+ * pass every rule here while the schema refuses the stage, and with no
+ * entries to draw rows from the researcher would be looking at an empty form
+ * for the reason their save keeps failing.
  */
 const everyEntryIsAField = (value: unknown) => {
   if (value === undefined) return undefined;
@@ -467,13 +467,26 @@ const everyEntryIsAField = (value: unknown) => {
   return value.every(isRecord) ? undefined : MALFORMED_FIELD;
 };
 
+/**
+ * A question is written when it has a translation and none of its translations
+ * is blank, the schema's own rule (`nonBlankText`). The question box removes a
+ * translation emptied or left as spaces, so a blank one only reaches here
+ * from a protocol written elsewhere.
+ */
+const hasQuestion = (prompt: unknown) => {
+  const translations = asLocalizedString(prompt);
+  return (
+    translations !== undefined &&
+    Object.values(translations).every((message) => !isBlankMessage(message))
+  );
+};
+
 const everyFieldComplete = (value: unknown) =>
   rowsOf(value).every(
     (row) =>
       typeof row.variable === 'string' &&
       row.variable !== '' &&
-      typeof row.prompt === 'string' &&
-      row.prompt !== '',
+      hasQuestion(row.prompt),
   )
     ? undefined
     : INCOMPLETE_FIELD;
@@ -490,8 +503,8 @@ const noAttributeTwice = (value: unknown) =>
  * A rule about the LIST rather than about a row, because either side of the
  * collision can move: the researcher can point a row at the reserved
  * attribute, and the interface can reserve an attribute a row is already
- * collecting — a Family Pedigree makes an attribute its display label, and the
- * form field asking for it stops being asked. Only the list is registered with
+ * collecting — a Family Pedigree binds an attribute to one of its person
+ * attribute slots. Only the list is registered with
  * the form, so only a rule here is re-asked when the second thing happens.
  */
 const noReservedAttribute = (
@@ -516,11 +529,8 @@ const noReservedAttribute = (
  * codebook subject the fields collect into, and where the list itself lives,
  * are decided by the section, so the section is what says them.
  *
- * Read here rather than from the stage document because there is nothing
- * reliable to read: a Family Pedigree names its node type at `nodeConfig.type`
- * and keeps its fields at `nodeConfig.form`, so a row that went looking for
- * `subject` would draw its picker from an empty codebook and refuse every
- * sibling attribute silently.
+ * Read here rather than from the stage document, so the row and the section
+ * cannot disagree about which codebook the fields collect into.
  */
 type FormFieldsScope = Readonly<{
   fieldsPath: string;
@@ -585,27 +595,13 @@ export type FormFieldsSectionProps = Readonly<{
   /** Whose codebook these fields collect into. */
   subject: SubjectEntity;
   /**
-   * Where the stage names that subject's TYPE, for a stage that does not hold
-   * a `subject` of its own. See `useStageSubject`.
-   */
-  subjectTypePath?: string;
-  /** Where the list of fields lives. See `DEFAULT_FIELDS_PATH`. */
-  fieldsPath?: string;
-  /**
-   * The schema accepts this form with nothing in it, so the section does too.
-   *
-   * True only for a form hung off another section as an extra — a Family
-   * Pedigree may ask nothing at all about each family member. A form that IS
-   * the stage collects nothing when it is empty, which is why that is the
-   * default.
-   */
-  optional?: boolean;
-  /**
    * Makes the whole form something the researcher switches on and off.
    *
-   * For an optional form: switching it off is how the protocol says "this
-   * stage does not do this", and the confirmation is written in the words of
-   * the interface that owns the form rather than in this section's.
+   * For a stage whose form is optional (a Family Pedigree's additional person
+   * fields): switching it off is how the protocol says "this stage does not do
+   * this", and the confirmation is written in the words of the interface that
+   * owns the form rather than in this section's. While it is on, the form
+   * still needs at least one field, as the schema requires.
    */
   capability?: SectionCapability;
   /**
@@ -638,7 +634,7 @@ export type FormFieldsSectionProps = Readonly<{
    *
    * The interface that owns those slots supplies this, because only it knows
    * where its own unvalidated writes live: a name generator reads its prompts'
-   * `additionalAttributes`, a Family Pedigree its node configuration — so an
+   * `additionalAttributes`, a Family Pedigree its person attribute slots — so an
    * interface that supplies this has to name EVERY unvalidated write its stage
    * makes, not only the ones it has changed. Give a stable array — a fresh one
    * each render re-registers the list's validator.
@@ -649,17 +645,14 @@ export type FormFieldsSectionProps = Readonly<{
    * already collects them through a control of its own.
    *
    * Not a conflict between writers — both are validated collections — but the
-   * same attribute asked for twice on one screen, which the INTERVIEW resolves
-   * by dropping the form field: a Family Pedigree collects each relative's
-   * name through its own name control and filters the display label (and any
-   * attribute whose id is literally `name`) out of the form it renders
-   * (`interview/src/interfaces/FamilyPedigree/utils/nodeUtils.ts`). A field
-   * bound to one is a question the researcher wrote that no participant is
-   * ever asked, recorded nowhere and reported by nothing.
+   * same attribute asked for twice on one screen: a Family Pedigree collects
+   * each person's name, gender identity and sex assigned at birth through its
+   * own controls, so a field bound to one of those attributes would ask the
+   * same question twice.
    *
    * Live, and read whole on every save: the interface can reserve an attribute
-   * a field is already collecting, which is what making an existing field's
-   * attribute the display label does.
+   * a field is already collecting, which is what binding an existing field's
+   * attribute to one of its slots does.
    */
   reservedVariables?: readonly string[];
   /**
@@ -681,11 +674,10 @@ export type FormFieldsSectionProps = Readonly<{
    * across a seam like this is extracted by nothing and translated by nobody,
    * so an interface's own words would be the only words left in English.
    *
-   * Only for a form hung off another section as an extra, where "Form fields"
-   * is not what the researcher is looking at: a Family Pedigree's is the
-   * FAMILY MEMBER form, and every sentence around it — what it asks about,
-   * when the participant answers it — is about a relative rather than about a
-   * form. A form that IS the stage overrides nothing.
+   * Only for a form that is an extra on another interface, where "Form
+   * fields" is not what the researcher is looking at: a Family Pedigree's are
+   * the additional questions about each family member. A form that IS the
+   * stage overrides nothing.
    *
    * `waitingDescription` and the dialog's own titles stay shared: they are
    * said about the CONTROL rather than about what it collects.
@@ -720,23 +712,21 @@ export type FormFieldsSectionProps = Readonly<{
  */
 export default function FormFieldsSection({
   subject,
-  subjectTypePath,
-  fieldsPath = DEFAULT_FIELDS_PATH,
-  optional = false,
   capability,
   hasTitle = false,
   draftUnvalidatedVariables,
   reservedVariables,
   reservedVariableRefusal,
-  title = messages.title,
-  description = messages.description,
-  fieldLabel = messages.fieldLabel,
-  fieldHint = messages.fieldHint,
-  addLabel = messages.addLabel,
-  emptyState = messages.emptyState,
+  title = formFieldsMessages.title,
+  description = formFieldsMessages.description,
+  fieldLabel = formFieldsMessages.fieldLabel,
+  fieldHint = formFieldsMessages.fieldHint,
+  addLabel = formFieldsMessages.addLabel,
+  emptyState = formFieldsMessages.emptyState,
 }: FormFieldsSectionProps) {
   const intl = useAppIntl();
-  const codebookSubject = useStageSubject(subject, subjectTypePath);
+  const fieldsPath = FIELDS_PATH;
+  const codebookSubject = useStageSubject(subject);
   const waiting = codebookSubject === undefined;
   const draftUnvalidated = useMemo(
     () => new Set(draftUnvalidatedVariables ?? []),
@@ -763,11 +753,7 @@ export default function FormFieldsSection({
    *
    * Memoised rather than rebuilt per render because a validation object is
    * part of what a field registers with: a fresh one each time re-registers
-   * the rules on every keystroke. Which rules apply is the `optional` prop —
-   * a form that IS the stage must collect something, while a form hung off
-   * another section is a capability the researcher may leave switched off, and
-   * the schema says exactly that (`FormSchema.fields.min(1)` against
-   * `FormFieldArraySchema.optional()`).
+   * the rules on every keystroke.
    */
   const fieldsValidation = useMemo(
     () => ({
@@ -783,7 +769,7 @@ export default function FormFieldsSection({
           ),
       ]),
     }),
-    [optional],
+    [],
   );
   // The stage whose saved unvalidated writes the draft above replaces, where
   // there is a draft to replace them with. See `draftUnvalidatedVariables`.
@@ -816,8 +802,8 @@ export default function FormFieldsSection({
       Preview: FormFieldPreview,
       Editor: FormFieldEditor,
       Aside: FormFieldPreviewPane,
-      addTitle: messages.addTitle,
-      editTitle: messages.editTitle,
+      addTitle: formFieldsMessages.addTitle,
+      editTitle: formFieldsMessages.editTitle,
       formId: 'form-field-editor',
       name: fieldsPath,
       // The answers the attribute already offers, so the save can tell a list
@@ -849,19 +835,21 @@ export default function FormFieldsSection({
     <BuilderSection
       title={intl.formatMessage(title)}
       description={intl.formatMessage(
-        waiting ? messages.waitingDescription : description,
+        waiting ? formFieldsMessages.waitingDescription : description,
       )}
       disabled={waiting}
       {...(capability === undefined ? {} : { capability })}
     >
       {hasTitle && (
-        <Field<typeof InputField>
+        <Field<typeof LocalizedInputField>
           name={TITLE}
-          component={InputField}
-          label={intl.formatMessage(messages.formTitleLabel)}
-          hint={intl.formatMessage(messages.formTitleHint)}
-          placeholder={intl.formatMessage(messages.formTitlePlaceholder)}
-          required={intl.formatMessage(messages.formTitleRequired)}
+          component={LocalizedInputField}
+          label={intl.formatMessage(formFieldsMessages.formTitleLabel)}
+          hint={intl.formatMessage(formFieldsMessages.formTitleHint)}
+          placeholder={intl.formatMessage(
+            formFieldsMessages.formTitlePlaceholder,
+          )}
+          required={intl.formatMessage(formFieldsMessages.formTitleRequired)}
         />
       )}
       <FormFieldsScopeContext value={scope}>
@@ -873,13 +861,13 @@ export default function FormFieldsSection({
             component={ArrayField}
             getId={rowId}
             addButtonLabel={intl.formatMessage(addLabel)}
-            itemLabel={messages.itemNoun}
+            itemLabel={formFieldsMessages.itemNoun}
             emptyStateMessage={intl.formatMessage(emptyState)}
             itemComponent={RowListItem}
             editorComponent={RowDialog}
             itemTemplate={rowTemplate()}
             sortable
-            required={optional ? false : AT_LEAST_ONE_FIELD}
+            required={AT_LEAST_ONE_FIELD}
             {...fieldsValidation}
           />
         </RowList>
@@ -1008,7 +996,7 @@ function useCommitFormField(
               refused: {
                 fieldErrors: {
                   [INPUT_CONTROL]: intl.formatMessage(
-                    messages.componentInventsRequired,
+                    formFieldsMessages.componentInventsRequired,
                   ),
                 },
               },
@@ -1142,7 +1130,7 @@ function useCommitFormField(
           return {
             refused: {
               formErrors: [
-                createMessageError(messages.controlLandedElsewhere, {
+                createMessageError(formFieldsMessages.controlLandedElsewhere, {
                   variableName: variableDisplayName(
                     variablesForSubject(protocolContext, codebookSubject),
                     variableId,
@@ -1165,7 +1153,7 @@ function useCommitFormField(
           refused: {
             fieldErrors: {
               [INPUT_CONTROL]: intl.formatMessage(
-                messages.componentInventsRequired,
+                formFieldsMessages.componentInventsRequired,
               ),
             },
           },
@@ -1343,7 +1331,9 @@ function useFormFieldValidate(
         variable !== NEW_VARIABLE &&
         siblings.some((row) => row.variable === variable)
       ) {
-        return { variable: intl.formatMessage(messages.attributeTaken) };
+        return {
+          variable: intl.formatMessage(formFieldsMessages.attributeTaken),
+        };
       }
       // An attribute the interface around this form collects for itself, which
       // the interview drops this field for. Refused with no escape for a
@@ -1398,8 +1388,8 @@ function useFormFieldValidate(
  * form field is a VALIDATED writer, so a stage's own form contributes nothing
  * this map is read for — but a stage may write the same subject unvalidated
  * somewhere else in itself: a name generator's prompt stamps an attribute onto
- * every node it adds, and a Family Pedigree derives three from the tree the
- * participant draws. Those are exactly the picks the schema's own
+ * every node it adds, and a Family Pedigree writes three person attributes
+ * itself. Those are exactly the picks the schema's own
  * role-conflict rule refuses, so dropping the open stage from a map nothing
  * replaces it in would offer every one of them and let the researcher author a
  * stage that cannot be saved.
@@ -1501,8 +1491,10 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
   return (
     <>
       <Section
-        title={intl.formatMessage(messages.attributeSectionTitle)}
-        description={intl.formatMessage(messages.attributeSectionDescription)}
+        title={intl.formatMessage(formFieldsMessages.attributeSectionTitle)}
+        description={intl.formatMessage(
+          formFieldsMessages.attributeSectionDescription,
+        )}
       >
         <AttributePicker item={item} editIndex={editIndex} />
         <AttributeCodebookControls
@@ -1517,33 +1509,35 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
         />
       </Section>
       <Section
-        title={intl.formatMessage(messages.questionSectionTitle)}
-        description={intl.formatMessage(messages.questionSectionDescription)}
+        title={intl.formatMessage(formFieldsMessages.questionSectionTitle)}
+        description={intl.formatMessage(
+          formFieldsMessages.questionSectionDescription,
+        )}
       >
-        <Field<typeof RichTextField>
+        <Field<typeof LocalizedRichTextField>
           name="prompt"
-          component={RichTextField}
-          label={intl.formatMessage(messages.promptLabel)}
-          hint={intl.formatMessage(messages.promptHint)}
-          placeholder={intl.formatMessage(messages.promptPlaceholder)}
+          component={LocalizedRichTextField}
+          label={intl.formatMessage(formFieldsMessages.promptLabel)}
+          hint={intl.formatMessage(formFieldsMessages.promptHint)}
+          placeholder={intl.formatMessage(formFieldsMessages.promptPlaceholder)}
           singleLine
-          initialValue={asString(item.prompt)}
-          required={intl.formatMessage(messages.promptRequired)}
+          initialValue={asLocalizedString(item.prompt)}
+          required={intl.formatMessage(formFieldsMessages.promptRequired)}
         />
-        <Field<typeof RichTextField>
+        <Field<typeof LocalizedRichTextField>
           name="hint"
-          component={RichTextField}
-          label={intl.formatMessage(messages.hintLabel)}
-          hint={intl.formatMessage(messages.hintHint)}
-          placeholder={intl.formatMessage(messages.hintPlaceholder)}
+          component={LocalizedRichTextField}
+          label={intl.formatMessage(formFieldsMessages.hintLabel)}
+          hint={intl.formatMessage(formFieldsMessages.hintHint)}
+          placeholder={intl.formatMessage(formFieldsMessages.hintPlaceholder)}
           singleLine
-          initialValue={asString(item.hint)}
+          initialValue={asLocalizedString(item.hint)}
         />
         <Field<typeof ToggleField>
           name="showValidationHints"
           component={ToggleField}
-          label={intl.formatMessage(messages.validationHintsLabel)}
-          hint={intl.formatMessage(messages.validationHintsHint)}
+          label={intl.formatMessage(formFieldsMessages.validationHintsLabel)}
+          hint={intl.formatMessage(formFieldsMessages.validationHintsHint)}
           inline
           initialValue={item.showValidationHints === true}
         />
@@ -1559,7 +1553,9 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
         variableId={control.chosen === '' ? undefined : control.chosen}
         rowComponent={liveControl ?? ''}
         revealWhenChosenIn={INPUT_CONTROL}
-        {...(inventing && newType !== '' ? { invented: newType } : {})}
+        {...(inventing && newType !== ''
+          ? { invented: newType, inventedName }
+          : {})}
       />
       <AttributeParameterFields
         subject={subject}
@@ -1601,8 +1597,7 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
  * The preview beside this family's fields.
  *
  * Here rather than in the pane because whose codebook the form collects into
- * is the SECTION's answer — a Family Pedigree names its node type somewhere a
- * row could not find — and the shared list threads no props of its own.
+ * is the SECTION's answer, and the shared list threads no props of its own.
  */
 function FormFieldPreviewPane({ item }: RowAsideProps) {
   const { subject } = useFormFieldsScope();
@@ -1736,9 +1731,11 @@ function InputControlField({
       <Field<typeof SelectControl>
         name={INPUT_CONTROL}
         component={SelectControl}
-        label={intl.formatMessage(messages.componentLabel)}
+        label={intl.formatMessage(formFieldsMessages.componentLabel)}
         hint={intl.formatMessage(
-          inventing ? messages.componentInventsHint : messages.componentHint,
+          inventing
+            ? formFieldsMessages.componentInventsHint
+            : formFieldsMessages.componentHint,
           { link: renderInputControlsLink },
         )}
         options={options}
@@ -1749,7 +1746,9 @@ function InputControlField({
         initialValue={seeded}
         {...(inventing
           ? {
-              required: intl.formatMessage(messages.componentInventsRequired),
+              required: intl.formatMessage(
+                formFieldsMessages.componentInventsRequired,
+              ),
             }
           : {})}
       />
@@ -1769,10 +1768,10 @@ function InputControlField({
         ) : (
           <Alert variant="warning" className="my-7">
             <AlertTitle>
-              {intl.formatMessage(messages.lockedTypeTitle)}
+              {intl.formatMessage(formFieldsMessages.lockedTypeTitle)}
             </AlertTitle>
             <AlertDescription>
-              {intl.formatMessage(messages.lockedTypeDescription, {
+              {intl.formatMessage(formFieldsMessages.lockedTypeDescription, {
                 variableType: intl.formatMessage(typeLabel),
                 strong: renderStrong,
               })}
@@ -1910,7 +1909,7 @@ function AttributePicker({
     asString(useRowValue(NEW_VARIABLE_NAME) ?? item[NEW_VARIABLE_NAME]) ?? '';
   const inventedType =
     variableTypeForComponent(asString(useRowValue(INPUT_CONTROL)) ?? '') ?? '';
-  const namesInUse = useSubjectVariableNames(subject);
+  const nameScope = useSubjectVariableScope(subject);
 
   const roleMap = useUnvalidatedWriterMap(answeredFor);
 
@@ -2013,12 +2012,17 @@ function AttributePicker({
     <Field<typeof VariablePicker>
       name="variable"
       component={VariablePicker}
-      label={intl.formatMessage(messages.attributeLabel)}
-      hint={intl.formatMessage(messages.attributeHint)}
+      label={intl.formatMessage(formFieldsMessages.attributeLabel)}
+      hint={intl.formatMessage(formFieldsMessages.attributeHint)}
       options={offered}
       initialValue={committed}
-      required={intl.formatMessage(messages.attributeRequired)}
-      {...(subject === undefined ? {} : { onCreateOption: invent, namesInUse })}
+      required={intl.formatMessage(formFieldsMessages.attributeRequired)}
+      {...(subject === undefined
+        ? {}
+        : {
+            onCreateOption: invent,
+            ...(nameScope === undefined ? {} : { nameScope }),
+          })}
     />
   );
 }
@@ -2026,17 +2030,19 @@ function AttributePicker({
 /** How one field reads in the list when its dialog is closed. */
 function FormFieldPreview({ item }: RowPreviewProps) {
   const protocolContext = useProtocolContext();
+  const localize = useLocalizedText();
   const { subject } = useFormFieldsScope();
   const variableId = asString(item.variable) ?? '';
   const variable =
     subject === undefined
       ? undefined
       : variablesForSubject(protocolContext, subject)[variableId];
+  const prompt = localize(item.prompt);
 
   return (
     <div className="flex flex-col gap-2.5">
-      <RenderMarkdown render={<div />}>
-        {asString(item.prompt) ?? ''}
+      <RenderMarkdown render={<div lang={prompt.lang} dir={prompt.dir} />}>
+        {prompt.text}
       </RenderMarkdown>
       <div>
         <AttributeControlBadge

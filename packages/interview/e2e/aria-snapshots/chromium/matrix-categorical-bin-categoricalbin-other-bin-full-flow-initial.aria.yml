@@ -8,7 +8,7 @@
   - button "Category Other, 1 item":
     - heading "Other" [level=4]
     - paragraph: Carol
-  - button "Collapse drawer" [expanded]: 2 unplaced
+  - button "2 unplaced Collapse drawer" [expanded]
   - button "Alice"
   - button "Bob"
   - navigation:

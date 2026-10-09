@@ -3,24 +3,32 @@ import { expect, screen, within } from 'storybook/test';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
+import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
 import { buttonPaint, TRANSPARENT } from '../../testing/buttonPaint.ts';
 import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
 import CodebookEntityEditor from './CodebookEntityEditor.tsx';
 
 const PERSON: SectionDoc = {
   name: 'Person',
+  label: { en: 'Person' },
   color: 'node-color-seq-1',
   icon: 'add-a-person',
   shape: { default: 'circle' },
   variables: {
-    name: { name: 'Name', type: 'text', component: 'Text' },
+    name: {
+      name: 'Name',
+      label: 'Name',
+      type: 'text',
+      component: 'Text',
+    },
     ethnicity: {
       name: 'Ethnicity',
+      label: 'Ethnicity',
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [
-        { label: 'Asian', value: 'asian' },
-        { label: 'White', value: 'white' },
+        { label: { en: 'Asian' }, value: 'asian' },
+        { label: { en: 'White' }, value: 'white' },
       ],
     },
   },
@@ -70,6 +78,15 @@ const meta = {
   component: ExistingNodeEditor,
   parameters: { layout: 'fullscreen' },
   tags: ['autodocs'],
+  decorators: [
+    (Story) => (
+      <ProtocolLocalizationProvider
+        localization={{ defaultLocale: 'en', locales: ['en'] }}
+      >
+        <Story />
+      </ProtocolLocalizationProvider>
+    ),
+  ],
 } satisfies Meta<typeof ExistingNodeEditor>;
 
 export default meta;

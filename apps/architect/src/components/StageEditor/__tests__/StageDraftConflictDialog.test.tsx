@@ -46,20 +46,41 @@ const closeDialogMock = globalThis.__architectDialogMocks.closeDialog;
 // The codebook as this tab holds it. Codebook edits commit as they are made
 // now, so there is no second copy to weigh against it: what a rescue copy
 // carries is this protocol plus the stage the editor is still holding.
-const savedCodebook = { node: { person: { name: 'Person', variables: {} } } };
+const savedCodebook: CurrentProtocol['codebook'] = {
+  node: {
+    person: {
+      name: 'Person',
+      label: { en: 'Person' },
+      color: 'node-color-seq-1',
+      shape: { default: 'circle' },
+      variables: {},
+    },
+  },
+};
 
-const protocol = {
+const protocol: CurrentProtocol = {
   name: 'Test Protocol',
-  schemaVersion: 8,
-  stages: [{ id: 'stage-1', type: 'Information', label: 'A' }],
+  schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
+  stages: [
+    {
+      id: 'stage-1',
+      type: 'Information',
+      label: { en: 'A' },
+      title: { en: 'A' },
+      items: [],
+    },
+  ],
   codebook: savedCodebook,
-} as unknown as CurrentProtocol;
+};
 
-const editedStage = {
+const editedStage: Stage = {
   id: 'stage-1',
   type: 'Information',
-  label: 'A, edited',
-} as Stage;
+  label: { en: 'A, edited' },
+  title: { en: 'A' },
+  items: [],
+};
 
 const createTestStore = () =>
   configureStore({
@@ -76,7 +97,12 @@ type TestStore = ReturnType<typeof createTestStore>;
 // A stage editor that has been typed into: what the researcher would lose,
 // published exactly as the editor's own chrome publishes it.
 const openDirtyStageDraft = () => {
-  publishStageDraft(editedStage, { label: 'A' }, { label: 'A, edited' }, true);
+  publishStageDraft(
+    editedStage,
+    { label: { en: 'A' } },
+    { label: { en: 'A, edited' } },
+    true,
+  );
 };
 
 const renderDialog = (store: TestStore) =>
@@ -226,7 +252,7 @@ describe('StageDraftConflictDialog', () => {
     const downloaded = downloadActiveProtocol.mock.calls[0]?.[2] as
       | CurrentProtocol
       | undefined;
-    expect(downloaded?.stages[0]).toMatchObject({ label: 'A, edited' });
+    expect(downloaded?.stages[0]).toMatchObject({ label: { en: 'A, edited' } });
     // The codebook comes from the protocol rather than from a draft copy of
     // it: an edit made to the codebook while this stage was open was committed
     // when it was made, so it is already here.

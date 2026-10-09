@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { type ComponentProps, Fragment } from 'react';
+import { expect, waitFor, within } from 'storybook/test';
 
 import { Button, ButtonSkeleton, MotionButton } from './Button';
 import { BUTTON_COLORS } from './button-constants';
@@ -837,5 +838,67 @@ export const LongUnbreakableLabel: Story = {
         </div>
       </div>
     );
+  },
+};
+
+const LONG_LABELS = [
+  'Show every missing translation',
+  'Download every exported file',
+  '6 fehlende Übersetzungen anzeigen',
+];
+
+const TALL_SCRIPT_LABELS = ['སྒྲིག་འགོད་', 'Tiếng Việt'];
+
+export const LongLabel: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'A label too long for the space the button is given ends in an ellipsis, and the full label stays the accessible name. The Tibetan and Vietnamese labels fit, and show that stacked glyphs and diacritics are not clipped above or below.',
+      },
+    },
+  },
+  render: () => (
+    <div
+      className="flex w-48 flex-col items-start gap-4"
+      data-testid="long-label-container"
+    >
+      <Button>{LONG_LABELS[0]}</Button>
+      <Button icon={<Download />}>{LONG_LABELS[1]}</Button>
+      <Button size="sm" variant="text">
+        {LONG_LABELS[2]}
+      </Button>
+      <Button lang="bo">{TALL_SCRIPT_LABELS[0]}</Button>
+      <Button lang="vi">{TALL_SCRIPT_LABELS[1]}</Button>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await document.fonts.ready;
+    const container = canvas.getByTestId('long-label-container');
+
+    for (const label of LONG_LABELS) {
+      const button = canvas.getByRole('button', { name: label });
+      const labelElement = within(button).getByText(label);
+      await expect(labelElement.tagName).toBe('SPAN');
+
+      await waitFor(() => {
+        expect(button.getBoundingClientRect().right).toBeLessThanOrEqual(
+          container.getBoundingClientRect().right,
+        );
+        expect(labelElement.scrollWidth).toBeGreaterThan(
+          labelElement.clientWidth,
+        );
+      });
+    }
+
+    for (const label of TALL_SCRIPT_LABELS) {
+      const labelElement = within(
+        canvas.getByRole('button', { name: label }),
+      ).getByText(label);
+      await expect(labelElement.scrollWidth).toBeLessThanOrEqual(
+        labelElement.clientWidth,
+      );
+    }
   },
 };

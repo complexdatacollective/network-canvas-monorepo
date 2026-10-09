@@ -3,6 +3,7 @@ import {
   BookOpenText,
   Eye,
   FileImage,
+  Languages,
   type LucideIcon,
   Printer,
   Timeline,
@@ -17,6 +18,7 @@ import { Badge } from '@codaco/fresco-ui/Badge';
 import { useProtocolAccessMode } from '~/hooks/useProtocolAccessMode';
 import { type MessageConfig, formatConfig } from '~/i18n/formatConfig';
 import {
+  getHasMissingTranslations,
   getHasUnusedAssets,
   getHasUnusedVariables,
   getHasVariableRoleConflicts,
@@ -51,6 +53,12 @@ const configMessages = defineMessages({
     defaultMessage: 'Codebook',
     description:
       'Presentation label or description in components/ProjectNav/ProjectNav.tsx. Identifiers are not translated.',
+  },
+  languages: {
+    id: 'architect.projectNav.projectNav.config.languages',
+    defaultMessage: 'Languages',
+    description:
+      'Project navigation tab for the languages a protocol is written in and their translations.',
   },
   summary: {
     id: 'architect.projectNav.projectNav.config.summary',
@@ -88,6 +96,12 @@ const finalMessages = defineMessages({
     defaultMessage: 'has unused attributes',
     description: 'Researcher-facing Architect control or feedback.',
   },
+  translationsWarning: {
+    id: 'architect.projectNav.projectNav.translationsWarning',
+    defaultMessage: 'has missing translations',
+    description:
+      'Screen-reader warning on the Languages tab when some text is not translated into every language of the protocol.',
+  },
 });
 
 type Tab = {
@@ -108,6 +122,11 @@ const TABS: MessageConfig<Tab>[] = [
     label: configMessages.codebook,
     Icon: BookOpenText,
   },
+  {
+    href: '/protocol/localization',
+    label: configMessages.languages,
+    Icon: Languages,
+  },
   { href: '/protocol/summary', label: configMessages.summary, Icon: Printer },
 ];
 
@@ -119,6 +138,7 @@ const ProjectNav = () => {
   const hasUnusedAssets = useSelector(getHasUnusedAssets);
   const hasUnusedVariables = useSelector(getHasUnusedVariables);
   const hasVariableRoleConflicts = useSelector(getHasVariableRoleConflicts);
+  const hasMissingTranslations = useSelector(getHasMissingTranslations);
 
   // Per-tab warning descriptions, keyed by href. A defined value renders a
   // warning indicator on that tab and provides its screen-reader label.
@@ -131,6 +151,9 @@ const ProjectNav = () => {
       : undefined,
     '/protocol/codebook': hasUnusedVariables
       ? intl.formatMessage(finalMessages.attributesWarning)
+      : undefined,
+    '/protocol/localization': hasMissingTranslations
+      ? intl.formatMessage(finalMessages.translationsWarning)
       : undefined,
   };
 

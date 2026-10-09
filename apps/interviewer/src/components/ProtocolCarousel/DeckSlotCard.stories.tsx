@@ -33,7 +33,8 @@ function makeProtocol({
   const protocol: CurrentProtocol = {
     name,
     description,
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {},
     stages: [],
   };
@@ -42,7 +43,7 @@ function makeProtocol({
     id: 'story-protocol',
     hash,
     name,
-    schemaVersion: 8,
+    schemaVersion: 9,
     importedAt,
     description,
     codebook: {},

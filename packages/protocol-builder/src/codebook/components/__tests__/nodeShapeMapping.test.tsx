@@ -15,6 +15,7 @@ import {
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { ProtocolLocalizationProvider } from '../../../localization/ProtocolLocalization.tsx';
 import {
   attributeField,
   chooseAttribute,
@@ -45,30 +46,54 @@ const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
 const VARIABLES: Record<string, unknown> = {
   ethnicity: {
     name: 'Ethnicity',
+    label: 'Ethnicity',
     type: 'categorical',
     component: 'CheckboxGroup',
     options: [
-      { label: 'Asian', value: 'asian' },
-      { label: 'White', value: 'white' },
+      { label: { en: 'Asian' }, value: 'asian' },
+      { label: { en: 'White' }, value: 'white' },
     ],
   },
-  alive: { name: 'Alive', type: 'boolean', component: 'Toggle' },
+  contact: {
+    name: 'Contact',
+    label: 'Contact',
+    type: 'categorical',
+    component: 'CheckboxGroup',
+    options: [
+      { label: { en: 'a.b [1]' }, value: 'a.b [1]' },
+      { label: { en: '友人' }, value: '友人' },
+    ],
+  },
+  alive: {
+    name: 'Alive',
+    label: 'Alive',
+    type: 'boolean',
+    component: 'Toggle',
+  },
   age: {
     name: 'Age',
+    label: 'Age',
     type: 'number',
     component: 'Number',
     validation: { minValue: 0, maxValue: 120 },
   },
   closeness: {
     name: 'Closeness',
+    label: 'Closeness',
     type: 'scalar',
     component: 'VisualAnalogScale',
   },
-  notes: { name: 'Notes', type: 'text', component: 'Text' },
+  notes: {
+    name: 'Notes',
+    label: 'Notes',
+    type: 'text',
+    component: 'Text',
+  },
 };
 
 const person = (shape: Record<string, unknown>): SectionDoc => ({
   name: 'Person',
+  label: { en: 'Person' },
   color: 'node-color-seq-1',
   icon: 'add-a-person',
   shape,
@@ -89,15 +114,19 @@ const renderEditor = (
   document: SectionDoc = PERSON,
 ) => {
   render(
-    <CodebookEntityEditor
-      mode="update"
-      sessionKey="mapping"
-      subject={SUBJECT}
-      initialDraft={document}
-      authoritativeDocument={document}
-      existingEntityNames={[]}
-      onSubmit={onSubmit}
-    />,
+    <ProtocolLocalizationProvider
+      localization={{ defaultLocale: 'en', locales: ['en'] }}
+    >
+      <CodebookEntityEditor
+        mode="update"
+        sessionKey="mapping"
+        subject={SUBJECT}
+        initialDraft={document}
+        authoritativeDocument={document}
+        existingEntityNames={[]}
+        onSubmit={onSubmit}
+      />
+    </ProtocolLocalizationProvider>,
   );
   return userEvent.setup();
 };
@@ -221,6 +250,7 @@ describe('the attribute a shape can follow', () => {
       'age',
       'alive',
       'closeness',
+      'contact',
       'ethnicity',
     ]);
   });
@@ -278,6 +308,39 @@ describe('a mapping that follows one answer at a time', () => {
         { value: false, shape: 'diamond' },
       ],
     });
+  });
+
+  /**
+   * Option values are researcher-typed text: they may hold spaces, dots,
+   * brackets and any script. Each answer's field is therefore named by its
+   * position, because a name built from the value would read as a path (`a.b`
+   * nested, `x[0]` indexed) wherever a name is interpreted as one.
+   */
+  it('names the field of an answer by position, whatever its value holds', async () => {
+    const onSubmit = vi.fn<SubmitEntity>(applied);
+    const user = renderEditor(onSubmit, person({ default: 'circle' }));
+    await user.click(toggle());
+    await chooseAttribute(user, attributeField('Attribute'), 'Contact');
+
+    await chooseShape(user, 'Shape for a.b [1]', 'Square');
+    await chooseShape(user, 'Shape for 友人', 'Diamond');
+    await user.click(save());
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    expect(dynamicOf(onSubmit)).toEqual({
+      variable: 'contact',
+      type: 'discrete',
+      map: [
+        { value: 'a.b [1]', shape: 'square' },
+        { value: '友人', shape: 'diamond' },
+      ],
+    });
+    expect(
+      Array.from(document.querySelectorAll('[data-field-name]')).map((field) =>
+        field.getAttribute('data-field-name'),
+      ),
+    ).toEqual(expect.arrayContaining(['shape-for-1', 'shape-for-2']));
+    expect(document.querySelector('[data-field-name*="a.b"]')).toBeNull();
   });
 
   it('says so while any answer still has no shape of its own', async () => {
@@ -688,6 +751,7 @@ describe('a mapping left pointing at an attribute no shape can follow', () => {
       'age',
       'alive',
       'closeness',
+      'contact',
       'ethnicity',
     ]);
 

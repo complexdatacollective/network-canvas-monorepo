@@ -60,7 +60,7 @@ export default function BooleanAnswersField({
           const next: OptionList = answers.map((held, heldIndex) => {
             const chosen = heldIndex === index ? answer : held;
             return {
-              label: chosen.label,
+              ...(chosen.label === undefined ? {} : { label: chosen.label }),
               value: chosen.value,
               // Whether this answer is drawn in red is part of what the pair
               // says, so it is carried rather than rebuilt from the two

@@ -1,4 +1,11 @@
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import type { ReactNode } from 'react';
+
+import type {
+  CurrentProtocol,
+  FinishOutcome,
+  LocaleMetadata,
+  LocaleTag,
+} from '@codaco/protocol-validation';
 import type { NcNetwork, StageMetadata } from '@codaco/shared-consts';
 
 /**
@@ -19,13 +26,13 @@ export type ResolvedAsset = {
 
 /**
  * Protocol payload: the validated protocol plus per-interview metadata
- * (id, importedAt, hash) the package carries in its store. Always schema 8 —
- * older protocols are migrated to the current version at import time, so
+ * (id, importedAt, hash) the package carries in its store. Always the current
+ * schema version — older protocols are migrated to it at import time, so
  * downstream code never sees a versioned union.
  *
- * `hash` is the host-computed canonical content hash (codebook + stages),
- * produced by `hashProtocol` from `@codaco/protocol-validation` at protocol
- * import time. Forwarded through analytics events as the `protocol_hash`
+ * `hash` is the host-computed canonical content hash (localization, codebook
+ * and stages), produced by `hashProtocol` from `@codaco/protocol-validation`
+ * at protocol import time. Forwarded through analytics events as the `protocol_hash`
  * super property.
  */
 export type ProtocolPayload = Omit<CurrentProtocol, 'assetManifest'> & {
@@ -36,10 +43,15 @@ export type ProtocolPayload = Omit<CurrentProtocol, 'assetManifest'> & {
 };
 
 /**
- * Session payload. Matches the persisted session state used by the reducer,
- * but is kept explicit so the public contract does not expose Redux internals.
+ * The session as the engine holds it and hands it to `SyncHandler`. Matches the
+ * persisted session state used by the reducer, but is kept explicit so the
+ * public contract does not expose Redux internals.
+ *
+ * The two locale fields are owned by `ProtocolLocaleChangeHandler`, not by the
+ * general sync route: a change to either reaches the host only through that
+ * handler, and a host persisting a `SyncHandler` snapshot must not write them.
  */
-export type SessionPayload = {
+export type SessionSnapshot = {
   id: string;
   startTime: string;
   finishTime: string | null;
@@ -49,6 +61,40 @@ export type SessionPayload = {
   promptIndex?: number;
   stageMetadata?: StageMetadata;
   stageRequiresEncryption?: boolean;
+  /**
+   * The language the participant chose on a language chooser stage. The only
+   * stored value that decides which protocol translation is shown; `null`
+   * until a choice is made, and the browser's languages decide until then.
+   */
+  localePreference: LocaleTag | null;
+  /**
+   * The protocol translation last shown, recorded for exports only and never
+   * used to choose one. `null` until the engine first reports it.
+   */
+  locale: LocaleTag | null;
+};
+
+/**
+ * What a host passes to start or resume an interview.
+ *
+ * `localeOptions` is presentation metadata for every locale the protocol
+ * declares, each once and in any order (`getLocaleMetadata` from
+ * `@codaco/protocol-validation`); the engine lists them alphabetically. The
+ * host derives it rather than the engine so a server-rendered host can
+ * serialise the exact labels it rendered with: display names vary between
+ * JavaScript runtimes, and deriving them again on the client would break
+ * hydration. It is never persisted or synchronised.
+ */
+export type SessionPayload = SessionSnapshot & {
+  localeOptions: readonly LocaleMetadata[];
+  /**
+   * The finish stage a finished interview ended at, as the host recorded it
+   * from `FinishHandler`. A finished interview (`finishTime` set) opens on
+   * this stage in its completed state. `null` for an interview that is not
+   * finished, or one finished before finish stages were recorded, which opens
+   * on the protocol's last finish stage instead. Absent reads as `null`.
+   */
+  finishStageId?: string | null;
 };
 
 export type InterviewPayload = {
@@ -88,25 +134,66 @@ export type SyncOptions = {
 
 export type SyncHandler = (
   interviewId: string,
-  session: SessionPayload,
+  session: SessionSnapshot,
   options: SyncOptions,
 ) => Promise<void>;
 
+export type ProtocolLocaleChange = Readonly<{
+  locale: LocaleTag;
+  localePreference: LocaleTag | null;
+}>;
+
+/**
+ * Persists the session's locale fields. Called once when the participant
+ * states a preference, and once whenever the language shown differs from the
+ * stored `locale` (a resumed interview on a device with different languages).
+ * Calls for one interview are made one at a time, in order.
+ */
+export type ProtocolLocaleChangeHandler = (
+  interviewId: string,
+  change: ProtocolLocaleChange,
+) => Promise<void>;
+
+/**
+ * Where and how an interview ended: the finish stage the participant finished
+ * at, and the outcome that stage declares. Hosts persist both with the finish
+ * time; exporters write the outcome as session metadata.
+ */
+export type SessionFinish = Readonly<{
+  stageId: string;
+  outcome: FinishOutcome;
+}>;
+
+/**
+ * Called when the participant confirms Finish on a finish stage, after the
+ * engine has flushed pending writes. Once it resolves, the interview shows its
+ * completed state; the host does not navigate away.
+ */
 export type FinishHandler = (
   interviewId: string,
+  finish: SessionFinish,
   signal: AbortSignal,
 ) => Promise<void>;
+
+/**
+ * An action a host offers on a finished interview's completed state, such as
+ * Interviewer's "Exit". The label is shown in the interview's interface
+ * language, so a host resolving its own message must resolve it in that
+ * language.
+ */
+export type CompletedAction = Readonly<{
+  label: ReactNode;
+  onAction: () => void;
+}>;
 
 export type AssetRequestHandler = (assetId: string) => Promise<string>;
 
 /**
  * Participant-facing progress for the step the package is moving to. `progress`
  * is the 0–100 value shown in the interview's own progress bar (see
- * `getInterviewProgress`); `totalSteps` is the true number of steps including
- * the synthetic FinishSession stage the package appends (so it is one greater
- * than the protocol's stage count). Hosts should persist/display these directly
- * rather than re-deriving progress from the bare step index, which requires
- * knowing about the appended finish stage.
+ * `getInterviewProgress`); `totalSteps` is the protocol's stage count, finish
+ * stage included. Hosts should persist/display these directly rather than
+ * re-deriving progress from the bare step index.
  */
 export type StepChangeMeta = {
   progress: number;

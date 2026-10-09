@@ -109,6 +109,44 @@ export const Narrow: Story = {
 };
 
 /**
+ * Protocol copy arrives as `PresentationalText`: the row header, each row
+ * label, each column header and each radio label carry the text's own `lang`
+ * and `dir`, so Arabic copy lays out right-to-left inside a left-to-right page.
+ */
+export const LocalizedLabels: Story = {
+  args: {
+    'name': 'partnerships-localized',
+    'rows': [
+      { id: 'egg-parent', label: { text: 'ليلى', lang: 'ar', dir: 'rtl' } },
+      { id: 'sperm-parent', label: { text: 'روبرت', lang: 'ar', dir: 'rtl' } },
+    ],
+    'options': [
+      {
+        value: 'current',
+        label: { text: 'شريك حالي', lang: 'ar', dir: 'rtl' },
+      },
+      { value: 'ex', label: { text: 'شريك سابق', lang: 'ar', dir: 'rtl' } },
+      { value: 'none', label: { text: 'ليس شريكا', lang: 'ar', dir: 'rtl' } },
+    ],
+    'defaultOption': 'none',
+    'rowHeader': { text: 'الشخص', lang: 'ar', dir: 'rtl' },
+    'aria-label': 'من هم شركاء ليلى؟',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const header = canvas.getByText('الشخص');
+    await expect(header.closest('[lang]')).toHaveAttribute('lang', 'ar');
+    await expect(getComputedStyle(header).direction).toBe('rtl');
+    for (const text of ['ليلى', 'روبرت', 'شريك حالي', 'شريك سابق']) {
+      for (const rendering of canvas.getAllByText(text)) {
+        await expect(rendering.closest('[lang]')).toHaveAttribute('dir', 'rtl');
+      }
+    }
+  },
+};
+
+/**
  * Intended usage: inside a `Field` (here the form-context-free
  * `UnconnectedField`), so the focal person is named in the question label.
  */

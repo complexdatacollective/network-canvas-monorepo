@@ -11,6 +11,8 @@ import {
 } from '../../__tests__/rowFixtures.tsx';
 import PageContentSection from '../PageContentSection.tsx';
 
+const en = (text: string) => ({ 'en-US': text });
+
 const pageContent = (
   <>
     <PageContentSection
@@ -62,11 +64,11 @@ describe('a page of content rather than a task', () => {
       {
         id: 'info-item-1',
         type: 'text',
-        content: 'Welcome to this interview.',
+        content: en('Welcome to this interview.'),
       },
       {
         id: expect.any(String) as unknown as string,
-        content: 'And then this.',
+        content: en('And then this.'),
         type: 'text',
       },
     ]);
@@ -108,85 +110,6 @@ describe('a page of content rather than a task', () => {
 });
 
 /**
- * A page can be the stage itself, or the screen that precedes a task. Where
- * the blocks live and whether there is a heading above them are not two
- * decisions a caller makes separately: they follow from which of those two
- * things the page is.
- */
-describe('a page shown before a task begins', () => {
-  const introScreen = (
-    <PageContentSection
-      variant="introScreen"
-      ItemEditor={TestItemEditor}
-      ItemPreview={TestItemPreview}
-    />
-  );
-
-  const familyPedigree = () => ({
-    stageId: 'family-pedigree-1',
-    sections: introScreen,
-  });
-
-  const pedigreeUnowned = [
-    'nodeConfig',
-    'edgeConfig',
-    'framing',
-    'boundaries',
-    'censusPrompt',
-    'nominationPrompts',
-  ];
-
-  it('has no heading of its own, and can be switched off entirely', async () => {
-    const harness = renderStageEditor(familyPedigree());
-
-    await waitFor(() => expect(harness.outline()).toHaveLength(1));
-    // A pedigree that opens straight into the task is an ordinary thing to
-    // want, so a stage arriving without an introduction opens switched off.
-    expect(harness.outline()[0]).toEqual({
-      title: 'Introduction screen',
-      state: 'Switched off',
-    });
-    expect(
-      screen.queryByRole('textbox', { name: 'Page heading' }),
-    ).not.toBeInTheDocument();
-    await harness.roundTrip({ unowned: pedigreeUnowned });
-  });
-
-  it('writes its blocks where the pedigree keeps them', async () => {
-    const harness = renderStageEditor(familyPedigree());
-
-    await harness.user.click(
-      await screen.findByRole('switch', { name: /Introduction screen/ }),
-    );
-    await harness.user.click(
-      await screen.findByRole('button', {
-        name: 'Create new introduction block',
-      }),
-    );
-    await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Block text' }),
-      'Some families are complicated.',
-    );
-    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
-    await screen.findByText('Some families are complicated.');
-
-    const request = await harness.submit();
-    expect(request?.stageDocument.introScreen).toEqual({
-      items: [
-        {
-          id: expect.any(String) as unknown as string,
-          type: 'text',
-          content: 'Some families are complicated.',
-        },
-      ],
-    });
-    // The blocks live INSIDE `introScreen`, so nothing of them reaches the
-    // stage's own `items`, which this interface does not have.
-    expect(request?.stageDocument).not.toHaveProperty('items');
-  });
-});
-
-/**
  * A block's `content` is one key whose meaning depends on its `type`. Editing
  * it through a single control means a type change has to destroy the value —
  * and until it does, the incoming type's control is showing the outgoing
@@ -199,10 +122,10 @@ describe('a page whose blocks can be prose or a resource', () => {
       id: 'information-media',
       type: 'Information' as const,
       fields: {
-        label: 'Information',
-        title: 'Welcome',
+        label: en('Information'),
+        title: en('Welcome'),
         items: [
-          { id: 'block-text', type: 'text', content: 'Read this.' },
+          { id: 'block-text', type: 'text', content: en('Read this.') },
           { id: 'block-asset', type: 'asset', content: 'geo_data' },
         ],
       },
@@ -250,7 +173,7 @@ describe('a page whose blocks can be prose or a resource', () => {
     const request = await harness.submit();
     const items = request?.stageDocument.items;
     expect(Array.isArray(items) ? items : []).toEqual([
-      { id: 'block-text', type: 'text', content: 'Read this.' },
+      { id: 'block-text', type: 'text', content: en('Read this.') },
       { id: 'block-asset', type: 'asset', content: 'roster_data' },
     ]);
   });
@@ -270,9 +193,11 @@ describe('a block field the researcher left empty', () => {
         id: 'information-empty',
         type: 'Information',
         fields: {
-          label: 'Information',
-          title: 'Welcome',
-          items: [{ id: 'block-text', type: 'text', content: 'Read this.' }],
+          label: en('Information'),
+          title: en('Welcome'),
+          items: [
+            { id: 'block-text', type: 'text', content: en('Read this.') },
+          ],
         },
       },
       sections: (
@@ -302,7 +227,7 @@ describe('a block field the researcher left empty', () => {
     const request = await harness.submit();
     const items = request?.stageDocument.items;
     expect(Array.isArray(items) ? items : []).toEqual([
-      { id: 'block-text', type: 'text', content: 'Read this.' },
+      { id: 'block-text', type: 'text', content: en('Read this.') },
     ]);
   });
 });
@@ -321,9 +246,11 @@ describe('a block whose active slot the researcher emptied', () => {
         id: 'information-emptied',
         type: 'Information',
         fields: {
-          label: 'Information',
-          title: 'Welcome',
-          items: [{ id: 'block-text', type: 'text', content: 'Read this.' }],
+          label: en('Information'),
+          title: en('Welcome'),
+          items: [
+            { id: 'block-text', type: 'text', content: en('Read this.') },
+          ],
         },
       },
       sections: (
@@ -403,9 +330,11 @@ describe('the expand and collapse halves of a block', () => {
         id: 'information-live',
         type: 'Information',
         fields: {
-          label: 'Information',
-          title: 'Welcome',
-          items: [{ id: 'block-text', type: 'text', content: 'Read this.' }],
+          label: en('Information'),
+          title: en('Welcome'),
+          items: [
+            { id: 'block-text', type: 'text', content: en('Read this.') },
+          ],
         },
       },
       sections: (
@@ -432,7 +361,7 @@ describe('the expand and collapse halves of a block', () => {
     // The row exactly, key for key: an editor-only slot left on it would be a
     // key the protocol schema has never heard of.
     expect(written?.stageDocument.items).toEqual([
-      { id: 'block-text', type: 'text', content: 'Read this instead.' },
+      { id: 'block-text', type: 'text', content: en('Read this instead.') },
     ]);
   });
 });

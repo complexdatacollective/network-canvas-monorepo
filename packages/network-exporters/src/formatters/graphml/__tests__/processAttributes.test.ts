@@ -12,6 +12,7 @@ import {
 
 import type { NodeWithResequencedID } from '../../../input';
 import type { ExportOptions } from '../../../options';
+import getKeyElementGenerator from '../generateKeyElements';
 import processAttributes from '../processAttributes';
 
 const mockExportOptions: ExportOptions = {
@@ -23,6 +24,14 @@ const mockExportOptions: ExportOptions = {
     screenLayoutWidth: 1920,
   },
 };
+
+const keyIdsFor = async (codebook: Codebook, node: NodeWithResequencedID) =>
+  (
+    await getKeyElementGenerator(
+      codebook,
+      mockExportOptions,
+    )({ ego: [], node: [node], edge: [] })
+  ).keyIds;
 
 // Helper to extract data elements from the document fragment
 const getDataElements = (fragment: XmlDomDocumentFragment) => {
@@ -67,11 +76,11 @@ describe('processAttributes', () => {
         },
       } as unknown as NodeWithResequencedID;
 
-      const result = await processAttributes(
+      const result = processAttributes(
         node,
         codebook,
         mockExportOptions,
-        new Map(),
+        await keyIdsFor(codebook, node),
       );
       const dataElements = getDataElements(result);
 
@@ -116,11 +125,11 @@ describe('processAttributes', () => {
         },
       } as unknown as NodeWithResequencedID;
 
-      const result = await processAttributes(
+      const result = processAttributes(
         node,
         codebook,
         mockExportOptions,
-        new Map(),
+        await keyIdsFor(codebook, node),
       );
       const dataElements = getDataElements(result);
 
@@ -133,88 +142,65 @@ describe('processAttributes', () => {
     });
   });
 
-  describe('encrypted values', () => {
-    const codebookWithName = (encrypted: boolean): Codebook => ({
+  describe('encrypted variables', () => {
+    const codebook: Codebook = {
       node: {
         person: {
           name: 'person',
+          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            'name-uuid': { name: 'name', type: 'text', encrypted },
+            'name-uuid': {
+              name: 'name',
+              label: 'Name',
+              type: 'text',
+              encrypted: true,
+            },
+            'city-uuid': { name: 'city', label: 'City', type: 'text' },
           },
         },
       },
-    });
+    };
+    const ciphertext = [201, 17, 93, 4, 250, 66, 128, 7, 33, 180, 2, 99];
 
-    it('exports a value saved as ciphertext as ENCRYPTED, though the codebook no longer asks for encryption', async () => {
-      const node: NodeWithResequencedID = {
-        [entityPrimaryKeyProperty]: '1',
-        [egoProperty]: 'ego-1',
-        [nodeExportIDProperty]: 1,
-        type: 'person',
-        [entityAttributesProperty]: {
-          'name-uuid': [12, 34, 56],
-          'external-uuid': [78, 90],
-        },
-        [entitySecureAttributesMeta]: {
-          'name-uuid': { iv: [1], salt: [2] },
-          'external-uuid': { iv: [3], salt: [4] },
-        },
-      };
+    it.each([
+      {
+        label: 'metadata without a salt',
+        metadata: { iv: [15, 243, 77, 120] },
+      },
+      {
+        label: 'schema 8 metadata with a salt',
+        metadata: { iv: [15, 243, 77, 120], salt: [44, 130, 213, 61] },
+      },
+    ])(
+      'writes the marker in place of the ciphertext, with $label',
+      async ({ metadata }) => {
+        const node: NodeWithResequencedID = {
+          [entityPrimaryKeyProperty]: '1',
+          [egoProperty]: 'ego-1',
+          [nodeExportIDProperty]: 1,
+          type: 'person',
+          [entityAttributesProperty]: {
+            'name-uuid': ciphertext,
+            'city-uuid': 'Lisbon',
+          },
+          [entitySecureAttributesMeta]: { 'name-uuid': metadata },
+        };
 
-      const result = await processAttributes(
-        node,
-        codebookWithName(false),
-        mockExportOptions,
-        new Map([['external-uuid', 'external-key']]),
-      );
+        const result = processAttributes(
+          node,
+          codebook,
+          mockExportOptions,
+          await keyIdsFor(codebook, node),
+        );
+        const values = Object.values(getDataElements(result));
 
-      expect(getDataElements(result)).toEqual({
-        'name-uuid': 'ENCRYPTED',
-        'external-key': 'ENCRYPTED',
-      });
-    });
-
-    it('exports a value saved as plaintext as itself, though the codebook now asks for encryption', async () => {
-      const node: NodeWithResequencedID = {
-        [entityPrimaryKeyProperty]: '1',
-        [egoProperty]: 'ego-1',
-        [nodeExportIDProperty]: 1,
-        type: 'person',
-        [entityAttributesProperty]: { 'name-uuid': 'Alice' },
-      };
-
-      const result = await processAttributes(
-        node,
-        codebookWithName(true),
-        mockExportOptions,
-        new Map(),
-      );
-
-      expect(getDataElements(result)).toEqual({ 'name-uuid': 'Alice' });
-    });
-
-    it('exports a plaintext value as itself, though metadata from an encrypted value it replaced was left with it', async () => {
-      const node: NodeWithResequencedID = {
-        [entityPrimaryKeyProperty]: '1',
-        [egoProperty]: 'ego-1',
-        [nodeExportIDProperty]: 1,
-        type: 'person',
-        [entityAttributesProperty]: { 'name-uuid': 'Alice' },
-        [entitySecureAttributesMeta]: {
-          'name-uuid': { iv: [1], salt: [2] },
-        },
-      };
-
-      const result = await processAttributes(
-        node,
-        codebookWithName(true),
-        mockExportOptions,
-        new Map(),
-      );
-
-      expect(getDataElements(result)).toEqual({ 'name-uuid': 'Alice' });
-    });
+        expect(values).toHaveLength(2);
+        expect(values).toContain('ENCRYPTED');
+        expect(values).toContain('Lisbon');
+        expect(values.join('')).not.toContain(ciphertext.join(','));
+      },
+    );
   });
 });

@@ -1,11 +1,33 @@
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+
 import type { Locator, Page } from '@playwright/test';
+import JSZip from 'jszip';
 
 import { expect, test } from '../fixtures/test.js';
 import { clickWhenDeckSettles } from '../helpers/deck.js';
 import {
+  DEVELOPMENT_PROTOCOL_DIR,
+  DEVELOPMENT_PROTOCOL_NAME,
   LEAN_E2E_PROTOCOL_NAME,
   LEAN_E2E_PROTOCOL_PATH,
 } from '../helpers/protocol-paths.js';
+
+// The development protocol is the only seeded protocol that opens with a
+// language chooser and declares a second language, so the test packs it into
+// a .netcanvas: protocol.json at the root, each asset under assets/.
+async function writeDevelopmentProtocolArchive(target: string) {
+  const zip = new JSZip();
+  zip.file(
+    'protocol.json',
+    readFileSync(path.join(DEVELOPMENT_PROTOCOL_DIR, 'protocol.json'), 'utf8'),
+  );
+  const assetDir = path.join(DEVELOPMENT_PROTOCOL_DIR, 'assets');
+  for (const file of readdirSync(assetDir)) {
+    zip.file(`assets/${file}`, readFileSync(path.join(assetDir, file)));
+  }
+  writeFileSync(target, await zip.generateAsync({ type: 'nodebuffer' }));
+}
 
 async function chooseLanguage(
   page: Page,
@@ -95,181 +117,226 @@ async function storedResearch(page: Page) {
   );
 }
 
-test('Spanish administration and built-in interview controls preserve authored content and data', async ({
-  page,
-  protocol,
-  interviewNav,
-}) => {
-  await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
-  await interviewNav.startNewSession('Caso Á-17');
-  await interviewNav.exitInterview();
-  const before = await storedResearch(page);
-  expect(before.protocols).toHaveLength(1);
-  expect(before.sessions).toHaveLength(1);
-  await chooseLanguage(page, 'es');
-  await expect(
-    page.getByRole('button', { name: 'Configuración', exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('heading', { name: LEAN_E2E_PROTOCOL_NAME }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'Iniciar nueva entrevista', exact: true }),
-  ).toBeVisible();
-  expect(await storedResearch(page)).toEqual(before);
-  await page.reload();
-  await expect(page.locator('html')).toHaveAttribute('lang', 'es');
-  await expect(
-    page.getByRole('button', { name: /Reanudar la última entrevista/ }),
-  ).toBeVisible();
-  await page
-    .getByRole('button', { name: /Reanudar la última entrevista/ })
-    .click();
-  await interviewNav.waitForStage();
-  await expect(page.locator('main[data-theme-interview]')).toHaveAttribute(
-    'lang',
-    'es',
-  );
-  await expect(page.locator('main[data-theme-interview]')).toHaveAttribute(
-    'dir',
-    'ltr',
-  );
-  await expect(page.locator('html')).toHaveAttribute('lang', 'es');
-  await expect(
-    page.getByRole('button', { name: 'Configuración', exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByText('Thanks for taking part.', { exact: true }),
-  ).toBeVisible();
-  await interviewNav.exitInterview('es');
-  await page.getByRole('button', { name: 'Datos', exact: true }).click();
-  await expect(
-    page.getByRole('columnheader', { name: /ID del caso/ }),
-  ).toBeVisible();
-  await expect(page.getByText('Caso Á-17', { exact: true })).toBeVisible();
-  await page
-    .getByRole('checkbox', { name: 'Seleccionar Caso Á-17', exact: true })
-    .check();
-  await page
-    .getByRole('button', { name: 'Eliminar seleccionadas (1)', exact: true })
-    .click();
-  const deletion = page.getByRole('dialog', {
-    name: '¿Eliminar 1 entrevista?',
+test.describe('a Spanish browser', () => {
+  test.use({ locale: 'es' });
+
+  test('shows the interview in the protocol’s language and its built-in names in Spanish whatever the app language, preserving authored content and data', async ({
+    page,
+    protocol,
+    interviewNav,
+  }) => {
+    await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
+    await chooseLanguage(page, 'en', 'es');
+    await interviewNav.startNewSession('Caso Á-17');
+    // The interview carries the protocol's language (it declares only en-US),
+    // and so does every word it shows, its own words included, which the
+    // protocol holds. Only the built-in accessible names of icon controls,
+    // never shown, follow the browser.
+    const interview = page.locator('main[data-theme-interview]');
+    await expect(interview).toHaveAttribute('lang', 'en-US');
+    await expect(interview).toHaveAttribute('dir', 'ltr');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    await expect(
+      page.getByRole('button', { name: 'Configuración', exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText('Thanks for taking part.', { exact: true }),
+    ).toBeVisible();
+    // The protocol declares only en-US, so its content stays in en-US while
+    // the built-in controls follow the browser.
+    await expect
+      .poll(async () => (await storedResearch(page)).sessions)
+      .toEqual([
+        expect.objectContaining({
+          caseId: 'Caso Á-17',
+          localePreference: null,
+          locale: 'en-US',
+        }),
+      ]);
+    // The exit dialog's words are the protocol's, so in English.
+    await interviewNav.exitInterview();
+    const before = await storedResearch(page);
+    expect(before.protocols).toHaveLength(1);
+    expect(before.sessions).toHaveLength(1);
+
+    await chooseLanguage(page, 'es');
+    await expect(
+      page.getByRole('button', { name: 'Configuración', exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: LEAN_E2E_PROTOCOL_NAME }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', {
+        name: 'Iniciar nueva entrevista',
+        exact: true,
+      }),
+    ).toBeVisible();
+    expect(await storedResearch(page)).toEqual(before);
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'es');
+    await expect(
+      page.getByRole('button', { name: /Reanudar la última entrevista/ }),
+    ).toBeVisible();
+    await page
+      .getByRole('button', { name: /Reanudar la última entrevista/ })
+      .click();
+    await interviewNav.waitForStage();
+    await expect(interview).toHaveAttribute('lang', 'en-US');
+    await expect(interview).toHaveAttribute('dir', 'ltr');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'es');
+    await expect(
+      page.getByRole('button', { name: 'Configuración', exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText('Thanks for taking part.', { exact: true }),
+    ).toBeVisible();
+    // The exit dialog's words are the protocol's, so in English.
+    await interviewNav.exitInterview();
+    await page.getByRole('button', { name: 'Datos', exact: true }).click();
+    await expect(
+      page.getByRole('columnheader', { name: /ID del caso/ }),
+    ).toBeVisible();
+    await expect(page.getByText('Caso Á-17', { exact: true })).toBeVisible();
+    await page
+      .getByRole('checkbox', { name: 'Seleccionar Caso Á-17', exact: true })
+      .check();
+    await page
+      .getByRole('button', { name: 'Eliminar seleccionadas (1)', exact: true })
+      .click();
+    const deletion = page.getByRole('dialog', {
+      name: '¿Eliminar 1 entrevista?',
+    });
+    await expect(deletion).toContainText('Esta acción no se puede deshacer.');
+    await deletion
+      .getByRole('button', { name: 'Cancelar', exact: true })
+      .click();
+    expect((await storedResearch(page)).sessions).toHaveLength(1);
   });
-  await expect(deletion).toContainText('Esta acción no se puede deshacer.');
-  await deletion.getByRole('button', { name: 'Cancelar', exact: true }).click();
-  expect((await storedResearch(page)).sessions).toHaveLength(1);
+
+  test("an open finish confirmation is shown in the interview's language, not the app's, without finishing or changing responses", async ({
+    page,
+    protocol,
+    interviewNav,
+  }) => {
+    await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
+    await chooseLanguage(page, 'en', 'es');
+    await interviewNav.startNewSession('Finish-locale-17');
+    await interviewNav.next();
+    await interviewNav.fillEgoName('Ángela Ñ-21');
+    await interviewNav.next();
+    await interviewNav.quickAddNode('Irene');
+    await interviewNav.next();
+    await interviewNav.next();
+    // The finish stage's title, its Finish button and the confirmation's
+    // question are the protocol's own text, which this protocol has only in
+    // English.
+    const finishHeading = page.getByRole('heading', {
+      name: 'Finish Interview',
+      exact: true,
+    });
+    await expect(finishHeading).toBeVisible();
+    await expect
+      .poll(async () => (await storedResearch(page)).sessions)
+      .toEqual([expect.objectContaining({ currentStep: 4, finishedAt: null })]);
+    const before = await storedResearch(page);
+    expect(before.protocols).toHaveLength(1);
+    expect(before.sessions).toHaveLength(1);
+    await page.getByRole('button', { name: 'Finish', exact: true }).click();
+    const confirmation = page.getByRole('dialog');
+    await expect(confirmation).toHaveAccessibleName(
+      'Are you sure you want to finish the interview?',
+    );
+    // Interviewer supplies this description, yet it follows the interview's
+    // language rather than Interviewer's own.
+    const description = confirmation.getByText(
+      'Al finalizar, se cierra esta entrevista. Si es necesario hacer cambios, la persona responsable de la investigación puede volver a marcarla como sin finalizar más adelante.',
+      { exact: true },
+    );
+    await expect(description).toBeVisible();
+    await expect(description).toHaveAttribute('lang', 'es');
+    await expect(description).toHaveAttribute('dir', 'ltr');
+    await expect(
+      confirmation.getByRole('button', {
+        name: 'Finish',
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    expect(await storedResearch(page)).toEqual(before);
+
+    await confirmation
+      .getByRole('button', { name: 'Cancel', exact: true })
+      .click();
+    await expect(confirmation).toBeHidden();
+    await expect(finishHeading).toBeVisible();
+    expect(await storedResearch(page)).toEqual(before);
+    await interviewNav.back();
+    await expect(page.getByRole('button', { name: /^Irene/ })).toBeVisible();
+  });
 });
 
-test('the interview menu persists its language choice while preserving the current form and authored copy', async ({
-  page,
-  protocol,
-  interviewNav,
-}) => {
-  await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
-  await interviewNav.startNewSession('Locale-menu-17');
-  await interviewNav.next();
-  await expect(page.getByText('Tell us about', { exact: false })).toBeVisible();
-  const name = page.getByRole('textbox', {
-    name: 'What is your name?',
-    exact: true,
-  });
-  await name.fill('Ángela Ñ-21');
-  await name.blur();
-  await expect
-    .poll(async () => (await storedResearch(page)).sessions)
-    .toEqual([expect.objectContaining({ currentStep: 1 })]);
-  const before = await storedResearch(page);
-  expect(before.protocols).toHaveLength(1);
-  expect(before.sessions).toHaveLength(1);
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  const picker = page.getByRole('combobox', {
-    name: 'Interface language',
-    exact: true,
-  });
-  await picker.focus();
-  await picker.selectOption('es');
-  await expect(page.locator('main[data-theme-interview]')).toHaveAttribute(
-    'lang',
-    'es',
-  );
-  await expect(page.locator('html')).toHaveAttribute('lang', 'es');
-  await expect(
-    page.getByRole('combobox', { name: 'Idioma de la interfaz', exact: true }),
-  ).toHaveValue('es');
-  await expect(
-    page.getByRole('button', { name: 'Salir de la entrevista', exact: true }),
-  ).toBeVisible();
-  await expect(name).toHaveValue('Ángela Ñ-21');
-  await expect(page.getByText('Tell us about', { exact: false })).toBeVisible();
-  expect(await storedResearch(page)).toEqual(before);
-  expect(
-    await page.evaluate(() => localStorage.getItem('interviewer.locale')),
-  ).toBe('es');
-  await page.keyboard.press('Escape');
-  // EgoForm commits on advancing. Language changes above preserved the dirty
-  // field without writing it; now submit through the actual interface before
-  // checking persistence on reload.
-  await interviewNav.next();
-  await expect
-    .poll(async () => (await storedResearch(page)).sessions)
-    .toEqual([
-      expect.objectContaining({
-        network: expect.objectContaining({
-          ego: expect.objectContaining({
-            attributes: expect.objectContaining({ ego_name: 'Ángela Ñ-21' }),
-          }),
-        }),
-      }),
+test.describe('the language chooser stage', () => {
+  test.use({ locale: 'en-US' });
+
+  test('a chosen language switches the interview at once and stays with the session across a reload', async ({
+    page,
+    protocol,
+    interviewNav,
+  }, testInfo) => {
+    // Packing and importing the development protocol's 24 MB of media.
+    test.slow();
+    const archive = testInfo.outputPath('development-protocol.netcanvas');
+    await writeDevelopmentProtocolArchive(archive);
+    await protocol.import(archive, DEVELOPMENT_PROTOCOL_NAME);
+    await expect(
+      page.getByText('Protocol imported', { exact: true }),
+    ).toBeVisible({ timeout: 30_000 });
+    await interviewNav.startNewSession('Idioma-17');
+
+    const interview = page.locator('main[data-theme-interview]');
+    await expect(interview).toHaveAttribute('lang', 'en-US');
+    await expect(
+      page.getByRole('listbox', { name: 'Choose a language', exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole('option')).toHaveCount(2);
+    const spanish = page.getByRole('option', { name: 'español', exact: true });
+    await expect(spanish).toHaveAttribute('aria-selected', 'false');
+    await expect
+      .poll(async () => (await storedResearch(page)).sessions)
+      .toEqual([
+        expect.objectContaining({ localePreference: null, locale: 'en-US' }),
+      ]);
+
+    await spanish.click();
+    await expect(spanish).toHaveAttribute('aria-selected', 'true');
+    // The list's name is built in and follows the chosen language.
+    await expect(
+      page.getByRole('listbox', { name: 'Elige un idioma', exact: true }),
+    ).toBeVisible();
+    await expect(interview).toHaveAttribute('lang', 'es');
+    await expect(
+      page.getByRole('button', { name: 'Configuración', exact: true }),
+    ).toBeVisible();
+    // The participant's choice never changes Interviewer's own language.
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    await expect
+      .poll(async () => (await storedResearch(page)).sessions)
+      .toEqual([
+        expect.objectContaining({ localePreference: 'es', locale: 'es' }),
+      ]);
+
+    await page.reload();
+    await interviewNav.waitForStage();
+    await expect(
+      page.getByRole('listbox', { name: 'Elige un idioma', exact: true }),
+    ).toBeVisible();
+    await expect(spanish).toHaveAttribute('aria-selected', 'true');
+    await expect(interview).toHaveAttribute('lang', 'es');
+    expect((await storedResearch(page)).sessions).toEqual([
+      expect.objectContaining({ localePreference: 'es', locale: 'es' }),
     ]);
-  await interviewNav.back();
-  await page.reload();
-  await expect(page.locator('main[data-theme-interview]')).toHaveAttribute(
-    'lang',
-    'es',
-  );
-  await expect(name).toHaveValue('Ángela Ñ-21');
-  await page
-    .getByRole('button', { name: 'Configuración', exact: true })
-    .click();
-  const restoredPicker = page.getByRole('combobox', {
-    name: 'Idioma de la interfaz',
-    exact: true,
   });
-  // The saved explicit preference must remain represented after Shell mounts
-  // again, so Automatic can be chosen directly without selecting an interim language.
-  await expect(restoredPicker).toHaveValue('es');
-  await restoredPicker.selectOption('__automatic');
-  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-  await expect(page.locator('main[data-theme-interview]')).toHaveAttribute(
-    'lang',
-    'en',
-  );
-  expect(
-    await page.evaluate(() => localStorage.getItem('interviewer.locale')),
-  ).toBeNull();
-  await expect(name).toHaveValue('Ángela Ñ-21');
-  await page
-    .getByRole('combobox', { name: 'Interface language', exact: true })
-    .selectOption('en-GB');
-  await expect(page.locator('main[data-theme-interview]')).toHaveAttribute(
-    'lang',
-    'en-GB',
-  );
-  await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
-  await expect(name).toHaveValue('Ángela Ñ-21');
-  await page
-    .getByRole('combobox', { name: 'Interface language', exact: true })
-    .selectOption('__automatic');
-  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-  await expect(page.locator('main[data-theme-interview]')).toHaveAttribute(
-    'lang',
-    'en',
-  );
-  expect(
-    await page.evaluate(() => localStorage.getItem('interviewer.locale')),
-  ).toBeNull();
-  await expect(name).toHaveValue('Ángela Ñ-21');
 });
 
 test.describe('automatic language and setup', () => {
@@ -310,7 +377,8 @@ test.describe('automatic language and setup', () => {
 });
 
 test.describe('installed app catalog availability', () => {
-  test.use({ serviceWorkers: 'allow' });
+  // The interview takes its language from the browser, never from the app.
+  test.use({ serviceWorkers: 'allow', locale: 'en-GB' });
   test('first switches to Spanish offline, reloads, and imports without fetching a catalog', async ({
     page,
     context,
@@ -373,89 +441,16 @@ test.describe('installed app catalog availability', () => {
       page.getByRole('button', { name: 'Settings', exact: true }),
     ).toBeVisible();
     await interviewNav.startNewSession('GB-offline-17');
+    // The interview carries the protocol's language, not the browser's.
     await expect(page.locator('main[data-theme-interview]')).toHaveAttribute(
       'lang',
-      'en-GB',
+      'en-US',
     );
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
     await interviewNav.exitInterview();
     expect((await storedResearch(page)).sessions).toHaveLength(1);
     expect(catalogRequests).toEqual([]);
   });
-});
-
-test('an open finish confirmation follows the device language without finishing or changing responses', async ({
-  page,
-  context,
-  protocol,
-  interviewNav,
-}) => {
-  await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
-  await interviewNav.startNewSession('Finish-locale-17');
-  await interviewNav.next();
-  await interviewNav.fillEgoName('Ángela Ñ-21');
-  await interviewNav.next();
-  await interviewNav.quickAddNode('Irene');
-  await interviewNav.next();
-  await interviewNav.next();
-  await expect(
-    page.getByRole('heading', { name: 'Finish Interview', exact: true }),
-  ).toBeVisible();
-  await expect
-    .poll(async () => (await storedResearch(page)).sessions)
-    .toEqual([expect.objectContaining({ currentStep: 4, finishedAt: null })]);
-  const before = await storedResearch(page);
-  expect(before.protocols).toHaveLength(1);
-  expect(before.sessions).toHaveLength(1);
-  await page.getByRole('button', { name: 'Finish', exact: true }).click();
-  const confirmation = page.getByRole('dialog');
-  const englishDescription =
-    'Finishing ends this interview. A researcher can mark it unfinished later if changes are needed.';
-  await expect(confirmation).toContainText(englishDescription);
-
-  const otherTab = await context.newPage();
-  await otherTab.goto('/welcome');
-  await otherTab.evaluate(() =>
-    localStorage.setItem('interviewer.locale', 'es'),
-  );
-  await expect(confirmation).toHaveAccessibleName(
-    '¿Seguro que quieres finalizar la entrevista?',
-  );
-  const description = confirmation.getByText(
-    'Al finalizar, se cierra esta entrevista. Si es necesario hacer cambios, la persona responsable de la investigación puede volver a marcarla como sin finalizar más adelante.',
-    { exact: true },
-  );
-  await expect(description).toBeVisible();
-  await expect(description).toHaveAttribute('lang', 'es');
-  await expect(description).toHaveAttribute('dir', 'ltr');
-  await expect(
-    confirmation.getByRole('button', {
-      name: 'Finalizar entrevista',
-      exact: true,
-    }),
-  ).toBeVisible();
-  await expect(page.locator('html')).toHaveAttribute('lang', 'es');
-  expect(await storedResearch(page)).toEqual(before);
-
-  await otherTab.evaluate(() =>
-    localStorage.setItem('interviewer.locale', 'en-GB'),
-  );
-  await expect(confirmation).toHaveAccessibleName(
-    'Are you sure you want to finish the interview?',
-  );
-  await expect(
-    confirmation.getByText(englishDescription, { exact: true }),
-  ).toHaveAttribute('lang', 'en-GB');
-  await confirmation
-    .getByRole('button', { name: 'Cancel', exact: true })
-    .click();
-  await expect(confirmation).toBeHidden();
-  await expect(
-    page.getByRole('heading', { name: 'Finish Interview', exact: true }),
-  ).toBeVisible();
-  expect(await storedResearch(page)).toEqual(before);
-  await interviewNav.back();
-  await expect(page.getByRole('button', { name: /^Irene/ })).toBeVisible();
 });
 
 test('an open security wizard follows a language preference changed in another tab', async ({

@@ -1,64 +1,59 @@
 import { describe, expect, it } from 'vitest';
 
+import { familyPedigreeWordingIn } from '../../schemas/9/stage-wording/family-pedigree.ts';
 import { findVariableRoleConflicts } from '../findVariableRoleConflicts.ts';
-import { createBaseProtocol } from '../test-utils.ts';
+import { createBaseProtocol, localized } from '../test-utils.ts';
 
 // Minimal stage builders over the base protocol's `person` node type.
 const egoFormStage = (variable: string) => ({
   id: 'ef1',
   type: 'EgoForm',
-  label: 'About you',
-  introductionPanel: { title: 'T', text: 'X' },
-  form: { fields: [{ variable, prompt: 'Answer' }] },
+  label: localized('About you'),
+  introductionPanel: { title: localized('T'), text: localized('X') },
+  form: { fields: [{ variable, prompt: localized('Answer') }] },
 });
 
 const alterFormStage = (variable: string) => ({
   id: 'af1',
   type: 'AlterForm',
-  label: 'Alter form',
+  label: localized('Alter form'),
   subject: { entity: 'node', type: 'person' },
-  introductionPanel: { title: 'T', text: 'X' },
-  form: { fields: [{ variable, prompt: 'Answer' }] },
+  introductionPanel: { title: localized('T'), text: localized('X') },
+  form: { fields: [{ variable, prompt: localized('Answer') }] },
 });
 
 const categoricalBinStage = (variable: string) => ({
   id: 'cb1',
   type: 'CategoricalBin',
-  label: 'Bin',
+  label: localized('Bin'),
   subject: { entity: 'node', type: 'person' },
-  prompts: [{ id: 'p1', text: 'Sort', variable }],
+  prompts: [{ id: 'p1', text: localized('Sort'), variable }],
 });
 
-// FamilyPedigree declares no top-level `subject` (unlike AlterForm/
-// CategoricalBin above); its nomination-prompt variable resolves via
-// `stageSubject`, which recoverSubject must derive from nodeConfig.type.
-const familyPedigreeStage = (nominationVariable: string) => ({
+// FamilyPedigree's form fields resolve against the stage's `subject`, like any
+// other form.
+const familyPedigreeStage = (formVariable: string) => ({
   id: 'fp1',
   type: 'FamilyPedigree',
-  label: 'Family Pedigree',
-  nodeConfig: {
-    type: 'person',
-    nodeLabelVariable: 'pedigreeLabel',
-    egoVariable: 'pedigreeEgo',
-    relationshipVariable: 'pedigreeRelationship',
-    biologicalSexVariable: 'pedigreeBioSex',
+  wording: familyPedigreeWordingIn(),
+  label: localized('Family Pedigree'),
+  subject: { entity: 'node', type: 'person' },
+  prompt: localized('Who is related to you?'),
+  nodeConfiguration: {
+    nameAttribute: 'pedigreeName',
+    genderIdentity: { attribute: 'pedigreeGender', terms: [] },
+    sexAssignedAtBirthAttribute: 'pedigreeSab',
+    egoAttribute: 'pedigreeEgo',
   },
-  edgeConfig: {
+  edgeConfiguration: {
     type: 'knows',
-    relationshipTypeVariable: 'pedigreeRelType',
-    isActiveVariable: 'pedigreeActive',
-    isGestationalCarrierVariable: 'pedigreeGestCarrier',
-    gameteRoleVariable: 'pedigreeGameteRole',
+    kindAttribute: 'pedigreeKind',
+    gestationalCarrierAttribute: 'pedigreeGestCarrier',
+    currentPartnerAttribute: 'pedigreeCurrent',
   },
-  framing: { mode: 'participantChoice' },
-  boundaries: {
-    requireGrandparents: 'off',
-    requireChildrenContributors: 'off',
+  form: {
+    fields: [{ variable: formVariable, prompt: localized('Family history') }],
   },
-  censusPrompt: 'Who is related to you?',
-  nominationPrompts: [
-    { id: 'np1', text: 'Family history', variable: nominationVariable },
-  ],
 });
 
 const withStages = (stages: unknown[]) => {
@@ -81,12 +76,12 @@ describe('findVariableRoleConflicts', () => {
     expect(typeof conflict?.unvalidated[0]?.stageIndex).toBe('number');
   });
 
-  it('recovers the subject for a FamilyPedigree stage with no top-level subject', () => {
-    // nominationPrompts[].variable resolves via stageSubject, which is
-    // undefined for FamilyPedigree; recoverSubject must fall back to reading
-    // nodeConfig.type from the stage document itself.
+  it('resolves the subject of a FamilyPedigree form field', () => {
     const conflicts = findVariableRoleConflicts(
-      withStages([alterFormStage('category'), familyPedigreeStage('category')]),
+      withStages([
+        categoricalBinStage('category'),
+        familyPedigreeStage('category'),
+      ]),
     );
     expect(conflicts).toHaveLength(1);
     const conflict = conflicts[0];
@@ -124,10 +119,11 @@ describe('findVariableRoleConflicts', () => {
       ...base.codebook.ego.variables,
       category: {
         name: 'ego_category',
+        label: 'ego_category',
         type: 'categorical',
         options: [
-          { label: 'A', value: 'a' },
-          { label: 'B', value: 'b' },
+          { label: localized('A'), value: 'a' },
+          { label: localized('B'), value: 'b' },
         ],
       },
     };

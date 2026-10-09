@@ -1,8 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { ProtocolWithCounts } from '~/lib/db/types';
+import { recordStoredProtocolMigrationFailures } from '~/lib/protocol/storedProtocolMigrationFailures';
 
 import { DeckSlotCard } from '../DeckSlotCard';
 
@@ -16,7 +17,8 @@ function makeProtocol(name: string): ProtocolWithCounts {
   const protocol: CurrentProtocol = {
     name,
     description: 'A description.',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {},
     stages: [],
   };
@@ -24,7 +26,7 @@ function makeProtocol(name: string): ProtocolWithCounts {
     id: `test-${name}`,
     hash: `hash-${name}`,
     name,
-    schemaVersion: 8,
+    schemaVersion: 9,
     importedAt: '2026-05-20T10:00:00.000Z',
     description: 'A description.',
     codebook: {},
@@ -65,6 +67,33 @@ describe('DeckSlotCard', () => {
     expect(activate).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole('button', { name: 'Delete Protocol' }));
     expect(onDeleteProtocol).toHaveBeenCalledWith('hash-Friendship Ties');
+  });
+
+  it('marks a current protocol the sweep held back with its interviews as not available', () => {
+    const protocol = makeProtocol('Held Back');
+    const card = () => (
+      <DeckSlotCard {...baseProps} entry={{ kind: 'protocol', protocol }} />
+    );
+    const { rerender } = render(card());
+    expect(screen.queryByText('Not available')).not.toBeInTheDocument();
+
+    act(() => {
+      recordStoredProtocolMigrationFailures([
+        {
+          name: protocol.name,
+          hash: protocol.hash,
+          reason: 'one interview could not be migrated',
+          kind: 'sessions',
+          sessions: [{ id: 'late', reason: 'invalid' }],
+        },
+      ]);
+    });
+    try {
+      rerender(card());
+      expect(screen.getByText('Not available')).toBeInTheDocument();
+    } finally {
+      act(() => recordStoredProtocolMigrationFailures([]));
+    }
   });
 
   it('renders the sample card with an install button when active', () => {

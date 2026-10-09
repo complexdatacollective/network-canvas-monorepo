@@ -5,7 +5,7 @@ import { createSelector } from '@reduxjs/toolkit';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { type RefObject, useCallback, useMemo, useState } from 'react';
 
-import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import {
   Accordion,
   AccordionHeader,
@@ -23,6 +23,7 @@ import {
   ToolbarPopover,
 } from '@codaco/fresco-ui/SegmentedToolbar';
 import type {
+  LocalizedString,
   Stage,
   VariableOption,
   VariableOptionValue,
@@ -30,8 +31,12 @@ import type {
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { useStageSelector } from '../../hooks/useStageSelector';
+import { LocalizedText } from '../../localization/LocalizedText';
+import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
+import { useContentFormat } from '../../localization/useContentFormat';
 import { getNetworkNodes, getSubjectType } from '../../selectors/session';
 import { getCodebook } from '../../store/modules/protocol';
+import { compareAsText } from '../../utils/compareCodeUnits';
 import { interfaceMessages } from '../messages';
 
 type NarrativeStage = Extract<Stage, { type: 'Narrative' }>;
@@ -54,21 +59,29 @@ type GroupLegendEntry = {
 export function buildGroupLegend(
   categoricalOptions: VariableOption[],
   groupValues: VariableOptionValue[],
+  resolveText: (label: LocalizedString) => string,
+  collator: Intl.Collator,
 ): GroupLegendEntry[] {
   const known = categoricalOptions.map((option, index) => ({
-    label: option.label,
+    label: resolveText(option.label),
     colorIndex: index + 1,
   }));
 
   const knownValues = new Set(categoricalOptions.map((option) => option.value));
+  // Colours are handed out in a language-independent order (the one the hulls
+  // use), so a value keeps its colour when the participant changes language.
+  // The legend itself is read, so it is listed in the reader's alphabetical
+  // order.
   const extraValues = [
     ...new Set(groupValues.filter((value) => !knownValues.has(value))),
-  ].toSorted((a, b) => String(a).localeCompare(String(b)));
+  ].toSorted(compareAsText);
 
-  const extra = extraValues.map((value, index) => ({
-    label: String(value),
-    colorIndex: categoricalOptions.length + 1 + index,
-  }));
+  const extra = extraValues
+    .map((value, index) => ({
+      label: String(value),
+      colorIndex: categoricalOptions.length + 1 + index,
+    }))
+    .toSorted((a, b) => collator.compare(a.label, b.label));
 
   return [...known, ...extra];
 }
@@ -79,6 +92,12 @@ const SECTION_GROUPS = 'groups';
 
 type PresetSwitcherProps = {
   presets: Preset[];
+  /** The stage's words for the headings of the panel's sections. */
+  headings: Readonly<{
+    attributes: string | undefined;
+    links: string | undefined;
+    groups: string | undefined;
+  }>;
   activePreset: number;
   highlightIndex: number;
   showHighlighting: boolean;
@@ -94,6 +113,7 @@ type PresetSwitcherProps = {
 
 export default function PresetSwitcher({
   presets,
+  headings,
   activePreset,
   highlightIndex,
   showHighlighting,
@@ -107,6 +127,8 @@ export default function PresetSwitcher({
   dragConstraints,
 }: PresetSwitcherProps) {
   const intl = useAppIntl();
+  const resolve = useResolveLocalizedString();
+  const { collator } = useContentFormat();
   const currentPreset = presets[activePreset];
 
   const selector = useMemo(
@@ -116,16 +138,9 @@ export default function PresetSwitcher({
         getSubjectType,
         getNetworkNodes,
         (codebook, subjectType, nodes) => {
-          const highlightLabels = (currentPreset?.highlight ?? []).map(
-            (variableId: string) =>
-              (subjectType &&
-                codebook?.node?.[subjectType]?.variables?.[variableId]?.name) ??
-              '',
-          );
-
           const edges = (currentPreset?.edges?.display ?? []).map(
             (type: string) => ({
-              label: codebook?.edge?.[type]?.name ?? '',
+              label: codebook?.edge?.[type]?.label,
               color: codebook?.edge?.[type]?.color ?? 'edge-color-seq-1',
             }),
           );
@@ -137,11 +152,8 @@ export default function PresetSwitcher({
             const variable =
               codebook?.node?.[subjectType]?.variables?.[groupVariable];
             categoricalOptions =
-              variable && 'options' in variable && variable.options
-                ? variable.options.filter(
-                    (option): option is VariableOption =>
-                      typeof option.value !== 'boolean',
-                  )
+              variable?.type === 'categorical' || variable?.type === 'ordinal'
+                ? variable.options
                 : undefined;
 
             for (const node of nodes) {
@@ -155,21 +167,27 @@ export default function PresetSwitcher({
             }
           }
 
-          return { categoricalOptions, groupValues, edges, highlightLabels };
+          return { categoricalOptions, groupValues, edges };
         },
       ),
     [currentPreset],
   );
 
-  const { categoricalOptions, groupValues, edges, highlightLabels } =
-    useStageSelector(selector);
+  const { categoricalOptions, groupValues, edges } = useStageSelector(selector);
+  const highlights = currentPreset?.highlight ?? [];
 
   const groupLegend = useMemo(
-    () => buildGroupLegend(categoricalOptions ?? [], groupValues),
-    [categoricalOptions, groupValues],
+    () =>
+      buildGroupLegend(
+        categoricalOptions ?? [],
+        groupValues,
+        (label) => resolve(label).text,
+        collator,
+      ),
+    [categoricalOptions, groupValues, resolve, collator],
   );
 
-  const hasHighlights = highlightLabels.length > 0;
+  const hasHighlights = highlights.length > 0;
   const hasEdges = edges.length > 0;
   const hasGroups = groupLegend.length > 0;
 
@@ -219,6 +237,7 @@ export default function PresetSwitcher({
       >
         <ToolbarIconButton
           aria-label={intl.formatMessage(interfaceMessages.previousPreset)}
+          tooltip={false}
           icon={<ChevronLeft />}
           disabled={activePreset === 0}
           onClick={() => onChangePreset(activePreset - 1)}
@@ -250,7 +269,7 @@ export default function PresetSwitcher({
             // stops shouting. Scoped to this trigger on purpose — every other
             // disclosure in the app is transient and wants the default.
             <ToolbarButton className="aria-expanded:bg-selected/15 aria-expanded:text-(--component-text)">
-              {currentPreset.label}
+              <LocalizedText value={currentPreset.label} render={<span />} />
             </ToolbarButton>
           }
           contentProps={{
@@ -264,12 +283,10 @@ export default function PresetSwitcher({
             value={accordionValue}
             onValueChange={handleAccordionValueChange}
           >
-            {hasHighlights && (
+            {hasHighlights && headings.attributes !== undefined && (
               <AccordionItem value={SECTION_ATTRIBUTES}>
                 <AccordionHeader>
-                  <AccordionTrigger>
-                    <AppMessage message={interfaceMessages.attributes} />
-                  </AccordionTrigger>
+                  <AccordionTrigger>{headings.attributes}</AccordionTrigger>
                 </AccordionHeader>
                 <AccordionPanel>
                   <RadioGroup
@@ -277,14 +294,14 @@ export default function PresetSwitcher({
                     onValueChange={(v) => onChangeHighlightIndex(Number(v))}
                     className="flex flex-col gap-2"
                   >
-                    {highlightLabels.map((label, index) => {
+                    {highlights.map((highlight, index) => {
                       const radioId = `highlight-radio-${index}`;
                       return (
                         <RadioItem
                           key={index}
                           id={radioId}
                           value={String(index)}
-                          label={label}
+                          label={resolve(highlight.label).text}
                         />
                       );
                     })}
@@ -293,12 +310,10 @@ export default function PresetSwitcher({
               </AccordionItem>
             )}
 
-            {hasEdges && (
+            {hasEdges && headings.links !== undefined && (
               <AccordionItem value={SECTION_LINKS}>
                 <AccordionHeader>
-                  <AccordionTrigger>
-                    <AppMessage message={interfaceMessages.links} />
-                  </AccordionTrigger>
+                  <AccordionTrigger>{headings.links}</AccordionTrigger>
                 </AccordionHeader>
                 <AccordionPanel>
                   <div className="flex flex-col gap-2">
@@ -308,7 +323,9 @@ export default function PresetSwitcher({
                         className="flex items-center gap-4 text-base"
                       >
                         <EdgeSwatch color={edge.color} />
-                        {edge.label}
+                        {edge.label && (
+                          <LocalizedText value={edge.label} render={<span />} />
+                        )}
                       </div>
                     ))}
                   </div>
@@ -316,12 +333,10 @@ export default function PresetSwitcher({
               </AccordionItem>
             )}
 
-            {hasGroups && (
+            {hasGroups && headings.groups !== undefined && (
               <AccordionItem value={SECTION_GROUPS}>
                 <AccordionHeader>
-                  <AccordionTrigger>
-                    <AppMessage message={interfaceMessages.groups} />
-                  </AccordionTrigger>
+                  <AccordionTrigger>{headings.groups}</AccordionTrigger>
                 </AccordionHeader>
                 <AccordionPanel>
                   <div className="flex flex-col gap-2">
@@ -347,6 +362,7 @@ export default function PresetSwitcher({
         </ToolbarPopover>
         <ToolbarIconButton
           aria-label={intl.formatMessage(interfaceMessages.nextPreset)}
+          tooltip={false}
           icon={<ChevronRight />}
           disabled={activePreset + 1 === presets.length}
           onClick={() => onChangePreset(activePreset + 1)}

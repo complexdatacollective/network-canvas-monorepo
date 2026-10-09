@@ -1,12 +1,14 @@
 'use client';
 
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
+  type CompletedAction,
   type FinishHandler,
   type InterviewPayload,
   Shell,
@@ -16,6 +18,7 @@ import {
   type AssetUrlOwner,
   createAssetUrlOwner,
 } from '@codaco/interview/contract';
+import { defaultLocale, isLocale, type Locale } from '~/lib/i18n/locales';
 import {
   createPreviewPayload,
   installPreviewProtocol,
@@ -31,9 +34,26 @@ export type PreviewWave = {
   protocolPath: string;
 };
 
+/**
+ * The finish confirmation's explanation and the completed state's action
+ * labels in every site language, so they can be shown in the interview's
+ * language rather than the page's.
+ */
+export type CompletionLabels = Readonly<
+  Record<
+    Locale,
+    Readonly<{
+      finishConfirmation: string;
+      restart: string;
+      backToProtocol: string;
+    }>
+  >
+>;
+
 export type ProtocolPreviewProps = {
   waves: PreviewWave[];
   backHref: string;
+  completionLabels: CompletionLabels;
 };
 
 type PreviewFailure = PreviewInstallFailure | 'unavailable';
@@ -43,6 +63,9 @@ type PreviewFailure = PreviewInstallFailure | 'unavailable';
 const PREVIEW_GENERATION = 'preview';
 
 const noopSync = async () => {};
+
+// The preview persists nothing, so a stated language is never stored.
+const noopProtocolLocaleChange = async () => {};
 
 function useWave(waves: PreviewWave[]): PreviewWave | undefined {
   const requested = Number(useSearchParams().get('wave'));
@@ -55,20 +78,36 @@ async function fetchProtocolBytes(path: string): Promise<Uint8Array> {
   return new Uint8Array(await response.arrayBuffer());
 }
 
-export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
+// Rendered inside the Shell, whose interface language is the interview's own
+// and can change while it runs (a language chooser, the visitor's choice). The
+// interview's English is US English, the site's default.
+function InterviewLanguageLabel({
+  labels,
+  name,
+}: {
+  labels: CompletionLabels;
+  name: keyof CompletionLabels[Locale];
+}) {
+  const { locale } = useAppIntl();
+  return labels[isLocale(locale) ? locale : defaultLocale][name];
+}
+
+export function ProtocolPreview({
+  waves,
+  backHref,
+  completionLabels,
+}: ProtocolPreviewProps) {
   const t = useTranslations('ProtocolGallery.preview');
-  const locale = useLocale();
   const wave = useWave(waves);
 
   const [install, setInstall] = useState<PreviewProtocolInstall | null>(null);
   const [payload, setPayload] = useState<InterviewPayload | null>(null);
+  const [requestedLocales, setRequestedLocales] = useState<
+    readonly string[] | null
+  >(null);
   const [failure, setFailure] = useState<PreviewFailure | null>(null);
-  const [finished, setFinished] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [currentStep, setCurrentStep] = useState(0);
-
-  const finishedHeadingRef = useRef<HTMLHeadingElement>(null);
-  const finishedDescriptionId = useId();
 
   // The install lives in a ref as well as state so the asset resolver, which
   // the Shell holds for its lifetime, reads the current one without being
@@ -87,11 +126,11 @@ export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
   }, []);
 
   // The interview's messages load while the protocol downloads and installs,
-  // rather than once the Shell mounts. A failure here is retried by the Shell
-  // itself.
+  // rather than once the Shell mounts, for the browser's languages the Shell
+  // is later given. A failure here is retried by the Shell itself.
   useEffect(() => {
-    loadInterviewCatalog(locale).catch(() => undefined);
-  }, [locale]);
+    loadInterviewCatalog(navigator.languages).catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     if (!wave) return;
@@ -99,8 +138,8 @@ export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
     setInstall(null);
     installRef.current = null;
     setPayload(null);
+    setRequestedLocales(null);
     setFailure(null);
-    setFinished(false);
     setCurrentStep(0);
 
     const load = async () => {
@@ -119,6 +158,9 @@ export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
       }
       installRef.current = result.install;
       setInstall(result.install);
+      // Read here, after the protocol has loaded in the browser, so the
+      // server render never depends on the visitor's languages.
+      setRequestedLocales(navigator.languages);
       setPayload(createPreviewPayload(result.install));
     };
     void load();
@@ -127,10 +169,6 @@ export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
       cancelled = true;
     };
   }, [wave, attempt]);
-
-  useEffect(() => {
-    if (finished) finishedHeadingRef.current?.focus();
-  }, [finished]);
 
   const onRequestAsset = useCallback(async (assetId: string) => {
     ownerRef.current ??= createAssetUrlOwner();
@@ -147,16 +185,37 @@ export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
     });
   }, []);
 
-  const onFinish = useCallback<FinishHandler>(async () => {
-    setFinished(true);
-  }, []);
+  // Nothing is recorded, so finishing always succeeds and the Shell shows the
+  // protocol's own completed state: its finish stage's text and the notice.
+  const onFinish = useCallback<FinishHandler>(async () => {}, []);
 
-  const restart = () => {
-    if (!install) return;
-    setFinished(false);
-    setCurrentStep(0);
-    setPayload(createPreviewPayload(install));
-  };
+  // Offered on that completed state, in the interview's language like the rest
+  // of it. Starting again is a new session, so the Shell starts a new interview
+  // rather than reopening the finished one.
+  const completedActions = useMemo<readonly CompletedAction[]>(
+    () => [
+      {
+        label: (
+          <InterviewLanguageLabel labels={completionLabels} name="restart" />
+        ),
+        onAction: () => {
+          if (!install) return;
+          setCurrentStep(0);
+          setPayload(createPreviewPayload(install));
+        },
+      },
+      {
+        label: (
+          <InterviewLanguageLabel
+            labels={completionLabels}
+            name="backToProtocol"
+          />
+        ),
+        onAction: () => window.location.assign(backHref),
+      },
+    ],
+    [completionLabels, install, backHref],
+  );
 
   const backAction = (
     <Button asChild color="default">
@@ -189,43 +248,28 @@ export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
     );
   }
 
-  if (finished) {
-    return (
-      <PreviewMessageScreen
-        heading={t('finishedHeading')}
-        headingRef={finishedHeadingRef}
-        describedById={finishedDescriptionId}
-        actions={
-          <>
-            <Button color="primary" onClick={restart}>
-              {t('restart')}
-            </Button>
-            {backAction}
-          </>
-        }
-      >
-        <Paragraph id={finishedDescriptionId} margin="none">
-          {t('finishedDescription')}
-        </Paragraph>
-      </PreviewMessageScreen>
-    );
-  }
-
-  if (!payload) {
+  if (!payload || !requestedLocales) {
     return <PreviewLoadingScreen label={t('loading')} />;
   }
 
   return (
     <div className="h-dvh">
       <Shell
-        requestedLocale={locale}
+        requestedLocales={requestedLocales}
         payload={payload}
         currentStep={currentStep}
         onStepChange={setCurrentStep}
         onSync={noopSync}
+        onProtocolLocaleChange={noopProtocolLocaleChange}
         onFinish={onFinish}
         onRequestAsset={onRequestAsset}
-        finishConfirmationDescription={t('finishConfirmation')}
+        finishConfirmationDescription={
+          <InterviewLanguageLabel
+            labels={completionLabels}
+            name="finishConfirmation"
+          />
+        }
+        completedActions={completedActions}
         flags={{ isDevelopment: process.env.NODE_ENV === 'development' }}
         allowStageNavigation
         allowUserScaling

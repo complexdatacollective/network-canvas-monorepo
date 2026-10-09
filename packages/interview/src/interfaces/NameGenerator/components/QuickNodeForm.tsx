@@ -1,20 +1,30 @@
 'use client';
 import { motion, type Variants } from 'motion/react';
-import { useCallback } from 'react';
+import {
+  type RefObject,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import Form from '@codaco/fresco-ui/form/Form';
+import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
+import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type {
   FormSubmissionResult,
   FormSubmitHandler,
   ValidationContext,
 } from '@codaco/fresco-ui/form/store/types';
+import type { LocalizedString } from '@codaco/protocol-validation';
 import type { EntityAttributesProperty, NcNode } from '@codaco/shared-consts';
 
 import { formValuesToAttributePatch } from '../../../forms/formValuesToAttributePatch';
 import { useValidationNetwork } from '../../../forms/useValidationNetwork';
 import { useStageSelector } from '../../../hooks/useStageSelector';
-import { runtimeMessages } from '../../../i18n/runtimeMessages';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
@@ -22,6 +32,7 @@ import {
 } from '../../../selectors/forms';
 import { getCodebookVariablesForSubjectType } from '../../../selectors/protocol';
 import { getPromptAdditionalAttributes } from '../../../selectors/session';
+import { useTrackWrite } from '../../../store/WritesInFlightContext';
 import { interfaceMessages } from '../../messages';
 import QuickAddField from './QuickAddField';
 
@@ -42,9 +53,46 @@ const containerVariants: Variants = {
   },
 };
 
+/**
+ * Counts each submission of the form it is rendered in as a save under way
+ * from the moment it starts, while the name is still being checked, so leaving
+ * the stage waits for it. Once the submission is over, it counts as stored
+ * when `added` says the person was added.
+ */
+function TrackSubmissions({ added }: { added: RefObject<boolean> }) {
+  const storeApi = useContext(FormStoreContext);
+  const trackWrite = useTrackWrite();
+
+  useEffect(() => {
+    if (!storeApi) return;
+    let settle: ((stored: boolean) => void) | undefined;
+    const unsubscribe = storeApi.subscribe((state, previous) => {
+      if (state.isSubmitting === previous.isSubmitting) return;
+      if (state.isSubmitting) {
+        added.current = false;
+        trackWrite(
+          new Promise<boolean>((resolve) => {
+            settle = resolve;
+          }),
+        );
+        return;
+      }
+      settle?.(added.current);
+      settle = undefined;
+    });
+    return () => {
+      unsubscribe();
+      settle?.(false);
+    };
+  }, [storeApi, trackWrite, added]);
+
+  return null;
+}
+
 type QuickNodeFormProps = {
   disabled: boolean;
   targetVariable: string;
+  hint: LocalizedString;
   onShowForm?: () => void;
   addNode: (
     attributes: NcNode[EntityAttributesProperty],
@@ -54,11 +102,14 @@ type QuickNodeFormProps = {
 const QuickNodeForm = ({
   disabled,
   targetVariable,
+  hint,
   onShowForm,
   addNode,
 }: QuickNodeFormProps) => {
   const intl = useAppIntl();
   const newNodeAttributes = useStageSelector(getPromptAdditionalAttributes);
+  const [successfulSubmissionCount, setSuccessfulSubmissionCount] = useState(0);
+  const added = useRef(false);
 
   // Derive the target variable's validation props directly from its
   // codebook definition — quick-add renders its own QuickAddField and only
@@ -77,7 +128,7 @@ const QuickNodeForm = ({
   // subject. Prompt-fixed attributes are the new node's sibling values even
   // though only the quick-add target is registered as a form field.
   // stageSubject is only ever null for stage types that carry no subject at
-  // all (Information/Anonymisation/FamilyPedigree/NarrativePedigree);
+  // all (Information/Anonymisation/NarrativePedigree);
   // NameGenerator always has a node subject, so the undefined fallback here
   // is defensive only, matching the "Missing codebook entry" guard above.
   //
@@ -93,11 +144,11 @@ const QuickNodeForm = ({
   // reach a participant. With nothing authored to offer, the comparison
   // validators' complete label-free sentences are the correct output.
   const baseValidationContext = useStageSelector(getValidationContext);
-  const validationNetwork = useValidationNetwork(
+  // A new person, so the rules read only the others' stored answers.
+  const { context: validationNetwork } = useValidationNetwork(
     baseValidationContext,
     baseValidationContext.stageSubject,
     [targetVariable],
-    // A new person, so the rules read only the others' stored answers.
     undefined,
   );
   const validationContext: ValidationContext | undefined =
@@ -110,32 +161,32 @@ const QuickNodeForm = ({
         }
       : undefined;
 
-  const handleAdd: FormSubmitHandler = useCallback(
+  const handleSubmit: FormSubmitHandler = useCallback(
     async (values) => {
       if (disabled) {
         return {
           success: false,
-          formErrors: [createMessageError(interfaceMessages.formDisabled)],
+          formErrors: [createMessageError(formMessages.submitFailed)],
         };
       }
 
-      // A new person: the form showed no stored values.
-      const patchResult = formValuesToAttributePatch(
-        values,
-        [targetVariable],
-        {},
-      );
+      const patchResult = formValuesToAttributePatch(values, [targetVariable]);
       if (!patchResult.success) {
         return {
           success: false,
-          formErrors: [createMessageError(runtimeMessages.submissionFailed)],
+          formErrors: [createMessageError(formMessages.submitFailed)],
         };
       }
 
-      return addNode({
+      const saved = await addNode({
         ...newNodeAttributes,
         ...patchResult.patch.set,
       });
+      if (saved.success) {
+        added.current = true;
+        setSuccessfulSubmissionCount((count) => count + 1);
+      }
+      return saved;
     },
     [disabled, addNode, newNodeAttributes, targetVariable],
   );
@@ -151,17 +202,21 @@ const QuickNodeForm = ({
         layout
         data-testid="quick-add-form"
       >
-        <QuickAddField
-          name={targetVariable}
-          disabled={disabled}
-          placeholder={intl.formatMessage(
-            interfaceMessages.quickLabelPlaceholder,
-          )}
-          onShowInput={onShowForm ?? undefined}
-          onAdd={handleAdd}
-          {...validationProps}
-          validationContext={validationContext}
-        />
+        <Form onSubmit={handleSubmit}>
+          <TrackSubmissions added={added} />
+          <QuickAddField
+            name={targetVariable}
+            disabled={disabled}
+            placeholder={intl.formatMessage(
+              interfaceMessages.addNamePlaceholder,
+            )}
+            hint={hint}
+            onShowInput={onShowForm ?? undefined}
+            successfulSubmissionCount={successfulSubmissionCount}
+            {...validationProps}
+            validationContext={validationContext}
+          />
+        </Form>
       </motion.div>
     </>
   );

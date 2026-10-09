@@ -59,7 +59,7 @@ describe('emptyRuleValue', () => {
 const baseSections: Record<string, SectionDoc> = {
   [sectionId({ kind: 'settings' })]: {
     name: 'Operand entry',
-    schemaVersion: 8,
+    schemaVersion: 9,
   },
   [sectionId({ kind: 'stageOrder' })]: { stages: ['stage-1'] },
   [STAGE_SECTION]: {
@@ -142,7 +142,7 @@ describe('an operand the codebook bounds', () => {
     fireEvent.blur(input);
 
     expect(
-      await screen.findByText(/Value must be at most 2/),
+      await screen.findByText(/less than or equal to 2\./),
     ).toBeInTheDocument();
   });
 
@@ -156,7 +156,7 @@ describe('an operand the codebook bounds', () => {
     fireEvent.blur(input);
 
     expect(
-      await screen.findByText(/Value must be at most 1/),
+      await screen.findByText(/less than or equal to 1\./),
     ).toBeInTheDocument();
   });
 
@@ -167,7 +167,7 @@ describe('an operand the codebook bounds', () => {
     fireEvent.change(input, { target: { value: '5000' } });
     fireEvent.blur(input);
 
-    expect(screen.queryByText(/Value must be at most/)).toBeNull();
+    expect(screen.queryByText(/less than or equal to/)).toBeNull();
     expect(probedOperand()).toBe(5000);
   });
 });

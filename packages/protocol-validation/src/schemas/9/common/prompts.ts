@@ -1,0 +1,278 @@
+import { z } from 'zod';
+
+import { OrdinalColorReferenceSchema } from '../color-reference.ts';
+import { asExclusiveVariants } from '../declared-variants.ts';
+import { entityAttributeReference } from '../entity-attribute-reference.ts';
+import { entityTypeReference } from '../entity-type-reference.ts';
+import { SortOrderSchema } from '../filters/index.ts';
+import { localizedString, nonBlankText } from '../localized-string.ts';
+
+export { OrdinalColorSequence as ordinalColorSequence } from '../color-reference.ts';
+
+export const promptSchema = z.strictObject({
+  id: z.string(),
+  text: localizedString(nonBlankText(), 'markdown'),
+});
+
+// Re-parses an already-refined value against a narrowing union so the STATIC
+// TYPE becomes the union, without a cast. The preceding superRefine rejects —
+// with a targeted, author-facing message — every value the union cannot
+// represent, so for values that reach the transform the sub-parse always
+// succeeds; its issues are forwarded as a guard against the two drifting.
+// (`.pipe(union)` can't express this: our reference brands apply to the
+// output side only, so the union's unbranded input type fails pipe's
+// constraint against the refined stage's branded output.)
+const narrowTo =
+  <T extends z.ZodType>(narrowed: T) =>
+  (value: unknown, ctx: z.RefinementCtx): z.output<T> => {
+    const result = narrowed.safeParse(value);
+    if (!result.success) {
+      for (const issue of result.error.issues) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: issue.message,
+          path: issue.path,
+        });
+      }
+      return z.NEVER;
+    }
+    return result.data;
+  };
+
+export type BasePrompt = z.infer<typeof promptSchema>;
+
+// The interview stamps `value` onto the node when it joins the prompt and
+// clears it when it leaves, so a non-boolean target would have collected data
+// (including encrypted text) overwritten by, then erased with, a plain boolean.
+const AdditionalAttributesSchema = z.array(
+  z.strictObject({
+    variable: entityAttributeReference({
+      subject: 'stageSubject',
+      requireType: ['boolean'],
+      usage: 'unvalidatedAttribute',
+    }),
+    value: z.boolean(),
+  }),
+);
+
+export type AdditionalAttributes = z.infer<typeof AdditionalAttributesSchema>;
+
+export const nameGeneratorPromptSchema = promptSchema.extend({
+  additionalAttributes: AdditionalAttributesSchema.optional(),
+});
+
+// ONE declaration of the highlight variable, shared by the loose shape the
+// reference collector reads and by both narrowed union branches, so the two
+// cannot disagree about what the site is. Tapping a node writes the attribute,
+// but only when `allowHighlighting` is on: a prompt that sets `variable` alone
+// merely colours nodes by a value something else recorded, which is a read (see
+// `usageRequiresSibling`, and the Canvas's display-only highlight).
+const highlightVariableReference = entityAttributeReference({
+  subject: 'stageSubject',
+  usage: 'unvalidatedAttribute',
+  usageRequiresSibling: 'allowHighlighting',
+});
+
+// Loose shape + superRefine for the author-facing message, piped into a union
+// so the static type proves `variable` exists whenever highlighting is on.
+// The union must accept exactly what the refine accepts.
+const sociogramHighlightSchema = z
+  .strictObject({
+    allowHighlighting: z.boolean().optional(),
+    variable: highlightVariableReference.optional(),
+  })
+  .superRefine((highlight, ctx) => {
+    if (highlight.allowHighlighting && !highlight.variable) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message:
+          'highlight.variable is required when allowHighlighting is enabled.',
+        path: ['variable'],
+      });
+    }
+  })
+  .transform(
+    narrowTo(
+      z.union([
+        z.strictObject({
+          allowHighlighting: z.literal(true),
+          variable: highlightVariableReference,
+        }),
+        z.strictObject({
+          allowHighlighting: z.literal(false).optional(),
+          variable: highlightVariableReference.optional(),
+        }),
+      ]),
+    ),
+  );
+
+// Highlighting is on and names the attribute a tap writes, or it is off. A
+// value carrying the members of both is one this schema refuses, so an editor
+// writing part of one has to write the whole of it — see `asExclusiveVariants`,
+// which is how a walk of the schemas learns what the transform above hides.
+asExclusiveVariants(sociogramHighlightSchema);
+
+export const sociogramPromptSchema = promptSchema
+  .extend({
+    sortOrder: SortOrderSchema.optional(),
+    layout: z.strictObject({
+      layoutVariable: entityAttributeReference({
+        subject: 'stageSubject',
+        usage: 'unvalidatedAttribute',
+      }),
+    }),
+    edges: z
+      .strictObject({
+        display: z.array(entityTypeReference({ entity: 'edge' })).optional(),
+        create: entityTypeReference({ entity: 'edge' }).optional(),
+      })
+      .optional(),
+    highlight: sociogramHighlightSchema.optional(),
+  })
+  .superRefine((prompt, ctx) => {
+    if (
+      prompt.edges &&
+      prompt.edges.create === undefined &&
+      (prompt.edges.display === undefined || prompt.edges.display.length === 0)
+    ) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message:
+          'edges must set create and/or a non-empty display; an empty edges object has no effect.',
+        path: ['edges'],
+      });
+    }
+  });
+
+export const dyadCensusPromptSchema = promptSchema.extend({
+  createEdge: entityTypeReference({ entity: 'edge' }),
+});
+
+export const tieStrengthCensusPromptSchema = promptSchema.extend({
+  createEdge: entityTypeReference({ entity: 'edge' }),
+  edgeVariable: entityAttributeReference({
+    subject: { sibling: 'createEdge', entity: 'edge' },
+    requireType: ['ordinal'],
+    usage: 'unvalidatedAttribute',
+  }),
+  negativeLabel: localizedString(nonBlankText(), 'markdown'),
+});
+
+export const ordinalBinPromptSchema = promptSchema.extend({
+  variable: entityAttributeReference({
+    subject: 'stageSubject',
+    usage: 'unvalidatedAttribute',
+  }),
+  bucketSortOrder: SortOrderSchema.optional(),
+  binSortOrder: SortOrderSchema.optional(),
+  color: OrdinalColorReferenceSchema,
+});
+
+const categoricalBinPromptFields = {
+  variable: entityAttributeReference({
+    subject: 'stageSubject',
+    usage: 'unvalidatedAttribute',
+  }),
+  bucketSortOrder: SortOrderSchema.optional(),
+  binSortOrder: SortOrderSchema.optional(),
+};
+
+// Loose shape + superRefine for the author-facing messages, piped into a
+// union so the static type proves otherOptionLabel and otherVariablePrompt
+// exist whenever otherVariable is set. The union must accept exactly what the
+// refine accepts, so every state the union cannot represent (the 'other'
+// fields partially set, or set to empty strings) is rejected by the refine
+// first with a targeted message.
+export const categoricalBinPromptSchema = promptSchema
+  .extend({
+    ...categoricalBinPromptFields,
+    otherVariable: entityAttributeReference({
+      subject: 'stageSubject',
+      requireType: ['text'],
+      usage: 'validatedAttribute',
+    }).optional(),
+    otherVariablePrompt: localizedString(nonBlankText(), 'markdown').optional(),
+    otherOptionLabel: localizedString(nonBlankText(), 'markdown').optional(),
+  })
+  .superRefine((prompt, ctx) => {
+    if (prompt.otherVariable === '') {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: 'otherVariable must name an attribute.',
+        path: ['otherVariable'],
+      });
+      return;
+    }
+    // The 'other' follow-up dialog renders otherVariablePrompt as its label;
+    // without it the dialog shows an empty, asterisk-only label.
+    if (prompt.otherVariable && !prompt.otherVariablePrompt) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: 'otherVariablePrompt is required when otherVariable is set.',
+        path: ['otherVariablePrompt'],
+      });
+    }
+    if (prompt.otherVariable && !prompt.otherOptionLabel) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: 'otherOptionLabel is required when otherVariable is set.',
+        path: ['otherOptionLabel'],
+      });
+    }
+    // The runtime only renders an 'other' bin when otherVariable is set, so
+    // otherOptionLabel/otherVariablePrompt without it are silently ignored.
+    if (!prompt.otherVariable && prompt.otherOptionLabel !== undefined) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: 'otherOptionLabel requires otherVariable to be set.',
+        path: ['otherOptionLabel'],
+      });
+    }
+    if (!prompt.otherVariable && prompt.otherVariablePrompt !== undefined) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: 'otherVariablePrompt requires otherVariable to be set.',
+        path: ['otherVariablePrompt'],
+      });
+    }
+  })
+  .transform(
+    narrowTo(
+      z.union([
+        promptSchema.extend({
+          ...categoricalBinPromptFields,
+          otherVariable: entityAttributeReference({
+            subject: 'stageSubject',
+            requireType: ['text'],
+            usage: 'validatedAttribute',
+          }),
+          otherVariablePrompt: localizedString(nonBlankText(), 'markdown'),
+          otherOptionLabel: localizedString(nonBlankText(), 'markdown'),
+        }),
+        promptSchema.extend({
+          ...categoricalBinPromptFields,
+          otherVariable: z.undefined().optional(),
+          otherVariablePrompt: z.undefined().optional(),
+          otherOptionLabel: z.undefined().optional(),
+        }),
+      ]),
+    ),
+  );
+
+// The ROW is the variant here: a bin prompt that offers an 'other' option
+// carries all three of the fields that describe it, and one that does not
+// carries none of them. Half of each is a prompt the schema refuses.
+asExclusiveVariants(categoricalBinPromptSchema);
+
+export const oneToManyDyadCensusPromptSchema = promptSchema.extend({
+  createEdge: entityTypeReference({ entity: 'edge' }),
+  bucketSortOrder: SortOrderSchema.optional(),
+  binSortOrder: SortOrderSchema.optional(),
+});
+
+export const geospatialPromptSchema = promptSchema.extend({
+  variable: entityAttributeReference({
+    subject: 'stageSubject',
+    usage: 'unvalidatedAttribute',
+  }),
+});

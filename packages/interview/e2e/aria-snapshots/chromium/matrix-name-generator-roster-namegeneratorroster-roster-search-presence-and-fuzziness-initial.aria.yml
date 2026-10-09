@@ -1,8 +1,8 @@
 - main:
   - status:
     - heading "Please add anyone you recognise." [level=2]
-  - button "Available to add":
-    - heading "Available to add" [level=3]
+  - button "People from your class":
+    - heading "People from your class" [level=3]
   - searchbox "Filter"
   - listbox "Available Roster Nodes":
     - option "Cara Chen":

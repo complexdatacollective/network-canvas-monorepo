@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Stage } from '@codaco/protocol-validation';
-import { entityAttributesProperty, type NcEdge } from '@codaco/shared-consts';
+import type { NcEdge } from '@codaco/shared-consts';
 
 import { generateNetwork } from '../../generateNetwork.ts';
 
@@ -11,11 +11,6 @@ import { generateNetwork } from '../../generateNetwork.ts';
  * `edgeExists({ from, to, type })` first, and that lookup runs over the whole
  * session edge list. Edges carry no stage or prompt provenance, so reuse spans
  * stages rather than prompts within one.
- *
- * FamilyPedigree is the deliberate exception and is covered at the bottom: its
- * edges all share one type and are told apart by a `relationshipType`
- * attribute, so several of them between one pair is meaningful data rather than
- * a duplicate.
  */
 
 type Codebook = Parameters<typeof generateNetwork>[0]['codebook'];
@@ -50,6 +45,12 @@ function threePeople(): Stage {
   return {
     id: 'stage-people',
     type: 'NameGenerator',
+    minNodesNotice: {
+      en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+    },
+    maxNodesNotice: {
+      en: 'You have completed this task. Click the next arrow to continue.',
+    },
     label: 'Name generator',
     subject: { entity: 'node', type: 'person' },
     prompts: [{ id: 'p1', text: 'Name people' }],
@@ -180,72 +181,5 @@ describe('edge reuse across stages', () => {
 
     expect(new Set(pairKeys(network.edges)).size).toBe(3);
     expect(network.edges).toHaveLength(3);
-  });
-});
-
-describe('TieStrengthCensus over an edge it did not create', () => {
-  const pedigree = {
-    id: 'stage-pedigree',
-    type: 'FamilyPedigree',
-    label: 'Family',
-    nodeConfig: { type: 'person' },
-    edgeConfig: { type: 'knows' },
-    prompts: [],
-  } as unknown as Stage;
-
-  const tieStrength = {
-    id: 'stage-tie',
-    type: 'TieStrengthCensus',
-    label: 'How close?',
-    subject: { entity: 'node', type: 'person' },
-    prompts: [
-      {
-        id: 'p1',
-        text: 'How close are they?',
-        createEdge: 'knows',
-        edgeVariable: 'strength',
-        negativeLabel: 'Not at all',
-      },
-    ],
-  } as unknown as Stage;
-
-  it('writes its edge variable onto the reused edge instead of drawing another', () => {
-    // A pedigree edge is born with no attributes at all, and the census is
-    // given no chance of drawing one of its own, so every edge here is a
-    // pedigree edge the census answered — the generator's stand-in for
-    // `updateEdge`, which merges the ordinal value into whatever the edge held.
-    const { network } = generateNetwork({
-      seed: 3,
-      codebook,
-      stages: [pedigree, tieStrength],
-      config: {
-        familyPedigreeNodeCount: { min: 4, max: 4 },
-        censusEdgeProbability: { min: 0, max: 0 },
-      },
-    });
-
-    expect(network.edges.length).toBeGreaterThan(0);
-    for (const edge of network.edges) {
-      expect(edge[entityAttributesProperty].strength).toBeDefined();
-    }
-  });
-
-  it('leaves the pedigree own edges in place when a census pairs the same people', () => {
-    // Reuse never removes anything: the pedigree's parent-child edges are still
-    // there, and the census adds only the pairs the pedigree left unjoined.
-    const { network } = generateNetwork({
-      seed: 3,
-      codebook,
-      stages: [pedigree, tieStrength],
-      config: {
-        familyPedigreeNodeCount: { min: 4, max: 4 },
-        censusEdgeProbability: { min: 1, max: 1 },
-      },
-    });
-
-    const keys = pairKeys(network.edges);
-    const pairCount = (network.nodes.length * (network.nodes.length - 1)) / 2;
-    expect(keys).toHaveLength(pairCount);
-    expect(new Set(keys).size).toBe(pairCount);
   });
 });

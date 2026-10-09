@@ -285,6 +285,8 @@ export async function createInterview(
         schemaVersion: true,
         stages: true,
         codebook: true,
+        localization: true,
+        interfaceText: true,
         experiments: true,
       },
     });

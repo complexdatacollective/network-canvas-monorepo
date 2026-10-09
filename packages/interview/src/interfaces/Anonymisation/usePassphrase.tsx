@@ -1,84 +1,102 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useDispatch, useSelector, useStore } from 'react-redux';
 
-import { getShouldEncryptNames } from '../../store/modules/protocol';
+import { runtimeMessages } from '../../i18n/runtimeMessages';
 import {
-  getPassphrase,
-  getPassphraseInvalid,
-  setPassphrase as setPassphraseAction,
-  setPassphraseInvalid as setPassphraseInvalidAction,
   setShowPassphrasePrompter,
   showPassphrasePrompter,
 } from '../../store/modules/ui';
 import type { RootState } from '../../store/store';
-import { passphraseUnlocksNetwork } from './verifyPassphrase';
+import { isUsableEncryptionHeader } from './encryptionFormat';
+import { unlockEncryption } from './unlockEncryption';
+import { useDecryptionScope } from './useDecryptionScope';
+import { useReportUnreadable } from './useReportUnreadable';
+
+const hasEncryptionHeader = (state: RootState) =>
+  state.session.network.encryption !== undefined;
+
+const hasRefusedEncryptionHeader = (state: RootState) => {
+  const header = state.session.network.encryption;
+  return header !== undefined && !isUsableEncryptionHeader(header);
+};
 
 export const usePassphrase = () => {
   const dispatch = useDispatch();
+  const store = useStore<RootState>();
+  const reportUnreadable = useReportUnreadable();
 
-  const isEnabled = useSelector(getShouldEncryptNames);
-
-  const passphrase = useSelector(getPassphrase);
-  const passphraseInvalid = useSelector(getPassphraseInvalid);
+  const unlocked = useDecryptionScope() !== undefined;
+  const passphraseChosen = useSelector(hasEncryptionHeader);
+  const encryptionUnavailable = useSelector(hasRefusedEncryptionHeader);
   const showPrompter = useSelector(showPassphrasePrompter);
 
+  useEffect(() => {
+    if (encryptionUnavailable) reportUnreadable('refused-header');
+  }, [encryptionUnavailable, reportUnreadable]);
+
   const requirePassphrase = useCallback(() => {
-    if (passphrase) {
+    // No passphrase can open a refused header, so none is asked for: the
+    // prompter would turn every one away.
+    if (unlocked || encryptionUnavailable) {
       if (showPrompter) {
         dispatch(setShowPassphrasePrompter(false));
       }
-
-      return passphrase;
+      return;
     }
 
     if (!showPrompter) {
       dispatch(setShowPassphrasePrompter(true));
     }
-    return undefined;
-  }, [passphrase, dispatch, showPrompter]);
-
-  const store = useStore<RootState>();
+  }, [unlocked, encryptionUnavailable, dispatch, showPrompter]);
 
   /**
-   * Puts `candidate` in force only if it unlocks the data this interview
-   * already holds, so a mistyped passphrase is turned away at entry instead of
-   * being used to encrypt new answers that could then never be read alongside
-   * the old ones. Resolves to whether it was accepted.
+   * Derives the key from `candidate` and puts it in force: the first
+   * passphrase of an interview creates its encryption header, and any later
+   * one must match it. Resolves to how the attempt ended.
    */
-  const submitPassphrase = useCallback(
+  const unlock = useCallback(
     async (candidate: string) => {
-      const state = store.getState();
-      const accepted = await passphraseUnlocksNetwork(
-        state.session.network.nodes,
-        state.protocol.codebook,
-        candidate,
-        getShouldEncryptNames(state),
-      );
-      if (!accepted) return false;
-
-      dispatch(setShowPassphrasePrompter(false));
-      dispatch(setPassphraseAction(candidate));
-      return true;
+      const outcome = await unlockEncryption(store, candidate);
+      if (outcome === 'chosen' || outcome === 'verified') {
+        dispatch(setShowPassphrasePrompter(false));
+      }
+      return outcome;
     },
     [store, dispatch],
   );
 
-  const setPassphraseInvalid = useCallback(
-    (state: boolean) => {
-      dispatch(setPassphraseInvalidAction(state));
+  /** As `unlock`, resolving to whether the passphrase was accepted. */
+  const submitPassphrase = useCallback(
+    async (candidate: string) => {
+      const outcome = await unlock(candidate);
+      return outcome === 'chosen' || outcome === 'verified';
     },
-    [dispatch],
+    [unlock],
   );
 
   return {
-    isEnabled,
-    passphrase,
-    passphraseInvalid,
+    /** Whether the interview's encryption key is in force. */
+    unlocked,
+    /**
+     * Whether a passphrase has been chosen for this interview, so that one
+     * entered now is checked against it rather than becoming it.
+     */
+    passphraseChosen,
+    /**
+     * Whether the interview's encryption header is outside the runtime's
+     * bounds, so no passphrase can open its protected answers: they are
+     * unavailable for the rest of the interview, and none is asked for.
+     */
+    encryptionUnavailable,
+    /** What to show in place of protected answers while they are locked. */
+    lockedNotice: encryptionUnavailable
+      ? runtimeMessages.protectedAnswersUnavailable
+      : runtimeMessages.protectedAnswersLocked,
+    unlock,
     submitPassphrase,
     requirePassphrase,
     showPassphrasePrompter: showPrompter,
-    setPassphraseInvalid,
   };
 };

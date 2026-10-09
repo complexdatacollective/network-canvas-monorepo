@@ -23,17 +23,24 @@ import {
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import type { VariableOptions } from '@codaco/protocol-validation';
+import type {
+  LocalizedString,
+  VariableOptions,
+} from '@codaco/protocol-validation';
 import { toCanonicalText } from '@codaco/shared-consts';
 
-import OptionLabelField from '../../fields/OptionLabelField.tsx';
+import { LocalizedOptionLabelField } from '../../fields/LocalizedStringField.tsx';
+import { asLocalizedString } from '../../localization/localizedText.ts';
+import { useLocalizedText } from '../../localization/ProtocolLocalization.tsx';
 import {
   cellIssues,
-  invalidVariableName,
+  invalidOptionValue,
   isDuplicatedInColumn,
+  isSameOptionValue,
+  optionExportColumnIssue,
   optionLabelIssues,
   requiredCell,
-  variableNameSubjects,
+  type OptionExportColumns,
 } from './cellRules.ts';
 import {
   isOptionComplete,
@@ -127,18 +134,20 @@ const messages = defineMessages({
 });
 
 const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
-const OptionLabelControl = OptionLabelField as ComponentType<
-  Record<string, unknown>
->;
 
 /** What an option's VALUE cell complains about. */
-const valueIssues = (value: unknown, rows: readonly OptionValue[]) =>
+const valueIssues = (
+  value: unknown,
+  rows: readonly OptionValue[],
+  exportColumns: OptionExportColumns | undefined,
+) =>
   cellIssues(
     requiredCell(value),
-    isDuplicatedInColumn(rows, 'value', value)
+    isDuplicatedInColumn(rows, 'value', value, isSameOptionValue)
       ? createMessageError(messages.duplicateValueRow)
       : undefined,
-    invalidVariableName(value, variableNameSubjects.optionValue),
+    invalidOptionValue(value),
+    optionExportColumnIssue(value, exportColumns),
   );
 
 const isNumberLike = (value: string) =>
@@ -165,6 +174,8 @@ export type OptionsContextValue = {
   rows: readonly OptionValue[];
   /** The array field itself is reporting an error (minTwoOptions et al). */
   showArrayError: boolean;
+  /** Where each value would be exported, when the list knows its attribute. */
+  exportColumns: OptionExportColumns | undefined;
 };
 
 export const OptionsContext = createContext<OptionsContextValue | null>(null);
@@ -201,7 +212,9 @@ export default function Option({
   deleteTriggerRef,
 }: ArrayFieldItemProps<OptionValue>) {
   const intl = useAppIntl();
-  const { arrayName, rows, showArrayError } = useOptionsContext();
+  const localize = useLocalizedText();
+  const { arrayName, rows, showArrayError, exportColumns } =
+    useOptionsContext();
   const { hasEdited, markEdited } = useEditedCells();
   const interactionDisabled = disabled || readOnly;
   const rowFieldName = `${arrayName}[${committedIndex ?? index}]`;
@@ -218,7 +231,9 @@ export default function Option({
   const hasAutoOpenedRef = useRef(false);
   useEffect(() => {
     if (hasAutoOpenedRef.current || isBeingEdited) return;
-    if (item.label || !isOptionValueEmpty(item.value)) return;
+    if (!isOptionLabelEmpty(item.label) || !isOptionValueEmpty(item.value)) {
+      return;
+    }
     hasAutoOpenedRef.current = true;
     onEdit?.();
   }, [isBeingEdited, item.label, item.value, onEdit]);
@@ -227,7 +242,7 @@ export default function Option({
   // been asked to finish — which is the only way a blank row hears about
   // itself, since nothing in it has been touched.
   const labelErrors = optionLabelIssues(item.label, rows);
-  const valueErrors = valueIssues(item.value, rows);
+  const valueErrors = valueIssues(item.value, rows, exportColumns);
   const showLabelErrors =
     (hasEdited('label') || forceShowErrors) && labelErrors.length > 0;
   const showValueErrors =
@@ -245,6 +260,7 @@ export default function Option({
   if (!isBeingEdited) {
     const hasLabel = !isOptionLabelEmpty(item.label);
     const hasValue = !isOptionValueEmpty(item.value);
+    const label = localize(item.label);
 
     return (
       <div
@@ -271,9 +287,15 @@ export default function Option({
           />
         )}
         <div className="min-w-0 flex-1 truncate">
-          <span className={!hasLabel ? 'text-current/50 italic' : undefined}>
-            {hasLabel ? item.label : intl.formatMessage(messages.untitled)}
-          </span>
+          {hasLabel ? (
+            <span lang={label.lang} dir={label.dir}>
+              {label.text}
+            </span>
+          ) : (
+            <span className="text-current/50 italic">
+              {intl.formatMessage(messages.untitled)}
+            </span>
+          )}
           <span className="text-current/50"> — </span>
           <span
             className={cx(
@@ -346,16 +368,15 @@ export default function Option({
       <UnconnectedField
         name={`${rowFieldName}.label`}
         label={intl.formatMessage(messages.labelLabel)}
-        component={OptionLabelControl}
+        component={LocalizedOptionLabelField}
         placeholder={intl.formatMessage(messages.labelPlaceholder)}
-        value={typeof item.label === 'string' ? item.label : ''}
-        onChange={(value: unknown) => {
+        value={asLocalizedString(item.label)}
+        onChange={(label: LocalizedString | undefined) => {
           // Canonical, escaped and single-line already: `OptionLabelField`
           // owns all three, and withholds the change the editor emits as it
           // mounts — so anything arriving here is an edit the researcher made.
-          const label = typeof value === 'string' ? value : '';
-          markEdited('label', label, item.label ?? '');
-          onUpdate?.({ label } as Partial<OptionValue>);
+          markEdited('label', label, item.label);
+          onUpdate?.({ label });
         }}
         errors={labelErrors}
         showErrors={showLabelErrors}

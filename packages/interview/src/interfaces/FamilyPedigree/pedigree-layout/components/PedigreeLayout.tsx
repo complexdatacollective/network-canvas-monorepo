@@ -3,10 +3,7 @@
 import { type ReactNode, useMemo } from 'react';
 
 import Spinner from '@codaco/fresco-ui/Spinner';
-import { entityAttributesProperty } from '@codaco/shared-consts';
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
-import type { VariableConfig } from '../../store';
 import { alignPedigree } from '../alignPedigree';
 import {
   computeLayoutMetrics,
@@ -15,30 +12,42 @@ import {
 import {
   buildConnectorData,
   pedigreeLayoutToPositions,
-  storeToPedigreeInput,
+  toPedigreeInput,
 } from '../pedigreeAdapter';
+import type { PedigreeLink } from '../types';
 import { PedigreeEdgeSvg } from './EdgeRenderer';
 
-type PedigreeLayoutNode = NcNode & { id: string };
-
 type PedigreeLayoutProps = {
-  nodes: Map<string, NcNode>;
-  edges: Map<string, NcEdge>;
-  variableConfig: VariableConfig;
+  /** Everyone to place, in a stable order. */
+  nodeIds: readonly string[];
+  links: readonly PedigreeLink[];
+  /**
+   * Display names by node id. The connector router uses them to keep a
+   * separated partnership's break mark clear of a labelled side.
+   */
+  nodeNames?: ReadonlyMap<string, string>;
   nodeWidth: number;
   nodeHeight: number;
-  renderNode: (node: PedigreeLayoutNode) => ReactNode;
+  /** See `LayoutDimensions`. */
+  rowGapRatio?: number;
+  columnGapRatio?: number;
+  renderNode: (nodeId: string) => ReactNode;
+  /** A CSS colour for every connector. */
+  edgeColor?: string;
   highlightedNodeIds?: Set<string>;
   highlightedEdgeKeys?: Set<string>;
 };
 
 export default function PedigreeLayout({
-  nodes,
-  edges,
-  variableConfig,
+  nodeIds,
+  links,
+  nodeNames,
   nodeWidth,
   nodeHeight,
+  rowGapRatio,
+  columnGapRatio,
   renderNode,
+  edgeColor = 'var(--edge-1)',
   highlightedNodeIds,
   highlightedEdgeKeys,
 }: PedigreeLayoutProps) {
@@ -46,47 +55,38 @@ export default function PedigreeLayout({
     () => ({
       nodeWidth,
       nodeHeight,
+      rowGapRatio,
+      columnGapRatio,
     }),
-    [nodeWidth, nodeHeight],
+    [nodeWidth, nodeHeight, rowGapRatio, columnGapRatio],
   );
 
   const metrics = useMemo(() => computeLayoutMetrics(dimensions), [dimensions]);
 
   const layoutResult = useMemo(() => {
     if (dimensions.nodeWidth === 0 || dimensions.nodeHeight === 0) return null;
-    if (nodes.size === 0) return null;
+    if (nodeIds.length === 0) return null;
 
-    const { input, indexToId, idToIndex } = storeToPedigreeInput(
-      nodes,
-      edges,
-      variableConfig,
-    );
-    if (input.id.length === 0) return null;
+    const { input, indexToId, idToIndex } = toPedigreeInput(nodeIds, links);
 
     const layout = alignPedigree(input);
     const positions = pedigreeLayoutToPositions(layout, indexToId, dimensions);
-    const nodeNames = variableConfig.nodeLabelVariable
-      ? indexToId.map((id) => {
-          const node = nodes.get(id);
-          const name =
-            node?.[entityAttributesProperty][variableConfig.nodeLabelVariable];
-          return typeof name === 'string' ? name : '';
-        })
+    const names = nodeNames
+      ? indexToId.map((id) => nodeNames.get(id) ?? '')
       : undefined;
 
     const connectorData = buildConnectorData(
       layout,
-      edges,
+      links,
       dimensions,
-      variableConfig,
       input.parents,
       idToIndex,
-      nodeNames,
+      names,
       indexToId,
     );
 
     return { positions, connectorData };
-  }, [nodes, edges, dimensions, variableConfig]);
+  }, [nodeIds, links, nodeNames, dimensions]);
 
   if (nodeWidth === 0 || nodeHeight === 0) {
     return (
@@ -132,7 +132,15 @@ export default function PedigreeLayout({
   totalWidth += diamondInset * 2 + routedConnectorInsetX;
   totalHeight += diamondInset * 2 + routedConnectorInset;
 
-  const edgeColor = 'var(--edge-1)';
+  // Nodes are emitted generation by generation, left to right, so the
+  // document order — and therefore keyboard and screen-reader order — follows
+  // the order the family tree is read in.
+  const readingOrder = [...nodeIds].sort((a, b) => {
+    const posA = positions.get(a);
+    const posB = positions.get(b);
+    if (!posA || !posB) return 0;
+    return posA.y - posB.y || posA.x - posB.x;
+  });
 
   return (
     <div
@@ -149,7 +157,7 @@ export default function PedigreeLayout({
         highlightedNodeIds={highlightedNodeIds}
         highlightedEdgeKeys={highlightedEdgeKeys}
       />
-      {Array.from(nodes.entries()).map(([id, node]) => {
+      {readingOrder.map((id) => {
         const pos = positions.get(id);
         if (!pos) return null;
 
@@ -164,7 +172,7 @@ export default function PedigreeLayout({
               height: metrics.containerHeight,
             }}
           >
-            {renderNode({ id, ...node })}
+            {renderNode(id)}
           </div>
         );
       })}

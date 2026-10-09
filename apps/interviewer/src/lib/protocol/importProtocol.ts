@@ -7,12 +7,13 @@ import {
   type ExtractedAsset,
   extractProtocolFromZip,
   getMigrationInfo,
+  getProtocolFileErrorKind,
   hashProtocol,
   loadNetcanvasArchive,
   migrateProtocol,
   missingAssetsError,
+  type SchemaVersion,
   validateProtocol,
-  VersionedProtocolSchema,
 } from '@codaco/protocol-validation';
 import { describeProtocolFileErrorMessage } from '@codaco/protocol-validation/messages';
 import { messageFailure, type LocalizedMessage } from '~/i18n/messageResult';
@@ -176,7 +177,19 @@ async function importParsedProtocol(
   onProgress?: OnImportProgress,
   nameOverride?: string,
 ): Promise<ImportProtocolResult> {
-  const version = detectSchemaVersion(document);
+  let version: SchemaVersion;
+  try {
+    version = detectSchemaVersion(document);
+  } catch (cause) {
+    return importFailure(
+      getProtocolFileErrorKind(cause) === 'newerVersion'
+        ? 'unsupported-version'
+        : 'validation-failed',
+      describeProtocolFileErrorMessage(cause) ?? {
+        descriptor: messages.invalidProtocol,
+      },
+    );
+  }
 
   let migratedDocument: unknown = document;
   let didMigrate = false;
@@ -203,16 +216,7 @@ async function importParsedProtocol(
     }
   }
 
-  const versionedProtocol = VersionedProtocolSchema.safeParse(migratedDocument);
-  if (!versionedProtocol.success) {
-    return importFailure(
-      'validation-failed',
-      { descriptor: messages.invalidProtocol },
-      formatValidationIssues(versionedProtocol.error.issues),
-    );
-  }
-
-  const validation = await validateProtocol(versionedProtocol.data);
+  const validation = await validateProtocol(migratedDocument);
   if (!validation.success) {
     return importFailure(
       'validation-failed',

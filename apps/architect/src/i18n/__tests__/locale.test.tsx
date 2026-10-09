@@ -112,17 +112,15 @@ describe('Architect device language', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Validate' }));
     expect(
-      await screen.findByText('Too long. Enter at most 3 characters.'),
+      await screen.findByText('Enter at most 3 characters.'),
     ).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Spanish' }));
     expect(screen.getByTestId('label')).toHaveTextContent('Número');
     expect(
-      await screen.findByText(
-        'El texto es demasiado largo. Introduce como máximo 3 caracteres.',
-      ),
+      await screen.findByText('Introduce como máximo 3 caracteres.'),
     ).toBeVisible();
     expect(
-      screen.queryByText('Too long. Enter at most 3 characters.'),
+      screen.queryByText('Enter at most 3 characters.'),
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText('Authored identifier')).toHaveValue(
       'Research_1',
@@ -211,7 +209,8 @@ it('uses the switched researcher locale for a later thunk failure without changi
   store.dispatch(
     setActiveProtocol({
       name: 'Research_Name',
-      schemaVersion: 8,
+      schemaVersion: 9,
+      localization: { defaultLocale: 'en', locales: ['en'] },
       stages: [],
       codebook: {},
     }),

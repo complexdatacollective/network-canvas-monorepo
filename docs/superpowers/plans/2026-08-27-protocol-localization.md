@@ -1,5 +1,12 @@
 # Protocol Localization Implementation Plan
 
+> **Superseded in part (8 October 2026).** This plan is a record of the work as
+> it was planned. Its steps that migrate schema-8 text to the undetermined
+> language `und`, relabel `und`, or warn about it no longer describe the
+> product: a schema-9 protocol always has a real language, the migration
+> records English, and `und` is refused by validation. The design authority
+> below, revision 16, describes what was built.
+
 ## Overview
 
 Implement protocol-authored localization as schema version 9, using

@@ -122,7 +122,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
         // Forward with no answer: blocked, toast surfaced, still on the pair.
         await page.getByTestId('next-button').click();
         await expect(
-          page.getByText('Please select a response before continuing.'),
+          page.getByText('You must answer this question before continuing.'),
         ).toBeVisible();
         await expect(dc.yesOption).toBeVisible();
 

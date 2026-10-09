@@ -3,17 +3,25 @@
     "fields": [
       {
         "id": "id-1",
-        "prompt": "What is your name?",
+        "prompt": {
+          "en": "What is your name?"
+        },
         "variable": "id-2"
       }
     ]
   },
   "id": "id-3",
   "introductionPanel": {
-    "text": "Tell us a bit about each person you know.",
-    "title": "About Each Person"
+    "text": {
+      "en": "Tell us a bit about each person you know."
+    },
+    "title": {
+      "en": "About Each Person"
+    }
   },
-  "label": "About Each Person",
+  "label": {
+    "en": "About Each Person"
+  },
   "subject": {
     "entity": "node",
     "type": "id-4"

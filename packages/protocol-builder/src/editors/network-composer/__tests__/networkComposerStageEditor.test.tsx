@@ -126,6 +126,15 @@ describe('the network composer stage editor', () => {
       'Create or select an attribute for the quick-add form',
       { selector: 'label' },
     );
+    // The field offers nothing until the subject has been chosen and its
+    // attributes have arrived, so the choice waits for that rather than for the label.
+    await waitFor(() =>
+      expect(
+        screen.queryByText(
+          'This type has no free-text attributes available, so there is nothing for the quick-add box to fill in.',
+        ),
+      ).not.toBeInTheDocument(),
+    );
     await chooseAttributeById(
       harness.user,
       attributeField('Create or select an attribute for the quick-add form'),
@@ -142,7 +151,7 @@ describe('the network composer stage editor', () => {
 
     const saved = await harness.submit();
     expect(saved?.stageDocument).toMatchObject({
-      label: 'Build',
+      label: { 'en-US': 'Build' },
       subject: { entity: 'node', type: 'person' },
       quickAdd: 'composerName',
       layoutVariable: 'layout',
@@ -199,7 +208,7 @@ describe('the network composer stage editor', () => {
       stage: {
         type: 'NetworkComposer',
         fields: {
-          label: 'Network Composer',
+          label: { 'en-US': 'Network Composer' },
           interviewScript: 'Ask them to build their network.',
           skipLogic: {
             action: 'SKIP',
@@ -219,6 +228,17 @@ describe('the network composer stage editor', () => {
           quickAdd: 'composerName',
           layoutVariable: 'layout',
           convexHullVariable: 'contactType',
+          addNamePlaceholder: { 'en-US': 'Type a name, then press Enter' },
+          overtakenEditNotice: {
+            'en-US':
+              'Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost.',
+          },
+          groupsHeading: { 'en-US': 'Groups' },
+          tooltips: {
+            addPerson: { 'en-US': 'Add node' },
+            automaticLayout: { 'en-US': 'Automatic layout' },
+            drawConnection: { 'en-US': 'Draw edge' },
+          },
           background: { image: 'canvas_image' },
           behaviours: { automaticLayout: true },
           nodeForm: {
@@ -227,8 +247,8 @@ describe('the network composer stage editor', () => {
                 id: 'composer-field-1',
                 variable: 'age',
                 component: 'Number',
-                label: 'How old are they?',
-                hint: 'In years.',
+                label: { 'en-US': 'How old are they?' },
+                hint: { 'en-US': 'In years.' },
                 showValidationHints: true,
               },
             ],
@@ -243,7 +263,7 @@ describe('the network composer stage editor', () => {
                     id: 'composer-edge-field-1',
                     variable: 'edgeNotes',
                     component: 'TextArea',
-                    label: 'Anything else?',
+                    label: { 'en-US': 'Anything else?' },
                   },
                 ],
               },
@@ -264,10 +284,10 @@ describe('the network composer stage editor', () => {
 
     // Every section registers its fields on mount, and the outline is built
     // from what is registered — so a mount that has not filled the outline has
-    // not finished registering. The connection forms add a ninth; automatic
-    // layout is a group inside the node configuration rather than a section of
-    // its own, as released Architect had it, so it adds none.
-    await waitFor(() => expect(harness.outline()).toHaveLength(8));
+    // not finished registering. The words on the canvas are the ninth section;
+    // automatic layout is a group inside the node configuration rather than a
+    // section of its own, as released Architect had it, so it adds none.
+    await waitFor(() => expect(harness.outline()).toHaveLength(9));
 
     const saved = await harness.roundTrip({ unowned: [] });
     // Read back as well as compared, so a round trip that agreed about an

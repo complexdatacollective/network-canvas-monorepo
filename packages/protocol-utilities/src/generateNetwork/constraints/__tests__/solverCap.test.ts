@@ -29,6 +29,9 @@ const config = resolveGenerationConfig({ today: TODAY });
 const nameGenerator = {
   id: 'stage-1',
   type: 'NameGenerator',
+  maxNodesNotice: {
+    en: 'You have completed this task. Click the next arrow to continue.',
+  },
   label: 'Name generator',
   subject: { entity: 'node', type: 'person' },
   prompts: [{ id: 'p1', text: 'Name people' }],
@@ -75,6 +78,7 @@ describe('solver search budget exhaustion', () => {
     for (let i = 0; i < 6; i++) {
       variables[`v${i}`] = {
         name: `V${i}`,
+        label: `V${i}`,
         type: 'number',
         validation: {
           minValue: 0,

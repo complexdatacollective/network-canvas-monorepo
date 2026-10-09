@@ -44,7 +44,7 @@ Each alter's position on the canvas is stored as normalized coordinates in a lay
 
 ### Attribute forms
 
-The inspector shows one optional attribute form for the alters, and one for each edge type. Each field pairs a codebook variable with the input control used to collect it, plus an optional label and hint to caption the field (the variable's name is used when no label is given). Unlike other form-based Interfaces, the input control is chosen **on the stage** rather than on the codebook variable, so the same variable can be collected with different controls on different stages. A stage whose form has no fields simply shows that there are no attributes to edit.
+The inspector shows one optional attribute form for the alters, and one for each edge type. Each field pairs a codebook variable with the input control used to collect it, plus a label and an optional hint to caption the field. Every field needs a label. When you choose the attribute, Architect fills in the label with the attribute's name, so change it to the words participants should read. The label can be translated. Unlike other form-based Interfaces, the input control is chosen **on the stage** rather than on the codebook variable, so the same variable can be collected with different controls on different stages. A stage whose form has no fields simply shows that there are no attributes to edit.
 
 ### Edge types
 
@@ -61,6 +61,15 @@ The canvas background is either concentric circles or a custom image, shared wit
 ### Automatic layout
 
 The design-time setting only chooses the **starting** state: unlike the Sociogram, the force-directed layout can be switched on and off during the interview, and the live choice is remembered for the stage.
+
+### Words on the canvas
+
+The **Words on the canvas** section of the stage editor holds the words participants read on the canvas. Network Canvas fills in starting wording for each, in every language it has wording for, and you can change and translate it like any other text (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)).
+
+- **Name box placeholder** is the hint shown in the **Add Node** name field.
+- **Undo or redo changed an answer** is the warning shown when an undo or redo changed an answer while the participant was editing it, so their edit was not saved.
+- **Groups heading** is the heading of the groups list. It is there only while the stage groups alters by a variable.
+- **Tooltips** name the **Add Node** and **Auto-layout** tools, and the **Draw Edge** tool while the stage has at least one edge type. The tools are icons, so a tooltip is how a participant learns what each does. The select and undo and redo tools have no tooltip, because their icons are familiar.
 
 ### Best Practices
 

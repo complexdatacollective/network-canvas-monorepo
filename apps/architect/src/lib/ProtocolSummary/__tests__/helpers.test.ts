@@ -61,7 +61,7 @@ describe('getCodebookIndex "Used In" stages', () => {
   it('keeps every distinct reference path while collapsing the stage link', () => {
     const AGE = 'age-variable-id';
     const protocol = {
-      schemaVersion: 8,
+      schemaVersion: 9,
       name: 'p',
       codebook: {
         node: {

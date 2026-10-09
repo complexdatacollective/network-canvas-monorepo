@@ -8,7 +8,9 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 import Section from '@codaco/fresco-ui/Section';
+import type { LocalizedString } from '@codaco/protocol-validation';
 import ArchitectField from '~/components/Form/ArchitectField';
+import LabelField from '~/components/Localization/LabelField';
 import { useAppSelector } from '~/ducks/hooks';
 import type { RootState } from '~/ducks/store';
 import { getCodebook } from '~/selectors/protocol';
@@ -42,7 +44,7 @@ const messages = defineMessages({
     defaultMessage:
       '{entity, select, node {This name identifies the node type in the codebook and in your data exports. Some examples might be "Person", "Place", or "Organization".} other {This name identifies the edge type in the codebook and in your data exports. Some examples might be "Friends" or "Colleagues".}}',
     description:
-      'Hint below the entity type name field. The entity selector chooses a complete explanation and suggested names for a node type or an edge type; example names are interface guidance, not authored data. The field accepts only the letters A–Z and a–z, digits and the symbols . _ - : — so each translated example must contain no spaces and no accented or non-Latin letters. Where no example in your language fits, keep the English name and add a translation in parentheses after the closing quote.',
+      'Hint below the entity type name field. The entity selector chooses a complete explanation and suggested names for a node type or an edge type; example names are interface guidance, not authored data. A type name can be any text: spaces and any script are allowed. Translate the example names naturally, as a researcher working in the target language would name a kind of person, place, organization or relationship, even if that makes them several words long.',
   },
   enterANameForThisType: {
     id: 'architect.typeEditor.typeEditor.enterANameForThisType',
@@ -50,6 +52,20 @@ const messages = defineMessages({
       'Enter a name for this {entity, select, node {node} edge {edge} other {ego}} type...',
     description:
       'The placeholder text in components / TypeEditor / TypeEditor.',
+  },
+  typeLabel: {
+    id: 'architect.typeEditor.typeEditor.typeLabel',
+    defaultMessage:
+      '{entity, select, node {Node type label} other {Edge type label}}',
+    description:
+      'Label of the field holding the words participants are shown for this node or edge type, as opposed to the type name the researcher and the exported data use. entity is node or edge.',
+  },
+  typeLabelHint: {
+    id: 'architect.typeEditor.typeEditor.typeLabelHint',
+    defaultMessage:
+      '{entity, select, node {The words participants are shown for this node type.} other {The words participants are shown for this edge type.}}',
+    description:
+      'Hint under the node or edge type label field, which sits below the type name field. When the protocol has several languages, a language menu above the field chooses which translation is being written. entity is node or edge.',
   },
   typeColor: {
     id: 'architect.typeEditor.typeEditor.typeColor',
@@ -106,25 +122,13 @@ const messages = defineMessages({
     description: 'The hint text in components / TypeEditor / TypeEditor.',
   },
 });
-const finalMessages = defineMessages({
-  nodeName: {
-    id: 'architect.final.components.TypeEditor.TypeEditor.nodeName',
-    defaultMessage: 'node type name',
-    description: 'Researcher-facing Architect control or feedback.',
-  },
-  edgeName: {
-    id: 'architect.final.components.TypeEditor.TypeEditor.edgeName',
-    defaultMessage: 'edge type name',
-    description: 'Researcher-facing Architect control or feedback.',
-  },
-});
-
 const DEFAULT_NODE_ICON = 'add-a-person';
 const DEFAULT_NODE_SHAPE: NodeShape = 'circle';
 
 /** The entity-type definition as the dialog holds it before it is committed. */
 export type EntityTypeValues = {
   name?: string;
+  label?: LocalizedString;
   color?: string;
   icon?: string;
   shape?: { default?: NodeShape; dynamic?: ShapeMappingDraft };
@@ -202,20 +206,21 @@ const TypeEditor = ({
           initialValue={initialValues.name}
           validation={{
             required: true,
-            // Names the subject, so the message reads "Not a valid node type
-            // name" rather than the mapper's default "variable name" — this
-            // field is not a variable. Whole strings, one per branch, rather
-            // than an interpolated `${entity} type name`.
-            allowedNMToken:
-              entity === 'node'
-                ? intl.formatMessage(finalMessages.nodeName)
-                : intl.formatMessage(finalMessages.edgeName),
+            codebookName: true,
             uniqueByList: existingTypes,
           }}
           placeholder={intl.formatMessage(messages.enterANameForThisType, {
             entity: entity,
           })}
         />
+        {!isNew && (
+          <LabelField
+            name="label"
+            label={intl.formatMessage(messages.typeLabel, { entity })}
+            hint={intl.formatMessage(messages.typeLabelHint, { entity })}
+            initialValue={initialValues.label}
+          />
+        )}
       </Section>
 
       <Section title={intl.formatMessage(messages.typeColor)}>

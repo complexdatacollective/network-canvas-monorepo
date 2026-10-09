@@ -28,7 +28,8 @@ export type OptionRow = { label: string; value: string };
  *   `data-attribute-type`.
  * - Where the caller allows creation, a term matching nothing puts a row
  *   reading `Create new attribute called “X”.` first; a duplicate name or one
- *   outside `[a-zA-Z0-9._\-:]` makes that row `aria-disabled` with the reason.
+ *   with a control character in it makes that row `aria-disabled` with the
+ *   reason.
  *   A term that matches an offered attribute EXACTLY suppresses the create row
  *   (`offersCreate` is `!exactMatch`), so a settled window offers one or the
  *   other and never both — which is what `chooseOrCreateAttribute` waits on.
@@ -72,7 +73,7 @@ export type AttributeEscalation = Readonly<{
   /**
    * The title the escalation dialog carries, which is the slot's own words for
    * inventing its attribute ("Create a new position attribute", …). Whole
-   * rather than generic: a pedigree editor binds eight slots and a shared
+   * rather than generic: an editor that binds many slots and a shared
    * title would not say which of them the open dialog is for.
    */
   title: string;

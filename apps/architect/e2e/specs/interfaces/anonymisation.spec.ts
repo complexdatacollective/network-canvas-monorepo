@@ -14,8 +14,8 @@ test('creates a valid Anonymisation stage from scratch', async ({
   const editor = new StageEditor(architectPage);
   // `editor.createNew` navigates straight to
   // `/protocol/stage/new?type=Anonymisation&...`, bypassing the New Stage
-  // picker screen's experiment gate that hides this interface from
-  // discovery — the interface itself is fully functional once reached.
+  // picker; that the picker offers this interface is covered by
+  // NewStageScreen.test.tsx.
   await editor.createNew('Anonymisation');
   await editor.setStageName('Anonymise Your Data');
 
@@ -61,21 +61,12 @@ test('creates a valid Anonymisation stage from scratch', async ({
   expect(stage).not.toHaveProperty('subject');
   expect(stage).not.toHaveProperty('prompts');
 
-  const { explanationText } = stage;
-  if (
-    typeof explanationText !== 'object' ||
-    explanationText === null ||
-    !('title' in explanationText) ||
-    !('body' in explanationText)
-  ) {
-    throw new Error(
-      `saved Anonymisation stage is missing "explanationText": ${JSON.stringify(stage)}`,
-    );
-  }
-  expect(explanationText.title).toContain('Protecting Your Privacy');
-  expect(explanationText.body).toContain(
-    'Enter your passphrase below, then continue.',
-  );
+  // The editor saves each text under the protocol's default language, which
+  // is `en` in `emptyProtocol()`.
+  expect(stage.explanationText).toEqual({
+    title: { en: 'Protecting Your Privacy' },
+    body: { en: 'Enter your passphrase below, then continue.' },
+  });
 
   expect(await stageSnapshotJson(stage)).toMatchSnapshot(
     'anonymisation-stage.json',

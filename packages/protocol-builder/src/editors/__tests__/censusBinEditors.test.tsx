@@ -43,8 +43,8 @@ import { tieStrengthCensusStageEditor } from '../tie-strength-census/TieStrength
 
 const SUBJECT = { entity: 'node', type: 'person' };
 const INTRODUCTION = {
-  title: 'Introduction',
-  text: 'Some words the participant reads first.',
+  title: { 'en-US': 'Introduction' },
+  text: { 'en-US': 'Some words the participant reads first.' },
 };
 const BUCKET_SORT_ORDER = [{ property: 'name', direction: 'asc' }];
 const BIN_SORT_ORDER = [{ property: '*', direction: 'desc' }];
@@ -162,21 +162,21 @@ const sortRuleControls = (group: string): readonly Control[] => [
 
 const DYAD_PROMPT = {
   id: 'p1',
-  text: 'Do they know each other?',
+  text: { 'en-US': 'Do they know each other?' },
   createEdge: 'knows',
 };
 
 const TIE_STRENGTH_PROMPT = {
   id: 'p1',
-  text: 'How close?',
+  text: { 'en-US': 'How close?' },
   createEdge: 'knows',
   edgeVariable: 'closeness',
-  negativeLabel: 'Not connected',
+  negativeLabel: { 'en-US': 'Not connected' },
 };
 
 const ONE_TO_MANY_PROMPT = {
   id: 'p1',
-  text: 'Who does this person know?',
+  text: { 'en-US': 'Who does this person know?' },
   createEdge: 'knows',
   bucketSortOrder: BUCKET_SORT_ORDER,
   binSortOrder: BIN_SORT_ORDER,
@@ -184,7 +184,7 @@ const ONE_TO_MANY_PROMPT = {
 
 const ORDINAL_BIN_PROMPT = {
   id: 'p1',
-  text: 'How often?',
+  text: { 'en-US': 'How often?' },
   variable: 'contactFreq',
   color: 'ord-color-seq-1',
   bucketSortOrder: BUCKET_SORT_ORDER,
@@ -213,7 +213,7 @@ const WITHOUT_FILTER: SectionDoc = {
  */
 const PANEL = {
   id: 'panel-1',
-  title: 'People you already named',
+  title: { 'en-US': 'People you already named' },
   dataSource: 'existing',
 };
 
@@ -224,7 +224,7 @@ const PANEL = {
  */
 const NAME_GENERATOR_PROMPT = {
   id: 'p1',
-  text: 'Who are the people you know?',
+  text: { 'en-US': 'Who are the people you know?' },
   additionalAttributes: [{ variable: 'highlighted', value: true }],
 };
 
@@ -258,11 +258,11 @@ const REWRITE_A_STAMP: Rewrite = {
  */
 const CATEGORICAL_BIN_PROMPT = {
   id: 'p1',
-  text: 'What kind of contact?',
+  text: { 'en-US': 'What kind of contact?' },
   variable: 'contactType',
   otherVariable: 'relationship_to_ego',
-  otherOptionLabel: 'Something else',
-  otherVariablePrompt: 'What kind of contact is it?',
+  otherOptionLabel: { 'en-US': 'Something else' },
+  otherVariablePrompt: { 'en-US': 'What kind of contact is it?' },
   bucketSortOrder: BUCKET_SORT_ORDER,
   binSortOrder: BIN_SORT_ORDER,
 };
@@ -310,7 +310,7 @@ const CASES: readonly EditorCase[] = [
     ownedKeys: ['introductionPanel', 'label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
-      label: 'Full dyad census',
+      label: { 'en-US': 'Full dyad census' },
       introductionPanel: INTRODUCTION,
       prompts: [DYAD_PROMPT],
     },
@@ -349,7 +349,7 @@ const CASES: readonly EditorCase[] = [
     ownedKeys: ['introductionPanel', 'label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
-      label: 'Full tie-strength census',
+      label: { 'en-US': 'Full tie-strength census' },
       introductionPanel: INTRODUCTION,
       prompts: [TIE_STRENGTH_PROMPT],
     },
@@ -362,7 +362,7 @@ const CASES: readonly EditorCase[] = [
     },
     rewrite: {
       key: 'negativeLabel',
-      value: 'Never met',
+      value: { 'en-US': 'Never met' },
       write: (harness) => retype(harness, 'Decline option', 'Never met'),
     },
   },
@@ -386,7 +386,7 @@ const CASES: readonly EditorCase[] = [
     ownedKeys: ['behaviours', 'label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
-      label: 'Full one-to-many dyad census',
+      label: { 'en-US': 'Full one-to-many dyad census' },
       behaviours: { removeAfterConsideration: false },
       prompts: [ONE_TO_MANY_PROMPT],
     },
@@ -430,7 +430,7 @@ const CASES: readonly EditorCase[] = [
     ownedKeys: ['label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
-      label: 'Full ordinal bin',
+      label: { 'en-US': 'Full ordinal bin' },
       prompts: [ORDINAL_BIN_PROMPT],
     },
     prompt: ORDINAL_BIN_PROMPT,
@@ -469,7 +469,7 @@ const CASES: readonly EditorCase[] = [
     ownedKeys: ['label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
-      label: 'Full categorical bin',
+      label: { 'en-US': 'Full categorical bin' },
       prompts: [CATEGORICAL_BIN_PROMPT],
     },
     prompt: CATEGORICAL_BIN_PROMPT,
@@ -503,7 +503,7 @@ const CASES: readonly EditorCase[] = [
     },
     rewrite: {
       key: 'otherOptionLabel',
-      value: 'Anything else',
+      value: { 'en-US': 'Anything else' },
       write: (harness) => retype(harness, 'Other bin label', 'Anything else'),
     },
   },
@@ -517,6 +517,7 @@ const CASES: readonly EditorCase[] = [
       'Prompt collection',
       'Side panels',
       'Nomination limits',
+      'Messages',
       'Skip logic',
       'Interviewer guidance',
     ],
@@ -528,11 +529,20 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para quien realiza la entrevista',
     ],
-    ownedKeys: ['label', 'prompts', 'quickAdd', 'subject'],
+    ownedKeys: ['label', 'prompts', 'quickAdd', 'quickAddHint', 'subject'],
     wholeStage: {
       ...WITHOUT_FILTER,
-      label: 'Full quick-add name generator',
+      label: { 'en-US': 'Full quick-add name generator' },
       quickAdd: 'name',
+      quickAddHint: { 'en-US': 'Press Enter when you are finished.' },
+      minNodesNotice: {
+        'en-US':
+          '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+      },
+      maxNodesNotice: {
+        'en-US':
+          'You have completed this task. Click the next arrow to continue.',
+      },
       panels: [PANEL],
       behaviours: { minNodes: 1, maxNodes: 8 },
       prompts: [NAME_GENERATOR_PROMPT],
@@ -549,10 +559,12 @@ const CASES: readonly EditorCase[] = [
       'Node setup',
       'Roster source',
       'Prompt collection',
+      'Roster panel',
       'Card display',
       'Roster sorting',
       'Roster search',
       'Nomination limits',
+      'Messages',
       'Skip logic',
       'Interviewer guidance',
     ],
@@ -565,27 +577,49 @@ const CASES: readonly EditorCase[] = [
       'Guía para quien realiza la entrevista',
     ],
     ownedKeys: [
+      'allAddedNotice',
       'behaviours',
       'cardOptions',
       'dataSource',
+      'externalDataError',
       'label',
+      'maxNodesNotice',
+      'minNodesNotice',
+      'panelTitle',
       'prompts',
+      'searchLabel',
+      'searchNoMatch',
       'searchOptions',
       'sortOptions',
       'subject',
     ],
     wholeStage: {
       ...WITHOUT_FILTER,
-      label: 'Full roster name generator',
+      label: { 'en-US': 'Full roster name generator' },
       dataSource: 'roster_data',
+      panelTitle: { 'en-US': 'People you could add' },
       cardOptions: {
-        additionalProperties: [{ label: 'Age', variable: 'age' }],
+        additionalProperties: [{ label: { 'en-US': 'Age' }, variable: 'age' }],
       },
       sortOptions: {
         sortOrder: [{ property: 'age', direction: 'desc' }],
-        sortableProperties: [{ label: 'Age', variable: 'age' }],
+        sortableProperties: [{ label: { 'en-US': 'Age' }, variable: 'age' }],
       },
       searchOptions: { fuzziness: 0.5, matchProperties: ['name', 'age'] },
+      searchLabel: { 'en-US': 'Search' },
+      searchNoMatch: { 'en-US': 'Nothing matched your search term.' },
+      externalDataError: { 'en-US': 'External data could not be loaded.' },
+      allAddedNotice: {
+        'en-US': 'There is nothing left to add from this list.',
+      },
+      minNodesNotice: {
+        'en-US':
+          '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+      },
+      maxNodesNotice: {
+        'en-US':
+          'You have completed this task. Click the next arrow to continue.',
+      },
       behaviours: { minNodes: 1, maxNodes: 8 },
       prompts: [NAME_GENERATOR_PROMPT],
     },

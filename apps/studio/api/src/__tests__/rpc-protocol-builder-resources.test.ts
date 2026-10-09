@@ -22,6 +22,7 @@ import {
   ASSETS,
   callerOf,
   EDIT,
+  enUS,
   GRACE,
   holdingEvents,
   holdingStaging,
@@ -99,7 +100,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         sectionId: stage.sectionId,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: 'Names a secret',
+          label: enUS('Names a secret'),
         }),
         revision: held.revision,
         promote: { editId: EDIT, resourceIds: [staged.data.descriptor.id] },
@@ -147,7 +148,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           sectionId: stage.sectionId,
           document: Redacted.make({
             ...Redacted.value(held.document),
-            label: 'Renamed',
+            label: enUS('Renamed'),
           }),
           revision: held.revision,
           promote: { editId: EDIT, resourceIds: ['never-staged'] },
@@ -164,8 +165,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ADA,
       host.rpc('GetSection', { protocolId, sectionId: stage.sectionId }),
     );
-    expect(Redacted.value(after.document).label).toBe(
-      'Renamed beside a bad promotion',
+    expect(Redacted.value(after.document).label).toEqual(
+      enUS('Renamed beside a bad promotion'),
     );
     expect(after.revision).toEqual(held.revision);
     const assets = await call(
@@ -221,7 +222,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         sectionId: stage.sectionId,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: 'Reads its key back',
+          label: enUS('Reads its key back'),
         }),
         revision: held.revision,
         promote: { editId: EDIT, resourceIds: [resourceId] },
@@ -276,7 +277,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         sectionId: stage.sectionId,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: 'Seals its key',
+          label: enUS('Seals its key'),
         }),
         revision: held.revision,
         promote: { editId: EDIT, resourceIds: [resourceId] },
@@ -371,7 +372,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         sectionId: stage.sectionId,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: 'Keeps its key',
+          label: enUS('Keeps its key'),
         }),
         revision: held.revision,
         promote: { editId: EDIT, resourceIds: [resourceId] },
@@ -501,8 +502,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         kind: 'stage',
         document: Redacted.make({
           type: 'Information',
-          label: 'Carries a secret',
-          title: 'Carries a secret',
+          label: enUS('Carries a secret'),
+          title: enUS('Carries a secret'),
           items: [],
         }),
         promote: { editId: EDIT, resourceIds: [staged.data.descriptor.id] },
@@ -546,8 +547,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           kind: 'stage',
           document: Redacted.make({
             type: 'Information',
-            label: 'Never made',
-            title: 'Never made',
+            label: enUS('Never made'),
+            title: enUS('Never made'),
             items: [],
           }),
           promote: { editId: EDIT, resourceIds: ['never-staged'] },
@@ -603,7 +604,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         sectionId: stage.sectionId,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: 'Saved once',
+          label: enUS('Saved once'),
         }),
         revision: held.revision,
         promote,
@@ -622,7 +623,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         sectionId: stage.sectionId,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: 'Saved once',
+          label: enUS('Saved once'),
         }),
         revision: held.revision,
         promote,
@@ -1244,7 +1245,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           sectionId: stage.sectionId,
           document: Redacted.make({
             ...Redacted.value(held.document),
-            label: 'Renamed',
+            label: enUS('Renamed'),
           }),
           revision: held.revision,
           promote: { editId: edit, resourceIds: [resourceId] },
@@ -1343,6 +1344,92 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     expect(listed.data.resources).toEqual([]);
   });
 
+  it('refuses a roster holding a character exports cannot carry, saying where it is', async () => {
+    const edit = 'edit-roster-characters';
+    const refused = await call(
+      ADA,
+      host.rpc('ResourcesStage', {
+        protocolId,
+        editId: edit,
+        requestId: 'roster-characters',
+        request: {
+          kind: 'content',
+          contentKind: 'network',
+          name: Redacted.make('People'),
+          source: Redacted.make('people.csv'),
+          contentType: 'text/csv',
+          bytes: Redacted.make(
+            new TextEncoder().encode(`name\nGr${String.fromCharCode(7)}ace\n`),
+          ),
+        },
+      }),
+    );
+
+    // A code and a place, which the editor words in the researcher's language.
+    expect(refused).toMatchObject({
+      status: 'failed',
+      failure: {
+        reason: 'invalid-content',
+        detail: {
+          code: 'roster-characters',
+          problem: {
+            kind: 'cell',
+            row: 2,
+            column: 'name',
+            character: 'U+0007',
+          },
+          total: 1,
+        },
+      },
+    });
+    const listed = await call(
+      ADA,
+      host.rpc('ResourcesList', { protocolId, editId: edit, status: 'staged' }),
+    );
+    if (listed.status !== 'ok') throw new Error(listed.failure.message);
+    expect(listed.data.resources).toEqual([]);
+  });
+
+  it('refuses a roster whose headings the interview could not tell apart', async () => {
+    const edit = 'edit-roster-headings';
+    const refused = await call(
+      ADA,
+      host.rpc('ResourcesStage', {
+        protocolId,
+        editId: edit,
+        requestId: 'roster-headings',
+        request: {
+          kind: 'content',
+          contentKind: 'network',
+          name: Redacted.make('People'),
+          source: Redacted.make('people.csv'),
+          contentType: 'text/csv',
+          bytes: Redacted.make(
+            new TextEncoder().encode('caf\u00e9,cafe\u0301\nAda,36\n'),
+          ),
+        },
+      }),
+    );
+
+    // Refused at staging rather than when a participant reaches the stage,
+    // where the interview would fill one variable from both columns.
+    expect(refused).toMatchObject({
+      status: 'failed',
+      failure: {
+        reason: 'invalid-content',
+        retryable: false,
+        message:
+          'the roster\'s attribute names "caf\u00e9" and "cafe\u0301" are the same name written two ways',
+      },
+    });
+    const listed = await call(
+      ADA,
+      host.rpc('ResourcesList', { protocolId, editId: edit, status: 'staged' }),
+    );
+    if (listed.status !== 'ok') throw new Error(listed.failure.message);
+    expect(listed.data.resources).toEqual([]);
+  });
+
   it('answers an unreachable object store with a failure the editor can retry', async () => {
     const edit = 'edit-store-down';
     const stage = await createStage(ADA, 'Names a file the store cannot take');
@@ -1383,7 +1470,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           sectionId: stage.sectionId,
           document: Redacted.make({
             ...Redacted.value(held.document),
-            label: 'Renamed with a file',
+            label: enUS('Renamed with a file'),
           }),
           revision: held.revision,
           promote,
@@ -1410,7 +1497,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         sectionId: stage.sectionId,
         document: Redacted.make({
           ...Redacted.value(held.document),
-          label: 'Renamed with a file',
+          label: enUS('Renamed with a file'),
         }),
         revision: held.revision,
         promote,

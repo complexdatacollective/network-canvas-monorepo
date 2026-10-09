@@ -12,6 +12,7 @@ import {
 import type { NodeWithResequencedID } from '../../../input';
 import type { ExportOptions } from '../../../options';
 import getDataElementGenerator from '../generateDataElements';
+import getKeyElementGenerator from '../generateKeyElements';
 
 const exportOptions: ExportOptions = {
   exportGraphML: true,
@@ -27,10 +28,11 @@ const codebookWithName = (encrypted: boolean): Codebook => ({
   node: {
     person: {
       name: 'Person',
+      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        'name-uuid': { name: 'name', type: 'text', encrypted },
+        'name-uuid': { name: 'name', label: 'Name', type: 'text', encrypted },
       },
     },
   },
@@ -40,10 +42,14 @@ const getNodeLabel = async (
   node: NodeWithResequencedID,
   codebook: Codebook,
 ) => {
+  const { keyIds } = await getKeyElementGenerator(
+    codebook,
+    exportOptions,
+  )({ ego: [], node: [node], edge: [] });
   const fragment = await getDataElementGenerator(
     codebook,
     exportOptions,
-    new Map(),
+    keyIds,
   )([node]);
   const [nodeElement] = Array.from(fragment.children);
   const label = Array.from(

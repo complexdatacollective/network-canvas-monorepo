@@ -1,16 +1,59 @@
 {
+  "conditionText": {
+    "heading": {
+      "en": "Conditions"
+    },
+    "instruction": {
+      "en": "Select a condition to see who it affects."
+    },
+    "notation": {
+      "affected": {
+        "en": "Has this condition"
+      },
+      "obligateAffected": {
+        "en": "Will develop this condition"
+      },
+      "obligateCarrier": {
+        "en": "Carries this condition"
+      },
+      "unknown": {
+        "en": "Not known"
+      }
+    },
+    "snapshotCondition": {
+      "en": "{title}: {condition}"
+    },
+    "snapshotInheritance": {
+      "en": "{title}: {condition} — inheritance for {name}"
+    }
+  },
   "diseases": [
     {
+      "attribute": "hasConditionX",
       "color": "node-color-seq-1",
       "id": "id-1",
       "inheritancePattern": "autosomalDominant",
-      "label": "Condition X",
-      "variable": "hasConditionX"
+      "label": {
+        "en": "Condition X"
+      }
     }
   ],
   "id": "id-2",
-  "label": "Family Health History",
+  "keyHeading": {
+    "en": "Key"
+  },
+  "label": {
+    "en": "Family Health History"
+  },
   "showAtRiskStatuses": false,
   "sourceStageId": "family-pedigree-1",
+  "tooltips": {
+    "clearFocus": {
+      "en": "Clear focus"
+    },
+    "saveSnapshot": {
+      "en": "Save snapshot"
+    }
+  },
   "type": "NarrativePedigree"
 }

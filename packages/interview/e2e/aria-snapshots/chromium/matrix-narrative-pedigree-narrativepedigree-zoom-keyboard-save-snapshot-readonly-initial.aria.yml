@@ -1,0 +1,25 @@
+- main:
+  - text: Showing all conditions
+  - complementary "Condition key":
+    - heading "Guide - matrix check" [level=4]
+    - heading "Diagnoses - matrix check" [level=4]
+    - paragraph: Pick one to see who has it - matrix check
+    - button "Huntington's Disease"
+    - separator
+    - text: Has it now - matrix check Will get it - matrix check Passes it on - matrix check Nobody knows - matrix check
+    - button "Keep a picture - matrix check"
+  - slider "Resize the condition key panel"
+  - region "Your family":
+    - button "Focus on Rose" [disabled]: "Huntington's Disease: Status unknown Rose"
+    - button "Focus on David" [disabled]: "Huntington's Disease: Status unknown David"
+    - button "Focus on You" [disabled]: "Huntington's Disease: Affected You"
+  - toolbar "Zoom controls":
+    - button "Zoom out"
+    - button "Zoom in"
+    - button "Show the whole family"
+  - navigation:
+    - button "Settings"
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

@@ -233,8 +233,10 @@
       "DyadCensus": "Dyadenzensus",
       "EgoForm": "Ego-Formular",
       "FamilyPedigree": "Familienstammbaum",
+      "FinishSession": "Abschlussbildschirm",
       "Geospatial": "Geodaten-Oberfläche",
       "Information": "Information",
+      "LanguageChooser": "Sprachauswahl",
       "NameGenerator": "Namensgenerator (mit Formularen)",
       "NameGeneratorQuickAdd": "Namensgenerator (Schnelleingabe)",
       "NameGeneratorRoster": "Namensgenerator mit Namensliste",
@@ -275,8 +277,6 @@
       },
       "loading": "Vorschau wird vorbereitet…",
       "finishConfirmation": "Dies ist eine Vorschau, daher wird nichts gespeichert. Wenn Sie das Interview beenden, endet dieser Durchlauf des Protokolls. Sie können ihn danach erneut starten.",
-      "finishedHeading": "Vorschau beendet",
-      "finishedDescription": "Das Interview wurde genau so abgeschlossen, wie es auch bei einer teilnehmenden Person der Fall wäre. Es wurde nichts gespeichert.",
       "restart": "Vorschau neu starten",
       "backToProtocol": "Zurück zum Protokoll",
       "errorHeading": "Für dieses Protokoll ist keine Vorschau möglich",
@@ -336,7 +336,7 @@
       "bestFor": "Ideal für",
       "downloadVersion": "Version {version} herunterladen",
       "platformAccessibleName": "{app} für {platform}",
-      "schemaVersionInfo": "Architect Classic und Interviewer Classic unterstützen Protokolle mit Schema 7. Die browserbasierten Apps Architect und Interviewer sowie Fresco verwenden Schema 8, das die neuesten Funktionen enthält. Die Aktualisierung eines Protokolls lässt sich nicht rückgängig machen. Bewahren Sie daher die ursprüngliche Datei mit Schema 7 auf, wenn Sie die Classic-Apps weiterhin benötigen.",
+      "schemaVersionInfo": "Architect Classic und Interviewer Classic unterstützen Protokolle mit Schema 7. Die browserbasierten Apps Architect und Interviewer sowie Fresco verwenden Schema 9, das die neuesten Funktionen enthält. Die Aktualisierung eines Protokolls lässt sich nicht rückgängig machen. Bewahren Sie daher die ursprüngliche Datei mit Schema 7 auf, wenn Sie die Classic-Apps weiterhin benötigen.",
       "schemaVersionLink": "Mehr über Schemaversionen erfahren"
     },
     "platforms": {

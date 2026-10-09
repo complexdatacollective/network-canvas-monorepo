@@ -33,12 +33,14 @@ import protocol from '../../../store/modules/protocol';
 import session, { type SessionState } from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import CategoricalBin from '../CategoricalBin';
 import { getCatBinDropTargetId } from '../components/CategoricalBinItem';
 
-const { celebrate, track } = vi.hoisted(() => ({
+const { celebrate, track, captureException } = vi.hoisted(() => ({
   celebrate: vi.fn(),
   track: vi.fn(),
+  captureException: vi.fn(),
 }));
 
 vi.mock('../../../hooks/useCelebrate', () => ({
@@ -47,6 +49,7 @@ vi.mock('../../../hooks/useCelebrate', () => ({
 
 vi.mock('../../../analytics/useTrack', () => ({
   useTrack: () => track,
+  useCaptureException: () => captureException,
 }));
 
 class StubResizeObserver {
@@ -152,11 +155,13 @@ function buildCodebook(
     node: {
       [NODE_TYPE]: {
         name: 'Person',
+        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
           [CATEGORY_VARIABLE]: {
             name: 'Category',
+            label: 'Category',
             type: 'categorical',
             component: 'CheckboxGroup',
             // The schema's categoricalOptionsSchema requires >= 2 options at
@@ -165,13 +170,14 @@ function buildCodebook(
             // to [category option, other bin] with the "other" bin at index 1
             // as long as there is exactly one option — matching
             // OTHER_BIN_INDEX below.
-            options: [{ label: 'Family', value: 1 }],
+            options: [{ label: { en: 'Family' }, value: 1 }],
           },
           ...(omitOtherVariable
             ? {}
             : {
                 [otherVariable]: {
                   name: 'Other reason',
+                  label: 'Other reason',
                   type: 'text' as const,
                   ...(omitOtherComponent ? {} : { component: 'Text' as const }),
                   ...(otherValidation ? { validation: otherValidation } : {}),
@@ -179,11 +185,13 @@ function buildCodebook(
               }),
           [NOTE_VARIABLE]: {
             name: 'Existing note',
+            label: 'Existing note',
             type: 'text',
             component: 'Text',
           },
           [COLLIDING_SIBLING_VARIABLE]: {
             name: 'Collision-prone sibling',
+            label: 'Collision-prone sibling',
             type: 'text',
             component: 'Text',
           },
@@ -201,16 +209,16 @@ function buildStage(otherVariable = OTHER_VARIABLE): CategoricalBinStage {
   return {
     id: STAGE_ID,
     type: 'CategoricalBin',
-    label: 'Categorise people',
+    label: { en: 'Categorise people' },
     subject: { entity: 'node', type: NODE_TYPE },
     prompts: [
       {
         id: PROMPT_ID,
-        text: 'Which category?',
+        text: { en: 'Which category?' },
         variable: asEntityAttributeReference(CATEGORY_VARIABLE),
         otherVariable: asEntityAttributeReference(otherVariable),
-        otherVariablePrompt: OTHER_PROMPT_TEXT,
-        otherOptionLabel: 'Other',
+        otherVariablePrompt: { en: OTHER_PROMPT_TEXT },
+        otherOptionLabel: { en: 'Other' },
       },
     ],
   };
@@ -224,6 +232,8 @@ function buildSession(): SessionState {
     finishTime: null,
     exportTime: null,
     lastUpdated: '2024-01-01T00:00:00.000Z',
+    localePreference: null,
+    locale: null,
     network: {
       ego: {
         [entityPrimaryKeyProperty]: 'ego',
@@ -247,7 +257,8 @@ function buildProtocol(
     importedAt: '2024-01-01T00:00:00.000Z',
     assets: [],
     name: 'Test protocol',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: buildCodebook(
       otherValidation,
       omitOtherComponent,
@@ -295,28 +306,30 @@ function renderCategoricalBin(
 
   const tree = (locale: string) => (
     <InterviewI18nProvider requestedLocale={locale}>
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-          <DialogProvider>
-            <DndStoreProvider>
-              <CaptureDndStore
-                onStore={(s) => {
-                  dndStore = s;
-                }}
-              />
-              {/* CategoricalBin never reads its props (destructures `_props`);
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+            <DialogProvider>
+              <DndStoreProvider>
+                <CaptureDndStore
+                  onStore={(s) => {
+                    dndStore = s;
+                  }}
+                />
+                {/* CategoricalBin never reads its props (destructures `_props`);
                 these satisfy the type without any bearing on behaviour. */}
-              <CategoricalBin
-                stage={buildStage(otherVariable)}
-                getNavigationHelpers={() => ({
-                  moveForward: () => {},
-                  moveBackward: () => {},
-                })}
-              />
-            </DndStoreProvider>
-          </DialogProvider>
-        </CurrentStepProvider>
-      </Provider>
+                <CategoricalBin
+                  stage={buildStage(otherVariable)}
+                  getNavigationHelpers={() => ({
+                    moveForward: () => {},
+                    moveBackward: () => {},
+                  })}
+                />
+              </DndStoreProvider>
+            </DialogProvider>
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>
     </InterviewI18nProvider>
   );
   const view = render(tree('en'));
@@ -684,23 +697,17 @@ describe('CategoricalBin queued dialog localization', () => {
     const input = await screen.findByRole('textbox', {
       name: OTHER_PROMPT_TEXT,
     });
-    expect(screen.getByRole('dialog')).toHaveAccessibleName('Specify other');
-    expect(input).toHaveAttribute('placeholder', 'Enter your response here...');
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Other');
     fireEvent.change(input, { target: { value: 'Respuesta literal á' } });
     expect(getOtherAttribute(store)).toBeUndefined();
 
     setLocale('es-MX');
-    expect(screen.getByRole('dialog')).toHaveAccessibleName(
-      'Especificar otra respuesta',
-    );
+    // The title is the researcher's authored label, so it does not translate.
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Other');
     expect(screen.getByRole('textbox', { name: OTHER_PROMPT_TEXT })).toBe(
       input,
     );
     expect(input).toHaveValue('Respuesta literal á');
-    expect(input).toHaveAttribute(
-      'placeholder',
-      'Introduce tu respuesta aquí...',
-    );
     expect(getOtherAttribute(store)).toBeUndefined();
 
     fireEvent.click(screen.getByTestId('dialog-submit'));

@@ -1,16 +1,9 @@
-import {
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import { commonMessages } from '@codaco/app-i18n/common';
-import { createAppIntl, defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl, useLocaleCatalog } from '@codaco/app-i18n/react';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -19,8 +12,10 @@ import {
   createInitialNetwork,
   type FinishHandler,
   type InterviewPayload,
+  type ProtocolLocaleChangeHandler,
   type SessionPayload,
   Shell,
+  type SyncHandler,
 } from '@codaco/interview';
 import { loadInterviewCatalog } from '@codaco/interview/catalog';
 import { currentProtocolToPayload } from '@codaco/interview/contract';
@@ -30,15 +25,22 @@ import {
   SyntheticDataConstraintError,
 } from '@codaco/protocol-utilities';
 import { formatConstraintConflictReason } from '@codaco/protocol-utilities/messages';
-import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
+import {
+  type CurrentProtocol,
+  getLocaleMetadata,
+  type LocaleTag,
+  selectProtocolLocale,
+  type Stage,
+} from '@codaco/protocol-validation';
 import { type StageMetadata, StageMetadataSchema } from '@codaco/shared-consts';
-import { architectCatalogSource } from '~/locales/catalogs';
 import { assetKey } from '~/utils/assetDB';
 import { hydrateMemoryAsset } from '~/utils/inMemoryAssetStore';
 import { reportError } from '~/utils/reportError';
 
 import { isPreviewMessage, type PreviewPayload } from './messages';
 import { collectPreviewRosterData } from './previewRosterData';
+import PreviewToolbar from './PreviewToolbar';
+import { ShellLanguageMessage } from './ShellLanguageMessage';
 import { useAssetResolver } from './useAssetResolver';
 const messages = defineMessages({
   finishConfirmation: {
@@ -68,23 +70,6 @@ const messages = defineMessages({
   closeTab: {
     id: 'architect.previewHost.previewHost.closeTab',
     defaultMessage: 'Close tab',
-    description: 'Visible text in components / PreviewHost / PreviewHost.',
-  },
-  previewFinished: {
-    id: 'architect.previewHost.previewHost.previewFinished',
-    defaultMessage: 'Preview finished',
-    description: 'Visible text in components / PreviewHost / PreviewHost.',
-  },
-  theInterviewFinishedJustAsIt: {
-    id: 'architect.previewHost.previewHost.theInterviewFinishedJustAsIt',
-    defaultMessage:
-      'The interview finished, just as it would for a participant. Nothing was saved — preview responses are never stored.',
-    description: 'Visible text in components / PreviewHost / PreviewHost.',
-  },
-  startingAgainRerunsTheProtocolAs: {
-    id: 'architect.previewHost.previewHost.startingAgainRerunsTheProtocolAs',
-    defaultMessage:
-      'Starting again reruns the protocol as it was when this preview opened. To preview changes you have made in Architect since then, start a new preview from there.',
     description: 'Visible text in components / PreviewHost / PreviewHost.',
   },
   startThePreviewAgain: {
@@ -145,7 +130,14 @@ const extraMessages = defineMessages({
 });
 
 const PAYLOAD_TIMEOUT_MS = 5000;
-const noopSync = async () => {};
+
+// The interview chooses its language from the browser's languages, never from
+// Architect's own interface language.
+function readBrowserLanguages(): readonly string[] {
+  return navigator.languages.length > 0
+    ? navigator.languages
+    : [navigator.language];
+}
 
 // Shown in the interview's finish confirmation instead of the participant
 // default ("…satisfied with your responses"), which is untrue in a preview:
@@ -153,32 +145,8 @@ const noopSync = async () => {};
 // clicking through. The dialog keeps its Cancel action, so this is the point
 // at which the researcher chooses to give up that run.
 function PreviewFinishConfirmation() {
-  // Shell owns its catalog and can select a language independently of Architect.
-  // Resolve this host-specific message against the Architect catalog explicitly
-  // while subscribing to the Shell locale, including in an already-open dialog.
-  const { locale } = useAppIntl();
-  // Usually the Shell renders Architect's own language, which startup already
-  // loaded. When it does not, that language's Architect catalog loads here.
-  // Keyed by locale so a switch suspends rather than keep the previous
-  // language: the sentence is blank for that moment instead of being the one
-  // thing in the dialog that has not changed language.
-  return (
-    <Suspense fallback={null}>
-      <PreviewFinishConfirmationText key={locale} locale={locale} />
-    </Suspense>
-  );
+  return <ShellLanguageMessage message={messages.finishConfirmation} />;
 }
-
-function PreviewFinishConfirmationText({ locale }: { locale: string }) {
-  const catalog = useLocaleCatalog(architectCatalogSource, locale);
-  const intl = useMemo(
-    () => createAppIntl({ locale: catalog.locale, messages: catalog.messages }),
-    [catalog.locale, catalog.messages],
-  );
-  return intl.formatMessage(messages.finishConfirmation);
-}
-
-const COMPLETION_DESCRIPTION_ID = 'preview-finished-description';
 
 function protocolWithoutSkipLogic(protocol: CurrentProtocol): CurrentProtocol {
   return {
@@ -198,6 +166,13 @@ async function buildSession(payload: PreviewPayload): Promise<SessionPayload> {
     exportTime: null,
     lastUpdated: now,
     network: createInitialNetwork(),
+    // Each run starts as it would for a participant with this browser: no
+    // language stated yet.
+    localePreference: null,
+    locale: null,
+    localeOptions: payload.protocol.localization.locales.map((locale) =>
+      getLocaleMetadata(locale),
+    ),
   };
   if (!payload.useSyntheticData) {
     return base;
@@ -218,8 +193,8 @@ async function buildSession(payload: PreviewPayload): Promise<SessionPayload> {
     // unplaced nodes to work with.
     inProgressStageIndex: payload.startStage,
   });
-  // Stages that record a finalized state (e.g. a FamilyPedigree's committed
-  // network) do so via stageMetadata; without it they preview as never
+  // Stages that record a finalized state (e.g. a census's recorded
+  // answers) do so via stageMetadata; without it they preview as never
   // finalized. Parse each entry independently so a single malformed entry is
   // dropped rather than discarding every stage's metadata. Interaction-driven
   // stages emit no metadata, so their "unplaced nodes" intent is preserved.
@@ -256,23 +231,27 @@ export function PreviewHost() {
   const [currentStep, setCurrentStep] = useState(0);
   const [failure, setFailure] = useState<PreviewFailure | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
-  // Set when the interview's finish confirmation completes. The preview has no
-  // store to write a finish time to, so this is the only record that the
-  // completion event was handled — and rendering it in place of the Shell is
-  // what stops Finish being confirmable a second time.
-  const [finished, setFinished] = useState(false);
-  const completionHeadingRef = useRef<HTMLHeadingElement>(null);
   // Index of the stage receiving a one-stage preview override, or null.
   const [initialStageOverrideIndex, setInitialStageOverrideIndex] = useState<
     number | null
   >(null);
   const onRequestAsset = useAssetResolver(protocolId);
+  const [browserLanguages] = useState(readBrowserLanguages);
+  // The language this preview states, held only while the window is open: the
+  // author's choice in the toolbar, or one a language chooser stage stated.
+  // Null follows the browser.
+  const [statedLocale, setStatedLocale] = useState<LocaleTag | null>(null);
+  // Whether the running interview holds a preference in its own store, stated
+  // by a language chooser stage. Requested languages cannot override one, so
+  // from then on the toolbar's choice is stated to the interview instead.
+  const [preferenceHeld, setPreferenceHeld] = useState(false);
   // The interview's messages load during the handshake and the synthetic
-  // network build, rather than once the Shell mounts. A failure here is
-  // retried by the Shell itself.
+  // network build, rather than once the Shell mounts, in the language the
+  // Shell will negotiate from the same inputs. A failure here is retried by
+  // the Shell itself.
   useEffect(() => {
-    loadInterviewCatalog(intl.locale).catch(() => undefined);
-  }, [intl.locale]);
+    loadInterviewCatalog(browserLanguages, statedLocale).catch(() => undefined);
+  }, [browserLanguages, statedLocale]);
   useEffect(() => {
     const opener = window.opener as Window | null;
     if (!opener) return;
@@ -310,6 +289,8 @@ export function PreviewHost() {
       }
       setFailure(null);
       setInterviewPayload(nextPayload);
+      setStatedLocale(null);
+      setPreferenceHeld(false);
       setProtocolId(previewPayload.protocolId);
       setCurrentStep(previewPayload.startStage);
       setInitialStageOverrideIndex(
@@ -351,34 +332,60 @@ export function PreviewHost() {
       clearTimeout(timeoutId);
     };
   }, [retryNonce]);
-  // The Shell unmounts in the same commit that sets `finished`, taking the
-  // Finish button — and the whole interview — with it, so focus would
-  // otherwise be dropped on <body> with nothing announced. Move it to the
-  // completion heading, which is described by the "nothing was saved"
-  // paragraph so both sentences are spoken together.
-  useEffect(() => {
-    if (!finished) return;
-    completionHeadingRef.current?.focus();
-  }, [finished]);
-  const handleFinish = useCallback<FinishHandler>(async () => {
-    setFinished(true);
-  }, []);
+  // Nothing in a preview is saved, so there is no finish to record. Once this
+  // resolves the interview shows its completed state, as it would for a
+  // participant, and Finish cannot be confirmed a second time.
+  const handleFinish = useCallback<FinishHandler>(async () => {}, []);
+  // Nothing in a preview is saved.
+  const handleSync = useCallback<SyncHandler>(async () => {}, []);
+  // A language chooser stage stated a preference: the toolbar follows it.
+  // Calls that only record the language shown carry no preference.
+  const handleProtocolLocaleChange = useCallback<ProtocolLocaleChangeHandler>(
+    async (_interviewId, { localePreference }) => {
+      if (localePreference === null) return;
+      setPreferenceHeld(true);
+      setStatedLocale(localePreference);
+    },
+    [],
+  );
+  // The Shell applies a change of requested languages in place, keeping the
+  // step, answers and unsaved input, so the stated language is passed as the
+  // first requested one.
+  const requestedLocales = useMemo(
+    () =>
+      statedLocale === null
+        ? browserLanguages
+        : [statedLocale, ...browserLanguages],
+    [statedLocale, browserLanguages],
+  );
+  // Once the interview holds a preference, the toolbar states its choice to
+  // the interview in place of that one, as a language chooser stage would:
+  // re-creating the interview instead would lose the prompt reached and any
+  // answer still in an unsubmitted form.
+  const changePreviewLocale = (locale: LocaleTag) => {
+    setStatedLocale(locale);
+  };
   // Re-run the handshake: the opener answers `preview:ready` with the payload
   // it captured at launch, and processPayload rebuilds a fresh session from it.
   //
-  // This is the only way out of `finished`, and it clears the flag itself
-  // rather than leaving that to processPayload — the completion screen
-  // outranks the failure screens below, so a restart that then times out would
-  // otherwise sit on a finished interview with no sign that the rebuild never
-  // arrived. Dropping the payload too means the interim screen is "Loading
-  // preview…", not the spent interview with a Finish that can no longer do
-  // anything.
-  const restartPreview = () => {
-    setFinished(false);
+  // The way out of a finished run, offered as the completed state's action.
+  // Dropping the payload means the interim screen is "Loading preview…", not
+  // the finished interview, and a restart that then times out shows that
+  // failure rather than the run it left.
+  const restartPreview = useCallback(() => {
     setFailure(null);
     setInterviewPayload(null);
     setRetryNonce((n) => n + 1);
-  };
+  }, []);
+  const completedActions = useMemo(
+    () => [
+      {
+        label: <ShellLanguageMessage message={messages.startThePreviewAgain} />,
+        onAction: restartPreview,
+      },
+    ],
+    [restartPreview],
+  );
   if (!window.opener) {
     return (
       <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 p-8 text-center">
@@ -391,48 +398,6 @@ export function PreviewHost() {
         <Button color="primary" onClick={() => window.close()}>
           {intl.formatMessage(messages.closeTab)}
         </Button>
-      </div>
-    );
-  }
-  // Deliberately below the closed-opener branch: without an opener there is
-  // nothing to restart from, so "This preview has ended" is the truthful
-  // screen even for a run that finished first.
-  if (finished) {
-    return (
-      <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 p-8 text-center">
-        <Heading
-          ref={completionHeadingRef}
-          tabIndex={-1}
-          level="h1"
-          margin="none"
-          className="text-2xl font-semibold"
-          aria-describedby={COMPLETION_DESCRIPTION_ID}
-        >
-          {intl.formatMessage(messages.previewFinished)}
-        </Heading>
-        <Paragraph
-          id={COMPLETION_DESCRIPTION_ID}
-          margin="none"
-          className="max-w-xl"
-        >
-          {intl.formatMessage(messages.theInterviewFinishedJustAsIt)}
-        </Paragraph>
-        <Paragraph
-          margin="none"
-          intent="smallText"
-          emphasis="muted"
-          className="max-w-xl"
-        >
-          {intl.formatMessage(messages.startingAgainRerunsTheProtocolAs)}
-        </Paragraph>
-        <div className="flex gap-3">
-          <Button color="primary" onClick={restartPreview}>
-            {intl.formatMessage(messages.startThePreviewAgain)}
-          </Button>
-          <Button color="default" onClick={() => window.close()}>
-            {intl.formatMessage(messages.closeTab)}
-          </Button>
-        </div>
       </div>
     );
   }
@@ -533,26 +498,43 @@ export function PreviewHost() {
       </div>
     );
   }
+  // The language the interview shows, chosen as the interview chooses it.
+  const shownLocale = selectProtocolLocale(
+    statedLocale === null ? browserLanguages : [statedLocale],
+    interviewPayload.protocol.localization,
+  );
   return (
-    <div className="h-screen">
-      <Shell
-        requestedLocale={intl.locale}
-        payload={interviewPayload}
-        onSync={noopSync}
-        onFinish={handleFinish}
-        finishConfirmationDescription={<PreviewFinishConfirmation />}
-        onRequestAsset={onRequestAsset}
-        currentStep={currentStep}
-        onStepChange={setCurrentStep}
-        flags={{ isDevelopment: import.meta.env.DEV }}
-        initialStageOverrideIndex={initialStageOverrideIndex ?? undefined}
-        allowStageNavigation
-        disableAnalytics
-        analytics={{
-          installationId: 'architect-preview',
-          hostApp: 'architect-preview',
-        }}
+    <div className="flex h-screen flex-col">
+      <PreviewToolbar
+        options={interviewPayload.session.localeOptions}
+        value={shownLocale}
+        onChange={changePreviewLocale}
       />
+      <div className="min-h-0 flex-1">
+        <Shell
+          requestedLocales={requestedLocales}
+          statedLocale={
+            preferenceHeld && statedLocale !== null ? statedLocale : undefined
+          }
+          payload={interviewPayload}
+          onSync={handleSync}
+          onProtocolLocaleChange={handleProtocolLocaleChange}
+          onFinish={handleFinish}
+          finishConfirmationDescription={<PreviewFinishConfirmation />}
+          completedActions={completedActions}
+          onRequestAsset={onRequestAsset}
+          currentStep={currentStep}
+          onStepChange={setCurrentStep}
+          flags={{ isDevelopment: import.meta.env.DEV }}
+          initialStageOverrideIndex={initialStageOverrideIndex ?? undefined}
+          allowStageNavigation
+          disableAnalytics
+          analytics={{
+            installationId: 'architect-preview',
+            hostApp: 'architect-preview',
+          }}
+        />
+      </div>
     </div>
   );
 }

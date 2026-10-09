@@ -3,6 +3,7 @@ import { map, pickBy } from 'es-toolkit/compat';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 import type {
   ColorReference,
+  LocalizedString,
   VariableOptions,
 } from '@codaco/protocol-validation';
 
@@ -17,7 +18,7 @@ type Item = {
   // Any codebook variable's options: categorical/ordinal (string/number) or
   // boolean variables (boolean value). Only categorical/ordinal options are
   // surfaced as Option.options (see asOption), so the boolean case is filtered.
-  options?: { label: string; value: string | number | boolean }[];
+  options?: { label: LocalizedString; value: string | number | boolean }[];
   [key: string]: unknown;
 };
 

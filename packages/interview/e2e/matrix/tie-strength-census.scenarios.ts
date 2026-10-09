@@ -27,7 +27,7 @@ const STRENGTH_OPTIONS = [
  * - Edge attributes are keyed by the codebook variable id, and network
  *   entities use the `_uid`/`attributes` shared-consts keys — not literal
  *   `.id`/`.Strength`. Each edge variable is given an explicit kebab-case id so
- *   assertions can read it precisely (VariableNameSchema allows [a-z0-9._:-]).
+ *   assertions can read it precisely (CodebookIdSchema allows [a-z0-9._:-]).
  * - `addEdge`/`updateEdge` are async thunks, so post-mutation network reads are
  *   wrapped in `expect.poll` rather than read synchronously.
  * - The e2e host mounts Shell without stage navigation (App.tsx:151-161), so
@@ -333,7 +333,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         const before = await protocol.getNetworkState(interview.interviewId);
         await page.getByTestId('next-button').click();
         await expect(
-          page.getByText('Please select a response before continuing.'),
+          page.getByText('You must answer this question before continuing.'),
         ).toBeVisible();
         const afterToast = await protocol.getNetworkState(
           interview.interviewId,
@@ -404,7 +404,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         await interview.nextButton.click();
 
         await expect(
-          page.getByText('Please select a response before continuing.'),
+          page.getByText('You must answer this question before continuing.'),
         ).toBeVisible();
         await expect.poll(() => tsc.getPairLabels()).toEqual(pairLabelsBefore);
 

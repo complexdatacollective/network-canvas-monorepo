@@ -1,9 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
-import { hashProtocol, migrateProtocol } from '@codaco/protocol-validation';
+import {
+  DEFAULT_FINISH_SESSION_TEXT,
+  hashProtocol,
+  migrateProtocol,
+} from '@codaco/protocol-validation';
 import {
   buildAssetManifest,
+  InterviewMigrationFailedError,
   migrateProtocolsToCompatibleVersion,
 } from '~/scripts/migrate-protocols';
 
@@ -57,6 +62,10 @@ type MockPrisma = {
     update: ReturnType<typeof vi.fn>;
     findFirst: ReturnType<typeof vi.fn>;
   };
+  interview: {
+    findMany: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+  };
 };
 
 function makeMockPrisma(): MockPrisma {
@@ -66,6 +75,286 @@ function makeMockPrisma(): MockPrisma {
       update: vi.fn().mockResolvedValue({}),
       findFirst: vi.fn().mockResolvedValue(null),
     },
+    interview: {
+      findMany: vi.fn().mockResolvedValue([]),
+      update: vi.fn().mockResolvedValue({}),
+    },
+  };
+}
+
+/**
+ * A minimal schema 8 protocol whose Family Pedigree (stage 1) has an
+ * introduction screen, which the v8 → v9 migration turns into a stage of its
+ * own, inserted before the pedigree.
+ */
+function makeV8PedigreeProtocol() {
+  const sexOptions = [
+    { value: 'female', label: 'Female' },
+    { value: 'male', label: 'Male' },
+    {
+      value: 'intersex',
+      label: 'Intersex or a variation in sex characteristics',
+    },
+    { value: 'unknown', label: 'Don’t know' },
+    { value: 'preferNotToSay', label: 'Prefer not to say' },
+  ];
+  return {
+    schemaVersion: 8,
+    description: 'Pedigree protocol',
+    lastModified: '2026-01-01T00:00:00.000Z',
+    codebook: {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          icon: 'add-a-person',
+          shape: { default: 'circle' },
+          variables: {
+            name: { name: 'name', type: 'text', component: 'Text' },
+            is_ego: { name: 'is_ego', type: 'boolean', component: 'Toggle' },
+            relationship_to_ego: {
+              name: 'relationship_to_ego',
+              type: 'text',
+              component: 'Text',
+            },
+            biologicalSex: {
+              name: 'biologicalSex',
+              type: 'categorical',
+              options: sexOptions,
+            },
+          },
+        },
+      },
+      edge: {
+        family_relationship: {
+          name: 'Family relationship',
+          color: 'edge-color-seq-1',
+          variables: {
+            relationshipType: {
+              name: 'relationshipType',
+              type: 'categorical',
+              options: [
+                { value: 'biological', label: 'Biological' },
+                { value: 'social', label: 'Social' },
+                { value: 'donor', label: 'Donor' },
+                { value: 'surrogate', label: 'Surrogate' },
+                { value: 'adoptive', label: 'Adoptive' },
+                { value: 'partner', label: 'Partner' },
+              ],
+            },
+            isActive: { name: 'isActive', type: 'boolean' },
+            isGestationalCarrier: {
+              name: 'isGestationalCarrier',
+              type: 'boolean',
+            },
+            gameteRole: {
+              name: 'gameteRole',
+              type: 'categorical',
+              options: [
+                { value: 'egg', label: 'Egg' },
+                { value: 'sperm', label: 'Sperm' },
+              ],
+            },
+          },
+        },
+      },
+      ego: { variables: {} },
+    },
+    stages: [
+      {
+        id: 'welcome',
+        type: 'Information',
+        label: 'Welcome',
+        title: 'Welcome',
+        items: [{ id: 'welcome-text', type: 'text', content: 'Welcome' }],
+      },
+      {
+        id: 'family',
+        type: 'FamilyPedigree',
+        label: 'Family',
+        introScreen: {
+          items: [{ id: 'intro', type: 'text', content: 'Your family.' }],
+        },
+        nodeConfig: {
+          type: 'person',
+          nodeLabelVariable: 'name',
+          egoVariable: 'is_ego',
+          relationshipVariable: 'relationship_to_ego',
+          biologicalSexVariable: 'biologicalSex',
+        },
+        edgeConfig: {
+          type: 'family_relationship',
+          relationshipTypeVariable: 'relationshipType',
+          isActiveVariable: 'isActive',
+          isGestationalCarrierVariable: 'isGestationalCarrier',
+          gameteRoleVariable: 'gameteRole',
+        },
+        framing: { mode: 'participantChoice' },
+        censusPrompt: 'Who is in your family?',
+      },
+      {
+        id: 'closing',
+        type: 'Information',
+        label: 'Closing',
+        title: 'Closing',
+        items: [{ id: 'closing-text', type: 'text', content: 'Thank you' }],
+      },
+    ],
+  };
+}
+
+const pedigreeNode = (id: string, attributes: Record<string, unknown>) => ({
+  _uid: id,
+  type: 'person',
+  attributes,
+  promptIDs: [],
+  stageId: 'family',
+});
+
+/** An interview finalized past the pedigree, as schema 8 recorded it. */
+function makeV8PedigreeInterview(id: string, currentStep: number) {
+  const nodes = [
+    pedigreeNode('ego-1', { is_ego: true, biologicalSex: ['female'] }),
+    pedigreeNode('mother-1', { is_ego: false, biologicalSex: ['female'] }),
+  ];
+  const edges = [
+    {
+      _uid: 'edge-1',
+      type: 'family_relationship',
+      from: 'mother-1',
+      to: 'ego-1',
+      attributes: { relationshipType: ['biological'], gameteRole: ['egg'] },
+    },
+  ];
+  return {
+    id,
+    network: { ego: { _uid: 'network-ego', attributes: {} }, nodes, edges },
+    stageMetadata: {
+      1: {
+        isNetworkCommitted: true,
+        edgeIdVersion: 1,
+        nodes: [
+          { id: 'ego-1', label: '', isEgo: true },
+          { id: 'mother-1', label: 'Mother', isEgo: false },
+        ],
+        edges: [
+          {
+            id: 'edge-1',
+            from: 'mother-1',
+            to: 'ego-1',
+            attributes: edges[0]?.attributes,
+          },
+        ],
+        noChildrenAffirmed: false,
+        selectedFraming: 'gendered',
+      },
+    },
+    currentStep,
+  };
+}
+
+function v8PedigreeRow(id: string) {
+  const v8 = makeV8PedigreeProtocol();
+  return {
+    id,
+    assets: [],
+    name: 'Pedigree.netcanvas',
+    schemaVersion: 8,
+    stages: v8.stages,
+    codebook: v8.codebook,
+    experiments: {},
+    description: v8.description,
+    lastModified: new Date(v8.lastModified),
+  };
+}
+
+// The script calls only these three methods of the transaction client.
+const runMigration = (prisma: MockPrisma) =>
+  migrateProtocolsToCompatibleVersion(
+    prisma as unknown as Parameters<
+      typeof migrateProtocolsToCompatibleVersion
+    >[0],
+  );
+
+/** The one update the migration made, to assert on by property path. */
+function onlyWrite(prisma: MockPrisma): unknown {
+  expect(prisma.protocol.update).toHaveBeenCalledTimes(1);
+  return prisma.protocol.update.mock.calls[0]?.[0];
+}
+
+/**
+ * What a write put in the experiments column, for `toStrictEqual`: Prisma's
+ * null markers have no enumerable keys, so `toEqual({})` would accept them.
+ */
+function experimentsWritten(written: unknown): unknown {
+  if (typeof written !== 'object' || written === null) return undefined;
+  if (!('data' in written)) return undefined;
+  const { data } = written;
+  if (typeof data !== 'object' || data === null) return undefined;
+  return 'experiments' in data ? data.experiments : undefined;
+}
+
+const NAME_ATTRIBUTE = 'node.person.variables.name';
+
+/**
+ * `makeV7Protocol` with a text attribute marked `encrypted`, a mark the
+ * migration to version 8 keeps and the one to version 9 removes unless the
+ * protocol's experiments turned encryption on.
+ */
+function makeV7ProtocolWithEncryptedName() {
+  const v7 = makeV7Protocol();
+  return {
+    ...v7,
+    codebook: {
+      ...v7.codebook,
+      node: {
+        person: {
+          ...v7.codebook.node.person,
+          variables: {
+            ...v7.codebook.node.person.variables,
+            name: { name: 'name', type: 'text', encrypted: true },
+          },
+        },
+      },
+    },
+  };
+}
+
+/** A conformant version 8 row with an encrypted attribute. */
+function makeEncryptedV8Row(experiments: unknown) {
+  const v8 = migrateProtocol(
+    { ...makeV7ProtocolWithEncryptedName(), name: 'Encrypted' },
+    8,
+    { name: 'Encrypted' },
+  );
+  return {
+    id: 'cm-encrypted-v8',
+    assets: [],
+    name: 'Encrypted.netcanvas',
+    schemaVersion: 8,
+    stages: v8.stages,
+    codebook: v8.codebook,
+    experiments,
+  };
+}
+
+/**
+ * A row stored at `schemaVersion` whose body still has the legacy shapes only
+ * normalization rewrites, with an encrypted attribute.
+ */
+function makeLegacyShapedEncryptedRow(
+  schemaVersion: number,
+  experiments: unknown,
+) {
+  const legacyShaped = makeV7ProtocolWithEncryptedName();
+  return {
+    id: 'cm-legacy-encrypted',
+    assets: [],
+    name: 'Legacy Encrypted.netcanvas',
+    schemaVersion,
+    stages: legacyShaped.stages,
+    codebook: legacyShaped.codebook,
+    experiments,
   };
 }
 
@@ -77,11 +366,7 @@ describe('migrateProtocolsToCompatibleVersion', () => {
   it('is a no-op when there are no v7 protocols', async () => {
     const prisma = makeMockPrisma();
 
-    await migrateProtocolsToCompatibleVersion(
-      prisma as unknown as Parameters<
-        typeof migrateProtocolsToCompatibleVersion
-      >[0],
-    );
+    await runMigration(prisma);
 
     expect(prisma.protocol.update).not.toHaveBeenCalled();
   });
@@ -103,11 +388,7 @@ describe('migrateProtocolsToCompatibleVersion', () => {
       },
     ]);
 
-    await migrateProtocolsToCompatibleVersion(
-      prisma as unknown as Parameters<
-        typeof migrateProtocolsToCompatibleVersion
-      >[0],
-    );
+    await runMigration(prisma);
 
     expect(prisma.protocol.update).toHaveBeenCalledTimes(1);
 
@@ -131,7 +412,8 @@ describe('migrateProtocolsToCompatibleVersion', () => {
     expect(updateCall.data.schemaVersion).toBe(
       COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
     );
-    expect(updateCall.data.experiments).toEqual({});
+    // The migration to version 8 gives the protocol empty experiments.
+    expect(updateCall.data.experiments).toStrictEqual({});
 
     // iconVariant → icon, with shape added
     const personNode = updateCall.data.codebook.node.person;
@@ -144,6 +426,13 @@ describe('migrateProtocolsToCompatibleVersion', () => {
       isAttending: Record<string, unknown>;
     };
     expect(toggleVar.isAttending).not.toHaveProperty('options');
+
+    // The interview's shared wording, which the migration to version 9
+    // supplies, is stored with it.
+    expect(updateCall.data).toHaveProperty(
+      'interfaceText.interview.continue.en',
+      'Continue',
+    );
 
     // Hash recomputed
     expect(typeof updateCall.data.hash).toBe('string');
@@ -169,11 +458,7 @@ describe('migrateProtocolsToCompatibleVersion', () => {
       },
     ]);
 
-    await migrateProtocolsToCompatibleVersion(
-      prisma as unknown as Parameters<
-        typeof migrateProtocolsToCompatibleVersion
-      >[0],
-    );
+    await runMigration(prisma);
 
     type UpdateCallArg = { data: { hash: string } };
     const dbCall = prisma.protocol.update.mock.calls[0]?.[0] as UpdateCallArg;
@@ -191,6 +476,236 @@ describe('migrateProtocolsToCompatibleVersion', () => {
     const importHash = hashProtocol(importMigrated);
 
     expect(dbHash).toBe(importHash);
+  });
+
+  describe('the interviews of a migrated protocol', () => {
+    it('are migrated with it: stage records and resume position follow their stages', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const prisma = makeMockPrisma();
+      prisma.protocol.findMany.mockResolvedValue([v8PedigreeRow('cm-p')]);
+      prisma.interview.findMany.mockResolvedValueOnce([
+        makeV8PedigreeInterview('int-at-pedigree', 1),
+        makeV8PedigreeInterview('int-after-pedigree', 2),
+      ]);
+
+      await migrateProtocolsToCompatibleVersion(
+        prisma as unknown as Parameters<
+          typeof migrateProtocolsToCompatibleVersion
+        >[0],
+      );
+
+      expect(prisma.interview.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { protocolId: 'cm-p' } }),
+      );
+      // Stage 1 is now the pedigree's introduction; the pedigree is stage 2.
+      expect(prisma.interview.update).toHaveBeenCalledTimes(2);
+      expect(prisma.interview.update).toHaveBeenNthCalledWith(1, {
+        where: { id: 'int-at-pedigree' },
+        data: expect.objectContaining({
+          currentStep: 2,
+          stageMetadata: { 2: { framing: 'gendered' } },
+        }),
+      });
+      expect(prisma.interview.update).toHaveBeenNthCalledWith(2, {
+        where: { id: 'int-after-pedigree' },
+        data: expect.objectContaining({ currentStep: 3 }),
+      });
+      // Migrated, not normalized: the protocol is a valid schema 8 one.
+      const logged = logSpy.mock.calls.map((call) => String(call[0])).join(' ');
+      expect(logged).toMatch(
+        /Migrated "Pedigree\.netcanvas".*2 interviews migrated/,
+      );
+      logSpy.mockRestore();
+    });
+
+    it('fails the whole migration when one interview cannot be migrated, naming every failed interview', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const prisma = makeMockPrisma();
+      prisma.protocol.findMany.mockResolvedValue([
+        v8PedigreeRow('cm-p'),
+        { ...v8PedigreeRow('cm-q'), name: 'Second.netcanvas' },
+      ]);
+      prisma.interview.findMany
+        .mockResolvedValueOnce([
+          {
+            id: 'int-broken',
+            network: null,
+            stageMetadata: null,
+            currentStep: 0,
+          },
+          makeV8PedigreeInterview('int-ok', 2),
+        ])
+        .mockResolvedValueOnce([
+          makeV8PedigreeInterview('int-fine', 1),
+          {
+            ...makeV8PedigreeInterview('int-bad-metadata', 1),
+            stageMetadata: [],
+          },
+        ]);
+
+      const run = migrateProtocolsToCompatibleVersion(
+        prisma as unknown as Parameters<
+          typeof migrateProtocolsToCompatibleVersion
+        >[0],
+      );
+      await expect(run).rejects.toBeInstanceOf(InterviewMigrationFailedError);
+      const error = (await run.catch(
+        (caught: unknown) => caught,
+      )) as InterviewMigrationFailedError;
+
+      // Every protocol was tried, so the report is complete.
+      expect(error.failures).toEqual([
+        {
+          interviewId: 'int-broken',
+          protocolId: 'cm-p',
+          protocolName: 'Pedigree.netcanvas',
+          reason: expect.stringContaining('no network') as unknown,
+        },
+        {
+          interviewId: 'int-bad-metadata',
+          protocolId: 'cm-q',
+          protocolName: 'Second.netcanvas',
+          reason: expect.stringContaining('not keyed by stage') as unknown,
+        },
+      ]);
+      expect(error.message).toMatch(/^2 interviews could not be migrated/);
+      expect(error.message).toMatch(/Nothing was changed/);
+      expect(error.message).toContain(
+        '- interview int-broken of protocol "Pedigree.netcanvas" (id=cm-p): ',
+      );
+      expect(error.message).toContain(
+        '- interview int-bad-metadata of protocol "Second.netcanvas" (id=cm-q): ',
+      );
+      // Thrown, not tolerated, so setup-database's transaction rolls back
+      // whatever was written before the failure was found.
+      expect(prisma.interview.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'int-ok' } }),
+      );
+      errorSpy.mockRestore();
+    });
+
+    it('does not rewrite an interview the migration leaves as it was', async () => {
+      const prisma = makeMockPrisma();
+      prisma.protocol.findMany.mockResolvedValue([v8PedigreeRow('cm-p')]);
+      prisma.interview.findMany.mockResolvedValueOnce([
+        {
+          id: 'int-untouched',
+          network: {
+            ego: { _uid: 'network-ego', attributes: {} },
+            nodes: [],
+            edges: [],
+          },
+          stageMetadata: null,
+          currentStep: 0,
+        },
+      ]);
+
+      await migrateProtocolsToCompatibleVersion(
+        prisma as unknown as Parameters<
+          typeof migrateProtocolsToCompatibleVersion
+        >[0],
+      );
+
+      expect(prisma.interview.update).not.toHaveBeenCalled();
+    });
+
+    it('are not touched when the protocol is already at the compatible version and conformant', async () => {
+      const prisma = makeMockPrisma();
+      prisma.protocol.findMany.mockResolvedValue([v8PedigreeRow('cm-p')]);
+      await migrateProtocolsToCompatibleVersion(
+        prisma as unknown as Parameters<
+          typeof migrateProtocolsToCompatibleVersion
+        >[0],
+      );
+      const written = prisma.protocol.update.mock.calls[0]?.[0] as {
+        data: { stages: unknown; codebook: unknown; localization: unknown };
+      };
+      const current = makeMockPrisma();
+      current.protocol.findMany.mockResolvedValue([
+        {
+          ...v8PedigreeRow('cm-current'),
+          schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+          stages: written.data.stages,
+          codebook: written.data.codebook,
+          localization: written.data.localization,
+        },
+      ]);
+
+      await migrateProtocolsToCompatibleVersion(
+        current as unknown as Parameters<
+          typeof migrateProtocolsToCompatibleVersion
+        >[0],
+      );
+
+      expect(current.protocol.update).not.toHaveBeenCalled();
+      expect(current.interview.findMany).not.toHaveBeenCalled();
+    });
+
+    // A protocol numbered with the compatible version but still in an older
+    // shape is rewritten through the migration chain, which can convert a
+    // pre-redesign Family Pedigree, insert its introduction stage and change
+    // the pedigree's stage record. Its interviews have to cross the same
+    // rewrite.
+    it('are migrated with a protocol at the compatible version that is normalized', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const prisma = makeMockPrisma();
+      prisma.protocol.findMany.mockResolvedValue([
+        {
+          ...v8PedigreeRow('cm-mislabelled'),
+          schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+        },
+      ]);
+      prisma.interview.findMany.mockResolvedValueOnce([
+        makeV8PedigreeInterview('int-at-pedigree', 1),
+      ]);
+
+      await migrateProtocolsToCompatibleVersion(
+        prisma as unknown as Parameters<
+          typeof migrateProtocolsToCompatibleVersion
+        >[0],
+      );
+
+      expect(prisma.protocol.update).toHaveBeenCalledTimes(1);
+      expect(prisma.interview.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { protocolId: 'cm-mislabelled' } }),
+      );
+      expect(prisma.interview.update).toHaveBeenCalledWith({
+        where: { id: 'int-at-pedigree' },
+        data: expect.objectContaining({
+          currentStep: 2,
+          stageMetadata: { 2: { framing: 'gendered' } },
+        }),
+      });
+      logSpy.mockRestore();
+    });
+
+    it('fail the whole migration when a normalized protocol has one that cannot be migrated', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const prisma = makeMockPrisma();
+      prisma.protocol.findMany.mockResolvedValue([
+        {
+          ...v8PedigreeRow('cm-mislabelled'),
+          schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+        },
+      ]);
+      prisma.interview.findMany.mockResolvedValueOnce([
+        {
+          ...makeV8PedigreeInterview('int-damaged', 1),
+          stageMetadata: { 7: { notAStageRecord: true } },
+        },
+      ]);
+
+      await expect(
+        migrateProtocolsToCompatibleVersion(
+          prisma as unknown as Parameters<
+            typeof migrateProtocolsToCompatibleVersion
+          >[0],
+        ),
+      ).rejects.toThrow(/int-damaged/);
+      errorSpy.mockRestore();
+      logSpy.mockRestore();
+    });
   });
 
   it('leaves an unmigratable protocol in place without failing the deployment', async () => {
@@ -215,19 +730,85 @@ describe('migrateProtocolsToCompatibleVersion', () => {
       },
     ]);
 
-    await expect(
-      migrateProtocolsToCompatibleVersion(
-        prisma as unknown as Parameters<
-          typeof migrateProtocolsToCompatibleVersion
-        >[0],
-      ),
-    ).resolves.toBeUndefined();
+    await expect(runMigration(prisma)).resolves.toBeUndefined();
 
     // Nothing was written for the broken row, and the failure names it.
     expect(prisma.protocol.update).not.toHaveBeenCalled();
     const logged = errorSpy.mock.calls.map((call) => String(call[0])).join(' ');
     expect(logged).toMatch(/Broken Protocol\.netcanvas/);
     expect(logged).toMatch(/cm-broken/);
+    errorSpy.mockRestore();
+  });
+
+  it('normalizes a version 8 row that fails its own version when the target has moved past it', async () => {
+    // A version 8 row persisted before version 8's current rules shipped,
+    // still carrying legacy field shapes. Once the target is past 8 it is
+    // migrated rather than checked for conformance, and its migration fails
+    // version 8's pre-validation; it must still reach the target.
+    const legacyShaped = makeV7Protocol();
+    const storedExperiments = { encryptedVariables: true };
+    const prisma = makeMockPrisma();
+    prisma.protocol.findMany.mockResolvedValue([
+      {
+        id: 'cm-legacy-v8',
+        assets: [],
+        name: 'Legacy V8.netcanvas',
+        schemaVersion: 8,
+        stages: legacyShaped.stages,
+        codebook: legacyShaped.codebook,
+        experiments: storedExperiments,
+        description: legacyShaped.description,
+        lastModified: new Date(legacyShaped.lastModified),
+      },
+    ]);
+    expect(() =>
+      migrateProtocol(
+        { ...legacyShaped, name: 'Legacy V8', schemaVersion: 8 },
+        COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+      ),
+    ).toThrow();
+
+    await runMigration(prisma);
+
+    expect(prisma.protocol.update).toHaveBeenCalledTimes(1);
+    expect(prisma.protocol.update).toHaveBeenCalledWith({
+      where: { id: 'cm-legacy-v8' },
+      data: expect.objectContaining({
+        schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+        // iconVariant → icon proves the legacy shape was rewritten.
+        codebook: expect.objectContaining({
+          node: {
+            person: expect.objectContaining({ icon: 'add-a-person' }),
+          },
+        }),
+      }),
+    });
+    expect(experimentsWritten(onlyWrite(prisma))).toStrictEqual({});
+  });
+
+  it('leaves a version 8 row in place when neither migration nor normalization succeeds', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const prisma = makeMockPrisma();
+    prisma.protocol.findMany.mockResolvedValue([
+      {
+        id: 'cm-broken-v8',
+        assets: [],
+        name: 'Broken V8.netcanvas',
+        schemaVersion: 8,
+        stages: 'not-an-array',
+        codebook: { node: {}, edge: {}, ego: { variables: {} } },
+        experiments: null,
+        description: null,
+        lastModified: new Date('2024-01-01T00:00:00.000Z'),
+      },
+    ]);
+
+    await expect(runMigration(prisma)).resolves.toBeUndefined();
+
+    expect(prisma.protocol.update).not.toHaveBeenCalled();
+    const logged = errorSpy.mock.calls.map((call) => String(call[0])).join(' ');
+    expect(logged).toMatch(/Broken V8\.netcanvas/);
+    expect(logged).toMatch(/Normalizing it from schema version 7 also failed/);
     errorSpy.mockRestore();
   });
 
@@ -252,11 +833,7 @@ describe('migrateProtocolsToCompatibleVersion', () => {
       },
     ]);
 
-    await migrateProtocolsToCompatibleVersion(
-      prisma as unknown as Parameters<
-        typeof migrateProtocolsToCompatibleVersion
-      >[0],
-    );
+    await runMigration(prisma);
 
     expect(prisma.protocol.update).toHaveBeenCalledTimes(1);
 
@@ -276,40 +853,6 @@ describe('migrateProtocolsToCompatibleVersion', () => {
     // mislabelled protocol rather than leaving its legacy shape untouched.
     expect(call.data.codebook.node.person.icon).toBe('add-a-person');
     expect(call.data.codebook.node.person).not.toHaveProperty('iconVariant');
-  });
-
-  it('preserves stored experiments when normalizing a non-conformant protocol', async () => {
-    // Experiments exist only at the compatible version and the migration chain
-    // predates them, so both write paths must carry the stored value through
-    // rather than resetting it to the chain's default.
-    const legacyShaped = makeV7Protocol();
-    const storedExperiments = { encryptedVariables: true };
-    const prisma = makeMockPrisma();
-    prisma.protocol.findMany.mockResolvedValue([
-      {
-        id: 'cm-experiments',
-        assets: [],
-        name: 'With Experiments.netcanvas',
-        schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
-        stages: legacyShaped.stages,
-        codebook: legacyShaped.codebook,
-        experiments: storedExperiments,
-        description: legacyShaped.description,
-        lastModified: new Date(legacyShaped.lastModified),
-      },
-    ]);
-
-    await migrateProtocolsToCompatibleVersion(
-      prisma as unknown as Parameters<
-        typeof migrateProtocolsToCompatibleVersion
-      >[0],
-    );
-
-    expect(prisma.protocol.update).toHaveBeenCalledTimes(1);
-    const call = prisma.protocol.update.mock.calls[0]?.[0] as {
-      data: { experiments: unknown };
-    };
-    expect(call.data.experiments).toEqual(storedExperiments);
   });
 
   it('normalizes non-conformant asset-referencing protocols', async () => {
@@ -348,11 +891,7 @@ describe('migrateProtocolsToCompatibleVersion', () => {
       },
     ]);
 
-    await migrateProtocolsToCompatibleVersion(
-      prisma as unknown as Parameters<
-        typeof migrateProtocolsToCompatibleVersion
-      >[0],
-    );
+    await runMigration(prisma);
 
     expect(prisma.protocol.update).toHaveBeenCalledTimes(1);
   });
@@ -400,17 +939,14 @@ describe('migrateProtocolsToCompatibleVersion', () => {
         schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
         stages: conformant.stages,
         codebook: conformant.codebook,
-        experiments: conformant.experiments ?? null,
+        localization: conformant.localization,
+        experiments: null,
         description: null,
         lastModified: new Date('2024-01-01T00:00:00.000Z'),
       },
     ]);
 
-    await migrateProtocolsToCompatibleVersion(
-      prisma as unknown as Parameters<
-        typeof migrateProtocolsToCompatibleVersion
-      >[0],
-    );
+    await runMigration(prisma);
 
     expect(prisma.protocol.update).not.toHaveBeenCalled();
   });
@@ -434,17 +970,14 @@ describe('migrateProtocolsToCompatibleVersion', () => {
         schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
         stages: conformant.stages,
         codebook: conformant.codebook,
-        experiments: conformant.experiments ?? null,
+        localization: conformant.localization,
+        experiments: null,
         description: null,
         lastModified: new Date('2024-01-01T00:00:00.000Z'),
       },
     ]);
 
-    await migrateProtocolsToCompatibleVersion(
-      prisma as unknown as Parameters<
-        typeof migrateProtocolsToCompatibleVersion
-      >[0],
-    );
+    await runMigration(prisma);
 
     expect(prisma.protocol.update).not.toHaveBeenCalled();
   });
@@ -471,13 +1004,7 @@ describe('migrateProtocolsToCompatibleVersion', () => {
       },
     ]);
 
-    await expect(
-      migrateProtocolsToCompatibleVersion(
-        prisma as unknown as Parameters<
-          typeof migrateProtocolsToCompatibleVersion
-        >[0],
-      ),
-    ).resolves.toBeUndefined();
+    await expect(runMigration(prisma)).resolves.toBeUndefined();
 
     expect(prisma.protocol.update).not.toHaveBeenCalled();
     expect(warnSpy).toHaveBeenCalledWith(
@@ -515,13 +1042,7 @@ describe('migrateProtocolsToCompatibleVersion', () => {
     // deployment completes and the log names both rows so the administrator
     // can resolve the duplicate.
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    await expect(
-      migrateProtocolsToCompatibleVersion(
-        prisma as unknown as Parameters<
-          typeof migrateProtocolsToCompatibleVersion
-        >[0],
-      ),
-    ).resolves.toBeUndefined();
+    await expect(runMigration(prisma)).resolves.toBeUndefined();
 
     const logged = errorSpy.mock.calls.map((call) => String(call[0])).join(' ');
     expect(logged).toMatch(/cm-collide/);
@@ -532,6 +1053,486 @@ describe('migrateProtocolsToCompatibleVersion', () => {
     // the surrounding PostgreSQL transaction.
     expect(prisma.protocol.update).not.toHaveBeenCalled();
     errorSpy.mockRestore();
+  });
+});
+
+/**
+ * Run the deploy migration over a version 8 row that fails its own version and
+ * so is normalized from version 7, whose migration to 8 resets experiments to
+ * empty. Returns what was written.
+ */
+async function normalizeLegacyShapedV8Row(experiments: unknown) {
+  const row = makeLegacyShapedEncryptedRow(8, experiments);
+  expect(row.codebook).toHaveProperty(`${NAME_ATTRIBUTE}.encrypted`, true);
+  expect(() =>
+    migrateProtocol(
+      {
+        name: 'Legacy Encrypted',
+        schemaVersion: 8,
+        stages: row.stages,
+        codebook: row.codebook,
+      },
+      COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+    ),
+  ).toThrow();
+  const prisma = makeMockPrisma();
+  prisma.protocol.findMany.mockResolvedValue([row]);
+
+  await runMigration(prisma);
+
+  const written = onlyWrite(prisma);
+  // iconVariant → icon proves the row went through normalization.
+  expect(written).toHaveProperty(
+    'data.codebook.node.person.icon',
+    'add-a-person',
+  );
+  return written;
+}
+
+describe('encrypted attributes in the deploy migration', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('keeps a version 8 row’s attributes encrypted when its experiments turned encryption on', async () => {
+    // Their collected values are ciphertext; unmarking them would hand the
+    // interview ciphertext as if it were the participant's answer.
+    const row = makeEncryptedV8Row({ encryptedVariables: true });
+    const prisma = makeMockPrisma();
+    prisma.protocol.findMany.mockResolvedValue([row]);
+
+    await runMigration(prisma);
+
+    const written = onlyWrite(prisma);
+    expect(written).toHaveProperty(
+      'data.schemaVersion',
+      COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+    );
+    expect(written).toHaveProperty(
+      `data.codebook.${NAME_ATTRIBUTE}.encrypted`,
+      true,
+    );
+    expect(experimentsWritten(written)).toStrictEqual({});
+  });
+
+  it.each([
+    ['absent', null],
+    ['empty', {}],
+    ['off', { encryptedVariables: false }],
+  ])(
+    'unmarks a version 8 row’s encrypted attributes when encryption was %s, since their values are plaintext',
+    async (_description, experiments) => {
+      const row = makeEncryptedV8Row(experiments);
+      expect(row.codebook).toHaveProperty(`${NAME_ATTRIBUTE}.encrypted`, true);
+      const prisma = makeMockPrisma();
+      prisma.protocol.findMany.mockResolvedValue([row]);
+
+      await runMigration(prisma);
+
+      const written = onlyWrite(prisma);
+      expect(written).toHaveProperty(
+        `data.codebook.${NAME_ATTRIBUTE}.type`,
+        'text',
+      );
+      expect(written).not.toHaveProperty(
+        `data.codebook.${NAME_ATTRIBUTE}.encrypted`,
+      );
+      expect(experimentsWritten(written)).toStrictEqual({});
+    },
+  );
+
+  it.each([
+    // The alpha runtime encrypted while the flag, then named `encryptNames`,
+    // was on.
+    ['the alpha’s name for the flag', { encryptNames: true }],
+    ['the flag beside an unknown key', { encryptedVariables: true, other: 1 }],
+  ])(
+    'keeps a version 8 row’s attributes encrypted when its experiments turn encryption on with %s',
+    async (_description, experiments) => {
+      const row = makeEncryptedV8Row(experiments);
+      const prisma = makeMockPrisma();
+      prisma.protocol.findMany.mockResolvedValue([row]);
+
+      await runMigration(prisma);
+
+      const written = onlyWrite(prisma);
+      expect(written).toHaveProperty(
+        'data.schemaVersion',
+        COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+      );
+      expect(written).toHaveProperty(
+        `data.codebook.${NAME_ATTRIBUTE}.encrypted`,
+        true,
+      );
+      expect(experimentsWritten(written)).toStrictEqual({});
+    },
+  );
+
+  it.each([
+    ['text', 'on'],
+    ['a list', ['encryptedVariables']],
+    ['a flag that is not a boolean', { encryptedVariables: 'true' }],
+    ['the alpha’s flag turned off', { encryptNames: false }],
+  ])(
+    'upgrades a version 8 row whose experiments are %s, with encryption off',
+    async (_description, experiments) => {
+      const row = makeEncryptedV8Row(experiments);
+      const prisma = makeMockPrisma();
+      prisma.protocol.findMany.mockResolvedValue([row]);
+
+      await runMigration(prisma);
+
+      const written = onlyWrite(prisma);
+      expect(written).toHaveProperty(
+        'data.schemaVersion',
+        COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+      );
+      expect(written).toHaveProperty(
+        `data.codebook.${NAME_ATTRIBUTE}.type`,
+        'text',
+      );
+      expect(written).not.toHaveProperty(
+        `data.codebook.${NAME_ATTRIBUTE}.encrypted`,
+      );
+    },
+  );
+
+  it('keeps a version 8 row’s attributes encrypted when normalizing it with the alpha’s name for the flag', async () => {
+    const written = await normalizeLegacyShapedV8Row({ encryptNames: true });
+
+    expect(written).toHaveProperty(
+      `data.codebook.${NAME_ATTRIBUTE}.encrypted`,
+      true,
+    );
+  });
+
+  it('normalizes a version 8 row whose experiments are text, with encryption off', async () => {
+    const written = await normalizeLegacyShapedV8Row('on');
+
+    expect(written).toHaveProperty(
+      `data.codebook.${NAME_ATTRIBUTE}.type`,
+      'text',
+    );
+    expect(written).not.toHaveProperty(
+      `data.codebook.${NAME_ATTRIBUTE}.encrypted`,
+    );
+  });
+
+  it('keeps a version 8 row’s attributes encrypted when normalizing it with encryption on', async () => {
+    const written = await normalizeLegacyShapedV8Row({
+      encryptedVariables: true,
+    });
+
+    expect(written).toHaveProperty(
+      `data.codebook.${NAME_ATTRIBUTE}.encrypted`,
+      true,
+    );
+    expect(experimentsWritten(written)).toStrictEqual({});
+  });
+
+  it('unmarks a version 8 row’s encrypted attributes when normalizing it with encryption off', async () => {
+    const written = await normalizeLegacyShapedV8Row(null);
+
+    expect(written).toHaveProperty(
+      `data.codebook.${NAME_ATTRIBUTE}.type`,
+      'text',
+    );
+    expect(written).not.toHaveProperty(
+      `data.codebook.${NAME_ATTRIBUTE}.encrypted`,
+    );
+    expect(experimentsWritten(written)).toStrictEqual({});
+  });
+
+  it.each([
+    ['none', null],
+    ['empty ones', {}],
+  ])(
+    'keeps the attributes of a non-conformant row at the compatible version encrypted when normalizing it, with %s stored',
+    async (_description, experiments) => {
+      // That version always encrypts an attribute marked `encrypted`, so the
+      // empty experiments the version 8 step of normalization starts from
+      // must not decide.
+      const row = makeLegacyShapedEncryptedRow(
+        COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+        experiments,
+      );
+      expect(row.codebook).toHaveProperty(`${NAME_ATTRIBUTE}.encrypted`, true);
+      const prisma = makeMockPrisma();
+      prisma.protocol.findMany.mockResolvedValue([row]);
+
+      await runMigration(prisma);
+
+      const written = onlyWrite(prisma);
+      expect(written).toHaveProperty(
+        'data.codebook.node.person.icon',
+        'add-a-person',
+      );
+      expect(written).toHaveProperty(
+        `data.codebook.${NAME_ATTRIBUTE}.encrypted`,
+        true,
+      );
+      expect(experimentsWritten(written)).toStrictEqual({});
+    },
+  );
+
+  it('normalizes a row at the compatible version whose experiments still turn on encrypted attributes, keeping them encrypted', async () => {
+    // A row stored while encrypted attributes were still an experiment of
+    // that version. Its body is conformant; only the setting is refused.
+    const atEncryptionVersion = migrateProtocol(
+      { ...makeV7ProtocolWithEncryptedName(), name: 'Prerelease' },
+      8,
+      { name: 'Prerelease' },
+    );
+    const current = migrateProtocol(
+      {
+        ...atEncryptionVersion,
+        experiments: { encryptedVariables: true },
+      },
+      COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+      { name: 'Prerelease' },
+    );
+    const prisma = makeMockPrisma();
+    prisma.protocol.findMany.mockResolvedValue([
+      {
+        id: 'cm-prerelease',
+        assets: [],
+        name: 'Prerelease.netcanvas',
+        schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+        stages: current.stages,
+        codebook: current.codebook,
+        localization: current.localization,
+        experiments: { encryptedVariables: true },
+      },
+    ]);
+
+    await runMigration(prisma);
+
+    const written = onlyWrite(prisma);
+    expect(written).toHaveProperty(
+      `data.codebook.${NAME_ATTRIBUTE}.encrypted`,
+      true,
+    );
+    expect(experimentsWritten(written)).toStrictEqual({});
+  });
+
+  it('leaves a row at the compatible version in place when its experiments name one this deployment does not have', async () => {
+    // Normalizing it must not drop a setting the protocol relies on.
+    const warnSpy = vi
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    const prisma = makeMockPrisma();
+    prisma.protocol.findMany.mockResolvedValue([
+      makeLegacyShapedEncryptedRow(COMPATIBLE_PROTOCOL_SCHEMA_VERSION, {
+        laterFeature: true,
+      }),
+    ]);
+
+    await runMigration(prisma);
+
+    expect(prisma.protocol.update).not.toHaveBeenCalled();
+    const warned = warnSpy.mock.calls.map((call) => String(call[0])).join(' ');
+    expect(warned).toMatch(/Legacy Encrypted\.netcanvas/);
+    warnSpy.mockRestore();
+  });
+});
+
+/**
+ * Rewrites every English-only text in a migrated protocol as French and
+ * German text, as a researcher who wrote it in those languages would have.
+ */
+function inFrenchAndGerman(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(inFrenchAndGerman);
+  if (typeof value !== 'object' || value === null) return value;
+  const entries = Object.entries(value);
+  const [only] = entries;
+  if (entries.length === 1 && only?.[0] === 'en') {
+    return { fr: `${String(only[1])} (fr)`, de: `${String(only[1])} (de)` };
+  }
+  return Object.fromEntries(
+    entries.map(([key, child]) => [key, inFrenchAndGerman(child)]),
+  );
+}
+
+/**
+ * Rewrites every English-only text in a migrated protocol as Japanese text, a
+ * language Network Canvas supplies no closing text for.
+ */
+function inJapanese(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(inJapanese);
+  if (typeof value !== 'object' || value === null) return value;
+  const entries = Object.entries(value);
+  const [only] = entries;
+  if (entries.length === 1 && only?.[0] === 'en') {
+    return { ja: `${String(only[1])} (ja)` };
+  }
+  return Object.fromEntries(
+    entries.map(([key, child]) => [key, inJapanese(child)]),
+  );
+}
+
+describe('languages in the deploy migration', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('keeps the languages and text of a row at the compatible version that it normalizes', async () => {
+    const atEncryptionVersion = migrateProtocol(
+      { ...makeV7ProtocolWithEncryptedName(), name: 'Bilingual' },
+      8,
+      { name: 'Bilingual' },
+    );
+    const current = migrateProtocol(
+      atEncryptionVersion,
+      COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+      { name: 'Bilingual' },
+    );
+    const localization = { defaultLocale: 'fr', locales: ['fr', 'de'] };
+    // The wording the migration supplied, as the researcher wrote it in
+    // French and German, with one entry of their own.
+    const translated = inFrenchAndGerman(current.interfaceText) as {
+      interview: Record<string, unknown>;
+    };
+    const interfaceText = {
+      ...translated,
+      interview: {
+        ...translated.interview,
+        continue: { fr: 'Question suivante', de: 'Nächste Frage' },
+      },
+    };
+    const codebook = inFrenchAndGerman(current.codebook);
+    const stages = inFrenchAndGerman(current.stages);
+    expect(codebook).toHaveProperty('node.person.label', {
+      fr: 'Person (fr)',
+      de: 'Person (de)',
+    });
+    const prisma = makeMockPrisma();
+    prisma.protocol.findMany.mockResolvedValue([
+      {
+        id: 'cm-bilingual',
+        assets: [],
+        name: 'Bilingual.netcanvas',
+        schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+        // Copies, so a migration that rewrites the row in place cannot also
+        // rewrite what the assertions expect.
+        stages: structuredClone(stages),
+        codebook: structuredClone(codebook),
+        localization: structuredClone(localization),
+        interfaceText: structuredClone(interfaceText),
+        // Refused at the compatible version, so the row is normalized.
+        experiments: { encryptedVariables: true },
+      },
+    ]);
+
+    await runMigration(prisma);
+
+    const written = onlyWrite(prisma);
+    expect(written).toHaveProperty('data.localization', localization);
+    // The researcher's wording is kept, where normalizing would otherwise
+    // supply Network Canvas's.
+    expect(written).toHaveProperty(
+      'data.interfaceText.interview.continue',
+      interfaceText.interview.continue,
+    );
+    expect(written).toHaveProperty('data.codebook', codebook);
+    expect(written).toHaveProperty('data.stages', stages);
+    // The row already ends at its finish stage, and keeps it as its only one,
+    // in its own languages.
+    const writtenStages = stages as { type: string }[];
+    const finishStages = writtenStages.filter(
+      (stage) => stage.type === 'FinishSession',
+    );
+    expect(finishStages).toHaveLength(1);
+    expect(writtenStages.at(-1)).toBe(finishStages[0]);
+  });
+
+  it('gives a row at the compatible version without a finish stage one in its own languages', async () => {
+    const atEncryptionVersion = migrateProtocol(
+      { ...makeV7ProtocolWithEncryptedName(), name: 'Bilingual' },
+      8,
+      { name: 'Bilingual' },
+    );
+    const current = migrateProtocol(
+      atEncryptionVersion,
+      COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+      { name: 'Bilingual' },
+    );
+    const localization = { defaultLocale: 'fr', locales: ['fr', 'de'] };
+    const codebook = inFrenchAndGerman(current.codebook);
+    const stages = (
+      inFrenchAndGerman(current.stages) as { type: string }[]
+    ).filter((stage) => stage.type !== 'FinishSession');
+    const prisma = makeMockPrisma();
+    prisma.protocol.findMany.mockResolvedValue([
+      {
+        id: 'cm-bilingual-unfinished',
+        assets: [],
+        name: 'Bilingual.netcanvas',
+        schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+        stages: structuredClone(stages),
+        codebook: structuredClone(codebook),
+        localization: structuredClone(localization),
+      },
+    ]);
+
+    await runMigration(prisma);
+
+    const written = onlyWrite(prisma);
+    expect(written).toHaveProperty('data.localization', localization);
+    expect(written).toHaveProperty('data.stages', [
+      ...stages,
+      expect.objectContaining({
+        type: 'FinishSession',
+        title: {
+          fr: DEFAULT_FINISH_SESSION_TEXT.fr.title,
+          de: DEFAULT_FINISH_SESSION_TEXT.de.title,
+        },
+        content: {
+          fr: DEFAULT_FINISH_SESSION_TEXT.fr.content,
+          de: DEFAULT_FINISH_SESSION_TEXT.de.content,
+        },
+      }),
+    ]);
+  });
+
+  it('leaves in place a row that would come out with a finish stage with no text', async () => {
+    const warnSpy = vi
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    const atEncryptionVersion = migrateProtocol(
+      { ...makeV7ProtocolWithEncryptedName(), name: 'Japanese' },
+      8,
+      { name: 'Japanese' },
+    );
+    const current = migrateProtocol(
+      atEncryptionVersion,
+      COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+      { name: 'Japanese' },
+    );
+    const stages = (inJapanese(current.stages) as { type: string }[]).filter(
+      (stage) => stage.type !== 'FinishSession',
+    );
+    const prisma = makeMockPrisma();
+    prisma.protocol.findMany.mockResolvedValue([
+      {
+        id: 'cm-japanese-unfinished',
+        assets: [],
+        name: 'Japanese.netcanvas',
+        schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+        stages,
+        codebook: inJapanese(current.codebook),
+        localization: { defaultLocale: 'ja', locales: ['ja'] },
+      },
+    ]);
+
+    await expect(runMigration(prisma)).resolves.toBeUndefined();
+
+    expect(prisma.protocol.update).not.toHaveBeenCalled();
+    const warned = warnSpy.mock.calls.map((call) => String(call[0])).join(' ');
+    expect(warned).toMatch(/Japanese\.netcanvas/);
+    expect(warned).toMatch(
+      /has no heading in the protocol's default language \(ja\)/,
+    );
+    warnSpy.mockRestore();
   });
 });
 

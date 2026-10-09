@@ -4,7 +4,10 @@ import { type ReactNode } from 'react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
-import { asEntityAttributeReference } from '@codaco/protocol-validation';
+import {
+  asEntityAttributeReference,
+  getLocaleMetadata,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -50,6 +53,9 @@ const payload = {
     finishTime: null,
     exportTime: null,
     lastUpdated: '2026-01-01T00:00:00.000Z',
+    localePreference: null,
+    locale: null,
+    localeOptions: [getLocaleMetadata('en')],
     network: {
       ego: {
         [entityPrimaryKeyProperty]: 'ego-1',
@@ -64,9 +70,14 @@ const payload = {
     hash: 'protocol-hash',
     importedAt: '2026-01-01T00:00:00.000Z',
     name: 'Writes-in-flight protocol',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {
-      ego: { variables: { agrees: { name: 'Agrees', type: 'boolean' } } },
+      ego: {
+        variables: {
+          agrees: { name: 'agrees', label: 'Agrees', type: 'boolean' },
+        },
+      },
       node: {},
       edge: {},
     },
@@ -75,15 +86,15 @@ const payload = {
       {
         id: 'first-stage',
         type: 'Information',
-        label: 'First stage',
-        title: 'First stage',
+        label: { en: 'First stage' },
+        title: { en: 'First stage' },
         items: [],
       },
       {
         id: 'agreed-stage',
         type: 'Information',
-        label: 'Agreed stage',
-        title: 'Agreed stage',
+        label: { en: 'Agreed stage' },
+        title: { en: 'Agreed stage' },
         items: [],
         skipLogic: {
           action: 'SKIP',
@@ -106,8 +117,8 @@ const payload = {
       {
         id: 'last-stage',
         type: 'Information',
-        label: 'Last stage',
-        title: 'Last stage',
+        label: { en: 'Last stage' },
+        title: { en: 'Last stage' },
         items: [],
       },
     ],
@@ -130,11 +141,16 @@ function liveStore() {
 
 const declined = { set: { agrees: false }, unset: [] };
 
-async function renderShell(onExit?: () => void) {
+async function renderShell(
+  onExit?: () => void,
+  onSync: () => Promise<void> = () => Promise.resolve(),
+) {
   render(
     <Shell
       payload={payload}
-      onSync={() => Promise.resolve()}
+      onSync={onSync}
+      onProtocolLocaleChange={() => Promise.resolve()}
+      requestedLocales={[]}
       onFinish={() => Promise.resolve()}
       onRequestAsset={() => Promise.resolve('')}
       analytics={{ installationId: 'test', hostApp: 'test' }}
@@ -156,11 +172,24 @@ async function exitInterview() {
   await user.click(screen.getByTestId('settings-button'));
   await user.click(await screen.findByTestId('exit-button'));
   const dialog = await screen.findByRole('dialog', {
-    name: 'Exit this interview?',
+    name: 'Exit interview',
   });
   await user.click(
     await within(dialog).findByRole('button', { name: 'Exit interview' }),
   );
+}
+
+const exitFailure =
+  'Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer.';
+
+// Confirms the exit again from the confirmation still showing its error.
+async function retryExit() {
+  const dialog = await screen.findByRole('dialog', {
+    name: 'Exit interview',
+  });
+  await userEvent
+    .setup()
+    .click(within(dialog).getByRole('button', { name: 'Exit interview' }));
 }
 
 describe('Shell leaving a stage with a write under way', () => {
@@ -200,7 +229,7 @@ describe('Shell leaving a stage with a write under way', () => {
 
 describe('Shell closing the interview with a write under way', () => {
   const exitConfirmation = () =>
-    screen.queryByRole('dialog', { name: 'Exit this interview?' });
+    screen.queryByRole('dialog', { name: 'Exit interview' });
 
   it('keeps the confirmation open until an answer still being stored is stored, then exits', async () => {
     const onExit = vi.fn();
@@ -252,11 +281,32 @@ describe('Shell closing the interview with a write under way', () => {
     act(() => {
       store.dispatch(updateEgo.rejected(new Error('refused'), 'w1', declined));
     });
-    await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
+    expect(await screen.findByText(exitFailure)).toBeVisible();
     expect(onExit).not.toHaveBeenCalled();
 
-    await exitInterview();
+    await retryExit();
     await waitFor(() => expect(onExit).toHaveBeenCalledTimes(1));
+  });
+
+  it('stays open with an error when the host refuses to save the answers, and exits once they are saved', async () => {
+    vi.spyOn(console, 'error').mockImplementation(vi.fn());
+    const onExit = vi.fn();
+    const onSync = vi
+      .fn<() => Promise<void>>()
+      .mockRejectedValue(new Error('offline'));
+    const { store } = await renderShell(onExit, onSync);
+    act(() => {
+      store.dispatch(updateEgo.fulfilled(declined, 'w1', declined));
+    });
+
+    await exitInterview();
+    expect(await screen.findByText(exitFailure)).toBeVisible();
+    expect(onExit).not.toHaveBeenCalled();
+
+    onSync.mockResolvedValue(undefined);
+    await retryExit();
+    await waitFor(() => expect(onExit).toHaveBeenCalledTimes(1));
+    vi.restoreAllMocks();
   });
 
   it('stays open when a save the stage has waiting its turn is refused', async () => {
@@ -277,10 +327,10 @@ describe('Shell closing the interview with a write under way', () => {
     act(() => {
       settleSave(false);
     });
-    await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
+    expect(await screen.findByText(exitFailure)).toBeVisible();
     expect(onExit).not.toHaveBeenCalled();
 
-    await exitInterview();
+    await retryExit();
     await waitFor(() => expect(onExit).toHaveBeenCalledTimes(1));
   });
 });

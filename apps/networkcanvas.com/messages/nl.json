@@ -233,8 +233,10 @@
       "DyadCensus": "Dyadencensus",
       "EgoForm": "Egoformulier",
       "FamilyPedigree": "Familiestamboom",
+      "FinishSession": "Afsluitscherm",
       "Geospatial": "Interface voor geografische gegevens",
       "Information": "Informatie",
+      "LanguageChooser": "Taalkeuze",
       "NameGenerator": "Naamgenerator (met formulieren)",
       "NameGeneratorQuickAdd": "Naamgenerator (snel toevoegen)",
       "NameGeneratorRoster": "Naamgenerator voor gegevens uit een namenlijst",
@@ -275,8 +277,6 @@
       },
       "loading": "Het voorbeeld wordt voorbereid…",
       "finishConfirmation": "Dit is een voorbeeld: er wordt niets opgeslagen. Door te voltooien beëindig je deze doorloop van het protocol; daarna kun je opnieuw beginnen.",
-      "finishedHeading": "Voorbeeld voltooid",
-      "finishedDescription": "Het interview is voltooid, net zoals dat bij een deelnemer zou gaan. Er is niets opgeslagen.",
       "restart": "Voorbeeld opnieuw starten",
       "backToProtocol": "Terug naar het protocol",
       "errorHeading": "Van dit protocol kan geen voorbeeld worden getoond",
@@ -336,7 +336,7 @@
       "bestFor": "Ideaal voor",
       "downloadVersion": "Versie {version} downloaden",
       "platformAccessibleName": "{platform} voor {app}",
-      "schemaVersionInfo": "Architect Classic en Interviewer Classic ondersteunen protocollen in schema 7. Architect, Interviewer en Fresco in de browser gebruiken schema 8, met alle nieuwste functies. Het omzetten van een protocol is onomkeerbaar. Bewaar daarom het originele bestand in schema 7 als je de Classic-apps nog nodig hebt.",
+      "schemaVersionInfo": "Architect Classic en Interviewer Classic ondersteunen protocollen in schema 7. Architect, Interviewer en Fresco in de browser gebruiken schema 9, met alle nieuwste functies. Het omzetten van een protocol is onomkeerbaar. Bewaar daarom het originele bestand in schema 7 als je de Classic-apps nog nodig hebt.",
       "schemaVersionLink": "Meer over schemaversies"
     },
     "platforms": {

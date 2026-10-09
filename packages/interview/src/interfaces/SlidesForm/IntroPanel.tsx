@@ -1,15 +1,17 @@
 'use client';
 
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
-import {
-  ALLOWED_MARKDOWN_SECTION_TAGS,
-  RenderMarkdown,
-} from '@codaco/fresco-ui/RenderMarkdown';
+import { ALLOWED_MARKDOWN_SECTION_TAGS } from '@codaco/fresco-ui/RenderMarkdown';
 import Heading from '@codaco/fresco-ui/typography/Heading';
+import type { LocalizedString } from '@codaco/protocol-validation';
+
+import { LocalizedMarkdown } from '../../localization/LocalizedMarkdown';
+import { LocalizedText } from '../../localization/LocalizedText';
 
 type IntroPanelProps = {
-  title: string;
-  text: string;
+  title: LocalizedString;
+  // Optional: a panel with only a title is a complete introduction.
+  text?: LocalizedString;
 };
 
 const introVariants = {
@@ -30,12 +32,16 @@ export default function IntroPanel({ title, text }: IntroPanelProps) {
       exit="exit"
       noContainer
     >
-      <Heading level="h1" className="text-center">
-        {title}
-      </Heading>
-      <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
-        {text}
-      </RenderMarkdown>
+      <LocalizedText
+        value={title}
+        render={<Heading level="h1" className="text-center" />}
+      />
+      {text && (
+        <LocalizedMarkdown
+          value={text}
+          allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+        />
+      )}
     </MotionSurface>
   );
 }

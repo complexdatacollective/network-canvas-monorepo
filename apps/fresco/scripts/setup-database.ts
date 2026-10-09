@@ -10,7 +10,10 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '~/lib/db/generated/client';
 
 import { migrateInterviewCategoricals } from './migrate-interview-categoricals';
-import { migrateProtocolsToCompatibleVersion } from './migrate-protocols';
+import {
+  InterviewMigrationFailedError,
+  migrateProtocolsToCompatibleVersion,
+} from './migrate-protocols';
 
 // CLI scripts must use the PG adapter directly because the Neon serverless
 // adapter doesn't work in CLI/Node.js context (only in serverless runtimes)
@@ -123,7 +126,9 @@ try {
   // failure rolls them all back. A partially-migrated database is dangerous:
   // when the deploy aborts, the previous Fresco version keeps serving and would
   // read half-converted protocols/networks written for the new interview
-  // module. All-or-nothing keeps the old version working on the old data.
+  // module. All-or-nothing keeps the old version working on the old data: an
+  // interview that cannot be migrated throws InterviewMigrationFailedError,
+  // which rolls everything back and stops startup.
   await prisma.$transaction(
     async (tx) => {
       await migrateProtocolsToCompatibleVersion(tx);
@@ -132,7 +137,12 @@ try {
     { timeout: DATA_MIGRATION_TIMEOUT_MS },
   );
 } catch (error) {
-  console.error('Error during database setup:', error);
+  if (error instanceof InterviewMigrationFailedError) {
+    // The report is the whole message; a stack trace would only bury it.
+    console.error(`Error during database setup: ${error.message}`);
+  } else {
+    console.error('Error during database setup:', error);
+  }
   process.exit(1);
 } finally {
   await prisma.$disconnect();

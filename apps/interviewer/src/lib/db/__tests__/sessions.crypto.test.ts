@@ -3,7 +3,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
-import type { NcNetwork } from '@codaco/shared-consts';
+import type { NcEncryptionHeader, NcNetwork } from '@codaco/shared-consts';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -22,6 +22,8 @@ import {
   markSessionUnfinished,
   markSessionsExported,
   querySessions,
+  reencryptSession,
+  SessionProtocolChangedError,
   updateSession,
 } from '../sessions';
 
@@ -44,17 +46,91 @@ const initialNetwork: NcNetwork = {
   edges: [],
 };
 
+// Deterministic stand-ins for salts, IVs and ciphertexts. The repo never
+// decrypts these values, so only their shape matters.
+const bytes = (length: number, offset: number) =>
+  Array.from({ length }, (_, index) => (index * 37 + offset) % 256);
+
+const encryptionHeader: NcEncryptionHeader = {
+  version: 1,
+  method: 'AES-256-GCM',
+  kdf: {
+    algorithm: 'PBKDF2',
+    hash: 'SHA-256',
+    iterations: 600_000,
+    salt: bytes(16, 1),
+  },
+  check: { iv: bytes(12, 2), data: bytes(48, 3) },
+};
+
+// The header is the only record of the participant's salt and check value:
+// dropping it makes the interview ask for a new passphrase, and every answer
+// encrypted under the old one becomes unreadable. A schema 8 interview that
+// later gains a passphrase holds both value shapes, so this one does too.
+const networkWithEncryptionHeader: NcNetwork = {
+  encryption: encryptionHeader,
+  ego: { [entityPrimaryKeyProperty]: 'ego', [entityAttributesProperty]: {} },
+  nodes: [
+    {
+      [entityPrimaryKeyProperty]: 'n1',
+      type: 'person',
+      [entityAttributesProperty]: { name: bytes(48, 4) },
+      _secureAttributes: { name: { iv: bytes(12, 5) } },
+    },
+    {
+      [entityPrimaryKeyProperty]: 'n2',
+      type: 'person',
+      [entityAttributesProperty]: { name: bytes(48, 6) },
+      _secureAttributes: { name: { iv: bytes(12, 7), salt: bytes(16, 8) } },
+    },
+  ],
+  edges: [],
+};
+
+const schema8EncryptedNetwork: NcNetwork = {
+  ego: { [entityPrimaryKeyProperty]: 'ego', [entityAttributesProperty]: {} },
+  nodes: [
+    {
+      [entityPrimaryKeyProperty]: 'n1',
+      type: 'person',
+      [entityAttributesProperty]: { name: bytes(48, 9) },
+      _secureAttributes: { name: { iv: bytes(12, 10), salt: bytes(16, 11) } },
+    },
+  ],
+  edges: [],
+};
+
 type InformationStage = Extract<
   NonNullable<CurrentProtocol['stages'][number]>,
   { type: 'Information' }
 >;
 
+type FinishStage = Extract<
+  NonNullable<CurrentProtocol['stages'][number]>,
+  { type: 'FinishSession' }
+>;
+
+const finishStage: FinishStage = {
+  id: 'finish',
+  type: 'FinishSession',
+  label: { en: 'Finish' },
+  title: { en: 'Finish' },
+  content: { en: 'Thank you.' },
+  finishLabel: { en: 'Finish' },
+  finishConfirmation: { en: 'Finish this interview?' },
+  finishedNotice: { en: 'This interview is finished.' },
+  finishFailed: { en: 'The interview could not be finished.' },
+  outcome: 'completed',
+};
+
+const finish = { stageId: 'finish', outcome: 'completed' } as const;
+
 function informationStage(id: string): InformationStage {
   return {
     id,
     type: 'Information',
-    label: id,
-    title: id,
+    label: { en: id },
+    title: { en: id },
     items: [],
   };
 }
@@ -64,6 +140,7 @@ const authoredStages: CurrentProtocol['stages'] = [
   informationStage('stage-1'),
   informationStage('stage-2'),
   informationStage('stage-3'),
+  finishStage,
 ];
 
 const stagesWithFinishRoute: CurrentProtocol['stages'] = [
@@ -78,6 +155,7 @@ const stagesWithFinishRoute: CurrentProtocol['stages'] = [
   },
   informationStage('stage-2'),
   informationStage('stage-3'),
+  finishStage,
 ];
 
 const stagesWithNoActiveAuthoredStage: CurrentProtocol['stages'] = [
@@ -92,6 +170,7 @@ const stagesWithNoActiveAuthoredStage: CurrentProtocol['stages'] = [
   informationStage('stage-1'),
   informationStage('stage-2'),
   informationStage('stage-3'),
+  finishStage,
 ];
 
 describe('sessions repo — encryption at boundary', () => {
@@ -141,7 +220,11 @@ describe('sessions repo — encryption at boundary', () => {
       initialNetwork,
     });
     const nextNetwork: NcNetwork = { ...initialNetwork, nodes: [] };
-    await updateSession(created.id, { network: nextNetwork, progress: 55 });
+    await updateSession(
+      created.id,
+      { network: nextNetwork, progress: 55 },
+      { protocolHash: 'h1' },
+    );
 
     const raw = await db.sessions.get(created.id);
     expect(raw?.network).toBeUndefined();
@@ -179,6 +262,61 @@ describe('sessions repo — encryption at boundary', () => {
     expect(result.statusCounts.all).toBe(1);
     expect(result.rows[0]?.caseId).toBe('case-1');
   });
+});
+
+describe('sessions repo — participant passphrase encryption', () => {
+  beforeEach(async () => {
+    await db.sessions.clear();
+    setSessionDek(null);
+  });
+  afterEach(async () => {
+    await db.sessions.clear();
+    setSessionDek(null);
+  });
+
+  it.each([
+    {
+      label: 'the encryption header and IV-only values',
+      network: networkWithEncryptionHeader,
+    },
+    {
+      label: 'schema 8 values without a header',
+      network: schema8EncryptedNetwork,
+    },
+  ])(
+    'keeps $label through syncs, resumes, re-encryption and export reads',
+    async ({ network }) => {
+      // No vault yet, so rows are written in plaintext.
+      const created = await createSession({
+        protocolHash: 'h1',
+        protocolName: 'Study',
+        caseId: 'case-1',
+        initialNetwork,
+      });
+      // What the interview route's sync handler writes.
+      await updateSession(
+        created.id,
+        { network, currentStep: 1 },
+        { protocolHash: 'h1' },
+      );
+      expect((await getSession(created.id))?.network).toStrictEqual(network);
+
+      // Securing the device re-encrypts every stored session under its key.
+      setSessionDek(await makeDek());
+      await reencryptSession(created.id);
+      expect((await db.sessions.get(created.id))?._enc).toBeDefined();
+      expect((await getSession(created.id))?.network).toStrictEqual(network);
+
+      await updateSession(
+        created.id,
+        { network, currentStep: 2 },
+        { protocolHash: 'h1' },
+      );
+      expect((await getSession(created.id))?.network).toStrictEqual(network);
+      const [exported] = await getSessionsByIds([created.id]);
+      expect(exported?.network).toStrictEqual(network);
+    },
+  );
 });
 
 // Formats a Date as its LOCAL calendar day, matching the 'YYYY-MM-DD' strings
@@ -329,7 +467,7 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
       caseId: 'case-1',
       initialNetwork,
     });
-    await markSessionFinished(created.id);
+    await markSessionFinished(created.id, finish);
     await markSessionsExported([created.id]);
 
     const list = await listSessions();
@@ -351,11 +489,17 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
       caseId: 'case-1',
       initialNetwork,
     });
-    await updateSession(created.id, { currentStep: 4, progress: 100 });
-    await markSessionFinished(created.id);
+    await updateSession(
+      created.id,
+      { currentStep: 4, progress: 100 },
+      { protocolHash: 'h1' },
+    );
+    await markSessionFinished(created.id, finish);
     await markSessionsExported([created.id]);
 
-    await markSessionUnfinished(created.id, authoredStages);
+    await markSessionUnfinished(created.id, authoredStages, {
+      protocolHash: 'h1',
+    });
 
     const session = await getSession(created.id);
     expect(session?.finishedAt).toBeNull();
@@ -376,10 +520,16 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
       caseId: 'case-1',
       initialNetwork,
     });
-    await updateSession(created.id, { currentStep: 4, progress: 100 });
-    await markSessionFinished(created.id);
+    await updateSession(
+      created.id,
+      { currentStep: 4, progress: 100 },
+      { protocolHash: 'h1' },
+    );
+    await markSessionFinished(created.id, finish);
 
-    await markSessionUnfinished(created.id, stagesWithFinishRoute);
+    await markSessionUnfinished(created.id, stagesWithFinishRoute, {
+      protocolHash: 'h1',
+    });
 
     const session = await getSession(created.id);
     expect(session?.finishedAt).toBeNull();
@@ -395,16 +545,44 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
       caseId: 'case-1',
       initialNetwork,
     });
-    await updateSession(created.id, { currentStep: 4, progress: 100 });
-    await markSessionFinished(created.id);
+    await updateSession(
+      created.id,
+      { currentStep: 4, progress: 100 },
+      { protocolHash: 'h1' },
+    );
+    await markSessionFinished(created.id, finish);
 
-    await markSessionUnfinished(created.id, stagesWithNoActiveAuthoredStage);
+    await markSessionUnfinished(created.id, stagesWithNoActiveAuthoredStage, {
+      protocolHash: 'h1',
+    });
 
     const session = await getSession(created.id);
     expect(session?.finishedAt).toBeNull();
     expect(session?.currentStep).toBe(0);
     expect(session?.progress).toBe(20);
     expect(session?.resumeStageOverrideIndex).toBe(0);
+  });
+
+  it('refuses to reopen a session that has moved to another protocol', async () => {
+    const created = await createSession({
+      protocolHash: 'h1',
+      protocolName: 'Study',
+      caseId: 'case-moved',
+      initialNetwork,
+    });
+    await updateSession(
+      created.id,
+      { currentStep: 4, progress: 100 },
+      { protocolHash: 'h1' },
+    );
+    await markSessionFinished(created.id, finish);
+    await db.sessions.update(created.id, { protocolHash: 'h2' });
+    const migrated = await db.sessions.get(created.id);
+
+    await expect(
+      markSessionUnfinished(created.id, authoredStages, { protocolHash: 'h1' }),
+    ).rejects.toBeInstanceOf(SessionProtocolChangedError);
+    expect(await db.sessions.get(created.id)).toEqual(migrated);
   });
 
   it('does not reset an interview that is already unfinished', async () => {
@@ -414,13 +592,143 @@ describe('sessions repo — status reflects completion, not export (#764)', () =
       caseId: 'case-1',
       initialNetwork,
     });
-    await updateSession(created.id, { currentStep: 2, progress: 60 });
+    await updateSession(
+      created.id,
+      { currentStep: 2, progress: 60 },
+      { protocolHash: 'h1' },
+    );
 
-    await markSessionUnfinished(created.id, authoredStages);
+    await markSessionUnfinished(created.id, authoredStages, {
+      protocolHash: 'h1',
+    });
 
     const session = await getSession(created.id);
     expect(session?.currentStep).toBe(2);
     expect(session?.progress).toBe(60);
+  });
+});
+
+describe('sessions repo — finish stage and outcome', () => {
+  beforeEach(async () => {
+    await db.sessions.clear();
+    setSessionDek(await makeDek());
+  });
+  afterEach(async () => {
+    await db.sessions.clear();
+    setSessionDek(null);
+  });
+
+  async function createStudySession() {
+    return createSession({
+      protocolHash: 'h1',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork,
+    });
+  }
+
+  it('records the finish stage and its outcome with the finish time', async () => {
+    const created = await createStudySession();
+
+    await markSessionFinished(created.id, {
+      stageId: 'finish-ineligible',
+      outcome: 'ineligible',
+    });
+
+    const session = await getSession(created.id);
+    expect(session?.finishedAt).not.toBeNull();
+    expect(session?.finishStageId).toBe('finish-ineligible');
+    expect(session?.finishOutcome).toBe('ineligible');
+    expect(session?.network).toEqual(initialNetwork);
+  });
+
+  it('stores the finish stage and outcome encrypted, never in plaintext', async () => {
+    const created = await createStudySession();
+
+    await markSessionFinished(created.id, {
+      stageId: 'finish-terminated',
+      outcome: 'terminated',
+    });
+
+    const raw = await db.sessions.get(created.id);
+    expect(raw?.finishedAt).not.toBeNull();
+    expect(raw?._enc?.finish).toBeDefined();
+    expect(raw?.finishStageId).toBeUndefined();
+    expect(raw?.finishOutcome).toBeUndefined();
+    expect(JSON.stringify(raw)).not.toContain('terminated');
+  });
+
+  it('keeps the finish stage and outcome through a later write', async () => {
+    const created = await createStudySession();
+    await markSessionFinished(created.id, finish);
+
+    await updateSession(
+      created.id,
+      { network: initialNetwork },
+      { protocolHash: 'h1' },
+    );
+
+    const session = await getSession(created.id);
+    expect(session?.finishStageId).toBe('finish');
+    expect(session?.finishOutcome).toBe('completed');
+  });
+
+  it('clears the finish time, stage and outcome together when marked unfinished', async () => {
+    const created = await createStudySession();
+    await markSessionFinished(created.id, finish);
+
+    await markSessionUnfinished(created.id, authoredStages, {
+      protocolHash: 'h1',
+    });
+
+    const raw = await db.sessions.get(created.id);
+    expect(raw?._enc?.finish).toBeUndefined();
+    const session = await getSession(created.id);
+    expect(session?.finishedAt).toBeNull();
+    expect(session?.finishStageId ?? null).toBeNull();
+    expect(session?.finishOutcome ?? null).toBeNull();
+
+    // Finishing again records the new finish, not a remnant of the old one.
+    await markSessionFinished(created.id, {
+      stageId: 'finish-ineligible',
+      outcome: 'ineligible',
+    });
+    const refinished = await getSession(created.id);
+    expect(refinished?.finishStageId).toBe('finish-ineligible');
+    expect(refinished?.finishOutcome).toBe('ineligible');
+  });
+
+  it('reads a session finished before outcomes were recorded as unknown', async () => {
+    const created = await createStudySession();
+    // A finish written by an earlier version: the time alone.
+    await db.sessions.update(created.id, {
+      finishedAt: '2026-01-02T00:00:00.000Z',
+    });
+
+    const session = await getSession(created.id);
+    expect(session?.finishedAt).toBe('2026-01-02T00:00:00.000Z');
+    expect(session?.finishStageId ?? null).toBeNull();
+    expect(session?.finishOutcome ?? null).toBeNull();
+  });
+
+  it('records and clears the finish in plaintext when no key is in use', async () => {
+    setSessionDek(null);
+    const created = await createStudySession();
+
+    await markSessionFinished(created.id, finish);
+    const raw = await db.sessions.get(created.id);
+    expect(raw?._enc).toBeUndefined();
+    expect(raw?.finishStageId).toBe('finish');
+    expect(raw?.finishOutcome).toBe('completed');
+    expect((await getSession(created.id))?.finishOutcome).toBe('completed');
+
+    await markSessionUnfinished(created.id, authoredStages, {
+      protocolHash: 'h1',
+    });
+    const reopened = await db.sessions.get(created.id);
+    expect(reopened?.finishedAt).toBeNull();
+    expect(reopened).not.toHaveProperty('finishStageId');
+    expect(reopened).not.toHaveProperty('finishOutcome');
   });
 });
 
@@ -446,8 +754,8 @@ describe('sessions repo — concurrent updateSession (#756)', () => {
     // write both read the same pre-update row and the last put would overwrite
     // the other's field; serialised, both must survive.
     await Promise.all([
-      updateSession(created.id, { currentStep: 1 }),
-      updateSession(created.id, { progress: 77 }),
+      updateSession(created.id, { currentStep: 1 }, { protocolHash: 'h1' }),
+      updateSession(created.id, { progress: 77 }, { protocolHash: 'h1' }),
     ]);
 
     const back = await getSession(created.id);
@@ -488,13 +796,15 @@ describe('sessions repo — an unreadable stored network fails closed', () => {
       finishedAt: null,
       exportedAt: null,
       currentStep: 2,
+      localePreference: null,
+      locale: null,
     };
   }
 
   async function expectRowUntouched(id: string, stored: StoredSessionRow) {
     await expect(getSession(id)).rejects.toThrow();
     await expect(
-      updateSession(id, { network: freshNetwork }),
+      updateSession(id, { network: freshNetwork }, { protocolHash: 'h1' }),
     ).rejects.toThrow();
     expect(await db.sessions.get(id)).toEqual(stored);
   }
