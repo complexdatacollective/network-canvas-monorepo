@@ -858,7 +858,7 @@ function tapAt(document: Document, x: number, y: number) {
   const target = document.elementFromPoint(x, y);
   if (!target) throw new Error('Nothing at the point tapped');
   const init = {
-    pointerId: 2,
+    pointerId: 1,
     pointerType: 'touch',
     isPrimary: true,
     clientX: x,
@@ -948,6 +948,190 @@ export const ChangingTheWordingIsAnnounced: Story = {
     await waitFor(() =>
       expect(liveRegionText(canvasElement)).toContain('egg parent'),
     );
+  },
+};
+
+/** Drags the canvas with the mouse from a point, in ten steps. */
+function dragFrom(element: Element, dx: number, dy: number) {
+  const box = element.getBoundingClientRect();
+  const start = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+  const at = (step: number) => ({
+    pointerId: 1,
+    pointerType: 'mouse',
+    isPrimary: true,
+    bubbles: true,
+    clientX: start.x + (dx * step) / 10,
+    clientY: start.y + (dy * step) / 10,
+  });
+  fireEvent.pointerDown(element, { ...at(0), buttons: 1 });
+  for (let step = 1; step <= 10; step++) {
+    fireEvent.pointerMove(element, { ...at(step), buttons: 1 });
+  }
+  fireEvent.pointerUp(element, at(10));
+}
+
+/**
+ * The add menu shown around the participant on a first visit goes once the
+ * mouse is used, here to drag the canvas from the participant's symbol:
+ * from then on the menu follows the pointer, and does not come back (and
+ * pull the view back to the participant) whenever the pointer is over no
+ * one.
+ */
+export const TheFirstVisitMenuGoesOnceTheMouseIsUsed: Story = {
+  render: () => (
+    <CanvasStory
+      family={{
+        people: [
+          { id: 'ego', name: 'Ana', gender: 'woman', sex: 'female', ego: true },
+        ],
+        links: [],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const you = await canvas.findByRole('button', { name: /^You/ });
+    await canvas.findByTestId('pedigree-menu-parent');
+    dragFrom(you, 120, 40);
+    await settled(canvasElement);
+    await waitFor(() =>
+      expect(canvas.queryByTestId('pedigree-menu-parent')).toBeNull(),
+    );
+  },
+};
+
+/** A tap, as a touch screen sends it. */
+function tap(element: Element) {
+  const box = element.getBoundingClientRect();
+  const init = {
+    pointerId: 1,
+    pointerType: 'touch',
+    isPrimary: true,
+    clientX: box.left + box.width / 2,
+    clientY: box.top + box.height / 2,
+    bubbles: true,
+  };
+  fireEvent.pointerDown(element, { ...init, buttons: 1 });
+  fireEvent.pointerUp(element, init);
+  fireEvent.click(element, { ...init, detail: 1 });
+}
+
+/**
+ * On a phone held sideways, a child added from the participant's add menu
+ * by touch can be tapped once the panel closes: bringing the participant's
+ * menu back into view does not push the child under the toolbar.
+ */
+export const AChildAddedByTouchCanBeTapped: Story = {
+  parameters: {
+    viewport: {
+      options: {
+        phoneLandscape: {
+          name: 'Phone (landscape)',
+          styles: { width: '844px', height: '320px' },
+          type: 'mobile',
+        },
+      },
+    },
+  },
+  globals: { viewport: { value: 'phoneLandscape', isRotated: false } },
+  render: () => (
+    <CanvasStory
+      family={{
+        people: [
+          { id: 'ego', name: 'Ana', gender: 'woman', sex: 'female', ego: true },
+        ],
+        links: [],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: /^You/ });
+    // Alone on a first visit, the participant's menu is showing.
+    tap(await canvas.findByTestId('pedigree-menu-child'));
+    await waitFor(() => expect(personPanel(canvasElement)).not.toBeNull());
+    const panel = within(personPanel(canvasElement) as HTMLElement);
+    await userEvent.type(
+      panel.getByRole('textbox', { name: 'Name (optional)' }),
+      'Emma',
+    );
+    for (const answer of [
+      'Woman',
+      'Female',
+      'No other parent',
+      'A biological child',
+    ]) {
+      tap(panel.getByRole('radio', { name: answer }));
+    }
+    const carried = panel.queryByRole('radiogroup', {
+      name: 'Who carried the pregnancy?',
+    });
+    if (carried) tap(within(carried).getByRole('radio', { name: /^You/ }));
+    tap(panel.getByRole('button', { name: 'Add to family' }));
+    await waitFor(() => expect(personPanel(canvasElement)).toBeNull());
+    await settled(canvasElement);
+    const emma = canvas.getByRole('button', { name: 'Emma' });
+    await expect(
+      overlaps(boxOf(emma), toolbarBox(canvasElement)),
+      'Emma clear of the toolbar',
+    ).toBe(false);
+    await expect(
+      inside(boxOf(emma), canvasBox(canvasElement)),
+      'Emma on the canvas',
+    ).toBe(true);
+  },
+};
+
+/**
+ * On a portrait tablet, opening the panel to add a parent of Ivy keeps Ivy
+ * in view beside the panel, with the parent being added.
+ */
+export const ThePersonAddedToStaysInViewBesideThePanel: Story = {
+  parameters: {
+    viewport: {
+      options: {
+        tabletPortrait: {
+          name: 'Tablet (portrait)',
+          styles: { width: '768px', height: '1024px' },
+          type: 'tablet',
+        },
+      },
+    },
+  },
+  globals: { viewport: { value: 'tabletPortrait', isRotated: false } },
+  render: () => (
+    <CanvasStory
+      family={{
+        people: [
+          { id: 'ego', name: 'Ana', gender: 'woman', sex: 'female', ego: true },
+          { id: 'beth', name: 'Beth', gender: 'woman', sex: 'female' },
+          { id: 'carmen', name: 'Carmen', gender: 'woman', sex: 'female' },
+          { id: 'ivy', name: 'Ivy', gender: 'woman', sex: 'female' },
+        ],
+        links: [
+          { from: 'beth', to: 'carmen', kind: 'partner' },
+          { from: 'beth', to: 'ego', kind: 'biological', carrier: true },
+          { from: 'carmen', to: 'ego', kind: 'social' },
+          { from: 'beth', to: 'ivy', kind: 'biological', carrier: true },
+          { from: 'carmen', to: 'ivy', kind: 'social' },
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: /^You/ });
+    await settled(canvasElement);
+    await userEvent.hover(personSymbol(canvasElement, 'ivy'));
+    await userEvent.click(await canvas.findByTestId('pedigree-menu-parent'));
+    await waitFor(() => expect(personPanel(canvasElement)).not.toBeNull());
+    await settled(canvasElement);
+    const panel = boxOf(personPanel(canvasElement) as HTMLElement);
+    const strip = { ...canvasBox(canvasElement), right: panel.left };
+    await expect(
+      inside(boxOf(personSymbol(canvasElement, 'ivy')), strip),
+      'Ivy beside the panel',
+    ).toBe(true);
   },
 };
 

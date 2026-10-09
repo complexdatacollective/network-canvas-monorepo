@@ -881,8 +881,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   });
 
   // The person selected moves to the middle of the part of the screen the
-  // side panel leaves uncovered. Someone being added, and the panel itself,
-  // are drawn a moment after the panel opens, so this waits for both.
+  // side panel leaves uncovered, clear of the prompt and the toolbar, with
+  // the person the panel was opened from beside them, the family zooming
+  // out if the two do not both fit. Someone being added, and the panel
+  // itself, are drawn a moment after the panel opens, so this waits for
+  // both.
+  const panelAnchorId = !panel?.open
+    ? null
+    : panel.mode.kind === 'add'
+      ? panel.mode.anchor.id
+      : panel.mode.person.id;
   useEffect(() => {
     if (!selectedId) return;
     let frame = 0;
@@ -895,18 +903,25 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         return;
       }
       if (!element) return;
+      const anchor = panelAnchorId
+        ? nodeRefs.current.get(panelAnchorId)
+        : undefined;
       // A panel as wide as the screen leaves nothing beside it, so the
       // person is centred on the whole canvas.
       const visibleRight = window.innerWidth - (drawer?.offsetWidth ?? 0);
       const canvasLeft = viewportRef.current?.getBoundingClientRect().left ?? 0;
-      panZoom.centreOn(element, {
-        visibleRight:
-          visibleRight - canvasLeft > 160 ? visibleRight : undefined,
-      });
+      panZoom.centreOn(
+        anchor && anchor !== element ? [element, anchor] : element,
+        {
+          visibleRight:
+            visibleRight - canvasLeft > 160 ? visibleRight : undefined,
+          insets: clearInsets(),
+        },
+      );
     };
     frame = requestAnimationFrame(centre);
     return () => cancelAnimationFrame(frame);
-  }, [selectedId, panZoom]);
+  }, [selectedId, panelAnchorId, panZoom, clearInsets]);
 
   // Closing the panel puts the view back as it was when the panel opened:
   // the same zoom, with the person it was opened from where they were on
@@ -920,8 +935,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     anchorAt: Point;
     subjectId: string;
   } | null>(null);
+  // The one just added, placed in view as the panel closed, and the person
+  // the panel was opened from, to whom focus (and the add menu) returns:
+  // bringing that person's menu into view keeps the one added in view too.
+  const placedOnClose = useRef<{
+    anchorId: string;
+    subjectId: string;
+  } | null>(null);
   const rememberView = (anchorId: string, subjectId: string) => {
     if (panel?.open) return;
+    placedOnClose.current = null;
     const anchor = nodeRefs.current.get(anchorId);
     viewBeforePanel.current = anchor
       ? {
@@ -985,6 +1008,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     const reach = addMenuReach(menuReachRef.current);
     const around = Math.max(reach.content, reach.screen / scale);
     const added = boxOf(subject);
+    placedOnClose.current = {
+      anchorId: before.anchorId,
+      subjectId: before.subjectId,
+    };
     panZoom.goTo(
       viewKeepingInArea({
         view: { x, y, scale },
@@ -1009,14 +1036,39 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // Only when the menu opens, or moves to someone else.
   const menuFromFocus = menuPersonId !== null && menuPersonId === focusedId;
   const revealedMenuId = useRef<string | null>(null);
+  // Brings someone, and their add menu when it shows, into the clear part of
+  // the canvas, without taking the one just added out of it again.
+  const reveal = useCallback(
+    (personId: string, element: HTMLElement) => {
+      const placed = placedOnClose.current;
+      const keep =
+        placed?.anchorId === personId
+          ? nodeRefs.current.get(placed.subjectId)
+          : undefined;
+      if (placed?.anchorId !== personId) placedOnClose.current = null;
+      const reach = addMenuReach(menuReachRef.current);
+      const scale = panZoom.scale.get();
+      panZoom.bringIntoView(
+        [element, ...menuItemsOf(element)],
+        clearInsets(),
+        keep
+          ? {
+              elements: [keep],
+              around: Math.max(reach.content * scale, reach.screen),
+            }
+          : undefined,
+      );
+    },
+    [panZoom, clearInsets],
+  );
   useEffect(() => {
     const id = menuFromFocus ? menuPersonId : null;
     if (id === revealedMenuId.current) return;
     revealedMenuId.current = id;
     const element = id ? nodeRefs.current.get(id) : undefined;
-    if (!element) return;
-    panZoom.bringIntoView([element, ...menuItemsOf(element)], clearInsets());
-  }, [menuFromFocus, menuPersonId, panZoom, clearInsets]);
+    if (!id || !element) return;
+    reveal(id, element);
+  }, [menuFromFocus, menuPersonId, reveal]);
 
   // Anything that could write what the study encrypts waits for the
   // passphrase, and asks for it instead, saying why: to see the names, when
@@ -1413,7 +1465,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       // The canvas does not scroll; keyboard focus pans to the person, clear
       // of the prompt and the toolbar.
       const element = nodeRefs.current.get(personId);
-      if (element) panZoom.bringIntoView(element, clearInsets());
+      if (element) reveal(personId, element);
     }
   };
 
@@ -1505,6 +1557,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // bubble here through React) are ignored.
   const handleStagePointerDown = (event: React.PointerEvent) => {
     const { target, currentTarget } = event;
+    // For a mouse, the menu follows the pointer alone: a press anywhere lets
+    // go of the menu keyboard focus (or a first visit) showed, so it does not
+    // come back each time the pointer leaves a person.
+    if (event.pointerType === 'mouse') setFocusedId(null);
     if (
       target instanceof Element &&
       currentTarget.contains(target) &&
