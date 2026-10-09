@@ -831,3 +831,65 @@ describe('auxiliary and direct parent lines', () => {
     }
   });
 });
+
+describe('the former-partner break', () => {
+  /** The partnership line between two people. */
+  const lineBetween = (connectors: PedigreeConnectors, a: string, b: string) =>
+    connectors.groupLines.find(
+      (line) =>
+        line.partnerIds?.includes(a) && line.partnerIds.includes(b) && a !== b,
+    );
+
+  it('is not drawn between co-parents who were never recorded as partners', () => {
+    const { connectors } = draw(
+      ['ego', 'kevin', 'dana', 'jordan', 'erin'],
+      [
+        ['kevin', 'biological', 'ego'],
+        ['dana', 'biological', 'ego', { carrier: true }],
+        ['kevin', 'biological', 'jordan'],
+        ['erin', 'biological', 'jordan', { carrier: true }],
+      ],
+    );
+    for (const other of ['dana', 'erin']) {
+      const line = lineBetween(connectors, 'kevin', other);
+      expect(line, `kevin and ${other}`).toBeDefined();
+      expect(line!.isActive).toBe(true);
+      expect(line!.slashSide).toBeUndefined();
+    }
+  });
+
+  it('is drawn for a recorded former partnership', () => {
+    const { connectors } = draw(
+      ['ego', 'kevin', 'dana'],
+      [
+        ['kevin', 'biological', 'ego'],
+        ['dana', 'biological', 'ego', { carrier: true }],
+        ['kevin', 'partner', 'dana', { former: true }],
+      ],
+    );
+    const line = lineBetween(connectors, 'kevin', 'dana');
+    expect(line!.isActive).toBe(false);
+    expect(line!.slashSide).toBeDefined();
+  });
+
+  it('is drawn for a recorded former partnership routed above the row', () => {
+    const { connectors } = draw(
+      ['ego', 'ann', 'bea', 'cat', 'dee'],
+      [
+        ['ego', 'partner', 'ann', { former: true }],
+        ['ego', 'partner', 'bea', { former: true }],
+        ['ego', 'partner', 'cat', { former: true }],
+        ['ego', 'partner', 'dee'],
+      ],
+    );
+    const routed = routedPartnerships(connectors);
+    const former = routed.filter((line) => !line.isActive);
+    const current = routed.filter((line) => line.isActive);
+    expect(former.length + current.length).toBe(2);
+    for (const line of former) expect(line.slashSide).toBeDefined();
+    for (const line of current) {
+      expect(line.partnerIds).toContain('dee');
+      expect(line.slashSide).toBeUndefined();
+    }
+  });
+});

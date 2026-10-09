@@ -38,8 +38,9 @@ function isPrimaryEdge(edgeType: PedigreeEdgeType): boolean {
  * @param scaling - box sizing and scale factors
  * @param parents - parent connections for edge type info
  * @param activePartnerPairs - set of "min,max" keys for active partner pairs.
- *   Inactive pairs are drawn with a relationship break mark. When omitted, all
- *   group lines are treated as active (backwards-compatible default).
+ *   A recorded partnership that is not active (see `partnerPairs`) is drawn
+ *   with a relationship break mark. When omitted, all group lines are treated
+ *   as active (backwards-compatible default).
  * @param branch - branch style for parent-child links (0=diagonal, >0=right-angle). Default 0.6
  * @param pconnect - where parent link meets sibling bar (0-1). Default 0.5
  * @param partnerPairs - all recorded partner pairs. Used to route recorded
@@ -67,6 +68,13 @@ export function computeConnectors(
   const twinIndicators: TwinIndicator[] = [];
   const duplicateArcs: DuplicateArc[] = [];
   const renderedPartnerPairs = new Set<string>();
+  // Only a recorded former partnership is drawn with the break. Co-parents
+  // the layout pairs up without a recorded partnership are drawn joined by a
+  // plain line: nothing says they were ever partners, let alone separated.
+  const isFormerPartnership = (pairKey: string) =>
+    activePartnerPairs !== undefined &&
+    !activePartnerPairs.has(pairKey) &&
+    (partnerPairs === undefined || partnerPairs.has(pairKey));
   const nodeLocation = new Map<
     number,
     { layer: number; x: number; y: number }
@@ -93,10 +101,7 @@ export function computeConnectors(
         const rightId = layout.nid[i]![j + 1]!;
         const pairKey = `${Math.min(leftId, rightId)},${Math.max(leftId, rightId)}`;
 
-        let isActive = true;
-        if (activePartnerPairs) {
-          isActive = activePartnerPairs.has(pairKey);
-        }
+        const isActive = !isFormerPartnership(pairKey);
 
         const x1 = layout.pos[i]![j]!;
         const x2 = layout.pos[i]![j + 1]!;
@@ -288,8 +293,7 @@ export function computeConnectors(
         },
         endpointSegments,
         double: isDouble,
-        isActive:
-          activePartnerPairs === undefined || activePartnerPairs.has(pairKey),
+        isActive: !isFormerPartnership(pairKey),
         ...(isDouble
           ? {
               doubleSegment: {
