@@ -76,21 +76,35 @@ const REFUSED = 'An error occurred while submitting the form.';
 
 /** The participant and their mother, unnamed, on a pedigree stage followed
  * by an information screen. */
-function interview({ twin = false }: { twin?: boolean } = {}) {
+type InterviewOptions = {
+  /** Sam, the mother's son, recorded as the participant's twin. */
+  twin?: boolean;
+  /** How the mother is the participant's parent. */
+  mumKind?: 'biological' | 'adoptive';
+};
+
+function interview({
+  twin = false,
+  mumKind = 'biological',
+}: InterviewOptions = {}) {
   const si = new SyntheticInterview(1);
   const people = si.addNodeType({ name: 'Person' });
   const stage = si.addStage('FamilyPedigree', {
     subject: { entity: 'node', type: people.id },
     prompt: 'Add the members of your family.',
   });
-  si.addManualNode(stage.id, stage.personType, 'ego', { [stage.ego]: true });
+  si.addManualNode(stage.id, stage.personType, 'ego', {
+    [stage.ego]: true,
+    [stage.sexAssignedAtBirth]: ['female'],
+    ...(stage.genderIdentity ? { [stage.genderIdentity]: ['woman'] } : {}),
+  });
   si.addManualNode(stage.id, stage.personType, 'mum', {
     [stage.ego]: false,
     [stage.sexAssignedAtBirth]: ['female'],
     ...(stage.genderIdentity ? { [stage.genderIdentity]: ['woman'] } : {}),
   });
   si.addManualEdge(stage.edgeType, 'mum-ego', 'mum', 'ego', {
-    [stage.kind]: ['biological'],
+    [stage.kind]: [mumKind],
     [stage.gestationalCarrier]: true,
   });
   if (twin) {
@@ -160,7 +174,7 @@ function refuseNextAddition() {
   return spy;
 }
 
-async function renderStage(options?: { twin?: boolean }) {
+async function renderStage(options?: InterviewOptions) {
   render(<StoryInterviewShell rawPayload={interview(options)} />, {
     wrapper: WithoutMotion,
   });
@@ -210,29 +224,28 @@ describe('FamilyPedigree when a write is refused', () => {
   });
 
   it('keeps the details panel open and says why when the stand-in a change needs is refused', async () => {
-    await renderStage();
+    // The participant's adoptive mother, re-described as their biological
+    // mother, leaves them one genetic parent, so the change is followed by
+    // a stand-in for the other.
+    await renderStage({ mumKind: 'adoptive' });
     const user = userEvent.setup();
-    await user.click(mother());
+    expect(screen.getAllByTestId('pedigree-person')).toHaveLength(2);
+    await user.click(personButton('ego'));
     const panel = await screen.findByTestId('pedigree-person-panel');
-    await user.type(
-      within(panel).getByRole('textbox', { name: /^Name/ }),
-      'Julie',
+    await user.click(
+      within(
+        within(panel).getByRole('radiogroup', { name: /is your…/ }),
+      ).getByRole('radio', { name: 'Biological parent' }),
     );
 
-    // The participant has one genetic parent recorded, so the change is
-    // followed by a stand-in for the other.
     const refused = refuseNextAddition();
     await user.click(within(panel).getByRole('button', { name: 'Save' }));
 
     expect(await within(panel).findByText(REFUSED)).toBeVisible();
     expect(refused).toHaveBeenCalled();
     expect(screen.getByTestId('pedigree-person-panel')).toBe(panel);
-    expect(within(panel).getByRole('textbox', { name: /^Name/ })).toHaveValue(
-      'Julie',
-    );
 
     // Saved on trying again, the panel closes, and the stand-in is drawn.
-    const before = screen.getAllByTestId('pedigree-person').length;
     await user.click(within(panel).getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(
@@ -240,7 +253,7 @@ describe('FamilyPedigree when a write is refused', () => {
       ).not.toBeInTheDocument(),
     );
     await waitFor(() =>
-      expect(screen.getAllByTestId('pedigree-person').length).toBe(before + 1),
+      expect(screen.getAllByTestId('pedigree-person')).toHaveLength(3),
     );
   });
 
@@ -276,5 +289,48 @@ describe('FamilyPedigree twins and the disconnect tool', () => {
     ).toBeGreaterThan(0);
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+describe('FamilyPedigree opening on a family missing a stand-in', () => {
+  /** Every change that adds people, let through. */
+  const watchAdditions = () => vi.spyOn(session, 'addNodesAndEdges');
+
+  /** Opens the mother's details and closes them again, which renders the
+   * stage over and runs its effects again. */
+  const openAndCloseMother = async (
+    user: ReturnType<typeof userEvent.setup>,
+  ) => {
+    await user.click(mother());
+    const panel = await screen.findByTestId('pedigree-person-panel');
+    await user.click(within(panel).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('pedigree-person-panel'),
+      ).not.toBeInTheDocument(),
+    );
+  };
+
+  it('gives someone with one genetic parent a stand-in for the other, once, without any change', async () => {
+    // The participant's biological mother alone, as a family saved before
+    // stand-ins, or drawn by another stage, records them.
+    const additions = watchAdditions();
+    await renderStage();
+    await waitFor(() =>
+      expect(screen.getAllByTestId('pedigree-person')).toHaveLength(3),
+    );
+    expect(additions).toHaveBeenCalledTimes(1);
+
+    await openAndCloseMother(userEvent.setup());
+    expect(additions).toHaveBeenCalledTimes(1);
+    expect(screen.getAllByTestId('pedigree-person')).toHaveLength(3);
+  });
+
+  it('adds nobody to a family that keeps the rule', async () => {
+    const additions = watchAdditions();
+    await renderStage({ mumKind: 'adoptive' });
+    await openAndCloseMother(userEvent.setup());
+    expect(additions).not.toHaveBeenCalled();
+    expect(screen.getAllByTestId('pedigree-person')).toHaveLength(2);
   });
 });

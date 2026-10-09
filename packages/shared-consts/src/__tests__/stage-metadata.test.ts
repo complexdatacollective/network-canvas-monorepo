@@ -62,6 +62,9 @@ describe('StageMetadataSchema', () => {
     expect(
       isFamilyPedigreeStageMetadata({ generatedLabels: { a: 'K1x0dYhGf8w' } }),
     ).toBe(true);
+    // The stand-ins the stage generated, alone.
+    expect(isFamilyPedigreeStageMetadata({ standIns: ['a'] })).toBe(true);
+    expect(isFamilyPedigreeStageMetadata({ standIns: [1] })).toBe(false);
     expect(isFamilyPedigreeStageMetadata({ framing: 'neutral' })).toBe(false);
     expect(isFamilyPedigreeStageMetadata({ generatedLabels: { a: 1 } })).toBe(
       false,

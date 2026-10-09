@@ -109,6 +109,13 @@ export type Person = {
    * none of these, and no name, may be a stand-in (`isStandIn`).
    */
   hasOtherDetails: boolean;
+  /** The stage generated them as a stand-in (its metadata's `standIns`);
+   * only someone it generated can be one (`isStandIn`). */
+  markedStandIn: boolean;
+  /** An edge of a type other than the family relationship's touches them:
+   * something outside the pedigree refers to them, so they are never removed
+   * as a stand-in, only their family links. */
+  referencedElsewhere: boolean;
   /** The value of the gender identity option the person was given, whatever
    * the researcher defined it to be. Undefined when not yet answered. */
   genderIdentity: string | number | undefined;
@@ -260,7 +267,9 @@ export function holdsGeneratedLabel(
  * participant left unnamed: someone who still holds that label is read as
  * unnamed, so their label is worked out afresh from the family as it stands.
  * `decryptedNames` holds, by person id, the text of each encrypted name the
- * stage has decrypted; any other encrypted name cannot be read.
+ * stage has decrypted; any other encrypted name cannot be read. `standIns`
+ * holds the ids of the stand-ins the stage generated (its metadata's
+ * `standIns`).
  */
 export function readFamily(
   nodes: readonly NcNode[],
@@ -268,7 +277,13 @@ export function readFamily(
   config: PedigreeConfig,
   generatedLabels: Readonly<Record<string, string>> = {},
   decryptedNames: ReadonlyMap<string, string> = new Map(),
+  standIns: ReadonlySet<string> = new Set(),
 ): Family {
+  const referencedElsewhere = new Set(
+    edges
+      .filter((edge) => edge.type !== config.relationshipType)
+      .flatMap((edge) => [edge.from, edge.to]),
+  );
   const people: Person[] = nodes
     .filter((node) => node.type === config.personType)
     .map((node) => {
@@ -313,6 +328,8 @@ export function readFamily(
         name,
         hasUnreadableName,
         hasOtherDetails,
+        markedStandIn: standIns.has(id),
+        referencedElsewhere: referencedElsewhere.has(id),
         genderIdentity,
         genderWords: genderIdentityConfig
           ? genderIdentity === undefined
@@ -685,6 +702,9 @@ export type AdditionPlan = {
   removedLinkIds?: string[];
   /** Stand-ins the addition leaves standing in for nobody. */
   removedPersonIds?: string[];
+  /** The people among `people` who are stand-ins the addition generates,
+   * to be recorded as the stage's stand-ins. */
+  standInIds?: string[];
   /** Twins the addition records. */
   twins?: PlannedTwin[];
 };
@@ -994,6 +1014,7 @@ export function planAddRelative({
     updatedPeople: standIns.updatedPeople,
     removedLinkIds: standIns.removedLinkIds.filter((id) => !isPlanned(id)),
     removedPersonIds: standIns.removedPersonIds,
+    standInIds: standIns.people.map((person) => person.id),
   };
   if (request.relation === 'sibling' && request.twin !== undefined) {
     plan.twins = twinsForNewSibling(
@@ -1329,7 +1350,10 @@ export function openGeneticParentSlots(
 
 /**
  * Whether someone is an unnamed stand-in for a genetic parent (the stand-in
- * rule, `planStandIns`): someone the participant has neither named nor told
+ * rule, `planStandIns`): someone the stage generated as one
+ * (`Person.markedStandIn`; an unnamed parent the participant added is never
+ * one, however little is recorded about them), whom the participant has
+ * neither named nor told
  * the interface anything about but their sex at birth (`hasOtherDetails`),
  * who is a biological parent and nothing else — no parents, partners or
  * twins of their own, and recorded as having carried nobody. A stand-in
@@ -1342,6 +1366,7 @@ export function isStandIn(family: Family, personId: string): boolean {
   const person = family.byId.get(personId);
   if (
     !person ||
+    !person.markedStandIn ||
     person.isEgo ||
     person.name !== undefined ||
     person.hasUnreadableName ||
@@ -1504,10 +1529,14 @@ export function planStandIns(
       removedLinkIds.add(link.id);
     }
   }
-  const removedPersonIds = [...standIns].filter((standInId) =>
-    family.links
-      .filter((link) => link.source === standInId)
-      .every((link) => removedLinkIds.has(link.id)),
+  // A stand-in left standing in for nobody is removed, unless something
+  // outside the pedigree refers to them: then only their family links go.
+  const removedPersonIds = [...standIns].filter(
+    (standInId) =>
+      !family.byId.get(standInId)?.referencedElsewhere &&
+      family.links
+        .filter((link) => link.source === standInId)
+        .every((link) => removedLinkIds.has(link.id)),
   );
 
   // Someone with one genetic parent is given a stand-in for the other, one
@@ -1580,6 +1609,8 @@ function familyWithPlan(
     name: undefined,
     hasUnreadableName: false,
     hasOtherDetails: true,
+    markedStandIn: false,
+    referencedElsewhere: false,
     genderIdentity: undefined,
     genderWords: undefined,
     sexAssignedAtBirth: readCategorical(

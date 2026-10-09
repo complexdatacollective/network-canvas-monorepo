@@ -66,6 +66,9 @@ type SeedPerson = {
   /** A relationship to the participant already recorded (needs
    * `recordsRelationship`). */
   relationship?: string;
+  /** A stand-in the stage generated on an earlier visit (its metadata's
+   * `standIns`). */
+  standIn?: boolean;
 };
 
 type SeedLink = {
@@ -264,6 +267,15 @@ export function buildInterview({
   }
   si.addInformationStage({ title: 'Complete', text: 'After the pedigree.' });
   const payload = si.getInterviewPayload({ currentStep: 1 });
+  const standIns = (family?.people ?? [])
+    .filter((person) => person.standIn)
+    .map((person) => person.id);
+  if (standIns.length > 0) {
+    const pedigreeIndex = payload.protocol.stages.findIndex(
+      (candidate) => candidate.type === 'FamilyPedigree',
+    );
+    payload.stageMetadata = { [pedigreeIndex]: { standIns } };
+  }
   if (followedByNameForm) {
     // The form draws its question with the name attribute's own input
     // control, which the builder leaves unset. Its codebook is built
@@ -926,7 +938,7 @@ export const RedescribingAParentWithdrawsNewSiblingsAnswers: Story = {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
 
-    await userEvent.click(await canvas.findByRole('button', { name: /^Kim/ }));
+    await userEvent.click(await canvas.findByRole('button', { name: /^Kim,/ }));
     await waitFor(() => expect(panelOf(canvasElement)).not.toBeNull());
     const panel = within(panelOf(canvasElement) as HTMLElement);
     const tom = await panel.findByRole('radiogroup', {
@@ -1059,10 +1071,11 @@ export const AddingASiblingAsksWhoCarriedThePregnancy: Story = {
 };
 
 /**
- * With only her father shown, the participant's second parent, not shown
- * yet, is added for both her and a new sister, and can be chosen as having
- * carried the sister's pregnancy: the unnamed parent added is recorded as
- * having carried it.
+ * With only her father recorded, the participant is given a stand-in for her
+ * other genetic parent on opening the stage, whom a new sister shares, and
+ * who can be chosen as having carried the sister's pregnancy: the stand-in
+ * is recorded as having carried it, and nobody as having carried the
+ * participant's.
  */
 export const AParentNotYetShownCanHaveCarriedASibling: Story = {
   args: { requirement: 'none' },
@@ -1103,10 +1116,13 @@ export const AParentNotYetShownCanHaveCarriedASibling: Story = {
         name: /^Who carried the pregnancy\?/,
       }),
     );
+    // The stand-in, and someone else: Tom, male at birth, could not have.
+    const [standIn] = carrier.getAllByRole('radio');
     await expect(carrier.getAllByRole('radio')).toHaveLength(2);
-    await userEvent.click(
-      carrier.getByRole('radio', { name: 'Your other parent, not shown yet' }),
+    await expect(standIn).not.toHaveAccessibleName(
+      'Someone else, or I don’t know',
     );
+    await userEvent.click(standIn as HTMLElement);
     await userEvent.click(
       await body.findByRole('button', { name: 'Add to family' }),
     );
@@ -1771,9 +1787,10 @@ export const FamilyInProgress: Story = {
  * From parents, siblings and children upwards, each of the participant's
  * biological children needs their other biological parent: the participant
  * has added both parents, said they have no siblings, and added a daughter on
- * their own. The list asks for her other parent, and the stage cannot be left
- * until she has one. A "Don't know" parent would do; that parent's own family
- * is never asked for.
+ * their own, in a family saved before stand-ins. Opening the stage gives her
+ * a stand-in for her other biological parent, so the list asks only for that
+ * parent's details, and the stage cannot be left until they are given. That
+ * parent's own family is never asked for.
  */
 export const EachChildNeedsTheirOtherBiologicalParent: Story = {
   args: { requirement: 'firstDegree', enforcement: 'required' },
@@ -1804,22 +1821,27 @@ export const EachChildNeedsTheirOtherBiologicalParent: Story = {
     />
   ),
   play: async (context) => {
-    await expectPeople(4)(context);
+    await expectPeople(5)(context);
     const canvas = within(context.canvasElement);
     const body = within(context.canvasElement.ownerDocument.body);
 
     // Required: Next does not leave the family, and pins open the list of
     // what is still needed.
     await userEvent.click(canvas.getByTestId('next-button'));
+    const list = () =>
+      body.queryByRole('region', { name: /^Before you continue/ });
     await waitFor(
       () =>
-        expect(
-          body.getByRole('button', {
-            name: 'Add another biological parent for “Mia”',
-          }),
-        ).toBeVisible(),
+        expect(list()?.textContent?.replaceAll('\u00AD', '')).toContain(
+          'Some details are missing for “Mia’s biological father”',
+        ),
       { timeout: 5000 },
     );
+    await expect(
+      body.queryByRole('button', {
+        name: 'Add another biological parent for “Mia”',
+      }),
+    ).toBeNull();
     await expect(canvas.getByTestId('pedigree-canvas')).toBeInTheDocument();
   },
 };
@@ -2237,7 +2259,9 @@ export const OnlyTheFamilyIsDrawn: Story = {
     />
   ),
   play: async (context) => {
-    await expectPeople(2)(context);
+    // Ella, Rachel, and a stand-in for Ella's other genetic parent, given
+    // on opening the stage.
+    await expectPeople(3)(context);
     const canvas = within(context.canvasElement);
     await expect(canvas.getByRole('button', { name: /^Rachel/ })).toBeVisible();
     for (const name of [/^Sam/, /^Leo/, /^Hannah/]) {
@@ -2274,7 +2298,9 @@ export const RemovingSomeoneRemovesThoseConnectedOnlyThroughThem: Story = {
           { from: 'mum', to: 'dad', kind: 'partner' },
           { from: 'mum', to: 'ego', kind: 'biological', carrier: true },
           { from: 'dad', to: 'ego', kind: 'biological' },
-          { from: 'grandma', to: 'mum', kind: 'biological', carrier: true },
+          // Rachel's adoptive mother, so Rachel has no genetic parent to
+          // stand in beside.
+          { from: 'grandma', to: 'mum', kind: 'adoptive' },
         ],
       }}
     />
@@ -2674,7 +2700,9 @@ export const MultiplePartners: Story = {
       }}
     />
   ),
-  play: expectPeople(7),
+  // With a stand-in, given on opening the stage, for Cleo's other genetic
+  // parent: Alex raises her, but gave her no gamete.
+  play: expectPeople(8),
 };
 
 // ---------------------------------------------------------------------------
@@ -2724,7 +2752,10 @@ export const UnnamedRelatives: Story = {
     />
   ),
   play: async (context) => {
-    await expectPeople(11)(context);
+    // With the stand-ins given on opening the stage, for the other genetic
+    // parent of the mother and her sister, the cousin, Rob, and the
+    // children.
+    await expectPeople(15)(context);
     if (context.args.framing !== 'gendered') return;
     const canvas = within(context.canvasElement);
     for (const name of [
@@ -2737,8 +2768,9 @@ export const UnnamedRelatives: Story = {
       'Stepmother',
       'Child 1',
     ]) {
+      // The name alone, not a stand-in described through them.
       await expect(
-        canvas.getByRole('button', { name: new RegExp(`^${name}`) }),
+        canvas.getByRole('button', { name: new RegExp(`^${name}(,|$)`) }),
       ).toBeVisible();
     }
   },
@@ -2866,9 +2898,10 @@ export const ARecommendationIsShownAgainWhenItGrows: Story = {
   },
 };
 
-/** With one biological parent recorded, the first press recommends adding
- * the other; removing that parent leaves both to add, which is more than the
- * list showed, so the next press shows it again. */
+/** With one biological parent recorded, the first press recommends the
+ * details of the other, a stand-in; removing the recorded parent leaves two
+ * stand-ins to describe, which is more than the list showed, so the next
+ * press shows it again. */
 export const RemovingTheOnlyParentShowsTheRecommendationAgain: Story = {
   args: { requirement: 'parents', enforcement: 'recommended' },
   render: (args) => (
@@ -2886,12 +2919,13 @@ export const RemovingTheOnlyParentShowsTheRecommendationAgain: Story = {
           },
           { id: 'mum', name: 'Rachel', gender: 'woman', sex: 'female' },
         ],
-        links: [{ from: 'mum', to: 'ego', kind: 'biological', carrier: true }],
+        links: [{ from: 'mum', to: 'ego', kind: 'biological' }],
       }}
     />
   ),
   play: async (context) => {
-    await expectPeople(2)(context);
+    // Rachel's partner is given as a stand-in when the stage opens.
+    await expectPeople(3)(context);
     const { canvasElement } = context;
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
@@ -2911,7 +2945,8 @@ export const RemovingTheOnlyParentShowsTheRecommendationAgain: Story = {
     await userEvent.click(
       within(dialog).getByRole('button', { name: 'Remove from family' }),
     );
-    await expectPeople(1)(context);
+    // A stand-in takes Rachel's place, so both parents are still unknown.
+    await expectPeople(3)(context);
     await waitFor(() => expect(recommendations()).toBeNull());
 
     await userEvent.click(canvas.getByTestId('next-button'));
@@ -4084,7 +4119,7 @@ export const RecordingAnswersKeepsTheFamily: Story = {
       for (const record of records) {
         await expect(
           Object.keys(record as Record<string, unknown>).every((key) =>
-            ['framing', 'generatedLabels'].includes(key),
+            ['framing', 'generatedLabels', 'standIns'].includes(key),
           ),
         ).toBe(true);
       }

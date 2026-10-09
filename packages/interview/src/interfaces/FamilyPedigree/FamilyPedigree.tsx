@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from 'motion/react';
 import {
   useCallback,
   useEffect,
+  useEffectEvent,
   useId,
   useLayoutEffect,
   useMemo,
@@ -276,6 +277,27 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     () => pedigreeMetadata?.generatedLabels ?? {},
     [pedigreeMetadata],
   );
+  // The stand-ins the stage generated: only they are ever treated as
+  // stand-ins (`isStandIn`).
+  const standInIds = useMemo(
+    () => new Set(pedigreeMetadata?.standIns),
+    [pedigreeMetadata],
+  );
+  // The stage's record as stored now, which a handler may have changed since
+  // this render, so that each write keeps what the others wrote.
+  const storedPedigreeMetadata = () => {
+    const stored = getStageMetadata(store.getState(), currentStep);
+    return isFamilyPedigreeStageMetadata(stored) ? stored : undefined;
+  };
+  const writePedigreeMetadata = (
+    patch: Partial<NonNullable<typeof pedigreeMetadata>>,
+  ) =>
+    dispatch(
+      updateStageMetadata({
+        currentStep,
+        metadata: { ...storedPedigreeMetadata(), ...patch },
+      }),
+    );
 
   const nodes = useStageSelector(getNetworkNodes);
   const edges = useStageSelector(getNetworkEdges);
@@ -347,9 +369,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const family = useMemo(
     () =>
       participantsFamily(
-        readFamily(nodes, edges, config, generatedLabels, decryptedNames),
+        readFamily(
+          nodes,
+          edges,
+          config,
+          generatedLabels,
+          decryptedNames,
+          standInIds,
+        ),
       ),
-    [nodes, edges, config, generatedLabels, decryptedNames],
+    [nodes, edges, config, generatedLabels, decryptedNames, standInIds],
   );
 
   // The person being added is drawn in the family from the moment the panel
@@ -437,9 +466,19 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         config,
         generatedLabels,
         decryptedNames,
+        standInIds,
       ),
     );
-  }, [draft, family, nodes, edges, config, generatedLabels, decryptedNames]);
+  }, [
+    draft,
+    family,
+    nodes,
+    edges,
+    config,
+    generatedLabels,
+    decryptedNames,
+    standInIds,
+  ]);
   const nodeColor = useStageSelector(getNodeColorSelector);
   // Connectors, and the preview of a new one, take the codebook's colour for
   // the relationship type ('edge-color-seq-N' is the CSS variable --edge-N).
@@ -646,14 +685,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const framing = pedigreeFraming(framingSetting, chosenFraming);
   const chooseFraming = useCallback(
     (chosen: FramingId) => {
-      dispatch(
-        updateStageMetadata({
-          currentStep,
-          metadata: { ...pedigreeMetadata, framing: chosen },
-        }),
-      );
+      writePedigreeMetadata({ framing: chosen });
     },
-    [dispatch, currentStep, pedigreeMetadata],
+    [writePedigreeMetadata],
   );
   // Everyone the participant has not named is shown by the label that will
   // be saved as their name when they leave, worked out afresh from the family
@@ -1091,7 +1125,14 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     const decrypted = unlocked ? await decryption.decryptAll(nodes) : undefined;
     const current = decrypted
       ? participantsFamily(
-          readFamily(nodes, edges, config, generatedLabels, decrypted),
+          readFamily(
+            nodes,
+            edges,
+            config,
+            generatedLabels,
+            decrypted,
+            standInIds,
+          ),
         )
       : family;
     const saved = generateLabels(current, framing, intl);
@@ -1137,12 +1178,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       Object.keys(record).length > 0 ||
       pedigreeMetadata?.generatedLabels !== undefined
     ) {
-      dispatch(
-        updateStageMetadata({
-          currentStep,
-          metadata: { ...pedigreeMetadata, generatedLabels: record },
-        }),
-      );
+      writePedigreeMetadata({ generatedLabels: record });
     }
     if (refused) {
       showToast({
@@ -1486,26 +1522,50 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     }
   };
 
-  // The stand-in rule (`planStandIns`), kept after every change to the
-  // family, read as stored: anyone a change leaves with one genetic parent
-  // is given a stand-in for the other, and a stand-in whose place a genetic
-  // parent fills gives way. Resolves to the write the session refused, if
-  // one was.
-  const keepStandInRule = async () => {
+  // The family as stored now, with the stand-ins recorded now (`marked`, or
+  // else the stage's record).
+  const latestFamily = (
+    marked: ReadonlySet<string> = new Set(storedPedigreeMetadata()?.standIns),
+  ) => {
     const state = store.getState();
-    const latest = participantsFamily(
+    return participantsFamily(
       readFamily(
         getNetworkNodes(state, displayedStep),
         getNetworkEdges(state, displayedStep),
         config,
         generatedLabels,
         decryptedNames,
+        marked,
       ),
     );
-    return applyStandIns(
-      planStandIns(latest, uuid, config.sexAssignedAtBirthAttribute),
-    );
   };
+
+  // Records the stand-ins `added` as the stage's, and takes off its record
+  // anyone no longer a stand-in: someone removed, or named, described or
+  // related further, who is someone in their own right from then on.
+  const recordStandIns = (added: readonly string[] = []) => {
+    const stored = storedPedigreeMetadata()?.standIns ?? [];
+    const marked = new Set([...stored, ...added]);
+    const latest = latestFamily(marked);
+    const kept = [...marked].filter((id) => isStandIn(latest, id));
+    if (
+      kept.length === stored.length &&
+      kept.every((id, index) => stored[index] === id)
+    ) {
+      return;
+    }
+    writePedigreeMetadata({ standIns: kept });
+  };
+
+  // The stand-in rule (`planStandIns`), kept after every change to the
+  // family, read as stored: anyone a change leaves with one genetic parent
+  // is given a stand-in for the other, and a stand-in whose place a genetic
+  // parent fills gives way. Resolves to the write the session refused, if
+  // one was.
+  const keepStandInRule = async () =>
+    applyStandIns(
+      planStandIns(latestFamily(), uuid, config.sexAssignedAtBirthAttribute),
+    );
 
   // Writes what keeping the stand-in rule changes, stopping at the first
   // write the session refuses, which it resolves to. Stand-ins are taken
@@ -1532,6 +1592,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         }),
       );
       if (writeFailureMessage(added)) return added;
+      recordStandIns(standIns.map((person) => person.id));
     }
     for (const person of updatedPeople) {
       const updated = await dispatch(
@@ -1545,6 +1606,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     }
     for (const linkId of removedLinkIds) dispatch(deleteEdge(linkId));
     for (const personId of removedPersonIds) dispatch(deleteNode(personId));
+    recordStandIns();
     return undefined;
   };
 
@@ -1562,6 +1624,29 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       anchor: 'forward',
     });
   };
+
+  // The stand-ins a family read on opening the stage is missing (one saved
+  // before this version, or changed by another stage) are added once, so the
+  // participant sees them and the saved family matches one made here. Only
+  // stand-ins are added: nobody is removed or changed until the participant
+  // changes the family.
+  const standInsChecked = useRef(false);
+  const addMissingStandIns = useEffectEvent(async () => {
+    const missing = planStandIns(
+      latestFamily(),
+      uuid,
+      config.sexAssignedAtBirthAttribute,
+    );
+    if (missing.people.length === 0 && missing.links.length === 0) return;
+    reportRefusedStandIn(
+      await applyStandIns({ people: missing.people, links: missing.links }),
+    );
+  });
+  useEffect(() => {
+    if (!family.egoId || standInsChecked.current) return;
+    standInsChecked.current = true;
+    void addMissingStandIns();
+  }, [family.egoId]);
 
   // The panel closes once what the participant entered is stored, with
   // everything it changes in the family (twins, stand-ins, and stand-ins
@@ -1620,19 +1705,13 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         typedName.trim() !== '' &&
         Object.hasOwn(generatedLabels, mode.person.id)
       ) {
-        dispatch(
-          updateStageMetadata({
-            currentStep,
-            metadata: {
-              ...pedigreeMetadata,
-              generatedLabels: Object.fromEntries(
-                Object.entries(generatedLabels).filter(
-                  ([personId]) => personId !== mode.person.id,
-                ),
-              ),
-            },
-          }),
-        );
+        writePedigreeMetadata({
+          generatedLabels: Object.fromEntries(
+            Object.entries(generatedLabels).filter(
+              ([personId]) => personId !== mode.person.id,
+            ),
+          ),
+        });
       }
 
       for (const update of result.linkUpdates ?? []) {
@@ -1762,6 +1841,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       }),
     );
     if (writeFailureMessage(added)) return writeSubmissionResult(added);
+    recordStandIns(plan.standInIds);
     // A stand-in whose place the addition fills gives way (`planStandIns`).
     const refusedGiveWay = await applyStandIns({
       updatedPeople: plan.updatedPeople,
@@ -1779,6 +1859,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         }
       }
       for (const person of plan.people) dispatch(deleteNode(person.id));
+      recordStandIns();
       return writeSubmissionResult(refusedGiveWay);
     }
     closePanel();

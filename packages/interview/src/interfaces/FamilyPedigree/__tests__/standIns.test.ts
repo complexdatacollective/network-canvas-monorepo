@@ -20,8 +20,14 @@ import { config, link, person } from './fixtures';
 // missing genetic parent. Adoptive and social parents never get stand-ins,
 // and stand-ins are never recorded as anyone's partner.
 
-const family = (nodes: NcNode[], edges: NcEdge[] = []) =>
-  readFamily(nodes, edges, config);
+/** The stand-ins the stage generated, unless a test says otherwise. */
+const GENERATED = ['standIn', 'stand-in-1'];
+
+const family = (
+  nodes: NcNode[],
+  edges: NcEdge[] = [],
+  standIns: readonly string[] = GENERATED,
+) => readFamily(nodes, edges, config, {}, new Map(), new Set(standIns));
 
 const ids = () => {
   let counter = 0;
@@ -64,8 +70,12 @@ describe('who is a stand-in', () => {
     link('dad', 'ego', 'biological'),
   ];
 
-  test('an unnamed biological parent with nothing recorded but their sex at birth', () => {
-    expect(isStandIn(family(nodes(), edges), 'dad')).toBe(true);
+  test('an unnamed biological parent the stage generated, with nothing recorded but their sex at birth', () => {
+    expect(isStandIn(family(nodes(), edges, ['dad']), 'dad')).toBe(true);
+  });
+
+  test('never an unnamed biological parent the participant added, however little is recorded', () => {
+    expect(isStandIn(family(nodes(), edges, []), 'dad')).toBe(false);
   });
 
   test.each([
@@ -73,7 +83,9 @@ describe('who is a stand-in', () => {
     ['described', { gender: ['man'] }],
     ['answered about', { nickname: 'Bob' }],
   ])('not someone %s', (_, attributes) => {
-    expect(isStandIn(family(nodes(attributes), edges), 'dad')).toBe(false);
+    expect(isStandIn(family(nodes(attributes), edges, ['dad']), 'dad')).toBe(
+      false,
+    );
   });
 
   test('not someone with a partner, a parent, or who carried a pregnancy', () => {
@@ -254,6 +266,56 @@ describe('the stand-in rule', () => {
     expect(result.removedLinkIds).toEqual(['standIn-ego-biological']);
     expect(result.removedPersonIds).toEqual(['standIn']);
     expect(result.people).toEqual([]);
+  });
+
+  test('an unnamed parent the participant added never gives way, and is never removed', () => {
+    // Recorded with only a sex at birth, as a stand-in is, but added by the
+    // participant: a genetic parent recorded beside them is refused by the
+    // genetic limit instead, and nobody is taken away.
+    const result = changes(
+      family(
+        [
+          person('ego', { isEgo: true }),
+          person('mum', { sex: ['female'] }),
+          person('unnamedDad', { sex: ['male'] }),
+          person('dad', { name: 'Rob', sex: ['male'] }),
+        ],
+        [
+          link('mum', 'ego', 'biological'),
+          link('unnamedDad', 'ego', 'biological'),
+          link('dad', 'ego', 'biological'),
+        ],
+      ),
+    );
+    expect(result.removedLinkIds).toEqual([]);
+    expect(result.removedPersonIds).toEqual([]);
+  });
+
+  test('a stand-in something outside the pedigree refers to gives way, but is kept', () => {
+    // Another stage joined the stand-in to someone by an edge of its own, so
+    // only their place in the family is taken away.
+    const result = changes(
+      family(
+        [
+          person('ego', { isEgo: true }),
+          person('mum', { sex: ['female'] }),
+          person('standIn', { sex: ['male'] }),
+          person('dad', { name: 'Rob', sex: ['male'] }),
+          person('friend', { name: 'Ali' }),
+        ],
+        [
+          link('mum', 'ego', 'biological'),
+          link('standIn', 'ego', 'biological'),
+          link('dad', 'ego', 'biological'),
+          {
+            ...link('standIn', 'friend', 'partner'),
+            type: 'knows',
+          },
+        ],
+      ),
+    );
+    expect(result.removedLinkIds).toEqual(['standIn-ego-biological']);
+    expect(result.removedPersonIds).toEqual([]);
   });
 
   test('a stand-in another person still needs is kept for them', () => {

@@ -155,7 +155,15 @@ function renderPersonForm(
     middleware: (getDefault) => getDefault({ serializableCheck: false }),
   });
 
-  const family = readFamily(nodes, edges, config);
+  // A node with the id `standIn` is one the stage generated.
+  const family = readFamily(
+    nodes,
+    edges,
+    config,
+    {},
+    new Map(),
+    new Set(['standIn']),
+  );
   const edited = family.byId.get(editing);
   if (!edited) throw new Error(`No person ${editing}`);
   const onSubmit = vi
