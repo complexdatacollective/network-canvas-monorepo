@@ -27,6 +27,9 @@ const spanishMessages = await loadCatalog(
 const nameGenerator = {
   id: 'stage-1',
   type: 'NameGenerator',
+  maxNodesNotice: {
+    en: 'You have completed this task. Click the next arrow to continue.',
+  },
   label: 'Name generator',
   subject: { entity: 'node', type: 'person' },
   prompts: [{ id: 'p1', text: 'Name people' }],
@@ -1049,6 +1052,11 @@ describe('a unique group whose members a roster populates unevenly', () => {
   const roster = {
     id: 'stage-roster',
     type: 'NameGeneratorRoster',
+    externalDataError: { en: 'External data could not be loaded.' },
+    allAddedNotice: { en: 'There is nothing left to add from this list.' },
+    maxNodesNotice: {
+      en: 'You have completed this task. Click the next arrow to continue.',
+    },
     label: 'Roster',
     subject: { entity: 'node', type: 'person' },
     dataSource: 'roster-asset',
@@ -1236,6 +1244,8 @@ describe('values a prompt fixes', () => {
     const stage = {
       ...fixingGenerator(2, 'stage-roster'),
       type: 'NameGeneratorRoster',
+      externalDataError: { en: 'External data could not be loaded.' },
+      allAddedNotice: { en: 'There is nothing left to add from this list.' },
     } as unknown as Stage;
 
     expect(
@@ -1252,6 +1262,8 @@ describe('values a prompt fixes', () => {
     const stage = {
       ...fixingGenerator(2, 'stage-roster'),
       type: 'NameGeneratorRoster',
+      externalDataError: { en: 'External data could not be loaded.' },
+      allAddedNotice: { en: 'There is nothing left to add from this list.' },
     } as unknown as Stage;
 
     const conflicts = analyseFeasibility(uniqueFlag, [stage], config, {
@@ -1266,6 +1278,8 @@ describe('values a prompt fixes', () => {
     const stage = {
       ...fixingGenerator(8, 'stage-roster'),
       type: 'NameGeneratorRoster',
+      externalDataError: { en: 'External data could not be loaded.' },
+      allAddedNotice: { en: 'There is nothing left to add from this list.' },
     } as unknown as Stage;
 
     expect(
@@ -1350,6 +1364,14 @@ describe('a value a prompt fixes and a roster row carries', () => {
   const rosterStage = {
     id: 'stage-roster',
     type: 'NameGeneratorRoster',
+    externalDataError: { en: 'External data could not be loaded.' },
+    allAddedNotice: { en: 'There is nothing left to add from this list.' },
+    minNodesNotice: {
+      en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+    },
+    maxNodesNotice: {
+      en: 'You have completed this task. Click the next arrow to continue.',
+    },
     label: 'Roster',
     subject: { entity: 'node', type: 'person' },
     prompts: [{ id: 'r-p1', text: 'Pick people' }],
@@ -1361,6 +1383,12 @@ describe('a value a prompt fixes and a roster row carries', () => {
     return {
       id: 'stage-panel',
       type: 'NameGenerator',
+      minNodesNotice: {
+        en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+      },
+      maxNodesNotice: {
+        en: 'You have completed this task. Click the next arrow to continue.',
+      },
       label: 'Panel',
       subject: { entity: 'node', type: 'person' },
       prompts: [
@@ -1471,6 +1499,12 @@ describe('a value a prompt fixes and a roster row carries', () => {
     const carrying = {
       id: 'stage-carry',
       type: 'NameGenerator',
+      minNodesNotice: {
+        en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+      },
+      maxNodesNotice: {
+        en: 'You have completed this task. Click the next arrow to continue.',
+      },
       label: 'Carrying panel',
       subject: { entity: 'node', type: 'person' },
       prompts: [{ id: 'c-p1', text: 'Name people' }],
@@ -1695,6 +1729,12 @@ describe('a value a prompt fixes and a roster row carries', () => {
       const carrying = {
         id: 'stage-carry',
         type: 'NameGenerator',
+        minNodesNotice: {
+          en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+        },
+        maxNodesNotice: {
+          en: 'You have completed this task. Click the next arrow to continue.',
+        },
         label: 'Carrying panel',
         subject: { entity: 'node', type: 'person' },
         prompts: [{ id: 'c-p1', text: 'Name people' }],
@@ -2136,6 +2176,12 @@ describe('a value one prompt fixes that the draw cannot complete', () => {
       {
         id: 'stage-pin',
         type: 'NameGenerator',
+        minNodesNotice: {
+          en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+        },
+        maxNodesNotice: {
+          en: 'You have completed this task. Click the next arrow to continue.',
+        },
         label: 'Name generator',
         subject: { entity: 'node', type: 'person' },
         prompts: [
@@ -2915,6 +2961,11 @@ describe('roster rows the rules turn away, at the seam the counts feed', () => {
   const roster = {
     id: 'stage-roster',
     type: 'NameGeneratorRoster',
+    externalDataError: { en: 'External data could not be loaded.' },
+    allAddedNotice: { en: 'There is nothing left to add from this list.' },
+    maxNodesNotice: {
+      en: 'You have completed this task. Click the next arrow to continue.',
+    },
     label: 'Roster',
     subject: { entity: 'node', type: 'person' },
     dataSource: 'roster-asset',

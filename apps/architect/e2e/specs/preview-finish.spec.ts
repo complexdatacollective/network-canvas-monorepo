@@ -69,6 +69,12 @@ function twoScreenProtocol(): CurrentProtocol {
         label: { en: 'Finish' },
         title: { en: 'All done' },
         content: { en: 'Thank you for your time.' },
+        finishLabel: { en: 'Finish' },
+        finishConfirmation: { en: 'Finish this interview?' },
+        finishedNotice: {
+          en: 'This interview is finished, and its answers can no longer be changed.',
+        },
+        finishFailed: { en: 'The interview could not be finished.' },
         outcome: 'completed',
       },
     ],

@@ -40,10 +40,11 @@ describe('the ways of looking at the network a narrative stage offers', () => {
   it('lists what the stage already holds', async () => {
     const harness = renderStageEditor(openEditor());
 
-    await waitFor(() => expect(harness.outline()).toHaveLength(2));
+    await waitFor(() => expect(harness.outline()).toHaveLength(3));
     expect(harness.outline()).toEqual([
       { title: 'Visualization presets', state: 'Finished' },
       { title: 'Narrative behaviors', state: 'Finished' },
+      { title: 'Words on the canvas', state: 'Finished' },
     ]);
     expect(screen.getByText('Default layout')).toBeInTheDocument();
   });

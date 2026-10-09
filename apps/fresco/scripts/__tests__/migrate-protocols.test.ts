@@ -427,6 +427,13 @@ describe('migrateProtocolsToCompatibleVersion', () => {
     };
     expect(toggleVar.isAttending).not.toHaveProperty('options');
 
+    // The interview's shared wording, which the migration to version 9
+    // supplies, is stored with it.
+    expect(updateCall.data).toHaveProperty(
+      'interfaceText.interview.continue.en',
+      'Continue',
+    );
+
     // Hash recomputed
     expect(typeof updateCall.data.hash).toBe('string');
     expect(updateCall.data.hash.length).toBeGreaterThan(0);
@@ -1380,6 +1387,18 @@ describe('languages in the deploy migration', () => {
       { name: 'Bilingual' },
     );
     const localization = { defaultLocale: 'fr', locales: ['fr', 'de'] };
+    // The wording the migration supplied, as the researcher wrote it in
+    // French and German, with one entry of their own.
+    const translated = inFrenchAndGerman(current.interfaceText) as {
+      interview: Record<string, unknown>;
+    };
+    const interfaceText = {
+      ...translated,
+      interview: {
+        ...translated.interview,
+        continue: { fr: 'Question suivante', de: 'Nächste Frage' },
+      },
+    };
     const codebook = inFrenchAndGerman(current.codebook);
     const stages = inFrenchAndGerman(current.stages);
     expect(codebook).toHaveProperty('node.person.label', {
@@ -1398,6 +1417,7 @@ describe('languages in the deploy migration', () => {
         stages: structuredClone(stages),
         codebook: structuredClone(codebook),
         localization: structuredClone(localization),
+        interfaceText: structuredClone(interfaceText),
         // Refused at the compatible version, so the row is normalized.
         experiments: { encryptedVariables: true },
       },
@@ -1407,6 +1427,12 @@ describe('languages in the deploy migration', () => {
 
     const written = onlyWrite(prisma);
     expect(written).toHaveProperty('data.localization', localization);
+    // The researcher's wording is kept, where normalizing would otherwise
+    // supply Network Canvas's.
+    expect(written).toHaveProperty(
+      'data.interfaceText.interview.continue',
+      interfaceText.interview.continue,
+    );
     expect(written).toHaveProperty('data.codebook', codebook);
     expect(written).toHaveProperty('data.stages', stages);
     // The row already ends at its finish stage, and keeps it as its only one,

@@ -38,10 +38,11 @@ describe('the narrative sections, read in Spanish', () => {
     // The outline reads its titles out of the same catalog, so a section named
     // in Spanish and listed in English would fail here rather than pass
     // halfway.
-    await waitFor(() => expect(harness.outline()).toHaveLength(2));
+    await waitFor(() => expect(harness.outline()).toHaveLength(3));
     expect(harness.outline().map((section) => section.title)).toEqual([
       'Vistas predefinidas',
       'Comportamientos de la narrativa',
+      'Textos del lienzo',
     ]);
     expect(
       screen.getByRole('switch', { name: 'Dibujo libre' }),

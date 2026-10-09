@@ -36,6 +36,13 @@ function renderDocument() {
       keyShape="circle"
       showAtRiskStatuses
       showKey={false}
+      keyHeading="Key"
+      notationWords={{
+        affected: 'Has this condition',
+        obligateAffected: 'Will develop this condition',
+        obligateCarrier: 'Carries this condition',
+        unknown: 'Not known',
+      }}
     />,
   );
   return ref.current;

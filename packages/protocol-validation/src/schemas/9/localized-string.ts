@@ -7,6 +7,10 @@ import {
   isUndeterminedLocale,
   type LocaleTag,
 } from '../../localization/localeTag.ts';
+import {
+  findMessageArgumentProblem,
+  type MessageArguments,
+} from '../../localization/messageArguments.ts';
 import { findMessageSyntaxProblem } from '../../localization/messageSyntax.ts';
 
 const LOCALIZED_STRING = 'localizedString' as const;
@@ -19,6 +23,11 @@ export type LocalizedStringFormat = 'plain' | 'markdown';
 
 type LocalizedStringDescriptor = Readonly<{
   format: LocalizedStringFormat;
+  /**
+   * The arguments a localized message's translations may use (see
+   * `localizedMessage`); absent for text made only of literal text.
+   */
+  arguments?: MessageArguments;
 }>;
 
 /**
@@ -116,26 +125,16 @@ export const nonBlankText = () =>
  * The metadata tag is what lets `collectLocalizedStrings` find every localized
  * field without a hand-maintained list of paths.
  */
-export const localizedString = (
+const localizedTranslations = (
   content: z.ZodString,
-  format: LocalizedStringFormat,
-  {
-    mayBeEmpty = false,
-  }: {
-    /**
-     * Allow a string with no translation at all. Only for text something
-     * else stops a protocol from leaving its editor without: the finish
-     * stage's heading and text, which a new protocol in a language Network
-     * Canvas supplies none for starts without (`findFinishStageTextProblems`).
-     */
-    mayBeEmpty?: boolean;
-  } = {},
+  findProblem: (message: string) => string | undefined,
+  mayBeEmpty: boolean,
 ) =>
   z
     .record(
       z.string(),
       content.superRefine((message, ctx) => {
-        const problem = findMessageSyntaxProblem(message);
+        const problem = findProblem(message);
         if (problem) ctx.addIssue({ code: 'custom', message: problem });
       }),
     )
@@ -153,8 +152,55 @@ export const localizedString = (
           ctx.addIssue({ code: 'custom', message: problem, path: [locale] });
         }
       }
-    })
-    .meta({ [LOCALIZED_STRING]: { format } });
+    });
+
+export const localizedString = (
+  content: z.ZodString,
+  format: LocalizedStringFormat,
+  {
+    mayBeEmpty = false,
+  }: {
+    /**
+     * Allow a string with no translation at all. Only for text something
+     * else stops a protocol from leaving its editor without: the finish
+     * stage's heading and text, which a new protocol in a language Network
+     * Canvas supplies none for starts without (`findFinishStageTextProblems`).
+     */
+    mayBeEmpty?: boolean;
+  } = {},
+) =>
+  localizedTranslations(content, findMessageSyntaxProblem, mayBeEmpty).meta({
+    [LOCALIZED_STRING]: { format },
+  });
+
+/**
+ * A localized string whose translations may also use the arguments the
+ * setting declares, for text Network Canvas words differently by who or how
+ * many it is about: `{name}` shows a value, `select` picks a version by case
+ * and `plural` by number (see `findMessageArgumentProblem`). Each language
+ * chooses its own versions, so a language that needs no distinction writes
+ * one phrase. Always plain: the interview shows values as text, which
+ * markdown could otherwise read as formatting.
+ */
+export const localizedMessage = (
+  content: z.ZodString,
+  { arguments: declaration }: { arguments: MessageArguments },
+) => {
+  const plurals = Object.values(declaration).filter(
+    (argument) => argument.kind === 'plural',
+  );
+  // `#` names the innermost plural, which a variant cannot tell apart.
+  if (plurals.length > 1) {
+    throw new Error('A localized message can declare at most one plural.');
+  }
+  return localizedTranslations(
+    content,
+    (message) => findMessageArgumentProblem(message, declaration),
+    false,
+  ).meta({
+    [LOCALIZED_STRING]: { format: 'plain', arguments: declaration },
+  });
+};
 
 const isLocalizedStringDescriptor = (
   value: unknown,
@@ -162,7 +208,9 @@ const isLocalizedStringDescriptor = (
   typeof value === 'object' &&
   value !== null &&
   'format' in value &&
-  (value.format === 'plain' || value.format === 'markdown');
+  (value.format === 'plain' || value.format === 'markdown') &&
+  (!('arguments' in value) ||
+    (typeof value.arguments === 'object' && value.arguments !== null));
 
 export const getLocalizedStringDescriptor = (
   schema: z.ZodType,

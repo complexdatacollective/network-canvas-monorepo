@@ -57,28 +57,17 @@ const messages = defineMessages({
     id: 'frescoUi.dialogProvider.pleaseWait',
     defaultMessage: 'Please wait...',
     description:
-      'Label shown on a confirm button while its action is still running.',
+      'Announced to screen readers, never shown, while a confirm button’s action is still running; the button shows a spinner.',
   },
   areYouSure: {
     id: 'frescoUi.dialogProvider.areYouSure',
     defaultMessage: 'Are you sure?',
     description: 'Default title of a confirmation dialog.',
   },
-  cannotBeUndone: {
-    id: 'frescoUi.dialogProvider.cannotBeUndone',
-    defaultMessage: 'This action cannot be undone.',
-    description: 'Default description of a confirmation dialog.',
-  },
   submit: {
     id: 'frescoUi.dialogProvider.submit',
     defaultMessage: 'Submit',
     description: 'Default submit action of a form dialog.',
-  },
-  errorOccurred: {
-    id: 'frescoUi.dialogProvider.errorOccurred',
-    defaultMessage: 'An error occurred',
-    description:
-      'Fallback error shown in a confirmation dialog when the failing action carries no message of its own.',
   },
 });
 
@@ -677,7 +666,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
               (e instanceof Error ? (
                 <AppErrorMessage error={e.message} />
               ) : (
-                <AppMessage message={messages.errorOccurred} />
+                <AppMessage message={commonMessages.genericError} />
               )),
           );
           return;
@@ -713,7 +702,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
               (e instanceof Error ? (
                 <AppErrorMessage error={e.message} />
               ) : (
-                <AppMessage message={messages.errorOccurred} />
+                <AppMessage message={commonMessages.genericError} />
               )),
           );
         } finally {
@@ -725,9 +714,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
         id: dialogId,
         type: 'choice',
         title: options.title ?? <AppMessage message={messages.areYouSure} />,
-        description: options.description ?? (
-          <AppMessage message={messages.cannotBeUndone} />
-        ),
+        description: options.description,
         intent: options.intent ?? 'destructive',
         size: options.size,
         finalFocus: options.finalFocus,
@@ -844,13 +831,15 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
             onClick={handlePrimaryClick}
             autoFocus={autoFocusButton === 'primary'}
             disabled={isLoading}
+            aria-busy={isLoading}
             icon={isLoading ? <Loader2 className="animate-spin" /> : undefined}
             data-testid="dialog-primary"
           >
-            {isLoading
-              ? intl.formatMessage(messages.pleaseWait)
-              : dialog.actions.primary.label}
+            {dialog.actions.primary.label}
           </Button>
+          <span role="status" className="sr-only">
+            {isLoading ? intl.formatMessage(messages.pleaseWait) : null}
+          </span>
         </>
       );
     }

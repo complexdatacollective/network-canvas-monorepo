@@ -949,3 +949,151 @@ describe('a multi-line RichTextEditorField', () => {
     expect(editor.querySelectorAll('p')).toHaveLength(2);
   });
 });
+
+describe('a RichTextEditorField with tokens', () => {
+  const TOKENS = [
+    { id: 'name', label: 'Name' },
+    { id: '#', label: 'Number' },
+  ];
+
+  const lineOf = (...content: JSONContent[]): JSONContent => ({
+    type: 'doc',
+    content: [{ type: 'paragraph', content }],
+  });
+  const token = (id: string): JSONContent => ({
+    type: 'token',
+    attrs: { id },
+  });
+
+  const renderWithTokens = (
+    props?: Partial<ComponentProps<typeof RichTextEditorField>>,
+  ) => {
+    const onChange = vi.fn<(value: JSONContent | undefined) => void>();
+    const user = userEvent.setup();
+    render(
+      <RichTextEditorField
+        id="item"
+        name="item"
+        aria-describedby="item-hint"
+        aria-label="List item"
+        compact
+        changeMode="input"
+        toolbarOptions={{ bold: false, italic: false, history: false }}
+        tokens={TOKENS}
+        value={lineOf({ type: 'text', text: 'Add ' }, token('name'))}
+        onChange={onChange}
+        {...props}
+      />,
+    );
+    return {
+      user,
+      onChange,
+      editor: () => screen.findByRole('textbox', { name: 'List item' }),
+    };
+  };
+
+  it('shows a token by its label, as one piece of the line', async () => {
+    const field = renderWithTokens();
+    const editor = await field.editor();
+
+    expect(editor.textContent).toBe('Add Name');
+    const chip = editor.querySelector('[data-token="name"]');
+    expect(chip).toHaveTextContent('Name');
+    expect(chip).toHaveAttribute('contenteditable', 'false');
+  });
+
+  it('inserts a token at the caret from its toolbar button', async () => {
+    const field = renderWithTokens({ value: lineOf() });
+    const editor = await field.editor();
+
+    await field.user.click(editor);
+    await field.user.type(editor, 'Parents: ');
+    await field.user.click(
+      screen.getByRole('button', { name: 'Insert “Number”' }),
+    );
+
+    expect(field.onChange).toHaveBeenLastCalledWith(
+      lineOf({ type: 'text', text: 'Parents: ' }, token('#')),
+    );
+    // Typing goes on where the token went in.
+    await waitFor(() => {
+      expect(editor).toHaveFocus();
+    });
+  });
+
+  it('groups the insert buttons under one name', async () => {
+    renderWithTokens();
+
+    const group = await screen.findByRole('group', {
+      name: 'Insert a placeholder',
+    });
+    expect(within(group).getAllByRole('button')).toHaveLength(2);
+  });
+
+  it('keeps a token when a value it is given is flattened to one line', async () => {
+    const field = renderWithTokens({
+      value: {
+        type: 'doc',
+        content: [
+          { type: 'paragraph', content: [{ type: 'text', text: 'Add' }] },
+          { type: 'paragraph', content: [token('name')] },
+        ],
+      },
+    });
+    const editor = await field.editor();
+
+    expect(editor.textContent).toBe('Add Name');
+    expect(editor.querySelector('[data-token="name"]')).not.toBe(null);
+  });
+
+  it('keeps a pasted token it offers, and the words of one it does not', async () => {
+    const field = renderWithTokens({ value: lineOf() });
+    const editor = await field.editor();
+
+    fireEvent.focus(editor);
+    fireEvent.paste(editor, {
+      clipboardData: clipboardOf({
+        'text/html':
+          '<p>For <span data-token="name">Name</span> and <span data-token="relation">Relation</span></p>',
+        'text/plain': 'For Name and Relation',
+      }),
+    });
+
+    expect(editor.textContent).toBe('For Name and Relation');
+    expect(editor.querySelector('[data-token="name"]')).not.toBe(null);
+    expect(editor.querySelector('[data-token="relation"]')).toBe(null);
+  });
+
+  it('offers no insert button while the field is read-only', async () => {
+    renderWithTokens({ readOnly: true });
+
+    expect(
+      await screen.findByRole('button', { name: 'Insert “Name”' }),
+    ).toBeDisabled();
+  });
+
+  it('is not rebuilt by a host passing the same tokens anew', async () => {
+    const onChange = vi.fn();
+    const props = {
+      'id': 'item',
+      'name': 'item',
+      'aria-describedby': 'item-hint',
+      'aria-label': 'List item',
+      'compact': true,
+      'changeMode': 'input',
+      'value': lineOf({ type: 'text', text: 'Add ' }, token('name')),
+      onChange,
+    } as const;
+    const { rerender } = render(
+      <RichTextEditorField {...props} tokens={[...TOKENS]} />,
+    );
+    const editor = await screen.findByRole('textbox', { name: 'List item' });
+
+    rerender(<RichTextEditorField {...props} tokens={[...TOKENS]} />);
+
+    expect(await screen.findByRole('textbox', { name: 'List item' })).toBe(
+      editor,
+    );
+    expect(onChange).not.toHaveBeenCalled();
+  });
+});

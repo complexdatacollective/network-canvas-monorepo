@@ -415,6 +415,13 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance: otherBinText. Categorical Bin is the name of an interface (stage type) where participants sort people into bins; one bin can collect answers that are not listed, and then asks the participant to describe their answer. "Other" and "Please specify" are literal English defaults written into protocol data: keep them in English.',
   },
+  schema9TieStrengthDeclineLabel: {
+    id: 'protocolValidation.migrationNotes.schema9.tieStrengthDeclineLabel',
+    defaultMessage:
+      'On a Tie-Strength Census stage, the label of the option for declining to rate a relationship must now contain some text. Where it contained only spaces, it now reads "No relationship".',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance: tieStrengthDeclineLabel. Tie-Strength Census is the name of an interface (stage type) where participants rate the strength of the relationship between pairs of people; one option lets them decline to rate it. "No relationship" is a literal English default written into protocol data: keep it in English.',
+  },
   schema9EncryptedAttributeRules: {
     id: 'protocolValidation.migrationNotes.schema9.encryptedAttributeRules',
     defaultMessage:
@@ -498,6 +505,13 @@ export const migrationNoteMessages = defineMessages({
       'A Name Generator Roster stage now has a panel title, shown above the list of people participants choose from, so you can change it and translate it like the rest of your protocol. It starts with the heading the interview has always shown there, "Available to add".',
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Name Generator Roster" is the name Architect gives the interface; use the same name Architect uses for it. "Available to add" is the English text written into the protocol: keep it in English, in quotation marks.',
+  },
+  schema9PedigreeWording: {
+    id: 'protocolValidation.migrationNotes.schema9.pedigreeWording',
+    defaultMessage:
+      "A Family Pedigree stage's own wording is now part of the stage, so you can change it and translate it like the rest of your protocol: the question asking each person's name and its hint, and, where the family must be complete, the list of what is still needed. It starts with the wording the interview has always shown.",
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Family Pedigree" is the name Architect gives the interface; use the same name Architect uses for it.',
   },
 });
 
@@ -592,6 +606,7 @@ const migrationNoteSets = {
       migrationNoteMessages.schema9DuplicateOptionValues,
       migrationNoteMessages.schema9IntroductionPanelText,
       migrationNoteMessages.schema9OtherBinText,
+      migrationNoteMessages.schema9TieStrengthDeclineLabel,
       migrationNoteMessages.schema9EncryptedAttributeRules,
       migrationNoteMessages.schema9FamilyPedigree,
       migrationNoteMessages.schema9FamilyPedigreeLabels,
@@ -604,6 +619,7 @@ const migrationNoteSets = {
       migrationNoteMessages.schema9FamilyPedigreeSharedAttributes,
       migrationNoteMessages.schema9FinishStage,
       migrationNoteMessages.schema9RosterPanelTitle,
+      migrationNoteMessages.schema9PedigreeWording,
     ],
   },
 };

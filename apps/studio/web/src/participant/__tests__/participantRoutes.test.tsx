@@ -86,6 +86,12 @@ const sessionPayload = (stageIndex: number, analytics = false) => ({
         label: { en: 'Finish' },
         title: { en: 'Thank you' },
         content: { en: 'The interview is complete.' },
+        finishLabel: { en: 'Finish' },
+        finishConfirmation: { en: 'Finish this interview?' },
+        finishedNotice: {
+          en: 'This interview is finished, and its answers can no longer be changed.',
+        },
+        finishFailed: { en: 'The interview could not be finished.' },
         outcome: 'terminated',
       },
     ],
@@ -286,7 +292,7 @@ describe('opening a participant link', () => {
   });
 });
 
-/** The interview's own notice under a finished interview's closing text. */
+/** The finish stage's notice under a finished interview's closing text. */
 const FINISHED_NOTICE =
   'This interview is finished, and its answers can no longer be changed.';
 

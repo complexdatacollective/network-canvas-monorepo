@@ -11,6 +11,7 @@ import {
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import { useStageEditorForm } from '@codaco/protocol-builder/form/stageEditorContext';
+import { useProtocolLocalization } from '@codaco/protocol-builder/localization/ProtocolLocalization';
 import type {
   StageProblemsStore,
   StageSectionsStore,
@@ -204,6 +205,7 @@ export function StageEditorHeader({
 function StageDraftPublisher() {
   const { liveDraft, storeApi, identity } = useStageEditorForm();
   const { committedFields, access } = useStageEdit();
+  const localization = useProtocolLocalization();
   const editing = access === 'editing';
 
   useEffect(() => {
@@ -211,7 +213,8 @@ function StageDraftPublisher() {
     const publish = () => {
       const draft = liveDraft();
       publishStageDraft(
-        stageDocument(identity, draft) as unknown as Stage,
+        // As it would be saved, holding the wording a save writes in.
+        stageDocument(identity, draft, localization) as unknown as Stage,
         committedFields,
         draft,
         editing,
@@ -223,7 +226,7 @@ function StageDraftPublisher() {
       unsubscribe();
       closeStageDraft();
     };
-  }, [committedFields, editing, identity, liveDraft, storeApi]);
+  }, [committedFields, editing, identity, liveDraft, localization, storeApi]);
 
   return null;
 }

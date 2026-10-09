@@ -351,7 +351,10 @@ export const MinNodesValidation: Story = {
       ).toBeInTheDocument();
     });
 
-    await expect(screen.getByText('3')).toBeInTheDocument();
+    // The notice is the stage's plain text, so the count sits inside it.
+    await expect(screen.getByText(/must create at least/i)).toHaveTextContent(
+      /\b3\b/,
+    );
   },
 };
 
@@ -763,7 +766,7 @@ export const ProtectedAnswersRefused: Story = {
       canvas.getByRole('button', { name: 'Add a person' }),
     ).toBeDisabled();
     await expect(
-      canvas.queryByRole('button', { name: 'Enter your passphrase' }),
+      canvas.queryByRole('button', { name: 'Passphrase' }),
     ).not.toBeInTheDocument();
 
     await userEvent.click(canvas.getByTestId('next-button'));
@@ -823,7 +826,7 @@ export const PassphraseInsideTheForm: Story = {
     docs: {
       description: {
         story:
-          "The form asks for a nickname that must differ from the person's name, which is protected and has not been unlocked. The form covers the navigation's passphrase prompt, so it offers the passphrase itself; once entered, focus returns to Finished and the nickname is checked against the name as the participant gave it.",
+          "The form asks for a nickname that must differ from the person's name, which is protected and has not been unlocked. The form covers the navigation's passphrase prompt, so it offers the passphrase itself; once entered, focus returns to Done and the nickname is checked against the name as the participant gave it.",
       },
     },
   },
@@ -841,33 +844,31 @@ export const PassphraseInsideTheForm: Story = {
       ).findByRole('option'),
     );
     const form = within(await screen.findByRole('dialog'));
-    await userEvent.click(
-      form.getByRole('button', { name: 'Enter your passphrase' }),
-    );
+    await userEvent.click(form.getByRole('button', { name: 'Passphrase' }));
     const prompt = await screen.findByRole('dialog', {
-      name: 'Enter your passphrase',
+      name: 'Passphrase',
     });
     await userEvent.type(
       within(prompt).getByLabelText(/^Passphrase/, { selector: 'input' }),
       PASSPHRASE,
     );
     await userEvent.click(
-      within(prompt).getByRole('button', { name: 'Submit passphrase' }),
+      within(prompt).getByRole('button', { name: 'Continue' }),
     );
     await waitFor(() => expect(prompt).not.toBeInTheDocument(), {
       timeout: 10_000,
     });
     await expect(
-      form.queryByRole('button', { name: 'Enter your passphrase' }),
+      form.queryByRole('button', { name: 'Passphrase' }),
     ).not.toBeInTheDocument();
-    const finished = screen.getByRole('button', { name: 'Finished' });
-    await expect(finished).toHaveFocus();
+    const done = screen.getByRole('button', { name: 'Done' });
+    await expect(done).toHaveFocus();
 
     const nickname = form.getByRole('textbox', {
       name: /What nickname do you use/,
     });
     await userEvent.type(nickname, 'Alice');
-    await userEvent.click(finished);
+    await userEvent.click(done);
     await waitFor(() =>
       expect(nickname).toHaveAccessibleDescription(
         /Your answer must be different/,

@@ -3,6 +3,7 @@ import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
 import { subjectPicker } from '../../sections/subject-picker/subjectPicker.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
 import { geospatialPrompts } from './sections/geospatialPrompts.tsx';
+import { geospatialWording } from './sections/geospatialWording.tsx';
 import { mapAppearance } from './sections/mapAppearance.tsx';
 import { mapSource } from './sections/mapSource.tsx';
 
@@ -23,6 +24,7 @@ export const geospatialStageEditor = defineStageEditor('Geospatial', [
   mapSource(),
   geospatialPrompts(),
   mapAppearance(),
+  geospatialWording(),
   skipLogic(),
   interviewerGuidance(),
 ]);

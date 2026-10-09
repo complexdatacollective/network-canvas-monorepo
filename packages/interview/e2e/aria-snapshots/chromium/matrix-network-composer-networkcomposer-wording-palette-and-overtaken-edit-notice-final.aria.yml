@@ -1,0 +1,32 @@
+- main:
+  - toolbar "Network composer tools":
+    - group "Editing tools":
+      - button "Select" [pressed]
+      - button "Add somebody - matrix check"
+      - button "Link people - matrix check"
+      - button "Circles - matrix check"
+    - separator
+    - group "Layout tools":
+      - button "Tidy up - matrix check"
+    - separator
+    - group "History tools":
+      - button "Undo" [disabled]
+      - button "Redo"
+  - application:
+    - img
+    - button "Dev" [pressed]
+  - dialog "Dev":
+    - separator "Resize panel"
+    - heading "Dev" [level=2]
+    - button "Close"
+    - text: Age
+    - button "Decrease value"
+    - spinbutton "Age": /\d+/
+    - button "Increase value"
+    - button "Delete"
+  - navigation:
+    - button "Settings"
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

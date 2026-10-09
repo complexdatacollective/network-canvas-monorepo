@@ -2,7 +2,6 @@
 import { invariant } from 'es-toolkit';
 import { useCallback, useMemo } from 'react';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
 import type { LocalizedString } from '@codaco/protocol-validation';
 import {
   type EntityPrimaryKey,
@@ -14,6 +13,7 @@ import {
 import useExternalData from '../../hooks/useExternalData';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
+import { useContentFormat } from '../../localization/useContentFormat';
 import { getStageCardOptions } from '../../selectors/name-generator';
 import {
   getNetworkNodes,
@@ -22,7 +22,6 @@ import {
 import getParentKeyByNameValue from '../../utils/getParentKeyByNameValue';
 import { getEntityAttributes } from '../../utils/networkEntities';
 import { resolveRosterNodeLabel } from '../../utils/resolveRosterNodeLabel';
-import { interfaceMessages } from '../messages';
 import type { DataCardDetail } from './DataCard';
 import type { NameGeneratorRosterProps } from './helpers';
 
@@ -75,7 +74,7 @@ export type UseItemElement = {
 
 // Returns all nodes associated with external data
 const useItems = (props: NameGeneratorRosterProps) => {
-  const intl = useAppIntl();
+  const { formatNumber } = useContentFormat();
   const resolve = useResolveLocalizedString();
   const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
   const { externalData, status } = useExternalData(
@@ -93,23 +92,19 @@ const useItems = (props: NameGeneratorRosterProps) => {
   // data, meaning we do not expect it to be encrypted.
   // TODO: this must be updated if we want rosters to support encrypted data.
   const codebookVariables = nodeTypeDefinition?.variables;
-  const typeLabel = nodeTypeDefinition
+  const subjectLabel = nodeTypeDefinition
     ? resolve(nodeTypeDefinition.label).text
     : '';
-  const subjectLabel =
-    typeLabel.trim() === ''
-      ? intl.formatMessage(interfaceMessages.nodeSubject)
-      : typeLabel;
   const getNodeLabel = useCallback(
     (node: NcNode, sequentialNumber: number) =>
       resolveRosterNodeLabel({
         codebookVariables,
-        intl,
+        formatNumber,
         node,
         subjectLabel,
         sequentialNumber,
       }),
-    [codebookVariables, subjectLabel, intl],
+    [codebookVariables, subjectLabel, formatNumber],
   );
 
   const items = useMemo(() => {

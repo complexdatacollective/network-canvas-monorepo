@@ -3,9 +3,9 @@ import { describe, expect, test } from 'vitest';
 import type { FramingId } from '@codaco/protocol-validation';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
-import { resolveInterviewIntl } from '../../../i18n/resolveIntl';
 import {
   formatPersonLabel,
+  formatRelativeTerm,
   KIN_TERMS,
   type KinTerm,
   labelFamily,
@@ -14,8 +14,9 @@ import { messages } from '../messages';
 import { readFamily, type PedigreeConfig } from '../model';
 import { relationshipsToParticipant } from '../relationshipToParticipant';
 import { config, configWithoutGenderIdentity, link, person } from './fixtures';
+import { pedigreeWordsIn } from './pedigreeWords';
 
-const intl = resolveInterviewIntl();
+const words = pedigreeWordsIn();
 
 /** Labels as English text, keyed by person id, read without the soft
  * hyphens where a long word may break inside a symbol. */
@@ -29,7 +30,7 @@ function labelsOf(
   return Object.fromEntries(
     [...labelFamily(family, framing)].map(([id, label]) => [
       id,
-      formatPersonLabel(label, intl).replace(/\u00AD/g, ''),
+      formatPersonLabel(label, words).replace(/\u00AD/g, ''),
     ]),
   );
 }
@@ -209,7 +210,7 @@ describe('labelFamily', () => {
     expect(
       formatPersonLabel(
         labelFamily(donorFamily, 'gamete').get('intersexDonor')!,
-        intl,
+        words,
       ),
     ).toBe('Egg donor');
   });
@@ -424,7 +425,7 @@ describe('labelFamily', () => {
       [...extendedNodes, man('cousinsSon')],
       [...extendedEdges, link('cousin', 'cousinsSon', 'biological')],
     );
-    expect(labels.cousinsSon).toBe('Cousin’s son');
+    expect(labels.cousinsSon).toBe('Cousin’s Son');
   });
 
   test('unnamed people may share a kinship word, which generateLabels tells apart', () => {
@@ -439,21 +440,25 @@ describe('labelFamily', () => {
     expect(labels).toMatchObject({ a: 'Child', b: 'Child', c: 'Daughter' });
   });
 
-  test('someone not connected to the participant is a family member', () => {
+  test('someone not connected to the participant is described as a relative', () => {
     expect(
       labelsOf([person('ego', { isEgo: true }), person('loose')], []).loose,
-    ).toBe('Family member');
+    ).toBe('Relative');
   });
 
   test('every kinship word has its own wording', () => {
     for (const term of KIN_TERMS) {
-      expect(intl.formatMessage(messages.relativeTerm, { term })).not.toBe(
+      expect(words.text(words.wording.relativeTerm, { term })).not.toBe(
         'Relative',
       );
       // Anyone can be described through a relative by any kinship word.
       expect(
-        intl.formatMessage(messages.relativeOf, { owner: 'Isaac', term }),
-      ).not.toBe('Isaac’s relative');
+        words.text(words.wording.generatedLabelOf, {
+          relation: 'owner',
+          owner: 'Isaac',
+          term: formatRelativeTerm(term, words),
+        }),
+      ).not.toBe('Isaac’s Relative');
     }
   });
 });
@@ -468,7 +473,7 @@ function tiesOf(nodes: NcNode[], edges: NcEdge[]) {
     [...relationships].map(([id, relationship]) => [
       id,
       [
-        formatPersonLabel(labels.get(id)!, intl).replace(/\u00AD/g, ''),
+        formatPersonLabel(labels.get(id)!, words).replace(/\u00AD/g, ''),
         relationship,
       ],
     ]),
@@ -722,7 +727,7 @@ describe('step and in-law relatives', () => {
             link('dad', 'her', 'partner', { current: false }),
           ],
         ).her,
-      ).toEqual(['Father’s former partner', 'otherRelative']);
+      ).toEqual(['Father’s Former partner', 'otherRelative']);
     });
   });
 
@@ -755,7 +760,7 @@ describe('step and in-law relatives', () => {
             link('ex', 'kid', 'biological'),
           ],
         ).kid,
-      ).toEqual(['Former partner’s son', 'otherRelative']);
+      ).toEqual(['Former partner’s Son', 'otherRelative']);
     });
   });
 
@@ -1076,9 +1081,9 @@ describe('step and in-law relatives', () => {
       ),
     ).toMatchObject({
       paul: ['Stepfather', 'stepParent'],
-      dansPartner: ['Sperm donor’s partner', 'otherRelative'],
-      paulsEx: ['Stepfather’s former partner', 'otherRelative'],
-      annsEx: ['Mother’s former partner', 'otherRelative'],
+      dansPartner: ['Sperm donor’s Partner', 'otherRelative'],
+      paulsEx: ['Stepfather’s Former partner', 'otherRelative'],
+      annsEx: ['Mother’s Former partner', 'otherRelative'],
     });
   });
 });
@@ -1088,8 +1093,16 @@ describe('apostrophes', () => {
     // In ICU messages a straight apostrophe quotes a following brace, hash,
     // pipe or apostrophe; anywhere else it is text, which should be U+2019.
     const straight = /(?<!')'(?![{}#|'])/;
-    const offending = Object.entries(messages)
-      .filter(([, message]) => straight.test(message.defaultMessage ?? ''))
+    const copy = [
+      ...Object.entries(messages).map(
+        ([key, message]) => [key, message.defaultMessage ?? ''] as const,
+      ),
+      ...Object.entries(words.wording).map(
+        ([key, value]) => [`wording.${key}`, value?.en ?? ''] as const,
+      ),
+    ];
+    const offending = copy
+      .filter(([, text]) => straight.test(text))
       .map(([key]) => key);
     expect(offending).toEqual([]);
   });
@@ -1111,13 +1124,13 @@ describe('apostrophes', () => {
           link('priyasMum', 'priya', 'biological'),
         ],
       ).priyasMum,
-    ).toBe('Priya\u2019s mother');
+    ).toBe('Priya\u2019s Mother');
   });
 });
 
 describe('soft hyphens', () => {
   const term = (kinTerm: KinTerm) =>
-    formatPersonLabel({ type: 'term', term: kinTerm }, intl);
+    formatPersonLabel({ type: 'term', term: kinTerm }, words);
 
   test('long kinship words carry a soft hyphen at a syllable break, so they break there inside a symbol', () => {
     const long: KinTerm[] = [
@@ -1156,9 +1169,9 @@ describe('soft hyphens', () => {
             },
           ],
         },
-        intl,
+        words,
       ),
-    ).toBe('Cousin’s step\u00ADmother');
+    ).toBe('Cousin’s Step\u00ADmother');
   });
 
   test('short words, and words that fit a symbol whole, have none', () => {

@@ -189,6 +189,20 @@ describe('userActions', () => {
             fr: DEFAULT_FINISH_SESSION_TEXT.fr.content,
             en: DEFAULT_FINISH_SESSION_TEXT.en.content,
           },
+          // The screen's own words, which Network Canvas also supplies.
+          finishLabel: { fr: 'Terminer', en: 'Finish' },
+          finishConfirmation: {
+            fr: 'Voulez-vous vraiment terminer l’entretien ?',
+            en: 'Are you sure you want to finish the interview?',
+          },
+          finishedNotice: {
+            fr: 'Cet entretien est terminé et ses réponses ne peuvent plus être modifiées.',
+            en: 'This interview is finished, and its answers can no longer be changed.',
+          },
+          finishFailed: {
+            fr: 'L’entretien n’a pas pu être terminé. Veuillez réessayer. Si le problème persiste, contactez l’équipe responsable de l’étude.',
+            en: 'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
+          },
           outcome: 'completed',
         },
       ]);
@@ -219,6 +233,18 @@ describe('userActions', () => {
           label: {},
           title: {},
           content: {},
+          // The screen's own words are required, so they are English under
+          // Japanese until the researcher translates them.
+          finishLabel: { ja: 'Finish' },
+          finishConfirmation: {
+            ja: 'Are you sure you want to finish the interview?',
+          },
+          finishedNotice: {
+            ja: 'This interview is finished, and its answers can no longer be changed.',
+          },
+          finishFailed: {
+            ja: 'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
+          },
           outcome: 'completed',
         },
       ]);

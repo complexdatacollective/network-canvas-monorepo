@@ -1,10 +1,14 @@
-import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import type { FramingId } from '@codaco/protocol-validation';
 import type { VariableValue } from '@codaco/shared-consts';
 
+import type { ContentFormat } from '../../localization/contentFormat';
 import { readOwnProperty } from '../../utils/ownProperty';
-import { formatPersonLabel, labelFamily, type PersonLabel } from './kinship';
-import { messages } from './messages';
+import {
+  formatPersonLabel,
+  formatRelativeTerm,
+  labelFamily,
+  type PersonLabel,
+} from './kinship';
 import {
   partnersOf,
   primaryParentsOf,
@@ -12,6 +16,13 @@ import {
   type Family,
   type Person,
 } from './model';
+import type { PedigreeWords } from './pedigreeWords';
+
+/**
+ * How a label's number is written and labels are compared: in the language
+ * of the wording the labels are made from, which is the protocol's.
+ */
+type LabelFormat = Pick<ContentFormat, 'locale' | 'formatNumber'>;
 
 /**
  * How a qualifier relates the person to the relative who tells them apart,
@@ -26,11 +37,16 @@ const QUALIFIERS: readonly Qualifier[] = [
   'siblingOf',
 ];
 
-const QUALIFIER_MESSAGES: Record<Qualifier, MessageDescriptor> = {
-  partnerOf: messages.generatedLabelPartnerOf,
-  parentOf: messages.generatedLabelParentOf,
-  childOf: messages.generatedLabelChildOf,
-  siblingOf: messages.generatedLabelSiblingOf,
+/** How the qualifying relative is related to the person, as `generatedLabelOf`
+ * names it. */
+const QUALIFIER_RELATION: Record<
+  Qualifier,
+  'partner' | 'parent' | 'child' | 'sibling'
+> = {
+  partnerOf: 'partner',
+  parentOf: 'parent',
+  childOf: 'child',
+  siblingOf: 'sibling',
 };
 
 /** The people a qualifier can name for a person. */
@@ -71,7 +87,7 @@ export function labelOfNoKind(
   relation: keyof typeof NO_KIND_TERMS,
   anchor: Person,
   anchorLabel: string,
-  intl: IntlShape,
+  words: PedigreeWords,
 ): string {
   const term = NO_KIND_TERMS[relation];
   return formatPersonLabel(
@@ -87,7 +103,7 @@ export function labelOfNoKind(
             },
           ],
         },
-    intl,
+    words,
   );
 }
 
@@ -116,17 +132,18 @@ const comparableIn = (locale: string) => (text: string) =>
 export function labelEveryone(
   family: Family,
   framing: FramingId,
-  intl: IntlShape,
+  format: LabelFormat,
+  words: PedigreeWords,
 ): Map<string, string> {
-  const generated = buildLabels(family, framing, intl);
+  const generated = buildLabels(family, framing, format, words);
   return new Map(
     family.people.map((person) => [
       person.id,
       person.isEgo
-        ? intl.formatMessage(messages.you)
+        ? words.text(words.wording.you)
         : (person.name ??
           generated.get(person.id) ??
-          intl.formatMessage(messages.familyMember)),
+          formatRelativeTerm('other', words)),
     ]),
   );
 }
@@ -150,10 +167,11 @@ export function labelEveryone(
 export function generateLabels(
   family: Family,
   framing: FramingId,
-  intl: IntlShape,
+  format: LabelFormat,
+  words: PedigreeWords,
 ): Map<string, string> {
   return new Map(
-    [...buildLabels(family, framing, intl)]
+    [...buildLabels(family, framing, format, words)]
       .filter(([id]) => family.byId.get(id)?.hasUnreadableName !== true)
       .map(([id, label]) => [id, withoutSoftHyphens(label)]),
   );
@@ -191,7 +209,8 @@ export function labelWrites(
 function buildLabels(
   family: Family,
   framing: FramingId,
-  intl: IntlShape,
+  format: LabelFormat,
+  words: PedigreeWords,
 ): Map<string, string> {
   const kinshipLabels = labelFamily(family, framing);
   const unnamed = family.people.filter(
@@ -217,12 +236,19 @@ function buildLabels(
     const baseTexts = new Map(
       unnamed.map((person) => [
         person.id,
-        formatPersonLabel(baseLabels.get(person.id)!, intl, (ownerId) =>
+        formatPersonLabel(baseLabels.get(person.id)!, words, (ownerId) =>
           settled.get(ownerId),
         ),
       ]),
     );
-    const next = resolveLabels(family, unnamed, baseLabels, baseTexts, intl);
+    const next = resolveLabels(
+      family,
+      unnamed,
+      baseLabels,
+      baseTexts,
+      format,
+      words,
+    );
     const unchanged =
       next.size === labels.size &&
       [...next].every(([id, label]) => labels.get(id) === label);
@@ -239,9 +265,10 @@ function resolveLabels(
   unnamed: readonly Person[],
   baseLabels: ReadonlyMap<string, PersonLabel>,
   baseTexts: ReadonlyMap<string, string>,
-  intl: IntlShape,
+  format: LabelFormat,
+  words: PedigreeWords,
 ): Map<string, string> {
-  const comparable = comparableIn(intl.locale);
+  const comparable = comparableIn(format.locale);
   // Every name typed, and any name the participant's own person was given
   // elsewhere in the interview.
   const used = new Set<string>();
@@ -301,18 +328,28 @@ function resolveLabels(
     if (!relative) return undefined;
     const term = baseTexts.get(personId) ?? '';
     // A partnership that has ended is named as one.
-    const message =
+    const relation =
       qualifier === 'partnerOf' && !isCurrentPartnership(personId, relativeId)
-        ? messages.generatedLabelFormerPartnerOf
-        : QUALIFIER_MESSAGES[qualifier];
+        ? 'formerPartner'
+        : QUALIFIER_RELATION[qualifier];
     if (relative.isEgo) {
-      return intl.formatMessage(message, { isYou: 'true', term, name: '' });
+      return words.text(words.wording.generatedLabelOf, {
+        relation,
+        isYou: 'true',
+        term,
+        name: '',
+      });
     }
     const name =
       relative.name?.trim() ??
       (allowKinWords ? kinWordOf(relativeId) : undefined);
     if (name === undefined) return undefined;
-    return intl.formatMessage(message, { isYou: 'false', term, name });
+    return words.text(words.wording.generatedLabelOf, {
+      relation,
+      isYou: 'false',
+      term,
+      name,
+    });
   };
 
   /** Each member qualified through the same kind of relative, or undefined
@@ -375,10 +412,7 @@ function resolveLabels(
     for (const member of members) {
       let label: string;
       do {
-        label = intl.formatMessage(messages.numberedRelative, {
-          label: baseTexts.get(member.id) ?? '',
-          number: number++,
-        });
+        label = `${baseTexts.get(member.id) ?? ''} ${format.formatNumber(number++)}`;
       } while (used.has(comparable(label)));
       labels.set(member.id, label);
       used.add(comparable(label));
@@ -425,9 +459,10 @@ function resolveLabels(
 export function distinctNames(
   family: Family,
   labels: ReadonlyMap<string, string>,
-  intl: IntlShape,
+  format: LabelFormat,
+  words: PedigreeWords,
 ): Map<string, string> {
-  const comparable = comparableIn(intl.locale);
+  const comparable = comparableIn(format.locale);
   const result = new Map(labels);
   const used = new Set([...labels.values()].map(comparable));
   const groups = new Map<string, Person[]>();
@@ -475,7 +510,8 @@ export function distinctNames(
         .toSorted((a, b) => rank(a) - rank(b))[0];
       const relative = relativeId ? family.byId.get(relativeId) : undefined;
       if (!relative) return undefined;
-      const text = intl.formatMessage(QUALIFIER_MESSAGES[qualifier], {
+      const text = words.text(words.wording.generatedLabelOf, {
+        relation: QUALIFIER_RELATION[qualifier],
         isYou: relative.isEgo ? 'true' : 'false',
         term: labels.get(member.id) ?? '',
         name: relative.isEgo ? '' : (labels.get(relative.id) ?? ''),
@@ -493,10 +529,7 @@ export function distinctNames(
     for (const member of members) {
       let text: string;
       do {
-        text = intl.formatMessage(messages.numberedRelative, {
-          label: labels.get(member.id) ?? '',
-          number: number++,
-        });
+        text = `${labels.get(member.id) ?? ''} ${format.formatNumber(number++)}`;
       } while (used.has(comparable(text)));
       used.add(comparable(text));
       told.set(member.id, text);

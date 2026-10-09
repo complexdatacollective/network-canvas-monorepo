@@ -12,9 +12,9 @@
   - status
   - toolbar "Layout and drawing tools":
     - group "Drawing controls":
-      - button "Disable drawing" [pressed]
-      - button "Freeze annotations"
-      - button "Reset annotations"
+      - button "Stop sketching - matrix check" [pressed]
+      - button "Hold the sketch - matrix check"
+      - button "Wipe the sketch - matrix check"
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

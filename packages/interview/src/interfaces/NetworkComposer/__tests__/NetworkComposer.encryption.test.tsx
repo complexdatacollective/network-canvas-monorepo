@@ -37,6 +37,7 @@ import { readEncryptedAttribute } from '../../Anonymisation/decryptionScope';
 import { decryptValue } from '../../Anonymisation/encryptionFormat';
 import { generateSecureAttributes } from '../../Anonymisation/utils';
 import NetworkComposer from '../NetworkComposer';
+import { composerWords } from './composerWords';
 
 // Records when a list holding encrypted values has been decrypted, so a test
 // can wait for stored values to be readable before relying on them.
@@ -193,6 +194,7 @@ const uniqueNameVariables: Record<string, Variable> = {
 const stage: StageProps<'NetworkComposer'>['stage'] = {
   id: 'nc1',
   type: 'NetworkComposer',
+  ...composerWords(),
   label: { en: 'Network Composer' },
   subject: { entity: 'node', type: NODE_TYPE },
   layoutVariable: asEntityAttributeReference(LAYOUT_VAR),
@@ -856,7 +858,7 @@ describe('NetworkComposer saving edits in the order they were made', () => {
     expect(
       await screen.findByRole('dialog', { name: 'Discard changes?' }),
     ).toHaveTextContent('An error occurred while submitting the form.');
-    fireEvent.click(screen.getByRole('button', { name: 'Keep changes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     await waitFor(() =>
       expect(
         screen.queryByRole('dialog', { name: 'Discard changes?' }),
@@ -1112,7 +1114,7 @@ describe('NetworkComposer side panel checking an answer against a protected one'
     expect(dialog).not.toHaveTextContent(
       locked ? /invalid data/ : /Enter your passphrase/,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Keep changes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     await waitFor(() =>
       expect(
         screen.queryByRole('dialog', { name: 'Discard changes?' }),

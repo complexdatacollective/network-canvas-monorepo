@@ -6,6 +6,7 @@ import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
+import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
@@ -21,7 +22,6 @@ import {
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import * as attributePatch from '../../../forms/formValuesToAttributePatch';
-import { runtimeMessages } from '../../../i18n/runtimeMessages';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
@@ -36,7 +36,9 @@ import {
   siblingTie,
 } from '../model';
 import type { OwnedOptionLabels } from '../options';
+import { PedigreeWordsProvider } from '../pedigreeWords';
 import { config, link, person } from './fixtures';
+import { pedigreeWordsIn } from './pedigreeWords';
 
 const OPTION_LABELS: OwnedOptionLabels = {
   sexAssignedAtBirth: {
@@ -92,6 +94,11 @@ type Setup = {
   optionLabels?: OwnedOptionLabels;
   /** What storing the submission comes to. */
   submitted?: Promise<FormSubmissionResult>;
+  /**
+   * The protocol's default language, which its wording is shown in. The
+   * fixture's own text is English, so English is declared too.
+   */
+  protocolLocale?: string;
 };
 
 /** The pedigree's side panel, editing `editing` (or adding a relative of
@@ -108,6 +115,7 @@ function renderPersonForm(
     decryptedNames = new Map(),
     optionLabels = OPTION_LABELS,
     submitted = Promise.resolve({ success: true }),
+    protocolLocale = 'en',
   }: Setup,
 ) {
   const store = configureStore({
@@ -178,12 +186,19 @@ function renderPersonForm(
     .mockImplementation(() => submitted);
 
   const Wrapper = ({ children }: { children: ReactNode }) => (
-    <TestProtocolLocalization>
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-          <FormStoreProvider>{children}</FormStoreProvider>
-        </CurrentStepProvider>
-      </Provider>
+    <TestProtocolLocalization
+      localization={{
+        defaultLocale: protocolLocale,
+        locales: [...new Set([protocolLocale, 'en'])],
+      }}
+    >
+      <PedigreeWordsProvider value={pedigreeWordsIn(protocolLocale)}>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+            <FormStoreProvider>{children}</FormStoreProvider>
+          </CurrentStepProvider>
+        </Provider>
+      </PedigreeWordsProvider>
     </TestProtocolLocalization>
   );
 
@@ -210,6 +225,10 @@ function renderPersonForm(
         generatedLabels={{}}
         decryptedNames={decryptedNames}
         displayName={(id) => id}
+        nameField={{
+          prompt: { en: 'Name (optional)' },
+          hint: { en: 'A first name or nickname is fine.' },
+        }}
         onSubmit={onSubmit}
       />
       <SubmitButton form={FORM_ID}>Save</SubmitButton>
@@ -285,7 +304,7 @@ describe('the person form', () => {
       nodes: [person('sis', { sex: ['female'] })],
       submitted: Promise.resolve({
         success: false,
-        formErrors: [createMessageError(runtimeMessages.submissionFailed)],
+        formErrors: [createMessageError(formMessages.submitFailed)],
       }),
     });
     await user.type(nameField(), 'Ann');
@@ -341,11 +360,7 @@ describe('the person form', () => {
     await user.type(nameField(), 'Julie');
     await save(user);
 
-    expect(
-      await screen.findByText(
-        'This value is used elsewhere. It must be unique.',
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Must be unique.')).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
   });
 });
@@ -726,6 +741,18 @@ describe('the missing details notice', () => {
       expect(notice()).toHaveTextContent('Some details are missing: Nickname.'),
     );
   });
+  // The notice is the protocol's wording, so the details it lists are joined
+  // as that wording's language joins a list, whatever the browser's is.
+  it('joins the details as the protocol’s language does', () => {
+    renderPersonForm('bea', {
+      nodes: [person('bea'), person('ego', { isEgo: true })],
+      missing: ['sexAssignedAtBirth', { variable: NICKNAME }],
+      formFields: [nicknameField],
+      protocolLocale: 'de',
+    });
+    expect(screen.getByText(/ und Nickname\.$/)).toBeInTheDocument();
+    expect(screen.queryByText(/ and Nickname/)).toBeNull();
+  });
 });
 
 // Ruling 19: "carried the pregnancy" is a yes/no answer about any kind of
@@ -1059,7 +1086,7 @@ describe('reasons an answer is unavailable', () => {
       name: /^Sex assigned at birth/,
     });
     expect(sex).toHaveAccessibleDescription(
-      /“Male” is unavailable because you are recorded as having carried “ava” and “ben”, and nobody recorded as “Male” at birth can carry a pregnancy\./,
+      /“Male” is unavailable because you are recorded as having carried ava and ben, and nobody recorded as “Male” at birth can carry a pregnancy\./,
     );
     const hint = sex.getAttribute('aria-describedby') ?? '';
     const text = hint
@@ -1094,7 +1121,7 @@ describe('reasons an answer is unavailable', () => {
       /“Female” is unavailable because this person and “linda” are both your genetic parents, and “linda” is recorded as “Female” at birth\./,
     );
     expect(sex).toHaveAccessibleDescription(
-      /“Female” is unavailable because this person and “linda” are both genetic parents of “sam”/,
+      /“Female” is unavailable because this person and “linda” are both genetic parents of sam,/,
     );
     expect(sex).not.toHaveAccessibleDescription(/your genetic parent, is/);
   });
@@ -1125,7 +1152,7 @@ describe('reasons an answer is unavailable', () => {
       expect(
         within(kind).getByRole('radio', { name }),
       ).toHaveAccessibleDescription(
-        /^“Biological parent” and “Egg or sperm donor” are unavailable because you already have two genetic parents recorded, “claire” and “robin”\./,
+        /^Biological parent and Egg or sperm donor are unavailable because you already have two genetic parents recorded, “claire” and “robin”\./,
       );
     }
     expect(
@@ -1250,7 +1277,7 @@ describe('stand-ins and shared parents in the forms', () => {
     await waitFor(() => expect(jess).toBeChecked());
     expect(jess).toHaveAttribute('aria-disabled', 'true');
     expect(
-      screen.getByText(/“jess” has the same unnamed parent as you/),
+      screen.getByText(/^jess has the same unnamed parent as you/),
     ).toBeVisible();
 
     // Another kind of parent takes nobody's place, and lets them go.
@@ -1635,7 +1662,7 @@ describe('questions worked out from the answers as they stand', () => {
     });
     expect(
       within(shared).getByRole('checkbox', {
-        name: /^priya’s bio\u00ADlogical father$/,
+        name: /^priya’s Bio\u00ADlogical father$/,
       }),
     ).toBeChecked();
     // A name is shown as typed.
@@ -1707,9 +1734,9 @@ describe('the parents a sibling shares make them a sibling', () => {
   };
 
   it.each([
-    { chosen: ['sue'], names: '“sue”' },
-    { chosen: ['gail'], names: '“gail”' },
-    { chosen: ['sue', 'gail'], names: '“sue” and “gail”' },
+    { chosen: ['sue'], names: 'sue' },
+    { chosen: ['gail'], names: 'gail' },
+    { chosen: ['sue', 'gail'], names: 'sue and gail' },
   ])(
     'refuses $chosen alone, saying to add them as a child of their own parent',
     async ({ chosen, names }) => {

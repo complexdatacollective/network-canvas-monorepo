@@ -5,7 +5,6 @@ import React, { Component, type ReactNode } from 'react';
 import { AppMessage } from '@codaco/app-i18n/react';
 import Icon from '@codaco/fresco-ui/Icon';
 import Surface from '@codaco/fresco-ui/layout/Surface';
-import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { useCaptureException } from '../analytics/useTrack';
@@ -54,7 +53,7 @@ class StageErrorBoundaryInner extends Component<
   }
 
   render() {
-    const { children, isOffline } = this.props;
+    const { children } = this.props;
     const { error } = this.state;
 
     if (error) {
@@ -64,25 +63,9 @@ class StageErrorBoundaryInner extends Component<
             <div className="flex items-center justify-center">
               <Icon name="error" />
             </div>
-            {isOffline ? (
-              <div data-testid="offline-error-message">
-                <Heading>
-                  <AppMessage message={messages.offlineTaskTitle} />
-                </Heading>
-                <Paragraph>
-                  <AppMessage message={messages.offlineTaskDescription} />
-                </Paragraph>
-              </div>
-            ) : (
-              <div>
-                <Heading>
-                  <AppMessage message={messages.taskErrorTitle} />
-                </Heading>
-                <Paragraph>
-                  <AppMessage message={messages.taskErrorDescription} />
-                </Paragraph>
-              </div>
-            )}
+            <Paragraph>
+              <AppMessage message={messages.taskErrorDescription} />
+            </Paragraph>
           </div>
           <div className="mt-4 flex justify-end">
             <CopyDebugInfoButton debugInfo={formatDebugInfo(error)} />

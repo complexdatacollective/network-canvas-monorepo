@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { normalizeForComparison } from '@codaco/shared-consts';
 
 import type { LocalizationDeclaration } from '../../../localization/localeTag.ts';
+import type { MessageArguments } from '../../../localization/messageArguments.ts';
 import { messageText } from '../../../localization/messageSyntax.ts';
 import { resolveLocalizedString } from '../../../localization/resolveLocalizedString.ts';
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
@@ -10,6 +11,7 @@ import { NodeColorReferenceSchema } from '../color-reference.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import {
   type LocalizedString,
+  localizedMessage,
   localizedString,
   nonBlankText,
 } from '../localized-string.ts';
@@ -73,6 +75,18 @@ export const findDuplicateDiseaseLabels = (
   }
   return duplicates;
 };
+
+// The snapshot's heading is built from the stage's title and the condition's
+// name, and from the focused person's name too for the inheritance heading.
+export const SNAPSHOT_CONDITION_ARGUMENTS = {
+  title: { kind: 'text' },
+  condition: { kind: 'text' },
+} as const satisfies MessageArguments;
+
+export const SNAPSHOT_INHERITANCE_ARGUMENTS = {
+  ...SNAPSHOT_CONDITION_ARGUMENTS,
+  name: { kind: 'text' },
+} as const satisfies MessageArguments;
 
 // A narrative pedigree describes the people of the FamilyPedigree it points
 // at, so its subject is that stage's alter node type. `sourceStageId` is
@@ -143,6 +157,33 @@ const narrativePedigreeStageShape = baseStageSchema.extend({
         });
       });
     }),
+  // The interview's own words on this stage, which Network Canvas supplies
+  // (`stage-wording/narrative-pedigree.ts`). The two at-risk notation rows are
+  // drawn only while `showAtRiskStatuses` is on, and are required then
+  // (`missingRequiredStageSettings`).
+  keyHeading: localizedString(nonBlankText(), 'plain'),
+  tooltips: z.strictObject({
+    clearFocus: localizedString(nonBlankText(), 'plain'),
+    saveSnapshot: localizedString(nonBlankText(), 'plain'),
+  }),
+  conditionText: z.strictObject({
+    heading: localizedString(nonBlankText(), 'plain'),
+    instruction: localizedString(nonBlankText(), 'plain'),
+    notation: z.strictObject({
+      affected: localizedString(nonBlankText(), 'plain'),
+      obligateAffected: localizedString(nonBlankText(), 'plain'),
+      obligateCarrier: localizedString(nonBlankText(), 'plain'),
+      atRiskAffected: localizedString(nonBlankText(), 'plain').optional(),
+      atRiskCarrier: localizedString(nonBlankText(), 'plain').optional(),
+      unknown: localizedString(nonBlankText(), 'plain'),
+    }),
+    snapshotCondition: localizedMessage(nonBlankText(), {
+      arguments: SNAPSHOT_CONDITION_ARGUMENTS,
+    }),
+    snapshotInheritance: localizedMessage(nonBlankText(), {
+      arguments: SNAPSHOT_INHERITANCE_ARGUMENTS,
+    }),
+  }),
 });
 
 export const narrativePedigreeStage = withStageSubjectResolution(

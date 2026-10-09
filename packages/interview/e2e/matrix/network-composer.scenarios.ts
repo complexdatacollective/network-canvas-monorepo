@@ -9,6 +9,15 @@ import { expectResponsiveCanvasBackgroundImage } from '../helpers/canvas-backgro
 import type { SyntheticAssetSpec } from '../helpers/synthetic-payload.js';
 import type { InterfaceScenarios } from './types.js';
 
+// A researcher's own wording for the tools and the notice, each distinct from
+// the text Network Canvas supplies.
+const NAME_PLACEHOLDER = 'Who is it? - matrix check';
+const OVERTAKEN_EDIT_NOTICE = 'Your edit was overtaken - matrix check';
+const GROUPS_HEADING = 'Circles - matrix check';
+const ADD_PERSON_TOOLTIP = 'Add somebody - matrix check';
+const AUTOMATIC_LAYOUT_TOOLTIP = 'Tidy up - matrix check';
+const DRAW_CONNECTION_TOOLTIP = 'Link people - matrix check';
+
 const BACKGROUND_IMAGE_FIXTURE = path.resolve(
   import.meta.dirname,
   '../../../../apps/documentation/public/assets/responsive-svg-background.svg',
@@ -280,6 +289,128 @@ export const networkComposerScenarios: InterfaceScenarios = {
     },
 
     {
+      id: 'wording-palette-and-overtaken-edit-notice',
+      covers: [
+        'addNamePlaceholder',
+        'overtakenEditNotice',
+        'groupsHeading',
+        'tooltips.addPerson',
+        'tooltips.automaticLayout',
+        'tooltips.drawConnection',
+      ],
+      seedNetwork: true,
+      build: () => {
+        const synth = new SyntheticInterview(197);
+        const person = synth.addNodeType({ name: 'Person' });
+        const quickAdd = person.addVariable({ type: 'text', name: 'name' });
+        const layoutVar = person.addVariable({
+          type: 'layout',
+          name: 'composerLayout',
+        });
+        const age = person.addVariable({ type: 'number', name: 'Age' });
+        const community = person.addVariable({
+          type: 'categorical',
+          name: 'Community',
+          options: [
+            { value: 'school', label: 'School' },
+            { value: 'work', label: 'Work' },
+          ],
+        });
+        const friendship = synth.addEdgeType({ name: 'Friendship' });
+        const stage = synth.addStage('NetworkComposer', {
+          subject: { entity: 'node', type: person.id },
+          quickAdd: quickAdd.id,
+          layoutVariable: layoutVar.id,
+          convexHullVariable: community.id,
+          nodeForm: {
+            fields: [{ variable: age.id, component: 'Number', label: 'Age' }],
+          },
+          // The researcher's own words, each distinct from the text Network
+          // Canvas supplies, so an assertion on one proves the stage's own
+          // setting is what the participant sees.
+          wording: {
+            'addNamePlaceholder': NAME_PLACEHOLDER,
+            'overtakenEditNotice': OVERTAKEN_EDIT_NOTICE,
+            'groupsHeading': GROUPS_HEADING,
+            'tooltips.addPerson': ADD_PERSON_TOOLTIP,
+            'tooltips.automaticLayout': AUTOMATIC_LAYOUT_TOOLTIP,
+            'tooltips.drawConnection': DRAW_CONNECTION_TOOLTIP,
+          },
+        });
+        stage.addEdgeType({ type: friendship.id });
+        // A saved age gives an undo something to change.
+        synth.addManualNode(stage.id, person.id, 'nc-dev', {
+          [quickAdd.id]: 'Dev',
+          [layoutVar.id]: { x: 0.5, y: 0.4 },
+          [age.id]: 25,
+        });
+        synth.addInformationStage({ title: 'Complete' });
+        nodeFormRefs.age = age.id;
+        return synth;
+      },
+      run: async ({ page, protocol, interview }) => {
+        const composer = new NetworkComposerFixture(page);
+        const ageValue = async () => {
+          const s = await protocol.getNetworkState(interview.interviewId);
+          return s?.nodes[0]?.[entityAttributesProperty][nodeFormRefs.age];
+        };
+
+        // Each tool carries the stage's own name, and none of the names
+        // Network Canvas supplies.
+        for (const [own, supplied] of [
+          [ADD_PERSON_TOOLTIP, 'Add node'],
+          [DRAW_CONNECTION_TOOLTIP, 'Draw edge'],
+          [GROUPS_HEADING, 'Groups'],
+          [AUTOMATIC_LAYOUT_TOOLTIP, 'Automatic layout'],
+        ] as const) {
+          await expect(
+            page.getByRole('button', { name: own, exact: true }),
+          ).toBeVisible();
+          await expect(
+            page.getByRole('button', { name: supplied, exact: true }),
+          ).toHaveCount(0);
+        }
+
+        // The name field the add-person tool opens shows the stage's hint.
+        await page
+          .getByRole('button', { name: ADD_PERSON_TOOLTIP, exact: true })
+          .click();
+        const nameField = page.getByLabel('Person name');
+        await expect(nameField).toHaveAttribute(
+          'placeholder',
+          NAME_PLACEHOLDER,
+        );
+        await page.keyboard.press('Escape');
+        await expect(nameField).toBeHidden();
+
+        // An undo pressed before an edit is saved overtakes it; leaving then
+        // asks before discarding it, in the stage's own words.
+        await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
+        await composer.getNode('Dev').click();
+        const age = composer.getField(nodeFormRefs.age).getByRole('spinbutton');
+        await age.fill('30');
+        await page.clock.fastForward('00:02');
+        await expect.poll(ageValue).toBe(30);
+
+        // Paused, the autosave cannot save the edit before the undo.
+        await page.clock.pauseAt(new Date('2026-01-01T00:10:00Z'));
+        await age.fill('31');
+        await composer.undo();
+        await page.clock.resume();
+        await expect.poll(ageValue).toBe(25);
+
+        await composer.tapBackground();
+        const dialog = page.getByRole('dialog', { name: 'Discard changes?' });
+        await expect(dialog.getByText(OVERTAKEN_EDIT_NOTICE)).toBeVisible();
+        await expect(
+          dialog.getByText(/Undo or redo changed an answer/),
+        ).toHaveCount(0);
+        await dialog.getByRole('button', { name: 'Cancel' }).click();
+        await expect(dialog).toBeHidden();
+      },
+    },
+
+    {
       id: 'nodeform-absent-edges-absent-convexhull-unset',
       covers: ['nodeForm.absent', 'edges[].absent', 'convexHullVariable.unset'],
       build: () => {
@@ -317,13 +448,14 @@ export const networkComposerScenarios: InterfaceScenarios = {
           page.getByRole('button', { name: 'Groups', exact: true }),
         ).toHaveCount(0);
 
-        // Selecting a node with no node form shows the empty state + Delete.
+        // Selecting a node with no node form shows the Delete control and no
+        // attribute form (the inspector panel only exists around a form).
         await composer.getNode('Eve').click();
-        await expect(page.getByText('No attributes to edit')).toBeVisible();
         await expect(composer.drawerDeleteButton).toBeVisible();
+        await expect(composer.inspectorPanel).toHaveCount(0);
         await composer.drawerDeleteButton.click();
         await expect.poll(nodeCount).toBe(2);
-        await expect(page.getByText('No attributes to edit')).not.toBeVisible();
+        await expect(composer.drawerDeleteButton).not.toBeVisible();
 
         // With no hull variable, dragging the background never draws a lasso.
         await composer.lassoSelect([
@@ -534,18 +666,25 @@ export const networkComposerScenarios: InterfaceScenarios = {
         }
 
         await page.setViewportSize({ width: 768, height: 1024 });
-        const toolbarBox = await page
-          .getByRole('toolbar', { name: 'Network composer tools' })
-          .boundingBox();
-        const membershipGroupBox = await membershipGroup.boundingBox();
-        if (toolbarBox === null || membershipGroupBox === null) {
-          throw new Error(
-            'Toolbar or group membership selector is not visible',
-          );
-        }
-        expect(membershipGroupBox.x).toBeGreaterThanOrEqual(
-          toolbarBox.x + toolbarBox.width,
-        );
+        // The group sits beside the toolbar, not over it, once the layout has
+        // settled at the narrower width: poll rather than measure the frame
+        // straight after the resize.
+        await expect
+          .poll(async () => {
+            const toolbarBox = await page
+              .getByRole('toolbar', { name: 'Network composer tools' })
+              .boundingBox();
+            const membershipGroupBox = await membershipGroup.boundingBox();
+            if (toolbarBox === null || membershipGroupBox === null) {
+              throw new Error(
+                'Toolbar or group membership selector is not visible',
+              );
+            }
+            return (
+              membershipGroupBox.x - (toolbarBox.x + toolbarBox.width) >= 0
+            );
+          })
+          .toBe(true);
         await page.setViewportSize(matrixViewport);
 
         await composer.getSelectionBarButton('Work').click();

@@ -12,18 +12,19 @@ import {
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Form from '@codaco/fresco-ui/form/Form';
+import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type {
   FormSubmissionResult,
   FormSubmitHandler,
   ValidationContext,
 } from '@codaco/fresco-ui/form/store/types';
+import type { LocalizedString } from '@codaco/protocol-validation';
 import type { EntityAttributesProperty, NcNode } from '@codaco/shared-consts';
 
 import { formValuesToAttributePatch } from '../../../forms/formValuesToAttributePatch';
 import { useValidationNetwork } from '../../../forms/useValidationNetwork';
 import { useStageSelector } from '../../../hooks/useStageSelector';
-import { runtimeMessages } from '../../../i18n/runtimeMessages';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
@@ -91,6 +92,7 @@ function TrackSubmissions({ added }: { added: RefObject<boolean> }) {
 type QuickNodeFormProps = {
   disabled: boolean;
   targetVariable: string;
+  hint: LocalizedString;
   onShowForm?: () => void;
   addNode: (
     attributes: NcNode[EntityAttributesProperty],
@@ -100,6 +102,7 @@ type QuickNodeFormProps = {
 const QuickNodeForm = ({
   disabled,
   targetVariable,
+  hint,
   onShowForm,
   addNode,
 }: QuickNodeFormProps) => {
@@ -163,7 +166,7 @@ const QuickNodeForm = ({
       if (disabled) {
         return {
           success: false,
-          formErrors: [createMessageError(interfaceMessages.formDisabled)],
+          formErrors: [createMessageError(formMessages.submitFailed)],
         };
       }
 
@@ -171,7 +174,7 @@ const QuickNodeForm = ({
       if (!patchResult.success) {
         return {
           success: false,
-          formErrors: [createMessageError(runtimeMessages.submissionFailed)],
+          formErrors: [createMessageError(formMessages.submitFailed)],
         };
       }
 
@@ -205,8 +208,9 @@ const QuickNodeForm = ({
             name={targetVariable}
             disabled={disabled}
             placeholder={intl.formatMessage(
-              interfaceMessages.quickLabelPlaceholder,
+              interfaceMessages.addNamePlaceholder,
             )}
+            hint={hint}
             onShowInput={onShowForm ?? undefined}
             successfulSubmissionCount={successfulSubmissionCount}
             {...validationProps}

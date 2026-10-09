@@ -681,10 +681,11 @@ describe('confirm with async onConfirm', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
+    // While the action runs the primary button keeps its label and is disabled.
     const loadingButton = await screen.findByRole('button', {
-      name: 'Please wait...',
+      name: 'Run Action',
     });
-    expect(loadingButton).toBeDisabled();
+    await waitFor(() => expect(loadingButton).toBeDisabled());
 
     const cancelButton = screen.getByRole('button', { name: 'Cancel' });
     expect(cancelButton).toBeDisabled();
@@ -720,7 +721,9 @@ describe('confirm with async onConfirm', () => {
       screen.getByRole('button', { name: 'Open Async Confirm' }),
     );
     await user.click(await screen.findByRole('button', { name: 'Run Action' }));
-    await screen.findByRole('button', { name: 'Please wait...' });
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Run Action' })).toBeDisabled(),
+    );
 
     // Every way out is refused while the work runs.
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
@@ -848,7 +851,9 @@ describe('confirm with async onConfirm', () => {
     );
     await user.click(await screen.findByRole('button', { name: 'Run Action' }));
 
-    expect(await screen.findByText('An error occurred')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Something went wrong.'),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Run Action' })).toBeEnabled();
   });
@@ -920,7 +925,9 @@ describe('confirm with async onConfirm', () => {
       screen.getByRole('button', { name: 'Open Async Confirm' }),
     );
     await user.click(await screen.findByRole('button', { name: 'Run Action' }));
-    await screen.findByRole('button', { name: 'Please wait...' });
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Run Action' })).toBeDisabled(),
+    );
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
 
     await user.keyboard('{Escape}');

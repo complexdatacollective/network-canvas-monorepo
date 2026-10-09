@@ -10,11 +10,15 @@ import type { StageEditorComponent } from '../../stage-editor-contract.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import {
   familyPedigreeEditor,
+  openWordingGroup,
   shimMarkdownEditorMeasurement,
 } from '../family-pedigree/__tests__/editorFixtures.ts';
 import {
   addFamilyMemberVariables,
+  EVERY_PEDIGREE_WORD,
+  FIXTURE_NAME_FIELD,
   RELATIVES_NOT_RECORDED_VARIABLE,
+  RESEARCHER_TRACKER_TEXT,
 } from '../family-pedigree/__tests__/pedigreeFixtures.ts';
 import { schemaKeysFor } from './schemaKeys.ts';
 
@@ -74,6 +78,7 @@ const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
     sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
     egoAttribute: 'is_ego',
     relationshipToParticipantAttribute: RELATIONSHIP_ATTRIBUTE,
+    nameField: FIXTURE_NAME_FIELD,
   },
   edgeConfiguration: {
     type: 'family_edge',
@@ -85,8 +90,10 @@ const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
     scope: 'thirdDegree',
     enforcement: 'recommended',
     relativesNotRecordedAttribute: RELATIVES_NOT_RECORDED_ATTRIBUTE,
+    ...RESEARCHER_TRACKER_TEXT,
   },
   framing: 'participantPreference',
+  wording: EVERY_PEDIGREE_WORD,
   nominationPrompts: [
     {
       id: 'nomination-1',
@@ -204,6 +211,7 @@ describe.each(MAXIMAL)(
           })),
         },
       });
+      await openWordingGroup(harness);
 
       await harness.roundTrip({ unowned: [...unowned] });
     });
@@ -237,6 +245,7 @@ describe.each(FIXTURE_STAGES)(
   ({ stageId, editor }) => {
     it('is saved back without a key the researcher never authored', async () => {
       const harness = renderStageEditor({ stageId, editor });
+      await openWordingGroup(harness);
 
       await harness.roundTrip({ unowned: [] });
     });

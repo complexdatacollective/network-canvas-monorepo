@@ -5,6 +5,7 @@ import type { FramingId } from '@codaco/protocol-validation';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
 import { resolveInterviewIntl } from '../../../i18n/resolveIntl';
+import { contentFormatFor } from '../../../localization/contentFormat';
 import {
   distinctNames,
   generateLabels,
@@ -13,8 +14,10 @@ import {
 } from '../generatedLabels';
 import { nameFingerprint, readFamily, type PedigreeConfig } from '../model';
 import { config, configWithoutGenderIdentity, link, person } from './fixtures';
+import { pedigreeWordsIn } from './pedigreeWords';
 
 const intl = resolveInterviewIntl();
+const words = pedigreeWordsIn();
 
 /** The generated labels as English text, keyed by person id. */
 function labelsOf(
@@ -24,7 +27,7 @@ function labelsOf(
   stageConfig: PedigreeConfig = config,
 ) {
   return Object.fromEntries(
-    generateLabels(readFamily(nodes, edges, stageConfig), framing, intl),
+    generateLabels(readFamily(nodes, edges, stageConfig), framing, intl, words),
   );
 }
 
@@ -124,7 +127,7 @@ describe('generateLabels', () => {
     ];
     expect(labelsOf(nodes, edges)).toMatchObject({
       sis1: 'Sister (partner of Tom)',
-      ex: 'Sister’s former partner',
+      ex: 'Sister’s Former partner',
     });
     // Two such people, whose labels then match, are told apart.
     const both = labelsOf(
@@ -195,7 +198,7 @@ describe('generateLabels', () => {
       isaacsDad: 'Great-grandfather (parent of Isaac)',
       // Not through his son's qualified label, but through the nearest
       // relative known by a label of their own.
-      isaacsGrandad: 'Isaac’s grandfather',
+      isaacsGrandad: 'Isaac’s Grandfather',
     });
   });
 
@@ -222,9 +225,9 @@ describe('generateLabels', () => {
       ],
     );
     expect(labels).toMatchObject({
-      cousinsSon: 'Cousin’s son',
-      cousinsGranddaughter: 'Cousin’s granddaughter',
-      cousinsSonsPartner: 'Cousin’s daughter-in-law',
+      cousinsSon: 'Cousin’s Son',
+      cousinsGranddaughter: 'Cousin’s Granddaughter',
+      cousinsSonsPartner: 'Cousin’s Daughter-in-law',
     });
     for (const label of Object.values(labels)) {
       expect(label.split('’s ').length).toBeLessThanOrEqual(2);
@@ -247,7 +250,7 @@ describe('generateLabels', () => {
         link('greatGreatNan', 'greatNan', 'biological'),
       ],
     );
-    expect(labels.greatGreatNan).toBe('Great-grandmother’s mother');
+    expect(labels.greatGreatNan).toBe('Great-grandmother’s Mother');
   });
 
   test('two sisters are told apart by their named children', () => {
@@ -404,6 +407,7 @@ describe('generateLabels', () => {
       ),
       'gendered',
       turkish,
+      words,
     );
     expect(labels.get('sis')).toBe('Sister (your sibling)');
   });
@@ -448,7 +452,7 @@ describe('generateLabels', () => {
   test('family members not connected to the participant are numbered, or told apart by named partners', () => {
     expect(
       labelsOf([...parents, person('x'), person('y')], parentLinks),
-    ).toMatchObject({ x: 'Family member 1', y: 'Family member 2' });
+    ).toMatchObject({ x: 'Relative 1', y: 'Relative 2' });
     expect(
       labelsOf(
         [
@@ -465,8 +469,8 @@ describe('generateLabels', () => {
         ],
       ),
     ).toMatchObject({
-      x: 'Family member (partner of Lee)',
-      y: 'Family member (partner of Kai)',
+      x: 'Relative (partner of Lee)',
+      y: 'Relative (partner of Kai)',
     });
   });
 
@@ -601,8 +605,8 @@ describe('labelEveryone', () => {
   test('shows each unnamed person by the label saved for them, the participant as “You” and named people by name', () => {
     const family = readFamily(nodes, edges, config);
     for (const framing of ['gendered', 'gamete'] as const) {
-      const shown = labelEveryone(family, framing, intl);
-      const saved = generateLabels(family, framing, intl);
+      const shown = labelEveryone(family, framing, intl, words);
+      const saved = generateLabels(family, framing, intl, words);
       for (const [id, label] of saved) {
         // The canvas keeps only the soft hyphens a long word may break at.
         expect(shown.get(id)?.replace(/\u00AD/g, '')).toBe(label);
@@ -611,19 +615,19 @@ describe('labelEveryone', () => {
       expect(shown.get('tom')).toBe('Tom');
       expect(shown.size).toBe(nodes.length);
     }
-    expect(Object.fromEntries(labelEveryone(family, 'gendered', intl))).toEqual(
-      {
-        ego: 'You',
-        mum: 'Bio\u00ADlogical mother',
-        dad: 'Father',
-        sis1: 'Sister (partner of Tom)',
-        sis2: 'Sister (partner of Sam)',
-        tom: 'Tom',
-        sam: 'Sam',
-        kid1: 'Child 1',
-        kid2: 'Child 2',
-      },
-    );
+    expect(
+      Object.fromEntries(labelEveryone(family, 'gendered', intl, words)),
+    ).toEqual({
+      ego: 'You',
+      mum: 'Bio\u00ADlogical mother',
+      dad: 'Father',
+      sis1: 'Sister (partner of Tom)',
+      sis2: 'Sister (partner of Sam)',
+      tom: 'Tom',
+      sam: 'Sam',
+      kid1: 'Child 1',
+      kid2: 'Child 2',
+    });
   });
 
   test('someone holding a name the stage cannot read is shown by a label but never given one to save', () => {
@@ -647,10 +651,10 @@ describe('labelEveryone', () => {
       ],
       config,
     );
-    const saved = generateLabels(family, 'gendered', intl);
+    const saved = generateLabels(family, 'gendered', intl, words);
     expect(saved.has('sis1')).toBe(false);
     expect(saved.get('sis2')).toBe('Sister (partner of Tom)');
-    expect(labelEveryone(family, 'gendered', intl).get('sis1')).toBe(
+    expect(labelEveryone(family, 'gendered', intl, words).get('sis1')).toBe(
       'Sister (partner of Sam)',
     );
   });
@@ -680,8 +684,10 @@ describe('encrypted names', () => {
       {},
       new Map([['sis1', 'Sister']]),
     );
-    expect(labelEveryone(family, 'gendered', intl).get('sis1')).toBe('Sister');
-    expect(generateLabels(family, 'gendered', intl).get('sis2')).toBe(
+    expect(labelEveryone(family, 'gendered', intl, words).get('sis1')).toBe(
+      'Sister',
+    );
+    expect(generateLabels(family, 'gendered', intl, words).get('sis2')).toBe(
       'Sister (partner of Tom)',
     );
   });
@@ -701,7 +707,7 @@ describe('encrypted names', () => {
         dad: nameFingerprint(ciphertext(2)),
       },
     );
-    const labels = generateLabels(family, 'gendered', intl);
+    const labels = generateLabels(family, 'gendered', intl, words);
     expect(Object.fromEntries(labels)).toEqual({
       mum: 'Mother',
       dad: 'Father',
@@ -732,7 +738,7 @@ describe('encrypted names', () => {
       config,
       { mum: nameFingerprint('Mother') },
     );
-    const labels = generateLabels(family, 'gendered', intl);
+    const labels = generateLabels(family, 'gendered', intl, words);
     expect(
       Object.fromEntries(labelWrites(family, labels, 'name', new Map()).held),
     ).toEqual({ mum: 'Mother' });
@@ -763,8 +769,8 @@ describe('soft hyphens', () => {
       ],
       config,
     );
-    const shown = labelEveryone(family, 'gendered', intl);
-    const saved = generateLabels(family, 'gendered', intl);
+    const shown = labelEveryone(family, 'gendered', intl, words);
+    const saved = generateLabels(family, 'gendered', intl, words);
     // The canvas breaks long kinship words at their soft hyphens.
     expect(shown.get('nan')).toBe('Maternal grand­mother');
     expect(shown.get('sd1')).toBe('Step­daughter (partner of Tom)');
@@ -784,7 +790,12 @@ describe('distinctNames', () => {
   const namesOf = (nodes: NcNode[], edges: NcEdge[]) => {
     const family = readFamily(nodes, edges, config);
     return Object.fromEntries(
-      distinctNames(family, labelEveryone(family, 'gendered', intl), intl),
+      distinctNames(
+        family,
+        labelEveryone(family, 'gendered', intl, words),
+        intl,
+        words,
+      ),
     );
   };
 
@@ -852,9 +863,33 @@ describe('distinctNames', () => {
         ['kim', 'Kim'],
       ]),
       intl,
+      words,
     );
     expect(names.get('a')).not.toBe(names.get('b'));
     expect(names.get('a')).toMatch(/^Child/);
     expect(names.get('kim')).toBe('Kim');
+  });
+});
+
+// A label is made from the protocol's words, so its number is written as the
+// protocol's language writes numbers, whatever the interface's language is.
+test('numbers a label in the language of the words it is made from', () => {
+  const family = readFamily(
+    [person('ego', { isEgo: true }), woman('ex1'), woman('ex2')],
+    [
+      link('ego', 'ex1', 'partner', { current: false }),
+      link('ego', 'ex2', 'partner', { current: false }),
+    ],
+    config,
+  );
+  const labels = generateLabels(
+    family,
+    'gendered',
+    contentFormatFor('ar-EG'),
+    words,
+  );
+  expect(Object.fromEntries(labels)).toEqual({
+    ex1: 'Former partner ١',
+    ex2: 'Former partner ٢',
   });
 });

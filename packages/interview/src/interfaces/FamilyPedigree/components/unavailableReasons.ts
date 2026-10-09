@@ -1,19 +1,21 @@
-import type { IntlShape } from '@codaco/app-i18n/messages';
 import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
 import type { PedigreeSexAssignedAtBirth } from '@codaco/protocol-validation';
 
-import { messages } from '../messages';
 import type { Family, GeneticParentBlock, SexRuledOut } from '../model';
+import type { PedigreeWords } from '../pedigreeWords';
 
 /**
- * What the sentences explaining an unavailable answer need: the people's
- * names as shown, and the codebook's labels for sex at birth, as text.
+ * What the sentences explaining an unavailable answer need: the stage's
+ * words for them, the people's names as shown, the codebook's labels for
+ * sex at birth, as text, and how lists are joined in the words' language.
  */
 export type ReasonContext = {
-  intl: IntlShape;
+  words: PedigreeWords;
   family: Family;
   displayName: (personId: string) => string;
   sexLabels: Readonly<Record<PedigreeSexAssignedAtBirth, string>>;
+  /** Joins items as the language of the stage's words joins a list. */
+  formatList: (items: readonly string[]) => string;
 };
 
 /** An answer a reason makes unavailable: its value, and its label as
@@ -63,19 +65,14 @@ const sexLabel = (context: ReasonContext, sex: string) =>
     context.sexLabels[sex as PedigreeSexAssignedAtBirth] ?? sex,
   );
 
-/** People or answers named in a sentence, each quoted, joined as the
- * participant's language joins a list. */
-const quotedList = (context: ReasonContext, items: readonly string[]) =>
-  context.intl.formatList(
-    items.map((name) =>
-      context.intl.formatMessage(messages.listedName, { name }),
-    ),
-    { type: 'conjunction' },
-  );
+/** People or answers named together in a sentence, joined as the language
+ * of the stage's words joins a list. */
+const listed = (context: ReasonContext, items: readonly string[]) =>
+  context.formatList(items);
 
 /** The answers a reason disables, as its sentence names them. */
 const answersArgs = (context: ReasonContext, reason: Reason) => ({
-  answers: quotedList(
+  answers: listed(
     context,
     reason.answers.map((answer) => answer.label),
   ),
@@ -150,10 +147,10 @@ function formatGeneticParent(
   reason: Reason,
   block: GeneticParentBlock,
 ): string {
-  const { intl, displayName } = context;
+  const { words, displayName } = context;
   const child = displayName(block.childId);
   if (block.rule === 'sameSexGeneticParent') {
-    return intl.formatMessage(messages.unavailableSameSexGeneticParent, {
+    return words.text(words.wording.unavailableSameSexGeneticParent, {
       ...answersArgs(context, reason),
       who: isYou(context, block.coParentId)
         ? 'coParentIsYou'
@@ -171,7 +168,7 @@ function formatGeneticParent(
       ? block.parentIds
       : [you, ...block.parentIds.filter((id) => id !== you)]
   ).map(displayName);
-  return intl.formatMessage(messages.unavailableGeneticParentsFull, {
+  return words.text(words.wording.unavailableGeneticParentsFull, {
     ...answersArgs(context, reason),
     who: isYou(context, block.childId)
       ? 'childIsYou'
@@ -193,14 +190,14 @@ function formatReason(
   reason: Reason,
   childIds: readonly string[],
 ): string {
-  const { intl, displayName } = context;
-  const children = quotedList(context, childIds.map(displayName));
+  const { words, displayName } = context;
+  const children = listed(context, childIds.map(displayName));
   const aboutYou = childIds.some((id) => isYou(context, id));
   switch (reason.rule) {
     case 'geneticParent':
       return formatGeneticParent(context, reason, reason.block);
     case 'sameSexAsCoParent':
-      return intl.formatMessage(messages.unavailableSameSexAsCoParent, {
+      return words.text(words.wording.unavailableSameSexAsCoParent, {
         who: isYou(context, reason.personId)
           ? 'personIsYou'
           : aboutYou
@@ -213,7 +210,7 @@ function formatReason(
         sex: sexLabel(context, reason.sex),
       });
     case 'carrierRecorded':
-      return intl.formatMessage(messages.unavailableCarrierRecorded, {
+      return words.text(words.wording.unavailableCarrierRecorded, {
         ...answersArgs(context, reason),
         who: isYou(context, reason.carrierId)
           ? 'carrierIsYou'
@@ -224,7 +221,7 @@ function formatReason(
         child: displayName(reason.childId),
       });
     case 'cannotCarry':
-      return intl.formatMessage(messages.unavailableCannotCarry, {
+      return words.text(words.wording.unavailableCannotCarry, {
         ...answersArgs(context, reason),
         who:
           reason.personId === undefined
@@ -236,7 +233,7 @@ function formatReason(
         sex: sexLabel(context, reason.sex),
       });
     case 'carried':
-      return intl.formatMessage(messages.unavailableCarried, {
+      return words.text(words.wording.unavailableCarried, {
         who: isYou(context, reason.personId)
           ? 'personIsYou'
           : aboutYou
@@ -249,7 +246,7 @@ function formatReason(
       const [first, second] = isYou(context, reason.secondId)
         ? [reason.secondId, reason.firstId]
         : [reason.firstId, reason.secondId];
-      return intl.formatMessage(messages.unavailableBothSameSex, {
+      return words.text(words.wording.unavailableBothSameSex, {
         ...answersArgs(context, reason),
         firstIsYou: isYou(context, first) ? 'true' : 'false',
         first: displayName(first),

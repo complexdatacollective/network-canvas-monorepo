@@ -7,6 +7,7 @@ import {
   asEntityAttributeReference,
   type PedigreeRelationshipKind,
   type PedigreeSexAssignedAtBirth,
+  familyPedigreeWordingIn,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -22,6 +23,7 @@ import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
+import { narrativePedigreeWords } from '../__tests__/narrativePedigreeWords';
 import NarrativePedigreeView from './NarrativePedigreeView';
 
 const NODE_TYPE = 'person';
@@ -111,6 +113,7 @@ const edges: NcEdge[] = [
 const sourceStage = {
   id: SOURCE_STAGE_ID,
   type: 'FamilyPedigree' as const,
+  wording: familyPedigreeWordingIn(),
   label: { en: 'Family Pedigree' },
   subject: { entity: 'node' as const, type: NODE_TYPE },
   prompt: { en: 'Build your pedigree.' },
@@ -135,6 +138,7 @@ const narrativeStage: NarrativeStage = {
   label: { en: 'Disease Pedigree' },
   sourceStageId: SOURCE_STAGE_ID,
   showAtRiskStatuses: false,
+  ...narrativePedigreeWords(),
   diseases: [
     {
       id: 'breast-cancer',

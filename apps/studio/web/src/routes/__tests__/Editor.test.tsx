@@ -148,6 +148,10 @@ const ENDS_AT_FINISH: Readonly<Record<string, SectionDoc>> = {
     label: enUS('Finish'),
     title: enUS('Thank you'),
     content: enUS('The interview is complete.'),
+    finishLabel: enUS('Finish'),
+    finishConfirmation: enUS('Finish this interview?'),
+    finishedNotice: enUS('This interview is finished.'),
+    finishFailed: enUS('The interview could not be finished.'),
     outcome: 'completed',
   },
 };

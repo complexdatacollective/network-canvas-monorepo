@@ -13,12 +13,15 @@ const protocol = {
     {
       id: 'roster',
       type: 'NameGeneratorRoster',
+      externalDataError: localized('External data could not be loaded.'),
+      allAddedNotice: localized('There is nothing left to add from this list.'),
       subject: { entity: 'node', type: 'person' },
       dataSource: 'roster-asset',
     },
     {
       id: 'ng',
       type: 'NameGenerator',
+      externalDataError: localized('External data could not be loaded.'),
       subject: { entity: 'node', type: 'person' },
       panels: [
         {
@@ -39,6 +42,13 @@ const protocol = {
     {
       id: 'geo',
       type: 'Geospatial',
+      offlineNotice: localized(
+        'You are offline — the map will not load until you reconnect.',
+      ),
+      mapUnavailable: localized(
+        'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
+      ),
+      outsideAreasLabel: localized('Outside Selectable Areas'),
       subject: { entity: 'node', type: 'person' },
       mapOptions: {
         tokenAssetId: 'token-asset',

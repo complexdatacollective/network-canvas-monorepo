@@ -415,26 +415,22 @@ describe('CategoricalBin validating an encrypted "other" answer', () => {
     fireEvent.click(submit);
     await waitFor(() =>
       expect(input).toHaveAccessibleDescription(
-        /checked against answers protected by your passphrase/,
+        /Your answers have not been saved/,
       ),
     );
 
-    fireEvent.click(
-      within(dialog).getByRole('button', { name: 'Enter your passphrase' }),
-    );
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Passphrase' }));
     const prompt = await screen.findByRole('dialog', {
-      name: 'Enter your passphrase',
+      name: 'Passphrase',
     });
     fireEvent.change(
       within(prompt).getByLabelText(/^Passphrase/, { selector: 'input' }),
       { target: { value: 'pw' } },
     );
-    fireEvent.click(
-      within(prompt).getByRole('button', { name: 'Submit passphrase' }),
-    );
+    fireEvent.click(within(prompt).getByRole('button', { name: 'Continue' }));
     await waitFor(() => expect(prompt).not.toBeInTheDocument());
     expect(
-      within(dialog).queryByRole('button', { name: 'Enter your passphrase' }),
+      within(dialog).queryByRole('button', { name: 'Passphrase' }),
     ).toBeNull();
 
     // Now compared with the name as the participant gave it.

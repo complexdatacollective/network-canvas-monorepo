@@ -18,6 +18,7 @@ import {
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
 
+import { useContentFormat } from '../../../localization/useContentFormat';
 import { messages } from '../messages';
 import {
   availableParentChoices,
@@ -30,6 +31,7 @@ import {
   parentConnectionBlock,
 } from '../model';
 import type { OwnedOptionLabels } from '../options';
+import { type PedigreeWords, usePedigreeWords } from '../pedigreeWords';
 import {
   carrierRecordedReason,
   geneticParentReason,
@@ -100,6 +102,7 @@ function ItemText({
  * in a pair, as "you and …".
  */
 function connectionWords(
+  { wording, text }: PedigreeWords,
   intl: IntlShape,
   family: Family,
   displayName: (personId: string) => string,
@@ -110,12 +113,12 @@ function connectionWords(
   // pregnancy is its own choice, qualifying that label.
   const parentChoiceLabel = (choice: ParentChoice) =>
     carriesBeyondKind(choice)
-      ? intl.formatMessage(messages.parentKindCarrier, {
+      ? text(wording.parentKindCarrier, {
           parentKind: parentKindLabels[choice.parentKind],
         })
       : parentKindLabels[choice.parentKind];
   const parentLabel = ({ parentId, childId }: ParentAndChild) =>
-    intl.formatMessage(messages.connectParent, {
+    text(wording.connectParent, {
       parentIsYou: isYou(parentId) ? 'true' : 'false',
       childIsYou: isYou(childId) ? 'true' : 'false',
       parent: displayName(parentId),
@@ -131,10 +134,10 @@ function connectionWords(
     };
   };
   const partnersLabel = (a: string, b: string, current: boolean) =>
-    intl.formatMessage(
-      current ? messages.connectPartners : messages.connectFormerPartners,
-      pairArgs(a, b),
-    );
+    text(wording.connectPartners, {
+      ...pairArgs(a, b),
+      current: current ? 'true' : 'false',
+    });
   return {
     isYou,
     inOrder,
@@ -166,14 +169,19 @@ function connectionWords(
  */
 export function describeConnection(
   connection: Connection,
+  words: PedigreeWords,
   intl: IntlShape,
   family: Family,
   displayName: (personId: string) => string,
   parentKindLabels: OwnedOptionLabels['parentKind'],
 ) {
-  return connectionWords(intl, family, displayName, parentKindLabels).describe(
-    connection,
-  );
+  return connectionWords(
+    words,
+    intl,
+    family,
+    displayName,
+    parentKindLabels,
+  ).describe(connection);
 }
 
 /**
@@ -193,9 +201,18 @@ export default function ConnectMenu({
   onConnect,
   onClose,
 }: ConnectMenuProps) {
+  const words = usePedigreeWords();
+  const { wording, text } = words;
   const intl = useAppIntl();
+  const contentFormat = useContentFormat();
   const reasonIdPrefix = useId();
-  const words = connectionWords(intl, family, displayName, parentKindLabels);
+  const connection = connectionWords(
+    words,
+    intl,
+    family,
+    displayName,
+    parentKindLabels,
+  );
   // The parent and child chosen in the first step, for the current pair.
   const [choice, setChoice] = useState<{
     pair: ConnectPair;
@@ -215,7 +232,7 @@ export default function ConnectMenu({
 
   const content = (() => {
     if (!pair) return null;
-    const { isYou, parentLabel, parentChoiceLabel } = words;
+    const { isYou, parentLabel, parentChoiceLabel } = connection;
 
     if (parentChoice) {
       const label = parentLabel(parentChoice);
@@ -224,7 +241,13 @@ export default function ConnectMenu({
       // choice it disables, and why: who carried the child, for a choice
       // that would record a second carrier, or the genetic parents already
       // recorded, for a genetic kind.
-      const reasonContext = { intl, family, displayName, sexLabels };
+      const reasonContext = {
+        words,
+        family,
+        displayName,
+        sexLabels,
+        formatList: contentFormat.formatList,
+      };
       const reasonFor = (
         unavailable: ParentChoiceBlock,
         option: ParentChoice,
@@ -288,23 +311,20 @@ export default function ConnectMenu({
     }
 
     // The participant comes first in the wording, as "you and …".
-    const [first = pair.firstId, second = pair.secondId] = words.inOrder(
+    const [first = pair.firstId, second = pair.secondId] = connection.inOrder(
       pair.firstId,
       pair.secondId,
     );
-    const pairArgs = words.pairArgs(first, second);
-    const partners = words.partnersLabel(first, second, true);
-    const formerPartners = words.partnersLabel(first, second, false);
+    const pairArgs = connection.pairArgs(first, second);
+    const partners = connection.partnersLabel(first, second, true);
+    const formerPartners = connection.partnersLabel(first, second, false);
+    // The canvas never offers a pair already connected (the second person
+    // is unavailable while the first is chosen), so these stay a guard
+    // rather than a choice with a reason to give.
     const canPartner = canConnectPartners(family, first, second);
-    // An unavailable choice says why. Two people already connected cannot
-    // be connected again.
-    const partnersReason = canPartner
-      ? undefined
-      : intl.formatMessage(messages.unavailableAlreadyConnected, pairArgs);
-    const partnersReasonId = `${reasonIdPrefix}-partners`;
     // The would-be child is already the would-be parent's ancestor.
     const ancestorReason = ({ parentId, childId }: ParentAndChild) =>
-      intl.formatMessage(messages.unavailableAncestor, {
+      text(wording.unavailableAncestor, {
         who: isYou(parentId)
           ? 'parentIsYou'
           : isYou(childId)
@@ -317,25 +337,21 @@ export default function ConnectMenu({
       const unavailable =
         availableParentChoices(family, parent.parentId, parent.childId)
           .length === 0;
-      const block = unavailable
-        ? parentConnectionBlock(family, parent.parentId, parent.childId)
-        : undefined;
-      // Already connected, the reason is the one shown under the partner
-      // choices, which are unavailable too.
+      // Said under the choice when the would-be parent descends from the
+      // child; a pair already connected is never offered.
       const reason =
-        block === 'descendant' ? ancestorReason(parent) : undefined;
-      const reasonId =
-        block === 'connected'
-          ? partnersReasonId
-          : `${reasonIdPrefix}-parent-${parent.parentId}`;
+        unavailable &&
+        parentConnectionBlock(family, parent.parentId, parent.childId) ===
+          'descendant'
+          ? ancestorReason(parent)
+          : undefined;
+      const reasonId = `${reasonIdPrefix}-parent-${parent.parentId}`;
       return (
         <DropdownMenuItem
           key={parent.parentId}
           closeOnClick={false}
           disabled={unavailable}
-          aria-describedby={
-            block === 'connected' || reason !== undefined ? reasonId : undefined
-          }
+          aria-describedby={reason === undefined ? undefined : reasonId}
           data-testid={`pedigree-connect-parent-${parent.parentId}`}
           onClick={() => setChoice({ pair, parent })}
         >
@@ -351,12 +367,11 @@ export default function ConnectMenu({
     return (
       <DropdownMenuGroup>
         <DropdownMenuLabel>
-          {intl.formatMessage(messages.connectQuestion, pairArgs)}
+          {text(wording.connectQuestion, pairArgs)}
         </DropdownMenuLabel>
         <DropdownMenuItem
           ref={firstItemRef}
           disabled={!canPartner}
-          aria-describedby={partnersReason && partnersReasonId}
           data-testid="pedigree-connect-partners"
           onClick={() =>
             onConnect({
@@ -367,15 +382,10 @@ export default function ConnectMenu({
             })
           }
         >
-          <ItemText
-            label={partners}
-            reason={partnersReason}
-            reasonId={partnersReasonId}
-          />
+          {partners}
         </DropdownMenuItem>
         <DropdownMenuItem
           disabled={!canPartner}
-          aria-describedby={partnersReason && partnersReasonId}
           data-testid="pedigree-connect-former-partners"
           onClick={() =>
             onConnect({

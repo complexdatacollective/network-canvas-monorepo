@@ -11,6 +11,9 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import ProtocolSchemaV9 from '../schema.ts';
+import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
+import { networkComposerWords } from './canvas-stage-words.ts';
+import { pedigreeNameField } from './family-pedigree-text.ts';
 import {
   GENDER_IDENTITY_OPTIONS,
   GENDER_IDENTITY_TERMS,
@@ -165,11 +168,13 @@ const familyPedigreeProtocol = () => ({
     {
       id: 'family',
       type: 'FamilyPedigree',
+      wording: familyPedigreeWordingIn(),
       label: localized('Family'),
       subject: { entity: 'node', type: 'person' },
       prompt: localized('Build your family'),
       nodeConfiguration: {
         nameAttribute: 'label',
+        nameField: pedigreeNameField(),
         genderIdentity: {
           attribute: 'genderIdentity',
           terms: GENDER_IDENTITY_TERMS,
@@ -325,6 +330,7 @@ describe('shared form stage-effective validation contradictions', () => {
           quickAdd: 'name',
           layoutVariable: 'layoutPosition',
           background: { concentricCircles: 4 },
+          ...networkComposerWords(),
           nodeForm: {
             fields: [
               {
@@ -364,6 +370,7 @@ describe('shared form stage-effective validation contradictions', () => {
           quickAdd: 'name',
           layoutVariable: 'layoutPosition',
           background: { concentricCircles: 4 },
+          ...networkComposerWords(),
           nodeForm: {
             fields: [
               {
@@ -495,6 +502,7 @@ describe('shared form stage-effective validation contradictions', () => {
       stage: {
         id: 'quick',
         type: 'NameGeneratorQuickAdd',
+        quickAddHint: localized('Press Enter when you are finished.'),
         label: localized('Quick add'),
         subject: { entity: 'node', type: 'person' },
         quickAdd: 'name',
@@ -507,6 +515,10 @@ describe('shared form stage-effective validation contradictions', () => {
       stage: {
         id: 'roster',
         type: 'NameGeneratorRoster',
+        externalDataError: localized('External data could not be loaded.'),
+        allAddedNotice: localized(
+          'There is nothing left to add from this list.',
+        ),
         label: localized('Roster'),
         subject: { entity: 'node', type: 'person' },
         dataSource: 'roster',

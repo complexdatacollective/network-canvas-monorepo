@@ -1,0 +1,38 @@
+- main:
+  - status:
+    - heading "Add the members of your family." [level=2]
+  - region "Your family":
+    - button "Joan"
+    - button "Maternal grandparent"
+    - button "Pat"
+    - button "Rachel" [disabled]
+    - button "Tom"
+    - button "You": Me myself - matrix check
+  - toolbar "Family tree tools":
+    - group "What clicking a person does":
+      - button "Add and edit"
+      - button "Connect" [pressed]
+      - button "Disconnect"
+    - separator
+    - button "Zoom out"
+    - button "Zoom in"
+    - button "Show the whole family"
+  - menu:
+    - group "Pat parents you - matrix check":
+      - menuitem "Biological parent" [disabled]
+      - menuitem "Biological parent who carried - matrix check" [disabled]
+      - menuitem "Adoptive parent"
+      - menuitem "Adoptive parent who carried - matrix check" [disabled]
+      - menuitem "Step or social parent"
+      - menuitem "Step or social parent who carried - matrix check" [disabled]
+      - menuitem "Egg or sperm donor" [disabled]
+      - menuitem "Egg or sperm donor who carried - matrix check" [disabled]
+      - menuitem "Surrogate" [disabled]
+      - separator
+      - menuitem "Back"
+  - navigation:
+    - button "Settings"
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

@@ -22,6 +22,7 @@ import type { StageFormDraft } from '../../stageDocument.ts';
 import { useOnResearcherChange } from '../researcherChange.ts';
 import {
   SUBJECT_INDEPENDENT_FIELDS,
+  subjectDependentPaths,
   subjectDependentResets,
 } from './subjectReset.ts';
 
@@ -117,11 +118,18 @@ export function useSubjectChangeDiscards(): () => boolean {
   return useCallback(() => {
     const template = getInterfaceTemplate(identity.type);
     return hasAnyValue(
-      heldStageKeys(storeApi, committedFields).filter(
-        (key) =>
-          !SUBJECT_INDEPENDENT_FIELDS.includes(key) &&
-          !survivesTheReset(storeApi, committedFields, key, template),
-      ),
+      heldStageKeys(storeApi, committedFields)
+        .filter(
+          (key) =>
+            !SUBJECT_INDEPENDENT_FIELDS.includes(key) &&
+            !survivesTheReset(storeApi, committedFields, key, template),
+        )
+        .flatMap((key) =>
+          subjectDependentPaths(
+            key,
+            stageAnswerAt(storeApi.getState(), committedFields, key),
+          ),
+        ),
     );
   }, [committedFields, hasAnyValue, identity.type, storeApi]);
 }
@@ -153,6 +161,10 @@ export function useResetStageOnSubjectChange(): void {
     const resets = subjectDependentResets(
       heldStageKeys(storeApi, committedFields),
       template,
+      (key) => stageAnswerAt(storeApi.getState(), committedFields, key),
+    );
+    const resetValues = Object.fromEntries(
+      resets.map((reset) => [reset.key, reset.value]),
     );
 
     // The document first, and in one batch, so nothing reading the stage
@@ -198,7 +210,7 @@ export function useResetStageOnSubjectChange(): void {
         }
         storeApi
           .getState()
-          .setFieldValue(name, asFieldValue(get(template, name)));
+          .setFieldValue(name, asFieldValue(get(resetValues, name)));
       }
     }
   });

@@ -148,7 +148,7 @@ describe('the sections of an anonymisation stage', () => {
 
     expect(await harness.submit()).toBeNull();
     expect(
-      await screen.findByText('Too long. Enter at most 50 characters.'),
+      await screen.findByText('Enter at most 50 characters.'),
     ).toBeInTheDocument();
 
     await harness.user.type(heading, '{Backspace}');
@@ -700,6 +700,11 @@ describe('the attributes a passphrase protects', () => {
         registry: anonymisationStageEditor,
         adapter: withStageFields({
           'name-generator-1': {
+            // A panel reading a data file needs the words for a file that did
+            // not load, which the stage must hold to be valid.
+            externalDataError: {
+              'en-US': 'External data could not be loaded.',
+            },
             panels: [
               {
                 id: 'panel-network',

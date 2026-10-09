@@ -17,7 +17,8 @@ import {
   resumeUnstartedPedigreeAtIntroduction,
 } from './family-pedigree-session-migration.ts';
 import { TypeLevelOperators } from './filters/filter.ts';
-import { defaultFinishSessionFields } from './finish-session-defaults.ts';
+import { createDefaultFinishSessionStage } from './finish-session-defaults.ts';
+import { withInterfaceText } from './interface-text.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
 import ProtocolSchemaV9 from './schema.ts';
 import { missingSuppliedStageText } from './supplied-stage-text.ts';
@@ -285,6 +286,31 @@ const repairOtherBinText = (
   }
 };
 
+/**
+ * A Tie-Strength Census prompt's decline label must say something in schema 9,
+ * where schema 8 accepted text of only spaces, which showed the participant an
+ * unnamed decline option. One that shows nothing takes the default the 7 to 8
+ * migration gives a missing one, "No relationship". Text already localized
+ * loses only its translations that show nothing, as an introduction panel's
+ * does.
+ */
+const repairTieStrengthDeclineLabels = (
+  protocol: unknown,
+  { defaultLocale }: LocalizationDeclaration,
+) => {
+  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
+  for (const stage of protocol.stages) {
+    if (!isRecord(stage) || stage.type !== 'TieStrengthCensus') continue;
+    if (!Array.isArray(stage.prompts)) continue;
+    for (const prompt of stage.prompts) {
+      if (!isRecord(prompt)) continue;
+      prompt.negativeLabel = shownText(prompt.negativeLabel) ?? {
+        [defaultLocale]: 'No relationship',
+      };
+    }
+  }
+};
+
 const nameOrKey = (definition: unknown, key: string) => {
   const name = isRecord(definition) ? definition.name : undefined;
   return typeof name === 'string' && !isBlankText(name) ? name : key;
@@ -518,12 +544,11 @@ const endsAtFinishStage = (stages: unknown): boolean => {
  * the protocol's languages that has it: English for a schema 8 document, which
  * is recorded as English, and a schema 9 document's own languages otherwise.
  */
-const finishStageFor = (stages: unknown, locales: readonly string[]) => ({
-  id: finishStageId(stages),
-  type: 'FinishSession' as const,
-  ...defaultFinishSessionFields(locales),
-  outcome: 'completed' as const,
-});
+const finishStageFor = (
+  stages: unknown,
+  localization: LocalizationDeclaration,
+) =>
+  createDefaultFinishSessionStage({ id: finishStageId(stages), localization });
 
 type SiteChange =
   | { kind: 'set'; value: unknown }
@@ -656,6 +681,7 @@ const migrationV8toV9 = createMigration({
 - Each option of an ordinal or categorical attribute must now have a value of its own, because answers are stored by value and two options with the same value cannot be told apart. Where options shared a value, the first is kept and the later ones are removed. Values are compared as written, except that a number and text that read the same, such as 1 and "1", count as the same value. Answers already recorded, and skip logic and filters, keep the value they use. If removing options leaves an attribute requiring more selections than it has options, that requirement is removed.
 - An introduction panel's text is now optional, so a panel can show only its title. Text that contained only spaces is removed, so the panel shows only its title, as before. An introduction panel's title must contain some text, so a title that contained only spaces now uses the stage's name.
 - On a Categorical Bin stage, the label of the bin for answers not listed and the question that asks participants to describe their answer must now contain some text. Where either contained only spaces, it now uses the other's text, or "Other" for the label and "Please specify" for the question.
+- On a Tie-Strength Census stage, the label of the option for declining to rate a relationship must now contain some text. Where it contained only spaces, it now reads "No relationship".
 - Skip logic and filters can no longer compare the answers to an encrypted attribute. Rules are checked without the participant's passphrase, so under schema 8 a rule like this only ever compared the encrypted text, never the answer. These rules are removed. Rules that only check whether an encrypted attribute is answered still work, so they are kept. Skip logic left with no rules is removed, so its stage now always appears: a stage that was shown only when a removed rule matched may never have appeared under schema 8. A filter left with no rules is removed, so it no longer limits what its stage or panel shows. Where other rules remain, they may now match differently: if all rules had to match, they now match at least as often as before; if any one rule could match, at most as often. Check the stages that used the removed rules. Rules in a panel that lists people from an external data file are kept, because that data is not encrypted.
 - Family Pedigree stages are converted to the redesigned Family Pedigree. If a stage had an introduction screen, the screen becomes an Information stage just before the pedigree, which is skipped whenever the pedigree is skipped.
 - The Family Pedigree answers for sex assigned at birth and for the kind of each relationship keep the values already recorded, but their labels change to the wording of the redesigned interface. A nomination prompt with the ID "pedigree", which is now reserved, is given a new ID.
@@ -667,7 +693,8 @@ const migrationV8toV9 = createMigration({
 - Additional person fields on a Family Pedigree that collected the name or sex assigned at birth are removed, because the redesigned interface asks every person for both itself. The old interface never showed a field for the name. Answers already recorded are kept.
 - A Family Pedigree cannot be converted if two of its answers use the same attribute: two nomination prompts, a nomination prompt and an additional person field, or the name and another answer. Each now needs an attribute of its own. Give each its own attribute in the version of Architect that made the protocol, then upgrade it.
 - The screen that ends the interview is now a Finish Screen stage at the end of your protocol, so you can change its heading and text and translate them like the rest of your protocol. It starts with the text the interview has always shown there.
-- A Name Generator Roster stage now has a panel title, shown above the list of people participants choose from, so you can change it and translate it like the rest of your protocol. It starts with the heading the interview has always shown there, "Available to add".`,
+- A Name Generator Roster stage now has a panel title, shown above the list of people participants choose from, so you can change it and translate it like the rest of your protocol. It starts with the heading the interview has always shown there, "Available to add".
+- A Family Pedigree stage's own wording is now part of the stage, so you can change it and translate it like the rest of your protocol: the question asking each person's name and its hint, and, where the family must be complete, the list of what is still needed. It starts with the wording the interview has always shown.`,
   migrate: ({ experiments, ...doc }) => {
     const migrated = structuredClone(doc);
     const localization = localizationOf(migrated);
@@ -687,6 +714,7 @@ const migrationV8toV9 = createMigration({
     addSuppliedStageText(migrated, localization);
     repairIntroductionPanels(migrated, localization);
     repairOtherBinText(migrated, localization);
+    repairTieStrengthDeclineLabels(migrated, localization);
 
     // Every site is found before any is rewritten, so the walk reads the
     // document as schema 8 left it.
@@ -703,20 +731,23 @@ const migrationV8toV9 = createMigration({
       else Reflect.deleteProperty(container, key);
     }
 
-    return {
+    // The interview's own words for what the protocol uses, recorded in
+    // English like the rest of its text, from the protocol as migrated (an
+    // attribute whose encryption was never on is no longer encrypted).
+    return withInterfaceText({
       ...migrated,
       stages: endsAtFinishStage(migrated.stages)
         ? migrated.stages
         : [
             ...(Array.isArray(migrated.stages) ? migrated.stages : []),
-            finishStageFor(migrated.stages, localization.locales),
+            finishStageFor(migrated.stages, localization),
           ],
       ...(experiments !== undefined && {
         experiments: withoutEncryptedVariables(experiments),
       }),
       schemaVersion: 9 as const,
       localization,
-    };
+    });
   },
   // A pedigree's introduction screen becomes a stage of its own, which moves
   // the pedigree and every stage after it one place on; the framework moves

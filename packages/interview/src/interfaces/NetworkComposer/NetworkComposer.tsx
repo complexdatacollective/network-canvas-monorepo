@@ -31,7 +31,10 @@ import { rejectedWriteMessage } from '../../forms/writeSubmissionResult';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
-import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
+import {
+  useOptionalLocalizedText,
+  useResolveLocalizedString,
+} from '../../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
@@ -58,7 +61,7 @@ import ComposerDrawer from './ComposerDrawer';
 import { nextGridPosition } from './gridPlacement';
 import type { ActiveGroup, GroupVariable } from './GroupPicker';
 import Inspector from './Inspector';
-import ToolPalette from './ToolPalette';
+import ToolPalette, { type ComposerToolWords } from './ToolPalette';
 import { useComposerActions } from './useComposerActions';
 import { useComposerStore, createComposerStore } from './useComposerStore';
 import { createUndoStore } from './useUndoStore';
@@ -95,6 +98,18 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const { currentStep } = useCurrentStep();
   const shouldReduceMotion = useReducedMotion();
   const resolve = useResolveLocalizedString();
+  const drawConnectionText = useOptionalLocalizedText(
+    stage.tooltips.drawConnection,
+  );
+  const groupsText = useOptionalLocalizedText(stage.groupsHeading);
+  // The stage's own words for its tools (`stage-wording/network-composer.ts`).
+  const toolWords: ComposerToolWords = {
+    addNamePlaceholder: resolve(stage.addNamePlaceholder).text,
+    addPerson: resolve(stage.tooltips.addPerson).text,
+    automaticLayout: resolve(stage.tooltips.automaticLayout).text,
+    drawConnection: drawConnectionText,
+    groups: groupsText,
+  };
 
   const layoutVariable = stage.layoutVariable;
 
@@ -699,6 +714,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         composerStore={composerStore}
         undoStore={undoStore}
         edges={edgeEntries}
+        words={toolWords}
         nodeLabel={nodeLabel}
         quickAddTargetVariable={stage.quickAdd}
         onAddNode={handleAddNode}
@@ -823,6 +839,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
               composerStore.getState().deselectDeleted();
             }}
             guardDraft={composerStore.getState().guardDraft}
+            overtakenEditNotice={resolve(stage.overtakenEditNotice).text}
           />
         )}
       </ComposerDrawer>

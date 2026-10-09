@@ -66,6 +66,8 @@ export const finishSessionScenarios: InterfaceScenarios = {
         'progress-100',
         'analytics.interview_finished',
         'completed-state.after-finish',
+        'finishLabel',
+        'finishedNotice',
       ],
       smoke: true,
       visual: true,
@@ -201,6 +203,7 @@ export const finishSessionScenarios: InterfaceScenarios = {
       covers: [
         'confirm-dialog.copy',
         'confirm-dialog.destructive-focus',
+        'finishConfirmation',
         'onFinish.cancel-path',
         'interviewId-guard',
       ],
@@ -218,11 +221,6 @@ export const finishSessionScenarios: InterfaceScenarios = {
         await expect(dialog).toBeVisible();
         await expect(
           dialog.getByText('Are you sure you want to finish the interview?'),
-        ).toBeVisible();
-        await expect(
-          dialog.getByText(
-            'Finish this interview only when you are satisfied with your responses.',
-          ),
         ).toBeVisible();
 
         const primary = dialog.getByTestId('dialog-primary');
@@ -281,10 +279,12 @@ export const finishSessionScenarios: InterfaceScenarios = {
         const primary = dialog.getByTestId('dialog-primary');
         await primary.click();
 
-        // Pending: disabled, spinner, "Please wait..." — no fixed delay to
-        // wait out, the mock hangs until we call resolveManualFinish().
+        // Pending: disabled, busy, spinner, and "Please wait..." announced to
+        // screen readers — no fixed delay to wait out, the mock hangs until we
+        // call resolveManualFinish().
         await expect(primary).toBeDisabled();
-        await expect(primary).toHaveText('Please wait...');
+        await expect(primary).toHaveAttribute('aria-busy', 'true');
+        await expect(dialog.getByRole('status')).toHaveText('Please wait...');
         await expect(dialog.locator('svg.animate-spin')).toBeVisible();
 
         await page.evaluate(() => window.__test.resolveManualFinish());
@@ -299,7 +299,7 @@ export const finishSessionScenarios: InterfaceScenarios = {
 
     {
       id: 'error-path-retry',
-      covers: ['onFinish.error-retry'],
+      covers: ['onFinish.error-retry', 'finishFailed'],
       build: () => {
         const synth = new SyntheticInterview();
         synth.addInformationStage({ title: 'Study overview' });
@@ -364,7 +364,8 @@ export const finishSessionScenarios: InterfaceScenarios = {
         await primary.click();
 
         await expect(primary).toBeDisabled();
-        await expect(primary).toHaveText('Please wait...');
+        await expect(primary).toHaveAttribute('aria-busy', 'true');
+        await expect(dialog.getByRole('status')).toHaveText('Please wait...');
 
         // A host's finish runs to completion whatever happens to the dialog,
         // so it cannot be left while the finish is under way: Cancel is

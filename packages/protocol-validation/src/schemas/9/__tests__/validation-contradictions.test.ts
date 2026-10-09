@@ -11,6 +11,7 @@ import {
   VariableSchema,
   VariablesSchema,
 } from '../variables/variable.ts';
+import { networkComposerWords } from './canvas-stage-words.ts';
 
 describe('findValidationContradictions — local checks', () => {
   it('reports minLength > maxLength, stripping both members', () => {
@@ -4734,6 +4735,7 @@ describe('findValidationContradictions — Twenty-first-wave Finding 1: componen
     subject: { entity: 'node', type: 'person' },
     quickAdd: 'name',
     layoutVariable: 'layoutPosition',
+    ...networkComposerWords(),
     background: { concentricCircles: 4 },
     nodeForm: {
       fields: [
@@ -4901,6 +4903,7 @@ describe('findValidationContradictions — Twenty-first-wave Finding 1: componen
           subject: { entity: 'node', type: 'person' },
           quickAdd: 'name',
           layoutVariable: 'layoutPosition',
+          ...networkComposerWords(),
           background: { concentricCircles: 4 },
           nodeForm: {
             fields: [

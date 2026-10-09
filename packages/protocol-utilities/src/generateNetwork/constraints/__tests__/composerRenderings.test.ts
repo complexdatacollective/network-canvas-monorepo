@@ -118,6 +118,13 @@ function composerStage(options: {
     quickAdd: asEntityAttributeReference('name'),
     layoutVariable: asEntityAttributeReference('layout'),
     background: { concentricCircles: 1 },
+    addNamePlaceholder: { 'en-US': 'Type a name' },
+    overtakenEditNotice: { 'en-US': 'Your edit has not been saved.' },
+    tooltips: {
+      addPerson: { 'en-US': 'Add node' },
+      automaticLayout: { 'en-US': 'Automatic layout' },
+      drawConnection: { 'en-US': 'Draw edge' },
+    },
     ...(options.nodeFields !== undefined
       ? { nodeForm: { fields: options.nodeFields.map(referencedField) } }
       : {}),

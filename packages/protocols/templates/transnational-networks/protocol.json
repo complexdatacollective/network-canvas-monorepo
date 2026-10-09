@@ -745,6 +745,11 @@
     },
     {
       "id": "name-generator-host",
+      "maxNodesNotice": {
+        "en-US": "You have completed this task. Click the next arrow to continue.",
+        "es": "Has completado esta tarea. Pulsa la flecha de avance para continuar.",
+        "hu": "Ezt a feladatot befejezte. A folytatáshoz kattintson a következő nyílra."
+      },
       "type": "NameGenerator",
       "label": {
         "en-US": "Important people here",
@@ -808,6 +813,11 @@
     },
     {
       "id": "name-generator-transnational",
+      "maxNodesNotice": {
+        "en-US": "You have completed this task. Click the next arrow to continue.",
+        "es": "Has completado esta tarea. Pulsa la flecha de avance para continuar.",
+        "hu": "Ezt a feladatot befejezte. A folytatáshoz kattintson a következő nyílra."
+      },
       "type": "NameGenerator",
       "label": {
         "en-US": "Important people abroad",
@@ -962,6 +972,21 @@
     },
     {
       "id": "geospatial-map",
+      "offlineNotice": {
+        "en-US": "You are offline — the map will not load until you reconnect.",
+        "es": "No tienes conexión. El mapa no se cargará hasta que vuelvas a conectarte.",
+        "hu": "Nincs internetkapcsolat. A térkép csak újracsatlakozás után töltődik be."
+      },
+      "mapUnavailable": {
+        "en-US": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.",
+        "es": "Esto puede ocurrir si tu navegador o dispositivo no admite las funciones que necesita el mapa (por ejemplo, WebGL). Prueba con otro navegador o dispositivo, o contacta con la persona que organiza el estudio. Es posible que puedas continuar la entrevista pulsando la flecha de avance.",
+        "hu": "Ez akkor fordulhat elő, ha a böngésző vagy az eszköz nem támogatja a térkép által igényelt funkciókat (például a WebGL-t). Próbáljon meg másik böngészőt vagy eszközt, vagy forduljon a vizsgálat szervezőjéhez. Az interjút a következő nyílra kattintva is folytathatja."
+      },
+      "outsideAreasLabel": {
+        "en-US": "Outside Selectable Areas",
+        "es": "Fuera de las áreas seleccionables",
+        "hu": "Kijelölhető területeken kívül"
+      },
       "type": "Geospatial",
       "label": {
         "en-US": "Place people on the map",
@@ -1031,6 +1056,18 @@
     },
     {
       "id": "sociogram-ties",
+      "tooltips": {
+        "pauseLayout": {
+          "en-US": "Pause automatic layout",
+          "es": "Pausar la disposición automática",
+          "hu": "Automatikus elrendezés szüneteltetése"
+        },
+        "resumeLayout": {
+          "en-US": "Resume automatic layout",
+          "es": "Reanudar la disposición automática",
+          "hu": "Automatikus elrendezés folytatása"
+        }
+      },
       "type": "Sociogram",
       "label": {
         "en-US": "How these people know each other",
@@ -1067,6 +1104,58 @@
     },
     {
       "id": "narrative-review",
+      "attributesHeading": {
+        "en-US": "Attributes",
+        "es": "Atributos",
+        "hu": "Attribútumok"
+      },
+      "linksHeading": {
+        "en-US": "Links",
+        "es": "Conexiones",
+        "hu": "Kapcsolatok"
+      },
+      "groupsHeading": {
+        "en-US": "Groups",
+        "es": "Grupos",
+        "hu": "Csoportok"
+      },
+      "tooltips": {
+        "enableDrawing": {
+          "en-US": "Enable drawing",
+          "es": "Activar el dibujo",
+          "hu": "Rajzolás bekapcsolása"
+        },
+        "disableDrawing": {
+          "en-US": "Disable drawing",
+          "es": "Desactivar el dibujo",
+          "hu": "Rajzolás kikapcsolása"
+        },
+        "freezeAnnotations": {
+          "en-US": "Freeze annotations",
+          "es": "Bloquear las anotaciones",
+          "hu": "Jegyzetek rögzítése"
+        },
+        "unfreezeAnnotations": {
+          "en-US": "Unfreeze annotations",
+          "es": "Desbloquear las anotaciones",
+          "hu": "Jegyzetek feloldása"
+        },
+        "resetAnnotations": {
+          "en-US": "Reset annotations",
+          "es": "Restablecer las anotaciones",
+          "hu": "Jegyzetek visszaállítása"
+        },
+        "pauseLayout": {
+          "en-US": "Pause automatic layout",
+          "es": "Pausar la disposición automática",
+          "hu": "Automatikus elrendezés szüneteltetése"
+        },
+        "resumeLayout": {
+          "en-US": "Resume automatic layout",
+          "es": "Reanudar la disposición automática",
+          "hu": "Automatikus elrendezés folytatása"
+        }
+      },
       "type": "Narrative",
       "label": {
         "en-US": "Your network, here and abroad",
@@ -1127,6 +1216,26 @@
     },
     {
       "id": "finish",
+      "finishLabel": {
+        "en-US": "Finish",
+        "es": "Finalizar",
+        "hu": "Befejezés"
+      },
+      "finishConfirmation": {
+        "en-US": "Are you sure you want to finish the interview?",
+        "es": "¿Seguro que quieres finalizar la entrevista?",
+        "hu": "Biztosan befejezi az interjút?"
+      },
+      "finishedNotice": {
+        "en-US": "This interview is finished, and its answers can no longer be changed.",
+        "es": "Esta entrevista ha finalizado y ya no se pueden cambiar sus respuestas.",
+        "hu": "Ez az interjú befejeződött, a válaszai már nem módosíthatók."
+      },
+      "finishFailed": {
+        "en-US": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer.",
+        "es": "No se pudo finalizar la entrevista. Inténtalo de nuevo. Si el problema continúa, ponte en contacto con la persona que organiza el estudio.",
+        "hu": "Az interjút nem sikerült befejezni. Kérjük, próbálja újra. Ha a probléma továbbra is fennáll, forduljon a kutatás szervezőjéhez."
+      },
       "type": "FinishSession",
       "label": {
         "en-US": "Finish Interview",
@@ -1145,5 +1254,128 @@
       },
       "outcome": "completed"
     }
-  ]
+  ],
+  "interfaceText": {
+    "interview": {
+      "exitInterview": {
+        "en-US": "Exit interview",
+        "es": "Salir de la entrevista",
+        "hu": "Kilépés az interjúból"
+      },
+      "exitInterviewDescription": {
+        "en-US": "Your answers so far will be saved and you can continue later.",
+        "es": "Tus respuestas hasta ahora se guardarán y podrás continuar más adelante.",
+        "hu": "Az eddigi válaszai mentésre kerülnek, és később folytathatja."
+      },
+      "stageError": {
+        "en-US": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button.",
+        "es": "Se produjo un error en el programa de la entrevista y no se pudo mostrar esta tarea. Algunas tareas, como los mapas, necesitan conexión a internet, así que comprueba tu conexión y después prueba a actualizar la página. Si el problema persiste, ponte en contacto con la persona que organiza el estudio y envíale la información de diagnóstico, que puedes copiar con el botón de abajo. Es posible que puedas continuar la entrevista pulsando la flecha de avance.",
+        "hu": "Hiba történt az interjúszoftverben, ezért ez a feladat nem jeleníthető meg. Egyes feladatokhoz, például a térképekhez, internetkapcsolat szükséges, ezért ellenőrizze a kapcsolatot, majd próbálja meg frissíteni az oldalt. Ha a probléma továbbra is fennáll, kérjük, forduljon a kutatás szervezőjéhez, és küldje el neki a hibakeresési információkat, amelyeket az alábbi gombbal másolhat ki. Lehet, hogy a Tovább gombra kattintva folytathatja az interjút."
+      },
+      "itemUnavailable": {
+        "en-US": "This item could not be displayed.",
+        "es": "No se pudo mostrar este elemento.",
+        "hu": "Ez az elem nem jeleníthető meg."
+      },
+      "back": {
+        "en-US": "Back",
+        "es": "Volver",
+        "hu": "Vissza"
+      },
+      "continue": {
+        "en-US": "Continue",
+        "es": "Continuar",
+        "hu": "Tovább"
+      },
+      "cancel": {
+        "en-US": "Cancel",
+        "es": "Cancelar",
+        "hu": "Mégse"
+      },
+      "done": {
+        "en-US": "Done",
+        "es": "Listo",
+        "hu": "Kész"
+      },
+      "delete": {
+        "en-US": "Delete",
+        "es": "Eliminar",
+        "hu": "Törlés"
+      },
+      "genericError": {
+        "en-US": "Something went wrong.",
+        "es": "Se ha producido un error.",
+        "hu": "Hiba történt."
+      }
+    },
+    "forms": {
+      "discardChanges": {
+        "en-US": "Discard changes",
+        "es": "Descartar cambios",
+        "hu": "Változtatások elvetése"
+      },
+      "discardChangesTitle": {
+        "en-US": "Discard changes?",
+        "es": "¿Descartar los cambios?",
+        "hu": "Elveti a változtatásokat?"
+      },
+      "discardChangesDescription": {
+        "en-US": "This form contains invalid data, so it cannot be saved. If you continue it will be reset, and your changes will be lost. Do you want to discard your changes?",
+        "es": "Este formulario contiene datos que no son válidos y no se puede guardar. Si continúas, se restablecerá y se perderán los cambios. ¿Quieres descartar los cambios?",
+        "hu": "Ez az űrlap érvénytelen adatokat tartalmaz, ezért nem menthető. Ha folytatja, az űrlap visszaáll, és a változtatások elvesznek. Elveti a változtatásokat?"
+      },
+      "yes": {
+        "en-US": "Yes",
+        "es": "Sí",
+        "hu": "Igen"
+      },
+      "no": {
+        "en-US": "No",
+        "es": "No",
+        "hu": "Nem"
+      },
+      "submitFailed": {
+        "en-US": "An error occurred while submitting the form.",
+        "es": "Se ha producido un error al enviar el formulario.",
+        "hu": "Hiba történt az űrlap elküldésekor."
+      }
+    },
+    "validation": {
+      "required": {
+        "en-US": "You must answer this question before continuing.",
+        "es": "Debes responder a esta pregunta antes de continuar.",
+        "hu": "A folytatás előtt válaszolnia kell erre a kérdésre."
+      },
+      "minValue": {
+        "en-US": "Enter a value greater than or equal to {min}.",
+        "es": "Introduce un valor mayor o igual que {min}.",
+        "hu": "Az érték legalább {min} legyen."
+      },
+      "maxValue": {
+        "en-US": "Enter a value less than or equal to {max}.",
+        "es": "Introduce un valor menor o igual que {max}.",
+        "hu": "Az érték legfeljebb {max} legyen."
+      },
+      "minDate": {
+        "en-US": "Must be on or after {min}.",
+        "es": "Debe ser igual o posterior a {min}.",
+        "hu": "Legkorábban {min} lehet."
+      },
+      "minSelected": {
+        "en-US": "{count, plural, one {Select at least # value.} other {Select at least # values.}}",
+        "es": "{count, plural, one {Selecciona al menos # valor.} other {Selecciona al menos # valores.}}",
+        "hu": "{count, plural, one {Válasszon legalább # értéket.} other {Válasszon legalább # értéket.}}"
+      },
+      "maxSelected": {
+        "en-US": "{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}",
+        "es": "{count, plural, one {Selecciona como máximo # valor.} other {Selecciona como máximo # valores.}}",
+        "hu": "{count, plural, one {Legfeljebb # értéket válasszon.} other {Legfeljebb # értéket válasszon.}}"
+      },
+      "unique": {
+        "en-US": "Must be unique.",
+        "es": "Debe ser una respuesta única.",
+        "hu": "Egyedinek kell lennie."
+      }
+    }
+  }
 }

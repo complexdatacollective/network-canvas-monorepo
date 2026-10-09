@@ -186,6 +186,7 @@ export function usePedigreeZoomButtons({
     <ToolbarIconButton
       key="zoom-fit"
       aria-label={intl.formatMessage(messages.showWholeFamily)}
+      tooltip={false}
       icon={<Scan />}
       onClick={onShowWholeFamily}
       data-testid="pedigree-zoom-fit"

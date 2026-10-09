@@ -9,6 +9,7 @@ import {
   type LocaleTag,
   type LocalizedString,
   type LocalizedStringFormat,
+  type MessageArguments,
   type ProtocolLocalizationWarning,
 } from '@codaco/protocol-validation';
 import {
@@ -235,7 +236,9 @@ export type TranslationPlace =
   | { kind: 'stage'; stageId: string }
   | { kind: 'codebook'; entity: 'node' | 'edge'; entityType: string }
   | { kind: 'ego' }
-  | { kind: 'protocol' };
+  | { kind: 'protocol' }
+  /** The words the interview itself shows, such as its buttons. */
+  | { kind: 'interface' };
 
 const locateTranslation = (
   protocol: CurrentProtocol,
@@ -266,6 +269,13 @@ const locateTranslation = (
       field: path.slice(3),
     };
   }
+  if (root === 'interfaceText') {
+    return {
+      key: 'interface',
+      place: { kind: 'interface' },
+      field: path.slice(1),
+    };
+  }
   return { key: 'protocol', place: { kind: 'protocol' }, field: [...path] };
 };
 
@@ -279,6 +289,8 @@ export type TranslationRow = {
   format: LocalizedStringFormat;
   /** Every translation the string has. */
   value: LocalizedString;
+  /** What a localized message may use (see `localizedMessage`), when it is one. */
+  arguments?: MessageArguments;
 };
 
 export type TranslationGroup = {
@@ -292,12 +304,13 @@ const PLACE_ORDER: Record<TranslationPlace['kind'], number> = {
   codebook: 1,
   ego: 2,
   protocol: 3,
+  interface: 4,
 };
 
 /**
  * Every participant-facing string grouped by the stage or codebook entry that
  * holds it: the stages in protocol order, then the codebook, then the
- * protocol's own texts.
+ * protocol's own texts, then the words the interview itself shows.
  */
 export const getTranslationGroups = createSelector(
   [getProtocol, getLocalizedStrings],
@@ -316,6 +329,7 @@ export const getTranslationGroups = createSelector(
         field,
         format: hit.format,
         value: hit.value,
+        ...(hit.arguments === undefined ? {} : { arguments: hit.arguments }),
       });
     }
     return [...groups]

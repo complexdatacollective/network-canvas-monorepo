@@ -19,6 +19,12 @@ const BACKGROUND_IMAGE_FIXTURE = path.resolve(
   '../../../../apps/documentation/public/assets/responsive-svg-background.svg',
 );
 
+// A researcher's own wording for the layout toggle, distinct from the text
+// Network Canvas supplies, so an assertion on it proves the stage's own
+// setting is what the participant sees.
+const PAUSE_LAYOUT = 'Hold the layout - matrix check';
+const RESUME_LAYOUT = 'Release the layout - matrix check';
+
 // --- module-private helpers ------------------------------------------------
 
 /**
@@ -253,9 +259,9 @@ function buildManualBaseline(): ScenarioDefinition {
           '[data-zone-id="sociogram-canvas"] button[aria-label]',
         ),
       ).toHaveCount(3);
-      await expect(page.locator('[data-zone-id="node-drawer"]')).toContainText(
-        '2 unplaced',
-      );
+      await expect(
+        page.getByRole('button', { name: /^2 unplaced\b/ }),
+      ).toBeVisible();
 
       // behaviours.automaticLayout is absent, so SimulationPanel never mounts
       // (Sociogram.tsx only renders it when layoutMode === 'AUTOMATIC').
@@ -469,9 +475,9 @@ function buildManualDragPlaceAndReposition(): ScenarioDefinition {
 
       await dragNodeToCanvasPosition(page, 'Bea', { x: 0.7, y: 0.3 });
 
-      await expect(page.locator('[data-zone-id="node-drawer"]')).toContainText(
-        '0 unplaced',
-      );
+      await expect(
+        page.getByRole('button', { name: /^0 unplaced\b/ }),
+      ).toBeVisible();
       let state = await protocol.getNetworkState(interview.interviewId);
       const bea = asPoint(nodeAttribute(state, nameVarId, 'Bea', layoutVarId));
       expect(bea).not.toBeNull();
@@ -628,9 +634,9 @@ function buildUnplaceDragAndKeyboard(): ScenarioDefinition {
           hasText: 'Ash returned to the drawer.',
         }),
       ).toHaveCount(1);
-      await expect(page.locator('[data-zone-id="node-drawer"]')).toContainText(
-        '1 unplaced',
-      );
+      await expect(
+        page.getByRole('button', { name: /^1 unplaced\b/ }),
+      ).toBeVisible();
       let state = await protocol.getNetworkState(interview.interviewId);
       expect(
         nodeAttribute(state, nameVarId, 'Ash', layoutVarId),
@@ -638,9 +644,9 @@ function buildUnplaceDragAndKeyboard(): ScenarioDefinition {
 
       await unplaceNodeViaKeyboard(page, 'Bea');
 
-      await expect(page.locator('[data-zone-id="node-drawer"]')).toContainText(
-        '2 unplaced',
-      );
+      await expect(
+        page.getByRole('button', { name: /^2 unplaced\b/ }),
+      ).toBeVisible();
       state = await protocol.getNetworkState(interview.interviewId);
       expect(
         nodeAttribute(state, nameVarId, 'Bea', layoutVarId),
@@ -718,7 +724,11 @@ function buildAutomaticLayoutSettle(): ScenarioDefinition {
 function buildAutomaticLayoutPauseResume(): ScenarioDefinition {
   return {
     id: 'automatic-layout-pause-resume',
-    covers: ['behaviours.automaticLayout'],
+    covers: [
+      'behaviours.automaticLayout',
+      'tooltips.pauseLayout',
+      'tooltips.resumeLayout',
+    ],
     seedNetwork: true,
     build: () => {
       const synth = new SyntheticInterview();
@@ -731,6 +741,10 @@ function buildAutomaticLayoutPauseResume(): ScenarioDefinition {
       const friendshipType = synth.addEdgeType({ name: 'Friendship' });
       const stage = synth.addStage('Sociogram', {
         behaviours: { automaticLayout: true },
+        wording: {
+          'tooltips.pauseLayout': PAUSE_LAYOUT,
+          'tooltips.resumeLayout': RESUME_LAYOUT,
+        },
       });
       // Named nodes with null layout — the simulation grids them from scratch.
       ['Ash', 'Bea', 'Cy', 'Dee'].forEach((name, i) => {
@@ -757,16 +771,20 @@ function buildAutomaticLayoutPauseResume(): ScenarioDefinition {
       await stage.sociogram.waitForSimulationSettled();
 
       await expect(
-        page.getByRole('button', { name: 'Pause automatic layout' }),
+        page.getByRole('button', { name: PAUSE_LAYOUT }),
       ).toBeVisible();
-      await page
-        .getByRole('button', { name: 'Pause automatic layout' })
-        .click();
+      // The words Network Canvas supplies are not shown in either state.
+      const supplied = page.getByRole('button', {
+        name: /Pause automatic layout|Resume automatic layout/,
+      });
+      await expect(supplied).toHaveCount(0);
+      await page.getByRole('button', { name: PAUSE_LAYOUT }).click();
 
       // After pause the toggle flips label; the worker is stopped.
       await expect(
-        page.getByRole('button', { name: 'Resume automatic layout' }),
+        page.getByRole('button', { name: RESUME_LAYOUT }),
       ).toBeVisible();
+      await expect(supplied).toHaveCount(0);
 
       // Dragging while paused pins the node but does not restart the worker.
       await dragNodeToCanvasPosition(page, 'Ash', { x: 0.12, y: 0.12 });
@@ -775,16 +793,14 @@ function buildAutomaticLayoutPauseResume(): ScenarioDefinition {
         'false',
       );
 
-      await page
-        .getByRole('button', { name: 'Resume automatic layout' })
-        .click();
+      await page.getByRole('button', { name: RESUME_LAYOUT }).click();
       // Resuming re-settles ~instantly via the mock grid worker — it must
       // transition back to false, not hang at true.
       await expect
         .poll(() => sociogram.getAttribute('data-simulation-running'))
         .toBe('false');
       await expect(
-        page.getByRole('button', { name: 'Pause automatic layout' }),
+        page.getByRole('button', { name: PAUSE_LAYOUT }),
       ).toBeVisible();
     },
   };
@@ -1379,9 +1395,9 @@ function buildSubjectFiltersToNodeType(): ScenarioDefinition {
       // (the plan's "drawer absent" is incorrect). All 3 Person nodes are
       // placed and the 2 Venue nodes are off-type, so the drawer shows
       // "0 unplaced" — filtering is by subject type, not node existence.
-      await expect(page.locator('[data-zone-id="node-drawer"]')).toContainText(
-        '0 unplaced',
-      );
+      await expect(
+        page.getByRole('button', { name: /^0 unplaced\b/ }),
+      ).toBeVisible();
 
       // All 5 nodes are retained in the network — filtering is display-only.
       const state = await protocol.getNetworkState(interview.interviewId);

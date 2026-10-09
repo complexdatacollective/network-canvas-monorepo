@@ -2,37 +2,29 @@ import type {
   LocaleTag,
   LocalizationDeclaration,
 } from '../../localization/localeTag.ts';
-import { escapeMessageText } from '../../localization/messageSyntax.ts';
+import {
+  FORMS_INTERFACE_TEXT,
+  INTERVIEW_INTERFACE_TEXT,
+  PASSPHRASE_INTERFACE_TEXT,
+  VALIDATION_INTERFACE_TEXT,
+} from './interface-text-wording.ts';
 import type { LocalizedString } from './localized-string.ts';
+import { FAMILY_PEDIGREE_SUPPLIED_TEXT } from './stage-wording/family-pedigree.ts';
+import { FINISH_SESSION_SUPPLIED_TEXT } from './stage-wording/finish-session.ts';
+import { GEOSPATIAL_SUPPLIED_TEXT } from './stage-wording/geospatial.ts';
+import { NAME_GENERATOR_QUICK_ADD_SUPPLIED_TEXT } from './stage-wording/name-generator-quick-add.ts';
+import { NAME_GENERATOR_ROSTER_SUPPLIED_TEXT } from './stage-wording/name-generator-roster.ts';
+import { NAME_GENERATOR_SUPPLIED_TEXT } from './stage-wording/name-generator.ts';
+import { NARRATIVE_PEDIGREE_SUPPLIED_TEXT } from './stage-wording/narrative-pedigree.ts';
+import { NARRATIVE_SUPPLIED_TEXT } from './stage-wording/narrative.ts';
+import { NETWORK_COMPOSER_SUPPLIED_TEXT } from './stage-wording/network-composer.ts';
+import { SOCIOGRAM_SUPPLIED_TEXT } from './stage-wording/sociogram.ts';
+import type { SuppliedStageSetting } from './supplied-stage-setting.ts';
 import {
   type LanguageChange,
   suppliedTextAfterLanguageChange,
   suppliedTextFor,
 } from './supplied-text.ts';
-
-/**
- * The heading above the people a Name Generator Roster offers, in each
- * language Network Canvas's apps ship in.
- */
-const ROSTER_PANEL_TITLE = {
-  'en': 'Available to add',
-  'de': 'Zum Hinzufügen verfügbar',
-  'es': 'Disponibles para añadir',
-  'fr': 'Éléments disponibles',
-  'it': 'Disponibili da aggiungere',
-  'nl': 'Beschikbaar om toe te voegen',
-  'pt-BR': 'Disponíveis para adicionar',
-  'zh-Hans': '可添加',
-  'zh-Hant': '可新增的項目',
-} as const satisfies Readonly<Record<LocaleTag, string>>;
-
-/** One stage setting whose wording Network Canvas supplies. */
-type SuppliedStageSetting = Readonly<{
-  /** Where the stage holds the setting. */
-  path: readonly string[];
-  /** The supplied text, by language. */
-  text: Readonly<Record<LocaleTag, string>>;
-}>;
 
 /**
  * The stage settings whose wording Network Canvas supplies, by stage type.
@@ -44,30 +36,37 @@ type SuppliedStageSetting = Readonly<{
 const SUPPLIED_STAGE_TEXT: Readonly<
   Record<string, readonly SuppliedStageSetting[]>
 > = {
-  NameGeneratorRoster: [{ path: ['panelTitle'], text: ROSTER_PANEL_TITLE }],
+  FamilyPedigree: FAMILY_PEDIGREE_SUPPLIED_TEXT,
+  FinishSession: FINISH_SESSION_SUPPLIED_TEXT,
+  Geospatial: GEOSPATIAL_SUPPLIED_TEXT,
+  NameGenerator: NAME_GENERATOR_SUPPLIED_TEXT,
+  NameGeneratorQuickAdd: NAME_GENERATOR_QUICK_ADD_SUPPLIED_TEXT,
+  NameGeneratorRoster: NAME_GENERATOR_ROSTER_SUPPLIED_TEXT,
+  Narrative: NARRATIVE_SUPPLIED_TEXT,
+  NarrativePedigree: NARRATIVE_PEDIGREE_SUPPLIED_TEXT,
+  NetworkComposer: NETWORK_COMPOSER_SUPPLIED_TEXT,
+  Sociogram: SOCIOGRAM_SUPPLIED_TEXT,
 };
 
 const settingsOf = (stageType: string): readonly SuppliedStageSetting[] =>
   SUPPLIED_STAGE_TEXT[stageType] ?? [];
 
 /**
- * The text Network Canvas writes for a setting in a protocol language, as the
- * stage holds it: its supplied text there, or, in the default language when
- * it supplies none, the English text, because every supplied setting is
- * required and a stage must hold it in some language. That is the rule for
- * the Family Pedigree's option labels too (`writtenOptionLabel`), and what
- * the schema 8 to 9 migration has always recorded.
+ * The message Network Canvas writes for a setting in a protocol language:
+ * its supplied wording there, or, in the default language when it supplies
+ * none, the English wording, because every supplied setting is required (or,
+ * for an optional one, wanted) and a stage must hold it in some language.
+ * That is the rule for the Family Pedigree's option labels too
+ * (`writtenOptionLabel`), and what the schema 8 to 9 migration has always
+ * recorded.
  */
 const writtenIn = (
   setting: SuppliedStageSetting,
   locale: LocaleTag,
   isDefault: boolean,
-): string | undefined => {
-  const text =
-    suppliedTextFor(setting.text, locale) ??
-    (isDefault ? setting.text.en : undefined);
-  return text === undefined ? undefined : escapeMessageText(text);
-};
+): string | undefined =>
+  suppliedTextFor(setting.message, locale) ??
+  (isDefault ? setting.message.en : undefined);
 
 const valueAt = (value: unknown, path: readonly string[]): unknown =>
   path.reduce<unknown>(
@@ -85,9 +84,9 @@ export type SuppliedStageText = Readonly<{
 }>;
 
 /**
- * The supplied settings a new stage of `stageType` starts with, each holding
- * Network Canvas's text in every protocol language it writes one in (see
- * `writtenIn`).
+ * Every supplied setting of `stageType`, each holding Network Canvas's text
+ * in every protocol language it writes one in (see `writtenIn`): what an
+ * editor seeds a setting with when the object holding it is created.
  */
 export const suppliedStageText = (
   stageType: string,
@@ -137,13 +136,119 @@ export const suppliedStageTextAfterLanguageChange = (
   });
 
 /**
- * The supplied settings `stage` is missing, as the schema 8 to 9 migration
- * adds them: as a new stage would hold them.
+ * The supplied settings `stage` should gain, as a new stage starts with them
+ * and the schema 8 to 9 migration adds them: each one it lacks, except one
+ * whose optional object it lacks (that arrives with the object) and an
+ * optional one whose object it already has (the researcher removed it).
  */
 export const missingSuppliedStageText = (
   stage: Readonly<{ type: string }>,
   localization: LocalizationDeclaration,
-): readonly SuppliedStageText[] =>
-  suppliedStageText(stage.type, localization).filter(
-    ({ path }) => valueAt(stage, path) === undefined,
+): readonly SuppliedStageText[] => {
+  const settings = settingsOf(stage.type);
+  const supplied = suppliedStageText(stage.type, localization);
+  return supplied.filter((_text, index) => {
+    const setting = settings[index];
+    if (setting === undefined) return false;
+    if (valueAt(stage, setting.path) !== undefined) return false;
+    if (
+      setting.within !== undefined &&
+      valueAt(stage, setting.within) === undefined
+    )
+      return false;
+    if (
+      setting.when !== undefined &&
+      !setting.when(stage as Readonly<Record<string, unknown>>)
+    )
+      return false;
+    return !(
+      setting.optional === true &&
+      valueAt(stage, setting.path.slice(0, -1)) !== undefined
+    );
+  });
+};
+
+/**
+ * The paths of the settings `stage` must hold but does not: each one shown
+ * only under a configuration (its `when`) that is on. The interview shows
+ * such a setting in place of its built-in wording, so a stage without it
+ * would show nothing where the participant expects words.
+ */
+export const missingRequiredStageSettings = (
+  stage: Readonly<{ type: string }>,
+): readonly (readonly string[])[] =>
+  settingsOf(stage.type)
+    .filter(
+      (setting) =>
+        setting.when !== undefined &&
+        setting.when(stage) &&
+        valueAt(stage, setting.path) === undefined,
+    )
+    .map((setting) => setting.path);
+
+/**
+ * The paths of the settings `stage` holds but no longer shows: each one shown
+ * only under a configuration (its `when`) that is off. A stage editor seeds
+ * such a setting when its configuration is turned on, so it drops it when the
+ * configuration is turned off, and a protocol never asks to translate words
+ * its participants cannot see.
+ */
+export const inapplicableStageSettings = (
+  stage: Readonly<{ type: string }> & Readonly<Record<string, unknown>>,
+): readonly (readonly string[])[] =>
+  settingsOf(stage.type)
+    .filter(
+      (setting) =>
+        setting.when !== undefined &&
+        !setting.when(stage) &&
+        valueAt(stage, setting.path) !== undefined,
+    )
+    .map((setting) => setting.path);
+
+const samePath = (a: readonly string[], b: readonly string[]): boolean =>
+  a.length === b.length && a.every((segment, index) => segment === b[index]);
+
+/**
+ * Whether the stage's setting at `path` applies to the stage as it is
+ * configured: true for a setting shown whatever the configuration, else what
+ * its `when` says. A stage editor shows a wording field only when this holds,
+ * so the field it shows is the one `missingRequiredStageSettings` requires.
+ * A path that is not a supplied setting of the stage's type does not apply.
+ */
+export const suppliedStageSettingApplies = (
+  stage: Readonly<{ type: string }> & Readonly<Record<string, unknown>>,
+  path: readonly string[],
+): boolean => {
+  const setting = settingsOf(stage.type).find((candidate) =>
+    samePath(candidate.path, path),
   );
+  if (setting === undefined) return false;
+  return setting.when === undefined || setting.when(stage);
+};
+
+let suppliedEnglish: ReadonlySet<string> | undefined;
+
+/**
+ * Whether `message` is wording Network Canvas supplies in English, for a
+ * stage setting or for the protocol's interface text. A protocol whose
+ * default language Network Canvas supplies no wording in holds the English
+ * under that language, so the interview formats such a message by English
+ * plural rules wherever it is held: by Japanese rules, "{count, plural, one
+ * {# item} other {# items}}" would read "1 items".
+ */
+export const isSuppliedEnglishMessage = (message: string): boolean => {
+  suppliedEnglish ??= new Set(
+    [
+      ...Object.values(SUPPLIED_STAGE_TEXT).flat(),
+      ...[
+        INTERVIEW_INTERFACE_TEXT,
+        PASSPHRASE_INTERFACE_TEXT,
+        FORMS_INTERFACE_TEXT,
+        VALIDATION_INTERFACE_TEXT,
+      ].flatMap((entries) => Object.values(entries)),
+    ].flatMap(({ message: wording }) =>
+      wording.en === undefined ? [] : [wording.en],
+    ),
+  );
+  return suppliedEnglish.has(message);
+};

@@ -120,7 +120,7 @@ async function storedResearch(page: Page) {
 test.describe('a Spanish browser', () => {
   test.use({ locale: 'es' });
 
-  test('shows the built-in interview controls in Spanish whatever the app language, preserving authored content and data', async ({
+  test('shows the interview in the protocol’s language and its built-in names in Spanish whatever the app language, preserving authored content and data', async ({
     page,
     protocol,
     interviewNav,
@@ -128,8 +128,10 @@ test.describe('a Spanish browser', () => {
     await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
     await chooseLanguage(page, 'en', 'es');
     await interviewNav.startNewSession('Caso Á-17');
-    // The interview carries the protocol's language (it declares only en-US);
-    // the built-in controls alone follow the browser.
+    // The interview carries the protocol's language (it declares only en-US),
+    // and so does every word it shows, its own words included, which the
+    // protocol holds. Only the built-in accessible names of icon controls,
+    // never shown, follow the browser.
     const interview = page.locator('main[data-theme-interview]');
     await expect(interview).toHaveAttribute('lang', 'en-US');
     await expect(interview).toHaveAttribute('dir', 'ltr');
@@ -151,7 +153,8 @@ test.describe('a Spanish browser', () => {
           locale: 'en-US',
         }),
       ]);
-    await interviewNav.exitInterview('es');
+    // The exit dialog's words are the protocol's, so in English.
+    await interviewNav.exitInterview();
     const before = await storedResearch(page);
     expect(before.protocols).toHaveLength(1);
     expect(before.sessions).toHaveLength(1);
@@ -188,7 +191,8 @@ test.describe('a Spanish browser', () => {
     await expect(
       page.getByText('Thanks for taking part.', { exact: true }),
     ).toBeVisible();
-    await interviewNav.exitInterview('es');
+    // The exit dialog's words are the protocol's, so in English.
+    await interviewNav.exitInterview();
     await page.getByRole('button', { name: 'Datos', exact: true }).click();
     await expect(
       page.getByRole('columnheader', { name: /ID del caso/ }),
@@ -224,9 +228,9 @@ test.describe('a Spanish browser', () => {
     await interviewNav.quickAddNode('Irene');
     await interviewNav.next();
     await interviewNav.next();
-    // The finish stage's title is the protocol's own text, which this protocol
-    // has only in English; the Finish button and its confirmation are the
-    // interview's, in its interface language.
+    // The finish stage's title, its Finish button and the confirmation's
+    // question are the protocol's own text, which this protocol has only in
+    // English.
     const finishHeading = page.getByRole('heading', {
       name: 'Finish Interview',
       exact: true,
@@ -238,10 +242,10 @@ test.describe('a Spanish browser', () => {
     const before = await storedResearch(page);
     expect(before.protocols).toHaveLength(1);
     expect(before.sessions).toHaveLength(1);
-    await page.getByRole('button', { name: 'Finalizar', exact: true }).click();
+    await page.getByRole('button', { name: 'Finish', exact: true }).click();
     const confirmation = page.getByRole('dialog');
     await expect(confirmation).toHaveAccessibleName(
-      '¿Seguro que quieres finalizar la entrevista?',
+      'Are you sure you want to finish the interview?',
     );
     // Interviewer supplies this description, yet it follows the interview's
     // language rather than Interviewer's own.
@@ -254,7 +258,7 @@ test.describe('a Spanish browser', () => {
     await expect(description).toHaveAttribute('dir', 'ltr');
     await expect(
       confirmation.getByRole('button', {
-        name: 'Finalizar',
+        name: 'Finish',
         exact: true,
       }),
     ).toBeVisible();
@@ -262,7 +266,7 @@ test.describe('a Spanish browser', () => {
     expect(await storedResearch(page)).toEqual(before);
 
     await confirmation
-      .getByRole('button', { name: 'Cancelar', exact: true })
+      .getByRole('button', { name: 'Cancel', exact: true })
       .click();
     await expect(confirmation).toBeHidden();
     await expect(finishHeading).toBeVisible();
@@ -293,7 +297,7 @@ test.describe('the language chooser stage', () => {
     const interview = page.locator('main[data-theme-interview]');
     await expect(interview).toHaveAttribute('lang', 'en-US');
     await expect(
-      page.getByRole('heading', { name: 'Choose a language', exact: true }),
+      page.getByRole('listbox', { name: 'Choose a language', exact: true }),
     ).toBeVisible();
     await expect(page.getByRole('option')).toHaveCount(2);
     const spanish = page.getByRole('option', { name: 'español', exact: true });
@@ -306,8 +310,9 @@ test.describe('the language chooser stage', () => {
 
     await spanish.click();
     await expect(spanish).toHaveAttribute('aria-selected', 'true');
+    // The list's name is built in and follows the chosen language.
     await expect(
-      page.getByRole('heading', { name: 'Elige un idioma', exact: true }),
+      page.getByRole('listbox', { name: 'Elige un idioma', exact: true }),
     ).toBeVisible();
     await expect(interview).toHaveAttribute('lang', 'es');
     await expect(
@@ -324,7 +329,7 @@ test.describe('the language chooser stage', () => {
     await page.reload();
     await interviewNav.waitForStage();
     await expect(
-      page.getByRole('heading', { name: 'Elige un idioma', exact: true }),
+      page.getByRole('listbox', { name: 'Elige un idioma', exact: true }),
     ).toBeVisible();
     await expect(spanish).toHaveAttribute('aria-selected', 'true');
     await expect(interview).toHaveAttribute('lang', 'es');

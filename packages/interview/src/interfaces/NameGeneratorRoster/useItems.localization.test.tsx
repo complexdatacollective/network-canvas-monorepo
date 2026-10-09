@@ -39,6 +39,8 @@ function RosterLabels() {
     stage: {
       id: 'stage',
       type: 'NameGeneratorRoster',
+      externalDataError: { en: 'External data could not be loaded.' },
+      allAddedNotice: { en: 'There is nothing left to add from this list.' },
       panelTitle: { en: 'Available to add' },
       label: { en: 'Authored stage' },
       subject: { entity: 'node', type: 'person' },
@@ -68,7 +70,7 @@ beforeAll(async () => {
 });
 
 describe('roster memoized fallback labels', () => {
-  it('invalidates already-loaded fallback labels on locale changes without rewriting roster data or authored type labels', () => {
+  it('keeps the fallback label, the roster data and authored type labels unchanged across locale changes', () => {
     const before = structuredClone(sourceNodes);
     const tree = (locale: string) => (
       <InterviewI18nProvider requestedLocale={locale}>
@@ -80,15 +82,15 @@ describe('roster memoized fallback labels', () => {
     const { rerender } = render(tree('en'));
     expect(
       screen.getAllByRole('listitem').map((item) => item.textContent),
-    ).toEqual(['Unnamed Researcher subject 1', 'Zoë Álvarez']);
+    ).toEqual(['Researcher subject 1', 'Zoë Álvarez']);
     rerender(tree('es'));
     expect(
       screen.getAllByRole('listitem').map((item) => item.textContent),
-    ).toEqual(['Researcher subject sin nombre 1', 'Zoë Álvarez']);
+    ).toEqual(['Researcher subject 1', 'Zoë Álvarez']);
     expect(sourceNodes).toEqual(before);
     rerender(tree('en-GB'));
     expect(
       screen.getAllByRole('listitem').map((item) => item.textContent),
-    ).toEqual(['Unnamed Researcher subject 1', 'Zoë Álvarez']);
+    ).toEqual(['Researcher subject 1', 'Zoë Álvarez']);
   });
 });

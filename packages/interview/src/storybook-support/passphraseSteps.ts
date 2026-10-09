@@ -10,16 +10,16 @@ const CHECK_TIMEOUT = 10_000;
 
 // The key button is the navigation's: a stage may offer its own button with
 // the same name, such as Family Pedigree's notice under the family.
-async function openPrompter(title: string) {
+async function openPrompter() {
   const navigation = within(await screen.findByRole('navigation'));
   await userEvent.click(
     await navigation.findByRole(
       'button',
-      { name: 'Enter your passphrase' },
+      { name: 'Passphrase' },
       { timeout: CHECK_TIMEOUT },
     ),
   );
-  return within(await screen.findByRole('dialog', { name: title }));
+  return within(await screen.findByRole('dialog', { name: 'Passphrase' }));
 }
 
 // Each label also carries a visual required marker.
@@ -27,9 +27,7 @@ const passphraseField = (dialog: ReturnType<typeof within>) =>
   dialog.getByLabelText(/^Passphrase/, { selector: 'input' });
 
 async function submitAndWaitForAcceptance(dialog: ReturnType<typeof within>) {
-  await userEvent.click(
-    dialog.getByRole('button', { name: 'Submit passphrase' }),
-  );
+  await userEvent.click(dialog.getByRole('button', { name: 'Continue' }));
   await waitFor(
     () => expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     { timeout: CHECK_TIMEOUT },
@@ -44,10 +42,12 @@ async function submitAndWaitForAcceptance(dialog: ReturnType<typeof within>) {
  * where none has been chosen yet.
  */
 export async function choosePassphraseInPrompter(passphrase: string) {
-  const dialog = await openPrompter('Choose a passphrase');
+  // Both dialogs are titled "Passphrase"; choosing is the one that asks for a
+  // confirmation, so the confirmation field is what tells them apart.
+  const dialog = await openPrompter();
   await userEvent.type(passphraseField(dialog), passphrase);
   await userEvent.type(
-    dialog.getByLabelText(/^Confirm Passphrase/, { selector: 'input' }),
+    await dialog.findByLabelText(/^Confirm Passphrase/, { selector: 'input' }),
     passphrase,
   );
   await submitAndWaitForAcceptance(dialog);
@@ -58,7 +58,7 @@ export async function choosePassphraseInPrompter(passphrase: string) {
  * prompter, which asks for it once without confirmation.
  */
 export async function enterPassphraseInPrompter(passphrase: string) {
-  const dialog = await openPrompter('Enter your passphrase');
+  const dialog = await openPrompter();
   await expect(
     dialog.queryByLabelText(/^Confirm Passphrase/, { selector: 'input' }),
   ).not.toBeInTheDocument();

@@ -351,7 +351,7 @@ export const LeavingWithAnInvalidEdit: Story = {
     await expect(
       await screen.findByRole('dialog', { name: 'Discard changes?' }),
     ).toHaveTextContent(/invalid data/);
-    await userEvent.click(screen.getByRole('button', { name: 'Keep changes' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     await expect(
       await screen.findByRole('spinbutton', { name: /age/i }),
@@ -384,7 +384,7 @@ export const UnsavedEditInDrawer: Story = {
     await expect(
       await screen.findByRole('dialog', discardDialog),
     ).toHaveTextContent(/invalid data/);
-    await userEvent.click(screen.getByRole('button', { name: 'Keep changes' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog', discardDialog)).toBeNull(),
     );
@@ -444,8 +444,12 @@ export const EncryptedNames: Story = {
     const addNode = await canvas.findByRole('button', { name: /add node/i });
 
     await userEvent.click(addNode);
+    // The key button's hidden description says the same, so only the notice
+    // that appears on the screen is looked for.
     await expect(
-      await screen.findByText(/enter your passphrase to see and change/i),
+      await screen.findByText(/enter your passphrase to see and change/i, {
+        ignore: '[hidden], script, style',
+      }),
     ).toBeInTheDocument();
     await expect(
       screen.queryByRole('textbox', { name: /name/i }),
@@ -525,7 +529,7 @@ export const ProtectedNotesRefused: Story = {
       screen.queryByRole('button', { name: 'Enter a new answer' }),
     ).not.toBeInTheDocument();
     await expect(
-      screen.queryByRole('button', { name: 'Enter your passphrase' }),
+      screen.queryByRole('button', { name: 'Passphrase' }),
     ).not.toBeInTheDocument();
   },
 };
@@ -589,7 +593,7 @@ export const UndoInDrawer: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Undo' }));
     await closeDrawer();
     await expect(await screen.findByText(overtaken)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Keep changes' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     await waitFor(() =>
       expect(screen.queryByText(overtaken)).not.toBeInTheDocument(),
     );

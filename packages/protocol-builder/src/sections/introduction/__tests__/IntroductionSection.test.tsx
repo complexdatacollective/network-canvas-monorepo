@@ -116,7 +116,7 @@ describe('the introduction a participant reads before a task', () => {
 
     expect(await harness.submit()).toBeNull();
     expect(
-      await screen.findByText('Too long. Enter at most 50 characters.'),
+      await screen.findByText('Enter at most 50 characters.'),
     ).toBeInTheDocument();
 
     await harness.user.type(heading, '{Backspace}');

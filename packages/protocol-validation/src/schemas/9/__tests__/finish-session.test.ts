@@ -28,7 +28,24 @@ const finish = (id = 'finish', outcome = 'completed') => ({
   label: { en: 'Finish' },
   title: { en: 'All done' },
   content: { en: 'Thank you.' },
+  ...englishSettings('en'),
   outcome,
+});
+
+/** The finish stage's supplied settings, in English, under `locale`. */
+const englishSettings = (locale: string) => ({
+  finishLabel: { [locale]: 'Finish' },
+  finishConfirmation: {
+    [locale]: 'Are you sure you want to finish the interview?',
+  },
+  finishedNotice: {
+    [locale]:
+      'This interview is finished, and its answers can no longer be changed.',
+  },
+  finishFailed: {
+    [locale]:
+      'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
+  },
 });
 
 const information = (id: string) => ({
@@ -183,6 +200,7 @@ describe('v8 to v9 migration', () => {
       label: { [defaultLocale]: DEFAULT_FINISH_SESSION_TEXT.en.label },
       title: { [defaultLocale]: DEFAULT_FINISH_SESSION_TEXT.en.title },
       content: { [defaultLocale]: DEFAULT_FINISH_SESSION_TEXT.en.content },
+      ...englishSettings(defaultLocale),
       outcome: 'completed',
     });
     expect(
@@ -305,6 +323,8 @@ describe('supplied finish text', () => {
       label: { 'en-US': DEFAULT_FINISH_SESSION_TEXT.en.label },
       title: { 'en-US': DEFAULT_FINISH_SESSION_TEXT.en.title },
       content: { 'en-US': DEFAULT_FINISH_SESSION_TEXT.en.content },
+      // Network Canvas words the settings in no Japanese.
+      ...englishSettings('en-US'),
       outcome: 'completed',
     });
   });
@@ -434,7 +454,9 @@ describe('closing text missing in the default language', () => {
     ],
   });
 
-  it('creates the stage with no text, rather than text in another language', () => {
+  // The settings are required, so they fall back to English in the default
+  // language, as every supplied setting does.
+  it('creates the stage with no closing text, rather than text in another language', () => {
     expect(
       createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
     ).toEqual({
@@ -443,6 +465,7 @@ describe('closing text missing in the default language', () => {
       label: {},
       title: {},
       content: {},
+      ...englishSettings('ja'),
       outcome: 'completed',
     });
   });

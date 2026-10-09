@@ -1,14 +1,19 @@
 'use client';
 
-import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
-import { Button } from '@codaco/fresco-ui/Button';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import { IconButton } from '@codaco/fresco-ui/Button';
 import Icon from '@codaco/fresco-ui/Icon';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@codaco/fresco-ui/Tooltip';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 
 import { messages } from '../messages';
-import { NotationKey } from './NotationKey';
+import { NotationKey, type NotationWords } from './NotationKey';
 
 type Disease = {
   id: string;
@@ -16,7 +21,17 @@ type Disease = {
   color: string;
 };
 
+/** The panel's words, from the stage's settings. */
+export type ConditionPanelWords = Readonly<{
+  keyHeading: string;
+  heading: string;
+  instruction: string;
+  saveSnapshot: string;
+  notation: NotationWords;
+}>;
+
 type ConditionPanelProps = {
+  words: ConditionPanelWords;
   diseases: Disease[];
   selectedDiseaseId: string | null;
   onSelect: (id: string | null) => void;
@@ -37,6 +52,7 @@ const KEY_GLYPH_FALLBACK_COLOUR = 'var(--node-1)';
 const KEY_GLYPH_SHAPE = 'circle' as const;
 
 export default function ConditionPanel({
+  words,
   diseases,
   selectedDiseaseId,
   onSelect,
@@ -64,7 +80,7 @@ export default function ConditionPanel({
       {/* Header — panel title, fixed above the scrolling key. */}
       <div className="flex shrink-0 flex-col gap-1 border-b border-(--outline) p-4">
         <Heading level="h4" margin="none">
-          <AppMessage message={messages.key} />
+          {words.keyHeading}
         </Heading>
       </div>
 
@@ -74,11 +90,9 @@ export default function ConditionPanel({
           {diseases.length > 0 && (
             <>
               <Heading level="label" margin="none">
-                <AppMessage message={messages.conditions} />
+                {words.heading}
               </Heading>
-              <p className="text-sm opacity-80">
-                <AppMessage message={messages.selectCondition} />
-              </p>
+              <p className="text-sm opacity-80">{words.instruction}</p>
               {diseases.map((disease) => {
                 const isSelected = disease.id === selectedDiseaseId;
                 return (
@@ -104,10 +118,8 @@ export default function ConditionPanel({
             </>
           )}
 
-          <Heading level="label" margin="none">
-            <AppMessage message={messages.symbols} />
-          </Heading>
           <NotationKey
+            words={words.notation}
             glyphColour={glyphColour}
             shape={KEY_GLYPH_SHAPE}
             showAtRiskStatuses={showAtRiskStatuses}
@@ -116,17 +128,26 @@ export default function ConditionPanel({
       </ScrollArea>
 
       {/* Footer — snapshot action, fixed below the scrolling key. */}
-      <div className="shrink-0 border-t border-(--outline) p-4">
-        <Button
-          color="primary"
-          className="w-full"
-          icon={
-            <Icon name="Camera" aria-hidden="true" className="size-[1em]" />
-          }
-          onClick={onSnapshot}
-        >
-          <AppMessage message={messages.saveSnapshot} />
-        </Button>
+      <div className="flex shrink-0 justify-center border-t border-(--outline) p-4">
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <IconButton
+                color="primary"
+                aria-label={words.saveSnapshot}
+                icon={
+                  <Icon
+                    name="Camera"
+                    aria-hidden="true"
+                    className="size-[1em]"
+                  />
+                }
+                onClick={onSnapshot}
+              />
+            }
+          />
+          <TooltipContent>{words.saveSnapshot}</TooltipContent>
+        </Tooltip>
       </div>
     </Surface>
   );

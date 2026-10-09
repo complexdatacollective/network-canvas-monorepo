@@ -1,15 +1,16 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
   asEntityAttributeReference,
   type FramingId,
+  type LocalizationDeclaration,
   type PedigreeRelationshipKind,
   type PedigreeSexAssignedAtBirth,
+  familyPedigreeWordingIn,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -30,6 +31,7 @@ import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalizati
 import { encryptionFor } from '../../Anonymisation/__tests__/encryptionFixtures';
 import { installEncryptionKey } from '../../Anonymisation/unlockEncryption';
 import { encryptedPerson } from '../../FamilyPedigree/__tests__/fixtures';
+import { narrativePedigreeWords } from './narrativePedigreeWords';
 
 const exportSnapshotMock =
   vi.fn<(element: HTMLElement, filename: string) => Promise<void>>();
@@ -216,6 +218,7 @@ const edges: NcEdge[] = [
 const sourceStage = {
   id: SOURCE_STAGE_ID,
   type: 'FamilyPedigree' as const,
+  wording: familyPedigreeWordingIn(['en', 'es']),
   label: { en: 'Family Pedigree' },
   subject: { entity: 'node' as const, type: NODE_TYPE },
   prompt: { en: 'Build your pedigree.' },
@@ -242,6 +245,7 @@ function makeNarrativeStage(): NarrativeStage {
     label: { en: 'Disease Pedigree' },
     sourceStageId: SOURCE_STAGE_ID,
     showAtRiskStatuses: false,
+    ...narrativePedigreeWords(),
     diseases: [
       {
         id: 'da',
@@ -316,7 +320,7 @@ function makeStore({
     reducer: { protocol, session, ui },
     preloadedState: {
       protocol: {
-        localization: { defaultLocale: 'en', locales: ['en'] },
+        localization: { defaultLocale: 'en', locales: ['en', 'es'] },
         codebook: makeCodebook(encryption !== undefined),
         stages: [{ ...sourceStage, framing: sourceFraming }, narrativeStage],
         assets: [],
@@ -342,26 +346,32 @@ function makeStore({
   return store;
 }
 
+const ENGLISH_AND_SPANISH: LocalizationDeclaration = {
+  defaultLocale: 'en',
+  locales: ['en', 'es'],
+};
+
 function renderView(options: StoreOptions = {}, locale = 'en') {
   const stage = options.narrativeStage ?? makeNarrativeStage();
   const store = makeStore({ ...options, narrativeStage: stage });
 
-  function Wrapper({ children }: { children: ReactNode }) {
-    return (
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
-          <TestProtocolLocalization>{children}</TestProtocolLocalization>
-        </CurrentStepProvider>
-      </Provider>
-    );
-  }
-
+  // The participant's stated locale reaches the protocol's localization, so
+  // the stage's own words resolve in it, as they do in the Shell.
   const view = (requestedLocale: string) => (
-    <InterviewI18nProvider requestedLocale={requestedLocale}>
-      <NarrativePedigreeView stage={stage} />
-    </InterviewI18nProvider>
+    <Provider store={store}>
+      <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
+        <TestProtocolLocalization
+          localization={ENGLISH_AND_SPANISH}
+          locale={requestedLocale}
+        >
+          <InterviewI18nProvider requestedLocale={requestedLocale}>
+            <NarrativePedigreeView stage={stage} />
+          </InterviewI18nProvider>
+        </TestProtocolLocalization>
+      </CurrentStepProvider>
+    </Provider>
   );
-  const rendered = render(view(locale), { wrapper: Wrapper });
+  const rendered = render(view(locale));
   return {
     ...rendered,
     store,
@@ -470,13 +480,16 @@ describe('NarrativePedigreeView — who is drawn', () => {
     }
   });
 
-  it('explains that the family cannot be found when the source is not a Family Pedigree', async () => {
+  it('throws when the source is not a Family Pedigree, so the task error boundary reports it', () => {
     const stage = { ...makeNarrativeStage(), sourceStageId: 'missing' };
-    renderView({ narrativeStage: stage });
-    expect(
-      await screen.findByText(/family/i, { selector: 'p' }),
-    ).toBeInTheDocument();
-    expect(document.querySelector('[data-pedigree-member]')).toBeNull();
+    // React logs the expected render error; it is not what this test is about.
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    expect(() => renderView({ narrativeStage: stage })).toThrow(
+      'The Narrative Pedigree source stage could not be found.',
+    );
+    consoleError.mockRestore();
   });
 });
 
@@ -893,6 +906,7 @@ function renderCousinView(showAtRiskStatuses = true) {
       label: { en: 'Cousin Union Disease Pedigree' },
       sourceStageId: SOURCE_STAGE_ID,
       showAtRiskStatuses,
+      ...narrativePedigreeWords({ atRisk: showAtRiskStatuses }),
       diseases: [
         {
           id: 'ar',

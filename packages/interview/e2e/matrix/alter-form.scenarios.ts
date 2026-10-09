@@ -1056,9 +1056,7 @@ export const alterFormScenarios: InterfaceScenarios = {
           .getByRole('textbox', { name: 'Confirm Passphrase' })
           .fill('correct horse battery staple');
         await page.getByRole('button', { name: 'Submit' }).click();
-        await expect(
-          page.getByText('Passphrase set successfully!'),
-        ).toBeVisible();
+        await expect(page.getByText('Passphrase accepted!')).toBeVisible();
         await interview.next(); // -> AlterForm (step 1)
 
         await interview.dismissIntro();

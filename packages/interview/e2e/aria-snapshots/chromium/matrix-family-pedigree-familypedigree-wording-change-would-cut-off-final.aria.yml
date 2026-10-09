@@ -1,0 +1,42 @@
+- main:
+  - status:
+    - heading "Add the members of your family." [level=2]
+  - region "Interview notifications"
+  - dialog "About you":
+    - heading "About you" [level=2]
+    - button "Close"
+    - alert:
+      - text: "Error:"
+      - paragraph: "Change would strand 1 person: Sam - matrix check"
+    - text: Gender identity Required
+    - radiogroup "Gender identity":
+      - radio "Woman"
+      - text: Woman
+      - radio "Man"
+      - text: Man
+      - radio "Non-binary" [checked]
+      - text: Non-binary
+      - radio "A different identity"
+      - text: A different identity
+      - radio "Don’t know"
+      - text: Don’t know
+      - radio "Prefer not to say"
+      - text: Prefer not to say
+    - text: Sex assigned at birth Required
+    - radiogroup "Sex assigned at birth":
+      - radio "Female"
+      - text: Female
+      - radio "Male"
+      - text: Male
+      - radio "Intersex" [checked]
+      - text: Intersex
+      - radio "Don’t know"
+      - text: Don’t know
+      - radio "Prefer not to say"
+      - text: Prefer not to say
+    - text: Which of your siblings, if any, are your twins? Include triplets and other multiple births.
+    - group "Which of your siblings, if any, are your twins?":
+      - checkbox "Sam"
+      - text: Sam
+    - button "Cancel"
+    - button "Save"

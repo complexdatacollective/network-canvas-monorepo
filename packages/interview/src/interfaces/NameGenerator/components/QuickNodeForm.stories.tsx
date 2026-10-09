@@ -124,6 +124,9 @@ const meta: Meta<typeof QuickNodeForm> = {
   parameters: {
     layout: 'centered',
   },
+  args: {
+    hint: { en: 'Press Enter when you are finished.' },
+  },
   argTypes: {
     disabled: {
       control: 'boolean',

@@ -8,8 +8,8 @@
       - heading "Alice Smith" [level=4]
     - option "Bob Jones":
       - heading "Bob Jones" [level=4]
-    - option "Unnamed Person 3":
-      - heading "Unnamed Person 3" [level=4]
+    - option "Person 3":
+      - heading "Person 3" [level=4]
   - slider "Resize panel and node list areas"
   - listbox "Added Nodes"
   - navigation:

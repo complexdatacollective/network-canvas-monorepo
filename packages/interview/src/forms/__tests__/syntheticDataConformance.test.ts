@@ -997,6 +997,12 @@ const stages = [
   {
     id: 'stage-people',
     type: 'NameGenerator',
+    minNodesNotice: {
+      en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+    },
+    maxNodesNotice: {
+      en: 'You have completed this task. Click the next arrow to continue.',
+    },
     label: { en: 'People' },
     subject: { entity: 'node', type: 'person' },
     prompts: [{ id: 'p1', text: { en: 'Name people' } }],
@@ -1009,6 +1015,12 @@ const stages = [
   {
     id: 'stage-tokens',
     type: 'NameGenerator',
+    minNodesNotice: {
+      en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+    },
+    maxNodesNotice: {
+      en: 'You have completed this task. Click the next arrow to continue.',
+    },
     label: { en: 'Tokens' },
     subject: { entity: 'node', type: 'token' },
     prompts: [{ id: 'p2', text: { en: 'Name tokens' } }],
@@ -1205,6 +1217,12 @@ const hazardCodebook: Codebook = {
 const hazardFormStage = {
   id: 'stage-binned',
   type: 'NameGenerator',
+  minNodesNotice: {
+    en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+  },
+  maxNodesNotice: {
+    en: 'You have completed this task. Click the next arrow to continue.',
+  },
   label: { en: 'Binned people' },
   subject: { entity: 'node', type: 'binned' },
   prompts: [{ id: 'p1', text: { en: 'Name people' } }],
@@ -1756,6 +1774,14 @@ const rosterDateStages = [
   {
     id: 'stage-roster-dates',
     type: 'NameGeneratorRoster',
+    externalDataError: { en: 'External data could not be loaded.' },
+    allAddedNotice: { en: 'There is nothing left to add from this list.' },
+    minNodesNotice: {
+      en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+    },
+    maxNodesNotice: {
+      en: 'You have completed this task. Click the next arrow to continue.',
+    },
     panelTitle: { en: 'Available to add' },
     label: { en: 'People' },
     subject: { entity: 'node', type: 'rosterPerson' },
@@ -1837,6 +1863,14 @@ const rosterPinStages = [
   {
     id: 'stage-roster-pins',
     type: 'NameGeneratorRoster',
+    externalDataError: { en: 'External data could not be loaded.' },
+    allAddedNotice: { en: 'There is nothing left to add from this list.' },
+    minNodesNotice: {
+      en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+    },
+    maxNodesNotice: {
+      en: 'You have completed this task. Click the next arrow to continue.',
+    },
     panelTitle: { en: 'Available to add' },
     label: { en: 'People' },
     subject: { entity: 'node', type: 'rosterPinned' },
@@ -1979,6 +2013,12 @@ const narrowStages = [
   {
     id: 'stage-narrow',
     type: 'NameGenerator',
+    minNodesNotice: {
+      en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+    },
+    maxNodesNotice: {
+      en: 'You have completed this task. Click the next arrow to continue.',
+    },
     label: { en: 'Narrow people' },
     subject: { entity: 'node', type: 'narrow' },
     prompts: [{ id: 'p1', text: { en: 'Name people' } }],

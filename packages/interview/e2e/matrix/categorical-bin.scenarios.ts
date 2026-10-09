@@ -147,8 +147,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
           return synth;
         },
         run: async ({ page, interview, stage, protocol }) => {
-          await expect(stage.categoricalBin.drawerToggle).toContainText(
-            '3 unplaced',
+          await expect(stage.categoricalBin.drawerToggle).toHaveAccessibleName(
+            /^3 unplaced\b/,
           );
 
           // Dead config: label is menu-only, interviewScript never renders.
@@ -186,8 +186,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
             expect(p[entityAttributesProperty][categoryVarId]).toBeUndefined();
           }
 
-          await expect(stage.categoricalBin.drawerToggle).toContainText(
-            '0 unplaced',
+          await expect(stage.categoricalBin.drawerToggle).toHaveAccessibleName(
+            /^0 unplaced\b/,
           );
           expect(await interview.nextButtonHasPulse()).toBe(true);
         },
@@ -262,7 +262,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
           familyBin.getByRole('heading', { name: 'Family' }),
         ).toBeVisible();
         await expect(familyBin.getByText(LONG_NODE_LABEL)).toBeVisible();
-        await expect(familyBin.getByText('and 2 others')).toBeVisible();
+        // The summary names the first node and shows the rest as a count badge.
+        await expect(familyBin.getByText('+2', { exact: true })).toBeVisible();
       },
     },
 
@@ -341,8 +342,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
 
           // Prompt 2 re-uncategorises the set (fresh variable) and resets
           // expansion.
-          await expect(stage.categoricalBin.drawerToggle).toContainText(
-            '2 unplaced',
+          await expect(stage.categoricalBin.drawerToggle).toHaveAccessibleName(
+            /^2 unplaced\b/,
           );
           await expect(page.locator('.catbin-expanded')).toHaveCount(0);
 
@@ -502,8 +503,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
           };
 
           // Initially Alice + Bob in the drawer; Carol already in Other.
-          await expect(stage.categoricalBin.drawerToggle).toContainText(
-            '2 unplaced',
+          await expect(stage.categoricalBin.drawerToggle).toHaveAccessibleName(
+            /^2 unplaced\b/,
           );
           expect(await stage.categoricalBin.getNodeCountInBin('Other')).toBe(1);
 
@@ -647,8 +648,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
           ).toBeNull();
           expect(alice[entityAttributesProperty][otherVarId]).toBe('');
           expect(await stage.categoricalBin.getNodeCountInBin('Other')).toBe(1);
-          await expect(stage.categoricalBin.drawerToggle).toContainText(
-            '0 unplaced',
+          await expect(stage.categoricalBin.drawerToggle).toHaveAccessibleName(
+            /^0 unplaced\b/,
           );
           await expect(
             stage.categoricalBin.getNodeInDrawer('Alice'),
@@ -859,11 +860,9 @@ export const categoricalBinScenarios: InterfaceScenarios = {
         return synth;
       },
       run: async ({ page, stage }) => {
-        // The collapsed summary names the first sorted node (Amy), not the
-        // first-created (Zed).
-        await expect(page.locator('.catbin-summary')).toContainText(
-          'Amy and 2 others',
-        );
+        // The collapsed summary names the first sorted node (Amy) and counts
+        // the others (+2), not the first-created (Zed).
+        await expect(page.locator('.catbin-summary')).toContainText('Amy +2');
 
         await stage.categoricalBin.expandBin('Family');
 
@@ -925,8 +924,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
           );
           expect(await stage.categoricalBin.getNodeCountInBin('Work')).toBe(1);
           // Both unset representations sit in the drawer.
-          await expect(stage.categoricalBin.drawerToggle).toContainText(
-            '2 unplaced',
+          await expect(stage.categoricalBin.drawerToggle).toHaveAccessibleName(
+            /^2 unplaced\b/,
           );
           await expect(
             stage.categoricalBin.getNodeInDrawer('Empty'),
@@ -1048,8 +1047,8 @@ export const categoricalBinScenarios: InterfaceScenarios = {
 
           // Advancing the prompt resets the expanded bin.
           await interview.nextButton.click();
-          await expect(stage.categoricalBin.drawerToggle).toContainText(
-            '2 unplaced',
+          await expect(stage.categoricalBin.drawerToggle).toHaveAccessibleName(
+            /^2 unplaced\b/,
           );
           await expect(panel).toHaveCount(0);
         },

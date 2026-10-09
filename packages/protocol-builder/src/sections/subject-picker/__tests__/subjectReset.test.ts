@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   SUBJECT_INDEPENDENT_FIELDS,
+  SUBJECT_INDEPENDENT_PARTS,
+  subjectDependentPaths,
   subjectDependentResets,
 } from '../subjectReset.ts';
 
@@ -13,7 +15,7 @@ describe('what a subject change invalidates', () => {
    * list is that a protocol edited in Architect and a protocol edited here
    * lose and keep exactly the same things.
    */
-  it('keeps what Architect keeps, named one by one', () => {
+  it("keeps what Architect keeps, named one by one, and a pedigree's words", () => {
     expect([...SUBJECT_INDEPENDENT_FIELDS]).toEqual([
       'id',
       'type',
@@ -22,6 +24,28 @@ describe('what a subject change invalidates', () => {
       'introductionPanel',
       'panelTitle',
       'subject',
+      'allAddedNotice',
+      'externalDataError',
+      'maxNodesNotice',
+      'minNodesNotice',
+      'quickAddHint',
+      'searchFailed',
+      'searchLabel',
+      'searchNoMatch',
+      'offlineNotice',
+      'mapUnavailable',
+      'outsideAreasLabel',
+      'addNamePlaceholder',
+      'overtakenEditNotice',
+      'groupsHeading',
+      'attributesHeading',
+      'linksHeading',
+      'tooltips',
+      'keyHeading',
+      'conditionText',
+      // The Family Pedigree's words for the participant, which only schema 9
+      // stages hold: prose about the task, which Architect never edits.
+      'wording',
     ]);
   });
 
@@ -68,5 +92,42 @@ describe('what a subject change invalidates', () => {
     const resets = subjectDependentResets(['panels', 'quickAdd'], {});
 
     expect(resets.map((reset) => reset.key)).toEqual(['panels', 'quickAdd']);
+  });
+
+  it('keeps prose inside a key that describes the subject', () => {
+    expect(SUBJECT_INDEPENDENT_PARTS).toEqual({
+      nodeConfiguration: ['nameField'],
+    });
+    const nameField = { prompt: { en: 'Name' } };
+
+    expect(
+      subjectDependentResets(['nodeConfiguration'], {}, () => ({
+        nameAttribute: 'name',
+        nameField,
+      })),
+    ).toEqual([{ key: 'nodeConfiguration', value: { nameField } }]);
+  });
+
+  it('removes a key whose prose it keeps is absent', () => {
+    expect(
+      subjectDependentResets(['nodeConfiguration'], {}, () => ({
+        nameAttribute: 'name',
+      })),
+    ).toEqual([{ key: 'nodeConfiguration', value: undefined }]);
+  });
+
+  it('counts as lost only the parts of a key it does not keep', () => {
+    expect(
+      subjectDependentPaths('nodeConfiguration', {
+        nameAttribute: 'name',
+        nameField: { prompt: { en: 'Name' } },
+      }),
+    ).toEqual(['nodeConfiguration.nameAttribute']);
+    expect(
+      subjectDependentPaths('nodeConfiguration', {
+        nameField: { prompt: { en: 'Name' } },
+      }),
+    ).toEqual([]);
+    expect(subjectDependentPaths('prompts', [])).toEqual(['prompts']);
   });
 });

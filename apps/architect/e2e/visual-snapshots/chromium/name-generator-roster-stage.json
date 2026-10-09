@@ -1,5 +1,11 @@
 {
+  "allAddedNotice": {
+    "en": "There is nothing left to add from this list."
+  },
   "dataSource": "roster_data",
+  "externalDataError": {
+    "en": "External data could not be loaded."
+  },
   "id": "id-1",
   "label": {
     "en": "Select From Roster"

@@ -22,6 +22,7 @@ export const SettingsSectionSchema = z.strictObject({
   description: z.string().optional(),
   localization: CurrentProtocolSchema.shape.localization,
   experiments: ExperimentsSchema.optional(),
+  interfaceText: CurrentProtocolSchema.shape.interfaceText,
   lastModified: z.string().datetime().optional(),
   schemaVersion: z.literal(CURRENT_SCHEMA_VERSION),
 });

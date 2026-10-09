@@ -48,6 +48,16 @@ describe('contentFormatFor', () => {
     expect(contentFormatFor('fr')).not.toBe(contentFormatFor('de'));
   });
 
+  it('signs a count added to something shown', () => {
+    expect(contentFormatFor('en').formatSigned(3)).toBe('+3');
+    expect(contentFormatFor('ar-EG').formatSigned(3)).toMatch(/\+٣$/);
+  });
+
+  it('shows a fraction as a whole percentage', () => {
+    expect(contentFormatFor('en').formatPercent(0.404)).toBe('40%');
+    expect(contentFormatFor('ar-EG').formatPercent(0.4)).toContain('٤٠');
+  });
+
   it('shows a coordinate with at most four fraction digits', () => {
     const format = contentFormatFor('de');
     expect(format.formatCoordinate(41.30834567)).toBe('41,3083');

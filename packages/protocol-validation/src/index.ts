@@ -73,6 +73,19 @@ export {
   type LocalizationDeclaration,
 } from './localization/localeTag.ts';
 export { isBlankMessage, isBlankText } from './localization/blankText.ts';
+// Localized messages whose translations may use the arguments their setting
+// declares, and the versions an editor shows each one as.
+export {
+  composeMessage,
+  findMessageArgumentProblem,
+  type MessageArgument,
+  type MessageArguments,
+  type MessagePart,
+  type MessageVariant,
+  messageVariants,
+  pluralCategoriesOf,
+  pluralCountExamples,
+} from './localization/messageArguments.ts';
 export { escapeMarkdownText } from './localization/markdownText.ts';
 export {
   escapeMessageText,
@@ -143,6 +156,19 @@ export {
   type LocalizedString,
   type LocalizedStringFormat,
 } from './schemas/9/localized-string.ts';
+// What the Family Pedigree's localized messages may use, for an editor of
+// them.
+export {
+  type FamilyPedigreeWording,
+  PEDIGREE_PERSON_ARGUMENTS,
+  PEDIGREE_WORDING_ARGUMENTS,
+} from './schemas/9/stages/family-pedigree.ts';
+// The arguments a name generator's minimum notice may use.
+export { NODE_COUNT_ARGUMENTS } from './schemas/9/stages/name-generator.ts';
+export {
+  familyPedigreeWordingIn,
+  limitsNominationBySex,
+} from './schemas/9/stage-wording/family-pedigree.ts';
 // The Family Pedigree option labels Network Canvas supplies, written into a
 // protocol by Architect.
 export {
@@ -156,13 +182,32 @@ export {
 } from './schemas/9/family-pedigree-option-labels.ts';
 // How text Network Canvas supplies follows a change to a protocol's languages.
 export { type LanguageChange } from './schemas/9/supplied-text.ts';
+// The arguments of the Narrative Pedigree's snapshot titles, which the stage
+// editor offers the same placeholders as the schema declares.
+export {
+  SNAPSHOT_CONDITION_ARGUMENTS,
+  SNAPSHOT_INHERITANCE_ARGUMENTS,
+} from './schemas/9/stages/narrative-pedigree.ts';
 // The stage settings whose wording Network Canvas supplies, written into a
 // stage by Architect when it is made and when a language is added.
 export {
+  inapplicableStageSettings,
+  isSuppliedEnglishMessage,
+  missingSuppliedStageText,
   type SuppliedStageText,
   suppliedStageText,
+  suppliedStageSettingApplies,
   suppliedStageTextAfterLanguageChange,
 } from './schemas/9/supplied-stage-text.ts';
+// The interview's shared words a protocol holds in its own languages, written
+// and removed by the migration and Architect as the protocol uses them.
+export {
+  INTERFACE_TEXT_MESSAGES,
+  type InterfaceText,
+  interfaceTextAfterLanguageChange,
+  type InterfaceTextUpdate,
+  withInterfaceText,
+} from './schemas/9/interface-text.ts';
 // The finish stage text Network Canvas supplies, written into a protocol by
 // the v8 → v9 migration and by Architect.
 export {

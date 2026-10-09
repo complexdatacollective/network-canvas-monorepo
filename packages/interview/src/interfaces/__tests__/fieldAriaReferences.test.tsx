@@ -19,7 +19,6 @@ vi.mock('../../selectors/session', () => ({
 }));
 
 vi.mock('../../selectors/name-generator', () => ({
-  getCanAddMultipleNodes: 'getCanAddMultipleNodes',
   getNodeIconName: 'getNodeIconName',
 }));
 
@@ -38,8 +37,6 @@ vi.mock('../../hooks/useStageSelector', () => ({
         return {};
       case 'getNodeIconName':
         return 'add-a-person';
-      case 'getCanAddMultipleNodes':
-        return true;
       default:
         return undefined;
     }
@@ -49,6 +46,9 @@ vi.mock('../../hooks/useStageSelector', () => ({
 import QuickAddField from '../NameGenerator/components/QuickAddField';
 import AddNodeInput from '../NetworkComposer/AddNodeInput';
 import { TestProtocolLocalization } from './TestProtocolLocalization';
+
+/** The stage's own line beside the quick-add field. */
+const QUICK_ADD_HINT = { en: 'Press Enter when you are finished.' };
 
 /**
  * Both of these components spread `useField`'s `fieldProps` onto markup of
@@ -74,6 +74,7 @@ describe('QuickAddField ARIA references', () => {
       <TestProtocolLocalization>
         <Form onSubmit={() => ({ success: true })}>
           <QuickAddField
+            hint={QUICK_ADD_HINT}
             name="name"
             placeholder="Type a label and press enter..."
             disabled={false}
@@ -95,6 +96,7 @@ describe('QuickAddField ARIA references', () => {
       <TestProtocolLocalization>
         <Form onSubmit={() => ({ success: true })}>
           <QuickAddField
+            hint={QUICK_ADD_HINT}
             name="name"
             placeholder="Type a label and press enter..."
             disabled={false}
@@ -115,6 +117,7 @@ describe('QuickAddField ARIA references', () => {
       <TestProtocolLocalization>
         <Form onSubmit={() => ({ success: true })}>
           <QuickAddField
+            hint={QUICK_ADD_HINT}
             name="name"
             placeholder="Type a label and press enter..."
             disabled={false}
@@ -138,6 +141,7 @@ describe('AddNodeInput ARIA references', () => {
     const { container } = render(
       <AddNodeInput
         entityLabel="Person"
+        placeholder="Type a name, then press Enter"
         targetVariable="name"
         onCreate={async () => true}
       />,
@@ -150,6 +154,7 @@ describe('AddNodeInput ARIA references', () => {
     const { container } = render(
       <AddNodeInput
         entityLabel="Person"
+        placeholder="Type a name, then press Enter"
         targetVariable="name"
         onCreate={async () => true}
         required
@@ -163,6 +168,7 @@ describe('AddNodeInput ARIA references', () => {
     render(
       <AddNodeInput
         entityLabel="Person"
+        placeholder="Type a name, then press Enter"
         targetVariable="name"
         onCreate={async () => true}
       />,

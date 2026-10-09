@@ -477,6 +477,10 @@ describe('indexes selectors', () => {
         {
           id: 's1',
           type: 'NameGeneratorRoster',
+          externalDataError: { en: 'External data could not be loaded.' },
+          allAddedNotice: {
+            en: 'There is nothing left to add from this list.',
+          },
           label: 'Roster',
           subject: { entity: 'node', type: 'person' },
           dataSource: 'asset-under-test',
@@ -487,6 +491,7 @@ describe('indexes selectors', () => {
         {
           id: 's1',
           type: 'NameGenerator',
+          externalDataError: { en: 'External data could not be loaded.' },
           label: 'Generator',
           subject: { entity: 'node', type: 'person' },
           panels: [
@@ -509,6 +514,13 @@ describe('indexes selectors', () => {
         {
           id: 's1',
           type: 'Geospatial',
+          offlineNotice: {
+            en: 'You are offline — the map will not load until you reconnect.',
+          },
+          mapUnavailable: {
+            en: 'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
+          },
+          outsideAreasLabel: { en: 'Outside Selectable Areas' },
           label: 'Map',
           subject: { entity: 'node', type: 'person' },
           mapOptions: { tokenAssetId: 'asset-under-test' },
@@ -519,6 +531,13 @@ describe('indexes selectors', () => {
         {
           id: 's1',
           type: 'Geospatial',
+          offlineNotice: {
+            en: 'You are offline — the map will not load until you reconnect.',
+          },
+          mapUnavailable: {
+            en: 'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
+          },
+          outsideAreasLabel: { en: 'Outside Selectable Areas' },
           label: 'Map',
           subject: { entity: 'node', type: 'person' },
           mapOptions: { dataSourceAssetId: 'asset-under-test' },

@@ -642,6 +642,245 @@
     },
     {
       "id": "family-pedigree",
+      "wording": {
+        "alsoParentOfLabel": {
+          "en-US": "Are they also the parent of…"
+        },
+        "biologicalParentBoth": {
+          "en-US": "{firstIsYou, select, true {Both you and “{second}”} other {Both “{first}” and “{second}”}}"
+        },
+        "biologicalParentHint": {
+          "en-US": "A parent who is not a biological parent is added as a step or social parent."
+        },
+        "biologicalParentLabel": {
+          "en-US": "Who is the child’s biological parent?"
+        },
+        "carriedSiblingsPregnancyLabel": {
+          "en-US": "{single, select, true {{isYou, select, true {Was this parent pregnant with you?} other {Was this parent pregnant with “{name}”?}}} other {Was this parent pregnant with each of the {count} people chosen above who have nobody recorded as having carried them?}}"
+        },
+        "carrierLabel": {
+          "en-US": "Who carried the pregnancy?"
+        },
+        "carrierUnknown": {
+          "en-US": "Someone else, or I don’t know"
+        },
+        "childKindAdoptive": {
+          "en-US": "An adopted child"
+        },
+        "childKindBiological": {
+          "en-US": "A biological child"
+        },
+        "childKindSocial": {
+          "en-US": "A step-child or other child they raise"
+        },
+        "childKindLabel": {
+          "en-US": "Is this child…"
+        },
+        "connectHint": {
+          "en-US": "Select a person, then select another to connect them."
+        },
+        "connectParent": {
+          "en-US": "{parentIsYou, select, true {You are a parent of “{child}”} other {{childIsYou, select, true {“{parent}” is your parent} other {“{parent}” is a parent of “{child}”}}}}"
+        },
+        "connectPartners": {
+          "en-US": "{current, select, true {{firstIsYou, select, true {You and “{second}” are partners} other {“{first}” and “{second}” are partners}}} other {{firstIsYou, select, true {You and “{second}” were partners} other {“{first}” and “{second}” were partners}}}}"
+        },
+        "connectQuestion": {
+          "en-US": "{firstIsYou, select, true {How are you and “{second}” related?} other {How are “{first}” and “{second}” related?}}"
+        },
+        "disconnectConfirmDescription": {
+          "en-US": "Both people stay in your family tree. Only the connection between them is removed."
+        },
+        "disconnectConfirmTitle": {
+          "en-US": "{firstIsYou, select, true {Remove the connection between you and “{second}”?} other {Remove the connection between “{first}” and “{second}”?}}"
+        },
+        "disconnectHint": {
+          "en-US": "Select a person, then select someone they are connected to, to remove that connection."
+        },
+        "disconnectWouldCutOff": {
+          "en-US": "{count, plural, one {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.} other {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.}}"
+        },
+        "dontKnow": {
+          "en-US": "Don’t know"
+        },
+        "panelTitle": {
+          "en-US": "{relation, select, edit {{isYou, select, true {About you} other {About {name}}}} parent {{isYou, select, true {Add your parent} other {Add a parent of {name}}}} sibling {{isYou, select, true {Add your sibling} other {Add a sibling of {name}}}} partner {{isYou, select, true {Add your partner} other {Add a partner of {name}}}} other {{isYou, select, true {Add your child} other {Add a child of {name}}}}}"
+        },
+        "generatedLabelOf": {
+          "en-US": "{relation, select, partner {{isYou, select, true {{term} (your partner)} other {{term} (partner of {name})}}} formerPartner {{isYou, select, true {{term} (your former partner)} other {{term} (former partner of {name})}}} parent {{isYou, select, true {{term} (your parent)} other {{term} (parent of {name})}}} sibling {{isYou, select, true {{term} (your sibling)} other {{term} (sibling of {name})}}} owner {{owner}’s {term}} other {{isYou, select, true {{term} (your child)} other {{term} (child of {name})}}}}"
+        },
+        "missingDetailsList": {
+          "en-US": "Some details are missing: {details}."
+        },
+        "otherParentLabel": {
+          "en-US": "Who is the child’s other parent?"
+        },
+        "otherParentNone": {
+          "en-US": "No other parent"
+        },
+        "otherParentUnknown": {
+          "en-US": "Someone not shown yet"
+        },
+        "parentCarriedLabel": {
+          "en-US": "{named, select, true {{parentIsYou, select, true {Did you carry the pregnancy?} other {Did {parent} carry the pregnancy?}}} other {Did this parent carry the pregnancy?}}"
+        },
+        "parentKindLabel": {
+          "en-US": "What kind of parent are they?"
+        },
+        "parentLinkKindLabel": {
+          "en-US": "{parentIsYou, select, true {You are their…} other {{personIsYou, select, true {{parent} is your…} other {{parent} is their…}}}}"
+        },
+        "parentPartnerLabel": {
+          "en-US": "Are they the partner of another parent?"
+        },
+        "placeholderParentsNote": {
+          "en-US": "{shared, select, eggParent {{framing, select, gamete {An egg parent and a sperm parent will be added for you to fill in later. The sibling shares the egg parent, and is given a sperm parent of their own.} other {A biological mother and a biological father will be added for you to fill in later. The sibling shares the mother, and is given a biological father of their own.}}} spermParent {{framing, select, gamete {An egg parent and a sperm parent will be added for you to fill in later. The sibling shares the sperm parent, and is given an egg parent of their own.} other {A biological mother and a biological father will be added for you to fill in later. The sibling shares the father, and is given a biological mother of their own.}}} other {{framing, select, gamete {An egg parent and a sperm parent will be added for you to fill in later, so the family tree can show these siblings together.} other {A biological mother and a biological father will be added for you to fill in later, so the family tree can show these siblings together.}}}}"
+        },
+        "relativeTerm": {
+          "en-US": "{term, select, mother {Mother} father {Father} parent {Parent} eggParent {Egg parent} spermParent {Sperm parent} biologicalMother {Bio­logical mother} biologicalFather {Bio­logical father} adoptiveMother {Adoptive mother} adoptiveFather {Adoptive father} adoptiveParent {Adoptive parent} stepmother {Step­mother} stepfather {Step­father} stepparent {Step-parent} eggDonor {Egg donor} spermDonor {Sperm donor} donor {Donor} surrogate {Surro­gate} daughter {Daughter} son {Son} child {Child} stepdaughter {Step­daughter} stepson {Stepson} stepchild {Stepchild} donorConceivedChild {Donor-conceived child} surrogacyChild {Surro­gacy child} sister {Sister} brother {Brother} sibling {Sibling} halfSister {Half-sister} halfBrother {Half-brother} halfSibling {Half-sibling} adoptiveSister {Adoptive sister} adoptiveBrother {Adoptive brother} adoptiveSibling {Adoptive sibling} stepsister {Step­sister} stepbrother {Step­brother} stepsibling {Step-sibling} partner {Partner} formerPartner {Former partner} grandmother {Grand­mother} grandfather {Grand­father} grandparent {Grand­parent} maternalGrandmother {Maternal grand­mother} maternalGrandfather {Maternal grand­father} maternalGrandparent {Maternal grand­parent} paternalGrandmother {Paternal grand­mother} paternalGrandfather {Paternal grand­father} paternalGrandparent {Paternal grand­parent} greatGrandmother {Great-grand­mother} greatGrandfather {Great-grand­father} greatGrandparent {Great-grand­parent} stepGrandmother {Step-grand­mother} stepGrandfather {Step-grand­father} stepGrandparent {Step-grand­parent} granddaughter {Grand­daughter} grandson {Grandson} grandchild {Grand­child} greatGranddaughter {Great-grand­daughter} greatGrandson {Great-grandson} greatGrandchild {Great-grand­child} aunt {Aunt} uncle {Uncle} maternalAunt {Maternal aunt} maternalUncle {Maternal uncle} paternalAunt {Paternal aunt} paternalUncle {Paternal uncle} parentsSibling {Parent’s sibling} greatAunt {Great-aunt} greatUncle {Great-uncle} grandparentsSibling {Grand­parent’s sibling} niece {Niece} nephew {Nephew} siblingsChild {Sibling’s child} cousin {Cousin} motherInLaw {Mother-in-law} fatherInLaw {Father-in-law} parentInLaw {Parent-in-law} sisterInLaw {Sister-in-law} brotherInLaw {Brother-in-law} siblingInLaw {Sibling-in-law} daughterInLaw {Daugh­ter-in-law} sonInLaw {Son-in-law} childInLaw {Child-in-law} other {Relative}}"
+        },
+        "removeConfirmDescription": {
+          "en-US": "{hasOthers, select, true {They will be removed from your family tree, along with their connections to other people. {count, plural, one {{names} is connected to you only through them, so will be removed too.} other {{names} are connected to you only through them, so will be removed too.}}} other {They will be removed from your family tree, along with their connections to other people.}}"
+        },
+        "removeConfirmTitle": {
+          "en-US": "Remove {name}?"
+        },
+        "sexAssignedAtBirthLabel": {
+          "en-US": "Sex assigned at birth"
+        },
+        "sharedParentCountBoth": {
+          "en-US": "Both parents"
+        },
+        "sharedParentCountLabel": {
+          "en-US": "{isYou, select, true {Which parents do they share with you?} other {Which parents do they share with “{name}”?}}"
+        },
+        "sharedParentEggOnly": {
+          "en-US": "{parent, select, egg {{framing, select, gamete {Only the egg parent} other {Only the biological mother}}} other {{framing, select, gamete {Only the sperm parent} other {Only the biological father}}}}"
+        },
+        "siblingKindLabel": {
+          "en-US": "To the parents they share, are they…"
+        },
+        "stillTogetherLabel": {
+          "en-US": "{named, select, true {{personIsYou, select, true {Are you still together with {partner}?} other {{partnerIsYou, select, true {Are you still together?} other {Are they still together with {partner}?}}}}} other {Are they still together?}}"
+        },
+        "you": {
+          "en-US": "You"
+        },
+        "save": {
+          "en-US": "Save"
+        },
+        "connectTool": {
+          "en-US": "Connect"
+        },
+        "disconnectTool": {
+          "en-US": "Disconnect"
+        },
+        "pointerTool": {
+          "en-US": "Add and edit"
+        },
+        "changeWouldCutOff": {
+          "en-US": "{count, plural, one {This would leave {names} outside your family tree, because it removes their only connection to you. Connect them to someone else in your family first.} other {This would leave {names} outside your family tree, because it removes their only connection to you. Connect them to someone else in your family first.}}"
+        },
+        "childKindDonor": {
+          "en-US": "A child conceived with an egg or sperm they donated"
+        },
+        "childKindSurrogate": {
+          "en-US": "A child they carried as a surrogate"
+        },
+        "parentKindCarrier": {
+          "en-US": "{parentKind} (carried the pregnancy)"
+        },
+        "sharedDonorsLabel": {
+          "en-US": "{isYou, select, true {{hasSurrogate, select, true {Do they share any of your donors, or the surrogate who carried you?} other {Do they share any of your donors?}}} other {{hasSurrogate, select, true {Do they share any of “{name}”’s donors, or the surrogate who carried them?} other {Do they share any of “{name}”’s donors?}}}}"
+        },
+        "siblingBiologicalParentLabel": {
+          "en-US": "Which of them is the sibling’s biological parent?"
+        },
+        "siblingTwinFraternal": {
+          "en-US": "Yes, fraternal (non-identical) twins"
+        },
+        "siblingTwinHint": {
+          "en-US": "Answer yes for triplets and other multiple births too."
+        },
+        "siblingTwinIdentical": {
+          "en-US": "Yes, identical twins"
+        },
+        "siblingTwinLabel": {
+          "en-US": "{isYou, select, true {Are they your twin?} other {Are they “{name}”’s twin?}}"
+        },
+        "siblingTwinNo": {
+          "en-US": "No"
+        },
+        "siblingTwinUnknown": {
+          "en-US": "Yes, but I don’t know if they are identical"
+        },
+        "twinsHint": {
+          "en-US": "Include triplets and other multiple births."
+        },
+        "twinsLabel": {
+          "en-US": "{isYou, select, true {Which of your siblings, if any, are your twins?} other {Which of “{name}”’s siblings, if any, are their twins?}}"
+        },
+        "twinZygosityLabel": {
+          "en-US": "{who, select, personIsYou {Are you and “{twin}” identical twins?} twinIsYou {Are “{name}” and you identical twins?} other {Are “{name}” and “{twin}” identical twins?}}"
+        },
+        "unavailableAncestor": {
+          "en-US": "{who, select, parentIsYou {You cannot be a parent of “{child}”, who is already one of your ancestors.} childIsYou {“{parent}” cannot be your parent, because you are already one of their ancestors.} other {“{parent}” cannot be a parent of “{child}”, who is already one of their ancestors.}}"
+        },
+        "unavailableBothSameSex": {
+          "en-US": "{firstIsYou, select, true {{count, plural, one {“{answers}” is unavailable because you and “{second}” are both recorded as “{sex}” at birth, so you cannot both be the child’s genetic parents. To choose it, first change one of your sexes at birth.} other {{answers} are unavailable because you and “{second}” are both recorded as “{sex}” at birth, so you cannot both be the child’s genetic parents. To choose one, first change one of your sexes at birth.}}} other {{count, plural, one {“{answers}” is unavailable because “{first}” and “{second}” are both recorded as “{sex}” at birth, so they cannot both be the child’s genetic parents. To choose it, first change the sex at birth of one of them.} other {{answers} are unavailable because “{first}” and “{second}” are both recorded as “{sex}” at birth, so they cannot both be the child’s genetic parents. To choose one, first change the sex at birth of one of them.}}}}"
+        },
+        "unavailableCannotCarry": {
+          "en-US": "{who, select, you {{count, plural, one {“{answers}” is unavailable because you are recorded as “{sex}” at birth, so you cannot have carried a pregnancy. To choose it, first change your sex at birth.} other {{answers} are unavailable because you are recorded as “{sex}” at birth, so you cannot have carried a pregnancy. To choose one, first change your sex at birth.}}} this {{count, plural, one {“{answers}” is unavailable because this person is recorded as “{sex}” at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.} other {{answers} are unavailable because this person is recorded as “{sex}” at birth, so they cannot have carried a pregnancy. To choose one, first change their sex at birth.}}} other {{count, plural, one {“{answers}” is unavailable because “{name}” is recorded as “{sex}” at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.} other {{answers} are unavailable because “{name}” is recorded as “{sex}” at birth, so they cannot have carried a pregnancy. To choose one, first change their sex at birth.}}}}"
+        },
+        "unavailableCarried": {
+          "en-US": "{who, select, personIsYou {“{sex}” is unavailable because you are recorded as having carried {children}, and nobody recorded as “{sex}” at birth can carry a pregnancy. To choose it, first change how you are connected to {children}.} childIsYou {“{sex}” is unavailable because this person is recorded as having carried you, and nobody recorded as “{sex}” at birth can carry a pregnancy. To choose it, first change how they are connected to you.} other {“{sex}” is unavailable because this person is recorded as having carried {children}, and nobody recorded as “{sex}” at birth can carry a pregnancy. To choose it, first change how they are connected to {children}.}}"
+        },
+        "unavailableCarrierRecorded": {
+          "en-US": "{who, select, carrierIsYou {{count, plural, one {“{answers}” is unavailable because you are recorded as having carried “{child}”, and only one person carries a pregnancy. To choose it, first change how you are connected to “{child}”.} other {{answers} are unavailable because you are recorded as having carried “{child}”, and only one person carries a pregnancy. To choose one, first change how you are connected to “{child}”.}}} childIsYou {{count, plural, one {“{answers}” is unavailable because “{carrier}” is recorded as having carried you, and only one person carries a pregnancy. To choose it, first change how “{carrier}” is connected to you.} other {{answers} are unavailable because “{carrier}” is recorded as having carried you, and only one person carries a pregnancy. To choose one, first change how “{carrier}” is connected to you.}}} other {{count, plural, one {“{answers}” is unavailable because “{carrier}” is recorded as having carried “{child}”, and only one person carries a pregnancy. To choose it, first change how “{carrier}” is connected to “{child}”.} other {{answers} are unavailable because “{carrier}” is recorded as having carried “{child}”, and only one person carries a pregnancy. To choose one, first change how “{carrier}” is connected to “{child}”.}}}}"
+        },
+        "unavailableGeneticParentsFull": {
+          "en-US": "{who, select, childIsYou {{count, plural, one {“{answers}” is unavailable because you already have two genetic parents recorded, “{first}” and “{second}”. To choose it, first change how one of them is connected to you.} other {{answers} are unavailable because you already have two genetic parents recorded, “{first}” and “{second}”. To choose one, first change how one of them is connected to you.}}} includesYou {{count, plural, one {“{answers}” is unavailable because “{child}” already has two genetic parents recorded, you and “{second}”. To choose it, first change how one of you is connected to “{child}”.} other {{answers} are unavailable because “{child}” already has two genetic parents recorded, you and “{second}”. To choose one, first change how one of you is connected to “{child}”.}}} other {{count, plural, one {“{answers}” is unavailable because “{child}” already has two genetic parents recorded, “{first}” and “{second}”. To choose it, first change how one of them is connected to “{child}”.} other {{answers} are unavailable because “{child}” already has two genetic parents recorded, “{first}” and “{second}”. To choose one, first change how one of them is connected to “{child}”.}}}}"
+        },
+        "unavailableIdenticalTwin": {
+          "en-US": "{who, select, personIsYou {“{answer}” is unavailable because identical twins have the same biological parents and donors, and you and “{twin}” do not. To choose it, first record the same biological parents and donors for both of you.} twinIsYou {“{answer}” is unavailable because identical twins have the same biological parents and donors, and “{name}” and you do not. To choose it, first record the same biological parents and donors for both of you.} other {“{answer}” is unavailable because identical twins have the same biological parents and donors, and “{name}” and “{twin}” do not. To choose it, first record the same biological parents and donors for both of them.}}"
+        },
+        "unavailableIdenticalTwinNew": {
+          "en-US": "{isYou, select, true {“{answer}” is unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of yours. To choose it, choose all of your biological parents and donors above.} other {“{answer}” is unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of “{name}”’s. To choose it, choose all of their biological parents and donors above.}}"
+        },
+        "unavailableSameSexGeneticParent": {
+          "en-US": "{who, select, coParentIsYou {{count, plural, one {“{answers}” is unavailable because you are recorded as “{sex}” at birth and are a genetic parent of “{child}”, who cannot have two genetic parents of the same sex at birth. To choose it, first change your sex at birth or how you are connected to “{child}”.} other {{answers} are unavailable because you are recorded as “{sex}” at birth and are a genetic parent of “{child}”, who cannot have two genetic parents of the same sex at birth. To choose one, first change your sex at birth or how you are connected to “{child}”.}}} childIsYou {{count, plural, one {“{answers}” is unavailable because “{coParent}”, your genetic parent, is recorded as “{sex}” at birth, and you cannot have two genetic parents of the same sex at birth. To choose it, first change the sex at birth of “{coParent}” or how they are connected to you.} other {{answers} are unavailable because “{coParent}”, your genetic parent, is recorded as “{sex}” at birth, and you cannot have two genetic parents of the same sex at birth. To choose one, first change the sex at birth of “{coParent}” or how they are connected to you.}}} other {{count, plural, one {“{answers}” is unavailable because “{coParent}”, a genetic parent of “{child}”, is recorded as “{sex}” at birth, and “{child}” cannot have two genetic parents of the same sex at birth. To choose it, first change the sex at birth of “{coParent}” or how they are connected to “{child}”.} other {{answers} are unavailable because “{coParent}”, a genetic parent of “{child}”, is recorded as “{sex}” at birth, and “{child}” cannot have two genetic parents of the same sex at birth. To choose one, first change the sex at birth of “{coParent}” or how they are connected to “{child}”.}}}}"
+        },
+        "zygosityFraternal": {
+          "en-US": "No, fraternal (non-identical)"
+        },
+        "zygosityIdentical": {
+          "en-US": "Yes, identical"
+        },
+        "zygosityUnknown": {
+          "en-US": "I don’t know"
+        },
+        "disconnectStandIn": {
+          "en-US": "{childIsYou, select, true {“{standIn}” stands in for a parent of yours who has not been added yet, so this connection cannot be removed. Add that parent to you instead, and they will take this place.} other {“{standIn}” stands in for a parent of “{child}” who has not been added yet, so this connection cannot be removed. Add that parent to “{child}” instead, and they will take this place.}}"
+        },
+        "otherParentBiologicalLabel": {
+          "en-US": "{otherIsYou, select, true {Are you the child’s biological parent?} other {Is “{other}” the child’s biological parent?}}"
+        },
+        "sharedParentsNotSibling": {
+          "en-US": "{isYou, select, true {Someone who shares only {chosen} with you is not your sibling. Choose a parent you both share as well, or add them as a child of their own parent instead.} other {Someone who shares only {chosen} with “{name}” is not their sibling. Choose a parent they both share as well, or add them as a child of their own parent instead.}}"
+        },
+        "sharedSurrogateLabel": {
+          "en-US": "{isYou, select, true {Did the surrogate who carried you carry them too?} other {Did the surrogate who carried “{name}” carry them too?}}"
+        },
+        "siblingOtherBiologicalParentLabel": {
+          "en-US": "Which of them is the sibling’s other biological parent?"
+        },
+        "standInPlaceTaken": {
+          "en-US": "{anchorIsYou, select, true {{count, plural, one {{names} has the same unnamed parent as you, so this person becomes their parent too.} other {{names} have the same unnamed parent as you, so this person becomes their parent too.}}} other {{count, plural, one {{names} has the same unnamed parent as “{anchor}”, so this person becomes their parent too.} other {{names} have the same unnamed parent as “{anchor}”, so this person becomes their parent too.}}}}"
+        },
+        "unavailableSameSexAsCoParent": {
+          "en-US": "{who, select, personIsYou {“{sex}” is unavailable because you and “{coParent}” are both genetic parents of {children}, and “{coParent}” is recorded as “{sex}” at birth. Nobody has two genetic parents of the same sex at birth. To choose it, first change the sex at birth of “{coParent}”, or how one of you is connected to {children}.} childIsYou {“{sex}” is unavailable because this person and “{coParent}” are both your genetic parents, and “{coParent}” is recorded as “{sex}” at birth. Nobody has two genetic parents of the same sex at birth. To choose it, first change the sex at birth of “{coParent}”, or how one of them is connected to you.} coParentIsYou {“{sex}” is unavailable because you and this person are both genetic parents of {children}, and you are recorded as “{sex}” at birth. Nobody has two genetic parents of the same sex at birth. To choose it, first change your sex at birth, or how one of you is connected to {children}.} other {“{sex}” is unavailable because this person and “{coParent}” are both genetic parents of {children}, and “{coParent}” is recorded as “{sex}” at birth. Nobody has two genetic parents of the same sex at birth. To choose it, first change the sex at birth of “{coParent}”, or how one of them is connected to {children}.}}"
+        }
+      },
       "type": "FamilyPedigree",
       "label": {
         "en-US": "Family pedigree"
@@ -656,6 +895,14 @@
       },
       "nodeConfiguration": {
         "nameAttribute": "name",
+        "nameField": {
+          "prompt": {
+            "en-US": "Name (optional)"
+          },
+          "hint": {
+            "en-US": "A first name or nickname is fine. If you don’t know it, leave this blank and they will be shown by how they are related to you."
+          }
+        },
         "sexAssignedAtBirthAttribute": "sexAssignedAtBirth",
         "egoAttribute": "is_ego"
       },
@@ -669,7 +916,44 @@
       "completeness": {
         "scope": "grandparents",
         "enforcement": "recommended",
-        "relativesNotRecordedAttribute": "relativesNotRecorded"
+        "relativesNotRecordedAttribute": "relativesNotRecorded",
+        "itemText": {
+          "parents": {
+            "listItem": {
+              "en-US": "{isYou, select, true {Add your biological parents} other {Add biological parents for “{name}”}}"
+            }
+          },
+          "siblings": {
+            "listItem": {
+              "en-US": "{isYou, select, true {Add your biological brothers and sisters, or say you have none} other {Add biological brothers and sisters for “{name}”, or say they have none}}"
+            },
+            "noneButton": {
+              "en-US": "{isYou, select, true {I have no biological siblings} other {“{name}” has no biological siblings}}"
+            },
+            "question": {
+              "en-US": "{isYou, select, true {Do you have any biological brothers or sisters, including half-brothers and half-sisters?} other {Does {name} have any biological brothers or sisters, including half-brothers and half-sisters?}}"
+            }
+          },
+          "children": {
+            "listItem": {
+              "en-US": "{isYou, select, true {Add your biological children, or say you have none} other {Add biological children for “{name}”, or say they have none}}"
+            },
+            "noneButton": {
+              "en-US": "{isYou, select, true {I have no biological children} other {“{name}” has no biological children}}"
+            },
+            "question": {
+              "en-US": "{isYou, select, true {Do you have any biological children?} other {Does {name} have any biological children?}}"
+            }
+          },
+          "details": {
+            "listItem": {
+              "en-US": "{isYou, select, true {Some details are missing about you} other {Some details are missing for “{name}”}}"
+            }
+          }
+        },
+        "recommendedNote": {
+          "en-US": "You can also continue without these by pressing Next again."
+        }
       },
       "form": {
         "fields": [
@@ -737,6 +1021,9 @@
     },
     {
       "id": "ng-non-kin",
+      "quickAddHint": {
+        "en-US": "Press Enter when you are finished."
+      },
       "type": "NameGeneratorQuickAdd",
       "label": {
         "en-US": "People in your life"
@@ -969,6 +1256,14 @@
     },
     {
       "id": "socio-exchanges",
+      "tooltips": {
+        "pauseLayout": {
+          "en-US": "Pause automatic layout"
+        },
+        "resumeLayout": {
+          "en-US": "Resume automatic layout"
+        }
+      },
       "type": "Sociogram",
       "label": {
         "en-US": "Exchanges of support"
@@ -1174,6 +1469,29 @@
     },
     {
       "id": "narrative-cegrm",
+      "attributesHeading": {
+        "en-US": "Attributes"
+      },
+      "linksHeading": {
+        "en-US": "Links"
+      },
+      "tooltips": {
+        "enableDrawing": {
+          "en-US": "Enable drawing"
+        },
+        "disableDrawing": {
+          "en-US": "Disable drawing"
+        },
+        "freezeAnnotations": {
+          "en-US": "Freeze annotations"
+        },
+        "unfreezeAnnotations": {
+          "en-US": "Unfreeze annotations"
+        },
+        "resetAnnotations": {
+          "en-US": "Reset annotations"
+        }
+      },
       "type": "Narrative",
       "label": {
         "en-US": "The completed map"
@@ -1287,6 +1605,45 @@
     },
     {
       "id": "narrative-pedigree",
+      "keyHeading": {
+        "en-US": "Key"
+      },
+      "tooltips": {
+        "clearFocus": {
+          "en-US": "Clear focus"
+        },
+        "saveSnapshot": {
+          "en-US": "Save snapshot"
+        }
+      },
+      "conditionText": {
+        "heading": {
+          "en-US": "Conditions"
+        },
+        "instruction": {
+          "en-US": "Select a condition to see who it affects."
+        },
+        "notation": {
+          "affected": {
+            "en-US": "Has this condition"
+          },
+          "obligateAffected": {
+            "en-US": "Will develop this condition"
+          },
+          "obligateCarrier": {
+            "en-US": "Carries this condition"
+          },
+          "unknown": {
+            "en-US": "Not known"
+          }
+        },
+        "snapshotCondition": {
+          "en-US": "{title}: {condition}"
+        },
+        "snapshotInheritance": {
+          "en-US": "{title}: {condition} — inheritance for {name}"
+        }
+      },
       "type": "NarrativePedigree",
       "label": {
         "en-US": "How the condition runs in the family"
@@ -1327,6 +1684,18 @@
     },
     {
       "id": "finish",
+      "finishLabel": {
+        "en-US": "Finish"
+      },
+      "finishConfirmation": {
+        "en-US": "Are you sure you want to finish the interview?"
+      },
+      "finishedNotice": {
+        "en-US": "This interview is finished, and its answers can no longer be changed."
+      },
+      "finishFailed": {
+        "en-US": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
+      },
       "type": "FinishSession",
       "label": {
         "en-US": "Finish Interview"
@@ -1339,5 +1708,70 @@
       },
       "outcome": "completed"
     }
-  ]
+  ],
+  "interfaceText": {
+    "interview": {
+      "exitInterview": {
+        "en-US": "Exit interview"
+      },
+      "exitInterviewDescription": {
+        "en-US": "Your answers so far will be saved and you can continue later."
+      },
+      "stageError": {
+        "en-US": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
+      },
+      "itemUnavailable": {
+        "en-US": "This item could not be displayed."
+      },
+      "back": {
+        "en-US": "Back"
+      },
+      "continue": {
+        "en-US": "Continue"
+      },
+      "cancel": {
+        "en-US": "Cancel"
+      },
+      "done": {
+        "en-US": "Done"
+      },
+      "delete": {
+        "en-US": "Delete"
+      },
+      "genericError": {
+        "en-US": "Something went wrong."
+      }
+    },
+    "forms": {
+      "discardChanges": {
+        "en-US": "Discard changes"
+      },
+      "discardChangesTitle": {
+        "en-US": "Discard changes?"
+      },
+      "discardChangesDescription": {
+        "en-US": "This form contains invalid data, so it cannot be saved. If you continue it will be reset, and your changes will be lost. Do you want to discard your changes?"
+      },
+      "yes": {
+        "en-US": "Yes"
+      },
+      "no": {
+        "en-US": "No"
+      },
+      "submitFailed": {
+        "en-US": "An error occurred while submitting the form."
+      }
+    },
+    "validation": {
+      "required": {
+        "en-US": "You must answer this question before continuing."
+      },
+      "maxSelected": {
+        "en-US": "{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}"
+      },
+      "unique": {
+        "en-US": "Must be unique."
+      }
+    }
+  }
 }

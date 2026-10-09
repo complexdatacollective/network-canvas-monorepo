@@ -117,6 +117,10 @@ describe('Cross-reference conformance', () => {
           {
             id: 'roster1',
             type: 'NameGeneratorRoster',
+            externalDataError: localized('External data could not be loaded.'),
+            allAddedNotice: localized(
+              'There is nothing left to add from this list.',
+            ),
             label: localized('Roster'),
             subject: { entity: 'node', type: 'person' },
             dataSource,
@@ -205,6 +209,13 @@ describe('Cross-reference conformance', () => {
           {
             id: 'geo1',
             type: 'Geospatial',
+            offlineNotice: localized(
+              'You are offline — the map will not load until you reconnect.',
+            ),
+            mapUnavailable: localized(
+              'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
+            ),
+            outsideAreasLabel: localized('Outside Selectable Areas'),
             label: localized('Map'),
             subject: { entity: 'node', type: 'person' },
             mapOptions: {

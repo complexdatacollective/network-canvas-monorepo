@@ -4,6 +4,10 @@ import { withFinishStage } from '../../../../__tests__/finishStage.ts';
 import { findExclusiveVariableConflicts } from '../../../../utils/findExclusiveVariableConflicts.ts';
 import { localized, localizedOptions } from '../../../../utils/test-utils.ts';
 import {
+  pedigreeCompletenessText,
+  pedigreeNameField,
+} from '../../__tests__/family-pedigree-text.ts';
+import {
   GENDER_IDENTITY_OPTIONS,
   GENDER_IDENTITY_TERMS,
 } from '../../__tests__/pedigreeGenderFixtures.ts';
@@ -13,6 +17,7 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../../family-pedigree-values.ts';
 import ProtocolSchemaV9 from '../../schema.ts';
+import { familyPedigreeWordingIn } from '../../stage-wording/family-pedigree.ts';
 import {
   FAMILY_PEDIGREE_BUILD_PROMPT_ID,
   familyPedigreeStage,
@@ -22,10 +27,12 @@ const base = {
   id: 'fp1',
   label: localized('Family Pedigree'),
   type: 'FamilyPedigree' as const,
+  wording: familyPedigreeWordingIn(),
   subject: { entity: 'node' as const, type: 'person' },
   prompt: localized('Draw your family'),
   nodeConfiguration: {
     nameAttribute: 'name',
+    nameField: pedigreeNameField(),
     genderIdentity: { attribute: 'gender', terms: GENDER_IDENTITY_TERMS },
     sexAssignedAtBirthAttribute: 'sab',
     egoAttribute: 'isEgo',
@@ -175,6 +182,156 @@ describe('familyPedigreeStage', () => {
       familyPedigreeStage.safeParse({ ...base, nodeConfiguration: incomplete })
         .success,
     ).toBe(false);
+  });
+
+  it('asks the name with a question of its own, and an optional hint', () => {
+    const { nameField: _omitted, ...withoutNameField } = base.nodeConfiguration;
+    expect(
+      familyPedigreeStage.safeParse({
+        ...base,
+        nodeConfiguration: withoutNameField,
+      }).success,
+    ).toBe(false);
+    const { hint: _hint, ...promptOnly } = pedigreeNameField();
+    expect(
+      familyPedigreeStage.safeParse({
+        ...base,
+        nodeConfiguration: { ...base.nodeConfiguration, nameField: promptOnly },
+      }).success,
+    ).toBe(true);
+  });
+
+  describe('the words shown only in some configurations', () => {
+    const without = (...keys: string[]) => {
+      const wording: Record<string, unknown> = familyPedigreeWordingIn();
+      for (const key of keys) delete wording[key];
+      return { ...base, wording };
+    };
+    const FRAMING_WORDS = [
+      'framingChoiceTitle',
+      'framingChoiceDescription',
+      'framingControlLabel',
+    ];
+
+    it('requires the framing words while participants choose the words', () => {
+      expect(
+        familyPedigreeStage.safeParse({
+          ...without(...FRAMING_WORDS),
+          framing: 'participantPreference',
+        }).success,
+      ).toBe(false);
+      expect(
+        familyPedigreeStage.safeParse({
+          ...without(...FRAMING_WORDS),
+          framing: 'gendered',
+        }).success,
+      ).toBe(true);
+      expect(
+        familyPedigreeStage.safeParse({
+          ...base,
+          wording: familyPedigreeWordingIn(),
+          framing: 'participantPreference',
+        }).success,
+      ).toBe(true);
+    });
+
+    it('requires the gender identity question while the stage asks about gender identity', () => {
+      expect(
+        familyPedigreeStage.safeParse(without('genderIdentityLabel')).success,
+      ).toBe(false);
+      const nodeConfiguration: Record<string, unknown> = {
+        ...base.nodeConfiguration,
+      };
+      delete nodeConfiguration.genderIdentity;
+      expect(
+        familyPedigreeStage.safeParse({
+          ...without('genderIdentityLabel'),
+          nodeConfiguration,
+        }).success,
+      ).toBe(true);
+    });
+  });
+
+  describe('the tracker’s wording', () => {
+    const withCompleteness = (completeness: Record<string, unknown>) => ({
+      ...base,
+      completeness: {
+        scope: 'parents',
+        enforcement: 'required',
+        relativesNotRecordedAttribute: 'notRecorded',
+        ...completeness,
+      },
+    });
+    const withParentsItem = (message: string) => {
+      const text = pedigreeCompletenessText();
+      return withCompleteness({
+        ...text,
+        itemText: { ...text.itemText, parents: { listItem: { en: message } } },
+      });
+    };
+
+    it('is required wherever the family must be complete', () => {
+      expect(
+        familyPedigreeStage.safeParse(
+          withCompleteness(pedigreeCompletenessText()),
+        ).success,
+      ).toBe(true);
+      expect(familyPedigreeStage.safeParse(withCompleteness({})).success).toBe(
+        false,
+      );
+    });
+
+    it('may say who the person is', () => {
+      expect(
+        familyPedigreeStage.safeParse(
+          withParentsItem(
+            '{isYou, select, true {Add your biological parents} other {Add biological parents for {name}}}',
+          ),
+        ).success,
+      ).toBe(true);
+    });
+
+    it('is not told how many parents are missing', () => {
+      expect(
+        familyPedigreeStage.safeParse(
+          withParentsItem(
+            '{missing, plural, one {Add a parent for {name}} other {Add parents for {name}}}',
+          ),
+        ).success,
+      ).toBe(false);
+    });
+
+    it('may be one phrase for everyone', () => {
+      expect(
+        familyPedigreeStage.safeParse(withParentsItem('Add biological parents'))
+          .success,
+      ).toBe(true);
+    });
+
+    it('may not use anything else', () => {
+      expect(
+        familyPedigreeStage.safeParse(
+          withParentsItem('Add parents for {relative}'),
+        ).success,
+      ).toBe(false);
+      // No entry is told how many are missing.
+      const text = pedigreeCompletenessText();
+      expect(
+        familyPedigreeStage.safeParse(
+          withCompleteness({
+            ...text,
+            itemText: {
+              ...text.itemText,
+              details: {
+                listItem: {
+                  en: '{missing, plural, other {# details missing}}',
+                },
+              },
+            },
+          }),
+        ).success,
+      ).toBe(false);
+    });
   });
 
   it('requires a relationship configuration', () => {

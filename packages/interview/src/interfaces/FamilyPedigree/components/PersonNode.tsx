@@ -10,16 +10,11 @@ import {
   useId,
 } from 'react';
 
-import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Node, {
   type NodeColorSequence,
   type NodeShape,
 } from '@codaco/fresco-ui/Node';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@codaco/fresco-ui/Tooltip';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { withoutSoftHyphens } from '../generatedLabels';
@@ -43,7 +38,8 @@ type PersonNodeProps = {
   /** Their details are open in the side panel; or, answering a nomination
    * prompt, it applies to them. */
   selected: boolean;
-  /** Nothing can be done with them for now (the wording is being asked). */
+  /** Nothing can be done with them for now: the wording is being asked, or
+   * the tool in use cannot pair them with the person chosen first. */
   disabled?: boolean;
   /** The id of why they cannot be chosen, when they are shown unavailable
    * but stay reachable (a nomination prompt that cannot apply to them):
@@ -195,22 +191,14 @@ export default function PersonNode({
       )}
       {/* Centred on the symbol's corner, clear of the label inside it. */}
       {hasMissingDetails && (
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <span
-                aria-hidden
-                data-missing-details-badge
-                className="bg-warning text-warning-contrast elevation-low absolute top-0 right-0 flex size-8 translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full"
-              />
-            }
-          >
-            <TriangleAlert className="size-5" aria-hidden />
-          </TooltipTrigger>
-          <TooltipContent>
-            <AppMessage message={messages.missingDetails} />
-          </TooltipContent>
-        </Tooltip>
+        // The person's accessible name says that details are missing.
+        <span
+          aria-hidden
+          data-missing-details-badge
+          className="bg-warning text-warning-contrast elevation-low absolute top-0 right-0 flex size-8 translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full"
+        >
+          <TriangleAlert className="size-5" aria-hidden />
+        </span>
       )}
       {children}
     </div>

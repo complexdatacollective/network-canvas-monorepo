@@ -700,6 +700,9 @@
     },
     {
       "id": "f6cff4b0-32e7-11eb-8503-3b4fa95b8bc6",
+      "quickAddHint": {
+        "en-US": "Press Enter when you are finished."
+      },
       "label": { "en-US": "Quick Add Name Generator" },
       "type": "NameGeneratorQuickAdd",
       "quickAdd": "c7053a78-bcd5-44bb-bfca-36c8aefa793f",
@@ -739,6 +742,9 @@
     },
     {
       "id": "39e14c40-32e8-11eb-8503-3b4fa95b8bc6",
+      "quickAddHint": {
+        "en-US": "Press Enter when you are finished."
+      },
       "label": { "en-US": "Quick Add with Sidepanel" },
       "type": "NameGeneratorQuickAdd",
       "quickAdd": "c7053a78-bcd5-44bb-bfca-36c8aefa793f",
@@ -844,6 +850,12 @@
     },
     {
       "id": "01455ba0-32ee-11eb-8503-3b4fa95b8bc6",
+      "externalDataError": {
+        "en-US": "External data could not be loaded."
+      },
+      "allAddedNotice": {
+        "en-US": "There is nothing left to add from this list."
+      },
       "label": { "en-US": "Small Roster - Classroom" },
       "type": "NameGeneratorRoster",
       "subject": {
@@ -893,6 +905,18 @@
     },
     {
       "id": "dfde4a90-32ec-11eb-8503-3b4fa95b8bc6",
+      "externalDataError": {
+        "en-US": "External data could not be loaded."
+      },
+      "allAddedNotice": {
+        "en-US": "There is nothing left to add from this list."
+      },
+      "searchLabel": {
+        "en-US": "Search"
+      },
+      "searchNoMatch": {
+        "en-US": "Nothing matched your search term."
+      },
       "label": { "en-US": "University Roster" },
       "type": "NameGeneratorRoster",
       "subject": {
@@ -1392,6 +1416,32 @@
     },
     {
       "id": "7fb3b540-330c-11eb-8982-61526ca14943",
+      "attributesHeading": {
+        "en-US": "Attributes"
+      },
+      "linksHeading": {
+        "en-US": "Links"
+      },
+      "groupsHeading": {
+        "en-US": "Groups"
+      },
+      "tooltips": {
+        "enableDrawing": {
+          "en-US": "Enable drawing"
+        },
+        "disableDrawing": {
+          "en-US": "Disable drawing"
+        },
+        "freezeAnnotations": {
+          "en-US": "Freeze annotations"
+        },
+        "unfreezeAnnotations": {
+          "en-US": "Unfreeze annotations"
+        },
+        "resetAnnotations": {
+          "en-US": "Reset annotations"
+        }
+      },
       "label": { "en-US": "Narrative Interface" },
       "type": "Narrative",
       "subject": {
@@ -1432,6 +1482,18 @@
     },
     {
       "id": "finish",
+      "finishLabel": {
+        "en-US": "Finish"
+      },
+      "finishConfirmation": {
+        "en-US": "Are you sure you want to finish the interview?"
+      },
+      "finishedNotice": {
+        "en-US": "This interview is finished, and its answers can no longer be changed."
+      },
+      "finishFailed": {
+        "en-US": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
+      },
       "type": "FinishSession",
       "label": {
         "en-US": "Finish Interview"
@@ -1444,5 +1506,67 @@
       },
       "outcome": "completed"
     }
-  ]
+  ],
+  "interfaceText": {
+    "interview": {
+      "exitInterview": {
+        "en-US": "Exit interview"
+      },
+      "exitInterviewDescription": {
+        "en-US": "Your answers so far will be saved and you can continue later."
+      },
+      "stageError": {
+        "en-US": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
+      },
+      "itemUnavailable": {
+        "en-US": "This item could not be displayed."
+      },
+      "back": {
+        "en-US": "Back"
+      },
+      "continue": {
+        "en-US": "Continue"
+      },
+      "cancel": {
+        "en-US": "Cancel"
+      },
+      "done": {
+        "en-US": "Done"
+      },
+      "delete": {
+        "en-US": "Delete"
+      },
+      "genericError": {
+        "en-US": "Something went wrong."
+      }
+    },
+    "forms": {
+      "discardChanges": {
+        "en-US": "Discard changes"
+      },
+      "discardChangesTitle": {
+        "en-US": "Discard changes?"
+      },
+      "discardChangesDescription": {
+        "en-US": "This form contains invalid data, so it cannot be saved. If you continue it will be reset, and your changes will be lost. Do you want to discard your changes?"
+      },
+      "yes": {
+        "en-US": "Yes"
+      },
+      "no": {
+        "en-US": "No"
+      },
+      "submitFailed": {
+        "en-US": "An error occurred while submitting the form."
+      }
+    },
+    "validation": {
+      "required": {
+        "en-US": "You must answer this question before continuing."
+      },
+      "minDate": {
+        "en-US": "Must be on or after {min}."
+      }
+    }
+  }
 }

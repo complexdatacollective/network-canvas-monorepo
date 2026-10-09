@@ -1,7 +1,5 @@
 import { describe, expect, test } from 'vitest';
 
-import { createAppIntl } from '@codaco/app-i18n/messages';
-
 import {
   carrierRecordedReason,
   joinReasons,
@@ -10,6 +8,7 @@ import {
 } from '../components/unavailableReasons';
 import { readFamily } from '../model';
 import { config, link, person } from './fixtures';
+import { pedigreeWordsIn } from './pedigreeWords';
 
 const family = readFamily(
   [
@@ -27,7 +26,7 @@ const family = readFamily(
 );
 
 const context: ReasonContext = {
-  intl: createAppIntl({ locale: 'en' }),
+  words: pedigreeWordsIn(),
   family,
   displayName: (id) => family.byId.get(id)?.name ?? id,
   sexLabels: {
@@ -37,6 +36,8 @@ const context: ReasonContext = {
     unknown: 'Don’t know',
     preferNotToSay: 'Prefer not to say',
   },
+  formatList: (items) =>
+    new Intl.ListFormat('en', { type: 'conjunction' }).format(items),
 };
 
 const carried = (childId: string) =>
@@ -45,7 +46,7 @@ const carried = (childId: string) =>
 describe('joinReasons', () => {
   test('says a reason about several children once, naming them together', () => {
     expect(joinReasons(context, [carried('ava'), carried('ben')])).toBe(
-      '“Male” is unavailable because you are recorded as having carried “Ava” and “Ben”, and nobody recorded as “Male” at birth can carry a pregnancy. To choose it, first change how you are connected to “Ava” and “Ben”.',
+      '“Male” is unavailable because you are recorded as having carried Ava and Ben, and nobody recorded as “Male” at birth can carry a pregnancy. To choose it, first change how you are connected to Ava and Ben.',
     );
   });
 
@@ -67,6 +68,6 @@ describe('joinReasons', () => {
           { value: 'true', label: 'Yes' },
         ]),
       ]),
-    ).toMatch(/^“Surrogate” and “Yes” are unavailable because/);
+    ).toMatch(/^Surrogate and Yes are unavailable because/);
   });
 });

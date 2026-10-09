@@ -1,0 +1,31 @@
+- main:
+  - text: Showing all conditions
+  - complementary "Condition key":
+    - heading "Key" [level=4]
+    - heading "Conditions" [level=4]
+    - paragraph: Select a condition to see who it affects.
+    - button "Cystic Fibrosis"
+    - separator
+    - text: Has this condition Will develop this condition Carries this condition Could get it - matrix check Could pass it on - matrix check Not known
+    - button "Save snapshot"
+  - slider "Resize the condition key panel"
+  - region "Your family":
+    - button "Focus on Albert" [disabled]: "Cystic Fibrosis: Status unknown Albert"
+    - button "Focus on Mabel" [disabled]: "Cystic Fibrosis: Status unknown Mabel"
+    - button "Focus on Frank" [disabled]: "Cystic Fibrosis: At risk (carrier) Frank"
+    - button "Focus on Iris" [disabled]: "Cystic Fibrosis: At risk (carrier) Iris"
+    - button "Focus on Ernest" [disabled]: "Cystic Fibrosis: At risk (carrier) Ernest"
+    - button "Focus on Vera" [disabled]: "Cystic Fibrosis: At risk (carrier) Vera"
+    - button "Focus on Diane" [disabled]: "Cystic Fibrosis: Obligate carrier Diane"
+    - button "Focus on Roy" [disabled]: "Cystic Fibrosis: Obligate carrier Roy"
+    - button "Focus on You" [disabled]: "Cystic Fibrosis: Affected You"
+  - toolbar "Zoom controls":
+    - button "Zoom out"
+    - button "Zoom in"
+    - button "Show the whole family"
+  - navigation:
+    - button "Settings"
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

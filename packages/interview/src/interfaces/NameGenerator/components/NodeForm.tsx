@@ -9,11 +9,13 @@ import {
   useState,
 } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Form from '@codaco/fresco-ui/form/Form';
+import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import type {
   FormSubmissionResult,
@@ -51,7 +53,6 @@ import type { AttributePatch } from '../../../store/entityAttributePatch';
 import { updateNode as updateNodeAction } from '../../../store/modules/session';
 import { useAppDispatch } from '../../../store/store';
 import { useProtectedFormValues } from '../../Anonymisation/useProtectedFormValues';
-import { interfaceMessages } from '../../messages';
 
 type NodeFormProps = {
   selectedNode: NcNode | null;
@@ -184,7 +185,7 @@ const NodeForm = (props: NodeFormProps) => {
       if (!patchResult.success) {
         return {
           success: false,
-          formErrors: [createMessageError(runtimeMessages.submissionFailed)],
+          formErrors: [createMessageError(formMessages.submitFailed)],
         };
       }
 
@@ -269,11 +270,11 @@ const NodeForm = (props: NodeFormProps) => {
             key="submit"
             type="submit"
             form="node-form"
-            aria-label={intl.formatMessage(interfaceMessages.finished)}
+            aria-label={intl.formatMessage(commonMessages.done)}
             color="primary"
             disabled={submitting}
           >
-            {intl.formatMessage(interfaceMessages.finished)}
+            {intl.formatMessage(commonMessages.done)}
           </Button>
         }
       >

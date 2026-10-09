@@ -59,7 +59,7 @@ export default function PassphraseEntry({ needed }: PassphraseEntryProps) {
             setOverlay({ show: true, choosing: !passphraseChosen });
           }}
         >
-          <AppMessage message={messages.enterPassphrase} />
+          <AppMessage message={messages.passphrase} />
         </Button>
       )}
       <PassphraseOverlay

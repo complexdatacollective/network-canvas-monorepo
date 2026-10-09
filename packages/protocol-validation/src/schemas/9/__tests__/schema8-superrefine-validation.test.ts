@@ -17,6 +17,8 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import ProtocolSchemaV9 from '../schema.ts';
+import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
+import { pedigreeNameField } from './family-pedigree-text.ts';
 import {
   GENDER_IDENTITY_OPTIONS,
   GENDER_IDENTITY_TERMS,
@@ -773,6 +775,45 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           'createEdge',
         ]);
       }
+    });
+
+    it('rejects a TieStrengthCensus decline label that shows nothing', () => {
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage({
+          ...baseValidProtocol,
+          stages: [
+            {
+              id: 'tieStrength1',
+              type: 'TieStrengthCensus',
+              label: localized('Tie Strength Census'),
+              subject: { entity: 'node', type: 'person' },
+              prompts: [
+                {
+                  id: 'prompt1',
+                  text: localized('How close are these people?'),
+                  createEdge: 'knows',
+                  edgeVariable: 'closeness',
+                  negativeLabel: localized('   '),
+                },
+              ],
+              introductionPanel: {
+                title: localized('Tie Strength Census'),
+                text: localized('Rate each pair.'),
+              },
+            },
+          ],
+        }),
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error?.issues.map(({ path }) => path)).toContainEqual([
+        'stages',
+        0,
+        'prompts',
+        0,
+        'negativeLabel',
+        'en',
+      ]);
     });
 
     it('validates edgeVariable for TieStrengthCensus stages', () => {
@@ -2661,6 +2702,18 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         {
           id: 'geospatial1',
           type: 'Geospatial',
+          offlineNotice: localized(
+            'You are offline — the map will not load until you reconnect.',
+          ),
+          mapUnavailable: localized(
+            'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
+          ),
+          outsideAreasLabel: localized('Outside Selectable Areas'),
+          searchLabel: localized('Search'),
+          searchNoMatch: localized('Nothing matched your search term.'),
+          searchFailed: localized(
+            'Search could not be completed. Try again in a moment.',
+          ),
           label: localized('Geospatial Stage'),
           subject: {
             entity: 'node',
@@ -2947,11 +3000,13 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         {
           id: 'fp1',
           type: 'FamilyPedigree' as const,
+          wording: familyPedigreeWordingIn(),
           label: localized('Family Pedigree'),
           subject: { entity: 'node' as const, type: 'person' },
           prompt: localized('Build your family'),
           nodeConfiguration: {
             nameAttribute: 'name',
+            nameField: pedigreeNameField(),
             ...(askGenderIdentity
               ? {
                   genderIdentity: {

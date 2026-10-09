@@ -13,6 +13,7 @@ import {
   suppliedOptionLabel,
   suppliedOptionLabels,
   validateProtocol,
+  familyPedigreeWordingIn,
 } from '@codaco/protocol-validation';
 
 import {
@@ -30,6 +31,14 @@ import {
 
 const NODE_TYPE = 'person';
 const VARIABLE = 'closeness';
+
+// Every declared locale gets the same text, so no settings string exists
+// in one language only.
+const everyLocale = (
+  localization: CurrentProtocol['localization'],
+  text: string,
+): Record<string, string> =>
+  Object.fromEntries(localization.locales.map((locale) => [locale, text]));
 
 const protocolIn = (
   localization: CurrentProtocol['localization'],
@@ -83,6 +92,13 @@ const protocolIn = (
       label: text.stage,
       title: text.title,
       content: text.title,
+      finishLabel: everyLocale(localization, 'Finish'),
+      finishConfirmation: everyLocale(localization, 'Finish this interview?'),
+      finishedNotice: everyLocale(localization, 'This interview is finished.'),
+      finishFailed: everyLocale(
+        localization,
+        'The interview could not be finished.',
+      ),
       outcome: 'completed',
     },
   ],
@@ -202,6 +218,7 @@ const withPedigree = (
       {
         id: 'familyPedigree',
         type: 'FamilyPedigree',
+        wording: familyPedigreeWordingIn(),
         label: { en: 'Family' },
         subject: { entity: 'node', type: 'relative' },
         nodeConfiguration: { sexAssignedAtBirthAttribute: 'sex' },
@@ -267,7 +284,25 @@ describe('addLocales', () => {
         { ...finish, content: { en: 'Thanks for taking part.' } },
       ];
       const protocol = protocolOf(addLocales(edited, ['fr']));
-      expect(protocol.stages).toEqual(edited.stages);
+      const translated = protocol.stages.at(-1);
+      if (translated?.type !== 'FinishSession') {
+        throw new Error('No finish stage');
+      }
+      // The researcher's text stays as written; the stage's own settings,
+      // which Network Canvas supplies, are translated.
+      expect(protocol.stages.slice(0, -1)).toEqual(edited.stages.slice(0, -1));
+      expect(translated).toMatchObject({
+        content: { en: 'Thanks for taking part.' },
+      });
+      expect(translated.content).not.toHaveProperty('fr');
+      for (const setting of [
+        'finishLabel',
+        'finishConfirmation',
+        'finishedNotice',
+        'finishFailed',
+      ] as const) {
+        expect(translated[setting]).toHaveProperty('fr');
+      }
     });
   });
 
@@ -338,7 +373,9 @@ describe('removeLocale', () => {
     expect(
       getLocaleRemovalImpact(collectLocalizedStrings(bilingual()), 'fr')
         .translationCount,
-    ).toBe(7);
+      // Seven texts of the protocol's own, and the finish stage's four
+      // settings.
+    ).toBe(11);
   });
 
   it('counts each text once however many readings of it there are', () => {
@@ -354,7 +391,7 @@ describe('removeLocale', () => {
       'fr',
     );
 
-    expect(impact.translationCount).toBe(7);
+    expect(impact.translationCount).toBe(11);
     expect(impact.strandedStrings).toEqual([unsaved]);
   });
 
@@ -699,6 +736,10 @@ describe('a roster stage’s supplied panel title', () => {
         {
           id: 'roster',
           type: 'NameGeneratorRoster',
+          externalDataError: { en: 'External data could not be loaded.' },
+          allAddedNotice: {
+            en: 'There is nothing left to add from this list.',
+          },
           label: { en: 'Services' },
           subject: { entity: 'node', type: 'person' },
           dataSource: 'roster',
@@ -743,5 +784,30 @@ describe('a roster stage’s supplied panel title', () => {
         ),
       ),
     ).toEqual({ hu: 'Available to add' });
+  });
+});
+
+describe('the interview’s shared words', () => {
+  const withBack = (back: Record<string, string>): CurrentProtocol =>
+    ({
+      ...monolingual(),
+      interfaceText: { interview: { back } },
+    }) as unknown as CurrentProtocol;
+  const backOf = (protocol: CurrentProtocol) =>
+    protocol.interfaceText?.interview?.back;
+
+  it('follow a language change while they are Network Canvas’s', () => {
+    expect(
+      backOf(protocolOf(addLocales(withBack({ en: 'Back' }), ['fr']))),
+    ).toEqual({ en: 'Back', fr: 'Retour' });
+    expect(
+      backOf(protocolOf(changeLocale(withBack({ en: 'Back' }), 'en', 'de'))),
+    ).toEqual({ de: 'Zurück' });
+  });
+
+  it('are left to the researcher once they have reworded them', () => {
+    expect(
+      backOf(protocolOf(addLocales(withBack({ en: 'Previous' }), ['fr']))),
+    ).toEqual({ en: 'Previous' });
   });
 });

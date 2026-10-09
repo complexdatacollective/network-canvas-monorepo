@@ -6,7 +6,7 @@
     - paragraph: Placed
   - button "Category Work, 0 items":
     - heading "Work" [level=4]
-  - button "Collapse drawer" [expanded]: 1 unplaced
+  - button "1 unplaced Collapse drawer" [expanded]
   - button "Unplaced"
   - navigation:
     - button "Settings"

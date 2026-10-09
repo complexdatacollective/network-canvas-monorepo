@@ -151,6 +151,14 @@ describe('Collection Filtering', () => {
       expect(screen.getByPlaceholderText('Search...')).toBeInTheDocument();
     });
 
+    // A status region announces only text that changes inside it, so it is
+    // there, empty, before any search starts.
+    it('keeps an empty status region ready to announce a search', () => {
+      render(<FilterableCollection />);
+
+      expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    });
+
     it('should render all items initially', () => {
       render(<FilterableCollection />);
 

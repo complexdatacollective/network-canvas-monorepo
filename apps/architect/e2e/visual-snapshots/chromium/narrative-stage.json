@@ -23,5 +23,13 @@
     "entity": "node",
     "type": "id-4"
   },
+  "tooltips": {
+    "pauseLayout": {
+      "en": "Pause automatic layout"
+    },
+    "resumeLayout": {
+      "en": "Resume automatic layout"
+    }
+  },
   "type": "Narrative"
 }

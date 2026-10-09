@@ -1,3 +1,4 @@
+import { hash } from 'ohash';
 import { describe, expect, it } from 'vitest';
 
 import { hashProtocol } from '../hashProtocol.ts';
@@ -52,7 +53,7 @@ describe('hashProtocol', () => {
     expect(hashProtocol(a)).toBe(hashProtocol(b));
   });
 
-  it('ignores fields outside localization, codebook and stages from schema 9', () => {
+  it('ignores fields outside localization, interface text, codebook and stages from schema 9', () => {
     const a = {
       ...localizedProtocol(),
       lastModified: '2026-01-01',
@@ -82,6 +83,30 @@ describe('hashProtocol', () => {
       ],
     };
     expect(hashProtocol(changed)).not.toBe(hashProtocol(localizedProtocol()));
+  });
+
+  it('changes when the interview’s shared wording changes', () => {
+    const wording = (fr: string) => ({
+      ...localizedProtocol(),
+      interfaceText: { interview: { continue: { en: 'Continue', fr } } },
+    });
+    expect(hashProtocol(wording('Suivant'))).not.toBe(
+      hashProtocol(wording('Continuer')),
+    );
+    expect(hashProtocol(wording('Suivant'))).not.toBe(
+      hashProtocol(localizedProtocol()),
+    );
+  });
+
+  it('keeps the hash of a protocol that holds no shared wording', () => {
+    // The hash a schema-9 protocol had before shared wording was hashed.
+    const { localization, codebook, stages } = localizedProtocol();
+    const before = hash({ localization, codebook, stages });
+
+    expect(hashProtocol(localizedProtocol())).toBe(before);
+    expect(
+      hashProtocol({ ...localizedProtocol(), interfaceText: undefined }),
+    ).toBe(before);
   });
 
   it('changes when the default language changes', () => {

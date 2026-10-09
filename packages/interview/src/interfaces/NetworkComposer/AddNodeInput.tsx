@@ -18,6 +18,8 @@ import { interfaceMessages } from '../messages';
 type AddNodeInputProps = {
   /** Protocol label for the entity being added, e.g. "Person". */
   entityLabel: string;
+  /** The stage's words for the empty name field. */
+  placeholder: string;
   /** Codebook variable the quick-add name is written to. */
   targetVariable: string;
   /**
@@ -48,6 +50,7 @@ type AddNodeInputProps = {
  */
 function AddNodeField({
   entityLabel,
+  placeholder,
   targetVariable,
   onCreate,
   onAddingChange,
@@ -161,7 +164,7 @@ function AddNodeField({
         aria-label={intl.formatMessage(interfaceMessages.entityName, {
           entityLabel,
         })}
-        placeholder={intl.formatMessage(interfaceMessages.addNamePlaceholder)}
+        placeholder={placeholder}
         id={id}
         name={targetVariable}
         {...fieldProps}

@@ -97,12 +97,9 @@ const findPassphraseField = (canvas: ReturnType<typeof within>) =>
 
 const CONFIRM_LABEL = /^Confirm Passphrase/;
 
-const PASSPHRASE_SET = 'Passphrase set successfully! Click "Next" to continue.';
+// One message covers choosing, entering again, and returning to the stage.
 const PASSPHRASE_ACCEPTED = 'Passphrase accepted! Click "Next" to continue.';
-const ALREADY_ENTERED =
-  'You have already entered your passphrase. Click "Next" to continue.';
-const ANY_SUCCESS =
-  /Passphrase set successfully|Passphrase accepted|You have already entered your passphrase/;
+const ANY_SUCCESS = /Passphrase accepted/;
 
 /**
  * Submits the passphrase form and waits for the check to show as under way
@@ -189,14 +186,14 @@ export const ChoosesAPassphrase: Story = {
       expect(passphrase).toHaveAttribute('aria-invalid', 'true'),
     );
     await expect(passphrase).toHaveAccessibleDescription(
-      expect.stringContaining('Too short. Enter at least 8 characters.'),
+      expect.stringContaining('Enter at least 8 characters.'),
     );
 
     await userEvent.clear(passphrase);
     await userEvent.type(passphrase, PASSPHRASE);
     await userEvent.clear(confirm);
     await userEvent.type(confirm, PASSPHRASE);
-    await submitAndWaitForAcceptance(canvas, PASSPHRASE_SET);
+    await submitAndWaitForAcceptance(canvas, PASSPHRASE_ACCEPTED);
   },
 };
 
@@ -223,12 +220,12 @@ export const ShorterMinimumLength: Story = {
       expect(passphrase).toHaveAttribute('aria-invalid', 'true'),
     );
     await expect(passphrase).toHaveAccessibleDescription(
-      expect.stringContaining('Too short. Enter at least 4 characters.'),
+      expect.stringContaining('Enter at least 4 characters.'),
     );
 
     await userEvent.type(passphrase, 'd');
     await userEvent.type(confirm, 'd');
-    await submitAndWaitForAcceptance(canvas, PASSPHRASE_SET);
+    await submitAndWaitForAcceptance(canvas, PASSPHRASE_ACCEPTED);
   },
 };
 
@@ -250,7 +247,7 @@ export const ReturnsToTheStage: Story = {
       canvas.getByLabelText(CONFIRM_LABEL, { selector: 'input' }),
       PASSPHRASE,
     );
-    await submitAndWaitForAcceptance(canvas, PASSPHRASE_SET);
+    await submitAndWaitForAcceptance(canvas, PASSPHRASE_ACCEPTED);
 
     await userEvent.click(canvas.getByTestId('next-button'));
     await expect(
@@ -259,9 +256,14 @@ export const ReturnsToTheStage: Story = {
     await userEvent.click(canvas.getByTestId('previous-button'));
 
     await expect(
-      await canvas.findByText(ALREADY_ENTERED, {}, { timeout: 10_000 }),
+      await canvas.findByText(PASSPHRASE_ACCEPTED, {}, { timeout: 10_000 }),
     ).toBeInTheDocument();
-    await expect(canvas.queryByText(PASSPHRASE_SET)).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole('button', { name: 'Submit' }),
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByText('Checking your passphrase…'),
+    ).not.toBeInTheDocument();
     await expect(
       canvas.queryByLabelText(/^Passphrase/, { selector: 'input' }),
     ).not.toBeInTheDocument();
@@ -308,7 +310,7 @@ export const ResumedWithProtectedAnswers: Story = {
   parameters: {
     docs: {
       description: {
-        story: `A passphrase ("${PASSPHRASE}") was chosen earlier in this interview, and is no longer in memory. The stage asks for it again, once and without length rules. A different passphrase is turned away with the reason under the field; the original one is accepted, and the stage says so rather than that a passphrase was set.`,
+        story: `A passphrase ("${PASSPHRASE}") was chosen earlier in this interview, and is no longer in memory. The stage asks for it again, once and without length rules. A different passphrase is turned away with the reason under the field; the original one is accepted.`,
       },
     },
   },
@@ -318,7 +320,7 @@ export const ResumedWithProtectedAnswers: Story = {
     await expect(passphrase).toHaveAttribute('autocomplete', 'off');
     await expect(
       canvas.getByText(
-        'You chose a passphrase earlier in this interview. Enter it to continue.',
+        /^Some answers on this screen are protected by a passphrase\./,
       ),
     ).toBeInTheDocument();
     await expect(
@@ -339,7 +341,7 @@ export const ResumedWithProtectedAnswers: Story = {
       ),
     );
     await expect(passphrase).not.toHaveAccessibleDescription(
-      expect.stringContaining('Too short'),
+      expect.stringContaining('Enter at least'),
     );
     await expect(
       canvas.queryByText('Checking your passphrase…'),

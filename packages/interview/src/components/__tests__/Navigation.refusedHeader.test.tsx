@@ -107,12 +107,17 @@ describe('the horizontal navigation bar beside answers that are locked', () => {
     renderHorizontalInterview(payloadWith());
 
     expect(
-      await screen.findByText('Enter your passphrase to see and change them.', {
-        exact: false,
-      }),
+      (
+        await screen.findAllByText(
+          'Enter your passphrase to see and change them.',
+          {
+            exact: false,
+          },
+        )
+      )[0],
     ).toBeInTheDocument();
     expect(
-      await screen.findByRole('button', { name: 'Enter your passphrase' }),
+      await screen.findByRole('button', { name: 'Passphrase' }),
     ).toBeInTheDocument();
   });
 
@@ -129,7 +134,7 @@ describe('the horizontal navigation bar beside answers that are locked', () => {
     await settle();
 
     expect(
-      screen.queryByRole('button', { name: 'Enter your passphrase' }),
+      screen.queryByRole('button', { name: 'Passphrase' }),
     ).not.toBeInTheDocument();
   });
 });

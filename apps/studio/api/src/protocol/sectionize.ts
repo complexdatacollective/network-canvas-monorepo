@@ -2,6 +2,7 @@ import {
   createDefaultFinishSessionStage,
   CURRENT_SCHEMA_VERSION,
   type CurrentProtocol,
+  withInterfaceText,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -19,13 +20,14 @@ export const NEW_PROTOCOL_FINISH_STAGE_ID = 'finish';
 // Nothing asks the researcher for a language yet, so a new protocol declares
 // English, as a protocol migrated from schema 8 does. Every interview has to
 // end at a finish stage, so a new protocol starts with the one Network Canvas
-// supplies, and the stages a researcher adds go in front of it.
+// supplies, and the stages a researcher adds go in front of it. Its interface
+// text is the wording Network Canvas supplies for what the interview shows.
 export function emptyProtocol(name: string): CurrentProtocol {
   const localization: CurrentProtocol['localization'] = {
     defaultLocale: 'en',
     locales: ['en'],
   };
-  return {
+  return withInterfaceText({
     name,
     schemaVersion: CURRENT_SCHEMA_VERSION,
     localization,
@@ -36,7 +38,7 @@ export function emptyProtocol(name: string): CurrentProtocol {
         localization,
       }),
     ],
-  };
+  });
 }
 
 export function sectionizeProtocol(
@@ -54,6 +56,9 @@ export function sectionizeProtocol(
   }
   if (protocol.experiments !== undefined) {
     settings.experiments = protocol.experiments;
+  }
+  if (protocol.interfaceText !== undefined) {
+    settings.interfaceText = protocol.interfaceText;
   }
   if (protocol.lastModified !== undefined) {
     settings.lastModified = protocol.lastModified;

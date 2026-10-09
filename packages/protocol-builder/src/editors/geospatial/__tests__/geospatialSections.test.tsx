@@ -158,13 +158,14 @@ describe('the map a geospatial stage shows', () => {
   it('reports each map decision separately', async () => {
     const harness = openEditor();
 
-    await waitFor(() => expect(harness.outline()).toHaveLength(5));
+    await waitFor(() => expect(harness.outline()).toHaveLength(6));
     expect(harness.outline().map((entry) => entry.title)).toEqual([
       'Map access',
       'Map layers',
       'Prompt collection',
       'Map appearance',
       'Map starting position',
+      'Messages',
     ]);
   });
 

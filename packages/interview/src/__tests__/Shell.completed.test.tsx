@@ -62,6 +62,10 @@ const finishStage = {
   label: { en: 'Finish' },
   title: { en: 'All *done*' },
   content: { en: 'Thank you for **taking part**.' },
+  finishLabel: { en: 'Finish' },
+  finishConfirmation: { en: 'Finish this interview?' },
+  finishedNotice: { en: NOTICE },
+  finishFailed: { en: 'The interview could not be finished.' },
   outcome: 'ineligible' as const,
 };
 

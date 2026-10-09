@@ -4,7 +4,7 @@ import type { ComponentProps } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
-import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -51,7 +51,6 @@ import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
 import { useNodeLabel } from '../Anonymisation/useNodeLabel';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
-import { interfaceMessages } from '../messages';
 import CategoricalBinItem from './components/CategoricalBinItem';
 import { useCategoricalBins } from './useCategoricalBins';
 
@@ -118,7 +117,6 @@ function OtherResponse({
   label,
   validationProps,
 }: OtherResponseProps) {
-  const intl = useAppIntl();
   const nodeId = node[entityPrimaryKeyProperty];
   // Base pieces of the validation context useProtocolForm builds for every
   // other Field (codebook + network + this stage's subject), scoped to the
@@ -176,9 +174,6 @@ function OtherResponse({
           component={InputField}
           name={variable}
           nameMode="opaque"
-          placeholder={intl.formatMessage(
-            interfaceMessages.responsePlaceholder,
-          )}
           {...validationProps}
           validationContext={validationContext}
           autoFocus
@@ -320,7 +315,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
     // specify the value for the other variable. The schema's prompt union
     // proves otherVariablePrompt exists whenever otherVariable is set.
     if (bin.isOther && prompt.otherVariable !== undefined) {
-      const { otherVariable, otherVariablePrompt } = prompt;
+      const { otherVariable, otherVariablePrompt, otherOptionLabel } = prompt;
       const otherPromptLabel = resolve(otherVariablePrompt).text;
 
       // An answer that would be encrypted is not asked for until it could be
@@ -350,7 +345,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 
       const result = await openDialog({
         type: 'form',
-        title: <AppMessage message={interfaceMessages.specifyOther} />,
+        title: resolve(otherOptionLabel).text,
         children: (
           <OtherResponse
             node={node}

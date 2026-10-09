@@ -49,7 +49,7 @@ describe('Protocol Summary stage', () => {
   // The heading a participant reads on the finish stage is its `title`, not
   // its name: the summary prints it as the stage's page heading, with the
   // text and outcome below it.
-  it('prints a finish stage’s heading, text and outcome, apart from its name', () => {
+  it('prints a finish stage’s heading, text, finishing words and outcome, apart from its name', () => {
     render(
       <SummaryContext.Provider
         value={{ protocol, protocolName: protocol.name, index: [] }}
@@ -62,6 +62,10 @@ describe('Protocol Summary stage', () => {
           configuration={{
             title: { en: 'Thank you for taking part' },
             content: { en: 'Your answers have been recorded.' },
+            finishLabel: { en: 'Submit' },
+            finishConfirmation: { en: 'Submit your answers?' },
+            finishedNotice: { en: 'Your answers are submitted.' },
+            finishFailed: { en: 'Your answers could not be submitted.' },
             outcome: 'ineligible',
           }}
         />
@@ -69,6 +73,15 @@ describe('Protocol Summary stage', () => {
     );
 
     expect(screen.getByText('Thank you for taking part')).toBeInTheDocument();
+    for (const [label, value] of [
+      ['Finish button', 'Submit'],
+      ['Confirmation question', 'Submit your answers?'],
+      ['Finished notice', 'Your answers are submitted.'],
+      ['If finishing fails', 'Your answers could not be submitted.'],
+    ] as const) {
+      expect(screen.getByText(label)).toBeInTheDocument();
+      expect(screen.getByText(value)).toBeInTheDocument();
+    }
     expect(
       screen.getByText('Your answers have been recorded.'),
     ).toBeInTheDocument();

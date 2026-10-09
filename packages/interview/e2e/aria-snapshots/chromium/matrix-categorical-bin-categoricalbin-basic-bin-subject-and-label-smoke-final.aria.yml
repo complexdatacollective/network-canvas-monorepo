@@ -10,7 +10,7 @@
   - button "Category School, 1 item":
     - heading "School" [level=4]
     - paragraph: Carol
-  - button "Expand drawer" [disabled]: 0 unplaced
+  - button "0 unplaced Expand drawer" [disabled]
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

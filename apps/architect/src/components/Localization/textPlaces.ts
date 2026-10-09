@@ -37,6 +37,12 @@ const messages = defineMessages({
     description:
       'Heading of the group of texts in the translation table that belong to the protocol itself rather than to a stage or codebook entry.',
   },
+  interface: {
+    id: 'architect.localization.textPlaces.interface',
+    defaultMessage: 'Interview text',
+    description:
+      'Heading of the group of texts in the translation table that the interview itself shows, such as its buttons and messages, rather than text written for a stage or codebook entry.',
+  },
   unnamed: {
     id: 'architect.localization.textPlaces.unnamed',
     defaultMessage: 'Untitled',
@@ -107,6 +113,14 @@ export const describePlace = (
         interfaceName: null,
         href: codebookHref(),
         variableNames: (id) => codebook.ego?.variables?.[id]?.name,
+      };
+    case 'interface':
+      return {
+        kind: intl.formatMessage(messages.interface),
+        name: null,
+        interfaceName: null,
+        href: null,
+        variableNames: () => undefined,
       };
     case 'protocol':
       return {

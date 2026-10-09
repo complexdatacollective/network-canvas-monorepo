@@ -60,6 +60,8 @@ const nameGeneratorWith = (configured: SectionDoc[]) => ({
       fields: [{ variable: 'name', prompt: en("What is this person's name?") }],
     },
     prompts: [{ id: 'prompt-1', text: en('Who are the people you know?') }],
+    // A panel reading a data file needs the words for a file that did not load.
+    externalDataError: en('External data could not be loaded.'),
     panels: configured,
   },
 });
@@ -165,14 +167,20 @@ const SCHEMA_REFUSAL = 'This stage is not finished, so it was not saved.';
 
 describe('the side panels a name generator shows', () => {
   it('shows the panels a stage arrives with, and saves them unchanged', async () => {
+    // No panel reads a data file, so the stage holds no words for one.
+    const { externalDataError: _unused, ...fields } = nameGeneratorWith([
+      {
+        id: 'panel-1',
+        title: en('People you named earlier'),
+        dataSource: 'existing',
+      },
+    ]).fields;
     const harness = renderStageEditor({
-      stage: nameGeneratorWith([
-        {
-          id: 'panel-1',
-          title: en('People you named earlier'),
-          dataSource: 'existing',
-        },
-      ]),
+      stage: {
+        id: 'name-generator-with-panels',
+        type: 'NameGenerator',
+        fields,
+      },
       sections: panels,
     });
 

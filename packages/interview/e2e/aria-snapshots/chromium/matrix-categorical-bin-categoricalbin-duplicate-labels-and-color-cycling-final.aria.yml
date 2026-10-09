@@ -25,7 +25,7 @@
     - heading /Option \d+/ [level=4]
   - button /Category Option \d+, 0 items/:
     - heading /Option \d+/ [level=4]
-  - button "Collapse drawer" [expanded]: 1 unplaced
+  - button "1 unplaced Collapse drawer" [expanded]
   - button "Alex"
   - navigation:
     - button "Settings"

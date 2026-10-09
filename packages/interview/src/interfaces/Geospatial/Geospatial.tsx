@@ -1,7 +1,7 @@
 'use client';
 
 import type { Action } from '@reduxjs/toolkit';
-import { LocateFixed, ZoomIn, ZoomOut } from 'lucide-react';
+import { LocateFixed, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { AnimatePresence, motion, type Variants } from 'motion/react';
 import {
   lazy,
@@ -15,7 +15,7 @@ import {
 import { useDispatch } from 'react-redux';
 import type { ThunkDispatch } from 'redux-thunk';
 
-import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import {
@@ -34,6 +34,7 @@ import useBeforeNext from '../../hooks/useBeforeNext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import useSavesInOrder from '../../hooks/useSavesInOrder';
 import { useStageSelector } from '../../hooks/useStageSelector';
+import { useLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { getCodebookVariablesForSubjectType } from '../../selectors/protocol';
 import { getNetworkNodesForType } from '../../selectors/session';
 import type { AttributePatch } from '../../store/entityAttributePatch';
@@ -134,6 +135,19 @@ export default function GeospatialInterface({
 
   const { isE2E } = useContractFlags();
   const useStub = isE2E && isMapboxStubBrowser();
+  const { text: mapUnavailable } = useLocalizedString(stage.mapUnavailable);
+  const { text: outsideAreasLabel } = useLocalizedString(
+    stage.outsideAreasLabel,
+  );
+  // The search's words are set while the map has a search (`allowSearch`).
+  const searchWording =
+    stage.searchLabel && stage.searchNoMatch && stage.searchFailed
+      ? {
+          label: stage.searchLabel,
+          noMatch: stage.searchNoMatch,
+          failed: stage.searchFailed,
+        }
+      : undefined;
 
   const [navState, setNavState] = useState<{
     activeIndex: number;
@@ -481,14 +495,7 @@ export default function GeospatialInterface({
           >
             <div className="bg-background absolute inset-0 opacity-90" />
             <div className="relative z-20 flex w-2/3 max-w-xl flex-col items-center gap-4 text-center">
-              <h2>
-                <AppMessage message={interfaceMessages.mapUnavailable} />
-              </h2>
-              <p>
-                <AppMessage
-                  message={interfaceMessages.mapUnavailableDescription}
-                />
-              </p>
+              <p>{mapUnavailable}</p>
             </div>
           </div>
         )}
@@ -501,29 +508,32 @@ export default function GeospatialInterface({
           >
             <div className="bg-background absolute inset-0 opacity-75" />
             <div className="relative z-20 flex w-1/3 flex-col items-center gap-6 text-center">
-              <h2>
-                <AppMessage message={interfaceMessages.outsideMapDescription} />
-              </h2>
-              <Button
-                size="sm"
+              <h2>{outsideAreasLabel}</h2>
+              <IconButton
                 onClick={() => {
                   setLocationValue(null);
                 }}
                 color="primary"
+                aria-label={intl.formatMessage(interfaceMessages.deselect)}
+                icon={<X />}
                 data-testid="deselect-outside-area-button"
-              >
-                <AppMessage message={interfaceMessages.deselect} />
-              </Button>
+              />
             </div>
           </div>
         )}
 
-        {mapOptions.allowSearch && (
+        {mapOptions.allowSearch && searchWording && (
           <Suspense fallback={null}>
             {useStub ? (
-              <GeospatialStubSearch className="absolute top-4 left-4 z-20" />
+              <GeospatialStubSearch
+                searchLabel={searchWording.label}
+                className="absolute top-4 left-4 z-20"
+              />
             ) : (
               <GeospatialSearch
+                searchLabel={searchWording.label}
+                searchNoMatch={searchWording.noMatch}
+                searchFailed={searchWording.failed}
                 accessToken={accessToken}
                 map={mapRef.current}
                 proximity={mapOptions.center}
@@ -615,7 +625,7 @@ export default function GeospatialInterface({
             disabled={initialSelectionValue === 'outside-selectable-areas'}
             data-testid="outside-selectable-areas-button"
           >
-            <AppMessage message={interfaceMessages.outsideSelectableAreas} />
+            {outsideAreasLabel}
           </Button>
         </CollapsablePrompts>
       </motion.div>

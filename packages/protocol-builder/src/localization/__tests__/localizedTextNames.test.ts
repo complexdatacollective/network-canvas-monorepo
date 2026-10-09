@@ -5,6 +5,7 @@ import {
   collectLocalizedStrings,
   type CurrentProtocol,
   CurrentProtocolSchema,
+  PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
 } from '@codaco/protocol-validation';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 
@@ -126,6 +127,29 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
   ],
   [[...fixtureStage('NameGenerator'), 'panels'], [panel]],
   [[...fixtureStage('NameGeneratorQuickAdd'), 'panels'], [panel]],
+  // The messages a name generator shows around its limits and its panels,
+  // and a map's search messages, which the fixture leaves unset.
+  ...(['NameGenerator', 'NameGeneratorQuickAdd'] as const).flatMap(
+    (type) =>
+      [
+        [
+          [...fixtureStage(type), 'minNodesNotice'],
+          en('You must name more people.'),
+        ],
+        [
+          [...fixtureStage(type), 'maxNodesNotice'],
+          en('You have named enough people.'),
+        ],
+        [
+          [...fixtureStage(type), 'externalDataError'],
+          en('The list could not be loaded.'),
+        ],
+      ] as const,
+  ),
+  [[...fixtureStage('Geospatial'), 'mapOptions', 'allowSearch'], true],
+  [[...fixtureStage('Geospatial'), 'searchLabel'], en('Search places')],
+  [[...fixtureStage('Geospatial'), 'searchNoMatch'], en('No place matches.')],
+  [[...fixtureStage('Geospatial'), 'searchFailed'], en('The search failed.')],
   [
     [...fixtureStage('CategoricalBin'), 'prompts', 0, 'otherVariable'],
     'contactOther',
@@ -159,6 +183,96 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
     },
   ],
   [
+    ['codebook', 'node', 'family_member', 'variables', 'relativesNotRecorded'],
+    {
+      name: 'relativesNotRecorded',
+      label: 'relativesNotRecorded',
+      type: 'categorical',
+      options: PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS.map(
+        ({ value, label }) => ({ value, label: en(label) }),
+      ),
+    },
+  ],
+  // The wording questions show only while participants choose the words, so
+  // the fixture chooses them for the pattern check to reach their rules.
+  [[...fixtureStage('FamilyPedigree'), 'framing'], 'participantPreference'],
+  [
+    [...fixtureStage('FamilyPedigree'), 'wording', 'framingChoiceTitle'],
+    en('How should we describe your family?'),
+  ],
+  [
+    [...fixtureStage('FamilyPedigree'), 'wording', 'framingChoiceDescription'],
+    en('Choose the words you would like us to use for your family.'),
+  ],
+  [
+    [...fixtureStage('FamilyPedigree'), 'wording', 'framingControlLabel'],
+    en('Wording'),
+  ],
+  // The note under the family tree shows only while a question about the
+  // family is limited to one sex at birth, so the fixture limits its question.
+  [
+    [
+      ...fixtureStage('FamilyPedigree'),
+      'nominationPrompts',
+      0,
+      'onlyForSexAssignedAtBirth',
+    ],
+    'female',
+  ],
+  [
+    [...fixtureStage('FamilyPedigree'), 'wording', 'nominationLimitHint'],
+    en(
+      '{sex, select, female {People assigned male at birth can’t be selected.} other {People assigned female at birth can’t be selected.}}',
+    ),
+  ],
+  [
+    [...fixtureStage('FamilyPedigree'), 'completeness'],
+    {
+      scope: 'firstDegree',
+      enforcement: 'recommended',
+      relativesNotRecordedAttribute: 'relativesNotRecorded',
+      itemText: {
+        parents: { listItem: en('Add parents') },
+        siblings: {
+          listItem: en('Add brothers and sisters'),
+          noneButton: en('None'),
+          question: en('Any brothers or sisters?'),
+        },
+        children: {
+          listItem: en('Add children'),
+          noneButton: en('None'),
+          question: en('Any children?'),
+        },
+        details: { listItem: en('Some details are missing') },
+      },
+      recommendedNote: en('You can continue without these.'),
+    },
+  ],
+  // Every rule's message, which the fixture's own rules do not all need.
+  [
+    ['interfaceText', 'validation'],
+    Object.fromEntries(
+      [
+        'required',
+        'minLength',
+        'maxLength',
+        'minValue',
+        'maxValue',
+        'minDate',
+        'maxDate',
+        'minSelected',
+        'maxSelected',
+        'unique',
+        'differentFrom',
+        'sameAs',
+        'greaterThan',
+        'lessThan',
+        'greaterThanOrEqual',
+        'lessThanOrEqual',
+      ].map((rule) => [rule, en(`The ${rule} message.`)]),
+    ),
+  ],
+  [
     [...fixtureStage('NetworkComposer'), 'nodeForm'],
     { fields: [composerScaleField('warmth', 'How warm are they?')] },
   ],
@@ -171,6 +285,44 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
         form: { fields: [composerScaleField('bond', 'How strong is it?')] },
       },
     ],
+  ],
+  // A composer with a connection type holds the tooltip of the tool that draws it.
+  [
+    [...fixtureStage('NetworkComposer'), 'tooltips', 'drawConnection'],
+    { 'en-US': 'Draw edge' },
+  ],
+  // Each setting a configuration switches on is held once that configuration is
+  // on, so the fixture exercises it: grouping, automatic layout and at-risk
+  // statuses.
+  [[...fixtureStage('NetworkComposer'), 'convexHullVariable'], 'contactType'],
+  [[...fixtureStage('NetworkComposer'), 'groupsHeading'], en('Groups')],
+  [[...fixtureStage('Narrative'), 'behaviours', 'automaticLayout'], true],
+  [
+    [...fixtureStage('Narrative'), 'tooltips', 'pauseLayout'],
+    en('Pause automatic layout'),
+  ],
+  [
+    [...fixtureStage('Narrative'), 'tooltips', 'resumeLayout'],
+    en('Resume automatic layout'),
+  ],
+  [[...fixtureStage('NarrativePedigree'), 'showAtRiskStatuses'], true],
+  [
+    [
+      ...fixtureStage('NarrativePedigree'),
+      'conditionText',
+      'notation',
+      'atRiskAffected',
+    ],
+    en('May develop this condition'),
+  ],
+  [
+    [
+      ...fixtureStage('NarrativePedigree'),
+      'conditionText',
+      'notation',
+      'atRiskCarrier',
+    ],
+    en('May carry this condition'),
   ],
 ];
 
@@ -372,6 +524,39 @@ describe('nameLocalizedText', () => {
   it('names a stage label', () => {
     expect(name([...stageAt('Anonymisation'), 'label'])).toEqual([
       { key: '["label"]', label: 'Stage name' },
+    ]);
+  });
+
+  it('names the words of a pedigree’s list by the group they sit in', () => {
+    expect(
+      name([
+        ...stageAt('FamilyPedigree'),
+        'completeness',
+        'itemText',
+        'siblings',
+        'noneButton',
+      ]),
+    ).toEqual([
+      { key: '[]', label: 'Completeness' },
+      { key: '["completeness"]', label: 'What the list says' },
+      {
+        key: '["completeness","itemText","siblings","noneButton"]',
+        label: 'No brothers or sisters',
+      },
+    ]);
+    expect(
+      name([
+        ...stageAt('FamilyPedigree'),
+        'nodeConfiguration',
+        'nameField',
+        'hint',
+      ]),
+    ).toEqual([
+      { key: '[]', label: 'Person attributes' },
+      {
+        key: '["nodeConfiguration","nameField","hint"]',
+        label: 'Name question guidance',
+      },
     ]);
   });
 

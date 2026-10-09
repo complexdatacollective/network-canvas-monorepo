@@ -28,6 +28,7 @@ import ui from '../../../store/modules/ui';
 import type { RegisterBeforeNext, StageProps } from '../../../types';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import NetworkComposer from '../NetworkComposer';
+import { composerWords } from './composerWords';
 
 beforeAll(() => {
   if (typeof window.ResizeObserver === 'undefined') {
@@ -55,6 +56,7 @@ const GROUP_VAR = 'var-group';
 const stage = {
   id: 'nc1',
   type: 'NetworkComposer' as const,
+  ...composerWords(),
   label: { en: 'Network Composer' },
   subject: { entity: 'node' as const, type: NODE_TYPE },
   layoutVariable: asEntityAttributeReference(LAYOUT_VAR),

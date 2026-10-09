@@ -7,6 +7,7 @@ import type { SqlError } from 'effect/sql';
 import {
   type CurrentProtocol,
   CurrentProtocolSchema,
+  withInterfaceText,
 } from '@codaco/protocol-validation';
 import {
   forceExpire,
@@ -154,78 +155,88 @@ export const FIXTURES = [
 ] as const;
 
 // A schema parse rather than a cast: the reference fields are branded.
+/**
+ * A protocol as Studio stores it: holding the interface text for what it
+ * shows, as every protocol Studio assembles does.
+ */
 export function baseProtocol(): CurrentProtocol {
-  return CurrentProtocolSchema.parse({
-    name: 'Test Protocol',
-    schemaVersion: 9,
-    localization: { defaultLocale: 'en', locales: ['en'] },
-    codebook: {
-      node: {
-        person: {
-          name: 'Person',
-          label: { en: 'Person' },
-          color: 'node-color-seq-1',
-          shape: { default: 'circle' },
-          variables: {
-            personName: {
-              name: 'Name',
-              label: 'Name',
-              type: 'text',
-              component: 'Text',
-            },
-            layoutPosition: {
-              name: 'Layout_Position',
-              label: 'Layout position',
-              type: 'layout',
+  return withInterfaceText(
+    CurrentProtocolSchema.parse({
+      name: 'Test Protocol',
+      schemaVersion: 9,
+      localization: { defaultLocale: 'en', locales: ['en'] },
+      codebook: {
+        node: {
+          person: {
+            name: 'Person',
+            label: { en: 'Person' },
+            color: 'node-color-seq-1',
+            shape: { default: 'circle' },
+            variables: {
+              personName: {
+                name: 'Name',
+                label: 'Name',
+                type: 'text',
+                component: 'Text',
+              },
+              layoutPosition: {
+                name: 'Layout_Position',
+                label: 'Layout position',
+                type: 'layout',
+              },
             },
           },
         },
-      },
-      edge: {
-        knows: {
-          name: 'Knows',
-          label: { en: 'Knows' },
-          color: 'edge-color-seq-1',
-        },
-      },
-    },
-    stages: [
-      {
-        id: 'nameGenerator1',
-        type: 'NameGenerator',
-        label: { en: 'Generate Names' },
-        subject: { entity: 'node', type: 'person' },
-        form: {
-          title: { en: 'Add person' },
-          fields: [{ variable: 'personName', prompt: { en: 'Enter name' } }],
-        },
-        prompts: [{ id: 'prompt1', text: { en: 'Who do you know?' } }],
-      },
-      {
-        id: 'sociogram1',
-        type: 'Sociogram',
-        label: { en: 'Sociogram' },
-        subject: { entity: 'node', type: 'person' },
-        background: { concentricCircles: 4 },
-        prompts: [
-          {
-            id: 'socPrompt1',
-            text: { en: 'Position nodes' },
-            layout: { layoutVariable: 'layoutPosition' },
+        edge: {
+          knows: {
+            name: 'Knows',
+            label: { en: 'Knows' },
+            color: 'edge-color-seq-1',
           },
-        ],
+        },
       },
-      // Every schema 9 interview ends at a finish stage.
-      {
-        id: 'finish',
-        type: 'FinishSession',
-        label: { en: 'Finish' },
-        title: { en: 'Thank you' },
-        content: { en: 'The interview is complete.' },
-        outcome: 'completed',
-      },
-    ],
-  });
+      stages: [
+        {
+          id: 'nameGenerator1',
+          type: 'NameGenerator',
+          label: { en: 'Generate Names' },
+          subject: { entity: 'node', type: 'person' },
+          form: {
+            title: { en: 'Add person' },
+            fields: [{ variable: 'personName', prompt: { en: 'Enter name' } }],
+          },
+          prompts: [{ id: 'prompt1', text: { en: 'Who do you know?' } }],
+        },
+        {
+          id: 'sociogram1',
+          type: 'Sociogram',
+          label: { en: 'Sociogram' },
+          subject: { entity: 'node', type: 'person' },
+          background: { concentricCircles: 4 },
+          prompts: [
+            {
+              id: 'socPrompt1',
+              text: { en: 'Position nodes' },
+              layout: { layoutVariable: 'layoutPosition' },
+            },
+          ],
+        },
+        // Every schema 9 interview ends at a finish stage.
+        {
+          id: 'finish',
+          type: 'FinishSession',
+          label: { en: 'Finish' },
+          title: { en: 'Thank you' },
+          content: { en: 'The interview is complete.' },
+          finishLabel: { en: 'Finish' },
+          finishConfirmation: { en: 'Finish this interview?' },
+          finishedNotice: { en: 'This interview is finished.' },
+          finishFailed: { en: 'The interview could not be finished.' },
+          outcome: 'completed',
+        },
+      ],
+    }),
+  );
 }
 
 export const waitForLockWait = Effect.fnUntraced(function* () {

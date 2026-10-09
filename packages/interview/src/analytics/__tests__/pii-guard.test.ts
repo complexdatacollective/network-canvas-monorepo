@@ -226,7 +226,15 @@ function buildRosterStore(tracker: Tracker) {
         codebook: rosterCodebook,
         stages: [
           { id: 's0', type: 'Information' },
-          { id: 's1', type: 'NameGeneratorRoster', prompts: [{ id: 'p1' }] },
+          {
+            id: 's1',
+            type: 'NameGeneratorRoster',
+            externalDataError: { en: 'External data could not be loaded.' },
+            allAddedNotice: {
+              en: 'There is nothing left to add from this list.',
+            },
+            prompts: [{ id: 'p1' }],
+          },
         ],
       } as never,
     },

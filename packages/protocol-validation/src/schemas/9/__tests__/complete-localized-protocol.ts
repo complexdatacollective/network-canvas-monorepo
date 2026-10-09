@@ -1,9 +1,15 @@
 import { localized, localizedOptions } from '../../../utils/test-utils.ts';
 import {
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import { DEFAULT_FINISH_SESSION_TEXT } from '../finish-session-defaults.ts';
+import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
+import {
+  pedigreeCompletenessText,
+  pedigreeNameField,
+} from './family-pedigree-text.ts';
 
 const shape = { default: 'circle' };
 
@@ -43,6 +49,61 @@ export const completeProtocol = () => ({
           label: 'Your name',
           type: 'text',
           component: 'Text',
+          validation: { required: true, minLength: 2, maxLength: 40 },
+        },
+        // Every validation rule and date bound, so the protocol holds every
+        // validation message.
+        egoNameAgain: {
+          name: 'EgoNameAgain',
+          label: 'Your name again',
+          type: 'text',
+          component: 'Text',
+          validation: { sameAs: 'egoName' },
+        },
+        egoNickname: {
+          name: 'EgoNickname',
+          label: 'Your nickname',
+          type: 'text',
+          component: 'Text',
+          validation: { differentFrom: 'egoName' },
+        },
+        egoAge: {
+          name: 'EgoAge',
+          label: 'Your age',
+          type: 'number',
+          component: 'Number',
+          validation: { minValue: 0, maxValue: 120 },
+        },
+        egoFirstAge: {
+          name: 'EgoFirstAge',
+          label: 'Age at first',
+          type: 'number',
+          component: 'Number',
+          validation: { lessThanVariable: 'egoAge' },
+        },
+        egoLastAge: {
+          name: 'EgoLastAge',
+          label: 'Age at last',
+          type: 'number',
+          component: 'Number',
+          validation: {
+            greaterThanVariable: 'egoFirstAge',
+            lessThanOrEqualToVariable: 'egoAge',
+          },
+        },
+        egoMovedAge: {
+          name: 'EgoMovedAge',
+          label: 'Age when moved',
+          type: 'number',
+          component: 'Number',
+          validation: { greaterThanOrEqualToVariable: 'egoFirstAge' },
+        },
+        egoBorn: {
+          name: 'EgoBorn',
+          label: 'Born',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { min: '1900-01-01', max: '2020-12-31' },
         },
       },
     },
@@ -58,6 +119,7 @@ export const completeProtocol = () => ({
             label: 'Name',
             type: 'text',
             component: 'Text',
+            validation: { unique: true },
           },
           nickname: {
             name: 'Nickname',
@@ -75,6 +137,7 @@ export const completeProtocol = () => ({
             label: 'Category',
             type: 'categorical',
             options: options(['Friend', 'friend'], ['Family', 'family']),
+            validation: { minSelected: 1, maxSelected: 2 },
           },
           other: {
             name: 'Other',
@@ -131,6 +194,12 @@ export const completeProtocol = () => ({
             label: 'Sex',
             type: 'categorical',
             options: localizedOptions(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS),
+          },
+          relativesNotRecorded: {
+            name: 'RelativesNotRecorded',
+            label: 'Relatives not recorded',
+            type: 'categorical',
+            options: localizedOptions(PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS),
           },
           birthYear: {
             name: 'BirthYear',
@@ -244,11 +313,24 @@ export const completeProtocol = () => ({
         title: localized('Add a person'),
         fields: [{ variable: 'name', prompt: localized('Their name') }],
       },
+      behaviours: { minNodes: 1, maxNodes: 5 },
+      minNodesNotice: localized(
+        '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+      ),
+      maxNodesNotice: localized(
+        'You have completed this task. Click the next arrow to continue.',
+      ),
+      externalDataError: localized('External data could not be loaded.'),
       panels: [
         {
           id: 'panel',
           title: localized('People so far'),
           dataSource: 'existing',
+        },
+        {
+          id: 'external',
+          title: localized('From the roster'),
+          dataSource: 'roster',
         },
       ],
       prompts: [{ id: 'p1', text: localized('Who do you know?') }],
@@ -256,6 +338,7 @@ export const completeProtocol = () => ({
     {
       id: 'quickAdd',
       type: 'NameGeneratorQuickAdd',
+      quickAddHint: localized('Press Enter when you are finished.'),
       label: localized('Quick add'),
       subject: { entity: 'node', type: 'person' },
       quickAdd: 'name',
@@ -264,10 +347,22 @@ export const completeProtocol = () => ({
     {
       id: 'roster',
       type: 'NameGeneratorRoster',
+      externalDataError: localized('External data could not be loaded.'),
+      allAddedNotice: localized('There is nothing left to add from this list.'),
       label: localized('Roster'),
       subject: { entity: 'node', type: 'person' },
       dataSource: 'roster',
       panelTitle: localized('Available to add'),
+      behaviours: { minNodes: 1, maxNodes: 5 },
+      minNodesNotice: localized(
+        '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+      ),
+      maxNodesNotice: localized(
+        'You have completed this task. Click the next arrow to continue.',
+      ),
+      searchLabel: localized('Search'),
+      searchNoMatch: localized('Nothing matched your search term.'),
+      searchOptions: { fuzziness: 0.5, matchProperties: ['name'] },
       cardOptions: {
         additionalProperties: [
           { label: localized('Card detail'), variable: 'name' },
@@ -284,6 +379,11 @@ export const completeProtocol = () => ({
       label: localized('Sociogram'),
       subject: { entity: 'node', type: 'person' },
       background: { concentricCircles: 3 },
+      behaviours: { automaticLayout: true },
+      tooltips: {
+        pauseLayout: localized('Pause automatic layout'),
+        resumeLayout: localized('Resume automatic layout'),
+      },
       prompts: [
         {
           id: 'p1',
@@ -300,6 +400,15 @@ export const completeProtocol = () => ({
       quickAdd: 'name',
       layoutVariable: 'layoutPosition',
       background: { concentricCircles: 3 },
+      addNamePlaceholder: localized('Type a name, then press Enter'),
+      overtakenEditNotice: localized('Your edit has not been saved.'),
+      convexHullVariable: 'category',
+      groupsHeading: localized('Groups'),
+      tooltips: {
+        addPerson: localized('Add node'),
+        automaticLayout: localized('Automatic layout'),
+        drawConnection: localized('Draw edge'),
+      },
       nodeForm: {
         fields: [
           {
@@ -437,8 +546,23 @@ export const completeProtocol = () => ({
           label: localized('Preset'),
           layoutVariable: 'layoutPosition',
           highlight: [{ variable: 'flag', label: localized('Flagged') }],
+          edges: { display: ['knows'] },
+          groupVariable: 'category',
         },
       ],
+      behaviours: { automaticLayout: true, freeDraw: true },
+      attributesHeading: localized('Attributes'),
+      linksHeading: localized('Links'),
+      groupsHeading: localized('Groups'),
+      tooltips: {
+        enableDrawing: localized('Enable drawing'),
+        disableDrawing: localized('Disable drawing'),
+        freezeAnnotations: localized('Freeze annotations'),
+        unfreezeAnnotations: localized('Unfreeze annotations'),
+        resetAnnotations: localized('Reset annotations'),
+        pauseLayout: localized('Pause automatic layout'),
+        resumeLayout: localized('Resume automatic layout'),
+      },
     },
     {
       id: 'anonymisation',
@@ -462,6 +586,13 @@ export const completeProtocol = () => ({
     {
       id: 'geospatial',
       type: 'Geospatial',
+      offlineNotice: localized(
+        'You are offline — the map will not load until you reconnect.',
+      ),
+      mapUnavailable: localized(
+        'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
+      ),
+      outsideAreasLabel: localized('Outside Selectable Areas'),
       label: localized('Map'),
       subject: { entity: 'node', type: 'person' },
       mapOptions: {
@@ -472,7 +603,13 @@ export const completeProtocol = () => ({
         dataSourceAssetId: 'map',
         color: 'node-color-seq-1',
         targetFeatureProperty: 'name',
+        allowSearch: true,
       },
+      searchLabel: localized('Search'),
+      searchNoMatch: localized('Nothing matched your search term.'),
+      searchFailed: localized(
+        'Search could not be completed. Try again in a moment.',
+      ),
       prompts: [
         {
           id: 'p1',
@@ -484,11 +621,13 @@ export const completeProtocol = () => ({
     {
       id: 'familyPedigree',
       type: 'FamilyPedigree',
+      wording: familyPedigreeWordingIn(),
       label: localized('Family'),
       subject: { entity: 'node', type: 'relative' },
       prompt: localized('Build your family'),
       nodeConfiguration: {
         nameAttribute: 'displayName',
+        nameField: pedigreeNameField(),
         sexAssignedAtBirthAttribute: 'sex',
         egoAttribute: 'isEgo',
       },
@@ -497,6 +636,12 @@ export const completeProtocol = () => ({
         kindAttribute: 'relType',
         gestationalCarrierAttribute: 'isGc',
         currentPartnerAttribute: 'isActive',
+      },
+      completeness: {
+        scope: 'parents',
+        enforcement: 'recommended',
+        relativesNotRecordedAttribute: 'relativesNotRecorded',
+        ...pedigreeCompletenessText(),
       },
       form: {
         fields: [
@@ -529,6 +674,28 @@ export const completeProtocol = () => ({
           inheritancePattern: 'autosomalDominant',
         },
       ],
+      showAtRiskStatuses: true,
+      keyHeading: localized('Key'),
+      tooltips: {
+        clearFocus: localized('Clear focus'),
+        saveSnapshot: localized('Save snapshot'),
+      },
+      conditionText: {
+        heading: localized('Conditions'),
+        instruction: localized('Select a condition to see who it affects.'),
+        notation: {
+          affected: localized('Has this condition'),
+          obligateAffected: localized('Will develop this condition'),
+          obligateCarrier: localized('Carries this condition'),
+          atRiskAffected: localized('May develop this condition'),
+          atRiskCarrier: localized('May carry this condition'),
+          unknown: localized('Not known'),
+        },
+        snapshotCondition: localized('{title}: {condition}'),
+        snapshotInheritance: localized(
+          '{title}: {condition} — inheritance for {name}',
+        ),
+      },
     },
     // Schema 8 has no finish stage; the migration adds this one, with this
     // id and the supplied text.
@@ -538,6 +705,17 @@ export const completeProtocol = () => ({
       label: localized(DEFAULT_FINISH_SESSION_TEXT.en.label),
       title: localized(DEFAULT_FINISH_SESSION_TEXT.en.title),
       content: localized(DEFAULT_FINISH_SESSION_TEXT.en.content),
+      // The English Network Canvas supplies, as the migration writes it.
+      finishLabel: localized('Finish'),
+      finishConfirmation: localized(
+        'Are you sure you want to finish the interview?',
+      ),
+      finishedNotice: localized(
+        'This interview is finished, and its answers can no longer be changed.',
+      ),
+      finishFailed: localized(
+        'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
+      ),
       outcome: 'completed',
     },
   ],

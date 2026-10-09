@@ -9,13 +9,14 @@ import {
 } from 'motion/react';
 import { type Ref, useLayoutEffect, useRef } from 'react';
 
-import type { MessageDescriptor } from '@codaco/app-i18n/messages';
-import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { MotionButton } from '@codaco/fresco-ui/Button';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
+import { formatRelativeTerm } from '../kinship';
 import { messages } from '../messages';
 import type { Relation } from '../model';
+import { usePedigreeWords } from '../pedigreeWords';
 
 /** The least size of a button on screen, in pixels, however far the family
  * is zoomed out: above the 24 pixel minimum target size. */
@@ -32,7 +33,6 @@ type AddRelativeMenuProps = {
 
 type MenuItem = {
   relation: Relation;
-  label: MessageDescriptor;
   /** Where the button sits around the person's symbol, the gap between
    * them, and the edge it grows from when kept from shrinking. */
   placement: string;
@@ -46,22 +46,18 @@ type MenuItem = {
 const ITEMS: MenuItem[] = [
   {
     relation: 'parent',
-    label: messages.addParent,
     placement: 'bottom-full left-1/2 pb-4 -translate-x-1/2 origin-bottom',
   },
   {
     relation: 'sibling',
-    label: messages.addSibling,
     placement: 'right-full top-1/2 pr-4 -translate-y-1/2 origin-right',
   },
   {
     relation: 'partner',
-    label: messages.addPartner,
     placement: 'left-full top-1/2 pl-4 -translate-y-1/2 origin-left',
   },
   {
     relation: 'child',
-    label: messages.addChild,
     placement: 'top-full left-1/2 pt-4 -translate-x-1/2 origin-top',
   },
 ];
@@ -104,6 +100,7 @@ export default function AddRelativeMenu({
   scale,
 }: AddRelativeMenuProps) {
   const intl = useAppIntl();
+  const words = usePedigreeWords();
   const reduceMotion = useReducedMotion();
 
   // How much each button is enlarged against the canvas's zoom.
@@ -167,7 +164,7 @@ export default function AddRelativeMenu({
               />
             }
           >
-            <AppMessage message={item.label} />
+            {formatRelativeTerm(item.relation, words)}
           </Toolbar.Button>
         </motion.div>
       ))}

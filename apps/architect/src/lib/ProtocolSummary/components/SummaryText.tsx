@@ -3,6 +3,7 @@ import { useCallback, useContext } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
+import { LocalizedMessageVersionsSummary } from '@codaco/protocol-builder/fields/LocalizedMessageField';
 import {
   fallbackDependsOnBrowser,
   resolveTranslation,
@@ -11,6 +12,7 @@ import {
   getLocaleMetadata,
   type LocaleTag,
   type LocalizedString,
+  type MessageArguments,
   messageText,
   sortByLanguageName,
 } from '@codaco/protocol-validation';
@@ -104,13 +106,33 @@ export const DefaultLanguageBadge = () => {
   );
 };
 
+/**
+ * One translation. A message whose setting declares arguments reads as its
+ * versions, one for each case it distinguishes, with its placeholders named.
+ */
 const TranslationContent = ({
   text,
   format,
+  locale,
+  messageArguments,
 }: {
   text: string;
   format: Format;
-}) => (format === 'markdown' ? <Markdown label={text} /> : text);
+  locale: LocaleTag;
+  messageArguments: MessageArguments | undefined;
+}) => {
+  if (messageArguments !== undefined) {
+    return (
+      <LocalizedMessageVersionsSummary
+        message={text}
+        declaration={messageArguments}
+        locale={locale}
+      />
+    );
+  }
+  const literal = messageText(text);
+  return format === 'markdown' ? <Markdown label={literal} /> : literal;
+};
 
 /**
  * What participants using `locale` see in place of the missing translation:
@@ -145,9 +167,11 @@ const MissingTranslation = ({
 const Translations = ({
   value,
   format,
+  messageArguments,
 }: {
   value: LocalizedString;
   format: Format;
+  messageArguments: MessageArguments | undefined;
 }) => {
   const languageName = useLanguageName();
   const { protocol } = useContext(SummaryContext);
@@ -180,8 +204,10 @@ const Translations = ({
                 className="m-0 min-w-[min(12rem,100%)] flex-1"
               >
                 <TranslationContent
-                  text={messageText(message)}
+                  text={message}
                   format={format}
+                  locale={locale}
+                  messageArguments={messageArguments}
                 />
               </dd>
             )}
@@ -200,14 +226,33 @@ const Translations = ({
 const LocalizedText = ({
   value,
   format,
-}: SummaryTextProps & { format: Format }) => {
+  messageArguments,
+}: SummaryTextProps & {
+  format: Format;
+  messageArguments?: MessageArguments;
+}) => {
   const multilingual = useMultilingualSummary();
   const resolved = useDefaultLanguageText()(value);
   if (!resolved || value === undefined) return null;
-  if (multilingual) return <Translations value={value} format={format} />;
+  const text = value[resolved.locale];
+  if (text === undefined) return null;
+  if (multilingual) {
+    return (
+      <Translations
+        value={value}
+        format={format}
+        messageArguments={messageArguments}
+      />
+    );
+  }
   return (
     <span {...languageAttributes(resolved.locale)}>
-      <TranslationContent text={resolved.text} format={format} />
+      <TranslationContent
+        text={text}
+        format={format}
+        locale={resolved.locale}
+        messageArguments={messageArguments}
+      />
     </span>
   );
 };
@@ -218,4 +263,16 @@ export const SummaryText = ({ value }: SummaryTextProps) => (
 
 export const SummaryMarkdown = ({ value }: SummaryTextProps) => (
   <LocalizedText value={value} format="markdown" />
+);
+
+/** A message that reads differently by what it is about: its versions. */
+export const SummaryMessage = ({
+  value,
+  messageArguments,
+}: SummaryTextProps & { messageArguments: MessageArguments }) => (
+  <LocalizedText
+    value={value}
+    format="plain"
+    messageArguments={messageArguments}
+  />
 );

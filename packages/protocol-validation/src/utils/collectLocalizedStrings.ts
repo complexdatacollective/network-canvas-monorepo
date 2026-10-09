@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import type { MessageArguments } from '../localization/messageArguments.ts';
 import {
   getLocalizedStringDescriptor,
   type LocalizedString,
@@ -14,12 +15,16 @@ export type LocalizedStringHit = Readonly<{
   path: (string | number)[];
   value: LocalizedString;
   format: LocalizedStringFormat;
+  /** The arguments a localized message may use; absent for literal text. */
+  arguments?: MessageArguments;
 }>;
 
 export type LocalizedStringSite = Readonly<{
   path: (string | number)[];
   value: unknown;
   format: LocalizedStringFormat;
+  /** The arguments a localized message may use; absent for literal text. */
+  arguments?: MessageArguments;
   /** The tagged declaration, shared by every site it describes. */
   schema: z.ZodType;
   /** The owning object lets the field be left out. */
@@ -162,7 +167,16 @@ const walk = (
   const descriptor = getLocalizedStringDescriptor(node);
   if (descriptor) {
     return [
-      { path, value, format: descriptor.format, schema: node, ...context },
+      {
+        path,
+        value,
+        format: descriptor.format,
+        ...(descriptor.arguments === undefined
+          ? {}
+          : { arguments: descriptor.arguments }),
+        schema: node,
+        ...context,
+      },
     ];
   }
 
@@ -248,7 +262,16 @@ export const collectLocalizedStringsFromSchema = (
 ): LocalizedStringHit[] =>
   collectLocalizedStringSites(schema, value).flatMap((site) =>
     isLocalizedStringValue(site.value)
-      ? [{ path: site.path, value: site.value, format: site.format }]
+      ? [
+          {
+            path: site.path,
+            value: site.value,
+            format: site.format,
+            ...(site.arguments === undefined
+              ? {}
+              : { arguments: site.arguments }),
+          },
+        ]
       : [],
   );
 

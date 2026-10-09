@@ -2,6 +2,7 @@ import {
   createMessageError,
   type MessageDescriptor,
 } from '@codaco/app-i18n/messages';
+import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 
 import { runtimeMessages } from '../i18n/runtimeMessages';
@@ -28,7 +29,7 @@ function refusalMessage(
   }
   return isPassphraseRequiredError(error)
     ? runtimeMessages.protectedAnswersNotSaved
-    : runtimeMessages.submissionFailed;
+    : formMessages.submitFailed;
 }
 
 /** Why a write was refused, in words the participant can act on. */

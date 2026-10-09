@@ -9,7 +9,7 @@
     - option "Dana"
   - heading "Very close" [level=4]
   - listbox "Container for the value 'Very close'"
-  - button "Expand drawer" [disabled]: 0 unplaced
+  - button "0 unplaced Expand drawer" [disabled]
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

@@ -425,8 +425,8 @@ async function migrateStoredProtocolRow(
   const protocolRow = await encryptProtocol(nextStored);
 
   // The hash covers a protocol's structure only (codebook and stages, and from
-  // schema 9 the localization declaration), so a migration that changed
-  // nothing structural keeps the row's key. Nothing moves: rewrite the row in
+  // schema 9 the localization declaration and any shared wording), so a
+  // migration that changed nothing structural keeps the row's key. Nothing moves: rewrite the row in
   // place and leave sessions and assets alone. A migration to schema 9 always
   // moves the key, because it adds the localization declaration.
   if (hash === previousHash) {

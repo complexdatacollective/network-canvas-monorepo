@@ -54,6 +54,18 @@ Three stage-level behaviors change how participants can interact with the canvas
 - **Allow repositioning** lets the participant drag nodes around the canvas.
 - **Free-draw** turns on annotation tools, so the participant or researcher can draw freehand over the network with a mouse, finger, or stylus.
 
+<AppOnly app="current">
+
+### Words on the canvas
+
+The **Words on the canvas** section of the stage editor holds the headings of the panels and the tooltips of the tools. Network Canvas fills in starting wording for each, in every language it has wording for, and you can change and translate it like any other text (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)). A setting is in the section only while the part of the stage it belongs to is switched on, and it is removed when you switch that part off.
+
+- **Attributes**, **Links** and **Groups** headings, which are there when a preset highlights attributes, shows links or groups nodes.
+- **Drawing tooltips** for enabling and disabling drawing and for freezing, unfreezing and resetting annotations, which are there when **Free-draw** is on.
+- **Layout tooltips** for pausing and resuming the automatic layout, which are there when **Automatic layout** is on.
+
+</AppOnly>
+
 ## Designing presets around your research questions
 
 A preset is a lens on the network, so design each one to open a specific line of questioning you want to raise in the interview. Keep each preset focused — one clear idea per view is easier for a participant to read and easier for you to talk about.

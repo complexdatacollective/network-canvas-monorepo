@@ -135,6 +135,30 @@ const canvasScale = (page: Page): Promise<number> =>
       : Number.NaN;
   });
 
+// A researcher's own wording for the key, its tools and the snapshot heading,
+// each distinct from the text Network Canvas supplies, so an assertion on one
+// proves the stage's own setting is what the participant sees.
+const KEY_HEADING = 'Guide - matrix check';
+const CONDITION_HEADING = 'Diagnoses - matrix check';
+const CONDITION_INSTRUCTION = 'Pick one to see who has it - matrix check';
+const CLEAR_FOCUS = 'Stop focusing - matrix check';
+const SAVE_SNAPSHOT = 'Keep a picture - matrix check';
+const NOTATION_AFFECTED = 'Has it now - matrix check';
+const NOTATION_OBLIGATE_AFFECTED = 'Will get it - matrix check';
+const NOTATION_OBLIGATE_CARRIER = 'Passes it on - matrix check';
+const NOTATION_UNKNOWN = 'Nobody knows - matrix check';
+const NOTATION_AT_RISK_AFFECTED = 'Could get it - matrix check';
+const NOTATION_AT_RISK_CARRIER = 'Could pass it on - matrix check';
+// The snapshot headings take the stage's title, the condition and the person
+// in focus as message arguments, so they are written as messages (a plain
+// string would show the braces as they are).
+const SNAPSHOT_CONDITION = {
+  'en-US': '{title} with {condition} - matrix check',
+};
+const SNAPSHOT_INHERITANCE = {
+  'en-US': '{title} for {name} and {condition} - matrix check',
+};
+
 const HD = "Huntington's disease";
 
 /**
@@ -191,7 +215,10 @@ const CF = 'cystic fibrosis';
  * at-risk carriers. Shared by the at-risk-hidden and at-risk-shown scenarios;
  * only `showAtRiskStatuses` differs.
  */
-function buildCousinUnion(showAtRiskStatuses: boolean): SyntheticInterview {
+function buildCousinUnion(
+  showAtRiskStatuses: boolean,
+  wording?: Record<string, string>,
+): SyntheticInterview {
   const { synth, fpStageId, attributeOf, person, bioEdge, partnerEdge } =
     scaffoldPedigree([CF]);
 
@@ -228,6 +255,7 @@ function buildCousinUnion(showAtRiskStatuses: boolean): SyntheticInterview {
     label: 'Inheritance Pathways',
     sourceStageId: fpStageId,
     showAtRiskStatuses,
+    ...(wording && { wording }),
     diseases: [
       {
         id: 'cf',
@@ -508,6 +536,32 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
           page.getByText('May develop this condition'),
         ).toBeVisible();
         await expect(page.getByText('May carry this condition')).toBeVisible();
+      },
+    },
+    {
+      id: 'at-risk-notation-wording',
+      covers: [
+        'conditionText.notation.atRiskAffected',
+        'conditionText.notation.atRiskCarrier',
+      ],
+      currentStep: 1,
+      seedNetwork: true,
+      build: () =>
+        buildCousinUnion(true, {
+          'conditionText.notation.atRiskAffected': NOTATION_AT_RISK_AFFECTED,
+          'conditionText.notation.atRiskCarrier': NOTATION_AT_RISK_CARRIER,
+        }),
+      run: async ({ page }) => {
+        // The key lists both at-risk rows in the stage's own words, and not
+        // in the words Network Canvas supplies. (A row's text is matched as
+        // part of the row, whose glyph also draws a "?".)
+        const key = page.locator('aside[aria-label="Condition key"]');
+        await expect(key.getByText(NOTATION_AT_RISK_AFFECTED)).toBeVisible();
+        await expect(key.getByText(NOTATION_AT_RISK_CARRIER)).toBeVisible();
+        await expect(key.getByText('May develop this condition')).toHaveCount(
+          0,
+        );
+        await expect(key.getByText('May carry this condition')).toHaveCount(0);
       },
     },
     {
@@ -943,10 +997,9 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         interview.interviewId = interviewId;
         await interview.goto(1);
 
+        // The stage cannot be drawn, so the task error boundary reports it.
         await expect(
-          page.getByText(
-            'This stage references a family pedigree that could not be found.',
-          ),
+          page.getByText(/this task could not be displayed/),
         ).toBeVisible();
         await expect(page.locator('[data-pedigree-member="true"]')).toHaveCount(
           0,
@@ -961,6 +1014,17 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         'saveSnapshot',
         'label',
         'readOnlyInvariant',
+        'keyHeading',
+        'tooltips.clearFocus',
+        'tooltips.saveSnapshot',
+        'conditionText.heading',
+        'conditionText.instruction',
+        'conditionText.notation.affected',
+        'conditionText.notation.obligateAffected',
+        'conditionText.notation.obligateCarrier',
+        'conditionText.notation.unknown',
+        'conditionText.snapshotCondition',
+        'conditionText.snapshotInheritance',
       ],
       chromiumOnly: true,
       currentStep: 1,
@@ -983,6 +1047,20 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
           label: 'Inheritance Pathways',
           sourceStageId: fpStageId,
           showAtRiskStatuses: false,
+          wording: {
+            'keyHeading': KEY_HEADING,
+            'tooltips.clearFocus': CLEAR_FOCUS,
+            'tooltips.saveSnapshot': SAVE_SNAPSHOT,
+            'conditionText.heading': CONDITION_HEADING,
+            'conditionText.instruction': CONDITION_INSTRUCTION,
+            'conditionText.notation.affected': NOTATION_AFFECTED,
+            'conditionText.notation.obligateAffected':
+              NOTATION_OBLIGATE_AFFECTED,
+            'conditionText.notation.obligateCarrier': NOTATION_OBLIGATE_CARRIER,
+            'conditionText.notation.unknown': NOTATION_UNKNOWN,
+            'conditionText.snapshotCondition': SNAPSHOT_CONDITION,
+            'conditionText.snapshotInheritance': SNAPSHOT_INHERITANCE,
+          },
           diseases: [
             {
               id: 'hd',
@@ -999,6 +1077,28 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         const before = await protocol.getNetworkState(interview.interviewId);
         const you = member(page, 'You');
         await expect(you).toBeVisible();
+
+        // The condition key carries the stage's own words, and none of the
+        // words Network Canvas supplies.
+        const key = page.locator('aside[aria-label="Condition key"]');
+        for (const [own, supplied] of [
+          [KEY_HEADING, 'Key'],
+          [CONDITION_HEADING, 'Conditions'],
+          [CONDITION_INSTRUCTION, 'Select a condition to see who it affects.'],
+          [NOTATION_AFFECTED, 'Has this condition'],
+          [NOTATION_OBLIGATE_AFFECTED, 'Will develop this condition'],
+          [NOTATION_OBLIGATE_CARRIER, 'Carries this condition'],
+          [NOTATION_UNKNOWN, 'Not known'],
+        ] as const) {
+          await expect(key.getByText(own, { exact: true })).toBeVisible();
+          await expect(key.getByText(supplied, { exact: true })).toHaveCount(0);
+        }
+        await expect(
+          page.getByRole('button', { name: SAVE_SNAPSHOT, exact: true }),
+        ).toBeVisible();
+        await expect(
+          page.getByRole('button', { name: 'Save snapshot', exact: true }),
+        ).toHaveCount(0);
 
         // The toolbar zooms in and out, and brings the whole family back.
         const opened = await canvasScale(page);
@@ -1037,19 +1137,37 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
           .poll(() => canvasScale(page))
           .toBeGreaterThan(beforeKeyZoom);
 
-        // Once a condition is chosen, Enter focuses on a person.
+        // Once a condition is chosen, a snapshot is headed by the stage's own
+        // message for a condition (the file is named after the heading).
         await page
           .getByRole('button', { name: "Huntington's Disease", exact: true })
           .click();
+        const saveSnapshot = page.getByRole('button', {
+          name: SAVE_SNAPSHOT,
+          exact: true,
+        });
+        const conditionDownload = page.waitForEvent('download');
+        await saveSnapshot.click();
+        expect((await conditionDownload).suggestedFilename()).toBe(
+          'inheritance-pathways-with-huntington-s-disease-matrix-check.png',
+        );
+
+        // Enter focuses on a person; the snapshot is then headed by the
+        // stage's own message for a condition focused on that person.
         await you.focus();
         await page.keyboard.press('Enter');
         await expect(you).toHaveAttribute('aria-pressed', 'true');
+        await expect(
+          page.getByRole('button', { name: CLEAR_FOCUS, exact: true }),
+        ).toBeVisible();
+        await expect(
+          page.getByRole('button', { name: 'Clear focus', exact: true }),
+        ).toHaveCount(0);
 
-        const downloadPromise = page.waitForEvent('download');
-        await page.getByRole('button', { name: 'Save snapshot' }).click();
-        const download = await downloadPromise;
-        expect(download.suggestedFilename()).toMatch(
-          /^inheritance-pathways.*\.png$/i,
+        const inheritanceDownload = page.waitForEvent('download');
+        await saveSnapshot.click();
+        expect((await inheritanceDownload).suggestedFilename()).toBe(
+          'inheritance-pathways-for-you-and-huntington-s-disease-matrix-check.png',
         );
 
         // Read-only invariant, under a zoom/keyboard/snapshot interaction mix.

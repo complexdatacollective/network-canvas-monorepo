@@ -15,11 +15,16 @@ import {
 import { useSelector } from 'react-redux';
 
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
-import { Button } from '@codaco/fresco-ui/Button';
+import { IconButton } from '@codaco/fresco-ui/Button';
 import Icon from '@codaco/fresco-ui/Icon';
 import Node, { type NodeShape } from '@codaco/fresco-ui/Node';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
 import { SegmentedToolbar } from '@codaco/fresco-ui/SegmentedToolbar';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@codaco/fresco-ui/Tooltip';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { NodeColorReference } from '@codaco/protocol-validation';
 import { isFamilyPedigreeStageMetadata } from '@codaco/shared-consts';
@@ -28,8 +33,11 @@ import { useNodeMeasurement } from '../../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import {
   useLocalizedString,
+  useOptionalLocalizedText,
+  useResolveLocalizedMessage,
   useResolveLocalizedString,
 } from '../../../localization/ProtocolLocalizationProvider';
+import { useContentFormat } from '../../../localization/useContentFormat';
 import {
   getActiveSession,
   getEdgeColorForType,
@@ -51,6 +59,10 @@ import PedigreeLayout from '../../FamilyPedigree/pedigree-layout/components/Pedi
 import { dimColor } from '../../FamilyPedigree/pedigree-layout/dimColor';
 import type { PedigreeLink } from '../../FamilyPedigree/pedigree-layout/types';
 import { pedigreeLinksOf } from '../../FamilyPedigree/pedigreeLinks';
+import {
+  type PedigreeWords,
+  usePedigreeText,
+} from '../../FamilyPedigree/pedigreeWords';
 import { usePanZoom } from '../../FamilyPedigree/usePanZoom';
 import { pedigreeFraming } from '../../pedigree-common/framing';
 import { readParticipantsFamily } from '../../pedigree-common/membership';
@@ -69,7 +81,7 @@ import { buildGeneticGraph } from '../genetics/geneticGraph';
 import { affectedSet, getStatusLabel, type Status } from '../genetics/status';
 import { computeContributors } from '../highlight';
 import { messages } from '../messages';
-import ConditionPanel from './ConditionPanel';
+import ConditionPanel, { type ConditionPanelWords } from './ConditionPanel';
 import { Sticker } from './Sticker';
 
 type NarrativeStage = StageProps<'NarrativePedigree'>['stage'];
@@ -127,8 +139,35 @@ export default function NarrativePedigreeView({
   stage,
 }: NarrativePedigreeViewProps) {
   const intl = useAppIntl();
+  const contentFormat = useContentFormat();
   const resolve = useResolveLocalizedString();
+  const resolveMessage = useResolveLocalizedMessage();
   const stageLabel = useLocalizedString(stage.label).text;
+  // The stage's own words (`stage-wording/narrative-pedigree.ts`). The two
+  // at-risk rows are held only while the stage shows at-risk statuses.
+  const atRiskAffected = useOptionalLocalizedText(
+    stage.conditionText.notation.atRiskAffected,
+  );
+  const atRiskCarrier = useOptionalLocalizedText(
+    stage.conditionText.notation.atRiskCarrier,
+  );
+  const conditionWords: ConditionPanelWords = {
+    keyHeading: resolve(stage.keyHeading).text,
+    heading: resolve(stage.conditionText.heading).text,
+    instruction: resolve(stage.conditionText.instruction).text,
+    saveSnapshot: resolve(stage.tooltips.saveSnapshot).text,
+    notation: {
+      affected: resolve(stage.conditionText.notation.affected).text,
+      obligateAffected: resolve(stage.conditionText.notation.obligateAffected)
+        .text,
+      obligateCarrier: resolve(stage.conditionText.notation.obligateCarrier)
+        .text,
+      atRiskAffected,
+      atRiskCarrier,
+      unknown: resolve(stage.conditionText.notation.unknown).text,
+    },
+  };
+  const clearFocusText = resolve(stage.tooltips.clearFocus).text;
   // Architect stores the selected node palette entry as a typed protocol
   // reference. SVG and inline CSS need the corresponding theme variable, so
   // resolve every disease once at the view boundary before it reaches the key,
@@ -197,10 +236,18 @@ export default function NarrativePedigreeView({
   // without a name the view can read (an encrypted name awaiting the
   // passphrase) by how they are related to the participant, in the source
   // stage's words. Soft hyphens let long kinship words break inside a symbol.
+  const pedigreeText = usePedigreeText();
+  const sourceWords = useMemo<PedigreeWords | null>(
+    () =>
+      sourceStage ? { wording: sourceStage.wording, text: pedigreeText } : null,
+    [sourceStage, pedigreeText],
+  );
   const labels = useMemo(
     () =>
-      family ? labelEveryone(family, framing, intl) : new Map<string, string>(),
-    [family, framing, intl],
+      family && sourceWords
+        ? labelEveryone(family, framing, contentFormat, sourceWords)
+        : new Map<string, string>(),
+    [family, framing, contentFormat, sourceWords],
   );
   const labelFor = useCallback(
     (personId: string) => labels.get(personId) ?? '',
@@ -611,16 +658,22 @@ export default function NarrativePedigreeView({
     const base = stageLabel;
     if (!selectedDiseaseLabel) return base;
     return focalLabel
-      ? intl.formatMessage(messages.snapshotInheritance, {
+      ? resolveMessage(stage.conditionText.snapshotInheritance, {
           title: base,
           condition: selectedDiseaseLabel,
           name: focalLabel,
-        })
-      : intl.formatMessage(messages.snapshotCondition, {
+        }).text
+      : resolveMessage(stage.conditionText.snapshotCondition, {
           title: base,
           condition: selectedDiseaseLabel,
-        });
-  }, [stageLabel, selectedDiseaseLabel, focalLabel, intl]);
+        }).text;
+  }, [
+    stageLabel,
+    selectedDiseaseLabel,
+    focalLabel,
+    stage.conditionText,
+    resolveMessage,
+  ]);
 
   const snapshotFilename = useMemo(() => {
     const slug = snapshotTitle
@@ -659,13 +712,9 @@ export default function NarrativePedigreeView({
   }, [isCapturing, snapshotFilename]);
 
   if (!config || !family) {
-    return (
-      <div className="interface flex items-center justify-center p-8 text-center">
-        <p>
-          <AppMessage message={messages.sourceMissing} />
-        </p>
-      </div>
-    );
+    // The schema requires the source stage to be a Family Pedigree, so this is
+    // a broken protocol. The task error boundary reports it.
+    throw new Error('The Narrative Pedigree source stage could not be found.');
   }
 
   const highlightedNodeIds = focalId !== null ? highlight.nodes : undefined;
@@ -694,6 +743,8 @@ export default function NarrativePedigreeView({
           glyphColour={snapshotGlyphColour}
           keyShape="circle"
           showAtRiskStatuses={showAtRiskStatuses}
+          keyHeading={conditionWords.keyHeading}
+          notationWords={conditionWords.notation}
           showKey={selectedDisease !== undefined}
         />
       )}
@@ -732,6 +783,7 @@ export default function NarrativePedigreeView({
             never collapses; the pedigree pane gives up space instead, and the
             family can be panned and zoomed within it. */}
         <ConditionPanel
+          words={conditionWords}
           diseases={diseases}
           selectedDiseaseId={selectedDiseaseId}
           onSelect={(id) => {
@@ -778,21 +830,27 @@ export default function NarrativePedigreeView({
             onKeyDown={(event) => zoomForKey(event, panZoom)}
           >
             {focalId !== null && (
-              <Button
-                size="sm"
-                variant="default"
-                icon={
-                  <Icon
-                    name="RotateCcw"
-                    aria-hidden="true"
-                    className="size-[1em]"
-                  />
-                }
-                className="pointer-events-auto"
-                onClick={() => setFocalId(null)}
-              >
-                <AppMessage message={messages.clearFocus} />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <IconButton
+                      size="sm"
+                      variant="default"
+                      aria-label={clearFocusText}
+                      icon={
+                        <Icon
+                          name="RotateCcw"
+                          aria-hidden="true"
+                          className="size-[1em]"
+                        />
+                      }
+                      className="pointer-events-auto"
+                      onClick={() => setFocalId(null)}
+                    />
+                  }
+                />
+                <TooltipContent>{clearFocusText}</TooltipContent>
+              </Tooltip>
             )}
             <SegmentedToolbar
               aria-label={intl.formatMessage(messages.zoomControls)}

@@ -58,10 +58,12 @@ import {
   INTERFACE_OWNED_OPTION_SETS,
   optionsMatchInterfaceOwnedSet,
 } from './interface-owned-options.ts';
+import { InterfaceTextSchema } from './interface-text.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
 import { type Prompt, type Stage, stageSchema } from './stages/index.ts';
 import { findDuplicateDiseaseLabels } from './stages/narrative-pedigree.ts';
 import type { ComposerFormField } from './stages/network-composer.ts';
+import { missingRequiredStageSettings } from './supplied-stage-text.ts';
 import { findTimelineStructureProblems } from './timeline-structure.ts';
 import {
   ComponentTypes,
@@ -657,6 +659,10 @@ const ProtocolSchema = z
     experiments: ExperimentsSchema.optional(),
     lastModified: z.string().datetime().optional(),
     codebook: CodebookSchema,
+    // The interview's words that belong to no one stage (see
+    // `interface-text.ts`). Architect keeps it holding what the protocol
+    // uses; the interview shows its own words for anything it lacks.
+    interfaceText: InterfaceTextSchema.optional(),
     assetManifest: z.record(z.string(), assetSchema).optional(),
     stages: z.array(stageSchema).superRefine((stages, ctx) => {
       // Check for duplicate stage IDs
@@ -668,6 +674,19 @@ const ProtocolSchema = z
           path: [],
         });
       }
+
+      // A setting the interview shows on a stage is written there. The stage
+      // must hold it wherever its configuration shows it (see
+      // `missingRequiredStageSettings`).
+      stages.forEach((stage, index) => {
+        for (const path of missingRequiredStageSettings(stage)) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `The interview shows this stage's "${path.join('.')}" setting, so the stage must hold it.`,
+            path: [index, ...path],
+          });
+        }
+      });
 
       // Every route ends at a finish stage, every stage is on a route, and a
       // protocol has exactly one finish stage.

@@ -10,6 +10,7 @@ import {
   Extension,
   getSchema,
   isProseMirrorFragment,
+  mergeAttributes,
   Node as TiptapNode,
 } from '@tiptap/core';
 import { BulletList } from '@tiptap/extension-bullet-list';
@@ -44,6 +45,7 @@ import {
   List,
   ListOrdered,
   Minus,
+  Plus,
   Redo,
   Trash2,
   Undo,
@@ -61,7 +63,7 @@ import {
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
-import Button, { iconButtonVariants } from '../../Button';
+import Button, { buttonVariants, iconButtonVariants } from '../../Button';
 import { Popover, PopoverContent, PopoverTrigger } from '../../Popover';
 import {
   controlVariants,
@@ -145,6 +147,18 @@ const messages = defineMessages({
     id: 'frescoUi.richTextEditor.redo',
     defaultMessage: 'Redo',
     description: 'Accessible name of the redo button in the editor toolbar.',
+  },
+  insertToken: {
+    id: 'frescoUi.richTextEditor.insertToken',
+    defaultMessage: 'Insert “{token}”',
+    description:
+      'Accessible name of a toolbar button that inserts a placeholder, such as a person’s name, at the caret. {token} is the placeholder’s label, which the button also shows.',
+  },
+  tokens: {
+    id: 'frescoUi.richTextEditor.tokens',
+    defaultMessage: 'Insert a placeholder',
+    description:
+      'Accessible name of the toolbar group of buttons that each insert a placeholder, such as a person’s name, into the text.',
   },
   linkUrlLabel: {
     id: 'frescoUi.richTextEditor.linkUrlLabel',
@@ -237,6 +251,78 @@ const SingleLineDocument = TiptapNode.create({
   content: 'paragraph',
 });
 
+/**
+ * A placeholder the field can hold among its text, such as a person's name
+ * filled in later. `id` is what the value records; `label` is what the field
+ * shows, on the chip in the text and on the button that inserts it.
+ */
+export type RichTextEditorToken = Readonly<{ id: string; label: string }>;
+
+/** The node type a token is held as: `{ type: 'token', attrs: { id } }`. */
+const TOKEN_NODE = 'token';
+
+const tokenChipClasses = cx(
+  'mx-0.5 rounded-sm px-1.5 py-0.5 whitespace-nowrap',
+  'bg-input-contrast/10 font-semibold',
+  '[&.ProseMirror-selectednode]:outline-primary [&.ProseMirror-selectednode]:outline-2',
+);
+
+/**
+ * A token, held as one character of the line: the caret steps over it,
+ * Backspace removes it whole, and it is copied and pasted between fields that
+ * offer it. A pasted token a field does not offer arrives as its label, as
+ * text: the field cannot hold it, and the words are what was meant.
+ */
+const createTokenNode = (tokens: readonly RichTextEditorToken[]) => {
+  const labels = new Map(tokens.map(({ id, label }) => [id, label]));
+  const labelOf = (id: unknown) =>
+    typeof id === 'string' ? (labels.get(id) ?? id) : '';
+
+  return TiptapNode.create({
+    name: TOKEN_NODE,
+    group: 'inline',
+    inline: true,
+    atom: true,
+    selectable: true,
+    draggable: false,
+
+    addAttributes() {
+      return {
+        id: {
+          default: null,
+          parseHTML: (element) => element.getAttribute('data-token'),
+          renderHTML: (attributes) => ({ 'data-token': attributes.id }),
+        },
+      };
+    },
+
+    parseHTML() {
+      return [
+        {
+          tag: 'span[data-token]',
+          getAttrs: (element) =>
+            labels.has(element.getAttribute('data-token') ?? '') ? null : false,
+        },
+      ];
+    },
+
+    renderHTML({ node, HTMLAttributes }): DOMOutputSpec {
+      return [
+        'span',
+        mergeAttributes(HTMLAttributes, {
+          class: tokenChipClasses,
+          contenteditable: 'false',
+        }),
+        labelOf(node.attrs.id),
+      ];
+    },
+
+    renderText({ node }) {
+      return labelOf(node.attrs.id);
+    },
+  });
+};
+
 /** The line being collected, and whether a break is owed before its next text. */
 type OneLineRun = {
   collected: JSONContent[];
@@ -286,6 +372,19 @@ const addText = (
 
   run.breakPending = false;
   pushRun(run, text, marks);
+};
+
+/**
+ * Adds a token to the line, after the space any break before it is owed. A
+ * token says something, as text does, so it is never a break itself.
+ */
+const addToken = (run: OneLineRun, node: JSONContent) => {
+  if (run.breakPending && run.collected.length > 0) {
+    pushRun(run, SPACE, undefined);
+  }
+
+  run.breakPending = false;
+  run.collected.push({ type: TOKEN_NODE, attrs: { id: node.attrs?.id } });
 };
 
 /** A run of newlines, however the platform that wrote them spells one. */
@@ -370,6 +469,11 @@ const collectOneLine = (
       if (node.text) {
         addTextLines(run, node.text, marksInSchema(node.marks, schema));
       }
+      continue;
+    }
+
+    if (node.type === TOKEN_NODE && Object.hasOwn(schema.nodes, TOKEN_NODE)) {
+      addToken(run, node);
       continue;
     }
 
@@ -499,6 +603,7 @@ type ExtensionOptions = {
   enableThematicBreak: boolean;
   singleLine: boolean;
   placeholder?: string;
+  tokens: readonly RichTextEditorToken[];
 };
 
 // Factory function to create custom extensions with typography classes
@@ -510,6 +615,7 @@ function createCustomExtensions({
   enableThematicBreak,
   singleLine,
   placeholder,
+  tokens,
 }: ExtensionOptions): AnyExtension[] {
   const CustomParagraph = Paragraph.extend({
     renderHTML({ HTMLAttributes }): DOMOutputSpec {
@@ -590,6 +696,10 @@ function createCustomExtensions({
     extensions.push(SingleLineDocument, SingleLineInput);
   }
 
+  if (tokens.length > 0) {
+    extensions.push(createTokenNode(tokens));
+  }
+
   if (headingLevels.length > 0) {
     extensions.push(
       CustomHeading.configure({
@@ -646,6 +756,14 @@ const toolbarButtonStyles = iconButtonVariants({
 });
 
 const toolbarSeparatorStyles = cx('mx-2 h-5 w-px shrink-0 bg-current/20');
+
+const toolbarTokenButtonStyles = buttonVariants({
+  size: 'sm',
+  color: 'dynamic',
+  variant: 'text',
+  textStyle: 'default',
+  className: 'h-10 gap-1 px-3 text-sm [&>.lucide]:size-4',
+});
 
 const editorContentVariants = cva({
   base: cx(
@@ -732,6 +850,13 @@ type RichTextEditorFieldProps = CreateFormFieldProps<
      * only the value, never the height.
      */
     'compact'?: boolean;
+    /**
+     * Placeholders the text can hold, such as a person's name filled in
+     * later. Each shows as a chip in the text, and the toolbar offers a
+     * button to insert each at the caret. The value holds one as
+     * `{ type: 'token', attrs: { id } }` among the paragraph's text.
+     */
+    'tokens'?: readonly RichTextEditorToken[];
     'id': string;
     'name': string;
     'aria-describedby': string;
@@ -786,6 +911,7 @@ export default function RichTextEditorField({
   placeholder,
   singleLine: singleLineProp = false,
   compact = false,
+  tokens: tokensProp,
   className,
   onFocus,
   onBlur,
@@ -803,6 +929,14 @@ export default function RichTextEditorField({
   const [isLinkPopoverOpen, setIsLinkPopoverOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const options = normalizeToolbarOptions(toolbarOptions, singleLine);
+  // By what they say rather than by identity: a host passing a fresh array
+  // on every render would otherwise rebuild the editor on every render.
+  const tokensKey = JSON.stringify(tokensProp ?? []);
+  const tokens = useMemo(
+    (): readonly RichTextEditorToken[] =>
+      JSON.parse(tokensKey) as RichTextEditorToken[],
+    [tokensKey],
+  );
   const editorId = id ?? name ?? 'rich-text-editor';
   const editorName = name ?? editorId;
   const linkInputId = `${editorId}-link-url`;
@@ -911,6 +1045,7 @@ export default function RichTextEditorField({
         enableThematicBreak: options.thematicBreak,
         singleLine,
         placeholder,
+        tokens,
       }),
     [
       headingLevels,
@@ -920,6 +1055,7 @@ export default function RichTextEditorField({
       options.thematicBreak,
       singleLine,
       placeholder,
+      tokens,
     ],
   );
   // The schema these extensions make, worked out before there is an editor to
@@ -1198,6 +1334,7 @@ export default function RichTextEditorField({
   const showHeadings = headingLevels.length > 0;
   const showLists = options.lists.bullet || options.lists.ordered;
   const showThematicBreak = options.thematicBreak;
+  const showTokens = tokens.length > 0;
   const showHistory = options.history;
 
   // Track which groups are visible for separator logic
@@ -1206,6 +1343,7 @@ export default function RichTextEditorField({
     showHeadings,
     showLists,
     showThematicBreak,
+    showTokens,
     showHistory,
   ].filter(Boolean);
   const hasToolbar = visibleGroups.length > 0;
@@ -1586,6 +1724,46 @@ export default function RichTextEditorField({
               showHeadings ||
               showLists ||
               showThematicBreak) &&
+              showTokens && (
+                <Toolbar.Separator className={toolbarSeparatorStyles} />
+              )}
+
+            {showTokens && (
+              <Toolbar.Group
+                className={toolbarGroupStyles}
+                aria-label={intl.formatMessage(messages.tokens)}
+              >
+                {tokens.map((token) => (
+                  <ToolbarButton
+                    key={token.id}
+                    className={toolbarTokenButtonStyles}
+                    disabled={isDisabled}
+                    aria-label={intl.formatMessage(messages.insertToken, {
+                      token: token.label,
+                    })}
+                    onClick={() =>
+                      editor
+                        .chain()
+                        .focus()
+                        .insertContent({
+                          type: TOKEN_NODE,
+                          attrs: { id: token.id },
+                        })
+                        .run()
+                    }
+                  >
+                    <Plus aria-hidden />
+                    {token.label}
+                  </ToolbarButton>
+                ))}
+              </Toolbar.Group>
+            )}
+
+            {(showTextFormatting ||
+              showHeadings ||
+              showLists ||
+              showThematicBreak ||
+              showTokens) &&
               showHistory && (
                 <Toolbar.Separator className={toolbarSeparatorStyles} />
               )}
