@@ -1369,10 +1369,16 @@ export function planStandIns(
     const [only] = genetic;
     if (genetic.length !== 1 || only === undefined) continue;
     // Full siblings — the same primary parents, at least one of them
-    // (`fullSiblingsOf`) — share one; anyone else has their own.
+    // (`fullSiblingsOf`), and so the same genetic parent — share one; anyone
+    // else has their own. A surrogate, who neither raises them nor gave them
+    // genes, tells nobody apart.
     const raised = parents.some((link) => PRIMARY_PARENT_KINDS.has(link.kind));
     const key = raised
       ? parents
+          .filter(
+            (link) =>
+              PRIMARY_PARENT_KINDS.has(link.kind) || isGeneticKind(link.kind),
+          )
           .map((link) => link.source)
           .toSorted()
           .join('\u0000')

@@ -176,6 +176,65 @@ describe('the stand-in rule', () => {
     ]);
   });
 
+  test('full siblings share one stand-in when a surrogate carried one of them', () => {
+    // The surrogate gave neither of them genes and raises neither, so she
+    // does not tell them apart.
+    const result = changes(
+      family(
+        [
+          person('ego', { isEgo: true }),
+          person('sib'),
+          person('mum', { sex: ['female'] }),
+          person('carrier', { sex: ['female'] }),
+        ],
+        [
+          link('mum', 'ego', 'biological'),
+          link('mum', 'sib', 'biological'),
+          link('carrier', 'ego', 'surrogate', { carrier: true }),
+        ],
+      ),
+    );
+    expect(result.people.map((planned) => planned.id)).toEqual(['stand-in-1']);
+    expect(result.links.map((planned) => planned.target)).toEqual([
+      'ego',
+      'sib',
+    ]);
+  });
+
+  test('children of one donor raised by the same parent share one stand-in, and children of different donors do not', () => {
+    const result = changes(
+      family(
+        [
+          person('ego', { isEgo: true }),
+          person('sib'),
+          person('halfSib'),
+          person('mum', { sex: ['female'] }),
+          person('donor', { sex: ['male'] }),
+          person('otherDonor', { sex: ['male'] }),
+        ],
+        [
+          link('mum', 'ego', 'social'),
+          link('mum', 'sib', 'social'),
+          link('mum', 'halfSib', 'social'),
+          link('donor', 'ego', 'donor'),
+          link('donor', 'sib', 'donor'),
+          link('otherDonor', 'halfSib', 'donor'),
+        ],
+      ),
+    );
+    expect(result.people.map((planned) => planned.id)).toEqual([
+      'stand-in-1',
+      'stand-in-2',
+    ]);
+    expect(
+      result.links.map((planned) => [planned.source, planned.target]),
+    ).toEqual([
+      ['stand-in-1', 'ego'],
+      ['stand-in-1', 'sib'],
+      ['stand-in-2', 'halfSib'],
+    ]);
+  });
+
   test('a stand-in gives way to a genetic parent recorded in their place', () => {
     const result = changes(
       family(
