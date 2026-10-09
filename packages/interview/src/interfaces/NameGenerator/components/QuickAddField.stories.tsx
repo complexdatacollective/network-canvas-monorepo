@@ -8,10 +8,10 @@ import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import Form from '@codaco/fresco-ui/form/Form';
+import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
 import type { NodeDefinition } from '@codaco/protocol-validation';
 
-import { runtimeMessages } from '../../../i18n/runtimeMessages';
 import QuickAddField from './QuickAddField';
 
 const customIconOptions = ['add-a-person', 'add-a-place'];
@@ -373,7 +373,7 @@ const slowRefusal: FormSubmitHandler = async () => {
   return {
     success: false,
     fieldErrors: {
-      name: [createMessageError(runtimeMessages.submissionFailed)],
+      name: [createMessageError(formMessages.submitFailed)],
     },
   };
 };

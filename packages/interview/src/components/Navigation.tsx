@@ -3,6 +3,7 @@
 import { useDirection } from '@base-ui/react/direction-provider';
 import { Drawer } from '@base-ui/react/drawer';
 import {
+  ALargeSmall,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -324,7 +325,7 @@ const Navigation = ({
       title: (
         <AppMessage
           message={
-            reviewMode ? messages.exitReviewTitle : messages.exitInterviewTitle
+            reviewMode ? messages.exitReviewTitle : messages.exitInterview
           }
         />
       ),
@@ -448,12 +449,15 @@ const Navigation = ({
                     <fieldset className="m-0 flex min-w-0 flex-col gap-1.5 border-0 p-0">
                       <legend
                         id={textSizeLabelId}
-                        className="px-2 py-1.5 text-sm font-semibold"
+                        className="flex items-center gap-2 px-2 py-1.5 text-sm font-semibold"
                       >
-                        <AppMessage
-                          message={messages.textSize}
-                          values={{ hidden: renderHiddenChunks }}
-                        />
+                        <ALargeSmall aria-hidden className="size-5 shrink-0" />
+                        <span className="sr-only">
+                          <AppMessage
+                            message={messages.textSize}
+                            values={{ hidden: renderHiddenChunks }}
+                          />
+                        </span>
                       </legend>
                       <div ref={textSizeControlRef} className="w-full">
                         <InputField

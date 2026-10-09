@@ -6,6 +6,7 @@ import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
+import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
@@ -17,7 +18,6 @@ import { entityAttributesProperty, type NcNode } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import * as attributePatch from '../../../forms/formValuesToAttributePatch';
-import { runtimeMessages } from '../../../i18n/runtimeMessages';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
@@ -253,7 +253,7 @@ describe('the person form', () => {
       nodes: [person('sis', { sex: ['female'] })],
       submitted: Promise.resolve({
         success: false,
-        formErrors: [createMessageError(runtimeMessages.submissionFailed)],
+        formErrors: [createMessageError(formMessages.submitFailed)],
       }),
     });
     await user.type(nameField(), 'Ann');

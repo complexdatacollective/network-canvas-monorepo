@@ -3,7 +3,6 @@ import type { NodeDefinition } from '@codaco/protocol-validation';
 import { entityAttributesProperty, type NcNode } from '@codaco/shared-consts';
 
 import { resolveInterviewIntl } from '../i18n/resolveIntl';
-import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import { getNodeLabelAttribute } from './getNodeLabelAttribute';
 
 type ResolveRosterNodeLabelArgs = {
@@ -54,8 +53,6 @@ export const resolveRosterNodeLabel = ({
     }
   }
 
-  return resolveInterviewIntl(intl).formatMessage(messages.unnamedRosterItem, {
-    subject: subjectLabel,
-    number: sequentialNumber,
-  });
+  const resolved = resolveInterviewIntl(intl);
+  return `${subjectLabel} ${resolved.formatNumber(sequentialNumber)}`;
 };

@@ -340,30 +340,26 @@ describe('NodeForm whose answer is checked against a protected one', () => {
     await user.click(screen.getByRole('button', { name: 'Finished' }));
     await waitFor(() =>
       expect(nickname).toHaveAccessibleDescription(
-        /checked against answers protected by your passphrase/,
+        /Your answers have not been saved/,
       ),
     );
 
     const form = screen.getByRole('dialog', { name: 'Add a person' });
-    await user.click(
-      within(form).getByRole('button', { name: 'Enter your passphrase' }),
-    );
+    await user.click(within(form).getByRole('button', { name: 'Passphrase' }));
     const prompt = await screen.findByRole('dialog', {
-      name: 'Enter your passphrase',
+      name: 'Passphrase',
     });
     await user.type(
       within(prompt).getByLabelText(/^Passphrase/, { selector: 'input' }),
       'pw',
     );
-    await user.click(
-      within(prompt).getByRole('button', { name: 'Submit passphrase' }),
-    );
+    await user.click(within(prompt).getByRole('button', { name: 'Continue' }));
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Finished' })).toHaveFocus(),
     );
     expect(
-      within(form).queryByRole('button', { name: 'Enter your passphrase' }),
+      within(form).queryByRole('button', { name: 'Passphrase' }),
     ).toBeNull();
     expect(nickname).toHaveValue('Ali');
 
@@ -386,9 +382,7 @@ describe('NodeForm whose answer is checked against a protected one', () => {
 
     await user.click(screen.getByRole('button', { name: 'Add a person' }));
     const nickname = await screen.findByRole('textbox', { name: 'Nickname' });
-    expect(
-      screen.queryByRole('button', { name: 'Enter your passphrase' }),
-    ).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Passphrase' })).toBeNull();
 
     await user.type(nickname, 'Alice');
     await user.click(screen.getByRole('button', { name: 'Finished' }));

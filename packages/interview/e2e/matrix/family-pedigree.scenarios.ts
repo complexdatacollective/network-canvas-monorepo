@@ -1807,13 +1807,11 @@ function encryptedFormField(): ScenarioDefinition {
       await member(page, 'You').hover();
       await expect(page.getByTestId('pedigree-menu-sibling')).toHaveCount(0);
 
-      await notice
-        .getByRole('button', { name: 'Enter your passphrase' })
-        .click();
+      await notice.getByRole('button', { name: 'Passphrase' }).click();
       // No passphrase has been chosen in this interview yet, so this one
       // becomes it.
       const overlay = page.getByRole('dialog', {
-        name: 'Choose a passphrase',
+        name: 'Passphrase',
       });
       await overlay
         .getByRole('textbox', { name: 'Passphrase', exact: true })
@@ -1821,7 +1819,7 @@ function encryptedFormField(): ScenarioDefinition {
       await overlay
         .getByRole('textbox', { name: 'Confirm Passphrase' })
         .fill('correct-horse-battery');
-      await overlay.getByRole('button', { name: 'Submit passphrase' }).click();
+      await overlay.getByRole('button', { name: 'Continue' }).click();
       await expect(notice).toHaveCount(0);
 
       await addRelativeOf(page, 'You', 'sibling');

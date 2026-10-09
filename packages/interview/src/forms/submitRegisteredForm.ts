@@ -1,18 +1,17 @@
 import type { ContextType } from 'react';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
+import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import { type FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type {
   FlattenedErrors,
   FormSubmissionResult,
 } from '@codaco/fresco-ui/form/store/types';
 
-import { runtimeMessages as messages } from '../i18n/runtimeMessages';
-
 type FormStoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
 
 const genericSubmissionErrors: FlattenedErrors = {
-  formErrors: [createMessageError(messages.submissionFailed)],
+  formErrors: [createMessageError(formMessages.submitFailed)],
   fieldErrors: {},
 };
 

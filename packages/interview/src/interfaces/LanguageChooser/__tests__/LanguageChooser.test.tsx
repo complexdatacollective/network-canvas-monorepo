@@ -233,7 +233,7 @@ describe('LanguageChooser', () => {
     await user.click(within(group).getByRole('option', { name: label('es') }));
 
     expect(
-      await screen.findByRole('heading', { name: 'Elige un idioma' }),
+      await screen.findByRole('listbox', { name: 'Elige un idioma' }),
     ).toBeVisible();
     expect(screen.getByRole('main')).toHaveAttribute('lang', 'es');
     expect(screen.getByRole('listbox', { name: 'Elige un idioma' })).toBe(
@@ -266,13 +266,13 @@ describe('LanguageChooser', () => {
     expect(spanish).toHaveFocus();
     expect(english).toHaveAttribute('aria-selected', 'true');
     expect(
-      screen.getByRole('heading', { name: 'Choose a language' }),
+      screen.getByRole('listbox', { name: 'Choose a language' }),
     ).toBeVisible();
 
     await user.keyboard('{Enter}');
 
     expect(
-      await screen.findByRole('heading', { name: 'Elige un idioma' }),
+      await screen.findByRole('listbox', { name: 'Elige un idioma' }),
     ).toBeVisible();
     expect(spanish).toHaveAttribute('aria-selected', 'true');
     expect(spanish).toHaveAttribute('tabindex', '0');
@@ -291,7 +291,7 @@ describe('LanguageChooser', () => {
     expect(shell).toHaveAttribute('lang', 'ar');
     // The interface has no Arabic, so its own text stays in English.
     expect(
-      screen.getByRole('heading', { name: 'Choose a language' }),
+      screen.getByRole('listbox', { name: 'Choose a language' }),
     ).toBeVisible();
     expect(
       within(group).getByRole('option', { name: label('ar') }),
@@ -318,7 +318,7 @@ describe('LanguageChooser', () => {
     expect(next).toBeEnabled();
 
     await user.click(within(group).getByRole('option', { name: label('es') }));
-    await screen.findByRole('heading', { name: 'Elige un idioma' });
+    await screen.findByRole('listbox', { name: 'Elige un idioma' });
 
     expect(liveStore().getState().session.network).toEqual(networkBefore);
     expect(onSync).not.toHaveBeenCalled();

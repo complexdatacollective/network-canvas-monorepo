@@ -79,7 +79,7 @@ afterEach(() => {
 type AnonymisationStage = StageProps<'Anonymisation'>['stage'];
 
 const VERIFY_LINE =
-  'You chose a passphrase earlier in this interview. Enter it to continue.';
+  'Some answers on this screen are protected by a passphrase. Keep it safe: you will need it to see or change these answers later, and it cannot be recovered if it is forgotten.';
 
 /**
  * Holds every key derivation until released, so the check of a passphrase

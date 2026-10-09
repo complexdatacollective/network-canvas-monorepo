@@ -1756,7 +1756,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 </p>
                 {!encryptionUnavailable && (
                   <Button size="sm" onClick={() => setPassphraseOpen(true)}>
-                    <AppMessage message={runtimeMessages.enterPassphrase} />
+                    <AppMessage message={runtimeMessages.passphrase} />
                   </Button>
                 )}
               </div>

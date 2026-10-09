@@ -101,12 +101,12 @@ export class AnonymisationFixture {
   }
 
   /**
-   * The line the stage shows in place of the choosing form when a passphrase
-   * was chosen earlier in this interview and has to be entered again.
+   * The line the stage shows above the entering form when a passphrase was
+   * chosen earlier in this interview and has to be entered again.
    */
   chosenEarlierNotice(): Locator {
     return this.page.getByText(
-      'You chose a passphrase earlier in this interview. Enter it to continue.',
+      'Some answers on this screen are protected by a passphrase. Keep it safe: you will need it to see or change these answers later, and it cannot be recovered if it is forgotten.',
     );
   }
 
@@ -145,23 +145,21 @@ export class AnonymisationFixture {
    */
   prompterButton(): Locator {
     return this.page.getByRole('button', {
-      name: 'Enter your passphrase',
+      name: 'Passphrase',
       exact: true,
     });
   }
 
   /**
-   * The prompter dialog, titled "Choose a passphrase" in an interview without
-   * one and "Enter your passphrase" in one that has one.
+   * The prompter dialog. Its title is "Passphrase" whether the interview has
+   * one yet or not.
    */
-  prompterDialog(
-    name: 'Choose a passphrase' | 'Enter your passphrase',
-  ): Locator {
-    return this.page.getByRole('dialog', { name, exact: true });
+  prompterDialog(): Locator {
+    return this.page.getByRole('dialog', { name: 'Passphrase', exact: true });
   }
 
   prompterSubmitButton(): Locator {
-    return this.page.getByRole('button', { name: 'Submit passphrase' });
+    return this.page.getByRole('button', { name: 'Continue' });
   }
 
   async openPrompter(): Promise<void> {

@@ -1051,7 +1051,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         const anon = new AnonymisationFixture(page);
         await expect(anon.prompterButton()).toBeVisible();
         await anon.openPrompter();
-        await expect(anon.prompterDialog('Choose a passphrase')).toBeVisible();
+        await expect(anon.prompterDialog()).toBeVisible();
         await anon.choosePrompterPassphrase('correct horse battery staple');
 
         // The passphrase is accepted: the prompter (🔑) is dismissed.
@@ -1116,7 +1116,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         expect(labels).toContain('Bob Jones');
         // ...and the value-less row falls back to a stable placeholder rather
         // than exposing its content-hash _uid.
-        expect(labels).toContain('Unnamed Person 3');
+        expect(labels).toContain('Person 3');
       },
     },
   ],

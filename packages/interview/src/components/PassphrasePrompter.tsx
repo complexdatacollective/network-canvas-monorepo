@@ -70,7 +70,7 @@ export default function PassphrasePrompter({
                 render={
                   <motion.button
                     type="button"
-                    aria-label={intl.formatMessage(messages.enterPassphrase)}
+                    aria-label={intl.formatMessage(messages.passphrase)}
                     aria-describedby={descriptionId}
                     key="lock"
                     layout
@@ -106,7 +106,7 @@ export default function PassphrasePrompter({
                         readers get the same explanation as the button's
                         description. */}
                     <span id={descriptionId} hidden>
-                      <AppMessage message={messages.passphraseNeeded} />
+                      <AppMessage message={messages.protectedAnswersLocked} />
                     </span>
                   </motion.button>
                 }
@@ -122,7 +122,7 @@ export default function PassphrasePrompter({
             }
             className="max-w-[min(var(--available-width),var(--container-md))]"
           >
-            <AppMessage message={messages.passphraseNeeded} />
+            <AppMessage message={messages.protectedAnswersLocked} />
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

@@ -1,9 +1,10 @@
 'use client';
 
+import { Pencil } from 'lucide-react';
 import { useState } from 'react';
 
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
-import Button from '@codaco/fresco-ui/Button';
+import { IconButton } from '@codaco/fresco-ui/Button';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -74,9 +75,16 @@ function UnavailableAnswer({
       readOnly
       suffixComponent={
         encryptionUnavailable ? undefined : (
-          <Button type="button" size="sm" variant="text" onClick={onReplace}>
-            <AppMessage message={runtimeMessages.replaceUnavailableAnswer} />
-          </Button>
+          <IconButton
+            type="button"
+            size="sm"
+            variant="text"
+            icon={<Pencil aria-hidden />}
+            aria-label={intl.formatMessage(
+              runtimeMessages.replaceUnavailableAnswer,
+            )}
+            onClick={onReplace}
+          />
         )
       }
     />
@@ -121,9 +129,7 @@ export default function ProtocolFormField({
               <RenderMarkdown render={<span />}>{authoredHint}</RenderMarkdown>
             )}
             <p>
-              <AppMessage
-                message={runtimeMessages.replacingUnavailableAnswer}
-              />
+              <AppMessage message={runtimeMessages.answerUnavailableKept} />
             </p>
           </>
         }

@@ -19,6 +19,7 @@ import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
+import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import type {
@@ -44,7 +45,6 @@ import {
 import PassphraseEntry from '../../../components/PassphraseEntry';
 import useProtocolForm from '../../../forms/useProtocolForm';
 import { useStageSelector } from '../../../hooks/useStageSelector';
-import { runtimeMessages } from '../../../i18n/runtimeMessages';
 import {
   useResolveLocalizedMessage,
   useResolveLocalizedString,
@@ -388,7 +388,7 @@ export default function PersonForm({
       if (!patch.success) {
         return {
           success: false,
-          formErrors: [createMessageError(runtimeMessages.submissionFailed)],
+          formErrors: [createMessageError(formMessages.submitFailed)],
         };
       }
       for (const [variable, value] of Object.entries(patch.patch.set)) {

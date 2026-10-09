@@ -20,6 +20,7 @@ import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
+import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import FormStoreProvider, {
   FormStoreContext,
@@ -35,7 +36,6 @@ import useProtocolForm from '../../forms/useProtocolForm';
 import { rejectedWriteMessage } from '../../forms/writeSubmissionResult';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import useSavesInOrder from '../../hooks/useSavesInOrder';
-import { runtimeMessages } from '../../i18n/runtimeMessages';
 import type { Subject } from '../../selectors/forms';
 import type { AttributePatch } from '../../store/entityAttributePatch';
 import PassphraseNotice, {
@@ -338,7 +338,7 @@ function AttributeFormInner({
           { keepWhenUnanswered: unavailable ?? NO_UNAVAILABLE },
         );
         if (!patchResult.success) {
-          failure = runtimeMessages.submissionFailed;
+          failure = formMessages.submitFailed;
           return null;
         }
 

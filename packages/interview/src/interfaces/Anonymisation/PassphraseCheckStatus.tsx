@@ -29,7 +29,7 @@ export default function PassphraseCheckStatus({
       {isSubmitting && (
         <>
           <Spinner size="xs" />
-          <span>
+          <span className="sr-only">
             <AppMessage message={runtimeMessages.checkingPassphrase} />
           </span>
         </>

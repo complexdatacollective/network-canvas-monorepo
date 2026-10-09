@@ -14,6 +14,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Form from '@codaco/fresco-ui/form/Form';
+import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import type {
   FormSubmissionResult,
@@ -184,7 +185,7 @@ const NodeForm = (props: NodeFormProps) => {
       if (!patchResult.success) {
         return {
           success: false,
-          formErrors: [createMessageError(runtimeMessages.submissionFailed)],
+          formErrors: [createMessageError(formMessages.submitFailed)],
         };
       }
 

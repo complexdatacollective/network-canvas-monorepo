@@ -172,7 +172,7 @@ async function exitInterview() {
   await user.click(screen.getByTestId('settings-button'));
   await user.click(await screen.findByTestId('exit-button'));
   const dialog = await screen.findByRole('dialog', {
-    name: 'Exit this interview?',
+    name: 'Exit interview',
   });
   await user.click(
     await within(dialog).findByRole('button', { name: 'Exit interview' }),
@@ -185,7 +185,7 @@ const exitFailure =
 // Confirms the exit again from the confirmation still showing its error.
 async function retryExit() {
   const dialog = await screen.findByRole('dialog', {
-    name: 'Exit this interview?',
+    name: 'Exit interview',
   });
   await userEvent
     .setup()
@@ -229,7 +229,7 @@ describe('Shell leaving a stage with a write under way', () => {
 
 describe('Shell closing the interview with a write under way', () => {
   const exitConfirmation = () =>
-    screen.queryByRole('dialog', { name: 'Exit this interview?' });
+    screen.queryByRole('dialog', { name: 'Exit interview' });
 
   it('keeps the confirmation open until an answer still being stored is stored, then exits', async () => {
     const onExit = vi.fn();

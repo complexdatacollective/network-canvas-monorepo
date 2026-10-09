@@ -641,9 +641,9 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         // the 🔑 prompter asks for a passphrase to be chosen and confirmed.
         await expect(anon.prompterButton()).toBeVisible();
         await anon.openPrompter();
-        await expect(anon.prompterDialog('Choose a passphrase')).toBeVisible();
+        await expect(anon.prompterDialog()).toBeVisible();
         await anon.choosePrompterPassphrase('correct horse battery');
-        await expect(anon.prompterDialog('Choose a passphrase')).toHaveCount(0);
+        await expect(anon.prompterDialog()).toHaveCount(0);
 
         await expect.poll(async () => stage.quickAdd.isDisabled()).toBe(false);
         await stage.quickAdd.addNode('Alice');

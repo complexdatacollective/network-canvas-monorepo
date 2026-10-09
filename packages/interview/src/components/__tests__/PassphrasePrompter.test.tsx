@@ -98,15 +98,13 @@ async function openPrompter({
   );
 
   const user = userEvent.setup();
-  await user.click(
-    screen.getByRole('button', { name: 'Enter your passphrase' }),
-  );
+  await user.click(screen.getByRole('button', { name: 'Passphrase' }));
   const dialog = await screen.findByRole('dialog');
   // Each label also carries a visual required marker.
   const passphrase = await within(dialog).findByLabelText(/^Passphrase/, {
     selector: 'input',
   });
-  const submit = screen.getByRole('button', { name: 'Submit passphrase' });
+  const submit = screen.getByRole('button', { name: 'Continue' });
   return { store, user, dialog, passphrase, submit };
 }
 
@@ -128,7 +126,7 @@ async function choose(
   await user.type(first, passphrase);
   await user.clear(second);
   await user.type(second, confirmation);
-  await user.click(screen.getByRole('button', { name: 'Submit passphrase' }));
+  await user.click(screen.getByRole('button', { name: 'Continue' }));
   return { first, second };
 }
 
@@ -143,7 +141,7 @@ describe('PassphrasePrompter in an interview without a passphrase', () => {
   it('has the participant choose one of at least eight characters, confirmed, and puts it in force', async () => {
     const { store, user, dialog } = await openPrompter();
 
-    expect(dialog).toHaveAccessibleName('Choose a passphrase');
+    expect(dialog).toHaveAccessibleName('Passphrase');
     expect(confirmField(dialog)).toHaveAttribute('type', 'password');
 
     const deriveKey = vi.spyOn(crypto.subtle, 'deriveKey');
@@ -213,7 +211,7 @@ describe('PassphrasePrompter in an interview whose passphrase has been chosen', 
       header,
     });
 
-    expect(dialog).toHaveAccessibleName('Enter your passphrase');
+    expect(dialog).toHaveAccessibleName('Passphrase');
     expect(passphrase).toHaveAttribute('type', 'password');
     expect(passphrase).toHaveAttribute('autocomplete', 'off');
     expect(confirmField(dialog)).not.toBeInTheDocument();
@@ -268,9 +266,7 @@ describe('PassphrasePrompter in an interview whose passphrase has been chosen', 
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
 
-    await user.click(
-      screen.getByRole('button', { name: 'Enter your passphrase' }),
-    );
+    await user.click(screen.getByRole('button', { name: 'Passphrase' }));
     const reopened = await within(
       await screen.findByRole('dialog'),
     ).findByLabelText(/^Passphrase/, { selector: 'input' });
@@ -294,9 +290,7 @@ describe('PassphrasePrompter in an interview whose passphrase has been chosen', 
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Enter your passphrase' }),
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Passphrase' }));
 
     const reopened = await within(
       await screen.findByRole('dialog'),
@@ -380,7 +374,7 @@ describe('PassphrasePrompter in an interview whose answers no passphrase can ope
       );
 
       expect(
-        screen.queryByRole('button', { name: 'Enter your passphrase' }),
+        screen.queryByRole('button', { name: 'Passphrase' }),
       ).not.toBeInTheDocument();
     },
   );
