@@ -701,11 +701,23 @@ export const NominatingConditions: Story = {
     await userEvent.click(canvas.getByTestId('next-button'));
     await canvas.findByText(OVARIAN_PROMPT);
     // Each prompt records its own answer, and this one is not for the
-    // father.
-    await waitFor(() => expect(father()).toBeDisabled());
+    // father: he is shown unavailable, saying why, beneath the family and
+    // as his description, and choosing him anyway changes nothing.
+    const limit =
+      'People assigned male at birth can’t be selected for this question.';
+    await waitFor(() =>
+      expect(father()).toHaveAttribute('aria-disabled', 'true'),
+    );
+    await expect(father()).toHaveAccessibleDescription(limit);
+    await expect(
+      canvas.getByTestId('pedigree-nomination-limit'),
+    ).toHaveTextContent(limit);
+    await userEvent.click(father());
     await expect(father()).toHaveAttribute('aria-pressed', 'false');
     // Intersex, the participant can still be chosen.
-    await expect(canvas.getByRole('button', { name: /^You/ })).toBeEnabled();
+    await expect(
+      canvas.getByRole('button', { name: /^You/ }),
+    ).not.toHaveAttribute('aria-disabled');
     await userEvent.click(mother());
     await waitFor(() =>
       expect(mother()).toHaveAttribute('aria-pressed', 'true'),
@@ -782,7 +794,7 @@ export const ChangingSexAtBirthWithdrawsANomination: Story = {
 
     await userEvent.click(canvas.getByTestId('next-button'));
     await canvas.findByText(OVARIAN_PROMPT);
-    await waitFor(() => expect(you()).toBeDisabled());
+    await waitFor(() => expect(you()).toHaveAttribute('aria-disabled', 'true'));
     await expect(you()).toHaveAttribute('aria-pressed', 'false');
   },
 };
@@ -818,12 +830,14 @@ export const AnIneligibleNominationCanBeWithdrawn: Story = {
     await waitFor(() =>
       expect(father()).toHaveAttribute('aria-pressed', 'true'),
     );
-    await expect(father()).toBeEnabled();
+    await expect(father()).not.toHaveAttribute('aria-disabled');
     await userEvent.click(father());
     await waitFor(() =>
       expect(father()).toHaveAttribute('aria-pressed', 'false'),
     );
-    await waitFor(() => expect(father()).toBeDisabled());
+    await waitFor(() =>
+      expect(father()).toHaveAttribute('aria-disabled', 'true'),
+    );
   },
 };
 
@@ -938,7 +952,7 @@ export const RedescribingAParentWithdrawsNewSiblingsAnswers: Story = {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
 
-    await userEvent.click(await canvas.findByRole('button', { name: /^Kim,/ }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Kim' }));
     await waitFor(() => expect(panelOf(canvasElement)).not.toBeNull());
     const panel = within(panelOf(canvasElement) as HTMLElement);
     const tom = await panel.findByRole('radiogroup', {
@@ -1777,7 +1791,8 @@ export const FamilyInProgress: Story = {
     await expectPeople(6)(context);
     await expect(
       within(context.canvasElement).getByRole('button', {
-        name: /^Mia’s biological father, some details missing/,
+        name: 'Mia’s biological father',
+        description: /Some details are missing/,
       }),
     ).toBeVisible();
   },

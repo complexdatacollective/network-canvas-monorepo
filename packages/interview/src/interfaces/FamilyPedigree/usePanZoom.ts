@@ -186,34 +186,156 @@ export function viewKeepingInArea({
   return { x, y, scale };
 }
 
+const unionOf = (boxes: readonly Box[]): Box =>
+  boxes.reduce((union, box) => ({
+    left: Math.min(union.left, box.left),
+    top: Math.min(union.top, box.top),
+    right: Math.max(union.right, box.right),
+    bottom: Math.max(union.bottom, box.bottom),
+  }));
+
+/**
+ * How far to move the view, in viewport pixels, to bring `targets` (boxes
+ * in viewport pixels) inside `area`: all of them when they fit, or else the
+ * first. Never so far that what is kept (boxes in viewport pixels) leaves
+ * the area: `keep` lists what to keep, most wanted first (say, someone with
+ * room for their menu, then the person alone), and along each axis the
+ * first the area can hold is kept. What was placed in view on purpose is not
+ * undone by bringing something else into view.
+ */
+export function shiftIntoArea({
+  targets,
+  keep = [],
+  area,
+}: {
+  targets: readonly Box[];
+  keep?: readonly (readonly Box[])[];
+  area: Box;
+}): { x: number; y: number } {
+  const [first] = targets;
+  if (!first) return { x: 0, y: 0 };
+  const all = unionOf(targets);
+  const axis = (
+    start: number,
+    end: number,
+    firstStart: number,
+    firstEnd: number,
+    areaStart: number,
+    areaEnd: number,
+    kept: readonly (readonly (readonly [number, number])[])[],
+  ) => {
+    // Everything, when it fits; otherwise the focused element.
+    const [from, to] =
+      end - start <= areaEnd - areaStart
+        ? [start, end]
+        : [firstStart, firstEnd];
+    const wanted =
+      from < areaStart ? areaStart - from : to > areaEnd ? areaEnd - to : 0;
+    // The shifts that leave everything kept inside the area.
+    for (const boxes of kept) {
+      let least = Number.NEGATIVE_INFINITY;
+      let most = Number.POSITIVE_INFINITY;
+      for (const [keptStart, keptEnd] of boxes) {
+        least = Math.max(least, areaStart - keptStart);
+        most = Math.min(most, areaEnd - keptEnd);
+      }
+      if (least <= most) return clamp(wanted, least, most);
+    }
+    return wanted;
+  };
+  return {
+    x: axis(
+      all.left,
+      all.right,
+      first.left,
+      first.right,
+      area.left,
+      area.right,
+      keep.map((boxes) => boxes.map((box) => [box.left, box.right] as const)),
+    ),
+    y: axis(
+      all.top,
+      all.bottom,
+      first.top,
+      first.bottom,
+      area.top,
+      area.bottom,
+      keep.map((boxes) => boxes.map((box) => [box.top, box.bottom] as const)),
+    ),
+  };
+}
+
+/**
+ * The view that puts the middle of `boxes` (in the content, unscaled) at the
+ * middle of `area` (viewport pixels), at the zoom of `view`, or zoomed out,
+ * no further than the zoom allows, when they do not all fit in the area.
+ */
+export function viewCentredOn({
+  view,
+  boxes,
+  area,
+}: {
+  view: View;
+  boxes: readonly Box[];
+  area: Box;
+}): View {
+  if (boxes.length === 0) return view;
+  const all = unionOf(boxes);
+  const areaWidth = area.right - area.left;
+  const areaHeight = area.bottom - area.top;
+  const scale = clamp(
+    Math.min(
+      view.scale,
+      areaWidth / Math.max(all.right - all.left, 1),
+      areaHeight / Math.max(all.bottom - all.top, 1),
+    ),
+    Math.min(MIN_SCALE, view.scale),
+    view.scale,
+  );
+  return {
+    x: (area.left + area.right) / 2 - ((all.left + all.right) / 2) * scale,
+    y: (area.top + area.bottom) / 2 - ((all.top + all.bottom) / 2) * scale,
+    scale,
+  };
+}
+
 export type PanZoom = {
   x: MotionValue<number>;
   y: MotionValue<number>;
   scale: MotionValue<number>;
-  /** Moves an element's centre to the middle of the viewport, or of the part
-   * of it from its left edge to `visibleRight` (a client x). */
+  /** Moves the middle of elements to the middle of the viewport, or of the
+   * part of it from its left edge to `visibleRight` (a client x), inside
+   * the given insets; zoomed out, if it has to be, so they all fit. */
   centreOn: (
-    element: HTMLElement,
-    options?: { visibleRight?: number; animated?: boolean },
+    elements: HTMLElement | HTMLElement[],
+    options?: { visibleRight?: number; animated?: boolean; insets?: Insets },
   ) => void;
   /** Pans just enough to bring elements fully into view, inside the given
    * insets (24 pixels from each edge, without them): all of them when they
-   * fit, or else the first. Measured where the view is headed, so it follows
-   * on from a move already under way. */
+   * fit, or else the first; but not so far that the elements in `keep`, with
+   * `around` pixels on screen about each if it can, leave that area. Measured where
+   * the view is headed, so it follows on from a move already under way. */
   bringIntoView: (
     elements: HTMLElement | HTMLElement[],
     insets?: Insets,
+    keep?: { elements: HTMLElement[]; around?: number },
   ) => void;
   /** Zooms by a power of two about the viewport's centre; or, given elements
    * in focus, about the first of them, bringing them all into view. */
   zoomBy: (exponent: number, focus?: ZoomFocus) => void;
   /** Fits an element of the content in the viewport, inside the given
    * insets, at no more than its natural size, with room for controls that
-   * reach out around it. */
+   * reach out around it. Given `least`, it zooms out no further than
+   * `least.scale`: when the element would need to, it is shown at that
+   * zoom with `least.around` in the middle instead. */
   fitToView: (
     element: HTMLElement,
     insets: Insets,
-    options?: { animated?: boolean; reach?: Reach },
+    options?: {
+      animated?: boolean;
+      reach?: Reach;
+      least?: { scale: number; around: HTMLElement };
+    },
   ) => void;
   /** Keeps an element where it is on screen across a change of layout,
    * given where it was in the content before the change. */
@@ -358,14 +480,24 @@ export function usePanZoom({
   useGesture(
     {
       onDragStart: () => stopAnimating(),
-      onDrag: ({ delta: [dx, dy], pinching, tap, last }) => {
-        if (pinching || tap) return;
+      // The drag's whole movement, from where it started, is kept in view,
+      // rather than each step of it from where the last left off: a step
+      // clamped on its own falls back into the gap between two generations
+      // (when a row is further from the next than the canvas is tall), so a
+      // slow drag could never cross it, while a quick one jumped it.
+      onDrag: ({ movement: [mx, my], pinching, tap, last, memo }) => {
+        if (pinching || tap) return undefined;
+        const origin: { x: number; y: number } = memo ?? {
+          x: x.get() - mx,
+          y: y.get() - my,
+        };
         dragged.current = true;
         const viewport = viewportRef.current;
         if (viewport) viewport.style.cursor = last ? '' : 'grabbing';
-        const target = clampPan(x.get() + dx, y.get() + dy, scale.get());
+        const target = clampPan(origin.x + mx, origin.y + my, scale.get());
         x.set(target.x);
         y.set(target.y);
+        return origin;
       },
       onPinchStart: () => stopAnimating(),
       onPinch: ({ offset: [nextScale], origin: [originX, originY], event }) => {
@@ -437,8 +569,24 @@ export function usePanZoom({
     [contentRef],
   );
 
+  // A content element's box, unscaled.
+  const contentBoxOf = useCallback(
+    (element: HTMLElement): Box => {
+      const centre = contentPositionOf(element);
+      const halfWidth = element.offsetWidth / 2;
+      const halfHeight = element.offsetHeight / 2;
+      return {
+        left: centre.x - halfWidth,
+        top: centre.y - halfHeight,
+        right: centre.x + halfWidth,
+        bottom: centre.y + halfHeight,
+      };
+    },
+    [contentPositionOf],
+  );
+
   const centreOn = useCallback<PanZoom['centreOn']>(
-    (element, { visibleRight, animated = true } = {}) => {
+    (elements, { visibleRight, animated = true, insets = NO_INSETS } = {}) => {
       const viewport = viewportRef.current;
       if (!viewport) return;
       const box = viewport.getBoundingClientRect();
@@ -446,20 +594,24 @@ export function usePanZoom({
         visibleRight === undefined
           ? box.right
           : clamp(visibleRight, box.left, box.right);
-      const centre = contentPositionOf(element);
-      const current = scale.get();
-      moveTo(
-        (right - box.left) / 2 - centre.x * current,
-        box.height / 2 - centre.y * current,
-        current,
-        animated,
-      );
+      const targets = Array.isArray(elements) ? elements : [elements];
+      const next = viewCentredOn({
+        view: { x: x.get(), y: y.get(), scale: scale.get() },
+        boxes: targets.map(contentBoxOf),
+        area: {
+          left: insets.left,
+          top: insets.top,
+          right: right - box.left - insets.right,
+          bottom: box.height - insets.bottom,
+        },
+      });
+      moveTo(next.x, next.y, next.scale, animated);
     },
-    [viewportRef, contentPositionOf, moveTo, scale],
+    [viewportRef, contentBoxOf, moveTo, x, y, scale],
   );
 
   const bringIntoView = useCallback<PanZoom['bringIntoView']>(
-    (elements, insets = MARGIN) => {
+    (elements, insets = MARGIN, keep) => {
       const viewport = viewportRef.current;
       const targets = Array.isArray(elements) ? elements : [elements];
       if (!viewport || targets.length === 0) return;
@@ -468,61 +620,37 @@ export function usePanZoom({
       const headed = destination.current ?? now;
       // Each element where it will be once the view gets where it is headed.
       const ratio = headed.scale / now.scale;
-      const placed = targets.map((element) => {
+      const placedAt = (element: HTMLElement, around = 0): Box => {
         const shown = element.getBoundingClientRect();
         const atX = (client: number) =>
           headed.x + (client - box.left - now.x) * ratio;
         const atY = (client: number) =>
           headed.y + (client - box.top - now.y) * ratio;
         return {
-          left: atX(shown.left),
-          right: atX(shown.right),
-          top: atY(shown.top),
-          bottom: atY(shown.bottom),
+          left: atX(shown.left) - around,
+          right: atX(shown.right) + around,
+          top: atY(shown.top) - around,
+          bottom: atY(shown.bottom) + around,
         };
-      });
-      const all = placed.reduce((union, rect) => ({
-        left: Math.min(union.left, rect.left),
-        top: Math.min(union.top, rect.top),
-        right: Math.max(union.right, rect.right),
-        bottom: Math.max(union.bottom, rect.bottom),
-      }));
-      const first = placed[0] ?? all;
-      const shift = (
-        start: number,
-        end: number,
-        firstStart: number,
-        firstEnd: number,
-        areaStart: number,
-        areaEnd: number,
-      ) => {
-        // Everything, when it fits; otherwise the focused element.
-        const [from, to] =
-          end - start <= areaEnd - areaStart
-            ? [start, end]
-            : [firstStart, firstEnd];
-        if (from < areaStart) return areaStart - from;
-        if (to > areaEnd) return areaEnd - to;
-        return 0;
       };
-      const shiftX = shift(
-        all.left,
-        all.right,
-        first.left,
-        first.right,
-        insets.left,
-        box.width - insets.right,
-      );
-      const shiftY = shift(
-        all.top,
-        all.bottom,
-        first.top,
-        first.bottom,
-        insets.top,
-        box.height - insets.bottom,
-      );
-      if (Math.abs(shiftX) < 0.5 && Math.abs(shiftY) < 0.5) return;
-      moveTo(headed.x + shiftX, headed.y + shiftY, headed.scale, true);
+      const shift = shiftIntoArea({
+        targets: targets.map((element) => placedAt(element)),
+        // With room around, or else alone.
+        keep: keep
+          ? [
+              keep.elements.map((element) => placedAt(element, keep.around)),
+              keep.elements.map((element) => placedAt(element)),
+            ]
+          : [],
+        area: {
+          left: insets.left,
+          top: insets.top,
+          right: box.width - insets.right,
+          bottom: box.height - insets.bottom,
+        },
+      });
+      if (Math.abs(shift.x) < 0.5 && Math.abs(shift.y) < 0.5) return;
+      moveTo(headed.x + shift.x, headed.y + shift.y, headed.scale, true);
     },
     [viewportRef, moveTo, x, y, scale],
   );
@@ -544,7 +672,7 @@ export function usePanZoom({
   );
 
   const fitToView = useCallback<PanZoom['fitToView']>(
-    (element, insets, { animated = true, reach } = {}) => {
+    (element, insets, { animated = true, reach, least } = {}) => {
       const viewport = viewportRef.current;
       if (!viewport) return;
       const width = element.offsetWidth;
@@ -567,6 +695,17 @@ export function usePanZoom({
         MIN_SCALE,
         1,
       );
+      if (least && nextScale < least.scale) {
+        const middle = contentPositionOf(least.around);
+        const leastScale = clamp(least.scale, MIN_SCALE, 1);
+        moveTo(
+          insets.left + availableWidth / 2 - middle.x * leastScale,
+          insets.top + availableHeight / 2 - middle.y * leastScale,
+          leastScale,
+          animated,
+        );
+        return;
+      }
       moveTo(
         insets.left + availableWidth / 2 - centre.x * nextScale,
         insets.top + availableHeight / 2 - centre.y * nextScale,

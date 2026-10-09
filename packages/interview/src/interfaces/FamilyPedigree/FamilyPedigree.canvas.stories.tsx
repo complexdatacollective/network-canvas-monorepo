@@ -787,6 +787,640 @@ export const ChoosingTheWordingReturnsFocusToItsButton: Story = {
   },
 };
 
+/** Watches for the given time, failing the moment the check does. */
+async function holdsFor(ms: number, check: () => void) {
+  const until = performance.now() + ms;
+  while (performance.now() < until) {
+    check();
+    await nextFrame();
+  }
+  check();
+}
+
+/**
+ * Answered before it would have opened by itself, the wording question does
+ * not open again uninvited, and takes no focus from what the participant
+ * goes on to do.
+ */
+export const TheWordingQuestionOpensOnceOnly: Story = {
+  render: () => (
+    <CanvasStory family={threePeople} framing="participantPreference" />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    // Selecting someone asks the question at once, and it is answered.
+    await userEvent.click(await canvas.findByRole('button', { name: /^You/ }));
+    await userEvent.click(
+      await body.findByRole('option', {
+        name: /Mother, father, sister, brother/,
+      }),
+    );
+    await waitFor(() => expect(body.queryByText(FRAMING_TITLE)).toBeNull());
+    const trigger = canvas.getByRole('button', { name: 'Wording' });
+    // Well past the moment it would have opened by itself.
+    await holdsFor(1800, () => {
+      expect(body.queryByText(FRAMING_TITLE), 'the question again').toBeNull();
+      expect(focused(canvasElement), 'focus kept').toBe(trigger);
+    });
+  },
+};
+
+/**
+ * While the wording question is held open, Tab still reaches its choices,
+ * even after focus has left it and Escape has been pressed.
+ */
+export const TheHeldWordingQuestionStaysInTheTabOrder: Story = {
+  render: () => (
+    <CanvasStory family={threePeople} framing="participantPreference" />
+  ),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body);
+    await body.findByText(FRAMING_TITLE, {}, { timeout: 5000 });
+    const options = () => body.getAllByRole('option');
+    await waitFor(() => expect(options()).toContain(focused(canvasElement)));
+    // Out of the question and past its button, Escape, and round again.
+    await userEvent.tab({ shift: true });
+    await userEvent.tab({ shift: true });
+    await userEvent.keyboard('{Escape}');
+    await expect(body.getByText(FRAMING_TITLE)).toBeInTheDocument();
+    let reached = false;
+    for (let press = 0; press < 12 && !reached; press++) {
+      await userEvent.tab();
+      reached = options().includes(focused(canvasElement) as HTMLElement);
+    }
+    await expect(reached, 'Tab reached a choice').toBe(true);
+  },
+};
+
+/** A touch at the point given, as a phone's tap. */
+function tapAt(document: Document, x: number, y: number) {
+  const target = document.elementFromPoint(x, y);
+  if (!target) throw new Error('Nothing at the point tapped');
+  const init = {
+    pointerId: 1,
+    pointerType: 'touch',
+    isPrimary: true,
+    clientX: x,
+    clientY: y,
+    bubbles: true,
+  };
+  fireEvent.pointerDown(target, { ...init, buttons: 1 });
+  fireEvent.pointerUp(target, init);
+  fireEvent.click(target, { clientX: x, clientY: y, detail: 1 });
+}
+
+/**
+ * On a phone held sideways the wording question fits the screen, scrolling
+ * rather than running off the top, so its heading can be read. A tap aimed
+ * at the participant, landing on the question as it opens over them,
+ * chooses nothing.
+ */
+export const TheWordingQuestionFitsAPhoneOnItsSide: Story = {
+  parameters: {
+    viewport: {
+      options: {
+        phoneLandscape: {
+          name: 'Phone (landscape)',
+          styles: { width: '844px', height: '390px' },
+          type: 'mobile',
+        },
+      },
+    },
+  },
+  globals: { viewport: { value: 'phoneLandscape', isRotated: false } },
+  render: () => (
+    <CanvasStory family={threePeople} framing="participantPreference" />
+  ),
+  play: async ({ canvasElement }) => {
+    const document = canvasElement.ownerDocument;
+    const body = within(document.body);
+    const you = await within(canvasElement).findByRole('button', {
+      name: /^You/,
+    });
+    const youBox = boxOf(you);
+    await body.findByText(FRAMING_TITLE, {}, { timeout: 5000 });
+    tapAt(
+      document,
+      (youBox.left + youBox.right) / 2,
+      (youBox.top + youBox.bottom) / 2,
+    );
+    await expect(body.getByText(FRAMING_TITLE)).toBeInTheDocument();
+    for (const option of body.getAllByRole('option')) {
+      await expect(option).toHaveAttribute('aria-selected', 'false');
+    }
+    await settled(canvasElement);
+    await waitFor(() =>
+      expect(
+        boxOf(body.getByText(FRAMING_TITLE)).top,
+        'the heading below the top of the screen',
+      ).toBeGreaterThanOrEqual(0),
+    );
+  },
+};
+
+/**
+ * Changing the wording renames everyone shown by a label, and says so.
+ */
+export const ChangingTheWordingIsAnnounced: Story = {
+  render: () => (
+    <CanvasStory family={threePeople} framing="participantPreference" />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await userEvent.click(
+      await body.findByRole(
+        'option',
+        { name: /Mother, father, sister, brother/ },
+        { timeout: 5000 },
+      ),
+    );
+    await waitFor(() =>
+      expect(liveRegionText(canvasElement)).toContain('mother, father'),
+    );
+    await userEvent.click(canvas.getByRole('button', { name: 'Wording' }));
+    await userEvent.click(
+      await body.findByRole('option', {
+        name: /Egg parent, sperm parent, sibling/,
+      }),
+    );
+    await waitFor(() =>
+      expect(liveRegionText(canvasElement)).toContain('egg parent'),
+    );
+  },
+};
+
+/** Drags the canvas with the mouse from a point, in ten steps. */
+function dragFrom(element: Element, dx: number, dy: number) {
+  const box = element.getBoundingClientRect();
+  const start = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+  const at = (step: number) => ({
+    pointerId: 1,
+    pointerType: 'mouse',
+    isPrimary: true,
+    bubbles: true,
+    clientX: start.x + (dx * step) / 10,
+    clientY: start.y + (dy * step) / 10,
+  });
+  fireEvent.pointerDown(element, { ...at(0), buttons: 1 });
+  for (let step = 1; step <= 10; step++) {
+    fireEvent.pointerMove(element, { ...at(step), buttons: 1 });
+  }
+  fireEvent.pointerUp(element, at(10));
+}
+
+/**
+ * The add menu shown around the participant on a first visit goes once the
+ * mouse is used, here to drag the canvas from the participant's symbol:
+ * from then on the menu follows the pointer, and does not come back (and
+ * pull the view back to the participant) whenever the pointer is over no
+ * one.
+ */
+export const TheFirstVisitMenuGoesOnceTheMouseIsUsed: Story = {
+  render: () => (
+    <CanvasStory
+      family={{
+        people: [
+          { id: 'ego', name: 'Ana', gender: 'woman', sex: 'female', ego: true },
+        ],
+        links: [],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const you = await canvas.findByRole('button', { name: /^You/ });
+    await canvas.findByTestId('pedigree-menu-parent');
+    dragFrom(you, 120, 40);
+    await settled(canvasElement);
+    await waitFor(() =>
+      expect(canvas.queryByTestId('pedigree-menu-parent')).toBeNull(),
+    );
+  },
+};
+
+/** A tap, as a touch screen sends it. */
+function tap(element: Element) {
+  const box = element.getBoundingClientRect();
+  const init = {
+    pointerId: 1,
+    pointerType: 'touch',
+    isPrimary: true,
+    clientX: box.left + box.width / 2,
+    clientY: box.top + box.height / 2,
+    bubbles: true,
+  };
+  fireEvent.pointerDown(element, { ...init, buttons: 1 });
+  fireEvent.pointerUp(element, init);
+  fireEvent.click(element, { ...init, detail: 1 });
+}
+
+/**
+ * On a phone held sideways, a child added from the participant's add menu
+ * by touch can be tapped once the panel closes: bringing the participant's
+ * menu back into view does not push the child under the toolbar.
+ */
+export const AChildAddedByTouchCanBeTapped: Story = {
+  parameters: {
+    viewport: {
+      options: {
+        phoneLandscape: {
+          name: 'Phone (landscape)',
+          styles: { width: '844px', height: '320px' },
+          type: 'mobile',
+        },
+      },
+    },
+  },
+  globals: { viewport: { value: 'phoneLandscape', isRotated: false } },
+  render: () => (
+    <CanvasStory
+      family={{
+        people: [
+          { id: 'ego', name: 'Ana', gender: 'woman', sex: 'female', ego: true },
+        ],
+        links: [],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: /^You/ });
+    // Alone on a first visit, the participant's menu is showing.
+    tap(await canvas.findByTestId('pedigree-menu-child'));
+    await waitFor(() => expect(personPanel(canvasElement)).not.toBeNull());
+    const panel = within(personPanel(canvasElement) as HTMLElement);
+    await userEvent.type(
+      panel.getByRole('textbox', { name: 'Name (optional)' }),
+      'Emma',
+    );
+    for (const answer of [
+      'Woman',
+      'Female',
+      'No other parent',
+      'A biological child',
+    ]) {
+      tap(panel.getByRole('radio', { name: answer }));
+    }
+    const carried = panel.queryByRole('radiogroup', {
+      name: 'Who carried the pregnancy?',
+    });
+    if (carried) tap(within(carried).getByRole('radio', { name: /^You/ }));
+    tap(panel.getByRole('button', { name: 'Add to family' }));
+    await waitFor(() => expect(personPanel(canvasElement)).toBeNull());
+    await settled(canvasElement);
+    const emma = canvas.getByRole('button', { name: 'Emma' });
+    await expect(
+      overlaps(boxOf(emma), toolbarBox(canvasElement)),
+      'Emma clear of the toolbar',
+    ).toBe(false);
+    await expect(
+      inside(boxOf(emma), canvasBox(canvasElement)),
+      'Emma on the canvas',
+    ).toBe(true);
+  },
+};
+
+/**
+ * On a portrait tablet, opening the panel to add a parent of Ivy keeps Ivy
+ * in view beside the panel, with the parent being added.
+ */
+export const ThePersonAddedToStaysInViewBesideThePanel: Story = {
+  parameters: {
+    viewport: {
+      options: {
+        tabletPortrait: {
+          name: 'Tablet (portrait)',
+          styles: { width: '768px', height: '1024px' },
+          type: 'tablet',
+        },
+      },
+    },
+  },
+  globals: { viewport: { value: 'tabletPortrait', isRotated: false } },
+  render: () => (
+    <CanvasStory
+      family={{
+        people: [
+          { id: 'ego', name: 'Ana', gender: 'woman', sex: 'female', ego: true },
+          { id: 'beth', name: 'Beth', gender: 'woman', sex: 'female' },
+          { id: 'carmen', name: 'Carmen', gender: 'woman', sex: 'female' },
+          { id: 'ivy', name: 'Ivy', gender: 'woman', sex: 'female' },
+        ],
+        links: [
+          { from: 'beth', to: 'carmen', kind: 'partner' },
+          { from: 'beth', to: 'ego', kind: 'biological', carrier: true },
+          { from: 'carmen', to: 'ego', kind: 'social' },
+          { from: 'beth', to: 'ivy', kind: 'biological', carrier: true },
+          { from: 'carmen', to: 'ivy', kind: 'social' },
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: /^You/ });
+    await settled(canvasElement);
+    await userEvent.hover(personSymbol(canvasElement, 'ivy'));
+    await userEvent.click(await canvas.findByTestId('pedigree-menu-parent'));
+    await waitFor(() => expect(personPanel(canvasElement)).not.toBeNull());
+    await settled(canvasElement);
+    const panel = boxOf(personPanel(canvasElement) as HTMLElement);
+    const strip = { ...canvasBox(canvasElement), right: panel.left };
+    await expect(
+      inside(boxOf(personSymbol(canvasElement, 'ivy')), strip),
+      'Ivy beside the panel',
+    ).toBe(true);
+  },
+};
+
+/** Drags the canvas by (dx, dy) with the mouse, slowly: in many small
+ * steps. */
+function dragSlowly(viewport: HTMLElement, dx: number, dy: number) {
+  const box = viewport.getBoundingClientRect();
+  const steps = 25;
+  const start = {
+    x: box.left + box.width * 0.5,
+    y: box.top + box.height * 0.5,
+  };
+  const at = (step: number) => ({
+    pointerId: 1,
+    pointerType: 'mouse',
+    isPrimary: true,
+    clientX: start.x + (dx * step) / steps,
+    clientY: start.y + (dy * step) / steps,
+  });
+  fireEvent.pointerDown(viewport, { ...at(0), buttons: 1 });
+  for (let step = 1; step <= steps; step++) {
+    fireEvent.pointerMove(viewport, { ...at(step), buttons: 1 });
+  }
+  fireEvent.pointerUp(viewport, at(steps));
+}
+
+const phoneLandscape = {
+  parameters: {
+    viewport: {
+      options: {
+        phoneLandscape: {
+          name: 'Phone (landscape)',
+          styles: { width: '844px', height: '390px' },
+          type: 'mobile',
+        },
+      },
+    },
+  },
+  globals: { viewport: { value: 'phoneLandscape', isRotated: false } },
+};
+
+/** Linda and Robert, and their children: the participant and Bea. */
+const twoGenerations: Family = {
+  people: [
+    { id: 'ego', name: 'Ana', gender: 'woman', sex: 'female', ego: true },
+    { id: 'linda', name: 'Linda', gender: 'woman', sex: 'female' },
+    { id: 'robert', name: 'Robert', gender: 'man', sex: 'male' },
+    { id: 'bea', name: 'Bea', gender: 'woman', sex: 'female' },
+  ],
+  links: [
+    { from: 'linda', to: 'robert', kind: 'partner' },
+    { from: 'linda', to: 'ego', kind: 'biological', carrier: true },
+    { from: 'robert', to: 'ego', kind: 'biological' },
+    { from: 'linda', to: 'bea', kind: 'biological', carrier: true },
+    { from: 'robert', to: 'bea', kind: 'biological' },
+  ],
+};
+
+/**
+ * Zoomed all the way in on a phone held sideways, where one row is further
+ * from the next than the canvas is tall, a slow drag still moves from the
+ * parents' row to the children's: the drag is not caught in the gap
+ * between them.
+ */
+export const ASlowDragCrossesBetweenGenerations: Story = {
+  ...phoneLandscape,
+  render: () => <CanvasStory family={twoGenerations} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: /^You/ });
+    const viewport = canvas.getByTestId('pedigree-canvas');
+    const zoomIn = canvas.getByRole('button', { name: 'Zoom in' });
+    while (!isDisabled(zoomIn)) {
+      fireEvent.click(zoomIn);
+      await settled(canvasElement);
+    }
+    const clear = () => ({
+      ...canvasBox(canvasElement),
+      top: boxOf(canvas.getByRole('heading', { name: /^Add the members/ }))
+        .bottom,
+      bottom: toolbarBox(canvasElement).top,
+    });
+    // Down to the parents' row first.
+    for (let drag = 0; drag < 6; drag++) dragSlowly(viewport, 0, 280);
+    await settled(canvasElement);
+    await expect(
+      overlaps(boxOf(personSymbol(canvasElement, 'linda')), clear()),
+      'Linda in view',
+    ).toBe(true);
+    // Then slowly up, as far as it takes, to the children's.
+    for (let drag = 0; drag < 6; drag++) {
+      dragSlowly(viewport, 0, -280);
+      await settled(canvasElement);
+      if (overlaps(boxOf(personSymbol(canvasElement, 'ego')), clear())) break;
+    }
+    await expect(
+      overlaps(boxOf(personSymbol(canvasElement, 'ego')), clear()),
+      'the participant in view',
+    ).toBe(true);
+  },
+};
+
+/**
+ * + and − zoom with keyboard focus on the toolbar, after choosing a tool, as
+ * they do with focus in the family.
+ */
+export const ZoomKeysWorkFromTheToolbar: Story = {
+  render: () => <CanvasStory family={threePeople} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: /^You/ });
+    await settled(canvasElement);
+    const width = () =>
+      boxOf(personSymbol(canvasElement, 'ego')).right -
+      boxOf(personSymbol(canvasElement, 'ego')).left;
+    const before = width();
+    canvas.getByTestId('pedigree-tool-connect').focus();
+    await userEvent.keyboard('-');
+    await settled(canvasElement);
+    await expect(width(), 'zoomed out').toBeLessThan(before - 1);
+    canvas.getByRole('button', { name: 'Zoom in' }).focus();
+    for (let press = 0; press < 2; press++) {
+      await userEvent.keyboard('+');
+      await settled(canvasElement);
+    }
+    await expect(width(), 'zoomed in').toBeGreaterThan(before + 1);
+  },
+};
+
+/** The size on screen, in pixels, of the smallest name drawn in a symbol. */
+function smallestNameOnScreen(canvasElement: HTMLElement) {
+  let smallest = Number.POSITIVE_INFINITY;
+  for (const person of within(canvasElement).getAllByTestId(
+    'pedigree-person',
+  )) {
+    const symbol = person.querySelector('button') as HTMLElement;
+    const scale = symbol.getBoundingClientRect().width / symbol.offsetWidth;
+    for (const text of symbol.querySelectorAll('span')) {
+      if (!text.textContent?.trim()) continue;
+      smallest = Math.min(
+        smallest,
+        Number.parseFloat(getComputedStyle(text).fontSize) * scale,
+      );
+    }
+  }
+  return smallest;
+}
+
+const phonePortrait = {
+  parameters: {
+    viewport: {
+      options: {
+        phonePortrait: {
+          name: 'Phone (portrait)',
+          styles: { width: '390px', height: '844px' },
+          type: 'mobile',
+        },
+      },
+    },
+  },
+  globals: { viewport: { value: 'phonePortrait', isRotated: false } },
+};
+
+/**
+ * On a phone, each prompt opens with every name drawn at least as large as
+ * the smallest legible size, on the family's own prompt (here a family too
+ * wide to show whole at that size, which opens on the participant) and on
+ * a nomination prompt, where relatives are chosen by name.
+ */
+export const NamesOpenLegibleOnAPhone: Story = {
+  ...phonePortrait,
+  render: () => (
+    <CanvasStory
+      family={fourGenerations}
+      nominationPrompts={[{ text: HEART_PROMPT }]}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: /^You/ });
+    await settled(canvasElement);
+    await expect(
+      smallestNameOnScreen(canvasElement),
+      'names on the family prompt',
+    ).toBeGreaterThanOrEqual(11.9);
+    await expect(
+      inside(
+        boxOf(personSymbol(canvasElement, 'ego')),
+        canvasBox(canvasElement),
+      ),
+      'the participant in view',
+    ).toBe(true);
+    await userEvent.click(canvas.getByTestId('next-button'));
+    await canvas.findByText(HEART_PROMPT);
+    await settled(canvasElement);
+    await expect(
+      smallestNameOnScreen(canvasElement),
+      'names on the nomination prompt',
+    ).toBeGreaterThanOrEqual(11.9);
+  },
+};
+
+/**
+ * On a nomination prompt, where no add menu is shown, showing the whole
+ * family leaves no room for one, so a small family is drawn at its natural
+ * size on a phone, names legible.
+ */
+export const TheWholeFamilyOnANominationPromptLeavesNoMenuRoom: Story = {
+  ...phonePortrait,
+  render: () => (
+    <CanvasStory
+      family={twoGenerations}
+      nominationPrompts={[{ text: HEART_PROMPT }]}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: /^You/ });
+    await userEvent.click(canvas.getByTestId('next-button'));
+    await canvas.findByText(HEART_PROMPT);
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Show the whole family' }),
+    );
+    await settled(canvasElement);
+    await expect(smallestNameOnScreen(canvasElement)).toBeGreaterThanOrEqual(
+      11.9,
+    );
+  },
+};
+
+/**
+ * Once the second person is picked, the instruction to pick them is taken
+ * back from what a screen reader can find, as it is from the screen: the
+ * menu asks its own question.
+ */
+export const TheConnectInstructionIsTakenBackOncePicked: Story = {
+  render: () => <CanvasStory family={lindaAndKim} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
+    await canvas.findByRole('button', { name: /^You/ });
+    await userEvent.click(canvas.getByTestId('pedigree-tool-connect'));
+    await userEvent.click(personSymbol(canvasElement, 'linda'));
+    await waitFor(() =>
+      expect(liveRegionText(canvasElement)).toContain('Now select'),
+    );
+    await userEvent.click(personSymbol(canvasElement, 'kim'));
+    await page.findByRole('menu');
+    await expect(liveRegionText(canvasElement)).not.toContain('Now select');
+  },
+};
+
+/**
+ * Cancelling the confirmation to remove someone, with the button or with
+ * Escape, returns focus to them: nothing was removed.
+ */
+export const CancellingARemovalReturnsFocusToThePerson: Story = {
+  render: () => <CanvasStory family={lindaAndKim} />,
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body);
+    await within(canvasElement).findByRole('button', { name: /^You/ });
+    for (const dismiss of ['button', 'escape'] as const) {
+      await userEvent.click(personSymbol(canvasElement, 'kim'));
+      await waitFor(() => expect(personPanel(canvasElement)).not.toBeNull());
+      await userEvent.click(
+        within(personPanel(canvasElement) as HTMLElement).getByRole('button', {
+          name: 'Remove from family',
+        }),
+      );
+      const dialog = await body.findByRole('dialog', { name: /^Remove/ });
+      if (dismiss === 'button') {
+        await userEvent.click(
+          within(dialog).getByRole('button', { name: 'Cancel' }),
+        );
+      } else {
+        await userEvent.keyboard('{Escape}');
+      }
+      await waitFor(() =>
+        expect(body.queryByRole('dialog', { name: /^Remove/ })).toBeNull(),
+      );
+      await waitFor(() =>
+        expect(focused(canvasElement), dismiss).toBe(
+          personSymbol(canvasElement, 'kim'),
+        ),
+      );
+    }
+  },
+};
+
 /**
  * Removing someone from the keyboard leaves focus on a person still in the
  * family, not on nothing.
@@ -958,8 +1592,9 @@ export const NamesakesKeepTheirTypedNames: Story = {
 };
 
 /**
- * Someone drawn in brackets, as adopted, is announced as adopted: the
- * participant and their sister, both adopted by Ruth.
+ * Someone drawn in brackets, as adopted, is announced as adopted, in their
+ * symbol's description: the participant and their sister, both adopted by
+ * Ruth. A typed name is read exactly as typed, with nothing added to it.
  */
 export const AdoptionIsAnnounced: Story = {
   render: () => (
@@ -979,14 +1614,17 @@ export const AdoptionIsAnnounced: Story = {
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const you = await canvas.findByRole('button', { name: /^You/ });
+    await expect(you).toHaveAccessibleName('You');
+    await expect(you).toHaveAccessibleDescription(/Adopted/);
+    const grace = personSymbol(canvasElement, 'grace');
+    await expect(grace).toHaveAccessibleName('Grace');
+    await expect(grace).toHaveAccessibleDescription(/Adopted/);
+    await expect(personSymbol(canvasElement, 'ruth')).toHaveAccessibleName(
+      'Ruth',
+    );
     await expect(
-      await canvas.findByRole('button', { name: /^You, adopted/ }),
-    ).toBeInTheDocument();
-    await expect(
-      canvas.getByRole('button', { name: /^Grace, adopted/ }),
-    ).toBeInTheDocument();
-    await expect(
-      canvas.getByRole('button', { name: /^Ruth/ }),
-    ).not.toHaveAccessibleName(/adopted/);
+      personSymbol(canvasElement, 'ruth'),
+    ).not.toHaveAccessibleDescription(/Adopted/);
   },
 };

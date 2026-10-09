@@ -239,6 +239,10 @@
     "defaultMessage": "How should we describe your family?",
     "description": "Heading of the popover, opened from the stage’s toolbar, that asks which words to use for family members. Open when the participant first reaches the stage."
   },
+  "interview.familyPedigree.framingChosenAnnouncement": {
+    "defaultMessage": "{framing, select, gamete {Family members are now described with words like egg parent, sperm parent and sibling.} other {Family members are now described with words like mother, father, sister and brother.}}",
+    "description": "Screen-reader announcement after the participant chooses the words used to describe family members, which changes the labels of everyone they have not named. {framing} is \"gamete\" for the words that do not depend on gender, otherwise the words that follow gender."
+  },
   "interview.familyPedigree.framingControlLabel": {
     "defaultMessage": "Wording",
     "description": "Short label of the toolbar button, shown beside its icon, that opens the choice of words used to describe family members (such as “mother” or “egg parent”). Keep it brief."
@@ -319,6 +323,10 @@
     "defaultMessage": "Name (optional)",
     "description": "Label of the field for a family member’s name, which the participant may not know."
   },
+  "interview.familyPedigree.nominationLimitHint": {
+    "defaultMessage": "{sex, select, female {People assigned male at birth can’t be selected for this question.} other {People assigned female at birth can’t be selected for this question.}}",
+    "description": "Shown under the family tree while a question about the family applies only to people of one sex assigned at birth, and read out for each person who cannot be selected. {sex} is the sex the question applies to: \"female\" (so people assigned male at birth are left out) or \"male\"."
+  },
   "interview.familyPedigree.numberedRelative": {
     "defaultMessage": "{label} {number, number}",
     "description": "Tells apart several family members who would otherwise share a label (for example two unnamed children). label is the already translated label; number is their position in the order they were added. Shown in the family tree, and saved as the name of an unnamed family member when nothing else tells them apart."
@@ -364,8 +372,16 @@
     "description": "Notice shown under the family tree when the study protects names with a passphrase that has not been entered yet. Until it is, people are shown by how they are related to the participant, and the family cannot be changed."
   },
   "interview.familyPedigree.personAccessibleName": {
-    "defaultMessage": "{isYou, select, true {You} other {{name}}}{adopted, select, true {, adopted} other {}}{missing, select, true {, some details missing} other {}}",
-    "description": "Accessible name of a family member’s symbol in the family tree. {name} is the person’s name, exactly as the participant typed it, or, when it is not known, how they are related to the participant. The second part is read out when the person was adopted, which the tree shows by drawing brackets around their symbol. The third part is read out when required details about the person have not been given yet."
+    "defaultMessage": "{isYou, select, true {You} other {{name}}}",
+    "description": "Accessible name of a family member’s symbol in the family tree. {name} is the person’s name, exactly as the participant typed it, or, when it is not known, how they are related to the participant."
+  },
+  "interview.familyPedigree.personAdoptedDescription": {
+    "defaultMessage": "Adopted.",
+    "description": "Read out after the name of a family member’s symbol in the family tree when the person was adopted, which the tree shows by drawing brackets around their symbol."
+  },
+  "interview.familyPedigree.personMissingDetailsDescription": {
+    "defaultMessage": "Some details are missing.",
+    "description": "Read out after the name of a family member’s symbol in the family tree when required details about the person have not been given yet, which the tree shows with a warning icon."
   },
   "interview.familyPedigree.placeholderParentsNote": {
     "defaultMessage": "{framing, select, gamete {An egg parent and a sperm parent will be added for you to fill in later, so the family tree can show these siblings together.} other {A biological mother and a biological father will be added for you to fill in later, so the family tree can show these siblings together.}}",

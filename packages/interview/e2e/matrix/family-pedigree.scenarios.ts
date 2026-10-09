@@ -639,8 +639,11 @@ function keyboardFirstVisit(): ScenarioDefinition {
     run: async (ctx) => {
       const { page, interview } = ctx;
       await interview.next();
-      const you = member(page, 'You, some details missing');
+      const you = member(page, 'You');
       await expect(you).toBeVisible();
+      await expect(you).toHaveAccessibleDescription(
+        'Some details are missing.',
+      );
       // Created on arrival, marked as the participant and nothing else.
       await expect
         .poll(async () => (await networkOf(ctx)).nodes.length)
@@ -1224,10 +1227,13 @@ function formFieldsMissingDetails(): ScenarioDefinition {
     build: () => synth,
     run: async (ctx) => {
       const { page } = ctx;
-      await expect(member(page, 'Julie, some details missing')).toBeVisible();
-      await expect(member(page, 'You, some details missing')).toBeVisible();
+      for (const name of ['Julie', 'You']) {
+        await expect(member(page, name)).toHaveAccessibleDescription(
+          'Some details are missing.',
+        );
+      }
 
-      await member(page, 'Julie, some details missing').click();
+      await member(page, 'Julie').click();
       await expect(
         panel(page).getByText('Some details are missing: How old are they?.'),
       ).toBeVisible();
@@ -1243,9 +1249,11 @@ function formFieldsMissingDetails(): ScenarioDefinition {
         .getByRole('radio', { name: 'Yes', exact: true })
         .click();
       await submitPanel(page, 'Save');
-      await expect(member(page, 'Julie')).toBeVisible();
+      await expect(member(page, 'Julie')).not.toHaveAccessibleDescription(
+        /Some details are missing/,
+      );
 
-      await addRelativeOf(page, 'You, some details missing', 'sibling');
+      await addRelativeOf(page, 'You', 'sibling');
       await describe(page, { name: 'Bea', gender: 'Woman', sex: 'Female' });
       await panel(page)
         .getByRole('spinbutton', { name: /^How old are they\?/ })

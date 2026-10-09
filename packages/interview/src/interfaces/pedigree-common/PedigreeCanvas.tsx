@@ -31,6 +31,42 @@ import { interfaceMessages } from '../messages';
  * two. */
 const ZOOM_STEP = 0.5;
 
+/**
+ * Zooms the canvas for + or −, wherever the key is pressed: about `focus`,
+ * kept in view, or else about the middle. Other keys, keys already handled
+ * and keys typed into a text field are left alone. Whether it zoomed.
+ */
+export function zoomForKey(
+  event: KeyboardEvent<HTMLElement>,
+  panZoom: PanZoom,
+  focus?: ZoomFocus,
+) {
+  const { target } = event;
+  const typing =
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    (target instanceof HTMLElement && target.isContentEditable);
+  if (
+    typing ||
+    event.defaultPrevented ||
+    event.metaKey ||
+    event.ctrlKey ||
+    event.altKey
+  ) {
+    return false;
+  }
+  const exponent =
+    event.key === '+' || event.key === '='
+      ? ZOOM_STEP
+      : event.key === '-' || event.key === '_'
+        ? -ZOOM_STEP
+        : 0;
+  if (exponent === 0) return false;
+  event.preventDefault();
+  panZoom.zoomBy(exponent, focus);
+  return true;
+}
+
 type PedigreeViewportProps = {
   viewportRef: RefObject<HTMLDivElement | null>;
   contentRef: RefObject<HTMLDivElement | null>;
@@ -81,18 +117,7 @@ export function PedigreeViewport({
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (!event.metaKey && !event.ctrlKey && !event.altKey) {
-      if (event.key === '+' || event.key === '=') {
-        event.preventDefault();
-        panZoom.zoomBy(ZOOM_STEP, focusOf(event.target));
-        return;
-      }
-      if (event.key === '-' || event.key === '_') {
-        event.preventDefault();
-        panZoom.zoomBy(-ZOOM_STEP, focusOf(event.target));
-        return;
-      }
-    }
+    if (zoomForKey(event, panZoom, focusOf(event.target))) return;
     onKeyDown?.(event);
   };
 
@@ -128,7 +153,9 @@ export function PedigreeViewport({
  * Zoom out, zoom in, and show the whole family: the canvas's controls, as
  * keyed buttons to place directly in a `SegmentedToolbar` (which accepts only
  * its own components as children, so they cannot share a wrapper). The zoom
- * buttons are disabled at either end of the zoom's range.
+ * buttons are disabled at either end of the zoom's range. The toolbar's
+ * area handles + and − too (`zoomForKey`), so the keys zoom with focus on
+ * any of its controls, as they do in the canvas.
  */
 export function usePedigreeZoomButtons({
   panZoom,

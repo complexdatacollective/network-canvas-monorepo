@@ -1978,9 +1978,13 @@ export function canConnectPartners(
 /**
  * Why a kind of parent is unavailable although the two people could be
  * connected: the child already has someone recorded as having carried them,
- * and a child has one carrier at most.
+ * and a child has one carrier at most; or, for the genetic kinds, the would-be
+ * parent could not be another genetic parent of the child
+ * (`GeneticParentBlock`).
  */
-export type ParentChoiceBlock = { rule: 'carrierRecorded'; carrierId: string };
+export type ParentChoiceBlock =
+  | { rule: 'carrierRecorded'; carrierId: string }
+  | GeneticParentBlock;
 
 /**
  * The kinds of parent the connect menu offers for making one person the
@@ -1989,7 +1993,8 @@ export type ParentChoiceBlock = { rule: 'carrierRecorded'; carrierId: string };
  * already linked, or when the would-be parent descends from the child. A
  * person has at most two genetic parents (biological or donor) — one who
  * provided the egg and one the sperm, as `geneticParentsPossible` — so the
- * genetic kinds are left out once that is impossible. Nobody recorded as male
+ * genetic kinds are offered unavailable once that is impossible, saying why
+ * (`geneticParentBlock`). Nobody recorded as male
  * at birth carried a pregnancy, so for them the choices that carry are left
  * out. A child has one carrier at most, so while they have one, every choice
  * that carries (a surrogate always does) is offered unavailable, naming the
@@ -2013,6 +2018,14 @@ export function parentChoiceOptions(
     ...firmGeneticParentSexes(family, childId),
     parentSex,
   ]);
+  const geneticBlock: ParentChoiceBlock | undefined = canBeGenetic
+    ? undefined
+    : geneticParentBlock(
+        family,
+        childId,
+        firmGeneticParentsOf(family, childId),
+        parentSex,
+      );
   const couldCarry = couldCarryPregnancy(parentSex);
   const carrierId = carrierOf(family, childId);
   const carrierBlock: ParentChoiceBlock | undefined =
@@ -2023,14 +2036,19 @@ export function parentChoiceOptions(
     [];
   for (const kind of PEDIGREE_RELATIONSHIP_KINDS) {
     if (kind === 'partner' || isTwinKind(kind)) continue;
-    if (isGeneticKind(kind) && !canBeGenetic) continue;
+    const kindBlock = isGeneticKind(kind) ? geneticBlock : undefined;
+    if (isGeneticKind(kind) && !canBeGenetic && !kindBlock) continue;
     if (kind !== 'surrogate') {
-      options.push({ choice: { parentKind: kind, carriedPregnancy: false } });
+      options.push({
+        choice: { parentKind: kind, carriedPregnancy: false },
+        ...(kindBlock ? { unavailable: kindBlock } : {}),
+      });
     }
     if (couldCarry) {
+      const block = kindBlock ?? carrierBlock;
       options.push({
         choice: { parentKind: kind, carriedPregnancy: true },
-        ...(carrierBlock ? { unavailable: carrierBlock } : {}),
+        ...(block ? { unavailable: block } : {}),
       });
     }
   }

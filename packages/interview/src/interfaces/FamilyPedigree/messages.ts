@@ -76,10 +76,21 @@ export const messages = defineMessages({
   },
   personAccessibleName: {
     id: 'interview.familyPedigree.personAccessibleName',
-    defaultMessage:
-      '{isYou, select, true {You} other {{name}}}{adopted, select, true {, adopted} other {}}{missing, select, true {, some details missing} other {}}',
+    defaultMessage: '{isYou, select, true {You} other {{name}}}',
     description:
-      'Accessible name of a family member’s symbol in the family tree. {name} is the person’s name, exactly as the participant typed it, or, when it is not known, how they are related to the participant. The second part is read out when the person was adopted, which the tree shows by drawing brackets around their symbol. The third part is read out when required details about the person have not been given yet.',
+      'Accessible name of a family member’s symbol in the family tree. {name} is the person’s name, exactly as the participant typed it, or, when it is not known, how they are related to the participant.',
+  },
+  personAdoptedDescription: {
+    id: 'interview.familyPedigree.personAdoptedDescription',
+    defaultMessage: 'Adopted.',
+    description:
+      'Read out after the name of a family member’s symbol in the family tree when the person was adopted, which the tree shows by drawing brackets around their symbol.',
+  },
+  personMissingDetailsDescription: {
+    id: 'interview.familyPedigree.personMissingDetailsDescription',
+    defaultMessage: 'Some details are missing.',
+    description:
+      'Read out after the name of a family member’s symbol in the family tree when required details about the person have not been given yet, which the tree shows with a warning icon.',
   },
   missingDetails: {
     id: 'interview.familyPedigree.missingDetails',
@@ -355,6 +366,20 @@ export const messages = defineMessages({
       'Words that do not depend on anyone’s gender. Biological parents are described by whether they gave the egg or the sperm, and everyone else with words like grandparent or parent’s sibling.',
     description:
       'Explanation of the option to describe family members without reference to gender.',
+  },
+  nominationLimitHint: {
+    id: 'interview.familyPedigree.nominationLimitHint',
+    defaultMessage:
+      '{sex, select, female {People assigned male at birth can’t be selected for this question.} other {People assigned female at birth can’t be selected for this question.}}',
+    description:
+      'Shown under the family tree while a question about the family applies only to people of one sex assigned at birth, and read out for each person who cannot be selected. {sex} is the sex the question applies to: "female" (so people assigned male at birth are left out) or "male".',
+  },
+  framingChosenAnnouncement: {
+    id: 'interview.familyPedigree.framingChosenAnnouncement',
+    defaultMessage:
+      '{framing, select, gamete {Family members are now described with words like egg parent, sperm parent and sibling.} other {Family members are now described with words like mother, father, sister and brother.}}',
+    description:
+      'Screen-reader announcement after the participant chooses the words used to describe family members, which changes the labels of everyone they have not named. {framing} is "gamete" for the words that do not depend on gender, otherwise the words that follow gender.',
   },
   siblingKindLabel: {
     id: 'interview.familyPedigree.siblingKindLabel',
