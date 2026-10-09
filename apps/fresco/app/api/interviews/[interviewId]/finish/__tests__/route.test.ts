@@ -7,14 +7,14 @@ const {
   findUniqueMock,
   getAppSettingMock,
   revalidateMock,
-  updateMock,
+  updateManyMock,
 } = vi.hoisted(() => ({
   addEventMock: vi.fn(),
   cookieSetMock: vi.fn(),
   findUniqueMock: vi.fn(),
   getAppSettingMock: vi.fn(),
   revalidateMock: vi.fn(),
-  updateMock: vi.fn(),
+  updateManyMock: vi.fn(),
 }));
 
 vi.mock('server-only', () => ({}));
@@ -32,7 +32,7 @@ vi.mock('~/lib/db', () => ({
   prisma: {
     interview: {
       findUnique: findUniqueMock,
-      update: updateMock,
+      updateMany: updateManyMock,
     },
   },
 }));
@@ -101,27 +101,46 @@ function post(body: unknown) {
   );
 }
 
-function installInterview(finishTime: Date | null = null) {
-  findUniqueMock.mockResolvedValue({
-    finishTime,
-    protocolId: 'protocol-1',
-    protocol: STORED_PROTOCOL,
-  });
+// The row as the route re-reads it after its write, with the participant.
+const FINISHED_ROW = {
+  protocolId: 'protocol-1',
+  network: {
+    nodes: [{ _uid: 'node-1', type: 'person', attributes: {} }],
+    edges: [],
+    ego: { _uid: 'ego-1', attributes: {} },
+  },
+  stageMetadata: null,
+  participant: { label: null, identifier: 'P001' },
+};
+
+type FindUniqueArgs = { include?: unknown };
+
+/**
+ * The first read is of the interview and its protocol; the re-read after the
+ * write (the one that includes the participant) is of the row it left.
+ */
+function installInterview(
+  finishTime: Date | null = null,
+  afterWrite: object | null = FINISHED_ROW,
+) {
+  findUniqueMock.mockImplementation((args: FindUniqueArgs) =>
+    Promise.resolve(
+      args.include
+        ? afterWrite
+        : { finishTime, protocolId: 'protocol-1', protocol: STORED_PROTOCOL },
+    ),
+  );
 }
+
+const freezeOnCompletion = () =>
+  getAppSettingMock.mockImplementation((key: string) =>
+    Promise.resolve(key === 'freezeInterviewsAfterCompletion'),
+  );
 
 beforeEach(() => {
   vi.clearAllMocks();
   getAppSettingMock.mockResolvedValue(false);
-  updateMock.mockResolvedValue({
-    protocolId: 'protocol-1',
-    network: {
-      nodes: [{ _uid: 'node-1', type: 'person', attributes: {} }],
-      edges: [],
-      ego: { _uid: 'ego-1', attributes: {} },
-    },
-    stageMetadata: null,
-    participant: { label: null, identifier: 'P001' },
-  });
+  updateManyMock.mockResolvedValue({ count: 1 });
 });
 
 describe('interview finish route', () => {
@@ -134,14 +153,13 @@ describe('interview finish route', () => {
     });
 
     expect(response.status).toBe(200);
-    expect(updateMock).toHaveBeenCalledWith({
+    expect(updateManyMock).toHaveBeenCalledWith({
       where: { id: 'interview-1' },
       data: {
         finishTime: expect.any(Date),
         finishStageId: 'finish-ineligible',
         finishOutcome: 'ineligible',
       },
-      include: { participant: true },
     });
     expect(addEventMock).toHaveBeenCalledWith(
       'Interview Completed',
@@ -184,7 +202,7 @@ describe('interview finish route', () => {
 
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ error: 'Invalid request body' });
-    expect(updateMock).not.toHaveBeenCalled();
+    expect(updateManyMock).not.toHaveBeenCalled();
     expect(cookieSetMock).not.toHaveBeenCalled();
   });
 
@@ -202,7 +220,7 @@ describe('interview finish route', () => {
 
     expect(response.status).toBe(400);
     expect(findUniqueMock).not.toHaveBeenCalled();
-    expect(updateMock).not.toHaveBeenCalled();
+    expect(updateManyMock).not.toHaveBeenCalled();
   });
 
   it('refuses to finish against a stored protocol that does not parse, without touching the row', async () => {
@@ -221,7 +239,7 @@ describe('interview finish route', () => {
     });
 
     expect(response.status).toBe(500);
-    expect(updateMock).not.toHaveBeenCalled();
+    expect(updateManyMock).not.toHaveBeenCalled();
     expect(cookieSetMock).not.toHaveBeenCalled();
   });
 
@@ -234,14 +252,12 @@ describe('interview finish route', () => {
     });
 
     expect(response.status).toBe(404);
-    expect(updateMock).not.toHaveBeenCalled();
+    expect(updateManyMock).not.toHaveBeenCalled();
   });
 
   it('keeps a frozen interview’s recorded finish', async () => {
     installInterview(new Date('2026-01-01T00:00:00.000Z'));
-    getAppSettingMock.mockImplementation((key: string) =>
-      Promise.resolve(key === 'freezeInterviewsAfterCompletion'),
-    );
+    freezeOnCompletion();
 
     const response = await post({
       stageId: 'finish-ineligible',
@@ -254,7 +270,7 @@ describe('interview finish route', () => {
       applied: false,
       frozen: true,
     });
-    expect(updateMock).not.toHaveBeenCalled();
+    expect(updateManyMock).not.toHaveBeenCalled();
     expect(addEventMock).not.toHaveBeenCalled();
     expect(cookieSetMock).toHaveBeenCalledWith(
       'protocol-1',
@@ -272,7 +288,7 @@ describe('interview finish route', () => {
     });
 
     expect(response.status).toBe(200);
-    expect(updateMock).toHaveBeenCalledWith(
+    expect(updateManyMock).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           finishStageId: 'finish-completed',
@@ -284,7 +300,7 @@ describe('interview finish route', () => {
 
   it('answers 500 when the write fails', async () => {
     installInterview();
-    updateMock.mockRejectedValue(new Error('database unavailable'));
+    updateManyMock.mockRejectedValue(new Error('database unavailable'));
 
     const response = await post({
       stageId: 'finish-completed',
@@ -295,5 +311,62 @@ describe('interview finish route', () => {
     expect(await response.json()).toEqual({
       error: 'Failed to finish interview',
     });
+  });
+
+  it('makes the freeze part of the write when interviews freeze on completion', async () => {
+    freezeOnCompletion();
+    installInterview();
+
+    const response = await post({
+      stageId: 'finish-completed',
+      outcome: 'completed',
+    });
+
+    expect(await response.json()).toEqual({ success: true, applied: true });
+    expect(updateManyMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'interview-1', finishTime: null },
+      }),
+    );
+  });
+
+  it('keeps the first of two overlapping finishes, and reports only that one as a completion', async () => {
+    freezeOnCompletion();
+    // Both requests read the interview unfinished; the database lets only the
+    // first write match the unfinished row.
+    installInterview(null, {
+      ...FINISHED_ROW,
+      finishTime: new Date('2026-01-01T00:00:00.000Z'),
+    });
+    updateManyMock
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValueOnce({ count: 0 });
+    const body = { stageId: 'finish-completed', outcome: 'completed' };
+
+    const [first, second] = await Promise.all([post(body), post(body)]);
+
+    expect(await first.json()).toEqual({ success: true, applied: true });
+    expect(await second.json()).toEqual({
+      success: true,
+      applied: false,
+      frozen: true,
+    });
+    expect(addEventMock).toHaveBeenCalledTimes(1);
+    // The browser that lost the race is still sent to the finished interview.
+    expect(cookieSetMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('answers 404 when the interview is deleted before the write', async () => {
+    freezeOnCompletion();
+    installInterview(null, null);
+    updateManyMock.mockResolvedValue({ count: 0 });
+
+    const response = await post({
+      stageId: 'finish-completed',
+      outcome: 'completed',
+    });
+
+    expect(response.status).toBe(404);
+    expect(addEventMock).not.toHaveBeenCalled();
   });
 });

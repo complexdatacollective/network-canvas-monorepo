@@ -91,6 +91,49 @@ async function fetchBatchWithRetry(
     : new Error('Export batch failed');
 }
 
+// File systems cap a single name at 255 bytes, not characters.
+const MAX_FILE_NAME_BYTES = 255;
+
+const utf8 = new TextEncoder();
+
+const truncateToBytes = (value: string, maxBytes: number): string => {
+  let bytes = 0;
+  let end = 0;
+  for (const character of value) {
+    bytes += utf8.encode(character).length;
+    if (bytes > maxBytes) break;
+    end += character.length;
+  }
+  return value.slice(0, end);
+};
+
+/**
+ * The name `name` is given in the combined archive: its own, unless an earlier
+ * batch already claimed it, in which case a counter before the extension
+ * tells the two apart.
+ *
+ * Each batch is named by the server on its own, and the exporter's prefix,
+ * `{caseId}_{sessionId}`, is cut to fit the file system's limit, so a long
+ * case id can leave two sessions in different batches with one name. Within a
+ * batch the exporter already tells such files apart; across batches only this
+ * can. Both files hold real participant data, so neither may replace the
+ * other, and neither is a reason to abandon the export.
+ */
+function claimName(name: string, claimed: Set<string>): string {
+  if (!claimed.has(normalizeForComparison(name))) return name;
+  const dot = name.lastIndexOf('.');
+  const stem = dot > 0 ? name.slice(0, dot) : name;
+  const extension = dot > 0 ? name.slice(dot) : '';
+  for (let counter = 2; ; counter += 1) {
+    const suffix = `_${String(counter)}${extension}`;
+    const candidate = `${truncateToBytes(
+      stem,
+      MAX_FILE_NAME_BYTES - utf8.encode(suffix).length,
+    )}${suffix}`;
+    if (!claimed.has(normalizeForComparison(candidate))) return candidate;
+  }
+}
+
 function zipAsync(
   files: Record<string, Uint8Array>,
 ): Promise<Uint8Array<ArrayBuffer>> {
@@ -103,10 +146,11 @@ function zipAsync(
 
 /**
  * Orchestrates a batched export entirely client-side: bounded per-batch
- * requests (with retry), then one zip in the browser. Two files with the same
- * name, across or within batches, fail the export rather than overwrite one
- * another. The single zip means each server request stays small, so a large
- * export never approaches the serverless time/memory limit.
+ * requests (with retry), then one zip in the browser. Two files of one batch
+ * with the same name fail the export, since the exporter names a batch's files
+ * so that cannot happen; a name a later batch repeats is told apart (see
+ * `claimName`). The single zip means each server request stays small, so a
+ * large export never approaches the serverless time/memory limit.
  */
 export async function runBatchedExport(
   interviewIds: string[],
@@ -119,8 +163,7 @@ export async function runBatchedExport(
   if (signal.aborted) throw abortError();
 
   const batches = chunk(ids, EXPORT_BATCH_SIZE);
-  const files = new Map<string, Uint8Array<ArrayBuffer>>();
-  const claimedNames = new Set<string>();
+  const batchFiles = new Map<number, Map<string, Uint8Array<ArrayBuffer>>>();
   const failedIds = new Set<string>();
   const batchWarnings = new Map<number, ExportWarning[]>();
   let completed = 0;
@@ -137,19 +180,12 @@ export async function runBatchedExport(
       const index = cursor++;
       if (index >= batches.length) return;
       const batch = batches[index]!;
-      const {
-        files: batchFiles,
-        failedSessionIds,
-        warnings,
-      } = await fetchBatchWithRetry(batch, exportOptions, internal.signal);
-      for (const [name, bytes] of batchFiles) {
-        const claim = normalizeForComparison(name);
-        if (claimedNames.has(claim)) {
-          throw new DuplicateExportFileError(name);
-        }
-        claimedNames.add(claim);
-        files.set(name, bytes);
-      }
+      const { files, failedSessionIds, warnings } = await fetchBatchWithRetry(
+        batch,
+        exportOptions,
+        internal.signal,
+      );
+      batchFiles.set(index, files);
       for (const id of failedSessionIds) failedIds.add(id);
       batchWarnings.set(index, warnings);
       completed += batch.length;
@@ -186,8 +222,21 @@ export async function runBatchedExport(
     signal.removeEventListener('abort', onExternalAbort);
   }
 
-  const filesObject: Record<string, Uint8Array> = Object.fromEntries(files);
-  const zipped = await zipAsync(filesObject);
+  // Batches finish in any order; name their files in the order they were
+  // asked for, so the same export names its files the same way every time.
+  const entries: [string, Uint8Array][] = [];
+  const claimedNames = new Set<string>();
+  for (let index = 0; index < batches.length; index++) {
+    for (const [name, bytes] of batchFiles.get(index) ?? []) {
+      const claimed = claimName(name, claimedNames);
+      claimedNames.add(normalizeForComparison(claimed));
+      entries.push([claimed, bytes]);
+    }
+  }
+  const zipped = await zipAsync(Object.fromEntries(entries));
+  // Assembling a large archive takes a while, and a cancel in that time must
+  // still stop the download and leave the interviews unmarked.
+  if (signal.aborted) throw abortError();
   const blob = new Blob([zipped], { type: 'application/zip' });
   const exportedIds = ids.filter((id) => !failedIds.has(id));
   // Batches finish in any order; report them in the order they were asked for.

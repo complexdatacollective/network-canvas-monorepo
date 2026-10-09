@@ -36,7 +36,8 @@ describe('createProtocolLocaleChangeHandler', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       '/interview/interview-1/locale',
-      expect.objectContaining({ method: 'POST' }),
+      // keepalive, so a change made just before the page is closed still lands.
+      expect.objectContaining({ method: 'POST', keepalive: true }),
     );
     expect(pending[0]?.body).toEqual({ locale: 'fr', localePreference: 'fr' });
 
