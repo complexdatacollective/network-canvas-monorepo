@@ -18,12 +18,12 @@ A new protocol starts with a Finish Screen already in place. Protocols made befo
 
 ## What participants see
 
-On the Finish Screen, participants read the heading and text you wrote and press **Finish**. They are asked to confirm, because their answers can't be changed once the interview is finished.
+On the Finish Screen, participants read the heading and text you wrote and press **Finish**. They are asked to confirm, because their answers can't be changed once the interview is finished. If the interview can't be finished, they see a message saying so and can try again.
 
 After they confirm, the interview shows its **completed state**:
 
 - the Finish Screen's heading and text again.
-- a notice from Network Canvas: "This interview is finished, and its answers can no longer be changed." You can't change this notice. It is shown in the same language as the interview's buttons and messages.
+- a notice that the interview is finished and its answers can no longer be changed. Network Canvas supplies it, and you can change and translate it (see [Finishing the interview](#finishing-the-interview)).
 - no way to move through the interview. There are no navigation buttons and no way back to an earlier screen.
 
 Opening a finished interview again shows the completed state again, rather than the interview from the start.
@@ -46,6 +46,7 @@ The stage editor has these sections:
 - **Closing screen** holds what participants read:
   - **Heading** is the title of the screen. It can use bold and italic text, but nothing else.
   - **Text** is the message below the heading. You can format it with Markdown, such as paragraphs, lists and links.
+- **Finishing the interview** holds the words participants read while they finish (see [Finishing the interview](#finishing-the-interview)).
 - **Outcome** has the choice **How the interview ended**. Participants never see it. It is saved with the interview and included in your exported data (see [Data](#data)). The choices are:
   - **Completed**: the participant reached the normal end of the interview.
   - **Ineligible**: the participant did not qualify for the study.
@@ -61,11 +62,22 @@ The Finish Screen has a fixed place at the end of the protocol:
 - **Add new stage** puts new stages before the Finish Screen.
 - Finish Screen isn't offered on the **New Stage** screen, because your protocol already has one.
 
+### Finishing the interview
+
+The **Finishing the interview** section holds the words participants read while they finish, apart from the heading and text above:
+
+- **Finish button** is the words on the button that ends the interview.
+- **Confirmation question** is the question participants are asked after they press the button, before the interview ends.
+- **Finished notice** is shown under the closing text once the interview is finished, and again whenever the finished interview is opened.
+- **If finishing fails** is the message participants see when the interview could not be finished.
+
+Network Canvas supplies all four in each language it has wording for, so a new Finish Screen is ready to use. Like the rest of your protocol, they are text you can change. When your protocol has more than one language, translate them with the heading and text (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)).
+
 ### Starting text
 
-A new protocol starts with a Finish Screen whose stage name and heading are "Finish Interview", and whose text reads "You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now." Network Canvas supplies this text in each language of your protocol that it has the text for. You can change all of it.
+A new protocol starts with a Finish Screen whose stage name and heading are "Finish Interview", and whose text reads "You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now." Network Canvas supplies this text in each language of your protocol that it has the text for. You can change all of it. The same goes for the words in **Finishing the interview**.
 
-When you add a language to your protocol, Architect also adds the supplied text in that language, as long as the Finish Screen's heading and text in your default language are still the supplied text. See [Adding languages](/en/design-protocols/translating-your-protocol#adding-languages). The same is true when you [change the language your text is recorded as](/en/design-protocols/translating-your-protocol#changing-the-language-your-text-is-recorded-as): unchanged supplied text becomes the supplied text in the language you chose. If you have changed the text, translate it yourself like the rest of your protocol (see [Translating Your Protocol](/en/design-protocols/translating-your-protocol)).
+When you add a language to your protocol, Architect also adds the supplied text in that language, as long as the Finish Screen's heading and text in your default language are still the supplied text. Each of the four finishing texts is filled in in the same way, as long as it is still the supplied wording. See [Adding languages](/en/design-protocols/translating-your-protocol#adding-languages). The same is true when you [change the language your text is recorded as](/en/design-protocols/translating-your-protocol#changing-the-language-your-text-is-recorded-as): unchanged supplied text becomes the supplied text in the language you chose. If you have changed the text, translate it yourself like the rest of your protocol (see [Translating Your Protocol](/en/design-protocols/translating-your-protocol)).
 
 ### Previewing
 
@@ -91,7 +103,7 @@ Write closing text that tells participants what happens next: that their answers
 
 <GoodPractice>
 
-Check the closing text in every language of your protocol. If you have added languages after changing the text, translate it in each one (see [Finding missing translations](/en/design-protocols/translating-your-protocol#finding-missing-translations)).
+Check the closing text and the words in **Finishing the interview** in every language of your protocol. If you have added languages after changing the text, translate it in each one (see [Finding missing translations](/en/design-protocols/translating-your-protocol#finding-missing-translations)).
 
 </GoodPractice>
 

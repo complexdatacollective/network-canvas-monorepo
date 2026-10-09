@@ -59,6 +59,20 @@ As a general rule of thumb search accuracy should increase as roster size increa
 
 ![](/assets/img/interface-documentation/name-generators/architect-search.png)
 
+<AppOnly app="current">
+
+### Messages
+
+The **Messages** section of the stage editor holds the words participants read about this stage's limits and data. Network Canvas fills in starting wording for each, in every language it has wording for, and you can change and translate it like any other text (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)). A message is in the section only while the part of the stage it belongs to is set up:
+
+- **Minimum not reached** is shown when participants try to continue before they have named the fewest people the stage asks for, and can show that number. It is there only when the stage has a minimum.
+- **Maximum reached** is shown once participants have named the most people the stage allows. It is there only when the stage has a maximum.
+- **Data could not be loaded** is shown in place of the roster when its data file could not be loaded.
+- **Everything added** is shown in the list of people when everyone on the roster has already been added.
+- **Search label** and **No search results** are the placeholder of the search box and the message shown when a search matches nothing. They are there only when the stage has search options.
+
+</AppOnly>
+
 ### Best Practices
 
 <GoodPractice>

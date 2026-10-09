@@ -135,6 +135,16 @@ This approach reduces burden by only validating fields that are relevant to each
 
 ### Built-in Error Messages
 
+<AppOnly app="current">
+
+Network Canvas supplies a message for each validation rule, such as "You must answer this question before continuing." for a required answer, or "Too short. Enter at least 3 characters." for a minimum length. The messages are part of your protocol's [interview text](/en/design-protocols/translating-your-protocol#interview-text), so each is shown in the language of the interview, and you can reword and translate them in the translation table.
+
+There is one wording for each rule, shared by every question that uses the rule, and a message can show the limit the rule sets, such as the minimum length. Your protocol holds only the messages of the rules it uses, so you only translate the messages that a participant could see. When you add a rule to a question, Architect adds its message, and when no question uses a rule any more, Architect removes it.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
 Network Canvas provides standard error messages for each validation type:
 
 - **Required:** "This field is required"
@@ -143,6 +153,8 @@ Network Canvas provides standard error messages for each validation type:
 - **Minimum value:** "Value must be at least [X]"
 - **Maximum value:** "Value must be no more than [X]"
 - **Date range:** "Please select a date within the specified range"
+
+</AppOnly>
 
 ### User Experience Considerations
 
