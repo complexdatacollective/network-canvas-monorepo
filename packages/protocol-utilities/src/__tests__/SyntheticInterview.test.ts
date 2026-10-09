@@ -3312,4 +3312,23 @@ describe('SyntheticInterview stage wording', () => {
       },
     });
   });
+
+  it('writes a dotted wording name inside its group and keeps the rest', () => {
+    const synth = new SyntheticInterview();
+    synth
+      .addStage('Sociogram', {
+        initialNodes: { count: 2 },
+        behaviours: { automaticLayout: true },
+        wording: { 'tooltips.pauseLayout': 'Hold still {now}' },
+      })
+      .addPrompt();
+
+    const { stages } = expectValid(synth);
+    expect(stages[0]).toMatchObject({
+      tooltips: {
+        pauseLayout: { 'en-US': escapeMessageText('Hold still {now}') },
+        resumeLayout: { 'en-US': expect.any(String) },
+      },
+    });
+  });
 });

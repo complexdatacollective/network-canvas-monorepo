@@ -612,7 +612,8 @@ export type AddStageInput = {
     'relativesNotRecordedAttribute'
   >;
   /** Stage settings holding participant-visible wording the researcher has
-   * written, by setting name (for example `externalDataError`); a setting not
+   * written, by setting name (for example `externalDataError`, or a dotted name
+   * such as `tooltips.addPerson` for a setting inside a group); a setting not
    * named here takes the text Network Canvas supplies. */
   wording?: Record<string, TextInput>;
   // Geospatial

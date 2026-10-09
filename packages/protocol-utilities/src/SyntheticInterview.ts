@@ -371,6 +371,27 @@ const DEFAULT_LOCALIZATION: LocalizationInput = {
   locales: ['en-US'],
 };
 
+/** Set `value` at `path` inside `config`, copying each group on the way so a
+ * group shared with another stage is never changed. */
+function setAtPath(
+  config: Record<string, unknown>,
+  path: readonly string[],
+  value: unknown,
+): void {
+  let container = config;
+  for (const key of path.slice(0, -1)) {
+    const child = container[key];
+    const copy: Record<string, unknown> =
+      typeof child === 'object' && child !== null
+        ? { ...(child as Record<string, unknown>) }
+        : {};
+    container[key] = copy;
+    container = copy;
+  }
+  const last = path.at(-1);
+  if (last !== undefined) container[last] = value;
+}
+
 export class SyntheticInterview {
   private seed: number;
   private idCounter = 0;
@@ -2720,18 +2741,7 @@ export class SyntheticInterview {
       { ...config, type },
       this.localization,
     )) {
-      let container = config;
-      for (const key of path.slice(0, -1)) {
-        const child = container[key];
-        const copy: Record<string, unknown> =
-          typeof child === 'object' && child !== null
-            ? { ...(child as Record<string, unknown>) }
-            : {};
-        container[key] = copy;
-        container = copy;
-      }
-      const last = path.at(-1);
-      if (last !== undefined) container[last] = value;
+      setAtPath(config, path, value);
     }
     return config;
   }
@@ -2979,9 +2989,10 @@ export class SyntheticInterview {
       }
     }
 
-    // The researcher's own wording, before Network Canvas's fills what is left.
+    // The researcher's own wording, before Network Canvas's fills what is
+    // left. A dotted name (`tooltips.addPerson`) is a setting inside a group.
     for (const [setting, text] of Object.entries(stage.wording ?? {})) {
-      config[setting] = this.localized(text);
+      setAtPath(config, setting.split('.'), this.localized(text));
     }
 
     return this.withSuppliedText(config, stage.type);
