@@ -1549,7 +1549,7 @@ function connectAndDisconnect(): ScenarioDefinition {
       await tom.click();
       await rachel.click();
       await expect(hint).toHaveText(
-        'Removing this connection would leave “Tom” outside your family tree. Connect them to someone else in your family first.',
+        'Removing this connection would leave Tom outside your family tree. Connect them to someone else in your family first.',
       );
       await expect(page.getByRole('dialog')).toHaveCount(0);
       await page.keyboard.press('Escape');

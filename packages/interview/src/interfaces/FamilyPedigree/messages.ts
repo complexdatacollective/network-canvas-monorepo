@@ -332,7 +332,7 @@ export const messages = defineMessages({
     defaultMessage:
       '{count, plural, one {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.} other {Removing this connection would leave {names} outside your family tree. Connect them to someone else in your family first.}}',
     description:
-      'Shown under the toolbar, and read out, when the participant selects two people to disconnect whose connection is the only link between the participant and other people in the family tree, so it cannot be removed. names is a list of those people’s names, or, when they have none, how they are related to the participant, each quoted and already joined in the participant’s language (for example “Aunt” and “Cousin”); count is how many people it names.',
+      'Shown under the toolbar, and read out, when the participant selects two people to disconnect whose connection is the only link between the participant and other people in the family tree, so it cannot be removed. names is a list of those people’s names, or, when they have none, how they are related to the participant, already joined in the participant’s language (for example Aunt and Cousin); count is how many people it names.',
   },
   disconnectConfirmTitle: {
     id: 'interview.familyPedigree.disconnectConfirmTitle',

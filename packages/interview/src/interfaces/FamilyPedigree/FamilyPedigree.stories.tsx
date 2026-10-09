@@ -1957,7 +1957,7 @@ export const ConnectingExistingPeople: Story = {
     await userEvent.click(person('dad'));
     await userEvent.click(person('mum'));
     await expect(canvas.getByTestId('pedigree-connect-hint')).toHaveTextContent(
-      'Removing this connection would leave “Tom” outside your family tree. Connect them to someone else in your family first.',
+      'Removing this connection would leave Tom outside your family tree. Connect them to someone else in your family first.',
     );
     await expect(page.queryByRole('dialog')).toBeNull();
     await userEvent.keyboard('{Escape}');
@@ -1983,7 +1983,6 @@ export const ConnectingExistingPeople: Story = {
     // Already connected, so no second link: the already-connected person is
     // unavailable, does not join the linking state, and opens no menu.
     await userEvent.click(person('mum'));
-    await userEvent.hover(person('dad'));
     await expect(person('dad')).toBeDisabled();
     await expect(
       canvasElement.querySelector('[data-person-id="dad"] [data-node-linking]'),
@@ -2122,7 +2121,7 @@ export const RemovingSomeoneRemovesThoseConnectedOnlyThroughThem: Story = {
     await userEvent.click(await page.findByRole('button', { name: 'Delete' }));
     const dialog = await page.findByRole('dialog', { name: 'Remove Rachel?' });
     await expect(dialog).toHaveTextContent(
-      '“Margaret” is connected to you only through them, so will be removed too.',
+      'Margaret is connected to you only through them, so will be removed too.',
     );
     await userEvent.click(
       within(dialog).getByRole('button', { name: 'Delete' }),
