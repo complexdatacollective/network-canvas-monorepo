@@ -1,7 +1,7 @@
 'use client';
 
 import { Speech } from 'lucide-react';
-import type { Ref } from 'react';
+import { type Ref, useRef } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
@@ -28,8 +28,9 @@ type FramingControlProps = {
 /**
  * The participant's choice of words for their family, in the stage's
  * toolbar, when the stage leaves the framing to them. Choosing applies at
- * once and closes the popover. Until they have chosen, nothing else closes
- * it: the words on the canvas depend on the answer.
+ * once, closes the popover and returns focus to its button. Until they have
+ * chosen, nothing else closes it: the words on the canvas depend on the
+ * answer.
  */
 function FramingControl({
   value,
@@ -39,10 +40,17 @@ function FramingControl({
   ref,
 }: FramingControlProps) {
   const intl = useAppIntl();
+  // The toolbar button, as well as whoever the ref is forwarded to.
+  const trigger = useRef<HTMLButtonElement | null>(null);
+  const setTrigger = (element: HTMLButtonElement | null) => {
+    trigger.current = element;
+    if (typeof ref === 'function') ref(element);
+    else if (ref) ref.current = element;
+  };
 
   return (
     <ToolbarPopover
-      ref={ref}
+      ref={setTrigger}
       open={open}
       onOpenChange={(next) => {
         if (!next && value === undefined) return;
@@ -87,6 +95,10 @@ function FramingControl({
         onChange={(chosen) => {
           if (chosen !== 'gendered' && chosen !== 'gamete') return;
           onChange(chosen);
+          // Focus is moved back by hand: once it has been away from the
+          // unanswered popover, the popover no longer returns it on closing,
+          // and it would be left on nothing.
+          trigger.current?.focus();
           onOpenChange(false);
         }}
       />

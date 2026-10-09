@@ -89,7 +89,7 @@
   "interview.familyPedigree.parentPartnerLabel": "Is deze persoon de partner van een andere ouder?",
   "interview.familyPedigree.partnershipCurrentLabel": "Zijn ze nog samen?",
   "interview.familyPedigree.passphraseNeededNotice": "Voer je wachtzin in om de namen in je familie te zien en om mensen toe te voegen of te wijzigen.",
-  "interview.familyPedigree.personAccessibleName": "{isYou, select, true {Jij} other {{name}}}{missing, select, true {, er ontbreken gegevens} other {}}",
+  "interview.familyPedigree.personAccessibleName": "{isYou, select, true {Jij} other {{name}}}{adopted, select, true {, geadopteerd} other {}}{missing, select, true {, er ontbreken gegevens} other {}}",
   "interview.familyPedigree.placeholderParentsNote": "{framing, select, gamete {Er worden een eicelouder en een zaadouder toegevoegd die je later kunt aanvullen, zodat de stamboom deze broers en zussen samen kan tonen.} other {Er worden een biologische moeder en een biologische vader toegevoegd die je later kunt aanvullen, zodat de stamboom deze broers en zussen samen kan tonen.}}",
   "interview.familyPedigree.pointerTool": "Toevoegen en bewerken",
   "interview.familyPedigree.relationshipSection": "Verwantschap",

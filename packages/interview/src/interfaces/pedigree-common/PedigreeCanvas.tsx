@@ -20,7 +20,11 @@ import {
   nearestInDirection,
   type Point,
 } from '../FamilyPedigree/spatialNavigation';
-import { type PanZoom, useZoomLimits } from '../FamilyPedigree/usePanZoom';
+import {
+  type PanZoom,
+  type ZoomFocus,
+  useZoomLimits,
+} from '../FamilyPedigree/usePanZoom';
 import { interfaceMessages } from '../messages';
 
 /** How far one press of a zoom control (or of + or −) zooms, as a power of
@@ -33,6 +37,9 @@ type PedigreeViewportProps = {
   panZoom: PanZoom;
   /** Keys the canvas does not handle itself (it handles + and −). */
   onKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void;
+  /** What + and − keep in view when focus is on `target`, inside the
+   * family. Without it, the focused element itself. */
+  zoomFocus?: (target: HTMLElement) => ZoomFocus | undefined;
   onBlur?: FocusEventHandler<HTMLDivElement>;
   onClick?: MouseEventHandler<HTMLDivElement>;
   /** Drawn over the canvas, outside the panned and zoomed content. */
@@ -44,15 +51,17 @@ type PedigreeViewportProps = {
 /**
  * The family tree's canvas, shared by the Family Pedigree and the Narrative
  * Pedigree: drag to pan, wheel or pinch to zoom (`usePanZoom`), and + or −
- * from the keyboard to zoom about the middle. It is clipped rather than
- * scrollable, so focusing someone off screen pans to them instead of
- * scrolling. Announced as a region named for the family.
+ * from the keyboard to zoom about the middle, or about the person focused,
+ * who stays in view. It is clipped rather than scrollable, so focusing
+ * someone off screen pans to them instead of scrolling. Announced as a
+ * region named for the family.
  */
 export function PedigreeViewport({
   viewportRef,
   contentRef,
   panZoom,
   onKeyDown,
+  zoomFocus,
   onBlur,
   onClick,
   overlay,
@@ -60,16 +69,27 @@ export function PedigreeViewport({
 }: PedigreeViewportProps) {
   const intl = useAppIntl();
 
+  // Focus inside the family is kept in view as it zooms.
+  const focusOf = (target: EventTarget): ZoomFocus | undefined => {
+    if (
+      !(target instanceof HTMLElement) ||
+      !contentRef.current?.contains(target)
+    ) {
+      return undefined;
+    }
+    return zoomFocus ? zoomFocus(target) : { elements: [target] };
+  };
+
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (!event.metaKey && !event.ctrlKey && !event.altKey) {
       if (event.key === '+' || event.key === '=') {
         event.preventDefault();
-        panZoom.zoomBy(ZOOM_STEP);
+        panZoom.zoomBy(ZOOM_STEP, focusOf(event.target));
         return;
       }
       if (event.key === '-' || event.key === '_') {
         event.preventDefault();
-        panZoom.zoomBy(-ZOOM_STEP);
+        panZoom.zoomBy(-ZOOM_STEP, focusOf(event.target));
         return;
       }
     }
@@ -147,6 +167,23 @@ export function usePedigreeZoomButtons({
 }
 
 /**
+ * Where an element's centre sits in the page's layout: from layout offsets,
+ * which the canvas's zoom and any animation under way do not change, so
+ * positions compare alike at every zoom.
+ */
+const layoutCentreOf = (element: HTMLElement): Point => {
+  let x = element.offsetWidth / 2;
+  let y = element.offsetHeight / 2;
+  let current: Element | null = element;
+  while (current instanceof HTMLElement) {
+    x += current.offsetLeft;
+    y += current.offsetTop;
+    current = current.offsetParent;
+  }
+  return { x, y };
+};
+
+/**
  * Moves keyboard focus from one person to the nearest in the arrow key's
  * direction, by where they sit in the tree. People whose button is disabled
  * are passed over. Other keys are left alone.
@@ -159,10 +196,7 @@ export function focusNeighbourInDirection(
   const direction = ARROW_DIRECTIONS[event.key];
   if (!direction) return;
   event.preventDefault();
-  const centreOf = (element: HTMLElement): Point => {
-    const rect = element.getBoundingClientRect();
-    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-  };
+  const centreOf = layoutCentreOf;
   const current = people.get(fromId);
   if (!current) return;
   const candidates = new Map<string, Point>();

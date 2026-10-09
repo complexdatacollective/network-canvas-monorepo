@@ -89,7 +89,7 @@
   "interview.familyPedigree.parentPartnerLabel": "此人是否是另一位家长的伴侣？",
   "interview.familyPedigree.partnershipCurrentLabel": "他们仍在一起吗？",
   "interview.familyPedigree.passphraseNeededNotice": "请输入您的密码短语，以查看您家人的姓名并添加或更改人员。",
-  "interview.familyPedigree.personAccessibleName": "{isYou, select, true {您} other {{name}}}{missing, select, true {，缺少一些信息} other {}}",
+  "interview.familyPedigree.personAccessibleName": "{isYou, select, true {您} other {{name}}}{adopted, select, true {，被收养} other {}}{missing, select, true {，缺少一些信息} other {}}",
   "interview.familyPedigree.placeholderParentsNote": "{framing, select, gamete {系统将添加一位卵子方家长和一位精子方家长，供您稍后填写，以便家谱图将这些兄弟姐妹显示在一起。} other {系统将添加一位生母和一位生父，供您稍后填写，以便家谱图将这些兄弟姐妹显示在一起。}}",
   "interview.familyPedigree.pointerTool": "添加和编辑",
   "interview.familyPedigree.relationshipSection": "亲属关系",

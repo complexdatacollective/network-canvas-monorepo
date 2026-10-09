@@ -398,3 +398,108 @@ function resolveLabels(
 
   return result;
 }
+
+/**
+ * The words that name each person alone, by person id, for wherever only
+ * words can tell people apart: what a screen reader reads out for their
+ * symbol, and the panel titles, connect hints and confirmations that name
+ * them. Each starts from their label (`labels`, as `labelEveryone` gives
+ * them). People whose labels match — two relatives given the same name —
+ * are told apart as generated labels are: by one relative of the same kind
+ * for each (their partner, then a child, then a parent, then a sibling,
+ * named by that relative's own label), the first kind that separates them
+ * all, or else by number in the order they were added. A label no one else
+ * shares is kept as it is. Nothing here is saved.
+ */
+export function distinctNames(
+  family: Family,
+  labels: ReadonlyMap<string, string>,
+  intl: IntlShape,
+): Map<string, string> {
+  const result = new Map(labels);
+  const used = new Set([...labels.values()].map(comparable));
+  const groups = new Map<string, Person[]>();
+  for (const person of family.people) {
+    const label = labels.get(person.id);
+    if (label === undefined || person.isEgo) continue;
+    const key = comparable(label);
+    groups.set(key, [...(groups.get(key) ?? []), person]);
+  }
+
+  const throughRelatives = (
+    members: readonly Person[],
+    qualifier: Qualifier,
+  ): Map<string, string> | undefined => {
+    const memberIds = new Set(members.map((member) => member.id));
+    const relativesOf = new Map(
+      members.map((member) => [
+        member.id,
+        relativesFor(family, member.id, qualifier),
+      ]),
+    );
+    const taken = new Set(used);
+    const told = new Map<string, string>();
+    for (const member of members) {
+      // A relative tells this member apart only when no one else in the
+      // group has them in the same way. Named relatives come first, then the
+      // participant, then relatives known by a label.
+      const rank = (id: string) => {
+        const relative = family.byId.get(id);
+        return relative?.name !== undefined ? 0 : relative?.isEgo ? 1 : 2;
+      };
+      const relativeId = (relativesOf.get(member.id) ?? [])
+        .filter(
+          (id) =>
+            !memberIds.has(id) &&
+            labels.has(id) &&
+            members.every(
+              (other) =>
+                other.id === member.id ||
+                !(relativesOf.get(other.id) ?? []).includes(id),
+            ),
+        )
+        .toSorted((a, b) => rank(a) - rank(b))[0];
+      const relative = relativeId ? family.byId.get(relativeId) : undefined;
+      if (!relative) return undefined;
+      const text = intl.formatMessage(QUALIFIER_MESSAGES[qualifier], {
+        isYou: relative.isEgo ? 'true' : 'false',
+        term: labels.get(member.id) ?? '',
+        name: relative.isEgo ? '' : (labels.get(relative.id) ?? ''),
+      });
+      if (taken.has(comparable(text))) return undefined;
+      taken.add(comparable(text));
+      told.set(member.id, text);
+    }
+    return told;
+  };
+
+  const byNumber = (members: readonly Person[]) => {
+    const told = new Map<string, string>();
+    let number = 1;
+    for (const member of members) {
+      let text: string;
+      do {
+        text = intl.formatMessage(messages.numberedRelative, {
+          label: labels.get(member.id) ?? '',
+          number: number++,
+        });
+      } while (used.has(comparable(text)));
+      used.add(comparable(text));
+      told.set(member.id, text);
+    }
+    return told;
+  };
+
+  for (const members of groups.values()) {
+    if (members.length < 2) continue;
+    const told =
+      QUALIFIERS.map((qualifier) => throughRelatives(members, qualifier)).find(
+        (candidate) => candidate !== undefined,
+      ) ?? byNumber(members);
+    for (const [id, text] of told) {
+      used.add(comparable(text));
+      result.set(id, text);
+    }
+  }
+  return result;
+}

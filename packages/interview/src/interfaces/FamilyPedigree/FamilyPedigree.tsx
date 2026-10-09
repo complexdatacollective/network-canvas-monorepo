@@ -92,9 +92,15 @@ import {
   RELATIVES_NOT_RECORDED,
   relativesToAskAbout,
 } from './completeness';
-import AddRelativeMenu from './components/AddRelativeMenu';
+import AddRelativeMenu, {
+  AddMenuReachProbe,
+  addMenuReach,
+} from './components/AddRelativeMenu';
 import CompletenessTracker from './components/CompletenessTracker';
-import ConnectMenu, { type ConnectPair } from './components/ConnectMenu';
+import ConnectMenu, {
+  type ConnectPair,
+  describeConnection,
+} from './components/ConnectMenu';
 import ConnectorPreview from './components/ConnectorPreview';
 import FramingControl from './components/FramingControl';
 import PersonDrawer from './components/PersonDrawer';
@@ -106,6 +112,7 @@ import PersonForm, {
 import PersonNode from './components/PersonNode';
 import { decryptDetails, useDecryptedNames } from './encryptedNames';
 import {
+  distinctNames,
   generateLabels,
   labelEveryone,
   labelOfNoKind,
@@ -134,7 +141,12 @@ import PedigreeLayout from './pedigree-layout/components/PedigreeLayout';
 import type { PedigreeLink } from './pedigree-layout/types';
 import { relationshipWrites } from './relationshipToParticipant';
 import type { Point } from './spatialNavigation';
-import { usePanZoom, type View } from './usePanZoom';
+import {
+  type Box,
+  usePanZoom,
+  type View,
+  viewKeepingInArea,
+} from './usePanZoom';
 
 /**
  * What selecting a person does: open their details (with their add menu on
@@ -161,6 +173,13 @@ type PanelState = {
    * one. */
   then?: 'sibling' | 'child';
 } | null;
+
+/** The buttons of the add menu shown around a person's symbol, if any. */
+const menuItemsOf = (symbol: HTMLElement) => [
+  ...(symbol
+    .closest('[data-testid="pedigree-person"]')
+    ?.querySelectorAll<HTMLElement>('[data-add-menu-item]') ?? []),
+];
 
 /** The attributes recording a link. */
 const linkAttributesFor = (config: PedigreeConfig, link: PlannedLink) => ({
@@ -471,10 +490,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const contentRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
-  const panZoom = usePanZoom({ viewportRef, contentRef });
   const promptRef = useRef<HTMLDivElement>(null);
   const toolbarAreaRef = useRef<HTMLDivElement>(null);
-  // The whole family, clear of the prompt above and the toolbar below.
+  const menuReachRef = useRef<HTMLSpanElement>(null);
   // How far in from each edge of the canvas the prompt and the toolbar leave
   // it clear.
   const clearInsets = useCallback(() => {
@@ -491,11 +509,18 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       right: 32,
     };
   }, []);
+  // Some of the family always stays in the clear part of the canvas.
+  const panZoom = usePanZoom({ viewportRef, contentRef, clearInsets });
+  // The whole family, clear of the prompt above and the toolbar below, with
+  // room around it for anyone's add menu.
   const showWholeFamily = useCallback(
     ({ animated = true }: { animated?: boolean } = {}) => {
       const layout = contentRef.current?.firstElementChild;
       if (!(layout instanceof HTMLElement)) return;
-      panZoom.fitToView(layout, clearInsets(), { animated });
+      panZoom.fitToView(layout, clearInsets(), {
+        animated,
+        reach: addMenuReach(menuReachRef.current),
+      });
     },
     [panZoom, clearInsets],
   );
@@ -512,7 +537,14 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       ? null
       : (hoveredId ?? focusedId);
   const menuPerson = menuPersonId ? family.byId.get(menuPersonId) : undefined;
-  const [announcement, setAnnouncement] = useState('');
+  // What the live region says, kept to the prompt it was said on, so moving
+  // to another prompt leaves nothing behind for a screen reader to find.
+  const [spoken, setSpoken] = useState({ text: '', promptId: prompt.id });
+  const setAnnouncement = useCallback(
+    (text: string) => setSpoken({ text, promptId: prompt.id }),
+    [prompt.id],
+  );
+  const announcement = spoken.promptId === prompt.id ? spoken.text : '';
 
   const nodeRefs = useRef(new Map<string, HTMLButtonElement>());
   const setNodeRef = useCallback(
@@ -585,10 +617,19 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     }
     return everyone;
   }, [shown, framing, intl, draft]);
+  // Each person's symbol shows their label. Everywhere else they are named in
+  // words that tell them apart from anyone whose label matches theirs (two
+  // relatives given the same name), as only words can there: the panel's
+  // title, announcements, hints and confirmations, and what a screen reader
+  // reads out for their symbol.
+  const names = useMemo(
+    () => distinctNames(shown, labels, intl),
+    [shown, labels, intl],
+  );
   const displayName = useCallback(
     (personId: string) =>
-      labels.get(personId) ?? intl.formatMessage(messages.familyMember),
-    [labels, intl],
+      names.get(personId) ?? intl.formatMessage(messages.familyMember),
+    [names, intl],
   );
 
   // Announce an addition once the new person is in the family, so they can be
@@ -602,7 +643,29 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       }),
     );
     setJustAddedId(null);
-  }, [justAddedId, family.byId, displayName, intl]);
+  }, [justAddedId, family.byId, displayName, intl, setAnnouncement]);
+
+  // Announce a connection once it is in the family, in the words people have
+  // now, which it may have changed for someone unnamed.
+  const [justConnected, setJustConnected] = useState<Connection | null>(null);
+  useEffect(() => {
+    if (!justConnected) return;
+    const [a, b] =
+      justConnected.kind === 'partner'
+        ? [justConnected.firstId, justConnected.secondId]
+        : [justConnected.parentId, justConnected.childId];
+    if (!areConnected(family, a, b)) return;
+    setAnnouncement(
+      describeConnection(
+        justConnected,
+        intl,
+        family,
+        displayName,
+        optionLabels.parentKind,
+      ),
+    );
+    setJustConnected(null);
+  }, [justConnected, family, displayName, intl, optionLabels, setAnnouncement]);
 
   const links: PedigreeLink[] = useMemo(
     () =>
@@ -727,24 +790,76 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       y += (before.anchorAt.y - now.y) * scale;
     }
     const subject = nodeRefs.current.get(before.subjectId);
-    if (subject && subject !== anchor) {
-      const at = panZoom.contentPositionOf(subject);
-      const halfWidth = (subject.offsetWidth / 2) * scale;
-      const halfHeight = (subject.offsetHeight / 2) * scale;
-      const insets = clearInsets();
-      const left = insets.left + halfWidth;
-      const right = viewport.clientWidth - insets.right - halfWidth;
-      const top = insets.top + halfHeight;
-      const bottom = viewport.clientHeight - insets.bottom - halfHeight;
-      const screenX = x + at.x * scale;
-      const screenY = y + at.y * scale;
-      if (screenX < left) x += left - screenX;
-      else if (screenX > right) x -= screenX - right;
-      if (screenY < top) y += top - screenY;
-      else if (screenY > bottom) y -= screenY - bottom;
+    if (!subject || subject === anchor) {
+      panZoom.goTo({ x, y, scale });
+      return;
     }
-    panZoom.goTo({ x, y, scale });
+    // Everyone clear of the prompt and the toolbar stays clear of them, as
+    // the one added comes into the clear area too, with room for their add
+    // menu, the family zooming out if it has to.
+    const insets = clearInsets();
+    const area = {
+      left: insets.left,
+      top: insets.top,
+      right: viewport.clientWidth - insets.right,
+      bottom: viewport.clientHeight - insets.bottom,
+    };
+    const boxOf = (element: HTMLElement) => {
+      const centre = panZoom.contentPositionOf(element);
+      const halfWidth = element.offsetWidth / 2;
+      const halfHeight = element.offsetHeight / 2;
+      return {
+        left: centre.x - halfWidth,
+        top: centre.y - halfHeight,
+        right: centre.x + halfWidth,
+        bottom: centre.y + halfHeight,
+      };
+    };
+    // (To within a pixel, as someone placed at the edge of the area sits.)
+    const isClear = (box: Box) =>
+      x + box.left * scale >= area.left - 1 &&
+      x + box.right * scale <= area.right + 1 &&
+      y + box.top * scale >= area.top - 1 &&
+      y + box.bottom * scale <= area.bottom + 1;
+    const keep = [...nodeRefs.current.values()]
+      .filter((element) => element !== subject)
+      .map(boxOf)
+      .filter(isClear);
+    const reach = addMenuReach(menuReachRef.current);
+    const around = Math.max(reach.content, reach.screen / scale);
+    const added = boxOf(subject);
+    panZoom.goTo(
+      viewKeepingInArea({
+        view: { x, y, scale },
+        required: {
+          left: added.left - around,
+          top: added.top - around,
+          right: added.right + around,
+          bottom: added.bottom + around,
+        },
+        keep,
+        area,
+        pivot: anchor
+          ? panZoom.contentPositionOf(anchor)
+          : panZoom.contentPositionOf(subject),
+      }),
+    );
   }, [selectedId, panZoom, clearInsets]);
+
+  // An add menu opened from the keyboard, or by a tap, is brought into the
+  // clear part of the canvas with its person. (One shown by the mouse
+  // stays put, under the pointer.)
+  // Only when the menu opens, or moves to someone else.
+  const menuFromFocus = menuPersonId !== null && menuPersonId === focusedId;
+  const revealedMenuId = useRef<string | null>(null);
+  useEffect(() => {
+    const id = menuFromFocus ? menuPersonId : null;
+    if (id === revealedMenuId.current) return;
+    revealedMenuId.current = id;
+    const element = id ? nodeRefs.current.get(id) : undefined;
+    if (!element) return;
+    panZoom.bringIntoView([element, ...menuItemsOf(element)], clearInsets());
+  }, [menuFromFocus, menuPersonId, panZoom, clearInsets]);
 
   // Anything that could write what the study encrypts waits for the
   // passphrase, and asks for it instead, saying why: to see the names, when
@@ -1117,9 +1232,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       event.target.matches(':focus-visible')
     ) {
       setFocusedId(personId);
-      // The canvas does not scroll; keyboard focus pans to the person.
+      // The canvas does not scroll; keyboard focus pans to the person, clear
+      // of the prompt and the toolbar.
       const element = nodeRefs.current.get(personId);
-      if (element) panZoom.bringIntoView(element);
+      if (element) panZoom.bringIntoView(element, clearInsets());
     }
   };
 
@@ -1215,6 +1331,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       setHoveredId(null);
       setLinkingId(null);
       setConnectNotice(null);
+      if (linkingId) setAnnouncement('');
     }
   };
 
@@ -1427,6 +1544,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     setJustAddedId(newPersonId);
   };
 
+  // Ending connecting or disconnecting, however it ends, takes back what it
+  // last said.
   const chooseTool = (next: Tool) => {
     setTool(next);
     setLinkingId(null);
@@ -1434,6 +1553,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     setChosenPair(null);
     setHoveredId(null);
     setFocusedId(null);
+    setAnnouncement('');
   };
 
   // Two people in a sentence, the participant first, as "you and …".
@@ -1494,6 +1614,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (linkingId === personId) {
       // Selecting the first person again lets them go.
       setLinkingId(null);
+      setAnnouncement('');
       return;
     }
     // A pair has one link at most; when the second person cannot be chosen,
@@ -1542,17 +1663,19 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const endConnecting = () => {
     setChosenPair(null);
     setLinkingId(null);
+    setAnnouncement('');
   };
 
-  const handleConnect = async (connection: Connection, description: string) => {
+  const handleConnect = async (connection: Connection) => {
     endConnecting();
     await addLink(planConnection(connection));
     await withdrawContradictedAnswers();
-    setAnnouncement(description);
+    setJustConnected(connection);
   };
 
   const handleDisconnect = async (firstId: string, secondId: string) => {
     const args = pairArgs(firstId, secondId);
+    let removed = false;
     await confirm({
       title: intl.formatMessage(messages.disconnectConfirmTitle, args),
       description: intl.formatMessage(messages.disconnectConfirmDescription),
@@ -1562,12 +1685,15 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         for (const linkId of linksBetween(firstId, secondId)) {
           dispatch(deleteEdge(linkId));
         }
-        setAnnouncement(
-          intl.formatMessage(messages.disconnectedAnnouncement, args),
-        );
+        removed = true;
       },
     });
     endConnecting();
+    if (removed) {
+      setAnnouncement(
+        intl.formatMessage(messages.disconnectedAnnouncement, args),
+      );
+    }
   };
 
   // Removing someone who is the only link between the participant and other
@@ -1578,6 +1704,18 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     const name = displayName(personId);
     const { cutOffIds, linkIds } = planRemovePerson(family, personId);
     const removedIds = [personId, ...cutOffIds];
+    // Focus goes on to someone who stays: a relative of the person removed,
+    // or else the participant.
+    const survivorId =
+      family.links
+        .flatMap((link) =>
+          link.source === personId
+            ? [link.target]
+            : link.target === personId
+              ? [link.source]
+              : [],
+        )
+        .find((id) => !removedIds.includes(id)) ?? family.egoId;
     // Close the panel first: its focus trap would otherwise hold focus away
     // from the confirmation.
     closePanel();
@@ -1592,7 +1730,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             }),
       confirmLabel: intl.formatMessage(messages.remove),
       intent: 'destructive',
+      // The dialog was opened from the person removed, who is gone.
+      finalFocus: () =>
+        survivorId ? (nodeRefs.current.get(survivorId) ?? null) : null,
       onConfirm: () => {
+        if (survivorId) setLastFocusedId(survivorId);
         for (const linkId of linkIds) dispatch(deleteEdge(linkId));
         for (const id of removedIds) dispatch(deleteNode(id));
         if (focusedId !== null && removedIds.includes(focusedId)) {
@@ -1617,6 +1759,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (event.key === 'Escape' && linkingId) {
       event.preventDefault();
       setLinkingId(null);
+      setConnectNotice(null);
+      setAnnouncement('');
       return;
     }
     if (event.key !== 'Escape' || !focusedId) return;
@@ -1692,6 +1836,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         <Prompts prompts={prompts} currentPromptId={prompt.id} />
       </div>
       {measurementContainer}
+      <AddMenuReachProbe ref={menuReachRef} />
       <div className="relative flex min-h-0 w-full flex-1 flex-col">
         {/* Drag to pan, wheel or pinch to zoom. */}
         <PedigreeViewport
@@ -1700,6 +1845,22 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           panZoom={panZoom}
           onKeyDown={handleCanvasKeyDown}
           onBlur={handleCanvasBlur}
+          // Zooming from the keyboard keeps the person focused, and their
+          // add menu, in the clear part of the canvas.
+          zoomFocus={(target) => {
+            const person = target.closest<HTMLElement>(
+              '[data-testid="pedigree-person"]',
+            );
+            const element = person?.dataset.personId
+              ? nodeRefs.current.get(person.dataset.personId)
+              : undefined;
+            return element
+              ? {
+                  elements: [element, ...menuItemsOf(element)],
+                  insets: clearInsets(),
+                }
+              : undefined;
+          }}
           overlay={
             connectorFrom &&
             tool === 'connect' && (
@@ -1731,7 +1892,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               return (
                 <PersonNode
                   person={person}
-                  label={displayName(personId)}
+                  label={
+                    labels.get(personId) ??
+                    intl.formatMessage(messages.familyMember)
+                  }
+                  accessibleName={displayName(personId)}
                   color={nodeColor}
                   shape={
                     shapeDefinition
@@ -1777,6 +1942,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                       isYou={person.isEgo}
                       name={displayName(personId)}
                       onAdd={openAdd}
+                      scale={panZoom.scale}
                     />
                   )}
                 </PersonNode>
@@ -1808,7 +1974,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               </div>
             </Alert>
           )}
-          {tool !== 'pointer' && (
+          {/* Once a pair is picked, the menu or the confirmation asks its
+              own question, so the hint asks for no one else. */}
+          {tool !== 'pointer' && !chosenPair && (
             <p
               className="text-sm opacity-80"
               data-testid="pedigree-connect-hint"
@@ -1902,7 +2070,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 <FramingControl
                   value={chosenFraming}
                   onChange={chooseFraming}
-                  open={framingOpen}
+                  // A person's panel, being modal, comes first: the question
+                  // waits for it to close rather than compete for focus.
+                  open={framingOpen && !panel?.open}
                   onOpenChange={setFramingOpen}
                 />
               )}
@@ -1939,9 +2109,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             ? (nodeRefs.current.get(chosenPair.secondId) ?? null)
             : null
         }
-        onConnect={(connection, description) =>
-          void handleConnect(connection, description)
-        }
+        onConnect={(connection) => void handleConnect(connection)}
         onClose={endConnecting}
       />
       <div aria-live="polite" className="sr-only">

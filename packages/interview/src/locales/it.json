@@ -89,7 +89,7 @@
   "interview.familyPedigree.parentPartnerLabel": "È partner di un altro genitore?",
   "interview.familyPedigree.partnershipCurrentLabel": "Stanno ancora insieme?",
   "interview.familyPedigree.passphraseNeededNotice": "Inserisci la tua passphrase per vedere i nomi della tua famiglia e per aggiungere o modificare persone.",
-  "interview.familyPedigree.personAccessibleName": "{isYou, select, true {Tu} other {{name}}}{missing, select, true {, mancano alcune informazioni} other {}}",
+  "interview.familyPedigree.personAccessibleName": "{isYou, select, true {Tu} other {{name}}}{adopted, select, true {, adottato/a} other {}}{missing, select, true {, mancano alcune informazioni} other {}}",
   "interview.familyPedigree.placeholderParentsNote": "{framing, select, gamete {Verranno aggiunti un genitore dell’ovulo e un genitore dello sperma, da completare in seguito, così che l’albero genealogico possa mostrare insieme questi fratelli e sorelle.} other {Verranno aggiunti una madre biologica e un padre biologico, da completare in seguito, così che l’albero genealogico possa mostrare insieme questi fratelli e sorelle.}}",
   "interview.familyPedigree.pointerTool": "Aggiungi e modifica",
   "interview.familyPedigree.relationshipSection": "Parentela",
