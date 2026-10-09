@@ -764,6 +764,9 @@
     },
     {
       "id": "ng-non-kin",
+      "quickAddHint": {
+        "en-US": "Press Enter when you are finished."
+      },
       "type": "NameGeneratorQuickAdd",
       "label": {
         "en-US": "People in your life"

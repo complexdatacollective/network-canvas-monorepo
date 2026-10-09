@@ -700,6 +700,9 @@
     },
     {
       "id": "f6cff4b0-32e7-11eb-8503-3b4fa95b8bc6",
+      "quickAddHint": {
+        "en-US": "Press Enter when you are finished."
+      },
       "label": { "en-US": "Quick Add Name Generator" },
       "type": "NameGeneratorQuickAdd",
       "quickAdd": "c7053a78-bcd5-44bb-bfca-36c8aefa793f",
@@ -739,6 +742,9 @@
     },
     {
       "id": "39e14c40-32e8-11eb-8503-3b4fa95b8bc6",
+      "quickAddHint": {
+        "en-US": "Press Enter when you are finished."
+      },
       "label": { "en-US": "Quick Add with Sidepanel" },
       "type": "NameGeneratorQuickAdd",
       "quickAdd": "c7053a78-bcd5-44bb-bfca-36c8aefa793f",
@@ -844,6 +850,12 @@
     },
     {
       "id": "01455ba0-32ee-11eb-8503-3b4fa95b8bc6",
+      "externalDataError": {
+        "en-US": "External data could not be loaded."
+      },
+      "allAddedNotice": {
+        "en-US": "There is nothing left to add from this list."
+      },
       "label": { "en-US": "Small Roster - Classroom" },
       "type": "NameGeneratorRoster",
       "subject": {
@@ -893,6 +905,18 @@
     },
     {
       "id": "dfde4a90-32ec-11eb-8503-3b4fa95b8bc6",
+      "externalDataError": {
+        "en-US": "External data could not be loaded."
+      },
+      "allAddedNotice": {
+        "en-US": "There is nothing left to add from this list."
+      },
+      "searchLabel": {
+        "en-US": "Search"
+      },
+      "searchNoMatch": {
+        "en-US": "Nothing matched your search term."
+      },
       "label": { "en-US": "University Roster" },
       "type": "NameGeneratorRoster",
       "subject": {

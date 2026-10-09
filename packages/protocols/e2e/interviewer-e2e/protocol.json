@@ -89,6 +89,15 @@
     },
     {
       "id": "stage-ng",
+      "minNodesNotice": {
+        "en-US": "{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}"
+      },
+      "maxNodesNotice": {
+        "en-US": "You have completed this task. Click the next arrow to continue."
+      },
+      "quickAddHint": {
+        "en-US": "Press Enter when you are finished."
+      },
       "type": "NameGeneratorQuickAdd",
       "label": { "en-US": "Name people" },
       "subject": { "entity": "node", "type": "person" },

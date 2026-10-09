@@ -141,6 +141,10 @@
     },
     {
       "id": "quick-add-ng-encryption",
+      "quickAddHint": {
+        "en-US": "Press Enter when you are finished.",
+        "es": "Pulsa Intro cuando hayas terminado."
+      },
       "label": {
         "en-US": "Quick Add NG with Encryption",
         "es": "GN de adición rápida con cifrado"
@@ -246,6 +250,10 @@
     },
     {
       "id": "namegen1",
+      "externalDataError": {
+        "en-US": "External data could not be loaded.",
+        "es": "No se pudieron cargar los datos externos."
+      },
       "interviewScript": "This is an example of interview script on a name generator.",
       "type": "NameGenerator",
       "label": {
@@ -367,6 +375,10 @@
     },
     {
       "id": "namegen1a",
+      "externalDataError": {
+        "en-US": "External data could not be loaded.",
+        "es": "No se pudieron cargar los datos externos."
+      },
       "type": "NameGenerator",
       "label": {
         "en-US": "NG CSV File",
@@ -427,6 +439,18 @@
     },
     {
       "id": "namegen2",
+      "minNodesNotice": {
+        "en-US": "{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}",
+        "es": "{count, plural, one {Debes crear al menos # elemento antes de continuar.} other {Debes crear al menos # elementos antes de continuar.}}"
+      },
+      "maxNodesNotice": {
+        "en-US": "You have completed this task. Click the next arrow to continue.",
+        "es": "Has completado esta tarea. Pulsa la flecha de avance para continuar."
+      },
+      "quickAddHint": {
+        "en-US": "Press Enter when you are finished.",
+        "es": "Pulsa Intro cuando hayas terminado."
+      },
       "type": "NameGeneratorQuickAdd",
       "label": {
         "en-US": "NG Quick add",
@@ -652,6 +676,22 @@
     },
     {
       "id": "namegenroster2a",
+      "minNodesNotice": {
+        "en-US": "{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}",
+        "es": "{count, plural, one {Debes crear al menos # elemento antes de continuar.} other {Debes crear al menos # elementos antes de continuar.}}"
+      },
+      "maxNodesNotice": {
+        "en-US": "You have completed this task. Click the next arrow to continue.",
+        "es": "Has completado esta tarea. Pulsa la flecha de avance para continuar."
+      },
+      "externalDataError": {
+        "en-US": "External data could not be loaded.",
+        "es": "No se pudieron cargar los datos externos."
+      },
+      "allAddedNotice": {
+        "en-US": "There is nothing left to add from this list.",
+        "es": "No queda nada que añadir de esta lista."
+      },
       "type": "NameGeneratorRoster",
       "label": {
         "en-US": "NG HIV Services",
@@ -682,6 +722,14 @@
     },
     {
       "id": "namegenroster2",
+      "externalDataError": {
+        "en-US": "External data could not be loaded.",
+        "es": "No se pudieron cargar los datos externos."
+      },
+      "allAddedNotice": {
+        "en-US": "There is nothing left to add from this list.",
+        "es": "No queda nada que añadir de esta lista."
+      },
       "type": "NameGeneratorRoster",
       "label": {
         "en-US": "NG Classmates",
@@ -986,6 +1034,22 @@
     },
     {
       "id": "namegenroster1",
+      "externalDataError": {
+        "en-US": "External data could not be loaded.",
+        "es": "No se pudieron cargar los datos externos."
+      },
+      "allAddedNotice": {
+        "en-US": "There is nothing left to add from this list.",
+        "es": "No queda nada que añadir de esta lista."
+      },
+      "searchLabel": {
+        "en-US": "Search",
+        "es": "Buscar"
+      },
+      "searchNoMatch": {
+        "en-US": "Nothing matched your search term.",
+        "es": "No hay resultados que coincidan con tu búsqueda."
+      },
       "type": "NameGeneratorRoster",
       "label": {
         "en-US": "NG Classmates",
@@ -1053,6 +1117,22 @@
     },
     {
       "id": "namegenroster3",
+      "externalDataError": {
+        "en-US": "External data could not be loaded.",
+        "es": "No se pudieron cargar los datos externos."
+      },
+      "allAddedNotice": {
+        "en-US": "There is nothing left to add from this list.",
+        "es": "No queda nada que añadir de esta lista."
+      },
+      "searchLabel": {
+        "en-US": "Search",
+        "es": "Buscar"
+      },
+      "searchNoMatch": {
+        "en-US": "Nothing matched your search term.",
+        "es": "No hay resultados que coincidan con tu búsqueda."
+      },
       "type": "NameGeneratorRoster",
       "label": {
         "en-US": "Roster Autocomplete HIV",
@@ -1571,6 +1651,18 @@
     },
     {
       "id": "geospatial-dev",
+      "offlineNotice": {
+        "en-US": "You are offline — the map will not load until you reconnect.",
+        "es": "No tienes conexión. El mapa no se cargará hasta que vuelvas a conectarte."
+      },
+      "mapUnavailable": {
+        "en-US": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.",
+        "es": "Esto puede ocurrir si tu navegador o dispositivo no admite las funciones que necesita el mapa (por ejemplo, WebGL). Prueba con otro navegador o dispositivo, o contacta con la persona que organiza el estudio. Es posible que puedas continuar la entrevista pulsando la flecha de avance."
+      },
+      "outsideAreasLabel": {
+        "en-US": "Outside Selectable Areas",
+        "es": "Fuera de las áreas seleccionables"
+      },
       "type": "Geospatial",
       "label": {
         "en-US": "Geospatial",

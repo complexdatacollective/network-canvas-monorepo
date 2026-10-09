@@ -745,6 +745,11 @@
     },
     {
       "id": "name-generator-host",
+      "maxNodesNotice": {
+        "en-US": "You have completed this task. Click the next arrow to continue.",
+        "es": "Has completado esta tarea. Pulsa la flecha de avance para continuar.",
+        "hu": "Ezt a feladatot befejezte. A folytatáshoz kattintson a következő nyílra."
+      },
       "type": "NameGenerator",
       "label": {
         "en-US": "Important people here",
@@ -808,6 +813,11 @@
     },
     {
       "id": "name-generator-transnational",
+      "maxNodesNotice": {
+        "en-US": "You have completed this task. Click the next arrow to continue.",
+        "es": "Has completado esta tarea. Pulsa la flecha de avance para continuar.",
+        "hu": "Ezt a feladatot befejezte. A folytatáshoz kattintson a következő nyílra."
+      },
       "type": "NameGenerator",
       "label": {
         "en-US": "Important people abroad",
@@ -962,6 +972,21 @@
     },
     {
       "id": "geospatial-map",
+      "offlineNotice": {
+        "en-US": "You are offline — the map will not load until you reconnect.",
+        "es": "No tienes conexión. El mapa no se cargará hasta que vuelvas a conectarte.",
+        "hu": "Nincs internetkapcsolat. A térkép csak újracsatlakozás után töltődik be."
+      },
+      "mapUnavailable": {
+        "en-US": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.",
+        "es": "Esto puede ocurrir si tu navegador o dispositivo no admite las funciones que necesita el mapa (por ejemplo, WebGL). Prueba con otro navegador o dispositivo, o contacta con la persona que organiza el estudio. Es posible que puedas continuar la entrevista pulsando la flecha de avance.",
+        "hu": "Ez akkor fordulhat elő, ha a böngésző vagy az eszköz nem támogatja a térkép által igényelt funkciókat (például a WebGL-t). Próbáljon meg másik böngészőt vagy eszközt, vagy forduljon a vizsgálat szervezőjéhez. Az interjút a következő nyílra kattintva is folytathatja."
+      },
+      "outsideAreasLabel": {
+        "en-US": "Outside Selectable Areas",
+        "es": "Fuera de las áreas seleccionables",
+        "hu": "Kijelölhető területeken kívül"
+      },
       "type": "Geospatial",
       "label": {
         "en-US": "Place people on the map",
