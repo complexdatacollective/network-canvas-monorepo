@@ -16,7 +16,7 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
-import { openEveryWordingGroup } from '../family-pedigree/__tests__/editorFixtures.ts';
+import { openWordingGroup } from '../family-pedigree/__tests__/editorFixtures.ts';
 import {
   addFamilyMemberVariables,
   EVERY_PEDIGREE_WORD,
@@ -487,7 +487,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     interfaceName: 'FamilyPedigree',
     type: 'FamilyPedigree',
     stageId: 'family-pedigree-1',
-    reveal: openEveryWordingGroup,
+    reveal: (harness) => openWordingGroup(harness),
     fields: fixtureMaximal('family-pedigree-1', {
       ...EVERY_STAGE,
       nodeConfiguration: {

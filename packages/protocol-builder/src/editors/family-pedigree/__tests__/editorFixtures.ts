@@ -29,21 +29,23 @@ export function shimMarkdownEditorMeasurement(): void {
 }
 
 /**
- * Opens every group of the participant wording, whose fields are on screen
- * only while their group is open, so a test that needs every key of the stage
- * on screen has the wording's too.
+ * Opens one group of the participant wording, whose fields are on screen only
+ * while their group is open.
+ *
+ * A whole-stage round trip opens one group rather than all of them: any one
+ * puts a field on screen that edits the stage's `wording`, the closed groups'
+ * settings come back as the stage holds them, and mounting every group's
+ * dozens of rich-text editors is what made those tests time out. Each group's
+ * own fields are round-tripped by a test of their own
+ * (`FamilyPedigreeStageEditor.test.tsx`, "the participant wording").
  */
-export async function openEveryWordingGroup(
+export async function openWordingGroup(
   harness: Readonly<{ user: UserEvent }>,
+  name: (typeof PARTICIPANT_WORDING_GROUP_TITLES)[number] = 'Drawing the family',
 ): Promise<void> {
-  for (const name of PARTICIPANT_WORDING_GROUP_TITLES) {
-    const trigger = await screen.findByRole('button', { name });
-    if (trigger.getAttribute('aria-expanded') === 'true') continue;
-    await harness.user.click(trigger);
-    await waitFor(() =>
-      expect(trigger).toHaveAttribute('aria-expanded', 'true'),
-    );
-  }
+  const trigger = await screen.findByRole('button', { name });
+  await harness.user.click(trigger);
+  await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'true'));
 }
 
 /** What each group of the participant wording is called on screen. */

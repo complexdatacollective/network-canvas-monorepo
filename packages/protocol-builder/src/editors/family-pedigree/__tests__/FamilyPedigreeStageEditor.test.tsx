@@ -31,6 +31,7 @@ import { familyPedigreeStageEditor } from '../FamilyPedigreeStageEditor.ts';
 import { newNominationPromptId } from '../sections/NominationPromptsSection.tsx';
 import {
   familyPedigreeEditor,
+  openWordingGroup,
   PARTICIPANT_WORDING_GROUP_TITLES,
   shimMarkdownEditorMeasurement,
 } from './editorFixtures.ts';
@@ -168,19 +169,6 @@ const summaryRows = async (): Promise<(string | null)[][]> => {
         .getAllByRole('cell')
         .map((cell) => cell.textContent),
     );
-};
-
-/**
- * Opens one group of the participant wording, whose fields are on screen only
- * while it is open.
- */
-const openWordingGroup = async (
-  harness: StageEditorHarness,
-  name: string,
-): Promise<void> => {
-  const trigger = await screen.findByRole('button', { name });
-  await harness.user.click(trigger);
-  await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'true'));
 };
 
 /** Opens the dialog that edits the gender identity options and their words. */
@@ -1622,6 +1610,28 @@ describe('the participant wording', () => {
       screen.queryByText('Connect question', { selector: FIELD_LABEL }),
     ).toBeNull();
   });
+
+  /**
+   * Each group's own fields, opened alone: every setting in it is seeded from
+   * the stage and written back unchanged. The gated settings are on, so
+   * their fields are among them.
+   */
+  it.each(PARTICIPANT_WORDING_GROUP_TITLES)(
+    'saves every setting of “%s” unchanged through its field',
+    async (name) => {
+      const harness = renderStageEditor({
+        stage: familyPedigreeStageWith({
+          framing: 'participantPreference',
+          wording: EVERY_PEDIGREE_WORD,
+        }),
+        editor: familyPedigreeEditor,
+      });
+      await harness.opened();
+      await openWordingGroup(harness, name);
+
+      await harness.roundTrip({ unowned: [] });
+    },
+  );
 
   it('saves the stage unchanged with every group closed', async () => {
     const harness = openFixture();
