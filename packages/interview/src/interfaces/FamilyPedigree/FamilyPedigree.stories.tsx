@@ -1021,15 +1021,22 @@ export const AddingASiblingAsksWhoCarriedThePregnancy: Story = {
     }
     await userEvent.click(carrier.getByRole('radio', { name: 'Rachel' }));
 
-    // Rachel is not shared after all: nobody shared could have carried the
-    // pregnancy. Shared again, she is offered with nothing chosen.
+    // Rachel is not shared after all: she is no longer offered, and the
+    // sibling's own other genetic parent, a stand-in (ruling 25), is offered
+    // instead. Shared again, she is offered with nothing chosen.
     const shared = await body.findByRole('group', {
       name: /^Which parents do they share with you\?/,
     });
     await userEvent.click(
       within(shared).getByRole('checkbox', { name: 'Rachel' }),
     );
-    await waitFor(() => expect(carrierQuestion()).toBeNull());
+    await waitFor(() =>
+      expect(
+        within(carrierQuestion() as HTMLElement).queryByRole('radio', {
+          name: 'Rachel',
+        }),
+      ).toBeNull(),
+    );
     await userEvent.click(
       within(shared).getByRole('checkbox', { name: 'Rachel' }),
     );
@@ -2287,11 +2294,14 @@ export const RemovingSomeoneRemovesThoseConnectedOnlyThroughThem: Story = {
       within(dialog).getByRole('button', { name: 'Remove from family' }),
     );
 
-    await expectPeople(2)(context);
+    // Rachel's place is taken by an unnamed stand-in for Ella's other
+    // genetic parent (rulings 22 and 25).
+    await expectPeople(3)(context);
     await expect(canvas.getByRole('button', { name: /^Tom/ })).toBeVisible();
     await expect(
       canvas.queryByRole('button', { name: /^Margaret/ }),
     ).toBeNull();
+    await expect(canvas.queryByRole('button', { name: /^Rachel/ })).toBeNull();
   },
 };
 
@@ -2828,7 +2838,9 @@ export const ARecommendationIsShownAgainWhenItGrows: Story = {
     );
     await expect(canvas.queryByText(PEOPLE_PROMPT)).toBeNull();
 
-    // Removing her mother adds a parent to the list.
+    // Removing her mother leaves an unnamed stand-in in her place (rulings
+    // 22 and 25), whose details are still to give: something new on the
+    // list.
     await userEvent.click(canvas.getByRole('button', { name: /^Rachel/ }));
     await userEvent.click(
       await body.findByRole('button', { name: 'Remove from family' }),
@@ -2837,7 +2849,7 @@ export const ARecommendationIsShownAgainWhenItGrows: Story = {
     await userEvent.click(
       within(dialog).getByRole('button', { name: 'Remove from family' }),
     );
-    await expectPeople(2)(context);
+    await expectPeople(3)(context);
     await waitFor(() => expect(recommendations()).toBeNull());
 
     // So the next press shows the list again, and stays.
@@ -4042,8 +4054,9 @@ export const RecordingAnswersKeepsTheFamily: Story = {
     lastSynced = undefined;
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
-    // The participant is seeded as `ego`; the only other person is the
-    // parent this adds.
+    // The participant is seeded as `ego`; the first other person is the
+    // parent this adds (the stand-in for their other genetic parent comes
+    // after).
     const parentId = () =>
       lastSynced?.network.nodes.find(
         (node) => node[entityPrimaryKeyProperty] !== 'ego',
@@ -4132,8 +4145,10 @@ export const RecordingAnswersKeepsTheFamily: Story = {
     await expect(await canvas.findByText('Egg parent')).toBeInTheDocument();
     await expectFamilyInSession();
     await returnToPedigree(canvasElement);
+    // The participant, the parent, and the unnamed stand-in the stand-in
+    // rule gave them for their other genetic parent (ruling 25).
     await waitFor(() =>
-      expect(canvas.getAllByTestId('pedigree-person')).toHaveLength(2),
+      expect(canvas.getAllByTestId('pedigree-person')).toHaveLength(3),
     );
     await expectFamilyInSession();
   },

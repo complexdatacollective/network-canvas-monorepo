@@ -24,6 +24,17 @@ The interface allows a child at most two genetic parents, at most one recorded
 female at birth and at most one recorded male, so the rule never meets two
 eggs or two sperm.
 
+## Stand-ins for a missing genetic parent
+
+Because each person has two genetic parents, anyone with one genetic parent
+recorded (a biological parent or a donor) is given an unnamed stand-in for
+the other (`planStandIns` in `model.ts`). The stand-in's sex at birth is the
+one the gamete rule gives the other gamete, and follows the recorded genetic
+parent's when that changes, so a stand-in never contradicts the rule above:
+it gives way to a genetic parent the participant records in its place, and
+never rules out a sex at birth for the genetic parent beside it. Adoptive and
+social parents are never stood in for.
+
 ## Who carried the pregnancy
 
 Carrying the pregnancy is recorded apart from the gamete, as a yes/no answer

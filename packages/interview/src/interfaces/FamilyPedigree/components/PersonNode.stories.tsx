@@ -9,6 +9,7 @@ const placeholder: Person = {
   isEgo: false,
   name: undefined,
   hasUnreadableName: false,
+  hasOtherDetails: false,
   genderIdentity: undefined,
   genderWords: undefined,
   sexAssignedAtBirth: undefined,

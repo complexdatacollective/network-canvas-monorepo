@@ -419,6 +419,10 @@
     "defaultMessage": "Sex assigned at birth",
     "description": "Label of the question about the sex a family member was assigned at birth."
   },
+  "interview.familyPedigree.sharedDonorsLabel": {
+    "defaultMessage": "{isYou, select, true {Do they share any of your donors?} other {Do they share any of “{name}”’s donors?}}",
+    "description": "Question in the side panel for adding a sibling to someone recorded with only egg or sperm donors as parents. Options are those donors, by name or by how they are related to the participant; any number, or none, may be chosen. name is the person the sibling is added to."
+  },
   "interview.familyPedigree.sharedParentCountBoth": {
     "defaultMessage": "Both parents",
     "description": "Option: the new sibling shares both parents (a full sibling)."
@@ -442,6 +446,10 @@
   "interview.familyPedigree.showWholeFamily": {
     "defaultMessage": "Show the whole family",
     "description": "Toolbar button that zooms and moves the family tree so everyone in it fits on screen."
+  },
+  "interview.familyPedigree.siblingBiologicalParentLabel": {
+    "defaultMessage": "Which of them is the sibling’s biological parent?",
+    "description": "Question in the side panel for adding a biological sibling, asked when the sibling shares two parents of whom only one could be their biological parent (for example two mothers, both recorded as female at birth). Options are those parents, by name or by how they are related to the participant."
   },
   "interview.familyPedigree.siblingKindHint": {
     "defaultMessage": "{isYou, select, true {This can differ from how you are related to them, for example if only one of you was adopted.} other {This can differ from how “{name}” is related to them, for example if only one of the two siblings was adopted.}}",

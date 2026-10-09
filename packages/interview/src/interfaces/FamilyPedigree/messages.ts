@@ -393,6 +393,19 @@ export const messages = defineMessages({
     defaultMessage: 'No other parent',
     description: 'Option: the child has only the one parent.',
   },
+  siblingBiologicalParentLabel: {
+    id: 'interview.familyPedigree.siblingBiologicalParentLabel',
+    defaultMessage: 'Which of them is the sibling’s biological parent?',
+    description:
+      'Question in the side panel for adding a biological sibling, asked when the sibling shares two parents of whom only one could be their biological parent (for example two mothers, both recorded as female at birth). Options are those parents, by name or by how they are related to the participant.',
+  },
+  sharedDonorsLabel: {
+    id: 'interview.familyPedigree.sharedDonorsLabel',
+    defaultMessage:
+      '{isYou, select, true {Do they share any of your donors?} other {Do they share any of “{name}”’s donors?}}',
+    description:
+      'Question in the side panel for adding a sibling to someone recorded with only egg or sperm donors as parents. Options are those donors, by name or by how they are related to the participant; any number, or none, may be chosen. name is the person the sibling is added to.',
+  },
   carrierLabel: {
     id: 'interview.familyPedigree.carrierLabel',
     defaultMessage: 'Who carried the pregnancy?',

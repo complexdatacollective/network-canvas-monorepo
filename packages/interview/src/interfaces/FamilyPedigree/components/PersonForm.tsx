@@ -66,14 +66,15 @@ import {
   carrierOf,
   carriesAs,
   couldCarryPregnancy,
+  firmGeneticParentSexes,
+  firmGeneticParentsOf,
   fullSiblingsOf,
   geneticParentBlock,
-  geneticParentsOf,
-  geneticParentSexes,
   geneticParentsPossible,
   hasCarrier,
   holdsGeneratedLabel,
   isGeneticKind,
+  isStandIn,
   mayHaveCarried,
   openGeneticParentSlots,
   otherParentChoices,
@@ -174,6 +175,7 @@ const ROLE = {
   sharedParents: 'pedigreeSharedParents',
   sharedParentCount: 'pedigreeSharedParentCount',
   siblingKind: 'pedigreeSiblingKind',
+  siblingBiologicalParent: 'pedigreeSiblingBiologicalParent',
   otherParent: 'pedigreeOtherParent',
   childKind: 'pedigreeChildKind',
   carrier: 'pedigreeCarrier',
@@ -778,9 +780,15 @@ function ExistingRelationshipFields({
     asString(linkValues[linkField(link, 'kind')]) ?? link.kind;
   // Whether the parent could be a genetic parent alongside the others who
   // are, as the answers stand.
+  // A stand-in gives way to a genetic parent recorded in their place.
   const otherGeneticParents = (link: FamilyLink) =>
     parents
-      .filter((other) => other.id !== link.id && isGeneticKind(kindOf(other)))
+      .filter(
+        (other) =>
+          other.id !== link.id &&
+          isGeneticKind(kindOf(other)) &&
+          !isStandIn(family, other.source),
+      )
       .map((other) => other.source);
   const sexOf = (personId: string) =>
     family.byId.get(personId)?.sexAssignedAtBirth;
@@ -1126,6 +1134,7 @@ function readSiblingRequest(
       (asString(values[ROLE.siblingKind]) as
         | (typeof SIBLING_KINDS)[number]
         | undefined) ?? 'biological',
+    biologicalParentId: asString(values[ROLE.siblingBiologicalParent]),
     carrier: carrier && carrier !== NONE ? carrier : null,
   };
 }
@@ -1234,17 +1243,22 @@ function ParentFields({
     parentKind === 'adoptive' ||
     parentKind === 'social';
 
-  const existingParents = primaryParentsOf(family, anchor.id);
+  // A stand-in is never recorded as anyone's partner (ruling 25), so is not
+  // offered as the new parent's partner.
+  const existingParents = primaryParentsOf(family, anchor.id).filter(
+    (parentId) => !isStandIn(family, parentId),
+  );
   // One person carried the pregnancy at most; once someone has, the new
   // parent cannot have too.
   const anchorHasCarrier = hasCarrier(family, anchor.id);
   // Nor can a parent recorded as male at birth.
   const canCarry = !anchorHasCarrier && couldCarryPregnancy(sexAssignedAtBirth);
   // A genetic parent provided the egg or the sperm, which another genetic
-  // parent may already have.
+  // parent may already have. A stand-in gives way to a genetic parent
+  // recorded in their place.
   const canBeGeneticParentOf = (personId: string) =>
     geneticParentsPossible([
-      ...geneticParentSexes(family, personId),
+      ...firmGeneticParentSexes(family, personId),
       sexAssignedAtBirth,
     ]);
   const kindPossible = (kind: string) =>
@@ -1268,7 +1282,7 @@ function ParentFields({
     const block = geneticParentBlock(
       family,
       personId,
-      geneticParentsOf(family, personId),
+      firmGeneticParentsOf(family, personId),
       sexAssignedAtBirth,
     );
     return block && geneticParentReason(reasonContext, block);
@@ -1731,17 +1745,34 @@ function SiblingFields({
     ROLE.sharedParents,
     ROLE.sharedParentCount,
     ROLE.siblingKind,
+    ROLE.siblingBiologicalParent,
     ROLE.carrier,
   ]);
   const parents = primaryParentsOf(family, anchor.id);
+  // The anchor's donors are offered too, so that a sibling who shares only a
+  // donor can be added (ruling 20).
+  const donors = family.links
+    .filter((link) => link.target === anchor.id && link.kind === 'donor')
+    .map((link) => link.source);
   const args = {
     isYou: anchor.isEgo ? 'true' : 'false',
     name: displayName(anchor.id),
   };
 
   const open = openGeneticParentSlots(family, anchor.id);
-  // A parent not yet shown stands for a genetic parent not yet recorded.
-  const offersUnshown = parents.length === 1 && open.length > 0;
+  // A parent not yet shown stands in for a genetic parent not yet recorded,
+  // beside the one biological parent recorded before the stand-in rule. An
+  // adoptive or social parent is never stood in for (ruling 24).
+  const [onlyParent] = parents;
+  const offersUnshown =
+    parents.length === 1 &&
+    open.length > 0 &&
+    family.links.some(
+      (link) =>
+        link.source === onlyParent &&
+        link.target === anchor.id &&
+        link.kind === 'biological',
+    );
   // The sibling as the biological child of the parents they share, as the
   // answers stand. The plan makes them the biological child of every shared
   // parent who could have given a gamete beside the others, and leaves any
@@ -1801,9 +1832,76 @@ function SiblingFields({
   // offered in the words the question about shared parents used, or one of
   // the two given to someone with no parents, shown by how they are related.
   const carrierLabel = (id: string) =>
-    family.byId.has(id) || !offersUnshown
+    family.byId.has(id) ||
+    !offersUnshown ||
+    !siblingPlan.links.some(
+      (link) => link.source === id && link.target === anchor.id,
+    )
       ? displayName(id)
       : intl.formatMessage(messages.sharedParentUnshown, args);
+
+  // A biological sibling of parents only one of whom could be their genetic
+  // parent — two mothers, say — is asked which (ruling 26): each shared
+  // parent who would be their biological parent if named, while the plan
+  // cannot make them all so.
+  const biologicalLinkFrom = (plan: typeof biologicalPlan, id: string) =>
+    plan.links.some(
+      (link) =>
+        link.source === id &&
+        link.target === ids[0] &&
+        link.kind === 'biological',
+    );
+  const sharedRecorded = asStringArray(values[ROLE.sharedParents]).filter(
+    (id) => parents.includes(id),
+  );
+  const biologicalCandidates =
+    siblingKind === 'biological'
+      ? sharedRecorded.filter((id) =>
+          biologicalLinkFrom(
+            planAdditionUnder(ids, {
+              family,
+              anchorId: anchor.id,
+              details: {},
+              request: {
+                ...readSiblingRequest(values),
+                parentKind: 'biological',
+                biologicalParentId: id,
+              },
+              sexAttribute: config.sexAssignedAtBirthAttribute,
+            }),
+            id,
+          ),
+        )
+      : [];
+  const asksBiologicalParent =
+    biologicalCandidates.length > 1 &&
+    !biologicalCandidates.every((id) => biologicalLinkFrom(biologicalPlan, id));
+  const biologicalParentDefault = biologicalCandidates.find((id) =>
+    biologicalLinkFrom(
+      planAdditionUnder(ids, {
+        family,
+        anchorId: anchor.id,
+        details: {},
+        request: {
+          ...readSiblingRequest(values),
+          parentKind: 'biological',
+          biologicalParentId: undefined,
+        },
+        sexAttribute: config.sexAssignedAtBirthAttribute,
+      }),
+      id,
+    ),
+  );
+  const biologicalParentAnswer = asString(values[ROLE.siblingBiologicalParent]);
+  const biologicalParentStale =
+    biologicalParentAnswer !== undefined &&
+    (!asksBiologicalParent ||
+      !biologicalCandidates.includes(biologicalParentAnswer));
+  useEffect(() => {
+    if (biologicalParentStale) {
+      setFieldValue(ROLE.siblingBiologicalParent, undefined);
+    }
+  }, [biologicalParentStale, setFieldValue]);
 
   // Someone with no parents is given an egg parent and a sperm parent,
   // unnamed; the sibling may share both or one of them. Someone whose egg or
@@ -1813,7 +1911,19 @@ function SiblingFields({
   // it is offered, and chosen to start with, only while that second parent
   // is a genetic parent not yet recorded.
   const sharedField =
-    parents.length === 0 && open.length < 2 ? null : parents.length === 0 ? (
+    parents.length === 0 && open.length < 2 ? (
+      // Someone with only donors shares unnamed parents with the sibling,
+      // and may share the donors too.
+      donors.length > 0 ? (
+        <Field
+          component={CheckboxGroupField}
+          name={ROLE.sharedParents}
+          label={intl.formatMessage(messages.sharedDonorsLabel, args)}
+          options={donors.map((id) => ({ value: id, label: displayName(id) }))}
+          initialValue={[]}
+        />
+      ) : null
+    ) : parents.length === 0 ? (
       <Field
         component={RadioGroupField}
         name={ROLE.sharedParentCount}
@@ -1855,6 +1965,7 @@ function SiblingFields({
                 },
               ]
             : []),
+          ...donors.map((id) => ({ value: id, label: displayName(id) })),
         ]}
         required
         initialValue={offersUnshown ? [...parents, UNKNOWN] : parents}
@@ -1877,6 +1988,19 @@ function SiblingFields({
         required
         initialValue="biological"
       />
+      {asksBiologicalParent && (
+        <Field
+          component={RadioGroupField}
+          name={ROLE.siblingBiologicalParent}
+          label={intl.formatMessage(messages.siblingBiologicalParentLabel)}
+          options={biologicalCandidates.map((id) => ({
+            value: id,
+            label: displayName(id),
+          }))}
+          required
+          initialValue={biologicalParentDefault}
+        />
+      )}
       {carriers.length > 0 && (
         <Field
           component={RadioGroupField}

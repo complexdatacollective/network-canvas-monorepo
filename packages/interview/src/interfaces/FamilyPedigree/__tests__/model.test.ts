@@ -564,7 +564,14 @@ describe('planAddRelative', () => {
       parentKind: 'biological',
       carrier: null,
     });
-    expect(result.people.map((p) => p.id)).toEqual(['added', 'new-1', 'new-2']);
+    // Ruling 25: the sibling, sharing only the egg parent, is given a
+    // stand-in of their own for the sperm parent.
+    expect(result.people.map((p) => p.id)).toEqual([
+      'added',
+      'new-1',
+      'new-2',
+      'new-3',
+    ]);
     const parentsOf = (id: string) =>
       result.links
         .filter(
@@ -572,7 +579,7 @@ describe('planAddRelative', () => {
         )
         .map((planned) => planned.source);
     expect(parentsOf('ego')).toEqual(['new-1', 'new-2']);
-    expect(parentsOf('added')).toEqual(['new-1']);
+    expect(parentsOf('added')).toEqual(['new-1', 'new-3']);
   });
 
   test('a sibling can share a parent not yet shown', () => {
@@ -588,14 +595,22 @@ describe('planAddRelative', () => {
       parentKind: 'biological',
       carrier: null,
     });
-    expect(result.people.map((p) => p.id)).toEqual(['added', 'new-1']);
     // Mum, female at birth, gave the egg; the parent added gave the sperm.
-    expect(result.people[1]!.details).toEqual({ sex: ['male'] });
+    expect(result.people[1]).toEqual({
+      id: 'new-1',
+      details: { sex: ['male'] },
+    });
     // Not recorded as mum's partner, which the participant was never asked.
+    // Ruling 25: the sibling, who does not share mum, is given a stand-in of
+    // their own for their egg parent.
     expect(result.links).toEqual([
       { source: 'new-1', target: 'ego', kind: 'biological' },
       { source: 'new-1', target: 'added', kind: 'biological' },
+      { source: 'new-2', target: 'added', kind: 'biological' },
     ]);
+    expect(result.links.some((planned) => planned.kind === 'partner')).toBe(
+      false,
+    );
   });
 
   test('a sibling who does not share the second parent of someone with one is a half sibling', () => {
@@ -611,13 +626,17 @@ describe('planAddRelative', () => {
       parentKind: 'biological',
       carrier: null,
     });
-    // The anchor's second parent is added for the anchor alone, so the two
-    // are recorded with different genetic parents.
-    expect(result.people.map((p) => p.id)).toEqual(['added', 'new-1']);
-    expect(result.people[1]!.details).toEqual({ sex: ['male'] });
+    // Ruling 25: the sibling is given a stand-in of their own, and the
+    // anchor theirs, so the two are recorded with different genetic parents.
+    expect(result.people).toEqual([
+      { id: 'added', details: { name: 'New' } },
+      { id: 'new-1', details: { sex: ['male'] } },
+      { id: 'new-2', details: { sex: ['male'] } },
+    ]);
     expect(result.links).toEqual([
-      { source: 'new-1', target: 'ego', kind: 'biological' },
+      { source: 'new-1', target: 'added', kind: 'biological' },
       { source: 'mum', target: 'added', kind: 'biological' },
+      { source: 'new-2', target: 'ego', kind: 'biological' },
     ]);
   });
 
@@ -674,11 +693,13 @@ describe('planAddRelative', () => {
         parentKind: 'biological',
         carrier: null,
       });
-      // Their genetic parents are all recorded, so nobody stands in for one,
-      // and nobody is added as an adoptive parent or a partner.
-      expect(result.people.map((p) => p.id)).toEqual(['added']);
+      // The anchor's genetic parents are all recorded, so nobody stands in
+      // for one of theirs, and nobody is added as an adoptive parent or a
+      // partner. The sibling, who does not share the donor, is given a
+      // stand-in of their own (ruling 25).
       expect(result.links).toEqual([
         { source: 'mum', target: 'added', kind: 'biological' },
+        { source: 'new-1', target: 'added', kind: 'biological' },
       ]);
     }
   });
@@ -691,8 +712,10 @@ describe('planAddRelative', () => {
       parentKind: 'biological',
       carrier: null,
     });
+    // Ruling 25: a stand-in of their own for the parent they do not share.
     expect(result.links).toEqual([
       { source: 'mum', target: 'added', kind: 'biological' },
+      { source: 'new-1', target: 'added', kind: 'biological' },
     ]);
   });
 
@@ -761,8 +784,10 @@ describe('planAddRelative', () => {
         parentKind: 'biological',
         carrier: 'mum',
       });
+      // Ruling 25: a stand-in of their own for the parent they do not share.
       expect(result.links).toEqual([
         { source: 'dad', target: 'added', kind: 'biological' },
+        { source: 'new-1', target: 'added', kind: 'biological' },
       ]);
     });
 
@@ -894,7 +919,9 @@ describe('planAddRelative', () => {
     );
   });
 
-  test('the other parent of someone adopted is added as an adoptive parent', () => {
+  // Ruling 24: a single person adopting is reasonable, so someone adopted
+  // by one parent is never given an unnamed adoptive parent.
+  test('someone adopted by one parent is given no other parent for a sibling', () => {
     const family = readFamily(
       [person('ego'), person('mum', { sex: ['female'] })],
       [link('mum', 'ego', 'adoptive')],
@@ -907,12 +934,9 @@ describe('planAddRelative', () => {
       parentKind: 'adoptive',
       carrier: null,
     });
-    // Not a gamete parent, so their sex at birth does not follow.
-    expect(result.people[1]!.details).toEqual({});
+    expect(result.people.map((planned) => planned.id)).toEqual(['added']);
     expect(result.links).toEqual([
-      { source: 'new-1', target: 'ego', kind: 'adoptive' },
       { source: 'mum', target: 'added', kind: 'adoptive' },
-      { source: 'new-1', target: 'added', kind: 'adoptive' },
     ]);
   });
 
@@ -964,6 +988,8 @@ describe('planAddRelative', () => {
         kind: 'biological',
         isGestationalCarrier: false,
       },
+      // Ruling 25: a stand-in for the child's other genetic parent.
+      { source: 'new-1', target: 'added', kind: 'biological' },
     ]);
   });
 
@@ -980,6 +1006,9 @@ describe('planAddRelative', () => {
       biologicalParent: 'both',
       carrier: null,
     });
+    // Ruling 25: the child, and the donor's earlier child (recorded with the
+    // donor alone), are each given a stand-in of their own for their other
+    // genetic parent.
     expect(result.links).toEqual([
       {
         source: 'donor',
@@ -987,6 +1016,8 @@ describe('planAddRelative', () => {
         kind: 'donor',
         isGestationalCarrier: false,
       },
+      { source: 'new-1', target: 'ego', kind: 'biological' },
+      { source: 'new-2', target: 'added', kind: 'biological' },
     ]);
   });
 
@@ -1017,6 +1048,9 @@ describe('planAddRelative', () => {
         kind: 'biological',
         isGestationalCarrier: true,
       },
+      // Ruling 25: the donor's earlier child, recorded with the donor alone,
+      // is given a stand-in for their other genetic parent.
+      { source: 'new-2', target: 'ego', kind: 'biological' },
     ]);
   });
 
@@ -1044,6 +1078,8 @@ describe('planAddRelative', () => {
         kind: 'biological',
         isGestationalCarrier: false,
       },
+      // Ruling 25: a stand-in for the child's other genetic parent.
+      { source: 'new-2', target: 'added', kind: 'biological' },
     ]);
   });
 
@@ -1079,6 +1115,10 @@ describe('planAddRelative', () => {
         isGestationalCarrier: true,
       },
       { source: 'beth', target: 'added', kind: 'social' },
+      // Ruling 25: the two, full siblings, share a stand-in for their other
+      // genetic parent.
+      { source: 'new-1', target: 'ego', kind: 'biological' },
+      { source: 'new-1', target: 'added', kind: 'biological' },
     ]);
   });
 
@@ -1102,6 +1142,8 @@ describe('planAddRelative', () => {
     expect(result.links).toEqual([
       { source: 'ann', target: 'added', kind: 'biological' },
       { source: 'bea', target: 'added', kind: 'adoptive' },
+      // Ruling 25: a stand-in for the sibling's other genetic parent.
+      { source: 'new-1', target: 'added', kind: 'biological' },
     ]);
   });
 
@@ -1213,14 +1255,18 @@ describe('no addition gives anyone more than two genetic parents', () => {
     });
     expect(breaches(family, result)).toEqual([]);
     // The sperm is still to give, so one unnamed parent gives it; the egg
-    // donor already gave the egg, so nobody else is added, and nobody as an
-    // adoptive parent.
+    // donor already gave the egg, so nobody else is added for the anchor,
+    // and nobody as an adoptive parent. The sibling, who does not share the
+    // egg donor, is given a stand-in of their own for their egg parent
+    // (ruling 25).
     expect(result.people.slice(1).map((p) => p.details)).toEqual([
       { sex: ['male'] },
+      { sex: ['female'] },
     ]);
     expect(result.links).toEqual([
       { source: 'new-1', target: 'ego', kind: 'biological' },
       { source: 'new-1', target: 'added', kind: 'biological' },
+      { source: 'new-2', target: 'added', kind: 'biological' },
     ]);
   });
 
@@ -1268,9 +1314,10 @@ describe('no addition gives anyone more than two genetic parents', () => {
     const family = readFamily(
       [
         person('ego'),
-        person('mum', { sex: ['female'] }),
+        // Named, so neither is a stand-in who gives way (ruling 25).
+        person('mum', { name: 'Julie', sex: ['female'] }),
         person('sib'),
-        person('sibDad', { sex: ['male'] }),
+        person('sibDad', { name: 'Al', sex: ['male'] }),
       ],
       [
         link('mum', 'ego', 'biological'),
@@ -1357,6 +1404,10 @@ describe('a new parent of the anchor’s siblings', () => {
         kind: 'surrogate',
         isGestationalCarrier: true,
       },
+      // Ruling 25: the two, recorded with one genetic parent, share a
+      // stand-in for the other.
+      { source: 'new-2', target: 'ego', kind: 'biological' },
+      { source: 'new-2', target: 'sib', kind: 'biological' },
     ]);
   });
 

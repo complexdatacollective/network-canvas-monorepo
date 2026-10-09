@@ -19,6 +19,9 @@ const family = (nodes: NcNode[], edges: NcEdge[]) =>
 const people = ['ego', 'mum', 'dad', 'nan', 'other'].map((id) =>
   person(id, id === 'ego' ? { isEgo: true } : {}),
 );
+const namedMum = people.map((node) =>
+  node._uid === 'mum' ? person('mum', { name: 'Julie' }) : node,
+);
 
 describe('connecting two people', () => {
   test('people already linked in any way are connected', () => {
@@ -85,7 +88,9 @@ describe('connecting two people', () => {
   });
 
   test('parents: at most two genetic parents and one surrogate', () => {
-    const f = family(people, [
+    // Mum is named, so is not a stand-in who gives way to a genetic parent
+    // recorded in her place (ruling 25).
+    const f = family(namedMum, [
       link('mum', 'ego', 'biological'),
       link('dad', 'ego', 'donor'),
       link('nan', 'ego', 'surrogate', { carrier: true }),
@@ -180,8 +185,14 @@ describe('connecting two people', () => {
       sexesRuledOut(fam, id).map((reason) => reason.sex);
     expect(sexes(f, 'mother')).toEqual([]);
     expect(sexes(f, 'carrier')).toEqual(['male']);
+    // The mother is named, so is not a stand-in, whose sex at birth would
+    // follow the father's (ruling 25).
     const twoParents = family(
-      [...people, person('mother', { sex: ['female'] }), person('father')],
+      [
+        ...people,
+        person('mother', { name: 'Julie', sex: ['female'] }),
+        person('father'),
+      ],
       [link('mother', 'ego', 'biological'), link('father', 'ego', 'donor')],
     );
     expect(sexes(twoParents, 'father')).toEqual(['female']);

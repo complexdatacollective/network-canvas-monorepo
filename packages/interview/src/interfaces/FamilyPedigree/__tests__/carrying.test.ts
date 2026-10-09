@@ -156,11 +156,15 @@ describe('adding a child someone carried', () => {
       carrier: 'otherParent',
     });
     expect(
-      result.links.map((planned) => [
-        planned.source,
-        planned.kind,
-        planned.isGestationalCarrier,
-      ]),
+      result.links
+        .filter(
+          (planned) => planned.source === 'jo' || planned.source === 'amy',
+        )
+        .map((planned) => [
+          planned.source,
+          planned.kind,
+          planned.isGestationalCarrier,
+        ]),
     ).toEqual([
       ['jo', 'biological', false],
       ['amy', 'social', true],
@@ -189,7 +193,7 @@ describe('adding a child someone carried', () => {
     const f = family(
       [
         person('ego', { isEgo: true }),
-        person('mum', { sex: ['female'] }),
+        person('mum', { name: 'Julie', sex: ['female'] }),
         person('donor', { sex: ['male'] }),
       ],
       [link('mum', 'ego', 'biological'), link('donor', 'ego', 'donor')],
