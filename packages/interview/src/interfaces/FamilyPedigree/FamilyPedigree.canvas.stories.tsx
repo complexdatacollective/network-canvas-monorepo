@@ -614,9 +614,7 @@ export const AConnectionIsAnnouncedInItsNewWords: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const page = within(canvasElement.ownerDocument.body);
-    await canvas.findByRole('button', {
-      name: /^Paternal grandfather.s partner/,
-    });
+    await canvas.findByRole('button', { name: /^Step-grandmother/ });
     await userEvent.click(canvas.getByTestId('pedigree-tool-connect'));
     await userEvent.click(personSymbol(canvasElement, 'partner'));
     await userEvent.click(personSymbol(canvasElement, 'ravi'));

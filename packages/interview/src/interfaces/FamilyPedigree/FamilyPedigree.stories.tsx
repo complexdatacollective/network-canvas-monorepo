@@ -1474,13 +1474,15 @@ export const AParentOfNoKindYetIsCalledAParent: Story = {
     await expect(drawn().some((label) => /step/i.test(label))).toBe(false);
     await expect(drawn().some((label) => /^Parent\b/.test(label))).toBe(true);
 
-    // Chosen, the kind names them.
+    // Chosen, the kind names them: raising Maya, and no parent's partner,
+    // she is called her mother.
     await userEvent.click(
       within(kind).getByRole('radio', { name: 'Step or social parent' }),
     );
     await waitFor(() =>
-      expect(drawn().some((label) => /^Step.?mother/.test(label))).toBe(true),
+      expect(drawn().some((label) => /^Mother$/.test(label))).toBe(true),
     );
+    await expect(drawn().some((label) => /step/i.test(label))).toBe(false);
   },
 };
 
