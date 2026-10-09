@@ -857,9 +857,12 @@ describe('a codebook write a Spanish form field needs, refused', () => {
    * chose here.
    *
    * Reached through an attribute the protocol SCHEMA accepts and the builder
-   * refuses — a stored value with a tab in it, which no name may hold — so the
-   * row's own save is refused on the control that caused it rather than
-   * closing over a write that never happened.
+   * refuses — two values that differ only in case. The schema compares option
+   * values exactly, because it decides whether a protocol can be opened at
+   * all; the codebook folds case, as the option rows do while a researcher
+   * types, so it will not rewrite the attribute. The row's own save is then
+   * refused on the control that caused it rather than closing over a write
+   * that never happened.
    */
   it('says the input control could not be recorded', async () => {
     const harness = alterFormInSpanish();
@@ -874,8 +877,8 @@ describe('a codebook write a Spanish form field needs, refused', () => {
         // writes, and its write the only thing that can be refused.
         readOnly: true,
         options: [
-          { label: en('En casa'), value: 'en\tcasa' },
-          { label: en('En el trabajo'), value: 'trabajo' },
+          { label: en('En casa'), value: 'casa' },
+          { label: en('En la casa de un amigo'), value: 'Casa' },
         ],
       },
     });
