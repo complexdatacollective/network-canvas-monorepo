@@ -9,7 +9,7 @@ export const BASE_PALETTE = [
   { name: 'mustard', l: 0.81, c: 0.17, h: 86.39 },
   { name: 'sea-green', l: 0.7, c: 0.2, h: 171.52 },
   { name: 'slate-blue', l: 0.55, c: 0.198, h: 281 },
-  { name: 'cerulean-blue', l: 0.5824, c: 0.229, h: 260.09 },
+  { name: 'cerulean-blue', l: 0.572, c: 0.229, h: 260.09 },
 ] as const;
 
 function pickBase(rng: Rng) {

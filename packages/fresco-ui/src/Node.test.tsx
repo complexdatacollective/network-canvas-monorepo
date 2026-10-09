@@ -53,3 +53,24 @@ describe('Node label layout', () => {
     expect(screen.getByText(label)).toHaveTextContent(label);
   });
 });
+
+describe('Node label ink', () => {
+  it('takes a palette color ink from its paired contrast token', () => {
+    render(<Node color="node-color-seq-5" label="Kiwi" />);
+
+    const node = screen.getByRole('button', { name: 'Kiwi' });
+    expect(node).toHaveClass('text-(--ink)', '[--ink:var(--node-5-contrast)]');
+    expect(node).not.toHaveClass('[--ink:var(--node-1-contrast)]');
+  });
+
+  it('gives a custom color white ink unless contrast-color() is supported', () => {
+    render(<Node color="custom" label="Custom" />);
+
+    const node = screen.getByRole('button', { name: 'Custom' });
+    expect(node).toHaveClass(
+      '[--ink:var(--color-white)]',
+      'supports-[color:contrast-color(red)]:[--ink:contrast-color(var(--base))]',
+    );
+    expect(node).not.toHaveClass('[--ink:var(--node-1-contrast)]');
+  });
+});

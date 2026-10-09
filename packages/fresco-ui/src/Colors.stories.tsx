@@ -242,7 +242,7 @@ export const EdgeColors: Story = {
               key={num}
               name={`Edge ${num}`}
               cssVar={`--edge-${num}`}
-              contrastVar="--neutral"
+              contrastVar={`--edge-${num}-contrast`}
             />
           ))}
         </div>
@@ -267,6 +267,7 @@ export const OrdinalColors: Story = {
               key={num}
               name={`Ordinal ${num}`}
               cssVar={`--ord-${num}`}
+              contrastVar={`--ord-${num}-contrast`}
             />
           ))}
         </div>
@@ -291,6 +292,7 @@ export const CategoricalColors: Story = {
               key={num}
               name={`Category ${num}`}
               cssVar={`--cat-${num}`}
+              contrastVar={`--cat-${num}-contrast`}
             />
           ))}
         </div>
@@ -385,6 +387,7 @@ export const AllColors: Story = {
               key={num}
               name={`Edge ${num}`}
               cssVar={`--edge-${num}`}
+              contrastVar={`--edge-${num}-contrast`}
             />
           ))}
         </div>
@@ -400,6 +403,7 @@ export const AllColors: Story = {
               key={num}
               name={`Ord ${num}`}
               cssVar={`--ord-${num}`}
+              contrastVar={`--ord-${num}-contrast`}
             />
           ))}
         </div>
@@ -409,6 +413,7 @@ export const AllColors: Story = {
               key={num}
               name={`Cat ${num}`}
               cssVar={`--cat-${num}`}
+              contrastVar={`--cat-${num}-contrast`}
             />
           ))}
         </div>
