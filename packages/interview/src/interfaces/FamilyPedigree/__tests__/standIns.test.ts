@@ -388,6 +388,32 @@ describe('the stand-in rule', () => {
     expect(result.removedPersonIds).toEqual([]);
   });
 
+  test('a stand-in joined by an edge of the pedigree type that records no family kind is kept', () => {
+    // Another interface drew an edge of the pedigree's own type, without a
+    // kind: it is not part of the family, but deleting the stand-in would
+    // take it with them.
+    const unkinded = link('standIn', 'friend', 'partner');
+    const result = changes(
+      family(
+        [
+          person('ego', { isEgo: true }),
+          person('mum', { sex: ['female'] }),
+          person('standIn', { sex: ['male'] }),
+          person('dad', { name: 'Rob', sex: ['male'] }),
+          person('friend', { name: 'Ali' }),
+        ],
+        [
+          link('mum', 'ego', 'biological'),
+          link('standIn', 'ego', 'biological'),
+          link('dad', 'ego', 'biological'),
+          { ...unkinded, attributes: {} },
+        ],
+      ),
+    );
+    expect(result.removedLinkIds).toEqual(['standIn-ego-biological']);
+    expect(result.removedPersonIds).toEqual([]);
+  });
+
   test('a stand-in gives way as one person: their full sibling takes the new parent too', () => {
     // The participant and their sister share their mother and an unknown
     // father. Recording the participant's father records the father they

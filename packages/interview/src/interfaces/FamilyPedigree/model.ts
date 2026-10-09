@@ -293,12 +293,18 @@ export function readFamily(
   decryptedNames: ReadonlyMap<string, string> = new Map(),
   standIns: ReadonlySet<string> = new Set(),
 ): Family {
-  // The kind of relationship an edge records in this pedigree: undefined for
-  // an edge it does not read, of another type or recorded under bindings of
-  // another stage's own (another family pedigree may share the edge type
-  // with a kind variable of its own).
-  const kindOf = (edge: NcEdge) =>
-    edge.type === config.relationshipType
+  const personIds = new Set(
+    nodes
+      .filter((node) => node.type === config.personType)
+      .map((node) => node[entityPrimaryKeyProperty]),
+  );
+  // The kind of family relationship an edge records, or undefined when it is
+  // not one: an edge of another type, one joining someone outside the family,
+  // or one of the pedigree's type that another interface drew without a kind.
+  const familyKindOf = (edge: NcEdge) =>
+    edge.type === config.relationshipType &&
+    personIds.has(edge.from) &&
+    personIds.has(edge.to)
       ? readCategorical(
           readOwnProperty(edge[entityAttributesProperty], config.kindAttribute),
           PEDIGREE_RELATIONSHIP_KINDS,
@@ -306,7 +312,7 @@ export function readFamily(
       : undefined;
   const referencedElsewhere = new Set(
     edges
-      .filter((edge) => kindOf(edge) === undefined)
+      .filter((edge) => familyKindOf(edge) === undefined)
       .flatMap((edge) => [edge.from, edge.to]),
   );
   const people: Person[] = nodes
@@ -378,9 +384,8 @@ export function readFamily(
   const links: FamilyLink[] = [];
   const twins: TwinLink[] = [];
   for (const edge of edges) {
-    const kind = kindOf(edge);
+    const kind = familyKindOf(edge);
     if (!kind) continue;
-    if (!byId.has(edge.from) || !byId.has(edge.to)) continue;
     const attributes = edge[entityAttributesProperty];
     const attribute = (key: string) => readOwnProperty(attributes, key);
     if (isTwinKind(kind)) {
