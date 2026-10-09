@@ -75,6 +75,26 @@ describe('the interface text a protocol holds', () => {
       'forms',
     );
     expect(groups({ stages: [{ type: 'Anonymisation' }] })).toContain('forms');
+    // A roster's cards show answers as Yes and No.
+    expect(groups({ stages: [{ type: 'NameGeneratorRoster' }] })).toContain(
+      'forms',
+    );
+    // A Categorical Bin asks for its "other" answer in a form dialog.
+    expect(
+      groups({
+        stages: [{ type: 'CategoricalBin', prompts: [{ id: 'p' }] }],
+      }),
+    ).not.toContain('forms');
+    expect(
+      groups({
+        stages: [
+          {
+            type: 'CategoricalBin',
+            prompts: [{ id: 'p', otherVariable: 'otherKind' }],
+          },
+        ],
+      }),
+    ).toContain('forms');
     expect(groups({ codebook: ENCRYPTED_CODEBOOK })).toContain('forms');
     // A Network Composer's name box is not a form that can be submitted, but
     // the form its inspector shows for a selected person is, once it has

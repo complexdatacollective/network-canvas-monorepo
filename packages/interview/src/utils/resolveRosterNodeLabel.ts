@@ -1,8 +1,7 @@
-import type { IntlShape } from '@codaco/app-i18n/messages';
 import type { NodeDefinition } from '@codaco/protocol-validation';
 import { entityAttributesProperty, type NcNode } from '@codaco/shared-consts';
 
-import { resolveInterviewIntl } from '../i18n/resolveIntl';
+import { contentFormatFor } from '../localization/contentFormat';
 import { getNodeLabelAttribute } from './getNodeLabelAttribute';
 
 type ResolveRosterNodeLabelArgs = {
@@ -10,7 +9,11 @@ type ResolveRosterNodeLabelArgs = {
   node: NcNode;
   subjectLabel: string;
   sequentialNumber: number;
-  intl?: IntlShape;
+  /**
+   * Writes the placeholder's number, in the language of the protocol's label
+   * it follows. Absent, English.
+   */
+  formatNumber?: (value: number) => string;
 };
 
 // Only string/number values produce a meaningful title; everything else
@@ -34,7 +37,7 @@ export const resolveRosterNodeLabel = ({
   node,
   subjectLabel,
   sequentialNumber,
-  intl,
+  formatNumber = contentFormatFor('en').formatNumber,
 }: ResolveRosterNodeLabelArgs): string => {
   const attributes = node[entityAttributesProperty];
 
@@ -53,6 +56,5 @@ export const resolveRosterNodeLabel = ({
     }
   }
 
-  const resolved = resolveInterviewIntl(intl);
-  return `${subjectLabel} ${resolved.formatNumber(sequentialNumber)}`;
+  return `${subjectLabel} ${formatNumber(sequentialNumber)}`;
 };

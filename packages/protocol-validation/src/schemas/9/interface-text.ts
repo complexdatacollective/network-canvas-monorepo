@@ -77,15 +77,30 @@ const usesPassphrase = (protocol: ProtocolDocument) =>
     (variable) => variable.encrypted === true,
   ) || stagesOf(protocol).some((stage) => stage.type === 'Anonymisation');
 
-/** Stage types that always show a form of the interview's own. */
+/**
+ * Stage types that always show the form text: a form of their own, or, on a
+ * roster's cards, the Yes and No a form writes answers in.
+ */
 const FORM_STAGE_TYPES: ReadonlySet<string> = new Set([
   'EgoForm',
   'AlterForm',
   'AlterEdgeForm',
   'NameGenerator',
   'NameGeneratorQuickAdd',
+  'NameGeneratorRoster',
   'FamilyPedigree',
 ]);
+
+/**
+ * A Categorical Bin asks for the answer behind its "other" bin in a form
+ * dialog, on a prompt that names a variable for it.
+ */
+const asksInAFormDialog = (stage: Readonly<Record<string, unknown>>) =>
+  stage.type === 'CategoricalBin' &&
+  Array.isArray(stage.prompts) &&
+  stage.prompts.some(
+    (prompt) => isRecord(prompt) && typeof prompt.otherVariable === 'string',
+  );
 
 /**
  * Where a stage holds a form of its own: an edge's or a prompt's `form`, or
@@ -105,14 +120,16 @@ const holdsAForm = (value: unknown): boolean => {
 };
 
 /**
- * Whether the interview shows a form: a stage's own, such as a Network
- * Composer's fields, or the one that asks for a passphrase.
+ * Whether the interview shows the form text: a stage's own form, such as a
+ * Network Composer's fields or a Categorical Bin's dialog, a roster's cards,
+ * or the form that asks for a passphrase.
  */
 const usesForms = (protocol: ProtocolDocument) =>
   usesPassphrase(protocol) ||
   stagesOf(protocol).some(
     (stage) =>
       (typeof stage.type === 'string' && FORM_STAGE_TYPES.has(stage.type)) ||
+      asksInAFormDialog(stage) ||
       holdsAForm(stage),
   );
 
