@@ -128,9 +128,6 @@ const PassphraseDialog = ({
               component={PasswordField}
               name="passphrase-2"
               label={intl.formatMessage(interfaceMessages.confirmPassphrase)}
-              placeholder={intl.formatMessage(
-                interfaceMessages.reenterPassphrase,
-              )}
               required
               suppressPasswordManager
               sameAs="passphrase"

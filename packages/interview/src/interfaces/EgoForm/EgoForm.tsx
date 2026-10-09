@@ -10,6 +10,7 @@ import {
   useState,
 } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { AppMessage } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -146,7 +147,7 @@ const EgoFormInner = (props: EgoFormProps) => {
               value: true,
             },
             cancel: {
-              label: <AppMessage message={interfaceMessages.keepChanges} />,
+              label: <AppMessage message={commonMessages.cancel} />,
               value: false,
             },
           },
@@ -332,9 +333,9 @@ const EgoFormInner = (props: EgoFormProps) => {
               >
                 <ChevronDown size="24" />
               </motion.div>
-              <Heading level="label" margin="none">
+              <span className="sr-only">
                 <AppMessage message={interfaceMessages.scrollForQuestions} />
-              </Heading>
+              </span>
               <motion.div
                 aria-hidden="true"
                 animate={{

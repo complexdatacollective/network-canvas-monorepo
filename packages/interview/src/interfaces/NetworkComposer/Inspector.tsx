@@ -517,11 +517,7 @@ export default function Inspector({
             guardDraft={guardDraft}
           />
         </FormStoreProvider>
-      ) : (
-        <div className="text-text/60 flex min-h-0 flex-1 items-center justify-center p-6 text-center">
-          <AppMessage message={interfaceMessages.noAttributes} />
-        </div>
-      )}
+      ) : null}
       <div className="flex shrink-0 items-center border-t border-current/10 p-4">
         <Button
           type="button"

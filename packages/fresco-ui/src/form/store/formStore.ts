@@ -3,7 +3,8 @@ import { enableMapSet } from 'immer';
 import { immer } from 'zustand/middleware/immer';
 import { createStore, type Mutate, type StoreApi } from 'zustand/vanilla';
 
-import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
+import { commonMessages } from '@codaco/app-i18n/common';
+import type { IntlShape } from '@codaco/app-i18n/messages';
 
 import { resolveIntl } from '../../utils/resolveIntl';
 import type { FieldValue } from '../Field/types';
@@ -35,15 +36,6 @@ import type {
  * beneath it to be copied rather than written into.
  */
 const seedRootKey = 'seed';
-
-const storeMessages = defineMessages({
-  validationFailed: {
-    id: 'frescoUi.formStore.validationFailed',
-    defaultMessage: 'Something went wrong during validation',
-    description:
-      'Error attached to a field whose own validation rule threw, so the rule produced no message of its own.',
-  },
-});
 
 /**
  * How the store reaches the host's formatter. The store is plain Zustand, not
@@ -1626,7 +1618,7 @@ export const createFormStore = (
                   ...form.errors.fieldErrors,
                   [fieldName]: [
                     resolveIntl(storeOptions.getIntl?.()).formatMessage(
-                      storeMessages.validationFailed,
+                      commonMessages.genericError,
                     ),
                   ],
                 },

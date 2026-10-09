@@ -35,7 +35,7 @@ describe('ProtocolField', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Check response' }));
 
     expect(
-      await screen.findByText('Too short. Enter at least 4 characters.'),
+      await screen.findByText('Enter at least 4 characters.'),
     ).toBeVisible();
     expect(onSubmit).not.toHaveBeenCalled();
 

@@ -23,6 +23,7 @@ import type {
 } from '@codaco/fresco-ui/collection/sorting/types';
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import { type DndStore, useDndStore } from '@codaco/fresco-ui/dnd/dnd';
+import Icon from '@codaco/fresco-ui/Icon';
 import Node from '@codaco/fresco-ui/Node';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -75,8 +76,9 @@ import { convertNamesToUUIDs, type NameGeneratorRosterProps } from './helpers';
 import useItems, { type UseItemElement } from './useItems';
 
 const ErrorMessage = (_props: { error: Error }) => (
-  <div className="flex flex-1 flex-col items-center justify-center">
-    <Heading level="h2">
+  <div className="flex flex-1 flex-col items-center justify-center gap-2">
+    <Icon name="warning" />
+    <Heading level="h2" className="sr-only">
       <AppMessage message={interfaceMessages.errorHeading} />
     </Heading>
     <Paragraph>
@@ -361,14 +363,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     // Reachable only once the roster has actually arrived: the panel below
     // renders the collection at all only in the `ready` state, so an empty
     // `items` here means the list really is empty rather than not yet read.
-    if (items.length === 0) {
-      return (
-        <>
-          <AppMessage message={interfaceMessages.emptyRoster} />
-        </>
-      );
-    }
-    if (filteredItems.length === 0) {
+    if (items.length === 0 || filteredItems.length === 0) {
       return (
         <>
           <AppMessage message={interfaceMessages.rosterAlreadyAdded} />
@@ -498,7 +493,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
                         <div className="flex flex-wrap gap-2 p-2">
                           <CollectionFilterInput
                             placeholder={intl.formatMessage(
-                              interfaceMessages.searchTerm,
+                              commonMessages.search,
                             )}
                           />
                         </div>

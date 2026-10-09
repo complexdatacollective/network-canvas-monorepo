@@ -1,7 +1,14 @@
+'use client';
+
 import { Pause as PauseIcon, Play as PlayIcon } from 'lucide-react';
 
-import { AppMessage } from '@codaco/app-i18n/react';
-import Button from '@codaco/fresco-ui/Button';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import { IconButton } from '@codaco/fresco-ui/Button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@codaco/fresco-ui/Tooltip';
 
 import { interfaceMessages } from '../messages';
 
@@ -14,18 +21,26 @@ export default function SimulationPanel({
   simulationEnabled,
   onToggle,
 }: SimulationPanelProps) {
+  const intl = useAppIntl();
+  const label = intl.formatMessage(
+    simulationEnabled
+      ? interfaceMessages.pauseAutomaticLayout
+      : interfaceMessages.resumeAutomaticLayout,
+  );
+
   return (
-    <Button
-      color="dynamic"
-      onClick={onToggle}
-      className="flex items-center gap-2 px-4 py-2 text-sm"
-      icon={simulationEnabled ? <PauseIcon /> : <PlayIcon />}
-    >
-      {simulationEnabled ? (
-        <AppMessage message={interfaceMessages.pauseAutomaticLayout} />
-      ) : (
-        <AppMessage message={interfaceMessages.resumeAutomaticLayout} />
-      )}
-    </Button>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <IconButton
+            color="dynamic"
+            aria-label={label}
+            icon={simulationEnabled ? <PauseIcon /> : <PlayIcon />}
+            onClick={onToggle}
+          />
+        }
+      />
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 }

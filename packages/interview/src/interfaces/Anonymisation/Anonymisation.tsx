@@ -2,7 +2,7 @@
 
 import { ArrowRight } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { createMessageError } from '@codaco/app-i18n/messages';
@@ -43,15 +43,6 @@ import { usePassphrase } from './usePassphrase';
 
 type AnonymisationProps = StageProps<'Anonymisation'>;
 
-/** How the passphrase was put in force on this visit to the stage. */
-type EnteredHere = 'chosen' | 'verified';
-
-const successMessages = {
-  chosen: interfaceMessages.passphraseSet,
-  verified: interfaceMessages.passphraseAccepted,
-  earlier: interfaceMessages.passphraseAlreadyEntered,
-};
-
 function AnonymisationInner(props: AnonymisationProps) {
   const intl = useAppIntl();
   const formRef = useRef<HTMLFormElement>(null);
@@ -62,10 +53,6 @@ function AnonymisationInner(props: AnonymisationProps) {
   } = props;
   const { unlocked, passphraseChosen, encryptionUnavailable, unlock } =
     usePassphrase();
-  // Set when the check starts rather than when it ends: the key is put in
-  // force before the check resolves, and the stage must not first say the
-  // passphrase was entered on an earlier visit.
-  const [enteredHere, setEnteredHere] = useState<EnteredHere | null>(null);
   // Once a passphrase has been chosen in this interview, this stage only asks
   // for it again: it is checked, not chosen, so it needs no confirmation and
   // the length rules do not apply to it.
@@ -126,10 +113,8 @@ function AnonymisationInner(props: AnonymisationProps) {
         };
       }
 
-      setEnteredHere(passphraseChosen ? 'verified' : 'chosen');
       const outcome = await unlock(candidate);
       if (outcome === 'incorrect') {
-        setEnteredHere(null);
         return {
           success: false,
           fieldErrors: {
@@ -140,7 +125,6 @@ function AnonymisationInner(props: AnonymisationProps) {
         };
       }
       if (outcome === 'unavailable') {
-        setEnteredHere(null);
         return {
           success: false,
           formErrors: [
@@ -148,10 +132,9 @@ function AnonymisationInner(props: AnonymisationProps) {
           ],
         };
       }
-      setEnteredHere(outcome);
       return { success: true };
     },
-    [passphraseChosen, unlock],
+    [unlock],
   );
 
   // The form's submit and the Next button can both ask for the check; while
@@ -225,7 +208,7 @@ function AnonymisationInner(props: AnonymisationProps) {
                   <Alert ref={alertRef} variant="success">
                     <AlertDescription>
                       <AppMessage
-                        message={successMessages[enteredHere ?? 'earlier']}
+                        message={interfaceMessages.passphraseAccepted}
                       />
                     </AlertDescription>
                   </Alert>
@@ -262,9 +245,6 @@ function AnonymisationInner(props: AnonymisationProps) {
                         <Field
                           component={PasswordField}
                           name="passphrase-2"
-                          placeholder={intl.formatMessage(
-                            interfaceMessages.reenterPassphrase,
-                          )}
                           label={intl.formatMessage(
                             interfaceMessages.confirmPassphrase,
                           )}

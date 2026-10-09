@@ -177,6 +177,7 @@ export default function ToolPalette({
       >
         <ToolbarIconButton
           aria-label={intl.formatMessage(interfaceMessages.select)}
+          tooltip={false}
           icon={<SelectIcon />}
           pressed={activeTool.kind === 'select'}
           onPressedChange={() => chooseTool({ kind: 'select' })}
@@ -291,12 +292,14 @@ export default function ToolPalette({
       >
         <ToolbarIconButton
           aria-label={intl.formatMessage(interfaceMessages.undo)}
+          tooltip={false}
           icon={<UndoIcon />}
           disabled={!canUndo}
           onClick={() => void undoStore.getState().undo()}
         />
         <ToolbarIconButton
           aria-label={intl.formatMessage(interfaceMessages.redo)}
+          tooltip={false}
           icon={<RedoIcon />}
           disabled={!canRedo}
           onClick={() => void undoStore.getState().redo()}

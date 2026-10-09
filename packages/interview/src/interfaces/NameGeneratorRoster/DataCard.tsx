@@ -2,6 +2,7 @@
 
 import type { IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { messages as booleanFieldMessages } from '@codaco/fresco-ui/form/fields/Boolean';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { VariableValue } from '@codaco/shared-consts';
@@ -26,6 +27,12 @@ type DataCardProps = Omit<
   details?: readonly DataCardDetail[];
 };
 
+const isEmptyValue = (value: VariableValue | undefined): boolean =>
+  value === null ||
+  value === undefined ||
+  value === '' ||
+  (Array.isArray(value) && value.length === 0);
+
 /**
  * A roster value as text for the participant. Words (yes, no, an empty value)
  * are in the interface language; numbers, coordinates and lists follow the
@@ -36,13 +43,15 @@ const formatValue = (
   intl: IntlShape,
   format: ContentFormat,
 ): string => {
-  const empty = () => intl.formatMessage(interfaceMessages.emptyValue);
+  // A dash stands for "no value". Its words are for screen readers only and
+  // come from DataCard, where they can be rendered beside the glyph.
+  const empty = () => '—';
 
   if (value === null || value === undefined || value === '') return empty();
 
   if (typeof value === 'boolean')
     return intl.formatMessage(
-      value ? interfaceMessages.yes : interfaceMessages.no,
+      value ? booleanFieldMessages.yes : booleanFieldMessages.no,
     );
 
   if (typeof value === 'number') return format.formatNumber(value);
@@ -130,7 +139,17 @@ const DataCard = ({
                 {detailLabel}
               </Heading>
               <dd className="text-sm leading-tight font-medium wrap-break-word">
-                {formatValue(value, intl, format)}
+                {isEmptyValue(value) ? (
+                  <>
+                    {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- Decorative dash for an empty value; the words follow for screen readers. */}
+                    <span aria-hidden="true">—</span>
+                    <span className="sr-only">
+                      {intl.formatMessage(interfaceMessages.emptyValue)}
+                    </span>
+                  </>
+                ) : (
+                  formatValue(value, intl, format)
+                )}
               </dd>
             </div>
           ))}

@@ -1,7 +1,7 @@
 'use client';
 
 import type { Action } from '@reduxjs/toolkit';
-import { LocateFixed, ZoomIn, ZoomOut } from 'lucide-react';
+import { LocateFixed, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { AnimatePresence, motion, type Variants } from 'motion/react';
 import {
   lazy,
@@ -481,9 +481,6 @@ export default function GeospatialInterface({
           >
             <div className="bg-background absolute inset-0 opacity-90" />
             <div className="relative z-20 flex w-2/3 max-w-xl flex-col items-center gap-4 text-center">
-              <h2>
-                <AppMessage message={interfaceMessages.mapUnavailable} />
-              </h2>
               <p>
                 <AppMessage
                   message={interfaceMessages.mapUnavailableDescription}
@@ -502,18 +499,19 @@ export default function GeospatialInterface({
             <div className="bg-background absolute inset-0 opacity-75" />
             <div className="relative z-20 flex w-1/3 flex-col items-center gap-6 text-center">
               <h2>
-                <AppMessage message={interfaceMessages.outsideMapDescription} />
+                <AppMessage
+                  message={interfaceMessages.outsideSelectableAreas}
+                />
               </h2>
-              <Button
-                size="sm"
+              <IconButton
                 onClick={() => {
                   setLocationValue(null);
                 }}
                 color="primary"
+                aria-label={intl.formatMessage(interfaceMessages.deselect)}
+                icon={<X />}
                 data-testid="deselect-outside-area-button"
-              >
-                <AppMessage message={interfaceMessages.deselect} />
-              </Button>
+              />
             </div>
           </div>
         )}

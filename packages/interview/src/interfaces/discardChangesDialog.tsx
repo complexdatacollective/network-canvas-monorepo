@@ -1,3 +1,4 @@
+import { commonMessages } from '@codaco/app-i18n/common';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { AppMessage } from '@codaco/app-i18n/react';
 
@@ -28,7 +29,7 @@ export default function discardChangesDialog(
     title: <AppMessage message={interfaceMessages.discardChangesTitle} />,
     description: <AppMessage message={reason} />,
     confirmLabel: <AppMessage message={interfaceMessages.discardChanges} />,
-    cancelLabel: <AppMessage message={interfaceMessages.keepChanges} />,
+    cancelLabel: <AppMessage message={commonMessages.cancel} />,
     intent: 'destructive' as const,
   };
 }

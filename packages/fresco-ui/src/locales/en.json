@@ -155,21 +155,13 @@
     "defaultMessage": "Filter",
     "description": "Accessible name of the collection filter input."
   },
-  "frescoUi.collectionFilterInput.indexing": {
-    "defaultMessage": "Indexing...",
-    "description": "Status text shown while the collection filter builds its search index."
-  },
   "frescoUi.collectionFilterInput.resultCount": {
     "defaultMessage": "{count, plural, one {# result} other {# results}}",
-    "description": "Match total shown inside the filter input while a filter is active."
+    "description": "Screen-reader announcement of the match total while a filter is active. The visible total is the bare number."
   },
   "frescoUi.collectionFilterInput.searchPlaceholder": {
     "defaultMessage": "Search...",
     "description": "Default placeholder for the collection filter input."
-  },
-  "frescoUi.collectionFilterInput.searching": {
-    "defaultMessage": "Searching...",
-    "description": "Status text shown while the collection filter is running a search."
   },
   "frescoUi.collectionSortButton.accessibleName": {
     "defaultMessage": "{state, select, ascending {Sort by {label} (ascending)} descending {Sort by {label} (descending)} other {Sort by {label}}}",
@@ -367,14 +359,6 @@
     "defaultMessage": "to",
     "description": "Word shown between the start and end date inputs of a date-range filter."
   },
-  "frescoUi.datePicker.month": {
-    "defaultMessage": "Month",
-    "description": "Label and placeholder of the month dropdown."
-  },
-  "frescoUi.datePicker.year": {
-    "defaultMessage": "Year",
-    "description": "Label and placeholder of the year dropdown."
-  },
   "frescoUi.dialogProvider.areYouSure": {
     "defaultMessage": "Are you sure?",
     "description": "Default title of a confirmation dialog."
@@ -383,17 +367,9 @@
     "defaultMessage": "Continue editing",
     "description": "Default cancel action of the dialog asking whether to abandon a wizard mid-way."
   },
-  "frescoUi.dialogProvider.errorOccurred": {
-    "defaultMessage": "An error occurred",
-    "description": "Fallback error shown in a confirmation dialog when the failing action carries no message of its own."
-  },
   "frescoUi.dialogProvider.exitAndLoseProgress": {
     "defaultMessage": "Exit and lose progress",
     "description": "Default confirm action of the dialog asking whether to abandon a wizard mid-way."
-  },
-  "frescoUi.dialogProvider.pleaseWait": {
-    "defaultMessage": "Please wait...",
-    "description": "Label shown on a confirm button while its action is still running."
   },
   "frescoUi.dialogProvider.submit": {
     "defaultMessage": "Submit",
@@ -462,10 +438,6 @@
   "frescoUi.form.submitFailed": {
     "defaultMessage": "An error occurred while submitting the form.",
     "description": "Form-level error shown when the submit handler itself throws, so it produced no message of its own."
-  },
-  "frescoUi.formStore.validationFailed": {
-    "defaultMessage": "Something went wrong during validation",
-    "description": "Error attached to a field whose own validation rule threw, so the rule produced no message of its own."
   },
   "frescoUi.icon.addAContextSingle": {
     "defaultMessage": "Add a context",
@@ -936,20 +908,8 @@
     "description": "Accessible name of the region containing status notifications and alerts."
   },
   "frescoUi.validation.differentFromError": {
-    "defaultMessage": "Your answer must be different from your earlier answer.",
-    "description": "Error for a must-differ comparison when the other answer has no visible label."
-  },
-  "frescoUi.validation.differentFromHint": {
-    "defaultMessage": "Must be different from your earlier answer.",
-    "description": "Hint for a must-differ comparison when the other answer has no visible label."
-  },
-  "frescoUi.validation.differentFromLabelledError": {
-    "defaultMessage": "Your answer must be different from your answer to ''{label}''.",
-    "description": "Error for a must-differ comparison naming the other question."
-  },
-  "frescoUi.validation.differentFromLabelledHint": {
-    "defaultMessage": "Must be different from your answer to ''{label}''.",
-    "description": "Hint for a must-differ comparison naming the other question."
+    "defaultMessage": "{hasLabel, select, true {Your answer must be different from your answer to ''{label}''.} other {Your answer must be different from your earlier answer.}}",
+    "description": "Error and hint for a must-differ comparison. hasLabel says whether the other question has a visible label; label is that label."
   },
   "frescoUi.validation.emailError": {
     "defaultMessage": "Enter a valid email address.",
@@ -960,156 +920,64 @@
     "description": "Hint summarising an email-format rule."
   },
   "frescoUi.validation.greaterThanError": {
-    "defaultMessage": "Your answer must be greater than your earlier answer.",
-    "description": "Error for a must-be-greater comparison when the other answer has no visible label."
-  },
-  "frescoUi.validation.greaterThanHint": {
-    "defaultMessage": "Must be greater than your earlier answer.",
-    "description": "Hint for a must-be-greater comparison when the other answer has no visible label."
-  },
-  "frescoUi.validation.greaterThanLabelledError": {
-    "defaultMessage": "Your answer must be greater than your answer to ''{label}''.",
-    "description": "Error for a must-be-greater comparison naming the other question."
-  },
-  "frescoUi.validation.greaterThanLabelledHint": {
-    "defaultMessage": "Must be greater than your answer to ''{label}''.",
-    "description": "Hint for a must-be-greater comparison naming the other question."
+    "defaultMessage": "{hasLabel, select, true {Your answer must be greater than your answer to ''{label}''.} other {Your answer must be greater than your earlier answer.}}",
+    "description": "Error and hint for a must-be-greater comparison. hasLabel says whether the other question has a visible label; label is that label."
   },
   "frescoUi.validation.greaterThanOrEqualError": {
-    "defaultMessage": "Your answer must be the same as or greater than your earlier answer.",
-    "description": "Error for a must-be-at-least comparison when the other answer has no visible label."
-  },
-  "frescoUi.validation.greaterThanOrEqualHint": {
-    "defaultMessage": "Must be the same as or greater than your earlier answer.",
-    "description": "Hint for a must-be-at-least comparison when the other answer has no visible label."
-  },
-  "frescoUi.validation.greaterThanOrEqualLabelledError": {
-    "defaultMessage": "Your answer must be the same as or greater than your answer to ''{label}''.",
-    "description": "Error for a must-be-at-least comparison naming the other question."
-  },
-  "frescoUi.validation.greaterThanOrEqualLabelledHint": {
-    "defaultMessage": "Must be the same as or greater than your answer to ''{label}''.",
-    "description": "Hint for a must-be-at-least comparison naming the other question."
+    "defaultMessage": "{hasLabel, select, true {Your answer must be the same as or greater than your answer to ''{label}''.} other {Your answer must be the same as or greater than your earlier answer.}}",
+    "description": "Error and hint for a must-be-at-least comparison. hasLabel says whether the other question has a visible label; label is that label."
   },
   "frescoUi.validation.lessThanError": {
-    "defaultMessage": "Your answer must be less than your earlier answer.",
-    "description": "Error for a must-be-less comparison when the other answer has no visible label."
-  },
-  "frescoUi.validation.lessThanHint": {
-    "defaultMessage": "Must be less than your earlier answer.",
-    "description": "Hint for a must-be-less comparison when the other answer has no visible label."
-  },
-  "frescoUi.validation.lessThanLabelledError": {
-    "defaultMessage": "Your answer must be less than your answer to ''{label}''.",
-    "description": "Error for a must-be-less comparison naming the other question."
-  },
-  "frescoUi.validation.lessThanLabelledHint": {
-    "defaultMessage": "Must be less than your answer to ''{label}''.",
-    "description": "Hint for a must-be-less comparison naming the other question."
+    "defaultMessage": "{hasLabel, select, true {Your answer must be less than your answer to ''{label}''.} other {Your answer must be less than your earlier answer.}}",
+    "description": "Error and hint for a must-be-less comparison. hasLabel says whether the other question has a visible label; label is that label."
   },
   "frescoUi.validation.lessThanOrEqualError": {
-    "defaultMessage": "Your answer must be the same as or less than your earlier answer.",
-    "description": "Error for a must-be-at-most comparison when the other answer has no visible label."
-  },
-  "frescoUi.validation.lessThanOrEqualHint": {
-    "defaultMessage": "Must be the same as or less than your earlier answer.",
-    "description": "Hint for a must-be-at-most comparison when the other answer has no visible label."
-  },
-  "frescoUi.validation.lessThanOrEqualLabelledError": {
-    "defaultMessage": "Your answer must be the same as or less than your answer to ''{label}''.",
-    "description": "Error for a must-be-at-most comparison naming the other question."
-  },
-  "frescoUi.validation.lessThanOrEqualLabelledHint": {
-    "defaultMessage": "Must be the same as or less than your answer to ''{label}''.",
-    "description": "Hint for a must-be-at-most comparison naming the other question."
+    "defaultMessage": "{hasLabel, select, true {Your answer must be the same as or less than your answer to ''{label}''.} other {Your answer must be the same as or less than your earlier answer.}}",
+    "description": "Error and hint for a must-be-at-most comparison. hasLabel says whether the other question has a visible label; label is that label."
   },
   "frescoUi.validation.maxDate": {
     "defaultMessage": "Must be on or before {max}.",
     "description": "Hint and error for a date/time maximum; {max} is the formatted bound."
   },
   "frescoUi.validation.maxLengthError": {
-    "defaultMessage": "{max, plural, one {Too long. Enter at most # character.} other {Too long. Enter at most # characters.}}",
-    "description": "Error shown when text exceeds its maximum length."
-  },
-  "frescoUi.validation.maxLengthHint": {
     "defaultMessage": "{max, plural, one {Enter at most # character.} other {Enter at most # characters.}}",
-    "description": "Hint summarising a maximum text length rule."
+    "description": "Error and hint shown when text is longer than its maximum length."
   },
   "frescoUi.validation.maxSelectedError": {
-    "defaultMessage": "{count, plural, one {Too many items selected. Select a maximum of # value.} other {Too many items selected. Select a maximum of # values.}}",
-    "description": "Error shown when too many options are selected."
-  },
-  "frescoUi.validation.maxSelectedHint": {
     "defaultMessage": "{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}",
-    "description": "Hint summarising a maximum selection-count rule."
+    "description": "Error and hint shown when too many options are selected."
   },
   "frescoUi.validation.maxValueError": {
-    "defaultMessage": "Too large. Value must be at most {max}.",
-    "description": "Error shown when a number is above its maximum."
-  },
-  "frescoUi.validation.maxValueHint": {
     "defaultMessage": "Enter a value less than or equal to {max}.",
-    "description": "Hint summarising a numeric maximum rule."
+    "description": "Error and hint shown when a number is above its maximum."
   },
   "frescoUi.validation.minDate": {
     "defaultMessage": "Must be on or after {min}.",
     "description": "Hint and error for a date/time minimum; {min} is the formatted bound."
   },
   "frescoUi.validation.minLengthError": {
-    "defaultMessage": "{min, plural, one {Too short. Enter at least # character.} other {Too short. Enter at least # characters.}}",
-    "description": "Error shown when text is shorter than its minimum length."
-  },
-  "frescoUi.validation.minLengthHint": {
     "defaultMessage": "{min, plural, one {Enter at least # character.} other {Enter at least # characters.}}",
-    "description": "Hint summarising a minimum text length rule."
+    "description": "Error and hint shown when text is shorter than its minimum length."
   },
   "frescoUi.validation.minSelectedError": {
-    "defaultMessage": "{count, plural, one {Too few selected. Select at least # value.} other {Too few selected. Select at least # values.}}",
-    "description": "Error shown when too few options are selected."
-  },
-  "frescoUi.validation.minSelectedHint": {
     "defaultMessage": "{count, plural, one {Select at least # value.} other {Select at least # values.}}",
-    "description": "Hint summarising a minimum selection-count rule."
+    "description": "Error and hint shown when too few options are selected."
   },
   "frescoUi.validation.minValueError": {
-    "defaultMessage": "Too small. Value must be at least {min}.",
-    "description": "Error shown when a number is below its minimum."
-  },
-  "frescoUi.validation.minValueHint": {
     "defaultMessage": "Enter a value greater than or equal to {min}.",
-    "description": "Hint summarising a numeric minimum rule."
+    "description": "Error and hint shown when a number is below its minimum."
   },
   "frescoUi.validation.required": {
     "defaultMessage": "You must answer this question before continuing.",
     "description": "Error shown when a required form field is left unanswered."
   },
   "frescoUi.validation.sameAsError": {
-    "defaultMessage": "Your answer must be the same as your earlier answer.",
-    "description": "Error for a must-match comparison when the other answer has no visible label."
-  },
-  "frescoUi.validation.sameAsHint": {
-    "defaultMessage": "Must be the same as your earlier answer.",
-    "description": "Hint for a must-match comparison when the other answer has no visible label."
-  },
-  "frescoUi.validation.sameAsLabelledError": {
-    "defaultMessage": "Your answer must be the same as your answer to ''{label}''.",
-    "description": "Error for a must-match comparison naming the other question."
-  },
-  "frescoUi.validation.sameAsLabelledHint": {
-    "defaultMessage": "Must be the same as your answer to ''{label}''.",
-    "description": "Hint for a must-match comparison naming the other question."
-  },
-  "frescoUi.validation.unexpectedError": {
-    "defaultMessage": "An error occurred while validating.",
-    "description": "Error shown when a validation rule itself throws unexpectedly."
+    "defaultMessage": "{hasLabel, select, true {Your answer must be the same as your answer to ''{label}''.} other {Your answer must be the same as your earlier answer.}}",
+    "description": "Error and hint for a must-match comparison. hasLabel says whether the other question has a visible label; label is that label."
   },
   "frescoUi.validation.uniqueError": {
-    "defaultMessage": "This value is used elsewhere. It must be unique.",
-    "description": "Error shown when a value duplicates one used elsewhere."
-  },
-  "frescoUi.validation.uniqueHint": {
     "defaultMessage": "Must be unique.",
-    "description": "Hint summarising a uniqueness rule."
+    "description": "Error and hint shown when a value duplicates one used elsewhere."
   },
   "frescoUi.visualAnalogScale.sliderLabel": {
     "defaultMessage": "Visual analog scale value",

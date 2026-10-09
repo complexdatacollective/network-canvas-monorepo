@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { datePickerWindows } from '@codaco/shared-consts';
 
@@ -65,18 +64,14 @@ function formatYmd(ymd: Ymd): string {
   return `${year}-${month}-${day}`;
 }
 
-const messages = defineMessages({
-  year: {
-    id: 'frescoUi.datePicker.year',
-    defaultMessage: 'Year',
-    description: 'Label and placeholder of the year dropdown.',
-  },
-  month: {
-    id: 'frescoUi.datePicker.month',
-    defaultMessage: 'Month',
-    description: 'Label and placeholder of the month dropdown.',
-  },
-});
+// Field names ("Month", "Year") come from the browser's own locale data, as the
+// month names above do. The browser returns them in lower case, so the first
+// letter is raised for use as a label or placeholder.
+const dateTimeFieldName = (locale: string, field: 'month' | 'year'): string => {
+  const name =
+    new Intl.DisplayNames(locale, { type: 'dateTimeField' }).of(field) ?? field;
+  return name.charAt(0).toLocaleUpperCase(locale) + name.slice(1);
+};
 
 const MONTH_VALUES = [
   '01',
@@ -133,6 +128,8 @@ const getMonthParts = (value: unknown) => {
 
 export default function DatePickerField(props: DatePickerFieldProps) {
   const intl = useAppIntl();
+  const yearLabel = dateTimeFieldName(intl.locale, 'year');
+  const monthLabel = dateTimeFieldName(intl.locale, 'month');
   const format = useFieldValueFormat();
   const {
     type: resolutionType = 'full',
@@ -326,12 +323,12 @@ export default function DatePickerField(props: DatePickerFieldProps) {
       <div className={cx('flex gap-2', className)}>
         {yearPartLabelId && (
           <span id={yearPartLabelId} className="sr-only">
-            {intl.formatMessage(messages.year)}
+            {yearLabel}
           </span>
         )}
         {monthPartLabelId && (
           <span id={monthPartLabelId} className="sr-only">
-            {intl.formatMessage(messages.month)}
+            {monthLabel}
           </span>
         )}
         <SelectField
@@ -339,7 +336,7 @@ export default function DatePickerField(props: DatePickerFieldProps) {
           size={size}
           name={name ? `${name}-year` : undefined}
           options={years}
-          placeholder={intl.formatMessage(messages.year)}
+          placeholder={yearLabel}
           value={selectedYear}
           onChange={(selectValue) =>
             handleChange(String(selectValue), undefined)
@@ -356,7 +353,7 @@ export default function DatePickerField(props: DatePickerFieldProps) {
           size={size}
           name={name ? `${name}-month` : undefined}
           options={availableMonths}
-          placeholder={intl.formatMessage(messages.month)}
+          placeholder={monthLabel}
           value={selectedMonth}
           onChange={(selectValue) =>
             handleChange(undefined, String(selectValue))
@@ -378,7 +375,7 @@ export default function DatePickerField(props: DatePickerFieldProps) {
         id={id}
         size={size}
         options={years}
-        placeholder={intl.formatMessage(messages.year)}
+        placeholder={yearLabel}
         value={value}
         onChange={(v) =>
           onChange?.(v === undefined || v === '' ? undefined : String(v))

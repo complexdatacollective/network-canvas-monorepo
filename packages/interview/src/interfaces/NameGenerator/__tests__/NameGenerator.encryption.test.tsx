@@ -340,7 +340,7 @@ describe('NameGenerator asking for encrypted answers', () => {
       await screen.findByRole('textbox', { name: 'Name' }),
       'Bob',
     );
-    await user.click(screen.getByRole('button', { name: 'Finished' }));
+    await user.click(screen.getByRole('button', { name: 'Done' }));
 
     await waitFor(() =>
       expect(store.getState().session.network.nodes).toHaveLength(1),

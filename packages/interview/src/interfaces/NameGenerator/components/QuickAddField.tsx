@@ -45,10 +45,7 @@ import {
 import { useCelebrate } from '../../../hooks/useCelebrate';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import { useResolveLocalizedString } from '../../../localization/ProtocolLocalizationProvider';
-import {
-  getCanAddMultipleNodes,
-  getNodeIconName,
-} from '../../../selectors/name-generator';
+import { getNodeIconName } from '../../../selectors/name-generator';
 import {
   getNodeColorSelector,
   getNodeTypeDefinition,
@@ -241,7 +238,6 @@ export default function QuickAddField({
   const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
   const newNodeAttributes = useStageSelector(getPromptAdditionalAttributes);
   const icon = useStageSelector(getNodeIconName);
-  const canAddMultiple = useStageSelector(getCanAddMultipleNodes);
   const resolve = useResolveLocalizedString();
 
   // When open, the toggle previews the node being created, so it takes the
@@ -326,11 +322,7 @@ export default function QuickAddField({
                     sideOffset={25}
                   >
                     <AppMessage
-                      message={
-                        canAddMultiple
-                          ? interfaceMessages.quickAddMultipleInstructions
-                          : interfaceMessages.quickAddInstructions
-                      }
+                      message={interfaceMessages.quickAddInstructions}
                       values={{ kbd: renderEnterKey }}
                     />
                   </TooltipContent>

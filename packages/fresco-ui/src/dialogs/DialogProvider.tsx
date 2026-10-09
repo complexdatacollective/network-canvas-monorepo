@@ -53,12 +53,6 @@ const messages = defineMessages({
     description:
       'Default cancel action of the dialog asking whether to abandon a wizard mid-way.',
   },
-  pleaseWait: {
-    id: 'frescoUi.dialogProvider.pleaseWait',
-    defaultMessage: 'Please wait...',
-    description:
-      'Label shown on a confirm button while its action is still running.',
-  },
   areYouSure: {
     id: 'frescoUi.dialogProvider.areYouSure',
     defaultMessage: 'Are you sure?',
@@ -68,12 +62,6 @@ const messages = defineMessages({
     id: 'frescoUi.dialogProvider.submit',
     defaultMessage: 'Submit',
     description: 'Default submit action of a form dialog.',
-  },
-  errorOccurred: {
-    id: 'frescoUi.dialogProvider.errorOccurred',
-    defaultMessage: 'An error occurred',
-    description:
-      'Fallback error shown in a confirmation dialog when the failing action carries no message of its own.',
   },
 });
 
@@ -486,7 +474,6 @@ function FormDialogContent({
 const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const intl = useAppIntl();
   const [dialogs, setDialogs] = useState<DialogState[]>([]);
   const dialogsRef = useRef<DialogState[]>([]);
   const isMounted = useRef(true);
@@ -672,7 +659,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
               (e instanceof Error ? (
                 <AppErrorMessage error={e.message} />
               ) : (
-                <AppMessage message={messages.errorOccurred} />
+                <AppMessage message={commonMessages.genericError} />
               )),
           );
           return;
@@ -708,7 +695,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
               (e instanceof Error ? (
                 <AppErrorMessage error={e.message} />
               ) : (
-                <AppMessage message={messages.errorOccurred} />
+                <AppMessage message={commonMessages.genericError} />
               )),
           );
         } finally {
@@ -840,9 +827,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
             icon={isLoading ? <Loader2 className="animate-spin" /> : undefined}
             data-testid="dialog-primary"
           >
-            {isLoading
-              ? intl.formatMessage(messages.pleaseWait)
-              : dialog.actions.primary.label}
+            {dialog.actions.primary.label}
           </Button>
         </>
       );

@@ -694,7 +694,7 @@ describe('the operand a rule compares against', () => {
     await waitFor(() =>
       expect(
         screen.getByRole('spinbutton', { name: /Selected option count/ }),
-      ).toHaveAccessibleDescription(/at least 0/),
+      ).toHaveAccessibleDescription(/greater than or equal to 0\./),
     );
     expect(onSave).not.toHaveBeenCalled();
   });

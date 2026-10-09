@@ -209,7 +209,7 @@ describe('GeospatialSearch', () => {
       view.rerender(localizedTree('es'));
       expect(screen.getByRole('combobox')).toBe(input);
       expect(input).toHaveValue('Sidetrack');
-      expect(input).toHaveAttribute('placeholder', 'Busca un lugar...');
+      expect(input).toHaveAttribute('placeholder', 'Buscar');
       expect(status.textContent).toBe(
         'No se pudo completar la búsqueda. Vuelve a intentarlo en un momento.',
       );
@@ -399,7 +399,7 @@ describe('GeospatialSearch', () => {
 
       await waitFor(() =>
         expect(status()).toHaveTextContent(
-          'That place could not be loaded. Try another search.',
+          'Search could not be completed. Try again in a moment.',
         ),
       );
       expect(flyTo).not.toHaveBeenCalled();
@@ -421,7 +421,7 @@ describe('GeospatialSearch', () => {
 
       await waitFor(() =>
         expect(status()).toHaveTextContent(
-          'That place could not be loaded. Try another search.',
+          'Search could not be completed. Try again in a moment.',
         ),
       );
       expect(flyTo).not.toHaveBeenCalled();

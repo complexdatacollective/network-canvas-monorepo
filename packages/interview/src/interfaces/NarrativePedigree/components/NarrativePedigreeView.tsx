@@ -15,11 +15,16 @@ import {
 import { useSelector } from 'react-redux';
 
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
-import { Button } from '@codaco/fresco-ui/Button';
+import { IconButton } from '@codaco/fresco-ui/Button';
 import Icon from '@codaco/fresco-ui/Icon';
 import Node, { type NodeShape } from '@codaco/fresco-ui/Node';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
 import { SegmentedToolbar } from '@codaco/fresco-ui/SegmentedToolbar';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@codaco/fresco-ui/Tooltip';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { NodeColorReference } from '@codaco/protocol-validation';
 import { isFamilyPedigreeStageMetadata } from '@codaco/shared-consts';
@@ -662,13 +667,9 @@ export default function NarrativePedigreeView({
   }, [isCapturing, snapshotFilename]);
 
   if (!config || !family) {
-    return (
-      <div className="interface flex items-center justify-center p-8 text-center">
-        <p>
-          <AppMessage message={messages.sourceMissing} />
-        </p>
-      </div>
-    );
+    // The schema requires the source stage to be a Family Pedigree, so this is
+    // a broken protocol. The task error boundary reports it.
+    throw new Error('The Narrative Pedigree source stage could not be found.');
   }
 
   const highlightedNodeIds = focalId !== null ? highlight.nodes : undefined;
@@ -778,21 +779,29 @@ export default function NarrativePedigreeView({
             className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex flex-col items-center gap-2 px-4"
           >
             {focalId !== null && (
-              <Button
-                size="sm"
-                variant="default"
-                icon={
-                  <Icon
-                    name="RotateCcw"
-                    aria-hidden="true"
-                    className="size-[1em]"
-                  />
-                }
-                className="pointer-events-auto"
-                onClick={() => setFocalId(null)}
-              >
-                <AppMessage message={messages.clearFocus} />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <IconButton
+                      size="sm"
+                      variant="default"
+                      aria-label={intl.formatMessage(messages.clearFocus)}
+                      icon={
+                        <Icon
+                          name="RotateCcw"
+                          aria-hidden="true"
+                          className="size-[1em]"
+                        />
+                      }
+                      className="pointer-events-auto"
+                      onClick={() => setFocalId(null)}
+                    />
+                  }
+                />
+                <TooltipContent>
+                  {intl.formatMessage(messages.clearFocus)}
+                </TooltipContent>
+              </Tooltip>
             )}
             <SegmentedToolbar
               aria-label={intl.formatMessage(messages.zoomControls)}

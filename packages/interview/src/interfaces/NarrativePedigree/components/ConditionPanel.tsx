@@ -1,10 +1,15 @@
 'use client';
 
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
-import { Button } from '@codaco/fresco-ui/Button';
+import { IconButton } from '@codaco/fresco-ui/Button';
 import Icon from '@codaco/fresco-ui/Icon';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@codaco/fresco-ui/Tooltip';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 
 import { messages } from '../messages';
@@ -104,9 +109,6 @@ export default function ConditionPanel({
             </>
           )}
 
-          <Heading level="label" margin="none">
-            <AppMessage message={messages.symbols} />
-          </Heading>
           <NotationKey
             glyphColour={glyphColour}
             shape={KEY_GLYPH_SHAPE}
@@ -116,17 +118,28 @@ export default function ConditionPanel({
       </ScrollArea>
 
       {/* Footer — snapshot action, fixed below the scrolling key. */}
-      <div className="shrink-0 border-t border-(--outline) p-4">
-        <Button
-          color="primary"
-          className="w-full"
-          icon={
-            <Icon name="Camera" aria-hidden="true" className="size-[1em]" />
-          }
-          onClick={onSnapshot}
-        >
-          <AppMessage message={messages.saveSnapshot} />
-        </Button>
+      <div className="flex shrink-0 justify-center border-t border-(--outline) p-4">
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <IconButton
+                color="primary"
+                aria-label={intl.formatMessage(messages.saveSnapshot)}
+                icon={
+                  <Icon
+                    name="Camera"
+                    aria-hidden="true"
+                    className="size-[1em]"
+                  />
+                }
+                onClick={onSnapshot}
+              />
+            }
+          />
+          <TooltipContent>
+            {intl.formatMessage(messages.saveSnapshot)}
+          </TooltipContent>
+        </Tooltip>
       </div>
     </Surface>
   );

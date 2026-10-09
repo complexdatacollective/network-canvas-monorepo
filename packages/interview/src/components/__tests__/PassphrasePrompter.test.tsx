@@ -149,7 +149,7 @@ describe('PassphrasePrompter in an interview without a passphrase', () => {
 
     await waitFor(() => expect(first).toHaveAttribute('aria-invalid', 'true'));
     expect(first).toHaveAccessibleDescription(
-      expect.stringContaining('Too short. Enter at least 8 characters.'),
+      expect.stringContaining('Enter at least 8 characters.'),
     );
     expect(first).toHaveFocus();
     expect(deriveKey).not.toHaveBeenCalled();
@@ -192,7 +192,7 @@ describe('PassphrasePrompter in an interview without a passphrase', () => {
     const { first } = await choose(user, dialog, 'abc');
     await waitFor(() => expect(first).toHaveAttribute('aria-invalid', 'true'));
     expect(first).toHaveAccessibleDescription(
-      expect.stringContaining('Too short. Enter at least 4 characters.'),
+      expect.stringContaining('Enter at least 4 characters.'),
     );
 
     await choose(user, dialog, 'abcd');

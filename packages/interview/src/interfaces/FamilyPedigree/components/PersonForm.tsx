@@ -14,7 +14,9 @@ import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
-import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
+import BooleanField, {
+  messages as booleanFieldMessages,
+} from '@codaco/fresco-ui/form/fields/Boolean';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
@@ -55,7 +57,6 @@ import {
 } from '../../../selectors/forms';
 import { getCodebookVariablesForSubjectType } from '../../../selectors/protocol';
 import { readOwnProperty, writeOwnProperty } from '../../../utils/ownProperty';
-import { interfaceMessages } from '../../messages';
 import { RELATIVES_NOT_RECORDED } from '../completeness';
 import { messages } from '../messages';
 import {
@@ -565,8 +566,8 @@ function RelativesQuestions({
     name: displayName(person.id),
   };
   const options = [
-    { value: 'yes', label: intl.formatMessage(interfaceMessages.yes) },
-    { value: 'no', label: intl.formatMessage(interfaceMessages.no) },
+    { value: 'yes', label: intl.formatMessage(booleanFieldMessages.yes) },
+    { value: 'no', label: intl.formatMessage(booleanFieldMessages.no) },
     { value: 'unknown', label: intl.formatMessage(messages.dontKnow) },
   ];
   const initial = (
@@ -1214,7 +1215,7 @@ function ParentFields({
               value: id,
               label: displayName(id),
             })),
-            { value: NONE, label: intl.formatMessage(interfaceMessages.no) },
+            { value: NONE, label: intl.formatMessage(booleanFieldMessages.no) },
           ]}
           initialValue={partnerDefault.initial}
           {...partnerDefault.answering}

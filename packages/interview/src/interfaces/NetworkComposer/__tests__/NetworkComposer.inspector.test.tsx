@@ -757,7 +757,7 @@ describe('NetworkComposer inspector — undo and redo changing what the drawer s
       await screen.findByText(/undo or redo changed an answer/i),
     ).toBeTruthy();
     act(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'Keep changes' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     });
     await waitFor(() =>
       expect(screen.queryByText(/undo or redo changed an answer/i)).toBeNull(),
@@ -1037,7 +1037,7 @@ describe('NetworkComposer inspector — leaving an edit', () => {
       name: 'Discard changes?',
     });
     expect(warning).toHaveTextContent(/invalid data/);
-    fireEvent.click(screen.getByRole('button', { name: 'Keep changes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     await expect(left).resolves.toBe(false);
     expect(nameInput).toHaveValue('');
@@ -1102,7 +1102,7 @@ describe('NetworkComposer inspector — leaving an edit', () => {
       expect(
         await screen.findByRole('dialog', discardDialog),
       ).toHaveTextContent(/invalid data/);
-      fireEvent.click(screen.getByRole('button', { name: 'Keep changes' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
       await waitFor(() =>
         expect(screen.queryByRole('dialog', discardDialog)).toBeNull(),
@@ -1191,7 +1191,7 @@ describe('NetworkComposer inspector — leaving an edit', () => {
     expect(await screen.findByRole('dialog', discardDialog)).toHaveTextContent(
       'An error occurred while submitting the form.',
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Keep changes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog', discardDialog)).toBeNull(),
     );
@@ -1236,7 +1236,7 @@ describe('NetworkComposer inspector — leaving an edit', () => {
 });
 
 describe('NetworkComposer inspector — no attributes', () => {
-  it('opens the drawer with an empty state when the node has no form', async () => {
+  it('opens the drawer with only its Delete action when the node has no form', async () => {
     const stageNoForm = { ...stage, nodeForm: undefined };
     const store = makeStore(false, stageNoForm);
     renderInterface(store, stageNoForm);
@@ -1246,8 +1246,10 @@ describe('NetworkComposer inspector — no attributes', () => {
       tapNode(nodeA);
     });
 
-    expect(await screen.findByText(/no attributes to edit/i)).toBeTruthy();
-    // A node with a form would render its field; here there is none.
+    expect(await screen.findByRole('button', { name: 'Delete' })).toBeTruthy();
+    // A node with a form would render its field; here there is none, and no
+    // sentence stands in for it.
     expect(screen.queryByLabelText(/full name/i)).toBeNull();
+    expect(screen.queryByText(/no attributes to edit/i)).toBeNull();
   });
 });

@@ -54,7 +54,7 @@ beforeAll(() => {
 const NODE_TYPE = 'person';
 const VARIABLE = 'answer';
 const FIELD_LABEL = 'Your answer';
-const UNIQUE_ERROR = 'This value is used elsewhere. It must be unique.';
+const UNIQUE_ERROR = 'Must be unique.';
 
 const form: TForm = {
   title: { en: 'Add a person' },
@@ -194,7 +194,7 @@ const openForm = async () => {
 };
 
 const finish = () =>
-  userEvent.click(screen.getByRole('button', { name: 'Finished' }));
+  userEvent.click(screen.getByRole('button', { name: 'Done' }));
 
 const waitForDialogToClose = () =>
   waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
@@ -355,7 +355,7 @@ describe('NodeForm while a person is being saved', () => {
     await finish();
     await waitFor(() => expect(addNode).toHaveBeenCalledTimes(1));
 
-    expect(screen.getByRole('button', { name: 'Finished' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Done' })).toBeDisabled();
     expect(
       screen.queryByRole('button', { name: 'Close' }),
     ).not.toBeInTheDocument();

@@ -6,6 +6,7 @@ import { commonMessages } from '@codaco/app-i18n/common';
 import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import type { DragMetadata, DropCallback } from '@codaco/fresco-ui/dnd/types';
+import Icon from '@codaco/fresco-ui/Icon';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { Panel as PanelType } from '@codaco/protocol-validation';
@@ -157,8 +158,9 @@ function NodePanel(props: NodePanelProps) {
           <Loading message={intl.formatMessage(commonMessages.loading)} />
         </div>
       ) : isExternalData && status.state === 'error' ? (
-        <div className="flex flex-1 flex-col items-center justify-center">
-          <Heading level="h4">
+        <div className="flex flex-1 flex-col items-center justify-center gap-2">
+          <Icon name="warning" />
+          <Heading level="h4" className="sr-only">
             <AppMessage message={interfaceMessages.errorHeading} />
           </Heading>
           <Paragraph>
