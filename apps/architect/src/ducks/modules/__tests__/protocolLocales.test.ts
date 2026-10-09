@@ -280,6 +280,17 @@ describe('protocol language reducers and undo', () => {
         value: {},
       }),
     );
+    // One language with nothing to show beside one that has text: the schema
+    // refuses any blank translation, and the interview would read it as an
+    // exact translation rather than fall back.
+    for (const blank of ['   ', '\u200B']) {
+      store.dispatch(
+        setProtocolLocalizedString({
+          path: ['stages', 0, 'label'],
+          value: { en: 'Welcome', fr: blank },
+        }),
+      );
+    }
 
     expect(pastLength(store)).toBe(before);
     expect(presentOf(store)).toBe(present);
