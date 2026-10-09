@@ -323,6 +323,10 @@
     "defaultMessage": "Name (optional)",
     "description": "Label of the field for a family member’s name, which the participant may not know."
   },
+  "interview.familyPedigree.nominationLimitHint": {
+    "defaultMessage": "{sex, select, female {People assigned male at birth can’t be selected for this question.} other {People assigned female at birth can’t be selected for this question.}}",
+    "description": "Shown under the family tree while a question about the family applies only to people of one sex assigned at birth, and read out for each person who cannot be selected. {sex} is the sex the question applies to: \"female\" (so people assigned male at birth are left out) or \"male\"."
+  },
   "interview.familyPedigree.numberedRelative": {
     "defaultMessage": "{label} {number, number}",
     "description": "Tells apart several family members who would otherwise share a label (for example two unnamed children). label is the already translated label; number is their position in the order they were added. Shown in the family tree, and saved as the name of an unnamed family member when nothing else tells them apart."

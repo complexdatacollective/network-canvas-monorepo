@@ -300,6 +300,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // birth was changed elsewhere in the interview) can still be deselected.
   const canSelect = (person: Person) =>
     canNominate(person) || isNominated(person);
+  // A prompt limited to one sex says so beneath the family, and the people
+  // it leaves out stay reachable, shown unavailable and described by it.
+  const nominationLimitId = useId();
+  const nominationLimit = nomination?.onlyForSexAssignedAtBirth;
+  const nominationLimitHint =
+    nominationLimit === undefined
+      ? undefined
+      : intl.formatMessage(messages.nominationLimitHint, {
+          sex: nominationLimit,
+        });
 
   // The stage's own record: the framing the participant chose, when the
   // stage leaves it to them.
@@ -1544,7 +1554,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (nomination) {
       setLastFocusedId(personId);
       const person = family.byId.get(personId);
-      if (!person || !canSelect(person)) return;
+      if (!person) return;
+      if (!canSelect(person)) {
+        if (nominationLimitHint) setAnnouncement(nominationLimitHint);
+        return;
+      }
       void dispatch(
         updateNode({
           nodeId: personId,
@@ -1569,8 +1583,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   // Roving focus: the family is a single tab stop, and the arrow keys move
   // between people by where they sit in the tree.
-  // Someone a nomination prompt cannot apply to cannot be focused, so is
-  // never the tab stop.
+  // Someone a nomination prompt cannot apply to is reached with the arrow
+  // keys, to hear why, but is never the tab stop.
   const tabStopId = [
     lastFocusedId,
     family.egoId,
@@ -2474,8 +2488,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   selected={
                     nomination ? isNominated(person) : personId === selectedId
                   }
-                  disabled={
-                    wordingForced || (nomination ? !canSelect(person) : false)
+                  disabled={wordingForced}
+                  unavailableReasonId={
+                    nomination && !canSelect(person) && nominationLimitHint
+                      ? nominationLimitId
+                      : undefined
                   }
                   linking={
                     tool !== 'pointer' &&
@@ -2545,6 +2562,15 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 )}
               </div>
             </Alert>
+          )}
+          {nominationLimitHint && (
+            <p
+              id={nominationLimitId}
+              className="text-sm opacity-80"
+              data-testid="pedigree-nomination-limit"
+            >
+              {nominationLimitHint}
+            </p>
           )}
           {/* Once a pair is picked, the menu or the confirmation asks its
               own question, so the hint asks for no one else. */}
@@ -2674,6 +2700,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         family={family}
         displayName={displayName}
         parentKindLabels={optionLabels.parentKind}
+        sexLabels={optionLabels.sexAssignedAtBirth}
         anchor={
           chosenPair
             ? (nodeRefs.current.get(chosenPair.secondId) ?? null)

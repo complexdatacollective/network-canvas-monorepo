@@ -80,6 +80,7 @@
   "interview.familyPedigree.moreAboutThisPerson": "{isYou, select, true {Mehr über Sie} other {Mehr über diese Person}}",
   "interview.familyPedigree.nameHint": "Ein Vorname oder Spitzname genügt. Wenn Sie ihn nicht kennen, lassen Sie das Feld leer – die Person wird dann so angezeigt, wie sie mit Ihnen verwandt ist.",
   "interview.familyPedigree.nameLabel": "Name (optional)",
+  "interview.familyPedigree.nominationLimitHint": "{sex, select, female {Personen, denen bei der Geburt das männliche Geschlecht zugewiesen wurde, können für diese Frage nicht ausgewählt werden.} other {Personen, denen bei der Geburt das weibliche Geschlecht zugewiesen wurde, können für diese Frage nicht ausgewählt werden.}}",
   "interview.familyPedigree.numberedRelative": "{label} {number, number}",
   "interview.familyPedigree.otherParentLabel": "Wer ist der andere Elternteil des Kindes?",
   "interview.familyPedigree.otherParentNone": "Kein anderer Elternteil",

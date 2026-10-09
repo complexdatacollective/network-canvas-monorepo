@@ -80,6 +80,7 @@
   "interview.familyPedigree.moreAboutThisPerson": "{isYou, select, true {關於您的更多資訊} other {關於此人的更多資訊}}",
   "interview.familyPedigree.nameHint": "填寫名字或暱稱即可。如果不知道，請留空，此人會依與您的親屬關係顯示。",
   "interview.familyPedigree.nameLabel": "姓名（選填）",
+  "interview.familyPedigree.nominationLimitHint": "{sex, select, female {此問題不能選擇出生時被指定為男性的人。} other {此問題不能選擇出生時被指定為女性的人。}}",
   "interview.familyPedigree.numberedRelative": "{label} {number, number}",
   "interview.familyPedigree.otherParentLabel": "這名子女的另一位家長是誰？",
   "interview.familyPedigree.otherParentNone": "沒有另一位家長",

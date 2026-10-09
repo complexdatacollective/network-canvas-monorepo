@@ -80,6 +80,7 @@
   "interview.familyPedigree.moreAboutThisPerson": "{isYou, select, true {Meer over jou} other {Meer over deze persoon}}",
   "interview.familyPedigree.nameHint": "Een voornaam of bijnaam is prima. Weet je die niet, laat dit dan leeg; de persoon wordt dan getoond met hoe die aan jou verwant is.",
   "interview.familyPedigree.nameLabel": "Naam (optioneel)",
+  "interview.familyPedigree.nominationLimitHint": "{sex, select, female {Mensen bij wie bij de geboorte het mannelijk geslacht is vastgesteld, kunnen voor deze vraag niet worden geselecteerd.} other {Mensen bij wie bij de geboorte het vrouwelijk geslacht is vastgesteld, kunnen voor deze vraag niet worden geselecteerd.}}",
   "interview.familyPedigree.numberedRelative": "{label} {number, number}",
   "interview.familyPedigree.otherParentLabel": "Wie is de andere ouder van het kind?",
   "interview.familyPedigree.otherParentNone": "Geen andere ouder",

@@ -356,6 +356,13 @@ export const messages = defineMessages({
     description:
       'Explanation of the option to describe family members without reference to gender.',
   },
+  nominationLimitHint: {
+    id: 'interview.familyPedigree.nominationLimitHint',
+    defaultMessage:
+      '{sex, select, female {People assigned male at birth can’t be selected for this question.} other {People assigned female at birth can’t be selected for this question.}}',
+    description:
+      'Shown under the family tree while a question about the family applies only to people of one sex assigned at birth, and read out for each person who cannot be selected. {sex} is the sex the question applies to: "female" (so people assigned male at birth are left out) or "male".',
+  },
   framingChosenAnnouncement: {
     id: 'interview.familyPedigree.framingChosenAnnouncement',
     defaultMessage:
