@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'vitest';
 
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  type NcEdge,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 import {
   type AddRelativeRequest,
@@ -310,6 +314,34 @@ describe('the stand-in rule', () => {
           {
             ...link('standIn', 'friend', 'partner'),
             type: 'knows',
+          },
+        ],
+      ),
+    );
+    expect(result.removedLinkIds).toEqual(['standIn-ego-biological']);
+    expect(result.removedPersonIds).toEqual([]);
+  });
+
+  test('a stand-in another pedigree refers to by the same edge type gives way, but is kept', () => {
+    // A second family pedigree stage records its relationships in the same
+    // edge type, under a kind variable of its own: this pedigree does not
+    // read that edge, so it is a reference from outside it.
+    const result = changes(
+      family(
+        [
+          person('ego', { isEgo: true }),
+          person('mum', { sex: ['female'] }),
+          person('standIn', { sex: ['male'] }),
+          person('dad', { name: 'Rob', sex: ['male'] }),
+          person('friend', { name: 'Ali' }),
+        ],
+        [
+          link('mum', 'ego', 'biological'),
+          link('standIn', 'ego', 'biological'),
+          link('dad', 'ego', 'biological'),
+          {
+            ...link('standIn', 'friend', 'biological'),
+            [entityAttributesProperty]: { otherKind: ['biological'] },
           },
         ],
       ),

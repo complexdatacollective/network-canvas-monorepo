@@ -112,9 +112,10 @@ export type Person = {
   /** The stage generated them as a stand-in (its metadata's `standIns`);
    * only someone it generated can be one (`isStandIn`). */
   markedStandIn: boolean;
-  /** An edge of a type other than the family relationship's touches them:
-   * something outside the pedigree refers to them, so they are never removed
-   * as a stand-in, only their family links. */
+  /** An edge this pedigree does not read touches them, of another type or
+   * recorded under another stage's own bindings: something outside the
+   * pedigree refers to them, so they are never removed as a stand-in, only
+   * their family links. */
   referencedElsewhere: boolean;
   /** The value of the gender identity option the person was given, whatever
    * the researcher defined it to be. Undefined when not yet answered. */
@@ -284,9 +285,20 @@ export function readFamily(
   decryptedNames: ReadonlyMap<string, string> = new Map(),
   standIns: ReadonlySet<string> = new Set(),
 ): Family {
+  // The kind of relationship an edge records in this pedigree: undefined for
+  // an edge it does not read, of another type or recorded under bindings of
+  // another stage's own (another family pedigree may share the edge type
+  // with a kind variable of its own).
+  const kindOf = (edge: NcEdge) =>
+    edge.type === config.relationshipType
+      ? readCategorical(
+          readOwnProperty(edge[entityAttributesProperty], config.kindAttribute),
+          PEDIGREE_RELATIONSHIP_KINDS,
+        )
+      : undefined;
   const referencedElsewhere = new Set(
     edges
-      .filter((edge) => edge.type !== config.relationshipType)
+      .filter((edge) => kindOf(edge) === undefined)
       .flatMap((edge) => [edge.from, edge.to]),
   );
   const people: Person[] = nodes
@@ -358,15 +370,11 @@ export function readFamily(
   const links: FamilyLink[] = [];
   const twins: TwinLink[] = [];
   for (const edge of edges) {
-    if (edge.type !== config.relationshipType) continue;
+    const kind = kindOf(edge);
+    if (!kind) continue;
     if (!byId.has(edge.from) || !byId.has(edge.to)) continue;
     const attributes = edge[entityAttributesProperty];
     const attribute = (key: string) => readOwnProperty(attributes, key);
-    const kind = readCategorical(
-      attribute(config.kindAttribute),
-      PEDIGREE_RELATIONSHIP_KINDS,
-    );
-    if (!kind) continue;
     if (isTwinKind(kind)) {
       twins.push({
         id: edge[entityPrimaryKeyProperty],
