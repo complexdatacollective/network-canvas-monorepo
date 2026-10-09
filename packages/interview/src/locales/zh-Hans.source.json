@@ -102,6 +102,7 @@
   "interview.familyPedigree.removeConfirmTitle": "Remove {name}?",
   "interview.familyPedigree.removedAnnouncement": "{name} removed from your family.",
   "interview.familyPedigree.removedWithOthersAnnouncement": "{count, plural, one {{name} and one other person removed from your family.} other {{name} and # other people removed from your family.}}",
+  "interview.familyPedigree.reproductiveRoleDescription": "{role, select, donor {egg or sperm donor} traditionalSurrogate {egg donor who carried the pregnancy} other {surrogate}}",
   "interview.familyPedigree.savedAnnouncement": "Details saved.",
   "interview.familyPedigree.sexAssignedAtBirthLabel": "Sex assigned at birth",
   "interview.familyPedigree.sharedDonorsLabel": "{isYou, select, true {Do they share any of your donors?} other {Do they share any of “{name}”’s donors?}}",

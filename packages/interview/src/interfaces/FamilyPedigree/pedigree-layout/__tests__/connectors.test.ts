@@ -951,9 +951,9 @@ describe('computeConnectors', () => {
     });
   });
 
-  it('joins a surrogate on the child’s own row by a line below the row, into the child from below', () => {
-    // Jade (2) carried her parents' (0, 1) baby, her sibling (3), so she sits
-    // on the child's row.
+  it('joins a sibling who adopted the child by a line below the row, into the child from below', () => {
+    // Jade (2) adopted her sibling (3), who stays in their birth sibship, so
+    // she sits on the child's row.
     const sameRowLayout: PedigreeLayout = {
       n: [2, 2],
       nid: [
@@ -988,7 +988,7 @@ describe('computeConnectors', () => {
       [
         { parentIndex: 0, edgeType: 'biological' },
         { parentIndex: 1, edgeType: 'biological' },
-        { parentIndex: 2, edgeType: 'surrogate', isGestationalCarrier: true },
+        { parentIndex: 2, edgeType: 'adoptive' },
       ],
     ];
     const connectors = computeConnectors(
@@ -997,6 +997,7 @@ describe('computeConnectors', () => {
       sameRowParents,
     );
     expect(connectors.auxiliaryLines).toHaveLength(1);
+    expect(connectors.auxiliaryLines[0]!.edgeType).toBe('adoptive');
     const { points } = connectors.auxiliaryLines[0]!;
     const rowBottom = 1 + scaling.boxHeight;
     // No level piece along the row, where it would read as a partnership.

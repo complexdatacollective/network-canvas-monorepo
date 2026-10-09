@@ -5,7 +5,7 @@ import type {
   PedigreeLayout,
   PedigreeEdgeType,
 } from './types';
-import { areConsanguineous, layerConstraints } from './utils';
+import { areConsanguineous, layerConstraints, relativeRaisers } from './utils';
 
 type PartnerGroup = {
   members: number[];
@@ -42,6 +42,8 @@ type PedigreeGraph = {
    * on their own from the parent to the child's family. */
   extraParents: Map<number, number[]>;
   parentEdgeTypes: Map<string, PedigreeEdgeType>;
+  /** Each person's twins. */
+  twinsOf: Map<number, Set<number>>;
 };
 
 function isPrimaryEdge(edgeType: PedigreeEdgeType): boolean {
@@ -60,49 +62,51 @@ function partnerGroupKey(members: number[]): string {
   return [...members].toSorted((a, b) => a - b).join(',');
 }
 
+/**
+ * Each person's parents as the layout places them. A child adopted or raised
+ * by a relative (see `relativeRaisers`) stays in their birth family: the
+ * relatives who raise them, and anyone raising them alongside, are drawn
+ * beside the birth family with a line of their own, as extra parents, rather
+ * than as the parents the child descends from. Their links are left out here.
+ * Everyone else's parents are as given.
+ */
+function placementParents(ped: PedigreeInput): ParentConnection[][] {
+  const raisers = relativeRaisers(ped.parents, ped.partners);
+  return ped.parents.map((conns, child) =>
+    raisers[child]!.size === 0
+      ? conns
+      : conns.filter(
+          (p) =>
+            !(
+              (p.edgeType === 'adoptive' || p.edgeType === 'social') &&
+              raisers[child]!.has(p.parentIndex)
+            ),
+        ),
+  );
+}
+
 function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
   const n = ped.id.length;
+  const placed = placementParents(ped);
 
   // 1. Assign layers (1-based). A child's generation comes from its primary
   // parents, and from all of its parents only when it has none, as in step
   // 3b: a donor may be a generation younger than the parents who raise the
-  // child, or one of them may be the child's birth parent. A donor or
-  // surrogate with no parents shown is still lined up with the child's
-  // primary parents, so a donor shared by two families brings both onto the
-  // donor's row.
-  const generationParents = ped.parents.map((pConns) => {
+  // child, or one of them may be the child's birth parent. Every donor and
+  // surrogate is lined up with the child's primary parents, whether or not
+  // their own parents are shown, so a donor shared by two families brings
+  // both onto the donor's row.
+  const generationParents = placed.map((pConns) => {
     const primary = pConns.filter((p) => isPrimaryEdge(p.edgeType));
     return primary.length > 0 ? primary : pConns;
   });
-  const alignedAuxiliaryParents = ped.parents.map((pConns, i) =>
+  const alignedAuxiliaryParents = placed.map((pConns, i) =>
     generationParents[i] === pConns
       ? []
-      : pConns.filter(
-          (p) =>
-            isAuxiliaryEdge(p.edgeType) &&
-            ped.parents[p.parentIndex]!.length === 0,
-        ),
+      : pConns.filter((p) => isAuxiliaryEdge(p.edgeType)),
   );
   const depth = kindepth(generationParents, true, alignedAuxiliaryParents);
   const layers = depth.map((d) => d + 1);
-
-  // 2. Force auxiliary parents to same layer as social parents
-  for (let i = 0; i < n; i++) {
-    const pConns = ped.parents[i]!;
-    if (pConns.length === 0) continue;
-    const socialLevel = Math.max(
-      ...pConns
-        .filter((p) => isPrimaryEdge(p.edgeType))
-        .map((p) => layers[p.parentIndex]!),
-      -1,
-    );
-    if (socialLevel < 0) continue;
-    for (const p of pConns) {
-      if (isAuxiliaryEdge(p.edgeType)) {
-        layers[p.parentIndex] = socialLevel;
-      }
-    }
-  }
 
   // 3. Build partner groups from all sources, deduplicating by sorted key
   const groupMap = new Map<string, PartnerGroup>();
@@ -142,7 +146,7 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
 
   // From implicit co-parent detection
   for (let i = 0; i < n; i++) {
-    const pConns = ped.parents[i]!;
+    const pConns = placed[i]!;
     if (pConns.length === 0) continue;
     const primaryParents = pConns
       .filter((p) => isPrimaryEdge(p.edgeType))
@@ -208,20 +212,22 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
 
   const partnerGroups = [...groupMap.values()];
 
-  // 3b. Settle layers. Each child sits below its primary parents (below all
-  // of its parents when it has none); partners share a layer; and a donor or
-  // surrogate sits no higher than the parents they contribute alongside.
-  // Descent always holds. Some families cannot have every alignment as well
-  // (someone partnered with their own grandchild), so each alignment is kept
-  // only if it leaves the constraints satisfiable — in order, partnerships
-  // first — and one that would need a person above their own descendant is
-  // dropped: its people then sit on different layers.
+  // 3b. Settle layers. Each child sits below its primary parents and below
+  // its donors and surrogates, never on their row; partners share a layer;
+  // and a donor or surrogate shares the layer of the parents they contribute
+  // alongside. Descent always holds. Some families cannot have every
+  // alignment as well (someone partnered with their own grandchild, a
+  // daughter who carried her mother's baby), so each alignment is kept only
+  // if it leaves the constraints satisfiable — in order, partnerships first —
+  // and one that would need a person above their own descendant is dropped:
+  // its people then sit on different layers, and the child goes down a row
+  // below them all.
   const { constrain, settle } = layerConstraints(n);
   for (let i = 0; i < n; i++) {
-    const pConns = ped.parents[i]!;
-    const primary = pConns.filter((p) => isPrimaryEdge(p.edgeType));
-    for (const p of primary.length > 0 ? primary : pConns) {
-      constrain([[p.parentIndex, i]], 1);
+    for (const p of placed[i]!) {
+      if (isPrimaryEdge(p.edgeType) || isAuxiliaryEdge(p.edgeType)) {
+        constrain([[p.parentIndex, i]], 1);
+      }
     }
   }
   for (const group of partnerGroups) {
@@ -237,10 +243,16 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
     }
   }
   for (let i = 0; i < n; i++) {
-    const pConns = ped.parents[i]!;
+    const pConns = placed[i]!;
     for (const aux of pConns.filter((p) => isAuxiliaryEdge(p.edgeType))) {
       for (const p of pConns.filter((q) => isPrimaryEdge(q.edgeType))) {
-        constrain([[p.parentIndex, aux.parentIndex]], 0);
+        constrain(
+          [
+            [p.parentIndex, aux.parentIndex],
+            [aux.parentIndex, p.parentIndex],
+          ],
+          0,
+        );
       }
     }
   }
@@ -256,9 +268,7 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
     edgeType === 'social' ? 1 : 2;
   const familyGroupOf = new Map<number, PartnerGroup>();
   for (let i = 0; i < n; i++) {
-    const primaryEdges = ped.parents[i]!.filter((p) =>
-      isPrimaryEdge(p.edgeType),
-    );
+    const primaryEdges = placed[i]!.filter((p) => isPrimaryEdge(p.edgeType));
     let bestWeight = 0;
     for (const group of partnerGroups) {
       let weight = 0;
@@ -293,7 +303,7 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
   // primary parent and aren't already covered by a partner-group family unit.
   const singleParentChildren = new Map<number, number[]>();
   for (let i = 0; i < n; i++) {
-    const pConns = ped.parents[i]!;
+    const pConns = placed[i]!;
     if (pConns.length === 0) continue;
     const primaryParents = pConns
       .filter((p) => isPrimaryEdge(p.edgeType))
@@ -365,6 +375,14 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
     }
   }
 
+  // 8. Twins, as the relation codes record them.
+  const twinsOf = new Map<number, Set<number>>();
+  for (const { id1, id2, code } of ped.relation ?? []) {
+    if (code > 3) continue;
+    twinsOf.set(id1, new Set([...(twinsOf.get(id1) ?? []), id2]));
+    twinsOf.set(id2, new Set([...(twinsOf.get(id2) ?? []), id1]));
+  }
+
   return {
     nodeCount: n,
     layers,
@@ -376,6 +394,7 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
     familyOf,
     extraParents,
     parentEdgeTypes,
+    twinsOf,
   };
 }
 
@@ -740,8 +759,24 @@ function buildConstraintBlocks(
   //    it is left outside to be split (a sibling at the end of the chain keeps
   //    the rest of it on the outer side).
   for (const members of realSibships) {
-    const siblings = members.toSorted((a, b) => a - b);
-    const siblingSet = new Set(siblings);
+    const siblingSet = new Set(members);
+    // Siblings in the order recorded, except that twins sit together, from
+    // where the first of them was recorded.
+    const siblings: number[] = [];
+    for (const sib of members.toSorted((a, b) => a - b)) {
+      if (siblings.includes(sib)) continue;
+      const set = [sib];
+      for (let k = 0; k < set.length; k++) {
+        for (const twin of graph.twinsOf.get(set[k]!) ?? []) {
+          if (siblingSet.has(twin) && !set.includes(twin)) set.push(twin);
+        }
+      }
+      siblings.push(...set.toSorted((a, b) => a - b));
+    }
+    const isTwinPair = (a: number | undefined, b: number | undefined) =>
+      a !== undefined &&
+      b !== undefined &&
+      (graph.twinsOf.get(a)?.has(b) ?? false);
     const ordered: number[] = [];
     siblings.forEach((sib, idx) => {
       // Placed already, as part of an earlier sibling's chain.
@@ -793,10 +828,14 @@ function buildConstraintBlocks(
             partnershipsAmong([sib, ...spouses], graph),
           ),
         );
-      } else if (idx === 0) {
-        ordered.push(...spouses, sib);
       } else {
-        ordered.push(sib, ...spouses);
+        // A single spouse goes on the outer side, and never between twins.
+        const twinBefore = isTwinPair(siblings[idx - 1], sib);
+        const twinAfter = isTwinPair(sib, siblings[idx + 1]);
+        const left =
+          twinAfter && !twinBefore ? true : twinBefore ? false : idx === 0;
+        if (left) ordered.push(...spouses, sib);
+        else ordered.push(sib, ...spouses);
       }
     });
     blocks.push({ nodes: ordered, barycenter: 0 });
@@ -1970,6 +2009,8 @@ function encodePedigreeLayout(
       const loc2 = nodeLocation.get(rel.id2);
       if (!loc1 || loc1.layer !== loc2?.layer) continue;
 
+      // Only twins seated side by side can be marked as twins.
+      if (Math.abs(loc1.col - loc2.col) !== 1) continue;
       const leftCol = Math.min(loc1.col, loc2.col);
       twins[loc1.layer]![leftCol] = rel.code;
     }

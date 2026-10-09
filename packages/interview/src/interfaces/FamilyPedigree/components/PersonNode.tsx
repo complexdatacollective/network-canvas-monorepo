@@ -1,12 +1,13 @@
 'use client';
 
 import { TriangleAlert } from 'lucide-react';
-import type {
-  FocusEvent,
-  KeyboardEvent,
-  PointerEventHandler,
-  ReactNode,
-  Ref,
+import {
+  type FocusEvent,
+  type KeyboardEvent,
+  type PointerEventHandler,
+  type ReactNode,
+  type Ref,
+  useId,
 } from 'react';
 
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
@@ -25,6 +26,7 @@ import { withoutSoftHyphens } from '../generatedLabels';
 import { messages } from '../messages';
 import type { Person } from '../model';
 import { EDGE_WIDTH } from '../pedigree-layout/components/EdgeRenderer';
+import type { ReproductiveRole } from '../reproductiveRoles';
 
 type PersonNodeProps = {
   person: Person;
@@ -49,6 +51,9 @@ type PersonNodeProps = {
   linking: boolean;
   /** Adopted: drawn within brackets, as pedigree nomenclature has it. */
   adopted: boolean;
+  /** Their roles in others' conception or birth, read out as their
+   * symbol's description. Nothing is drawn for them. */
+  reproductiveRoles?: readonly ReproductiveRole[];
 
   hasMissingDetails: boolean;
   onActivate: () => void;
@@ -80,6 +85,7 @@ export default function PersonNode({
   menuOpen,
   linking,
   adopted,
+  reproductiveRoles = [],
   hasMissingDetails,
   onActivate,
   tabIndex,
@@ -92,6 +98,8 @@ export default function PersonNode({
   children,
 }: PersonNodeProps) {
   const intl = useAppIntl();
+  const rolesId = useId();
+  const hasRoles = reproductiveRoles.length > 0;
 
   return (
     <div
@@ -136,6 +144,7 @@ export default function PersonNode({
           adopted: adopted ? 'true' : 'false',
           missing: hasMissingDetails ? 'true' : 'false',
         })}
+        aria-describedby={hasRoles ? rolesId : undefined}
         selected={selected}
         disabled={disabled}
         linking={linking}
@@ -143,6 +152,18 @@ export default function PersonNode({
         tabIndex={tabIndex}
         onKeyDown={onKeyDown}
       />
+      {hasRoles && (
+        <span id={rolesId} hidden>
+          {intl.formatList(
+            reproductiveRoles.map((role) =>
+              intl.formatMessage(messages.reproductiveRoleDescription, {
+                role,
+              }),
+            ),
+            { type: 'conjunction' },
+          )}
+        </span>
+      )}
       {/* Centred on the symbol's corner, clear of the label inside it. */}
       {hasMissingDetails && (
         <Tooltip>

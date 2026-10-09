@@ -102,6 +102,7 @@
   "interview.familyPedigree.removeConfirmTitle": "要移除{name}嗎？",
   "interview.familyPedigree.removedAnnouncement": "已將{name}從您的家庭中移除。",
   "interview.familyPedigree.removedWithOthersAnnouncement": "{count, plural, other {已將{name}和另外 # 人從您的家庭中移除。}}",
+  "interview.familyPedigree.reproductiveRoleDescription": "{role, select, donor {卵子或精子捐贈者} traditionalSurrogate {同時懷孕的卵子捐贈者} other {代孕者}}",
   "interview.familyPedigree.savedAnnouncement": "資訊已儲存。",
   "interview.familyPedigree.sexAssignedAtBirthLabel": "出生時指定的性別",
   "interview.familyPedigree.sharedDonorsLabel": "{isYou, select, true {他們和您有共同的捐贈者嗎？} other {他們和「{name}」有共同的捐贈者嗎？}}",

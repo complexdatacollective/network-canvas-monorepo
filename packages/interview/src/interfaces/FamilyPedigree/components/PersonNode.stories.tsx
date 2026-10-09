@@ -88,3 +88,60 @@ export const AdoptedPlaceholderWithMissingDetails: Story = {
     }
   },
 };
+
+/**
+ * An adopted relative with details missing who donated to one child and
+ * carried another as a surrogate: their roles are read out as the symbol's
+ * description, and nothing is drawn for them beyond the symbol, the badge
+ * and the brackets.
+ */
+export const DonorAndSurrogateRolesAreSpoken: Story = {
+  args: {
+    label: 'Aunt',
+    shape: 'circle',
+    reproductiveRoles: ['donor', 'gestationalCarrier'],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const symbol = canvas.getByRole('button', {
+      name: 'Aunt, adopted, some details missing',
+      description: 'egg or sperm donor and surrogate',
+    });
+    await expect(symbol).toBeInTheDocument();
+    // No pedigree letter is drawn: the only visible text is the label.
+    const person = canvas.getByTestId('pedigree-person');
+    const visibleText = [...person.querySelectorAll('*')]
+      .filter(
+        (element) =>
+          !element.closest('[hidden]') &&
+          [...element.childNodes].some(
+            (node) =>
+              node.nodeType === Node.TEXT_NODE &&
+              (node.textContent ?? '').trim() !== '',
+          ),
+      )
+      .map((element) => element.textContent?.trim());
+    await expect(visibleText).toEqual(['Aunt']);
+  },
+};
+
+/** A donor who carried the pregnancy, read out in plain words. */
+export const TraditionalSurrogateRoleIsSpoken: Story = {
+  args: {
+    label: 'Sister',
+    shape: 'circle',
+    adopted: false,
+    hasMissingDetails: false,
+    reproductiveRoles: ['traditionalSurrogate'],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getByRole('button', {
+        name: 'Sister',
+        description: 'egg donor who carried the pregnancy',
+      }),
+    ).toBeInTheDocument();
+    await expect(canvas.queryByText('S')).toBeNull();
+  },
+};

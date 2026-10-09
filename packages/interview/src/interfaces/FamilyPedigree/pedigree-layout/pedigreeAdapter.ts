@@ -1,3 +1,5 @@
+import type { PedigreeTwinKind } from '@codaco/protocol-validation';
+
 import { computeConnectors } from './connectors';
 import {
   computeLayoutMetrics,
@@ -13,6 +15,7 @@ import type {
   Relation,
   ScalingParams,
 } from './types';
+import { relativeRaisers } from './utils';
 
 export type ConnectorRenderData = {
   connectors: PedigreeConnectors;
@@ -23,6 +26,17 @@ type ConversionResult = {
   indexToId: string[];
   idToIndex: Map<string, number>;
 };
+
+/** The layout's twin code for each twin kind: 1 identical (monozygotic),
+ * 2 fraternal (dizygotic), 3 zygosity unknown. */
+const TWIN_CODES: Record<PedigreeTwinKind, 1 | 2 | 3> = {
+  identicalTwin: 1,
+  fraternalTwin: 2,
+  unknownZygosityTwin: 3,
+};
+
+const isTwinKind = (kind: PedigreeLink['kind']): kind is PedigreeTwinKind =>
+  kind in TWIN_CODES;
 
 function readLink(link: PedigreeLink) {
   return {
@@ -46,8 +60,21 @@ export function toPedigreeInput(
   const relations: Relation[] = [];
   const partnerConnections: PartnerConnection[] = [];
 
+  const twinPairs = new Set<string>();
   for (const link of links) {
-    const { relationshipType, isActive, isGestationalCarrier } = readLink(link);
+    const { kind } = link;
+    if (isTwinKind(kind)) {
+      const i1 = idToIndex.get(link.source);
+      const i2 = idToIndex.get(link.target);
+      if (i1 === undefined || i2 === undefined) continue;
+      const pairKey = `${Math.min(i1, i2)},${Math.max(i1, i2)}`;
+      if (twinPairs.has(pairKey)) continue;
+      twinPairs.add(pairKey);
+      relations.push({ id1: i1, id2: i2, code: TWIN_CODES[kind] });
+      continue;
+    }
+    const { isActive, isGestationalCarrier } = readLink(link);
+    const relationshipType = kind;
 
     if (relationshipType === 'partner') {
       const i1 = idToIndex.get(link.source);
@@ -77,17 +104,22 @@ export function toPedigreeInput(
   // under the adoptive parents, as standard pedigree nomenclature has it. A
   // birth parent who is the partner of one of the child's adoptive parents (a
   // step-parent adoption) raises the child in that family, so their edge stays
-  // biological and the child descends from them within the couple.
+  // biological and the child descends from them within the couple. A child
+  // adopted by a relative (see `relativeRaisers`) stays in their birth
+  // family, so their birth parents stay parents too; the layout draws the
+  // relatives' adoptive lines beside the birth family.
   const partnersOf = new Map<number, Set<number>>();
   for (const { partnerIndex1: a, partnerIndex2: b } of partnerConnections) {
     partnersOf.set(a, new Set([...(partnersOf.get(a) ?? []), b]));
     partnersOf.set(b, new Set([...(partnersOf.get(b) ?? []), a]));
   }
+  const raisedByRelatives = relativeRaisers(parents, partnerConnections);
   for (let i = 0; i < n; i++) {
     const adoptiveParents = parents[i]!.filter(
       (p) => p.edgeType === 'adoptive',
     ).map((p) => p.parentIndex);
     if (adoptiveParents.length === 0) continue;
+    if (raisedByRelatives[i]!.size > 0) continue;
     for (const p of parents[i]!) {
       if (p.edgeType !== 'biological') continue;
       const raisesChild = adoptiveParents.some(
