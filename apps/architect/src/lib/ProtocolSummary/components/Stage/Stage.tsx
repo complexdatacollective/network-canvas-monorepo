@@ -26,6 +26,7 @@ import {
 } from '../SummaryText';
 import Anonymisation from './Anonymisation';
 import Behaviours from './Behaviours';
+import CanvasWording from './CanvasWording';
 import DataSource from './DataSource';
 import FamilyPedigree, {
   type FamilyPedigreeCompleteness,
@@ -421,6 +422,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
           finishing={finishing}
         />
       )}
+      <CanvasWording type={type} configuration={configuration} />
       <InterviewScript interviewScript={interviewScript ?? null} />
     </div>
   );
