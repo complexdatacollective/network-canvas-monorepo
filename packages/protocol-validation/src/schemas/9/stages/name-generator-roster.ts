@@ -46,7 +46,7 @@ export const nameGeneratorRosterStage = baseStageSchema.extend({
       additionalProperties: z
         .array(
           z.strictObject({
-            label: localizedString(z.string(), 'plain'),
+            label: localizedString(nonBlankText(), 'plain'),
             variable: rosterColumnReference(),
           }),
         )
@@ -59,7 +59,7 @@ export const nameGeneratorRosterStage = baseStageSchema.extend({
       sortableProperties: z
         .array(
           z.strictObject({
-            label: localizedString(z.string(), 'plain'),
+            label: localizedString(nonBlankText(), 'plain'),
             variable: rosterColumnReference(),
           }),
         )

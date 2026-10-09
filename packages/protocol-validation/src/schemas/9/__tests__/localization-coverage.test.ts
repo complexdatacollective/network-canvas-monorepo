@@ -50,27 +50,11 @@ const stage = (index: number, ...rest: (string | number)[]) => [
 
 const EXPECTED_SITES: readonly ExpectedSite[] = [
   // Codebook entity type labels, and variable option copy.
-  site([...person, 'label'], 'plain', true),
-  site(
-    [...personVariable('category'), 'options', 0, 'label'],
-    'markdown',
-    true,
-  ),
-  site(
-    [...personVariable('category'), 'options', 1, 'label'],
-    'markdown',
-    true,
-  ),
-  site(
-    [...personVariable('strength'), 'options', 0, 'label'],
-    'markdown',
-    true,
-  ),
-  site(
-    [...personVariable('strength'), 'options', 1, 'label'],
-    'markdown',
-    true,
-  ),
+  site([...person, 'label'], 'plain'),
+  site([...personVariable('category'), 'options', 0, 'label'], 'markdown'),
+  site([...personVariable('category'), 'options', 1, 'label'], 'markdown'),
+  site([...personVariable('strength'), 'options', 0, 'label'], 'markdown'),
+  site([...personVariable('strength'), 'options', 1, 'label'], 'markdown'),
   site(
     [...personVariable('closeness'), 'parameters', 'minLabel'],
     'markdown',
@@ -81,9 +65,9 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
     'markdown',
     true,
   ),
-  site([...personVariable('flag'), 'options', 0, 'label'], 'markdown', true),
-  site([...personVariable('flag'), 'options', 1, 'label'], 'markdown', true),
-  site(['codebook', 'node', 'relative', 'label'], 'plain', true),
+  site([...personVariable('flag'), 'options', 0, 'label'], 'markdown'),
+  site([...personVariable('flag'), 'options', 1, 'label'], 'markdown'),
+  site(['codebook', 'node', 'relative', 'label'], 'plain'),
   // The answers a Family Pedigree asks for, which participants choose from,
   // so none may be blank.
   ...Array.from({ length: 5 }, (_, index) =>
@@ -101,18 +85,10 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
       'markdown',
     ),
   ),
-  site(['codebook', 'edge', 'knows', 'label'], 'plain', true),
-  site(
-    [...knowsVariable('tieStrength'), 'options', 0, 'label'],
-    'markdown',
-    true,
-  ),
-  site(
-    [...knowsVariable('tieStrength'), 'options', 1, 'label'],
-    'markdown',
-    true,
-  ),
-  site(['codebook', 'edge', 'family', 'label'], 'plain', true),
+  site(['codebook', 'edge', 'knows', 'label'], 'plain'),
+  site([...knowsVariable('tieStrength'), 'options', 0, 'label'], 'markdown'),
+  site([...knowsVariable('tieStrength'), 'options', 1, 'label'], 'markdown'),
+  site(['codebook', 'edge', 'family', 'label'], 'plain'),
   ...Array.from({ length: 6 }, (_, index) =>
     site(
       [
@@ -151,16 +127,8 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(4, 'prompts', 0, 'text'), 'markdown'),
 
   site(stage(5, 'panelTitle'), 'plain'),
-  site(
-    stage(5, 'cardOptions', 'additionalProperties', 0, 'label'),
-    'plain',
-    true,
-  ),
-  site(
-    stage(5, 'sortOptions', 'sortableProperties', 0, 'label'),
-    'plain',
-    true,
-  ),
+  site(stage(5, 'cardOptions', 'additionalProperties', 0, 'label'), 'plain'),
+  site(stage(5, 'sortOptions', 'sortableProperties', 0, 'label'), 'plain'),
   site(stage(5, 'prompts', 0, 'text'), 'markdown'),
 
   site(stage(6, 'prompts', 0, 'text'), 'markdown'),

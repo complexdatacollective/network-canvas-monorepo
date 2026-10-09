@@ -332,6 +332,38 @@ describe('findExportColumnConflicts', () => {
       ]);
     });
 
+    it('refuses two options of one variable GraphML writes as one attribute name', () => {
+      expect(conflicts(categorical('q', 'a b', 'a?b', 'c'), [])).toEqual([
+        {
+          kind: 'own',
+          column: 'q_a b',
+          origin: { kind: 'option', value: 'a b' },
+          otherColumn: 'q_a?b',
+          otherOrigin: { kind: 'option', value: 'a?b' },
+          formats: ['graphml'],
+          writtenColumn: 'q_a_b',
+        },
+        {
+          kind: 'own',
+          column: 'q_a?b',
+          origin: { kind: 'option', value: 'a?b' },
+          otherColumn: 'q_a b',
+          otherOrigin: { kind: 'option', value: 'a b' },
+          formats: ['graphml'],
+          writtenColumn: 'q_a_b',
+        },
+      ]);
+    });
+
+    // Two options with the same value are refused as a duplicate value, with
+    // that message; a variable whose columns all differ has nothing to refuse.
+    it('leaves options with the same value to the duplicate-value check', () => {
+      expect(conflicts(categorical('q', 'yes', 'YES'), [])).toEqual([]);
+      expect(conflicts(categorical('q', 1, '1'), [])).toEqual([]);
+      expect(conflicts(categorical('q', 'a b', 'a_c'), [])).toEqual([]);
+      expect(conflicts(layout('pos'), [])).toEqual([]);
+    });
+
     it('refuses an option column GraphML writes as a sibling’s name', () => {
       const closeFriend = text('close friend');
 

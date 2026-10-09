@@ -425,6 +425,8 @@ const validateVariableDraft = (draft: CodebookVariableDraft): Variable => {
   if (tooFew !== null) throw researcherIssue(tooFew);
   const incomplete = incompleteOptionsIssue(normalized);
   if (incomplete !== null) throw researcherIssue(incomplete);
+  const invalidValue = invalidOptionValueIssue(normalized);
+  if (invalidValue !== null) throw researcherIssue(invalidValue);
   const result = VariableSchema.safeParse(normalized);
   if (!result.success) {
     throw invalidDraft('the variable draft is invalid', result.error.issues);
@@ -510,18 +512,34 @@ const categoricalOptionIssue = (
       message: createMessageError(messages.optionsDuplicateLabel),
     });
   }
-
-  if (
-    variable.options.some(
-      ({ value }) => !CodebookNameSchema.safeParse(String(value)).success,
-    )
-  ) {
-    return Object.freeze({
-      path: Object.freeze(['options']),
-      message: createMessageError(messages.optionsInvalidValue),
-    });
-  }
   return null;
+};
+
+/**
+ * An option value that is not a name the codebook can hold, such as one with
+ * a tab or line break in it.
+ *
+ * Asked before the schema parses the draft, because the schema refuses the
+ * same value with a message written for a protocol file rather than for the
+ * researcher typing it.
+ */
+const invalidOptionValueIssue = (
+  draft: Readonly<Record<string, unknown>>,
+): CodebookDraftIssue | null => {
+  if (typeof draft.type !== 'string' || !isOptionType(draft.type)) return null;
+  const { options } = draft;
+  if (!Array.isArray(options)) return null;
+  const invalid = options.some(
+    (option: unknown) =>
+      isRecord(option) &&
+      !CodebookNameSchema.safeParse(String(option.value)).success,
+  );
+  return invalid
+    ? Object.freeze({
+        path: Object.freeze(['options']),
+        message: createMessageError(messages.optionsInvalidValue),
+      })
+    : null;
 };
 
 const variablesFromDocument = (

@@ -154,8 +154,9 @@ export type OptionExportColumns = Readonly<{
  * column, or `undefined` while it would not.
  *
  * Judged as it will be stored, like `invalidOptionValue`, and asked of the
- * value alone: the attribute's other options cannot clash with it, because
- * they share its name and differ in value.
+ * value alone. Another of the attribute's options meets it only where an
+ * export writes two different values the same way (GraphML writes `a b` and
+ * `a?b` alike), which the codebook write refuses for the whole attribute.
  */
 export const optionExportColumnIssue = (
   value: unknown,

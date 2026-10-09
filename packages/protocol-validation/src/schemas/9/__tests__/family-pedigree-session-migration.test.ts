@@ -276,6 +276,39 @@ describe('migrationV8toV9 session step', () => {
       expect(ego?.attributes).not.toHaveProperty('relativesNotRecorded');
     });
 
+    // The redesigned stage draws neither a relationship without a kind nor
+    // one of a kind it does not know, so neither makes a child.
+    it.each([
+      ['no kind', {}],
+      ['a kind schema 9 does not know', { relationshipType: ['cousin'] }],
+    ])(
+      'records "no children" beside a relationship from the participant with %s',
+      (_description, attributes) => {
+        const withUnrelated = committedSession(9);
+        withUnrelated.network.nodes.push({
+          _uid: 'other-1',
+          type: 'person',
+          attributes: { is_ego: false, name: 'Sam' },
+          promptIDs: [],
+          stageId: 'family-pedigree',
+        });
+        withUnrelated.network.edges.push({
+          _uid: 'edge-ego-other',
+          type: 'family_relationship',
+          from: 'ego-1',
+          to: 'other-1',
+          attributes,
+        });
+        const ego = nodeById(
+          migrated(migrateSession(withUnrelated)).network.nodes,
+          'ego-1',
+        );
+        expect(ego?.attributes).toHaveProperty('relativesNotRecorded', [
+          'noChildren',
+        ]);
+      },
+    );
+
     it('does not duplicate relationships an older record listed by the interface’s own ids', () => {
       const legacy = committedSession(9);
       const { edgeIdVersion: _edgeIdVersion, ...record } = committedRecord();

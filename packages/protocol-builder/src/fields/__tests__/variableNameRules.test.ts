@@ -398,6 +398,28 @@ describe('the export columns an attribute would write', () => {
     ).toEqual([]);
   });
 
+  it('refuses two options of the attribute GraphML writes as one column', () => {
+    expect(
+      refusals(
+        {
+          name: 'q',
+          type: 'categorical',
+          options: [{ value: 'a b' }, { value: 'a?b' }],
+        },
+        [],
+      ),
+    ).toEqual([
+      {
+        origin: 'option',
+        text: 'In the export, the column “q_a b” for option “a b” of “q” and the column “q_a?b” of the attribute “q” would become the same column, “q_a_b”. Change the option value or the attribute name.',
+      },
+      {
+        origin: 'option',
+        text: 'In the export, the column “q_a?b” for option “a?b” of “q” and the column “q_a b” of the attribute “q” would become the same column, “q_a_b”. Change the option value or the attribute name.',
+      },
+    ]);
+  });
+
   it('refuses a name GraphML writes as another attribute’s column', () => {
     expect(
       refusals({ name: 'close friend', type: 'text' }, [

@@ -61,9 +61,29 @@ describe('Migrating encrypted attributes from schema 8 to 9', () => {
     expect(ProtocolSchemaV9.safeParse(migrated).success).toBe(true);
   });
 
+  // The schema 8 alpha named the experiment `encryptNames`, and its runtime
+  // encrypted marked attributes while it was on.
+  it('keeps them encrypted when the alpha flag was on, and drops the flag', () => {
+    const migrated = migrateProtocol(
+      schema8WithEncryptedName({ encryptNames: true }),
+      9,
+    );
+
+    expect(migrated.codebook.node?.person?.variables?.name).toMatchObject({
+      encrypted: true,
+    });
+    expect(migrated.experiments).toStrictEqual({});
+    expect(ProtocolSchemaV9.safeParse(migrated).success).toBe(true);
+  });
+
   it.each([
     ['empty', {}],
     ['off', { encryptedVariables: false }],
+    ['off under its alpha name', { encryptNames: false }],
+    [
+      'off, whatever its alpha name said',
+      { encryptedVariables: false, encryptNames: true },
+    ],
   ])(
     'unmarks them when the experiment was %s, since they were never encrypted',
     (_description, experiments) => {

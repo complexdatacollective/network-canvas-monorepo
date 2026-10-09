@@ -1386,9 +1386,10 @@ const ProtocolSchema = z
           }
         }
 
-        const sourceStage = protocol.stages.find(
+        const sourceStageIndex = protocol.stages.findIndex(
           (s) => s.id === stage.sourceStageId,
         );
+        const sourceStage = protocol.stages[sourceStageIndex];
 
         if (!sourceStage) {
           ctx.addIssue({
@@ -1403,6 +1404,15 @@ const ProtocolSchema = z
             path: ['stages', stageIndex, 'sourceStageId'],
           });
         } else {
+          // The narrative shows the family the participant drew, so a source
+          // that runs later has drawn nothing yet when the narrative opens.
+          if (sourceStageIndex > stageIndex) {
+            ctx.addIssue({
+              code: 'custom' as const,
+              message: `NarrativePedigree sourceStageId "${stage.sourceStageId}" must reference a FamilyPedigree stage that comes before it.`,
+              path: ['stages', stageIndex, 'sourceStageId'],
+            });
+          }
           // sourceStage is confirmed FamilyPedigree — resolve each disease
           // attribute on its people, the stage's subject node type. These are
           // typically the boolean attributes its nomination prompts set.
