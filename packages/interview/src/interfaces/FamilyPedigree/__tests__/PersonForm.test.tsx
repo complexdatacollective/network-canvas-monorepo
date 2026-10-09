@@ -896,6 +896,47 @@ describe('a parent of any kind who carried the pregnancy', () => {
     }
   });
 
+  // Decided gap (9 Oct 2026), as ruling 20 offers donors.
+  it('offers the surrogate who carried the participant among the parents a sibling shares, who then carried the sibling', async () => {
+    const { onSubmit, user } = renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('amy', { sex: ['female'] }),
+        person('rob', { sex: ['male'] }),
+        person('gail', { sex: ['female'] }),
+      ],
+      edges: [
+        link('amy', 'ego', 'biological'),
+        link('rob', 'ego', 'biological'),
+        link('gail', 'ego', 'surrogate', { carrier: true }),
+      ],
+      adding: 'sibling',
+    });
+    const shared = screen.getByRole('group', {
+      name: /^Which parents do they share with you\?/,
+    });
+    const surrogate = within(shared).getByRole('checkbox', { name: 'gail' });
+    expect(surrogate).not.toBeChecked();
+    expect(
+      screen.getByRole('radiogroup', { name: /^Who carried the pregnancy\?/ }),
+    ).toBeInTheDocument();
+    await user.click(surrogate);
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('radiogroup', {
+          name: /^Who carried the pregnancy\?/,
+        }),
+      ).not.toBeInTheDocument(),
+    );
+    await user.click(screen.getByRole('radio', { name: 'Female' }));
+    await save(user);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0].request).toMatchObject({
+      sharedParentIds: ['amy', 'rob', 'gail'],
+    });
+  });
+
   it('offers a new adoptive sibling’s adoptive parent as having carried them', async () => {
     const { user } = renderPersonForm('ego', {
       nodes: [

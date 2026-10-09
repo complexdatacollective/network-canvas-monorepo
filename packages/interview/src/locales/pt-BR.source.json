@@ -108,7 +108,7 @@
   "interview.familyPedigree.reproductiveRoleDescription": "{role, select, donor {egg or sperm donor} traditionalSurrogate {egg donor who carried the pregnancy} other {surrogate}}",
   "interview.familyPedigree.savedAnnouncement": "Details saved.",
   "interview.familyPedigree.sexAssignedAtBirthLabel": "Sex assigned at birth",
-  "interview.familyPedigree.sharedDonorsLabel": "{isYou, select, true {Do they share any of your donors?} other {Do they share any of “{name}”’s donors?}}",
+  "interview.familyPedigree.sharedDonorsLabel": "{isYou, select, true {{hasSurrogate, select, true {Do they share any of your donors, or the surrogate who carried you?} other {Do they share any of your donors?}}} other {{hasSurrogate, select, true {Do they share any of “{name}”’s donors, or the surrogate who carried them?} other {Do they share any of “{name}”’s donors?}}}}",
   "interview.familyPedigree.sharedParentCountBoth": "Both parents",
   "interview.familyPedigree.sharedParentCountLabel": "{isYou, select, true {Which parents do they share with you?} other {Which parents do they share with “{name}”?}}",
   "interview.familyPedigree.sharedParentEggOnly": "{framing, select, gamete {Only the egg parent} other {Only the biological mother}}",

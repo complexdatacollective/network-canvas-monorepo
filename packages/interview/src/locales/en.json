@@ -436,8 +436,8 @@
     "description": "Label of the question about the sex a family member was assigned at birth."
   },
   "interview.familyPedigree.sharedDonorsLabel": {
-    "defaultMessage": "{isYou, select, true {Do they share any of your donors?} other {Do they share any of “{name}”’s donors?}}",
-    "description": "Question in the side panel for adding a sibling to someone recorded with only egg or sperm donors as parents. Options are those donors, by name or by how they are related to the participant; any number, or none, may be chosen. name is the person the sibling is added to."
+    "defaultMessage": "{isYou, select, true {{hasSurrogate, select, true {Do they share any of your donors, or the surrogate who carried you?} other {Do they share any of your donors?}}} other {{hasSurrogate, select, true {Do they share any of “{name}”’s donors, or the surrogate who carried them?} other {Do they share any of “{name}”’s donors?}}}}",
+    "description": "Question in the side panel for adding a sibling to someone recorded with only egg or sperm donors as parents. Options are those donors, and the surrogate who carried the person when one is recorded (hasSurrogate), by name or by how they are related to the participant; any number, or none, may be chosen. name is the person the sibling is added to."
   },
   "interview.familyPedigree.sharedParentCountBoth": {
     "defaultMessage": "Both parents",
@@ -445,7 +445,7 @@
   },
   "interview.familyPedigree.sharedParentCountLabel": {
     "defaultMessage": "{isYou, select, true {Which parents do they share with you?} other {Which parents do they share with “{name}”?}}",
-    "description": "Question in the side panel for adding a sibling: which parents the two siblings have in common. Options are the parents’ names, or for someone with no parents yet, both or one of the parents who will be added. name is that person’s name or how they are related to the participant."
+    "description": "Question in the side panel for adding a sibling: which parents the two siblings have in common. Options are the parents’ names (with the person’s egg or sperm donors and the surrogate who carried them, where recorded), or for someone with no parents yet, both or one of the parents who will be added. name is that person’s name or how they are related to the participant."
   },
   "interview.familyPedigree.sharedParentEggOnly": {
     "defaultMessage": "{framing, select, gamete {Only the egg parent} other {Only the biological mother}}",

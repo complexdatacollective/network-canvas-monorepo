@@ -685,7 +685,8 @@ export type AddRelativeRequest =
     }
   | {
       relation: 'sibling';
-      /** The anchor's parents the sibling shares. */
+      /** The anchor's parents the sibling shares: their primary parents,
+       * and their donors and the surrogate who carried them (ruling 20). */
       sharedParentIds: readonly string[];
       /**
        * For someone with no parents, who is given an unnamed egg parent and
@@ -916,15 +917,22 @@ export function planAddRelative({
     case 'sibling': {
       const anchorParents = primaryParentsOf(family, anchorId);
       // The anchor's donors are offered too, so that a sibling who shares
-      // only a donor can be added (ruling 20).
-      const anchorDonors = parentLinksOf(family, anchorId)
-        .filter((link) => link.kind === 'donor')
-        .map((link) => link.source);
+      // only a donor can be added (ruling 20), and so is the surrogate who
+      // carried them.
+      const anchorLinksOf = (kind: FamilyLinkKind) =>
+        parentLinksOf(family, anchorId)
+          .filter((link) => link.kind === kind)
+          .map((link) => link.source);
+      const anchorDonors = anchorLinksOf('donor');
+      const anchorSurrogates = anchorLinksOf('surrogate');
       const shared = request.sharedParentIds.filter((id) =>
         anchorParents.includes(id),
       );
       const sharedDonors = request.sharedParentIds.filter((id) =>
         anchorDonors.includes(id),
+      );
+      const sharedSurrogate = request.sharedParentIds.find((id) =>
+        anchorSurrogates.includes(id),
       );
       // Siblings hang from the parents they share. Someone without parents
       // is given unnamed ones for the sibling to share, for the participant
@@ -986,7 +994,8 @@ export function planAddRelative({
       const sharesNone =
         shared.length === 0 &&
         sharedPlaceholders.length === 0 &&
-        sharedDonors.length === 0;
+        sharedDonors.length === 0 &&
+        sharedSurrogate === undefined;
       const anchorKindOf = (parentId: string) =>
         placeholders.find((placeholder) => placeholder.id === parentId)?.kind ??
         parentLinksOf(family, anchorId).find((link) => link.source === parentId)
@@ -1012,6 +1021,15 @@ export function planAddRelative({
               ),
             ]
           : siblingParents;
+      // A surrogate they share carried them, so nobody else did.
+      if (sharedSurrogate !== undefined) {
+        links.push({
+          source: sharedSurrogate,
+          target: newPersonId,
+          kind: 'surrogate',
+          isGestationalCarrier: true,
+        });
+      }
       const geneticSexes: (string | undefined)[] = [];
       for (const donorId of sharedDonors) {
         const sex = family.byId.get(donorId)?.sexAssignedAtBirth;
@@ -1407,8 +1425,9 @@ function plannedSexOf(
 /**
  * The parents a planned addition gives `childId` who could have carried their
  * pregnancy: any of their parents, as planned, except anyone recorded (or
- * planned) as male at birth. Unnamed parents the addition creates are
- * included, by the ids the plan gives them.
+ * planned) as male at birth, and nobody once a surrogate is planned for
+ * them, who carried them. Unnamed parents the addition creates are included,
+ * by the ids the plan gives them.
  */
 export function possibleCarriers(
   family: Family,
@@ -1416,10 +1435,11 @@ export function possibleCarriers(
   childId: string,
   sexAttribute: string,
 ): string[] {
-  return plan.links
+  const parentLinks = plan.links.filter((link) => link.target === childId);
+  if (parentLinks.some((link) => link.kind === 'surrogate')) return [];
+  return parentLinks
     .filter(
       (link) =>
-        link.target === childId &&
         mayHaveCarried(link.kind) &&
         couldCarryPregnancy(
           plannedSexOf(family, plan, link.source, sexAttribute),

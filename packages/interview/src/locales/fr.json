@@ -108,7 +108,7 @@
   "interview.familyPedigree.reproductiveRoleDescription": "{role, select, donor {donneur ou donneuse d’ovule ou de sperme} traditionalSurrogate {donneuse d’ovule ayant porté la grossesse} other {mère porteuse}}",
   "interview.familyPedigree.savedAnnouncement": "Informations enregistrées.",
   "interview.familyPedigree.sexAssignedAtBirthLabel": "Sexe assigné à la naissance",
-  "interview.familyPedigree.sharedDonorsLabel": "{isYou, select, true {Partage-t-il ou elle l’un de vos donneurs ?} other {Partage-t-il ou elle l’un des donneurs de « {name} » ?}}",
+  "interview.familyPedigree.sharedDonorsLabel": "{isYou, select, true {{hasSurrogate, select, true {Partage-t-il ou elle l’un de vos donneurs, ou la mère porteuse qui vous a porté ?} other {Partage-t-il ou elle l’un de vos donneurs ?}}} other {{hasSurrogate, select, true {Partage-t-il ou elle l’un des donneurs de « {name} », ou la mère porteuse qui l’a porté ?} other {Partage-t-il ou elle l’un des donneurs de « {name} » ?}}}}",
   "interview.familyPedigree.sharedParentCountBoth": "Les deux parents",
   "interview.familyPedigree.sharedParentCountLabel": "{isYou, select, true {Quels parents cette personne a-t-elle en commun avec vous ?} other {Quels parents cette personne a-t-elle en commun avec « {name} » ?}}",
   "interview.familyPedigree.sharedParentEggOnly": "{framing, select, gamete {Seulement le parent de l’ovule} other {Seulement la mère biologique}}",

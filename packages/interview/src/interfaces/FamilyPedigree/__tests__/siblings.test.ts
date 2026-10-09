@@ -6,6 +6,7 @@ import {
   type AddRelativeRequest,
   type Family,
   planAddRelative,
+  possibleCarriers,
   readFamily,
 } from '../model';
 import { config, link, person } from './fixtures';
@@ -154,5 +155,61 @@ describe('a biological sibling of three shared parents', () => {
       ['raj', 'biological'],
       ['tom', 'social'],
     ]);
+  });
+});
+
+// Decided gap (9 Oct 2026): the sibling form offers the participant's
+// surrogate among the shared-parent choices, as ruling 20 offers donors.
+describe('a sibling who shares the surrogate who carried the participant', () => {
+  const parentsAndASurrogate = () =>
+    family(
+      [
+        person('ego', { isEgo: true }),
+        person('amy', { name: 'Amy', sex: ['female'] }),
+        person('rob', { name: 'Rob', sex: ['male'] }),
+        person('gc', { name: 'Gail', sex: ['female'] }),
+      ],
+      [
+        link('amy', 'ego', 'biological'),
+        link('rob', 'ego', 'biological'),
+        link('gc', 'ego', 'surrogate', { carrier: true }),
+      ],
+    );
+
+  test('was carried by them too, and by nobody else', () => {
+    const result = plan(parentsAndASurrogate(), {
+      relation: 'sibling',
+      sharedParentIds: ['amy', 'rob', 'gc'],
+      parentKind: 'biological',
+      carrier: 'amy',
+    });
+    expect(result.links).toEqual([
+      {
+        source: 'gc',
+        target: 'added',
+        kind: 'surrogate',
+        isGestationalCarrier: true,
+      },
+      {
+        source: 'amy',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
+      {
+        source: 'rob',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
+    ]);
+    expect(
+      possibleCarriers(
+        parentsAndASurrogate(),
+        result,
+        'added',
+        config.sexAssignedAtBirthAttribute,
+      ),
+    ).toEqual([]);
   });
 });

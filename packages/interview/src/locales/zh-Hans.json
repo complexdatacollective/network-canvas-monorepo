@@ -108,7 +108,7 @@
   "interview.familyPedigree.reproductiveRoleDescription": "{role, select, donor {卵子或精子捐献者} traditionalSurrogate {同时怀孕的卵子捐献者} other {代孕者}}",
   "interview.familyPedigree.savedAnnouncement": "信息已保存。",
   "interview.familyPedigree.sexAssignedAtBirthLabel": "出生时指定的性别",
-  "interview.familyPedigree.sharedDonorsLabel": "{isYou, select, true {他们和您有共同的捐赠者吗？} other {他们和“{name}”有共同的捐赠者吗？}}",
+  "interview.familyPedigree.sharedDonorsLabel": "{isYou, select, true {{hasSurrogate, select, true {他们和您有共同的捐赠者，或共同的代孕者（怀了您的人）吗？} other {他们和您有共同的捐赠者吗？}}} other {{hasSurrogate, select, true {他们和“{name}”有共同的捐赠者，或共同的代孕者（怀了“{name}”的人）吗？} other {他们和“{name}”有共同的捐赠者吗？}}}}",
   "interview.familyPedigree.sharedParentCountBoth": "双方父母",
   "interview.familyPedigree.sharedParentCountLabel": "{isYou, select, true {此人与您共有哪些父母？} other {此人与“{name}”共有哪些父母？}}",
   "interview.familyPedigree.sharedParentEggOnly": "{framing, select, gamete {仅卵子方家长} other {仅生母}}",

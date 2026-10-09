@@ -2177,10 +2177,14 @@ function SiblingFields({
   ]);
   const parents = primaryParentsOf(family, anchor.id);
   // The anchor's donors are offered too, so that a sibling who shares only a
-  // donor can be added (ruling 20).
-  const donors = family.links
-    .filter((link) => link.target === anchor.id && link.kind === 'donor')
-    .map((link) => link.source);
+  // donor can be added (ruling 20), and so is the surrogate who carried
+  // them, who then carried the sibling.
+  const anchorParentsOf = (kind: FamilyLinkKind) =>
+    family.links
+      .filter((link) => link.target === anchor.id && link.kind === kind)
+      .map((link) => link.source);
+  const donors = anchorParentsOf('donor');
+  const surrogates = anchorParentsOf('surrogate');
   const args = {
     isYou: anchor.isEgo ? 'true' : 'false',
     name: displayName(anchor.id),
@@ -2375,8 +2379,14 @@ function SiblingFields({
       <Field
         component={CheckboxGroupField}
         name={ROLE.sharedParents}
-        label={intl.formatMessage(messages.sharedDonorsLabel, args)}
-        options={donors.map((id) => ({ value: id, label: parentLabel(id) }))}
+        label={intl.formatMessage(messages.sharedDonorsLabel, {
+          ...args,
+          hasSurrogate: surrogates.length > 0 ? 'true' : 'false',
+        })}
+        options={[...donors, ...surrogates].map((id) => ({
+          value: id,
+          label: parentLabel(id),
+        }))}
         initialValue={[]}
       />
     ) : parents.length === 0 ? (
@@ -2414,10 +2424,10 @@ function SiblingFields({
         component={CheckboxGroupField}
         name={ROLE.sharedParents}
         label={intl.formatMessage(messages.sharedParentCountLabel, args)}
-        options={[
-          ...parents.map((id) => ({ value: id, label: parentLabel(id) })),
-          ...donors.map((id) => ({ value: id, label: parentLabel(id) })),
-        ]}
+        options={[...parents, ...donors, ...surrogates].map((id) => ({
+          value: id,
+          label: parentLabel(id),
+        }))}
         required
         initialValue={parents}
       />

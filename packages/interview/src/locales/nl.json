@@ -108,7 +108,7 @@
   "interview.familyPedigree.reproductiveRoleDescription": "{role, select, donor {eicel- of zaaddonor} traditionalSurrogate {eiceldonor die de zwangerschap heeft gedragen} other {draagmoeder}}",
   "interview.familyPedigree.savedAnnouncement": "Gegevens opgeslagen.",
   "interview.familyPedigree.sexAssignedAtBirthLabel": "Bij de geboorte toegewezen geslacht",
-  "interview.familyPedigree.sharedDonorsLabel": "{isYou, select, true {Hebben ze een van jouw donoren gemeen?} other {Hebben ze een van de donoren van “{name}” gemeen?}}",
+  "interview.familyPedigree.sharedDonorsLabel": "{isYou, select, true {{hasSurrogate, select, true {Hebben ze een van jouw donoren gemeen, of de draagmoeder die jou heeft gedragen?} other {Hebben ze een van jouw donoren gemeen?}}} other {{hasSurrogate, select, true {Hebben ze een van de donoren van “{name}” gemeen, of de draagmoeder die “{name}” heeft gedragen?} other {Hebben ze een van de donoren van “{name}” gemeen?}}}}",
   "interview.familyPedigree.sharedParentCountBoth": "Beide ouders",
   "interview.familyPedigree.sharedParentCountLabel": "{isYou, select, true {Welke ouders heeft deze persoon met jou gemeen?} other {Welke ouders heeft deze persoon met “{name}” gemeen?}}",
   "interview.familyPedigree.sharedParentEggOnly": "{framing, select, gamete {Alleen de eicelouder} other {Alleen de biologische moeder}}",
