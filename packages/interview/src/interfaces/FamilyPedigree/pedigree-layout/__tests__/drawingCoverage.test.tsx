@@ -556,6 +556,7 @@ describe('every line lies inside the drawing', () => {
     it(name, () => {
       const { container } = render(
         <PedigreeLayout
+          nodeShapes={new Map()}
           nodeIds={people}
           links={links}
           nodeWidth={DIMENSIONS.nodeWidth}

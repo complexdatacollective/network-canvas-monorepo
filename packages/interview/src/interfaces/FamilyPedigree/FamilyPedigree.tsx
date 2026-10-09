@@ -63,7 +63,6 @@ import {
   getNetworkNodes,
   getNodeColorSelector,
   getStageMetadata,
-  resolveNodeShape,
 } from '../../selectors/session';
 import { getCodebook, getStages } from '../../store/modules/protocol';
 import {
@@ -97,6 +96,7 @@ import {
   usePedigreeZoomButtons,
   zoomForKey,
 } from '../pedigree-common/PedigreeCanvas';
+import { symbolShapesOf } from '../pedigree-common/symbolShapes';
 import {
   answersContradictedBy,
   type CompletenessItem,
@@ -892,15 +892,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // The shape each person's symbol is drawn with, so that lines meet the
   // symbols' edges.
   const nodeShapes = useMemo(
-    () =>
-      new Map(
-        shown.people.map((person) => [
-          person.id,
-          shapeDefinition
-            ? resolveNodeShape(shapeDefinition, person.attributes)
-            : ('circle' as const),
-        ]),
-      ),
+    () => symbolShapesOf(shown.people, shapeDefinition),
     [shown.people, shapeDefinition],
   );
 

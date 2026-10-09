@@ -27,10 +27,13 @@ type PedigreeLayoutProps = {
    */
   nodeNames?: ReadonlyMap<string, string>;
   /**
-   * Each person's symbol shape by node id, so that connectors meet the
-   * symbols' edges (a line into a square ends on its flat top).
+   * The shape each person's symbol is drawn with, by node id, so that
+   * connectors meet the symbols' edges (a line into a square ends on its flat
+   * top). Required: every pedigree passes the shapes it draws
+   * (`symbolShapesOf`); a person missing from it is routed for the deepest
+   * of the shapes.
    */
-  nodeShapes?: ReadonlyMap<string, PedigreeSymbolShape>;
+  nodeShapes: ReadonlyMap<string, PedigreeSymbolShape>;
   nodeWidth: number;
   nodeHeight: number;
   /** See `LayoutDimensions`. */

@@ -986,6 +986,7 @@ describe('PedigreeLayout — highlightedEdgeKeys prop forwarded', () => {
 
     const { container } = render(
       <PedigreeLayout
+        nodeShapes={new Map()}
         nodeIds={nodes}
         links={edges}
         {...DIMS}
@@ -1030,6 +1031,7 @@ describe('PedigreeLayout — highlightedEdgeKeys prop forwarded', () => {
     expect(() =>
       render(
         <PedigreeLayout
+          nodeShapes={new Map()}
           nodeIds={nodes}
           links={edges}
           {...DIMS}
