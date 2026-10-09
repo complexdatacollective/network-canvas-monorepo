@@ -1505,10 +1505,28 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   // Keyboard focus shows the menu; focus from a click (or returned there by
   // the panel after a click) does not, so for a mouse user the menu follows
-  // the pointer alone.
+  // the pointer alone. Browsers differ in whether focus a script moves (the
+  // panel returning it) is :focus-visible, so the input last used decides
+  // that, alike in every browser.
+  const lastInput = useRef<'pointer' | 'keyboard' | null>(null);
+  useEffect(() => {
+    const pointer = () => {
+      lastInput.current = 'pointer';
+    };
+    const keyboard = () => {
+      lastInput.current = 'keyboard';
+    };
+    document.addEventListener('pointerdown', pointer, true);
+    document.addEventListener('keydown', keyboard, true);
+    return () => {
+      document.removeEventListener('pointerdown', pointer, true);
+      document.removeEventListener('keydown', keyboard, true);
+    };
+  }, []);
   const handleFocusPerson = (personId: string, event: React.FocusEvent) => {
     setLastFocusedId(personId);
     if (
+      lastInput.current !== 'pointer' &&
       event.target instanceof Element &&
       event.target.matches(':focus-visible')
     ) {
@@ -1524,20 +1542,52 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // moment, so the pointer can cross the gap between the person and a button.
   const hoverLeaveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(hoverLeaveTimer.current), []);
+  const cancelHoverLeave = () => {
+    clearTimeout(hoverLeaveTimer.current);
+    hoverLeaveTimer.current = undefined;
+  };
   const handlePersonPointerEnter = (
     personId: string,
     event: React.PointerEvent,
   ) => {
     if (event.pointerType !== 'mouse') return;
-    clearTimeout(hoverLeaveTimer.current);
+    cancelHoverLeave();
     setHoveredId(personId);
   };
   const handlePersonPointerLeave = (event: React.PointerEvent) => {
     if (event.pointerType !== 'mouse') return;
-    clearTimeout(hoverLeaveTimer.current);
+    cancelHoverLeave();
     // The connector line lets go of a person at once; the add menu waits.
     if (tool !== 'pointer') setHoveredId(null);
-    else hoverLeaveTimer.current = setTimeout(() => setHoveredId(null), 300);
+    else {
+      hoverLeaveTimer.current = setTimeout(() => {
+        hoverLeaveTimer.current = undefined;
+        setHoveredId(null);
+      }, 300);
+    }
+  };
+  // Browsers differ in telling a person the pointer has left them: none does
+  // when the element under the pointer goes (the menu button that opened the
+  // panel), and Firefox does not when the page moves under a still pointer.
+  // So where the pointer moves decides it alike in every browser: over a
+  // person, it is over them; anywhere else on the stage (the panel
+  // included), it has left whoever it was over, as leaving them does.
+  const handleStagePointerMove = (event: React.PointerEvent) => {
+    // A drag (the canvas panned, a button held) is not hovering.
+    if (event.pointerType !== 'mouse' || event.buttons !== 0) return;
+    const over =
+      event.target instanceof Element
+        ? event.target
+            .closest('[data-testid="pedigree-person"]')
+            ?.getAttribute('data-person-id')
+        : undefined;
+    if (over) {
+      if (over !== hoveredId || hoverLeaveTimer.current !== undefined) {
+        handlePersonPointerEnter(over, event);
+      }
+    } else if (hoveredId !== null && hoverLeaveTimer.current === undefined) {
+      handlePersonPointerLeave(event);
+    }
   };
 
   // A touch screen has no hover, so a tap leaves the person's menu showing
@@ -2476,6 +2526,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     <div
       className="relative flex h-full w-full flex-col"
       onPointerDown={handleStagePointerDown}
+      onPointerMove={handleStagePointerMove}
     >
       <div
         ref={promptRef}
