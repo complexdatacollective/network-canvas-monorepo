@@ -14,6 +14,7 @@ import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessib
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import {
   LocalizedMessageVersions,
+  useLocalizedMessageProblem,
   LocalizedMessageVersionsSummary,
 } from '@codaco/protocol-builder/fields/LocalizedMessageField';
 import RichTextField from '@codaco/protocol-builder/fields/RichTextField';
@@ -80,6 +81,12 @@ const messages = defineMessages({
     description:
       'Screen-reader announcement after an emptied translation is restored, because it is the only translation the text has. language is the language of the translation.',
   },
+  messageRefused: {
+    id: 'architect.localization.translationTable.messageRefused',
+    defaultMessage: 'Your change was not saved. {reason}',
+    description:
+      'Screen-reader announcement after leaving a translation table cell whose text, written in several versions, could not be saved. reason is the sentence saying what is wrong, such as that some versions are empty.',
+  },
   saveFailed: {
     id: 'architect.localization.translationTable.saveFailed',
     defaultMessage:
@@ -94,6 +101,8 @@ export type CommitResult =
   | 'saved'
   | 'unchanged'
   | 'only-translation'
+  /** A message whose versions break its setting's rule; nothing saved. */
+  | 'refused'
   | 'failed';
 
 export type TranslationCellProps = {
@@ -320,6 +329,22 @@ const Fallback = ({
   );
 };
 
+/** Why the cell will not save what it holds, in Architect's language. */
+const RefusalNote = ({ id, children }: { id: string; children: string }) => {
+  const intl = useAppIntl();
+  return (
+    <p
+      id={id}
+      role="status"
+      lang={intl.locale}
+      dir="auto"
+      className="text-destructive-ink px-3 pb-2 text-sm"
+    >
+      {children}
+    </p>
+  );
+};
+
 const OnlyTranslationNote = ({
   id,
   locale,
@@ -330,17 +355,11 @@ const OnlyTranslationNote = ({
   const intl = useAppIntl();
   const languageName = useLanguageName();
   return (
-    <p
-      id={id}
-      role="status"
-      lang={intl.locale}
-      dir="auto"
-      className="text-destructive-ink px-3 pb-2 text-sm"
-    >
+    <RefusalNote id={id}>
       {intl.formatMessage(messages.onlyTranslation, {
         language: languageName(locale),
       })}
-    </p>
+    </RefusalNote>
   );
 };
 
@@ -348,8 +367,10 @@ const useCommitFeedback = (locale: LocaleTag) => {
   const intl = useAppIntl();
   const languageName = useLanguageName();
   const { announce } = useAccessibilityAnnouncements();
-  return (result: CommitResult) => {
-    if (result === 'only-translation') {
+  return (result: CommitResult, reason?: string) => {
+    if (result === 'refused') {
+      announce(intl.formatMessage(messages.messageRefused, { reason }));
+    } else if (result === 'only-translation') {
       const language = languageName(locale);
       announce(intl.formatMessage(messages.onlyTranslationKept, { language }));
     } else if (result === 'failed') {
@@ -804,7 +825,17 @@ const MessageCell = ({
   const stored = value[locale] ?? '';
   const message = draft === null ? stored : (draft.message ?? '');
   const empty = message === '';
-  const refusing = empty && isOnlyTranslation(value, locale, localization);
+  const onlyTranslation =
+    empty && isOnlyTranslation(value, locale, localization);
+  // Some versions written and others empty: the table refuses to save it
+  // (see `localizedMessageProblem`), and says so while the cell is open.
+  const problem = useLocalizedMessageProblem(
+    draft === null || empty ? undefined : message,
+    messageArguments,
+    locale,
+  );
+  const problemRef = useRef(problem);
+  const refusing = onlyTranslation || problem !== undefined;
 
   const changeDraft = (next: { message: string | undefined } | null) => {
     draftRef.current = next;
@@ -815,13 +846,14 @@ const MessageCell = ({
     const pending = draftRef.current;
     if (pending === null) return;
     changeDraft(null);
-    feedback(onCommitMessage(pending.message));
+    feedback(onCommitMessage(pending.message), problemRef.current);
   };
 
   const holdFocus = () => cellRef.current?.focus({ preventScroll: true });
 
   useEffect(() => {
     onCommitRef.current = onCommitMessage;
+    problemRef.current = problem;
   });
 
   useEffect(
@@ -928,7 +960,12 @@ const MessageCell = ({
             }
             autoFocus
           />
-          {refusing && <OnlyTranslationNote id={noteId} locale={locale} />}
+          {onlyTranslation && (
+            <OnlyTranslationNote id={noteId} locale={locale} />
+          )}
+          {problem !== undefined && (
+            <RefusalNote id={noteId}>{problem}</RefusalNote>
+          )}
           {draft !== null && <UnsavedMark />}
         </div>
       ) : (

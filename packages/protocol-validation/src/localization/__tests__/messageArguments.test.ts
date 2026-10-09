@@ -6,6 +6,7 @@ import {
   type MessageArguments,
   messageVariants,
   pluralCategoriesOf,
+  pluralCountExamples,
 } from '../messageArguments.ts';
 
 /** What the Family Pedigree tracker's parents entry may use. */
@@ -87,12 +88,24 @@ describe('a message as its variants', () => {
     ]);
   });
 
-  it('has a variant for each plural category of the language', () => {
-    expect(pluralCategoriesOf('pl')).toEqual(['one', 'few', 'many', 'other']);
+  it('has a variant for each plural category a whole number selects', () => {
+    // Polish `other` is for fractions only; a count is never one.
+    expect(pluralCategoriesOf('pl')).toEqual(['one', 'few', 'many']);
     expect(pluralCategoriesOf('zh-Hans')).toEqual(['other']);
+    // French `many` begins at a million.
+    expect(pluralCategoriesOf('fr')).toEqual(['one', 'many', 'other']);
+    expect(pluralCategoriesOf('cs')).toEqual(['one', 'few', 'other']);
     expect(
       messageVariants('Add biological parents', PARENTS, 'pl'),
-    ).toHaveLength(8);
+    ).toHaveLength(6);
+  });
+
+  it('gives examples of the counts each category is for', () => {
+    expect(pluralCountExamples('fr').get('many')).toEqual([
+      1_000_000, 2_000_000, 3_000_000, 10_000_000,
+    ]);
+    expect(pluralCountExamples('pl').get('few')).toEqual([2, 3, 4, 22]);
+    expect(pluralCountExamples('pl').has('other')).toBe(false);
   });
 
   it('reads `#` in a plural as its number, and outside one as text', () => {
@@ -137,6 +150,25 @@ describe('variants written back as a message', () => {
         '{isYou, select, true {Mine} other {{missing, plural, one {Theirs} other {Theirs}}}}',
       ),
     ).toBe('{isYou, select, true {Mine} other {Theirs}}');
+  });
+
+  it('writes the `other` ICU requires where no count selects it', () => {
+    const variants = messageVariants(
+      '{missing, plural, one {# rodzic} few {# rodzice} many {# rodziców} other {# rodzica}}',
+      { missing: { kind: 'plural' } },
+      'pl',
+    );
+    const message = composeMessage(
+      variants,
+      { missing: { kind: 'plural' } },
+      'pl',
+    );
+    expect(message).toBe(
+      '{missing, plural, one {# rodzic} few {# rodzice} many {# rodziców} other {# rodziców}}',
+    );
+    expect(
+      findMessageArgumentProblem(message, { missing: { kind: 'plural' } }),
+    ).toBeUndefined();
   });
 
   it('keeps a plural whose number is shown', () => {

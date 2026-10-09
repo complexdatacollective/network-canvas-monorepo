@@ -84,6 +84,7 @@ export {
   type MessageVariant,
   messageVariants,
   pluralCategoriesOf,
+  pluralCountExamples,
 } from './localization/messageArguments.ts';
 export { escapeMarkdownText } from './localization/markdownText.ts';
 export {

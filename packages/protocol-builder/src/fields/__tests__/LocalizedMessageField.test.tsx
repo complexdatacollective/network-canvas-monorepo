@@ -40,10 +40,13 @@ function ItemField({ initialValue }: { initialValue?: LocalizedString }) {
   );
 }
 
-function renderItem(initialValue?: LocalizedString) {
+function renderItem(
+  initialValue?: LocalizedString,
+  localization: ProtocolLocalization = ENGLISH,
+) {
   const saved: { current: Saved | undefined } = { current: undefined };
   render(
-    <ProtocolLocalizationProvider localization={ENGLISH}>
+    <ProtocolLocalizationProvider localization={localization}>
       <Form
         onSubmit={(values: Saved) => {
           saved.current = values;
@@ -80,6 +83,23 @@ describe('LocalizedMessageField', () => {
     );
     expect(versions[3]).toHaveAccessibleName(
       'About someone else When “Parents missing” is 0, 2, 3, …',
+    );
+  });
+
+  it('labels every version with numbers it is for, in a language whose plural forms begin past 1,000', async () => {
+    renderItem(
+      { fr: 'Ajoutez des parents' },
+      {
+        defaultLocale: 'fr',
+        locales: ['fr'],
+      },
+    );
+
+    const versions = await screen.findAllByRole('textbox');
+    // French says "un million de parents": `many` begins at a million.
+    expect(versions).toHaveLength(6);
+    expect(versions[1]).toHaveAccessibleName(
+      'About the participant When “Parents missing” is 1,000,000, 2,000,000, 3,000,000, …',
     );
   });
 

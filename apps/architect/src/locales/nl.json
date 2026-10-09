@@ -493,6 +493,7 @@
   "architect.localization.translationTable.languages": "Talen ({shown, number} van {total, number})",
   "architect.localization.translationTable.languagesMenu": "Talen tonen",
   "architect.localization.translationTable.lastLanguage": "Er wordt altijd minstens één taal getoond.",
+  "architect.localization.translationTable.messageRefused": "Je wijziging is niet opgeslagen. {reason}",
   "architect.localization.translationTable.missingAny": "Ontbreekt in een van de getoonde talen",
   "architect.localization.translationTable.missingLanguage": "Ontbreekt in het {language}",
   "architect.localization.translationTable.noMatches": "Geen teksten komen overeen met je zoekopdracht.",

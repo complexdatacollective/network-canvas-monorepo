@@ -161,6 +161,35 @@ describe('TranslationTable: texts with versions', () => {
     expect(listItem(store)).toEqual({ en: SIBLINGS });
   });
 
+  it('refuses some versions written and others empty, says why, and keeps what was saved', async () => {
+    const { store, user } = renderTable();
+
+    await user.click(messageCell('English'));
+    const [aboutYou] = await versions('English');
+    await user.click(aboutYou!);
+    await user.keyboard('{Control>}a{/Control}{Backspace}');
+    expect(
+      await screen.findByText(
+        'Write every version of this text, or leave them all empty.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('group', { name: cellName('English') }),
+    ).toHaveAccessibleDescription(
+      'Write every version of this text, or leave them all empty.',
+    );
+
+    await user.click(
+      screen.getByRole('textbox', { name: /Stage name English$/ }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('group', { name: cellName('English') })).toBe(
+        null,
+      ),
+    );
+    expect(listItem(store)).toEqual({ en: SIBLINGS });
+  });
+
   it('refuses to clear the only translation, and keeps it', async () => {
     const { store, user } = renderTable();
 

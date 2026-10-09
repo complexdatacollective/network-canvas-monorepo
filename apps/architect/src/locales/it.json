@@ -493,6 +493,7 @@
   "architect.localization.translationTable.languages": "Lingue ({shown, number} di {total, number})",
   "architect.localization.translationTable.languagesMenu": "Mostra lingue",
   "architect.localization.translationTable.lastLanguage": "Viene sempre mostrata almeno una lingua.",
+  "architect.localization.translationTable.messageRefused": "La modifica non è stata salvata. {reason}",
   "architect.localization.translationTable.missingAny": "Mancante in una delle lingue mostrate",
   "architect.localization.translationTable.missingLanguage": "Mancante in {language}",
   "architect.localization.translationTable.noMatches": "Nessun testo corrisponde alla ricerca.",

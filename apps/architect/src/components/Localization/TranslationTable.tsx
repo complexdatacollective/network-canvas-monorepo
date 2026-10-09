@@ -33,6 +33,7 @@ import {
 } from '@codaco/fresco-ui/Popover';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { Table } from '@codaco/fresco-ui/Table';
+import { localizedMessageProblem } from '@codaco/protocol-builder/fields/LocalizedMessageField';
 import {
   localeDirection,
   translationText,
@@ -585,9 +586,19 @@ const TranslationTable = ({
     (path: TranslationRow['path'], locale: LocaleTag) =>
     (message: string | undefined): CommitResult => {
       const before = store.getState();
-      const current = findRow(getTranslationGroups(before), path)?.value;
+      const row = findRow(getTranslationGroups(before), path);
+      const current = row?.value;
       const declared = getProtocol(before)?.localization.locales;
       if (current === undefined || declared === undefined) return 'failed';
+      // Held to the rule the stage editor holds it to, so the table never
+      // saves what the protocol's schema refuses.
+      if (
+        message !== undefined &&
+        row?.arguments !== undefined &&
+        localizedMessageProblem(message, row.arguments, locale) !== undefined
+      ) {
+        return 'refused';
+      }
       const next = withMessage(current, locale, message);
       if (
         next === undefined ||

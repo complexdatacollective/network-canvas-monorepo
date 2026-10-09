@@ -17,6 +17,7 @@ import {
   type MessagePart,
   type MessageVariant,
   messageVariants,
+  pluralCountExamples,
 } from '@codaco/protocol-validation';
 
 import { asLocalizedString } from '../localization/localizedText.ts';
@@ -50,31 +51,6 @@ const messages = defineMessages({
 
 /** How many examples a plural version's label gives of the numbers it is for. */
 const EXAMPLE_COUNT = 3;
-/** Far enough to find examples of every category in every CLDR language. */
-const EXAMPLE_SEARCH_LIMIT = 1000;
-
-/** Examples of the whole numbers each plural category is for in `locale`. */
-const numberExamples = (
-  locale: LocaleTag,
-): ReadonlyMap<string, readonly string[]> => {
-  const rules = new Intl.PluralRules(locale);
-  const found = new Map<string, number[]>();
-  for (let n = 0; n <= EXAMPLE_SEARCH_LIMIT; n += 1) {
-    const category = rules.select(n);
-    const numbers = found.get(category) ?? [];
-    // One past the count, to know whether the list goes on.
-    if (numbers.length <= EXAMPLE_COUNT) numbers.push(n);
-    found.set(category, numbers);
-  }
-  return new Map(
-    [...found].map(([category, numbers]) => [
-      category,
-      numbers.length > EXAMPLE_COUNT
-        ? [...numbers.slice(0, EXAMPLE_COUNT).map(String), '…']
-        : numbers.map(String),
-    ]),
-  );
-};
 
 const isBlankVariant = (variant: MessageVariant) =>
   variant.parts.every((part) => typeof part === 'string' && part.trim() === '');
@@ -120,9 +96,11 @@ const partsOf = (document: JSONContent | undefined): MessagePart[] => {
 
 /**
  * What a translation of a message is refused for: some of its versions
- * written and others empty, or something its arguments do not offer.
+ * written and others empty, or something its arguments do not offer. Every
+ * place that writes a message holds it to this rule: the stage editor's
+ * field (`localizedMessageValidation`) and Architect's translation table.
  */
-const messageProblem = (
+export const localizedMessageProblem = (
   message: string,
   declaration: MessageArguments,
   locale: LocaleTag,
@@ -151,7 +129,7 @@ export function localizedMessageValidation(
         for (const [locale, message] of Object.entries(
           asLocalizedString(value) ?? {},
         )) {
-          const problem = messageProblem(message, declaration, locale);
+          const problem = localizedMessageProblem(message, declaration, locale);
           if (problem !== undefined) {
             ctx.addIssue({
               code: 'custom',
@@ -165,6 +143,23 @@ export function localizedMessageValidation(
       }),
     ),
   };
+}
+
+/**
+ * Why `message` cannot be saved, in words, or undefined when it can (or when
+ * there is nothing to judge).
+ */
+export function useLocalizedMessageProblem(
+  message: string | undefined,
+  declaration: MessageArguments,
+  locale: LocaleTag,
+): string | undefined {
+  const intl = useAppIntl();
+  if (message === undefined) return undefined;
+  const problem = localizedMessageProblem(message, declaration, locale);
+  return problem === undefined
+    ? undefined
+    : intl.formatMessage(messages[problem]);
 }
 
 type VersionGroup = Readonly<{
@@ -205,17 +200,27 @@ function useMessageVersions(
   const plural = Object.entries(declaration).find(
     ([, { kind }]) => kind === 'plural',
   )?.[0];
-  const examples = plural === undefined ? undefined : numberExamples(locale);
-  const pluralLabel = (variant: MessageVariant) =>
-    plural === undefined
-      ? undefined
-      : intl.formatMessage(messages.pluralVersion, {
-          placeholder: placeholderLabels[plural] ?? plural,
-          numbers: intl.formatList(
-            examples?.get(variant.when[plural] ?? '') ?? [],
-            { type: 'unit', style: 'short' },
-          ),
-        });
+  // Every version a message has is for some whole numbers, so each label
+  // has examples (see `pluralCountExamples`).
+  const examples =
+    plural === undefined ? undefined : pluralCountExamples(locale);
+  const pluralLabel = (variant: MessageVariant) => {
+    if (plural === undefined) return undefined;
+    const counts =
+      [...(examples ?? [])].find(
+        ([category]) => category === variant.when[plural],
+      )?.[1] ?? [];
+    const shown = counts
+      .slice(0, EXAMPLE_COUNT)
+      .map((count) => intl.formatNumber(count));
+    return intl.formatMessage(messages.pluralVersion, {
+      placeholder: placeholderLabels[plural] ?? plural,
+      numbers: intl.formatList(
+        counts.length > EXAMPLE_COUNT ? [...shown, '…'] : shown,
+        { type: 'unit', style: 'short' },
+      ),
+    });
+  };
 
   const variants = messageVariants(message, declaration, locale);
   const groups = new Map<

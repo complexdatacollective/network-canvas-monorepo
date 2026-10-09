@@ -493,6 +493,7 @@
   "architect.localization.translationTable.languages": "語言（{shown, number}/{total, number}）",
   "architect.localization.translationTable.languagesMenu": "顯示語言",
   "architect.localization.translationTable.lastLanguage": "一律至少顯示一種語言。",
+  "architect.localization.translationTable.messageRefused": "您的變更未儲存。{reason}",
   "architect.localization.translationTable.missingAny": "任一所顯示語言中缺少",
   "architect.localization.translationTable.missingLanguage": "缺少{language}翻譯",
   "architect.localization.translationTable.noMatches": "沒有符合搜尋條件的文字。",

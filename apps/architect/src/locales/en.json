@@ -1975,6 +1975,10 @@
     "defaultMessage": "One language is always shown.",
     "description": "Note in the menu of language columns when only one language is shown, which therefore cannot be hidden."
   },
+  "architect.localization.translationTable.messageRefused": {
+    "defaultMessage": "Your change was not saved. {reason}",
+    "description": "Screen-reader announcement after leaving a translation table cell whose text, written in several versions, could not be saved. reason is the sentence saying what is wrong, such as that some versions are empty."
+  },
   "architect.localization.translationTable.missingAny": {
     "defaultMessage": "Missing in any shown language",
     "description": "Option in the menu above the translation table that shows only the texts with no translation into one or more of the languages whose columns are shown."

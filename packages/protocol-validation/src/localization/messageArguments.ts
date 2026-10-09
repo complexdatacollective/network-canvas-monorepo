@@ -45,19 +45,68 @@ type PluralCategory = (typeof PLURAL_CATEGORIES)[number];
 const isPluralCategory = (key: string): key is PluralCategory =>
   (PLURAL_CATEGORIES as readonly string[]).includes(key);
 
-/** The plural categories a language distinguishes, in CLDR order. */
+// Whole numbers to try: every count to 1,000, then a few millions to
+// billions, where some languages' `many` begins (French, Spanish, Italian,
+// Portuguese and Catalan say "1 million de …").
+const SAMPLE_COUNTS: readonly number[] = [
+  ...Array.from({ length: 1001 }, (_, count) => count),
+  ...[6, 7, 8, 9].flatMap((power) =>
+    [1, 2, 3].map((multiple) => multiple * 10 ** power),
+  ),
+];
+
+/** How many examples of each category `pluralCountExamples` keeps. */
+const EXAMPLES_KEPT = 4;
+
+const examplesByLocale = new Map<
+  string,
+  ReadonlyMap<PluralCategory, readonly number[]>
+>();
+
+const pluralRulesFor = (locale: LocaleTag): Intl.PluralRules => {
+  try {
+    return new Intl.PluralRules(locale);
+  } catch {
+    return new Intl.PluralRules('en');
+  }
+};
+
+/**
+ * The plural categories some whole number selects in `locale`, in CLDR
+ * order, each with the first few counts that select it. A plural argument
+ * counts whole things, so a category only fractions reach, such as Russian
+ * `other` or Czech `many`, is never shown and has no version of its own.
+ */
+export const pluralCountExamples = (
+  locale: LocaleTag,
+): ReadonlyMap<PluralCategory, readonly number[]> => {
+  const cached = examplesByLocale.get(locale);
+  if (cached !== undefined) return cached;
+  const rules = pluralRulesFor(locale);
+  const found = new Map<string, number[]>();
+  for (const count of SAMPLE_COUNTS) {
+    const category = rules.select(count);
+    const examples = found.get(category) ?? [];
+    if (examples.length < EXAMPLES_KEPT) examples.push(count);
+    found.set(category, examples);
+  }
+  const examples = new Map(
+    PLURAL_CATEGORIES.flatMap((category) => {
+      const counts = found.get(category);
+      return counts === undefined ? [] : [[category, counts] as const];
+    }),
+  );
+  examplesByLocale.set(locale, examples);
+  return examples;
+};
+
+/**
+ * The plural categories a message has a version for in `locale`: those some
+ * whole number selects (see `pluralCountExamples`), in CLDR order.
+ */
 export const pluralCategoriesOf = (
   locale: LocaleTag,
-): readonly PluralCategory[] => {
-  let categories: readonly string[];
-  try {
-    categories = new Intl.PluralRules(locale).resolvedOptions()
-      .pluralCategories;
-  } catch {
-    categories = ['one', 'other'];
-  }
-  return PLURAL_CATEGORIES.filter((category) => categories.includes(category));
-};
+): readonly PluralCategory[] => [...pluralCountExamples(locale).keys()];
 
 const parseMessage = (message: string): MessageFormatElement[] | string => {
   try {
@@ -350,8 +399,17 @@ export const composeMessage = (
     if (!keepsPlural && arms.every((arm) => arm === arms[0])) {
       return compose(rest, fixed, inPlural);
     }
-    const options = axis.keys
-      .map((key, index) => `${key} {${arms[index] ?? ''}}`)
+    // ICU requires `other`. Where no whole number selects it, nothing ever
+    // reads it, so it repeats the last version rather than standing empty.
+    const keys =
+      axis.kind === 'plural' && !axis.keys.includes('other')
+        ? [...axis.keys, 'other']
+        : axis.keys;
+    const options = keys
+      .map(
+        (key, index) =>
+          `${key} {${arms[Math.min(index, arms.length - 1)] ?? ''}}`,
+      )
       .join(' ');
     return `{${axis.name}, ${axis.kind}, ${options}}`;
   };
