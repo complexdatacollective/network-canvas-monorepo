@@ -3150,10 +3150,21 @@ export const ANameGivenOnALaterStageIsKept: Story = {
     await next();
     await canvas.findByText('After the pedigree.');
 
-    // Back on the pedigree, Sam is named.
+    // Back on the pedigree, Sam is named. Each step back is taken only once
+    // the shell shows a stage after the pedigree (step 1), so a retry while
+    // the pedigree is still drawing never goes on past it.
+    const pastPedigree = () => {
+      const shown = [...canvasElement.querySelectorAll('[data-stage-step]')];
+      return (
+        shown.length > 0 &&
+        shown.every(
+          (stage) => Number(stage.getAttribute('data-stage-step')) > 1,
+        )
+      );
+    };
     await waitFor(
       async () => {
-        if (!canvas.queryByTestId('pedigree-canvas')) {
+        if (!canvas.queryByTestId('pedigree-canvas') && pastPedigree()) {
           await userEvent.click(canvas.getByTestId('previous-button'));
         }
         await expect(canvas.getByTestId('pedigree-canvas')).toBeVisible();
