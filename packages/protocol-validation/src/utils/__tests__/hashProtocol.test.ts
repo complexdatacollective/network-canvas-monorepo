@@ -1,3 +1,4 @@
+import { hash } from 'ohash';
 import { describe, expect, it } from 'vitest';
 
 import { hashProtocol } from '../hashProtocol.ts';
@@ -95,6 +96,17 @@ describe('hashProtocol', () => {
     expect(hashProtocol(wording('Suivant'))).not.toBe(
       hashProtocol(localizedProtocol()),
     );
+  });
+
+  it('keeps the hash of a protocol that holds no shared wording', () => {
+    // The hash a schema-9 protocol had before shared wording was hashed.
+    const { localization, codebook, stages } = localizedProtocol();
+    const before = hash({ localization, codebook, stages });
+
+    expect(hashProtocol(localizedProtocol())).toBe(before);
+    expect(
+      hashProtocol({ ...localizedProtocol(), interfaceText: undefined }),
+    ).toBe(before);
   });
 
   it('changes when the default language changes', () => {

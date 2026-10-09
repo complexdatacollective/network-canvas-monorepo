@@ -56,7 +56,11 @@ export function hashProtocol(
         ...protocol.localization,
         locales: protocol.localization.locales.toSorted(compareLocaleTags),
       },
-      interfaceText: protocol.interfaceText,
+      // Present only when held: `ohash` hashes an undefined key apart from an
+      // absent one, and a protocol without shared wording keeps its hash.
+      ...(protocol.interfaceText !== undefined && {
+        interfaceText: protocol.interfaceText,
+      }),
       codebook: protocol.codebook,
       stages: protocol.stages,
     });
