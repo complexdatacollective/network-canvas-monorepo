@@ -1157,7 +1157,7 @@ export const AParentNotYetShownCanHaveCarriedASibling: Story = {
 /**
  * Jun was adopted by Clare, as was his sister Lucy. His birth mother, added
  * as a biological parent, is not assumed to be Clare's partner, nor Lucy's
- * mother: the partner question starts at No and Lucy is not chosen. Made an
+ * mother: the partner question starts unanswered and Lucy is not chosen. Made an
  * adoptive parent instead, she is assumed to have raised them with Clare,
  * until the participant says she was not Clare's partner, which changing
  * the kind of parent again leaves alone. Nothing records a partnership.
@@ -1217,7 +1217,7 @@ export const ABirthParentIsNotAssumedToBeAnAdoptiveParentsPartner: Story = {
       within(alsoParentOf).getByRole('checkbox', { name: 'Lucy' });
 
     // A biological parent, by default.
-    await waitFor(() => expect(partnerAnswer()).toBe('No'));
+    await waitFor(() => expect(partnerAnswer()).toBeUndefined());
     await expect(lucyChosen()).not.toBeChecked();
 
     await chooseKind('Adoptive parent');
@@ -1225,7 +1225,7 @@ export const ABirthParentIsNotAssumedToBeAnAdoptiveParentsPartner: Story = {
     await waitFor(() => expect(lucyChosen()).toBeChecked());
 
     await chooseKind('Biological parent');
-    await waitFor(() => expect(partnerAnswer()).toBe('No'));
+    await waitFor(() => expect(partnerAnswer()).toBeUndefined());
     await waitFor(() => expect(lucyChosen()).not.toBeChecked());
 
     // The participant's own answer is kept.
@@ -1254,8 +1254,9 @@ export const ABirthParentIsNotAssumedToBeAnAdoptiveParentsPartner: Story = {
  * Choosing the answer already filled in is an answer too, with the pointer or
  * the keyboard: Jun's new parent, made adoptive, is assumed to be Clare's
  * partner, and the participant clicks Clare; made biological again, she is
- * still Clare's partner. Opened afresh, the partner question starts at No,
- * and the participant presses Space on No; made adoptive, it stays No.
+ * still Clare's partner. Opened afresh, the partner question starts
+ * unanswered, and the participant presses Space on No; made adoptive, it
+ * stays No.
  */
 export const ChoosingTheAnswerFilledInKeepsIt: Story = {
   args: { requirement: 'none' },
@@ -1304,9 +1305,10 @@ export const ChoosingTheAnswerFilledInKeepsIt: Story = {
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
 
     const byKeyboard = await openAddParent();
-    await waitFor(() => expect(byKeyboard.option('No')).toBeChecked());
+    await expect(byKeyboard.option('No')).not.toBeChecked();
     byKeyboard.option('No').focus();
     await userEvent.keyboard(' ');
+    await waitFor(() => expect(byKeyboard.option('No')).toBeChecked());
     await byKeyboard.chooseKind('Adoptive parent');
     await expect(byKeyboard.option('No')).toBeChecked();
   },
@@ -1368,13 +1370,10 @@ export const ANewParentIsAskedAboutCarryingSiblings: Story = {
       }),
     ).toBeNull();
 
-    // Sam, Jun's full brother, is chosen already, and asked about; not
-    // chosen, he is not.
+    // Sam, Jun's full brother, shares the unnamed mother Mei takes the
+    // place of, so is chosen and cannot be unchosen; he is asked about.
     await waitFor(() => expect(sam).toBeChecked());
-    await waitFor(() => expect(carriedSam()).not.toBeNull());
-    await userEvent.click(sam);
-    await waitFor(() => expect(carriedSam()).toBeNull());
-    await userEvent.click(sam);
+    await expect(sam).toHaveAttribute('aria-disabled', 'true');
     await waitFor(() => expect(carriedSam()).not.toBeNull());
     const yes = () =>
       within(carriedSam() as HTMLElement).getByRole('radio', { name: 'Yes' });
@@ -1382,16 +1381,16 @@ export const ANewParentIsAskedAboutCarryingSiblings: Story = {
 
     // Recorded as male at birth, she could not have been pregnant, nor a
     // genetic parent beside the father, so her kind of parent and Sam are
-    // taken back with the answer. Female again, a biological parent of Sam
-    // again, she is asked again.
+    // taken back with the answer. Female again, a biological parent in the
+    // unnamed mother's place again, she is asked again.
     await userEvent.click(body.getByRole('radio', { name: 'Male' }));
     await waitFor(() => expect(carriedSam()).toBeNull());
+    await waitFor(() => expect(sam).not.toBeChecked());
     await userEvent.click(body.getByRole('radio', { name: 'Female' }));
     await userEvent.click(
       body.getByRole('radio', { name: 'Biological parent' }),
     );
-    await waitFor(() => expect(sam).not.toBeChecked());
-    await userEvent.click(sam);
+    await waitFor(() => expect(sam).toBeChecked());
     await waitFor(() => expect(carriedSam()).not.toBeNull());
     await expect(yes()).not.toBeChecked();
     await userEvent.click(yes());
@@ -1409,10 +1408,11 @@ export const ANewParentIsAskedAboutCarryingSiblings: Story = {
 
 /**
  * Ella's birth mother Rachel is recorded. Her father, added as a biological
- * parent, is assumed to be Rachel's partner, as is a stepfather: either
- * raised Ella with her.
+ * parent, is not assumed to be Rachel's partner (ruling 25: a partnership
+ * between biological parents is never assumed); a stepfather, who raised
+ * Ella with her, is.
  */
-export const AParentIsAssumedToBeTheirCoParentsPartner: Story = {
+export const AStepParentIsAssumedToBeTheirCoParentsPartner: Story = {
   args: { requirement: 'none' },
   render: (args) => (
     <PedigreeStory
@@ -1444,7 +1444,7 @@ export const AParentIsAssumedToBeTheirCoParentsPartner: Story = {
       name: /^Are they the partner of another parent\?/,
     });
     const rachel = within(partner).getByRole('radio', { name: 'Rachel' });
-    await waitFor(() => expect(rachel).toBeChecked());
+    await expect(rachel).not.toBeChecked();
     await userEvent.click(
       within(
         await body.findByRole('radiogroup', {
@@ -1452,7 +1452,7 @@ export const AParentIsAssumedToBeTheirCoParentsPartner: Story = {
         }),
       ).getByRole('radio', { name: 'Step or social parent' }),
     );
-    await expect(rachel).toBeChecked();
+    await waitFor(() => expect(rachel).toBeChecked());
   },
 };
 

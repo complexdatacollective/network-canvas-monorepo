@@ -16,6 +16,45 @@ export type ReasonContext = {
   sexLabels: Readonly<Record<PedigreeSexAssignedAtBirth, string>>;
 };
 
+/** An answer a reason makes unavailable: its value, and its label as
+ * shown. */
+export type UnavailableAnswer = { value: string; label: string };
+
+/**
+ * Why answers are unavailable, and which: each reason names the answers it
+ * disables, so a hint holding several says which goes with which, and each
+ * option can be described by its own (`reasonsFor`).
+ */
+export type Reason = { answers: readonly UnavailableAnswer[] } & (
+  | { rule: 'geneticParent'; block: GeneticParentBlock }
+  | {
+      /** The person the panel describes, a genetic parent of `childId`
+       * beside `coParentId`, cannot be given the sex at birth they have. */
+      rule: 'sameSexAsCoParent';
+      personId: string;
+      childId: string;
+      coParentId: string;
+      sex: string;
+    }
+  | { rule: 'carrierRecorded'; childId: string; carrierId: string }
+  | {
+      /** `personId` cannot have carried a pregnancy: the person the panel
+       * describes when undefined. */
+      rule: 'cannotCarry';
+      personId: string | undefined;
+      sex: string;
+    }
+  | {
+      /** The person the panel describes carried `childId`, so cannot be
+       * given a sex at birth that rules it out. */
+      rule: 'carried';
+      personId: string;
+      childId: string;
+      sex: string;
+    }
+  | { rule: 'bothSameSex'; firstId: string; secondId: string; sex: string }
+);
+
 const isYou = (context: ReasonContext, personId: string) =>
   context.family.byId.get(personId)?.isEgo === true;
 
@@ -24,16 +63,98 @@ const sexLabel = (context: ReasonContext, sex: string) =>
     context.sexLabels[sex as PedigreeSexAssignedAtBirth] ?? sex,
   );
 
-/** Why someone cannot be another genetic parent of a child, naming the
- * genetic parent recorded in the way. */
-export function geneticParentReason(
+/** People or answers named in a sentence, each quoted, joined as the
+ * participant's language joins a list. */
+const quotedList = (context: ReasonContext, items: readonly string[]) =>
+  context.intl.formatList(
+    items.map((name) =>
+      context.intl.formatMessage(messages.listedName, { name }),
+    ),
+    { type: 'conjunction' },
+  );
+
+/** The answers a reason disables, as its sentence names them. */
+const answersArgs = (context: ReasonContext, reason: Reason) => ({
+  answers: quotedList(
+    context,
+    reason.answers.map((answer) => answer.label),
+  ),
+  count: reason.answers.length,
+});
+
+/** The answer that is a sex at birth. */
+const sexAnswer = (context: ReasonContext, sex: string): UnavailableAnswer => ({
+  value: sex,
+  label: sexLabel(context, sex),
+});
+
+/** Why a genetic parent recorded in the way makes answers unavailable. */
+export const geneticParentReason = (
+  block: GeneticParentBlock,
+  answers: readonly UnavailableAnswer[],
+): Reason => ({ rule: 'geneticParent', block, answers });
+
+/** Why someone else having carried the child makes answers unavailable. */
+export const carrierRecordedReason = (
+  childId: string,
+  carrierId: string,
+  answers: readonly UnavailableAnswer[],
+): Reason => ({ rule: 'carrierRecorded', childId, carrierId, answers });
+
+/** Why someone recorded as male at birth cannot have carried a pregnancy:
+ * the person the panel describes when `personId` is undefined. */
+export const cannotCarryReason = (
+  personId: string | undefined,
+  sex: string,
+  answers: readonly UnavailableAnswer[],
+): Reason => ({ rule: 'cannotCarry', personId, sex, answers });
+
+/** Why two people cannot both be a new child's genetic parents. */
+export const bothSameSexReason = (
+  firstId: string,
+  secondId: string,
+  sex: string,
+  answers: readonly UnavailableAnswer[],
+): Reason => ({ rule: 'bothSameSex', firstId, secondId, sex, answers });
+
+/** Why the person the panel describes cannot be given a sex at birth,
+ * phrased from their own point of view. */
+export const sexRuledOutReason = (
   context: ReasonContext,
+  personId: string,
+  reason: SexRuledOut,
+): Reason => {
+  const answers = [sexAnswer(context, reason.sex)];
+  return reason.rule === 'sameSexGeneticParent'
+    ? {
+        rule: 'sameSexAsCoParent',
+        personId,
+        childId: reason.childId,
+        coParentId: reason.coParentId,
+        sex: reason.sex,
+        answers,
+      }
+    : {
+        rule: 'carried',
+        personId,
+        childId: reason.childId,
+        sex: reason.sex,
+        answers,
+      };
+};
+
+/** Why a genetic parent recorded in the way makes answers unavailable, as
+ * a sentence. */
+function formatGeneticParent(
+  context: ReasonContext,
+  reason: Reason,
   block: GeneticParentBlock,
 ): string {
   const { intl, displayName } = context;
   const child = displayName(block.childId);
   if (block.rule === 'sameSexGeneticParent') {
     return intl.formatMessage(messages.unavailableSameSexGeneticParent, {
+      ...answersArgs(context, reason),
       who: isYou(context, block.coParentId)
         ? 'coParentIsYou'
         : isYou(context, block.childId)
@@ -51,6 +172,7 @@ export function geneticParentReason(
       : [you, ...block.parentIds.filter((id) => id !== you)]
   ).map(displayName);
   return intl.formatMessage(messages.unavailableGeneticParentsFull, {
+    ...answersArgs(context, reason),
     who: isYou(context, block.childId)
       ? 'childIsYou'
       : you !== undefined
@@ -62,87 +184,155 @@ export function geneticParentReason(
   });
 }
 
-/** Why nobody else can have carried a child: someone already did. */
-export function carrierRecordedReason(
+/**
+ * One reason as a sentence, about `childIds` where it can be about several
+ * children (`joinReasons` merges reasons that differ only in the child).
+ */
+function formatReason(
   context: ReasonContext,
-  childId: string,
-  carrierId: string,
+  reason: Reason,
+  childIds: readonly string[],
 ): string {
-  return context.intl.formatMessage(messages.unavailableCarrierRecorded, {
-    who: isYou(context, carrierId)
-      ? 'carrierIsYou'
-      : isYou(context, childId)
-        ? 'childIsYou'
-        : 'other',
-    carrier: context.displayName(carrierId),
-    child: context.displayName(childId),
-  });
-}
-
-/** Why someone recorded as male at birth cannot have carried a pregnancy:
- * the person the panel describes when `personId` is undefined. */
-export function cannotCarryReason(
-  context: ReasonContext,
-  personId: string | undefined,
-  sex: string,
-): string {
-  return context.intl.formatMessage(messages.unavailableCannotCarry, {
-    who:
-      personId === undefined
-        ? 'this'
-        : isYou(context, personId)
-          ? 'you'
-          : 'other',
-    name: personId === undefined ? '' : context.displayName(personId),
-    sex: sexLabel(context, sex),
-  });
-}
-
-/** Why the person the panel describes cannot be given a sex at birth. */
-export function sexRuledOutReason(
-  context: ReasonContext,
-  personId: string,
-  reason: SexRuledOut,
-): string {
-  if (reason.rule === 'sameSexGeneticParent') {
-    return geneticParentReason(context, {
-      rule: 'sameSexGeneticParent',
-      childId: reason.childId,
-      coParentId: reason.coParentId,
-      sex: reason.sex === 'female' ? 'female' : 'male',
-    });
+  const { intl, displayName } = context;
+  const children = quotedList(context, childIds.map(displayName));
+  const aboutYou = childIds.some((id) => isYou(context, id));
+  switch (reason.rule) {
+    case 'geneticParent':
+      return formatGeneticParent(context, reason, reason.block);
+    case 'sameSexAsCoParent':
+      return intl.formatMessage(messages.unavailableSameSexAsCoParent, {
+        who: isYou(context, reason.personId)
+          ? 'personIsYou'
+          : aboutYou
+            ? 'childIsYou'
+            : isYou(context, reason.coParentId)
+              ? 'coParentIsYou'
+              : 'other',
+        children,
+        coParent: displayName(reason.coParentId),
+        sex: sexLabel(context, reason.sex),
+      });
+    case 'carrierRecorded':
+      return intl.formatMessage(messages.unavailableCarrierRecorded, {
+        ...answersArgs(context, reason),
+        who: isYou(context, reason.carrierId)
+          ? 'carrierIsYou'
+          : isYou(context, reason.childId)
+            ? 'childIsYou'
+            : 'other',
+        carrier: displayName(reason.carrierId),
+        child: displayName(reason.childId),
+      });
+    case 'cannotCarry':
+      return intl.formatMessage(messages.unavailableCannotCarry, {
+        ...answersArgs(context, reason),
+        who:
+          reason.personId === undefined
+            ? 'this'
+            : isYou(context, reason.personId)
+              ? 'you'
+              : 'other',
+        name: reason.personId === undefined ? '' : displayName(reason.personId),
+        sex: sexLabel(context, reason.sex),
+      });
+    case 'carried':
+      return intl.formatMessage(messages.unavailableCarried, {
+        who: isYou(context, reason.personId)
+          ? 'personIsYou'
+          : aboutYou
+            ? 'childIsYou'
+            : 'other',
+        children,
+        sex: sexLabel(context, reason.sex),
+      });
+    case 'bothSameSex': {
+      const [first, second] = isYou(context, reason.secondId)
+        ? [reason.secondId, reason.firstId]
+        : [reason.firstId, reason.secondId];
+      return intl.formatMessage(messages.unavailableBothSameSex, {
+        ...answersArgs(context, reason),
+        firstIsYou: isYou(context, first) ? 'true' : 'false',
+        first: displayName(first),
+        second: displayName(second),
+        sex: sexLabel(context, reason.sex),
+      });
+    }
   }
-  return context.intl.formatMessage(messages.unavailableCarried, {
-    who: isYou(context, personId)
-      ? 'personIsYou'
-      : isYou(context, reason.childId)
-        ? 'childIsYou'
-        : 'other',
-    child: context.displayName(reason.childId),
-    sex: sexLabel(context, reason.sex),
-  });
 }
 
-/** Why two people cannot both be a new child's genetic parents. */
-export function bothSameSexReason(
-  context: ReasonContext,
-  firstId: string,
-  secondId: string,
-  sex: string,
-): string {
-  const [first, second] = isYou(context, secondId)
-    ? [secondId, firstId]
-    : [firstId, secondId];
-  return context.intl.formatMessage(messages.unavailableBothSameSex, {
-    firstIsYou: isYou(context, first) ? 'true' : 'false',
-    first: context.displayName(first),
-    second: context.displayName(second),
-    sex: sexLabel(context, sex),
-  });
-}
-
-/** The reasons as one hint, each sentence once; undefined with none. */
-export const joinReasons = (reasons: readonly (string | undefined)[]) => {
-  const unique = [...new Set(reasons.filter((reason) => reason !== undefined))];
-  return unique.length > 0 ? unique.join(' ') : undefined;
+/** What a reason says apart from the child it is about, for the reasons
+ * that can be about several children at once. */
+const mergeKey = (reason: Reason) => {
+  if (reason.rule === 'carried') {
+    return JSON.stringify([reason.rule, reason.personId, reason.sex]);
+  }
+  if (reason.rule === 'sameSexAsCoParent') {
+    return JSON.stringify([
+      reason.rule,
+      reason.personId,
+      reason.coParentId,
+      reason.sex,
+    ]);
+  }
+  return undefined;
 };
+
+/**
+ * The reasons as one hint. Each names the answers it disables, so no
+ * lead-in is repeated; reasons that differ only in the child they are about
+ * are said once, naming the children together ("you are recorded as having
+ * carried “Ava” and “Ben”"), except that the participant, when one of them,
+ * is spoken of in a sentence of their own. Each sentence is said once.
+ * Undefined with none.
+ */
+export function joinReasons(
+  context: ReasonContext,
+  reasons: readonly (Reason | undefined | false)[],
+): string | undefined {
+  const groups: { reason: Reason; childIds: string[] }[] = [];
+  for (const reason of reasons) {
+    if (!reason) continue;
+    const key = mergeKey(reason);
+    const childId =
+      reason.rule === 'carried' || reason.rule === 'sameSexAsCoParent'
+        ? reason.childId
+        : undefined;
+    const merged =
+      key !== undefined &&
+      childId !== undefined &&
+      !isYou(context, childId) &&
+      groups.find(
+        (group) =>
+          mergeKey(group.reason) === key &&
+          !group.childIds.some((id) => isYou(context, id)),
+      );
+    if (merged) {
+      if (!merged.childIds.includes(childId)) merged.childIds.push(childId);
+      continue;
+    }
+    groups.push({ reason, childIds: childId === undefined ? [] : [childId] });
+  }
+  const sentences = [
+    ...new Set(
+      groups.map(({ reason, childIds }) =>
+        formatReason(context, reason, childIds),
+      ),
+    ),
+  ];
+  return sentences.length > 0 ? sentences.join(' ') : undefined;
+}
+
+/** Why an answer is unavailable, as its own description: the reasons that
+ * name it. Undefined when none does. */
+export const reasonsFor = (
+  context: ReasonContext,
+  reasons: readonly (Reason | undefined | false)[],
+  value: string,
+) =>
+  joinReasons(
+    context,
+    reasons.filter(
+      (reason) =>
+        reason && reason.answers.some((answer) => answer.value === value),
+    ),
+  );

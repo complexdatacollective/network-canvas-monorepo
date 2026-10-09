@@ -51,8 +51,8 @@
     - text: Did Julie carry the pregnancy?
     - radiogroup "Did Julie carry the pregnancy?":
       - radio "Yes"
-      - radio "No" [checked]
-    - text: Rob is their… Some answers are unavailable because “Rob” is recorded as “Male” at birth, so they cannot have carried a pregnancy. To choose one, first change their sex at birth.
+      - radio "No"
+    - text: Rob is their… “Surrogate” is unavailable because “Rob” is recorded as “Male” at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.
     - radiogroup "Rob is their…":
       - radio "Biological parent" [checked]
       - text: Biological parent
@@ -63,7 +63,7 @@
       - radio "Egg or sperm donor"
       - text: Egg or sperm donor
       - radio "Surrogate" [disabled]
-      - text: Surrogate
+      - text: Surrogate “Surrogate” is unavailable because “Rob” is recorded as “Male” at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.
     - text: Which of “Bea”’s siblings, if any, are their twins? Include triplets and other multiple births.
     - group "Which of “Bea”’s siblings, if any, are their twins?":
       - checkbox "You"

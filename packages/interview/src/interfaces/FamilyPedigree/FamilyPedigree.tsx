@@ -232,15 +232,15 @@ const menuItemsOf = (symbol: HTMLElement) => [
     ?.querySelectorAll<HTMLElement>('[data-add-menu-item]') ?? []),
 ];
 
-/** The attributes recording a link. */
+/** The attributes recording a link. Whether a parent carried the
+ * pregnancy is left unrecorded while not known, told apart from "No". */
 const linkAttributesFor = (config: PedigreeConfig, link: PlannedLink) => ({
   [config.kindAttribute]: [link.kind],
   ...(link.kind === 'partner'
     ? { [config.currentPartnerAttribute]: link.isCurrentPartner ?? true }
-    : {
-        [config.gestationalCarrierAttribute]:
-          link.isGestationalCarrier ?? false,
-      }),
+    : link.isGestationalCarrier === undefined
+      ? {}
+      : { [config.gestationalCarrierAttribute]: link.isGestationalCarrier }),
 });
 
 /** The attributes recording twins: their zygosity, as the relationship
@@ -1742,6 +1742,15 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       planStandIns(latestFamily(), uuid, config.sexAssignedAtBirthAttribute),
     );
 
+  // Whether keeping the stand-in rule changes anything.
+  const changesAnything = (changes: StandInChanges) =>
+    changes.people.length > 0 ||
+    changes.links.length > 0 ||
+    changes.updatedPeople.length > 0 ||
+    changes.changedTwins.length > 0 ||
+    changes.removedLinkIds.length > 0 ||
+    changes.removedPersonIds.length > 0;
+
   // Writes what keeping the stand-in rule changes, stopping at the first
   // write the session refuses, which it resolves to. Stand-ins are taken
   // away only once every other change is stored, so a refusal leaves no one
@@ -1813,22 +1822,20 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     });
   };
 
-  // The stand-ins a family read on opening the stage is missing (one saved
-  // before this version, or changed by another stage) are added once, so the
-  // participant sees them and the saved family matches one made here. Only
-  // stand-ins are added: nobody is removed or changed until the participant
-  // changes the family.
+  // A family read on opening the stage that does not keep the stand-in rule
+  // (one saved before this version, or changed by another stage) is brought
+  // into line once, as after any change, so the participant sees it as it
+  // will be saved and the saved family matches one made here: stand-ins are
+  // added, give way, and take the sex at birth that follows, in one piece.
   const standInsChecked = useRef(false);
   const addMissingStandIns = useEffectEvent(async () => {
-    const missing = planStandIns(
+    const changes = planStandIns(
       latestFamily(),
       uuid,
       config.sexAssignedAtBirthAttribute,
     );
-    if (missing.people.length === 0 && missing.links.length === 0) return;
-    reportRefusedStandIn(
-      await applyStandIns({ people: missing.people, links: missing.links }),
-    );
+    if (!changesAnything(changes)) return;
+    reportRefusedStandIn(await applyStandIns(changes));
   });
   useEffect(() => {
     if (!family.egoId || standInsChecked.current) return;
@@ -1903,6 +1910,20 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         }),
       );
       if (writeFailureMessage(updated)) return writeSubmissionResult(updated);
+      // A sex at birth the participant chose for a stand-in, rather than the
+      // one that followed from the other genetic parent, is something they
+      // told about them: they are someone in their own right from then on,
+      // so the stand-in rule neither changes it nor has them give way.
+      if (
+        sexAssignedAtBirth !== mode.person.sexAssignedAtBirth &&
+        isStandIn(family, mode.person.id)
+      ) {
+        writeSharedRecord({
+          standIns: storedSharedRecord().standIns.filter(
+            (id) => id !== mode.person.id,
+          ),
+        });
+      }
       // A name typed for someone whose label was saved is theirs now, even
       // when it is the same words.
       if (
@@ -1930,12 +1951,19 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   ? {
                       [config.currentPartnerAttribute]: update.isCurrentPartner,
                     }
-                  : {
-                      [config.gestationalCarrierAttribute]:
-                        update.isGestationalCarrier,
-                    }),
+                  : update.isGestationalCarrier === undefined
+                    ? {}
+                    : {
+                        [config.gestationalCarrierAttribute]:
+                          update.isGestationalCarrier,
+                      }),
               },
-              unset: [],
+              // Not known any more: nothing recorded.
+              unset:
+                update.kind !== 'partner' &&
+                update.isGestationalCarrier === undefined
+                  ? [config.gestationalCarrierAttribute]
+                  : [],
             },
           }),
         );
@@ -2213,12 +2241,24 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       const cutOff = peopleCutOff(family, {
         linkIds: linksBetween(linkingId, personId),
       });
+      // A stand-in's connection is not replaced by connecting anyone else:
+      // they give way to the parent they stand in for, once added.
+      const standInId = [linkingId, personId].find((id) =>
+        isStandIn(family, id),
+      );
+      const childId = standInId === linkingId ? personId : linkingId;
       if (cutOff.length > 0) {
         refuse(
-          intl.formatMessage(messages.disconnectWouldCutOff, {
-            count: cutOff.length,
-            names: listOfNames(cutOff),
-          }),
+          standInId === undefined
+            ? intl.formatMessage(messages.disconnectWouldCutOff, {
+                count: cutOff.length,
+                names: listOfNames(cutOff),
+              })
+            : intl.formatMessage(messages.disconnectStandIn, {
+                childIsYou: family.byId.get(childId)?.isEgo ? 'true' : 'false',
+                child: displayName(childId),
+                standIn: displayName(standInId),
+              }),
         );
         return;
       }

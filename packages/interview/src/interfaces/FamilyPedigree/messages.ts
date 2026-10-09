@@ -316,6 +316,13 @@ export const messages = defineMessages({
     description:
       'Question in the side panel for adding a parent: which of the selected person’s siblings share this parent. Options are the siblings’ names.',
   },
+  standInPlaceTaken: {
+    id: 'interview.familyPedigree.standInPlaceTaken',
+    defaultMessage:
+      '{anchorIsYou, select, true {{count, plural, one {{names} has the same unnamed parent as you, so this person becomes their parent too.} other {{names} have the same unnamed parent as you, so this person becomes their parent too.}}} other {{count, plural, one {{names} has the same unnamed parent as “{anchor}”, so this person becomes their parent too.} other {{names} have the same unnamed parent as “{anchor}”, so this person becomes their parent too.}}}}',
+    description:
+      'Hint under the question “Are they also the parent of…” when adding a biological parent or egg or sperm donor. The person the parent is added to shares an unnamed placeholder parent with some of their siblings; the new parent takes that placeholder’s place, so becomes those siblings’ parent too, and they are shown chosen and cannot be unchosen. names is a list of those siblings’ names, each quoted and already joined in the participant’s language; count is how many it names; anchor is the name of the person the parent is added to, or how they are related to the participant.',
+  },
   showWholeFamily: {
     id: 'interview.familyPedigree.showWholeFamily',
     defaultMessage: 'Show the whole family',
@@ -385,7 +392,7 @@ export const messages = defineMessages({
     id: 'interview.familyPedigree.siblingKindLabel',
     defaultMessage: 'To the parents they share, are they…',
     description:
-      'Question in the side panel for adding a sibling: how the new sibling is related to the parents chosen above. Followed by the options "A biological child", "An adopted child", "A step-child or other child they raise".',
+      'Question in the side panel for adding a sibling: how the new sibling is related to the parents chosen above. Followed by the options "A biological child" and "An adopted child".',
   },
   siblingKindHint: {
     id: 'interview.familyPedigree.siblingKindHint',
@@ -397,15 +404,15 @@ export const messages = defineMessages({
   placeholderParentsNote: {
     id: 'interview.familyPedigree.placeholderParentsNote',
     defaultMessage:
-      '{framing, select, gamete {An egg parent and a sperm parent will be added for you to fill in later, so the family tree can show these siblings together.} other {A biological mother and a biological father will be added for you to fill in later, so the family tree can show these siblings together.}}',
+      '{shared, select, eggParent {{framing, select, gamete {An egg parent and a sperm parent will be added for you to fill in later. The sibling shares the egg parent, and is given a sperm parent of their own.} other {A biological mother and a biological father will be added for you to fill in later. The sibling shares the mother, and is given a biological father of their own.}}} spermParent {{framing, select, gamete {An egg parent and a sperm parent will be added for you to fill in later. The sibling shares the sperm parent, and is given an egg parent of their own.} other {A biological mother and a biological father will be added for you to fill in later. The sibling shares the father, and is given a biological mother of their own.}}} other {{framing, select, gamete {An egg parent and a sperm parent will be added for you to fill in later, so the family tree can show these siblings together.} other {A biological mother and a biological father will be added for you to fill in later, so the family tree can show these siblings together.}}}}',
     description:
-      'Note in the side panel for adding a sibling, shown when the selected person has no parents yet.',
+      'Note in the side panel for adding a sibling, shown when the selected person has no parents yet. shared is the answer to which of those parents the sibling shares: both, only the egg parent (mother), or only the sperm parent (father); a sibling who shares one is given an unnamed parent of their own for the other.',
   },
   otherParentLabel: {
     id: 'interview.familyPedigree.otherParentLabel',
     defaultMessage: 'Who is the child’s other parent?',
     description:
-      'Question in the side panel for adding a child. Options are the selected person’s partners, someone not in the family tree yet, or no other parent.',
+      'Question in the side panel for adding a child. Options are the selected person’s current and former partners, anyone they already have a child with (the child’s other biological or adoptive parent), someone not in the family tree yet, or no other parent.',
   },
   otherParentUnknown: {
     id: 'interview.familyPedigree.otherParentUnknown',
@@ -422,14 +429,27 @@ export const messages = defineMessages({
     id: 'interview.familyPedigree.siblingBiologicalParentLabel',
     defaultMessage: 'Which of them is the sibling’s biological parent?',
     description:
-      'Question in the side panel for adding a biological sibling, asked when the sibling shares two parents of whom only one could be their biological parent (for example two mothers, both recorded as female at birth). Options are those parents, by name or by how they are related to the participant.',
+      'Question in the side panel for adding a biological sibling, asked when the sibling shares parents not all of whom could be their biological parents (for example two mothers, both recorded as female at birth). Options are those parents, by name or by how they are related to the participant.',
+  },
+  siblingOtherBiologicalParentLabel: {
+    id: 'interview.familyPedigree.siblingOtherBiologicalParentLabel',
+    defaultMessage: 'Which of them is the sibling’s other biological parent?',
+    description:
+      'Question in the side panel for adding a biological sibling, asked after “Which of them is the sibling’s biological parent?” when the answer still leaves more than one parent who could be the sibling’s other biological parent (for example a mother and two fathers). Options are those parents, by name or by how they are related to the participant.',
+  },
+  otherParentBiologicalLabel: {
+    id: 'interview.familyPedigree.otherParentBiologicalLabel',
+    defaultMessage:
+      '{otherIsYou, select, true {Are you the child’s biological parent?} other {Is “{other}” the child’s biological parent?}}',
+    description:
+      'Yes/no question in the side panel for adding a step-child, or an adopted child, with someone already in the family tree as the other parent: whether that other parent is the child’s own biological parent (for example a partner’s child). other is that parent’s name or how they are related to the participant.',
   },
   sharedDonorsLabel: {
     id: 'interview.familyPedigree.sharedDonorsLabel',
     defaultMessage:
-      '{isYou, select, true {Do they share any of your donors?} other {Do they share any of “{name}”’s donors?}}',
+      '{isYou, select, true {{hasSurrogate, select, true {Do they share any of your donors, or the surrogate who carried you?} other {Do they share any of your donors?}}} other {{hasSurrogate, select, true {Do they share any of “{name}”’s donors, or the surrogate who carried them?} other {Do they share any of “{name}”’s donors?}}}}',
     description:
-      'Question in the side panel for adding a sibling to someone recorded with only egg or sperm donors as parents. Options are those donors, by name or by how they are related to the participant; any number, or none, may be chosen. name is the person the sibling is added to.',
+      'Question in the side panel for adding a sibling to someone recorded with only egg or sperm donors as parents. Options are those donors, and the surrogate who carried the person when one is recorded (hasSurrogate), by name or by how they are related to the participant; any number, or none, may be chosen. name is the person the sibling is added to.',
   },
   carrierLabel: {
     id: 'interview.familyPedigree.carrierLabel',
@@ -784,6 +804,13 @@ export const messages = defineMessages({
     description:
       'Shown under the toolbar, and read out, when the participant selects two people to disconnect whose connection is the only link between the participant and other people in the family tree, so it cannot be removed. names is a list of those people’s names, or, when they have none, how they are related to the participant, each quoted and already joined in the participant’s language (for example “Aunt” and “Cousin”); count is how many people it names.',
   },
+  disconnectStandIn: {
+    id: 'interview.familyPedigree.disconnectStandIn',
+    defaultMessage:
+      '{childIsYou, select, true {“{standIn}” stands in for a parent of yours who has not been added yet, so this connection cannot be removed. Add that parent to you instead, and they will take this place.} other {“{standIn}” stands in for a parent of “{child}” who has not been added yet, so this connection cannot be removed. Add that parent to “{child}” instead, and they will take this place.}}',
+    description:
+      'Shown under the toolbar, and read out, when the participant selects an unnamed placeholder parent and their child to disconnect, and removing the connection would leave someone outside the family tree. The placeholder holds the place of a parent not yet recorded, and is replaced by adding that parent (from the child’s Parent menu), not by connecting anyone else. standIn is how the placeholder is described (for example “Biological father”); child is the child’s name or how they are related to the participant.',
+  },
   changeWouldCutOff: {
     id: 'interview.familyPedigree.changeWouldCutOff',
     defaultMessage:
@@ -821,58 +848,65 @@ export const messages = defineMessages({
   unavailableSameSexGeneticParent: {
     id: 'interview.familyPedigree.unavailableSameSexGeneticParent',
     defaultMessage:
-      '{who, select, coParentIsYou {Some answers are unavailable because you are recorded as “{sex}” at birth and are a genetic parent of “{child}”, who cannot have two genetic parents of the same sex at birth. To choose one, first change your sex at birth or how you are connected to “{child}”.} childIsYou {Some answers are unavailable because “{coParent}”, your genetic parent, is recorded as “{sex}” at birth, and you cannot have two genetic parents of the same sex at birth. To choose one, first change the sex at birth of “{coParent}” or how they are connected to you.} other {Some answers are unavailable because “{coParent}”, a genetic parent of “{child}”, is recorded as “{sex}” at birth, and “{child}” cannot have two genetic parents of the same sex at birth. To choose one, first change the sex at birth of “{coParent}” or how they are connected to “{child}”.}}',
+      '{who, select, coParentIsYou {{count, plural, one {{answers} is unavailable because you are recorded as “{sex}” at birth and are a genetic parent of “{child}”, who cannot have two genetic parents of the same sex at birth. To choose it, first change your sex at birth or how you are connected to “{child}”.} other {{answers} are unavailable because you are recorded as “{sex}” at birth and are a genetic parent of “{child}”, who cannot have two genetic parents of the same sex at birth. To choose one, first change your sex at birth or how you are connected to “{child}”.}}} childIsYou {{count, plural, one {{answers} is unavailable because “{coParent}”, your genetic parent, is recorded as “{sex}” at birth, and you cannot have two genetic parents of the same sex at birth. To choose it, first change the sex at birth of “{coParent}” or how they are connected to you.} other {{answers} are unavailable because “{coParent}”, your genetic parent, is recorded as “{sex}” at birth, and you cannot have two genetic parents of the same sex at birth. To choose one, first change the sex at birth of “{coParent}” or how they are connected to you.}}} other {{count, plural, one {{answers} is unavailable because “{coParent}”, a genetic parent of “{child}”, is recorded as “{sex}” at birth, and “{child}” cannot have two genetic parents of the same sex at birth. To choose it, first change the sex at birth of “{coParent}” or how they are connected to “{child}”.} other {{answers} are unavailable because “{coParent}”, a genetic parent of “{child}”, is recorded as “{sex}” at birth, and “{child}” cannot have two genetic parents of the same sex at birth. To choose one, first change the sex at birth of “{coParent}” or how they are connected to “{child}”.}}}}',
     description:
-      'Hint under a question whose answers are partly unavailable: someone already recorded as a genetic parent (biological parent or egg or sperm donor) of a child has the sex at birth that would make another genetic parent impossible. {coParent} is that parent, {child} the child, {sex} the answer to the sex at birth question, e.g. “Male”.',
+      'Hint under a question whose answers are partly unavailable: someone already recorded as a genetic parent (biological parent or egg or sperm donor) of a child has the sex at birth that would make another genetic parent impossible. {coParent} is that parent, {child} the child, {sex} the answer to the sex at birth question, e.g. “Male”. answers is the list of unavailable answers, each quoted and already joined in the participant’s language (for example “Biological parent” and “Egg or sperm donor”), and count is how many it names; the sentence names them so it is clear which answers it explains.',
   },
   unavailableGeneticParentsFull: {
     id: 'interview.familyPedigree.unavailableGeneticParentsFull',
     defaultMessage:
-      '{who, select, childIsYou {Some answers are unavailable because you already have two genetic parents recorded, “{first}” and “{second}”. To choose one, first change how one of them is connected to you.} includesYou {Some answers are unavailable because “{child}” already has two genetic parents recorded, you and “{second}”. To choose one, first change how one of you is connected to “{child}”.} other {Some answers are unavailable because “{child}” already has two genetic parents recorded, “{first}” and “{second}”. To choose one, first change how one of them is connected to “{child}”.}}',
+      '{who, select, childIsYou {{count, plural, one {{answers} is unavailable because you already have two genetic parents recorded, “{first}” and “{second}”. To choose it, first change how one of them is connected to you.} other {{answers} are unavailable because you already have two genetic parents recorded, “{first}” and “{second}”. To choose one, first change how one of them is connected to you.}}} includesYou {{count, plural, one {{answers} is unavailable because “{child}” already has two genetic parents recorded, you and “{second}”. To choose it, first change how one of you is connected to “{child}”.} other {{answers} are unavailable because “{child}” already has two genetic parents recorded, you and “{second}”. To choose one, first change how one of you is connected to “{child}”.}}} other {{count, plural, one {{answers} is unavailable because “{child}” already has two genetic parents recorded, “{first}” and “{second}”. To choose it, first change how one of them is connected to “{child}”.} other {{answers} are unavailable because “{child}” already has two genetic parents recorded, “{first}” and “{second}”. To choose one, first change how one of them is connected to “{child}”.}}}}',
     description:
-      'Hint under a question whose answers are partly unavailable: the child already has two genetic parents (biological parents or egg or sperm donors), so nobody else can be one. {first} and {second} are those parents.',
+      'Hint under a question whose answers are partly unavailable: the child already has two genetic parents (biological parents or egg or sperm donors), so nobody else can be one. {first} and {second} are those parents. answers is the list of unavailable answers, each quoted and already joined in the participant’s language (for example “Biological parent” and “Egg or sperm donor”), and count is how many it names; the sentence names them so it is clear which answers it explains.',
   },
   unavailableCarrierRecorded: {
     id: 'interview.familyPedigree.unavailableCarrierRecorded',
     defaultMessage:
-      '{who, select, carrierIsYou {Some answers are unavailable because you are recorded as having carried “{child}”, and only one person carries a pregnancy. To choose one, first change how you are connected to “{child}”.} childIsYou {Some answers are unavailable because “{carrier}” is recorded as having carried you, and only one person carries a pregnancy. To choose one, first change how “{carrier}” is connected to you.} other {Some answers are unavailable because “{carrier}” is recorded as having carried “{child}”, and only one person carries a pregnancy. To choose one, first change how “{carrier}” is connected to “{child}”.}}',
+      '{who, select, carrierIsYou {{count, plural, one {{answers} is unavailable because you are recorded as having carried “{child}”, and only one person carries a pregnancy. To choose it, first change how you are connected to “{child}”.} other {{answers} are unavailable because you are recorded as having carried “{child}”, and only one person carries a pregnancy. To choose one, first change how you are connected to “{child}”.}}} childIsYou {{count, plural, one {{answers} is unavailable because “{carrier}” is recorded as having carried you, and only one person carries a pregnancy. To choose it, first change how “{carrier}” is connected to you.} other {{answers} are unavailable because “{carrier}” is recorded as having carried you, and only one person carries a pregnancy. To choose one, first change how “{carrier}” is connected to you.}}} other {{count, plural, one {{answers} is unavailable because “{carrier}” is recorded as having carried “{child}”, and only one person carries a pregnancy. To choose it, first change how “{carrier}” is connected to “{child}”.} other {{answers} are unavailable because “{carrier}” is recorded as having carried “{child}”, and only one person carries a pregnancy. To choose one, first change how “{carrier}” is connected to “{child}”.}}}}',
     description:
-      'Hint under a question whose answers are partly unavailable: someone is already recorded as having carried the child’s pregnancy (a surrogate, or a parent of another kind who did), so nobody else can have.',
+      'Hint under a question whose answers are partly unavailable: someone is already recorded as having carried the child’s pregnancy (a surrogate, or a parent of another kind who did), so nobody else can have. answers is the list of unavailable answers, each quoted and already joined in the participant’s language (for example “Biological parent” and “Egg or sperm donor”), and count is how many it names; the sentence names them so it is clear which answers it explains.',
   },
   unavailableIdenticalTwinNew: {
     id: 'interview.familyPedigree.unavailableIdenticalTwinNew',
     defaultMessage:
-      '{isYou, select, true {Some answers are unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of yours. To choose one, choose all of your biological parents and donors above.} other {Some answers are unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of “{name}”’s. To choose one, choose all of their biological parents and donors above.}}',
+      '{isYou, select, true {{answer} is unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of yours. To choose it, choose all of your biological parents and donors above.} other {{answer} is unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of “{name}”’s. To choose it, choose all of their biological parents and donors above.}}',
     description:
-      'Hint under the question asking whether a new sibling is a twin, when they cannot be an identical twin: the parents chosen for them above do not include all of the biological parents and egg or sperm donors of the person they are added to (name).',
+      'Hint under the question asking whether a new sibling is a twin, when they cannot be an identical twin: the parents chosen for them above do not include all of the biological parents and egg or sperm donors of the person they are added to (name). answer is the unavailable answer, quoted (for example “Yes, identical”).',
   },
   unavailableIdenticalTwin: {
     id: 'interview.familyPedigree.unavailableIdenticalTwin',
     defaultMessage:
-      '{who, select, personIsYou {Some answers are unavailable because identical twins have the same biological parents and donors, and you and “{twin}” do not. To choose one, first record the same biological parents and donors for both of you.} twinIsYou {Some answers are unavailable because identical twins have the same biological parents and donors, and “{name}” and you do not. To choose one, first record the same biological parents and donors for both of you.} other {Some answers are unavailable because identical twins have the same biological parents and donors, and “{name}” and “{twin}” do not. To choose one, first record the same biological parents and donors for both of them.}}',
+      '{who, select, personIsYou {{answer} is unavailable because identical twins have the same biological parents and donors, and you and “{twin}” do not. To choose it, first record the same biological parents and donors for both of you.} twinIsYou {{answer} is unavailable because identical twins have the same biological parents and donors, and “{name}” and you do not. To choose it, first record the same biological parents and donors for both of you.} other {{answer} is unavailable because identical twins have the same biological parents and donors, and “{name}” and “{twin}” do not. To choose it, first record the same biological parents and donors for both of them.}}',
     description:
-      'Hint under the question asking whether two twins are identical, when they cannot be: the biological parents and egg or sperm donors recorded for them differ. name is the person the panel describes, twin is the sibling.',
+      'Hint under the question asking whether two twins are identical, when they cannot be: the biological parents and egg or sperm donors recorded for them differ. name is the person the panel describes, twin is the sibling. answer is the unavailable answer, quoted (for example “Yes, identical”).',
   },
   unavailableCannotCarry: {
     id: 'interview.familyPedigree.unavailableCannotCarry',
     defaultMessage:
-      '{who, select, you {Some answers are unavailable because you are recorded as “{sex}” at birth, so you cannot have carried a pregnancy. To choose one, first change your sex at birth.} this {Some answers are unavailable because this person is recorded as “{sex}” at birth, so they cannot have carried a pregnancy. To choose one, first change their sex at birth.} other {Some answers are unavailable because “{name}” is recorded as “{sex}” at birth, so they cannot have carried a pregnancy. To choose one, first change their sex at birth.}}',
+      '{who, select, you {{count, plural, one {{answers} is unavailable because you are recorded as “{sex}” at birth, so you cannot have carried a pregnancy. To choose it, first change your sex at birth.} other {{answers} are unavailable because you are recorded as “{sex}” at birth, so you cannot have carried a pregnancy. To choose one, first change your sex at birth.}}} this {{count, plural, one {{answers} is unavailable because this person is recorded as “{sex}” at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.} other {{answers} are unavailable because this person is recorded as “{sex}” at birth, so they cannot have carried a pregnancy. To choose one, first change their sex at birth.}}} other {{count, plural, one {{answers} is unavailable because “{name}” is recorded as “{sex}” at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.} other {{answers} are unavailable because “{name}” is recorded as “{sex}” at birth, so they cannot have carried a pregnancy. To choose one, first change their sex at birth.}}}}',
     description:
-      'Hint under a question whose answers are partly unavailable: the person is recorded as male at birth, so cannot be recorded as having carried a pregnancy. “this” is the person the panel describes; {name} is anyone else.',
+      'Hint under a question whose answers are partly unavailable: the person is recorded as male at birth, so cannot be recorded as having carried a pregnancy. “this” is the person the panel describes; {name} is anyone else. answers is the list of unavailable answers, each quoted and already joined in the participant’s language (for example “Biological parent” and “Egg or sperm donor”), and count is how many it names; the sentence names them so it is clear which answers it explains.',
   },
   unavailableCarried: {
     id: 'interview.familyPedigree.unavailableCarried',
     defaultMessage:
-      '{who, select, personIsYou {Some answers are unavailable because you are recorded as having carried “{child}”, which nobody recorded as “{sex}” at birth can have. To choose one, first change how you are connected to “{child}”.} childIsYou {Some answers are unavailable because this person is recorded as having carried you, which nobody recorded as “{sex}” at birth can have. To choose one, first change how they are connected to you.} other {Some answers are unavailable because this person is recorded as having carried “{child}”, which nobody recorded as “{sex}” at birth can have. To choose one, first change how they are connected to “{child}”.}}',
+      '{who, select, personIsYou {“{sex}” is unavailable because you are recorded as having carried {children}, and nobody recorded as “{sex}” at birth can carry a pregnancy. To choose it, first change how you are connected to {children}.} childIsYou {“{sex}” is unavailable because this person is recorded as having carried you, and nobody recorded as “{sex}” at birth can carry a pregnancy. To choose it, first change how they are connected to you.} other {“{sex}” is unavailable because this person is recorded as having carried {children}, and nobody recorded as “{sex}” at birth can carry a pregnancy. To choose it, first change how they are connected to {children}.}}',
     description:
-      'Hint under the sex at birth question when an answer is unavailable because the person is recorded as having carried a child’s pregnancy. {sex} is the unavailable answer, e.g. “Male”.',
+      'Hint under the sex at birth question when an answer is unavailable because the person the panel describes is recorded as having carried a pregnancy, which nobody recorded with that sex at birth can have. {sex} is the unavailable answer, e.g. “Male”. children is the children they carried, each quoted and already joined in the participant’s language (for example “Ava” and “Ben”).',
+  },
+  unavailableSameSexAsCoParent: {
+    id: 'interview.familyPedigree.unavailableSameSexAsCoParent',
+    defaultMessage:
+      '{who, select, personIsYou {“{sex}” is unavailable because you and “{coParent}” are both genetic parents of {children}, and “{coParent}” is recorded as “{sex}” at birth. Nobody has two genetic parents of the same sex at birth. To choose it, first change the sex at birth of “{coParent}”, or how one of you is connected to {children}.} childIsYou {“{sex}” is unavailable because this person and “{coParent}” are both your genetic parents, and “{coParent}” is recorded as “{sex}” at birth. Nobody has two genetic parents of the same sex at birth. To choose it, first change the sex at birth of “{coParent}”, or how one of them is connected to you.} coParentIsYou {“{sex}” is unavailable because you and this person are both genetic parents of {children}, and you are recorded as “{sex}” at birth. Nobody has two genetic parents of the same sex at birth. To choose it, first change your sex at birth, or how one of you is connected to {children}.} other {“{sex}” is unavailable because this person and “{coParent}” are both genetic parents of {children}, and “{coParent}” is recorded as “{sex}” at birth. Nobody has two genetic parents of the same sex at birth. To choose it, first change the sex at birth of “{coParent}”, or how one of them is connected to {children}.}}',
+    description:
+      'Hint under the sex at birth question in the panel about one person, when an answer is unavailable because that person (“this person”, or the participant) is a genetic parent (biological parent or egg or sperm donor) of children whose other genetic parent, {coParent}, is recorded with that sex at birth: nobody has two genetic parents of the same sex at birth. {sex} is the unavailable answer, e.g. “Female”. children is those children, each quoted and already joined in the participant’s language (for example “Sam” and “Leo”).',
   },
   unavailableBothSameSex: {
     id: 'interview.familyPedigree.unavailableBothSameSex',
     defaultMessage:
-      '{firstIsYou, select, true {Some answers are unavailable because you and “{second}” are both recorded as “{sex}” at birth, so you cannot both be the child’s genetic parents. To choose one, first change one of your sexes at birth.} other {Some answers are unavailable because “{first}” and “{second}” are both recorded as “{sex}” at birth, so they cannot both be the child’s genetic parents. To choose one, first change the sex at birth of one of them.}}',
+      '{firstIsYou, select, true {{count, plural, one {{answers} is unavailable because you and “{second}” are both recorded as “{sex}” at birth, so you cannot both be the child’s genetic parents. To choose it, first change one of your sexes at birth.} other {{answers} are unavailable because you and “{second}” are both recorded as “{sex}” at birth, so you cannot both be the child’s genetic parents. To choose one, first change one of your sexes at birth.}}} other {{count, plural, one {{answers} is unavailable because “{first}” and “{second}” are both recorded as “{sex}” at birth, so they cannot both be the child’s genetic parents. To choose it, first change the sex at birth of one of them.} other {{answers} are unavailable because “{first}” and “{second}” are both recorded as “{sex}” at birth, so they cannot both be the child’s genetic parents. To choose one, first change the sex at birth of one of them.}}}}',
     description:
-      'Hint under the question of which of two parents is a new child’s biological parent, when “both” is unavailable because the two are recorded with the same sex at birth.',
+      'Hint under the question of which of two parents is a new child’s biological parent, when “both” is unavailable because the two are recorded with the same sex at birth. answers is the list of unavailable answers, each quoted and already joined in the participant’s language (for example “Biological parent” and “Egg or sperm donor”), and count is how many it names; the sentence names them so it is clear which answers it explains.',
   },
   unavailableAlreadyConnected: {
     id: 'interview.familyPedigree.unavailableAlreadyConnected',
@@ -941,7 +975,7 @@ export const messages = defineMessages({
     defaultMessage:
       '{isYou, select, true {Which parents do they share with you?} other {Which parents do they share with “{name}”?}}',
     description:
-      'Question in the side panel for adding a sibling: which parents the two siblings have in common. Options are the parents’ names, or for someone with no parents yet, both or one of the parents who will be added. name is that person’s name or how they are related to the participant.',
+      'Question in the side panel for adding a sibling: which parents the two siblings have in common. Options are the parents’ names (with the person’s egg or sperm donors and the surrogate who carried them, where recorded), or for someone with no parents yet, both or one of the parents who will be added. name is that person’s name or how they are related to the participant.',
   },
   sharedParentCountBoth: {
     id: 'interview.familyPedigree.sharedParentCountBoth',

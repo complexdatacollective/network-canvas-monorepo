@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'vitest';
 
-import type { NcEdge, NcNode } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  type NcEdge,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 import {
   type AddRelativeRequest,
@@ -140,7 +144,12 @@ describe('the stand-in rule', () => {
       { id: 'stand-in-1', details: { sex: ['male'] } },
     ]);
     expect(result.links).toEqual([
-      { source: 'stand-in-1', target: 'ego', kind: 'biological' },
+      {
+        source: 'stand-in-1',
+        target: 'ego',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
   });
 
@@ -211,6 +220,39 @@ describe('the stand-in rule', () => {
       'ego',
       'sib',
     ]);
+  });
+
+  test('identical triplets of one donor share one stand-in, though one pair of them has no link recorded', () => {
+    // Nobody raising them is recorded, so only being identical tells that
+    // they came from one egg and one sperm. The first and the last are
+    // identical through the middle one.
+    const result = changes(
+      family(
+        [
+          person('ego', { isEgo: true }),
+          person('a'),
+          person('b'),
+          person('c'),
+          person('donor', { sex: ['male'] }),
+        ],
+        [
+          link('donor', 'a', 'donor'),
+          link('donor', 'b', 'donor'),
+          link('donor', 'c', 'donor'),
+          link('a', 'b', 'identicalTwin'),
+          link('b', 'c', 'identicalTwin'),
+        ],
+      ),
+    );
+    expect(result.people.map((planned) => planned.id)).toEqual(['stand-in-1']);
+    expect(
+      result.links.map((planned) => [planned.source, planned.target]),
+    ).toEqual([
+      ['stand-in-1', 'a'],
+      ['stand-in-1', 'b'],
+      ['stand-in-1', 'c'],
+    ]);
+    expect(result.changedTwins).toEqual([]);
   });
 
   test('children of one donor raised by the same parent share one stand-in, and children of different donors do not', () => {
@@ -318,7 +360,38 @@ describe('the stand-in rule', () => {
     expect(result.removedPersonIds).toEqual([]);
   });
 
-  test('a stand-in another person still needs is kept for them', () => {
+  test('a stand-in another pedigree refers to by the same edge type gives way, but is kept', () => {
+    // A second family pedigree stage records its relationships in the same
+    // edge type, under a kind variable of its own: this pedigree does not
+    // read that edge, so it is a reference from outside it.
+    const result = changes(
+      family(
+        [
+          person('ego', { isEgo: true }),
+          person('mum', { sex: ['female'] }),
+          person('standIn', { sex: ['male'] }),
+          person('dad', { name: 'Rob', sex: ['male'] }),
+          person('friend', { name: 'Ali' }),
+        ],
+        [
+          link('mum', 'ego', 'biological'),
+          link('standIn', 'ego', 'biological'),
+          link('dad', 'ego', 'biological'),
+          {
+            ...link('standIn', 'friend', 'biological'),
+            [entityAttributesProperty]: { otherKind: ['biological'] },
+          },
+        ],
+      ),
+    );
+    expect(result.removedLinkIds).toEqual(['standIn-ego-biological']);
+    expect(result.removedPersonIds).toEqual([]);
+  });
+
+  test('a stand-in gives way as one person: their full sibling takes the new parent too', () => {
+    // The participant and their sister share their mother and an unknown
+    // father. Recording the participant's father records the father they
+    // share, so the sisters stay full sisters.
     const result = changes(
       family(
         [
@@ -337,8 +410,109 @@ describe('the stand-in rule', () => {
         ],
       ),
     );
+    expect(result.removedLinkIds.toSorted()).toEqual([
+      'standIn-ego-biological',
+      'standIn-sib-biological',
+    ]);
+    expect(result.removedPersonIds).toEqual(['standIn']);
+    expect(result.links).toEqual([
+      {
+        source: 'dad',
+        target: 'sib',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
+    ]);
+    expect(result.people).toEqual([]);
+  });
+
+  test('a stand-in gives way as one person: a half sibling who shares only them is not cut off', () => {
+    // Jess shares only the participant's unknown father, and has an unknown
+    // mother of her own. Mark, recorded as the participant's father, is the
+    // father she shares.
+    const result = changes(
+      family(
+        [
+          person('ego', { isEgo: true }),
+          person('jess', { name: 'Jess' }),
+          person('mum', { sex: ['female'] }),
+          person('standIn', { sex: ['male'] }),
+          person('stand-in-1', { sex: ['female'] }),
+          person('mark', { name: 'Mark', sex: ['male'] }),
+        ],
+        [
+          link('mum', 'ego', 'biological'),
+          link('standIn', 'ego', 'biological'),
+          link('standIn', 'jess', 'biological'),
+          link('stand-in-1', 'jess', 'biological'),
+          link('mark', 'ego', 'biological'),
+        ],
+      ),
+    );
+    expect(result.removedPersonIds).toEqual(['standIn']);
+    expect(result.links).toEqual([
+      {
+        source: 'mark',
+        target: 'jess',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
+    ]);
+    expect(result.people).toEqual([]);
+  });
+
+  test('a stand-in is kept for someone the new parent could not be a genetic parent of', () => {
+    // The sibling's other genetic parent is recorded as male, as the new
+    // father is, so the stand-in stays theirs.
+    const result = changes(
+      family(
+        [
+          person('ego', { isEgo: true }),
+          person('sib'),
+          person('mum', { sex: ['female'] }),
+          person('otherDad', { name: 'Al', sex: ['male'] }),
+          person('standIn'),
+          person('dad', { name: 'Rob', sex: ['male'] }),
+        ],
+        [
+          link('mum', 'ego', 'biological'),
+          link('standIn', 'ego', 'biological'),
+          link('otherDad', 'sib', 'biological'),
+          link('standIn', 'sib', 'biological'),
+          link('dad', 'ego', 'biological'),
+        ],
+      ),
+    );
     expect(result.removedLinkIds).toEqual(['standIn-ego-biological']);
     expect(result.removedPersonIds).toEqual([]);
+    expect(result.links).toEqual([]);
+  });
+
+  test('the participant’s own unnamed parent outlasts the stand-in when another unnamed parent is added', () => {
+    // Gender identity is not asked, so the participant's "Parent 1" has
+    // nothing recorded but a sex at birth of "Don't know", as a stand-in may.
+    const f = family(
+      [
+        person('ego', { isEgo: true, sex: ['female'] }),
+        person('parent1', { sex: ['unknown'] }),
+        person('standIn'),
+      ],
+      [
+        link('parent1', 'ego', 'biological'),
+        link('standIn', 'ego', 'biological'),
+      ],
+    );
+    const result = planAddRelative({
+      family: f,
+      anchorId: 'ego',
+      newPersonId: 'added',
+      details: { sex: ['unknown'] },
+      request: parentRequest('biological'),
+      createId: ids(),
+      sexAttribute: config.sexAssignedAtBirthAttribute,
+    });
+    expect(result.removedPersonIds).toEqual(['standIn']);
+    expect(result.removedLinkIds).toEqual(['standIn-ego-biological']);
   });
 
   test('a stand-in’s sex at birth follows the gamete the other genetic parent gave', () => {
@@ -536,6 +710,7 @@ describe('additions keep the stand-in rule', () => {
       source: 'stand-in-1',
       target: 'added',
       kind: 'biological',
+      isGestationalCarrier: false,
     });
     expect(result.people).toContainEqual({
       id: 'stand-in-1',
@@ -564,7 +739,12 @@ describe('a sibling who does not share a parent', () => {
     });
     expect(result.links).toEqual([
       { source: 'mum', target: 'added', kind: 'biological' },
-      { source: 'stand-in-1', target: 'added', kind: 'biological' },
+      {
+        source: 'stand-in-1',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
     expect(result.removedLinkIds ?? []).toEqual([]);
   });
@@ -635,7 +815,12 @@ describe('removing a parent who tells half siblings apart', () => {
     );
     const result = changes(after);
     expect(result.links).toEqual([
-      { source: 'stand-in-1', target: 'sam', kind: 'biological' },
+      {
+        source: 'stand-in-1',
+        target: 'sam',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
     const refilled = family(
       [

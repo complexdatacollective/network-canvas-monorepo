@@ -369,14 +369,15 @@ function smokeAddBothParents(): ScenarioDefinition {
 
       await addRelativeOf(page, 'You', 'parent');
       await describe(page, { name: 'Robert', gender: 'Man', sex: 'Male' });
-      // Linda is offered as Robert's partner, and chosen already.
-      await expect(
-        panel(page)
-          .getByRole('radiogroup', {
-            name: /^Are they the partner of another parent\?/,
-          })
-          .getByRole('radio', { name: 'Linda', exact: true }),
-      ).toBeChecked();
+      // Linda is offered as Robert's partner, but not chosen for him: a
+      // partnership between biological parents is never assumed (ruling 25).
+      const lindaAsPartner = panel(page)
+        .getByRole('radiogroup', {
+          name: /^Are they the partner of another parent\?/,
+        })
+        .getByRole('radio', { name: 'Linda', exact: true });
+      await expect(lindaAsPartner).not.toBeChecked();
+      await lindaAsPartner.click();
       await submitPanel(page, 'Add to family');
       await expect(member(page, 'Robert')).toBeVisible();
       await expect(page.getByTestId('pedigree-person')).toHaveCount(3);
