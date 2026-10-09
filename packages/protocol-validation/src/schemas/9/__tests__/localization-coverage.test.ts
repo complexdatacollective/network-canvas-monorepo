@@ -247,6 +247,11 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   // emphasise a word in either.
   site(stage(FINISH_STAGE_INDEX, 'title'), 'markdown', false, true),
   site(stage(FINISH_STAGE_INDEX, 'content'), 'markdown', false, true),
+  // The interview's own words on that screen, which Network Canvas supplies.
+  site(stage(FINISH_STAGE_INDEX, 'finishLabel'), 'plain'),
+  site(stage(FINISH_STAGE_INDEX, 'finishConfirmation'), 'plain'),
+  site(stage(FINISH_STAGE_INDEX, 'finishedNotice'), 'plain'),
+  site(stage(FINISH_STAGE_INDEX, 'finishFailed'), 'plain'),
 ];
 
 const pathKey = (path: readonly PropertyKey[]) =>

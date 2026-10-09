@@ -39,25 +39,6 @@ export const interfaceMessages = defineMessages({
     description:
       'Accessible name of icon-only or visually hidden form submit buttons in anonymisation and slide forms.',
   },
-  finishConfirmation: {
-    id: 'interview.interfaces.finishConfirmation',
-    defaultMessage: 'Are you sure you want to finish the interview?',
-    description:
-      'Title of the confirmation dialog opened by the finish button at the end of an interview.',
-  },
-  interviewFinishedNotice: {
-    id: 'interview.interfaces.interviewFinishedNotice',
-    defaultMessage:
-      'This interview is finished, and its answers can no longer be changed.',
-    description:
-      'Notice shown below the closing text of the last interview screen once the interview has been finished, including whenever a finished interview is opened again. Addressed to whoever is holding the device, which may be the participant or a researcher.',
-  },
-  finish: {
-    id: 'interview.interfaces.finish',
-    defaultMessage: 'Finish',
-    description:
-      'Button on the final interview screen that opens the finish confirmation dialog.',
-  },
   finished: {
     id: 'interview.interfaces.finished',
     defaultMessage: 'Finished',

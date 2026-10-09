@@ -556,6 +556,17 @@ export const completeProtocol = () => ({
       label: localized(DEFAULT_FINISH_SESSION_TEXT.en.label),
       title: localized(DEFAULT_FINISH_SESSION_TEXT.en.title),
       content: localized(DEFAULT_FINISH_SESSION_TEXT.en.content),
+      // The English Network Canvas supplies, as the migration writes it.
+      finishLabel: localized('Finish'),
+      finishConfirmation: localized(
+        'Are you sure you want to finish the interview?',
+      ),
+      finishedNotice: localized(
+        'This interview is finished, and its answers can no longer be changed.',
+      ),
+      finishFailed: localized(
+        'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
+      ),
       outcome: 'completed',
     },
   ],

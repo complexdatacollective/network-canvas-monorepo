@@ -1127,6 +1127,26 @@
     },
     {
       "id": "finish",
+      "finishLabel": {
+        "en-US": "Finish",
+        "es": "Finalizar",
+        "hu": "Befejezés"
+      },
+      "finishConfirmation": {
+        "en-US": "Are you sure you want to finish the interview?",
+        "es": "¿Seguro que quieres finalizar la entrevista?",
+        "hu": "Biztosan befejezi az interjút?"
+      },
+      "finishedNotice": {
+        "en-US": "This interview is finished, and its answers can no longer be changed.",
+        "es": "Esta entrevista ha finalizado y ya no se pueden cambiar sus respuestas.",
+        "hu": "Ez az interjú befejeződött, a válaszai már nem módosíthatók."
+      },
+      "finishFailed": {
+        "en-US": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer.",
+        "es": "No se pudo finalizar la entrevista. Inténtalo de nuevo. Si el problema continúa, ponte en contacto con la persona que organiza el estudio.",
+        "hu": "Az interjút nem sikerült befejezni. Kérjük, próbálja újra. Ha a probléma továbbra is fennáll, forduljon a kutatás szervezőjéhez."
+      },
       "type": "FinishSession",
       "label": {
         "en-US": "Finish Interview",

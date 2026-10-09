@@ -3234,6 +3234,19 @@ describe('FinishSession stage', () => {
         en: 'You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now.',
         es: 'Has llegado al final de la entrevista. Si estás conforme con la información que has introducido, puedes finalizar la entrevista ahora.',
       },
+      finishLabel: { en: 'Finish', es: 'Finalizar' },
+      finishConfirmation: {
+        en: 'Are you sure you want to finish the interview?',
+        es: '¿Seguro que quieres finalizar la entrevista?',
+      },
+      finishedNotice: {
+        en: 'This interview is finished, and its answers can no longer be changed.',
+        es: 'Esta entrevista ha finalizado y ya no se pueden cambiar sus respuestas.',
+      },
+      finishFailed: {
+        en: 'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
+        es: 'No se pudo finalizar la entrevista. Inténtalo de nuevo. Si el problema continúa, ponte en contacto con la persona que organiza el estudio.',
+      },
       outcome: 'completed',
     });
   });

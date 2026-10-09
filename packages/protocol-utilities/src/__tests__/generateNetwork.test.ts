@@ -1497,6 +1497,10 @@ describe('generateNetwork', () => {
         label: { en: 'Finish' },
         title: { en: 'All done' },
         content: { en: 'Thank you.' },
+        finishLabel: { en: 'Finish' },
+        finishConfirmation: { en: 'Finish this interview?' },
+        finishedNotice: { en: 'This interview is finished.' },
+        finishFailed: { en: 'The interview could not be finished.' },
         outcome: 'completed' as const,
       };
       const stages = [

@@ -17,7 +17,7 @@ import {
   resumeUnstartedPedigreeAtIntroduction,
 } from './family-pedigree-session-migration.ts';
 import { TypeLevelOperators } from './filters/filter.ts';
-import { defaultFinishSessionFields } from './finish-session-defaults.ts';
+import { createDefaultFinishSessionStage } from './finish-session-defaults.ts';
 import { withInterfaceText } from './interface-text.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
 import ProtocolSchemaV9 from './schema.ts';
@@ -337,12 +337,11 @@ const endsAtFinishStage = (stages: unknown): boolean => {
  * the protocol's languages that has it: English for a schema 8 document, which
  * is recorded as English, and a schema 9 document's own languages otherwise.
  */
-const finishStageFor = (stages: unknown, locales: readonly string[]) => ({
-  id: finishStageId(stages),
-  type: 'FinishSession' as const,
-  ...defaultFinishSessionFields(locales),
-  outcome: 'completed' as const,
-});
+const finishStageFor = (
+  stages: unknown,
+  localization: LocalizationDeclaration,
+) =>
+  createDefaultFinishSessionStage({ id: finishStageId(stages), localization });
 
 type SiteChange =
   | { kind: 'set'; value: unknown }
@@ -525,7 +524,7 @@ const migrationV8toV9 = createMigration({
         ? migrated.stages
         : [
             ...(Array.isArray(migrated.stages) ? migrated.stages : []),
-            finishStageFor(migrated.stages, localization.locales),
+            finishStageFor(migrated.stages, localization),
           ],
       ...(experiments !== undefined && {
         experiments: withoutEncryptedVariables(experiments),

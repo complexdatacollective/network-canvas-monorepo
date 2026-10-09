@@ -407,14 +407,6 @@
     "defaultMessage": "External data could not be loaded.",
     "description": "Explanation shown when a configured external list of people could not be loaded."
   },
-  "interview.interfaces.finish": {
-    "defaultMessage": "Finish",
-    "description": "Button on the final interview screen that opens the finish confirmation dialog."
-  },
-  "interview.interfaces.finishConfirmation": {
-    "defaultMessage": "Are you sure you want to finish the interview?",
-    "description": "Title of the confirmation dialog opened by the finish button at the end of an interview."
-  },
   "interview.interfaces.finished": {
     "defaultMessage": "Finished",
     "description": "Button that submits and closes the form for adding or editing a person; it does not finish the whole interview."
@@ -446,10 +438,6 @@
   "interview.interfaces.historyTools": {
     "defaultMessage": "History tools",
     "description": "Accessible name of the toolbar group containing undo and redo actions."
-  },
-  "interview.interfaces.interviewFinishedNotice": {
-    "defaultMessage": "This interview is finished, and its answers can no longer be changed.",
-    "description": "Notice shown below the closing text of the last interview screen once the interview has been finished, including whenever a finished interview is opened again. Addressed to whoever is holding the device, which may be the participant or a researcher."
   },
   "interview.interfaces.keepChanges": {
     "defaultMessage": "Keep changes",
@@ -962,10 +950,6 @@
   "interview.runtime.filter": {
     "defaultMessage": "Filter...",
     "description": "Placeholder for filtering the interview screen navigation list."
-  },
-  "interview.runtime.finishFailed": {
-    "defaultMessage": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer.",
-    "description": "Recoverable finish-dialog error after saving pending answers or the host finish request fails; no claim is made that all responses have been submitted."
   },
   "interview.runtime.firstNode": {
     "defaultMessage": "First item",

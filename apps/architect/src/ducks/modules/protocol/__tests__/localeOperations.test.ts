@@ -31,6 +31,14 @@ import {
 const NODE_TYPE = 'person';
 const VARIABLE = 'closeness';
 
+// Every declared locale gets the same text, so no settings string exists
+// in one language only.
+const everyLocale = (
+  localization: CurrentProtocol['localization'],
+  text: string,
+): Record<string, string> =>
+  Object.fromEntries(localization.locales.map((locale) => [locale, text]));
+
 const protocolIn = (
   localization: CurrentProtocol['localization'],
   text: {
@@ -83,6 +91,13 @@ const protocolIn = (
       label: text.stage,
       title: text.title,
       content: text.title,
+      finishLabel: everyLocale(localization, 'Finish'),
+      finishConfirmation: everyLocale(localization, 'Finish this interview?'),
+      finishedNotice: everyLocale(localization, 'This interview is finished.'),
+      finishFailed: everyLocale(
+        localization,
+        'The interview could not be finished.',
+      ),
       outcome: 'completed',
     },
   ],
@@ -267,7 +282,22 @@ describe('addLocales', () => {
         { ...finish, content: { en: 'Thanks for taking part.' } },
       ];
       const protocol = protocolOf(addLocales(edited, ['fr']));
-      expect(protocol.stages).toEqual(edited.stages);
+      const translated = protocol.stages.at(-1);
+      // The researcher's text stays as written; the stage's own settings,
+      // which Network Canvas supplies, are translated.
+      expect(protocol.stages.slice(0, -1)).toEqual(edited.stages.slice(0, -1));
+      expect(translated).toMatchObject({
+        content: { en: 'Thanks for taking part.' },
+      });
+      expect(translated?.content).not.toHaveProperty('fr');
+      for (const setting of [
+        'finishLabel',
+        'finishConfirmation',
+        'finishedNotice',
+        'finishFailed',
+      ] as const) {
+        expect(translated?.[setting]).toHaveProperty('fr');
+      }
     });
   });
 

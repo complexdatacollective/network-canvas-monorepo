@@ -200,13 +200,6 @@ export const runtimeMessages = defineMessages({
     description:
       'Notification that the maximum item count is reached and the participant can continue.',
   },
-  finishFailed: {
-    id: 'interview.runtime.finishFailed',
-    defaultMessage:
-      'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
-    description:
-      'Recoverable finish-dialog error after saving pending answers or the host finish request fails; no claim is made that all responses have been submitted.',
-  },
   notifications: {
     id: 'interview.runtime.notifications',
     defaultMessage: 'Interview notifications',

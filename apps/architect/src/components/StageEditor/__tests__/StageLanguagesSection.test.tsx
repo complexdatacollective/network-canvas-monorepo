@@ -50,6 +50,19 @@ const protocol: CurrentProtocol = {
       label: { en: 'Finish', fr: 'Fin' },
       title: { en: 'All done', fr: 'Terminé' },
       content: { en: 'Thank you.', fr: 'Merci.' },
+      finishLabel: { en: 'Finish', fr: 'Terminer' },
+      finishConfirmation: {
+        en: 'Finish this interview?',
+        fr: 'Terminer l’entretien ?',
+      },
+      finishedNotice: {
+        en: 'This interview is finished.',
+        fr: 'Cet entretien est terminé.',
+      },
+      finishFailed: {
+        en: 'The interview could not be finished.',
+        fr: 'L’entretien n’a pas pu être terminé.',
+      },
       outcome: 'completed',
     },
   ],

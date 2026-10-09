@@ -66,6 +66,8 @@ export const finishSessionScenarios: InterfaceScenarios = {
         'progress-100',
         'analytics.interview_finished',
         'completed-state.after-finish',
+        'finishLabel',
+        'finishedNotice',
       ],
       smoke: true,
       visual: true,
@@ -201,6 +203,7 @@ export const finishSessionScenarios: InterfaceScenarios = {
       covers: [
         'confirm-dialog.copy',
         'confirm-dialog.destructive-focus',
+        'finishConfirmation',
         'onFinish.cancel-path',
         'interviewId-guard',
       ],
@@ -294,7 +297,7 @@ export const finishSessionScenarios: InterfaceScenarios = {
 
     {
       id: 'error-path-retry',
-      covers: ['onFinish.error-retry'],
+      covers: ['onFinish.error-retry', 'finishFailed'],
       build: () => {
         const synth = new SyntheticInterview();
         synth.addInformationStage({ title: 'Study overview' });

@@ -156,6 +156,18 @@
     },
     {
       "id": "finish",
+      "finishLabel": {
+        "en-US": "Finish"
+      },
+      "finishConfirmation": {
+        "en-US": "Are you sure you want to finish the interview?"
+      },
+      "finishedNotice": {
+        "en-US": "This interview is finished, and its answers can no longer be changed."
+      },
+      "finishFailed": {
+        "en-US": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
+      },
       "type": "FinishSession",
       "label": {
         "en-US": "Finish Interview"

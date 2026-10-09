@@ -3,7 +3,6 @@
 import { type ReactNode, type Ref, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
-import { AppMessage } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { default as Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -14,7 +13,10 @@ import {
 } from '@codaco/fresco-ui/RenderMarkdown';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import type { FinishSessionStage } from '@codaco/protocol-validation';
+import type {
+  FinishSessionStage,
+  LocalizedString,
+} from '@codaco/protocol-validation';
 
 import { useTrack } from '../../analytics/useTrack';
 import { useInterviewCompletion } from '../../contexts/InterviewCompletionContext';
@@ -23,23 +25,25 @@ import {
   useFinishConfirmationDescription,
 } from '../../contract/context';
 import type { CompletedAction } from '../../contract/types';
-import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { LocalizedMarkdown } from '../../localization/LocalizedMarkdown';
 import { useLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { getInterviewId } from '../../selectors/session';
 import { getStages } from '../../store/modules/protocol';
 import { useSyncFlush } from '../../store/SyncFlushContext';
 import type { StageProps } from '../../types';
-import { interfaceMessages } from '../messages';
 
 // A heading takes emphasis and nothing else: the title's markdown is inline.
 const TITLE_ELEMENTS = ['em', 'strong'];
 
-const describeFinishError = () => (
-  <AppMessage message={runtimeMessages.finishFailed} />
-);
+type FinishSessionText = Pick<
+  FinishSessionStage,
+  'title' | 'content' | 'finishedNotice'
+>;
 
-type FinishSessionText = Pick<FinishSessionStage, 'title' | 'content'>;
+/** The screen's own words, which the protocol holds as the stage's settings. */
+function StageText({ value }: { value: LocalizedString }) {
+  return <>{useLocalizedString(value).text}</>;
+}
 
 function FinishSessionTitle({
   title,
@@ -129,10 +133,10 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
     if (!interviewId) return;
 
     const finished = await confirm({
-      title: <AppMessage message={interfaceMessages.finishConfirmation} />,
+      title: <StageText value={stage.finishConfirmation} />,
       description: finishConfirmationDescription,
-      confirmLabel: <AppMessage message={interfaceMessages.finish} />,
-      describeError: describeFinishError,
+      confirmLabel: <StageText value={stage.finishLabel} />,
+      describeError: () => <StageText value={stage.finishFailed} />,
       onConfirm: async (signal: AbortSignal) => {
         // Order matters: autosave is debounced, so the participant's most
         // recent answers may still be waiting to be written. Hosts can freeze
@@ -170,7 +174,7 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
         color="primary"
         onClick={() => void finishInterviewConfirmation()}
       >
-        <AppMessage message={interfaceMessages.finish} />
+        <StageText value={stage.finishLabel} />
       </Button>
     </FinishSessionLayout>
   );
@@ -182,8 +186,8 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
  * any. There is no way back into the interview from here.
  *
  * `stage` is absent only for a protocol with no finish stage, which a
- * validated protocol cannot be; the notice is then shown alone, and takes
- * focus as it does when the stage has no heading.
+ * validated protocol cannot be. The notice is the stage's own wording, so
+ * there is then none, and only the host's actions are shown.
  *
  * `notice` is off for a review of an interview with nothing before its finish
  * stage: it shows the finish stage's text read-only, but the interview is not
@@ -220,7 +224,7 @@ export function CompletedInterview({
   return (
     <FinishSessionLayout>
       {stage && <FinishSessionText stage={stage} headingRef={headingRef} />}
-      {notice && (
+      {notice && stage && (
         <Alert
           ref={noticeRef}
           tabIndex={hasHeading ? undefined : -1}
@@ -228,7 +232,7 @@ export function CompletedInterview({
           density="compact"
         >
           <AlertDescription>
-            <AppMessage message={interfaceMessages.interviewFinishedNotice} />
+            <StageText value={stage.finishedNotice} />
           </AlertDescription>
         </Alert>
       )}

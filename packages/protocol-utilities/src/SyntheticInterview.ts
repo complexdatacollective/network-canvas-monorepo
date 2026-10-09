@@ -2700,7 +2700,39 @@ export class SyntheticInterview {
         };
       }
     }
-    return { id, type: 'FinishSession', ...fields, outcome: 'completed' };
+    return this.withSuppliedText(
+      { id, type: 'FinishSession', ...fields, outcome: 'completed' },
+      'FinishSession',
+    );
+  }
+
+  /**
+   * `config` with the stage's own wording it lacks, as Architect writes it
+   * into a new stage and a new completeness requirement: what Network Canvas
+   * supplies in the protocol's languages.
+   */
+  private withSuppliedText(
+    config: Record<string, unknown>,
+    type: string,
+  ): Record<string, unknown> {
+    for (const { path, value } of missingSuppliedStageText(
+      { ...config, type },
+      this.localization,
+    )) {
+      let container = config;
+      for (const key of path.slice(0, -1)) {
+        const child = container[key];
+        const copy: Record<string, unknown> =
+          typeof child === 'object' && child !== null
+            ? { ...(child as Record<string, unknown>) }
+            : {};
+        container[key] = copy;
+        container = copy;
+      }
+      const last = path.at(-1);
+      if (last !== undefined) container[last] = value;
+    }
+    return config;
   }
 
   private buildStageConfig(stage: StageEntry): unknown {
@@ -2890,26 +2922,6 @@ export class SyntheticInterview {
         };
       }
       if (stage.framing) config.framing = stage.framing;
-      // The stage's own wording, as Architect writes it into a new stage and
-      // a new completeness requirement: what Network Canvas supplies in the
-      // protocol's languages.
-      for (const { path, value } of missingSuppliedStageText(
-        { ...config, type: stage.type },
-        this.localization,
-      )) {
-        let container = config;
-        for (const key of path.slice(0, -1)) {
-          const child = container[key];
-          const copy: Record<string, unknown> =
-            typeof child === 'object' && child !== null
-              ? { ...(child as Record<string, unknown>) }
-              : {};
-          container[key] = copy;
-          container = copy;
-        }
-        const last = path.at(-1);
-        if (last !== undefined) container[last] = value;
-      }
       if (stage.nominationPrompts) {
         config.nominationPrompts = stage.nominationPrompts.map((prompt) => ({
           ...prompt,
@@ -2966,7 +2978,7 @@ export class SyntheticInterview {
       }
     }
 
-    return config;
+    return this.withSuppliedText(config, stage.type);
   }
 
   // --- Node/edge manipulation after creation ---
