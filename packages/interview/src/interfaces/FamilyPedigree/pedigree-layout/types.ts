@@ -27,6 +27,10 @@ export type PedigreeLink = {
   isGestationalCarrier?: boolean;
 };
 
+/** The shape of a person's symbol, which decides where a line meets its
+ * edge. */
+export type PedigreeSymbolShape = 'circle' | 'square' | 'diamond';
+
 export type ParentConnection = {
   parentIndex: number;
   /** How the link is drawn, which the adapter may change from the kind

@@ -12,6 +12,7 @@ import type {
   PedigreeInput,
   PedigreeLayout,
   PedigreeLink,
+  PedigreeSymbolShape,
   Relation,
   ScalingParams,
 } from './types';
@@ -220,6 +221,8 @@ export function buildConnectorData(
   idToIndex?: Map<string, number>,
   nodeNames?: string[],
   indexToId?: string[],
+  /** Each person's symbol shape, by node id. */
+  nodeShapes?: ReadonlyMap<string, PedigreeSymbolShape>,
 ): ConnectorRenderData {
   const metrics = computeLayoutMetrics(dimensions);
   const boxHeight = dimensions.nodeHeight / metrics.rowHeight;
@@ -261,6 +264,9 @@ export function buildConnectorData(
     nodeNames,
     indexToId,
     partnerPairs,
+    nodeShapes && indexToId
+      ? indexToId.map((nodeId) => nodeShapes.get(nodeId))
+      : undefined,
   );
 
   // Transform all coordinates to pixel space

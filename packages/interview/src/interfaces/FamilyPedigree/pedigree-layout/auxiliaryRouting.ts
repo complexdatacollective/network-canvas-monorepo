@@ -1,4 +1,4 @@
-import type { LineSegment, Point } from './types';
+import type { LineSegment, PedigreeSymbolShape, Point } from './types';
 
 /**
  * Routing for the lines that join a parent to a child outside the child's
@@ -27,6 +27,9 @@ type Symbol = {
   top: number;
   right: number;
   bottom: number;
+  /** Where lines meet the symbol's edge; unknown, a line ends where it
+   * would meet any of them. */
+  shape?: PedigreeSymbolShape;
 };
 
 /** A line already drawn, which a routed line must keep clear of. */
@@ -58,6 +61,7 @@ export type RouteEnd =
       layer: number;
       /** Where on the child's top edge a line may end. */
       attachments: number[];
+      shape?: PedigreeSymbolShape;
     }
   | {
       kind: 'bar';
@@ -80,6 +84,7 @@ export function symbolOf(
   boxWidth: number,
   boxHeight: number,
   bracketed: boolean,
+  shape?: PedigreeSymbolShape,
 ): { symbol: Symbol; brackets: Symbol[] } {
   const symbol = {
     person,
@@ -87,6 +92,7 @@ export function symbolOf(
     right: x + boxWidth / 2,
     top: layer,
     bottom: layer + boxHeight,
+    ...(shape ? { shape } : {}),
   };
   if (!bracketed) return { symbol, brackets: [] };
   const top = layer - boxHeight * BRACKET_OVERHANG;
@@ -119,37 +125,80 @@ const gapMiddles = (stops: number[]) => {
   return gaps.toSorted((a, b) => b.width - a.width).map((gap) => gap.at);
 };
 
-/** Offsets from the middle of a child's top edge, as fractions of its width,
- * at which other lines end first, nearest the centre first. */
-const ATTACHMENT_OFFSETS = [0.2, -0.2, 0.32, -0.32, 0.12, -0.12];
-/** How far from the middle a line may end, as a fraction of the width. */
-const ATTACHMENT_REACH = 0.4;
+/** A square's rounded corners, as a fraction of its width. */
+const CORNER_RADIUS = 0.25;
 
 /**
- * The places on a child's top edge where lines other than their own line of
- * descent may end, nearest the centre first, leaving out those `taken`.
- * Never none, however many lines end on the child (every recorded parent tie
- * is drawn): once the usual places are taken, the middles of the gaps between
- * the lines already there, widest first; and once those are too narrow, the
- * usual places again.
+ * How far below the top of its box a symbol's edge lies at `offset` from the
+ * middle (both as fractions of the box). A circle's edge curves away; a
+ * square's is flat but for its rounded corners; a diamond (a square turned
+ * and scaled to 0.85) has its tip a tenth of the box above the box's top.
+ * Unknown, the deepest of the three. Symbols are symmetric, so the same
+ * depth measures up from the bottom.
  */
-export function attachmentsFor(
+function edgeDepth(shape: PedigreeSymbolShape | undefined, offset: number) {
+  const o = Math.min(Math.abs(offset), 0.5);
+  const circle = 0.5 - Math.sqrt(Math.max(0, 0.25 - o * o));
+  const diamond = Math.max(0, o - 0.1);
+  const intoCorner = o - (0.5 - CORNER_RADIUS);
+  const square =
+    intoCorner <= 0
+      ? 0
+      : CORNER_RADIUS -
+        Math.sqrt(Math.max(0, CORNER_RADIUS ** 2 - intoCorner ** 2));
+  if (shape === 'circle') return circle;
+  if (shape === 'square') return square;
+  if (shape === 'diamond') return diamond;
+  return Math.max(circle, diamond, square);
+}
+
+/** How far from the middle of a child's top edge a line may end, as a
+ * fraction of its width: within a square's flat top, and nearly to a
+ * circle's or diamond's sides. */
+const REACH: Record<PedigreeSymbolShape, number> = {
+  circle: 0.4,
+  diamond: 0.36,
+  square: 0.5 - CORNER_RADIUS,
+};
+/** How far from the middle a line ends when the child's own line up to
+ * their parents leaves from there. */
+const CENTRE_CLEARANCE = 0.15;
+
+/**
+ * The places on a child's top edge where the `index`th of the `count` lines
+ * other than their own line of descent may end. The lines into one child
+ * share the edge between them in the order they are given (their parents'
+ * order, left to right), each over a stretch of its own, and keep off the
+ * middle when the child's line up leaves from there.
+ */
+export function attachmentSlots(
   x: number,
   boxWidth: number,
-  taken: readonly number[] = [],
+  shape: PedigreeSymbolShape | undefined,
+  index: number,
+  count: number,
+  clearOfCentre: boolean,
 ): number[] {
-  const isTaken = (at: number) =>
-    taken.some((used) => Math.abs(used - at) < 1e-9);
-  const usual = ATTACHMENT_OFFSETS.map((offset) => x + offset * boxWidth);
-  const free = usual.filter((at) => !isTaken(at));
-  if (free.length > 0) return free;
-  const reach = ATTACHMENT_REACH * boxWidth;
-  const between = gapMiddles([
-    x - reach,
-    x + reach,
-    ...taken.filter((at) => Math.abs(at - x) <= reach),
-  ]).filter((at) => !isTaken(at));
-  return between.length > 0 ? between : usual;
+  const reach = shape ? REACH[shape] : REACH.square;
+  const stretches: [number, number][] = clearOfCentre
+    ? [
+        [-reach, -CENTRE_CLEARANCE],
+        [CENTRE_CLEARANCE, reach],
+      ]
+    : [[-reach, reach]];
+  const total = stretches.reduce((sum, [from, to]) => sum + (to - from), 0);
+  const offsetAt = (measure: number) => {
+    let left = measure;
+    for (const [from, to] of stretches) {
+      if (left <= to - from + 1e-12) return from + left;
+      left -= to - from;
+    }
+    return reach;
+  };
+  const share = total / Math.max(1, count);
+  return [0.5, 0.25, 0.75].map(
+    (fraction) => x + offsetAt(share * (index + fraction)) * boxWidth,
+  );
 }
 
 /**
@@ -207,8 +256,9 @@ function distanceToSegment(p: Point, s: LineSegment): number {
   return Math.hypot(p.x - (s.x1 + t * dx), p.y - (s.y1 + t * dy));
 }
 
-/** The part of a segment inside a rectangle, as a length. */
-function lengthInside(s: LineSegment, r: Symbol): number {
+/** The stretch of a segment inside a rectangle, as fractions of the way
+ * along it, if any. */
+function clipRange(s: LineSegment, r: Symbol): [number, number] | undefined {
   // Liang–Barsky clipping.
   let t0 = 0;
   let t1 = 1;
@@ -232,9 +282,32 @@ function lengthInside(s: LineSegment, r: Symbol): number {
     clip(-dy, s.y1 - r.top) &&
     clip(dy, r.bottom - s.y1)
   ) {
-    return Math.max(0, t1 - t0) * segmentLength(s);
+    return [t0, t1];
   }
-  return 0;
+  return undefined;
+}
+
+/** The part of a segment inside a rectangle, as a length. */
+function lengthInside(s: LineSegment, r: Symbol): number {
+  const range = clipRange(s, r);
+  return range ? Math.max(0, range[1] - range[0]) * segmentLength(s) : 0;
+}
+
+const strictlyInside = (p: Point, r: Symbol) =>
+  p.x > r.left + ON &&
+  p.x < r.right - ON &&
+  p.y > r.top + ON &&
+  p.y < r.bottom - ON;
+
+/** Where a segment with one end inside a symbol's box crosses its edge. */
+function edgeCrossing(s: LineSegment, r: Symbol): Point | undefined {
+  const fromInside = strictlyInside({ x: s.x1, y: s.y1 }, r);
+  const toInside = strictlyInside({ x: s.x2, y: s.y2 }, r);
+  if (fromInside === toInside) return undefined;
+  const range = clipRange(s, r);
+  if (!range) return undefined;
+  const t = fromInside ? range[1] : range[0];
+  return { x: s.x1 + t * (s.x2 - s.x1), y: s.y1 + t * (s.y2 - s.y1) };
 }
 
 const shrink = (r: Symbol, by: number): Symbol => ({
@@ -294,6 +367,9 @@ function crossing(a: LineSegment, b: LineSegment): Point | undefined {
 
 const COST = {
   symbol: 1000,
+  /** Two lines meeting one symbol's edge too close together read as one
+   * line that forks. */
+  crowdedEnd: 150,
   bracket: 1000,
   runAlong: 1000,
   throughCorner: 500,
@@ -307,6 +383,17 @@ const COST = {
   length: 0.01,
 };
 
+/** How close two lines may meet one symbol's edge, as a fraction of its
+ * width. */
+const MIN_END_GAP = 0.25;
+
+/** Where other lines cross the edges of the symbols a course leaves and
+ * reaches, for keeping its own ends apart from theirs. */
+type EndContext = {
+  parent?: { symbol: Symbol; crossings: Point[] };
+  child?: { symbol: Symbol; crossings: Point[] };
+};
+
 /** What is wrong with a candidate course, as a cost: 0 is a clean line. */
 function costOf(
   points: Point[],
@@ -314,6 +401,7 @@ function costOf(
   end: RouteEnd,
   owner: string,
   scene: RoutingScene,
+  endContext: EndContext = {},
 ): number {
   const segments = pieces(points);
   const near = scene.boxWidth * 0.1;
@@ -397,6 +485,29 @@ function costOf(
       else if (distance < near) cost += COST.nearCorner;
     }
   }
+  // Where it leaves the parent and reaches the child, clear of where other
+  // lines meet those symbols.
+  const gap = MIN_END_GAP * scene.boxWidth;
+  const crowding = (at: Point | undefined, crossings: Point[]) =>
+    at
+      ? crossings.filter(
+          (other) => Math.hypot(other.x - at.x, other.y - at.y) < gap,
+        ).length * COST.crowdedEnd
+      : 0;
+  if (endContext.parent) {
+    const { symbol, crossings } = endContext.parent;
+    const exit = segments
+      .map((segment) => edgeCrossing(segment, symbol))
+      .find((at) => at !== undefined);
+    cost += crowding(exit, crossings);
+  }
+  if (endContext.child) {
+    const { symbol, crossings } = endContext.child;
+    const entry = segments
+      .map((segment) => edgeCrossing(segment, symbol))
+      .findLast((at) => at !== undefined);
+    cost += crowding(entry, crossings);
+  }
   return cost;
 }
 
@@ -435,15 +546,9 @@ export function routeLine(
     end.kind === 'child'
       ? attachments.map((x) => {
           // Into the child from above, down to their centre. A straight line
-          // ends where it meets the symbol, whatever its shape: a circle, or
-          // a diamond (a square turned and scaled to 0.85), at this distance
-          // from the centre falls short of the box's top edge.
-          const offset = Math.abs(x - end.x) / boxw;
-          const shortfall = Math.max(
-            0,
-            offset - 0.1,
-            0.5 - Math.sqrt(Math.max(0, 0.25 - offset * offset)),
-          );
+          // ends where it meets the symbol's edge, which at this distance
+          // from the centre may fall short of the box's top edge.
+          const shortfall = edgeDepth(end.shape, (x - end.x) / boxw);
           return {
             x,
             entry: { x, y: end.layer },
@@ -463,8 +568,55 @@ export function routeLine(
   const childLayer = end.layer;
   const rowsBetween = childLayer - from.layer;
 
+  // The parent's symbol, unless the line starts on a partnership line.
+  const parentSymbol = scene.symbols.find(
+    (symbol) =>
+      symbol.person === from.person &&
+      symbol.top === from.layer &&
+      Math.abs((symbol.left + symbol.right) / 2 - from.x) < 1e-9,
+  );
+  const childSymbol =
+    end.kind === 'child'
+      ? scene.symbols.find(
+          (symbol) =>
+            symbol.person === end.person &&
+            symbol.top === end.layer &&
+            Math.abs((symbol.left + symbol.right) / 2 - end.x) < 1e-9,
+        )
+      : undefined;
+  const crossingsOf = (symbol: Symbol) =>
+    scene.lines
+      .filter((line) => !(line.owner !== undefined && line.owner === owner))
+      .flatMap((line) => edgeCrossing(line.segment, symbol) ?? []);
+  const endContext: EndContext = {
+    ...(parentSymbol
+      ? {
+          parent: {
+            symbol: parentSymbol,
+            crossings: crossingsOf(parentSymbol),
+          },
+        }
+      : {}),
+    ...(childSymbol
+      ? { child: { symbol: childSymbol, crossings: crossingsOf(childSymbol) } }
+      : {}),
+  };
+
   const candidates: { points: Point[]; endX: number }[] = [];
   const startXs = [from.x, from.x + 0.2 * boxw, from.x - 0.2 * boxw];
+  // A straight line down to the child may leave the parent at a point on
+  // their bottom edge rather than from their centre, out of the way of the
+  // lines already leaving them.
+  const exits: Point[][] = [[start]];
+  if (parentSymbol && rowsBetween >= 1) {
+    for (const offset of [0, 0.2, -0.2, 0.32, -0.32]) {
+      const depth = edgeDepth(parentSymbol.shape, offset);
+      exits.push([
+        start,
+        { x: from.x + offset * boxw, y: from.layer + boxh * (1 - depth) },
+      ]);
+    }
+  }
   if (rowsBetween === 0 && end.kind === 'child') {
     // Down from the parent, along the gap below the row, up into the child.
     for (const target of targets) {
@@ -487,10 +639,12 @@ export function routeLine(
     }
   } else {
     for (const target of targets) {
-      candidates.push({
-        points: [start, target.meet, ...target.tail],
-        endX: target.x,
-      });
+      for (const exit of exits) {
+        candidates.push({
+          points: [...exit, target.meet, ...target.tail],
+          endX: target.x,
+        });
+      }
     }
   }
   if (rowsBetween >= 1) {
@@ -568,7 +722,7 @@ export function routeLine(
   let best: { points: Point[]; endX: number; cost: number } | undefined;
   for (const candidate of candidates) {
     const points = simplify(candidate.points);
-    const cost = costOf(points, from.person, end, owner, scene);
+    const cost = costOf(points, from.person, end, owner, scene, endContext);
     if (!best || cost < best.cost - 1e-9) {
       best = { points, endX: candidate.endX, cost };
     }

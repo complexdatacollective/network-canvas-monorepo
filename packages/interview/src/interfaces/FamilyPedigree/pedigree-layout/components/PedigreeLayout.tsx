@@ -14,7 +14,7 @@ import {
   pedigreeLayoutToPositions,
   toPedigreeInput,
 } from '../pedigreeAdapter';
-import type { PedigreeLink } from '../types';
+import type { PedigreeLink, PedigreeSymbolShape } from '../types';
 import { PedigreeEdgeSvg } from './EdgeRenderer';
 
 type PedigreeLayoutProps = {
@@ -26,6 +26,11 @@ type PedigreeLayoutProps = {
    * separated partnership's break mark clear of a labelled side.
    */
   nodeNames?: ReadonlyMap<string, string>;
+  /**
+   * Each person's symbol shape by node id, so that connectors meet the
+   * symbols' edges (a line into a square ends on its flat top).
+   */
+  nodeShapes?: ReadonlyMap<string, PedigreeSymbolShape>;
   nodeWidth: number;
   nodeHeight: number;
   /** See `LayoutDimensions`. */
@@ -42,6 +47,7 @@ export default function PedigreeLayout({
   nodeIds,
   links,
   nodeNames,
+  nodeShapes,
   nodeWidth,
   nodeHeight,
   rowGapRatio,
@@ -83,10 +89,11 @@ export default function PedigreeLayout({
       idToIndex,
       names,
       indexToId,
+      nodeShapes,
     );
 
     return { positions, connectorData };
-  }, [nodeIds, links, nodeNames, dimensions]);
+  }, [nodeIds, links, nodeNames, nodeShapes, dimensions]);
 
   if (nodeWidth === 0 || nodeHeight === 0) {
     return (

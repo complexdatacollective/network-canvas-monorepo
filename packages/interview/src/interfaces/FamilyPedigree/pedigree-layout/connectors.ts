@@ -1,5 +1,5 @@
 import {
-  attachmentsFor,
+  attachmentSlots,
   joinsFor,
   type RouteEnd,
   routeLine,
@@ -20,6 +20,7 @@ import type {
   ScalingParams,
   TwinIndicator,
   PedigreeEdgeType,
+  PedigreeSymbolShape,
 } from './types';
 import { areConsanguineous } from './utils';
 
@@ -50,6 +51,9 @@ function isPrimaryEdge(edgeType: PedigreeEdgeType): boolean {
  * @param pconnect - where parent link meets sibling bar (0-1). Default 0.5
  * @param partnerPairs - all recorded partner pairs. Used to route recorded
  *   partnerships that the adjacent-node layout cannot encode directly.
+ * @param shapes - each person's symbol shape, by index, so that lines meet
+ *   the symbols' edges. When omitted, lines end where they would meet any
+ *   shape.
  */
 export function computeConnectors(
   layout: PedigreeLayout,
@@ -61,6 +65,7 @@ export function computeConnectors(
   nodeNames?: string[],
   id?: string[],
   partnerPairs?: Set<string>,
+  shapes?: (PedigreeSymbolShape | undefined)[],
 ): PedigreeConnectors {
   const { boxWidth: boxw, boxHeight: boxh, legHeight: legh } = scaling;
   const maxlev = layout.nid.length;
@@ -232,7 +237,9 @@ export function computeConnectors(
         const key = `${personIndex},${side}`;
         const stem = stemCountBySide.get(key) ?? 0;
         stemCountBySide.set(key, stem + 1);
-        return location.x + side * boxw * Math.min(0.15 + 0.1 * stem, 0.45);
+        // Far enough from the middle, where the line up to their parents
+        // leaves, to read as a line of its own.
+        return location.x + side * boxw * Math.min(0.28 + 0.1 * stem, 0.45);
       };
       const [upperIndex, upper, lowerIndex, lower] =
         left.layer <= right.layer
@@ -704,8 +711,8 @@ export function computeConnectors(
   // in the next column. The marks are placed from the two twins' own lines
   // up, whichever sibships those lines belong to (twins with different
   // recorded parents hang from different bars).
+  const allUplines = parentChildLines.flatMap((line) => line.uplines);
   if (layout.twins) {
-    const allUplines = parentChildLines.flatMap((line) => line.uplines);
     const markY = (i: number) => i - legh / 2;
     // Where the twin's line up crosses the height of the marks: an upline
     // starts at the centre of the child's symbol. A twin with no line up
@@ -928,6 +935,7 @@ export function computeConnectors(
         boxw,
         boxh,
         bracketed,
+        shapes?.[personIndex],
       );
       scene.symbols.push(symbol);
       scene.brackets.push(...brackets);
@@ -958,29 +966,68 @@ export function computeConnectors(
       scene.lines.push({ segment: twin.segment, kind: 'other' });
   }
 
-  const usedAttachments = new Map<string, number[]>();
-  for (const conn of [
-    ...auxConnections.values(),
-    ...socialConnections.values(),
-  ]) {
-    const parentAt = nodeLocation.get(conn.parentIndex);
-    if (!parentAt) continue;
-    const partnerAt =
-      'partnerIndex' in conn && conn.partnerIndex !== undefined
-        ? nodeLocation.get(conn.partnerIndex)
-        : undefined;
-    const from = {
-      person: conn.parentIndex,
-      // A couple's line starts on their partnership line, between them.
-      x: partnerAt ? (parentAt.x + partnerAt.x) / 2 : parentAt.x,
-      layer: parentAt.layer,
-    };
-    const owner = `${conn.parentIndex}${partnerAt ? '+' : ''},${conn.edgeType}`;
-    const parentNodeId = id ? id[conn.parentIndex] : undefined;
+  const plans = [...auxConnections.values(), ...socialConnections.values()]
+    .map((conn) => {
+      const parentAt = nodeLocation.get(conn.parentIndex);
+      if (!parentAt) return undefined;
+      const partnerAt =
+        'partnerIndex' in conn && conn.partnerIndex !== undefined
+          ? nodeLocation.get(conn.partnerIndex)
+          : undefined;
+      const from = {
+        person: conn.parentIndex,
+        // A couple's line starts on their partnership line, between them.
+        x: partnerAt ? (parentAt.x + partnerAt.x) / 2 : parentAt.x,
+        layer: parentAt.layer,
+      };
+      const owner = `${conn.parentIndex}${partnerAt ? '+' : ''},${conn.edgeType}`;
+      const bar = sibshipBar.get(conn.sibship);
+      const totalChildren = sibshipSize.get(conn.sibship) ?? 0;
+      const isParentOfAllSiblings = conn.childColumns.length >= totalChildren;
+      // A parent of every child in the sibship joins its bar. (One on the
+      // children's own row, a relative who raises them, joins each child,
+      // from below, instead.)
+      const joinsBar =
+        bar !== undefined &&
+        isParentOfAllSiblings &&
+        totalChildren > 1 &&
+        parentAt.layer < conn.childLevel;
+      return { conn, from, owner, bar, joinsBar };
+    })
+    .filter((plan) => plan !== undefined);
 
-    const bar = sibshipBar.get(conn.sibship);
-    const totalChildren = sibshipSize.get(conn.sibship) ?? 0;
-    const isParentOfAllSiblings = conn.childColumns.length >= totalChildren;
+  // The lines that end on each child share the child's edge in the order of
+  // their parents, left to right, so that they neither cross nor bunch.
+  const endsOnChild = new Map<string, { plan: number; x: number }[]>();
+  plans.forEach((plan, index) => {
+    if (plan.joinsBar) return;
+    for (const col of plan.conn.childColumns) {
+      const key = `${plan.conn.childLevel},${col}`;
+      endsOnChild.set(key, [
+        ...(endsOnChild.get(key) ?? []),
+        { plan: index, x: plan.from.x },
+      ]);
+    }
+  });
+  const slotOf = new Map<string, { index: number; count: number }>();
+  for (const [key, ends] of endsOnChild) {
+    ends
+      .toSorted((a, b) => a.x - b.x || a.plan - b.plan)
+      .forEach((end, index) => {
+        slotOf.set(`${end.plan}|${key}`, { index, count: ends.length });
+      });
+  }
+  // Whether a child's own line up to their parents leaves from the middle
+  // of their top edge.
+  const hasUpline = (layer: number, x: number) =>
+    allUplines.some(
+      (upline) =>
+        Math.abs(upline.x1 - x) < 1e-9 &&
+        Math.abs(upline.y1 - (layer + boxh / 2)) < 1e-9,
+    );
+
+  plans.forEach(({ conn, from, owner, bar, joinsBar }, planIndex) => {
+    const parentNodeId = id ? id[conn.parentIndex] : undefined;
 
     const draw = (end: RouteEnd, childNodeId: string | undefined) => {
       const { points, endX } = routeLine(from, end, owner, scene);
@@ -996,15 +1043,8 @@ export function computeConnectors(
       return endX;
     };
 
-    if (
-      bar &&
-      isParentOfAllSiblings &&
-      totalChildren > 1 &&
-      parentAt.layer < conn.childLevel
-    ) {
-      // A parent of every child in the sibship joins its bar, away from
-      // every line already meeting it. (One on the children's own row, a
-      // relative who raises them, joins each child, from below, instead.)
+    if (joinsBar && bar) {
+      // Joins the bar away from every line already meeting it.
       const stems = sibshipStems.get(conn.sibship) ?? [];
       const joined = draw(
         {
@@ -1016,29 +1056,36 @@ export function computeConnectors(
         undefined,
       );
       stems.push(joined);
-    } else {
-      // A parent of only some children (or of a child with no sibling bar)
-      // joins each child, at a point of the line's own on their top edge.
-      for (const col of conn.childColumns) {
-        const childPersonIndex = layout.nid[conn.childLevel]![col]!;
-        const childX = layout.pos[conn.childLevel]![col]!;
-        const key = `${conn.childLevel},${col}`;
-        const used = usedAttachments.get(key) ?? [];
-        const attachments = attachmentsFor(childX, boxw, used);
-        const attached = draw(
-          {
-            kind: 'child',
-            person: childPersonIndex,
-            x: childX,
-            layer: conn.childLevel,
-            attachments,
-          },
-          id ? id[childPersonIndex] : undefined,
-        );
-        usedAttachments.set(key, [...used, attached]);
-      }
+      return;
     }
-  }
+    // A parent of only some children (or of a child with no sibling bar)
+    // joins each child, at a point of the line's own on their top edge.
+    for (const col of conn.childColumns) {
+      const childPersonIndex = layout.nid[conn.childLevel]![col]!;
+      const childX = layout.pos[conn.childLevel]![col]!;
+      const key = `${conn.childLevel},${col}`;
+      const slot = slotOf.get(`${planIndex}|${key}`) ?? { index: 0, count: 1 };
+      const shape = shapes?.[childPersonIndex];
+      draw(
+        {
+          kind: 'child',
+          person: childPersonIndex,
+          x: childX,
+          layer: conn.childLevel,
+          attachments: attachmentSlots(
+            childX,
+            boxw,
+            shape,
+            slot.index,
+            slot.count,
+            hasUpline(conn.childLevel, childX),
+          ),
+          ...(shape ? { shape } : {}),
+        },
+        id ? id[childPersonIndex] : undefined,
+      );
+    }
+  });
 
   // --- Duplicate subject arcs ---
   const allIds = new Set<number>();

@@ -832,6 +832,20 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     () => new Map(shown.people.map((person) => [person.id, person.name ?? ''])),
     [shown.people],
   );
+  // The shape each person's symbol is drawn with, so that lines meet the
+  // symbols' edges.
+  const nodeShapes = useMemo(
+    () =>
+      new Map(
+        shown.people.map((person) => [
+          person.id,
+          shapeDefinition
+            ? resolveNodeShape(shapeDefinition, person.attributes)
+            : ('circle' as const),
+        ]),
+      ),
+    [shown.people, shapeDefinition],
+  );
 
   const { nodeWidth, nodeHeight, measurementContainer } = useNodeMeasurement({
     component: <Node size="sm" />,
@@ -2345,6 +2359,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             edgeColor={edgeColor}
             links={links}
             nodeNames={nodeNames}
+            nodeShapes={nodeShapes}
             nodeWidth={nodeWidth}
             nodeHeight={nodeHeight}
             // Room around each person for the add menu that appears beside,
@@ -2364,11 +2379,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   }
                   accessibleName={displayName(personId)}
                   color={nodeColor}
-                  shape={
-                    shapeDefinition
-                      ? resolveNodeShape(shapeDefinition, person.attributes)
-                      : 'circle'
-                  }
+                  shape={nodeShapes.get(personId) ?? 'circle'}
                   selected={
                     nomination ? isNominated(person) : personId === selectedId
                   }
