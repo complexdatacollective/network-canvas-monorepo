@@ -25,7 +25,7 @@ const familyPedigree = (overrides: Stage = {}): Stage => ({
   id: 'fp1',
   label: localized('Family Pedigree'),
   type: 'FamilyPedigree',
-  wording: familyPedigreeWordingIn('en'),
+  wording: familyPedigreeWordingIn(),
   subject: { entity: 'node', type: 'family_member' },
   prompt: localized('Build your family'),
   nodeConfiguration: {

@@ -2949,7 +2949,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         {
           id: 'fp1',
           type: 'FamilyPedigree' as const,
-          wording: familyPedigreeWordingIn('en'),
+          wording: familyPedigreeWordingIn(),
           label: localized('Family Pedigree'),
           subject: { entity: 'node' as const, type: 'person' },
           prompt: localized('Build your family'),

@@ -1,3 +1,4 @@
+import type { LocaleTag } from '../../../localization/localeTag.ts';
 import {
   CHILDREN_ITEM,
   CHILDREN_NONE,
@@ -916,28 +917,22 @@ export const FAMILY_PEDIGREE_SUPPLIED_TEXT: readonly SuppliedStageSetting[] = [
   { path: ['wording', 'pointerTool'], message: POINTER_TOOL },
 ];
 
-const englishOf = (message: SuppliedWording): string => {
-  const text = message.en;
-  if (text === undefined) {
-    throw new Error('Network Canvas supplies no English wording for a setting');
-  }
-  return text;
-};
-
 /**
- * The stage's `wording`, every setting in one language. Each holds the
- * English wording, which is what Network Canvas supplies where it supplies
- * none, so a fixture can make a stage valid without spelling the wording out
- * again.
+ * The stage's `wording`, every setting in the given languages (English by
+ * default). A fixture can make a stage valid without spelling the wording out
+ * again; a test that switches language passes the protocol's languages too.
  */
 export const familyPedigreeWordingIn = (
-  locale = 'en',
+  locales: readonly LocaleTag[] = ['en'],
 ): Readonly<Record<string, LocalizedString>> =>
   Object.fromEntries(
     FAMILY_PEDIGREE_SUPPLIED_TEXT.flatMap(({ path, message }) => {
       const [group, key] = path;
-      return group === 'wording' && key !== undefined
-        ? [[key, { [locale]: englishOf(message) }] as const]
-        : [];
+      if (group !== 'wording' || key === undefined) return [];
+      const held = locales.flatMap((locale) => {
+        const text = message[locale];
+        return text === undefined ? [] : [[locale, text] as const];
+      });
+      return [[key, Object.fromEntries(held)] as const];
     }),
   );

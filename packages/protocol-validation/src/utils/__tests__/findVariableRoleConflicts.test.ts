@@ -35,7 +35,7 @@ const categoricalBinStage = (variable: string) => ({
 const familyPedigreeStage = (formVariable: string) => ({
   id: 'fp1',
   type: 'FamilyPedigree',
-  wording: familyPedigreeWordingIn('en'),
+  wording: familyPedigreeWordingIn(),
   label: localized('Family Pedigree'),
   subject: { entity: 'node', type: 'person' },
   prompt: localized('Who is related to you?'),

@@ -106,7 +106,7 @@ describe('attribute-writer usage tags', () => {
         {
           id: 'family',
           type: 'FamilyPedigree',
-          wording: familyPedigreeWordingIn('en'),
+          wording: familyPedigreeWordingIn(),
           label: localized('Family'),
           subject: { entity: 'node', type: 'person' },
           prompt: localized('Build your family'),

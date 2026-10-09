@@ -18,7 +18,7 @@ const validFamilyPedigreeStage = {
   id: 'fp1',
   label: localized('FamilyPedigree'),
   type: 'FamilyPedigree' as const,
-  wording: familyPedigreeWordingIn('en'),
+  wording: familyPedigreeWordingIn(),
   subject: { entity: 'node' as const, type: 'person' },
   prompt: localized('Build your family'),
   nodeConfiguration: {

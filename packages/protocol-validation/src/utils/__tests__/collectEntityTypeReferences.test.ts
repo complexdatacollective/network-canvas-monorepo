@@ -79,7 +79,7 @@ const protocol = {
     {
       id: 'ped',
       type: 'FamilyPedigree',
-      wording: familyPedigreeWordingIn('en'),
+      wording: familyPedigreeWordingIn(),
       subject: { entity: 'node', type: 'family-member' },
       edgeConfiguration: { type: 'partnership' },
     },

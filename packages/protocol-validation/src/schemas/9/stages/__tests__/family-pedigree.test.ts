@@ -27,7 +27,7 @@ const base = {
   id: 'fp1',
   label: localized('Family Pedigree'),
   type: 'FamilyPedigree' as const,
-  wording: familyPedigreeWordingIn('en'),
+  wording: familyPedigreeWordingIn(),
   subject: { entity: 'node' as const, type: 'person' },
   prompt: localized('Draw your family'),
   nodeConfiguration: {

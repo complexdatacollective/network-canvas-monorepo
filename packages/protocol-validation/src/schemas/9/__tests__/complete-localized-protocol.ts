@@ -553,7 +553,7 @@ export const completeProtocol = () => ({
     {
       id: 'familyPedigree',
       type: 'FamilyPedigree',
-      wording: familyPedigreeWordingIn('en'),
+      wording: familyPedigreeWordingIn(),
       label: localized('Family'),
       subject: { entity: 'node', type: 'relative' },
       prompt: localized('Build your family'),
