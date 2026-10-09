@@ -697,7 +697,7 @@ describe('step and in-law relatives', () => {
             link('dad', 'her', 'partner', { current: false }),
           ],
         ).her,
-      ).toEqual(['Father’s former partner', 'otherRelative']);
+      ).toEqual(['Father’s Former partner', 'otherRelative']);
     });
   });
 
@@ -730,7 +730,7 @@ describe('step and in-law relatives', () => {
             link('ex', 'kid', 'biological'),
           ],
         ).kid,
-      ).toEqual(['Former partner’s son', 'otherRelative']);
+      ).toEqual(['Former partner’s Son', 'otherRelative']);
     });
   });
 
@@ -1051,9 +1051,9 @@ describe('step and in-law relatives', () => {
       ),
     ).toMatchObject({
       paul: ['Stepfather', 'stepParent'],
-      dansPartner: ['Sperm donor’s partner', 'otherRelative'],
-      paulsEx: ['Stepfather’s former partner', 'otherRelative'],
-      annsEx: ['Mother’s former partner', 'otherRelative'],
+      dansPartner: ['Sperm donor’s Partner', 'otherRelative'],
+      paulsEx: ['Stepfather’s Former partner', 'otherRelative'],
+      annsEx: ['Mother’s Former partner', 'otherRelative'],
     });
   });
 });
@@ -1094,7 +1094,7 @@ describe('apostrophes', () => {
           link('priyasMum', 'priya', 'biological'),
         ],
       ).priyasMum,
-    ).toBe('Priya\u2019s mother');
+    ).toBe('Priya\u2019s Mother');
   });
 });
 

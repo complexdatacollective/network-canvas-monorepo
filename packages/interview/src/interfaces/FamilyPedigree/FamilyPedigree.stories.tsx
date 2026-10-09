@@ -1769,7 +1769,7 @@ export const FamilyInProgress: Story = {
     await expectPeople(6)(context);
     await expect(
       within(context.canvasElement).getByRole('button', {
-        name: /^Mia’s biological father, some details missing/,
+        name: /^Mia’s Biological father, some details missing/,
       }),
     ).toBeVisible();
   },
@@ -1821,11 +1821,11 @@ export const EachChildNeedsTheirOtherBiologicalParent: Story = {
     // what is still needed.
     await userEvent.click(canvas.getByTestId('next-button'));
     const list = () =>
-      body.queryByRole('region', { name: /^Before you continue/ });
+      body.queryByRole('region', { name: /Show what’s still needed/ });
     await waitFor(
       () =>
         expect(list()?.textContent?.replaceAll('\u00AD', '')).toContain(
-          'Some details are missing for “Mia’s biological father”',
+          'Some details are missing for “Mia’s Biological father”',
         ),
       { timeout: 5000 },
     );
@@ -1839,8 +1839,8 @@ export const EachChildNeedsTheirOtherBiologicalParent: Story = {
 
 /**
  * The list of what is still needed asks for the participant's brothers and
- * sisters. Choosing it asks whether they have any; answering "Yes — I’ll add
- * them" goes on to adding a sibling. That answer is kept: opened again, the
+ * sisters. Choosing it asks whether they have any; answering "Yes" goes
+ * on to adding a sibling. That answer is kept: opened again, the
  * participant's panel still shows it.
  */
 export const SayingYouHaveSiblingsGoesOnToAddingOne: Story = {
@@ -1887,11 +1887,7 @@ export const SayingYouHaveSiblingsGoesOnToAddingOne: Story = {
     const siblings = await body.findByRole('radiogroup', {
       name: /^Do you have any biological brothers or sisters/,
     });
-    await userEvent.click(
-      within(siblings).getByRole('radio', {
-        name: 'Yes — I’ll add them to the family tree',
-      }),
-    );
+    await userEvent.click(within(siblings).getByRole('radio', { name: 'Yes' }));
     await userEvent.click(await body.findByRole('button', { name: 'Save' }));
 
     // On to adding a sibling.
@@ -1909,9 +1905,7 @@ export const SayingYouHaveSiblingsGoesOnToAddingOne: Story = {
       name: /^Do you have any biological brothers or sisters/,
     });
     await expect(
-      within(asked).getByRole('radio', {
-        name: 'Yes — I’ll add them to the family tree',
-      }),
+      within(asked).getByRole('radio', { name: 'Yes' }),
     ).toBeChecked();
   },
 };

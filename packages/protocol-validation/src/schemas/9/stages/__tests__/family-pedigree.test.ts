@@ -281,14 +281,24 @@ describe('familyPedigreeStage', () => {
       );
     });
 
-    it('may say who the person is, and how many parents are missing', () => {
+    it('may say who the person is', () => {
       expect(
         familyPedigreeStage.safeParse(
           withParentsItem(
-            '{isYou, select, true {Add your parents} other {{missing, plural, one {Add a parent for {name}} other {Add parents for {name}}}}}',
+            '{isYou, select, true {Add your biological parents} other {Add biological parents for {name}}}',
           ),
         ).success,
       ).toBe(true);
+    });
+
+    it('is not told how many parents are missing', () => {
+      expect(
+        familyPedigreeStage.safeParse(
+          withParentsItem(
+            '{missing, plural, one {Add a parent for {name}} other {Add parents for {name}}}',
+          ),
+        ).success,
+      ).toBe(false);
     });
 
     it('may be one phrase for everyone', () => {
@@ -304,7 +314,7 @@ describe('familyPedigreeStage', () => {
           withParentsItem('Add parents for {relative}'),
         ).success,
       ).toBe(false);
-      // Only the parents entry is told how many are missing.
+      // No entry is told how many are missing.
       const text = pedigreeCompletenessText();
       expect(
         familyPedigreeStage.safeParse(

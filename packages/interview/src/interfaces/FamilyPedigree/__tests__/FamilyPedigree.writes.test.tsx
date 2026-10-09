@@ -295,12 +295,12 @@ describe('FamilyPedigree twins and the disconnect tool', () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Disconnect' }));
     await user.click(personButton('ego'));
-    await user.click(personButton('sam'));
 
-    // Shown under the toolbar, and read out.
-    expect(
-      (await screen.findAllByText(/are not connected\./)).length,
-    ).toBeGreaterThan(0);
+    // With the participant chosen, their twin cannot be chosen: there is no
+    // line between them to remove.
+    await waitFor(() => expect(personButton('sam')).toBeDisabled());
+    await user.click(personButton('sam'));
+    expect(document.querySelector('[data-person-id="sam"]')).not.toBeNull();
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });

@@ -235,7 +235,7 @@ describe('the Family Pedigree wording Network Canvas supplies', () => {
       defaultLocale: 'en',
       locales: ['en', 'zh-Hans'],
     });
-    expect(parents?.value['zh-Hans']).toContain('{missing, plural,');
+    expect(parents?.value['zh-Hans']).toContain('{isYou, select,');
     expect(parents?.value.en).toContain('{name}');
   });
 

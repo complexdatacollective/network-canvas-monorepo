@@ -1055,7 +1055,7 @@ function completenessFirstDegreeRecommended(): ScenarioDefinition {
 /**
  * The researcher writes the stage's wording: the name question, and what the
  * tracker says about each item. The participant reads it as written, with
- * the person and the number of missing parents filled in, and the stage's
+ * the person filled in, and the stage's
  * own note under a recommended list.
  */
 function researcherWording(): ScenarioDefinition {
@@ -1070,7 +1070,7 @@ function researcherWording(): ScenarioDefinition {
       itemText: {
         parents: {
           listItem:
-            '{isYou, select, true {{missing, plural, one {One more parent to add} other {# parents to add}}} other {Parents of {name}}}',
+            '{isYou, select, true {Your parents to add} other {Parents of {name}}}',
         },
         siblings: {
           listItem:
@@ -1104,7 +1104,7 @@ function researcherWording(): ScenarioDefinition {
       await interview.nextButton.click();
       await expect(trackerList(page)).toBeVisible();
       for (const item of [
-        '2 parents to add',
+        'Your parents to add',
         'Your brothers and sisters',
         // The supplied wording fills what the researcher left out.
         'Add your biological children, or say you have none',
@@ -1137,7 +1137,7 @@ function researcherWording(): ScenarioDefinition {
       // The participant is not asked their own name; a relative is.
       await trackerRing(page).click();
       await trackerList(page)
-        .getByRole('button', { name: '2 parents to add', exact: true })
+        .getByRole('button', { name: 'Your parents to add', exact: true })
         .click();
       await expect(
         panel(page).getByRole('textbox', { name: 'What do you call them?' }),
