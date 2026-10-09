@@ -1534,6 +1534,7 @@ function ParentFields({
       label={
         anchorHasCarrier
           ? text(wording.carriedSiblingsPregnancyLabel, {
+              single: siblingsWithoutCarrier.length === 1 ? 'true' : 'false',
               count: siblingsWithoutCarrier.length,
               isYou:
                 onlySibling !== undefined && family.byId.get(onlySibling)?.isEgo
