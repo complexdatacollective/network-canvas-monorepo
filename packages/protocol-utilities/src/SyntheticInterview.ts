@@ -657,6 +657,7 @@ export class SyntheticInterview {
               }
             : undefined,
       initialEdges: opts?.initialEdges ?? [],
+      ...(opts?.wording && { wording: opts.wording }),
     };
 
     // Handle form fields for NameGenerator (node-based)
@@ -2976,6 +2977,11 @@ export class SyntheticInterview {
             : {}),
         }));
       }
+    }
+
+    // The researcher's own wording, before Network Canvas's fills what is left.
+    for (const [setting, text] of Object.entries(stage.wording ?? {})) {
+      config[setting] = this.localized(text);
     }
 
     return this.withSuppliedText(config, stage.type);

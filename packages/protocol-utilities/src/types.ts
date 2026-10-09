@@ -352,6 +352,10 @@ export type StageEntry = {
   narrativePedigreeSourceStageId?: string;
   narrativePedigreeDiseases?: NarrativeDiseaseEntry[];
   narrativePedigreeShowAtRiskStatuses?: boolean;
+  /** Stage settings holding participant-visible wording the researcher has
+   * written, by setting name; a setting not named here takes the text
+   * Network Canvas supplies. */
+  wording?: Record<string, TextInput>;
   // Geospatial
   mapOptions?: MapOptionsEntry;
   // NetworkComposer
@@ -607,6 +611,10 @@ export type AddStageInput = {
     FamilyPedigreeCompletenessEntry,
     'relativesNotRecordedAttribute'
   >;
+  /** Stage settings holding participant-visible wording the researcher has
+   * written, by setting name (for example `externalDataError`); a setting not
+   * named here takes the text Network Canvas supplies. */
+  wording?: Record<string, TextInput>;
   // Geospatial
   mapOptions?: MapOptionsEntry;
   // NarrativePedigree

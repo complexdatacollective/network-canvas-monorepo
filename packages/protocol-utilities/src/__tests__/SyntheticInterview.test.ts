@@ -3291,3 +3291,25 @@ describe('FinishSession stage', () => {
     expect(network.edges).toEqual([]);
   });
 });
+
+describe('SyntheticInterview stage wording', () => {
+  it('writes the wording a fixture gives a stage as plain text', () => {
+    const synth = new SyntheticInterview();
+    const person = synth.addNodeType({ name: 'Person' });
+    const nameVariable = person.addVariable({ type: 'text', name: 'fullName' });
+    synth
+      .addStage('NameGeneratorQuickAdd', {
+        subject: { entity: 'node', type: person.id },
+        quickAdd: nameVariable.id,
+        wording: { quickAddHint: 'Type a name, then press {Enter}' },
+      })
+      .addPrompt({ text: 'Who do you know?' });
+
+    const { stages } = expectValid(synth);
+    expect(stages[0]).toMatchObject({
+      quickAddHint: {
+        'en-US': escapeMessageText('Type a name, then press {Enter}'),
+      },
+    });
+  });
+});

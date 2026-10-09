@@ -13,6 +13,10 @@ import type { InterfaceScenarios } from './types.js';
 
 const FIXTURES_DIR = path.resolve(import.meta.dirname, '../helpers/fixtures');
 
+// A researcher's own wording for the panel that could not load, distinct from
+// the text Network Canvas supplies.
+const EXTERNAL_DATA_ERROR = 'The list could not load - matrix check';
+
 type NetworkState = NonNullable<SessionPayload['network']>;
 
 /** Find the first node whose attributes contain the given label value. */
@@ -925,7 +929,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
 
     {
       id: 'external-panel-error-state',
-      covers: ['panels[].dataSource=asset(external)'],
+      covers: ['panels[].dataSource=asset(external)', 'externalDataError'],
       build: () => {
         const synth = new SyntheticInterview();
         const person = synth.addNodeType({ name: 'Person' });
@@ -941,6 +945,9 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         const ng = synth.addStage('NameGenerator', {
           subject: { entity: 'node', type: person.id },
           form: { title: 'Add a person', fields: [] },
+          // The researcher's own words, so the panel proves it shows the
+          // stage's setting rather than Network Canvas's supplied text.
+          wording: { externalDataError: EXTERNAL_DATA_ERROR },
         });
         ng.addFormField({
           variable: formVar.id,
@@ -965,9 +972,10 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         await expect(panel).toBeAttached();
         await expect(panel).toBeHidden();
         await expect(panel.getByText('Something went wrong')).toBeAttached();
+        await expect(panel.getByText(EXTERNAL_DATA_ERROR)).toBeAttached();
         await expect(
           panel.getByText('External data could not be loaded.'),
-        ).toBeAttached();
+        ).toHaveCount(0);
 
         // No crash: the main list is present and the add flow still works.
         await expect(page.getByTestId('node-list')).toBeVisible();

@@ -53,6 +53,17 @@ const TWO_TRACTS_ASSET: SyntheticAssetSpec = {
   localPath: TWO_TRACTS_GEOJSON_PATH,
 };
 
+// A researcher's own words for the map's messages, each distinct from the text
+// Network Canvas supplies, so an assertion on one proves the stage's own
+// setting is what the participant sees.
+const MAP_UNAVAILABLE = 'Maps are not available here - matrix check';
+const OUTSIDE_AREAS_LABEL = 'Somewhere else entirely - matrix check';
+// The fixture finds the search box by a name containing "search", which its
+// placeholder supplies.
+const SEARCH_LABEL = 'Search for a place - matrix check';
+const SEARCH_NO_MATCH = 'No such place - matrix check';
+const SEARCH_FAILED = 'The place search broke - matrix check';
+
 type GeoMapOptions = {
   tokenAssetId: string;
   style: string;
@@ -286,7 +297,7 @@ function buildOutsideSelectableAreasScenario(): ScenarioDefinition {
 
   return {
     id: 'outside-selectable-areas-button-and-deselect',
-    covers: ['outside-selectable-areas'],
+    covers: ['outside-selectable-areas', 'outsideAreasLabel'],
     slow: true,
     build: () => {
       const { synth, person } = newPersonInterview();
@@ -300,6 +311,7 @@ function buildOutsideSelectableAreasScenario(): ScenarioDefinition {
         subject: { entity: 'node', type: person.id },
         initialNodes: { count: 1 },
         mapOptions: chicagoMapOptions(),
+        wording: { outsideAreasLabel: OUTSIDE_AREAS_LABEL },
       });
       geo.addPrompt({
         variable: locationVar.id,
@@ -315,8 +327,18 @@ function buildOutsideSelectableAreasScenario(): ScenarioDefinition {
     run: async ({ interview, stage, protocol }) => {
       await stage.geospatial.waitForMapIdle();
 
+      // The button carries the stage's own label, not Network Canvas's.
+      await expect(stage.geospatial.outsideSelectableAreasButton).toHaveText(
+        OUTSIDE_AREAS_LABEL,
+      );
+
       await stage.geospatial.selectOutsideSelectableAreas();
       await expect(stage.geospatial.outsideSelectableOverlay).toBeVisible();
+      await expect(
+        stage.geospatial.outsideSelectableOverlay.getByRole('heading', {
+          name: OUTSIDE_AREAS_LABEL,
+        }),
+      ).toBeVisible();
       await expect(
         stage.geospatial.outsideSelectableAreasButton,
       ).toBeDisabled();
@@ -850,7 +872,7 @@ function buildSearchFlowScenario(): ScenarioDefinition {
 
   return {
     id: 'search-flow-select-suggestion-and-ux',
-    covers: ['mapOptions.allowSearch', 'analytics-events'],
+    covers: ['mapOptions.allowSearch', 'analytics-events', 'searchLabel'],
     slow: true,
     build: () => {
       const { synth, person, nameVarId } = newPersonInterview();
@@ -864,6 +886,7 @@ function buildSearchFlowScenario(): ScenarioDefinition {
         subject: { entity: 'node', type: person.id },
         initialNodes: { count: 1 },
         mapOptions: chicagoMapOptions({ allowSearch: true }),
+        wording: { searchLabel: SEARCH_LABEL },
       });
       geo.addPrompt({
         variable: locationVar.id,
@@ -886,6 +909,11 @@ function buildSearchFlowScenario(): ScenarioDefinition {
       // Search renders (allowSearch true) and returns the mocked suggestion.
       await stage.geospatial.search('Sidetrack');
       await expect(stage.geospatial.getSuggestions()).toHaveCount(1);
+      // The search box is labelled with the stage's own words.
+      await expect(stage.geospatial.searchInput).toHaveAttribute(
+        'placeholder',
+        SEARCH_LABEL,
+      );
 
       // Tabbing PAST the panel closes it and leaves focus where the browser
       // sent it. #1394: restoring focus from that close — the document
@@ -957,10 +985,84 @@ function buildSearchFlowScenario(): ScenarioDefinition {
   };
 }
 
+function buildSearchNoMatchAndFailureScenario(): ScenarioDefinition {
+  // Mapbox's suggest endpoint, which the e2e host mocks (mapbox-mocks.ts).
+  const SUGGEST = /https:\/\/api\.mapbox\.com\/search\/searchbox\/v1\/suggest/;
+
+  return {
+    id: 'search-no-match-and-failure-wording',
+    covers: ['searchNoMatch', 'searchFailed'],
+    // Firefox and webkit run the stub search, which never asks Mapbox.
+    chromiumOnly: true,
+    slow: true,
+    build: () => {
+      const { synth, person } = newPersonInterview();
+      const locationVar = person.addVariable({
+        type: 'location',
+        name: 'Location',
+      });
+
+      const geo = synth.addStage('Geospatial', {
+        subject: { entity: 'node', type: person.id },
+        initialNodes: { count: 1 },
+        mapOptions: chicagoMapOptions({ allowSearch: true }),
+        wording: {
+          searchNoMatch: SEARCH_NO_MATCH,
+          searchFailed: SEARCH_FAILED,
+        },
+      });
+      geo.addPrompt({
+        variable: locationVar.id,
+        text: 'Search for this person’s neighbourhood.',
+      });
+
+      clearNodeLocations(synth, [0], [locationVar.id]);
+      return synth;
+    },
+    assets: [TOKEN_ASSET, CHICAGO_ASSET],
+    currentStep: 0,
+    seedNetwork: true,
+    run: async ({ page, stage }) => {
+      await stage.geospatial.waitForMapIdle();
+      await stage.geospatial.openSearch();
+      const emptyList = page.getByTestId('geospatial-search-empty');
+
+      // A search that reached Mapbox and found nothing says nothing matched,
+      // in the stage's own words, in the panel and to a screen reader.
+      await page.route(SUGGEST, (route) =>
+        route.fulfill({
+          headers: { 'access-control-allow-origin': '*' },
+          json: {
+            suggestions: [],
+            attribution: 'e2e mock',
+            response_id: 'e2e-mock-empty',
+          },
+        }),
+      );
+      await stage.geospatial.searchInput.fill('Nowhere at all');
+      await expect(emptyList).toHaveText(SEARCH_NO_MATCH);
+      await expect(stage.geospatial.searchStatus).toHaveText(SEARCH_NO_MATCH);
+
+      // A search that never reached Mapbox says it failed, not that nothing
+      // matched. Routes registered later win, so this replaces the empty one.
+      await page.route(SUGGEST, (route) =>
+        route.fulfill({
+          status: 500,
+          headers: { 'access-control-allow-origin': '*' },
+          json: { message: 'e2e mock failure' },
+        }),
+      );
+      await stage.geospatial.searchInput.fill('Still nowhere');
+      await expect(emptyList).toHaveText(SEARCH_FAILED);
+      await expect(stage.geospatial.searchStatus).toHaveText(SEARCH_FAILED);
+    },
+  };
+}
+
 function buildMapErrorOverlayScenario(): ScenarioDefinition {
   return {
     id: 'map-error-overlay-webgl-failure',
-    covers: ['map-error-overlay'],
+    covers: ['map-error-overlay', 'mapUnavailable'],
     chromiumOnly: true,
     slow: true,
     build: () => {
@@ -975,6 +1077,7 @@ function buildMapErrorOverlayScenario(): ScenarioDefinition {
         subject: { entity: 'node', type: person.id },
         initialNodes: { count: 1 },
         mapOptions: chicagoMapOptions(),
+        wording: { mapUnavailable: MAP_UNAVAILABLE },
       });
       geo.addPrompt({
         variable: locationVar.id,
@@ -1021,9 +1124,7 @@ function buildMapErrorOverlayScenario(): ScenarioDefinition {
       await expect(stage.geospatial.mapContainer).toBeVisible();
       await expect(page.getByTestId('map-error-overlay')).toBeVisible();
       await expect(
-        page
-          .getByTestId('map-error-overlay')
-          .getByText(/does not support the features the map requires/),
+        page.getByTestId('map-error-overlay').getByText(MAP_UNAVAILABLE),
       ).toBeVisible();
 
       // The stage did not crash to the error boundary and stays navigable.
@@ -1111,6 +1212,7 @@ export const geospatialScenarios: InterfaceScenarios = {
     buildZoomControlsScenario(),
     buildMapStyleColorTransitScenario(),
     buildSearchFlowScenario(),
+    buildSearchNoMatchAndFailureScenario(),
     buildMapErrorOverlayScenario(),
     buildOfflineIndicatorScenario(),
   ],
