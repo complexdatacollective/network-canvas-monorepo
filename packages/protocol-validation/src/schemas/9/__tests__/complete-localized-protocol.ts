@@ -312,11 +312,24 @@ export const completeProtocol = () => ({
         title: localized('Add a person'),
         fields: [{ variable: 'name', prompt: localized('Their name') }],
       },
+      behaviours: { minNodes: 1, maxNodes: 5 },
+      minNodesNotice: localized(
+        '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+      ),
+      maxNodesNotice: localized(
+        'You have completed this task. Click the next arrow to continue.',
+      ),
+      externalDataError: localized('External data could not be loaded.'),
       panels: [
         {
           id: 'panel',
           title: localized('People so far'),
           dataSource: 'existing',
+        },
+        {
+          id: 'external',
+          title: localized('From the roster'),
+          dataSource: 'roster',
         },
       ],
       prompts: [{ id: 'p1', text: localized('Who do you know?') }],
@@ -324,6 +337,7 @@ export const completeProtocol = () => ({
     {
       id: 'quickAdd',
       type: 'NameGeneratorQuickAdd',
+      quickAddHint: localized('Press Enter when you are finished.'),
       label: localized('Quick add'),
       subject: { entity: 'node', type: 'person' },
       quickAdd: 'name',
@@ -332,10 +346,22 @@ export const completeProtocol = () => ({
     {
       id: 'roster',
       type: 'NameGeneratorRoster',
+      externalDataError: localized('External data could not be loaded.'),
+      allAddedNotice: localized('There is nothing left to add from this list.'),
       label: localized('Roster'),
       subject: { entity: 'node', type: 'person' },
       dataSource: 'roster',
       panelTitle: localized('Available to add'),
+      behaviours: { minNodes: 1, maxNodes: 5 },
+      minNodesNotice: localized(
+        '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+      ),
+      maxNodesNotice: localized(
+        'You have completed this task. Click the next arrow to continue.',
+      ),
+      searchLabel: localized('Search'),
+      searchNoMatch: localized('Nothing matched your search term.'),
+      searchOptions: { fuzziness: 0.5, matchProperties: ['name'] },
       cardOptions: {
         additionalProperties: [
           { label: localized('Card detail'), variable: 'name' },
@@ -530,6 +556,13 @@ export const completeProtocol = () => ({
     {
       id: 'geospatial',
       type: 'Geospatial',
+      offlineNotice: localized(
+        'You are offline — the map will not load until you reconnect.',
+      ),
+      mapUnavailable: localized(
+        'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
+      ),
+      outsideAreasLabel: localized('Outside Selectable Areas'),
       label: localized('Map'),
       subject: { entity: 'node', type: 'person' },
       mapOptions: {
@@ -540,7 +573,13 @@ export const completeProtocol = () => ({
         dataSourceAssetId: 'map',
         color: 'node-color-seq-1',
         targetFeatureProperty: 'name',
+        allowSearch: true,
       },
+      searchLabel: localized('Search'),
+      searchNoMatch: localized('Nothing matched your search term.'),
+      searchFailed: localized(
+        'Search could not be completed. Try again in a moment.',
+      ),
       prompts: [
         {
           id: 'p1',

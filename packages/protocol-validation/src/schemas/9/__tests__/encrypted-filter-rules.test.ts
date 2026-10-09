@@ -136,6 +136,7 @@ describe('Schema 9 rules on encrypted attributes', () => {
           {
             ...nameGenerator,
             skipLogic: undefined,
+            externalDataError: localized('External data could not be loaded.'),
             panels: [
               {
                 id: 'panel-1',

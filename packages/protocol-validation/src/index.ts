@@ -160,6 +160,8 @@ export {
   PEDIGREE_PARENTS_ARGUMENTS,
   PEDIGREE_PERSON_ARGUMENTS,
 } from './schemas/9/stages/family-pedigree.ts';
+// The arguments a name generator's minimum notice may use.
+export { NODE_COUNT_ARGUMENTS } from './schemas/9/stages/name-generator.ts';
 // The Family Pedigree option labels Network Canvas supplies, written into a
 // protocol by Architect.
 export {

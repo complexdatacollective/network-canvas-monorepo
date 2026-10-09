@@ -535,6 +535,12 @@ describe('Forms & prompts schema conformance', () => {
       id: 'ng1',
       type: 'NameGenerator',
       label: localized('Generate Names'),
+      minNodesNotice: localized(
+        '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+      ),
+      maxNodesNotice: localized(
+        'You have completed this task. Click the next arrow to continue.',
+      ),
       subject: { entity: 'node', type: 'person' },
       form: {
         title: localized('Add person'),
@@ -547,7 +553,14 @@ describe('Forms & prompts schema conformance', () => {
     const quickAddStage = (behaviours: Record<string, number>) => ({
       id: 'ngqa1',
       type: 'NameGeneratorQuickAdd',
+      quickAddHint: localized('Press Enter when you are finished.'),
       label: localized('Quick Add'),
+      minNodesNotice: localized(
+        '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+      ),
+      maxNodesNotice: localized(
+        'You have completed this task. Click the next arrow to continue.',
+      ),
       subject: { entity: 'node', type: 'person' },
       quickAdd: 'personName',
       prompts: [{ id: 'p1', text: localized('Who do you know?') }],

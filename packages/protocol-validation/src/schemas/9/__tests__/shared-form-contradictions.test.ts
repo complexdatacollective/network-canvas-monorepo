@@ -497,6 +497,7 @@ describe('shared form stage-effective validation contradictions', () => {
       stage: {
         id: 'quick',
         type: 'NameGeneratorQuickAdd',
+        quickAddHint: localized('Press Enter when you are finished.'),
         label: localized('Quick add'),
         subject: { entity: 'node', type: 'person' },
         quickAdd: 'name',
@@ -509,6 +510,10 @@ describe('shared form stage-effective validation contradictions', () => {
       stage: {
         id: 'roster',
         type: 'NameGeneratorRoster',
+        externalDataError: localized('External data could not be loaded.'),
+        allAddedNotice: localized(
+          'There is nothing left to add from this list.',
+        ),
         label: localized('Roster'),
         subject: { entity: 'node', type: 'person' },
         dataSource: 'roster',

@@ -12,13 +12,17 @@ import { asSchema8Protocol } from './schema-8-protocol.ts';
 
 const english = { defaultLocale: 'en', locales: ['en'] };
 
+/** The roster's panel title, of the settings the roster is supplied. */
+const panelTitleOnly = (text: { path: readonly string[] }) =>
+  text.path[0] === 'panelTitle';
+
 describe('the roster panel title Network Canvas supplies', () => {
   it('is written in each protocol language it is supplied in', () => {
     expect(
       suppliedStageText('NameGeneratorRoster', {
         defaultLocale: 'en-GB',
         locales: ['en-GB', 'es', 'hu'],
-      }),
+      }).filter(panelTitleOnly),
     ).toEqual([
       {
         path: ['panelTitle'],
@@ -34,7 +38,7 @@ describe('the roster panel title Network Canvas supplies', () => {
       suppliedStageText('NameGeneratorRoster', {
         defaultLocale: 'hu',
         locales: ['hu', 'fr'],
-      }),
+      }).filter(panelTitleOnly),
     ).toEqual([
       {
         path: ['panelTitle'],
@@ -44,7 +48,9 @@ describe('the roster panel title Network Canvas supplies', () => {
   });
 
   it('is supplied for no other stage', () => {
-    expect(suppliedStageText('NameGenerator', english)).toEqual([]);
+    expect(
+      suppliedStageText('NameGenerator', english).filter(panelTitleOnly),
+    ).toEqual([]);
   });
 
   const roster = (panelTitle: Record<string, string>) => ({
