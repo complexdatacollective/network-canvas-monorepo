@@ -17,9 +17,11 @@ import { readProtocolJson } from '../helpers/read-store.js';
  * Seeded with one English stage holding three texts (its name, its heading and
  * one text block), then the finish stage every protocol ends with, holding
  * three more (its name, heading and text), so there is something to count and
- * translate once a second language joins. The finish stage's text is the
- * researcher's own, not the text Network Canvas supplies, so adding a language
- * translates none of it.
+ * translate once a second language joins. Those six are the researcher's own.
+ * The finish stage's four finishing words and the interview's ten words of its
+ * own (Back, Continue and the like) are Network Canvas's, so a language
+ * Network Canvas supplies them in gains them when it is added: 20 texts, 14 of
+ * which French starts with.
  */
 const STAGE_NAME = 'Welcome';
 
@@ -32,6 +34,50 @@ const STAGE_TEXT_ROWS = [
   'Closing screen › Heading',
   'Closing screen › Text',
 ];
+
+/**
+ * Every text's row: the researcher's six, then the finish stage's finishing
+ * words and the interview's own words, which Network Canvas supplies.
+ */
+const ALL_TEXT_ROWS = [
+  ...STAGE_TEXT_ROWS,
+  'Finishing the interview › Finish button',
+  'Finishing the interview › Confirmation question',
+  'Finishing the interview › Finished notice',
+  'Finishing the interview › If finishing fails',
+  'Throughout the interview › Exit button',
+  'Throughout the interview › Exit explanation',
+  'Throughout the interview › Screen error message',
+  'Throughout the interview › Missing item message',
+  'Throughout the interview › Back button',
+  'Throughout the interview › Continue button',
+  'Throughout the interview › Cancel button',
+  'Throughout the interview › Done button',
+  'Throughout the interview › Delete button',
+  'Throughout the interview › General error message',
+];
+
+/** The finish stage's finishing words, as Network Canvas supplies them. */
+const FINISHING_WORDS_EN = {
+  finishLabel: { en: 'Finish' },
+  finishConfirmation: { en: 'Are you sure you want to finish the interview?' },
+  finishedNotice: {
+    en: 'This interview is finished, and its answers can no longer be changed.',
+  },
+  finishFailed: {
+    en: 'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
+  },
+};
+
+/** The same words in French, which adding French writes. */
+const FINISHING_WORDS_FR = {
+  finishLabel: 'Terminer',
+  finishConfirmation: 'Voulez-vous vraiment terminer l’entretien ?',
+  finishedNotice:
+    'Cet entretien est terminé et ses réponses ne peuvent plus être modifiées.',
+  finishFailed:
+    'L’entretien n’a pas pu être terminé. Veuillez réessayer. Si le problème persiste, contactez l’équipe responsable de l’étude.',
+};
 
 function englishProtocol(): CurrentProtocol {
   return CurrentProtocolSchema.parse({
@@ -56,10 +102,7 @@ function englishProtocol(): CurrentProtocol {
         label: { en: 'End' },
         title: { en: 'All done' },
         content: { en: 'Thanks again.' },
-        finishLabel: { en: 'Finish' },
-        finishConfirmation: { en: 'Finish this interview?' },
-        finishedNotice: { en: 'This interview is finished.' },
-        finishFailed: { en: 'The interview could not be finished.' },
+        ...FINISHING_WORDS_EN,
         outcome: 'completed',
       },
     ],
@@ -167,7 +210,7 @@ test('adds a language, keeps the default language from being removed, translates
   await expect(languageRows(page)).toHaveCount(1);
   await expect(english).toContainText('English');
   await expect(english.getByText('Default', { exact: true })).toBeVisible();
-  await expect(english).toContainText('6 of 6 texts translated');
+  await expect(english).toContainText('20 of 20 texts translated');
   // With nothing to translate into, there is no translation table.
   const openTable = page.getByRole('link', {
     name: 'Open translation table',
@@ -202,7 +245,7 @@ test('adds a language, keeps the default language from being removed, translates
 
   const french = languageRow(page, 'fr');
   await expect(french).toContainText('French');
-  await expect(french).toContainText('0 of 6 texts translated');
+  await expect(french).toContainText('14 of 20 texts translated');
   await expect(french.getByText('Default', { exact: true })).toHaveCount(0);
   await expect(
     french.getByText('Missing translations', { exact: true }),
@@ -227,8 +270,8 @@ test('adds a language, keeps the default language from being removed, translates
     page.getByRole('link', { name: /^Languages\b/ }),
   ).toHaveAccessibleName(/has missing translations/);
 
-  // Adding a language translates nothing: the protocol gains the language and
-  // every text keeps its one English translation.
+  // Adding a language writes Network Canvas's wording in it, and leaves the
+  // researcher's own texts with their one English translation.
   const added = await readProtocolJson(page, (protocol) =>
     protocol.localization.locales.includes('fr'),
   );
@@ -236,7 +279,27 @@ test('adds a language, keeps the default language from being removed, translates
     defaultLocale: 'en',
     locales: ['en', 'fr'],
   });
-  expect(added.stages).toEqual(before.stages);
+  expect(added.stages[0]).toEqual(before.stages[0]);
+  const addedFinish = added.stages.at(-1);
+  const beforeFinish = before.stages.at(-1);
+  expect(addedFinish?.type).toBe('FinishSession');
+  if (
+    addedFinish?.type === 'FinishSession' &&
+    beforeFinish?.type === 'FinishSession'
+  ) {
+    expect(addedFinish.title).toEqual(beforeFinish.title);
+    expect(addedFinish.content).toEqual(beforeFinish.content);
+    for (const [key, fr] of Object.entries(FINISHING_WORDS_FR)) {
+      expect(addedFinish[key as keyof typeof FINISHING_WORDS_FR]).toEqual({
+        ...FINISHING_WORDS_EN[key as keyof typeof FINISHING_WORDS_EN],
+        fr,
+      });
+    }
+  }
+  expect(added.interfaceText?.interview?.back).toEqual({
+    en: 'Back',
+    fr: 'Retour',
+  });
 
   // Make French the default.
   await expect(defaultLanguage).toHaveAccessibleDescription(
@@ -255,7 +318,7 @@ test('adds a language, keeps the default language from being removed, translates
     defaultLocale: 'fr',
     locales: ['en', 'fr'],
   });
-  expect(frenchDefault.stages).toEqual(before.stages);
+  expect(frenchDefault.stages).toEqual(added.stages);
 
   // The default language cannot be removed, and its delete button says why.
   // The button stays in the tab order, so the reason reaches keyboard users
@@ -312,7 +375,7 @@ test('adds a language, keeps the default language from being removed, translates
   await expect(page).toHaveURL(
     /\/protocol\/localization\?table=open&missing=fr$/,
   );
-  await expect(page.getByText('Showing 6 of 6 texts')).toBeVisible();
+  await expect(page.getByText('Showing 6 of 20 texts')).toBeVisible();
   const table = translationTable(page);
   await expect(table.locator('th[scope="row"]')).toHaveText(STAGE_TEXT_ROWS);
   // A stage is headed by its position, its name in the default language and
@@ -351,7 +414,7 @@ test('adds a language, keeps the default language from being removed, translates
   await page.keyboard.press('Control+Enter');
   await expect(
     table.getByRole('columnheader', { name: /^French/ }),
-  ).toContainText('6 of 6 translated');
+  ).toContainText('20 of 20 translated');
   await expect(table.locator('th[scope="row"]')).toHaveText(STAGE_TEXT_ROWS);
   const translated = await readProtocolJson(page, (protocol) =>
     Object.hasOwn(finishContent(protocol) ?? {}, 'fr'),
@@ -382,7 +445,7 @@ test('adds a language, keeps the default language from being removed, translates
   await expect(translationTableDialog(page)).toBeHidden();
   await expect(page).toHaveURL(/\/protocol\/localization$/);
   await expect(openTable).toBeFocused();
-  await expect(french).toContainText('6 of 6 texts translated');
+  await expect(french).toContainText('20 of 20 texts translated');
   await expect(
     french.getByText('Missing translations', { exact: true }),
   ).toHaveCount(0);
@@ -530,10 +593,28 @@ test('changes the protocol’s languages from the language chooser stage, and th
   expect(saved.stages[0]?.label).toEqual({ en: 'Pick a language' });
 });
 
+/** In English and French, with only the researcher's six texts untranslated. */
 function bilingualProtocol(): CurrentProtocol {
+  const english = englishProtocol();
   return CurrentProtocolSchema.parse({
-    ...englishProtocol(),
+    ...english,
     localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
+    stages: english.stages.map((stage) =>
+      stage.type === 'FinishSession'
+        ? {
+            ...stage,
+            ...Object.fromEntries(
+              Object.entries(FINISHING_WORDS_FR).map(([key, fr]) => [
+                key,
+                {
+                  ...FINISHING_WORDS_EN[key as keyof typeof FINISHING_WORDS_EN],
+                  fr,
+                },
+              ]),
+            ),
+          }
+        : stage,
+    ),
   });
 }
 
@@ -553,13 +634,13 @@ test('opens the translation table on every missing translation from the protocol
   await expect(textsToShow(page).locator('option:checked')).toHaveText(
     'Missing in any shown language',
   );
-  await expect(page.getByText('Showing 6 of 6 texts')).toBeVisible();
+  await expect(page.getByText('Showing 6 of 20 texts')).toBeVisible();
 
   // The filter is kept in the address, and every text has a row without it.
   await textsToShow(page).selectOption({ label: 'All texts' });
   await expect(page).toHaveURL(/\/protocol\/localization\?table=open$/);
   await expect(translationTable(page).locator('th[scope="row"]')).toHaveText(
-    STAGE_TEXT_ROWS,
+    ALL_TEXT_ROWS,
   );
 
   // Closed, the table leaves the Languages page it was opened over.
