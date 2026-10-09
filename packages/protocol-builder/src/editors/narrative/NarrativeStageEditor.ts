@@ -5,6 +5,7 @@ import { subjectPicker } from '../../sections/subject-picker/subjectPicker.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
 import { canvasPermissions } from './sections/permissions/canvasPermissions.tsx';
 import { narrativePresets } from './sections/presets/narrativePresets.tsx';
+import { narrativeWording } from './sections/wording/narrativeWording.tsx';
 
 /**
  * The canvas a participant is shown their own network on and asked to talk
@@ -25,6 +26,7 @@ export const narrativeStageEditor = defineStageEditor('Narrative', [
   narrativePresets(),
   background(),
   canvasPermissions(),
+  narrativeWording(),
   skipLogic(),
   interviewerGuidance(),
 ]);

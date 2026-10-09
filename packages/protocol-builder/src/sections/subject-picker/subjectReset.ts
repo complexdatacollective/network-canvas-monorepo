@@ -20,6 +20,17 @@ export const SUBJECT_INDEPENDENT_FIELDS: readonly string[] = Object.freeze([
   'introductionPanel',
   'panelTitle',
   'subject',
+  // The words a canvas shows its participant: its name box and tooltips, and
+  // the headings of its panels. Prose about the canvas, which a subject change
+  // keeps, the same as the task's introduction.
+  'addNamePlaceholder',
+  'overtakenEditNotice',
+  'groupsHeading',
+  'attributesHeading',
+  'linksHeading',
+  'tooltips',
+  'keyHeading',
+  'conditionText',
 ]);
 
 /**

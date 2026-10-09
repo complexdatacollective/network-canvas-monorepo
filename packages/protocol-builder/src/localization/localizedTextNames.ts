@@ -15,8 +15,10 @@ import { cardDisplayMessages } from '../editors/name-generator-roster/sections/C
 import { sortOptionsMessages } from '../editors/name-generator-roster/sections/SortOptionsSection.tsx';
 import { narrativePedigreeMessages } from '../editors/narrative-pedigree/sections/narrativePedigreeMessages.ts';
 import { narrativePresetMessages } from '../editors/narrative/sections/presets/narrativePresetMessages.ts';
+import { narrativeWordingMessages } from '../editors/narrative/sections/wording/narrativeWordingMessages.ts';
 import { composerMessages } from '../editors/network-composer/sections/composerMessages.ts';
 import { sociogramPromptMessages } from '../editors/sociogram/sections/prompts/sociogramPromptMessages.ts';
+import { sociogramWordingMessages } from '../editors/sociogram/sections/wording/sociogramWordingMessages.ts';
 import { tieStrengthPromptMessages } from '../editors/tie-strength-census/sections/TieStrengthCensusPromptsSection.tsx';
 import { geospatialMessages } from '../fields/geospatial/geospatialMessages.ts';
 import { stageNameMessages } from '../naming/stageNameInternals.ts';
@@ -395,6 +397,188 @@ const composerFieldRules = (
   );
 };
 
+/**
+ * A text setting an editor shows under a section: the section names it first,
+ * then the setting's own label names the whole path to it.
+ */
+const settingRule = (
+  pattern: string,
+  section: MessageDescriptor,
+  label: MessageDescriptor,
+): Rule =>
+  rule(
+    pattern,
+    [0, words(section)],
+    [segmentsOf(pattern).length, words(label)],
+  );
+
+const COMPOSER_WORDING = [
+  settingRule(
+    'addNamePlaceholder',
+    composerMessages.wordingTitle,
+    composerMessages.addNamePlaceholderLabel,
+  ),
+  settingRule(
+    'overtakenEditNotice',
+    composerMessages.wordingTitle,
+    composerMessages.overtakenEditNoticeLabel,
+  ),
+  settingRule(
+    'groupsHeading',
+    composerMessages.wordingTitle,
+    composerMessages.groupsHeadingLabel,
+  ),
+  settingRule(
+    'tooltips.addPerson',
+    composerMessages.wordingTitle,
+    composerMessages.addNodeTooltipLabel,
+  ),
+  settingRule(
+    'tooltips.automaticLayout',
+    composerMessages.wordingTitle,
+    composerMessages.automaticLayoutTooltipLabel,
+  ),
+  settingRule(
+    'tooltips.drawConnection',
+    composerMessages.wordingTitle,
+    composerMessages.drawConnectionTooltipLabel,
+  ),
+];
+
+const NARRATIVE_WORDING = [
+  settingRule(
+    'attributesHeading',
+    narrativeWordingMessages.wordingTitle,
+    narrativeWordingMessages.attributesHeadingLabel,
+  ),
+  settingRule(
+    'linksHeading',
+    narrativeWordingMessages.wordingTitle,
+    narrativeWordingMessages.linksHeadingLabel,
+  ),
+  settingRule(
+    'groupsHeading',
+    narrativeWordingMessages.wordingTitle,
+    narrativeWordingMessages.groupsHeadingLabel,
+  ),
+  settingRule(
+    'tooltips.enableDrawing',
+    narrativeWordingMessages.wordingTitle,
+    narrativeWordingMessages.enableDrawingTooltipLabel,
+  ),
+  settingRule(
+    'tooltips.disableDrawing',
+    narrativeWordingMessages.wordingTitle,
+    narrativeWordingMessages.disableDrawingTooltipLabel,
+  ),
+  settingRule(
+    'tooltips.freezeAnnotations',
+    narrativeWordingMessages.wordingTitle,
+    narrativeWordingMessages.freezeAnnotationsTooltipLabel,
+  ),
+  settingRule(
+    'tooltips.unfreezeAnnotations',
+    narrativeWordingMessages.wordingTitle,
+    narrativeWordingMessages.unfreezeAnnotationsTooltipLabel,
+  ),
+  settingRule(
+    'tooltips.resetAnnotations',
+    narrativeWordingMessages.wordingTitle,
+    narrativeWordingMessages.resetAnnotationsTooltipLabel,
+  ),
+  settingRule(
+    'tooltips.pauseLayout',
+    narrativeWordingMessages.wordingTitle,
+    narrativeWordingMessages.pauseLayoutTooltipLabel,
+  ),
+  settingRule(
+    'tooltips.resumeLayout',
+    narrativeWordingMessages.wordingTitle,
+    narrativeWordingMessages.resumeLayoutTooltipLabel,
+  ),
+];
+
+const SOCIOGRAM_WORDING = [
+  settingRule(
+    'tooltips.pauseLayout',
+    sociogramWordingMessages.wordingTitle,
+    sociogramWordingMessages.pauseLayoutTooltipLabel,
+  ),
+  settingRule(
+    'tooltips.resumeLayout',
+    sociogramWordingMessages.wordingTitle,
+    sociogramWordingMessages.resumeLayoutTooltipLabel,
+  ),
+];
+
+const NARRATIVE_PEDIGREE_WORDING = [
+  settingRule(
+    'keyHeading',
+    narrativePedigreeMessages.wordingTitle,
+    narrativePedigreeMessages.keyHeadingLabel,
+  ),
+  settingRule(
+    'tooltips.clearFocus',
+    narrativePedigreeMessages.wordingTitle,
+    narrativePedigreeMessages.clearFocusTooltipLabel,
+  ),
+  settingRule(
+    'tooltips.saveSnapshot',
+    narrativePedigreeMessages.wordingTitle,
+    narrativePedigreeMessages.saveSnapshotTooltipLabel,
+  ),
+  settingRule(
+    'conditionText.heading',
+    narrativePedigreeMessages.wordingTitle,
+    narrativePedigreeMessages.conditionHeadingLabel,
+  ),
+  settingRule(
+    'conditionText.instruction',
+    narrativePedigreeMessages.wordingTitle,
+    narrativePedigreeMessages.conditionInstructionLabel,
+  ),
+  settingRule(
+    'conditionText.notation.affected',
+    narrativePedigreeMessages.wordingTitle,
+    narrativePedigreeMessages.affectedNotationLabel,
+  ),
+  settingRule(
+    'conditionText.notation.obligateAffected',
+    narrativePedigreeMessages.wordingTitle,
+    narrativePedigreeMessages.obligateAffectedNotationLabel,
+  ),
+  settingRule(
+    'conditionText.notation.obligateCarrier',
+    narrativePedigreeMessages.wordingTitle,
+    narrativePedigreeMessages.obligateCarrierNotationLabel,
+  ),
+  settingRule(
+    'conditionText.notation.atRiskAffected',
+    narrativePedigreeMessages.wordingTitle,
+    narrativePedigreeMessages.atRiskAffectedNotationLabel,
+  ),
+  settingRule(
+    'conditionText.notation.atRiskCarrier',
+    narrativePedigreeMessages.wordingTitle,
+    narrativePedigreeMessages.atRiskCarrierNotationLabel,
+  ),
+  settingRule(
+    'conditionText.notation.unknown',
+    narrativePedigreeMessages.wordingTitle,
+    narrativePedigreeMessages.unknownNotationLabel,
+  ),
+  settingRule(
+    'conditionText.snapshotCondition',
+    narrativePedigreeMessages.wordingTitle,
+    narrativePedigreeMessages.snapshotConditionLabel,
+  ),
+  settingRule(
+    'conditionText.snapshotInheritance',
+    narrativePedigreeMessages.wordingTitle,
+    narrativePedigreeMessages.snapshotInheritanceLabel,
+  ),
+];
+
 const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
   AlterEdgeForm: [...INTRODUCTION_RULES, ...formFieldRules(stageSubject)],
   AlterForm: [...INTRODUCTION_RULES, ...formFieldRules(stageSubject)],
@@ -536,6 +720,7 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
     ),
   ],
   Narrative: [
+    ...NARRATIVE_WORDING,
     rule('presets.#.label', NARRATIVE_PRESETS, NARRATIVE_PRESET, [
       3,
       words(narrativePresetMessages.presetNameLabel),
@@ -546,6 +731,7 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
     ]),
   ],
   NarrativePedigree: [
+    ...NARRATIVE_PEDIGREE_WORDING,
     rule(
       'diseases.#.label',
       [1, words(narrativePedigreeMessages.diseasesTitle)],
@@ -554,6 +740,7 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
     ),
   ],
   NetworkComposer: [
+    ...COMPOSER_WORDING,
     ...composerFieldRules(
       'nodeForm.fields',
       [
@@ -573,7 +760,10 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
   ],
   OneToManyDyadCensus: [CENSUS_PROMPT],
   OrdinalBin: [CENSUS_PROMPT],
-  Sociogram: [promptText(sociogramPromptMessages.promptTextLabel)],
+  Sociogram: [
+    promptText(sociogramPromptMessages.promptTextLabel),
+    ...SOCIOGRAM_WORDING,
+  ],
   TieStrengthCensus: [
     ...INTRODUCTION_RULES,
     CENSUS_PROMPT,
