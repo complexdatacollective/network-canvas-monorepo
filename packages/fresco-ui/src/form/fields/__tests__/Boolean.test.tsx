@@ -116,4 +116,25 @@ describe('BooleanField answers that cannot be chosen', () => {
     await userEvent.click(no);
     expect(onChange).toHaveBeenCalledWith(false);
   });
+
+  it('keeps the group in the tab order when the chosen answer is the one that cannot be chosen', () => {
+    render(
+      <BooleanField
+        name="carried"
+        options={options}
+        value={true}
+        onChange={() => undefined}
+      />,
+    );
+    // A disabled button leaves the tab order, so the tab stop moves to the
+    // first answer that can be chosen.
+    expect(screen.getByRole('radio', { name: 'Yes' })).toHaveAttribute(
+      'tabindex',
+      '-1',
+    );
+    expect(screen.getByRole('radio', { name: 'No' })).toHaveAttribute(
+      'tabindex',
+      '0',
+    );
+  });
 });

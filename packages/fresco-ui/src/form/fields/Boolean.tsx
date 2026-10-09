@@ -240,8 +240,15 @@ export default function BooleanField(props: BooleanFieldProps) {
 
   const groupState = getInputState(props);
   const descriptionIdPrefix = useId();
-  // With nothing chosen, the first answer that can be chosen takes focus.
+  // The chosen answer holds the tab stop. With nothing chosen, or when the
+  // chosen answer cannot be chosen (a disabled button leaves the tab order),
+  // the first answer that can be chosen holds it.
   const firstEnabled = options.findIndex((option) => !option.disabled);
+  const selectedIndex = options.findIndex((option) => option.value === value);
+  const tabStop =
+    selectedIndex >= 0 && !options[selectedIndex]?.disabled
+      ? selectedIndex
+      : firstEnabled;
 
   return (
     <div className={cx('flex w-full flex-col gap-2', className)}>
@@ -295,11 +302,7 @@ export default function BooleanField(props: BooleanFieldProps) {
               data-value={String(option.value)}
               data-negative={option.negative ? 'true' : undefined}
               aria-describedby={option.description ? descriptionId : undefined}
-              tabIndex={
-                isSelected || (value === undefined && index === firstEnabled)
-                  ? 0
-                  : -1
-              }
+              tabIndex={index === tabStop ? 0 : -1}
               className={optionCardVariants({
                 selected: isSelected,
                 state: optionState,
