@@ -1869,3 +1869,201 @@ describe('the parents a sibling shares make them a sibling', () => {
     }
   });
 });
+
+// An answer about a particular person belongs to that person: choosing
+// someone else as the person a question is about asks it afresh, and an
+// answer about someone no longer offered is never saved.
+describe('an answer about a particular person', () => {
+  const otherParent = () =>
+    screen.getByRole('radiogroup', { name: /^Who is the child’s other/ });
+  const carrier = () =>
+    screen.getByRole('radiogroup', { name: /^Who carried the pregnancy\?/ });
+  const choose = async (
+    user: ReturnType<typeof userEvent.setup>,
+    group: HTMLElement,
+    name: string,
+  ) => user.click(within(group).getByRole('radio', { name }));
+  const expectUnanswered = (group: HTMLElement) => {
+    for (const option of within(group).getAllByRole('radio')) {
+      expect(option).not.toBeChecked();
+    }
+  };
+  // Two partners, neither preferred, of unknown sex: either could have
+  // carried the pregnancy, and either could be a biological parent.
+  const twoPartners = {
+    nodes: [
+      person('jo', { isEgo: true, sex: ['female'] }),
+      person('sam'),
+      person('alex'),
+    ],
+    edges: [
+      link('jo', 'sam', 'partner', { current: true }),
+      link('jo', 'alex', 'partner', { current: true }),
+    ],
+    adding: 'child' as const,
+  };
+
+  it('asks afresh whether a step-child’s other parent is their biological parent once another is chosen', async () => {
+    const { onSubmit, user } = renderPersonForm('jo', twoPartners);
+    await choose(user, otherParent(), 'sam');
+    await user.click(
+      screen.getByRole('radio', {
+        name: 'A step-child or other child they raise',
+      }),
+    );
+    await choose(
+      user,
+      await screen.findByRole('radiogroup', {
+        name: /^Is “sam” the child’s biological parent\?/,
+      }),
+      'Yes',
+    );
+    await choose(user, otherParent(), 'alex');
+    const asked = await screen.findByRole('radiogroup', {
+      name: /^Is “alex” the child’s biological parent\?/,
+    });
+    expectUnanswered(asked);
+    await choose(user, asked, 'No');
+    await user.click(screen.getByRole('radio', { name: 'Female' }));
+    await save(user);
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0].request).toMatchObject({
+      otherParent: 'alex',
+      parentKind: 'social',
+      biologicalParent: 'both',
+    });
+  });
+
+  it('asks afresh about a step-child’s other parent chosen after someone not shown yet', async () => {
+    const { user } = renderPersonForm('jo', twoPartners);
+    await choose(user, otherParent(), 'sam');
+    await user.click(
+      screen.getByRole('radio', {
+        name: 'A step-child or other child they raise',
+      }),
+    );
+    await choose(
+      user,
+      await screen.findByRole('radiogroup', {
+        name: /^Is “sam” the child’s biological parent\?/,
+      }),
+      'Yes',
+    );
+    await choose(user, otherParent(), 'Someone not shown yet');
+    await choose(user, otherParent(), 'alex');
+    expectUnanswered(
+      await screen.findByRole('radiogroup', {
+        name: /^Is “alex” the child’s biological parent\?/,
+      }),
+    );
+  });
+
+  it('records no carrier when the other parent said to have carried them is replaced by no other parent', async () => {
+    const { onSubmit, user } = renderPersonForm('jo', twoPartners);
+    await choose(user, otherParent(), 'sam');
+    await choose(user, carrier(), 'sam');
+    await choose(user, otherParent(), 'No other parent');
+    expectUnanswered(carrier());
+    await user.click(screen.getByRole('radio', { name: 'Female' }));
+    await save(user);
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0].request).toMatchObject({
+      otherParent: null,
+      carrier: null,
+    });
+  });
+
+  it('records no carrier when the other parent said to have carried them is replaced by another', async () => {
+    const { onSubmit, user } = renderPersonForm('jo', twoPartners);
+    await choose(user, otherParent(), 'sam');
+    await choose(user, carrier(), 'sam');
+    await choose(user, otherParent(), 'alex');
+    expectUnanswered(carrier());
+    await user.click(screen.getByRole('radio', { name: 'Female' }));
+    await save(user);
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0].request).toMatchObject({
+      otherParent: 'alex',
+      carrier: null,
+    });
+  });
+
+  it('keeps the answer that the participant carried them when the other parent changes', async () => {
+    const { onSubmit, user } = renderPersonForm('jo', twoPartners);
+    await choose(user, otherParent(), 'sam');
+    await choose(user, carrier(), 'jo');
+    await choose(user, otherParent(), 'alex');
+    expect(within(carrier()).getByRole('radio', { name: 'jo' })).toBeChecked();
+    await user.click(screen.getByRole('radio', { name: 'Female' }));
+    await save(user);
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0].request).toMatchObject({
+      otherParent: 'alex',
+      carrier: 'anchor',
+    });
+  });
+
+  it('asks afresh which of the two is a biological parent once another other parent is chosen', async () => {
+    const { onSubmit, user } = renderPersonForm('jo', twoPartners);
+    const biological = () =>
+      screen.getByRole('radiogroup', {
+        name: /^Who is the child’s biological parent/,
+      });
+    await choose(user, otherParent(), 'sam');
+    await choose(user, biological(), 'sam');
+    await choose(user, otherParent(), 'alex');
+    // Asked as it is when alex is chosen first: both, until answered.
+    expect(
+      within(biological()).getByRole('radio', { name: 'alex' }),
+    ).not.toBeChecked();
+    expect(
+      within(biological()).getByRole('radio', { name: /^Both you and “alex”/ }),
+    ).toBeChecked();
+    await user.click(screen.getByRole('radio', { name: 'Female' }));
+    await save(user);
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0].request).toMatchObject({
+      otherParent: 'alex',
+      biologicalParent: 'both',
+    });
+  });
+
+  it('asks afresh whether a new parent is still with the parent chosen as their partner once another is chosen', async () => {
+    const { onSubmit, user } = renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('mum', { sex: ['female'] }),
+        person('dad', { sex: ['male'] }),
+      ],
+      edges: [
+        link('mum', 'ego', 'biological', { carrier: true }),
+        link('dad', 'ego', 'biological'),
+      ],
+      adding: 'parent',
+    });
+    await user.click(screen.getByRole('radio', { name: 'Female' }));
+    await user.click(
+      screen.getByRole('radio', { name: 'Step or social parent' }),
+    );
+    const partner = () =>
+      screen.getByRole('radiogroup', {
+        name: /^Are they the partner of another parent\?/,
+      });
+    const together = () =>
+      screen.getByRole('radiogroup', { name: /^Are they still together\?/ });
+    await choose(user, partner(), 'dad');
+    await choose(user, together(), 'No');
+    await choose(user, partner(), 'mum');
+    // Asked as it is when mum is chosen first: still together, until
+    // answered.
+    expect(
+      within(together()).getByRole('radio', { name: 'Yes' }),
+    ).toBeChecked();
+    await save(user);
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0].request).toMatchObject({
+      partnerId: 'mum',
+      partnershipCurrent: true,
+    });
+  });
+});
