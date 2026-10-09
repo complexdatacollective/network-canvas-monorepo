@@ -17,6 +17,7 @@ import {
   useLocalizedString,
   useResolveLocalizedMessage,
 } from '../../../localization/ProtocolLocalizationProvider';
+import { useContentFormat } from '../../../localization/useContentFormat';
 import type { CompletenessItem, CompletenessProgress } from '../completeness';
 import { messages } from '../messages';
 import type { Family } from '../model';
@@ -46,7 +47,8 @@ type CompletenessTrackerProps = {
 /** A ring that fills as the family nears completion, with the percentage in
  * its middle, or a tick once complete. It fills its button to the edge. */
 function ProgressRing({ fraction }: { fraction: number }) {
-  const intl = useAppIntl();
+  // Shown among the protocol's text, so in its digits.
+  const { locale } = useContentFormat();
   const strokeWidth = 3.5;
   // The stroke's outer edge meets the edge of the 40-unit view box.
   const radius = 20 - strokeWidth / 2;
@@ -88,10 +90,10 @@ function ProgressRing({ fraction }: { fraction: number }) {
           aria-hidden
           className="absolute text-sm font-semibold tabular-nums"
         >
-          {intl.formatNumber(fraction, {
+          {new Intl.NumberFormat(locale, {
             style: 'percent',
             maximumFractionDigits: 0,
-          })}
+          }).format(fraction)}
         </span>
       )}
     </span>
