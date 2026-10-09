@@ -79,9 +79,13 @@ export function labelOfNoKind(
       ? { type: 'term', term }
       : {
           type: 'relativeOf',
-          ownerId: anchor.id,
-          owner: { type: 'name', name: anchorLabel },
-          term,
+          anchors: [
+            {
+              ownerId: anchor.id,
+              owner: { type: 'name', name: anchorLabel },
+              term,
+            },
+          ],
         },
     intl,
   );
@@ -200,11 +204,12 @@ function buildLabels(
     );
   }
 
-  // Someone described through a relative ("Great-grandfather’s father") is
-  // described by the label that relative ends up with, qualified or
-  // numbered, so the labels are worked out again until each one's relative
-  // is described as they are. Each round settles everyone one step further
-  // from the participant.
+  // Someone described through a relative ("Isaac’s grandfather") is
+  // described through the nearest whose final label is a name or a plain
+  // kinship word, and that depends on whether the relative ends up qualified
+  // or numbered, so the labels are worked out again until each one's
+  // relatives are settled. Each round settles everyone one step further from
+  // the participant.
   let labels = new Map<string, string>();
   for (let round = 0; round <= unnamed.length; round++) {
     const settled = labels;

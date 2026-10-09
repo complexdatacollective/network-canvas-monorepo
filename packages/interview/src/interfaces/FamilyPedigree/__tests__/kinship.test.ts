@@ -420,6 +420,10 @@ describe('labelFamily', () => {
       expect(intl.formatMessage(messages.relativeTerm, { term })).not.toBe(
         'Relative',
       );
+      // Anyone can be described through a relative by any kinship word.
+      expect(
+        intl.formatMessage(messages.relativeOf, { owner: 'Isaac', term }),
+      ).not.toBe('Isaac’s relative');
     }
   });
 });
@@ -1114,9 +1118,13 @@ describe('soft hyphens', () => {
       formatPersonLabel(
         {
           type: 'relativeOf',
-          ownerId: 'cousin',
-          owner: { type: 'term', term: 'cousin' },
-          term: 'stepmother',
+          anchors: [
+            {
+              ownerId: 'cousin',
+              owner: { type: 'term', term: 'cousin' },
+              term: 'stepmother',
+            },
+          ],
         },
         intl,
       ),

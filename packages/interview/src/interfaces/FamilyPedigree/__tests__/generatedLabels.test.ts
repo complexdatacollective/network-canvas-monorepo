@@ -158,8 +158,61 @@ describe('generateLabels', () => {
     expect(labels).toMatchObject({
       miriamsDad: 'Great-grandfather (parent of Miriam)',
       isaacsDad: 'Great-grandfather (parent of Isaac)',
-      isaacsGrandad: 'Great-grandfather (parent of Isaac)’s father',
+      // Not through his son's qualified label, but through the nearest
+      // relative known by a label of their own.
+      isaacsGrandad: 'Isaac’s grandfather',
     });
+  });
+
+  test('someone beyond the kinship words is described through one relative, never through a description', () => {
+    const labels = labelsOf(
+      [
+        person('ego', { isEgo: true }),
+        woman('mum'),
+        woman('nan'),
+        woman('aunt'),
+        person('cousin'),
+        man('cousinsSon'),
+        woman('cousinsGranddaughter'),
+        woman('cousinsSonsPartner'),
+      ],
+      [
+        link('mum', 'ego', 'biological'),
+        link('nan', 'mum', 'biological'),
+        link('nan', 'aunt', 'biological'),
+        link('aunt', 'cousin', 'biological'),
+        link('cousin', 'cousinsSon', 'biological'),
+        link('cousinsSon', 'cousinsGranddaughter', 'biological'),
+        link('cousinsSon', 'cousinsSonsPartner', 'partner'),
+      ],
+    );
+    expect(labels).toMatchObject({
+      cousinsSon: 'Cousin’s son',
+      cousinsGranddaughter: 'Cousin’s granddaughter',
+      cousinsSonsPartner: 'Cousin’s daughter-in-law',
+    });
+    for (const label of Object.values(labels)) {
+      expect(label.split('’s ').length).toBeLessThanOrEqual(2);
+    }
+  });
+
+  test('a plain kinship word is the nearest relative to describe someone through', () => {
+    const labels = labelsOf(
+      [
+        woman('ego', { isEgo: true }),
+        woman('mum'),
+        woman('nan'),
+        woman('greatNan'),
+        woman('greatGreatNan'),
+      ],
+      [
+        link('mum', 'ego', 'biological'),
+        link('nan', 'mum', 'biological'),
+        link('greatNan', 'nan', 'biological'),
+        link('greatGreatNan', 'greatNan', 'biological'),
+      ],
+    );
+    expect(labels.greatGreatNan).toBe('Great-grandmother’s mother');
   });
 
   test('two sisters are told apart by their named children', () => {
