@@ -1035,7 +1035,7 @@ function buildMapErrorOverlayScenario(): ScenarioDefinition {
 function buildOfflineIndicatorScenario(): ScenarioDefinition {
   return {
     id: 'offline-indicator-geospatial-only',
-    covers: ['offline-indicator'],
+    covers: ['offline-indicator', 'offlineNotice'],
     slow: true,
     build: () => {
       const { synth, person } = newPersonInterview();

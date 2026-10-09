@@ -443,6 +443,9 @@
     },
     {
       "id": "name-generator-quick-add-1",
+      "quickAddHint": {
+        "en-US": "Press Enter when you are finished."
+      },
       "type": "NameGeneratorQuickAdd",
       "label": {
         "en-US": "Name Generator Quick Add"
@@ -463,6 +466,24 @@
     },
     {
       "id": "name-generator-roster-1",
+      "minNodesNotice": {
+        "en-US": "{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}"
+      },
+      "maxNodesNotice": {
+        "en-US": "You have completed this task. Click the next arrow to continue."
+      },
+      "externalDataError": {
+        "en-US": "External data could not be loaded."
+      },
+      "allAddedNotice": {
+        "en-US": "There is nothing left to add from this list."
+      },
+      "searchLabel": {
+        "en-US": "Search"
+      },
+      "searchNoMatch": {
+        "en-US": "Nothing matched your search term."
+      },
       "type": "NameGeneratorRoster",
       "label": {
         "en-US": "Name Generator Roster"
@@ -904,6 +925,15 @@
     },
     {
       "id": "geospatial-1",
+      "offlineNotice": {
+        "en-US": "You are offline — the map will not load until you reconnect."
+      },
+      "mapUnavailable": {
+        "en-US": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow."
+      },
+      "outsideAreasLabel": {
+        "en-US": "Outside Selectable Areas"
+      },
       "type": "Geospatial",
       "label": {
         "en-US": "Geospatial"

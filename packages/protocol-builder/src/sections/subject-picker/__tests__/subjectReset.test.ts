@@ -24,6 +24,17 @@ describe('what a subject change invalidates', () => {
       'introductionPanel',
       'panelTitle',
       'subject',
+      'allAddedNotice',
+      'externalDataError',
+      'maxNodesNotice',
+      'minNodesNotice',
+      'quickAddHint',
+      'searchFailed',
+      'searchLabel',
+      'searchNoMatch',
+      'offlineNotice',
+      'mapUnavailable',
+      'outsideAreasLabel',
     ]);
   });
 

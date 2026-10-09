@@ -19,6 +19,7 @@ import {
   PEDIGREE_PARENTS_ARGUMENTS,
   PEDIGREE_PERSON_ARGUMENTS,
 } from '../stages/family-pedigree.ts';
+import { NODE_COUNT_ARGUMENTS } from '../stages/name-generator.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
 
 type Path = readonly (string | number)[];
@@ -151,12 +152,23 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
 
   site(stage(3, 'form', 'title'), 'plain'),
   site(stage(3, 'form', 'fields', 0, 'prompt'), 'markdown'),
+  messageSite(stage(3, 'minNodesNotice'), NODE_COUNT_ARGUMENTS),
+  site(stage(3, 'maxNodesNotice'), 'plain'),
+  site(stage(3, 'externalDataError'), 'plain'),
   site(stage(3, 'panels', 0, 'title'), 'plain'),
+  site(stage(3, 'panels', 1, 'title'), 'plain'),
   site(stage(3, 'prompts', 0, 'text'), 'markdown'),
 
+  site(stage(4, 'quickAddHint'), 'plain'),
   site(stage(4, 'prompts', 0, 'text'), 'markdown'),
 
   site(stage(5, 'panelTitle'), 'plain'),
+  messageSite(stage(5, 'minNodesNotice'), NODE_COUNT_ARGUMENTS),
+  site(stage(5, 'maxNodesNotice'), 'plain'),
+  site(stage(5, 'externalDataError'), 'plain'),
+  site(stage(5, 'allAddedNotice'), 'plain'),
+  site(stage(5, 'searchLabel'), 'plain'),
+  site(stage(5, 'searchNoMatch'), 'plain'),
   site(stage(5, 'cardOptions', 'additionalProperties', 0, 'label'), 'plain'),
   site(stage(5, 'sortOptions', 'sortableProperties', 0, 'label'), 'plain'),
   site(stage(5, 'prompts', 0, 'text'), 'markdown'),
@@ -212,6 +224,12 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(16, 'prompts', 0, 'text'), 'markdown'),
 
   site(stage(17, 'prompts', 0, 'text'), 'markdown'),
+  site(stage(17, 'offlineNotice'), 'plain'),
+  site(stage(17, 'mapUnavailable'), 'plain'),
+  site(stage(17, 'outsideAreasLabel'), 'plain'),
+  site(stage(17, 'searchLabel'), 'plain'),
+  site(stage(17, 'searchNoMatch'), 'plain'),
+  site(stage(17, 'searchFailed'), 'plain'),
 
   site(stage(18, 'prompt'), 'markdown'),
   // The Family Pedigree's own wording, which Network Canvas supplies.
@@ -253,6 +271,19 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(FINISH_STAGE_INDEX, 'finishedNotice'), 'plain'),
   site(stage(FINISH_STAGE_INDEX, 'finishFailed'), 'plain'),
 ];
+
+/**
+ * A message that uses the arguments a site declares: its plural if it has one,
+ * else the person's name and whether they are the participant.
+ */
+const exampleFor = (declaration: MessageArguments | undefined): string => {
+  const plural = Object.keys(declaration ?? {}).find(
+    (name) => declaration?.[name]?.kind === 'plural',
+  );
+  return plural === undefined
+    ? '{isYou, select, true {You} other {“{name}”}}'
+    : `{${plural}, plural, other {# items}}`;
+};
 
 const pathKey = (path: readonly PropertyKey[]) =>
   JSON.stringify(path.map((key) => (typeof key === 'symbol' ? '' : key)));
@@ -374,15 +405,18 @@ describe('localized string coverage', () => {
     EXPECTED_SITES.flatMap((expected) =>
       expected.arguments === undefined ? [] : [[siteName(expected), expected]],
     ),
-  )('accepts the arguments it declares at %s', (_name, { path }) => {
-    expect(
-      failurePaths(
-        withValueAt(path, {
-          en: '{isYou, select, true {You} other {“{name}”}}',
-        }),
-      ),
-    ).toEqual([]);
-  });
+  )(
+    'accepts the arguments it declares at %s',
+    (_name, { path, arguments: declaration }) => {
+      expect(
+        failurePaths(
+          withValueAt(path, {
+            en: exampleFor(declaration),
+          }),
+        ),
+      ).toEqual([]);
+    },
+  );
 });
 
 describe('attribute labels', () => {

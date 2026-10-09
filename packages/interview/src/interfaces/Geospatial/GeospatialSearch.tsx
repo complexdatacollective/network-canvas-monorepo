@@ -21,8 +21,9 @@ import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import { cx } from '@codaco/fresco-ui/utils/cva';
+import type { LocalizedString } from '@codaco/protocol-validation';
 
-import { runtimeMessages } from '../../i18n/runtimeMessages';
+import { useLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { interfaceMessages } from '../messages';
 import {
   type Suggestion,
@@ -44,18 +45,13 @@ const searchContainerVariants = {
 const preventBlur = (e: React.MouseEvent) => e.preventDefault();
 
 /**
- * Search outcomes, as whole sentences a translator can work with — never
- * assembled from fragments, and never a status code.
+ * A status is the stage's own words (a search's outcome, which the stage holds
+ * as `searchNoMatch` and `searchFailed`), or the one message built with a
+ * place.
  */
-const NO_RESULTS_MESSAGE = runtimeMessages.noSearchMatch;
-/**
- * Kept distinct from `NO_RESULTS_MESSAGE` on purpose: a search that could not
- * run tells us nothing about whether the place exists, and saying "Nothing
- * matched your search." to someone who is simply offline is a false statement
- * the participant cannot act on.
- */
-const SEARCH_FAILED_MESSAGE = interfaceMessages.searchFailed;
-type SearchStatus = { message: MessageDescriptor; values?: { place: string } };
+type SearchStatus =
+  | { text: string }
+  | { message: MessageDescriptor; values?: { place: string } };
 
 export default function GeospatialSearch({
   accessToken,
@@ -64,8 +60,19 @@ export default function GeospatialSearch({
   resetKey,
   onSearchPerformed,
   className,
-}: UseGeospatialSearchProps & { className?: string }) {
+  searchLabel,
+  searchNoMatch,
+  searchFailed: searchFailedWording,
+}: UseGeospatialSearchProps & {
+  className?: string;
+  searchLabel: LocalizedString;
+  searchNoMatch: LocalizedString;
+  searchFailed: LocalizedString;
+}) {
   const intl = useAppIntl();
+  const { text: searchLabelText } = useLocalizedString(searchLabel);
+  const { text: noMatchText } = useLocalizedString(searchNoMatch);
+  const { text: failedText } = useLocalizedString(searchFailedWording);
   const [isOpen, setIsOpen] = useState(false);
   const [statusMessage, setStatusMessage] = useState<SearchStatus | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -251,12 +258,12 @@ export default function GeospatialSearch({
                 message: interfaceMessages.mapMoved,
                 values: { place: suggestion.name },
               }
-            : { message: SEARCH_FAILED_MESSAGE },
+            : { text: failedText },
         );
       });
       closeSearch();
     },
-    [handleSelect, closeSearch],
+    [handleSelect, closeSearch, failedText],
   );
 
   // KeyDown handler factory for suggestions
@@ -331,8 +338,8 @@ export default function GeospatialSearch({
   const settledMessage = !hasSettledEmpty
     ? null
     : searchFailed
-      ? SEARCH_FAILED_MESSAGE
-      : NO_RESULTS_MESSAGE;
+      ? failedText
+      : noMatchText;
 
   // A settled outcome joins the live region as soon as the search settles.
   // Adopted during render rather than copied in by an effect, so it is
@@ -352,7 +359,7 @@ export default function GeospatialSearch({
   if (lastSettledMessage !== settledMessage) {
     setLastSettledMessage(settledMessage);
     if (settledMessage) {
-      setStatusMessage({ message: settledMessage });
+      setStatusMessage({ text: settledMessage });
     }
   }
 
@@ -380,7 +387,12 @@ export default function GeospatialSearch({
         className="sr-only"
         data-testid="geospatial-search-status"
       >
-        {statusMessage && <AppMessage {...statusMessage} />}
+        {statusMessage &&
+          ('text' in statusMessage ? (
+            statusMessage.text
+          ) : (
+            <AppMessage {...statusMessage} />
+          ))}
       </div>
 
       <Toggle
@@ -421,7 +433,7 @@ export default function GeospatialSearch({
                 ref={inputRef}
                 type="text"
                 autoFocus
-                placeholder={intl.formatMessage(commonMessages.search)}
+                placeholder={searchLabelText}
                 value={query}
                 onChange={handleSearchQueryChange}
                 onKeyDown={handleInputKeyDown}
@@ -513,9 +525,7 @@ export default function GeospatialSearch({
                           </span>
                         </>
                       ) : (
-                        <AppMessage
-                          message={settledMessage ?? NO_RESULTS_MESSAGE}
-                        />
+                        (settledMessage ?? noMatchText)
                       )}
                     </div>
                   )}

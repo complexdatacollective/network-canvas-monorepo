@@ -78,6 +78,15 @@ class MockWorker {
 const flyTo = vi.fn();
 const mockMap = { flyTo } as unknown as MapboxMap;
 
+/** The stage's own search wording, which the protocol holds in English only. */
+const WORDING = {
+  searchLabel: { en: 'Search' },
+  searchNoMatch: { en: 'Nothing matched your search term.' },
+  searchFailed: {
+    en: 'Search could not be completed. Try again in a moment.',
+  },
+};
+
 /**
  * Renders the search beside a control that follows it in the tab order, the
  * way `Geospatial.tsx` puts the zoom toolbar after the search panel.
@@ -86,7 +95,7 @@ const setup = () => {
   const user = userEvent.setup();
   const view = render(
     <TestProtocolLocalization>
-      <GeospatialSearch accessToken="test-token" map={mockMap} />
+      <GeospatialSearch accessToken="test-token" map={mockMap} {...WORDING} />
       <button type="button">Zoom In</button>
     </TestProtocolLocalization>,
   );
@@ -140,7 +149,11 @@ describe('GeospatialSearch', () => {
     const localizedTree = (locale: string) => (
       <InterviewI18nProvider requestedLocale={locale}>
         <TestProtocolLocalization>
-          <GeospatialSearch accessToken="test-token" map={mockMap} />
+          <GeospatialSearch
+            accessToken="test-token"
+            map={mockMap}
+            {...WORDING}
+          />
         </TestProtocolLocalization>
       </InterviewI18nProvider>
     );
@@ -189,7 +202,7 @@ describe('GeospatialSearch', () => {
       expect(flyTo).toHaveBeenCalledTimes(1);
     });
 
-    it('relocalizes a completed failure while retaining the existing query and search outcome', async () => {
+    it('keeps the stage’s own failure wording while retaining the existing query and search outcome', async () => {
       mockSuggest.mockRejectedValue(new Error('offline'));
       const user = userEvent.setup();
       const view = render(localizedTree('en'));
@@ -206,16 +219,18 @@ describe('GeospatialSearch', () => {
       );
       const searchCount = mockSuggest.mock.calls.length;
 
+      // The stage's words belong to the protocol, not the browser's language,
+      // so a change of language leaves them as the stage holds them.
       view.rerender(localizedTree('es'));
       expect(screen.getByRole('combobox')).toBe(input);
       expect(input).toHaveValue('Sidetrack');
-      expect(input).toHaveAttribute('placeholder', 'Buscar');
+      expect(input).toHaveAttribute('placeholder', 'Search');
       expect(status.textContent).toBe(
-        'No se pudo completar la búsqueda. Vuelve a intentarlo en un momento.',
+        'Search could not be completed. Try again in a moment.',
       );
       expect(
         screen.getByRole('listbox', { name: 'Sugerencias de búsqueda' }),
-      ).toHaveTextContent('No se pudo completar la búsqueda.');
+      ).toHaveTextContent('Search could not be completed.');
       expect(mockSuggest).toHaveBeenCalledTimes(searchCount);
       expect(flyTo).not.toHaveBeenCalled();
     });

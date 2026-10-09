@@ -2291,6 +2291,62 @@
     "defaultMessage": "Starting zoom must be between {min, number} and {max, number}.",
     "description": "Refusal shown under the starting-zoom control when it holds a zoom level Mapbox has no such thing as. min and max are the ends of Mapbox’s own zoom scale, 0 and 22. A zoom between two whole numbers is ordinary — a map panned into place hands back a fraction — so only the ends are named."
   },
+  "protocolBuilder.geospatialWording.description": {
+    "defaultMessage": "These start with wording Network Canvas supplies, which you can change. The search messages appear only when the map has a search.",
+    "description": "Description of the messages section of a map. Each message starts with wording Network Canvas supplies in each of the protocol’s languages that it has."
+  },
+  "protocolBuilder.geospatialWording.offlineHint": {
+    "defaultMessage": "Shown while the device is offline, because the map cannot load without a connection.",
+    "description": "Guidance under the field holding the offline message of a map."
+  },
+  "protocolBuilder.geospatialWording.offlineLabel": {
+    "defaultMessage": "Offline",
+    "description": "Label of the field holding the message shown while the device is offline and the map cannot load."
+  },
+  "protocolBuilder.geospatialWording.outsideAreasHint": {
+    "defaultMessage": "The button that marks a place outside the areas the map allows.",
+    "description": "Guidance under the field holding the outside-areas button of a map."
+  },
+  "protocolBuilder.geospatialWording.outsideAreasLabel": {
+    "defaultMessage": "Outside selectable areas",
+    "description": "Label of the field holding the button that lets the participant choose a place outside the areas the map allows."
+  },
+  "protocolBuilder.geospatialWording.searchFailedHint": {
+    "defaultMessage": "Shown when a search could not run. It does not mean the place does not exist.",
+    "description": "Guidance under the field holding the message shown when a map search could not run."
+  },
+  "protocolBuilder.geospatialWording.searchFailedLabel": {
+    "defaultMessage": "Search failed",
+    "description": "Label of the field holding the message shown when a map search could not run."
+  },
+  "protocolBuilder.geospatialWording.searchLabelHint": {
+    "defaultMessage": "The placeholder shown in the map’s search box.",
+    "description": "Guidance under the field holding the search box’s placeholder on a map."
+  },
+  "protocolBuilder.geospatialWording.searchLabelLabel": {
+    "defaultMessage": "Search label",
+    "description": "Label of the field holding the search box’s placeholder on a map, which a screen reader also reads out."
+  },
+  "protocolBuilder.geospatialWording.searchNoMatchHint": {
+    "defaultMessage": "Shown when a search of the map matches nothing.",
+    "description": "Guidance under the field holding the map search’s no-match message."
+  },
+  "protocolBuilder.geospatialWording.searchNoMatchLabel": {
+    "defaultMessage": "No search results",
+    "description": "Label of the field holding the message shown when a map search matches nothing."
+  },
+  "protocolBuilder.geospatialWording.title": {
+    "defaultMessage": "Messages",
+    "description": "Heading of the section holding the words a map shows a participant: when it is offline, when it cannot be drawn, its outside-areas button, and its search. A map is a Geospatial stage."
+  },
+  "protocolBuilder.geospatialWording.unavailableHint": {
+    "defaultMessage": "Shown in place of the map when it cannot be drawn, and says what to try.",
+    "description": "Guidance under the field holding the message shown when a map cannot be drawn."
+  },
+  "protocolBuilder.geospatialWording.unavailableLabel": {
+    "defaultMessage": "Map unavailable",
+    "description": "Label of the field holding the message shown when the map cannot be drawn on the participant’s device."
+  },
   "protocolBuilder.integerField.notAWholeNumber": {
     "defaultMessage": "This has to be a whole number of people.",
     "description": "Refusal shown against a box that counts people when the researcher has typed something that is not a whole number — a decimal on its way to being one, or a stray character. Every control this rule guards counts people, which is why the sentence names them rather than saying \"a whole number\"."
@@ -2562,6 +2618,70 @@
   "protocolBuilder.nameGeneratorPrompts.textRequired": {
     "defaultMessage": "Write the question this prompt asks.",
     "description": "Refusal shown when a researcher saves a name-generator prompt with no question in it."
+  },
+  "protocolBuilder.nameGeneratorWording.allAddedHint": {
+    "defaultMessage": "Shown in the list of people to add when there is nothing left to add from it.",
+    "description": "Guidance under the field holding the message shown when there is nothing left to add from a roster."
+  },
+  "protocolBuilder.nameGeneratorWording.allAddedLabel": {
+    "defaultMessage": "Everything added",
+    "description": "Label of the field holding the message shown when every person on a roster has already been added."
+  },
+  "protocolBuilder.nameGeneratorWording.description": {
+    "defaultMessage": "These start with wording Network Canvas supplies, which you can change. Each one appears only where its limit, panel or field is part of this stage.",
+    "description": "Description of the messages section of a name generator. Each message starts with wording Network Canvas supplies in each of the protocol’s languages that it has."
+  },
+  "protocolBuilder.nameGeneratorWording.externalErrorHint": {
+    "defaultMessage": "Shown in place of a list of people from a data file when that file could not be loaded.",
+    "description": "Guidance under the field holding the message shown in place of a list of people from a data file that could not be loaded."
+  },
+  "protocolBuilder.nameGeneratorWording.externalErrorLabel": {
+    "defaultMessage": "Data could not be loaded",
+    "description": "Label of the field holding the message shown when a list of people from a data file could not be loaded."
+  },
+  "protocolBuilder.nameGeneratorWording.maxNoticeHint": {
+    "defaultMessage": "Shown once the participant has named the most people this stage allows.",
+    "description": "Guidance under the field holding the message shown when the stage’s maximum number of people has been named."
+  },
+  "protocolBuilder.nameGeneratorWording.maxNoticeLabel": {
+    "defaultMessage": "Maximum reached",
+    "description": "Label of the field holding the message shown once the participant has named the most people this stage allows."
+  },
+  "protocolBuilder.nameGeneratorWording.minNoticeHint": {
+    "defaultMessage": "Shown when the participant tries to continue before naming the fewest people this stage asks for.",
+    "description": "Guidance under the field holding the message shown when the participant has not yet named the stage’s minimum number of people."
+  },
+  "protocolBuilder.nameGeneratorWording.minNoticeLabel": {
+    "defaultMessage": "Minimum not reached",
+    "description": "Label of the field holding the message shown when the participant tries to continue having named fewer people than the stage’s minimum."
+  },
+  "protocolBuilder.nameGeneratorWording.quickAddHintHint": {
+    "defaultMessage": "Shown beside the name field, saying how to finish adding a person.",
+    "description": "Guidance under the field holding the line shown beside the quick-add name field."
+  },
+  "protocolBuilder.nameGeneratorWording.quickAddHintLabel": {
+    "defaultMessage": "Quick-add hint",
+    "description": "Label of the field holding the line shown beside the quick-add name field, telling the participant how to finish."
+  },
+  "protocolBuilder.nameGeneratorWording.searchLabelHint": {
+    "defaultMessage": "The placeholder shown in the search box.",
+    "description": "Guidance under the field holding the search box’s placeholder."
+  },
+  "protocolBuilder.nameGeneratorWording.searchLabelLabel": {
+    "defaultMessage": "Search label",
+    "description": "Label of the field holding the search box’s placeholder, which a screen reader also reads out."
+  },
+  "protocolBuilder.nameGeneratorWording.searchNoMatchHint": {
+    "defaultMessage": "Shown when a search matches nothing.",
+    "description": "Guidance under the field holding the no-match message."
+  },
+  "protocolBuilder.nameGeneratorWording.searchNoMatchLabel": {
+    "defaultMessage": "No search results",
+    "description": "Label of the field holding the message shown when a search matches nothing."
+  },
+  "protocolBuilder.nameGeneratorWording.title": {
+    "defaultMessage": "Messages",
+    "description": "Heading of the section holding the words a name generator shows a participant about its limits, its side panels, its search and its quick-add field. A name generator is a stage that asks the participant to name people."
   },
   "protocolBuilder.narrativePedigree.atRiskFieldHint": {
     "defaultMessage": "Optionally show <strong>possible</strong> (at-risk) statuses alongside the certain ones, inferred from family structure and inheritance patterns.",

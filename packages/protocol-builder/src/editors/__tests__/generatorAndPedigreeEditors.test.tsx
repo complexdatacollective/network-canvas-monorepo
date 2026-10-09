@@ -42,6 +42,7 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
       'Prompt collection',
       'Side panels',
       'Nomination limits',
+      'Messages',
       'Skip logic',
       'Interviewer guidance',
     ],

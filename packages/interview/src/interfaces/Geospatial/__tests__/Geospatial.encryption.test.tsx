@@ -95,6 +95,13 @@ const variables: Record<string, Variable> = {
 const stage: StageProps<'Geospatial'>['stage'] = {
   id: 'geospatial-stage',
   type: 'Geospatial',
+  offlineNotice: {
+    en: 'You are offline — the map will not load until you reconnect.',
+  },
+  mapUnavailable: {
+    en: 'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
+  },
+  outsideAreasLabel: { en: 'Outside Selectable Areas' },
   label: { en: 'Where people live' },
   subject: { entity: 'node', type: 'person' },
   mapOptions: {

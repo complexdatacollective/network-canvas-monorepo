@@ -136,6 +136,8 @@ describe('a Network Composer field caption', () => {
 const rosterStage = {
   id: 'roster',
   type: 'NameGeneratorRoster',
+  externalDataError: localized('External data could not be loaded.'),
+  allAddedNotice: localized('There is nothing left to add from this list.'),
   label: localized('Roster'),
   subject: { entity: 'node', type: 'person' },
   dataSource: 'rosterAsset',

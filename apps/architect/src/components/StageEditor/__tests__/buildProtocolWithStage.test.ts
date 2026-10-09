@@ -22,6 +22,8 @@ function makeProtocol(stageOverrides: Partial<Stage> = {}): CurrentProtocol {
     id: STAGE_ID,
     type: 'NameGenerator',
     label: localized('Name some people'),
+    // A panel reading a data file needs the words for a file that did not load.
+    externalDataError: localized('External data could not be loaded.'),
     subject: { entity: 'node', type: 'person' },
     form: {
       title: localized('Add person'),

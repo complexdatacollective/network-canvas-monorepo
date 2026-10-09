@@ -46,13 +46,14 @@ describe('the geospatial sections, read in Spanish', () => {
     // The outline reads its titles out of the same catalog, so a section named
     // in Spanish and listed in English would fail here rather than pass
     // halfway.
-    await waitFor(() => expect(harness.outline()).toHaveLength(5));
+    await waitFor(() => expect(harness.outline()).toHaveLength(6));
     expect(harness.outline().map((entry) => entry.title)).toEqual([
       'Acceso al mapa',
       'Capas del mapa',
       'Conjunto de preguntas',
       'Apariencia del mapa',
       'Posición inicial del mapa',
+      'Mensajes',
     ]);
     expect(
       screen.getByRole('combobox', { name: 'Estilo de Mapbox' }),

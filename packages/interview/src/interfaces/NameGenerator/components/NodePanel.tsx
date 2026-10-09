@@ -9,7 +9,10 @@ import type { DragMetadata, DropCallback } from '@codaco/fresco-ui/dnd/types';
 import Icon from '@codaco/fresco-ui/Icon';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import type { Panel as PanelType } from '@codaco/protocol-validation';
+import type {
+  LocalizedString,
+  Panel as PanelType,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -21,7 +24,10 @@ import NodeList from '../../../components/NodeList';
 import Panel from '../../../components/Panel';
 import useExternalData from '../../../hooks/useExternalData';
 import { useStageSelector } from '../../../hooks/useStageSelector';
-import { useLocalizedString } from '../../../localization/ProtocolLocalizationProvider';
+import {
+  useLocalizedString,
+  useResolveLocalizedString,
+} from '../../../localization/ProtocolLocalizationProvider';
 import { getPanelNodes } from '../../../selectors/name-generator';
 import { getCodebookVariablesForSubjectType } from '../../../selectors/protocol';
 import { getStageSubject } from '../../../selectors/session';
@@ -41,6 +47,7 @@ type NodePanelProps = {
   onUpdate: (nodeCount: number, nodeIndex: Set<string>) => void;
   id: string;
   animationKey?: string | number;
+  externalDataError?: LocalizedString;
 };
 
 function NodePanel(props: NodePanelProps) {
@@ -55,7 +62,9 @@ function NodePanel(props: NodePanelProps) {
     accepts,
     animationKey,
     disableDragging,
+    externalDataError,
   } = props;
+  const resolveString = useResolveLocalizedString();
 
   const stageSubject = useStageSelector(getStageSubject);
   const { text: title } = useLocalizedString(panelConfig.title);
@@ -164,7 +173,7 @@ function NodePanel(props: NodePanelProps) {
             <AppMessage message={interfaceMessages.errorHeading} />
           </Heading>
           <Paragraph>
-            <AppMessage message={interfaceMessages.externalDataUnavailable} />
+            {externalDataError && resolveString(externalDataError).text}
           </Paragraph>
         </div>
       ) : needsPassphrase ? (

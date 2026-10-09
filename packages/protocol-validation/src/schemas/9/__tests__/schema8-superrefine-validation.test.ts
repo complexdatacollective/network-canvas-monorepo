@@ -2662,6 +2662,18 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         {
           id: 'geospatial1',
           type: 'Geospatial',
+          offlineNotice: localized(
+            'You are offline — the map will not load until you reconnect.',
+          ),
+          mapUnavailable: localized(
+            'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
+          ),
+          outsideAreasLabel: localized('Outside Selectable Areas'),
+          searchLabel: localized('Search'),
+          searchNoMatch: localized('Nothing matched your search term.'),
+          searchFailed: localized(
+            'Search could not be completed. Try again in a moment.',
+          ),
           label: localized('Geospatial Stage'),
           subject: {
             entity: 'node',

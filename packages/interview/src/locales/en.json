@@ -395,10 +395,6 @@
     "defaultMessage": "Something went wrong",
     "description": "Short heading above an external-list loading error. This heading intentionally has no final period."
   },
-  "interview.interfaces.externalDataUnavailable": {
-    "defaultMessage": "External data could not be loaded.",
-    "description": "Explanation shown when a configured external list of people could not be loaded."
-  },
   "interview.interfaces.freezeAnnotations": {
     "defaultMessage": "Freeze annotations",
     "description": "Toggle action that locks existing narrative annotations in place."
@@ -447,10 +443,6 @@
     "defaultMessage": "Map",
     "description": "Accessible region name of the native Mapbox canvas in the geospatial interface."
   },
-  "interview.interfaces.mapUnavailableDescription": {
-    "defaultMessage": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.",
-    "description": "Recovery guidance after map initialization fails. The next arrow refers to the interview navigation control, not a map control."
-  },
   "interview.interfaces.mapboxHomepage": {
     "defaultMessage": "Mapbox homepage",
     "description": "Accessible name of the native map logo link that opens the Mapbox homepage; preserve the Mapbox brand name."
@@ -466,10 +458,6 @@
   "interview.interfaces.ordinalContainer": {
     "defaultMessage": "Container for the value ''{label}''",
     "description": "Drag-and-drop name of a rating container. label is the unchanged researcher-authored ordinal response label; keep it as a value, not a translation key."
-  },
-  "interview.interfaces.outsideSelectableAreas": {
-    "defaultMessage": "Outside Selectable Areas",
-    "description": "Button used to indicate that the participant’s location lies outside the selectable map areas. The stored selection identifier is never translated."
   },
   "interview.interfaces.passphraseAccepted": {
     "defaultMessage": "Passphrase accepted! Click \"Next\" to continue.",
@@ -494,10 +482,6 @@
   "interview.interfaces.quickAddInput": {
     "defaultMessage": "Quick add input",
     "description": "Accessible name of the active quick-add toggle while its name-entry field is open."
-  },
-  "interview.interfaces.quickAddInstructions": {
-    "defaultMessage": "Press <kbd>Enter</kbd> when you are finished.",
-    "description": "Tooltip beside the quick-add name field. The kbd tag marks the Enter key and must be preserved."
   },
   "interview.interfaces.recenterMap": {
     "defaultMessage": "Recenter Map",
@@ -527,17 +511,9 @@
     "defaultMessage": "Returned to the drawer.",
     "description": "Screen-reader announcement after an item without a usable name is removed from the canvas and returned to the unplaced-items panel."
   },
-  "interview.interfaces.rosterAlreadyAdded": {
-    "defaultMessage": "There is nothing left to add from this list.",
-    "description": "Empty state of an external roster when there is nothing left to add: the list is empty, or every entry has already been added to the interview network."
-  },
   "interview.interfaces.scrollForQuestions": {
     "defaultMessage": "Scroll to see more questions",
     "description": "Hint at the bottom of a long personal-information form indicating that more questions are below the visible area."
-  },
-  "interview.interfaces.searchFailed": {
-    "defaultMessage": "Search could not be completed. Try again in a moment.",
-    "description": "Recoverable error when geospatial search could not run; it does not mean the place does not exist."
   },
   "interview.interfaces.searchLocation": {
     "defaultMessage": "Search location",
@@ -851,10 +827,6 @@
     "defaultMessage": "This item could not be displayed.",
     "description": "Fallback when protocol-provided media cannot be displayed."
   },
-  "interview.runtime.minimumItems": {
-    "defaultMessage": "You must create at least <strong>{count, number}</strong> {count, plural, one {item} other {items}} before you can continue.",
-    "description": "Blocking message when too few items have been created; emphasize the minimum count."
-  },
   "interview.runtime.noSearchMatch": {
     "defaultMessage": "Nothing matched your search term.",
     "description": "Empty result after searching the interview screen list."
@@ -866,10 +838,6 @@
   "interview.runtime.notifications": {
     "defaultMessage": "Interview notifications",
     "description": "Accessible name of the interview notification region."
-  },
-  "interview.runtime.offlineMap": {
-    "defaultMessage": "You are offline — the map will not load until you reconnect.",
-    "description": "Persistent message while a map screen cannot load offline."
   },
   "interview.runtime.outsideCurrentPath": {
     "defaultMessage": "Outside current path",
@@ -902,10 +870,6 @@
   "interview.runtime.secondNode": {
     "defaultMessage": "second item",
     "description": "Fallback accessible name for the second item when its name is missing."
-  },
-  "interview.runtime.taskComplete": {
-    "defaultMessage": "You have completed this task. Click the next arrow to continue.",
-    "description": "Notification that the maximum item count is reached and the participant can continue."
   },
   "interview.runtime.taskErrorDescription": {
     "defaultMessage": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button.",

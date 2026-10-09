@@ -11,6 +11,7 @@ import { categoricalBinPromptMessages } from '../editors/categorical-bin/section
 import { censusMessages } from '../editors/dyad-census/sections/censusMessages.ts';
 import { familyPedigreeMessages } from '../editors/family-pedigree/sections/pedigreeMessages.ts';
 import { finishSessionMessages } from '../editors/finish-session/sections/finishSessionMessages.ts';
+import { geospatialWordingMessages } from '../editors/geospatial/sections/geospatialWording.tsx';
 import { cardDisplayMessages } from '../editors/name-generator-roster/sections/CardDisplaySection.tsx';
 import { sortOptionsMessages } from '../editors/name-generator-roster/sections/SortOptionsSection.tsx';
 import { narrativePedigreeMessages } from '../editors/narrative-pedigree/sections/narrativePedigreeMessages.ts';
@@ -25,6 +26,7 @@ import { composerFormFieldMessages } from '../sections/form-fields/composerFormF
 import { formFieldsMessages } from '../sections/form-fields/FormFieldsSection.tsx';
 import { introductionMessages } from '../sections/introduction/IntroductionSection.tsx';
 import { nameGeneratorPromptMessages } from '../sections/name-generator-prompts/NameGeneratorPromptsSection.tsx';
+import { nameGeneratorWordingMessages } from '../sections/name-generator-wording/nameGeneratorWording.tsx';
 import { pageContentMessages } from '../sections/page-content/PageContentSection.tsx';
 import { nodePanelsMessages } from '../sections/panels/NodePanelsSection.tsx';
 import { promptsSectionMessages } from '../sections/PromptsSection.tsx';
@@ -308,6 +310,27 @@ const contentItemRules = (
 const PAGE_CONTENT: Step = [0, words(pageContentMessages.pageTitle)];
 const FINISH_SCREEN: Step = [0, words(finishSessionMessages.closingTitle)];
 const FINISHING: Step = [0, words(finishSessionMessages.finishingTitle)];
+const NAME_GENERATOR_WORDING: Step = [
+  0,
+  words(nameGeneratorWordingMessages.title),
+];
+const GEOSPATIAL_WORDING: Step = [0, words(geospatialWordingMessages.title)];
+
+/** The limit and panel words a name generator stage holds, by setting. */
+const NAME_GENERATOR_LIMIT_RULES: readonly Rule[] = [
+  rule('minNodesNotice', NAME_GENERATOR_WORDING, [
+    1,
+    words(nameGeneratorWordingMessages.minNoticeLabel),
+  ]),
+  rule('maxNodesNotice', NAME_GENERATOR_WORDING, [
+    1,
+    words(nameGeneratorWordingMessages.maxNoticeLabel),
+  ]),
+  rule('externalDataError', NAME_GENERATOR_WORDING, [
+    1,
+    words(nameGeneratorWordingMessages.externalErrorLabel),
+  ]),
+];
 
 const NARRATIVE_PRESETS: Step = [
   1,
@@ -483,7 +506,33 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
       [2, words(familyPedigreeMessages.trackerRecommendedNoteLabel)],
     ),
   ],
-  Geospatial: [promptText(geospatialMessages.promptTextLabel)],
+  Geospatial: [
+    promptText(geospatialMessages.promptTextLabel),
+    rule('offlineNotice', GEOSPATIAL_WORDING, [
+      1,
+      words(geospatialWordingMessages.offlineLabel),
+    ]),
+    rule('mapUnavailable', GEOSPATIAL_WORDING, [
+      1,
+      words(geospatialWordingMessages.unavailableLabel),
+    ]),
+    rule('outsideAreasLabel', GEOSPATIAL_WORDING, [
+      1,
+      words(geospatialWordingMessages.outsideAreasLabel),
+    ]),
+    rule('searchLabel', GEOSPATIAL_WORDING, [
+      1,
+      words(geospatialWordingMessages.searchLabelLabel),
+    ]),
+    rule('searchNoMatch', GEOSPATIAL_WORDING, [
+      1,
+      words(geospatialWordingMessages.searchNoMatchLabel),
+    ]),
+    rule('searchFailed', GEOSPATIAL_WORDING, [
+      1,
+      words(geospatialWordingMessages.searchFailedLabel),
+    ]),
+  ],
   Information: [
     rule('title', PAGE_CONTENT, [1, words(pageContentMessages.headingLabel)]),
     ...contentItemRules(PAGE_CONTENT, 'items'),
@@ -515,13 +564,35 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
   NameGenerator: [
     NAME_GENERATOR_PROMPT,
     ...PANEL_RULES,
+    ...NAME_GENERATOR_LIMIT_RULES,
     rule('form.title', FORM, [2, words(formFieldsMessages.formTitleLabel)]),
     ...formFieldRules(stageSubject),
   ],
-  NameGeneratorQuickAdd: [NAME_GENERATOR_PROMPT, ...PANEL_RULES],
+  NameGeneratorQuickAdd: [
+    NAME_GENERATOR_PROMPT,
+    ...PANEL_RULES,
+    ...NAME_GENERATOR_LIMIT_RULES,
+    rule('quickAddHint', NAME_GENERATOR_WORDING, [
+      1,
+      words(nameGeneratorWordingMessages.quickAddHintLabel),
+    ]),
+  ],
   NameGeneratorRoster: [
     NAME_GENERATOR_PROMPT,
     rule('panelTitle', [1, words(nodePanelsMessages.panelTitleLabel)]),
+    ...NAME_GENERATOR_LIMIT_RULES,
+    rule('allAddedNotice', NAME_GENERATOR_WORDING, [
+      1,
+      words(nameGeneratorWordingMessages.allAddedLabel),
+    ]),
+    rule('searchLabel', NAME_GENERATOR_WORDING, [
+      1,
+      words(nameGeneratorWordingMessages.searchLabelLabel),
+    ]),
+    rule('searchNoMatch', NAME_GENERATOR_WORDING, [
+      1,
+      words(nameGeneratorWordingMessages.searchNoMatchLabel),
+    ]),
     rule(
       'cardOptions.additionalProperties.#.label',
       [1, words(cardDisplayMessages.title)],

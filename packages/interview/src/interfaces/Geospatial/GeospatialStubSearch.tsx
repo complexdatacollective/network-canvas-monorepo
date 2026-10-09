@@ -4,13 +4,14 @@ import { Toggle } from '@base-ui/react';
 import { Search, X } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 
-import { commonMessages } from '@codaco/app-i18n/common';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import { cx } from '@codaco/fresco-ui/utils/cva';
+import type { LocalizedString } from '@codaco/protocol-validation';
 
+import { useLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { interfaceMessages } from '../messages';
 
 const STUB_SUGGESTIONS = [
@@ -21,10 +22,15 @@ const STUB_SUGGESTIONS = [
 
 type Props = {
   className?: string;
+  searchLabel: LocalizedString;
 };
 
-export default function GeospatialStubSearch({ className }: Props) {
+export default function GeospatialStubSearch({
+  className,
+  searchLabel,
+}: Props) {
   const intl = useAppIntl();
+  const { text: searchLabelText } = useLocalizedString(searchLabel);
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -103,7 +109,7 @@ export default function GeospatialStubSearch({ className }: Props) {
             <InputField
               type="text"
               autoFocus
-              placeholder={intl.formatMessage(commonMessages.search)}
+              placeholder={searchLabelText}
               value={query}
               onChange={handleQueryChange}
               onKeyDown={(e) => {
@@ -113,7 +119,7 @@ export default function GeospatialStubSearch({ className }: Props) {
               }}
               data-testid="geospatial-search-input"
               role="combobox"
-              aria-label={intl.formatMessage(commonMessages.search)}
+              aria-label={searchLabelText}
               aria-expanded={showSuggestions}
               aria-autocomplete="list"
               aria-haspopup="listbox"

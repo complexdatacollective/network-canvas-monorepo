@@ -8,6 +8,12 @@ import {
   NodeStageSubjectSchema,
 } from '../common/index.ts';
 import { FilterSchema } from '../filters/index.ts';
+import { localizedString, nonBlankText } from '../localized-string.ts';
+import {
+  hasMapSearch,
+  requireWhenShown,
+  type StageRecord,
+} from '../stage-wording/conditions.ts';
 import { baseStageSchema } from './base.ts';
 
 const mapboxStyleOptions = [
@@ -58,23 +64,59 @@ const mapOptions = z.strictObject({
 
 export type MapOptions = z.infer<typeof mapOptions>;
 
-export const geospatialStage = baseStageSchema.extend({
-  type: z.literal('Geospatial'),
-  subject: NodeStageSubjectSchema,
-  filter: FilterSchema.optional(),
-  mapOptions: mapOptions,
-  prompts: z
-    .array(geospatialPromptSchema)
-    .min(1)
-    .superRefine((prompts, ctx) => {
-      // Check for duplicate prompt IDs
-      const duplicatePromptId = findDuplicateId(prompts);
-      if (duplicatePromptId) {
-        ctx.addIssue({
-          code: 'custom' as const,
-          message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
-          path: [],
-        });
-      }
-    }),
-});
+/**
+ * The map's own words (`stage-wording/geospatial.ts`). The map is always
+ * shown, so its notices are always required; the search's words are required
+ * only while the map has a search.
+ */
+const geospatialWording = {
+  offlineNotice: localizedString(nonBlankText(), 'plain'),
+  mapUnavailable: localizedString(nonBlankText(), 'plain'),
+  outsideAreasLabel: localizedString(nonBlankText(), 'plain'),
+  searchLabel: localizedString(nonBlankText(), 'plain').optional(),
+  searchNoMatch: localizedString(nonBlankText(), 'plain').optional(),
+  searchFailed: localizedString(nonBlankText(), 'plain').optional(),
+};
+
+const requireGeospatialWording = (stage: StageRecord, ctx: z.RefinementCtx) =>
+  requireWhenShown(stage, ctx, [
+    {
+      name: 'searchLabel',
+      when: hasMapSearch,
+      message: 'A map with a search needs a search label.',
+    },
+    {
+      name: 'searchNoMatch',
+      when: hasMapSearch,
+      message: 'A map with a search needs a no-match notice.',
+    },
+    {
+      name: 'searchFailed',
+      when: hasMapSearch,
+      message: 'A map with a search needs a search-failed notice.',
+    },
+  ]);
+
+export const geospatialStage = baseStageSchema
+  .extend({
+    type: z.literal('Geospatial'),
+    subject: NodeStageSubjectSchema,
+    filter: FilterSchema.optional(),
+    mapOptions: mapOptions,
+    ...geospatialWording,
+    prompts: z
+      .array(geospatialPromptSchema)
+      .min(1)
+      .superRefine((prompts, ctx) => {
+        // Check for duplicate prompt IDs
+        const duplicatePromptId = findDuplicateId(prompts);
+        if (duplicatePromptId) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
+            path: [],
+          });
+        }
+      }),
+  })
+  .superRefine(requireGeospatialWording);

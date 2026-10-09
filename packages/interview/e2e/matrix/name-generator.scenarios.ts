@@ -612,7 +612,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
 
     {
       id: 'min-nodes-behaviour',
-      covers: ['behaviours', 'behaviours.minNodes'],
+      covers: ['behaviours', 'behaviours.minNodes', 'minNodesNotice'],
       build: () => {
         const synth = new SyntheticInterview();
         const person = synth.addNodeType({ name: 'Person' });
@@ -666,7 +666,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
 
     {
       id: 'max-nodes-behaviour',
-      covers: ['behaviours.maxNodes'],
+      covers: ['behaviours.maxNodes', 'maxNodesNotice'],
       visual: true,
       build: () => {
         const synth = new SyntheticInterview();

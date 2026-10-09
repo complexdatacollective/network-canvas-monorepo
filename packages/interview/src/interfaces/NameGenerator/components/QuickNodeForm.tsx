@@ -19,6 +19,7 @@ import type {
   FormSubmitHandler,
   ValidationContext,
 } from '@codaco/fresco-ui/form/store/types';
+import type { LocalizedString } from '@codaco/protocol-validation';
 import type { EntityAttributesProperty, NcNode } from '@codaco/shared-consts';
 
 import { formValuesToAttributePatch } from '../../../forms/formValuesToAttributePatch';
@@ -91,6 +92,7 @@ function TrackSubmissions({ added }: { added: RefObject<boolean> }) {
 type QuickNodeFormProps = {
   disabled: boolean;
   targetVariable: string;
+  hint: LocalizedString;
   onShowForm?: () => void;
   addNode: (
     attributes: NcNode[EntityAttributesProperty],
@@ -100,6 +102,7 @@ type QuickNodeFormProps = {
 const QuickNodeForm = ({
   disabled,
   targetVariable,
+  hint,
   onShowForm,
   addNode,
 }: QuickNodeFormProps) => {
@@ -207,6 +210,7 @@ const QuickNodeForm = ({
             placeholder={intl.formatMessage(
               interfaceMessages.addNamePlaceholder,
             )}
+            hint={hint}
             onShowInput={onShowForm ?? undefined}
             successfulSubmissionCount={successfulSubmissionCount}
             {...validationProps}

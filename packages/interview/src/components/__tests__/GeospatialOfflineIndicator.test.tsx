@@ -1,6 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
+
 let online = true;
 vi.mock('../../hooks/useOnline', () => ({
   default: () => online,
@@ -8,23 +10,37 @@ vi.mock('../../hooks/useOnline', () => ({
 
 import { GeospatialOfflineIndicator } from '../GeospatialOfflineIndicator';
 
+const NOTICE = { en: 'You are offline. The map will not load.' };
+
 describe('GeospatialOfflineIndicator', () => {
-  it('renders an offline banner when active and offline', () => {
+  it('renders the stage’s offline notice when offline on a Geospatial stage', () => {
     online = false;
-    render(<GeospatialOfflineIndicator active />);
+    render(
+      <TestProtocolLocalization>
+        <GeospatialOfflineIndicator notice={NOTICE} />
+      </TestProtocolLocalization>,
+    );
     const status = screen.getByRole('status');
-    expect(/offline/i.test(status.textContent ?? '')).toBe(true);
+    expect(status).toHaveTextContent('You are offline. The map will not load.');
   });
 
-  it('renders nothing when active but online', () => {
+  it('renders nothing when online on a Geospatial stage', () => {
     online = true;
-    const { container } = render(<GeospatialOfflineIndicator active />);
+    const { container } = render(
+      <TestProtocolLocalization>
+        <GeospatialOfflineIndicator notice={NOTICE} />
+      </TestProtocolLocalization>,
+    );
     expect(container.innerHTML).toBe('');
   });
 
   it('renders nothing when offline but not on a Geospatial stage', () => {
     online = false;
-    const { container } = render(<GeospatialOfflineIndicator active={false} />);
+    const { container } = render(
+      <TestProtocolLocalization>
+        <GeospatialOfflineIndicator notice={undefined} />
+      </TestProtocolLocalization>,
+    );
     expect(container.innerHTML).toBe('');
   });
 });
