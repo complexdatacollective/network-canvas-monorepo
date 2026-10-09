@@ -1,3 +1,5 @@
+import type { PedigreeTwinKind } from '@codaco/protocol-validation';
+
 import { computeConnectors } from './connectors';
 import {
   computeLayoutMetrics,
@@ -24,6 +26,17 @@ type ConversionResult = {
   idToIndex: Map<string, number>;
 };
 
+/** The layout's twin code for each twin kind: 1 identical (monozygotic),
+ * 2 fraternal (dizygotic), 3 zygosity unknown. */
+const TWIN_CODES: Record<PedigreeTwinKind, 1 | 2 | 3> = {
+  identicalTwin: 1,
+  fraternalTwin: 2,
+  unknownZygosityTwin: 3,
+};
+
+const isTwinKind = (kind: PedigreeLink['kind']): kind is PedigreeTwinKind =>
+  kind in TWIN_CODES;
+
 function readLink(link: PedigreeLink) {
   return {
     relationshipType: link.kind,
@@ -46,8 +59,21 @@ export function toPedigreeInput(
   const relations: Relation[] = [];
   const partnerConnections: PartnerConnection[] = [];
 
+  const twinPairs = new Set<string>();
   for (const link of links) {
-    const { relationshipType, isActive, isGestationalCarrier } = readLink(link);
+    const { kind } = link;
+    if (isTwinKind(kind)) {
+      const i1 = idToIndex.get(link.source);
+      const i2 = idToIndex.get(link.target);
+      if (i1 === undefined || i2 === undefined) continue;
+      const pairKey = `${Math.min(i1, i2)},${Math.max(i1, i2)}`;
+      if (twinPairs.has(pairKey)) continue;
+      twinPairs.add(pairKey);
+      relations.push({ id1: i1, id2: i2, code: TWIN_CODES[kind] });
+      continue;
+    }
+    const { isActive, isGestationalCarrier } = readLink(link);
+    const relationshipType = kind;
 
     if (relationshipType === 'partner') {
       const i1 = idToIndex.get(link.source);

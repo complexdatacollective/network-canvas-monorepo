@@ -332,9 +332,14 @@ export function computeConnectors(
     if (!layout.twins) {
       target = whoIdx.map((j) => layout.pos[i]![j]!);
     } else {
+      // A twin code is kept at the left twin's column; each child after the
+      // first is a twin of the one to their left when it is set there.
       const twinToLeft: number[] = [0];
       for (let k = 1; k < whoIdx.length; k++) {
-        twinToLeft.push(layout.twins[i]?.[whoIdx[k]!] ?? 0);
+        const left = whoIdx[k - 1]!;
+        twinToLeft.push(
+          left === whoIdx[k]! - 1 ? (layout.twins[i]?.[left] ?? 0) : 0,
+        );
       }
       const groups: number[] = [];
       let groupId = 0;

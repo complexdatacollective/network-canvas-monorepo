@@ -42,6 +42,8 @@ type PedigreeGraph = {
    * on their own from the parent to the child's family. */
   extraParents: Map<number, number[]>;
   parentEdgeTypes: Map<string, PedigreeEdgeType>;
+  /** Each person's twins. */
+  twinsOf: Map<number, Set<number>>;
 };
 
 function isPrimaryEdge(edgeType: PedigreeEdgeType): boolean {
@@ -395,6 +397,14 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
     }
   }
 
+  // 8. Twins, as the relation codes record them.
+  const twinsOf = new Map<number, Set<number>>();
+  for (const { id1, id2, code } of ped.relation ?? []) {
+    if (code > 3) continue;
+    twinsOf.set(id1, new Set([...(twinsOf.get(id1) ?? []), id2]));
+    twinsOf.set(id2, new Set([...(twinsOf.get(id2) ?? []), id1]));
+  }
+
   return {
     nodeCount: n,
     layers,
@@ -406,6 +416,7 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
     familyOf,
     extraParents,
     parentEdgeTypes,
+    twinsOf,
   };
 }
 
@@ -770,8 +781,24 @@ function buildConstraintBlocks(
   //    it is left outside to be split (a sibling at the end of the chain keeps
   //    the rest of it on the outer side).
   for (const members of realSibships) {
-    const siblings = members.toSorted((a, b) => a - b);
-    const siblingSet = new Set(siblings);
+    const siblingSet = new Set(members);
+    // Siblings in the order recorded, except that twins sit together, from
+    // where the first of them was recorded.
+    const siblings: number[] = [];
+    for (const sib of members.toSorted((a, b) => a - b)) {
+      if (siblings.includes(sib)) continue;
+      const set = [sib];
+      for (let k = 0; k < set.length; k++) {
+        for (const twin of graph.twinsOf.get(set[k]!) ?? []) {
+          if (siblingSet.has(twin) && !set.includes(twin)) set.push(twin);
+        }
+      }
+      siblings.push(...set.toSorted((a, b) => a - b));
+    }
+    const isTwinPair = (a: number | undefined, b: number | undefined) =>
+      a !== undefined &&
+      b !== undefined &&
+      (graph.twinsOf.get(a)?.has(b) ?? false);
     const ordered: number[] = [];
     siblings.forEach((sib, idx) => {
       // Placed already, as part of an earlier sibling's chain.
@@ -823,10 +850,14 @@ function buildConstraintBlocks(
             partnershipsAmong([sib, ...spouses], graph),
           ),
         );
-      } else if (idx === 0) {
-        ordered.push(...spouses, sib);
       } else {
-        ordered.push(sib, ...spouses);
+        // A single spouse goes on the outer side, and never between twins.
+        const twinBefore = isTwinPair(siblings[idx - 1], sib);
+        const twinAfter = isTwinPair(sib, siblings[idx + 1]);
+        const left =
+          twinAfter && !twinBefore ? true : twinBefore ? false : idx === 0;
+        if (left) ordered.push(...spouses, sib);
+        else ordered.push(sib, ...spouses);
       }
     });
     blocks.push({ nodes: ordered, barycenter: 0 });
@@ -2000,6 +2031,8 @@ function encodePedigreeLayout(
       const loc2 = nodeLocation.get(rel.id2);
       if (!loc1 || loc1.layer !== loc2?.layer) continue;
 
+      // Only twins seated side by side can be marked as twins.
+      if (Math.abs(loc1.col - loc2.col) !== 1) continue;
       const leftCol = Math.min(loc1.col, loc2.col);
       twins[loc1.layer]![leftCol] = rel.code;
     }

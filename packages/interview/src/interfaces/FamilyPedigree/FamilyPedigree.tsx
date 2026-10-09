@@ -139,6 +139,7 @@ import {
 import { ownedOptionLabels } from './options';
 import PedigreeLayout from './pedigree-layout/components/PedigreeLayout';
 import type { PedigreeLink } from './pedigree-layout/types';
+import { pedigreeLinksOf } from './pedigreeLinks';
 import { relationshipWrites } from './relationshipToParticipant';
 import { reproductiveRolesOf } from './reproductiveRoles';
 import type { Point } from './spatialNavigation';
@@ -668,17 +669,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     setJustConnected(null);
   }, [justConnected, family, displayName, intl, optionLabels, setAnnouncement]);
 
-  const links: PedigreeLink[] = useMemo(
-    () =>
-      shown.links.map((link) => ({
-        source: link.source,
-        target: link.target,
-        kind: link.kind,
-        isActive: link.isCurrentPartner,
-        isGestationalCarrier: link.isGestationalCarrier,
-      })),
-    [shown.links],
-  );
+  const links: PedigreeLink[] = useMemo(() => pedigreeLinksOf(shown), [shown]);
   const nodeIds = useMemo(
     () => shown.people.map((person) => person.id),
     [shown.people],

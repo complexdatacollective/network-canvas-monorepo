@@ -1,3 +1,5 @@
+import type { PedigreeTwinKind } from '@codaco/protocol-validation';
+
 /**
  * The kind of a family link as the layout reads it: a partnership, or the kind
  * of parent the link's source is to its target.
@@ -12,12 +14,13 @@ export type PedigreeEdgeType =
 
 /**
  * One family link handed to the layout. Parent links run from the parent
- * (`source`) to the child (`target`); partner links may run either way.
+ * (`source`) to the child (`target`); partner and twin links may run either
+ * way.
  */
 export type PedigreeLink = {
   source: string;
   target: string;
-  kind: PedigreeEdgeType;
+  kind: PedigreeEdgeType | PedigreeTwinKind;
   /** Partner links only: false draws the partnership as separated. */
   isActive?: boolean;
   /** Parent links only: this parent carried the pregnancy. */
