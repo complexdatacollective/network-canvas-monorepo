@@ -27,6 +27,7 @@ function renderDocument() {
       nodeIds={nodeIds}
       links={links}
       nodeNames={new Map()}
+      nodeShapes={new Map()}
       edgeColor="var(--edge-1)"
       nodeWidth={100}
       nodeHeight={100}

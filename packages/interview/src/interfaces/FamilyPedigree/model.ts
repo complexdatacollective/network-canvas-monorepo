@@ -1072,6 +1072,7 @@ export function planAddRelative({
     familyWithPlan(family, people, kept, sexAttribute),
     createId,
     sexAttribute,
+    family,
   );
   const isPlanned = (linkId: string) =>
     linkId.startsWith(plannedLinkId(0).slice(0, -1));
@@ -1605,6 +1606,15 @@ export function planStandIns(
   family: Family,
   createId: () => string,
   sexAttribute: string,
+  /**
+   * The family before the change the rule is kept after, or undefined when
+   * the rule is kept without one (a family read as another stage left it):
+   * a genetic tie it lacked (a parent added, connected, or re-described as
+   * genetic) is one the change recorded, which tells who took a stand-in's
+   * place (`standInsGiveWayWhole`). Required, so that no change keeps the
+   * rule without saying what it changed from.
+   */
+  before: Family | undefined,
 ): StandInChanges {
   const standIns = new Set(
     family.people
@@ -1675,7 +1685,12 @@ export function planStandIns(
       removedLinkIds.add(link.id);
     }
   }
-  const movedLinks = standInsGiveWayWhole(family, standIns, removedLinkIds);
+  const movedLinks = standInsGiveWayWhole(
+    family,
+    standIns,
+    removedLinkIds,
+    before,
+  );
   // A stand-in left standing in for nobody is removed, unless something
   // outside the pedigree refers to them: then only their family links go.
   const removedPersonIds = [...standIns].filter(
@@ -1788,25 +1803,46 @@ export function planStandIns(
  * the person they took the place for, and adds the stand-in's links they
  * replace to `removedLinkIds`.
  *
- * Who took the stand-in's place is the genetic parent recorded after them
- * (the one added, connected or re-described since the stand-in was given),
- * or else the one of the stand-in's sex at birth, when only one is. A
- * stand-in who gave way to different people, or to nobody known, passes on
- * nothing; nor is anything passed on to someone the new parent is already
- * related to, could not be a genetic parent of beside their others, or
- * descends from.
+ * Who took the stand-in's place is the genetic parent whose tie the change
+ * recorded (one `before` lacked: added, connected, or re-described as
+ * genetic), however the record happens to be ordered. Without that, it is
+ * the one genetic parent left who could be in the stand-in's place: not
+ * the parent who gave the other gamete (of the sex at birth the stand-in's
+ * follows from), nor the stand-in's partner in parenthood of someone they
+ * still stand in for. A stand-in who gave way to different people, or to
+ * nobody known, passes on nothing; nor is anything passed on to someone the
+ * new parent is already related to, could not be a genetic parent of beside
+ * their others, or descends from.
  */
 function standInsGiveWayWhole(
   family: Family,
   standIns: ReadonlySet<string>,
   removedLinkIds: Set<string>,
+  before: Family | undefined,
 ): PlannedLink[] {
-  const order = new Map(family.links.map((link, index) => [link.id, index]));
   const sexOf = (personId: string) =>
     family.byId.get(personId)?.sexAssignedAtBirth;
   const geneticLinksOf = (personId: string) =>
     parentLinksOf(family, personId).filter(
       (link) => isGeneticKind(link.kind) && !removedLinkIds.has(link.id),
+    );
+  const geneticBefore = new Set(
+    (before?.links ?? [])
+      .filter((link) => isGeneticKind(link.kind))
+      .map((link) => link.id),
+  );
+  // The genetic parents a stand-in stands beside for someone they still
+  // stand in for.
+  const standingBeside = (standInId: string) =>
+    new Set(
+      family.links
+        .filter(
+          (link) => link.source === standInId && !removedLinkIds.has(link.id),
+        )
+        .flatMap((link) =>
+          geneticLinksOf(link.target).map((other) => other.source),
+        )
+        .filter((id) => id !== standInId),
     );
 
   // Who took each stand-in's place, wherever they gave way.
@@ -1816,16 +1852,24 @@ function standInsGiveWayWhole(
     const firm = geneticLinksOf(link.target).filter(
       (other) => !standIns.has(other.source),
     );
-    const after = firm.filter(
-      (other) => (order.get(other.id) ?? 0) > (order.get(link.id) ?? 0),
+    const recorded = before
+      ? firm.filter((other) => !geneticBefore.has(other.id))
+      : [];
+    const standInSex = sexOf(link.source);
+    const coParents = standingBeside(link.source);
+    const couldBeInPlace = firm.filter(
+      (other) =>
+        !(
+          standInSex !== undefined &&
+          otherGameteSex(sexOf(other.source)) === standInSex
+        ) && !coParents.has(other.source),
     );
-    const sex = sexOf(link.source);
-    const sameSex =
-      sex === undefined
-        ? []
-        : firm.filter((other) => sexOf(other.source) === sex);
     const [replacement] =
-      after.length === 1 ? after : sameSex.length === 1 ? sameSex : [];
+      recorded.length === 1
+        ? recorded
+        : couldBeInPlace.length === 1
+          ? couldBeInPlace
+          : [];
     replacements.set(link.source, [
       ...(replacements.get(link.source) ?? []),
       replacement,
@@ -1883,7 +1927,7 @@ export function standInPlaceTakenFor(
     [{ source: newParentId, target: childId, kind }],
     sexAttribute,
   );
-  return planStandIns(planned, () => '\u0000unused', sexAttribute)
+  return planStandIns(planned, () => '\u0000unused', sexAttribute, family)
     .links.filter(
       (link) => link.source === newParentId && link.target !== childId,
     )

@@ -649,3 +649,79 @@ describe('FamilyPedigree stand-ins the participant describes or disconnects', ()
     expect(screen.queryByText(/Connect them to someone else/)).toBeNull();
   });
 });
+
+describe('FamilyPedigree a parent re-described as genetic', () => {
+  // Alex raised the participant before their mother Julie was recorded;
+  // Jess shares only the stand-in for the participant's other genetic
+  // parent, beside an unknown other parent of her own. Nobody's sex at
+  // birth is recorded, so only the change itself tells who takes the
+  // stand-in's place.
+  function halfSisterThroughStandIn() {
+    const si = new SyntheticInterview(5);
+    const people = si.addNodeType({ name: 'Person' });
+    const stage = si.addStage('FamilyPedigree', {
+      subject: { entity: 'node', type: people.id },
+      prompt: 'Add the members of your family.',
+      askGenderIdentity: false,
+    });
+    const node = (id: string, name?: string, isEgo = false) =>
+      si.addManualNode(stage.id, stage.personType, id, {
+        [stage.ego]: isEgo,
+        // The participant answers “Don’t know”, which rules out nothing.
+        ...(isEgo ? { [stage.sexAssignedAtBirth]: ['unknown'] } : {}),
+        ...(name ? { [stage.name]: name } : {}),
+      });
+    node('ego', undefined, true);
+    node('alex', 'Alex');
+    node('mum', 'Julie');
+    node('jess', 'Jess');
+    node('standIn');
+    node('jessStandIn');
+    const parent = (from: string, to: string, kind: string) =>
+      si.addManualEdge(stage.edgeType, `${from}-${to}`, from, to, {
+        [stage.kind]: [kind],
+      });
+    parent('alex', 'ego', 'social');
+    parent('mum', 'ego', 'biological');
+    parent('standIn', 'ego', 'biological');
+    parent('standIn', 'jess', 'biological');
+    parent('jessStandIn', 'jess', 'biological');
+    si.addInformationStage({ title: 'After the pedigree', text: 'Done.' });
+    return SuperJSON.stringify(
+      si.getInterviewPayload({
+        currentStep: 0,
+        stageMetadata: { 0: { standIns: ['standIn', 'jessStandIn'] } },
+      }),
+    );
+  }
+
+  it('takes the stand-in’s place for everyone they stood in for', async () => {
+    render(<StoryInterviewShell rawPayload={halfSisterThroughStandIn()} />, {
+      wrapper: WithoutMotion,
+    });
+    await screen.findAllByTestId('pedigree-person');
+    expect(screen.getAllByTestId('pedigree-person')).toHaveLength(6);
+    const user = userEvent.setup();
+    await user.click(personButton('ego'));
+    const panel = await screen.findByTestId('pedigree-person-panel');
+    await user.click(
+      within(
+        within(panel).getByRole('radiogroup', { name: /^“?Alex”? is your…/ }),
+      ).getByRole('radio', { name: 'Biological parent' }),
+    );
+    await user.click(within(panel).getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('pedigree-person-panel'),
+      ).not.toBeInTheDocument(),
+    );
+    // The stand-in gives way for Jess too: Alex is her parent in their
+    // place, so they stand in for nobody, and are gone.
+    await waitFor(() =>
+      expect(
+        document.querySelector('[data-person-id="standIn"]'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getAllByTestId('pedigree-person')).toHaveLength(5);
+  });
+});

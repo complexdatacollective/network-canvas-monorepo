@@ -39,7 +39,7 @@ const ids = () => {
 };
 
 const changes = (f: Family) =>
-  planStandIns(f, ids(), config.sexAssignedAtBirthAttribute);
+  planStandIns(f, ids(), config.sexAssignedAtBirthAttribute, undefined);
 
 const plan = (f: Family, anchorId: string, request: AddRelativeRequest) =>
   planAddRelative({
@@ -864,5 +864,105 @@ describe('removing a parent who tells half siblings apart', () => {
       ],
     );
     expect(fullSiblingsOf(refilled, 'ego')).toEqual([]);
+  });
+});
+
+// Whichever change makes a genetic parent take a stand-in's place — a new
+// link, a connection, or an existing parent re-described as genetic — the
+// stand-in gives way as one person, and who took their place is told by
+// what the change recorded, never by where a link sits in the record.
+describe('a parent re-described as genetic takes a stand-in’s place', () => {
+  // Alex raised the participant before their mother was recorded, so Alex's
+  // link comes first in the record; the participant and Sam share their
+  // mother and the stand-in for their other genetic parent.
+  const nodes = (sexes: { mum?: string; standIn?: string } = {}) => [
+    person('ego', { isEgo: true }),
+    person('sam', { name: 'Sam' }),
+    person('alex', { name: 'Alex' }),
+    person('mum', {
+      name: 'Julie',
+      ...(sexes.mum ? { sex: [sexes.mum] } : {}),
+    }),
+    person('standIn', sexes.standIn ? { sex: [sexes.standIn] } : {}),
+  ];
+  const edges = (alexKind: string) => [
+    link('alex', 'ego', alexKind),
+    link('mum', 'ego', 'biological'),
+    link('standIn', 'ego', 'biological'),
+    link('mum', 'sam', 'biological'),
+    link('standIn', 'sam', 'biological'),
+  ];
+  const redescribed = (sexes?: { mum?: string; standIn?: string }) =>
+    planStandIns(
+      family(nodes(sexes), edges('biological')),
+      ids(),
+      config.sexAssignedAtBirthAttribute,
+      family(nodes(sexes), edges('social')),
+    );
+  const takesThePlace = (result: ReturnType<typeof changes>) => {
+    expect(result.removedLinkIds.toSorted()).toEqual([
+      'standIn-ego-biological',
+      'standIn-sam-biological',
+    ]);
+    expect(result.removedPersonIds).toEqual(['standIn']);
+    expect(result.links).toEqual([
+      expect.objectContaining({
+        source: 'alex',
+        target: 'sam',
+        kind: 'biological',
+      }),
+    ]);
+    expect(result.people).toEqual([]);
+  };
+
+  test('when their sex at birth is not known', () => {
+    takesThePlace(redescribed({ mum: 'female', standIn: 'male' }));
+  });
+
+  test('when nobody’s sex at birth tells them apart', () => {
+    takesThePlace(redescribed());
+  });
+
+  test('for a half sibling who shares only the stand-in, when nobody’s sex at birth tells them apart', () => {
+    // Jess shares only the stand-in, and has her own unknown other parent.
+    const people = [
+      person('ego', { isEgo: true }),
+      person('jess', { name: 'Jess' }),
+      person('alex', { name: 'Alex' }),
+      person('mum', { name: 'Julie' }),
+      person('standIn'),
+      person('stand-in-1'),
+    ];
+    const links = (alexKind: string) => [
+      link('alex', 'ego', alexKind),
+      link('mum', 'ego', 'biological'),
+      link('standIn', 'ego', 'biological'),
+      link('standIn', 'jess', 'biological'),
+      link('stand-in-1', 'jess', 'biological'),
+    ];
+    const result = planStandIns(
+      family(people, links('biological')),
+      ids(),
+      config.sexAssignedAtBirthAttribute,
+      family(people, links('adoptive')),
+    );
+    expect(result.removedPersonIds).toEqual(['standIn']);
+    expect(result.links).toEqual([
+      expect.objectContaining({
+        source: 'alex',
+        target: 'jess',
+        kind: 'biological',
+      }),
+    ]);
+  });
+
+  test('a parent newly connected takes the place however the record is ordered', () => {
+    // The record lists the new parent's link before the stand-in's.
+    const people = nodes();
+    const before = family(people, edges('biological').slice(1));
+    const after = family(people, edges('biological'));
+    takesThePlace(
+      planStandIns(after, ids(), config.sexAssignedAtBirthAttribute, before),
+    );
   });
 });

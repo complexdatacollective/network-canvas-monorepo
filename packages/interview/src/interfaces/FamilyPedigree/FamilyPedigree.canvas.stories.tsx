@@ -1000,6 +1000,41 @@ export const TheFirstVisitMenuGoesOnceTheMouseIsUsed: Story = {
   },
 };
 
+/**
+ * The add menu follows the mouse alone, in every browser. Moving the pointer
+ * from a person's menu into the panel it opened leaves the person, though
+ * the browser may say nothing of it (the menu button the pointer was on went
+ * when the panel opened), so once the panel closes after a click in it, no
+ * menu shows until the pointer is over someone again.
+ */
+export const TheMenuDoesNotOutstayThePointer: Story = {
+  render: () => (
+    <CanvasStory
+      family={{
+        people: [
+          { id: 'ego', name: 'Ana', gender: 'woman', sex: 'female', ego: true },
+        ],
+        links: [],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.hover(await canvas.findByRole('button', { name: /^You/ }));
+    await userEvent.click(await canvas.findByTestId('pedigree-menu-parent'));
+    await waitFor(() => expect(personPanel(canvasElement)).not.toBeNull());
+    const panel = within(personPanel(canvasElement) as HTMLElement);
+    await userEvent.click(panel.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(personPanel(canvasElement)).toBeNull());
+    await waitFor(() =>
+      expect(canvas.queryByTestId('pedigree-menu-parent')).toBeNull(),
+    );
+    // Over someone again, the pointer shows their menu.
+    await userEvent.hover(canvas.getByRole('button', { name: /^You/ }));
+    await canvas.findByTestId('pedigree-menu-parent');
+  },
+};
+
 /** A tap, as a touch screen sends it. */
 function tap(element: Element) {
   const box = element.getBoundingClientRect();

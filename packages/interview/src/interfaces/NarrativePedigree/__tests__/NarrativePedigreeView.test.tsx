@@ -39,6 +39,35 @@ vi.mock('../export/snapshot', () => ({
     exportSnapshotMock(element, filename),
 }));
 
+// Every family tree the view lays out, as it was asked to lay it out: the
+// real layout, recorded on the way through.
+type LayoutProps = {
+  nodeIds: readonly string[];
+  nodeShapes?: ReadonlyMap<string, string>;
+};
+const layoutsDrawn = vi.hoisted(
+  () => [] as { instance: string; props: LayoutProps }[],
+);
+vi.mock(
+  '../../FamilyPedigree/pedigree-layout/components/PedigreeLayout',
+  async (importActual) => {
+    const { createElement, useId } = await import('react');
+    const actual =
+      await importActual<
+        typeof import('../../FamilyPedigree/pedigree-layout/components/PedigreeLayout')
+      >();
+    const Recorded = (
+      props: Parameters<typeof actual.default>[0] & LayoutProps,
+    ) => {
+      // Which layout drew it: the canvas's, or the snapshot's.
+      const instance = useId();
+      layoutsDrawn.push({ instance, props });
+      return createElement(actual.default, props);
+    };
+    return { default: Recorded };
+  },
+);
+
 import NarrativePedigreeView, {
   resolveDiseaseColor,
 } from '../components/NarrativePedigreeView';
@@ -750,6 +779,28 @@ describe('NarrativePedigreeView — the canvas', () => {
     await waitForFamily();
     for (const name of ['Zoom out', 'Zoom in', 'Show the whole family']) {
       expect(screen.getByRole('button', { name })).toBeInTheDocument();
+    }
+  });
+});
+
+describe('NarrativePedigreeView — symbol shapes', () => {
+  // Lines meet each symbol's edge only when the layout knows the shape the
+  // symbol is drawn with (here every person is a square, as the codebook
+  // says), on screen and in the printable snapshot alike.
+  it('lays out the family, on screen and in the snapshot, with the shape each symbol is drawn with', async () => {
+    layoutsDrawn.length = 0;
+    renderView();
+    await waitForFamily();
+    await userEvent.click(
+      screen.getByRole('button', { name: /save snapshot/i }),
+    );
+    await waitFor(() => expect(exportSnapshotMock).toHaveBeenCalledTimes(1));
+    // The canvas's layout and the snapshot's.
+    expect(new Set(layoutsDrawn.map(({ instance }) => instance)).size).toBe(2);
+    for (const { props } of layoutsDrawn) {
+      expect(props.nodeIds.map((id) => props.nodeShapes?.get(id))).toEqual(
+        props.nodeIds.map(() => 'square'),
+      );
     }
   });
 });
