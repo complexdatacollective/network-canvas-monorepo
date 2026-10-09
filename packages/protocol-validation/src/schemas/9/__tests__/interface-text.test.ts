@@ -201,6 +201,11 @@ describe('the interface text a protocol holds', () => {
     ).toEqual(['maxLength', 'minLength', 'required', 'sameAs']);
     // A Family Pedigree asks questions that must be answered.
     expect(rules([{ type: 'FamilyPedigree' }])).toEqual(['required']);
+    // A Dyad Census and a Tie Strength Census need an answer for each pair.
+    expect(rules([{ type: 'DyadCensus' }])).toEqual(['required']);
+    expect(rules([{ type: 'TieStrengthCensus' }])).toEqual(['required']);
+    // A one-to-many census lets a person be left unconnected.
+    expect(rules([{ type: 'OneToManyDyadCensus' }])).toEqual([]);
   });
 
   it('holds the date messages for the bounds a date control sets', () => {

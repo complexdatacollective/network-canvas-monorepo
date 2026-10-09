@@ -181,10 +181,21 @@ const dateBoundMessages = (
 };
 
 /**
+ * Stage types whose own question must be answered before going on: a Family
+ * Pedigree's questions about each person, and each pair a Dyad Census or Tie
+ * Strength Census asks about.
+ */
+const ANSWER_REQUIRED_STAGE_TYPES: ReadonlySet<string> = new Set([
+  'FamilyPedigree',
+  'DyadCensus',
+  'TieStrengthCensus',
+]);
+
+/**
  * The rules the interview applies of its own accord, whatever the codebook
  * says: a passphrase must be given, confirmed and long enough (and no longer
- * than an Anonymisation stage allows), and a Family Pedigree's own questions
- * must be answered.
+ * than an Anonymisation stage allows), and some stages' own questions must be
+ * answered.
  */
 const interviewValidationMessages = (
   protocol: ProtocolDocument,
@@ -200,7 +211,11 @@ const interviewValidationMessages = (
     )
       ? ['maxLength']
       : []),
-    ...(stages.some((stage) => stage.type === 'FamilyPedigree')
+    ...(stages.some(
+      (stage) =>
+        typeof stage.type === 'string' &&
+        ANSWER_REQUIRED_STAGE_TYPES.has(stage.type),
+    )
       ? ['required']
       : []),
   ];
