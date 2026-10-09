@@ -1519,6 +1519,20 @@ describe('otherParentChoices', () => {
     });
   });
 
+  // Every parent link but a partnership is evidence of a child, so the
+  // child's other parents are offered as the other parent of the next one.
+  test.each(['donor', 'surrogate'])(
+    'offers the parent of a child the person is the %s of',
+    (kind) => {
+      const family = readFamily(
+        [person('kayla'), person('theo'), person('theoMum')],
+        [link('kayla', 'theo', kind), link('theoMum', 'theo', 'biological')],
+        config,
+      );
+      expect(otherParentChoices(family, 'kayla').choices).toEqual(['theoMum']);
+    },
+  );
+
   test('assumes nobody while two current partners could be the parent', () => {
     const family = readFamily(
       [person('kayla'), person('ana'), person('tyler')],

@@ -448,16 +448,15 @@ const primaryOrGeneticParentsOf = (family: Family, personId: string) =>
 /**
  * The other parents of the person's children who are not their partners:
  * someone they had a child with, recorded as the child's parent alone, as an
- * unnamed parent added for a child is.
+ * unnamed parent added for a child is. Every child counts, whatever kind of
+ * parent the person is to them: the parent of a child they were the donor or
+ * surrogate for is someone they may have another child with.
  */
 function coParentsOf(family: Family, personId: string): string[] {
   const partners = new Set(partnersOf(family, personId));
   const children = new Set(
     family.links
-      .filter(
-        (link) =>
-          link.source === personId && PRIMARY_PARENT_KINDS.has(link.kind),
-      )
+      .filter((link) => link.source === personId && link.kind !== 'partner')
       .map((link) => link.target),
   );
   const coParents = new Set<string>();
@@ -689,6 +688,13 @@ export type AddRelativeRequest =
 
 export type PlannedPerson = { id: string; details: PersonDetails };
 
+/** A change to someone already recorded: the details to set, and the
+ * attributes to unset. */
+export type PlannedUpdate = PlannedPerson & { unset?: string[] };
+
+/** Twins recorded as of another zygosity, by the link recording them. */
+export type TwinZygosityChange = { linkId: string; zygosity: TwinZygosity };
+
 export type PlannedLink = {
   source: string;
   target: string;
@@ -701,7 +707,7 @@ export type AdditionPlan = {
   people: PlannedPerson[];
   links: PlannedLink[];
   /** Stand-ins whose sex at birth the addition changes (`planStandIns`). */
-  updatedPeople?: PlannedPerson[];
+  updatedPeople?: PlannedUpdate[];
   /** Links of stand-ins who give way to someone the addition records in
    * their place. */
   removedLinkIds?: string[];
@@ -712,6 +718,9 @@ export type AdditionPlan = {
   standInIds?: string[];
   /** Twins the addition records. */
   twins?: PlannedTwin[];
+  /** Twins recorded as identical whose genetic parents the addition makes
+   * differ, recorded as not known to be identical (`planStandIns`). */
+  changedTwins?: TwinZygosityChange[];
 };
 
 /** Two people to record as twins. */
@@ -1000,6 +1009,7 @@ export function planAddRelative({
     removedLinkIds: standIns.removedLinkIds.filter((id) => !isPlanned(id)),
     removedPersonIds: standIns.removedPersonIds,
     standInIds: standIns.people.map((person) => person.id),
+    changedTwins: standIns.changedTwins,
   };
   if (request.relation === 'sibling' && request.twin !== undefined) {
     plan.twins = twinsForNewSibling(
@@ -1176,8 +1186,9 @@ function twinsForNewSibling(
  *   is to everyone else what the person is; any other pair keeps what is
  *   recorded, and a pair the change newly forms takes `zygosityThrough` the
  *   person. A worked-out pair is identical only while the two would have the
- *   same genetic parents, and otherwise not known to be, unless it was
- *   recorded identical.
+ *   same genetic parents, and otherwise not known to be: identical twins
+ *   always have the same genetic parents (`planStandIns` keeps them so after
+ *   every change to anyone's parents).
  */
 export function planTwinChanges(
   family: Family,
@@ -1185,16 +1196,14 @@ export function planTwinChanges(
   answers: ReadonlyMap<string, TwinZygosity>,
 ): {
   added: PlannedTwin[];
-  changed: { linkId: string; zygosity: TwinZygosity }[];
+  changed: TwinZygosityChange[];
   removedLinkIds: string[];
 } {
   const current = twinSetOf(family, personId);
   const recorded = (a: string, b: string) =>
     twinLinkBetween(family, a, b)?.zygosity;
   const possible = (a: string, b: string, wanted: TwinZygosity) =>
-    wanted === 'identical' &&
-    recorded(a, b) !== 'identical' &&
-    !identicalTwinsPossible(family, a, b)
+    wanted === 'identical' && !identicalTwinsPossible(family, a, b)
       ? 'unknown'
       : wanted;
 
@@ -1228,7 +1237,7 @@ export function planTwinChanges(
   };
 
   const added: PlannedTwin[] = [];
-  const changed: { linkId: string; zygosity: TwinZygosity }[] = [];
+  const changed: TwinZygosityChange[] = [];
   staying.forEach((a, index) => {
     for (const b of staying.slice(index + 1)) {
       const zygosity = zygosityOf(a, b);
@@ -1390,13 +1399,16 @@ export type StandInChanges = {
   /** Their links: each a biological parent of the people they stand in for. */
   links: PlannedLink[];
   /** Stand-ins whose sex at birth changes, to that of the gamete the other
-   * genetic parent did not give. */
-  updatedPeople: PlannedPerson[];
+   * genetic parent did not give, or is unset when no single sex follows. */
+  updatedPeople: PlannedUpdate[];
   /** Links of stand-ins who gave way to a genetic parent recorded in their
    * place. */
   removedLinkIds: string[];
   /** Stand-ins left standing in for nobody. */
   removedPersonIds: string[];
+  /** Twins recorded as identical whose genetic parents, once the rest is
+   * changed, differ: recorded as not known to be identical. */
+  changedTwins: TwinZygosityChange[];
 };
 
 /**
@@ -1420,7 +1432,18 @@ export type StandInChanges = {
  *   (`geneticParentsPossible`) is removed, and a stand-in left standing in
  *   for nobody is removed.
  * - A stand-in's sex at birth follows the gamete their children's other
- *   genetic parent gave, when every such child agrees on it.
+ *   genetic parent gave, when every such child agrees on it, and is unset
+ *   when they do not, or the other genetic parent's sex at birth is not
+ *   female or male: it is derived, so never outlives what it followed from.
+ *
+ * The same pass keeps the other fact derived from anyone's parents: identical
+ * twins came from one egg and one sperm, so have the same genetic parents.
+ * Twins recorded as identical whose genetic parents differ once everything
+ * above is changed (a parent added to one of them, a shared parent
+ * re-described, a parent removed) are recorded as not known to be identical,
+ * as a twin added beside parents they do not share is: the zygosity gives way
+ * to the parents, never the parents to the zygosity, so no change to the
+ * family is refused or spread to anyone it was not made to.
  */
 export function planStandIns(
   family: Family,
@@ -1445,7 +1468,7 @@ export function planStandIns(
   // parent of each child they share with someone in their own right gave,
   // when the children all agree. Asked first, so that a stand-in whose sex
   // only needs to follow does not give way.
-  const updatedPeople: PlannedPerson[] = [];
+  const updatedPeople: PlannedUpdate[] = [];
   for (const standInId of standIns) {
     const required = new Set<string>();
     for (const link of family.links) {
@@ -1458,11 +1481,14 @@ export function planStandIns(
       const sex = otherGameteSex(sexOf(other.source));
       if (sex !== undefined) required.add(sex);
     }
-    const [sex] = required;
-    if (required.size === 1 && sex !== undefined && sex !== sexOf(standInId)) {
-      sexes.set(standInId, sex);
-      updatedPeople.push({ id: standInId, details: { [sexAttribute]: [sex] } });
-    }
+    const [sex] = required.size === 1 ? required : [];
+    if (sex === sexOf(standInId)) continue;
+    sexes.set(standInId, sex);
+    updatedPeople.push(
+      sex === undefined
+        ? { id: standInId, details: {}, unset: [sexAttribute] }
+        : { id: standInId, details: { [sexAttribute]: [sex] } },
+    );
   }
 
   // A stand-in gives way to a genetic parent recorded in their place.
@@ -1505,6 +1531,12 @@ export function planStandIns(
 
   // Someone with one genetic parent is given a stand-in for the other, one
   // for everyone with exactly the same parents.
+  // The first of someone and their identical twins, who stand for them all.
+  const identicalRootOf = (personId: string) =>
+    twinsOf(family, personId)
+      .filter((twin) => twin.zygosity === 'identical')
+      .map((twin) => twin.twinId)
+      .reduce((first, id) => (id < first ? id : first), personId);
   const groups = new Map<string, { parentId: string; childIds: string[] }>();
   for (const person of family.people) {
     if (removedPersonIds.includes(person.id)) continue;
@@ -1515,9 +1547,10 @@ export function planStandIns(
     const [only] = genetic;
     if (genetic.length !== 1 || only === undefined) continue;
     // Full siblings — the same primary parents, at least one of them
-    // (`fullSiblingsOf`), and so the same genetic parent — share one; anyone
-    // else has their own. A surrogate, who neither raises them nor gave them
-    // genes, tells nobody apart.
+    // (`fullSiblingsOf`), and so the same genetic parent — share one, as do
+    // identical twins with the same genetic parent, who came from one egg
+    // and one sperm; anyone else has their own. A surrogate, who neither
+    // raises them nor gave them genes, tells nobody apart.
     const raised = parents.some((link) => PRIMARY_PARENT_KINDS.has(link.kind));
     const key = raised
       ? parents
@@ -1528,7 +1561,7 @@ export function planStandIns(
           .map((link) => link.source)
           .toSorted()
           .join('\u0000')
-      : `\u0000${person.id}`;
+      : `\u0000${only.source}\u0000${identicalRootOf(person.id)}`;
     const group = groups.get(key) ?? { parentId: only.source, childIds: [] };
     group.childIds.push(person.id);
     groups.set(key, group);
@@ -1544,6 +1577,27 @@ export function planStandIns(
     }
   }
 
+  // Identical twins whose genetic parents, as the rule leaves them, differ.
+  const geneticParentsAfter = (personId: string) =>
+    new Set([
+      ...geneticLinksOf(personId)
+        .filter((link) => !removedLinkIds.has(link.id))
+        .map((link) => link.source),
+      ...links
+        .filter((link) => link.target === personId)
+        .map((link) => link.source),
+    ]);
+  const changedTwins = family.twins
+    .filter(
+      (twin) =>
+        twin.zygosity === 'identical' &&
+        !sameSet(
+          geneticParentsAfter(twin.source),
+          geneticParentsAfter(twin.target),
+        ),
+    )
+    .map((twin) => ({ linkId: twin.id, zygosity: 'unknown' as const }));
+
   return {
     people,
     links,
@@ -1552,6 +1606,7 @@ export function planStandIns(
     ),
     removedLinkIds: [...removedLinkIds],
     removedPersonIds,
+    changedTwins,
   };
 }
 

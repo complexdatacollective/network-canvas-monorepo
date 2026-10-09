@@ -361,6 +361,73 @@ describe('the stand-in rule', () => {
     expect(result.removedLinkIds).toEqual([]);
   });
 
+  // The stand-in's sex at birth is derived from the other genetic parent's,
+  // and is unset when there is no longer exactly one sex it follows from.
+  test.each([['intersex'], ['unknown'], ['preferNotToSay'], undefined])(
+    'a stand-in’s sex at birth is unset when the other genetic parent’s is %s',
+    (sex) => {
+      const result = changes(
+        family(
+          [
+            person('ego', { isEgo: true }),
+            person('parent', {
+              name: 'Robin',
+              ...(sex === undefined ? {} : { sex }),
+            }),
+            person('standIn', { sex: ['male'] }),
+          ],
+          [
+            link('parent', 'ego', 'biological'),
+            link('standIn', 'ego', 'biological'),
+          ],
+        ),
+      );
+      expect(result.updatedPeople).toEqual([
+        { id: 'standIn', details: {}, unset: ['sex'] },
+      ]);
+    },
+  );
+
+  test('a stand-in’s sex at birth is unset when the children it shares disagree on it', () => {
+    const result = changes(
+      family(
+        [
+          person('ego', { isEgo: true }),
+          person('sib', { name: 'Sam' }),
+          person('mum', { name: 'Julie', sex: ['female'] }),
+          person('dad', { name: 'Rob', sex: ['male'] }),
+          person('standIn', { sex: ['male'] }),
+        ],
+        [
+          link('mum', 'ego', 'biological'),
+          link('standIn', 'ego', 'biological'),
+          link('dad', 'sib', 'biological'),
+          link('standIn', 'sib', 'biological'),
+        ],
+      ),
+    );
+    expect(result.updatedPeople).toEqual([
+      { id: 'standIn', details: {}, unset: ['sex'] },
+    ]);
+  });
+
+  test('a stand-in with no sex at birth recorded is left as it is when none follows', () => {
+    const result = changes(
+      family(
+        [
+          person('ego', { isEgo: true }),
+          person('parent', { name: 'Robin', sex: ['intersex'] }),
+          person('standIn'),
+        ],
+        [
+          link('parent', 'ego', 'biological'),
+          link('standIn', 'ego', 'biological'),
+        ],
+      ),
+    );
+    expect(result.updatedPeople).toEqual([]);
+  });
+
   test('a stand-in does not stop the other genetic parent’s sex at birth from changing', () => {
     const f = family(
       [

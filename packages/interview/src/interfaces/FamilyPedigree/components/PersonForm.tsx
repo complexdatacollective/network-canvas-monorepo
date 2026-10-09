@@ -842,11 +842,19 @@ function TwinFields({
         .filter((twinId) => candidates.includes(twinId))
         .map((twinId) => {
           const recorded = current.find((each) => each.twinId === twinId);
-          // A recorded answer is kept as it is, so a change elsewhere never
-          // silently rewrites it.
-          const identicalUnavailable =
-            recorded?.zygosity !== 'identical' &&
-            !identicalTwinsPossible(family, person.id, twinId);
+          // Identical twins have the same genetic parents. Twins recorded as
+          // identical whose parents differ (saved before every change kept
+          // that) are shown as the family records them after the next
+          // change: not known to be identical (`planStandIns`).
+          const identicalUnavailable = !identicalTwinsPossible(
+            family,
+            person.id,
+            twinId,
+          );
+          const recordedZygosity =
+            recorded?.zygosity === 'identical' && identicalUnavailable
+              ? 'unknown'
+              : recorded?.zygosity;
           const args = {
             who: who(twinId),
             name: displayName(person.id),
@@ -870,7 +878,7 @@ function TwinFields({
                   : undefined
               }
               required
-              initialValue={recorded?.zygosity}
+              initialValue={recordedZygosity}
             />
           );
         })}

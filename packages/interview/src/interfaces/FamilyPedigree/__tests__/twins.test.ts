@@ -10,6 +10,7 @@ import {
   type Family,
   identicalTwinsPossible,
   planAddRelative,
+  planStandIns,
   planTwinChanges,
   readFamily,
   twinCandidatesOf,
@@ -115,6 +116,146 @@ describe('identical twins', () => {
       ],
     );
     expect(identicalTwinsPossible(halfSiblings, 'ego', 'sam')).toBe(false);
+  });
+});
+
+// Derived facts follow their premises: identical twins came from one egg and
+// one sperm, so have the same genetic parents. Asked of the family after every
+// change to anyone's parents, alongside the stand-in rule (`planStandIns`):
+// identical twins whose genetic parents a change makes differ are recorded as
+// not known to be identical, never left contradicting their parents.
+describe('identical twins after a change to their parents', () => {
+  const standInRule = (f: Family) => {
+    let counter = 0;
+    return planStandIns(
+      f,
+      () => `stand-in-${++counter}`,
+      config.sexAssignedAtBirthAttribute,
+    );
+  };
+
+  test('a biological parent added to one of them leaves them not known to be identical', () => {
+    const f = family(
+      [person('ego', { isEgo: true }), person('sam', { name: 'Sam' })],
+      [link('ego', 'sam', 'identicalTwin')],
+    );
+    const result = plan(f, {
+      relation: 'parent',
+      parentKind: 'biological',
+      carriedPregnancy: false,
+      partnerId: null,
+      partnershipCurrent: true,
+      alsoParentOf: [],
+    });
+    expect(result.changedTwins).toEqual([
+      { linkId: 'ego-sam-identicalTwin', zygosity: 'unknown' },
+    ]);
+  });
+
+  test('a parent they share added to both keeps them identical', () => {
+    const f = family(
+      [person('ego', { isEgo: true }), person('sam', { name: 'Sam' })],
+      [link('ego', 'sam', 'identicalTwin')],
+    );
+    const result = plan(f, {
+      relation: 'parent',
+      parentKind: 'biological',
+      carriedPregnancy: false,
+      partnerId: null,
+      partnershipCurrent: true,
+      alsoParentOf: ['sam'],
+    });
+    expect(result.changedTwins ?? []).toEqual([]);
+  });
+
+  test('a shared parent re-described as a social parent of one leaves them not known to be identical', () => {
+    const f = family(
+      [
+        person('ego', { isEgo: true }),
+        person('sam', { name: 'Sam' }),
+        person('mum', { name: 'Julie', sex: ['female'] }),
+        person('dad', { name: 'Rob', sex: ['male'] }),
+      ],
+      [
+        link('mum', 'ego', 'biological'),
+        link('dad', 'ego', 'biological'),
+        link('mum', 'sam', 'biological'),
+        link('dad', 'sam', 'social'),
+        link('ego', 'sam', 'identicalTwin'),
+      ],
+    );
+    expect(standInRule(f).changedTwins).toEqual([
+      { linkId: 'ego-sam-identicalTwin', zygosity: 'unknown' },
+    ]);
+  });
+
+  test('identical twins who share their genetic parents are left as they are', () => {
+    expect(
+      standInRule(siblings([link('ego', 'sam', 'identicalTwin')])).changedTwins,
+    ).toEqual([]);
+  });
+
+  test('twins not recorded as identical are left as they are', () => {
+    const f = family(
+      [
+        person('ego', { isEgo: true }),
+        person('sam', { name: 'Sam' }),
+        person('mum', { name: 'Julie', sex: ['female'] }),
+        person('dad', { name: 'Rob', sex: ['male'] }),
+        person('al', { name: 'Al', sex: ['male'] }),
+      ],
+      [
+        link('mum', 'ego', 'biological'),
+        link('dad', 'ego', 'biological'),
+        link('mum', 'sam', 'biological'),
+        link('al', 'sam', 'biological'),
+        link('ego', 'sam', 'fraternalTwin'),
+      ],
+    );
+    expect(standInRule(f).changedTwins).toEqual([]);
+  });
+
+  test('changing someone’s twins never keeps a pair identical whose genetic parents differ', () => {
+    // Sam and Kim saved as identical though Kim's father is Al, not Rob.
+    const f = siblings(
+      [
+        link('mum', 'kim', 'biological'),
+        link('al', 'kim', 'biological'),
+        link('sam', 'kim', 'identicalTwin'),
+      ],
+      [
+        person('kim', { name: 'Kim' }),
+        person('al', { name: 'Al', sex: ['male'] }),
+      ],
+    );
+    expect(
+      planTwinChanges(
+        f,
+        'ego',
+        new Map([
+          ['sam', 'fraternal'],
+          ['kim', 'fraternal'],
+        ]),
+      ).changed,
+    ).toEqual([{ linkId: 'sam-kim-identicalTwin', zygosity: 'unknown' }]);
+  });
+
+  test('identical twins with one donor and no parent raising them share one stand-in, and stay identical', () => {
+    const f = family(
+      [
+        person('ego', { isEgo: true }),
+        person('sam', { name: 'Sam' }),
+        person('donor', { name: 'Dana', sex: ['female'] }),
+      ],
+      [
+        link('donor', 'ego', 'donor'),
+        link('donor', 'sam', 'donor'),
+        link('ego', 'sam', 'identicalTwin'),
+      ],
+    );
+    const result = standInRule(f);
+    expect(result.people).toHaveLength(1);
+    expect(result.changedTwins).toEqual([]);
   });
 });
 

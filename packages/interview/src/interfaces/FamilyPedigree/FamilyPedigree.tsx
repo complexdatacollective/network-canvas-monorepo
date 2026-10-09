@@ -449,30 +449,46 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         type: config.personType,
         [entityAttributesProperty]: person.details,
       }));
-    // A stand-in whose place the addition fills gives way, and one whose sex
-    // at birth follows from it changes, as they will once it is recorded.
+    // A stand-in whose place the addition fills gives way, one whose sex
+    // at birth follows from it changes, and identical twins whose genetic
+    // parents it makes differ are not known to be identical, as they will be
+    // once it is recorded.
     const removedLinks = new Set(plan.removedLinkIds ?? []);
     const removedPeople = new Set(plan.removedPersonIds ?? []);
     const updated = new Map(
-      (plan.updatedPeople ?? []).map((person) => [person.id, person.details]),
+      (plan.updatedPeople ?? []).map((person) => [person.id, person]),
     );
     const keptNodes = nodes
       .filter((node) => !removedPeople.has(node[entityPrimaryKeyProperty]))
       .map((node) => {
-        const details = updated.get(node[entityPrimaryKeyProperty]);
-        return details
+        const update = updated.get(node[entityPrimaryKeyProperty]);
+        if (!update) return node;
+        const attributes = {
+          ...node[entityAttributesProperty],
+          ...update.details,
+        };
+        for (const attribute of update.unset ?? []) {
+          delete attributes[attribute];
+        }
+        return { ...node, [entityAttributesProperty]: attributes };
+      });
+    const changedTwins = new Map(
+      (plan.changedTwins ?? []).map((twin) => [twin.linkId, twin.zygosity]),
+    );
+    const keptEdges = edges
+      .filter((edge) => !removedLinks.has(edge[entityPrimaryKeyProperty]))
+      .map((edge) => {
+        const zygosity = changedTwins.get(edge[entityPrimaryKeyProperty]);
+        return zygosity
           ? {
-              ...node,
+              ...edge,
               [entityAttributesProperty]: {
-                ...node[entityAttributesProperty],
-                ...details,
+                ...edge[entityAttributesProperty],
+                [config.kindAttribute]: [TWIN_KIND_BY_ZYGOSITY[zygosity]],
               },
             }
-          : node;
+          : edge;
       });
-    const keptEdges = edges.filter(
-      (edge) => !removedLinks.has(edge[entityPrimaryKeyProperty]),
-    );
     const draftEdges: NcEdge[] = plan.links
       .filter(
         (link) =>
@@ -1586,9 +1602,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   // The stand-in rule (`planStandIns`), kept after every change to the
   // family, read as stored: anyone a change leaves with one genetic parent
-  // is given a stand-in for the other, and a stand-in whose place a genetic
-  // parent fills gives way. Resolves to the write the session refused, if
-  // one was.
+  // is given a stand-in for the other, a stand-in whose place a genetic
+  // parent fills gives way, a stand-in's sex at birth follows the other
+  // genetic parent's, and identical twins whose genetic parents now differ
+  // are not known to be identical. Resolves to the write the session
+  // refused, if one was.
   const keepStandInRule = async () =>
     applyStandIns(
       planStandIns(latestFamily(), uuid, config.sexAssignedAtBirthAttribute),
@@ -1603,6 +1621,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     people: standIns = [],
     links: standInLinks = [],
     updatedPeople = [],
+    changedTwins = [],
     removedLinkIds = [],
     removedPersonIds = [],
   }: Partial<StandInChanges>) => {
@@ -1625,11 +1644,23 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       const updated = await dispatch(
         updateNode({
           nodeId: person.id,
-          attributePatch: { set: person.details, unset: [] },
+          attributePatch: { set: person.details, unset: person.unset ?? [] },
           currentStep,
         }),
       );
       if (writeFailureMessage(updated)) return updated;
+    }
+    for (const { linkId, zygosity } of changedTwins) {
+      const redescribed = await dispatch(
+        updateEdge({
+          edgeId: linkId,
+          attributePatch: {
+            set: { [config.kindAttribute]: [TWIN_KIND_BY_ZYGOSITY[zygosity]] },
+            unset: [],
+          },
+        }),
+      );
+      if (writeFailureMessage(redescribed)) return redescribed;
     }
     for (const linkId of removedLinkIds) dispatch(deleteEdge(linkId));
     for (const personId of removedPersonIds) dispatch(deleteNode(personId));
@@ -1896,9 +1927,12 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     );
     if (writeFailureMessage(added)) return writeSubmissionResult(added);
     recordStandIns(plan.standInIds);
-    // A stand-in whose place the addition fills gives way (`planStandIns`).
+    // A stand-in whose place the addition fills gives way, and identical
+    // twins whose genetic parents it makes differ are not known to be
+    // identical (`planStandIns`).
     const refusedGiveWay = await applyStandIns({
       updatedPeople: plan.updatedPeople,
+      changedTwins: plan.changedTwins,
       removedLinkIds: plan.removedLinkIds,
       removedPersonIds: plan.removedPersonIds,
     });
