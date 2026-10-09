@@ -14,7 +14,6 @@
     - button "Zoom out"
     - button "Zoom in"
     - button "Show the whole family"
-  - text: “Tom” and “Rachel” were partners
   - navigation:
     - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x

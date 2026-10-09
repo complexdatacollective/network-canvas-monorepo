@@ -9,7 +9,6 @@
     - button "Zoom out"
     - button "Zoom in"
     - button "Show the whole family"
-  - text: Details saved.
   - navigation:
     - button "Previous Step"
     - progressbar "Progress indicator": x
