@@ -15,9 +15,11 @@ import {
   localizedString,
 } from '../localized-string.ts';
 import ProtocolSchemaV9 from '../schema.ts';
+import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import {
   PEDIGREE_PARENTS_ARGUMENTS,
   PEDIGREE_PERSON_ARGUMENTS,
+  PEDIGREE_WORDING_ARGUMENTS,
 } from '../stages/family-pedigree.ts';
 import { NODE_COUNT_ARGUMENTS } from '../stages/name-generator.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
@@ -51,6 +53,22 @@ const messageSite = (
   ...site(path, 'plain'),
   arguments: declaration,
 });
+
+/**
+ * A message that uses each argument a declaration holds, as its kind says:
+ * the text shows it, a select chooses by its first case, and a plural by
+ * number.
+ */
+const messageUsing = (declaration: MessageArguments): string =>
+  Object.entries(declaration)
+    .map(([name, argument]) => {
+      if (argument.kind === 'text') return `{${name}}`;
+      if (argument.kind === 'plural')
+        return `{${name}, plural, one {# x} other {# y}}`;
+      const [first = 'other'] = argument.cases;
+      return `{${name}, select, ${first} {x} other {y}}`;
+    })
+    .join(' ');
 
 const FINISH_STAGE_INDEX = 20;
 
@@ -274,6 +292,16 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
     ),
   ),
   site(stage(18, 'completeness', 'recommendedNote'), 'plain'),
+  // The stage's own words, which Network Canvas supplies: each has the
+  // arguments its message declares (see `PEDIGREE_WORDING_ARGUMENTS`).
+  ...Object.keys(familyPedigreeWordingIn()).map((key) => {
+    const declaration: Readonly<Record<string, MessageArguments | undefined>> =
+      PEDIGREE_WORDING_ARGUMENTS;
+    const argumentsOf = declaration[key];
+    return argumentsOf === undefined
+      ? site(stage(18, 'wording', key), 'plain')
+      : messageSite(stage(18, 'wording', key), argumentsOf);
+  }),
   site(stage(18, 'form', 'fields', 0, 'prompt'), 'markdown'),
   site(stage(18, 'form', 'fields', 0, 'hint'), 'markdown', true),
   site(stage(18, 'nominationPrompts', 0, 'text'), 'markdown'),
@@ -311,24 +339,6 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(FINISH_STAGE_INDEX, 'finishedNotice'), 'plain'),
   site(stage(FINISH_STAGE_INDEX, 'finishFailed'), 'plain'),
 ];
-
-/**
- * A message that uses the arguments a site declares: its plural if it has one,
- * else the person's name and whether they are the participant.
- */
-const exampleFor = (declaration: MessageArguments | undefined): string => {
-  const plural = Object.keys(declaration ?? {}).find(
-    (name) => declaration?.[name]?.kind === 'plural',
-  );
-  if (plural !== undefined) return `{${plural}, plural, other {# items}}`;
-  // Text-only arguments are shown as they are; the others need a select.
-  return declaration !== undefined &&
-    Object.values(declaration).every(({ kind }) => kind === 'text')
-    ? Object.keys(declaration)
-        .map((name) => `{${name}}`)
-        .join(' ')
-    : '{isYou, select, true {You} other {“{name}”}}';
-};
 
 const pathKey = (path: readonly PropertyKey[]) =>
   JSON.stringify(path.map((key) => (typeof key === 'symbol' ? '' : key)));
@@ -450,18 +460,15 @@ describe('localized string coverage', () => {
     EXPECTED_SITES.flatMap((expected) =>
       expected.arguments === undefined ? [] : [[siteName(expected), expected]],
     ),
-  )(
-    'accepts the arguments it declares at %s',
-    (_name, { path, arguments: declaration }) => {
-      expect(
-        failurePaths(
-          withValueAt(path, {
-            en: exampleFor(declaration),
-          }),
-        ),
-      ).toEqual([]);
-    },
-  );
+  )('accepts the arguments it declares at %s', (_name, expected) => {
+    expect(
+      failurePaths(
+        withValueAt(expected.path, {
+          en: messageUsing(expected.arguments ?? {}),
+        }),
+      ),
+    ).toEqual([]);
+  });
 });
 
 describe('attribute labels', () => {

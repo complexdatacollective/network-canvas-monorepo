@@ -15,7 +15,7 @@ describe('what a subject change invalidates', () => {
    * list is that a protocol edited in Architect and a protocol edited here
    * lose and keep exactly the same things.
    */
-  it('keeps what Architect keeps, named one by one', () => {
+  it("keeps what Architect keeps, named one by one, and a pedigree's words", () => {
     expect([...SUBJECT_INDEPENDENT_FIELDS]).toEqual([
       'id',
       'type',
@@ -43,6 +43,9 @@ describe('what a subject change invalidates', () => {
       'tooltips',
       'keyHeading',
       'conditionText',
+      // The Family Pedigree's words for the participant, which only schema 9
+      // stages hold: prose about the task, which Architect never edits.
+      'wording',
     ]);
   });
 

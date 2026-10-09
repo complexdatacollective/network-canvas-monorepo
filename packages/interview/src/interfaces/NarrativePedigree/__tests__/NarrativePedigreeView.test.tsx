@@ -7,8 +7,10 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   asEntityAttributeReference,
   type FramingId,
+  type LocalizationDeclaration,
   type PedigreeRelationshipKind,
   type PedigreeSexAssignedAtBirth,
+  familyPedigreeWordingIn,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -187,6 +189,7 @@ const edges: NcEdge[] = [
 const sourceStage = {
   id: SOURCE_STAGE_ID,
   type: 'FamilyPedigree' as const,
+  wording: familyPedigreeWordingIn(['en', 'es']),
   label: { en: 'Family Pedigree' },
   subject: { entity: 'node' as const, type: NODE_TYPE },
   prompt: { en: 'Build your pedigree.' },
@@ -314,18 +317,22 @@ function makeStore({
   return store;
 }
 
+const ENGLISH_AND_SPANISH: LocalizationDeclaration = {
+  defaultLocale: 'en',
+  locales: ['en', 'es'],
+};
+
 function renderView(options: StoreOptions = {}, locale = 'en') {
   const stage = options.narrativeStage ?? makeNarrativeStage();
   const store = makeStore({ ...options, narrativeStage: stage });
 
-  // The protocol declares English and Spanish, so the stage's own wording can
-  // be shown in either. The preference is passed on every render, so a locale
-  // change reaches the stage text as well as the interface catalogs.
-  const tree = (requestedLocale: string) => (
+  // The participant's stated locale reaches the protocol's localization, so
+  // the stage's own words resolve in it, as they do in the Shell.
+  const view = (requestedLocale: string) => (
     <Provider store={store}>
       <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
         <TestProtocolLocalization
-          localization={{ defaultLocale: 'en', locales: ['en', 'es'] }}
+          localization={ENGLISH_AND_SPANISH}
           locale={requestedLocale}
         >
           <InterviewI18nProvider requestedLocale={requestedLocale}>
@@ -335,12 +342,12 @@ function renderView(options: StoreOptions = {}, locale = 'en') {
       </CurrentStepProvider>
     </Provider>
   );
-  const rendered = render(tree(locale));
+  const rendered = render(view(locale));
   return {
     ...rendered,
     store,
     changeLocale: (requestedLocale: string) =>
-      rendered.rerender(tree(requestedLocale)),
+      rendered.rerender(view(requestedLocale)),
   };
 }
 

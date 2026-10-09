@@ -10,6 +10,7 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import { formatRelativeTerm } from '../kinship';
 import { messages } from '../messages';
 import type { Relation } from '../model';
+import { usePedigreeWords } from '../pedigreeWords';
 
 type AddRelativeMenuProps = {
   isYou: boolean;
@@ -56,6 +57,7 @@ export default function AddRelativeMenu({
   onAdd,
 }: AddRelativeMenuProps) {
   const intl = useAppIntl();
+  const words = usePedigreeWords();
   const reduceMotion = useReducedMotion();
 
   return (
@@ -96,7 +98,7 @@ export default function AddRelativeMenu({
               />
             }
           >
-            {formatRelativeTerm(item.relation, intl)}
+            {formatRelativeTerm(item.relation, words)}
           </Toolbar.Button>
         </div>
       ))}

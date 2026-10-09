@@ -7,6 +7,7 @@ import {
   type SkipLogicDestination,
   type Stage,
   stageSchema,
+  familyPedigreeWordingIn,
 } from '@codaco/protocol-validation';
 import {
   NcNetworkSchema,
@@ -186,6 +187,7 @@ function makeFamilyPedigreeStage(overrides?: Record<string, unknown>): Stage {
     id: 'stage-fp',
     label: en('Family'),
     type: 'FamilyPedigree',
+    wording: familyPedigreeWordingIn(),
     subject: { entity: 'node', type: 'node-type-1' },
     prompt: en('Tell us about your family'),
     nodeConfiguration: {

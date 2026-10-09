@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { familyPedigreeWordingIn } from '../../schemas/9/stage-wording/family-pedigree.ts';
 import { collectEntityTypeReferences } from '../collectEntityAttributeReferences.ts';
 import { localized } from '../test-utils.ts';
 
@@ -78,6 +79,7 @@ const protocol = {
     {
       id: 'ped',
       type: 'FamilyPedigree',
+      wording: familyPedigreeWordingIn(),
       subject: { entity: 'node', type: 'family-member' },
       edgeConfiguration: { type: 'partnership' },
     },

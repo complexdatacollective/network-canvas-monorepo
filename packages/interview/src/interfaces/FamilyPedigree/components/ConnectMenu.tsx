@@ -26,6 +26,7 @@ import {
   type ParentChoice,
 } from '../model';
 import type { OwnedOptionLabels } from '../options';
+import { usePedigreeWords } from '../pedigreeWords';
 
 export type ConnectPair = { firstId: string; secondId: string };
 
@@ -67,12 +68,14 @@ export default function ConnectMenu({
   onConnect,
   onClose,
 }: ConnectMenuProps) {
+  const words = usePedigreeWords();
+  const { wording, text } = words;
   const intl = useAppIntl();
   // Every kind is offered by the codebook's label; a biological parent who
   // carried the pregnancy is its own choice, qualifying that label.
   const parentChoiceLabel = (choice: ParentChoice) =>
     choice.parentKind === 'biological' && choice.carriedPregnancy
-      ? intl.formatMessage(messages.parentKindBiologicalCarrier, {
+      ? text(wording.parentKindBiologicalCarrier, {
           parentKind: parentKindLabels.biological,
         })
       : parentKindLabels[choice.parentKind];
@@ -97,7 +100,7 @@ export default function ConnectMenu({
     if (!pair) return null;
     const isYou = (id: string) => family.byId.get(id)?.isEgo === true;
     const parentLabel = ({ parentId, childId }: ParentAndChild) =>
-      intl.formatMessage(messages.connectParent, {
+      text(wording.connectParent, {
         parentIsYou: isYou(parentId) ? 'true' : 'false',
         childIsYou: isYou(childId) ? 'true' : 'false',
         parent: displayName(parentId),
@@ -155,11 +158,11 @@ export default function ConnectMenu({
       first: displayName(first),
       second: displayName(second),
     };
-    const partners = intl.formatMessage(messages.connectPartners, {
+    const partners = text(wording.connectPartners, {
       ...pairArgs,
       current: 'true',
     });
-    const formerPartners = intl.formatMessage(messages.connectPartners, {
+    const formerPartners = text(wording.connectPartners, {
       ...pairArgs,
       current: 'false',
     });
@@ -182,7 +185,7 @@ export default function ConnectMenu({
     return (
       <DropdownMenuGroup>
         <DropdownMenuLabel>
-          {intl.formatMessage(messages.connectQuestion, pairArgs)}
+          {text(wording.connectQuestion, pairArgs)}
         </DropdownMenuLabel>
         <DropdownMenuItem
           ref={firstItemRef}

@@ -58,6 +58,10 @@ import { EDGE_WIDTH } from '../../FamilyPedigree/pedigree-layout/components/Edge
 import PedigreeLayout from '../../FamilyPedigree/pedigree-layout/components/PedigreeLayout';
 import { dimColor } from '../../FamilyPedigree/pedigree-layout/dimColor';
 import type { PedigreeLink } from '../../FamilyPedigree/pedigree-layout/types';
+import {
+  type PedigreeWords,
+  usePedigreeText,
+} from '../../FamilyPedigree/pedigreeWords';
 import { usePanZoom } from '../../FamilyPedigree/usePanZoom';
 import { pedigreeFraming } from '../../pedigree-common/framing';
 import { readParticipantsFamily } from '../../pedigree-common/membership';
@@ -228,10 +232,18 @@ export default function NarrativePedigreeView({
   // without a name the view can read (an encrypted name awaiting the
   // passphrase) by how they are related to the participant, in the source
   // stage's words. Soft hyphens let long kinship words break inside a symbol.
+  const pedigreeText = usePedigreeText();
+  const sourceWords = useMemo<PedigreeWords | null>(
+    () =>
+      sourceStage ? { wording: sourceStage.wording, text: pedigreeText } : null,
+    [sourceStage, pedigreeText],
+  );
   const labels = useMemo(
     () =>
-      family ? labelEveryone(family, framing, intl) : new Map<string, string>(),
-    [family, framing, intl],
+      family && sourceWords
+        ? labelEveryone(family, framing, intl, sourceWords)
+        : new Map<string, string>(),
+    [family, framing, intl, sourceWords],
   );
   const labelFor = useCallback(
     (personId: string) => labels.get(personId) ?? '',

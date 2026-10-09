@@ -4995,6 +4995,242 @@
     "defaultMessage": "What the list says",
     "description": "Heading of the group of boxes holding the words of the list showing participants what is still needed in their family, and of the side panel’s questions about brothers, sisters and children."
   },
+  "protocolBuilder.pedigree.wording.addingTitle": {
+    "defaultMessage": "Adding a family member",
+    "description": "Heading of the group of words shown in the side panel for a family member the participant adds or edits."
+  },
+  "protocolBuilder.pedigree.wording.alsoParentOfLabel": {
+    "defaultMessage": "Also parent of question",
+    "description": "Label of the question asking whether a person is also the parent of another person."
+  },
+  "protocolBuilder.pedigree.wording.biologicalParentBoth": {
+    "defaultMessage": "Both biological parents option",
+    "description": "Label of the option that both parents are biological parents. The two names are filled in."
+  },
+  "protocolBuilder.pedigree.wording.biologicalParentHint": {
+    "defaultMessage": "Biological parent hint",
+    "description": "Label of the hint explaining that a parent who is not biological is added as a step or social parent."
+  },
+  "protocolBuilder.pedigree.wording.biologicalParentLabel": {
+    "defaultMessage": "Biological parent question",
+    "description": "Label of the question asking which parent is the child’s biological parent."
+  },
+  "protocolBuilder.pedigree.wording.carriedSiblingsPregnancyLabel": {
+    "defaultMessage": "Siblings’ pregnancy question",
+    "description": "Label of the question asking whether each sibling’s parent carried the pregnancy with them."
+  },
+  "protocolBuilder.pedigree.wording.carrierLabel": {
+    "defaultMessage": "Carrier question",
+    "description": "Label of the question asking who carried the pregnancy."
+  },
+  "protocolBuilder.pedigree.wording.carrierUnknown": {
+    "defaultMessage": "Other or unknown carrier option",
+    "description": "Label of the option for someone else, or for not knowing who carried the pregnancy."
+  },
+  "protocolBuilder.pedigree.wording.childKindAdoptive": {
+    "defaultMessage": "Adopted child option",
+    "description": "Label of the option for an adopted child."
+  },
+  "protocolBuilder.pedigree.wording.childKindBiological": {
+    "defaultMessage": "Biological child option",
+    "description": "Label of the option for a biological child."
+  },
+  "protocolBuilder.pedigree.wording.childKindLabel": {
+    "defaultMessage": "Kind of child question",
+    "description": "Label of the question asking what kind of child a person is."
+  },
+  "protocolBuilder.pedigree.wording.childKindSocial": {
+    "defaultMessage": "Step or other raised child option",
+    "description": "Label of the option for a step-child or another child the participant raises."
+  },
+  "protocolBuilder.pedigree.wording.choosesFramingHint": {
+    "defaultMessage": "Shown only when participants choose the words used for family members.",
+    "description": "Hint on the wording settings that are shown only when participants choose the words used for family members."
+  },
+  "protocolBuilder.pedigree.wording.connectHint": {
+    "defaultMessage": "Connect hint",
+    "description": "Label of the hint shown while the participant chooses the first person to connect."
+  },
+  "protocolBuilder.pedigree.wording.connectParent": {
+    "defaultMessage": "Parent connection",
+    "description": "Label of the sentence describing a parent connection."
+  },
+  "protocolBuilder.pedigree.wording.connectPartners": {
+    "defaultMessage": "Partner connection",
+    "description": "Label of the sentence describing a partnership, whether current or past."
+  },
+  "protocolBuilder.pedigree.wording.connectQuestion": {
+    "defaultMessage": "Connect question",
+    "description": "Label of the question asking how two people are related."
+  },
+  "protocolBuilder.pedigree.wording.connectTool": {
+    "defaultMessage": "Connect tool button",
+    "description": "Label of the button that connects two people on the family tree."
+  },
+  "protocolBuilder.pedigree.wording.connectingTitle": {
+    "defaultMessage": "Connecting people",
+    "description": "Heading of the group of words shown while the participant connects and removes people."
+  },
+  "protocolBuilder.pedigree.wording.description": {
+    "defaultMessage": "The words the interface shows the participant while they draw their family, in the order they meet them. Each starts with Network Canvas’s wording in each language the protocol has, and you can change it.",
+    "description": "Description of the participant wording section."
+  },
+  "protocolBuilder.pedigree.wording.disconnectConfirmDescription": {
+    "defaultMessage": "Remove connection explanation",
+    "description": "Label of the explanation that both people stay in the family tree when a connection is removed."
+  },
+  "protocolBuilder.pedigree.wording.disconnectConfirmTitle": {
+    "defaultMessage": "Remove connection question",
+    "description": "Label of the question asking whether to remove a connection between two people."
+  },
+  "protocolBuilder.pedigree.wording.disconnectHint": {
+    "defaultMessage": "Disconnect hint",
+    "description": "Label of the hint shown while the participant chooses a connection to remove."
+  },
+  "protocolBuilder.pedigree.wording.disconnectTool": {
+    "defaultMessage": "Disconnect tool button",
+    "description": "Label of the button that removes a connection between two people on the family tree."
+  },
+  "protocolBuilder.pedigree.wording.disconnectWouldCutOff": {
+    "defaultMessage": "Connection that would leave someone out",
+    "description": "Label of the warning that removing a connection would leave people outside the family tree."
+  },
+  "protocolBuilder.pedigree.wording.dontKnow": {
+    "defaultMessage": "Don’t know option",
+    "description": "Label of the option a participant picks when they do not know an answer."
+  },
+  "protocolBuilder.pedigree.wording.drawingTitle": {
+    "defaultMessage": "Drawing the family",
+    "description": "Heading of the group of words shown while the participant draws their family on the canvas."
+  },
+  "protocolBuilder.pedigree.wording.framingChoiceDescription": {
+    "defaultMessage": "Wording question explanation",
+    "description": "Label of the explanation under the question asking which words to use for family members."
+  },
+  "protocolBuilder.pedigree.wording.framingChoiceTitle": {
+    "defaultMessage": "Wording question",
+    "description": "Label of the question asking which words to use for family members. Shown only when participants choose the words."
+  },
+  "protocolBuilder.pedigree.wording.framingControlLabel": {
+    "defaultMessage": "Wording control label",
+    "description": "Label of the control that lets the participant change the words used for family members."
+  },
+  "protocolBuilder.pedigree.wording.genderIdentityHint": {
+    "defaultMessage": "Shown only when the interface asks about gender identity.",
+    "description": "Hint on the gender identity wording setting, which is shown only when the interface asks about gender identity."
+  },
+  "protocolBuilder.pedigree.wording.genderIdentityLabel": {
+    "defaultMessage": "Gender identity question",
+    "description": "Label of the gender identity question. Shown only when the interface asks about gender identity."
+  },
+  "protocolBuilder.pedigree.wording.generatedLabelOf": {
+    "defaultMessage": "Label for a relative",
+    "description": "Label of a family member, named by how they relate to the participant."
+  },
+  "protocolBuilder.pedigree.wording.missingDetailsList": {
+    "defaultMessage": "Missing details notice",
+    "description": "Label of the notice listing what details are still missing for a family member."
+  },
+  "protocolBuilder.pedigree.wording.otherParentLabel": {
+    "defaultMessage": "Other parent question",
+    "description": "Label of the question asking who the child’s other parent is."
+  },
+  "protocolBuilder.pedigree.wording.otherParentNone": {
+    "defaultMessage": "No other parent option",
+    "description": "Label of the option that the child has no other parent."
+  },
+  "protocolBuilder.pedigree.wording.otherParentUnknown": {
+    "defaultMessage": "Other parent not shown option",
+    "description": "Label of the option for an other parent who is not yet shown on the family tree."
+  },
+  "protocolBuilder.pedigree.wording.panelTitle": {
+    "defaultMessage": "Panel title",
+    "description": "Label of the title of the side panel for a family member being added or edited."
+  },
+  "protocolBuilder.pedigree.wording.parentCarriedLabel": {
+    "defaultMessage": "Carried the pregnancy question",
+    "description": "Label of the question asking whether a parent carried the pregnancy."
+  },
+  "protocolBuilder.pedigree.wording.parentKindBiologicalCarrier": {
+    "defaultMessage": "Biological parent who carried the pregnancy",
+    "description": "Label of the option for a biological parent who carried the pregnancy. The kind of parent is filled in."
+  },
+  "protocolBuilder.pedigree.wording.parentKindLabel": {
+    "defaultMessage": "Kind of parent question",
+    "description": "Label of the question asking what kind of parent a person is."
+  },
+  "protocolBuilder.pedigree.wording.parentLinkKindLabel": {
+    "defaultMessage": "Kind of relationship question",
+    "description": "Label of the question asking how a person is related to another person in the family."
+  },
+  "protocolBuilder.pedigree.wording.parentPartnerLabel": {
+    "defaultMessage": "Parent partner question",
+    "description": "Label of the question asking whether a parent is the partner of another parent."
+  },
+  "protocolBuilder.pedigree.wording.placeholderParentsNote": {
+    "defaultMessage": "Note about added parents",
+    "description": "Label of the note explaining the placeholder parents added for a set of siblings."
+  },
+  "protocolBuilder.pedigree.wording.pointerTool": {
+    "defaultMessage": "Pointer tool button",
+    "description": "Label of the button that selects and moves people on the family tree."
+  },
+  "protocolBuilder.pedigree.wording.relativeTerm": {
+    "defaultMessage": "Relative terms",
+    "description": "Label of the words for each kind of relative, shown in place of their relationship."
+  },
+  "protocolBuilder.pedigree.wording.removeConfirmDescription": {
+    "defaultMessage": "Remove person explanation",
+    "description": "Label of the explanation of what removing a family member also removes."
+  },
+  "protocolBuilder.pedigree.wording.removeConfirmTitle": {
+    "defaultMessage": "Remove person question",
+    "description": "Label of the question asking whether to remove a family member."
+  },
+  "protocolBuilder.pedigree.wording.save": {
+    "defaultMessage": "Save button",
+    "description": "Label of the button that saves a family member’s details."
+  },
+  "protocolBuilder.pedigree.wording.sexAssignedAtBirthLabel": {
+    "defaultMessage": "Sex assigned at birth question",
+    "description": "Label of the question asking a family member’s sex assigned at birth."
+  },
+  "protocolBuilder.pedigree.wording.sexRuledOutHint": {
+    "defaultMessage": "Unavailable answers hint",
+    "description": "Label of the hint explaining why some sex assigned at birth answers are unavailable."
+  },
+  "protocolBuilder.pedigree.wording.sharedParentCountBoth": {
+    "defaultMessage": "Both shared parents option",
+    "description": "Label of the option that both parents are shared."
+  },
+  "protocolBuilder.pedigree.wording.sharedParentCountLabel": {
+    "defaultMessage": "Shared parents question",
+    "description": "Label of the question asking which parents a person shares with the participant or with another person."
+  },
+  "protocolBuilder.pedigree.wording.sharedParentEggOnly": {
+    "defaultMessage": "One shared parent option",
+    "description": "Label of the option that only one of the shared parents is shared. The parent’s kind is filled in."
+  },
+  "protocolBuilder.pedigree.wording.sharedParentUnshown": {
+    "defaultMessage": "Shared parent not shown option",
+    "description": "Label of the option for a shared parent who is not yet shown on the family tree."
+  },
+  "protocolBuilder.pedigree.wording.siblingKindLabel": {
+    "defaultMessage": "Shared parents of siblings question",
+    "description": "Label of the question asking which parents a person shares with their siblings."
+  },
+  "protocolBuilder.pedigree.wording.stillTogetherLabel": {
+    "defaultMessage": "Still together question",
+    "description": "Label of the question asking whether a partnership is still ongoing."
+  },
+  "protocolBuilder.pedigree.wording.title": {
+    "defaultMessage": "Participant wording",
+    "description": "Heading of the section holding the words the participant sees on this stage."
+  },
+  "protocolBuilder.pedigree.wording.you": {
+    "defaultMessage": "Participant’s own name",
+    "description": "Label of the words shown for the participant when they appear as a family member."
+  },
   "protocolBuilder.promptAttribute.lockedOptions": {
     "defaultMessage": "These values are set by the interface that uses this attribute, so they cannot be changed here.",
     "description": "Shown above the read-only list of an attribute’s values, when another interface both writes the attribute and depends on its exact values so a researcher may not edit them."

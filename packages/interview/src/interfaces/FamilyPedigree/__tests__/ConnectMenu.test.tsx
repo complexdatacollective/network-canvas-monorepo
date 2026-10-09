@@ -5,7 +5,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import ConnectMenu from '../components/ConnectMenu';
 import { readFamily } from '../model';
+import { PedigreeWordsProvider } from '../pedigreeWords';
 import { config, person } from './fixtures';
+import { pedigreeWordsIn } from './pedigreeWords';
 
 const PARENT_KIND_LABELS = {
   biological: 'Genetic parent',
@@ -28,15 +30,17 @@ describe('ConnectMenu', () => {
 
     render(
       <TestProtocolLocalization>
-        <ConnectMenu
-          pair={{ firstId: 'julie', secondId: 'rob' }}
-          family={family}
-          displayName={(id) => (id === 'julie' ? 'Julie' : 'Rob')}
-          parentKindLabels={PARENT_KIND_LABELS}
-          anchor={anchor}
-          onConnect={onConnect}
-          onClose={() => undefined}
-        />
+        <PedigreeWordsProvider value={pedigreeWordsIn()}>
+          <ConnectMenu
+            pair={{ firstId: 'julie', secondId: 'rob' }}
+            family={family}
+            displayName={(id) => (id === 'julie' ? 'Julie' : 'Rob')}
+            parentKindLabels={PARENT_KIND_LABELS}
+            anchor={anchor}
+            onConnect={onConnect}
+            onClose={() => undefined}
+          />
+        </PedigreeWordsProvider>
       </TestProtocolLocalization>,
     );
 

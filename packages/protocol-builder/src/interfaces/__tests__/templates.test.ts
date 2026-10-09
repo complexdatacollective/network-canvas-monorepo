@@ -1,9 +1,23 @@
 import { describe, expect, it } from 'vitest';
 
-import { stageSchema } from '@codaco/protocol-validation';
+import {
+  familyPedigreeWordingIn,
+  stageSchema,
+} from '@codaco/protocol-validation';
 
 import { STAGE_TYPES } from '../../stage-types.ts';
 import { getInterfaceTemplate, newStageFields } from '../templates.ts';
+
+/**
+ * The words a Family Pedigree holds only while a configuration asks for them:
+ * the wording question and its control, and the gender identity question.
+ */
+const CONFIGURATION_WORDS = [
+  'framingChoiceDescription',
+  'framingChoiceTitle',
+  'framingControlLabel',
+  'genderIdentityLabel',
+];
 
 describe('getInterfaceTemplate', () => {
   it('answers with a template object for every stage type', () => {
@@ -240,6 +254,13 @@ describe('a new stage given nothing but a name', () => {
                 hint: { en: expect.stringContaining('first name') },
               },
             },
+            // The words a new stage starts with: all but those a configuration
+            // asks for, which a new stage does not yet have.
+            wording: Object.fromEntries(
+              Object.entries(familyPedigreeWordingIn(['en'])).filter(
+                ([key]) => !CONFIGURATION_WORDS.includes(key),
+              ),
+            ),
           }
         : {}),
       ...(type === 'NetworkComposer'

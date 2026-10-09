@@ -7,6 +7,8 @@ import {
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
 import { UnorderedList } from '@codaco/fresco-ui/typography/UnorderedList';
+import { PARTICIPANT_WORDING_GROUPS } from '@codaco/protocol-builder/editors/family-pedigree/participantWordingSettings';
+import { familyPedigreeMessages as builderMessages } from '@codaco/protocol-builder/editors/family-pedigree/pedigreeMessages';
 import type {
   FramingSetting,
   LocalizedString,
@@ -401,6 +403,8 @@ type FamilyPedigreeProps = {
   completeness: FamilyPedigreeCompleteness | null;
   /** Absent when the stage stores no wording, which means everyday words. */
   framing: FramingSetting | null;
+  /** The participant-facing words the stage holds, by key. */
+  wording: Record<string, LocalizedString | undefined> | null;
   nominationPrompts: NominationPrompt[] | null;
 };
 
@@ -448,6 +452,7 @@ const FamilyPedigree = ({
   edgeConfiguration,
   completeness,
   framing,
+  wording,
   nominationPrompts,
 }: FamilyPedigreeProps) => {
   const intl = useAppIntl();
@@ -459,6 +464,7 @@ const FamilyPedigree = ({
     edgeConfiguration === null &&
     completeness === null &&
     framing === null &&
+    wording === null &&
     nominationPrompts === null
   ) {
     return null;
@@ -684,11 +690,30 @@ const FamilyPedigree = ({
     ],
   ];
 
+  // Every participant-facing word the stage holds, in the order participants
+  // meet it. A word the stage does not hold has no row.
+  const wordingRows: [string, ReactNode][] = PARTICIPANT_WORDING_GROUPS.flatMap(
+    (group) =>
+      group.settings.flatMap((setting) =>
+        textRow(
+          intl.formatMessage(setting.label),
+          `wording-${setting.key}`,
+          wording?.[setting.key],
+          setting.arguments,
+        ),
+      ),
+  );
+
   return (
     <>
       <SectionFrame title={intl.formatMessage(messages.title)}>
         <MiniTable rotated wide rows={rows} />
       </SectionFrame>
+      {wordingRows.length > 0 && (
+        <SectionFrame title={intl.formatMessage(builderMessages.wordingTitle)}>
+          <MiniTable rotated wide rows={wordingRows} />
+        </SectionFrame>
+      )}
       {nominationPrompts !== null && nominationPrompts.length > 0 && (
         <SectionFrame title={intl.formatMessage(messages.nominationPrompts)}>
           <UnorderedList>

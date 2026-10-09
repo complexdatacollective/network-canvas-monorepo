@@ -1,4 +1,7 @@
-import { PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS } from '@codaco/protocol-validation';
+import {
+  familyPedigreeWordingIn,
+  PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
+} from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -96,6 +99,19 @@ export const FIXTURE_NAME_FIELD: SectionDoc = (() => {
   }
   return nameField as SectionDoc;
 })();
+
+/**
+ * Every participant-facing word a Family Pedigree stage can hold, in the
+ * fixture protocol's language, with the framing and gender identity words the
+ * configuration asks for. A maximal stage holds them all, so each is one a
+ * round trip must give back unchanged.
+ */
+export const EVERY_PEDIGREE_WORD: SectionDoc = Object.fromEntries(
+  Object.entries(familyPedigreeWordingIn(['en'])).map(([key, words]) => [
+    key,
+    { 'en-US': Object.values(words)[0] },
+  ]),
+);
 
 /**
  * The words of a completeness requirement's list as a researcher might write

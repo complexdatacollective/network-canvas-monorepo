@@ -25,7 +25,9 @@ import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalizati
 import PersonForm, { type PersonFormResult } from '../components/PersonForm';
 import { readFamily } from '../model';
 import type { OwnedOptionLabels } from '../options';
+import { PedigreeWordsProvider } from '../pedigreeWords';
 import { config, person } from './fixtures';
+import { pedigreeWordsIn } from './pedigreeWords';
 
 const OPTION_LABELS: OwnedOptionLabels = {
   sexAssignedAtBirth: {
@@ -152,11 +154,13 @@ function renderPersonForm(
 
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <TestProtocolLocalization>
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
-          <FormStoreProvider>{children}</FormStoreProvider>
-        </CurrentStepProvider>
-      </Provider>
+      <PedigreeWordsProvider value={pedigreeWordsIn()}>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+            <FormStoreProvider>{children}</FormStoreProvider>
+          </CurrentStepProvider>
+        </Provider>
+      </PedigreeWordsProvider>
     </TestProtocolLocalization>
   );
 

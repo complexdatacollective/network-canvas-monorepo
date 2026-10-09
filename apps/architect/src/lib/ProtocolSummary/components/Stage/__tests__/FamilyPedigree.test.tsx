@@ -59,6 +59,7 @@ describe('Protocol Summary family pedigree', () => {
           edgeConfiguration={null}
           completeness={null}
           framing={null}
+          wording={null}
           nominationPrompts={null}
         />
       </SummaryContext.Provider>,
@@ -91,6 +92,7 @@ describe('Protocol Summary family pedigree', () => {
           edgeConfiguration={null}
           completeness={null}
           framing={null}
+          wording={null}
           nominationPrompts={null}
         />
       </SummaryContext.Provider>,
@@ -113,6 +115,7 @@ describe('Protocol Summary family pedigree', () => {
           edgeConfiguration={null}
           completeness={null}
           framing={null}
+          wording={null}
           nominationPrompts={null}
         />
       </SummaryContext.Provider>,
@@ -139,6 +142,7 @@ describe('Protocol Summary family pedigree', () => {
           edgeConfiguration={null}
           completeness={null}
           framing={null}
+          wording={null}
           nominationPrompts={null}
         />
       </SummaryContext.Provider>,
@@ -165,6 +169,7 @@ describe('Protocol Summary family pedigree', () => {
           edgeConfiguration={null}
           completeness={null}
           framing="participantPreference"
+          wording={null}
           nominationPrompts={null}
         />
       </SummaryContext.Provider>,
@@ -187,6 +192,7 @@ describe('Protocol Summary family pedigree', () => {
           edgeConfiguration={null}
           completeness={null}
           framing={null}
+          wording={null}
           nominationPrompts={[
             {
               id: 'nomination-1',
@@ -255,6 +261,7 @@ describe('Protocol Summary family pedigree', () => {
           edgeConfiguration={null}
           completeness={recommended}
           framing={null}
+          wording={null}
           nominationPrompts={null}
         />
       </SummaryContext.Provider>,
@@ -281,11 +288,37 @@ describe('Protocol Summary family pedigree', () => {
           edgeConfiguration={null}
           completeness={{ ...recommended, enforcement: 'required' }}
           framing={null}
+          wording={null}
           nominationPrompts={null}
         />
       </SummaryContext.Provider>,
     );
     // Participants never read the note when the list must be completed.
     expect(screen.queryByText('You may skip these.')).toBeNull();
+  });
+  it('prints each participant-facing word the stage holds, under its name in the builder', () => {
+    render(
+      <SummaryContext.Provider
+        value={{ protocol, protocolName: protocol.name, index: [] }}
+      >
+        <FamilyPedigree
+          personType="person"
+          prompt={null}
+          nodeConfiguration={null}
+          edgeConfiguration={null}
+          completeness={null}
+          framing={null}
+          wording={{
+            alsoParentOfLabel: { en: 'Are they also the parent of…' },
+          }}
+          nominationPrompts={null}
+        />
+      </SummaryContext.Provider>,
+    );
+
+    expect(screen.getByText('Also parent of question')).toBeInTheDocument();
+    expect(
+      screen.getByText('Are they also the parent of…'),
+    ).toBeInTheDocument();
   });
 });

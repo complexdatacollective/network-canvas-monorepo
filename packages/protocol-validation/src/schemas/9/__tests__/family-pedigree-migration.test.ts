@@ -13,6 +13,7 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import migrationV8toV9 from '../migration.ts';
+import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import {
   pedigreeCompletenessText,
   pedigreeNameField,
@@ -82,6 +83,21 @@ const consentSkip = (destination?: Fields): Fields => ({
 });
 
 /** A schema 8 Family Pedigree with every optional piece set. */
+/** The wording a stage holds while its framing question and gender identity are off. */
+const CONFIGURED_WORDING = [
+  'framingChoiceTitle',
+  'framingChoiceDescription',
+  'framingControlLabel',
+  'genderIdentityLabel',
+];
+
+const pedigreeWordingWithout = () =>
+  Object.fromEntries(
+    Object.entries(familyPedigreeWordingIn()).filter(
+      ([key]) => !CONFIGURED_WORDING.includes(key),
+    ),
+  );
+
 const schema8Pedigree = (extra: Fields = {}): Fields => ({
   id: 'pedigree',
   type: 'FamilyPedigree',
@@ -264,6 +280,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
     expect(pedigreeOf(migrated)).toEqual({
       id: 'pedigree',
       type: 'FamilyPedigree',
+      wording: pedigreeWordingWithout(),
       label: en('Your family'),
       interviewScript: 'Draw the family with the participant.',
       subject: { entity: 'node', type: 'person' },
@@ -924,6 +941,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
       {
         id: 'pedigree',
         type: 'FamilyPedigree',
+        wording: pedigreeWordingWithout(),
         label: en('Your family'),
         subject: { entity: 'node', type: 'person' },
         prompt: en('Who is in your family? {braces} it’s fine'),

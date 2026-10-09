@@ -3,18 +3,17 @@ import { describe, expect, test } from 'vitest';
 import type { FramingId } from '@codaco/protocol-validation';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
-import { resolveInterviewIntl } from '../../../i18n/resolveIntl';
 import {
   formatPersonLabel,
   KIN_TERMS,
   type KinTerm,
   labelFamily,
 } from '../kinship';
-import { messages } from '../messages';
 import { readFamily, type PedigreeConfig } from '../model';
 import { config, configWithoutGenderIdentity, link, person } from './fixtures';
+import { pedigreeWordsIn } from './pedigreeWords';
 
-const intl = resolveInterviewIntl();
+const words = pedigreeWordsIn();
 
 /** Labels as English text, keyed by person id, read without the soft
  * hyphens where a long word may break inside a symbol. */
@@ -28,7 +27,7 @@ function labelsOf(
   return Object.fromEntries(
     [...labelFamily(family, framing)].map(([id, label]) => [
       id,
-      formatPersonLabel(label, intl).replace(/\u00AD/g, ''),
+      formatPersonLabel(label, words).replace(/\u00AD/g, ''),
     ]),
   );
 }
@@ -207,7 +206,7 @@ describe('labelFamily', () => {
     expect(
       formatPersonLabel(
         labelFamily(donorFamily, 'gamete').get('intersexDonor')!,
-        intl,
+        words,
       ),
     ).toBe('Egg donor');
   });
@@ -415,7 +414,7 @@ describe('labelFamily', () => {
 
   test('every kinship word has its own wording', () => {
     for (const term of KIN_TERMS) {
-      expect(intl.formatMessage(messages.relativeTerm, { term })).not.toBe(
+      expect(words.text(words.wording.relativeTerm, { term })).not.toBe(
         'Relative',
       );
     }
@@ -424,7 +423,7 @@ describe('labelFamily', () => {
 
 describe('soft hyphens', () => {
   const term = (kinTerm: KinTerm) =>
-    formatPersonLabel({ type: 'term', term: kinTerm }, intl);
+    formatPersonLabel({ type: 'term', term: kinTerm }, words);
 
   test('long kinship words carry a soft hyphen at a syllable break, so they break there inside a symbol', () => {
     const long: KinTerm[] = [
@@ -458,7 +457,7 @@ describe('soft hyphens', () => {
           owner: { type: 'term', term: 'cousin' },
           term: 'stepmother',
         },
-        intl,
+        words,
       ),
     ).toBe('Cousin’s Step\u00ADmother');
   });

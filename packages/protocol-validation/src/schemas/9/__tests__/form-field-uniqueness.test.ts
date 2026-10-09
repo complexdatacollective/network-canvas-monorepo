@@ -12,6 +12,7 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import ProtocolSchemaV9 from '../schema.ts';
+import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import { familyPedigreeStage } from '../stages/family-pedigree.ts';
 import { pedigreeNameField } from './family-pedigree-text.ts';
 import {
@@ -28,6 +29,7 @@ const pedigreeStage = (form?: ReturnType<typeof field>[]) => ({
   id: 'fp1',
   label: localized('Family Pedigree'),
   type: 'FamilyPedigree' as const,
+  wording: familyPedigreeWordingIn(),
   subject: { entity: 'node' as const, type: 'person' },
   prompt: localized('Build your family'),
   nodeConfiguration: {

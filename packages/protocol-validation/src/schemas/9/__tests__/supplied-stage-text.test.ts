@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import ProtocolSchemaV9 from '../schema.ts';
+import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import {
   missingSuppliedStageText,
   suppliedStageSettingApplies,
@@ -177,10 +178,24 @@ describe('the Family Pedigree wording Network Canvas supplies', () => {
       { defaultLocale: 'en', locales: ['en', 'de'] },
     ).map(({ path }) => path.join('.'));
 
-  it('gives a new stage its name question, and no tracker wording until it has a tracker', () => {
+  // The wording a stage holds only while its configuration is on: the framing
+  // question while participants choose the words, and the gender identity
+  // question while the stage asks about gender identity.
+  const CONFIGURED = [
+    'framingChoiceTitle',
+    'framingChoiceDescription',
+    'framingControlLabel',
+    'genderIdentityLabel',
+  ];
+  const alwaysWording = Object.keys(familyPedigreeWordingIn())
+    .filter((key) => !CONFIGURED.includes(key))
+    .map((key) => `wording.${key}`);
+
+  it('gives a new stage its name question and its wording, and no tracker wording until it has a tracker', () => {
     expect(paths({})).toEqual([
       'nodeConfiguration.nameField.prompt',
       'nodeConfiguration.nameField.hint',
+      ...alwaysWording,
     ]);
   });
 
@@ -200,13 +215,14 @@ describe('the Family Pedigree wording Network Canvas supplies', () => {
       'completeness.itemText.children.question',
       'completeness.itemText.details.listItem',
       'completeness.recommendedNote',
+      ...alwaysWording,
     ]);
   });
 
   it('does not put back a hint the researcher removed', () => {
     expect(
       paths({ nodeConfiguration: { nameField: { prompt: { en: 'Name' } } } }),
-    ).toEqual([]);
+    ).toEqual(alwaysWording);
   });
 
   it('writes the wording with its arguments, in each language it is supplied in', () => {
