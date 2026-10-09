@@ -86,7 +86,7 @@
   "interview.familyPedigree.parentPartnerLabel": "此人是否為另一位家長的伴侶？",
   "interview.familyPedigree.partnershipCurrentLabel": "他們仍在一起嗎？",
   "interview.familyPedigree.passphraseNeededNotice": "請輸入您的通關密語，以查看您家人的姓名並新增或變更人員。",
-  "interview.familyPedigree.personAccessibleName": "{isYou, select, true {您} other {{name}}}{missing, select, true {，缺少部分資訊} other {}}",
+  "interview.familyPedigree.personAccessibleName": "{isYou, select, true {您} other {{name}}}{adopted, select, true {，被收養} other {}}{missing, select, true {，缺少部分資訊} other {}}",
   "interview.familyPedigree.placeholderParentsNote": "{framing, select, gamete {系統會新增一位卵子方家長和一位精子方家長，供您稍後填寫，讓家譜圖能將這些手足顯示在一起。} other {系統會新增一位生母和一位生父，供您稍後填寫，讓家譜圖能將這些手足顯示在一起。}}",
   "interview.familyPedigree.pointerTool": "新增和編輯",
   "interview.familyPedigree.relationshipSection": "親屬關係",

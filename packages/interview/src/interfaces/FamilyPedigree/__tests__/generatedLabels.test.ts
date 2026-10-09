@@ -4,7 +4,12 @@ import type { FramingId } from '@codaco/protocol-validation';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
 import { resolveInterviewIntl } from '../../../i18n/resolveIntl';
-import { generateLabels, labelEveryone, labelWrites } from '../generatedLabels';
+import {
+  distinctNames,
+  generateLabels,
+  labelEveryone,
+  labelWrites,
+} from '../generatedLabels';
 import { nameFingerprint, readFamily, type PedigreeConfig } from '../model';
 import { config, configWithoutGenderIdentity, link, person } from './fixtures';
 
@@ -604,5 +609,58 @@ describe('soft hyphens', () => {
       expect(label).not.toContain('­');
     }
     expect(saved.get('sd2')).toBe('Stepdaughter (partner of Al)');
+  });
+});
+
+describe('distinctNames', () => {
+  const namesOf = (nodes: NcNode[], edges: NcEdge[]) => {
+    const family = readFamily(nodes, edges, config);
+    return Object.fromEntries(
+      distinctNames(family, labelEveryone(family, 'gendered', intl), intl),
+    );
+  };
+
+  test('keeps every label no one else shares', () => {
+    expect(
+      namesOf(
+        [person('ego', { isEgo: true }), woman('mum', { name: 'Rosa' })],
+        [link('mum', 'ego', 'biological')],
+      ),
+    ).toEqual({ ego: 'You', mum: 'Rosa' });
+  });
+
+  test('tells relatives given the same name apart by a relative each', () => {
+    const names = namesOf(
+      [
+        person('ego', { isEgo: true }),
+        man('dad', { name: 'José García' }),
+        woman('mum', { name: 'Maria' }),
+        man('uncle', { name: 'José García' }),
+        woman('aunt', { name: 'Lucia' }),
+      ],
+      [
+        link('mum', 'dad', 'partner'),
+        link('dad', 'ego', 'biological'),
+        link('mum', 'ego', 'biological'),
+        link('uncle', 'aunt', 'partner'),
+      ],
+    );
+    expect(names.dad).toBe('José García (partner of Maria)');
+    expect(names.uncle).toBe('José García (partner of Lucia)');
+    expect(names.mum).toBe('Maria');
+  });
+
+  test('numbers them when no kind of relative tells them all apart', () => {
+    const names = namesOf(
+      [
+        person('ego', { isEgo: true }),
+        man('dad', { name: 'José García' }),
+        man('grandad', { name: 'José García' }),
+      ],
+      [link('dad', 'ego', 'biological'), link('grandad', 'dad', 'biological')],
+    );
+    expect(names.dad).toBe('José García 1');
+    expect(names.grandad).toBe('José García 2');
+    expect(new Set(Object.values(names)).size).toBe(3);
   });
 });

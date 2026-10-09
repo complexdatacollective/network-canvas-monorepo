@@ -86,7 +86,7 @@
   "interview.familyPedigree.parentPartnerLabel": "Ist diese Person die Partnerperson eines anderen Elternteils?",
   "interview.familyPedigree.partnershipCurrentLabel": "Sind die beiden noch zusammen?",
   "interview.familyPedigree.passphraseNeededNotice": "Geben Sie Ihre Passphrase ein, um die Namen in Ihrer Familie zu sehen und Personen hinzuzufügen oder zu ändern.",
-  "interview.familyPedigree.personAccessibleName": "{isYou, select, true {Sie} other {{name}}}{missing, select, true {, einige Angaben fehlen} other {}}",
+  "interview.familyPedigree.personAccessibleName": "{isYou, select, true {Sie} other {{name}}}{adopted, select, true {, adoptiert} other {}}{missing, select, true {, einige Angaben fehlen} other {}}",
   "interview.familyPedigree.placeholderParentsNote": "{framing, select, gamete {Ein Eizell-Elternteil und ein Samen-Elternteil werden hinzugefügt, die Sie später ergänzen können, damit der Stammbaum diese Geschwister gemeinsam zeigen kann.} other {Eine leibliche Mutter und ein leiblicher Vater werden hinzugefügt, die Sie später ergänzen können, damit der Stammbaum diese Geschwister gemeinsam zeigen kann.}}",
   "interview.familyPedigree.pointerTool": "Hinzufügen und bearbeiten",
   "interview.familyPedigree.relationshipSection": "Verwandtschaft",

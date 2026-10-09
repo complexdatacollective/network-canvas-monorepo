@@ -111,7 +111,12 @@ import PersonForm, {
 } from './components/PersonForm';
 import PersonNode from './components/PersonNode';
 import { decryptDetails, useDecryptedNames } from './encryptedNames';
-import { generateLabels, labelEveryone, labelWrites } from './generatedLabels';
+import {
+  distinctNames,
+  generateLabels,
+  labelEveryone,
+  labelWrites,
+} from './generatedLabels';
 import { messages } from './messages';
 import {
   areConnected,
@@ -574,10 +579,19 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     () => labelEveryone(shown, framing, intl),
     [shown, framing, intl],
   );
+  // Each person's symbol shows their label. Everywhere else they are named in
+  // words that tell them apart from anyone whose label matches theirs (two
+  // relatives given the same name), as only words can there: the panel's
+  // title, announcements, hints and confirmations, and what a screen reader
+  // reads out for their symbol.
+  const names = useMemo(
+    () => distinctNames(shown, labels, intl),
+    [shown, labels, intl],
+  );
   const displayName = useCallback(
     (personId: string) =>
-      labels.get(personId) ?? intl.formatMessage(messages.familyMember),
-    [labels, intl],
+      names.get(personId) ?? intl.formatMessage(messages.familyMember),
+    [names, intl],
   );
 
   // Announce an addition once the new person is in the family, so they can be
@@ -1801,7 +1815,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               return (
                 <PersonNode
                   person={person}
-                  label={displayName(personId)}
+                  label={
+                    labels.get(personId) ??
+                    intl.formatMessage(messages.familyMember)
+                  }
+                  accessibleName={displayName(personId)}
                   color={nodeColor}
                   shape={
                     shapeDefinition

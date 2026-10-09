@@ -4,7 +4,7 @@
   - region "Your family":
     - button "Rachel"
     - button "Tom"
-    - button "You"
+    - button "You, adopted"
   - toolbar "Family tree tools":
     - group "What clicking a person does":
       - button "Add and edit" [pressed]

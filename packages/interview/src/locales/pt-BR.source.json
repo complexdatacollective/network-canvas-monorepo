@@ -86,7 +86,7 @@
   "interview.familyPedigree.parentPartnerLabel": "Are they the partner of another parent?",
   "interview.familyPedigree.partnershipCurrentLabel": "Are they still together?",
   "interview.familyPedigree.passphraseNeededNotice": "Enter your passphrase to see the names in your family and to add or change people.",
-  "interview.familyPedigree.personAccessibleName": "{isYou, select, true {You} other {{name}}}{missing, select, true {, some details missing} other {}}",
+  "interview.familyPedigree.personAccessibleName": "{isYou, select, true {You} other {{name}}}{adopted, select, true {, adopted} other {}}{missing, select, true {, some details missing} other {}}",
   "interview.familyPedigree.placeholderParentsNote": "{framing, select, gamete {An egg parent and a sperm parent will be added for you to fill in later, so the family tree can show these siblings together.} other {A biological mother and a biological father will be added for you to fill in later, so the family tree can show these siblings together.}}",
   "interview.familyPedigree.pointerTool": "Add and edit",
   "interview.familyPedigree.relationshipSection": "How you are related",

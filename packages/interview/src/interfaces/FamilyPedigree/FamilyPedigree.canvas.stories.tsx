@@ -846,3 +846,113 @@ export const ArrowKeysMoveAlikeAtEveryZoom: Story = {
     ).toBe(true);
   },
 };
+
+/**
+ * Two relatives with the same name are told apart wherever only words can
+ * do it: in their symbols' accessible names, their panels' titles, the
+ * connect tool's hints and the remove confirmation.
+ */
+export const NamesakesAreToldApart: Story = {
+  render: () => (
+    <CanvasStory
+      family={{
+        people: [
+          { id: 'ego', name: 'Ana', gender: 'woman', sex: 'female', ego: true },
+          { id: 'dad', name: 'José García', gender: 'man', sex: 'male' },
+          { id: 'grandad', name: 'José García', gender: 'man', sex: 'male' },
+        ],
+        links: [
+          { from: 'dad', to: 'ego', kind: 'biological' },
+          { from: 'grandad', to: 'dad', kind: 'biological' },
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
+    await canvas.findByRole('button', { name: /^You/ });
+    const namesakes = canvas.getAllByRole('button', { name: /^José García/ });
+    await expect(namesakes).toHaveLength(2);
+    const [first, second] = namesakes.map(
+      (symbol) => symbol.getAttribute('aria-label') ?? '',
+    );
+    await expect(first).not.toBe(second);
+    // The accessible names, as computed, are the distinct ones.
+    await expect(canvas.getAllByRole('button', { name: first }).length).toBe(1);
+    await expect(canvas.getAllByRole('button', { name: second }).length).toBe(
+      1,
+    );
+
+    // Each panel is titled by its own name.
+    const titles: string[] = [];
+    for (const id of ['dad', 'grandad']) {
+      await userEvent.click(personSymbol(canvasElement, id));
+      await waitFor(() => expect(personPanel(canvasElement)).not.toBeNull());
+      titles.push(
+        within(personPanel(canvasElement) as HTMLElement).getByRole('heading', {
+          level: 2,
+        }).textContent ?? '',
+      );
+      await userEvent.keyboard('{Escape}');
+      await waitFor(() => expect(personPanel(canvasElement)).toBeNull());
+    }
+    await expect(titles[0]).not.toBe(titles[1]);
+
+    // Connecting them is refused in words that tell them apart.
+    await userEvent.click(canvas.getByTestId('pedigree-tool-connect'));
+    await userEvent.click(personSymbol(canvasElement, 'dad'));
+    await userEvent.click(personSymbol(canvasElement, 'grandad'));
+    const refusal = canvas.getByTestId('pedigree-connect-hint').textContent;
+    await expect(refusal).toMatch(/already connected/);
+    await expect(refusal).not.toMatch(/“José García” and “José García”/);
+    await userEvent.click(canvas.getByTestId('pedigree-tool-pointer'));
+
+    // So is removing one of them.
+    await userEvent.click(personSymbol(canvasElement, 'grandad'));
+    await waitFor(() => expect(personPanel(canvasElement)).not.toBeNull());
+    await userEvent.click(
+      within(personPanel(canvasElement) as HTMLElement).getByRole('button', {
+        name: 'Remove from family',
+      }),
+    );
+    const dialog = await page.findByRole('dialog', { name: /^Remove/ });
+    await expect(within(dialog).getByRole('heading').textContent).not.toBe(
+      'Remove José García?',
+    );
+  },
+};
+
+/**
+ * Someone drawn in brackets, as adopted, is announced as adopted: the
+ * participant and their sister, both adopted by Ruth.
+ */
+export const AdoptionIsAnnounced: Story = {
+  render: () => (
+    <CanvasStory
+      family={{
+        people: [
+          { id: 'ego', name: 'Sam', gender: 'man', sex: 'male', ego: true },
+          { id: 'ruth', name: 'Ruth', gender: 'woman', sex: 'female' },
+          { id: 'grace', name: 'Grace', gender: 'woman', sex: 'female' },
+        ],
+        links: [
+          { from: 'ruth', to: 'ego', kind: 'adoptive' },
+          { from: 'ruth', to: 'grace', kind: 'adoptive' },
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('button', { name: /^You, adopted/ }),
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByRole('button', { name: /^Grace, adopted/ }),
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByRole('button', { name: /^Ruth/ }),
+    ).not.toHaveAccessibleName(/adopted/);
+  },
+};

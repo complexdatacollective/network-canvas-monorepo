@@ -28,8 +28,12 @@ import { EDGE_WIDTH } from '../pedigree-layout/components/EdgeRenderer';
 
 type PersonNodeProps = {
   person: Person;
-  /** Their name, or how they are related to the participant. */
+  /** Their name, or how they are related to the participant, as shown in
+   * their symbol. */
   label: string;
+  /** The words that name them alone, read out for their symbol: their label,
+   * told apart from anyone else's it matches. Defaults to the label. */
+  accessibleName?: string;
   color: NodeColorSequence;
   /** From the person type's shape in the codebook, which may follow one of
    * their attributes. */
@@ -68,6 +72,7 @@ type PersonNodeProps = {
 export default function PersonNode({
   person,
   label,
+  accessibleName = label,
   color,
   shape,
   selected,
@@ -127,7 +132,8 @@ export default function PersonNode({
         label={label}
         ariaLabel={intl.formatMessage(messages.personAccessibleName, {
           isYou: person.isEgo ? 'true' : 'false',
-          name: withoutSoftHyphens(label),
+          name: withoutSoftHyphens(accessibleName),
+          adopted: adopted ? 'true' : 'false',
           missing: hasMissingDetails ? 'true' : 'false',
         })}
         selected={selected}
@@ -137,13 +143,15 @@ export default function PersonNode({
         tabIndex={tabIndex}
         onKeyDown={onKeyDown}
       />
+      {/* Centred on the symbol's corner, clear of the label inside it. */}
       {hasMissingDetails && (
         <Tooltip>
           <TooltipTrigger
             render={
               <span
                 aria-hidden
-                className="bg-warning text-warning-contrast elevation-low absolute top-0 right-0 flex size-8 items-center justify-center rounded-full"
+                data-missing-details-badge
+                className="bg-warning text-warning-contrast elevation-low absolute top-0 right-0 flex size-8 translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full"
               />
             }
           >
