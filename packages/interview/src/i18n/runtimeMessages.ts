@@ -30,12 +30,6 @@ export const runtimeMessages = defineMessages({
     description:
       'Button that copies interview error details for the study organizer.',
   },
-  offlineMap: {
-    id: 'interview.runtime.offlineMap',
-    defaultMessage:
-      'You are offline — the map will not load until you reconnect.',
-    description: 'Persistent message while a map screen cannot load offline.',
-  },
   canvas: {
     id: 'interview.runtime.canvas',
     defaultMessage: 'Placement area',
@@ -185,20 +179,6 @@ export const runtimeMessages = defineMessages({
     defaultMessage: 'Filter...',
     description:
       'Placeholder for filtering the interview screen navigation list.',
-  },
-  minimumItems: {
-    id: 'interview.runtime.minimumItems',
-    defaultMessage:
-      'You must create at least <strong>{count, number}</strong> {count, plural, one {item} other {items}} before you can continue.',
-    description:
-      'Blocking message when too few items have been created; emphasize the minimum count.',
-  },
-  taskComplete: {
-    id: 'interview.runtime.taskComplete',
-    defaultMessage:
-      'You have completed this task. Click the next arrow to continue.',
-    description:
-      'Notification that the maximum item count is reached and the participant can continue.',
   },
   notifications: {
     id: 'interview.runtime.notifications',

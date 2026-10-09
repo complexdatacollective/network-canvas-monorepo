@@ -47,6 +47,9 @@ import QuickAddField from '../NameGenerator/components/QuickAddField';
 import AddNodeInput from '../NetworkComposer/AddNodeInput';
 import { TestProtocolLocalization } from './TestProtocolLocalization';
 
+/** The stage's own line beside the quick-add field. */
+const QUICK_ADD_HINT = { en: 'Press Enter when you are finished.' };
+
 /**
  * Both of these components spread `useField`'s `fieldProps` onto markup of
  * their own rather than rendering through `BaseField`, so every ARIA reference
@@ -71,6 +74,7 @@ describe('QuickAddField ARIA references', () => {
       <TestProtocolLocalization>
         <Form onSubmit={() => ({ success: true })}>
           <QuickAddField
+            hint={QUICK_ADD_HINT}
             name="name"
             placeholder="Type a label and press enter..."
             disabled={false}
@@ -92,6 +96,7 @@ describe('QuickAddField ARIA references', () => {
       <TestProtocolLocalization>
         <Form onSubmit={() => ({ success: true })}>
           <QuickAddField
+            hint={QUICK_ADD_HINT}
             name="name"
             placeholder="Type a label and press enter..."
             disabled={false}
@@ -112,6 +117,7 @@ describe('QuickAddField ARIA references', () => {
       <TestProtocolLocalization>
         <Form onSubmit={() => ({ success: true })}>
           <QuickAddField
+            hint={QUICK_ADD_HINT}
             name="name"
             placeholder="Type a label and press enter..."
             disabled={false}

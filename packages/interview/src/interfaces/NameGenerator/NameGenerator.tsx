@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
-import type { Form } from '@codaco/protocol-validation';
+import type { Form, LocalizedString } from '@codaco/protocol-validation';
 import {
   type EntityAttributesProperty,
   type EntityPrimaryKey,
@@ -55,13 +55,22 @@ const NameGenerator = (props: NameGeneratorProps) => {
   const intl = useAppIntl();
   const { stage } = props;
 
-  const { behaviours, type, panels } = stage;
+  const {
+    behaviours,
+    type,
+    panels,
+    minNodesNotice,
+    maxNodesNotice,
+    externalDataError,
+  } = stage;
 
   let quickAdd: string | null = null;
+  let quickAddHint: LocalizedString | null = null;
   let form: Form | null = null;
 
   if (type === 'NameGeneratorQuickAdd') {
     quickAdd = stage.quickAdd;
+    quickAddHint = stage.quickAddHint;
   }
 
   if (type === 'NameGenerator') {
@@ -181,6 +190,8 @@ const NameGenerator = (props: NameGeneratorProps) => {
     stageNodeCount,
     minNodes,
     maxNodes,
+    minNodesNotice,
+    maxNodesNotice,
     isLastPrompt,
     writesEncrypted: useEncryption,
   });
@@ -288,6 +299,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
               disableAddNew={maxNodesReached || encryptionLocked}
               onOpenChange={setIsPanelsOpen}
               animationKey={promptIndex}
+              externalDataError={externalDataError}
             />
             <NodeList
               items={nodesForPrompt}
@@ -330,6 +342,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
           <QuickNodeForm
             disabled={maxNodesReached || encryptionLocked}
             targetVariable={quickAdd!}
+            hint={quickAddHint!}
             addNode={addNode}
           />
         )}

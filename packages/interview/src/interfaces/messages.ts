@@ -64,18 +64,6 @@ export const interfaceMessages = defineMessages({
     description:
       'Short heading above an external-list loading error. This heading intentionally has no final period.',
   },
-  externalDataUnavailable: {
-    id: 'interview.interfaces.externalDataUnavailable',
-    defaultMessage: 'External data could not be loaded.',
-    description:
-      'Explanation shown when a configured external list of people could not be loaded.',
-  },
-  rosterAlreadyAdded: {
-    id: 'interview.interfaces.rosterAlreadyAdded',
-    defaultMessage: 'There is nothing left to add from this list.',
-    description:
-      'Empty state of an external roster when there is nothing left to add: the list is empty, or every entry has already been added to the interview network.',
-  },
   availableRosterNodes: {
     id: 'interview.interfaces.availableRosterNodes',
     defaultMessage: 'Available Roster Nodes',
@@ -105,12 +93,6 @@ export const interfaceMessages = defineMessages({
     defaultMessage: 'Quick add input',
     description:
       'Accessible name of the active quick-add toggle while its name-entry field is open.',
-  },
-  quickAddInstructions: {
-    id: 'interview.interfaces.quickAddInstructions',
-    defaultMessage: 'Press <kbd>Enter</kbd> when you are finished.',
-    description:
-      'Tooltip beside the quick-add name field. The kbd tag marks the Enter key and must be preserved.',
   },
   entityName: {
     id: 'interview.interfaces.entityName',
@@ -378,13 +360,6 @@ export const interfaceMessages = defineMessages({
     description:
       'Accessible name of the test-only map placeholder used by automated interface tests; clicking it selects a fixture feature.',
   },
-  mapUnavailableDescription: {
-    id: 'interview.interfaces.mapUnavailableDescription',
-    defaultMessage:
-      'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
-    description:
-      'Recovery guidance after map initialization fails. The next arrow refers to the interview navigation control, not a map control.',
-  },
   deselect: {
     id: 'interview.interfaces.deselect',
     defaultMessage: 'Deselect',
@@ -409,12 +384,6 @@ export const interfaceMessages = defineMessages({
     description:
       'Accessible name of the map button that restores the researcher-configured starting center and zoom.',
   },
-  outsideSelectableAreas: {
-    id: 'interview.interfaces.outsideSelectableAreas',
-    defaultMessage: 'Outside Selectable Areas',
-    description:
-      'Button used to indicate that the participant’s location lies outside the selectable map areas. The stored selection identifier is never translated.',
-  },
   closeSearch: {
     id: 'interview.interfaces.closeSearch',
     defaultMessage: 'Close search',
@@ -438,12 +407,6 @@ export const interfaceMessages = defineMessages({
     defaultMessage: 'Search suggestions',
     description:
       'Accessible name of the list of places returned by geospatial search, including its loading and empty states.',
-  },
-  searchFailed: {
-    id: 'interview.interfaces.searchFailed',
-    defaultMessage: 'Search could not be completed. Try again in a moment.',
-    description:
-      'Recoverable error when geospatial search could not run; it does not mean the place does not exist.',
   },
   mapMoved: {
     id: 'interview.interfaces.mapMoved',

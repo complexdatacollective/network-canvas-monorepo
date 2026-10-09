@@ -58,6 +58,8 @@ vi.mock('../../../../hooks/useStageSelector', () => ({
 import { TestProtocolLocalization } from '../../../__tests__/TestProtocolLocalization';
 import QuickAddField from '../QuickAddField';
 
+const HINT = { en: 'Press Enter when you are finished.' };
+
 const renderField = (ui: ReactElement) =>
   render(ui, { wrapper: TestProtocolLocalization });
 
@@ -92,7 +94,12 @@ describe('QuickAddField', () => {
 
     renderField(
       <Form onSubmit={onSubmit}>
-        <QuickAddField name="name" placeholder="Type a name" disabled={false} />
+        <QuickAddField
+          hint={HINT}
+          name="name"
+          placeholder="Type a name"
+          disabled={false}
+        />
       </Form>,
     );
 
@@ -134,6 +141,7 @@ describe('QuickAddField', () => {
     renderField(
       <Form onSubmit={onSubmit}>
         <QuickAddField
+          hint={HINT}
           name="safe.__proto__.polluted"
           placeholder="Type a name"
           disabled={false}
@@ -166,6 +174,7 @@ describe('QuickAddField', () => {
           }}
         >
           <QuickAddField
+            hint={HINT}
             name="name"
             placeholder="Type a name"
             disabled={false}
@@ -193,7 +202,12 @@ describe('QuickAddField', () => {
   it('names the input after the codebook node type label, not its name', async () => {
     renderField(
       <Form onSubmit={vi.fn(async () => ({ success: true }))}>
-        <QuickAddField name="name" placeholder="Type a name" disabled={false} />
+        <QuickAddField
+          hint={HINT}
+          name="name"
+          placeholder="Type a name"
+          disabled={false}
+        />
       </Form>,
     );
 
@@ -206,7 +220,12 @@ describe('QuickAddField', () => {
   it('closes when the user blurs the enabled input', async () => {
     renderField(
       <Form onSubmit={vi.fn(async () => ({ success: true }))}>
-        <QuickAddField name="name" placeholder="Type a name" disabled={false} />
+        <QuickAddField
+          hint={HINT}
+          name="name"
+          placeholder="Type a name"
+          disabled={false}
+        />
       </Form>,
     );
 

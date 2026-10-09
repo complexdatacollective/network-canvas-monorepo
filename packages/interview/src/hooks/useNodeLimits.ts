@@ -3,9 +3,13 @@
 import { createElement, useEffect, useRef } from 'react';
 
 import { AppMessage } from '@codaco/app-i18n/react';
+import type { LocalizedString } from '@codaco/protocol-validation';
 
-import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import { usePassphrase } from '../interfaces/Anonymisation/usePassphrase';
+import {
+  useResolveLocalizedMessage,
+  useResolveLocalizedString,
+} from '../localization/ProtocolLocalizationProvider';
 import useReadyForNextStage from './useReadyForNextStage';
 import useStageValidation from './useStageValidation';
 
@@ -13,6 +17,9 @@ type UseNodeLimitsOptions = {
   stageNodeCount: number;
   minNodes: number;
   maxNodes: number;
+  /** The stage's words for a minimum and a maximum, shown only when set. */
+  minNodesNotice?: LocalizedString;
+  maxNodesNotice?: LocalizedString;
   isLastPrompt: boolean;
   /**
    * Whether the people this stage adds carry encrypted answers. Under an
@@ -26,10 +33,14 @@ function useNodeLimits({
   stageNodeCount,
   minNodes,
   maxNodes,
+  minNodesNotice,
+  maxNodesNotice,
   isLastPrompt,
   writesEncrypted,
 }: UseNodeLimitsOptions) {
   const { encryptionUnavailable, lockedNotice } = usePassphrase();
+  const resolveMessage = useResolveLocalizedMessage();
+  const resolveString = useResolveLocalizedString();
   const addingUnavailable = writesEncrypted && encryptionUnavailable;
 
   const maxNodesReached = stageNodeCount >= maxNodes;
@@ -41,17 +52,11 @@ function useNodeLimits({
 
   const { updateReady } = useReadyForNextStage();
 
-  const minNodesMessage = createElement(
-    'span',
-    null,
-    createElement(AppMessage, {
-      message: messages.minimumItems,
-      values: {
-        count: minNodes,
-        strong: (chunks) => createElement('strong', null, chunks),
-      },
-    }),
-  );
+  // A stage that sets no minimum has no notice to show, and the schema makes
+  // the notice required whenever it does set one.
+  const minNodesMessage = minNodesNotice
+    ? resolveMessage(minNodesNotice, { count: minNodes }).text
+    : undefined;
 
   const { showToast, closeToast } = useStageValidation({
     constraints: [
@@ -83,9 +88,9 @@ function useNodeLimits({
     // the pending timer rather than closing an already-rendered toast.
     const timeout = setTimeout(() => {
       maxToastRef.current = showToast({
-        description: createElement(AppMessage, {
-          message: messages.taskComplete,
-        }),
+        description: maxNodesNotice
+          ? resolveString(maxNodesNotice).text
+          : undefined,
         variant: 'success',
         anchor: 'forward',
         timeout: 0,

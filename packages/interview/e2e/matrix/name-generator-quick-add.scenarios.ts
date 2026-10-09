@@ -323,6 +323,8 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         'behaviours.minNodes',
         'behaviours.maxNodes',
         'behaviours.maxNodes-panel-drag',
+        'minNodesNotice',
+        'maxNodesNotice',
       ],
       currentStep: 1,
       seedNetwork: true,

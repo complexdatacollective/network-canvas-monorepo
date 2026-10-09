@@ -19,7 +19,6 @@ import {
   vi,
 } from 'vitest';
 
-import { AppMessage } from '@codaco/app-i18n/react';
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import {
   asEntityAttributeReference,
@@ -33,7 +32,6 @@ import {
 import type { InterviewPayload, SyncHandler } from '../contract/types';
 import useStageValidation from '../hooks/useStageValidation';
 import { interviewCatalogSource } from '../i18n/catalog';
-import { runtimeMessages } from '../i18n/runtimeMessages';
 import Shell from '../Shell';
 import {
   InterviewToastProvider,
@@ -156,6 +154,10 @@ function makePayload(id: string): InterviewPayload {
         {
           id: `${id}-names`,
           type: 'NameGeneratorQuickAdd',
+          minNodesNotice: {
+            en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+          },
+          quickAddHint: { en: 'Press Enter when you are finished.' },
           label: { en: `Original_${id}` },
           subject: { entity: 'node', type: 'person' },
           quickAdd: asEntityAttributeReference('name'),
@@ -194,9 +196,10 @@ function currentStore() {
   return store;
 }
 
-const taskCompleteDescription = (
-  <AppMessage message={runtimeMessages.taskComplete} />
-);
+// The words a stage's maximum shows, as a stage holds them: a toast needs no
+// catalog message to say them.
+const taskCompleteDescription =
+  'You have completed this task. Click the next arrow to continue.';
 
 function StandaloneToast() {
   const { showToast, closeToast } = useStageValidation({ constraints: [] });
@@ -349,11 +352,12 @@ describe('Shell toast ownership', () => {
 
     firstView.rerender(firstContent('es-MX'));
     expect(within(first).getByRole('dialog')).toBe(notification);
-    expect(notification).toHaveTextContent(
-      'Debes crear al menos 1 elemento antes de continuar.',
-    );
-    // The built-in text follows the browser's Spanish; the region keeps the
+    // The notice is the stage's own text, which the protocol holds in English
+    // only, so it does not follow the browser's Spanish; the region keeps the
     // English-only protocol's language.
+    expect(notification).toHaveTextContent(
+      'You must create at least 1 item before you can continue.',
+    );
     expect(notification.closest('[lang]')).toHaveAttribute('lang', 'en');
     expect(
       within(first).getAllByRole('region', {

@@ -407,7 +407,11 @@ function ActiveInterview({
                       >
                         {canRenderStage && (
                           <GeospatialOfflineIndicator
-                            active={stage.type === 'Geospatial'}
+                            notice={
+                              stage.type === 'Geospatial'
+                                ? stage.offlineNotice
+                                : undefined
+                            }
                           />
                         )}
                         <StageErrorBoundary>

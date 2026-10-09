@@ -21,6 +21,9 @@ import {
   type ResolveRosterAsset,
 } from '../rosterData';
 
+/** A stage's own words, in the protocol's only language. */
+const localized = (text: string) => ({ en: text });
+
 const PEOPLE_CSV = 'Name,Age\nAda,36\nGrace,45\nAlan,41\n';
 const PLACES_CSV = 'Name\nOffice\nHome\n';
 // Header row only: a roster asset that resolves and parses but has no rows.
@@ -65,6 +68,8 @@ function rosterStage(id: string, dataSource: string): Stage {
     id,
     label: { en: 'Roster' },
     type: 'NameGeneratorRoster',
+    externalDataError: { en: 'External data could not be loaded.' },
+    allAddedNotice: { en: 'There is nothing left to add from this list.' },
     panelTitle: { en: 'Available to add' },
     subject: { entity: 'node', type: 'person' },
     dataSource,
@@ -479,6 +484,10 @@ describe('collectRosterExternalData', () => {
           id: 'as-place',
           label: { en: 'Roster' },
           type: 'NameGeneratorRoster',
+          externalDataError: { en: 'External data could not be loaded.' },
+          allAddedNotice: {
+            en: 'There is nothing left to add from this list.',
+          },
           panelTitle: { en: 'Available to add' },
           subject: { entity: 'node', type: 'place' },
           dataSource: 'roster',
@@ -598,6 +607,8 @@ describe('collectRosterExternalData', () => {
       id: 'draft-no-subject',
       label: 'Roster',
       type: 'NameGeneratorRoster',
+      externalDataError: localized('External data could not be loaded.'),
+      allAddedNotice: localized('There is nothing left to add from this list.'),
       dataSource: 'draft-roster',
       prompts: [{ id: 'p1', text: 'Pick people' }],
     } as unknown as Stage;
@@ -605,6 +616,8 @@ describe('collectRosterExternalData', () => {
       id: 'draft-no-source',
       label: 'Roster',
       type: 'NameGeneratorRoster',
+      externalDataError: localized('External data could not be loaded.'),
+      allAddedNotice: localized('There is nothing left to add from this list.'),
       subject: { entity: 'node', type: 'person' },
       prompts: [{ id: 'p1', text: 'Pick people' }],
     } as unknown as Stage;

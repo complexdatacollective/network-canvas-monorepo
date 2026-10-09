@@ -750,7 +750,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
 
     {
       id: 'roster-behaviours-min-nodes',
-      covers: ['behaviours.minNodes'],
+      covers: ['behaviours.minNodes', 'minNodesNotice'],
       build: () => {
         const synth = new SyntheticInterview();
         const personType = synth.addNodeType({ name: 'Person' });
@@ -800,7 +800,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
 
     {
       id: 'roster-behaviours-max-nodes',
-      covers: ['behaviours.maxNodes'],
+      covers: ['behaviours.maxNodes', 'maxNodesNotice'],
       visual: true,
       build: () => {
         const synth = new SyntheticInterview();

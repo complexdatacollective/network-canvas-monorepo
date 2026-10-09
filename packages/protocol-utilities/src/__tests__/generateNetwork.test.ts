@@ -69,6 +69,12 @@ function makeNameGeneratorStage(overrides?: Record<string, unknown>): Stage {
     id: 'stage-ng',
     label: en('Name Generator'),
     type: 'NameGenerator',
+    minNodesNotice: en(
+      '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+    ),
+    maxNodesNotice: en(
+      'You have completed this task. Click the next arrow to continue.',
+    ),
     subject: { entity: 'node', type: 'node-type-1' },
     prompts: [{ id: 'prompt-ng', text: en('Add people') }],
     behaviours: { minNodes: 5, maxNodes: 8 },
@@ -81,6 +87,14 @@ function makeRosterStage(overrides?: Record<string, unknown>): Stage {
     id: 'stage-ngr',
     label: en('Roster'),
     type: 'NameGeneratorRoster',
+    externalDataError: en('External data could not be loaded.'),
+    allAddedNotice: en('There is nothing left to add from this list.'),
+    minNodesNotice: en(
+      '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+    ),
+    maxNodesNotice: en(
+      'You have completed this task. Click the next arrow to continue.',
+    ),
     subject: { entity: 'node', type: 'node-type-1' },
     dataSource: 'roster-asset',
     prompts: [{ id: 'prompt-ngr', text: en('Pick people') }],
@@ -522,6 +536,12 @@ describe('generateNetwork', () => {
           id: 'stage-ng',
           label: en('Name Generator'),
           type: 'NameGenerator',
+          minNodesNotice: en(
+            '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+          ),
+          maxNodesNotice: en(
+            'You have completed this task. Click the next arrow to continue.',
+          ),
           subject: { entity: 'node', type: 'node-type-1' },
           prompts: [{ id: 'prompt-1', text: en('Add people') }],
           behaviours: { minNodes: 2, maxNodes: 5 },
@@ -1403,6 +1423,12 @@ describe('generateNetwork', () => {
         id: 'stage-ng-draft',
         label: 'Name Generator',
         type: 'NameGenerator',
+        minNodesNotice: en(
+          '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+        ),
+        maxNodesNotice: en(
+          'You have completed this task. Click the next arrow to continue.',
+        ),
         prompts: [{ id: 'prompt-ng', text: 'Add people' }],
         behaviours: { minNodes: 5, maxNodes: 8 },
       } as unknown as Stage;
@@ -1494,13 +1520,13 @@ describe('generateNetwork', () => {
       const finish = {
         id: 'finish',
         type: 'FinishSession' as const,
-        label: { en: 'Finish' },
-        title: { en: 'All done' },
-        content: { en: 'Thank you.' },
-        finishLabel: { en: 'Finish' },
-        finishConfirmation: { en: 'Finish this interview?' },
-        finishedNotice: { en: 'This interview is finished.' },
-        finishFailed: { en: 'The interview could not be finished.' },
+        label: en('Finish'),
+        title: en('All done'),
+        content: en('Thank you.'),
+        finishLabel: en('Finish'),
+        finishConfirmation: en('Finish this interview?'),
+        finishedNotice: en('This interview is finished.'),
+        finishFailed: en('The interview could not be finished.'),
         outcome: 'completed' as const,
       };
       const stages = [

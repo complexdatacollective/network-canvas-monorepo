@@ -3,19 +3,9 @@
 import { Toggle } from '@base-ui/react';
 import { Plus } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-import {
-  AppErrorMessage,
-  AppMessage,
-  useAppIntl,
-} from '@codaco/app-i18n/react';
+import { AppErrorMessage, useAppIntl } from '@codaco/app-i18n/react';
 import type { ValidationPropsCatalogue } from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { useField } from '@codaco/fresco-ui/form/hooks/useField';
@@ -35,6 +25,7 @@ import {
 } from '@codaco/fresco-ui/Tooltip';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
+import type { LocalizedString } from '@codaco/protocol-validation';
 
 import {
   actionCircleVariants,
@@ -44,7 +35,10 @@ import {
 } from '../../../components/actionButtonVariants';
 import { useCelebrate } from '../../../hooks/useCelebrate';
 import { useStageSelector } from '../../../hooks/useStageSelector';
-import { useResolveLocalizedString } from '../../../localization/ProtocolLocalizationProvider';
+import {
+  useLocalizedString,
+  useResolveLocalizedString,
+} from '../../../localization/ProtocolLocalizationProvider';
 import { getNodeIconName } from '../../../selectors/name-generator';
 import {
   getNodeColorSelector,
@@ -82,6 +76,8 @@ function convertToNodeColor(color: NodeColorSequence): string {
 type QuickAddFieldProps = {
   name: string;
   placeholder: string;
+  /** The stage's line about finishing, shown beside the field. */
+  hint: LocalizedString;
   disabled: boolean;
   onShowInput?: () => void;
   /**
@@ -100,8 +96,6 @@ type QuickAddFieldProps = {
   validationContext?: ValidationContext;
 } & Partial<ValidationPropsCatalogue>;
 
-const renderEnterKey = (chunks: ReactNode[]) => <kbd>{chunks}</kbd>;
-
 export default function QuickAddField({
   placeholder,
   name: targetVariable,
@@ -109,9 +103,11 @@ export default function QuickAddField({
   onShowInput,
   successfulSubmissionCount,
   validationContext,
+  hint,
   ...validationProps
 }: QuickAddFieldProps) {
   const intl = useAppIntl();
+  const { text: hintText } = useLocalizedString(hint);
   const [checked, setChecked] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
@@ -321,10 +317,7 @@ export default function QuickAddField({
                     className="max-w-md text-sm"
                     sideOffset={25}
                   >
-                    <AppMessage
-                      message={interfaceMessages.quickAddInstructions}
-                      values={{ kbd: renderEnterKey }}
-                    />
+                    {hintText}
                   </TooltipContent>
                 </Tooltip>
               </TooltipTrigger>
