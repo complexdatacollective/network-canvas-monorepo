@@ -129,6 +129,7 @@ import {
   planAdditionUnder,
   planConnection,
   type PlannedLink,
+  type PlannedTwin,
   planStandIns,
   type StandInChanges,
   nameFingerprint,
@@ -138,6 +139,7 @@ import {
   type Family,
   type Person,
   type Relation,
+  TWIN_KIND_BY_ZYGOSITY,
 } from './model';
 import { ownedOptionLabels } from './options';
 import PedigreeLayout from './pedigree-layout/components/PedigreeLayout';
@@ -193,6 +195,12 @@ const linkAttributesFor = (config: PedigreeConfig, link: PlannedLink) => ({
         [config.gestationalCarrierAttribute]:
           link.isGestationalCarrier ?? false,
       }),
+});
+
+/** The attributes recording twins: their zygosity, as the relationship
+ * kind. */
+const twinAttributesFor = (config: PedigreeConfig, twin: PlannedTwin) => ({
+  [config.kindAttribute]: [TWIN_KIND_BY_ZYGOSITY[twin.zygosity]],
 });
 
 /** Everything to create to add a relative, under the panel's ids. */
@@ -394,10 +402,17 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         to: link.target,
         [entityAttributesProperty]: linkAttributesFor(config, link),
       }));
+    const draftTwinEdges: NcEdge[] = (plan.twins ?? []).map((twin, index) => ({
+      [entityPrimaryKeyProperty]: `draft-twin-${index}`,
+      type: config.relationshipType,
+      from: twin.source,
+      to: twin.target,
+      [entityAttributesProperty]: twinAttributesFor(config, twin),
+    }));
     return participantsFamily(
       readFamily(
         [...keptNodes, ...draftNodes],
-        [...keptEdges, ...draftEdges],
+        [...keptEdges, ...draftEdges, ...draftTwinEdges],
         config,
         generatedLabels,
         decryptedNames,
@@ -1388,6 +1403,13 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     attributeData: linkAttributes(link),
   });
 
+  const twinEdge = (twin: PlannedTwin) => ({
+    from: twin.source,
+    to: twin.target,
+    type: config.relationshipType,
+    attributeData: twinAttributesFor(config, twin),
+  });
+
   const addLink = (link: PlannedLink) =>
     dispatch(addEdge({ ...linkEdge(link), currentStep })).unwrap();
 
@@ -1560,6 +1582,29 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           }),
         );
       }
+      // Twins answered, re-described or no longer twins.
+      const twinChanges = result.twinChanges;
+      if (twinChanges) {
+        for (const twin of twinChanges.added) {
+          await dispatch(addEdge({ ...twinEdge(twin), currentStep })).unwrap();
+        }
+        for (const { linkId, zygosity } of twinChanges.changed) {
+          await dispatch(
+            updateEdge({
+              edgeId: linkId,
+              attributePatch: {
+                set: {
+                  [config.kindAttribute]: [TWIN_KIND_BY_ZYGOSITY[zygosity]],
+                },
+                unset: [],
+              },
+            }),
+          );
+        }
+        for (const linkId of twinChanges.removedLinkIds) {
+          dispatch(deleteEdge(linkId));
+        }
+      }
       // A parent re-described, or a parent's sex at birth changed, may leave
       // someone needing a stand-in, or let one give way.
       await keepStandInRule();
@@ -1619,7 +1664,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           // encrypts it.
           useEncryption: encryptDetails,
         })),
-        edges: plan.links.map(linkEdge),
+        edges: [
+          ...plan.links.map(linkEdge),
+          ...(plan.twins ?? []).map(twinEdge),
+        ],
         currentStep,
       }),
     ).unwrap();

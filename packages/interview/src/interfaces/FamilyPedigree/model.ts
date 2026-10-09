@@ -156,6 +156,13 @@ const ZYGOSITY_BY_KIND: Record<PedigreeTwinKind, TwinZygosity> = {
   unknownZygosityTwin: 'unknown',
 };
 
+/** The relationship kind that records twins of this zygosity. */
+export const TWIN_KIND_BY_ZYGOSITY: Record<TwinZygosity, PedigreeTwinKind> = {
+  identical: 'identicalTwin',
+  fraternal: 'fraternalTwin',
+  unknown: 'unknownZygosityTwin',
+};
+
 /** Two people recorded as twins, in either order. */
 export type TwinLink = {
   id: string;
@@ -610,6 +617,8 @@ export type AddRelativeRequest =
        * first.
        */
       biologicalParentId?: string;
+      /** The sibling is the anchor's twin, of this zygosity (ruling 16). */
+      twin?: TwinZygosity;
       /**
        * Who carried the pregnancy, for a biological sibling: one of the
        * parents the sibling is planned to have (`possibleCarriers`), by id,
@@ -639,6 +648,15 @@ export type AdditionPlan = {
   removedLinkIds?: string[];
   /** Stand-ins the addition leaves standing in for nobody. */
   removedPersonIds?: string[];
+  /** Twins the addition records. */
+  twins?: PlannedTwin[];
+};
+
+/** Two people to record as twins. */
+export type PlannedTwin = {
+  source: string;
+  target: string;
+  zygosity: TwinZygosity;
 };
 
 /**
@@ -940,6 +958,15 @@ export function planAddRelative({
     removedLinkIds: standIns.removedLinkIds.filter((id) => !isPlanned(id)),
     removedPersonIds: standIns.removedPersonIds,
   };
+  if (request.relation === 'sibling' && request.twin !== undefined) {
+    plan.twins = twinsForNewSibling(
+      family,
+      familyWithPlan(family, plan.people, plan.links, sexAttribute),
+      anchorId,
+      newPersonId,
+      request.twin,
+    );
+  }
   if (request.relation !== 'sibling' || request.carrier === null) {
     return plan;
   }
@@ -961,6 +988,109 @@ export function planAddRelative({
         ? { ...link, isGestationalCarrier: true }
         : link,
     ),
+  };
+}
+
+/** The person's twins, each with their zygosity and the link recording it. */
+export function twinsOf(
+  family: Family,
+  personId: string,
+): { twinId: string; zygosity: TwinZygosity; linkId: string }[] {
+  return family.twins.flatMap((twin) =>
+    twin.source === personId || twin.target === personId
+      ? [
+          {
+            twinId: twin.source === personId ? twin.target : twin.source,
+            zygosity: twin.zygosity,
+            linkId: twin.id,
+          },
+        ]
+      : [],
+  );
+}
+
+/** Whether two people could be identical twins: identical twins come from
+ * one egg and one sperm, so they have the same genetic parents. */
+export function identicalTwinsPossible(
+  family: Family,
+  a: string,
+  b: string,
+): boolean {
+  const first = new Set(geneticParentsOf(family, a));
+  const second = geneticParentsOf(family, b);
+  return first.size === second.length && second.every((id) => first.has(id));
+}
+
+/**
+ * The twins a new sibling, recorded as the anchor's twin of `zygosity`, is
+ * given: the anchor, and each of the anchor's own twins, born of the same
+ * pregnancy. Twins are identical only while they would have the same genetic
+ * parents, and otherwise not known to be; the anchor's twin is identical to
+ * the sibling only when both pairs are, fraternal when either pair is, and
+ * otherwise not known to be either.
+ */
+function twinsForNewSibling(
+  family: Family,
+  planned: Family,
+  anchorId: string,
+  siblingId: string,
+  zygosity: TwinZygosity,
+): PlannedTwin[] {
+  const possible = (a: string, b: string, wanted: TwinZygosity) =>
+    wanted === 'identical' && !identicalTwinsPossible(planned, a, b)
+      ? 'unknown'
+      : wanted;
+  const withAnchor = possible(anchorId, siblingId, zygosity);
+  return [
+    { source: anchorId, target: siblingId, zygosity: withAnchor },
+    ...twinsOf(family, anchorId).map(({ twinId, zygosity: theirs }) => {
+      const combined: TwinZygosity =
+        withAnchor === 'identical' && theirs === 'identical'
+          ? 'identical'
+          : withAnchor === 'fraternal' || theirs === 'fraternal'
+            ? 'fraternal'
+            : 'unknown';
+      return {
+        source: twinId,
+        target: siblingId,
+        zygosity: possible(twinId, siblingId, combined),
+      };
+    }),
+  ];
+}
+
+/**
+ * What to change so that the person's twins are the siblings answered, each
+ * of the zygosity answered: a twin link added for each new twin, changed for
+ * each whose zygosity changes, and removed for each no longer their twin.
+ */
+export function planTwinChanges(
+  family: Family,
+  personId: string,
+  answers: ReadonlyMap<string, TwinZygosity>,
+): {
+  added: PlannedTwin[];
+  changed: { linkId: string; zygosity: TwinZygosity }[];
+  removedLinkIds: string[];
+} {
+  const current = twinsOf(family, personId);
+  return {
+    added: [...answers]
+      .filter(([twinId]) => !current.some((each) => each.twinId === twinId))
+      .map(([twinId, zygosity]) => ({
+        source: personId,
+        target: twinId,
+        zygosity,
+      })),
+    changed: current.flatMap(({ twinId, zygosity, linkId }) => {
+      const answer = answers.get(twinId);
+      return answer !== undefined && answer !== zygosity
+        ? [{ linkId, zygosity: answer }]
+        : [];
+    }),
+    removedLinkIds: current
+      .filter(({ twinId }) => !answers.has(twinId))
+      .map(({ linkId }) => linkId),
   };
 }
 
@@ -1606,11 +1736,10 @@ function isAncestor(family: Family, ancestorId: string, personId: string) {
 /** Whether two people are already linked, as partners or parent and child.
  * A pair has at most one link, so they cannot be connected again. */
 export function areConnected(family: Family, a: string, b: string): boolean {
-  return family.links.some(
-    (link) =>
-      (link.source === a && link.target === b) ||
-      (link.source === b && link.target === a),
-  );
+  const joins = (link: { source: string; target: string }) =>
+    (link.source === a && link.target === b) ||
+    (link.source === b && link.target === a);
+  return family.links.some(joins) || family.twins.some(joins);
 }
 
 /**

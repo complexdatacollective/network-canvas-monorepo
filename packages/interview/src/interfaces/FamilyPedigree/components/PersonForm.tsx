@@ -63,6 +63,7 @@ import {
   type Person,
   type PersonDetails,
   type Relation,
+  type TwinZygosity,
   carrierOf,
   carriesAs,
   couldCarryPregnancy,
@@ -73,6 +74,7 @@ import {
   geneticParentsPossible,
   hasCarrier,
   holdsGeneratedLabel,
+  identicalTwinsPossible,
   isGeneticKind,
   isStandIn,
   mayHaveCarried,
@@ -80,9 +82,11 @@ import {
   otherParentChoices,
   sexesRuledOut,
   planAdditionUnder,
+  planTwinChanges,
   possibleCarriers,
   primaryParentsOf,
   siblingsOf,
+  twinsOf,
 } from '../model';
 import {
   BUILT_IN_DETAIL_LABELS,
@@ -130,6 +134,8 @@ export type PersonFormResult = {
   /** The answers to whether the person has siblings, and children, for
    * each asked (edit only). */
   relativesAnswers?: Partial<Record<RelativesGroup, RelativesAnswer>>;
+  /** Changes to who the person's twins are (edit only). */
+  twinChanges?: ReturnType<typeof planTwinChanges>;
 };
 
 type RelativesGroup = 'siblings' | 'children';
@@ -180,6 +186,8 @@ const ROLE = {
   childKind: 'pedigreeChildKind',
   carrier: 'pedigreeCarrier',
   biologicalParent: 'pedigreeBiologicalParent',
+  twin: 'pedigreeTwin',
+  twins: 'pedigreeTwins',
   hasSiblings: 'pedigreeHasSiblings',
   hasChildren: 'pedigreeHasChildren',
 } as const;
@@ -198,6 +206,9 @@ const PARENT_KINDS: PedigreeParentKind[] = [
 // having; a sibling, to the parents they share, as a child they raise.
 const CHILD_KINDS = PARENT_KINDS;
 const SIBLING_KINDS = ['biological', 'adoptive', 'social'] as const;
+const ZYGOSITIES: TwinZygosity[] = ['identical', 'fraternal', 'unknown'];
+const asZygosity = (value: FieldValue | undefined) =>
+  ZYGOSITIES.find((zygosity) => zygosity === value);
 
 export type GenderIdentityOption = {
   value: string | number;
@@ -431,6 +442,10 @@ export default function PersonForm({
           ? readLinkUpdates(existingLinksOf(family, mode.person.id), values)
           : undefined,
       relativesAnswers: mode.kind === 'edit' ? relativesAnswers : undefined,
+      twinChanges:
+        mode.kind === 'edit'
+          ? readTwinChanges(family, mode.person.id, values)
+          : undefined,
     });
     return { success: true };
   };
@@ -750,6 +765,124 @@ function readLinkUpdates(
   return updates;
 }
 
+const twinZygosityField = (twinId: string) => `pedigreeTwin:${twinId}`;
+
+/** The siblings who could be recorded as the person's twins: their
+ * siblings, and anyone already recorded as their twin. */
+function twinCandidatesOf(family: Family, personId: string): string[] {
+  const candidates = new Set(siblingsOf(family, personId));
+  for (const { twinId } of twinsOf(family, personId)) candidates.add(twinId);
+  return [...candidates];
+}
+
+/** The answers about the person's twins, as the changes to make. */
+function readTwinChanges(
+  family: Family,
+  personId: string,
+  values: Record<string, FieldValue>,
+) {
+  if (twinCandidatesOf(family, personId).length === 0) return undefined;
+  const answers = new Map<string, TwinZygosity>();
+  for (const twinId of asStringArray(values[ROLE.twins])) {
+    answers.set(
+      twinId,
+      asZygosity(values[twinZygosityField(twinId)]) ?? 'unknown',
+    );
+  }
+  const changes = planTwinChanges(family, personId, answers);
+  return changes.added.length > 0 ||
+    changes.changed.length > 0 ||
+    changes.removedLinkIds.length > 0
+    ? changes
+    : undefined;
+}
+
+/**
+ * Which of the person's siblings are their twins, and for each whether they
+ * are identical (ruling 16). Identical twins have the same genetic parents,
+ * so "identical" is unavailable, saying why, for a sibling who does not.
+ */
+function TwinFields({
+  person,
+  family,
+  displayName,
+}: {
+  person: Person;
+  family: Family;
+  displayName: (personId: string) => string;
+}) {
+  const intl = useAppIntl();
+  const candidates = twinCandidatesOf(family, person.id);
+  const current = twinsOf(family, person.id);
+  const values = useFormValue([ROLE.twins], 'opaque');
+  const chosen = asStringArray(values[ROLE.twins]);
+  if (candidates.length === 0) return null;
+  const isYou = (personId: string) => family.byId.get(personId)?.isEgo === true;
+  const who = (twinId: string) =>
+    isYou(person.id) ? 'personIsYou' : isYou(twinId) ? 'twinIsYou' : 'other';
+  return (
+    <>
+      <Field
+        component={CheckboxGroupField}
+        name={ROLE.twins}
+        nameMode="opaque"
+        label={intl.formatMessage(messages.twinsLabel, {
+          isYou: isYou(person.id) ? 'true' : 'false',
+          name: displayName(person.id),
+        })}
+        hint={intl.formatMessage(messages.siblingTwinHint)}
+        options={candidates.map((id) => ({
+          value: id,
+          label: displayName(id),
+        }))}
+        initialValue={current.map(({ twinId }) => twinId)}
+      />
+      {chosen
+        .filter((twinId) => candidates.includes(twinId))
+        .map((twinId) => {
+          const recorded = current.find((each) => each.twinId === twinId);
+          // A recorded answer is kept as it is, so a change elsewhere never
+          // silently rewrites it.
+          const identicalUnavailable =
+            recorded?.zygosity !== 'identical' &&
+            !identicalTwinsPossible(family, person.id, twinId);
+          const args = {
+            who: who(twinId),
+            name: displayName(person.id),
+            twin: displayName(twinId),
+          };
+          return (
+            <Field
+              key={twinId}
+              component={RadioGroupField}
+              name={twinZygosityField(twinId)}
+              nameMode="opaque"
+              label={intl.formatMessage(messages.twinZygosityLabel, args)}
+              options={ZYGOSITIES.map((value) => ({
+                value,
+                label: intl.formatMessage(ZYGOSITY_LABELS[value]),
+                disabled: value === 'identical' && identicalUnavailable,
+              }))}
+              hint={
+                identicalUnavailable
+                  ? intl.formatMessage(messages.unavailableIdenticalTwin, args)
+                  : undefined
+              }
+              required
+              initialValue={recorded?.zygosity}
+            />
+          );
+        })}
+    </>
+  );
+}
+
+const ZYGOSITY_LABELS = {
+  identical: messages.zygosityIdentical,
+  fraternal: messages.zygosityFraternal,
+  unknown: messages.zygosityUnknown,
+} as const;
+
 function ExistingRelationshipFields({
   person,
   family,
@@ -803,7 +936,13 @@ function ExistingRelationshipFields({
     const carrier = linkValues[linkField(link, 'carrier')];
     return carrier === undefined ? link.isGestationalCarrier : carrier === true;
   };
-  if (partnerships.length === 0 && parents.length === 0) return null;
+  if (
+    partnerships.length === 0 &&
+    parents.length === 0 &&
+    twinCandidatesOf(family, person.id).length === 0
+  ) {
+    return null;
+  }
 
   const isYou = (personId: string) =>
     family.byId.get(personId)?.isEgo ? 'true' : 'false';
@@ -880,6 +1019,7 @@ function ExistingRelationshipFields({
           />
         );
       })}
+      <TwinFields person={person} family={family} displayName={displayName} />
     </section>
   );
 }
@@ -1135,6 +1275,7 @@ function readSiblingRequest(
         | (typeof SIBLING_KINDS)[number]
         | undefined) ?? 'biological',
     biologicalParentId: asString(values[ROLE.siblingBiologicalParent]),
+    twin: asZygosity(values[ROLE.twin]),
     carrier: carrier && carrier !== NONE ? carrier : null,
   };
 }
@@ -1747,6 +1888,7 @@ function SiblingFields({
     ROLE.siblingKind,
     ROLE.siblingBiologicalParent,
     ROLE.carrier,
+    ROLE.twin,
   ]);
   const parents = primaryParentsOf(family, anchor.id);
   // The anchor's donors are offered too, so that a sibling who shares only a
@@ -1903,6 +2045,24 @@ function SiblingFields({
     }
   }, [biologicalParentStale, setFieldValue]);
 
+  // Twins (ruling 16): identical twins have the same genetic parents, so a
+  // sibling who would not have all of the anchor's cannot be one. The model
+  // records them as twins not known to be identical; the answer is
+  // unavailable, saying why, and asked again once taken away.
+  const identicalPossible =
+    planAdditionUnder(ids, {
+      family,
+      anchorId: anchor.id,
+      details: {},
+      request: { ...readSiblingRequest(values), twin: 'identical' },
+      sexAttribute: config.sexAssignedAtBirthAttribute,
+    }).twins?.[0]?.zygosity === 'identical';
+  const identicalImpossible =
+    asString(values[ROLE.twin]) === 'identical' && !identicalPossible;
+  useEffect(() => {
+    if (identicalImpossible) setFieldValue(ROLE.twin, undefined);
+  }, [identicalImpossible, setFieldValue]);
+
   // Someone with no parents is given an egg parent and a sperm parent,
   // unnamed; the sibling may share both or one of them. Someone whose egg or
   // sperm came from a donor already has that genetic parent, so is given
@@ -2015,6 +2175,34 @@ function SiblingFields({
           ]}
         />
       )}
+      <Field
+        component={RadioGroupField}
+        name={ROLE.twin}
+        label={intl.formatMessage(messages.siblingTwinLabel, args)}
+        hint={joinReasons([
+          intl.formatMessage(messages.siblingTwinHint),
+          identicalPossible
+            ? undefined
+            : intl.formatMessage(messages.unavailableIdenticalTwinNew, args),
+        ])}
+        options={[
+          { value: NONE, label: intl.formatMessage(messages.siblingTwinNo) },
+          {
+            value: 'identical',
+            label: intl.formatMessage(messages.siblingTwinIdentical),
+            disabled: !identicalPossible,
+          },
+          {
+            value: 'fraternal',
+            label: intl.formatMessage(messages.siblingTwinFraternal),
+          },
+          {
+            value: 'unknown',
+            label: intl.formatMessage(messages.siblingTwinUnknown),
+          },
+        ]}
+        initialValue={NONE}
+      />
     </>
   );
 }

@@ -418,6 +418,73 @@ export const messages = defineMessages({
     description:
       'Option: none of the parents offered carried the pregnancy, or the participant does not know.',
   },
+  siblingTwinLabel: {
+    id: 'interview.familyPedigree.siblingTwinLabel',
+    defaultMessage:
+      '{isYou, select, true {Are they your twin?} other {Are they “{name}”’s twin?}}',
+    description:
+      'Question in the side panel for adding a sibling: whether the new sibling and the person they are added to were born of the same pregnancy. name is the person the sibling is added to. Options are "No", and whether they are identical, fraternal, or the participant does not know which.',
+  },
+  siblingTwinHint: {
+    id: 'interview.familyPedigree.siblingTwinHint',
+    defaultMessage: 'Answer yes for triplets and other multiple births too.',
+    description:
+      'Hint under the question asking whether a new sibling is a twin of the person they are added to.',
+  },
+  siblingTwinNo: {
+    id: 'interview.familyPedigree.siblingTwinNo',
+    defaultMessage: 'No',
+    description:
+      'Option: the new sibling is not a twin of the person they are added to.',
+  },
+  siblingTwinIdentical: {
+    id: 'interview.familyPedigree.siblingTwinIdentical',
+    defaultMessage: 'Yes, identical twins',
+    description:
+      'Option: the new sibling is an identical twin of the person they are added to.',
+  },
+  siblingTwinFraternal: {
+    id: 'interview.familyPedigree.siblingTwinFraternal',
+    defaultMessage: 'Yes, fraternal (non-identical) twins',
+    description:
+      'Option: the new sibling is a fraternal (non-identical) twin of the person they are added to.',
+  },
+  siblingTwinUnknown: {
+    id: 'interview.familyPedigree.siblingTwinUnknown',
+    defaultMessage: 'Yes, but I don’t know if they are identical',
+    description:
+      'Option: the new sibling is a twin of the person they are added to, and the participant does not know whether they are identical or fraternal twins.',
+  },
+  twinsLabel: {
+    id: 'interview.familyPedigree.twinsLabel',
+    defaultMessage:
+      '{isYou, select, true {Which of your siblings, if any, are your twins?} other {Which of “{name}”’s siblings, if any, are their twins?}}',
+    description:
+      'Question in the panel showing a family member’s details. Options are the person’s siblings, by name or by how they are related to the participant; any number, or none, may be chosen. Triplets and other multiple births are twins here too.',
+  },
+  twinZygosityLabel: {
+    id: 'interview.familyPedigree.twinZygosityLabel',
+    defaultMessage:
+      '{who, select, personIsYou {Are you and “{twin}” identical twins?} twinIsYou {Are “{name}” and you identical twins?} other {Are “{name}” and “{twin}” identical twins?}}',
+    description:
+      'Question in the panel showing a family member’s details, asked for each sibling chosen as their twin. name is the person the panel describes, twin is the sibling. Options are "Identical", "Fraternal (non-identical)" and "I don’t know".',
+  },
+  zygosityIdentical: {
+    id: 'interview.familyPedigree.zygosityIdentical',
+    defaultMessage: 'Yes, identical',
+    description: 'Option: the two twins are identical twins.',
+  },
+  zygosityFraternal: {
+    id: 'interview.familyPedigree.zygosityFraternal',
+    defaultMessage: 'No, fraternal (non-identical)',
+    description: 'Option: the two twins are fraternal (non-identical) twins.',
+  },
+  zygosityUnknown: {
+    id: 'interview.familyPedigree.zygosityUnknown',
+    defaultMessage: 'I don’t know',
+    description:
+      'Option: the participant does not know whether the two twins are identical or fraternal.',
+  },
   add: {
     id: 'interview.familyPedigree.add',
     defaultMessage: 'Add to family',
@@ -733,6 +800,20 @@ export const messages = defineMessages({
       '{who, select, carrierIsYou {Some answers are unavailable because you are recorded as having carried “{child}”, and only one person carries a pregnancy. To choose one, first change how you are connected to “{child}”.} childIsYou {Some answers are unavailable because “{carrier}” is recorded as having carried you, and only one person carries a pregnancy. To choose one, first change how “{carrier}” is connected to you.} other {Some answers are unavailable because “{carrier}” is recorded as having carried “{child}”, and only one person carries a pregnancy. To choose one, first change how “{carrier}” is connected to “{child}”.}}',
     description:
       'Hint under a question whose answers are partly unavailable: someone is already recorded as having carried the child’s pregnancy (a surrogate, or a parent of another kind who did), so nobody else can have.',
+  },
+  unavailableIdenticalTwinNew: {
+    id: 'interview.familyPedigree.unavailableIdenticalTwinNew',
+    defaultMessage:
+      '{isYou, select, true {Some answers are unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of yours. To choose one, choose all of your biological parents and donors above.} other {Some answers are unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of “{name}”’s. To choose one, choose all of their biological parents and donors above.}}',
+    description:
+      'Hint under the question asking whether a new sibling is a twin, when they cannot be an identical twin: the parents chosen for them above do not include all of the biological parents and egg or sperm donors of the person they are added to (name).',
+  },
+  unavailableIdenticalTwin: {
+    id: 'interview.familyPedigree.unavailableIdenticalTwin',
+    defaultMessage:
+      '{who, select, personIsYou {Some answers are unavailable because identical twins have the same biological parents and donors, and you and “{twin}” do not. To choose one, first record the same biological parents and donors for both of you.} twinIsYou {Some answers are unavailable because identical twins have the same biological parents and donors, and “{name}” and you do not. To choose one, first record the same biological parents and donors for both of you.} other {Some answers are unavailable because identical twins have the same biological parents and donors, and “{name}” and “{twin}” do not. To choose one, first record the same biological parents and donors for both of them.}}',
+    description:
+      'Hint under the question asking whether two twins are identical, when they cannot be: the biological parents and egg or sperm donors recorded for them differ. name is the person the panel describes, twin is the sibling.',
   },
   unavailableCannotCarry: {
     id: 'interview.familyPedigree.unavailableCannotCarry',
