@@ -2209,6 +2209,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         return;
       }
     }
+    // The menu, or the confirmation, asks its own question now, so the
+    // instruction to select someone is taken back.
+    setAnnouncement('');
     setChosenPair({ firstId: linkingId, secondId: personId });
     if (tool === 'disconnect') void handleDisconnect(linkingId, personId);
   };
@@ -2305,9 +2308,13 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             }),
       confirmLabel: intl.formatMessage(messages.remove),
       intent: 'destructive',
-      // The dialog was opened from the person removed, who is gone.
-      finalFocus: () =>
-        survivorId ? (nodeRefs.current.get(survivorId) ?? null) : null,
+      // The dialog was opened from the person removed: once they are gone,
+      // focus goes on to someone who stays; when nothing was removed, back
+      // to them.
+      finalFocus: () => {
+        const returnTo = removed ? survivorId : personId;
+        return returnTo ? (nodeRefs.current.get(returnTo) ?? null) : null;
+      },
       onConfirm: () => {
         if (survivorId) setLastFocusedId(survivorId);
         for (const linkId of linkIds) dispatch(deleteEdge(linkId));

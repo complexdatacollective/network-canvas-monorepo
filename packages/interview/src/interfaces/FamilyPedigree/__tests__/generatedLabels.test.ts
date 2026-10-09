@@ -103,6 +103,40 @@ describe('generateLabels', () => {
     });
   });
 
+  test('someone described through a relative told apart by a qualifier is described through that relative’s kinship word alone (ruling 5)', () => {
+    const nodes = [
+      ...parents,
+      woman('kasia', { name: 'Kasia' }),
+      woman('sis1'),
+      woman('sis2'),
+      man('tom', { name: 'Tom' }),
+      man('raj', { name: 'Raj' }),
+      man('ex'),
+    ];
+    const edges = [
+      ...parentLinks,
+      ...siblingLinks('kasia'),
+      ...siblingLinks('sis1'),
+      ...siblingLinks('sis2'),
+      link('sis1', 'tom', 'partner'),
+      link('sis2', 'raj', 'partner'),
+      link('sis1', 'ex', 'partner', { current: false }),
+    ];
+    expect(labelsOf(nodes, edges)).toMatchObject({
+      sis1: 'Sister (partner of Tom)',
+      ex: 'Sister’s former partner',
+    });
+    // Two such people, whose labels then match, are told apart.
+    const both = labelsOf(
+      [...nodes, man('ex2')],
+      [...edges, link('sis2', 'ex2', 'partner', { current: false })],
+    );
+    expect(both.ex).not.toBe(both.ex2);
+    for (const id of ['ex', 'ex2']) {
+      expect(both[id]).not.toMatch(/\(partner of (Tom|Raj)\)’s/);
+    }
+  });
+
   test('a partnership that has ended is named as one', () => {
     expect(
       labelsOf(

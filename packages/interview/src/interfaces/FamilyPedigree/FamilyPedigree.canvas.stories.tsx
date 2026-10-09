@@ -1363,6 +1363,65 @@ export const TheWholeFamilyOnANominationPromptLeavesNoMenuRoom: Story = {
 };
 
 /**
+ * Once the second person is picked, the instruction to pick them is taken
+ * back from what a screen reader can find, as it is from the screen: the
+ * menu asks its own question.
+ */
+export const TheConnectInstructionIsTakenBackOncePicked: Story = {
+  render: () => <CanvasStory family={lindaAndKim} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
+    await canvas.findByRole('button', { name: /^You/ });
+    await userEvent.click(canvas.getByTestId('pedigree-tool-connect'));
+    await userEvent.click(personSymbol(canvasElement, 'linda'));
+    await waitFor(() =>
+      expect(liveRegionText(canvasElement)).toContain('Now select'),
+    );
+    await userEvent.click(personSymbol(canvasElement, 'kim'));
+    await page.findByRole('menu');
+    await expect(liveRegionText(canvasElement)).not.toContain('Now select');
+  },
+};
+
+/**
+ * Cancelling the confirmation to remove someone, with the button or with
+ * Escape, returns focus to them: nothing was removed.
+ */
+export const CancellingARemovalReturnsFocusToThePerson: Story = {
+  render: () => <CanvasStory family={lindaAndKim} />,
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body);
+    await within(canvasElement).findByRole('button', { name: /^You/ });
+    for (const dismiss of ['button', 'escape'] as const) {
+      await userEvent.click(personSymbol(canvasElement, 'kim'));
+      await waitFor(() => expect(personPanel(canvasElement)).not.toBeNull());
+      await userEvent.click(
+        within(personPanel(canvasElement) as HTMLElement).getByRole('button', {
+          name: 'Remove from family',
+        }),
+      );
+      const dialog = await body.findByRole('dialog', { name: /^Remove/ });
+      if (dismiss === 'button') {
+        await userEvent.click(
+          within(dialog).getByRole('button', { name: 'Cancel' }),
+        );
+      } else {
+        await userEvent.keyboard('{Escape}');
+      }
+      await waitFor(() =>
+        expect(body.queryByRole('dialog', { name: /^Remove/ })).toBeNull(),
+      );
+      await waitFor(() =>
+        expect(focused(canvasElement), dismiss).toBe(
+          personSymbol(canvasElement, 'kim'),
+        ),
+      );
+    }
+  },
+};
+
+/**
  * Removing someone from the keyboard leaves focus on a person still in the
  * family, not on nothing.
  */
@@ -1533,8 +1592,9 @@ export const NamesakesKeepTheirTypedNames: Story = {
 };
 
 /**
- * Someone drawn in brackets, as adopted, is announced as adopted: the
- * participant and their sister, both adopted by Ruth.
+ * Someone drawn in brackets, as adopted, is announced as adopted, in their
+ * symbol's description: the participant and their sister, both adopted by
+ * Ruth. A typed name is read exactly as typed, with nothing added to it.
  */
 export const AdoptionIsAnnounced: Story = {
   render: () => (
@@ -1554,14 +1614,17 @@ export const AdoptionIsAnnounced: Story = {
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const you = await canvas.findByRole('button', { name: /^You/ });
+    await expect(you).toHaveAccessibleName('You');
+    await expect(you).toHaveAccessibleDescription(/Adopted/);
+    const grace = personSymbol(canvasElement, 'grace');
+    await expect(grace).toHaveAccessibleName('Grace');
+    await expect(grace).toHaveAccessibleDescription(/Adopted/);
+    await expect(personSymbol(canvasElement, 'ruth')).toHaveAccessibleName(
+      'Ruth',
+    );
     await expect(
-      await canvas.findByRole('button', { name: /^You, adopted/ }),
-    ).toBeInTheDocument();
-    await expect(
-      canvas.getByRole('button', { name: /^Grace, adopted/ }),
-    ).toBeInTheDocument();
-    await expect(
-      canvas.getByRole('button', { name: /^Ruth/ }),
-    ).not.toHaveAccessibleName(/adopted/);
+      personSymbol(canvasElement, 'ruth'),
+    ).not.toHaveAccessibleDescription(/Adopted/);
   },
 };

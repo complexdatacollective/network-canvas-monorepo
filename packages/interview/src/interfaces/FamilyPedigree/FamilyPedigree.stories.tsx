@@ -952,7 +952,7 @@ export const RedescribingAParentWithdrawsNewSiblingsAnswers: Story = {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
 
-    await userEvent.click(await canvas.findByRole('button', { name: /^Kim,/ }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Kim' }));
     await waitFor(() => expect(panelOf(canvasElement)).not.toBeNull());
     const panel = within(panelOf(canvasElement) as HTMLElement);
     const tom = await panel.findByRole('radiogroup', {
@@ -1791,7 +1791,8 @@ export const FamilyInProgress: Story = {
     await expectPeople(6)(context);
     await expect(
       within(context.canvasElement).getByRole('button', {
-        name: /^Mia’s biological father, some details missing/,
+        name: 'Mia’s biological father',
+        description: /Some details are missing/,
       }),
     ).toBeVisible();
   },

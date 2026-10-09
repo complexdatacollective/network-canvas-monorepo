@@ -712,9 +712,11 @@ function fillUnconnected(family: Family, labels: Map<string, PersonLabel>) {
  * Someone described through a relative is described through a single one,
  * never through a description of another: the nearest whose text is a name
  * or a plain kinship word, unqualified ("Isaac’s grandfather", not
- * "Great-grandfather (parent of Isaac)’s father"). Only when no one on the
- * way is known that simply are they described through the person before
- * them, as that person is known.
+ * "Great-grandfather (parent of Isaac)’s father"). When no one on the way is
+ * known that simply, they are described through the person before them by
+ * that person's own kinship label, without the qualifier that tells them
+ * apart ("Sister’s former partner", not "Sister (partner of Tom)’s former
+ * partner"); labels that then match are told apart as any others are.
  */
 export function formatPersonLabel(
   label: PersonLabel,
@@ -738,9 +740,7 @@ export function formatPersonLabel(
       const anchor = label.anchors.find(isPlain) ?? label.anchors[0];
       if (!anchor) return intl.formatMessage(messages.familyMember);
       return intl.formatMessage(messages.relativeOf, {
-        owner:
-          ownerText?.(anchor.ownerId) ??
-          formatPersonLabel(anchor.owner, intl, ownerText),
+        owner: formatPersonLabel(anchor.owner, intl, ownerText),
         term: anchor.term,
       });
     }

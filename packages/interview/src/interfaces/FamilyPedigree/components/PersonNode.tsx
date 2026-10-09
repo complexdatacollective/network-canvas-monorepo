@@ -104,7 +104,20 @@ export default function PersonNode({
 }: PersonNodeProps) {
   const intl = useAppIntl();
   const rolesId = useId();
+  const adoptedId = useId();
+  const missingId = useId();
   const hasRoles = reproductiveRoles.length > 0;
+  // The symbol is named by the name alone, exactly as typed (or the label);
+  // what else is known about the person, drawn around the symbol, describes
+  // it.
+  const describedBy = [
+    unavailableReasonId,
+    adopted ? adoptedId : undefined,
+    hasMissingDetails ? missingId : undefined,
+    hasRoles ? rolesId : undefined,
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <div
@@ -146,14 +159,8 @@ export default function PersonNode({
         ariaLabel={intl.formatMessage(messages.personAccessibleName, {
           isYou: person.isEgo ? 'true' : 'false',
           name: withoutSoftHyphens(accessibleName),
-          adopted: adopted ? 'true' : 'false',
-          missing: hasMissingDetails ? 'true' : 'false',
         })}
-        aria-describedby={
-          [unavailableReasonId, hasRoles ? rolesId : undefined]
-            .filter(Boolean)
-            .join(' ') || undefined
-        }
+        aria-describedby={describedBy || undefined}
         aria-disabled={unavailableReasonId ? true : undefined}
         // Drawn as Node draws a disabled symbol, but still focusable.
         className={unavailableReasonId ? 'saturate-50' : undefined}
@@ -164,6 +171,16 @@ export default function PersonNode({
         tabIndex={tabIndex}
         onKeyDown={onKeyDown}
       />
+      {adopted && (
+        <span id={adoptedId} hidden>
+          {intl.formatMessage(messages.personAdoptedDescription)}
+        </span>
+      )}
+      {hasMissingDetails && (
+        <span id={missingId} hidden>
+          {intl.formatMessage(messages.personMissingDetailsDescription)}
+        </span>
+      )}
       {hasRoles && (
         <span id={rolesId} hidden>
           {intl.formatList(
