@@ -210,3 +210,149 @@ describe('each parent tie is drawn in its own style', () => {
     expect(julianToEgo.map((line) => line.edgeType)).toEqual(['social']);
   });
 });
+
+type StyledSegment = { segment: LineSegment; dashed: boolean };
+
+/** Every drawn line segment, with whether it is drawn dashed. */
+function drawnSegments(connectors: PedigreeConnectors): StyledSegment[] {
+  const segments: StyledSegment[] = [];
+  for (const line of connectors.groupLines) {
+    for (const segment of [line.segment, ...(line.endpointSegments ?? [])]) {
+      segments.push({ segment, dashed: false });
+    }
+  }
+  for (const line of connectors.parentChildLines) {
+    const dashed = isDashed(line.edgeType);
+    for (const segment of [
+      ...line.parentLink,
+      line.siblingBar,
+      ...line.uplines,
+    ]) {
+      segments.push({ segment, dashed });
+    }
+  }
+  for (const line of connectors.auxiliaryLines) {
+    for (const segment of auxiliarySegments(line)) {
+      segments.push({ segment, dashed: isDashed(line.edgeType) });
+    }
+  }
+  return segments.filter(({ segment }) => length(segment) > 0.5);
+}
+
+function auxiliarySegments(line: PedigreeConnectors['auxiliaryLines'][number]) {
+  return [line.segment];
+}
+
+const length = (s: LineSegment) => Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+
+/** How far two segments run along one another on the same line. */
+function collinearOverlap(a: LineSegment, b: LineSegment): number {
+  const EPSILON = 0.5;
+  const dx = a.x2 - a.x1;
+  const dy = a.y2 - a.y1;
+  const len = Math.hypot(dx, dy);
+  if (len === 0 || length(b) === 0) return 0;
+  const distanceFromA = (x: number, y: number) =>
+    Math.abs((x - a.x1) * dy - (y - a.y1) * dx) / len;
+  if (
+    distanceFromA(b.x1, b.y1) > EPSILON ||
+    distanceFromA(b.x2, b.y2) > EPSILON
+  ) {
+    return 0;
+  }
+  const along = (x: number, y: number) =>
+    ((x - a.x1) * dx + (y - a.y1) * dy) / len;
+  const [b1, b2] = [along(b.x1, b.y1), along(b.x2, b.y2)].toSorted(
+    (p, q) => p - q,
+  );
+  return Math.max(0, Math.min(len, b2!) - Math.max(0, b1!));
+}
+
+/** Solid segments that lie along a dashed one, hiding it. */
+function solidOverDashed(connectors: PedigreeConnectors) {
+  const segments = drawnSegments(connectors);
+  const found: [LineSegment, LineSegment][] = [];
+  for (const dashed of segments.filter((s) => s.dashed)) {
+    for (const solid of segments.filter((s) => !s.dashed)) {
+      if (collinearOverlap(dashed.segment, solid.segment) > 1) {
+        found.push([dashed.segment, solid.segment]);
+      }
+    }
+  }
+  return found;
+}
+
+describe('a birth parent who raises an adopted child', () => {
+  it('draws the birth parent’s tie as descent and the adoptive partner’s as their own dashed line', () => {
+    const { connectors } = draw(
+      ['ego', 'karen', 'steve', 'emily'],
+      [
+        ['karen', 'biological', 'ego', { carrier: true }],
+        ['steve', 'adoptive', 'ego'],
+        ['karen', 'partner', 'steve'],
+        ['karen', 'biological', 'emily', { carrier: true }],
+        ['steve', 'biological', 'emily'],
+      ],
+    );
+    // Karen is not drawn as a donor.
+    expect(
+      auxiliaryLinesFrom(connectors, 'karen').map((line) => line.edgeType),
+    ).toEqual([]);
+    const egoDescent = uplineOf(connectors, 'ego').connector;
+    expect(egoDescent.edgeType).toBe('biological');
+    expect(egoDescent.parentIds).toContain('karen');
+    expect(
+      auxiliaryLinesFrom(connectors, 'steve').map((line) => [
+        line.edgeType,
+        line.endpointIds?.[1],
+      ]),
+    ).toEqual([['adoptive', 'ego']]);
+  });
+
+  it('keeps a step parent’s dashed adoptive line clear of the birth parent’s line once they have a child', () => {
+    const { connectors } = draw(
+      ['ego', 'paul', 'kate', 'nora'],
+      [
+        ['paul', 'biological', 'ego'],
+        ['paul', 'partner', 'kate'],
+        ['kate', 'adoptive', 'ego'],
+        ['kate', 'biological', 'nora', { carrier: true }],
+        ['paul', 'biological', 'nora'],
+      ],
+    );
+    expect(auxiliaryLinesFrom(connectors, 'paul')).toEqual([]);
+    expect(solidOverDashed(connectors)).toEqual([]);
+  });
+
+  it('keeps the adoptive line to a stepchild visible beside a later half-sibling', () => {
+    const { connectors } = draw(
+      ['ego', 'sara', 'ella', 'jess', 'leo'],
+      [
+        ['ego', 'partner', 'sara', { former: true }],
+        ['ego', 'biological', 'ella'],
+        ['sara', 'biological', 'ella', { carrier: true }],
+        ['ego', 'partner', 'jess'],
+        ['jess', 'adoptive', 'ella'],
+        ['ego', 'biological', 'leo'],
+        ['jess', 'biological', 'leo', { carrier: true }],
+      ],
+    );
+    expect(solidOverDashed(connectors)).toEqual([]);
+  });
+});
+
+describe('a child carried by a surrogate with no other parent', () => {
+  it('draws the surrogate’s line of descent solid', () => {
+    const { connectors } = draw(
+      ['ego', 'dan', 'sue'],
+      [
+        ['dan', 'donor', 'ego'],
+        ['sue', 'surrogate', 'ego', { carrier: true }],
+      ],
+    );
+    expect(drawnSegments(connectors).filter((s) => s.dashed)).toEqual([]);
+    expect(
+      descentsInto(connectors, 'ego').map((line) => line.parentIds),
+    ).toEqual([['sue']]);
+  });
+});
