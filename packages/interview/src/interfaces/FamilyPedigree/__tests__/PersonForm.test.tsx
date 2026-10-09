@@ -309,11 +309,7 @@ describe('the person form', () => {
     await user.type(nameField(), 'Julie');
     await save(user);
 
-    expect(
-      await screen.findByText(
-        'This value is used elsewhere. It must be unique.',
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Must be unique.')).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
   });
 });

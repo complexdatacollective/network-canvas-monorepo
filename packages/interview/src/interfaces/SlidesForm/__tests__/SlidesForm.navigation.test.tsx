@@ -596,7 +596,7 @@ describe('SlidesForm navigation ownership', () => {
     });
 
     const keepChanges = await screen.findByRole('button', {
-      name: 'Keep changes',
+      name: 'Cancel',
     });
     await act(async () => {
       fireEvent.click(keepChanges);
@@ -810,7 +810,7 @@ describe('SlidesForm going back from the first slide', () => {
     });
 
     const keepChanges = await screen.findByRole('button', {
-      name: 'Keep changes',
+      name: 'Cancel',
     });
     await act(async () => {
       fireEvent.click(keepChanges);

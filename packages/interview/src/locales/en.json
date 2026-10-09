@@ -471,10 +471,6 @@
     "defaultMessage": "Available Roster Nodes",
     "description": "Accessible name used by drag-and-drop announcements for the external roster entries that can still be added."
   },
-  "interview.interfaces.binSummary": {
-    "defaultMessage": "{otherCount, plural, =0 {<label>{name}</label>} one {<label>{name}</label> <count>and # other</count>} other {<label>{name}</label> <count>and # others</count>}}",
-    "description": "Whole categorical-bin summary. name is the first item’s unchanged display name; otherCount excludes that item. label and count tags keep the name and remaining-item count in separate visual spans."
-  },
   "interview.interfaces.categoryContents": {
     "defaultMessage": "Category {label}, {count, plural, one {# item} other {# items}}",
     "description": "Accessible name of a collapsed category container. label is its authored category label; count is the number of items currently in the container."
@@ -547,10 +543,6 @@
     "defaultMessage": "Editing tools",
     "description": "Accessible name of the toolbar group for selection, adding people, creating connections, and group membership."
   },
-  "interview.interfaces.emptyRoster": {
-    "defaultMessage": "There is nothing to add from this list.",
-    "description": "Empty state after an external roster has loaded successfully but contains no entries."
-  },
   "interview.interfaces.emptyValue": {
     "defaultMessage": "No value",
     "description": "Shown in place of a roster detail that has no value: a blank field or an empty list. Replaces a bare dash so screen readers announce it."
@@ -578,14 +570,6 @@
   "interview.interfaces.finishConfirmation": {
     "defaultMessage": "Are you sure you want to finish the interview?",
     "description": "Title of the confirmation dialog opened by the finish button at the end of an interview."
-  },
-  "interview.interfaces.finished": {
-    "defaultMessage": "Finished",
-    "description": "Button that submits and closes the form for adding or editing a person; it does not finish the whole interview."
-  },
-  "interview.interfaces.formDisabled": {
-    "defaultMessage": "Form is disabled",
-    "description": "Form-level error when a quick-add submission is attempted while that form is disabled."
   },
   "interview.interfaces.freezeAnnotations": {
     "defaultMessage": "Freeze annotations",
@@ -615,10 +599,6 @@
     "defaultMessage": "This interview is finished, and its answers can no longer be changed.",
     "description": "Notice shown below the closing text of the last interview screen once the interview has been finished, including whenever a finished interview is opened again. Addressed to whoever is holding the device, which may be the participant or a researcher."
   },
-  "interview.interfaces.keepChanges": {
-    "defaultMessage": "Keep changes",
-    "description": "Cancellation action in the discard-changes warning; the participant stays on the current form to continue editing."
-  },
   "interview.interfaces.layoutAndDrawing": {
     "defaultMessage": "Layout and drawing tools",
     "description": "Accessible name of the narrative toolbar for automatic positioning and freehand annotations."
@@ -643,10 +623,6 @@
     "defaultMessage": "Map",
     "description": "Accessible region name of the native Mapbox canvas in the geospatial interface."
   },
-  "interview.interfaces.mapUnavailable": {
-    "defaultMessage": "The map could not be displayed",
-    "description": "Heading when the participant’s device or browser cannot initialize the map."
-  },
   "interview.interfaces.mapUnavailableDescription": {
     "defaultMessage": "This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.",
     "description": "Recovery guidance after map initialization fails. The next arrow refers to the interview navigation control, not a map control."
@@ -654,10 +630,6 @@
   "interview.interfaces.mapboxHomepage": {
     "defaultMessage": "Mapbox homepage",
     "description": "Accessible name of the native map logo link that opens the Mapbox homepage; preserve the Mapbox brand name."
-  },
-  "interview.interfaces.missingInterface": {
-    "defaultMessage": "No \"{interfaceType}\" interface found.",
-    "description": "Fallback error when the runtime cannot render a configured interface type. interfaceType is the unchanged technical type identifier for diagnosing the unsupported configuration."
   },
   "interview.interfaces.namedReturnedToDrawer": {
     "defaultMessage": "{name} returned to the drawer.",
@@ -667,33 +639,9 @@
     "defaultMessage": "Next preset",
     "description": "Action that selects the next researcher-configured narrative view."
   },
-  "interview.interfaces.no": {
-    "defaultMessage": "No",
-    "description": "Negative built-in binary response in pair comparisons and human-readable display of false roster values. The stored boolean remains false."
-  },
-  "interview.interfaces.noAttributes": {
-    "defaultMessage": "No attributes to edit",
-    "description": "Empty state in the network-composer editing panel when the selected item has no configured form fields."
-  },
-  "interview.interfaces.noNodes": {
-    "defaultMessage": "No nodes to display.",
-    "description": "Empty state when a one-to-many relationship question has no people to display."
-  },
-  "interview.interfaces.node": {
-    "defaultMessage": "Node",
-    "description": "Capitalized fallback label when a displayed network item has no authored type name or usable participant-entered name."
-  },
-  "interview.interfaces.nodeSubject": {
-    "defaultMessage": "node",
-    "description": "Lowercase fallback subject noun in the generated unnamed-roster-entry label when the protocol supplies no type name."
-  },
   "interview.interfaces.ordinalContainer": {
     "defaultMessage": "Container for the value ''{label}''",
     "description": "Drag-and-drop name of a rating container. label is the unchanged researcher-authored ordinal response label; keep it as a value, not a translation key."
-  },
-  "interview.interfaces.outsideMapDescription": {
-    "defaultMessage": "You have indicated an area outside of the selectable map. If this is correct, please select the next arrow to proceed.",
-    "description": "Confirmation guidance when the participant indicates a location outside the selectable map areas. The next arrow advances the interview."
   },
   "interview.interfaces.outsideSelectableAreas": {
     "defaultMessage": "Outside Selectable Areas",
@@ -703,21 +651,9 @@
     "defaultMessage": "Passphrase accepted! Click \"Next\" to continue.",
     "description": "Success message after the participant enters, on the anonymisation screen, the passphrase they chose earlier in the interview. Next refers to the interview navigation arrow."
   },
-  "interview.interfaces.passphraseAlreadyEntered": {
-    "defaultMessage": "You have already entered your passphrase. Click \"Next\" to continue.",
-    "description": "Shown on the anonymisation screen when the participant returns to it after their passphrase was already set or entered. Next refers to the interview navigation arrow."
-  },
-  "interview.interfaces.passphraseSet": {
-    "defaultMessage": "Passphrase set successfully! Click \"Next\" to continue.",
-    "description": "Success message after the participant sets the anonymisation passphrase. Next refers to the interview navigation arrow."
-  },
   "interview.interfaces.pauseAutomaticLayout": {
     "defaultMessage": "Pause automatic layout",
     "description": "Accessible action that pauses automatic movement of the displayed people in a narrative view."
-  },
-  "interview.interfaces.placeUnavailable": {
-    "defaultMessage": "That place could not be loaded. Try another search.",
-    "description": "Recoverable error when a chosen geospatial search suggestion could not be retrieved and the map could not move to it."
   },
   "interview.interfaces.presetNavigation": {
     "defaultMessage": "Preset navigation",
@@ -739,14 +675,6 @@
     "defaultMessage": "Press <kbd>Enter</kbd> when you are finished.",
     "description": "Tooltip beside the quick-add name field. The kbd tag marks the Enter key and must be preserved."
   },
-  "interview.interfaces.quickAddMultipleInstructions": {
-    "defaultMessage": "Press <kbd>Enter</kbd> when you are finished. The box will stay open so you can quickly enter multiple names in a row.",
-    "description": "Tooltip when quick-add supports consecutive entries. The field stays open after each submission. The kbd tag marks the Enter key."
-  },
-  "interview.interfaces.quickLabelPlaceholder": {
-    "defaultMessage": "Type a label and press enter...",
-    "description": "Placeholder in the quick-add field for entering the label of a new network item; Enter submits the value."
-  },
   "interview.interfaces.recenterMap": {
     "defaultMessage": "Recenter Map",
     "description": "Accessible name of the map button that restores the researcher-configured starting center and zoom."
@@ -754,10 +682,6 @@
   "interview.interfaces.redo": {
     "defaultMessage": "Redo",
     "description": "Toolbar action that reapplies an edit that was undone in the network composer."
-  },
-  "interview.interfaces.reenterPassphrase": {
-    "defaultMessage": "Re-enter your passphrase...",
-    "description": "Placeholder in the second anonymisation password field, where the participant repeats their new passphrase for confirmation."
   },
   "interview.interfaces.resetAnnotations": {
     "defaultMessage": "Reset annotations",
@@ -771,10 +695,6 @@
     "defaultMessage": "Resize panel and node list areas",
     "description": "Accessible name of the divider between the source panel and the list of added people; dragging or keyboard controls resize the two areas."
   },
-  "interview.interfaces.responsePlaceholder": {
-    "defaultMessage": "Enter your response here...",
-    "description": "Placeholder in the explanation field of the categorical Other dialog. The visible question label remains researcher-authored."
-  },
   "interview.interfaces.resumeAutomaticLayout": {
     "defaultMessage": "Resume automatic layout",
     "description": "Accessible action that resumes automatic movement of the displayed people in a narrative view."
@@ -784,8 +704,8 @@
     "description": "Screen-reader announcement after an item without a usable name is removed from the canvas and returned to the unplaced-items panel."
   },
   "interview.interfaces.rosterAlreadyAdded": {
-    "defaultMessage": "Everything from this list has already been added.",
-    "description": "Empty state when every entry from an external roster has already been added to the interview network."
+    "defaultMessage": "There is nothing left to add from this list.",
+    "description": "Empty state of an external roster when there is nothing left to add: the list is empty, or every entry has already been added to the interview network."
   },
   "interview.interfaces.scrollForQuestions": {
     "defaultMessage": "Scroll to see more questions",
@@ -799,41 +719,17 @@
     "defaultMessage": "Search location",
     "description": "Accessible name of the toggle that opens the geospatial place-search panel."
   },
-  "interview.interfaces.searchPlace": {
-    "defaultMessage": "Search for a place...",
-    "description": "Placeholder in the geospatial search field where the participant enters a place name."
-  },
   "interview.interfaces.searchSuggestions": {
     "defaultMessage": "Search suggestions",
     "description": "Accessible name of the list of places returned by geospatial search, including its loading and empty states."
-  },
-  "interview.interfaces.searchTerm": {
-    "defaultMessage": "Enter a search term...",
-    "description": "Placeholder in the filter field above an external roster; it searches the available roster entries."
-  },
-  "interview.interfaces.searching": {
-    "defaultMessage": "Searching...",
-    "description": "Status shown in the geospatial search results panel while a search request is pending."
   },
   "interview.interfaces.select": {
     "defaultMessage": "Select",
     "description": "Network-composer tool that selects existing people or connections for editing."
   },
-  "interview.interfaces.selectAllThenNext": {
-    "defaultMessage": "Select all that apply, then click next",
-    "description": "Heading above a one-to-many relationship question. The participant may select multiple people before using the next navigation arrow."
-  },
-  "interview.interfaces.selectResponse": {
-    "defaultMessage": "Please select a response before continuing.",
-    "description": "Warning shown when the participant tries to advance a pair-comparison question without choosing a response."
-  },
   "interview.interfaces.showInstructions": {
     "defaultMessage": "Show instructions",
     "description": "Accessible action that expands the floating instructions panel above a network view."
-  },
-  "interview.interfaces.specifyOther": {
-    "defaultMessage": "Specify other",
-    "description": "Title of the dialog opened when an item is placed in a categorical Other response and a written explanation is required."
   },
   "interview.interfaces.stubMap": {
     "defaultMessage": "Stubbed map (click to select test feature)",
@@ -858,10 +754,6 @@
   "interview.interfaces.unfreezeAnnotations": {
     "defaultMessage": "Unfreeze annotations",
     "description": "Toggle action that allows existing narrative annotations to be edited again."
-  },
-  "interview.interfaces.yes": {
-    "defaultMessage": "Yes",
-    "description": "Affirmative built-in binary response in pair comparisons and human-readable display of true roster values. The stored boolean remains true."
   },
   "interview.interfaces.zoomIn": {
     "defaultMessage": "Zoom in",
@@ -975,17 +867,9 @@
     "defaultMessage": "{title}: {condition} — inheritance for {name}",
     "description": "Whole snapshot heading for a condition focused on a person. title and condition are authored text; name is entered text or a localized fallback. Translate only the surrounding inheritance phrase."
   },
-  "interview.narrativePedigree.sourceMissing": {
-    "defaultMessage": "This stage references a family pedigree that could not be found.",
-    "description": "Empty-state error when the protocol references a family-tree source that cannot be found. Uses participant language rather than exposing the internal stage identifier."
-  },
   "interview.narrativePedigree.statusUnknown": {
     "defaultMessage": "Status unknown",
     "description": "Clinical status tooltip and screen-reader label when the inheritance information does not establish a displayed genetic status."
-  },
-  "interview.narrativePedigree.symbols": {
-    "defaultMessage": "What the symbols mean",
-    "description": "Subheading explaining the visual genetic-status glyphs, including uncertain statuses only when enabled by the protocol."
   },
   "interview.narrativePedigree.willDevelop": {
     "defaultMessage": "Will develop this condition",

@@ -163,7 +163,7 @@ const QuickNodeForm = ({
       if (disabled) {
         return {
           success: false,
-          formErrors: [createMessageError(interfaceMessages.formDisabled)],
+          formErrors: [createMessageError(runtimeMessages.submissionFailed)],
         };
       }
 
@@ -205,7 +205,7 @@ const QuickNodeForm = ({
             name={targetVariable}
             disabled={disabled}
             placeholder={intl.formatMessage(
-              interfaceMessages.quickLabelPlaceholder,
+              interfaceMessages.addNamePlaceholder,
             )}
             onShowInput={onShowForm ?? undefined}
             successfulSubmissionCount={successfulSubmissionCount}

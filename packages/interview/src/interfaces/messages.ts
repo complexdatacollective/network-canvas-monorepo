@@ -2,30 +2,11 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 
 /** Built-in interface controls. Protocol-authored labels and collected values remain literal. */
 export const interfaceMessages = defineMessages({
-  passphraseSet: {
-    id: 'interview.interfaces.passphraseSet',
-    defaultMessage: 'Passphrase set successfully! Click "Next" to continue.',
-    description:
-      'Success message after the participant sets the anonymisation passphrase. Next refers to the interview navigation arrow.',
-  },
   passphraseAccepted: {
     id: 'interview.interfaces.passphraseAccepted',
     defaultMessage: 'Passphrase accepted! Click "Next" to continue.',
     description:
       'Success message after the participant enters, on the anonymisation screen, the passphrase they chose earlier in the interview. Next refers to the interview navigation arrow.',
-  },
-  passphraseAlreadyEntered: {
-    id: 'interview.interfaces.passphraseAlreadyEntered',
-    defaultMessage:
-      'You have already entered your passphrase. Click "Next" to continue.',
-    description:
-      'Shown on the anonymisation screen when the participant returns to it after their passphrase was already set or entered. Next refers to the interview navigation arrow.',
-  },
-  reenterPassphrase: {
-    id: 'interview.interfaces.reenterPassphrase',
-    defaultMessage: 'Re-enter your passphrase...',
-    description:
-      'Placeholder in the second anonymisation password field, where the participant repeats their new passphrase for confirmation.',
   },
   confirmPassphrase: {
     id: 'interview.interfaces.confirmPassphrase',
@@ -58,12 +39,6 @@ export const interfaceMessages = defineMessages({
     description:
       'Button on the final interview screen that opens the finish confirmation dialog.',
   },
-  finished: {
-    id: 'interview.interfaces.finished',
-    defaultMessage: 'Finished',
-    description:
-      'Button that submits and closes the form for adding or editing a person; it does not finish the whole interview.',
-  },
   discardChangesTitle: {
     id: 'interview.interfaces.discardChangesTitle',
     defaultMessage: 'Discard changes?',
@@ -90,35 +65,11 @@ export const interfaceMessages = defineMessages({
     description:
       'Confirmation action that leaves an invalid form and discards its unsaved changes.',
   },
-  keepChanges: {
-    id: 'interview.interfaces.keepChanges',
-    defaultMessage: 'Keep changes',
-    description:
-      'Cancellation action in the discard-changes warning; the participant stays on the current form to continue editing.',
-  },
   scrollForQuestions: {
     id: 'interview.interfaces.scrollForQuestions',
     defaultMessage: 'Scroll to see more questions',
     description:
       'Hint at the bottom of a long personal-information form indicating that more questions are below the visible area.',
-  },
-  selectResponse: {
-    id: 'interview.interfaces.selectResponse',
-    defaultMessage: 'Please select a response before continuing.',
-    description:
-      'Warning shown when the participant tries to advance a pair-comparison question without choosing a response.',
-  },
-  yes: {
-    id: 'interview.interfaces.yes',
-    defaultMessage: 'Yes',
-    description:
-      'Affirmative built-in binary response in pair comparisons and human-readable display of true roster values. The stored boolean remains true.',
-  },
-  no: {
-    id: 'interview.interfaces.no',
-    defaultMessage: 'No',
-    description:
-      'Negative built-in binary response in pair comparisons and human-readable display of false roster values. The stored boolean remains false.',
   },
   emptyValue: {
     id: 'interview.interfaces.emptyValue',
@@ -138,17 +89,11 @@ export const interfaceMessages = defineMessages({
     description:
       'Explanation shown when a configured external list of people could not be loaded.',
   },
-  emptyRoster: {
-    id: 'interview.interfaces.emptyRoster',
-    defaultMessage: 'There is nothing to add from this list.',
-    description:
-      'Empty state after an external roster has loaded successfully but contains no entries.',
-  },
   rosterAlreadyAdded: {
     id: 'interview.interfaces.rosterAlreadyAdded',
-    defaultMessage: 'Everything from this list has already been added.',
+    defaultMessage: 'There is nothing left to add from this list.',
     description:
-      'Empty state when every entry from an external roster has already been added to the interview network.',
+      'Empty state of an external roster when there is nothing left to add: the list is empty, or every entry has already been added to the interview network.',
   },
   availableRosterNodes: {
     id: 'interview.interfaces.availableRosterNodes',
@@ -168,29 +113,11 @@ export const interfaceMessages = defineMessages({
     description:
       'Accessible name of the collection containing external roster entries that can be added.',
   },
-  searchTerm: {
-    id: 'interview.interfaces.searchTerm',
-    defaultMessage: 'Enter a search term...',
-    description:
-      'Placeholder in the filter field above an external roster; it searches the available roster entries.',
-  },
   addedNodes: {
     id: 'interview.interfaces.addedNodes',
     defaultMessage: 'Added Nodes',
     description:
       'Accessible name used by drag-and-drop announcements for the list of people already added to the network.',
-  },
-  node: {
-    id: 'interview.interfaces.node',
-    defaultMessage: 'Node',
-    description:
-      'Capitalized fallback label when a displayed network item has no authored type name or usable participant-entered name.',
-  },
-  nodeSubject: {
-    id: 'interview.interfaces.nodeSubject',
-    defaultMessage: 'node',
-    description:
-      'Lowercase fallback subject noun in the generated unnamed-roster-entry label when the protocol supplies no type name.',
   },
   quickAddInput: {
     id: 'interview.interfaces.quickAddInput',
@@ -203,25 +130,6 @@ export const interfaceMessages = defineMessages({
     defaultMessage: 'Press <kbd>Enter</kbd> when you are finished.',
     description:
       'Tooltip beside the quick-add name field. The kbd tag marks the Enter key and must be preserved.',
-  },
-  quickAddMultipleInstructions: {
-    id: 'interview.interfaces.quickAddMultipleInstructions',
-    defaultMessage:
-      'Press <kbd>Enter</kbd> when you are finished. The box will stay open so you can quickly enter multiple names in a row.',
-    description:
-      'Tooltip when quick-add supports consecutive entries. The field stays open after each submission. The kbd tag marks the Enter key.',
-  },
-  formDisabled: {
-    id: 'interview.interfaces.formDisabled',
-    defaultMessage: 'Form is disabled',
-    description:
-      'Form-level error when a quick-add submission is attempted while that form is disabled.',
-  },
-  quickLabelPlaceholder: {
-    id: 'interview.interfaces.quickLabelPlaceholder',
-    defaultMessage: 'Type a label and press enter...',
-    description:
-      'Placeholder in the quick-add field for entering the label of a new network item; Enter submits the value.',
   },
   entityName: {
     id: 'interview.interfaces.entityName',
@@ -240,12 +148,6 @@ export const interfaceMessages = defineMessages({
     defaultMessage: 'Resize panel',
     description:
       'Accessible name of the draggable divider that changes the width of the network-composer editing panel.',
-  },
-  noAttributes: {
-    id: 'interview.interfaces.noAttributes',
-    defaultMessage: 'No attributes to edit',
-    description:
-      'Empty state in the network-composer editing panel when the selected item has no configured form fields.',
   },
   groupMembershipOptions: {
     id: 'interview.interfaces.groupMembershipOptions',
@@ -427,23 +329,11 @@ export const interfaceMessages = defineMessages({
     description:
       'Narrative legend heading for displayed connection types. Individual connection labels come unchanged from the protocol.',
   },
-  selectAllThenNext: {
-    id: 'interview.interfaces.selectAllThenNext',
-    defaultMessage: 'Select all that apply, then click next',
-    description:
-      'Heading above a one-to-many relationship question. The participant may select multiple people before using the next navigation arrow.',
-  },
   targetNodes: {
     id: 'interview.interfaces.targetNodes',
     defaultMessage: 'Target nodes',
     description:
       'Accessible name of the collection of people that can be selected in a one-to-many relationship question.',
-  },
-  noNodes: {
-    id: 'interview.interfaces.noNodes',
-    defaultMessage: 'No nodes to display.',
-    description:
-      'Empty state when a one-to-many relationship question has no people to display.',
   },
   ordinalContainer: {
     id: 'interview.interfaces.ordinalContainer',
@@ -475,18 +365,6 @@ export const interfaceMessages = defineMessages({
     description:
       'Screen-reader announcement after an item is returned to the unplaced-items panel. name is its unchanged participant-entered or authored display name.',
   },
-  specifyOther: {
-    id: 'interview.interfaces.specifyOther',
-    defaultMessage: 'Specify other',
-    description:
-      'Title of the dialog opened when an item is placed in a categorical Other response and a written explanation is required.',
-  },
-  responsePlaceholder: {
-    id: 'interview.interfaces.responsePlaceholder',
-    defaultMessage: 'Enter your response here...',
-    description:
-      'Placeholder in the explanation field of the categorical Other dialog. The visible question label remains researcher-authored.',
-  },
   categoryDrop: {
     id: 'interview.interfaces.categoryDrop',
     defaultMessage: 'Category: {label}',
@@ -513,30 +391,11 @@ export const interfaceMessages = defineMessages({
     description:
       'Accessible name of the item list inside an expanded category. label is the unchanged researcher-authored category label.',
   },
-  binSummary: {
-    id: 'interview.interfaces.binSummary',
-    defaultMessage:
-      '{otherCount, plural, =0 {<label>{name}</label>} one {<label>{name}</label> <count>and # other</count>} other {<label>{name}</label> <count>and # others</count>}}',
-    description:
-      'Whole categorical-bin summary. name is the first item’s unchanged display name; otherCount excludes that item. label and count tags keep the name and remaining-item count in separate visual spans.',
-  },
-  missingInterface: {
-    id: 'interview.interfaces.missingInterface',
-    defaultMessage: 'No "{interfaceType}" interface found.',
-    description:
-      'Fallback error when the runtime cannot render a configured interface type. interfaceType is the unchanged technical type identifier for diagnosing the unsupported configuration.',
-  },
   stubMap: {
     id: 'interview.interfaces.stubMap',
     defaultMessage: 'Stubbed map (click to select test feature)',
     description:
       'Accessible name of the test-only map placeholder used by automated interface tests; clicking it selects a fixture feature.',
-  },
-  mapUnavailable: {
-    id: 'interview.interfaces.mapUnavailable',
-    defaultMessage: 'The map could not be displayed',
-    description:
-      'Heading when the participant’s device or browser cannot initialize the map.',
   },
   mapUnavailableDescription: {
     id: 'interview.interfaces.mapUnavailableDescription',
@@ -544,13 +403,6 @@ export const interfaceMessages = defineMessages({
       'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
     description:
       'Recovery guidance after map initialization fails. The next arrow refers to the interview navigation control, not a map control.',
-  },
-  outsideMapDescription: {
-    id: 'interview.interfaces.outsideMapDescription',
-    defaultMessage:
-      'You have indicated an area outside of the selectable map. If this is correct, please select the next arrow to proceed.',
-    description:
-      'Confirmation guidance when the participant indicates a location outside the selectable map areas. The next arrow advances the interview.',
   },
   deselect: {
     id: 'interview.interfaces.deselect',
@@ -594,12 +446,6 @@ export const interfaceMessages = defineMessages({
     description:
       'Accessible name of the toggle that opens the geospatial place-search panel.',
   },
-  searchPlace: {
-    id: 'interview.interfaces.searchPlace',
-    defaultMessage: 'Search for a place...',
-    description:
-      'Placeholder in the geospatial search field where the participant enters a place name.',
-  },
   clearSearch: {
     id: 'interview.interfaces.clearSearch',
     defaultMessage: 'Clear search',
@@ -612,23 +458,11 @@ export const interfaceMessages = defineMessages({
     description:
       'Accessible name of the list of places returned by geospatial search, including its loading and empty states.',
   },
-  searching: {
-    id: 'interview.interfaces.searching',
-    defaultMessage: 'Searching...',
-    description:
-      'Status shown in the geospatial search results panel while a search request is pending.',
-  },
   searchFailed: {
     id: 'interview.interfaces.searchFailed',
     defaultMessage: 'Search could not be completed. Try again in a moment.',
     description:
       'Recoverable error when geospatial search could not run; it does not mean the place does not exist.',
-  },
-  placeUnavailable: {
-    id: 'interview.interfaces.placeUnavailable',
-    defaultMessage: 'That place could not be loaded. Try another search.',
-    description:
-      'Recoverable error when a chosen geospatial search suggestion could not be retrieved and the map could not move to it.',
   },
   mapMoved: {
     id: 'interview.interfaces.mapMoved',

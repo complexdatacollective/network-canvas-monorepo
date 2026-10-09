@@ -82,8 +82,9 @@ describe('roster values follow the language the protocol is read in', () => {
     expect(text('List')).toBe('a, b und c');
     expect(text('Place')).toBe('41,3083 und -72,9279');
     // The words stay in the interface language.
-    expect(text('Empty')).toBe('No value');
-    expect(text('None')).toBe('No value');
+    // A dash shows the empty value; its words are read by screen readers only.
+    expect(text('Empty')).toBe('—No value');
+    expect(text('None')).toBe('—No value');
   });
 
   it('formats for the interface language outside a protocol provider', () => {
@@ -95,7 +96,7 @@ describe('roster values follow the language the protocol is read in', () => {
 
     expect(text('Number')).toBe('1.234,5');
     expect(text('List')).toBe('a, b und c');
-    expect(text('Empty')).toBe('Kein Wert');
+    expect(text('Empty')).toBe('—Kein Wert');
   });
 
   it('writes the empty value in the interface language of each catalog', () => {
@@ -105,6 +106,6 @@ describe('roster values follow the language the protocol is read in', () => {
       </InterviewI18nProvider>,
     );
 
-    expect(text('Empty')).toBe('Aucune valeur');
+    expect(text('Empty')).toBe('—Aucune valeur');
   });
 });

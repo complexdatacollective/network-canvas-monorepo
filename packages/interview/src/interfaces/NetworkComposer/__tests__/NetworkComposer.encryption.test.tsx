@@ -856,7 +856,7 @@ describe('NetworkComposer saving edits in the order they were made', () => {
     expect(
       await screen.findByRole('dialog', { name: 'Discard changes?' }),
     ).toHaveTextContent('An error occurred while submitting the form.');
-    fireEvent.click(screen.getByRole('button', { name: 'Keep changes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     await waitFor(() =>
       expect(
         screen.queryByRole('dialog', { name: 'Discard changes?' }),
@@ -1112,7 +1112,7 @@ describe('NetworkComposer side panel checking an answer against a protected one'
     expect(dialog).not.toHaveTextContent(
       locked ? /invalid data/ : /Enter your passphrase/,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Keep changes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     await waitFor(() =>
       expect(
         screen.queryByRole('dialog', { name: 'Discard changes?' }),

@@ -25,12 +25,6 @@ export const messages = defineMessages({
     description:
       'Instruction for choosing one condition to show its inheritance notation and enable focusing on a family member.',
   },
-  symbols: {
-    id: 'interview.narrativePedigree.symbols',
-    defaultMessage: 'What the symbols mean',
-    description:
-      'Subheading explaining the visual genetic-status glyphs, including uncertain statuses only when enabled by the protocol.',
-  },
   saveSnapshot: {
     id: 'interview.narrativePedigree.saveSnapshot',
     defaultMessage: 'Save snapshot',
@@ -132,13 +126,6 @@ export const messages = defineMessages({
     defaultMessage: '{title}: {condition} — inheritance for {name}',
     description:
       'Whole snapshot heading for a condition focused on a person. title and condition are authored text; name is entered text or a localized fallback. Translate only the surrounding inheritance phrase.',
-  },
-  sourceMissing: {
-    id: 'interview.narrativePedigree.sourceMissing',
-    defaultMessage:
-      'This stage references a family pedigree that could not be found.',
-    description:
-      'Empty-state error when the protocol references a family-tree source that cannot be found. Uses participant language rather than exposing the internal stage identifier.',
   },
   showingAll: {
     id: 'interview.narrativePedigree.showingAll',

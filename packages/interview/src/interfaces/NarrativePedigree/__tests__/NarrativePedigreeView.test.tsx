@@ -441,13 +441,16 @@ describe('NarrativePedigreeView — who is drawn', () => {
     }
   });
 
-  it('explains that the family cannot be found when the source is not a Family Pedigree', async () => {
+  it('throws when the source is not a Family Pedigree, so the task error boundary reports it', () => {
     const stage = { ...makeNarrativeStage(), sourceStageId: 'missing' };
-    renderView({ narrativeStage: stage });
-    expect(
-      await screen.findByText(/family/i, { selector: 'p' }),
-    ).toBeInTheDocument();
-    expect(document.querySelector('[data-pedigree-member]')).toBeNull();
+    // React logs the expected render error; it is not what this test is about.
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    expect(() => renderView({ narrativeStage: stage })).toThrow(
+      'The Narrative Pedigree source stage could not be found.',
+    );
+    consoleError.mockRestore();
   });
 });
 

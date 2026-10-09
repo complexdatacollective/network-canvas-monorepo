@@ -103,7 +103,7 @@ export default function GeospatialStubSearch({ className }: Props) {
             <InputField
               type="text"
               autoFocus
-              placeholder={intl.formatMessage(interfaceMessages.searchPlace)}
+              placeholder={intl.formatMessage(commonMessages.search)}
               value={query}
               onChange={handleQueryChange}
               onKeyDown={(e) => {

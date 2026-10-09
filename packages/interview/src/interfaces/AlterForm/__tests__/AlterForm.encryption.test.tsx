@@ -448,9 +448,7 @@ describe('AlterForm comparing an answer with a protected one', () => {
       name: 'Discard changes?',
     });
     const keep = async () => {
-      fireEvent.click(
-        within(dialog).getByRole('button', { name: 'Keep changes' }),
-      );
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
       await act(async () => {
         await leaving;
       });
@@ -516,9 +514,7 @@ describe('AlterForm comparing an answer with a protected one', () => {
         'This answer is checked against answers protected by your passphrase. Enter your passphrase, then try again.',
       ),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText('An error occurred while validating.'),
-    ).toBeNull();
+    expect(screen.queryByText('Something went wrong.')).toBeNull();
     expect(onStepChange).not.toHaveBeenCalled();
     expect(store.getState().ui.showPassphrasePrompter).toBe(true);
 

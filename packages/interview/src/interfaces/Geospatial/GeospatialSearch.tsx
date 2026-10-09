@@ -1,6 +1,6 @@
 'use client';
 import { Toggle } from '@base-ui/react';
-import { Search, X } from 'lucide-react';
+import { Loader2, Search, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   useCallback,
@@ -11,6 +11,7 @@ import {
   useState,
 } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
@@ -54,7 +55,6 @@ const NO_RESULTS_MESSAGE = runtimeMessages.noSearchMatch;
  * the participant cannot act on.
  */
 const SEARCH_FAILED_MESSAGE = interfaceMessages.searchFailed;
-const RETRIEVE_FAILED_MESSAGE = interfaceMessages.placeUnavailable;
 type SearchStatus = { message: MessageDescriptor; values?: { place: string } };
 
 export default function GeospatialSearch({
@@ -251,7 +251,7 @@ export default function GeospatialSearch({
                 message: interfaceMessages.mapMoved,
                 values: { place: suggestion.name },
               }
-            : { message: RETRIEVE_FAILED_MESSAGE },
+            : { message: SEARCH_FAILED_MESSAGE },
         );
       });
       closeSearch();
@@ -421,7 +421,7 @@ export default function GeospatialSearch({
                 ref={inputRef}
                 type="text"
                 autoFocus
-                placeholder={intl.formatMessage(interfaceMessages.searchPlace)}
+                placeholder={intl.formatMessage(commonMessages.search)}
                 value={query}
                 onChange={handleSearchQueryChange}
                 onKeyDown={handleInputKeyDown}
@@ -503,7 +503,15 @@ export default function GeospatialSearch({
                       )}
                     >
                       {isLoading ? (
-                        <AppMessage message={interfaceMessages.searching} />
+                        <>
+                          <Loader2
+                            className="mx-auto size-4 animate-spin"
+                            aria-hidden="true"
+                          />
+                          <span className="sr-only">
+                            <AppMessage message={commonMessages.loading} />
+                          </span>
+                        </>
                       ) : (
                         <AppMessage
                           message={settledMessage ?? NO_RESULTS_MESSAGE}

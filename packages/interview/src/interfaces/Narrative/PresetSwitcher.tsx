@@ -230,6 +230,7 @@ export default function PresetSwitcher({
       >
         <ToolbarIconButton
           aria-label={intl.formatMessage(interfaceMessages.previousPreset)}
+          tooltip={false}
           icon={<ChevronLeft />}
           disabled={activePreset === 0}
           onClick={() => onChangePreset(activePreset - 1)}
@@ -360,6 +361,7 @@ export default function PresetSwitcher({
         </ToolbarPopover>
         <ToolbarIconButton
           aria-label={intl.formatMessage(interfaceMessages.nextPreset)}
+          tooltip={false}
           icon={<ChevronRight />}
           disabled={activePreset + 1 === presets.length}
           onClick={() => onChangePreset(activePreset + 1)}

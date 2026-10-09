@@ -151,7 +151,7 @@ describe('NodeForm editing a person with an encrypted answer', () => {
 
     await user.clear(name);
     await user.type(name, 'Alicia');
-    await user.click(screen.getByRole('button', { name: 'Finished' }));
+    await user.click(screen.getByRole('button', { name: 'Done' }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     await expect(
@@ -204,7 +204,7 @@ describe('NodeForm editing a person with an encrypted answer', () => {
 
     await user.clear(age);
     await user.type(age, '41');
-    await user.click(screen.getByRole('button', { name: 'Finished' }));
+    await user.click(screen.getByRole('button', { name: 'Done' }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     const [saved] = store.getState().session.network.nodes;
@@ -231,7 +231,7 @@ describe('NodeForm editing a person with an encrypted answer', () => {
     const name = screen.getByRole('textbox', { name: 'Name' });
     expect(name).toHaveValue('');
     await user.type(name, 'Alicia');
-    await user.click(screen.getByRole('button', { name: 'Finished' }));
+    await user.click(screen.getByRole('button', { name: 'Done' }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     await expect(
@@ -265,7 +265,7 @@ describe('NodeForm editing a person with an encrypted answer', () => {
     expect(name).toHaveValue('Answer unavailable');
     expect(screen.getByRole('spinbutton', { name: 'Age' })).toHaveValue(40);
 
-    await user.click(screen.getByRole('button', { name: 'Finished' }));
+    await user.click(screen.getByRole('button', { name: 'Done' }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(
@@ -283,7 +283,7 @@ describe('NodeForm adding a person with an encrypted answer', () => {
     await user.click(screen.getByRole('button', { name: 'Add a person' }));
     const name = await screen.findByRole('textbox', { name: 'Name' });
     await user.type(name, 'Alicia');
-    await user.click(screen.getByRole('button', { name: 'Finished' }));
+    await user.click(screen.getByRole('button', { name: 'Done' }));
 
     expect(
       await screen.findByText(/Your answers have not been saved/),
@@ -337,7 +337,7 @@ describe('NodeForm whose answer is checked against a protected one', () => {
 
     const nickname = await screen.findByRole('textbox', { name: 'Nickname' });
     await user.type(nickname, 'Ali');
-    await user.click(screen.getByRole('button', { name: 'Finished' }));
+    await user.click(screen.getByRole('button', { name: 'Done' }));
     await waitFor(() =>
       expect(nickname).toHaveAccessibleDescription(
         /checked against answers protected by your passphrase/,
@@ -360,14 +360,14 @@ describe('NodeForm whose answer is checked against a protected one', () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Finished' })).toHaveFocus(),
+      expect(screen.getByRole('button', { name: 'Done' })).toHaveFocus(),
     );
     expect(
       within(form).queryByRole('button', { name: 'Enter your passphrase' }),
     ).toBeNull();
     expect(nickname).toHaveValue('Ali');
 
-    await user.click(screen.getByRole('button', { name: 'Finished' }));
+    await user.click(screen.getByRole('button', { name: 'Done' }));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(
       store.getState().session.network.nodes[0]?.[entityAttributesProperty]
@@ -391,7 +391,7 @@ describe('NodeForm whose answer is checked against a protected one', () => {
     ).toBeNull();
 
     await user.type(nickname, 'Alice');
-    await user.click(screen.getByRole('button', { name: 'Finished' }));
+    await user.click(screen.getByRole('button', { name: 'Done' }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(
