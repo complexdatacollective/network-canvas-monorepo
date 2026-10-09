@@ -1,3 +1,12 @@
+import {
+  attachmentsFor,
+  joinsFor,
+  type RouteEnd,
+  routeLine,
+  type RoutingScene,
+  segmentsOf,
+  symbolOf,
+} from './auxiliaryRouting';
 import type {
   AuxiliaryConnector,
   DuplicateArc,
@@ -465,13 +474,17 @@ export function computeConnectors(
   const sibshipOf = new Map<string, string>();
   const sibshipSize = new Map<string, number>();
   const sibshipBar = new Map<string, LineSegment>();
+  // The x of every line meeting each sibship's bar from above or below.
+  const sibshipStems = new Map<string, number[]>();
   const joinSibship = (
     key: string,
     i: number,
     columns: number[],
     bar: LineSegment,
+    stems: number[],
   ) => {
     sibshipBar.set(key, bar);
+    sibshipStems.set(key, stems);
     sibshipSize.set(key, columns.length);
     for (const j of columns) sibshipOf.set(`${i},${j}`, key);
   };
@@ -487,7 +500,13 @@ export function computeConnectors(
       if (coupleless.has(fam)) {
         const whoIdx = familyOf[i]!.flatMap((f, j) => (f === fam ? [j] : []));
         const { uplines, siblingBar } = sibshipLines(i, whoIdx);
-        joinSibship(`${i},${fam}`, i, whoIdx, siblingBar);
+        joinSibship(
+          `${i},${fam}`,
+          i,
+          whoIdx,
+          siblingBar,
+          uplines.map((upline) => upline.x2),
+        );
         const sibshipParents = (
           parents[layout.nid[i]![whoIdx[0]!]!] ?? []
         ).filter((p) => isPrimaryEdge(p.edgeType));
@@ -586,7 +605,6 @@ export function computeConnectors(
           i,
           columns,
         );
-        joinSibship(`${i},${fam},${from}`, i, columns, siblingBar);
         for (const j of columns) {
           descentParentsOf.set(`${i},${j}`, descentParents(from));
         }
@@ -600,6 +618,10 @@ export function computeConnectors(
                 minTarget + pconnect,
                 Math.min(maxTarget - pconnect, descentX),
               );
+        joinSibship(`${i},${fam},${from}`, i, columns, siblingBar, [
+          x1,
+          ...uplines.map((upline) => upline.x2),
+        ]);
         const parentLink = buildParentLink(x1, descentX, i, boxh, legh, branch);
 
         // Each child's own tie sets the style of the line to them. The
@@ -752,86 +774,7 @@ export function computeConnectors(
     }
   }
 
-  for (const conn of auxConnections.values()) {
-    let parentX: number | undefined;
-    let parentY: number | undefined;
-    for (let pi = 0; pi < maxlev; pi++) {
-      for (let pj = 0; pj < (layout.n[pi] ?? 0); pj++) {
-        if (layout.nid[pi]![pj] === conn.parentIndex) {
-          parentX = layout.pos[pi]![pj]!;
-          parentY = pi + boxh / 2;
-          break;
-        }
-      }
-      if (parentX !== undefined) break;
-    }
-    if (parentX === undefined || parentY === undefined) continue;
-
-    const bar = sibshipBar.get(conn.sibship);
-    const totalChildren = sibshipSize.get(conn.sibship) ?? 0;
-    const isParentOfAllSiblings = conn.childColumns.length >= totalChildren;
-
-    const donorParentNodeId = id ? id[conn.parentIndex] : undefined;
-
-    if (bar && isParentOfAllSiblings && totalChildren > 1) {
-      // Parent of all siblings — connect to the sibling bar
-      const barMinX = Math.min(bar.x1, bar.x2);
-      const barMaxX = Math.max(bar.x1, bar.x2);
-      const connectX = Math.max(barMinX, Math.min(parentX, barMaxX));
-
-      const endpointIds: [string | undefined, string | undefined] | undefined =
-        id ? [donorParentNodeId, undefined] : undefined;
-      auxiliaryLines.push({
-        type: 'auxiliary',
-        edgeType: conn.edgeType,
-        segment: {
-          type: 'line',
-          x1: parentX,
-          y1: parentY,
-          x2: connectX,
-          y2: bar.y1,
-        },
-        ...(endpointIds ? { endpointIds } : {}),
-      });
-    } else {
-      // Parent of only some children (or no sibling bar) — connect
-      // directly to each child node
-      for (const col of conn.childColumns) {
-        const childPersonIndex = layout.nid[conn.childLevel]![col];
-        const childNodeId =
-          id && childPersonIndex !== undefined
-            ? id[childPersonIndex]
-            : undefined;
-        const endpointIds:
-          | [string | undefined, string | undefined]
-          | undefined = id ? [donorParentNodeId, childNodeId] : undefined;
-        auxiliaryLines.push({
-          type: 'auxiliary',
-          edgeType: conn.edgeType,
-          segment: {
-            type: 'line',
-            x1: parentX,
-            y1: parentY,
-            x2: layout.pos[conn.childLevel]![col]!,
-            y2: conn.childLevel + boxh / 2,
-          },
-          ...(endpointIds ? { endpointIds } : {}),
-        });
-      }
-    }
-  }
-
   // --- Direct lines from parents a child's family does not name ---
-  const nodePosition = new Map<number, { x: number; y: number }>();
-  for (let i = 0; i < maxlev; i++) {
-    for (let j = 0; j < (layout.n[i] ?? 0); j++) {
-      const nid = layout.nid[i]![j]!;
-      if (!nodePosition.has(nid)) {
-        nodePosition.set(nid, { x: layout.pos[i]![j]!, y: i });
-      }
-    }
-  }
-
   // Group direct parent connections by (parentIndex, edgeType, sibship) so
   // we can decide per-parent whether to connect to the sibling bar or
   // directly to individual children.
@@ -886,57 +829,127 @@ export function computeConnectors(
     }
   }
 
-  for (const conn of socialConnections.values()) {
-    const parentPos = nodePosition.get(conn.parentIndex);
-    if (!parentPos) continue;
+  // --- Routing the auxiliary and direct lines ---
+  // Each is routed clear of everyone and of every line drawn so far,
+  // including the auxiliary lines routed before it.
+  const scene: RoutingScene = {
+    boxWidth: boxw,
+    boxHeight: boxh,
+    symbols: [],
+    brackets: [],
+    lines: [],
+    rowXs: layout.pos.map((row, layer) => row.slice(0, layout.n[layer] ?? 0)),
+  };
+  for (let i = 0; i < maxlev; i++) {
+    for (let j = 0; j < (layout.n[i] ?? 0); j++) {
+      const personIndex = layout.nid[i]![j]!;
+      const bracketed = (parents[personIndex] ?? []).some(
+        (p) => p.edgeType === 'adoptive',
+      );
+      const { symbol, brackets } = symbolOf(
+        personIndex,
+        layout.pos[i]![j]!,
+        i,
+        boxw,
+        boxh,
+        bracketed,
+      );
+      scene.symbols.push(symbol);
+      scene.brackets.push(...brackets);
+    }
+  }
+  for (const line of groupLines) {
+    for (const segment of [
+      line.segment,
+      ...(line.endpointSegments ?? []),
+      ...(line.doubleSegment ? [line.doubleSegment] : []),
+    ]) {
+      scene.lines.push({ segment, kind: 'other' });
+    }
+  }
+  for (const line of parentChildLines) {
+    for (const segment of line.parentLink) {
+      scene.lines.push({ segment, kind: 'other' });
+    }
+    scene.lines.push({ segment: line.siblingBar, kind: 'bar' });
+    for (const segment of line.uplines) {
+      scene.lines.push({ segment, kind: 'upline' });
+    }
+  }
+  for (const twin of twinIndicators) {
+    if (twin.segment)
+      scene.lines.push({ segment: twin.segment, kind: 'other' });
+  }
 
-    const socialParentNodeId = id ? id[conn.parentIndex] : undefined;
+  const usedAttachments = new Map<string, number[]>();
+  for (const conn of [
+    ...auxConnections.values(),
+    ...socialConnections.values(),
+  ]) {
+    const parentAt = nodeLocation.get(conn.parentIndex);
+    if (!parentAt) continue;
+    const from = {
+      person: conn.parentIndex,
+      x: parentAt.x,
+      layer: parentAt.layer,
+    };
+    const owner = `${conn.parentIndex},${conn.edgeType}`;
+    const parentNodeId = id ? id[conn.parentIndex] : undefined;
 
     const bar = sibshipBar.get(conn.sibship);
     const totalChildren = sibshipSize.get(conn.sibship) ?? 0;
     const isParentOfAllSiblings = conn.childColumns.length >= totalChildren;
 
-    if (bar && isParentOfAllSiblings && totalChildren > 1) {
-      const barMinX = Math.min(bar.x1, bar.x2);
-      const barMaxX = Math.max(bar.x1, bar.x2);
-      const connectX = Math.max(barMinX, Math.min(parentPos.x, barMaxX));
-      const endpointIds: [string | undefined, string | undefined] | undefined =
-        id ? [socialParentNodeId, undefined] : undefined;
-
+    const draw = (end: RouteEnd, childNodeId: string | undefined) => {
+      const { points, endX } = routeLine(from, end, owner, scene);
+      for (const segment of segmentsOf(points)) {
+        scene.lines.push({ segment, kind: 'other', owner });
+      }
       auxiliaryLines.push({
         type: 'auxiliary',
         edgeType: conn.edgeType,
-        segment: {
-          type: 'line',
-          x1: parentPos.x,
-          y1: parentPos.y + boxh / 2,
-          x2: connectX,
-          y2: bar.y1,
-        },
-        ...(endpointIds ? { endpointIds } : {}),
+        points,
+        ...(id ? { endpointIds: [parentNodeId, childNodeId] } : {}),
       });
+      return endX;
+    };
+
+    if (bar && isParentOfAllSiblings && totalChildren > 1) {
+      // A parent of every child in the sibship joins its bar, away from
+      // every line already meeting it.
+      const stems = sibshipStems.get(conn.sibship) ?? [];
+      const joined = draw(
+        {
+          kind: 'bar',
+          bar,
+          layer: conn.childLevel,
+          joins: joinsFor(bar, stems),
+        },
+        undefined,
+      );
+      stems.push(joined);
     } else {
+      // A parent of only some children (or of a child with no sibling bar)
+      // joins each child, at a point of the line's own on their top edge.
       for (const col of conn.childColumns) {
-        const childPersonIndex = layout.nid[conn.childLevel]![col];
-        const childNodeId =
-          id && childPersonIndex !== undefined
-            ? id[childPersonIndex]
-            : undefined;
-        const endpointIds:
-          | [string | undefined, string | undefined]
-          | undefined = id ? [socialParentNodeId, childNodeId] : undefined;
-        auxiliaryLines.push({
-          type: 'auxiliary',
-          edgeType: conn.edgeType,
-          segment: {
-            type: 'line',
-            x1: parentPos.x,
-            y1: parentPos.y + boxh / 2,
-            x2: layout.pos[conn.childLevel]![col]!,
-            y2: conn.childLevel + boxh / 2,
+        const childPersonIndex = layout.nid[conn.childLevel]![col]!;
+        const childX = layout.pos[conn.childLevel]![col]!;
+        const key = `${conn.childLevel},${col}`;
+        const used = usedAttachments.get(key) ?? [];
+        const attachments = attachmentsFor(childX, boxw).filter(
+          (x) => !used.some((u) => Math.abs(u - x) < 1e-9),
+        );
+        const attached = draw(
+          {
+            kind: 'child',
+            person: childPersonIndex,
+            x: childX,
+            layer: conn.childLevel,
+            attachments,
           },
-          ...(endpointIds ? { endpointIds } : {}),
-        });
+          id ? id[childPersonIndex] : undefined,
+        );
+        usedAttachments.set(key, [...used, attached]);
       }
     }
   }

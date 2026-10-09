@@ -239,8 +239,21 @@ function drawnSegments(connectors: PedigreeConnectors): StyledSegment[] {
   return segments.filter(({ segment }) => length(segment) > 0.5);
 }
 
-function auxiliarySegments(line: PedigreeConnectors['auxiliaryLines'][number]) {
-  return [line.segment];
+/** The pieces of an auxiliary line, from the parent to the child or bar. */
+function auxiliarySegments(
+  line: PedigreeConnectors['auxiliaryLines'][number],
+): LineSegment[] {
+  const course = line as { points?: { x: number; y: number }[] };
+  if (!course.points) {
+    return [(line as unknown as { segment: LineSegment }).segment];
+  }
+  return course.points.slice(1).map((point, k) => ({
+    type: 'line',
+    x1: course.points![k]!.x,
+    y1: course.points![k]!.y,
+    x2: point.x,
+    y2: point.y,
+  }));
 }
 
 const length = (s: LineSegment) => Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
@@ -451,5 +464,370 @@ describe('partnership lines routed above a row', () => {
     expect(egoStems).toHaveLength(2);
     expect(egoStems[0]!.x1).not.toBeCloseTo(egoStems[1]!.x1, 0);
     expect(collinearOverlap(egoStems[0]!, egoStems[1]!)).toBe(0);
+  });
+});
+
+/** Where a segment passes through the inside of a rectangle. */
+function crossesRect(
+  s: LineSegment,
+  rect: { left: number; top: number; right: number; bottom: number },
+): boolean {
+  // Sample along the segment; symbols are large next to the step.
+  const steps = Math.max(2, Math.ceil(length(s)));
+  for (let k = 1; k < steps; k++) {
+    const t = k / steps;
+    const x = s.x1 + (s.x2 - s.x1) * t;
+    const y = s.y1 + (s.y2 - s.y1) * t;
+    if (
+      x > rect.left + 1 &&
+      x < rect.right - 1 &&
+      y > rect.top + 1 &&
+      y < rect.bottom - 1
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+const distanceToSegment = (p: { x: number; y: number }, s: LineSegment) => {
+  const dx = s.x2 - s.x1;
+  const dy = s.y2 - s.y1;
+  const len2 = dx * dx + dy * dy;
+  const t =
+    len2 === 0
+      ? 0
+      : Math.max(
+          0,
+          Math.min(1, ((p.x - s.x1) * dx + (p.y - s.y1) * dy) / len2),
+        );
+  return Math.hypot(p.x - (s.x1 + t * dx), p.y - (s.y1 + t * dy));
+};
+
+/** Whether two segments cross at a point inside both. */
+function properlyCross(a: LineSegment, b: LineSegment): boolean {
+  const cross = (
+    o: { x: number; y: number },
+    p: { x: number; y: number },
+    q: { x: number; y: number },
+  ) => (p.x - o.x) * (q.y - o.y) - (p.y - o.y) * (q.x - o.x);
+  const a1 = { x: a.x1, y: a.y1 };
+  const a2 = { x: a.x2, y: a.y2 };
+  const b1 = { x: b.x1, y: b.y1 };
+  const b2 = { x: b.x2, y: b.y2 };
+  const d1 = cross(b1, b2, a1);
+  const d2 = cross(b1, b2, a2);
+  const d3 = cross(a1, a2, b1);
+  const d4 = cross(a1, a2, b2);
+  return d1 * d2 < -1e-6 && d3 * d4 < -1e-6;
+}
+
+/**
+ * Everything wrong with how the auxiliary and direct lines are drawn: a line
+ * through someone else's symbol or brackets, through another line's corner
+ * or junction, or along another line.
+ */
+function auxiliaryLineFaults(
+  connectors: PedigreeConnectors,
+  people: string[],
+  centre: (id: string) => { x: number; y: number },
+  adopted: string[] = [],
+): string[] {
+  const W = DIMENSIONS.nodeWidth;
+  const H = DIMENSIONS.nodeHeight;
+  const boxOf = (id: string) => {
+    const c = centre(id);
+    return {
+      left: c.x - W / 2,
+      right: c.x + W / 2,
+      top: c.y - H / 2,
+      bottom: c.y + H / 2,
+    };
+  };
+  const insideAnySymbol = (p: { x: number; y: number }) =>
+    people.some((id) => {
+      const b = boxOf(id);
+      return p.x > b.left && p.x < b.right && p.y > b.top && p.y < b.bottom;
+    });
+  const faults: string[] = [];
+  const withoutAuxiliary = drawnSegments({
+    ...connectors,
+    auxiliaryLines: [],
+  });
+  connectors.auxiliaryLines.forEach((line, index) => {
+    const [from, to] = line.endpointIds ?? [];
+    const name = `${from}→${to ?? 'their sibship'}`;
+    const segments = auxiliarySegments(line);
+    // One parent's lines of one kind to several children may share their
+    // way down, as one line that branches.
+    const others = [
+      ...withoutAuxiliary,
+      ...connectors.auxiliaryLines
+        .filter(
+          (other, otherIndex) =>
+            otherIndex !== index &&
+            !(
+              other.endpointIds?.[0] === from &&
+              other.edgeType === line.edgeType
+            ),
+        )
+        .flatMap((other) =>
+          auxiliarySegments(other).map((segment) => ({
+            segment,
+            dashed: isDashed(other.edgeType),
+          })),
+        ),
+    ];
+    for (const segment of segments) {
+      for (const id of people) {
+        if (id === from || id === to) continue;
+        if (crossesRect(segment, boxOf(id))) {
+          faults.push(`${name} passes through ${id}`);
+        }
+      }
+      for (const id of adopted) {
+        const c = centre(id);
+        for (const side of [-1, 1]) {
+          const inner = c.x + side * (W / 2 + 11);
+          const outer = c.x + side * (W / 2 + 16);
+          const bracket = {
+            left: Math.min(inner, outer) - 1,
+            right: Math.max(inner, outer) + 1,
+            top: c.y - H / 2 - 9,
+            bottom: c.y + H / 2 + 9,
+          };
+          if (crossesRect(segment, bracket)) {
+            faults.push(`${name} crosses ${id}'s brackets`);
+          }
+        }
+      }
+      for (const other of others) {
+        if (collinearOverlap(segment, other.segment) > 1) {
+          faults.push(`${name} runs along another line`);
+        }
+        for (const vertex of [
+          { x: other.segment.x1, y: other.segment.y1 },
+          { x: other.segment.x2, y: other.segment.y2 },
+        ]) {
+          if (insideAnySymbol(vertex)) continue;
+          const isMyEnd =
+            Math.hypot(vertex.x - segment.x2, vertex.y - segment.y2) < 1 ||
+            Math.hypot(vertex.x - segment.x1, vertex.y - segment.y1) < 1;
+          if (!isMyEnd && distanceToSegment(vertex, segment) < 1) {
+            faults.push(`${name} passes through a corner or junction`);
+          }
+        }
+      }
+    }
+  });
+  return [...new Set(faults)];
+}
+
+describe('auxiliary and direct parent lines', () => {
+  const scenarios: Record<
+    string,
+    { people: string[]; links: Link[]; adopted?: string[] }
+  > = {
+    'a surrogate grandmother': {
+      people: ['ego', 'hannah', 'ben', 'margaret', 'george'],
+      links: [
+        ['hannah', 'biological', 'ego'],
+        ['hannah', 'partner', 'ben'],
+        ['ben', 'biological', 'ego'],
+        ['margaret', 'biological', 'hannah', { carrier: true }],
+        ['george', 'biological', 'hannah'],
+        ['margaret', 'partner', 'george'],
+        ['margaret', 'surrogate', 'ego', { carrier: true }],
+      ],
+    },
+    'a birth parent and a sperm donor': {
+      people: ['ego', 'ann', 'dan'],
+      links: [
+        ['ann', 'biological', 'ego', { carrier: true }],
+        ['dan', 'donor', 'ego'],
+      ],
+    },
+    'an adopted child’s birth mother': {
+      people: ['ego', 'ann', 'bob', 'cara'],
+      adopted: ['ego'],
+      links: [
+        ['ann', 'adoptive', 'ego'],
+        ['bob', 'adoptive', 'ego'],
+        ['ann', 'partner', 'bob'],
+        ['cara', 'biological', 'ego', { carrier: true }],
+      ],
+    },
+    'a donor above one of three half-siblings': {
+      people: ['ego', 'hannah', 'paul', 'ruby', 'theo'],
+      links: [
+        ['hannah', 'biological', 'ego', { carrier: true }],
+        ['paul', 'donor', 'ego'],
+        ['hannah', 'biological', 'ruby', { carrier: true }],
+        ['hannah', 'biological', 'theo', { carrier: true }],
+      ],
+    },
+    'a surrogate beside a half-sister’s descent': {
+      people: [
+        'ego',
+        'grace',
+        'henry',
+        'oliver',
+        'jenna',
+        'mark',
+        'paula',
+        'zoe',
+      ],
+      links: [
+        ['grace', 'biological', 'ego', { carrier: true }],
+        ['henry', 'biological', 'ego'],
+        ['grace', 'partner', 'henry'],
+        ['grace', 'biological', 'oliver'],
+        ['henry', 'biological', 'oliver'],
+        ['jenna', 'surrogate', 'oliver', { carrier: true }],
+        ['jenna', 'partner', 'mark'],
+        ['henry', 'partner', 'paula', { former: true }],
+        ['henry', 'biological', 'zoe'],
+        ['paula', 'biological', 'zoe', { carrier: true }],
+      ],
+    },
+    'a step parent of one of three siblings': {
+      people: ['ego', 'jill', 'phil', 'ken', 'amy', 'ben'],
+      links: [
+        ['jill', 'biological', 'ego', { carrier: true }],
+        ['phil', 'biological', 'ego'],
+        ['jill', 'partner', 'phil', { former: true }],
+        ['ken', 'social', 'ego'],
+        ['jill', 'partner', 'ken'],
+        ['jill', 'biological', 'amy', { carrier: true }],
+        ['phil', 'biological', 'amy'],
+        ['jill', 'biological', 'ben', { carrier: true }],
+        ['phil', 'biological', 'ben'],
+      ],
+    },
+    'an egg donor and a surrogate of twins': {
+      people: ['ego', 'leo', 'marcus', 'julian', 'eggdonor', 'becky'],
+      links: [
+        ['marcus', 'biological', 'ego'],
+        ['julian', 'social', 'ego'],
+        ['marcus', 'social', 'leo'],
+        ['julian', 'social', 'leo'],
+        ['marcus', 'partner', 'julian'],
+        ['eggdonor', 'donor', 'ego'],
+        ['eggdonor', 'donor', 'leo'],
+        ['becky', 'surrogate', 'ego', { carrier: true }],
+        ['becky', 'surrogate', 'leo', { carrier: true }],
+      ],
+    },
+    'a donor and a surrogate of two full siblings': {
+      people: ['ego', 'leo', 'marcus', 'julian', 'eggdonor', 'becky'],
+      links: [
+        ['marcus', 'biological', 'ego'],
+        ['julian', 'biological', 'ego'],
+        ['marcus', 'biological', 'leo'],
+        ['julian', 'biological', 'leo'],
+        ['marcus', 'partner', 'julian'],
+        ['eggdonor', 'donor', 'ego'],
+        ['eggdonor', 'donor', 'leo'],
+        ['becky', 'surrogate', 'ego', { carrier: true }],
+        ['becky', 'surrogate', 'leo', { carrier: true }],
+      ],
+    },
+  };
+
+  for (const [name, { people, links, adopted }] of Object.entries(scenarios)) {
+    it(`are drawn clear of everyone and every other line: ${name}`, () => {
+      const { connectors, centre } = draw(people, links);
+      expect(auxiliaryLineFaults(connectors, people, centre, adopted)).toEqual(
+        [],
+      );
+    });
+  }
+
+  it('end at a point on the child’s top edge, distinct for each line into them', () => {
+    const { connectors, centre } = draw(
+      ['ego', 'ann', 'dan', 'sue'],
+      [
+        ['ann', 'biological', 'ego', { carrier: false }],
+        ['dan', 'donor', 'ego'],
+        ['sue', 'surrogate', 'ego', { carrier: true }],
+      ],
+    );
+    const ego = centre('ego');
+    const ends = connectors.auxiliaryLines.map((line) => {
+      const segments = auxiliarySegments(line);
+      const last = segments[segments.length - 1]!;
+      // The line meets the child's symbol from above, at its top, and runs
+      // on under it, off the child's own line up.
+      expect(last.x1).toBeCloseTo(last.x2, 5);
+      expect(last.y1).toBeLessThanOrEqual(ego.y - DIMENSIONS.nodeHeight / 4);
+      expect(Math.abs(last.x2 - ego.x)).toBeGreaterThan(5);
+      expect(Math.abs(last.x2 - ego.x)).toBeLessThan(DIMENSIONS.nodeWidth / 2);
+      return last.x2;
+    });
+    expect(ends).toHaveLength(2);
+    expect(Math.abs(ends[0]! - ends[1]!)).toBeGreaterThan(5);
+  });
+
+  it('join a sibship’s bar away from every child’s line', () => {
+    const { connectors } = draw(
+      ['ego', 'leo', 'marcus', 'julian', 'eggdonor', 'becky'],
+      [
+        ['marcus', 'biological', 'ego'],
+        ['julian', 'biological', 'ego'],
+        ['marcus', 'biological', 'leo'],
+        ['julian', 'biological', 'leo'],
+        ['marcus', 'partner', 'julian'],
+        ['eggdonor', 'donor', 'ego'],
+        ['eggdonor', 'donor', 'leo'],
+        ['becky', 'surrogate', 'ego', { carrier: true }],
+        ['becky', 'surrogate', 'leo', { carrier: true }],
+      ],
+    );
+    const sibship = uplineOf(connectors, 'ego').connector;
+    const stems = [
+      ...sibship.uplines.map((upline) => upline.x2),
+      ...sibship.parentLink.map((segment) => segment.x2),
+    ];
+    const joins = connectors.auxiliaryLines.map((line) => {
+      const segments = auxiliarySegments(line);
+      const last = segments[segments.length - 1]!;
+      expect(last.y2).toBeCloseTo(sibship.siblingBar.y1, 5);
+      for (const stem of stems) {
+        expect(Math.abs(last.x2 - stem)).toBeGreaterThan(10);
+      }
+      return last.x2;
+    });
+    expect(joins).toHaveLength(2);
+    expect(Math.abs(joins[0]! - joins[1]!)).toBeGreaterThan(10);
+  });
+
+  it('keep a step parent’s line off the sibship he is not a parent of', () => {
+    const { connectors } = draw(
+      ['ego', 'jill', 'phil', 'ken', 'amy', 'ben'],
+      [
+        ['jill', 'biological', 'ego', { carrier: true }],
+        ['phil', 'biological', 'ego'],
+        ['jill', 'partner', 'phil', { former: true }],
+        ['ken', 'social', 'ego'],
+        ['jill', 'partner', 'ken'],
+        ['jill', 'biological', 'amy', { carrier: true }],
+        ['phil', 'biological', 'amy'],
+        ['jill', 'biological', 'ben', { carrier: true }],
+        ['phil', 'biological', 'ben'],
+      ],
+    );
+    const sibship = uplineOf(connectors, 'amy').connector;
+    const kens = auxiliaryLinesFrom(connectors, 'ken').flatMap(
+      auxiliarySegments,
+    );
+    expect(kens.length).toBeGreaterThan(0);
+    for (const segment of kens) {
+      expect(properlyCross(segment, sibship.siblingBar)).toBe(false);
+      for (const child of ['amy', 'ben']) {
+        expect(
+          properlyCross(segment, uplineOf(connectors, child).segment),
+        ).toBe(false);
+      }
+    }
   });
 });

@@ -126,7 +126,10 @@ export type ParentChildConnector = {
 export type AuxiliaryConnector = {
   type: 'auxiliary';
   edgeType: PedigreeEdgeType;
-  segment: LineSegment;
+  /** The line's course, from the parent's centre to its end on the child's
+   * top edge (continuing to their centre, under their symbol) or on the
+   * sibling bar it joins. */
+  points: Point[];
   endpointIds?: [string | undefined, string | undefined];
 };
 

@@ -3,6 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { computeConnectors } from '../connectors';
 import type { ParentConnection, PedigreeLayout, ScalingParams } from '../types';
 
+/** Where an auxiliary line ends: on the child, or on the bar it joins. */
+const endOf = (line: { points: { x: number; y: number }[] }) =>
+  line.points[line.points.length - 1]!;
+
 describe('computeConnectors', () => {
   const scaling: ScalingParams = {
     boxWidth: 0.5,
@@ -180,7 +184,7 @@ describe('computeConnectors', () => {
     const connectors = computeConnectors(donorLayout, scaling, donorParents);
     expect(connectors.auxiliaryLines.length).toBe(1);
     expect(connectors.auxiliaryLines[0]!.edgeType).toBe('donor');
-    expect(connectors.auxiliaryLines[0]!.segment).toBeDefined();
+    expect(connectors.auxiliaryLines[0]!.points.length).toBeGreaterThan(1);
   });
 
   it('routes parent links to specific couple midpoints in multi-partner layouts', () => {
@@ -391,7 +395,7 @@ describe('computeConnectors', () => {
     );
     expect(connectors.auxiliaryLines.length).toBe(1);
     // Sibling bar y = childLevel(1) - legh(0.25) = 0.75
-    expect(connectors.auxiliaryLines[0]!.segment.y2).toBeCloseTo(0.75, 5);
+    expect(endOf(connectors.auxiliaryLines[0]!).y).toBeCloseTo(0.75, 5);
   });
 
   it('auxiliary connector connects directly to child when donor is parent of only SOME siblings', () => {
@@ -444,8 +448,8 @@ describe('computeConnectors', () => {
     );
     expect(connectors.auxiliaryLines.length).toBe(2);
     // Each connects directly to child: y = childLevel(1) + boxh/2(0.25) = 1.25
-    expect(connectors.auxiliaryLines[0]!.segment.y2).toBeCloseTo(1.25, 5);
-    expect(connectors.auxiliaryLines[1]!.segment.y2).toBeCloseTo(1.25, 5);
+    expect(endOf(connectors.auxiliaryLines[0]!).y).toBeCloseTo(1.25, 5);
+    expect(endOf(connectors.auxiliaryLines[1]!).y).toBeCloseTo(1.25, 5);
   });
 
   it('auxiliary connector connects directly to child when single child in family', () => {
@@ -491,7 +495,7 @@ describe('computeConnectors', () => {
     );
     expect(connectors.auxiliaryLines.length).toBe(1);
     // Single child: connects directly to child node y = 1 + 0.25 = 1.25
-    expect(connectors.auxiliaryLines[0]!.segment.y2).toBeCloseTo(1.25, 5);
+    expect(endOf(connectors.auxiliaryLines[0]!).y).toBeCloseTo(1.25, 5);
   });
 
   it('social parent connector connects to sibling bar when social parent of ALL siblings', () => {
@@ -549,7 +553,7 @@ describe('computeConnectors', () => {
     );
     expect(bioAux.length).toBe(1);
     // Connects to sibling bar y = 1 - 0.25 = 0.75
-    expect(bioAux[0]!.segment.y2).toBeCloseTo(0.75, 5);
+    expect(endOf(bioAux[0]!).y).toBeCloseTo(0.75, 5);
   });
 
   it('social parent connector connects directly to child when social parent of only SOME siblings', () => {
@@ -606,8 +610,8 @@ describe('computeConnectors', () => {
     );
     expect(bioAux.length).toBe(2);
     // Each connects directly to child: y = 1 + 0.25 = 1.25
-    expect(bioAux[0]!.segment.y2).toBeCloseTo(1.25, 5);
-    expect(bioAux[1]!.segment.y2).toBeCloseTo(1.25, 5);
+    expect(endOf(bioAux[0]!).y).toBeCloseTo(1.25, 5);
+    expect(endOf(bioAux[1]!).y).toBeCloseTo(1.25, 5);
   });
 
   it('slashSide is set correctly for inactive group lines', () => {

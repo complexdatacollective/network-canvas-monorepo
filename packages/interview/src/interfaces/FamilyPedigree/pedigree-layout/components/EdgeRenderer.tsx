@@ -191,13 +191,21 @@ function getAuxiliaryStyle(edgeType: AuxiliaryConnector['edgeType']) {
 
 function renderAuxiliary(conn: AuxiliaryConnector, idx: number, color: string) {
   const style = getAuxiliaryStyle(conn.edgeType);
-  return renderLine(conn.segment, color, `aux-${idx}`, {
-    ...('strokeDasharray' in style
-      ? { strokeDasharray: style.strokeDasharray }
-      : {}),
-    strokeWidth: style.strokeWidth,
-    strokeLinecap: 'round',
-  });
+  // One polyline, so a dashed line's pattern flows round its corners.
+  return (
+    <polyline
+      key={`aux-${idx}`}
+      points={conn.points.map((p) => `${p.x},${p.y}`).join(' ')}
+      fill="none"
+      stroke={color}
+      strokeWidth={style.strokeWidth}
+      {...('strokeDasharray' in style
+        ? { strokeDasharray: style.strokeDasharray }
+        : {})}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  );
 }
 
 /**
