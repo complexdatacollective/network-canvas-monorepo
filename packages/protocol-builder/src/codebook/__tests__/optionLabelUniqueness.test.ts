@@ -156,3 +156,38 @@ describe('the write that records the answers an attribute offers', () => {
     );
   });
 });
+
+describe('the write, when two answers share a value', () => {
+  const DUPLICATE_VALUE = 'Every option needs a unique value.';
+
+  // The schema refuses an exact repeat as well, with a message written for a
+  // protocol file; the researcher reads the editor's own.
+  it.each([
+    ['the same text', 'close', 'close'],
+    ['a number and the same number', 1, 1],
+    ['a number and text that reads the same', 1, '1'],
+    ['text differing only in case', 'close', 'Close'],
+    [
+      'text differing only in how the accent is composed',
+      PRECOMPOSED,
+      DECOMPOSED,
+    ],
+  ])('refuses %s in the researcher’s words', (_, first, second) => {
+    expect(
+      refusal([
+        { label: { en: 'Close' }, value: first },
+        { label: { en: 'Distant' }, value: second },
+        { label: { en: 'Far' }, value: 'far' },
+      ]),
+    ).toBe(DUPLICATE_VALUE);
+  });
+
+  it('says so before it says two labels read the same', () => {
+    expect(
+      refusal([
+        { label: { en: 'Close' }, value: 'close' },
+        { label: { en: 'Close' }, value: 'close' },
+      ]),
+    ).toBe(DUPLICATE_VALUE);
+  });
+});

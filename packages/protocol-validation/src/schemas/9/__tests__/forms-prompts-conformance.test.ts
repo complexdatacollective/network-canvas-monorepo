@@ -386,6 +386,31 @@ describe('Forms & prompts schema conformance', () => {
       ).toBe(true);
     });
 
+    // A blank translation is chosen over a fallback, so a French interview
+    // would show an unlabelled bin and a question with no words.
+    it.each([
+      ['otherOptionLabel', ['prompts', 0, 'otherOptionLabel', 'fr']],
+      ['otherVariablePrompt', ['prompts', 0, 'otherVariablePrompt', 'fr']],
+    ] as const)('rejects a blank translation of %s', (field, path) => {
+      const protocol = createProtocol([
+        categoricalBinStage({
+          otherVariable: 'personOther',
+          otherOptionLabel: localized('Other'),
+          otherVariablePrompt: localized('Please specify'),
+          [field]: { en: 'Other', fr: '   ' },
+        }),
+      ]);
+      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
+      expect(result.success).toBe(false);
+      expect(
+        result.error?.issues.some(
+          (issue) =>
+            issue.message === 'Text cannot be blank.' &&
+            issue.path.join('.').endsWith(path.join('.')),
+        ),
+      ).toBe(true);
+    });
+
     it('accepts a prompt with no otherVariable at all', () => {
       const protocol = createProtocol([categoricalBinStage({})]);
       expect(

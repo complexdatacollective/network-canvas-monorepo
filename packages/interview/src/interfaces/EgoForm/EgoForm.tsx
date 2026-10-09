@@ -283,10 +283,12 @@ const EgoFormInner = (props: EgoFormProps) => {
               value={introductionPanel.title}
               render={<Heading level="h1" />}
             />
-            <LocalizedMarkdown
-              value={introductionPanel.text}
-              allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
-            />
+            {introductionPanel.text && (
+              <LocalizedMarkdown
+                value={introductionPanel.text}
+                allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+              />
+            )}
           </Surface>
           <Surface spacing="lg" shadow="lg">
             <FormWithoutProvider onSubmit={handleSubmitForm}>

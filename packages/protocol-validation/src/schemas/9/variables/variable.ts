@@ -446,6 +446,18 @@ export const categoricalOptionValueSchema = z.union([
   CodebookNameSchema,
 ]);
 
+/**
+ * The form in which two option values are compared. Answers are stored by
+ * value and export formats write values as text, so `1` and `"1"` are one
+ * value. Exact otherwise, with no case or Unicode folding, for the reason
+ * `findDuplicateName` gives: Architect's editor folds as a researcher types,
+ * but here the rule decides whether a protocol can be opened at all.
+ *
+ * The 8 to 9 migration removes duplicates by the same comparison, so a
+ * protocol it produces always passes this schema.
+ */
+export const optionValueKey = (value: string | number): string => String(value);
+
 const categoricalOptionsSchema = z
   .array(
     z.strictObject({
@@ -453,7 +465,24 @@ const categoricalOptionsSchema = z
       value: categoricalOptionValueSchema,
     }),
   )
-  .min(MINIMUM_VARIABLE_OPTIONS);
+  .min(MINIMUM_VARIABLE_OPTIONS)
+  // Two options with one value store the same answer, so the participant's
+  // choice between them cannot be recovered, and their export columns
+  // collide.
+  .superRefine((options, ctx) => {
+    const seen = new Set<string>();
+    options.forEach((option, index) => {
+      const key = optionValueKey(option.value);
+      if (seen.has(key)) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `Options contain duplicate value "${key}". Each option needs a value of its own; a number and text that read the same, such as 1 and "1", are the same value.`,
+          path: [index, 'value'],
+        });
+      }
+      seen.add(key);
+    });
+  });
 
 const ordinalVariableSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.ordinal),

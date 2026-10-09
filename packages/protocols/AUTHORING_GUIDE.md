@@ -201,7 +201,7 @@ key); TieStrength `edgeVariable` (must be an **ordinal edge** variable); sociogr
 Required keys per stage type used by these templates:
 
 - **Information**: `items: [{ "id", "type":"text", "content":"…" }]` (use `text` items; `title?`).
-- **EgoForm**: `introductionPanel:{title,text}` (REQUIRED) + `form:{title?, fields:[{variable(ego key), prompt}]}`.
+- **EgoForm**: `introductionPanel:{title,text?}` (REQUIRED; `text` may be left out for a title-only panel) + `form:{title?, fields:[{variable(ego key), prompt}]}`.
 - **NameGenerator**: `subject`(node) + `form:{fields:[{variable(node key), prompt}]}` (≥0 fields; include a name field) + `prompts:[{id,text, additionalAttributes?}]` (≥1) + `behaviours?:{minNodes?,maxNodes?}`.
 - **NameGeneratorQuickAdd**: `subject`(node) + `quickAdd:"<a text node-variable key>"` + `prompts:[{id,text}]` (≥1). (No `form`.)
 - **AlterForm**: `subject`(node) + `introductionPanel` + `form:{fields:[{variable(node key),prompt}]}` + `filter?`.

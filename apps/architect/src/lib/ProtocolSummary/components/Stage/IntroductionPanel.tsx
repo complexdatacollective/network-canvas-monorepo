@@ -23,7 +23,8 @@ const messages = defineMessages({
 type IntroductionPanelProps = {
   introductionPanel?: {
     title: LocalizedString;
-    text: LocalizedString;
+    // Optional: a panel can show only its title.
+    text?: LocalizedString;
   } | null;
 };
 const IntroductionPanel = ({
@@ -45,10 +46,17 @@ const IntroductionPanel = ({
               intl.formatMessage(summaryMessages.title),
               <SummaryText key="title" value={introductionPanel.title} />,
             ],
-            [
-              intl.formatMessage(summaryMessages.text),
-              <SummaryMarkdown key="text" value={introductionPanel.text} />,
-            ],
+            ...(introductionPanel.text
+              ? [
+                  [
+                    intl.formatMessage(summaryMessages.text),
+                    <SummaryMarkdown
+                      key="text"
+                      value={introductionPanel.text}
+                    />,
+                  ],
+                ]
+              : []),
           ]}
         />
       ) : (
