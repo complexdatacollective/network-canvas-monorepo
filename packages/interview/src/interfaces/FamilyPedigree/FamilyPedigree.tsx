@@ -618,10 +618,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     return everyone;
   }, [shown, framing, intl, draft]);
   // Each person's symbol shows their label. Everywhere else they are named in
-  // words that tell them apart from anyone whose label matches theirs (two
-  // relatives given the same name), as only words can there: the panel's
-  // title, announcements, hints and confirmations, and what a screen reader
-  // reads out for their symbol.
+  // words that tell them apart from anyone whose label matches theirs, as
+  // only words can there: the panel's title, announcements, hints and
+  // confirmations, and what a screen reader reads out for their symbol. A
+  // name the participant typed is never altered or added to: two relatives
+  // given the same name are both called by it, exactly as typed.
   const names = useMemo(
     () => distinctNames(shown, labels, intl),
     [shown, labels, intl],

@@ -846,11 +846,12 @@ export const ArrowKeysMoveAlikeAtEveryZoom: Story = {
 };
 
 /**
- * Two relatives with the same name are told apart wherever only words can
- * do it: in their symbols' accessible names, their panels' titles, the
- * connect tool's hints and the remove confirmation.
+ * Two relatives given the same name are each called by it exactly as typed,
+ * wherever they are named: in their symbols and accessible names, their
+ * panels' titles, the connect tool's hints and the remove confirmation.
+ * Nothing is added to a typed name to tell them apart.
  */
-export const NamesakesAreToldApart: Story = {
+export const NamesakesKeepTheirTypedNames: Story = {
   render: () => (
     <CanvasStory
       family={{
@@ -870,40 +871,37 @@ export const NamesakesAreToldApart: Story = {
     const canvas = within(canvasElement);
     const page = within(canvasElement.ownerDocument.body);
     await canvas.findByRole('button', { name: /^You/ });
-    const namesakes = canvas.getAllByRole('button', { name: /^José García/ });
-    await expect(namesakes).toHaveLength(2);
-    const [first, second] = namesakes.map(
-      (symbol) => symbol.getAttribute('aria-label') ?? '',
-    );
-    await expect(first).not.toBe(second);
-    // The accessible names, as computed, are the distinct ones.
-    await expect(canvas.getAllByRole('button', { name: first }).length).toBe(1);
-    await expect(canvas.getAllByRole('button', { name: second }).length).toBe(
-      1,
-    );
+    // Both symbols show, and are read out as, the name alone.
+    await expect(
+      canvas.getAllByRole('button', { name: 'José García' }),
+    ).toHaveLength(2);
+    for (const id of ['dad', 'grandad']) {
+      await expect(personSymbol(canvasElement, id)).toHaveTextContent(
+        /^José García$/,
+      );
+    }
 
-    // Each panel is titled by its own name.
-    const titles: string[] = [];
+    // Each panel is titled by the name as typed.
     for (const id of ['dad', 'grandad']) {
       await userEvent.click(personSymbol(canvasElement, id));
       await waitFor(() => expect(personPanel(canvasElement)).not.toBeNull());
-      titles.push(
-        within(personPanel(canvasElement) as HTMLElement).getByRole('heading', {
-          level: 2,
-        }).textContent ?? '',
-      );
+      const title = within(personPanel(canvasElement) as HTMLElement).getByRole(
+        'heading',
+        { level: 2 },
+      ).textContent;
+      await expect(title).toContain('José García');
+      await expect(title).not.toMatch(/José García \d|José García \(/);
       await userEvent.keyboard('{Escape}');
       await waitFor(() => expect(personPanel(canvasElement)).toBeNull());
     }
-    await expect(titles[0]).not.toBe(titles[1]);
 
-    // Connecting them is refused in words that tell them apart.
+    // Connecting them is refused naming each as typed.
     await userEvent.click(canvas.getByTestId('pedigree-tool-connect'));
     await userEvent.click(personSymbol(canvasElement, 'dad'));
     await userEvent.click(personSymbol(canvasElement, 'grandad'));
     const refusal = canvas.getByTestId('pedigree-connect-hint').textContent;
     await expect(refusal).toMatch(/already connected/);
-    await expect(refusal).not.toMatch(/“José García” and “José García”/);
+    await expect(refusal).toContain('“José García” and “José García”');
     await userEvent.click(canvas.getByTestId('pedigree-tool-pointer'));
 
     // So is removing one of them.
@@ -915,7 +913,7 @@ export const NamesakesAreToldApart: Story = {
       }),
     );
     const dialog = await page.findByRole('dialog', { name: /^Remove/ });
-    await expect(within(dialog).getByRole('heading').textContent).not.toBe(
+    await expect(within(dialog).getByRole('heading').textContent).toBe(
       'Remove José García?',
     );
   },
