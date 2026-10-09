@@ -18,6 +18,7 @@ import {
   type LocalizedString,
   messageText,
   missingSuppliedStageText,
+  suppliedStageText,
   type Stage,
   type StageType,
   type StructuralCodebook,
@@ -2990,9 +2991,22 @@ export class SyntheticInterview {
     }
 
     // The researcher's own wording, before Network Canvas's fills what is
-    // left. A dotted name (`tooltips.addPerson`) is a setting inside a group.
+    // left. A dotted name (`tooltips.addPerson`) is a setting inside a group,
+    // and a name the stage keeps in its `wording` group (as the Family
+    // Pedigree keeps `wording.panelTitle`) may leave the group out.
+    const supplied = new Set(
+      suppliedStageText(stage.type, this.localization).map(({ path }) =>
+        path.join('.'),
+      ),
+    );
     for (const [setting, text] of Object.entries(stage.wording ?? {})) {
-      setAtPath(config, setting.split('.'), this.localized(text));
+      const inWording =
+        !supplied.has(setting) && supplied.has(`wording.${setting}`);
+      setAtPath(
+        config,
+        [...(inWording ? ['wording'] : []), ...setting.split('.')],
+        this.localized(text),
+      );
     }
 
     return this.withSuppliedText(config, stage.type);

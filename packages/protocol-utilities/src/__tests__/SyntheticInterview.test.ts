@@ -3313,6 +3313,25 @@ describe('SyntheticInterview stage wording', () => {
     });
   });
 
+  it('writes a Family Pedigree setting into its wording group, named with or without it', () => {
+    const synth = new SyntheticInterview();
+    synth.addStage('FamilyPedigree', {
+      wording: {
+        'panelTitle': 'Your relatives',
+        'wording.biologicalParentLabel': 'Birth parent',
+      },
+    });
+
+    const { stages } = expectValid(synth);
+    expect(stages[0]).not.toHaveProperty('panelTitle');
+    expect(stages[0]).toMatchObject({
+      wording: {
+        panelTitle: { 'en-US': 'Your relatives' },
+        biologicalParentLabel: { 'en-US': 'Birth parent' },
+      },
+    });
+  });
+
   it('writes a dotted wording name inside its group and keeps the rest', () => {
     const synth = new SyntheticInterview();
     synth
