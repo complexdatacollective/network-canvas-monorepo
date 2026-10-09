@@ -480,3 +480,48 @@ describe('adding a child', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('an answer that cannot be chosen', () => {
+  it('says which recorded parent rules out a kind of parent', async () => {
+    const { user } = renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['female'] }),
+        person('shannon', { sex: ['female'] }),
+      ],
+      edges: [link('shannon', 'ego', 'biological', { carrier: true })],
+      adding: 'parent',
+    });
+    await user.click(screen.getByRole('radio', { name: 'Female' }));
+    const kind = screen.getByRole('radiogroup', {
+      name: /^What kind of parent are they\?/,
+    });
+    await waitFor(() =>
+      expect(
+        within(kind).getByRole('radio', { name: 'Biological parent' }),
+      ).toBeDisabled(),
+    );
+    expect(kind).toHaveAccessibleDescription(/“shannon”.*“Female” at birth/);
+    expect(kind).toHaveAccessibleDescription(
+      /“shannon” is recorded as having carried you/,
+    );
+  });
+
+  it('names the other genetic parent whose sex at birth rules a sex out', () => {
+    renderPersonForm('robin', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['female'] }),
+        person('robin', { sex: ['intersex'] }),
+        person('donor', { sex: ['male'] }),
+      ],
+      edges: [
+        link('robin', 'ego', 'biological', { carrier: true }),
+        link('donor', 'ego', 'donor'),
+      ],
+    });
+    const sex = screen.getByRole('radiogroup', {
+      name: /^Sex assigned at birth/,
+    });
+    expect(within(sex).getByRole('radio', { name: 'Male' })).toBeDisabled();
+    expect(sex).toHaveAccessibleDescription(/“donor”.*“Male” at birth/);
+  });
+});

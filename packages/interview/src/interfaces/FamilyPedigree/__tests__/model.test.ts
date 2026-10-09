@@ -14,6 +14,7 @@ import {
   possibleCarriers,
   primaryParentsOf,
   readFamily,
+  sexesRuledOut,
   siblingsOf,
 } from '../model';
 import { config, configWithoutGenderIdentity, link, person } from './fixtures';
@@ -1438,5 +1439,31 @@ describe('otherParentChoices', () => {
       choices: ['father'],
       preferred: undefined,
     });
+  });
+});
+
+describe('sexesRuledOut', () => {
+  test('names the other genetic parent whose sex at birth rules a sex out', () => {
+    const family = readFamily(
+      [
+        person('ego', { isEgo: true }),
+        person('robin', { sex: ['intersex'] }),
+        person('donor', { sex: ['male'] }),
+      ],
+      [
+        link('robin', 'ego', 'biological', { carrier: true }),
+        link('donor', 'ego', 'donor'),
+      ],
+      config,
+    );
+    expect(sexesRuledOut(family, 'robin')).toEqual([
+      {
+        sex: 'male',
+        rule: 'sameSexGeneticParent',
+        childId: 'ego',
+        coParentId: 'donor',
+      },
+      { sex: 'male', rule: 'carried', childId: 'ego' },
+    ]);
   });
 });

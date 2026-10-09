@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -24,6 +24,7 @@ import {
   type Connection,
   type Family,
   type ParentChoice,
+  parentConnectionBlock,
 } from '../model';
 import type { OwnedOptionLabels } from '../options';
 
@@ -52,6 +53,32 @@ type ConnectMenuProps = {
 type ParentAndChild = { parentId: string; childId: string };
 
 /**
+ * A menu item's label, with the reason it is unavailable shown beneath it
+ * when it is. The reason is the item's description (`aria-describedby` to
+ * `reasonId`), not part of its name.
+ */
+function ItemText({
+  label,
+  reason,
+  reasonId,
+}: {
+  label: ReactNode;
+  reason: string | undefined;
+  reasonId: string;
+}) {
+  return (
+    <span className="flex flex-col items-start">
+      <span>{label}</span>
+      {reason !== undefined && (
+        <span id={reasonId} aria-hidden className="text-sm">
+          {reason}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/**
  * Asks how two people the participant has selected are related: as partners,
  * or one as the other's parent — and then what kind of parent, as a second
  * step in the same menu rather than a submenu, which a touch screen cannot
@@ -68,6 +95,7 @@ export default function ConnectMenu({
   onClose,
 }: ConnectMenuProps) {
   const intl = useAppIntl();
+  const reasonIdPrefix = useId();
   // Every kind is offered by the codebook's label; a biological parent who
   // carried the pregnancy is its own choice, qualifying that label.
   const parentChoiceLabel = (choice: ParentChoice) =>
@@ -161,20 +189,57 @@ export default function ConnectMenu({
       pairArgs,
     );
     const canPartner = canConnectPartners(family, first, second);
-    const parentOption = (parent: ParentAndChild) => (
-      <DropdownMenuItem
-        key={parent.parentId}
-        closeOnClick={false}
-        disabled={
-          availableParentChoices(family, parent.parentId, parent.childId)
-            .length === 0
-        }
-        data-testid={`pedigree-connect-parent-${parent.parentId}`}
-        onClick={() => setChoice({ pair, parent })}
-      >
-        {parentLabel(parent)}
-      </DropdownMenuItem>
-    );
+    // An unavailable choice says why. Two people already connected cannot
+    // be connected again.
+    const partnersReason = canPartner
+      ? undefined
+      : intl.formatMessage(messages.unavailableAlreadyConnected, pairArgs);
+    const partnersReasonId = `${reasonIdPrefix}-partners`;
+    // The would-be child is already the would-be parent's ancestor.
+    const ancestorReason = ({ parentId, childId }: ParentAndChild) =>
+      intl.formatMessage(messages.unavailableAncestor, {
+        who: isYou(parentId)
+          ? 'parentIsYou'
+          : isYou(childId)
+            ? 'childIsYou'
+            : 'other',
+        parent: displayName(parentId),
+        child: displayName(childId),
+      });
+    const parentOption = (parent: ParentAndChild) => {
+      const unavailable =
+        availableParentChoices(family, parent.parentId, parent.childId)
+          .length === 0;
+      const block = unavailable
+        ? parentConnectionBlock(family, parent.parentId, parent.childId)
+        : undefined;
+      // Already connected, the reason is the one shown under the partner
+      // choices, which are unavailable too.
+      const reason =
+        block === 'descendant' ? ancestorReason(parent) : undefined;
+      const reasonId =
+        block === 'connected'
+          ? partnersReasonId
+          : `${reasonIdPrefix}-parent-${parent.parentId}`;
+      return (
+        <DropdownMenuItem
+          key={parent.parentId}
+          closeOnClick={false}
+          disabled={unavailable}
+          aria-describedby={
+            block === 'connected' || reason !== undefined ? reasonId : undefined
+          }
+          data-testid={`pedigree-connect-parent-${parent.parentId}`}
+          onClick={() => setChoice({ pair, parent })}
+        >
+          <ItemText
+            label={parentLabel(parent)}
+            reason={reason}
+            reasonId={reasonId}
+          />
+        </DropdownMenuItem>
+      );
+    };
 
     return (
       <DropdownMenuGroup>
@@ -184,6 +249,7 @@ export default function ConnectMenu({
         <DropdownMenuItem
           ref={firstItemRef}
           disabled={!canPartner}
+          aria-describedby={partnersReason && partnersReasonId}
           data-testid="pedigree-connect-partners"
           onClick={() =>
             onConnect(
@@ -197,10 +263,15 @@ export default function ConnectMenu({
             )
           }
         >
-          {partners}
+          <ItemText
+            label={partners}
+            reason={partnersReason}
+            reasonId={partnersReasonId}
+          />
         </DropdownMenuItem>
         <DropdownMenuItem
           disabled={!canPartner}
+          aria-describedby={partnersReason && partnersReasonId}
           data-testid="pedigree-connect-former-partners"
           onClick={() =>
             onConnect(

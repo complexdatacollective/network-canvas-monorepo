@@ -173,13 +173,15 @@ describe('connecting two people', () => {
       ],
     );
     // Ego's only genetic parent could have been either; nothing is ruled out.
-    expect([...sexesRuledOut(f, 'mother')]).toEqual([]);
-    expect([...sexesRuledOut(f, 'carrier')]).toEqual(['male']);
+    const sexes = (fam: typeof f, id: string) =>
+      sexesRuledOut(fam, id).map((reason) => reason.sex);
+    expect(sexes(f, 'mother')).toEqual([]);
+    expect(sexes(f, 'carrier')).toEqual(['male']);
     const twoParents = family(
       [...people, person('mother', { sex: ['female'] }), person('father')],
       [link('mother', 'ego', 'biological'), link('father', 'ego', 'donor')],
     );
-    expect([...sexesRuledOut(twoParents, 'father')]).toEqual(['female']);
+    expect(sexes(twoParents, 'father')).toEqual(['female']);
   });
 
   test('the recorded link', () => {

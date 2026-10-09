@@ -1024,30 +1024,109 @@ export function geneticParentsPossible(
 }
 
 /**
- * The sexes at birth that would contradict how a person is recorded as a
- * parent: as the genetic parent of someone whose other genetic parent
- * provided the same kind of gamete, or as having carried a pregnancy.
+ * A sex at birth that would contradict how a person is recorded as a parent,
+ * and why: they are a genetic parent of `childId`, whose other genetic
+ * parent `coParentId` is recorded with that sex and so provided the same
+ * kind of gamete, or they carried `childId`'s pregnancy, which nobody
+ * recorded as male at birth did.
  */
-export function sexesRuledOut(
-  family: Family,
-  personId: string,
-): Set<PedigreeSexAssignedAtBirth> {
+export type SexRuledOut = {
+  sex: PedigreeSexAssignedAtBirth;
+  childId: string;
+} & (
+  | { rule: 'sameSexGeneticParent'; coParentId: string }
+  | { rule: 'carried' }
+);
+
+/**
+ * The sexes at birth that would contradict how a person is recorded as a
+ * parent, each with the record that rules it out (`SexRuledOut`). A sex may
+ * be ruled out for several reasons, each listed.
+ */
+export function sexesRuledOut(family: Family, personId: string): SexRuledOut[] {
   const asParent = family.links.filter(
     (link) => link.kind !== 'partner' && link.source === personId,
   );
-  return new Set(
-    PEDIGREE_SEX_ASSIGNED_AT_BIRTH.filter((sex) =>
-      asParent.some(
-        (link) =>
-          (isGeneticKind(link.kind) &&
-            !geneticParentsPossible([
-              ...geneticParentSexes(family, link.target, personId),
-              sex,
-            ])) ||
-          (link.isGestationalCarrier && !couldCarryPregnancy(sex)),
-      ),
-    ),
+  const reasons: SexRuledOut[] = [];
+  for (const sex of PEDIGREE_SEX_ASSIGNED_AT_BIRTH) {
+    for (const link of asParent) {
+      if (isGeneticKind(link.kind)) {
+        const block = geneticParentBlock(
+          family,
+          link.target,
+          geneticParentsOf(family, link.target).filter((id) => id !== personId),
+          sex,
+        );
+        if (block?.rule === 'sameSexGeneticParent') {
+          reasons.push({
+            sex,
+            childId: link.target,
+            rule: 'sameSexGeneticParent',
+            coParentId: block.coParentId,
+          });
+        }
+      }
+      if (link.isGestationalCarrier && !couldCarryPregnancy(sex)) {
+        reasons.push({ sex, childId: link.target, rule: 'carried' });
+      }
+    }
+  }
+  return reasons;
+}
+
+/**
+ * Why someone of this sex at birth could not be another genetic parent of
+ * `childId` beside `geneticParentIds` (`geneticParentsPossible`): the child
+ * already has two, or one recorded with the same binary sex, who provided
+ * the same kind of gamete. Undefined when they could.
+ */
+export type GeneticParentBlock =
+  | { rule: 'geneticParentsFull'; childId: string; parentIds: string[] }
+  | {
+      rule: 'sameSexGeneticParent';
+      childId: string;
+      coParentId: string;
+      sex: 'female' | 'male';
+    };
+
+export function geneticParentBlock(
+  family: Family,
+  childId: string,
+  geneticParentIds: readonly string[],
+  sex: string | undefined,
+): GeneticParentBlock | undefined {
+  if (geneticParentIds.length >= 2) {
+    return {
+      rule: 'geneticParentsFull',
+      childId,
+      parentIds: [...geneticParentIds],
+    };
+  }
+  if (sex !== 'female' && sex !== 'male') return undefined;
+  const coParentId = geneticParentIds.find(
+    (id) => family.byId.get(id)?.sexAssignedAtBirth === sex,
   );
+  return coParentId === undefined
+    ? undefined
+    : { rule: 'sameSexGeneticParent', childId, coParentId, sex };
+}
+
+/** The person's genetic parents (biological parents and donors), as
+ * recorded. */
+export function geneticParentsOf(family: Family, personId: string): string[] {
+  return parentLinksOf(family, personId)
+    .filter((link) => isGeneticKind(link.kind))
+    .map((link) => link.source);
+}
+
+/** Whoever is recorded as having carried the person's pregnancy. */
+export function carrierOf(
+  family: Family,
+  personId: string,
+): string | undefined {
+  return parentLinksOf(family, personId).find(
+    (link) => link.isGestationalCarrier,
+  )?.source;
 }
 
 /** The sexes at birth of the person's genetic parents, as recorded, leaving
@@ -1088,6 +1167,23 @@ export function areConnected(family: Family, a: string, b: string): boolean {
       (link.source === a && link.target === b) ||
       (link.source === b && link.target === a),
   );
+}
+
+/**
+ * Why one person cannot be made any kind of parent of another
+ * (`availableParentChoices` offers nothing): they are the same person, they
+ * are already linked, or the would-be parent descends from the child.
+ * Undefined while some kind of parent is possible.
+ */
+export function parentConnectionBlock(
+  family: Family,
+  parentId: string,
+  childId: string,
+): 'self' | 'connected' | 'descendant' | undefined {
+  if (parentId === childId) return 'self';
+  if (areConnected(family, parentId, childId)) return 'connected';
+  if (isAncestor(family, childId, parentId)) return 'descendant';
+  return undefined;
 }
 
 /** Two people can be made partners unless they are already linked. */
