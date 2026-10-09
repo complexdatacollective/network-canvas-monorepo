@@ -57,9 +57,6 @@ const SECTIONS = [
   'Additional person fields',
   'Completeness',
   'Participant wording',
-  'Drawing the family',
-  'Connecting people',
-  'Adding a family member',
   'Nomination prompts',
   'Skip logic',
   'Interviewer guidance',
@@ -172,6 +169,19 @@ const summaryRows = async (): Promise<(string | null)[][]> => {
     );
 };
 
+/**
+ * Opens one group of the participant wording, whose fields are on screen only
+ * while it is open.
+ */
+const openWordingGroup = async (
+  harness: StageEditorHarness,
+  name: string,
+): Promise<void> => {
+  const trigger = await screen.findByRole('button', { name });
+  await harness.user.click(trigger);
+  await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'true'));
+};
+
 /** Opens the dialog that edits the gender identity options and their words. */
 const openGenderOptions = async (harness: StageEditorHarness) => {
   await harness.user.click(
@@ -213,6 +223,8 @@ describe('the family pedigree stage editor', () => {
       type: 'text',
       component: 'Text',
     });
+    // The wording's fields mount with their group.
+    await openWordingGroup(harness, 'Drawing the family');
 
     await harness.roundTrip({ unowned: [] });
   });
@@ -261,7 +273,9 @@ describe('the family pedigree stage editor', () => {
       subject: { entity: 'node', type: 'family_member' },
       prompt: { 'en-US': PROMPT_TEXT },
       // Every word the interface shows, except the wording question, which a
-      // stage shows only once participants choose their own.
+      // stage shows only once participants choose their own. The gender
+      // identity label among them is written by the save: the stage gained it
+      // when the attribute was bound, with its wording group closed.
       wording: Object.fromEntries(
         Object.entries(EVERY_PEDIGREE_WORD).filter(
           ([key]) => !key.startsWith('framing'),
@@ -1571,6 +1585,154 @@ describe('the wording', () => {
     );
     const request = await harness.submit();
     expect(framingOf(request?.stageDocument)).toBe('participantPreference');
+  });
+});
+
+describe('the participant wording', () => {
+  const GROUPS = [
+    'Drawing the family',
+    'Connecting people',
+    'Adding a family member',
+  ];
+  const group = (name: string) => screen.findByRole('button', { name });
+  const wordingOf = (document: SectionDoc | undefined) =>
+    isRecord(document?.wording) ? document.wording : {};
+
+  it('opens with every group closed and none of their fields on screen', async () => {
+    const harness = openFixture();
+    await harness.opened();
+
+    for (const name of GROUPS) {
+      expect(await group(name)).toHaveAttribute('aria-expanded', 'false');
+    }
+    expect(
+      screen.queryByText('Pointer tool button', { selector: FIELD_LABEL }),
+    ).toBeNull();
+    // So nothing on screen edits the wording yet.
+    expect(harness.ownedKeys()).not.toContain('wording');
+  });
+
+  it('shows a group’s settings once it is opened, as the stage holds them', async () => {
+    const harness = openFixture();
+    await harness.opened();
+
+    await openWordingGroup(harness, 'Drawing the family');
+
+    expect(
+      await screen.findByRole('textbox', { name: 'Pointer tool button' }),
+    ).toHaveValue(String(get(EVERY_PEDIGREE_WORD, ['pointerTool', 'en-US'])));
+    // Only that group's.
+    expect(
+      screen.queryByText('Connect question', { selector: FIELD_LABEL }),
+    ).toBeNull();
+  });
+
+  it('saves the stage unchanged with every group closed', async () => {
+    const harness = openFixture();
+    await harness.opened();
+
+    // Nothing on screen edits the wording while its groups are closed, and
+    // the stage keeps every word of it all the same.
+    await harness.roundTrip({ unowned: ['wording'] });
+  });
+
+  it('writes Network Canvas’s words for the framing choice, chosen while its group is closed', async () => {
+    const harness = openFixture();
+    await harness.opened();
+    expect(wordingOf(harness.seeded.fields)).not.toHaveProperty(
+      'framingChoiceTitle',
+    );
+
+    await harness.user.click(
+      await screen.findByRole('option', {
+        name: /^Let the participant choose/,
+      }),
+    );
+
+    const request = await harness.submit();
+    const wording = wordingOf(request?.stageDocument);
+    for (const key of [
+      'framingChoiceTitle',
+      'framingChoiceDescription',
+      'framingControlLabel',
+    ]) {
+      expect(wording[key]).toEqual(EVERY_PEDIGREE_WORD[key]);
+    }
+    expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
+      true,
+    );
+  });
+
+  it('keeps what was written in a group after the group is closed', async () => {
+    const harness = openFixture();
+    await harness.opened();
+    await openWordingGroup(harness, 'Drawing the family');
+    const field = await screen.findByRole('textbox', {
+      name: 'Pointer tool button',
+    });
+    await harness.user.clear(field);
+    await harness.user.type(field, 'Point');
+
+    await harness.user.click(await group('Drawing the family'));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('textbox', { name: 'Pointer tool button' }),
+      ).toBeNull(),
+    );
+
+    const request = await harness.submit();
+    expect(wordingOf(request?.stageDocument).pointerTool).toEqual({
+      'en-US': 'Point',
+    });
+  });
+
+  it('refuses a setting emptied in an open group, and keeps the group open over it', async () => {
+    const harness = openFixture();
+    await harness.opened();
+    await openWordingGroup(harness, 'Drawing the family');
+    await harness.user.clear(
+      await screen.findByRole('textbox', { name: 'Pointer tool button' }),
+    );
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByRole('textbox', { name: 'Pointer tool button' }),
+    ).toHaveFocus();
+
+    // Closing it would hide the field that has to be put right.
+    const trigger = await group('Drawing the family');
+    await harness.user.click(trigger);
+    await waitFor(() =>
+      expect(trigger).toHaveAttribute('aria-expanded', 'true'),
+    );
+    expect(
+      screen.getByRole('textbox', { name: 'Pointer tool button' }),
+    ).toBeInTheDocument();
+  });
+
+  it('opens the group holding a setting the protocol refuses', async () => {
+    const harness = renderStageEditor({
+      stage: familyPedigreeStageWith({
+        wording: {
+          ...wordingOf(loadFixtureStage('family-pedigree-1').fields),
+          // A placeholder this setting does not offer.
+          connectQuestion: { 'en-US': 'How is {nobody} related?' },
+        },
+      }),
+      editor: familyPedigreeEditor,
+    });
+    await harness.opened();
+    const trigger = await group('Connecting people');
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+
+    expect(await harness.submit()).toBeNull();
+
+    await waitFor(() =>
+      expect(trigger).toHaveAttribute('aria-expanded', 'true'),
+    );
+    expect(
+      await screen.findByText('Connect question', { selector: FIELD_LABEL }),
+    ).toBeVisible();
   });
 });
 

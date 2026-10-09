@@ -22,7 +22,9 @@ type WordingSetting = Readonly<{
   hint?: MessageDescriptor;
 }>;
 
-type WordingGroup = Readonly<{
+export type WordingGroup = Readonly<{
+  /** Names the group among the open ones. */
+  id: string;
   title: MessageDescriptor;
   settings: readonly WordingSetting[];
 }>;
@@ -34,6 +36,7 @@ type WordingGroup = Readonly<{
  */
 export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
   {
+    id: 'drawing',
     title: messages.wordingDrawingTitle,
     settings: [
       { key: 'pointerTool', label: messages.wordingPointerTool },
@@ -85,6 +88,7 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
     ],
   },
   {
+    id: 'connecting',
     title: messages.wordingConnectingTitle,
     settings: [
       {
@@ -154,6 +158,7 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
     ],
   },
   {
+    id: 'adding',
     title: messages.wordingAddingTitle,
     settings: [
       {
