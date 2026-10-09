@@ -73,6 +73,12 @@ function useNodeLimits({
     ],
   });
 
+  // Resolved on every render, so a change of interview language replaces the
+  // maximum's notice, which stays up until the participant moves on.
+  const maxNodesMessage = maxNodesNotice
+    ? resolveString(maxNodesNotice).text
+    : undefined;
+
   const maxToastRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -88,9 +94,7 @@ function useNodeLimits({
     // the pending timer rather than closing an already-rendered toast.
     const timeout = setTimeout(() => {
       maxToastRef.current = showToast({
-        description: maxNodesNotice
-          ? resolveString(maxNodesNotice).text
-          : undefined,
+        description: maxNodesMessage,
         variant: 'success',
         anchor: 'forward',
         timeout: 0,
@@ -104,8 +108,7 @@ function useNodeLimits({
         maxToastRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [maxNodesReached]);
+  }, [maxNodesReached, maxNodesMessage, showToast, closeToast]);
 
   // Once the maximum is reached nothing more could be added anyway, and the
   // stage says it is complete instead.

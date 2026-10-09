@@ -406,6 +406,52 @@ describe('Shell toast ownership', () => {
     expect(secondSync).not.toHaveBeenCalled();
   });
 
+  // The maximum's notice stays up until the participant moves on, so it is
+  // replaced when the interview's language changes under it.
+  it('says the maximum’s notice again in a language the participant changes to', async () => {
+    const payload = makePayload('limit');
+    payload.protocol.localization = {
+      defaultLocale: 'en',
+      locales: ['en', 'es'],
+    };
+    payload.session.localeOptions = [
+      getLocaleMetadata('en'),
+      getLocaleMetadata('es'),
+    ];
+    const [stage] = payload.protocol.stages as Record<string, unknown>[];
+    if (!stage) throw new Error('No name generator');
+    Object.assign(stage, {
+      behaviours: { maxNodes: 1 },
+      minNodesNotice: undefined,
+      maxNodesNotice: { en: 'That is everyone.', es: 'Eso es todo.' },
+    });
+    const content = (requestedLocale: string) => (
+      <Shell
+        {...handlers}
+        payload={payload}
+        onSync={() => Promise.resolve()}
+        requestedLocales={[requestedLocale]}
+        flags={{ isE2E: true }}
+        disableAnalytics
+      />
+    );
+    const view = render(content('en'), { wrapper: WithoutMotion });
+    await screen.findByRole('button', { name: 'Next Step' });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('quick-add-toggle'));
+    await user.click(
+      await screen.findByRole('textbox', { name: 'Person name' }),
+    );
+    await user.paste('Ana');
+    await user.keyboard('{Enter}');
+    expect(await screen.findByText('That is everyone.')).toBeInTheDocument();
+
+    view.rerender(content('es'));
+    expect(await screen.findByText('Eso es todo.')).toBeInTheDocument();
+    expect(screen.queryByText('That is everyone.')).not.toBeInTheDocument();
+  });
+
   it('retains provider-optional English and the module-manager fallback for standalone controls', async () => {
     render(
       <Toast.Provider toastManager={interviewToastManager}>
