@@ -50,12 +50,22 @@ const SUPPLIED_STAGE_TEXT: Readonly<
 const settingsOf = (stageType: string): readonly SuppliedStageSetting[] =>
   SUPPLIED_STAGE_TEXT[stageType] ?? [];
 
-/** A setting's supplied text in a protocol language, as the stage holds it. */
-const suppliedIn = (
+/**
+ * The text Network Canvas writes for a setting in a protocol language, as the
+ * stage holds it: its supplied text there, or, in the default language when
+ * it supplies none, the English text, because every supplied setting is
+ * required and a stage must hold it in some language. That is the rule for
+ * the Family Pedigree's option labels too (`writtenOptionLabel`), and what
+ * the schema 8 to 9 migration has always recorded.
+ */
+const writtenIn = (
   setting: SuppliedStageSetting,
   locale: LocaleTag,
+  isDefault: boolean,
 ): string | undefined => {
-  const text = suppliedTextFor(setting.text, locale);
+  const text =
+    suppliedTextFor(setting.text, locale) ??
+    (isDefault ? setting.text.en : undefined);
   return text === undefined ? undefined : escapeMessageText(text);
 };
 
@@ -76,28 +86,32 @@ export type SuppliedStageText = Readonly<{
 
 /**
  * The supplied settings a new stage of `stageType` starts with, each holding
- * its text in every protocol language Network Canvas supplies it in. A
- * setting no protocol language has text for is left out, for the researcher
- * to write like any other required text.
+ * Network Canvas's text in every protocol language it writes one in (see
+ * `writtenIn`).
  */
 export const suppliedStageText = (
   stageType: string,
   localization: LocalizationDeclaration,
 ): readonly SuppliedStageText[] =>
-  settingsOf(stageType).flatMap((setting) => {
+  settingsOf(stageType).map((setting) => {
     const value: Record<LocaleTag, string> = {};
     for (const locale of localization.locales) {
-      const text = suppliedIn(setting, locale);
+      const text = writtenIn(
+        setting,
+        locale,
+        locale === localization.defaultLocale,
+      );
       if (text !== undefined) value[locale] = text;
     }
-    return Object.keys(value).length > 0 ? [{ path: setting.path, value }] : [];
+    return { path: setting.path, value };
   });
 
 /**
  * A stage's supplied settings as Network Canvas writes them after a change to
  * the protocol's languages (see `suppliedTextAfterLanguageChange`): each one
- * whose text in the default language before the change is still the supplied
- * text. A setting the researcher has reworded is theirs, and is left out.
+ * whose text in the default language before the change is still Network
+ * Canvas's text there. A setting the researcher has reworded is theirs, and
+ * is left out.
  */
 export const suppliedStageTextAfterLanguageChange = (
   stage: Readonly<{ type: string }>,
@@ -108,14 +122,14 @@ export const suppliedStageTextAfterLanguageChange = (
     if (typeof current !== 'object' || current === null) return [];
     const { defaultLocale } = change.before;
     const text = (current as LocalizedString)[defaultLocale];
-    if (text === undefined || text !== suppliedIn(setting, defaultLocale))
+    if (text === undefined || text !== writtenIn(setting, defaultLocale, true))
       return [];
     return [
       {
         path: setting.path,
         value: suppliedTextAfterLanguageChange(
           current as LocalizedString,
-          (locale) => suppliedIn(setting, locale),
+          (locale, isDefault) => writtenIn(setting, locale, isDefault),
           change,
         ),
       },
@@ -124,25 +138,12 @@ export const suppliedStageTextAfterLanguageChange = (
 
 /**
  * The supplied settings `stage` is missing, as the schema 8 to 9 migration
- * adds them: in each protocol language Network Canvas supplies the text in,
- * or, where it supplies none of them, as English text for the migration to
- * record in the default language, since every one is required.
+ * adds them: as a new stage would hold them.
  */
 export const missingSuppliedStageText = (
   stage: Readonly<{ type: string }>,
   localization: LocalizationDeclaration,
-): readonly Readonly<{
-  path: readonly string[];
-  value: LocalizedString | string;
-}>[] => {
-  const supplied = suppliedStageText(stage.type, localization);
-  return settingsOf(stage.type)
-    .filter((setting) => valueAt(stage, setting.path) === undefined)
-    .map((setting) => ({
-      path: setting.path,
-      value:
-        supplied.find((text) => text.path === setting.path)?.value ??
-        setting.text.en ??
-        '',
-    }));
-};
+): readonly SuppliedStageText[] =>
+  suppliedStageText(stage.type, localization).filter(
+    ({ path }) => valueAt(stage, path) === undefined,
+  );

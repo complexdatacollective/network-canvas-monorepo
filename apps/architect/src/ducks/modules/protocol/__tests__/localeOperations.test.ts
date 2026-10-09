@@ -732,4 +732,16 @@ describe('a roster stage’s supplied panel title', () => {
       ),
     ).toEqual({ en: 'Services' });
   });
+
+  // A panel title is required, so a language Network Canvas has no wording
+  // for keeps the English text rather than being left with none.
+  it('stays in English when the protocol’s only language is corrected to one it is not supplied in', () => {
+    expect(
+      panelTitleOf(
+        protocolOf(
+          changeLocale(withRoster({ en: 'Available to add' }), 'en', 'hu'),
+        ),
+      ),
+    ).toEqual({ hu: 'Available to add' });
+  });
 });

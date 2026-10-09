@@ -26,13 +26,20 @@ describe('the roster panel title Network Canvas supplies', () => {
     ]);
   });
 
-  it('is left for the researcher to write when no protocol language has it', () => {
+  // It is required, so a default language Network Canvas has no wording for
+  // holds the English text, as the Family Pedigree's option labels do.
+  it('is written in English in a default language it is not supplied in', () => {
     expect(
       suppliedStageText('NameGeneratorRoster', {
         defaultLocale: 'hu',
-        locales: ['hu'],
+        locales: ['hu', 'fr'],
       }),
-    ).toEqual([]);
+    ).toEqual([
+      {
+        path: ['panelTitle'],
+        value: { hu: 'Available to add', fr: 'Éléments disponibles' },
+      },
+    ]);
   });
 
   it('is supplied for no other stage', () => {
@@ -67,6 +74,39 @@ describe('the roster panel title Network Canvas supplies', () => {
       }),
     ).toEqual([
       { path: ['panelTitle'], value: { de: 'Zum Hinzufügen verfügbar' } },
+    ]);
+  });
+
+  it('stays in English when its only language is corrected to one it is not supplied in', () => {
+    expect(
+      suppliedStageTextAfterLanguageChange(roster({ en: 'Available to add' }), {
+        before: english,
+        after: { defaultLocale: 'hu', locales: ['hu'] },
+        renamed: { en: 'hu' },
+      }),
+    ).toEqual([{ path: ['panelTitle'], value: { hu: 'Available to add' } }]);
+  });
+
+  it('stays in English in a new default language it is not supplied in when the old one is removed', () => {
+    expect(
+      suppliedStageTextAfterLanguageChange(roster({ en: 'Available to add' }), {
+        before: { defaultLocale: 'en', locales: ['en', 'hu'] },
+        after: { defaultLocale: 'hu', locales: ['hu'] },
+      }),
+    ).toEqual([{ path: ['panelTitle'], value: { hu: 'Available to add' } }]);
+  });
+
+  it('is still Network Canvas’s when a default language it is not supplied in holds the English text', () => {
+    expect(
+      suppliedStageTextAfterLanguageChange(roster({ hu: 'Available to add' }), {
+        before: { defaultLocale: 'hu', locales: ['hu'] },
+        after: { defaultLocale: 'hu', locales: ['hu', 'fr'] },
+      }),
+    ).toEqual([
+      {
+        path: ['panelTitle'],
+        value: { hu: 'Available to add', fr: 'Éléments disponibles' },
+      },
     ]);
   });
 
