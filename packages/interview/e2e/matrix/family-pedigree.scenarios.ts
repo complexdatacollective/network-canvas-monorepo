@@ -241,7 +241,7 @@ async function describe(
 }
 
 /** Submits the panel with the named button and waits for it to close. */
-async function submitPanel(page: Page, button: 'Add to family' | 'Save') {
+async function submitPanel(page: Page, button: 'Save') {
   await panel(page).getByRole('button', { name: button, exact: true }).click();
   await expect(panel(page)).toHaveCount(0);
 }
@@ -302,7 +302,7 @@ const trackerRing = (page: Page): Locator =>
 /** The list of what is still needed, open in the toolbar's popover. */
 const trackerList = (page: Page): Locator =>
   page.getByRole('region', {
-    name: 'Before you continue, please complete the following:',
+    name: /Show what’s still needed/,
   });
 
 // --- Scenarios ---------------------------------------------------------------
@@ -369,7 +369,7 @@ function smokeAddBothParents(): ScenarioDefinition {
         })
         .getByRole('radio', { name: 'Yes', exact: true })
         .click();
-      await submitPanel(page, 'Add to family');
+      await submitPanel(page, 'Save');
       await expect(member(page, 'Linda')).toBeVisible();
 
       await addRelativeOf(page, 'You', 'parent');
@@ -382,7 +382,7 @@ function smokeAddBothParents(): ScenarioDefinition {
           })
           .getByRole('radio', { name: 'Linda', exact: true }),
       ).toBeChecked();
-      await submitPanel(page, 'Add to family');
+      await submitPanel(page, 'Save');
       await expect(member(page, 'Robert')).toBeVisible();
       await expect(page.getByTestId('pedigree-person')).toHaveCount(3);
 
@@ -510,12 +510,12 @@ function siblingPartnerChildAndGeneratedLabels(): ScenarioDefinition {
         panel(page).getByRole('radiogroup', { name: /^Gender identity/ }),
       ).toHaveCount(0);
       await describe(page, { sex: 'Female' });
-      await submitPanel(page, 'Add to family');
+      await submitPanel(page, 'Save');
       await expect(member(page, 'Sister')).toBeVisible();
 
       await addRelativeOf(page, 'You', 'partner');
       await describe(page, { sex: 'Male' });
-      await submitPanel(page, 'Add to family');
+      await submitPanel(page, 'Save');
       await expect(member(page, 'Partner')).toBeVisible();
 
       await addRelativeOf(page, 'You', 'child');
@@ -528,7 +528,7 @@ function siblingPartnerChildAndGeneratedLabels(): ScenarioDefinition {
           .getByRole('radio', { name: 'Partner', exact: true }),
       ).toBeChecked();
       await describe(page, { sex: 'Male' });
-      await submitPanel(page, 'Add to family');
+      await submitPanel(page, 'Save');
       await expect(member(page, 'Son')).toBeVisible();
       await expect(page.getByTestId('pedigree-person')).toHaveCount(6);
 
@@ -608,7 +608,7 @@ function relationshipToParticipantRecorded(): ScenarioDefinition {
 
       await addRelativeOf(page, 'You', 'child');
       await describe(page, { name: 'Mia', gender: 'Woman', sex: 'Female' });
-      await submitPanel(page, 'Add to family');
+      await submitPanel(page, 'Save');
       await expect(member(page, 'Mia')).toBeVisible();
 
       await leaveForward(ctx);
@@ -688,7 +688,7 @@ function keyboardFirstVisit(): ScenarioDefinition {
         .focus();
       await page.keyboard.press('Space');
       await panel(page)
-        .getByRole('button', { name: 'Add to family', exact: true })
+        .getByRole('button', { name: 'Save', exact: true })
         .focus();
       await page.keyboard.press('Enter');
       await expect(panel(page)).toHaveCount(0);
@@ -781,10 +781,10 @@ function framingParticipantPreference(): ScenarioDefinition {
       const title = page.getByText('How should we describe your family?');
       await expect(title).toBeVisible();
       const gamete = page.getByRole('option', {
-        name: /^Egg parent, sperm parent, sibling/,
+        name: /^Egg parent, Sperm parent, Sibling/,
       });
       const gendered = page.getByRole('option', {
-        name: /^Mother, father, sister, brother/,
+        name: /^Mother, Father, Sister, Brother/,
       });
       await expect(gamete).toHaveAttribute('aria-selected', 'false');
       await expect(gendered).toHaveAttribute('aria-selected', 'false');
@@ -939,7 +939,7 @@ function completenessParentsRequired(): ScenarioDefinition {
         panel(page).getByRole('heading', { name: 'Add your parent' }),
       ).toBeVisible();
       await describe(page, { gender: 'Woman', sex: 'Female' });
-      await submitPanel(page, 'Add to family');
+      await submitPanel(page, 'Save');
       // Without a framing set, the gendered words describe her.
       await expect(member(page, 'Mother')).toBeVisible();
 
@@ -948,7 +948,7 @@ function completenessParentsRequired(): ScenarioDefinition {
         .getByRole('button', { name: 'Add your other biological parent' })
         .click();
       await describe(page, { gender: 'Man', sex: 'Male' });
-      await submitPanel(page, 'Add to family');
+      await submitPanel(page, 'Save');
       await expect(member(page, 'Father')).toBeVisible();
 
       // The last item opens the participant's own details.
@@ -1325,9 +1325,6 @@ function formFieldsMissingDetails(): ScenarioDefinition {
       await expect(
         panel(page).getByText('Some details are missing: How old are they?.'),
       ).toBeVisible();
-      await expect(
-        panel(page).getByRole('heading', { name: 'More about this person' }),
-      ).toBeVisible();
       await expect(panel(page).getByText('In whole years.')).toBeVisible();
       await panel(page)
         .getByRole('spinbutton', { name: /^How old are they\?/ })
@@ -1344,7 +1341,7 @@ function formFieldsMissingDetails(): ScenarioDefinition {
       await panel(page)
         .getByRole('spinbutton', { name: /^How old are they\?/ })
         .fill('30');
-      await submitPanel(page, 'Add to family');
+      await submitPanel(page, 'Save');
       await expect(member(page, 'Bea')).toBeVisible();
 
       const network = await networkOf(ctx);
@@ -1560,7 +1557,7 @@ function connectAndDisconnect(): ScenarioDefinition {
       await page.getByTestId('pedigree-tool-connect').click();
       await tom.click();
       await expect(hint).toHaveText(
-        'Now select the person to connect to “Tom”.',
+        'Select a person, then select another to connect them.',
       );
       await member(page, 'You').click();
       await page
@@ -1578,12 +1575,9 @@ function connectAndDisconnect(): ScenarioDefinition {
       const [adoption] = linksBetween(await networkOf(ctx), 'dad', 'ego');
       expect(adoption?.from).toBe('dad');
 
-      // Already connected: no second link.
+      // Already connected: no second link, so Tom is unavailable.
       await rachel.click();
-      await tom.click();
-      await expect(hint).toHaveText(
-        '“Rachel” and “Tom” are already connected.',
-      );
+      await expect(tom).toBeDisabled();
       await expect(page.getByRole('menu')).toHaveCount(0);
       await page.keyboard.press('Escape');
 
@@ -1594,7 +1588,7 @@ function connectAndDisconnect(): ScenarioDefinition {
       const dialog = page.getByRole('dialog', {
         name: 'Remove the connection between “Tom” and “Rachel”?',
       });
-      await dialog.getByRole('button', { name: 'Remove connection' }).click();
+      await dialog.getByRole('button', { name: 'Delete' }).click();
       await expect(dialog).toHaveCount(0);
       await expect
         .poll(async () => linksBetween(await networkOf(ctx), 'dad', 'mum'))
@@ -1738,7 +1732,7 @@ function encryptedNames(): ScenarioDefinition {
       );
       await addRelativeOf(page, 'You', 'sibling');
       await describe(page, { name: 'Bea', gender: 'Woman', sex: 'Female' });
-      await submitPanel(page, 'Add to family');
+      await submitPanel(page, 'Save');
       await expect(member(page, 'Bea')).toBeVisible();
 
       const isCiphertext = (value: unknown) =>
@@ -1800,7 +1794,7 @@ function encryptedFormField(): ScenarioDefinition {
       const notice = page.getByTestId('pedigree-passphrase-notice');
       await expect(
         notice.getByText(
-          'Enter your passphrase to add or change people in your family.',
+          'Some answers here are protected by your passphrase. Enter your passphrase to see and change them.',
           { exact: true },
         ),
       ).toBeVisible();
@@ -1827,7 +1821,7 @@ function encryptedFormField(): ScenarioDefinition {
       await addRelativeOf(page, 'You', 'sibling');
       await describe(page, { name: 'Bea', gender: 'Woman', sex: 'Female' });
       await panel(page).getByRole('textbox', { name: NICKNAME }).fill('Bee');
-      await submitPanel(page, 'Add to family');
+      await submitPanel(page, 'Save');
       await expect(member(page, 'Bea')).toBeVisible();
 
       const isCiphertext = (value: unknown) =>
