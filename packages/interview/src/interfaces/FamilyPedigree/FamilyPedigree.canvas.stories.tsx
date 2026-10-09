@@ -1,0 +1,487 @@
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { useMemo } from 'react';
+import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test';
+import SuperJSON from 'superjson';
+
+import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
+import { buildInterview, type Family } from './FamilyPedigree.stories';
+
+/**
+ * The family tree's canvas: what stays in view, and where, as the family is
+ * built, panned and zoomed; and where keyboard focus goes. The stage is
+ * rendered at the story viewport's size, or in a frame of the given size.
+ */
+function CanvasStory({
+  family,
+  frame,
+}: {
+  family: Family;
+  /** A screen of this size in place of the whole story viewport. */
+  frame?: { width: number; height: number };
+}) {
+  const rawPayload = useMemo(
+    () => SuperJSON.stringify(buildInterview({ family })),
+    [family],
+  );
+  return (
+    <div
+      className={frame ? 'flex' : 'flex h-dvh w-full'}
+      style={frame ? { width: frame.width, height: frame.height } : undefined}
+    >
+      <StoryInterviewShell rawPayload={rawPayload} />
+    </div>
+  );
+}
+
+const meta: Meta = {
+  title: 'Interfaces/FamilyPedigree/Canvas',
+  parameters: { layout: 'fullscreen' },
+};
+
+export default meta;
+type Story = StoryObj;
+
+type Box = { left: number; top: number; right: number; bottom: number };
+
+const boxOf = (element: Element): Box => {
+  const { left, top, right, bottom } = element.getBoundingClientRect();
+  return { left, top, right, bottom };
+};
+
+const overlaps = (a: Box, b: Box) =>
+  a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+
+const inside = (inner: Box, outer: Box) =>
+  inner.left >= outer.left - 0.5 &&
+  inner.right <= outer.right + 0.5 &&
+  inner.top >= outer.top - 0.5 &&
+  inner.bottom <= outer.bottom + 0.5;
+
+const isDisabled = (button: HTMLElement) =>
+  button.getAttribute('aria-disabled') === 'true' ||
+  (button as HTMLButtonElement).disabled;
+
+const nextFrame = () =>
+  new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
+
+/** Waits for the canvas to stop moving: the same transform for five frames. */
+async function settled(canvasElement: HTMLElement) {
+  const content = within(canvasElement).getByTestId('pedigree-canvas')
+    .lastElementChild as HTMLElement;
+  let last = '';
+  let steady = 0;
+  for (let frame = 0; frame < 300 && steady < 5; frame++) {
+    await nextFrame();
+    const now = getComputedStyle(content).transform;
+    steady = now === last ? steady + 1 : 0;
+    last = now;
+  }
+}
+
+const personSymbol = (canvasElement: HTMLElement, personId: string) => {
+  const person = canvasElement.querySelector(
+    `[data-testid="pedigree-person"][data-person-id="${personId}"]`,
+  );
+  const symbol = person?.querySelector('button');
+  if (!symbol) throw new Error(`No symbol for ${personId}`);
+  return symbol;
+};
+
+const toolbarBox = (canvasElement: HTMLElement) =>
+  boxOf(
+    within(canvasElement).getByRole('toolbar', { name: 'Family tree tools' }),
+  );
+
+const canvasBox = (canvasElement: HTMLElement) =>
+  boxOf(within(canvasElement).getByTestId('pedigree-canvas'));
+
+/** Moves keyboard focus back from the toolbar to the family's tab stop. */
+async function tabIntoFamily(canvasElement: HTMLElement) {
+  await userEvent.click(
+    within(canvasElement).getByRole('button', {
+      name: 'Show the whole family',
+    }),
+  );
+  for (let press = 0; press < 6; press++) {
+    await userEvent.tab({ shift: true });
+    const focused = canvasElement.ownerDocument.activeElement;
+    if (focused?.closest('[data-testid="pedigree-person"]')) return;
+  }
+  throw new Error('Focus did not reach the family');
+}
+
+const menuButtons = (canvasElement: HTMLElement) =>
+  ['parent', 'sibling', 'partner', 'child'].map((relation) =>
+    within(canvasElement).getByTestId(`pedigree-menu-${relation}`),
+  );
+
+/** A straight line of mothers: the participant, their mother, her mother
+ * and hers, each with a partner. */
+const fourGenerations: Family = {
+  people: [
+    { id: 'ego', name: 'Ana', gender: 'woman', sex: 'female', ego: true },
+    { id: 'mum', name: 'Rosa', gender: 'woman', sex: 'female' },
+    { id: 'dad', name: 'Luis', gender: 'man', sex: 'male' },
+    { id: 'gran', name: 'Elena', gender: 'woman', sex: 'female' },
+    { id: 'grandad', name: 'Jorge', gender: 'man', sex: 'male' },
+    { id: 'greatGran', name: 'Carmen', gender: 'woman', sex: 'female' },
+    { id: 'greatGrandad', name: 'Pablo', gender: 'man', sex: 'male' },
+  ],
+  links: [
+    { from: 'mum', to: 'dad', kind: 'partner' },
+    { from: 'mum', to: 'ego', kind: 'biological', carrier: true },
+    { from: 'dad', to: 'ego', kind: 'biological' },
+    { from: 'gran', to: 'grandad', kind: 'partner' },
+    { from: 'gran', to: 'mum', kind: 'biological', carrier: true },
+    { from: 'grandad', to: 'mum', kind: 'biological' },
+    { from: 'greatGran', to: 'greatGrandad', kind: 'partner' },
+    { from: 'greatGran', to: 'gran', kind: 'biological', carrier: true },
+    { from: 'greatGrandad', to: 'gran', kind: 'biological' },
+  ],
+};
+
+/**
+ * Showing the whole family leaves room for the add menu: the top row's
+ * Parent buttons clear of the prompt, and the bottom row's Child buttons
+ * clear of the toolbar, where they can be clicked.
+ */
+export const TheWholeFamilyLeavesRoomForTheAddMenu: Story = {
+  render: () => <CanvasStory family={fourGenerations} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: /^You/ });
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Show the whole family' }),
+    );
+    await settled(canvasElement);
+
+    await userEvent.hover(personSymbol(canvasElement, 'ego'));
+    const child = await canvas.findByTestId('pedigree-menu-child');
+    await expect(
+      overlaps(boxOf(child), toolbarBox(canvasElement)),
+      'Child clear of the toolbar',
+    ).toBe(false);
+    await expect(
+      inside(boxOf(child), canvasBox(canvasElement)),
+      'Child on the canvas',
+    ).toBe(true);
+
+    const heading = canvas.getByRole('heading', { name: /^Add the members/ });
+    for (const topRow of ['greatGran', 'greatGrandad']) {
+      await userEvent.hover(personSymbol(canvasElement, topRow));
+      await waitFor(() =>
+        expect(
+          personSymbol(canvasElement, topRow).parentElement?.querySelector(
+            '[data-testid="pedigree-menu-parent"]',
+          ),
+        ).not.toBeNull(),
+      );
+      const parent = canvas.getByTestId('pedigree-menu-parent');
+      await expect(
+        overlaps(boxOf(parent), boxOf(heading)),
+        `${topRow}'s Parent clear of the prompt`,
+      ).toBe(false);
+    }
+  },
+};
+
+/** Adds a parent to someone through their add menu, as a woman. */
+async function addMother(canvasElement: HTMLElement, childId: string) {
+  const canvas = within(canvasElement);
+  const body = within(canvasElement.ownerDocument.body);
+  await userEvent.hover(personSymbol(canvasElement, childId));
+  await userEvent.click(await canvas.findByTestId('pedigree-menu-parent'));
+  await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
+  await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
+  await userEvent.click(
+    await body.findByRole('button', { name: 'Add to family' }),
+  );
+  await waitFor(() =>
+    expect(
+      canvasElement.ownerDocument.querySelector(
+        '[data-testid="pedigree-person-panel"]',
+      ),
+    ).toBeNull(),
+  );
+  // Away from everyone, so no menu is left open.
+  await userEvent.unhover(personSymbol(canvasElement, childId));
+  await settled(canvasElement);
+}
+
+/**
+ * Building the family upwards, one parent at a time, moves the view to show
+ * each new person without pushing anyone who was in view under the toolbar
+ * or the prompt.
+ */
+export const AddingAncestorsKeepsEveryoneClear: Story = {
+  render: () => (
+    <CanvasStory
+      family={{
+        people: [
+          { id: 'ego', name: 'Ana', gender: 'woman', sex: 'female', ego: true },
+        ],
+        links: [],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: /^You/ });
+    let childId = 'ego';
+    for (let generation = 0; generation < 4; generation++) {
+      const before = new Set(
+        canvas
+          .getAllByTestId('pedigree-person')
+          .map((person) => person.dataset.personId),
+      );
+      await addMother(canvasElement, childId);
+      const added = canvas
+        .getAllByTestId('pedigree-person')
+        .map((person) => person.dataset.personId ?? '')
+        .find((id) => !before.has(id));
+      if (!added) throw new Error('No one was added');
+      const toolbar = toolbarBox(canvasElement);
+      const heading = boxOf(
+        canvas.getByRole('heading', { name: /^Add the members/ }),
+      );
+      for (const person of canvas.getAllByTestId('pedigree-person')) {
+        const symbol = boxOf(person.querySelector('button') as Element);
+        await expect(
+          overlaps(symbol, toolbar),
+          `${person.dataset.personId} clear of the toolbar`,
+        ).toBe(false);
+        await expect(
+          overlaps(symbol, heading),
+          `${person.dataset.personId} clear of the prompt`,
+        ).toBe(false);
+        await expect(
+          inside(symbol, canvasBox(canvasElement)),
+          `${person.dataset.personId} on the canvas`,
+        ).toBe(true);
+      }
+      childId = added;
+    }
+  },
+};
+
+/** Drags the canvas by (dx, dy) with the mouse, in ten steps. */
+function dragCanvas(viewport: HTMLElement, dx: number, dy: number) {
+  const box = viewport.getBoundingClientRect();
+  const start = {
+    x: box.left + box.width * 0.2,
+    y: box.top + box.height * 0.3,
+  };
+  const at = (step: number) => ({
+    pointerId: 1,
+    pointerType: 'mouse',
+    isPrimary: true,
+    clientX: start.x + (dx * step) / 10,
+    clientY: start.y + (dy * step) / 10,
+  });
+  fireEvent.pointerDown(viewport, { ...at(0), buttons: 1 });
+  for (let step = 1; step <= 10; step++) {
+    fireEvent.pointerMove(viewport, { ...at(step), buttons: 1 });
+  }
+  fireEvent.pointerUp(viewport, at(10));
+}
+
+/** How much of anyone's symbol is inside the box, at most, in pixels of
+ * width and height. */
+function mostVisible(canvasElement: HTMLElement, area: Box) {
+  let best = { width: 0, height: 0 };
+  for (const person of within(canvasElement).getAllByTestId(
+    'pedigree-person',
+  )) {
+    const symbol = boxOf(person.querySelector('button') as Element);
+    const width =
+      Math.min(symbol.right, area.right) - Math.max(symbol.left, area.left);
+    const height =
+      Math.min(symbol.bottom, area.bottom) - Math.max(symbol.top, area.top);
+    if (width > 0 && height > 0 && width * height > best.width * best.height) {
+      best = { width, height };
+    }
+  }
+  return best;
+}
+
+const threePeople: Family = {
+  people: [
+    { id: 'ego', name: 'Ana', gender: 'woman', sex: 'female', ego: true },
+    { id: 'mum', name: 'Rosa', gender: 'woman', sex: 'female' },
+    { id: 'dad', name: 'Luis', gender: 'man', sex: 'male' },
+  ],
+  links: [
+    { from: 'mum', to: 'dad', kind: 'partner' },
+    { from: 'mum', to: 'ego', kind: 'biological', carrier: true },
+    { from: 'dad', to: 'ego', kind: 'biological' },
+  ],
+};
+
+/**
+ * However far the canvas is dragged, at any zoom, some of the family stays
+ * on screen, clear of the prompt and the toolbar.
+ */
+export const TheFamilyCannotBeDraggedOutOfSight: Story = {
+  render: () => <CanvasStory family={threePeople} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const viewport = canvas.getByTestId('pedigree-canvas');
+    await canvas.findByRole('button', { name: /^You/ });
+    const clearArea = () => {
+      const box = canvasBox(canvasElement);
+      return {
+        ...box,
+        top: boxOf(canvas.getByRole('heading', { name: /^Add the members/ }))
+          .bottom,
+        bottom: toolbarBox(canvasElement).top,
+      };
+    };
+    const dragFar = async (dx: number, dy: number) => {
+      for (let time = 0; time < 4; time++) dragCanvas(viewport, dx, dy);
+      await settled(canvasElement);
+    };
+    const expectSomeoneInView = () => {
+      const seen = mostVisible(canvasElement, clearArea());
+      expect(seen.width, 'someone in view, across').toBeGreaterThan(20);
+      expect(seen.height, 'someone in view, down').toBeGreaterThan(20);
+    };
+
+    await dragFar(2000, 1500);
+    expectSomeoneInView();
+    await dragFar(-4000, -3000);
+    expectSomeoneInView();
+
+    const zoomIn = canvas.getByRole('button', { name: 'Zoom in' });
+    while (!isDisabled(zoomIn)) {
+      await userEvent.click(zoomIn);
+      await settled(canvasElement);
+    }
+    await dragFar(3000, 2000);
+    expectSomeoneInView();
+    await dragFar(-6000, -4000);
+    expectSomeoneInView();
+  },
+};
+
+/** A sibling drawn at the right-hand end of the family. */
+const withBrother: Family = {
+  ...threePeople,
+  people: [
+    ...threePeople.people,
+    { id: 'brother', name: 'Tomasz', gender: 'man', sex: 'male' },
+  ],
+  links: [
+    ...threePeople.links,
+    { from: 'mum', to: 'brother', kind: 'biological', carrier: true },
+    { from: 'dad', to: 'brother', kind: 'biological' },
+  ],
+};
+
+/**
+ * On a phone, the add menu opened from the keyboard around someone at the
+ * edge of the screen is moved fully into view.
+ */
+export const TheAddMenuOpensInView: Story = {
+  render: () => (
+    <CanvasStory family={withBrother} frame={{ width: 390, height: 844 }} />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: /^You/ });
+    await tabIntoFamily(canvasElement);
+    await settled(canvasElement);
+    // Every person in turn. Focus moved from someone focused by the
+    // keyboard shows as keyboard focus too.
+    for (const id of ['ego', 'brother', 'mum', 'dad']) {
+      personSymbol(canvasElement, id).focus();
+      await settled(canvasElement);
+      const area = canvasBox(canvasElement);
+      const toolbar = toolbarBox(canvasElement);
+      for (const button of menuButtons(canvasElement)) {
+        await expect(
+          inside(boxOf(button), area),
+          `${id}: ${button.textContent} on the canvas`,
+        ).toBe(true);
+        await expect(
+          overlaps(boxOf(button), toolbar),
+          `${id}: ${button.textContent} clear of the toolbar`,
+        ).toBe(false);
+      }
+    }
+  },
+};
+
+/**
+ * Zoomed all the way out, the add menu's buttons keep a target of at least
+ * 24 pixels.
+ */
+export const AddButtonsKeepTheirSizeWhenZoomedOut: Story = {
+  render: () => <CanvasStory family={fourGenerations} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: /^You/ });
+    const zoomOut = canvas.getByRole('button', { name: 'Zoom out' });
+    while (!isDisabled(zoomOut)) {
+      await userEvent.click(zoomOut);
+      await settled(canvasElement);
+    }
+    await userEvent.hover(personSymbol(canvasElement, 'ego'));
+    await canvas.findByTestId('pedigree-menu-child');
+    for (const button of menuButtons(canvasElement)) {
+      const { width, height } = button.getBoundingClientRect();
+      await expect(
+        width,
+        `${button.textContent} wide enough`,
+      ).toBeGreaterThanOrEqual(24);
+      await expect(
+        height,
+        `${button.textContent} tall enough`,
+      ).toBeGreaterThanOrEqual(24);
+    }
+  },
+};
+
+/**
+ * Zooming in from the keyboard with someone focused keeps them, and their add
+ * menu, on screen.
+ */
+export const ZoomingKeepsTheFocusedPersonInView: Story = {
+  render: () => <CanvasStory family={fourGenerations} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: /^You/ });
+    // Into the family from the toolbar, then up to the top row.
+    await tabIntoFamily(canvasElement);
+    await settled(canvasElement);
+    await userEvent.keyboard('{ArrowUp}');
+    await userEvent.keyboard('{ArrowUp}');
+    await userEvent.keyboard('{ArrowUp}');
+    const top = canvasElement.ownerDocument.activeElement as HTMLElement;
+    await expect(
+      ['greatGran', 'greatGrandad'].includes(
+        top.closest<HTMLElement>('[data-testid="pedigree-person"]')?.dataset
+          .personId ?? '',
+      ),
+    ).toBe(true);
+    const zoomIn = canvas.getByRole('button', { name: 'Zoom in' });
+    while (!isDisabled(zoomIn)) {
+      await userEvent.keyboard('+');
+      await settled(canvasElement);
+      await expect(
+        canvasElement.ownerDocument.activeElement,
+        'focus kept',
+      ).toBe(top);
+      const area = canvasBox(canvasElement);
+      await expect(
+        inside(boxOf(top), area),
+        'focused person on the canvas',
+      ).toBe(true);
+      for (const button of menuButtons(canvasElement)) {
+        await expect(
+          inside(boxOf(button), area),
+          `${button.textContent} on the canvas`,
+        ).toBe(true);
+      }
+    }
+  },
+};
