@@ -394,6 +394,27 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance: contradictoryPassphraseRules. Anonymisation is the name of the interface (stage type) that asks a participant to choose a passphrase protecting some of their answers; the lengths are the shortest and longest passphrase the researcher allowed. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
   },
+  schema9DuplicateOptionValues: {
+    id: 'protocolValidation.migrationNotes.schema9.duplicateOptionValues',
+    defaultMessage:
+      'Each option of an ordinal or categorical attribute must now have a value of its own, because answers are stored by value and two options with the same value cannot be told apart. Where options shared a value, the first is kept and the later ones are removed. Values are compared as written, except that a number and text that read the same, such as 1 and "1", count as the same value. Answers already recorded, and skip logic and filters, keep the value they use. If removing options leaves an attribute requiring more selections than it has options, that requirement is removed.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance: duplicateOptionValues. An ordinal or categorical attribute offers a fixed list of options; each option has a label the participant reads and a value stored as the answer. Skip logic decides whether a stage is shown; a filter decides which people a stage lists. "Requiring more selections" refers to the minimum number of options a participant must choose. Keep 1 and "1" exactly as written.',
+  },
+  schema9IntroductionPanelText: {
+    id: 'protocolValidation.migrationNotes.schema9.introductionPanelText',
+    defaultMessage:
+      "An introduction panel's text is now optional, so a panel can show only its title. Text that contained only spaces is removed, so the panel shows only its title, as before. An introduction panel's title must contain some text, so a title that contained only spaces now uses the stage's name.",
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance: introductionPanelText. An introduction panel is the screen with a title and text that opens a form or census stage before its questions. The stage name is the name shown for the stage in the list of stages.',
+  },
+  schema9OtherBinText: {
+    id: 'protocolValidation.migrationNotes.schema9.otherBinText',
+    defaultMessage:
+      'On a Categorical Bin stage, the label of the bin for answers not listed and the question that asks participants to describe their answer must now contain some text. Where either contained only spaces, it now uses the other\'s text, or "Other" for the label and "Please specify" for the question.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance: otherBinText. Categorical Bin is the name of an interface (stage type) where participants sort people into bins; one bin can collect answers that are not listed, and then asks the participant to describe their answer. "Other" and "Please specify" are literal English defaults written into protocol data: keep them in English.',
+  },
   schema9EncryptedAttributeRules: {
     id: 'protocolValidation.migrationNotes.schema9.encryptedAttributeRules',
     defaultMessage:
@@ -575,6 +596,9 @@ const migrationNoteSets = {
       migrationNoteMessages.schema9BlankFieldQuestions,
       migrationNoteMessages.schema9EncryptedAttributes,
       migrationNoteMessages.schema9ContradictoryPassphraseRules,
+      migrationNoteMessages.schema9DuplicateOptionValues,
+      migrationNoteMessages.schema9IntroductionPanelText,
+      migrationNoteMessages.schema9OtherBinText,
       migrationNoteMessages.schema9EncryptedAttributeRules,
       migrationNoteMessages.schema9FamilyPedigree,
       migrationNoteMessages.schema9FamilyPedigreeLabels,

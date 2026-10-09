@@ -38,8 +38,9 @@ export async function generateMetadata({
   };
 }
 
-// The interview's language can differ from the page's, and the completed
-// state's actions follow the interview, so every language's labels go along.
+// The interview's language can differ from the page's, and the finish
+// confirmation and the completed state's actions follow the interview, so
+// every language's text goes along.
 async function loadCompletionLabels(): Promise<CompletionLabels> {
   const entries = await Promise.all(
     locales.map(async (locale) => {
@@ -49,7 +50,11 @@ async function loadCompletionLabels(): Promise<CompletionLabels> {
       });
       return [
         locale,
-        { restart: t('restart'), backToProtocol: t('backToProtocol') },
+        {
+          finishConfirmation: t('finishConfirmation'),
+          restart: t('restart'),
+          backToProtocol: t('backToProtocol'),
+        },
       ] as const;
     }),
   );

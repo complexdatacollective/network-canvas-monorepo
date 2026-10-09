@@ -130,7 +130,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
   const introductionPanel = configuration.introductionPanel as
     | {
         title: LocalizedString;
-        text: LocalizedString;
+        text?: LocalizedString;
       }
     | undefined;
   const dataSource = configuration.dataSource as string | undefined;

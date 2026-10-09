@@ -43,8 +43,7 @@ describe('the introduction a participant reads before a task', () => {
 
   /**
    * Not a capability: every interface with an introduction requires one, so
-   * there is nothing to switch off and no state in which half of it is
-   * acceptable.
+   * there is nothing to switch off. Only its text may be left out.
    */
   it('offers no way to switch the introduction off', () => {
     renderStageEditor({ stageId: 'ego-form-1', sections: introduction });
@@ -69,6 +68,26 @@ describe('the introduction a participant reads before a task', () => {
     expect(
       await screen.findByText('This field is required.'),
     ).toBeInTheDocument();
+  });
+
+  // A panel with only a title is a complete introduction: published protocols
+  // open a stage with their heading alone.
+  it('saves a stage whose introduction has a heading and no text', async () => {
+    const harness = renderStageEditor({
+      stageId: 'ego-form-1',
+      sections: introduction,
+    });
+    const before = harness.seeded.fields.introductionPanel;
+
+    await harness.user.clear(
+      await screen.findByRole('textbox', { name: 'Introduction text' }),
+    );
+    await waitFor(() => expect(harness.outline()[0]?.state).toBe('Finished'));
+
+    const request = await harness.submit();
+    expect(request?.stageDocument.introductionPanel).toEqual({
+      title: Reflect.get(before as object, 'title'),
+    });
   });
 
   /**

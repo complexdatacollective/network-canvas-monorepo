@@ -382,6 +382,49 @@ describe('InterviewRoute enter gate', () => {
     expect(getSessionMock).toHaveBeenCalledTimes(reads);
   });
 
+  // The runtime treats a refused write as unsaved and offers it again, so a
+  // failure has to reach it as a rejection rather than be swallowed here.
+  it('rejects a language change the session could not store', async () => {
+    getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    const cause = new Error('IndexedDB write failed');
+    setSessionLocaleMock.mockRejectedValueOnce(cause);
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await lastShellProps()
+        .onProtocolLocaleChange('s1', { locale: 'fr', localePreference: 'fr' })
+        .then(
+          () => 'resolved',
+          (error: unknown) => error,
+        );
+    });
+
+    expect(outcome).toBe(cause);
+  });
+
+  it('rejects answers the session could not store', async () => {
+    getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    const cause = new Error('IndexedDB write failed');
+    updateSessionMock.mockRejectedValueOnce(cause);
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await lastShellProps()
+        .onSync('s1', makeSyncPayload(), { immediate: true, unloading: false })
+        .then(
+          () => 'resolved',
+          (error: unknown) => error,
+        );
+    });
+
+    expect(updateSessionMock).toHaveBeenCalledTimes(1);
+    expect(outcome).toBe(cause);
+  });
+
   it('navigates home when the enter gate is cancelled', async () => {
     getSettingsMock.mockResolvedValue({
       requireUnlockOnEnter: true,
@@ -597,18 +640,22 @@ describe('InterviewRoute finish flow', () => {
     render(<InterviewRoute sessionId="s1" />);
     await screen.findByTestId('shell-mounted');
 
+    const finishing = new AbortController();
     await act(async () => {
       await lastShellProps().onFinish(
         's1',
         { stageId: 'finish-ineligible', outcome: 'ineligible' },
-        new AbortController().signal,
+        finishing.signal,
       );
     });
 
-    expect(markSessionFinishedMock).toHaveBeenCalledWith('s1', {
-      stageId: 'finish-ineligible',
-      outcome: 'ineligible',
-    });
+    // The signal goes with the write, which checks it again before it
+    // commits (sessions.finishRace.test.ts).
+    expect(markSessionFinishedMock).toHaveBeenCalledWith(
+      's1',
+      { stageId: 'finish-ineligible', outcome: 'ineligible' },
+      finishing.signal,
+    );
     // The Shell shows the completed state in place: the route neither
     // navigates nor replaces it, and offers Exit there.
     expect(screen.getByTestId('shell-mounted')).toBeInTheDocument();
@@ -1134,6 +1181,70 @@ describe('InterviewRoute session change', () => {
       }),
     ).toBeInTheDocument();
     expect(shellMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps a write the previous interview makes after the next one loads out of the next one's state", async () => {
+    const previousNetwork = {
+      nodes: [{ _uid: 'from-s1', type: 'person', attributes: {} }],
+      edges: [],
+      ego: { _uid: 'ego-1', attributes: {} },
+    };
+    const nextNetwork = {
+      nodes: [{ _uid: 'from-s2', type: 'person', attributes: {} }],
+      edges: [],
+      ego: { _uid: 'ego-2', attributes: {} },
+    };
+    getSessionMock.mockImplementation((id: string) =>
+      Promise.resolve(
+        id === 's1'
+          ? makeSession()
+          : makeSession({ id: 's2', protocolHash: 'h2', network: nextNetwork }),
+      ),
+    );
+    getProtocolByHashMock.mockImplementation((hash: string) =>
+      Promise.resolve({ ...makeProtocol(), hash }),
+    );
+
+    const { rerender } = render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    const previousShell = lastShellProps();
+    act(() => {
+      previousShell.onStepChange(2, { progress: 50, totalSteps: 4 });
+    });
+
+    useRouteMock.mockReturnValue([true, { sessionId: 's2' }]);
+    rerender(<InterviewRoute sessionId="s2" />);
+    await waitFor(() => {
+      expect(lastShellProps().payload.session.id).toBe('s2');
+    });
+    const nextShell = lastShellProps();
+    updateSessionMock.mockClear();
+
+    // The previous interview's handler writes once the next one has loaded:
+    // a write that was queued behind another, or its Shell's teardown flush.
+    await act(async () => {
+      await previousShell.onSync(
+        's1',
+        makeSyncPayload({ network: previousNetwork }),
+        { immediate: true, unloading: false },
+      );
+    });
+    act(() => {
+      nextShell.onStepChange(1, { progress: 25, totalSteps: 4 });
+    });
+
+    expect(updateSessionMock.mock.calls).toEqual([
+      [
+        's1',
+        expect.objectContaining({ network: previousNetwork, currentStep: 2 }),
+        { protocolHash: 'h1' },
+      ],
+      [
+        's2',
+        expect.objectContaining({ network: nextNetwork, currentStep: 1 }),
+        { protocolHash: 'h2' },
+      ],
+    ]);
   });
 });
 

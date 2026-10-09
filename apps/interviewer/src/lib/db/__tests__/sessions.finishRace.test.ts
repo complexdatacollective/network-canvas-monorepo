@@ -118,4 +118,42 @@ describe('recording a finish while another tab migrates the session', () => {
     expect(session.finishStageId).toBe('finish');
     expect(session.finishOutcome).toBe('ineligible');
   });
+
+  it('writes no finish when the interview is torn down while the finish is being encrypted', async () => {
+    const created = await createSession({
+      protocolHash: 'old-hash',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork: networkWith('Ada'),
+    });
+
+    let release: () => void = () => undefined;
+    gate.held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const reached = new Promise<void>((resolve) => {
+      gate.reached = resolve;
+    });
+
+    const teardown = new AbortController();
+    const finishing = markSessionFinished(
+      created.id,
+      { stageId: 'finish', outcome: 'ineligible' },
+      teardown.signal,
+    ).then(
+      () => 'resolved',
+      (error: unknown) => error,
+    );
+    await reached;
+
+    // The Shell is torn down after the route's own abort check, while the
+    // write is past it.
+    teardown.abort();
+    release();
+
+    expect(await finishing).toMatchObject({ name: 'AbortError' });
+    const session = await decryptSession((await db.sessions.get(created.id))!);
+    expect(session.finishedAt).toBeNull();
+    expect(session.finishStageId ?? null).toBeNull();
+  });
 });

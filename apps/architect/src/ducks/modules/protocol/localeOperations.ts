@@ -5,6 +5,8 @@ import {
   collectLocalizedStrings,
   type CurrentProtocol,
   findInterfaceOwnedOptionBindings,
+  isBlankMessage,
+  isBlankText,
   isFinishSessionStage,
   isSuppliedOptionLabelSet,
   isUndeterminedLocale,
@@ -14,7 +16,6 @@ import {
   defaultFinishSessionTextAfterLanguageChange,
   interfaceTextAfterLanguageChange,
   type LanguageChange,
-  messageText,
   suppliedOptionLabelsAfterLanguageChange,
   suppliedStageTextAfterLanguageChange,
 } from '@codaco/protocol-validation';
@@ -338,7 +339,7 @@ export const setTranslation = (
   text: string,
 ): LocaleOperationResult => {
   if (!isDeclared(protocol, locale)) return fail('not-declared');
-  if (text.trim() === '') return fail('blank-text');
+  if (isBlankText(text)) return fail('blank-text');
   const hit = collectLocalizedStrings(protocol).find((candidate) =>
     isSamePath(candidate.path, path),
   );
@@ -354,7 +355,9 @@ export const setTranslation = (
 /**
  * Replaces every translation of one participant-facing text at once. `value`
  * holds stored messages, as the localized fields write them, and `path` must
- * be where `collectLocalizedStrings` finds that text.
+ * be where `collectLocalizedStrings` finds that text. Every translation must
+ * say something, as the schema requires: a language with nothing to show is
+ * left out of `value`, never stored blank.
  */
 export const setLocalizedString = (
   protocol: CurrentProtocol,
@@ -365,7 +368,10 @@ export const setLocalizedString = (
   if (translations.some(([locale]) => !isDeclared(protocol, locale))) {
     return fail('not-declared');
   }
-  if (translations.every(([, message]) => messageText(message).trim() === '')) {
+  if (
+    translations.length === 0 ||
+    translations.some(([, message]) => isBlankMessage(message))
+  ) {
     return fail('blank-text');
   }
   const hit = collectLocalizedStrings(protocol).find((candidate) =>

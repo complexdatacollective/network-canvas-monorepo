@@ -215,7 +215,6 @@ describe('interview finish route', () => {
   });
 
   it.each([
-    ['no body', ''],
     ['unparseable JSON', '{'],
     ['an empty object', {}],
     ['a missing outcome', { stageId: 'finish-completed' }],
@@ -229,6 +228,58 @@ describe('interview finish route', () => {
     expect(response.status).toBe(400);
     expect(findUniqueMock).not.toHaveBeenCalled();
     expect(updateManyMock).not.toHaveBeenCalled();
+  });
+
+  // A tab opened before an upgrade keeps running the previous bundle, whose
+  // finish is a POST with no body at all.
+  const postWithoutBody = () =>
+    POST(
+      new NextRequest('http://localhost/api/interviews/interview-1/finish', {
+        method: 'POST',
+      }),
+      { params: Promise.resolve({ interviewId: 'interview-1' }) },
+    );
+
+  it('records the previous bundle’s bodyless finish at the protocol’s finish stage', async () => {
+    findUniqueMock.mockImplementation((args: FindUniqueArgs) =>
+      Promise.resolve(
+        args.include
+          ? FINISHED_ROW
+          : {
+              finishTime: null,
+              protocolId: 'protocol-1',
+              protocol: {
+                ...STORED_PROTOCOL,
+                stages: STAGES.filter(
+                  (stage) => stage.id !== 'finish-ineligible',
+                ),
+              },
+            },
+      ),
+    );
+
+    const response = await postWithoutBody();
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ success: true, applied: true });
+    expect(updateManyMock).toHaveBeenCalledWith({
+      where: { id: 'interview-1' },
+      data: {
+        finishTime: expect.any(Date),
+        finishStageId: 'finish-completed',
+        finishOutcome: 'completed',
+      },
+    });
+  });
+
+  it('refuses a bodyless finish when the protocol does not have exactly one finish stage', async () => {
+    installInterview();
+
+    const response = await postWithoutBody();
+
+    expect(response.status).toBe(400);
+    expect(updateManyMock).not.toHaveBeenCalled();
+    expect(cookieSetMock).not.toHaveBeenCalled();
   });
 
   it('refuses to finish against a stored protocol that does not parse, without touching the row', async () => {

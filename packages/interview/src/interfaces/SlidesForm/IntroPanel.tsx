@@ -10,7 +10,8 @@ import { LocalizedText } from '../../localization/LocalizedText';
 
 type IntroPanelProps = {
   title: LocalizedString;
-  text: LocalizedString;
+  // Optional: a panel with only a title is a complete introduction.
+  text?: LocalizedString;
 };
 
 const introVariants = {
@@ -35,10 +36,12 @@ export default function IntroPanel({ title, text }: IntroPanelProps) {
         value={title}
         render={<Heading level="h1" className="text-center" />}
       />
-      <LocalizedMarkdown
-        value={text}
-        allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
-      />
+      {text && (
+        <LocalizedMarkdown
+          value={text}
+          allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+        />
+      )}
     </MotionSurface>
   );
 }

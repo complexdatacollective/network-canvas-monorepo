@@ -24,7 +24,6 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import {
   getLastAvailableAuthoredStageIndex,
   InterviewI18nProvider,
-  type SessionSnapshot,
 } from '@codaco/interview';
 import {
   DEFAULT_SYNTHETIC_SEED,
@@ -984,6 +983,9 @@ describe('PreviewHost', () => {
       expect(control).toHaveValue('fr');
       expect(lastShellProps().requestedLocales).toEqual(['fr', 'en-US']);
       expect(lastShellProps().payload).toBe(payload);
+      // Nothing is held for it to replace, so it is only requested: a
+      // language chooser stage still shows no language chosen.
+      expect(lastShellProps().statedLocale).toBeUndefined();
     });
 
     it('follows the language a language chooser stage states', async () => {
@@ -1000,52 +1002,31 @@ describe('PreviewHost', () => {
       expect(control).toHaveValue('fr');
     });
 
-    it('re-creates the interview where it is when the toolbar replaces a chooser-stated language', async () => {
+    it('states the toolbar’s language to the interview in place once a chooser stage has stated one', async () => {
       const control = await openPreview(
         makeProtocol(ENGLISH_AND_FRENCH),
         ['en-US'],
         2,
       );
-      const { onProtocolLocaleChange, onSync, payload } = lastShellProps();
+      const { onProtocolLocaleChange, payload } = lastShellProps();
       await act(() =>
         onProtocolLocaleChange(payload.session.id, {
           locale: 'fr',
           localePreference: 'fr',
         }),
       );
-      const synced: SessionSnapshot = {
-        ...payload.session,
-        promptIndex: 1,
-        localePreference: 'fr',
-        locale: 'fr',
-        network: {
-          ...payload.session.network,
-          ego: {
-            ...payload.session.network.ego,
-            [entityAttributesProperty]: { mood: 'calm' },
-          },
-        },
-      };
-      await act(() =>
-        onSync(payload.session.id, synced, {
-          immediate: false,
-          unloading: false,
-        }),
-      );
 
       fireEvent.change(control, { target: { value: 'en' } });
 
-      const rebuilt = lastShellProps();
+      // The interview keeps its store, and with it the prompt reached and any
+      // answer still in an unsubmitted form: the language is stated to it,
+      // which replaces the preference it holds, rather than re-created.
+      const shell = lastShellProps();
       expect(control).toHaveValue('en');
-      expect(rebuilt.payload.protocol).toBe(payload.protocol);
-      expect(rebuilt.payload.session).toEqual({
-        ...synced,
-        promptIndex: 0,
-        localePreference: null,
-        localeOptions: payload.session.localeOptions,
-      });
-      expect(rebuilt.currentStep).toBe(2);
-      expect(rebuilt.requestedLocales).toEqual(['en', 'en-US']);
+      expect(shell.payload).toBe(payload);
+      expect(shell.statedLocale).toBe('en');
+      expect(shell.currentStep).toBe(2);
+      expect(shell.requestedLocales).toEqual(['en', 'en-US']);
     });
   });
 

@@ -438,6 +438,53 @@ describe('Shell interview languages', () => {
     expect(observed.mounts).toBe(1);
   });
 
+  it('replaces a held preference with the language the host states, keeping unsaved input', async () => {
+    const onProtocolLocaleChange = vi.fn<ProtocolLocaleChangeHandler>(() =>
+      Promise.resolve(),
+    );
+    function Host() {
+      const [stated, setStated] = useState<string | undefined>(undefined);
+      return (
+        <>
+          <button onClick={() => setStated('ja')}>State Japanese</button>
+          <Shell
+            {...handlers}
+            onProtocolLocaleChange={onProtocolLocaleChange}
+            payload={makePayload('es')}
+            requestedLocales={['en-GB']}
+            statedLocale={stated}
+            flags={{ isE2E: true }}
+            disableAnalytics
+          />
+        </>
+      );
+    }
+    render(<Host />);
+    const user = userEvent.setup();
+    await expectVisibleHeading(titles.es);
+    const input = screen.getByRole('textbox', {
+      name: /^Nombre elegido por el estudio/,
+    });
+    await user.type(input, 'Sin guardar');
+
+    await user.click(screen.getByRole('button', { name: 'State Japanese' }));
+
+    await expectVisibleHeading(titles.ja);
+    expect(screen.getByRole('main')).toHaveAttribute('lang', 'ja');
+    expect(liveStore().getState().session.localePreference).toBe('ja');
+    await waitFor(() =>
+      expect(onProtocolLocaleChange).toHaveBeenLastCalledWith(
+        'locale-session',
+        { locale: 'ja', localePreference: 'ja' },
+      ),
+    );
+    expect(
+      screen.getByRole('textbox', { name: /^Nombre elegido por el estudio/ }),
+    ).toBe(input);
+    expect(input).toHaveValue('Sin guardar');
+    expect(observed.mounts).toBe(1);
+  });
+
   it("follows a change of the browser's languages without remounting fields or rewriting protocol, answers or navigation", async () => {
     const original = structuredClone(payload);
     function Host() {

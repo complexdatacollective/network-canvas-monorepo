@@ -82,10 +82,13 @@ const referenceRule = (
  * the ordinal/categorical arms of `pinnedValue` (tenth-wave Finding 2).
  * `undefined` — not an empty set — means "unusable for this check": raw
  * migration input may not have an `options` array at all, and that must skip
- * the check rather than be treated as zero options. `categoricalOptionsSchema`
- * permits duplicate-VALUE entries (the runtime can only ever select a
- * distinct value), so this counts distinct values, not entries — sixth-wave
- * Finding 3.
+ * the check rather than be treated as zero options. Raw migration input may
+ * hold duplicate-VALUE entries (the runtime can only ever select a distinct
+ * value), so this counts distinct values, not entries — sixth-wave Finding 3.
+ * `categoricalOptionsSchema` itself now refuses duplicates, and the 8 to 9
+ * migration removes them, re-checking these rules for the attributes it
+ * changes, because it compares values as text (`optionValueKey`) where this
+ * Set keeps `1` and `"1"` apart.
  */
 const optionValues = (variable: unknown): Set<string | number> | undefined => {
   const options = asRecord(variable)?.options;

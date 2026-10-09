@@ -51,15 +51,10 @@ export const introductionMessages = defineMessages({
  * What the participant reads before this stage's task begins.
  *
  * Not a capability: every interface that has an introduction requires one, so
- * there is nothing here to switch off — a stage with half an introduction is
- * a stage the protocol schema refuses.
- *
- * Both fields are owned together for the same reason. They are the two halves
- * of one schema object that the researcher decides as one thing: an
- * introduction with a title and no text, or text under no title, is a stage
- * the protocol schema refuses. (A save writes each mounted path on its own, so
- * leaving one half unrendered would keep it rather than blank it — this is
- * about what the researcher can author, not about what the draft preserves.)
+ * there is nothing here to switch off. The title is required; the text is
+ * not, because a panel with only a title is a complete introduction (published
+ * protocols use one to open a stage with its heading alone). Clearing the
+ * text removes it from the stage rather than storing it empty.
  */
 export default function IntroductionSection() {
   const intl = useAppIntl();
@@ -80,7 +75,6 @@ export default function IntroductionSection() {
         name={TEXT_FIELD}
         component={LocalizedRichTextField}
         label={intl.formatMessage(introductionMessages.textLabel)}
-        required={REQUIRED}
       />
     </BuilderSection>
   );

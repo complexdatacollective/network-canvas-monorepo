@@ -1,4 +1,4 @@
-import { isBlankText } from '../../localization/blankText.ts';
+import { isBlankMessage, isBlankText } from '../../localization/blankText.ts';
 import type { LocalizationDeclaration } from '../../localization/localeTag.ts';
 import { escapeMarkdownText } from '../../localization/markdownText.ts';
 import { escapeMessageText } from '../../localization/messageSyntax.ts';
@@ -22,6 +22,8 @@ import { withInterfaceText } from './interface-text.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
 import ProtocolSchemaV9 from './schema.ts';
 import { missingSuppliedStageText } from './supplied-stage-text.ts';
+import { findValidationContradictions } from './variables/validation-contradictions.ts';
+import { optionValueKey } from './variables/variable.ts';
 
 // Schema 8 never recorded the language its copy was written in, and a schema 9
 // protocol always has a real one, so migrated copy is recorded as English. The
@@ -100,6 +102,186 @@ const removeContradictoryPassphraseRules = (protocol: unknown) => {
       minLength > maxLength
     ) {
       Reflect.deleteProperty(stage, 'validation');
+    }
+  }
+};
+
+/** Every attribute record in a codebook: each node type's, each edge type's and the ego's. */
+const variableRecordsOf = (codebook: unknown): Record<string, unknown>[] => {
+  if (!isRecord(codebook)) return [];
+  const records: Record<string, unknown>[] = [];
+  for (const entity of ['node', 'edge'] as const) {
+    const types = codebook[entity];
+    if (!isRecord(types)) continue;
+    for (const type of Object.values(types)) {
+      if (isRecord(type) && isRecord(type.variables)) {
+        records.push(type.variables);
+      }
+    }
+  }
+  if (isRecord(codebook.ego) && isRecord(codebook.ego.variables)) {
+    records.push(codebook.ego.variables);
+  }
+  return records;
+};
+
+/**
+ * Removes the validation rules that contradict each other once an attribute
+ * has lost options, as the 7 to 8 migration does for every attribute. Only a
+ * contradiction involving an attribute this step changed is repaired: any
+ * other was already in the document, and validation reports it.
+ *
+ * Needed because the analyser counts `1` and `"1"` as two values where schema
+ * 9 counts one, so a `minSelected` the 7 to 8 migration kept can exceed the
+ * options left. Each pass removes at least one rule, so the passes are
+ * bounded by the number of rules.
+ */
+const removeContradictionsOf = (
+  variables: Record<string, unknown>,
+  changed: ReadonlySet<string>,
+) => {
+  const ruleCount = Object.values(variables).reduce<number>(
+    (count, variable) =>
+      isRecord(variable) && isRecord(variable.validation)
+        ? count + Object.keys(variable.validation).length
+        : count,
+    0,
+  );
+  for (let pass = 0; pass <= ruleCount; pass += 1) {
+    const contradiction = findValidationContradictions(variables).find(
+      ({ variableIds }) => variableIds.some((id) => changed.has(id)),
+    );
+    if (!contradiction) return;
+    for (const { variableId, rule } of contradiction.strips) {
+      const variable = variables[variableId];
+      if (isRecord(variable) && isRecord(variable.validation)) {
+        Reflect.deleteProperty(variable.validation, rule);
+      }
+    }
+  }
+};
+
+/**
+ * Schema 9 refuses two options of one ordinal or categorical attribute with
+ * the same value: they store the same answer, so a participant's choice
+ * between them cannot be recovered, and their export columns collide. Each
+ * later option whose value repeats an earlier one goes, compared as schema 9
+ * compares them (`optionValueKey`), so `1` and `"1"` collide. The option kept
+ * has the value the removed one had, so answers already recorded, and filters
+ * and skip logic that name it, still refer to an option.
+ */
+const removeDuplicateOptionValues = (codebook: unknown) => {
+  for (const variables of variableRecordsOf(codebook)) {
+    const changed = new Set<string>();
+    for (const [id, variable] of Object.entries(variables)) {
+      if (!isRecord(variable) || !Array.isArray(variable.options)) continue;
+      if (variable.type !== 'categorical' && variable.type !== 'ordinal') {
+        continue;
+      }
+      const seen = new Set<string>();
+      const options = variable.options.filter((option: unknown) => {
+        const value = isRecord(option) ? option.value : undefined;
+        // Any other value is already invalid, and is left for validation.
+        if (typeof value !== 'string' && typeof value !== 'number') return true;
+        const key = optionValueKey(value);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      if (options.length === variable.options.length) continue;
+      variable.options = options;
+      changed.add(id);
+    }
+    if (changed.size > 0) removeContradictionsOf(variables, changed);
+  }
+};
+
+/**
+ * Text that shows nothing in any language: a schema 8 string, or the
+ * translations of text already localized. Blank translations are removed
+ * from localized text, so the text left says something in every language it
+ * has, or is `undefined` when nothing is left.
+ */
+const withoutBlankText = (text: unknown): unknown => {
+  if (typeof text === 'string') return isBlankText(text) ? undefined : text;
+  if (!isRecord(text)) return text;
+  const kept = Object.entries(text).filter(
+    ([, message]) => typeof message !== 'string' || !isBlankMessage(message),
+  );
+  return kept.length === 0 ? undefined : Object.fromEntries(kept);
+};
+
+/** Text that says something, as a schema 8 string or a localized record. */
+const shownText = (text: unknown) => {
+  const shown = withoutBlankText(text);
+  return typeof shown === 'string' || isRecord(shown) ? shown : undefined;
+};
+
+// The title a panel whose title shows nothing is given: the stage's label,
+// as the 7 to 8 migration gives a panel with no title, else "Introduction".
+const fallbackPanelTitle = (label: unknown, defaultLocale: string): unknown =>
+  shownText(label) ?? { [defaultLocale]: 'Introduction' };
+
+/**
+ * Schema 8 accepted an introduction panel whose title or text was only
+ * spaces, and published protocols use a body of spaces on purpose to show a
+ * panel with only a title. Schema 9 requires both to say something, but its
+ * text is optional, so text that shows nothing goes, and the panel shows only
+ * its title, as it did. A title that shows nothing takes the stage's label, as
+ * the 7 to 8 migration does for a panel with no title.
+ *
+ * Text a document in schema 9 form already localized loses only the
+ * translations that show nothing: those languages fall back to another
+ * translation, and the protocol's translation report lists them as missing.
+ */
+const repairIntroductionPanels = (
+  protocol: unknown,
+  { defaultLocale }: LocalizationDeclaration,
+) => {
+  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
+  for (const stage of protocol.stages) {
+    if (!isRecord(stage) || !isRecord(stage.introductionPanel)) continue;
+    const panel = stage.introductionPanel;
+    panel.title =
+      withoutBlankText(panel.title) ??
+      fallbackPanelTitle(stage.label, defaultLocale);
+    const text = withoutBlankText(panel.text);
+    if (text === undefined) Reflect.deleteProperty(panel, 'text');
+    else panel.text = text;
+  }
+};
+
+/**
+ * Schema 9 requires a Categorical Bin's "other" bin caption and its follow-up
+ * question to say something, where schema 8 accepted text of only spaces,
+ * which showed an unlabelled bin and a question with no words. Each that shows
+ * nothing takes the other's text, else the default the 7 to 8 migration gives
+ * when one is missing: "Other" for the caption, "Please specify" for the
+ * question. Text already localized loses only its translations that show
+ * nothing, as an introduction panel's does.
+ */
+const repairOtherBinText = (
+  protocol: unknown,
+  { defaultLocale }: LocalizationDeclaration,
+) => {
+  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
+  for (const stage of protocol.stages) {
+    if (!isRecord(stage) || stage.type !== 'CategoricalBin') continue;
+    if (!Array.isArray(stage.prompts)) continue;
+    for (const prompt of stage.prompts) {
+      if (!isRecord(prompt) || typeof prompt.otherVariable !== 'string') {
+        continue;
+      }
+      if (prompt.otherVariable === '') continue;
+      const question = shownText(prompt.otherVariablePrompt);
+      const caption = shownText(prompt.otherOptionLabel);
+      // Copied, so the two fields never share one object.
+      prompt.otherVariablePrompt = structuredClone(
+        question ?? caption ?? { [defaultLocale]: 'Please specify' },
+      );
+      prompt.otherOptionLabel = structuredClone(
+        caption ?? question ?? { [defaultLocale]: 'Other' },
+      );
     }
   }
 };
@@ -471,6 +653,9 @@ const migrationV8toV9 = createMigration({
 - A form field whose question was empty or contained only spaces now uses the name of its attribute as the question, because every question must contain some text.
 - Encrypted attributes are no longer experimental: the Anonymisation interface is always available, and an attribute marked as encrypted is always encrypted. If this protocol marked attributes as encrypted without turning on the experimental "Encrypted Attributes" feature, those attributes are no longer marked, so they keep being collected without encryption.
 - If an Anonymisation stage required a minimum passphrase length longer than its maximum, no participant could choose a passphrase, so both lengths are removed and the default minimum length applies.
+- Each option of an ordinal or categorical attribute must now have a value of its own, because answers are stored by value and two options with the same value cannot be told apart. Where options shared a value, the first is kept and the later ones are removed. Values are compared as written, except that a number and text that read the same, such as 1 and "1", count as the same value. Answers already recorded, and skip logic and filters, keep the value they use. If removing options leaves an attribute requiring more selections than it has options, that requirement is removed.
+- An introduction panel's text is now optional, so a panel can show only its title. Text that contained only spaces is removed, so the panel shows only its title, as before. An introduction panel's title must contain some text, so a title that contained only spaces now uses the stage's name.
+- On a Categorical Bin stage, the label of the bin for answers not listed and the question that asks participants to describe their answer must now contain some text. Where either contained only spaces, it now uses the other's text, or "Other" for the label and "Please specify" for the question.
 - Skip logic and filters can no longer compare the answers to an encrypted attribute. Rules are checked without the participant's passphrase, so under schema 8 a rule like this only ever compared the encrypted text, never the answer. These rules are removed. Rules that only check whether an encrypted attribute is answered still work, so they are kept. Skip logic left with no rules is removed, so its stage now always appears: a stage that was shown only when a removed rule matched may never have appeared under schema 8. A filter left with no rules is removed, so it no longer limits what its stage or panel shows. Where other rules remain, they may now match differently: if all rules had to match, they now match at least as often as before; if any one rule could match, at most as often. Check the stages that used the removed rules. Rules in a panel that lists people from an external data file are kept, because that data is not encrypted.
 - Family Pedigree stages are converted to the redesigned Family Pedigree. If a stage had an introduction screen, the screen becomes an Information stage just before the pedigree, which is skipped whenever the pedigree is skipped.
 - The Family Pedigree answers for sex assigned at birth and for the kind of each relationship keep the values already recorded, but their labels change to the wording of the redesigned interface. A nomination prompt with the ID "pedigree", which is now reserved, is given a new ID.
@@ -490,6 +675,8 @@ const migrationV8toV9 = createMigration({
     if (!encryptionWasOn(experiments)) removeEncryptedMarks(migrated.codebook);
     removeContradictoryPassphraseRules(migrated);
     removeEncryptedAttributeComparisons(migrated);
+    // Before the pedigree conversion, which reads the options it keeps.
+    removeDuplicateOptionValues(migrated.codebook);
     // Before the codebook labels and the localization pass, so the attribute
     // and stage the conversion adds are labelled and localized with the rest.
     migrateFamilyPedigreeStages(migrated);
@@ -499,6 +686,8 @@ const migrationV8toV9 = createMigration({
     addComposerCaptions(migrated);
     addFormFieldPrompts(migrated);
     addSuppliedStageText(migrated, localization);
+    repairIntroductionPanels(migrated, localization);
+    repairOtherBinText(migrated, localization);
 
     // Every site is found before any is rewritten, so the walk reads the
     // document as schema 8 left it.

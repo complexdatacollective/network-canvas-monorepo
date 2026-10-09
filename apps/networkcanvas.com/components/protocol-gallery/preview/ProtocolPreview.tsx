@@ -35,11 +35,19 @@ export type PreviewWave = {
 };
 
 /**
- * The completed state's action labels in every site language, so they can be
- * shown in the interview's language rather than the page's.
+ * The finish confirmation's explanation and the completed state's action
+ * labels in every site language, so they can be shown in the interview's
+ * language rather than the page's.
  */
 export type CompletionLabels = Readonly<
-  Record<Locale, Readonly<{ restart: string; backToProtocol: string }>>
+  Record<
+    Locale,
+    Readonly<{
+      finishConfirmation: string;
+      restart: string;
+      backToProtocol: string;
+    }>
+  >
 >;
 
 export type ProtocolPreviewProps = {
@@ -255,7 +263,12 @@ export function ProtocolPreview({
         onProtocolLocaleChange={noopProtocolLocaleChange}
         onFinish={onFinish}
         onRequestAsset={onRequestAsset}
-        finishConfirmationDescription={t('finishConfirmation')}
+        finishConfirmationDescription={
+          <InterviewLanguageLabel
+            labels={completionLabels}
+            name="finishConfirmation"
+          />
+        }
         completedActions={completedActions}
         flags={{ isDevelopment: process.env.NODE_ENV === 'development' }}
         allowStageNavigation

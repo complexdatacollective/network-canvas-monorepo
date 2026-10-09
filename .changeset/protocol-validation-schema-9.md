@@ -97,6 +97,20 @@ Schema 9:
   notes tell researchers to check those stages: rules joined with `AND` that
   lose one match at least as often as before, and rules joined with `OR`
   match at most as often.
+- Schema 9 refuses two options of one ordinal or categorical attribute with
+  the same value, compared as text (so `1` and `"1"` are the same value) but
+  without folding case. The v8 to v9 migration keeps the first option with
+  each value and removes the later ones; answers, filters and skip logic keep
+  the value they use. Where that leaves a `minSelected` above the options
+  left, it is removed. An attribute left with one option is still refused.
+- An introduction panel's `text` is optional in schema 9, and when present,
+  like its `title`, every translation must contain text. The v8 to v9
+  migration removes text that is blank in every language, so the panel shows
+  only its title, and gives a blank title the stage's label. A Categorical Bin
+  prompt's `otherOptionLabel` and `otherVariablePrompt` must also contain text;
+  the migration gives a blank one the other's text, else `Other` or
+  `Please specify`. In a document already in schema 9 form, only the blank
+  translations of these fields are removed.
 
 - Schema 8 still refuses names outside `a-z`, `A-Z`, digits and `. _ - :`, with
   a message that says so. `VersionlessProtocolSchema`, the version 8 body

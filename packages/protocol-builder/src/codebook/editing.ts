@@ -427,12 +427,14 @@ const validateVariableDraft = (draft: CodebookVariableDraft): Variable => {
   if (incomplete !== null) throw researcherIssue(incomplete);
   const invalidValue = invalidOptionValueIssue(normalized);
   if (invalidValue !== null) throw researcherIssue(invalidValue);
+  const duplicateValue = duplicateOptionValueIssue(normalized);
+  if (duplicateValue !== null) throw researcherIssue(duplicateValue);
   const result = VariableSchema.safeParse(normalized);
   if (!result.success) {
     throw invalidDraft('the variable draft is invalid', result.error.issues);
   }
-  const optionIssue = categoricalOptionIssue(result.data);
-  if (optionIssue !== null) throw researcherIssue(optionIssue);
+  const duplicateLabel = duplicateOptionLabelIssue(result.data);
+  if (duplicateLabel !== null) throw researcherIssue(duplicateLabel);
   return result.data;
 };
 
@@ -477,15 +479,25 @@ const incompleteOptionsIssue = (
     : null;
 };
 
-const categoricalOptionIssue = (
-  variable: Variable,
+/**
+ * Two options stored under one value.
+ *
+ * Asked before the schema parses the draft, because the schema refuses an
+ * exact repeat with a message written for a protocol file rather than for the
+ * researcher typing it. This check is the wider of the two: it also folds case
+ * and Unicode form, as the row cell does while the researcher types, where the
+ * schema compares values exactly (`optionValueKey`), so every draft the schema
+ * would refuse for a repeat is refused here first.
+ */
+const duplicateOptionValueIssue = (
+  draft: Readonly<Record<string, unknown>>,
 ): CodebookDraftIssue | null => {
-  if (variable.type !== 'categorical' && variable.type !== 'ordinal') {
-    return null;
-  }
-
+  if (typeof draft.type !== 'string' || !isOptionType(draft.type)) return null;
+  const { options } = draft;
+  if (!Array.isArray(options)) return null;
   const seen = new Set<string>();
-  for (const option of variable.options) {
+  for (const option of options) {
+    if (!isRecord(option)) continue;
     // Export formats stringify option values into keys. A numeric 1 and text
     // "1" must therefore collide here even when a non-UI caller bypasses the
     // editor's numeric parser.
@@ -497,6 +509,15 @@ const categoricalOptionIssue = (
       });
     }
     seen.add(comparableValue);
+  }
+  return null;
+};
+
+const duplicateOptionLabelIssue = (
+  variable: Variable,
+): CodebookDraftIssue | null => {
+  if (variable.type !== 'categorical' && variable.type !== 'ordinal') {
+    return null;
   }
 
   // The write's own reading of the same question the row cell asks while the
