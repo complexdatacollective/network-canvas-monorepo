@@ -223,6 +223,13 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
     | FamilyPedigreeCompleteness
     | undefined;
   const framing = configuration.framing as FramingSetting | undefined;
+  // The words the participant sees, which the summary prints beside the rest.
+  const pedigreeWording =
+    type === 'FamilyPedigree'
+      ? ((configuration.wording as
+          | Record<string, LocalizedString | undefined>
+          | undefined) ?? null)
+      : null;
   const nominationPrompts = configuration.nominationPrompts as
     | FamilyPedigreeNominationPrompt[]
     | undefined;
@@ -403,6 +410,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
         edgeConfiguration={edgeConfiguration ?? null}
         completeness={completeness ?? null}
         framing={framing ?? null}
+        wording={pedigreeWording}
         nominationPrompts={nominationPrompts ?? null}
       />
       {narrativePedigree && <NarrativePedigree {...narrativePedigree} />}
