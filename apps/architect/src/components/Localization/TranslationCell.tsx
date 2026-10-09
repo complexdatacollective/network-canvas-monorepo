@@ -1,7 +1,9 @@
 import {
+  createContext,
   type FocusEvent,
   type KeyboardEvent,
   type ReactNode,
+  useContext,
   useEffect,
   useId,
   useRef,
@@ -363,10 +365,29 @@ const OnlyTranslationNote = ({
   );
 };
 
+const AnnounceContext = createContext<((message: string) => void) | null>(null);
+
+/**
+ * The table's one live region, which says what became of a change. It outlives
+ * each cell, so a cell taken away mid-edit (its row filtered out, its column
+ * hidden) can still say that its change was not saved.
+ */
+export const CommitAnnouncer = ({ children }: { children: ReactNode }) => {
+  const { announce } = useAccessibilityAnnouncements();
+  return (
+    <AnnounceContext.Provider value={announce}>
+      {children}
+    </AnnounceContext.Provider>
+  );
+};
+
 const useCommitFeedback = (locale: LocaleTag) => {
   const intl = useAppIntl();
   const languageName = useLanguageName();
-  const { announce } = useAccessibilityAnnouncements();
+  const announce = useContext(AnnounceContext);
+  if (announce === null) {
+    throw new Error('A translation cell needs a CommitAnnouncer above it.');
+  }
   return (result: CommitResult, reason?: string) => {
     if (result === 'refused') {
       announce(intl.formatMessage(messages.messageRefused, { reason }));
@@ -410,6 +431,7 @@ const PlainTextCell = ({
   // Read as the cell unmounts, after the render that last changed it.
   const draftRef = useRef<string | null>(null);
   const onCommitRef = useRef(onCommit);
+  const feedbackRef = useRef(feedback);
   const [draft, setDraft] = useState<string | null>(null);
   const stored = translationText(value, locale);
   const text = draft ?? stored;
@@ -429,14 +451,15 @@ const PlainTextCell = ({
 
   useEffect(() => {
     onCommitRef.current = onCommit;
+    feedbackRef.current = feedback;
   });
 
   // A cell taken away mid-edit, as when the table is closed by going back,
-  // still saves what was typed in it.
+  // still saves what was typed in it, and says so if it cannot.
   useEffect(
     () => () => {
       const pending = draftRef.current;
-      if (pending !== null) onCommitRef.current(pending);
+      if (pending !== null) feedbackRef.current(onCommitRef.current(pending));
     },
     [],
   );
@@ -589,6 +612,7 @@ const RichTextCell = ({
   // Read when focus has left, a moment after the render that scheduled it.
   const draftRef = useRef<string | null>(null);
   const onCommitRef = useRef(onCommit);
+  const feedbackRef = useRef(feedback);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<string | null>(null);
   // The editor takes no new value while it has focus, so putting back what
@@ -628,15 +652,16 @@ const RichTextCell = ({
 
   useEffect(() => {
     onCommitRef.current = onCommit;
+    feedbackRef.current = feedback;
   });
 
   // A cell taken away mid-edit, by leaving the page, still saves what was
-  // typed in it.
+  // typed in it, and says so if it cannot.
   useEffect(
     () => () => {
       if (leaveTimer.current !== null) window.clearTimeout(leaveTimer.current);
       const pending = draftRef.current;
-      if (pending !== null) onCommitRef.current(pending);
+      if (pending !== null) feedbackRef.current(onCommitRef.current(pending));
     },
     [],
   );
@@ -817,6 +842,7 @@ const MessageCell = ({
   // change too.
   const draftRef = useRef<{ message: string | undefined } | null>(null);
   const onCommitRef = useRef(onCommitMessage);
+  const feedbackRef = useRef(feedback);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<{ message: string | undefined } | null>(
     null,
@@ -853,6 +879,7 @@ const MessageCell = ({
 
   useEffect(() => {
     onCommitRef.current = onCommitMessage;
+    feedbackRef.current = feedback;
     problemRef.current = problem;
   });
 
@@ -860,7 +887,11 @@ const MessageCell = ({
     () => () => {
       if (leaveTimer.current !== null) window.clearTimeout(leaveTimer.current);
       const pending = draftRef.current;
-      if (pending !== null) onCommitRef.current(pending.message);
+      if (pending === null) return;
+      feedbackRef.current(
+        onCommitRef.current(pending.message),
+        problemRef.current,
+      );
     },
     [],
   );

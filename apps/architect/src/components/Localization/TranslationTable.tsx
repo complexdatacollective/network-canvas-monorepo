@@ -59,6 +59,7 @@ import { getProtocol } from '~/selectors/protocol';
 
 import { describePlace, type PlaceDetails, textSteps } from './textPlaces';
 import TranslationCell, {
+  CommitAnnouncer,
   type CommitResult,
   fallbackFor,
 } from './TranslationCell';
@@ -643,298 +644,303 @@ const TranslationTable = ({
   let rowIndex = -1;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-start gap-2 px-6 py-4">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2">
-          {heading}
-          <InputField
-            id={searchId}
-            type="search"
-            value={query}
-            onChange={(value) => {
-              setQuery(value ?? '');
-              resetKept();
-            }}
-            placeholder={intl.formatMessage(messages.search)}
-            aria-label={intl.formatMessage(messages.search)}
-            prefixComponent={<Search aria-hidden className="size-4" />}
-            size="sm"
-            className="max-w-80 min-w-56 flex-1 basis-64"
-          />
-          <NativeSelectField
-            id={filterId}
-            name="translation-table-filter"
-            aria-label={intl.formatMessage(messages.filter)}
-            value={
-              filter.kind === 'language'
-                ? languageOption(filter.locale)
-                : filter.kind
-            }
-            onChange={handleFilterChange}
-            options={filterOptions}
-            size="sm"
-            className="w-auto max-w-72 min-w-44"
-          />
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  size="sm"
-                  variant="outline"
-                  icon={<Columns3 aria-hidden />}
-                  className="px-3"
-                />
+    <CommitAnnouncer>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex items-start gap-2 px-6 py-4">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2">
+            {heading}
+            <InputField
+              id={searchId}
+              type="search"
+              value={query}
+              onChange={(value) => {
+                setQuery(value ?? '');
+                resetKept();
+              }}
+              placeholder={intl.formatMessage(messages.search)}
+              aria-label={intl.formatMessage(messages.search)}
+              prefixComponent={<Search aria-hidden className="size-4" />}
+              size="sm"
+              className="max-w-80 min-w-56 flex-1 basis-64"
+            />
+            <NativeSelectField
+              id={filterId}
+              name="translation-table-filter"
+              aria-label={intl.formatMessage(messages.filter)}
+              value={
+                filter.kind === 'language'
+                  ? languageOption(filter.locale)
+                  : filter.kind
               }
-            >
-              {intl.formatMessage(messages.languages, {
-                shown: visible.length,
-                total: locales.length,
-              })}
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="bottom" align="start">
-              <DropdownMenuGroup>
-                <DropdownMenuLabel>
-                  {intl.formatMessage(messages.languagesMenu)}
-                </DropdownMenuLabel>
-                {locales.map((locale) => {
-                  const isShown = !hidden.has(locale);
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={locale}
-                      checked={isShown}
-                      disabled={isShown && visible.length === 1}
-                      onCheckedChange={(checked) =>
-                        toggleLanguage(locale, checked)
-                      }
-                    >
-                      {languageName(locale)}
-                    </DropdownMenuCheckboxItem>
-                  );
+              onChange={handleFilterChange}
+              options={filterOptions}
+              size="sm"
+              className="w-auto max-w-72 min-w-44"
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    icon={<Columns3 aria-hidden />}
+                    className="px-3"
+                  />
+                }
+              >
+                {intl.formatMessage(messages.languages, {
+                  shown: visible.length,
+                  total: locales.length,
                 })}
-              </DropdownMenuGroup>
-              {visible.length === 1 && (
-                <p className="max-w-60 px-2 pt-2 text-sm text-current/70">
-                  {intl.formatMessage(messages.lastLanguage)}
-                </p>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <div className="ms-auto flex items-center gap-1">
-            <Popover>
-              <PopoverTrigger asChild>
-                <IconButton
-                  size="sm"
-                  variant="text"
-                  color="dynamic"
-                  icon={<CircleHelp aria-hidden />}
-                  aria-label={intl.formatMessage(messages.help)}
-                />
-              </PopoverTrigger>
-              <PopoverContent
-                side="bottom"
-                align="end"
-                className="flex max-w-md flex-col gap-2 text-sm"
-              >
-                <p>{intl.formatMessage(messages.about)}</p>
-                <p>{intl.formatMessage(messages.keyboardHelp)}</p>
-              </PopoverContent>
-            </Popover>
-            {actions}
-          </div>
-        </div>
-        {closeButton}
-      </div>
-      <Table
-        ref={tableRef}
-        bodyScroll
-        aria-describedby={helpId}
-        style={tableStyle}
-        surfaceProps={{
-          className:
-            'bg-surface text-surface-contrast border-outline mx-6 w-auto',
-        }}
-        className="w-[calc(var(--translation-table-names)+var(--translation-columns)*var(--translation-table-column))] min-w-full table-fixed border-separate border-spacing-0 [--translation-table-column:14.5rem] [--translation-table-names:clamp(10rem,13vw,14rem)]"
-      >
-        <caption className="sr-only">
-          {intl.formatMessage(messages.caption)}
-        </caption>
-        <colgroup>
-          <col className="w-(--translation-table-names)" />
-          {visible.map((locale) => (
-            <col key={locale} />
-          ))}
-        </colgroup>
-        <thead ref={headRef}>
-          <tr>
-            <th
-              scope="col"
-              className="bg-surface-2 text-surface-2-contrast border-outline sticky inset-s-0 top-0 z-40 border-e border-b px-3 py-2.5 text-start text-sm font-semibold"
-            >
-              {intl.formatMessage(messages.textColumn)}
-            </th>
-            {visible.map((locale) => {
-              const entry = coverage.locales.find(
-                (candidate) => candidate.locale === locale,
-              );
-              const translated = entry?.translated ?? 0;
-              const name = languageName(locale);
-              return (
-                <th
-                  key={locale}
-                  scope="col"
-                  // Named by the language alone: a screen reader repeats the
-                  // name on every move between columns.
-                  aria-labelledby={columnId(locale)}
-                  // In a fixed table the first row's widths size the columns:
-                  // the usual width, or the heading's own where that is wider.
-                  className="bg-surface-2 text-surface-2-contrast border-outline sticky top-0 z-30 w-[max(var(--translation-table-column),calc(var(--translation-heading-width,0px)+1.5rem+1px))] border-e border-b px-3 py-2.5 text-start font-normal"
-                >
-                  <div
-                    ref={columnHeadingRef}
-                    className="flex w-max items-center gap-3 whitespace-nowrap"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span id={columnId(locale)} className="font-semibold">
-                        {name}
-                      </span>
-                      {locale === localization.defaultLocale && (
-                        <Badge render={<span />} size="sm" tone="primary">
-                          {intl.formatMessage(messages.defaultLanguage)}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div aria-hidden className="w-10">
-                        <ProgressBar
-                          orientation="horizontal"
-                          percentProgress={
-                            coverage.total === 0
-                              ? 0
-                              : (translated / coverage.total) * 100
-                          }
-                          nudge={false}
-                          label={intl.formatMessage(messages.progressLabel, {
-                            language: name,
-                          })}
-                          className="h-1.5"
-                        />
-                      </div>
-                      <span
-                        aria-hidden
-                        className="text-xs whitespace-nowrap text-current/70"
-                      >
-                        {intl.formatMessage(messages.progressCount, {
-                          translated,
-                          total: coverage.total,
-                        })}
-                      </span>
-                      <span className="sr-only">
-                        {intl.formatMessage(messages.progress, {
-                          translated,
-                          total: coverage.total,
-                        })}
-                      </span>
-                    </div>
-                  </div>
-                </th>
-              );
-            })}
-          </tr>
-        </thead>
-        {shownGroups.length === 0 && (
-          <tbody>
-            <tr>
-              <td
-                colSpan={visible.length + 1}
-                className="px-3 py-10 text-center text-current/70"
-              >
-                {emptyMessage()}
-              </td>
-            </tr>
-          </tbody>
-        )}
-        {shownGroups.map((group, groupIndex) => {
-          const groupId = `${baseId}-group-${groupIndex}`;
-          return (
-            <tbody
-              key={group.key}
-              className="[--translation-table-sticky-top:calc(var(--translation-table-head,0px)+var(--translation-group-head,0px))]"
-            >
-              <tr>
-                <th
-                  ref={groupHeadingRef}
-                  id={groupId}
-                  scope="rowgroup"
-                  colSpan={visible.length + 1}
-                  className="bg-surface-1 text-surface-1-contrast border-outline sticky top-(--translation-table-head,0px) z-20 border-b p-0 text-start text-sm font-normal"
-                >
-                  {/* Stays at the start of the visible width as the table
-                      scrolls sideways, so the heading is never cut off. */}
-                  <div className="sticky inset-s-0 w-max max-w-[min(calc(100vw-4rem),60rem)] px-3 py-2">
-                    <GroupHeading group={group} />
-                  </div>
-                </th>
-              </tr>
-              {group.rows.map((row) => {
-                rowIndex += 1;
-                const currentRow = rowIndex;
-                const rowId = `${groupId}-row-${currentRow}`;
-                return (
-                  <tr
-                    key={row.key}
-                    onFocus={() => {
-                      if (filtering && !kept.has(row.key)) {
-                        setKept(new Set(kept).add(row.key));
-                      }
-                    }}
-                  >
-                    <th
-                      id={rowId}
-                      scope="row"
-                      className="bg-surface border-outline sticky inset-s-0 z-10 border-e border-b px-3 py-2 text-start align-top text-sm font-normal text-current/80"
-                    >
-                      {row.rawName ? (
-                        <span dir="ltr" className="font-monospace break-words">
-                          {row.name}
-                        </span>
-                      ) : (
-                        <span className="break-words">{row.name}</span>
-                      )}
-                    </th>
-                    {visible.map((locale, colIndex) => (
-                      <TranslationCell
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="bottom" align="start">
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>
+                    {intl.formatMessage(messages.languagesMenu)}
+                  </DropdownMenuLabel>
+                  {locales.map((locale) => {
+                    const isShown = !hidden.has(locale);
+                    return (
+                      <DropdownMenuCheckboxItem
                         key={locale}
-                        value={row.row.value}
-                        format={row.row.format}
-                        singleLine={row.singleLine}
-                        locale={locale}
-                        localization={localization}
-                        labelledBy={`${groupId} ${rowId} ${columnId(locale)}`}
-                        rowIndex={currentRow}
-                        colIndex={colIndex}
-                        messageArguments={row.row.arguments}
-                        onCommit={commit(row.row.path, locale)}
-                        onCommitMessage={commitMessage(row.row.path, locale)}
-                        onMove={move(currentRow, colIndex)}
-                      />
-                    ))}
-                  </tr>
+                        checked={isShown}
+                        disabled={isShown && visible.length === 1}
+                        onCheckedChange={(checked) =>
+                          toggleLanguage(locale, checked)
+                        }
+                      >
+                        {languageName(locale)}
+                      </DropdownMenuCheckboxItem>
+                    );
+                  })}
+                </DropdownMenuGroup>
+                {visible.length === 1 && (
+                  <p className="max-w-60 px-2 pt-2 text-sm text-current/70">
+                    {intl.formatMessage(messages.lastLanguage)}
+                  </p>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <div className="ms-auto flex items-center gap-1">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <IconButton
+                    size="sm"
+                    variant="text"
+                    color="dynamic"
+                    icon={<CircleHelp aria-hidden />}
+                    aria-label={intl.formatMessage(messages.help)}
+                  />
+                </PopoverTrigger>
+                <PopoverContent
+                  side="bottom"
+                  align="end"
+                  className="flex max-w-md flex-col gap-2 text-sm"
+                >
+                  <p>{intl.formatMessage(messages.about)}</p>
+                  <p>{intl.formatMessage(messages.keyboardHelp)}</p>
+                </PopoverContent>
+              </Popover>
+              {actions}
+            </div>
+          </div>
+          {closeButton}
+        </div>
+        <Table
+          ref={tableRef}
+          bodyScroll
+          aria-describedby={helpId}
+          style={tableStyle}
+          surfaceProps={{
+            className:
+              'bg-surface text-surface-contrast border-outline mx-6 w-auto',
+          }}
+          className="w-[calc(var(--translation-table-names)+var(--translation-columns)*var(--translation-table-column))] min-w-full table-fixed border-separate border-spacing-0 [--translation-table-column:14.5rem] [--translation-table-names:clamp(10rem,13vw,14rem)]"
+        >
+          <caption className="sr-only">
+            {intl.formatMessage(messages.caption)}
+          </caption>
+          <colgroup>
+            <col className="w-(--translation-table-names)" />
+            {visible.map((locale) => (
+              <col key={locale} />
+            ))}
+          </colgroup>
+          <thead ref={headRef}>
+            <tr>
+              <th
+                scope="col"
+                className="bg-surface-2 text-surface-2-contrast border-outline sticky inset-s-0 top-0 z-40 border-e border-b px-3 py-2.5 text-start text-sm font-semibold"
+              >
+                {intl.formatMessage(messages.textColumn)}
+              </th>
+              {visible.map((locale) => {
+                const entry = coverage.locales.find(
+                  (candidate) => candidate.locale === locale,
+                );
+                const translated = entry?.translated ?? 0;
+                const name = languageName(locale);
+                return (
+                  <th
+                    key={locale}
+                    scope="col"
+                    // Named by the language alone: a screen reader repeats the
+                    // name on every move between columns.
+                    aria-labelledby={columnId(locale)}
+                    // In a fixed table the first row's widths size the columns:
+                    // the usual width, or the heading's own where that is wider.
+                    className="bg-surface-2 text-surface-2-contrast border-outline sticky top-0 z-30 w-[max(var(--translation-table-column),calc(var(--translation-heading-width,0px)+1.5rem+1px))] border-e border-b px-3 py-2.5 text-start font-normal"
+                  >
+                    <div
+                      ref={columnHeadingRef}
+                      className="flex w-max items-center gap-3 whitespace-nowrap"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span id={columnId(locale)} className="font-semibold">
+                          {name}
+                        </span>
+                        {locale === localization.defaultLocale && (
+                          <Badge render={<span />} size="sm" tone="primary">
+                            {intl.formatMessage(messages.defaultLanguage)}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div aria-hidden className="w-10">
+                          <ProgressBar
+                            orientation="horizontal"
+                            percentProgress={
+                              coverage.total === 0
+                                ? 0
+                                : (translated / coverage.total) * 100
+                            }
+                            nudge={false}
+                            label={intl.formatMessage(messages.progressLabel, {
+                              language: name,
+                            })}
+                            className="h-1.5"
+                          />
+                        </div>
+                        <span
+                          aria-hidden
+                          className="text-xs whitespace-nowrap text-current/70"
+                        >
+                          {intl.formatMessage(messages.progressCount, {
+                            translated,
+                            total: coverage.total,
+                          })}
+                        </span>
+                        <span className="sr-only">
+                          {intl.formatMessage(messages.progress, {
+                            translated,
+                            total: coverage.total,
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  </th>
                 );
               })}
+            </tr>
+          </thead>
+          {shownGroups.length === 0 && (
+            <tbody>
+              <tr>
+                <td
+                  colSpan={visible.length + 1}
+                  className="px-3 py-10 text-center text-current/70"
+                >
+                  {emptyMessage()}
+                </td>
+              </tr>
             </tbody>
-          );
-        })}
-      </Table>
-      <p id={helpId} className="sr-only">
-        {intl.formatMessage(messages.keyboardHelp)}
-      </p>
-      <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 px-6 py-3 text-sm text-current/70">
-        {footnote && <p>{intl.formatMessage(messages.unlessBrowserLists)}</p>}
-        <p role="status" className="ms-auto whitespace-nowrap">
-          {intl.formatMessage(messages.shownCount, { shown, total })}
+          )}
+          {shownGroups.map((group, groupIndex) => {
+            const groupId = `${baseId}-group-${groupIndex}`;
+            return (
+              <tbody
+                key={group.key}
+                className="[--translation-table-sticky-top:calc(var(--translation-table-head,0px)+var(--translation-group-head,0px))]"
+              >
+                <tr>
+                  <th
+                    ref={groupHeadingRef}
+                    id={groupId}
+                    scope="rowgroup"
+                    colSpan={visible.length + 1}
+                    className="bg-surface-1 text-surface-1-contrast border-outline sticky top-(--translation-table-head,0px) z-20 border-b p-0 text-start text-sm font-normal"
+                  >
+                    {/* Stays at the start of the visible width as the table
+                      scrolls sideways, so the heading is never cut off. */}
+                    <div className="sticky inset-s-0 w-max max-w-[min(calc(100vw-4rem),60rem)] px-3 py-2">
+                      <GroupHeading group={group} />
+                    </div>
+                  </th>
+                </tr>
+                {group.rows.map((row) => {
+                  rowIndex += 1;
+                  const currentRow = rowIndex;
+                  const rowId = `${groupId}-row-${currentRow}`;
+                  return (
+                    <tr
+                      key={row.key}
+                      onFocus={() => {
+                        if (filtering && !kept.has(row.key)) {
+                          setKept(new Set(kept).add(row.key));
+                        }
+                      }}
+                    >
+                      <th
+                        id={rowId}
+                        scope="row"
+                        className="bg-surface border-outline sticky inset-s-0 z-10 border-e border-b px-3 py-2 text-start align-top text-sm font-normal text-current/80"
+                      >
+                        {row.rawName ? (
+                          <span
+                            dir="ltr"
+                            className="font-monospace break-words"
+                          >
+                            {row.name}
+                          </span>
+                        ) : (
+                          <span className="break-words">{row.name}</span>
+                        )}
+                      </th>
+                      {visible.map((locale, colIndex) => (
+                        <TranslationCell
+                          key={locale}
+                          value={row.row.value}
+                          format={row.row.format}
+                          singleLine={row.singleLine}
+                          locale={locale}
+                          localization={localization}
+                          labelledBy={`${groupId} ${rowId} ${columnId(locale)}`}
+                          rowIndex={currentRow}
+                          colIndex={colIndex}
+                          messageArguments={row.row.arguments}
+                          onCommit={commit(row.row.path, locale)}
+                          onCommitMessage={commitMessage(row.row.path, locale)}
+                          onMove={move(currentRow, colIndex)}
+                        />
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            );
+          })}
+        </Table>
+        <p id={helpId} className="sr-only">
+          {intl.formatMessage(messages.keyboardHelp)}
         </p>
+        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 px-6 py-3 text-sm text-current/70">
+          {footnote && <p>{intl.formatMessage(messages.unlessBrowserLists)}</p>}
+          <p role="status" className="ms-auto whitespace-nowrap">
+            {intl.formatMessage(messages.shownCount, { shown, total })}
+          </p>
+        </div>
       </div>
-    </div>
+    </CommitAnnouncer>
   );
 };
 

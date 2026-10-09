@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -115,6 +115,20 @@ const shownCount = () => screen.getByText(/^Showing /);
 
 const filterMenu = () =>
   screen.getByRole('combobox', { name: 'Texts to show' });
+
+/**
+ * English stops being one of the protocol's languages, so its column goes
+ * while one of its cells still has focus, without that cell ever being left.
+ */
+const dropEnglish = (store: ReturnType<typeof renderTable>['store']) =>
+  act(() => {
+    store.dispatch(
+      setActiveProtocol({
+        ...structuredClone(trilingual),
+        localization: { defaultLocale: 'fr', locales: ['fr', 'es'] },
+      }),
+    );
+  });
 
 describe('TranslationTable', () => {
   afterEach(() => {
@@ -246,6 +260,20 @@ describe('TranslationTable', () => {
     await user.tab();
     expect(stageTitle(store, 1)).toEqual({ en: 'Thank you' });
     expect(english).toHaveValue('Thank you');
+  });
+
+  it('says a cleared only translation was kept when its cell is taken away mid-edit', async () => {
+    const { store, user } = renderTable();
+
+    await user.clear(cell('2', 'Page heading', 'English'));
+    dropEnglish(store);
+
+    expect(
+      await screen.findByText(
+        'The English translation was kept, because this text exists only in English.',
+      ),
+    ).toBeInTheDocument();
+    expect(stageTitle(store, 1)).toEqual({ en: 'Thank you' });
   });
 
   it('finds texts by a translation shown, or by the stage or type they belong to', async () => {
@@ -504,6 +532,21 @@ describe('TranslationTable', () => {
       expect(formattedCell('2', 'English')).toHaveAccessibleDescription(
         'See you soon',
       );
+    });
+
+    it('says a cleared only translation was kept when its cell is taken away mid-edit', async () => {
+      const { store, user } = renderTable();
+
+      await user.click(formattedCell('2', 'English'));
+      await user.clear(await formattedEditor('2', 'English'));
+      dropEnglish(store);
+
+      expect(
+        await screen.findByText(
+          'The English translation was kept, because this text exists only in English.',
+        ),
+      ).toBeInTheDocument();
+      expect(itemContent(store, 1)).toEqual({ en: 'See you **soon**' });
     });
   });
 });

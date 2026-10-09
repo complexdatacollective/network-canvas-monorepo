@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
@@ -192,6 +192,36 @@ describe('TranslationTable: texts with versions', () => {
         null,
       ),
     );
+    expect(listItem(store)).toEqual({ en: SIBLINGS });
+  });
+
+  it('says a change was not saved when its cell is taken away mid-edit', async () => {
+    const { store, user } = renderTable();
+
+    await user.click(messageCell('English'));
+    const [aboutYou] = await versions('English');
+    await user.click(aboutYou!);
+    await user.keyboard('{Control>}a{/Control}{Backspace}');
+    await screen.findByText(
+      'Write every version of this text, or leave them all empty.',
+    );
+
+    // English stops being one of the protocol's languages while its cell
+    // still has focus, so the cell goes without ever being left.
+    act(() => {
+      store.dispatch(
+        setActiveProtocol({
+          ...structuredClone(protocol),
+          localization: { defaultLocale: 'fr', locales: ['fr'] },
+        }),
+      );
+    });
+
+    expect(
+      await screen.findByText(
+        'Your change was not saved. Write every version of this text, or leave them all empty.',
+      ),
+    ).toBeInTheDocument();
     expect(listItem(store)).toEqual({ en: SIBLINGS });
   });
 
