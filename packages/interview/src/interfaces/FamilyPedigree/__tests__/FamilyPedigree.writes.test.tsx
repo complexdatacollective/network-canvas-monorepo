@@ -76,7 +76,7 @@ const REFUSED = 'An error occurred while submitting the form.';
 
 /** The participant and their mother, unnamed, on a pedigree stage followed
  * by an information screen. */
-function interview() {
+function interview({ twin = false }: { twin?: boolean } = {}) {
   const si = new SyntheticInterview(1);
   const people = si.addNodeType({ name: 'Person' });
   const stage = si.addStage('FamilyPedigree', {
@@ -93,6 +93,20 @@ function interview() {
     [stage.kind]: ['biological'],
     [stage.gestationalCarrier]: true,
   });
+  if (twin) {
+    // Sam, the participant's mother's son, recorded as their twin.
+    si.addManualNode(stage.id, stage.personType, 'sam', {
+      [stage.ego]: false,
+      [stage.sexAssignedAtBirth]: ['male'],
+    });
+    si.addManualEdge(stage.edgeType, 'mum-sam', 'mum', 'sam', {
+      [stage.kind]: ['biological'],
+      [stage.gestationalCarrier]: true,
+    });
+    si.addManualEdge(stage.edgeType, 'ego-sam', 'ego', 'sam', {
+      [stage.kind]: ['fraternalTwin'],
+    });
+  }
   si.addInformationStage({ title: 'After the pedigree', text: 'Done.' });
   return SuperJSON.stringify(si.getInterviewPayload({ currentStep: 0 }));
 }
@@ -146,12 +160,18 @@ function refuseNextAddition() {
   return spy;
 }
 
-async function renderStage() {
-  render(<StoryInterviewShell rawPayload={interview()} />, {
+async function renderStage(options?: { twin?: boolean }) {
+  render(<StoryInterviewShell rawPayload={interview(options)} />, {
     wrapper: WithoutMotion,
   });
   await screen.findAllByTestId('pedigree-person');
 }
+
+const personButton = (id: string) => {
+  const node = document.querySelector(`[data-person-id="${id}"]`);
+  if (!(node instanceof HTMLElement)) throw new Error(`No ${id} drawn`);
+  return within(node).getByRole('button');
+};
 
 const mother = () => {
   const node = document.querySelector('[data-person-id="mum"]');
@@ -239,5 +259,22 @@ describe('FamilyPedigree when a write is refused', () => {
     // Saved on trying again, the interview moves on.
     await user.click(screen.getByRole('button', { name: 'Next Step' }));
     expect(await screen.findByText('After the pedigree')).toBeInTheDocument();
+  });
+});
+
+describe('FamilyPedigree twins and the disconnect tool', () => {
+  it('refuses to disconnect twins, who have no line it removes, and asks nothing', async () => {
+    await renderStage({ twin: true });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Disconnect' }));
+    await user.click(personButton('ego'));
+    await user.click(personButton('sam'));
+
+    // Shown under the toolbar, and read out.
+    expect(
+      (await screen.findAllByText(/are not connected\./)).length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });

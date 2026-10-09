@@ -9,7 +9,7 @@ import {
 /**
  * The participant's family: the participant, and everyone connected to them
  * through family relationships, however indirectly — through parents,
- * children, partners (current or not), donors and surrogates alike.
+ * children, partners (current or not), donors, surrogates and twins alike.
  *
  * The interview network is one shared graph, and other stages can add people
  * of the same type who are not family (a friend, a colleague) and are not
@@ -39,7 +39,9 @@ export function participantsFamily(family: Family): Family {
     list.push(to);
     neighbours.set(from, list);
   };
-  for (const link of family.links) {
+  // Twins are family to each other, even recorded with no parent between
+  // them.
+  for (const link of [...family.links, ...family.twins]) {
     connect(link.source, link.target);
     connect(link.target, link.source);
   }
@@ -77,8 +79,8 @@ export function participantsFamily(family: Family): Family {
 }
 
 /**
- * Who would leave the participant's family if this person, or these links,
- * were removed from it: everyone connected to the participant only through
+ * Who would leave the participant's family if this person, or these links
+ * (parent, partner or twin links), were removed from it: everyone connected to the participant only through
  * them. `family` is the participant's family (`participantsFamily`); the
  * person removed is not counted among those cut off.
  *
@@ -100,6 +102,12 @@ export function peopleCutOff(
         !linkIds.has(link.id) &&
         link.source !== personId &&
         link.target !== personId,
+    ),
+    twins: family.twins.filter(
+      (twin) =>
+        !linkIds.has(twin.id) &&
+        twin.source !== personId &&
+        twin.target !== personId,
     ),
     egoId: family.egoId === personId ? undefined : family.egoId,
   });

@@ -516,6 +516,43 @@ export function fullSiblingsOf(family: Family, personId: string): string[] {
   });
 }
 
+const adoptiveParentsOf = (family: Family, personId: string) =>
+  family.links
+    .filter((link) => link.target === personId && link.kind === 'adoptive')
+    .map((link) => link.source);
+
+const sameSet = (a: ReadonlySet<string>, b: ReadonlySet<string>) =>
+  a.size === b.size && [...a].every((item) => b.has(item));
+
+/**
+ * How two people are siblings, if they are: the one definition the canvas
+ * labels, the saved relationship to the participant and twins all follow.
+ *
+ * It is decided from their genetic parents first (biological parents and
+ * donors): full siblings have the same genetic parents, and half siblings
+ * share some. Only two people who share no genetic parent are adoptive
+ * siblings, when one has adopted either of them and is a parent to both;
+ * they are half adoptive siblings unless their genetic and adoptive parents
+ * are the same. An adoptive parent never makes full genetic siblings half
+ * siblings. Someone who shares only a step-parent is not a sibling here, and
+ * is reached through that parent instead.
+ */
+export function siblingTie(
+  family: Family,
+  a: string,
+  b: string,
+): { half: boolean; adoptive: boolean } | undefined {
+  const aGenetic = new Set(geneticParentsOf(family, a));
+  const bGenetic = new Set(geneticParentsOf(family, b));
+  if ([...aGenetic].some((parent) => bGenetic.has(parent))) {
+    return { half: !sameSet(aGenetic, bGenetic), adoptive: false };
+  }
+  const aParents = new Set([...aGenetic, ...adoptiveParentsOf(family, a)]);
+  const bParents = new Set([...bGenetic, ...adoptiveParentsOf(family, b)]);
+  if (![...aParents].some((parent) => bParents.has(parent))) return undefined;
+  return { half: !sameSet(aParents, bParents), adoptive: true };
+}
+
 export type MissingDetail =
   | 'genderIdentity'
   | 'sexAssignedAtBirth'
@@ -1009,6 +1046,65 @@ export function twinsOf(
   );
 }
 
+/**
+ * The person's twin set: everyone born of the same pregnancy as them, them
+ * included. Twins form a set, with a twin link between every pair, so this
+ * is everyone their twin links reach, however indirectly; a set recorded
+ * with a pair missing is still one set.
+ */
+export function twinSetOf(family: Family, personId: string): string[] {
+  const set = [personId];
+  for (let index = 0; index < set.length; index += 1) {
+    for (const { twinId } of twinsOf(family, set[index]!)) {
+      if (!set.includes(twinId)) set.push(twinId);
+    }
+  }
+  return set;
+}
+
+/** The twin link between two people, if there is one. */
+function twinLinkBetween(family: Family, a: string, b: string) {
+  return family.twins.find(
+    (twin) =>
+      (twin.source === a && twin.target === b) ||
+      (twin.source === b && twin.target === a),
+  );
+}
+
+/**
+ * The zygosity of `a` and `c`, from those of `a` and `b` and of `b` and
+ * `c`. Identical twins come from one egg, so someone identical to `b` is to
+ * `c` what `b` is; two twins are identical only when both pairs are, and
+ * fraternal when either pair is.
+ */
+function zygosityThrough(ab: TwinZygosity, bc: TwinZygosity): TwinZygosity {
+  if (ab === 'identical') return bc;
+  if (bc === 'identical') return ab;
+  return ab === 'fraternal' || bc === 'fraternal' ? 'fraternal' : 'unknown';
+}
+
+/**
+ * Who could be recorded as the person's twins: their siblings by the
+ * kinship model's own test (`siblingTie`: genetic or adoptive siblings, never
+ * step or social-only siblings), whose own twin set the person could join —
+ * each of its members is the person's sibling too — and everyone already in
+ * the person's twin set.
+ */
+export function twinCandidatesOf(family: Family, personId: string): string[] {
+  const own = twinSetOf(family, personId);
+  const isSibling = (id: string) =>
+    id !== personId && siblingTie(family, personId, id) !== undefined;
+  const candidates = family.people
+    .map((person) => person.id)
+    .filter(
+      (id) =>
+        !own.includes(id) &&
+        isSibling(id) &&
+        twinSetOf(family, id).every(isSibling),
+    );
+  return [...own.filter((id) => id !== personId), ...candidates];
+}
+
 /** Whether two people could be identical twins: identical twins come from
  * one egg and one sperm, so they have the same genetic parents. */
 export function identicalTwinsPossible(
@@ -1023,11 +1119,10 @@ export function identicalTwinsPossible(
 
 /**
  * The twins a new sibling, recorded as the anchor's twin of `zygosity`, is
- * given: the anchor, and each of the anchor's own twins, born of the same
- * pregnancy. Twins are identical only while they would have the same genetic
- * parents, and otherwise not known to be; the anchor's twin is identical to
- * the sibling only when both pairs are, fraternal when either pair is, and
- * otherwise not known to be either.
+ * given: everyone in the anchor's twin set, the anchor included, born of the
+ * same pregnancy. Twins are identical only while they would have the same
+ * genetic parents, and otherwise not known to be; each of the anchor's twins
+ * is to the sibling as `zygosityThrough` the anchor works out.
  */
 function twinsForNewSibling(
   family: Family,
@@ -1043,26 +1138,40 @@ function twinsForNewSibling(
   const withAnchor = possible(anchorId, siblingId, zygosity);
   return [
     { source: anchorId, target: siblingId, zygosity: withAnchor },
-    ...twinsOf(family, anchorId).map(({ twinId, zygosity: theirs }) => {
-      const combined: TwinZygosity =
-        withAnchor === 'identical' && theirs === 'identical'
-          ? 'identical'
-          : withAnchor === 'fraternal' || theirs === 'fraternal'
-            ? 'fraternal'
-            : 'unknown';
-      return {
+    ...twinSetOf(family, anchorId)
+      .filter((twinId) => twinId !== anchorId)
+      .map((twinId) => ({
         source: twinId,
         target: siblingId,
-        zygosity: possible(twinId, siblingId, combined),
-      };
-    }),
+        zygosity: possible(
+          twinId,
+          siblingId,
+          zygosityThrough(
+            twinLinkBetween(family, anchorId, twinId)?.zygosity ?? 'unknown',
+            withAnchor,
+          ),
+        ),
+      })),
   ];
 }
 
 /**
  * What to change so that the person's twins are the siblings answered, each
- * of the zygosity answered: a twin link added for each new twin, changed for
- * each whose zygosity changes, and removed for each no longer their twin.
+ * of the zygosity answered, keeping every twin set whole: a link between
+ * every pair in a set, and none between sets.
+ *
+ * - A sibling answered who is in another twin set brings their whole set
+ *   into the person's, each of its members as `zygosityThrough` that sibling
+ *   works out.
+ * - Someone in the person's set who is not answered leaves it: their links to
+ *   everyone staying are removed, and their links to anyone else leaving are
+ *   kept, so a person unticking every twin leaves the others twins.
+ * - The person's own pairs take the answers. Anyone identical to the person
+ *   is to everyone else what the person is; any other pair keeps what is
+ *   recorded, and a pair the change newly forms takes `zygosityThrough` the
+ *   person. A worked-out pair is identical only while the two would have the
+ *   same genetic parents, and otherwise not known to be, unless it was
+ *   recorded identical.
  */
 export function planTwinChanges(
   family: Family,
@@ -1073,25 +1182,69 @@ export function planTwinChanges(
   changed: { linkId: string; zygosity: TwinZygosity }[];
   removedLinkIds: string[];
 } {
-  const current = twinsOf(family, personId);
-  return {
-    added: [...answers]
-      .filter(([twinId]) => !current.some((each) => each.twinId === twinId))
-      .map(([twinId, zygosity]) => ({
-        source: personId,
-        target: twinId,
-        zygosity,
-      })),
-    changed: current.flatMap(({ twinId, zygosity, linkId }) => {
-      const answer = answers.get(twinId);
-      return answer !== undefined && answer !== zygosity
-        ? [{ linkId, zygosity: answer }]
-        : [];
-    }),
-    removedLinkIds: current
-      .filter(({ twinId }) => !answers.has(twinId))
-      .map(({ linkId }) => linkId),
+  const current = twinSetOf(family, personId);
+  const recorded = (a: string, b: string) =>
+    twinLinkBetween(family, a, b)?.zygosity;
+  const possible = (a: string, b: string, wanted: TwinZygosity) =>
+    wanted === 'identical' &&
+    recorded(a, b) !== 'identical' &&
+    !identicalTwinsPossible(family, a, b)
+      ? 'unknown'
+      : wanted;
+
+  // Each twin's zygosity with the person, as answered or as brought in.
+  const withPerson = new Map(answers);
+  for (const [twinId, zygosity] of answers) {
+    if (current.includes(twinId)) continue;
+    for (const memberId of twinSetOf(family, twinId)) {
+      if (memberId === personId || withPerson.has(memberId)) continue;
+      withPerson.set(
+        memberId,
+        possible(
+          personId,
+          memberId,
+          zygosityThrough(zygosity, recorded(twinId, memberId) ?? 'unknown'),
+        ),
+      );
+    }
+  }
+  const staying = [personId, ...withPerson.keys()];
+
+  const zygosityOf = (a: string, b: string): TwinZygosity => {
+    if (a === personId) return withPerson.get(b) ?? 'unknown';
+    const withA = withPerson.get(a) ?? 'unknown';
+    const withB = withPerson.get(b) ?? 'unknown';
+    const kept =
+      withA === 'identical' || withB === 'identical'
+        ? zygosityThrough(withA, withB)
+        : (recorded(a, b) ?? zygosityThrough(withA, withB));
+    return possible(a, b, kept);
   };
+
+  const added: PlannedTwin[] = [];
+  const changed: { linkId: string; zygosity: TwinZygosity }[] = [];
+  staying.forEach((a, index) => {
+    for (const b of staying.slice(index + 1)) {
+      const zygosity = zygosityOf(a, b);
+      const link = twinLinkBetween(family, a, b);
+      if (!link) added.push({ source: a, target: b, zygosity });
+      else if (link.zygosity !== zygosity) {
+        changed.push({ linkId: link.id, zygosity });
+      }
+    }
+  });
+
+  const leaving = new Set(current.filter((id) => !staying.includes(id)));
+  const stayingSet = new Set(staying);
+  const removedLinkIds = family.twins
+    .filter(
+      (twin) =>
+        (leaving.has(twin.source) && stayingSet.has(twin.target)) ||
+        (leaving.has(twin.target) && stayingSet.has(twin.source)),
+    )
+    .map((twin) => twin.id);
+
+  return { added, changed, removedLinkIds };
 }
 
 /** The sex at birth a planned addition gives a person, or that they are
@@ -1739,8 +1892,20 @@ function isAncestor(family: Family, ancestorId: string, personId: string) {
   return false;
 }
 
-/** Whether two people are already linked, as partners or parent and child.
- * A pair has at most one link, so they cannot be connected again. */
+/** Whether two people are joined by a parent or partner link: the links
+ * the connect tool makes and the disconnect tool removes. Twins are siblings,
+ * joined through their parents, and are told apart in the person form. */
+export function areLinked(family: Family, a: string, b: string): boolean {
+  return family.links.some(
+    (link) =>
+      (link.source === a && link.target === b) ||
+      (link.source === b && link.target === a),
+  );
+}
+
+/** Whether two people are already related directly: linked as partners or
+ * parent and child, or recorded as twins. A pair has at most one link, so
+ * they cannot be connected again. */
 export function areConnected(family: Family, a: string, b: string): boolean {
   const joins = (link: { source: string; target: string }) =>
     (link.source === a && link.target === b) ||

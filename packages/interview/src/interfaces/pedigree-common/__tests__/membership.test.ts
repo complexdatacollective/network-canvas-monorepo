@@ -159,6 +159,56 @@ describe('the Family Pedigree and people who are not family', () => {
   });
 });
 
+describe('twins in the participant’s family', () => {
+  test('someone joined to the family only as a twin is in it', () => {
+    const f = participantsFamily(
+      readFamily(
+        [...family, person('twin', { name: 'Tam' })],
+        [...familyLinks, link('ego', 'twin', 'fraternalTwin')],
+        config,
+      ),
+    );
+    expect(f.byId.has('twin')).toBe(true);
+    expect(f.twins.map((twin) => twin.id)).toEqual(['ego-twin-fraternalTwin']);
+  });
+
+  test('taking away the only twin link cuts the twin off', () => {
+    const f = participantsFamily(
+      readFamily(
+        [...family, person('twin', { name: 'Tam' })],
+        [...familyLinks, link('ego', 'twin', 'fraternalTwin')],
+        config,
+      ),
+    );
+    expect(peopleCutOff(f, { linkIds: ['ego-twin-fraternalTwin'] })).toEqual([
+      'twin',
+    ]);
+    // Removing the participant's twin's twin removes nobody else with them.
+    expect(peopleCutOff(f, { personId: 'twin' })).toEqual([]);
+  });
+
+  test('removing someone does not keep those reached only through their twin link', () => {
+    // Tam is joined to the family only through Kit's twin link; removing Kit
+    // cuts Tam off too.
+    const f = participantsFamily(
+      readFamily(
+        [
+          ...family,
+          person('kit', { name: 'Kit' }),
+          person('tam', { name: 'Tam' }),
+        ],
+        [
+          ...familyLinks,
+          link('mum', 'kit', 'biological'),
+          link('kit', 'tam', 'fraternalTwin'),
+        ],
+        config,
+      ),
+    );
+    expect(peopleCutOff(f, { personId: 'kit' })).toEqual(['tam']);
+  });
+});
+
 describe('peopleCutOff', () => {
   // The participant's mother's mother, connected to them only through her.
   const grandma = person('grandma', { sex: ['female'] });

@@ -87,6 +87,8 @@ import {
   possibleCarriers,
   primaryParentsOf,
   siblingsOf,
+  twinCandidatesOf,
+  twinSetOf,
   twinsOf,
 } from '../model';
 import {
@@ -771,14 +773,6 @@ function readLinkUpdates(
 
 const twinZygosityField = (twinId: string) => `pedigreeTwin:${twinId}`;
 
-/** The siblings who could be recorded as the person's twins: their
- * siblings, and anyone already recorded as their twin. */
-function twinCandidatesOf(family: Family, personId: string): string[] {
-  const candidates = new Set(siblingsOf(family, personId));
-  for (const { twinId } of twinsOf(family, personId)) candidates.add(twinId);
-  return [...candidates];
-}
-
 /** The answers about the person's twins, as the changes to make. */
 function readTwinChanges(
   family: Family,
@@ -839,7 +833,11 @@ function TwinFields({
           value: id,
           label: displayName(id),
         }))}
-        initialValue={current.map(({ twinId }) => twinId)}
+        // Everyone in their twin set, so a set recorded with a pair missing
+        // is made whole when saved.
+        initialValue={twinSetOf(family, person.id).filter(
+          (id) => id !== person.id,
+        )}
       />
       {chosen
         .filter((twinId) => candidates.includes(twinId))

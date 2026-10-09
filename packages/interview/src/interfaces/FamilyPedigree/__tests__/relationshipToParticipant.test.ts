@@ -20,6 +20,18 @@ const relationshipsOf = (nodes: NcNode[], edges: NcEdge[]) =>
 const ego = person('ego', { isEgo: true });
 
 describe('relationshipsToParticipant', () => {
+  test('a twin is a sibling, even with no parent recorded between them, and so is their partner an in-law', () => {
+    expect(
+      relationshipsOf(
+        [ego, person('twin'), person('twinsWife')],
+        [
+          link('ego', 'twin', 'unknownZygosityTwin'),
+          link('twin', 'twinsWife', 'partner'),
+        ],
+      ),
+    ).toEqual({ twin: 'sibling', twinsWife: 'siblingInLaw' });
+  });
+
   test('names every kind of parent, child and partner, neutrally', () => {
     expect(
       relationshipsOf(

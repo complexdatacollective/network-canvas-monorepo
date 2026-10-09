@@ -128,6 +128,7 @@ import {
 import { messages } from './messages';
 import {
   areConnected,
+  areLinked,
   type Connection,
   isStandIn,
   missingDetailsFor,
@@ -1863,7 +1864,13 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     }
     // A pair has one link at most; when the second person cannot be chosen,
     // the first stays selected.
-    const connected = areConnected(family, linkingId, personId);
+    // Twins are already related, so are not connected again; but a twin
+    // link is no line the disconnect tool removes (twins are siblings,
+    // joined through their parents, and are told apart in the person form).
+    const connected =
+      tool === 'disconnect'
+        ? areLinked(family, linkingId, personId)
+        : areConnected(family, linkingId, personId);
     if (tool === 'connect' && connected) {
       refuse(
         intl.formatMessage(
@@ -2065,7 +2072,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     id !== null &&
     linkingId !== null &&
     id !== linkingId &&
-    areConnected(family, linkingId, id) === (tool === 'disconnect');
+    (tool === 'disconnect'
+      ? areLinked(family, linkingId, id)
+      : !areConnected(family, linkingId, id));
   const connectorTargetId =
     chosenPair?.secondId ??
     [hoveredId, focusedId].find(isConnectTarget) ??

@@ -6,11 +6,13 @@ import { planRemovePerson } from '../../pedigree-common/membership';
 import {
   type AddRelativeRequest,
   areConnected,
+  areLinked,
   type Family,
   identicalTwinsPossible,
   planAddRelative,
   planTwinChanges,
   readFamily,
+  twinCandidatesOf,
   twinsOf,
   type TwinZygosity,
 } from '../model';
@@ -174,11 +176,208 @@ describe('changing someone’s twins', () => {
         ]),
       ),
     ).toEqual({
-      added: [{ source: 'ego', target: 'kim', zygosity: 'fraternal' }],
+      // Sam, now identical to the participant, is Kim's twin too.
+      added: [
+        { source: 'ego', target: 'kim', zygosity: 'fraternal' },
+        { source: 'sam', target: 'kim', zygosity: 'fraternal' },
+      ],
       changed: [
         { linkId: 'ego-sam-unknownZygosityTwin', zygosity: 'identical' },
       ],
       removedLinkIds: ['ego-lee-fraternalTwin'],
     });
+  });
+});
+
+// Twins form a set — siblings by the kinship model's own test, born of one
+// pregnancy — with a twin link between every pair, and every change keeps the
+// set whole.
+describe('a twin set', () => {
+  /** Ego, Sam and Kim, children of Julie and Rob. */
+  const threeSiblings = (twinEdges: NcEdge[]) =>
+    siblings(
+      [
+        link('mum', 'kim', 'biological'),
+        link('dad', 'kim', 'biological'),
+        ...twinEdges,
+      ],
+      [person('kim', { name: 'Kim' })],
+    );
+
+  test('a twin added from the person form joins the whole set of the twin chosen', () => {
+    // Kim is already Sam's twin; making the participant Sam's twin makes
+    // them Kim's too.
+    const f = threeSiblings([link('sam', 'kim', 'fraternalTwin')]);
+    expect(planTwinChanges(f, 'ego', new Map([['sam', 'fraternal']]))).toEqual({
+      added: [
+        { source: 'ego', target: 'sam', zygosity: 'fraternal' },
+        { source: 'ego', target: 'kim', zygosity: 'fraternal' },
+      ],
+      changed: [],
+      removedLinkIds: [],
+    });
+  });
+
+  test('a twin added to someone already in a set is the twin of everyone in it', () => {
+    // The participant is already Kim's twin; adding Sam makes Sam Kim's twin.
+    const f = threeSiblings([link('ego', 'kim', 'unknownZygosityTwin')]);
+    expect(
+      planTwinChanges(
+        f,
+        'ego',
+        new Map([
+          ['kim', 'unknown'],
+          ['sam', 'fraternal'],
+        ]),
+      ).added,
+    ).toEqual([
+      { source: 'ego', target: 'sam', zygosity: 'fraternal' },
+      { source: 'kim', target: 'sam', zygosity: 'fraternal' },
+    ]);
+  });
+
+  test('someone unticked leaves the set, and the others stay twins', () => {
+    const f = threeSiblings([
+      link('ego', 'sam', 'fraternalTwin'),
+      link('ego', 'kim', 'fraternalTwin'),
+      link('sam', 'kim', 'fraternalTwin'),
+    ]);
+    expect(planTwinChanges(f, 'ego', new Map([['sam', 'fraternal']]))).toEqual({
+      added: [],
+      changed: [],
+      removedLinkIds: ['ego-kim-fraternalTwin', 'sam-kim-fraternalTwin'],
+    });
+  });
+
+  test('unticking every twin takes the person out of the set, and the others stay twins', () => {
+    const f = threeSiblings([
+      link('ego', 'sam', 'fraternalTwin'),
+      link('ego', 'kim', 'fraternalTwin'),
+      link('sam', 'kim', 'fraternalTwin'),
+    ]);
+    expect(planTwinChanges(f, 'ego', new Map())).toEqual({
+      added: [],
+      changed: [],
+      removedLinkIds: ['ego-sam-fraternalTwin', 'ego-kim-fraternalTwin'],
+    });
+  });
+
+  test('twins are identical only when every pair through them is', () => {
+    const f = threeSiblings([link('ego', 'sam', 'identicalTwin')]);
+    expect(
+      planTwinChanges(
+        f,
+        'ego',
+        new Map([
+          ['sam', 'identical'],
+          ['kim', 'identical'],
+        ]),
+      ).added,
+    ).toEqual([
+      { source: 'ego', target: 'kim', zygosity: 'identical' },
+      { source: 'sam', target: 'kim', zygosity: 'identical' },
+    ]);
+    expect(
+      planTwinChanges(
+        f,
+        'ego',
+        new Map([
+          ['sam', 'identical'],
+          ['kim', 'fraternal'],
+        ]),
+      ).added,
+    ).toEqual([
+      { source: 'ego', target: 'kim', zygosity: 'fraternal' },
+      { source: 'sam', target: 'kim', zygosity: 'fraternal' },
+    ]);
+  });
+
+  test('a set recorded with a pair missing is made whole', () => {
+    const f = threeSiblings([
+      link('ego', 'sam', 'fraternalTwin'),
+      link('ego', 'kim', 'fraternalTwin'),
+    ]);
+    expect(
+      planTwinChanges(
+        f,
+        'ego',
+        new Map([
+          ['sam', 'fraternal'],
+          ['kim', 'fraternal'],
+        ]),
+      ).added,
+    ).toEqual([{ source: 'sam', target: 'kim', zygosity: 'fraternal' }]);
+  });
+
+  test('a new sibling added as a twin joins every member of the anchor’s set', () => {
+    // A set recorded with the anchor's link to Kim missing still brings Kim.
+    const f = threeSiblings([
+      link('ego', 'sam', 'fraternalTwin'),
+      link('sam', 'kim', 'fraternalTwin'),
+    ]);
+    expect(
+      plan(f, siblingRequest('fraternal')).twins?.map((twin) => twin.source),
+    ).toEqual(['ego', 'sam', 'kim']);
+  });
+});
+
+describe('who could be someone’s twin', () => {
+  test('a step-sibling, who shares only a social parent, could not', () => {
+    const f = family(
+      [
+        person('ego', { isEgo: true }),
+        person('mum', { sex: ['female'] }),
+        person('step', { name: 'Stepdad', sex: ['male'] }),
+        person('stepkid', { name: 'Ash' }),
+      ],
+      [
+        link('mum', 'ego', 'biological'),
+        link('step', 'ego', 'social'),
+        link('step', 'stepkid', 'biological'),
+      ],
+    );
+    expect(twinCandidatesOf(f, 'ego')).toEqual([]);
+  });
+
+  test('siblings adopted together could, as adoptive siblings', () => {
+    const f = family(
+      [
+        person('ego', { isEgo: true }),
+        person('sib', { name: 'Sam' }),
+        person('amy', { sex: ['female'] }),
+      ],
+      [link('amy', 'ego', 'adoptive'), link('amy', 'sib', 'adoptive')],
+    );
+    expect(twinCandidatesOf(f, 'ego')).toEqual(['sib']);
+  });
+
+  test('a sibling whose twins are not all the person’s siblings could not', () => {
+    // Kim is Sam's twin through their father, but not the participant's
+    // sibling, so the participant cannot join their set.
+    const f = family(
+      [
+        person('ego', { isEgo: true }),
+        person('sam', { name: 'Sam' }),
+        person('kim', { name: 'Kim' }),
+        person('mum', { sex: ['female'] }),
+        person('dad', { sex: ['male'] }),
+      ],
+      [
+        link('mum', 'ego', 'biological'),
+        link('mum', 'sam', 'biological'),
+        link('dad', 'sam', 'biological'),
+        link('dad', 'kim', 'biological'),
+        link('sam', 'kim', 'fraternalTwin'),
+      ],
+    );
+    expect(twinCandidatesOf(f, 'ego')).toEqual([]);
+  });
+});
+
+describe('disconnecting', () => {
+  test('twins have no link the disconnect tool removes', () => {
+    const f = siblings([link('ego', 'sam', 'fraternalTwin')]);
+    expect(areLinked(f, 'ego', 'sam')).toBe(false);
+    expect(areLinked(f, 'mum', 'sam')).toBe(true);
   });
 });

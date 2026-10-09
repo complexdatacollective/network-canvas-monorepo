@@ -7,7 +7,7 @@ import type {
 
 import { type Gamete, gameteLookup, inferGametes } from './gametes';
 import { messages } from './messages';
-import { type Family, geneticParentsOf, type Person } from './model';
+import { type Family, type Person, siblingTie } from './model';
 
 /**
  * Every kinship word an unnamed person can be described by. The interview
@@ -161,11 +161,6 @@ function pick<T>(gender: Gendered, terms: { woman: T; man: T; other: T }) {
   return terms[gender];
 }
 
-const adoptiveParentsOf = (family: Family, personId: string) =>
-  family.links
-    .filter((link) => link.target === personId && link.kind === 'adoptive')
-    .map((link) => link.source);
-
 /**
  * Whether the step or social parent link from `parentId` to `childId` is a
  * step-parent's: the step or social parent has a partnership, current or
@@ -199,43 +194,12 @@ function isStepLink(family: Family, parentId: string, childId: string) {
   );
 }
 
-const sameSet = (a: ReadonlySet<string>, b: ReadonlySet<string>) =>
-  a.size === b.size && [...a].every((item) => b.has(item));
-
-/**
- * How two people are siblings, if they are: the one definition the canvas
- * labels and the saved relationship to the participant both follow.
- *
- * It is decided from their genetic parents first (biological parents and
- * donors): full siblings have the same genetic parents, and half siblings
- * share some. Only two people who share no genetic parent are adoptive
- * siblings, when one has adopted either of them and is a parent to both;
- * they are half adoptive siblings unless their genetic and adoptive parents
- * are the same. An adoptive parent never makes full genetic siblings half
- * siblings. Someone who shares only a step-parent is not a sibling here, and
- * is reached through that parent instead.
- */
-function siblingTie(
-  family: Family,
-  a: string,
-  b: string,
-): { half: boolean; adoptive: boolean } | undefined {
-  const aGenetic = new Set(geneticParentsOf(family, a));
-  const bGenetic = new Set(geneticParentsOf(family, b));
-  if ([...aGenetic].some((parent) => bGenetic.has(parent))) {
-    return { half: !sameSet(aGenetic, bGenetic), adoptive: false };
-  }
-  const aParents = new Set([...aGenetic, ...adoptiveParentsOf(family, a)]);
-  const bParents = new Set([...bGenetic, ...adoptiveParentsOf(family, b)]);
-  if (![...aParents].some((parent) => bParents.has(parent))) return undefined;
-  return { half: !sameSet(aParents, bParents), adoptive: true };
-}
-
 /**
  * A person's relatives one step away, in the order a path through them is
  * preferred: parents (as recorded), siblings, partners, then children.
  * Siblings are a single step so that "aunt" is found as a parent's sibling,
- * and are those `siblingTie` finds.
+ * and are those `siblingTie` finds, and twins, who are siblings even with no
+ * parent recorded between them.
  */
 export function stepsFrom(family: Family, personId: string): Step[] {
   const steps: Step[] = [];
@@ -248,6 +212,15 @@ export function stepsFrom(family: Family, personId: string): Step[] {
     if (person.id === personId) continue;
     const tie = siblingTie(family, personId, person.id);
     if (tie) steps.push({ type: 'sibling', ...tie, to: person.id });
+  }
+  // A twin is a sibling, even with no parent recorded between them.
+  for (const twin of family.twins) {
+    if (twin.source !== personId && twin.target !== personId) continue;
+    const twinId = twin.source === personId ? twin.target : twin.source;
+    if (steps.some((step) => step.type === 'sibling' && step.to === twinId)) {
+      continue;
+    }
+    steps.push({ type: 'sibling', half: false, adoptive: false, to: twinId });
   }
   for (const link of family.links) {
     if (link.kind !== 'partner') continue;

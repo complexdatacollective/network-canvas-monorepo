@@ -923,13 +923,39 @@ describe('twins', () => {
     await save(user);
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    // Sam is identical to the participant, so is to Kim what they are.
     expect(onSubmit.mock.calls[0]?.[0].twinChanges).toEqual({
-      added: [{ source: 'ego', target: 'sam', zygosity: 'identical' }],
+      added: [
+        { source: 'ego', target: 'sam', zygosity: 'identical' },
+        { source: 'kim', target: 'sam', zygosity: 'fraternal' },
+      ],
       changed: [
         { linkId: 'ego-kim-unknownZygosityTwin', zygosity: 'fraternal' },
       ],
       removedLinkIds: [],
     });
+  });
+
+  it('offers no step-sibling as a twin', async () => {
+    // Ash shares only a step-parent with the participant, so is no sibling
+    // the kinship model knows, and could not be their twin.
+    renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('ash', { name: 'Ash', sex: ['male'] }),
+        ...parents,
+      ],
+      edges: [
+        link('mum', 'ego', 'biological', { carrier: true }),
+        link('dad', 'ego', 'social'),
+        link('dad', 'ash', 'biological'),
+      ],
+    });
+    expect(
+      screen.queryByRole('group', {
+        name: /^Which of your siblings, if any, are your twins\?/,
+      }),
+    ).not.toBeInTheDocument();
   });
 
   it('shows identical twins unavailable for a half sibling, saying why', async () => {
