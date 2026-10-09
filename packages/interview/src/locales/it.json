@@ -250,6 +250,7 @@
   "interview.narrativePedigree.zoomControls": "Controlli dello zoom",
   "interview.navigation.currentTextSize": "Dimensione attuale del testo: {size, number, ::percent}",
   "interview.navigation.decreaseTextSize": "Riduci la dimensione del testo",
+  "interview.navigation.exitFailed": "Non è stato possibile salvare le tue risposte, quindi l’intervista non è stata chiusa. Riprova. Se il problema persiste, contatta chi organizza lo studio.",
   "interview.navigation.exitInterview": "Esci dall’intervista",
   "interview.navigation.exitInterviewDescription": "Le risposte date finora verranno salvate e potrai continuare in seguito.",
   "interview.navigation.exitInterviewTitle": "Vuoi uscire da questa intervista?",

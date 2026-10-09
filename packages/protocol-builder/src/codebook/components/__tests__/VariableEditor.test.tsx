@@ -2405,46 +2405,9 @@ describe('the two answers a boolean offers', () => {
   });
 
   /**
-   * A stored pair with nothing written on either answer is not the same
-   * protocol as an attribute holding no `options` key at all. `BooleanField`
-   * renders every entry it is given, and falls back to Yes and No only where
-   * the key is absent — so the pair is two blank buttons and the absent key is
-   * Yes and No, and which of the two a participant meets is the researcher's
-   * to settle by clearing the fields. An edit that only renamed the attribute
-   * never asked that question, so the pair is written back as it was found.
-   */
-  it('keeps a stored pair whose two answers are blank, through an edit that only renames it', async () => {
-    const user = userEvent.setup();
-    const onSubmitDocument = submitting();
-    const committed = {
-      name: 'flagged',
-      label: 'flagged',
-      type: 'boolean',
-      component: 'Boolean',
-      options: [
-        { label: { en: '' }, value: true },
-        // Whitespace and all: an answer nobody touched is written back as it
-        // was authored, and trimming decides only whether it has been named.
-        { label: { en: ' ' }, value: false },
-      ],
-    };
-    render(<VariableEditor {...booleanProps(committed, onSubmitDocument)} />);
-
-    const name = screen.getByRole('textbox', { name: /attribute name/i });
-    await user.clear(name);
-    await user.type(name, 'starred');
-    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
-
-    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
-    expect(savedVariable(onSubmitDocument)).toEqual({
-      ...committed,
-      name: 'starred',
-    });
-  });
-
-  /**
-   * The other side of it: those two blank fields are still the editor for that
-   * pair, and naming both of them writes what was named.
+   * A stored pair whose two answers are blank (which schema 9 no longer
+   * accepts) is still edited through those two fields, and naming both of
+   * them writes what was named.
    */
   it('writes the answers a researcher names onto a stored pair that was blank', async () => {
     const user = userEvent.setup();

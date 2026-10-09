@@ -250,6 +250,7 @@
   "interview.narrativePedigree.zoomControls": "Zoom controls",
   "interview.navigation.currentTextSize": "Current text size: {size, number, ::percent}",
   "interview.navigation.decreaseTextSize": "Decrease text size",
+  "interview.navigation.exitFailed": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer.",
   "interview.navigation.exitInterview": "Exit interview",
   "interview.navigation.exitInterviewDescription": "Your answers so far will be saved and you can continue later.",
   "interview.navigation.exitInterviewTitle": "Exit this interview?",

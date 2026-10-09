@@ -474,6 +474,36 @@ describe('NarrativePedigree protocol-level cross-references', () => {
     }
   });
 
+  // The narrative shows the family the participant drew, so a pedigree that
+  // runs after it has drawn nothing yet when the narrative opens.
+  it('rejects a source FamilyPedigree that comes after the narrative', () => {
+    const result = ProtocolSchemaV9.safeParse(
+      withFinishStage(
+        makeProtocol({
+          stages: [validNarrativePedigreeStageShape, validFamilyPedigreeStage],
+        }),
+      ),
+    );
+    expect(
+      result.error?.issues.map(({ message, path }) => ({ message, path })),
+    ).toContainEqual({
+      message:
+        'NarrativePedigree sourceStageId "fp1" must reference a FamilyPedigree stage that comes before it.',
+      path: ['stages', 0, 'sourceStageId'],
+    });
+  });
+
+  it('accepts a source FamilyPedigree that comes before the narrative', () => {
+    const result = ProtocolSchemaV9.safeParse(
+      withFinishStage(
+        makeProtocol({
+          stages: [validFamilyPedigreeStage, validNarrativePedigreeStageShape],
+        }),
+      ),
+    );
+    expect(result.error?.issues ?? []).toEqual([]);
+  });
+
   it('rejects when sourceStageId references a non-FamilyPedigree stage', () => {
     const informationStage = {
       id: 'info1',

@@ -15,10 +15,12 @@ import { useSelector, useStore } from 'react-redux';
 import { v4 as uuid } from 'uuid';
 
 import { commonMessages } from '@codaco/app-i18n/common';
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
 import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Node from '@codaco/fresco-ui/Node';
 import {
@@ -40,6 +42,10 @@ import PassphraseOverlay from '../../components/PassphraseOverlay';
 import Prompts from '../../components/Prompts/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import {
+  writeFailureMessage,
+  writeSubmissionResult,
+} from '../../forms/writeSubmissionResult';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
@@ -66,6 +72,7 @@ import {
   updateStageMetadata,
 } from '../../store/modules/session';
 import { type RootState, useAppDispatch } from '../../store/store';
+import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { Direction, StageProps } from '../../types';
 import { readOwnProperty, writeOwnProperty } from '../../utils/ownProperty';
 import { getDecryptionScope } from '../Anonymisation/decryptionScope';
@@ -187,6 +194,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const { currentStep, displayedStep } = useCurrentStep();
   const store = useStore<RootState>();
   const { confirm } = useDialog();
+  const { showToast } = useInterviewToast();
   const formId = useId();
 
   const config = useMemo(() => pedigreeConfigFromStage(stage), [stage]);
@@ -851,6 +859,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // going on waits for the participant to enter the passphrase; going back
   // leaves the labels to be saved when they next leave. When no passphrase
   // can ever put the key in force, they are never saved.
+  //
+  // A label the session refuses keeps the participant on the stage, told why,
+  // and those written before it are still recorded as labels, so trying
+  // again writes only what is left.
   const saveGeneratedLabels = async (direction: Direction) => {
     // Every encrypted name is decrypted first, so that no label repeats a
     // typed name still being decrypted.
@@ -876,6 +888,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     for (const [personId, stored] of held) {
       record[personId] = nameFingerprint(stored);
     }
+    let refused: MessageDescriptor | undefined;
     for (const [personId, label] of toWrite) {
       const result = await dispatch(
         updateNode({
@@ -887,6 +900,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           currentStep,
         }),
       );
+      refused = writeFailureMessage(result);
+      if (refused) break;
       // The value as stored, which encryption may have turned to ciphertext.
       const written = updateNode.fulfilled.match(result)
         ? readOwnProperty(
@@ -897,17 +912,24 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       if (written !== undefined) record[personId] = nameFingerprint(written);
     }
     if (
-      Object.keys(record).length === 0 &&
-      pedigreeMetadata?.generatedLabels === undefined
+      Object.keys(record).length > 0 ||
+      pedigreeMetadata?.generatedLabels !== undefined
     ) {
-      return true;
+      dispatch(
+        updateStageMetadata({
+          currentStep,
+          metadata: { ...pedigreeMetadata, generatedLabels: record },
+        }),
+      );
     }
-    dispatch(
-      updateStageMetadata({
-        currentStep,
-        metadata: { ...pedigreeMetadata, generatedLabels: record },
-      }),
-    );
+    if (refused) {
+      showToast({
+        description: intl.formatMessage(refused),
+        variant: 'destructive',
+        anchor: direction === 'backwards' ? 'backward' : 'forward',
+      });
+      return false;
+    }
     return true;
   };
 
@@ -1217,16 +1239,20 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     }
   };
 
-  const handleSubmit = async (result: PersonFormResult) => {
-    if (!panel) return;
+  // The panel closes once what the participant entered is stored. A write
+  // the session refuses (a protected answer whose key went, say) keeps it
+  // open with their answers and says why, so they can save again.
+  const handleSubmit = async (
+    result: PersonFormResult,
+  ): Promise<FormSubmissionResult> => {
+    if (!panel) return { success: true };
     // Without the key (it went while the panel was open) nothing typed could
     // be saved, so the panel stays open until the passphrase is entered.
     if (detailsLocked) {
       askForPassphrase();
-      return;
+      return { success: false };
     }
     const { mode } = panel;
-    closePanel();
     const typedName = readOwnProperty(result.set, config.nameAttribute);
 
     if (mode.kind === 'edit') {
@@ -1248,7 +1274,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       )) {
         writeOwnProperty(set, attribute, false);
       }
-      await dispatch(
+      const updated = await dispatch(
         updateNode({
           nodeId: mode.person.id,
           attributePatch: {
@@ -1260,6 +1286,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           currentStep,
         }),
       );
+      if (writeFailureMessage(updated)) return writeSubmissionResult(updated);
       // A name typed for someone whose label was saved is theirs now, even
       // when it is the same words.
       if (
@@ -1283,7 +1310,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       }
 
       for (const update of result.linkUpdates ?? []) {
-        await dispatch(
+        const relinked = await dispatch(
           updateEdge({
             edgeId: update.linkId,
             attributePatch: {
@@ -1302,17 +1329,22 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             },
           }),
         );
+        if (writeFailureMessage(relinked)) {
+          return writeSubmissionResult(relinked);
+        }
       }
+      closePanel();
       // A parent re-described as biological gives the person siblings, and
       // the parent a child.
       await withdrawContradictedAnswers();
       setAnnouncement(intl.formatMessage(messages.savedAnnouncement));
-      return;
+      return { success: true };
     }
 
     if (!result.request) {
+      closePanel();
       setDraft(null);
-      return;
+      return { success: true };
     }
     const plan = planAddition(
       family,
@@ -1326,7 +1358,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     // Everyone the addition draws, and how they are related, is saved as one
     // change, or not at all, so nothing observing the session sees part of
     // it.
-    await dispatch(
+    const added = await dispatch(
       addNodesAndEdges({
         nodes: plan.people.map((person) => ({
           type: config.personType,
@@ -1339,11 +1371,14 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         edges: plan.links.map(linkEdge),
         currentStep,
       }),
-    ).unwrap();
+    );
+    if (writeFailureMessage(added)) return writeSubmissionResult(added);
+    closePanel();
     await withdrawContradictedAnswers();
     // Recorded: the people drawn are now the family's own.
     setDraft(null);
     setJustAddedId(newPersonId);
+    return { success: true };
   };
 
   const chooseTool = (next: Tool) => {
@@ -1944,7 +1979,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 : undefined
             }
             onDraftChange={handleDraftChange}
-            onSubmit={(result) => void handleSubmit(result)}
+            onSubmit={handleSubmit}
           />
         )}
       </PersonDrawer>

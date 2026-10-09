@@ -390,7 +390,14 @@ const deriveSexFromGameteRole = (
 
 const NO_CHILDREN = 'noChildren';
 
-/** Records schema 8's "no children" answer on the participant. */
+/**
+ * Records schema 8's "no children" answer on the participant, unless the
+ * participant is the parent on a parent relationship. A relationship of the
+ * pedigree's type with no kind, or one schema 9 does not know, is not one the
+ * redesigned stage draws, so it is no child. The record's membership list is
+ * not consulted: the redesigned stage draws everyone connected to the
+ * participant, so a child outside the list is still a child it shows.
+ */
 const recordNoChildren = (
   network: SessionNetwork,
   bindings: PedigreeBindings,
@@ -399,12 +406,11 @@ const recordNoChildren = (
   if (attribute === undefined) return;
   const ego = findEgo(network, bindings);
   if (!ego) return;
-  const hasChildren = network.edges.some(
-    (edge) =>
-      edge.type === bindings.edgeType &&
-      edge.from === ego._uid &&
-      kindOf(attributesOf(edge), bindings.kindAttribute) !== 'partner',
-  );
+  const hasChildren = familyEdges(network, bindings).some((edge) => {
+    if (edge.from !== ego._uid) return false;
+    const kind = kindOf(attributesOf(edge), bindings.kindAttribute);
+    return typeof kind === 'string' && PARENT_KINDS.has(kind);
+  });
   if (hasChildren) return;
   const attributes = attributesOf(ego);
   const current = attributes[attribute];

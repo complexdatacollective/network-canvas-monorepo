@@ -213,25 +213,36 @@ const refusalValues = (
     : {}),
   ...(conflict.kind === 'reserved'
     ? { reservedColumn: conflict.reservedColumn }
-    : {
-        siblingName: conflict.sibling.name,
-        siblingColumn: conflict.siblingColumn,
-        ...(conflict.siblingOrigin.kind === 'option'
-          ? { siblingValue: String(conflict.siblingOrigin.value) }
-          : {}),
-        ...(conflict.writtenColumn === undefined
-          ? {}
-          : { writtenColumn: conflict.writtenColumn }),
-      }),
+    : conflict.kind === 'own'
+      ? // Another of the attribute's own columns, said as a column of it.
+        {
+          siblingName: name,
+          siblingColumn: conflict.otherColumn,
+          writtenColumn: conflict.writtenColumn,
+        }
+      : {
+          siblingName: conflict.sibling.name,
+          siblingColumn: conflict.siblingColumn,
+          ...(conflict.siblingOrigin.kind === 'option'
+            ? { siblingValue: String(conflict.siblingOrigin.value) }
+            : {}),
+          ...(conflict.writtenColumn === undefined
+            ? {}
+            : { writtenColumn: conflict.writtenColumn }),
+        }),
 });
 
 const refusalMessage = (conflict: ExportColumnConflict): MessageDescriptor => {
-  if (conflict.kind === 'reserved') {
-    return reservedMessages[conflict.origin.kind];
+  switch (conflict.kind) {
+    case 'reserved':
+      return reservedMessages[conflict.origin.kind];
+    case 'own':
+      return writtenMessages[conflict.origin.kind];
+    case 'sibling':
+      return conflict.writtenColumn === undefined
+        ? siblingMessages[conflict.origin.kind][conflict.siblingOrigin.kind]
+        : writtenMessages[conflict.origin.kind];
   }
-  return conflict.writtenColumn === undefined
-    ? siblingMessages[conflict.origin.kind][conflict.siblingOrigin.kind]
-    : writtenMessages[conflict.origin.kind];
 };
 
 /**

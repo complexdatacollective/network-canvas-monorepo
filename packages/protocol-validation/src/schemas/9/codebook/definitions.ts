@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { CodebookNameSchema } from '@codaco/shared-consts';
+
 import {
   EdgeColorReferenceSchema,
   NodeColorReferenceSchema,
@@ -7,7 +9,7 @@ import {
   type NodeColorReference,
 } from '../color-reference.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
-import { localizedString } from '../localized-string.ts';
+import { localizedString, nonBlankText } from '../localized-string.ts';
 import {
   EdgeVariablesSchema,
   EgoVariablesSchema,
@@ -75,8 +77,8 @@ const ShapeSchema = z.strictObject({
 });
 
 const NodeDefinitionSchema = z.strictObject({
-  name: z.string(),
-  label: localizedString(z.string(), 'plain'),
+  name: CodebookNameSchema,
+  label: localizedString(nonBlankText(), 'plain'),
   icon: z.string().optional(),
   variables: VariablesSchema.optional(),
   color: NodeColorReferenceSchema,
@@ -89,8 +91,8 @@ export type NodeDefinition = z.infer<typeof NodeDefinitionSchema>;
 export type EdgeColor = EdgeColorReference;
 
 const EdgeDefinitionSchema = z.strictObject({
-  name: z.string(),
-  label: localizedString(z.string(), 'plain'),
+  name: CodebookNameSchema,
+  label: localizedString(nonBlankText(), 'plain'),
   color: EdgeColorReferenceSchema.optional(),
   variables: EdgeVariablesSchema.optional(),
 });

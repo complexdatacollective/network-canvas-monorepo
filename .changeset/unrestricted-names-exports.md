@@ -17,7 +17,10 @@ when it had to change something to do so.
   the end of each file name. Before, one type's file could replace the other's,
   and its data was then missing from the export. If two files in one export
   would still have the same name, the export now stops with an error rather
-  than lose one of them.
+  than lose one of them. In Fresco, a large export is made in parts, and a
+  file from a later part that has the same name as one already exported is
+  given a number at the end of its name, such as `_2`. Before, the later file
+  was left out of the export.
 - When two columns in one file would have the same name, the later one is
   written under a numbered name, such as "age_2", and the export tells you
   which columns were renamed. Before, the columns were merged and one

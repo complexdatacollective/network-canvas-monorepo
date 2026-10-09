@@ -220,6 +220,39 @@ describe('evaluateCompleteness', () => {
     ]);
   });
 
+  test('asks once about someone reached through more than one relative', () => {
+    // Pedigree collapse: the parents are siblings, so their sister is the
+    // participant's aunt through each of them.
+    const f = family(
+      [
+        person('ego', {
+          isEgo: true,
+          notRecorded: ['noSiblings', 'noChildren'],
+        }),
+        person('mum'),
+        person('dad'),
+        person('nan'),
+        person('gramps'),
+        person('aunt'),
+      ],
+      [
+        ...parented,
+        link('nan', 'mum', 'biological'),
+        link('gramps', 'mum', 'biological'),
+        link('nan', 'dad', 'biological'),
+        link('gramps', 'dad', 'biological'),
+        link('nan', 'aunt', 'biological'),
+        link('gramps', 'aunt', 'biological'),
+      ],
+    );
+    const progress = evaluateCompleteness(f, 'thirdDegree', noneMissing);
+    expect(progress.items).toEqual([{ kind: 'children', personId: 'aunt' }]);
+    // Ego: 2 parents + siblings + children; each parent: 2 parents +
+    // siblings, and children as the other's sibling; the aunt's children
+    // once; details for all six.
+    expect(progress).toMatchObject({ done: 18, total: 19 });
+  });
+
   test('progress counts parents not yet added, so adding one never lowers it', () => {
     const empty = evaluateCompleteness(
       family([ego], []),

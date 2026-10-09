@@ -583,6 +583,15 @@ describe('v8 to v9 localization migration', () => {
       const document = schema8Protocol();
       const field = [...stagePath(document, 'egoForm'), 'form', 'fields', 0];
       setAt(document, [...field, 'hint'], '');
+
+      const migrated = migrateProtocol(document, 9);
+      expect(getAt(migrated, [...field, 'hint'])).toEqual({ en: '' });
+    });
+
+    // A participant chooses between options by their labels, so an empty one
+    // is wrapped like any other required text and validation reports it.
+    it('wraps an empty option label, so validation reports it', () => {
+      const document = schema8Protocol();
       const option = [
         'codebook',
         'node',
@@ -595,9 +604,10 @@ describe('v8 to v9 localization migration', () => {
       ];
       setAt(document, option, '');
 
-      const migrated = migrateProtocol(document, 9);
-      expect(getAt(migrated, [...field, 'hint'])).toEqual({ en: '' });
-      expect(getAt(migrated, option)).toEqual({ en: '' });
+      expect(getAt(migrateStep(document), option)).toEqual({ en: '' });
+      expect(() => migrateProtocol(document, 9)).toThrow(
+        MigrationResultInvalidError,
+      );
     });
 
     it('leaves out an optional field that may not be empty', () => {

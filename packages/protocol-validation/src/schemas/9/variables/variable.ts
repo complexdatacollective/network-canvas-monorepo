@@ -6,7 +6,7 @@ import {
   findDuplicateName,
   getVariableNames,
 } from '../../../utils/validation-helpers.ts';
-import { localizedString } from '../localized-string.ts';
+import { localizedString, nonBlankText } from '../localized-string.ts';
 import {
   type ComponentType,
   ComponentTypes,
@@ -399,7 +399,7 @@ const textVariableSchema = baseVariableSchema.extend({
 // actually known.
 const booleanOptionsSchema = z.array(
   z.strictObject({
-    label: localizedString(z.string(), 'markdown'),
+    label: localizedString(nonBlankText(), 'markdown'),
     value: z.boolean(),
     negative: z.boolean().optional(),
   }),
@@ -439,15 +439,17 @@ const booleanToggleVariableSchema = baseVariableSchema.extend({
 // two options to be usable, so require a minimum of two.
 export const MINIMUM_VARIABLE_OPTIONS = 2;
 
+// A string value is a name a researcher typed, and becomes an export column
+// name, so it is held to the same rule as any other codebook name.
 export const categoricalOptionValueSchema = z.union([
   z.number().int(),
-  z.string(),
+  CodebookNameSchema,
 ]);
 
 const categoricalOptionsSchema = z
   .array(
     z.strictObject({
-      label: localizedString(z.string(), 'markdown'),
+      label: localizedString(nonBlankText(), 'markdown'),
       value: categoricalOptionValueSchema,
     }),
   )

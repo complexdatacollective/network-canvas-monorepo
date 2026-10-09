@@ -5,13 +5,13 @@ import { asExclusiveVariants } from '../declared-variants.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { entityTypeReference } from '../entity-type-reference.ts';
 import { SortOrderSchema } from '../filters/index.ts';
-import { localizedString } from '../localized-string.ts';
+import { localizedString, nonBlankText } from '../localized-string.ts';
 
 export { OrdinalColorSequence as ordinalColorSequence } from '../color-reference.ts';
 
 export const promptSchema = z.strictObject({
   id: z.string(),
-  text: localizedString(z.string().min(1), 'markdown'),
+  text: localizedString(nonBlankText(), 'markdown'),
 });
 
 // Re-parses an already-refined value against a narrowing union so the STATIC

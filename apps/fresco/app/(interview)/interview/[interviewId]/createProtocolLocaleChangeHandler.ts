@@ -14,6 +14,11 @@ export function createProtocolLocaleChangeHandler(): ProtocolLocaleChangeHandler
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ locale, localePreference }),
+        // A language is often chosen just before the participant leaves, and
+        // an ordinary request dies with the page. Two language tags sit far
+        // below the 64KB the browser allows keepalive bodies, so unlike the
+        // answer sync this can always ask for it.
+        keepalive: true,
       });
 
       if (!response.ok) throw new Error('Locale change failed');

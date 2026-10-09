@@ -141,11 +141,14 @@ function liveStore() {
 
 const declined = { set: { agrees: false }, unset: [] };
 
-async function renderShell(onExit?: () => void) {
+async function renderShell(
+  onExit?: () => void,
+  onSync: () => Promise<void> = () => Promise.resolve(),
+) {
   render(
     <Shell
       payload={payload}
-      onSync={() => Promise.resolve()}
+      onSync={onSync}
       onProtocolLocaleChange={() => Promise.resolve()}
       requestedLocales={[]}
       onFinish={() => Promise.resolve()}
@@ -174,6 +177,19 @@ async function exitInterview() {
   await user.click(
     await within(dialog).findByRole('button', { name: 'Exit interview' }),
   );
+}
+
+const exitFailure =
+  'Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer.';
+
+// Confirms the exit again from the confirmation still showing its error.
+async function retryExit() {
+  const dialog = await screen.findByRole('dialog', {
+    name: 'Exit this interview?',
+  });
+  await userEvent
+    .setup()
+    .click(within(dialog).getByRole('button', { name: 'Exit interview' }));
 }
 
 describe('Shell leaving a stage with a write under way', () => {
@@ -265,11 +281,32 @@ describe('Shell closing the interview with a write under way', () => {
     act(() => {
       store.dispatch(updateEgo.rejected(new Error('refused'), 'w1', declined));
     });
-    await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
+    expect(await screen.findByText(exitFailure)).toBeVisible();
     expect(onExit).not.toHaveBeenCalled();
 
-    await exitInterview();
+    await retryExit();
     await waitFor(() => expect(onExit).toHaveBeenCalledTimes(1));
+  });
+
+  it('stays open with an error when the host refuses to save the answers, and exits once they are saved', async () => {
+    vi.spyOn(console, 'error').mockImplementation(vi.fn());
+    const onExit = vi.fn();
+    const onSync = vi
+      .fn<() => Promise<void>>()
+      .mockRejectedValue(new Error('offline'));
+    const { store } = await renderShell(onExit, onSync);
+    act(() => {
+      store.dispatch(updateEgo.fulfilled(declined, 'w1', declined));
+    });
+
+    await exitInterview();
+    expect(await screen.findByText(exitFailure)).toBeVisible();
+    expect(onExit).not.toHaveBeenCalled();
+
+    onSync.mockResolvedValue(undefined);
+    await retryExit();
+    await waitFor(() => expect(onExit).toHaveBeenCalledTimes(1));
+    vi.restoreAllMocks();
   });
 
   it('stays open when a save the stage has waiting its turn is refused', async () => {
@@ -290,10 +327,10 @@ describe('Shell closing the interview with a write under way', () => {
     act(() => {
       settleSave(false);
     });
-    await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
+    expect(await screen.findByText(exitFailure)).toBeVisible();
     expect(onExit).not.toHaveBeenCalled();
 
-    await exitInterview();
+    await retryExit();
     await waitFor(() => expect(onExit).toHaveBeenCalledTimes(1));
   });
 });
